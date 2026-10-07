@@ -11,9 +11,8 @@ from .smc_addr_map import smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_output_fabric_vip_utils import reg_field_pack
 
-# Every expected value below is derived from the register definition plus, for
-# the modem-status pair, the pad level THIS TEST DRIVES -- never from a prior DUT
-# readback and never from a pad default.
+# Every expected value below is derived from the register definition and, for
+# the modem-status pair, from the pad level this test drives.
 #
 #   UART_IIR=0x01, UART_LSR=0x60, UART_LOG_ENGINE_CTRL / LOG_ENGINE CTRL &
 #   INTR_STATUS = 0: RDL reset constants (uart_16550_main.rdl / log_engine.rdl).
@@ -24,8 +23,7 @@ UART_LOG_ENGINE_CTRL_CTRL = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR", 0
 )
 
-# UART0 pad function enable, packed from the generated field layout rather than
-# written as 0x1: ``UART_LOG_ENGINE_CTRL.CTRL.UART_EN``.
+# UART0 pad function enable: ``UART_LOG_ENGINE_CTRL.CTRL.UART_EN``.
 UART_LOG_ENGINE_CTRL_UART_EN = reg_field_pack("UART_LOG_ENGINE_CTRL_CTRL_reg_t", uart_en=1)
 
 # --- UART_MSR: field contract + the CTS pad level this test drives -----------
@@ -51,34 +49,22 @@ UART_LOG_ENGINE_CTRL_UART_EN = reg_field_pack("UART_LOG_ENGINE_CTRL_CTRL_reg_t",
 # (``MSR_LIVE_MASK``); the other six bits are logged, not asserted.
 #
 # CTS INPUT LEVEL -- driven by this test, because an undriven pad has no
-# simulator-independent level:
-#   * ``tb_top.sv:803`` instantiates ``pullup u_pad_pullup (gpio_pad_io[i])`` on
-#     EVERY pad, "to give idle/unconnected pads a defined '1"
-#     (tb_top.sv:692-693) -- an undriven pad here is 1, not 0; and
-#   * whether that pullup resolves at all is a tool property: the same TB notes
-#     at :723-724 that "Verilator ignores `pullup`". An expectation resting on
-#     an undriven pad is therefore an expectation resting on a simulator
-#     artefact, and would flip on a 4-state simulator.
-# So the level is stimulus this sequence establishes: pad 14 is driven from
-# the top-level ``tb_gpio_ext_drive_en`` / ``tb_gpio_ext_drive_value`` pins,
-# which are the highest-precedence entry in tb_top's pad-injection mux
-# (``tb_top.sv:725-730``, evaluated before the pullup and before every other
-# injector) -- the same external pad-drive path the GPIO/I2C sequences use. No
-# force, no deposit, no hierarchical write.
+# simulator-independent level: ``tb_top.sv`` puts a weak ``pullup`` on every pad
+# so an undriven pad reads 1 where the simulator honours ``pullup``, and
+# Verilator ignores ``pullup``. Pad 14 is therefore driven from the top-level
+# ``tb_gpio_ext_drive_en`` / ``tb_gpio_ext_drive_value`` pins, the
+# highest-precedence entry in tb_top's pad-injection mux, the same external
+# pad-drive path the GPIO/I2C sequences use.
 #
-# PAD IDENTITY: pad 14 is UART[0].CTS per the authoritative integrator pin table
-# ``doc/integrator/meta/ocah_gpio_table.csv:16`` /
-# ``doc/integrator/meta/ocah_gpio_table.adoc`` (included into the integrator
-# guide at ``doc/integrator/src/index.adoc:510``).
+# PAD IDENTITY: pad 14 is UART[0].CTS per the integrator pin table
+# ``doc/integrator/meta/ocah_gpio_table.csv`` (rendered by
+# ``doc/integrator/meta/ocah_gpio_table.adoc`` in the integrator guide).
 #
-# STIMULUS PATH (how the pad reaches the pin -- a stimulus statement, NOT the
-# source of any expected value): the pad's UART function is muxed on, so it must
-# be enabled before the pad can drive the UART's CTS input.
-# ``UART_LOG_ENGINE_CTRL.CTRL.UART_EN`` is that enable
-# (``uart_log_engine_ctrl.rdl``: "When set, the pad-mux downstream will be
-# forced to accept UART traffic"). This sequence therefore reads
-# UART_LOG_ENGINE_CTRL at its RDL reset 0x0 first (which is what proves UART_EN
-# starts cleared) and only then writes UART_EN = 1.
+# STIMULUS PATH: the pad's UART function must be enabled before the pad can
+# drive the UART's CTS input; ``UART_LOG_ENGINE_CTRL.CTRL.UART_EN`` is that
+# enable (``uart_log_engine_ctrl.rdl``: "When set, the pad-mux downstream will
+# be forced to accept UART traffic"). The register is read at its RDL reset 0x0
+# before UART_EN = 1 is written.
 MSR_DCTS = reg_field_pack("UART_16550_MAIN_MSR_reg_t", dcts=1)
 MSR_CTS = reg_field_pack("UART_16550_MAIN_MSR_reg_t", cts=1)
 # The bits every MSR compare is masked to: the two this test drives and reads.

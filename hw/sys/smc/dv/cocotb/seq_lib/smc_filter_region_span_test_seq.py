@@ -3,15 +3,14 @@
 """Filter entries programmed with a region that spans two granules.
 
 `smc_filter_config_field_sweep_test` cycles `FILTER_CONFIG` on every entry and
-`smc_filter_multi_entry_test` reads the reset of all of them, but nothing
-programs `START_ADDR` and `END_ADDR` into a region at all. A sweep cannot: its
-ones and zeros patterns give both registers the same value, so the start and
-the end always land in the same granule. Only `smc_dma_sanity_test_seq`
-programs a spanning region, and only on entry 0 of each filter, which is why
-entries 1 to 15 have never had a start and an end in different granules.
+`smc_filter_multi_entry_test` reads the reset of all of them. A sweep cannot
+program `START_ADDR` and `END_ADDR` into a region: its ones and zeros patterns
+give both registers the same value, so the start and the end always land in
+the same granule. `smc_dma_sanity_test_seq` programs a spanning region on
+entry 0 of each filter only.
 
-This leaf programs such a region on every one of those entries, and drives
-traffic through one of them.
+This leaf programs such a region on entries 1 to 15, and drives traffic
+through one of them.
 
 **The outbound filter, and why.** `hw/sys/smc/doc/fabric.adoc` separates the
 two: inbound filtering "protects SMC resources from unauthorized external
@@ -49,13 +48,11 @@ region and a word a granule above it. The copy inside has to leave its
 destination holding the sentinel it was seeded with; the copy outside has to
 land, which is what shows the first was refused rather than the DMA idle.
 
-The observable there is memory rather than the response, and deliberately so:
-the backend is elaborated with `ErrorCap(idma_pkg::NO_ERROR_HANDLING)`, so a
-refused write raises no error the DMA reports. The JTAG2AXI bridge seeds and
-reads those addresses, and is not the master under test here -- a first
-attempt drove the traffic through it and the refusal never appeared, because
-that bridge enters the fabric on the inbound side rather than the outbound one
-this entry sits on.
+The observable there is memory rather than the response: the backend is
+elaborated with `ErrorCap(idma_pkg::NO_ERROR_HANDLING)`, so a refused write
+raises no error the DMA reports. The JTAG2AXI bridge seeds and reads those
+addresses; it enters the fabric on the inbound side rather than the outbound
+side this entry sits on, so it cannot be the master under test.
 
 **Nothing is left behind.** The entry under test is restored to its RDL reset,
 `FILTER_CONFIG.locked` is never written, and the inbound entry this leaf reads
@@ -92,8 +89,7 @@ def _spec(register: str) -> tuple[str, str, str, str]:
 _GRANULE = 0x1000
 
 # The region under test, in a window of the SYS_OUT address space the bench
-# models. Start and end sit in different granules, which is the case no entry
-# but 0 has ever been programmed into.
+# models. Start and end sit in different granules.
 _REGION_BASE = 0x0200_1000
 _REGION_START = _REGION_BASE
 _REGION_END = _REGION_BASE + _GRANULE + 0xFF

@@ -2,14 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_combined_observability_test.
 
-Cross-agent sequence: samples both the reset observables and the I2C
-observables from the same scenario. Uses dual-sequencer dispatch via the
-respective agent sequencers, demonstrating the multi-agent env pattern
-end-to-end within a single test scenario.
+Cross-agent sequence: samples the reset observables and the I2C observables
+from one scenario, dispatching each item to its agent's sequencer.
 
-Dispatching the two items and returning would leave the retained evidence as
-scoreboard prose only, with nothing asserted locally. The body therefore
-restates both expectations -- the five reset observables at 1
+The body asserts both expectations locally -- the five reset observables at 1
 (released) and ``tb_i2c_cg_en == 0``, whose same-run positive control is the
 test's declared ``probe_positive_controls = ("i2c_cg_en",)`` -- reconciles both
 dispatched items against the scoreboard's typed counters, and only then emits

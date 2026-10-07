@@ -9,10 +9,9 @@ divisor. The register reset of that field is 0, which the RDL describes as
 keeping the hardware default of 4 by matching the reset value of the resynced
 copy the divider compares against; the field takes a minimum of 2.
 
-Every leaf so far leaves the divider at that reset, so nothing shows that a
-written divisor reaches the clock at all. This one writes a divisor, measures
-the period of `avs_clk` at the pad, and requires the measured period to scale
-with the divisor. The duty-cycle numerator is then changed on its own and the
+This leaf writes a divisor, measures the period of `avs_clk` at the pad, and
+requires the measured period to scale with the divisor. The duty-cycle
+numerator is then changed on its own and the
 high fraction of the period measured, because the divider compares the two
 settings separately and a change to either has to take effect.
 

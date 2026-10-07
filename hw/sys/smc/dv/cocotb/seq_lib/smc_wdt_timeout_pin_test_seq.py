@@ -31,7 +31,7 @@ previous warm reset has released. The sticky latches are already set by then,
 so those passes read the live pins, which the warm reset clears again.
 
 Each holds before its ``CHK-WDT-TIMEOUT-{FIRST,SECOND,RESET,CORES}`` line is logged;
-the SMC_VPLAN card of the same name declares the three.
+the SMC_VPLAN card of the same name declares them.
 
 ``+smc_wdt_timeout_negative`` is the same run with one expectation inverted:
 it requires the second timeout to be visible on the cycle the first one is,

@@ -4,13 +4,12 @@
 
 `smc_gpio_intf_regblock_sweep_test` cycles `DATA_CTRL_ENABLE` and
 `ACCESS_FILTER` on every GPIO_INTF instance but leaves `DATA_CTRL` at its reset
-word, because writing it moves the pad mux and can drive the pad. So the write
-side of its seven software-writable fields has never run.
+word, because writing it moves the pad mux and can drive the pad.
 
-This leaf writes them, with the smallest footprint that reaches them: **one
-instance, one field at a time, each field set and put straight back to its
-reset with a read-back on either side, and nothing held between fields.** At no
-point is more than one field off its reset value.
+This leaf writes its software-writable fields, with the smallest footprint that
+reaches them: **one instance, one field at a time, each field set and put
+straight back to its reset with a read-back on either side, and nothing held
+between fields.** At no point is more than one field off its reset value.
 
 **The instance is a pad the integrator table reserves.** The integrator pad
 table (`doc/integrator/meta/ocah_gpio_table.csv`) assigns a function to every

@@ -89,7 +89,7 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test_seq(smc_fw_i2c_pair_test_seq):
         self._watch_task = cocotb.start_soon(self.watch.start(self.sequencer))
 
     async def _sample_target_scl(self) -> tuple[list[int], list[int]]:
-        """Sample (I2C_0 pulling SCL low, resolved SCL) every SAMPLE_EVERY_CYCLES."""
+        """Sample (I2C_0 pulling SCL low, resolved SCL) every SAMPLE_EVERY_NS."""
         dut = cocotb.top
         pulled: list[int] = []
         scl: list[int] = []

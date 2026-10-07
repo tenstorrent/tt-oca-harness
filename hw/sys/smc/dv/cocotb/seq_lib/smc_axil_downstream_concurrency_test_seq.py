@@ -4,8 +4,8 @@
 
 SMC drives three independent downstream AXI-Lite manager ports out of the local
 fabric -- ``axil_dtp_csr_req_o``, ``smc_external_req_o`` and
-``efuse_bank_ctrl_req_o`` (``tb_top.sv:1429-1437`` lift each one's request-side
-valid as its activity probe). They are separate ports on separate branches, so
+``efuse_bank_ctrl_req_o`` (``tb_top.sv`` lifts each one's request-side valid
+as its activity probe). They are separate ports on separate branches, so
 a request to one is not serialised behind a request to another, and each answer
 comes from its own window.
 

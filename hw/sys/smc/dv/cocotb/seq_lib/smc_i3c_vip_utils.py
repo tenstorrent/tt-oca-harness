@@ -6,25 +6,22 @@ What the testbench determines and what the DUT determines
 --------------------------------------------------------
 ``tb/tb_top.sv`` resolves the open-drain I3C0 pads itself::
 
-    assign tb_i3c0_scl_dut_low = i3c_scl_oe_to_pad[0] && !i3c_scl_to_pad[0]; // :674
-    assign tb_i3c0_sda_dut_low = i3c_sda_oe_to_pad[0] && !i3c_sda_to_pad[0]; // :676
-    assign tb_i3c0_scl = !(tb_i3c0_scl_dut_low || tb_i3c0_scl_ext_low);      // :678
-    assign tb_i3c0_sda = !(tb_i3c0_sda_dut_low || tb_i3c0_sda_ext_low);      // :679
+    assign tb_i3c0_scl_dut_low = i3c_scl_oe_to_pad[0] && !i3c_scl_to_pad[0];
+    assign tb_i3c0_sda_dut_low = i3c_sda_oe_to_pad[0] && !i3c_sda_to_pad[0];
+    assign tb_i3c0_scl = !(tb_i3c0_scl_dut_low || tb_i3c0_scl_ext_low);
+    assign tb_i3c0_sda = !(tb_i3c0_sda_dut_low || tb_i3c0_sda_ext_low);
 
 ``*_ext_low`` are **testbench inputs** this helper drives, so while an
 ``ext_low`` is 1 the matching resolved pad is 0 by that combinational assign
 whatever the DUT does: asserting it would be a tautology and is therefore NOT
 checked or tokenized here (``[NO-ALWAYS-PASS-CHECKER]``).
 
-Why the DUT-drive levels are OBSERVED-ONLY here
------------------------------------------------------------------
-``tb_i3c0_{scl,sda}_dut_low`` really are DUT-determined, but every expectation
-this helper could place on them in this bench is ``0`` -- and no positive
-control for either net exists anywhere in this testbench, so ``== 0`` would pass
-identically against a DUT that tied ``i3c_*_oe_to_pad`` low, against a
-black-boxed core, and against a core whose pad driver is broken. That is exactly
-the shape policy ``[NEGATIVE-NEEDS-POSITIVE-CONTROL]`` prohibits, so the levels
-are **recorded, not asserted**, and no ``CHK-`` token claims them as checks.
+The DUT-drive levels are observed only
+--------------------------------------
+``tb_i3c0_{scl,sda}_dut_low`` are DUT-determined, but every level this bench can
+produce on them is ``0`` and no positive control for either net exists here
+(``[NEGATIVE-NEEDS-POSITIVE-CONTROL]``), so the levels are **recorded, not
+asserted**, and no ``CHK-`` token claims them as checks.
 
 The core is enabled -- ``smc_i3c_to_fabric_test_seq`` writes the RDL-declared
 ``HC_CONTROL.BUS_ENABLE`` and value-compares the readback, and this helper runs
@@ -33,10 +30,6 @@ no bus transfer queued releases both open-drain lines, so ``*_dut_low`` never
 reaches 1. Making the core drive SCL/SDA requires queueing real I3C bus
 traffic, which this bench does not generate, so no ``PROBE_CONTROLS`` entry can
 be built for these nets here.
-
-The two nets are not registered in ``PROBE_SIGNALS`` / ``UNBACKABLE_PROBES``
-(``env/smc_probe_liveness.py``); this helper carries the disclosure in its own
-retained log line instead.
 
 What therefore IS asserted here: every I3C0 net must be resolvable (never X/Z)
 at every sample point, in every step, with the core enabled. An X on a pad is a
@@ -100,12 +93,12 @@ def _state(dut, step: str) -> str:
 async def _settle_tb_resolved_pad(dut, sig_name: str, level: int, step: str) -> None:
     """Synchronization ONLY -- never evidence.
 
-    Waits (bounded) for a pad whose level this step forced through
-    ``tb_top.sv:687-688``. Since ``ext_low`` determines it, reaching the level
-    proves nothing about the DUT; it only lets the drive change propagate before
-    the step's samples are taken. Emits no ``CHK-`` token. Expiry
-    still fails, because a TB-forced level that never appears means the pad
-    resolution itself is broken.
+    Waits (bounded) for a pad whose level this step forced through the
+    ``tb_i3c0_*_ext_low`` controls in ``tb/tb_top.sv``. Since ``ext_low``
+    determines it, reaching the level proves nothing about the DUT; it only lets
+    the drive change propagate before the step's samples are taken. Emits no
+    ``CHK-`` token. Expiry still fails, because a TB-forced level that never
+    appears means the pad resolution itself is broken.
     """
     for _ in range(_PAD_FOLLOW_TIMEOUT_CYCLES):
         if _pad_level(dut, sig_name, step) == level:
@@ -195,7 +188,6 @@ async def observe_i3c0_external_pull_low(core_enabled: bool = False) -> None:
         len(_I3C0_NETS),
         len(samples) * len(_I3C0_NETS),
     )
-    # Diagnostics: NOT a CHK- token and NOT asserted.
     cocotb.log.info(
         "OBSERVED-ONLY-I3C0-DUT-DRIVE (not a check): %s. These levels are "
         "recorded, not compared: an idle == 0 expectation on "

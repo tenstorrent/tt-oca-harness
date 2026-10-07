@@ -5,12 +5,12 @@
 `cpu_ctrl.rdl` gives each core a `RESET_CTRL.coreN_reset_pulse_start` field:
 writing a one there triggers a reset pulse whose length comes from
 `CORE_RESET_PULSE_COUNT`, and `CORE_RESET_PULSE_COUNT.core_resets_done` reads
-low for a core while its pulse is running. The only writer had been the
-firmware boot contract. From SEP_IN, core 1 is pulsed with every level reset
-field left high, so the pulse is the only reset request. Its `core_resets_done`
-bit must fall and come back, and the other cores' bits must stay high. The
-request is gated on the cluster draining; `RESET_TIMEOUT` is set to force mode
-for this leg, as the boot contract does, so the pulse is applied either way.
+low for a core while its pulse is running. From SEP_IN, core 1 is pulsed with
+every level reset field left high, so the pulse is the only reset request. Its
+`core_resets_done` bit must fall and come back, and the other cores' bits must
+stay high. The request is gated on the cluster draining; `RESET_TIMEOUT` is set
+to force mode for this leg, as the boot contract does, so the pulse is applied
+either way.
 
 The pulse is then timed at the cluster boundary. `post_reset_count` gives the
 "Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset",

@@ -4,10 +4,8 @@
 
 Each SMC register block is fronted by the same generated AXI-Lite interface. It
 keeps up to two transactions in flight, alternates reads and writes, captures AW
-and W in separate registers, and holds a response until BREADY or RREADY. Three
-parts of that interface have been exercised on only one block --
-`smc_sep_in_axi_flow_control_test` drives them, but only on the scratch
-registers -- so on every other block they have never run:
+and W in separate registers, and holds a response until BREADY or RREADY. Serial
+traffic never reaches these three parts of that interface:
 
 * **An accept in the same cycle a response is acknowledged.** The in-flight
   counter increments on an accept and decrements on an acknowledge, and the

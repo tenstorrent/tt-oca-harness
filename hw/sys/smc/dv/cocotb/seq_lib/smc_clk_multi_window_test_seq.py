@@ -45,11 +45,10 @@ HYST_LEGAL_LO = 9
 HYST_LEGAL_HI = 63
 
 
-# Named, log-emitted exclusion record for the unexercised 0..8 band: a DV-side
-# stimulus carve-out with NO SPEC basis. At those encodings the DMA accepts a
+# Exclusion record logged at run time for the hysteresis band 0..8 this
+# sequence never programs: at those SPEC-legal encodings the DMA accepts a
 # command via NEXT_ID but DMA_CTRL_DONE never advances, so `_wait_dma_done`
-# reaches its bound on a SPEC-legal encoding. The record is printed at run time
-# so the carve-out is auditable from the kept log.
+# reaches its bound.
 HYST_LOW_EXCLUSION = {
     "name": "HYST-LOW-BAND-0-8-NOT-EXERCISED",
     "tag": "[BY-DESIGN-EXCEPTION]",
@@ -124,8 +123,7 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
         self.required_cells_hit: list[str] = []
         self.measured: dict[str, int] = {}
         # Per-window measured timing evidence (programmed hyst, observed
-        # completion/quiet cycles) so CHK-TIMEOUT-PATHS can carry measured
-        # numbers instead of a hardcoded `fail_on_expiry=1`.
+        # completion/quiet cycles) carried by CHK-TIMEOUT-PATHS.
         self.window_evidence: dict[str, dict[str, int]] = {}
 
     def _dut(self):
@@ -222,11 +220,10 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
             if done > baseline_done:
                 # Wait until the *gater* busy input clears so the re-gate delay
                 # starts from the same T0 the meter below measures from.
-                # tb_dma_busy (dma_busy_o = frontend_busy|backend_busy,
-                # idma_wrapper.sv:117) is NOT that reference: the hysteresis
-                # gater samples idma_wrapper.dma_busy
-                # (frontend_wakeup|backend_busy, :162) exposed as
-                # tb_dma_gater_busy, which is also what
+                # tb_dma_busy (dma_busy_o = frontend_busy|backend_busy) is a
+                # different signal: the hysteresis gater samples
+                # idma_wrapper.dma_busy (frontend_wakeup|backend_busy) exposed
+                # as tb_dma_gater_busy, which is also what
                 # smc_static_cg_sanity_test_seq._wait_dma_done waits on.
                 for _ in range(BUSY_TIMEOUT_SMC):
                     if cg.sample_bit(dut, "tb_dma_gater_busy") == 0:
@@ -384,9 +381,6 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         dut = self._dut()
-        # tb_dma_gater_busy is on the proof path (hysteresis T0 and the
-        # post-DONE idle wait both sample it), so it belongs in the presence
-        # assert next to the other observation ports.
         for port in (
             "tb_dma_cg_en",
             "tb_dma_gated_clk",
@@ -410,11 +404,8 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
             HYST_LEGAL_LO,
             HYST_LEGAL_HI,
         )
-        # Emit the named stimulus exclusion into the kept log: the SPEC range is
-        # 0..63, this testcase draws only 9..63, and the 0..8 band is therefore
-        # UNPROVEN here. Recording it in the retained evidence (rather than only
-        # in a source comment) is what keeps the carve-out auditable
-        # ([BY-DESIGN-EXCEPTION]).
+        # Log the stimulus exclusion: the SPEC range is 0..63 and this testcase
+        # draws only 9..63 ([BY-DESIGN-EXCEPTION]).
         cocotb.log.info(
             "EXCEPTION-RECORD %s %s: scope=%s | spec_range=%s | observed=%s | consequence=%s",
             HYST_LOW_EXCLUSION["tag"],
@@ -507,11 +498,9 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
             f"{d_min} < {d_mid} < {d_max} for programmed hyst "
             f"{hyst_min} < {hyst_mid} < {hyst_max}",
         )
-        # Golden consumer for the two payload writes: predict the DMA outcome
-        # into the TB-local model, then read the destination back with
-        # check_golden so the scoreboard compares DUT-vs-prediction. Without the
-        # read-back the model is written and never read, and the "memory-model
-        # UPDATE" records read like data checking ([NO-DUMMY-DEAD-CODE]).
+        # Predict the DMA outcome into the TB-local model, then read the
+        # destination back with check_golden so the scoreboard compares the DUT
+        # against the prediction.
         self.memory_model.write(DMA_DST_ADDR, DMA_PAYLOAD, region=DMA_MODEL_REGION)
         moved = await self._read_bytes(DMA_DST_ADDR, len(DMA_PAYLOAD), check_golden=True)
         assert moved == DMA_PAYLOAD, (

@@ -449,8 +449,7 @@ def reset_unit_u32(symbol: str) -> int:
 # smc_jtag_reset_ctrl_test drives `cool_reset_n` and `ss_warm_reset_n[0]` one
 # at a time and requires the matching reset pin -- and only that pin -- to
 # move, which fails on a wrong position of either leaf, a swapped half or a
-# wrong slice width. The positions of the other leaves are not exercised by
-# any test.
+# wrong slice width.
 JTAG_RESET_CTRL_HALVES: tuple[str, ...] = ("ovrd", "val")  # MSB half first
 JTAG_RESET_CTRL_LEAVES: tuple[tuple[str, int], ...] = (  # MSB leaf first
     ("ss_warm_reset_n", reset_unit_u32("RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_bw")),
@@ -548,7 +547,7 @@ DFX_MBIST_ABORT = dfx_status_u32("DFX_CTRL_STATUS__STATUS__MBIST_ABORT_bm")
 # The STATUS_SMU word an SMC bench shows when neither engine has aborted. The
 # bit POSITIONS are authoritative (generated `dfx_ctrl_status.h`); the choice of
 # which four are set is a property of THIS bench, not of the DFX block:
-# `hw/sys/smc/dv/tb/tb_top.sv:1314-1318` ties `mem_repair_done_i`,
+# `hw/sys/smc/dv/tb/tb_top.sv` ties `mem_repair_done_i`,
 # `mem_repair_success_i`, `mbist_done_i` and `mbist_pass_i` to `1'b1` (without
 # an external BISR/MBIST agent the boot sequencer would otherwise wait forever),
 # and leaves the two abort inputs to the sequences. Any testcase using this

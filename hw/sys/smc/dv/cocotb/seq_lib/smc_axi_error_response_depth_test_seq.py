@@ -81,11 +81,8 @@ class smc_axi_error_response_depth_test_seq(SmcCsrSeq):
         item.length = 4
         item.allow_error = True
         item.expected_resp = expected_resp
-        # `allow_timeout` False is what enforces [TIMEOUT-MUST-FAIL] here: on
-        # expiry `SmcSysAxiDriver._timed_event` (env/smc_sys_axi_agent.py:159-173)
-        # RAISES instead of returning, so a wedged probe fails the testcase in
-        # the driver and no `not item.timed_out` assert downstream of this await
-        # is reachable with `timed_out` set.
+        # With `allow_timeout` False, `SmcSysAxiDriver._timed_event` raises on a
+        # no-response, so a wedged probe fails in the driver.
         item.allow_timeout = False
         item.timeout_ns = 500
         await self.start_item(item)
@@ -130,17 +127,13 @@ class smc_axi_error_response_depth_test_seq(SmcCsrSeq):
         for name, addr, expected_resp, expected_rdata in ERROR_PROBES:
             await self._error_probe(name, addr, expected_resp, expected_rdata)
 
-        # Recovery is pinned against the word the SAME register returned before
-        # the probes, so "the fabric recovered" means "returns the same content",
-        # not merely "still answers OKAY". The compare is booked by the
-        # scoreboard (env/smc_scoreboard.py:711-718) because `expected` is set.
+        # Recovery means the sentinel returns the same word it held before the
+        # probes, not merely that it still answers OKAY; `expected` makes the
+        # scoreboard book the compare.
         await self.csr_read("ALIVE_SENTINEL_RECOVERY", ALIVE_SENTINEL, expected=baseline)
 
-        # Reachability against the scoreboard's own tally rather than against
-        # `self.error_responses`, which this sequence increments once per loop
-        # iteration and so restates the loop ([NO-ZERO-ACTIVITY-PASS]). The
-        # error probes bypass `csr_read`, so `sys_axi_checks_seen` advancing to
-        # cover all five accesses is what shows the analysis path is bound.
+        # The error probes bypass `csr_read`, so `sys_axi_checks_seen` covering
+        # all five accesses is what shows the analysis path is bound.
         self.assert_all_reachable(len(ERROR_PROBES) + 2, "AXI_ERROR_RESPONSE_DEPTH")
         sb = self.env.scoreboard
         assert sb.sys_axi_value_checks_seen >= 1, (

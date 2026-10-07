@@ -5,9 +5,7 @@
 The bus monitor tracks whether the bus is free, busy, or busy but idling with
 SCL released. `HOST_TIMEOUT_CTRL.VAL` arms the last of those: the RDL calls the
 resulting interrupt a "Target Mode interrupt: asserted when the controller
-stops generating the clock longer than `HOST_TIMEOUT_CTRL.VAL`". Nothing in
-this package programs that register, so the monitor has never had reason to
-leave its busy-with-SCL-low state.
+stops generating the clock longer than `HOST_TIMEOUT_CTRL.VAL`".
 
 `INTR_STATE.HOST_TIMEOUT` is what makes the state observable rather than
 inferred. Only the idling state counts that timeout down, so the interrupt

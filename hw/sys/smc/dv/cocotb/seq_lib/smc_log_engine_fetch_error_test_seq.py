@@ -3,9 +3,8 @@
 """The log engine on UART wrapper 0 fetching from an address that refuses the read.
 
 `log_engine.rdl` has an error interrupt, `LOG_FETCH_ERR`, for an error
-response on the engine's fetch from the log region. The other log-engine
-leaves give the engine a good region and raise the interrupt only through
-`INTR_TEST`, so no fetch had ever come back with an error.
+response on the engine's fetch from the log region; this leaf provokes that
+response.
 
 The address that refuses is the one `smc_deadspace_decode_test` holds the
 decode to: inside the I2C0 instance's stride but past its `SIZE`, which the

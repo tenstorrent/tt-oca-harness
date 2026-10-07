@@ -130,12 +130,8 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
             f"GPIO wrap0 pad[{pad_idx}] output-enable did not release after disable"
         )
 
-        # `self.accesses` is incremented by every csr_* call in
-        # smc_csr_seq_utils.py, so `self.accesses == <literal>` restates the
-        # loop above and cannot fail on anything the DUT did
-        # ([NO-ZERO-ACTIVITY-PASS]). `assert_all_reachable` cross-checks the
-        # same count against the scoreboard, which a mis-bound analysis path
-        # or a dead port fails.
+        # `assert_all_reachable` cross-checks the access count against the
+        # scoreboard, which a mis-bound analysis path or a dead port fails.
         self.assert_all_reachable(3, "GPIO_OUTPUT_DRIVEBACK")
         cocotb.log.info(
             "CHK-GPIO-OUTPUT-DRIVEBACK: GPIO wrap0 TX enable raised exactly one "

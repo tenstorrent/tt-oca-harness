@@ -82,8 +82,8 @@ class SmcClkDriver(uvm_driver):
         if gated_sig is not None:
             gated_task = cocotb.start_soon(_count_one(gated_sig, gated_count))
 
-        # Window: drive by ref-clock cycles; we drop one cycle because the
-        # first edge we wait for here also increments ref_count.
+        # The window is window_ref_cycles clk_ref_i edges, the same edges
+        # ref_count tallies.
         for _ in range(item.window_ref_cycles):
             await RisingEdge(dut.clk_ref_i)
         stop.set()

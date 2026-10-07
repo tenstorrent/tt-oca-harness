@@ -7,10 +7,10 @@ type comes from the generated register map through
 :mod:`seq_lib.smc_rdl_regmap` and :mod:`seq_lib.smc_cla_regmap`. The vendored
 RTL is not a source for any value this sequence programs or compares against.
 
-The trace leaves already on this branch fill the sink and stop there, so the
-sink's read side is never used: its read pointer stays at its reset, the
-buffer never reads non-empty against the write pointer, and the RAM data port
-is never taken. This sequence drives the other half of the same register
+The other trace leaves fill the sink and stop there, so the sink's read side
+stays idle: its read pointer stays at its reset, the buffer never reads
+non-empty against the write pointer, and the RAM data port is not taken. This
+sequence drives the other half of the same register
 contract, all of it ``sw = rw`` in ``dfd_dst_sink.rdl``:
 
 * ``Trdstramrplow`` is walked across the window, and ``Trdstramdata``

@@ -23,8 +23,8 @@ burst types from the DV-owned rule stated with them:
   registers the burst addressed, read back before any further write, must keep
   the values the INCR burst left, so a path that errored the response but still
   wrote is caught. The code actually
-  returned is reported, not asserted; a specification statement fixing it
-  would let this become an exact expectation.
+  returned is reported, not asserted, because no specification statement
+  fixes it.
 * A 16-beat INCR burst of full-width beats into the SPM: every beat must land
   at its own address and a 16-beat read must return them in order, so a
   splitter that drops, repeats or reorders beats past the first few is caught.

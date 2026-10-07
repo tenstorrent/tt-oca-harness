@@ -550,8 +550,8 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
         await self.wait_fuse_sense_done()
 
         # Bystander check: a CSR none of the probes touches must be byte-identical
-        # after a sweep that writes 0xA5A5A5A5 into nine unmapped
-        # windows. The baseline is captured and passed as `expected=` to the
+        # after a sweep that writes PAYLOAD into every probe's unmapped
+        # window. The baseline is captured and passed as `expected=` to the
         # recovery read, so the scoreboard's exact compare FAILS on collateral
         # damage instead of the pair being two discarded reads.
         sentinel = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")

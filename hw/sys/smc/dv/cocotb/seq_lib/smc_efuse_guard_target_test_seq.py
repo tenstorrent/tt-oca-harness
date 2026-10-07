@@ -7,9 +7,9 @@ bank, and looks up the field a request targets to apply that field's
 hardware locks: `hw/ip/efuse/doc/architecture.adoc` gives every shadow field a
 read lock and a write lock in `LOCKS`, and a locked access is answered rather
 than executed. `smc_efuse_lock_guard_test` drives the locks on the shadow
-register path; every leaf that uses the read or program interface targets bit
-0, which lies in `LOCKS` itself, a field hardware never applies locks to. So
-the guard had never looked a target up and found a field.
+register path; every other leaf that uses the read or program interface
+targets bit 0, which lies in `LOCKS` itself, a field hardware never applies
+locks to, so none of them exercises the guard's field lookup.
 
 This leaf targets SPARE fields, whose locks the default image leaves clear
 (the sequence checks), and sets their locks through the `LOCKS` CSR, which is

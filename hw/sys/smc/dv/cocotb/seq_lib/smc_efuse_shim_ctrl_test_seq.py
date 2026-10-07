@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""EFUSE_INTERFACE_CTRL + EFUSE_SHIM_CTRL reachability (TC_SMC_P1CG_05).
+"""EFUSE_INTERFACE_CTRL + EFUSE_SHIM_CTRL reachability.
 
 Reads the eFuse shim interface control registers (EFUSE_INTERFACE_CTRL and the
 EXTERNAL_MANDATORY EFUSE_SHIM_CTRL window) over SEP_IN AXI.
@@ -39,19 +39,17 @@ class smc_efuse_shim_ctrl_test_seq(SmcCsrSeq):
             EFUSE_SHIM_CTRL,
             expected=EFUSE_BANK_INIT_TIME_RESET,
         )
-        # Write leg on the same window. Every access this package made to the
-        # bank-control port was a read, so the write direction of that port --
-        # aw_valid with w_valid through to its B response -- had never been
-        # presented at all, and the port's own docs place it outside the eFuse
-        # map / interface CSR ranges, which is what makes this address decode to
-        # it (smc_efuse_vip_utils.py names the same decode). `init_time` is
-        # `sw = rw; hw = r` (hw/ip/efuse/dv/models/regs/efuse_shim_ctrl.rdl), so
-        # the readback is a real value compare booked by the scoreboard: a write
-        # routed to the interface CSR window instead answers with an error
-        # rather than OKAY, and a write that was dropped while its response was
-        # still returned leaves the reset value behind. The value is the reset
-        # plus one -- `init_time` presets the bank-init down-counter -- and it is
-        # restored before the sequence ends.
+        # Write leg on the same window: the port's own docs place it outside the
+        # eFuse map / interface CSR ranges, which is what makes this address
+        # decode to it (smc_efuse_vip_utils.py names the same decode).
+        # `init_time` is `sw = rw; hw = r`
+        # (hw/ip/efuse/dv/models/regs/efuse_shim_ctrl.rdl), so the readback is a
+        # real value compare booked by the scoreboard: a write routed to the
+        # interface CSR window instead answers with an error rather than OKAY,
+        # and a write that was dropped while its response was still returned
+        # leaves the reset value behind. The value is the reset plus one --
+        # `init_time` presets the bank-init down-counter -- and it is restored
+        # before the sequence ends.
         probe_value = EFUSE_BANK_INIT_TIME_RESET + 1
         await self.csr_write_readback(
             "EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_WR", EFUSE_SHIM_CTRL, probe_value

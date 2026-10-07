@@ -10,10 +10,8 @@ is not a source for any value this sequence programs or compares against.
 
 ``CDbgSignalSnapshotNode<n>Eap<m>Lo`` and ``...Hi`` are read-only registers the
 hardware writes when the pair they belong to captures a snapshot of the debug
-signals. Nothing in the package has ever made one capture: the leaves that
-drive the action field drive it on one pair of one node, so fifteen of the
-sixteen pairs never act at all and the halves of the snapshot the capture
-writes stay at their reset.
+signals. A pair whose action field is never driven never acts, and the halves
+of the snapshot the capture writes stay at their reset.
 
 Which action code requests a capture is published by no RDL, generated header
 or MMR specification, so this sequence names none. It walks the node chain the

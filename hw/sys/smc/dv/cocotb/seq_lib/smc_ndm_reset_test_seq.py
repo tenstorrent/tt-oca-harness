@@ -14,13 +14,9 @@ NDM_REQUEST = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_AD
 NDM_PROCESS = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR")
 NDM_CLUSTERS = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR")
 # NDMRESET_CLUSTER_COUNT is `sw = r; hw = w` with reset 0x0, so the RDL
-# supplies no reset value. The programmer's guide states that this harness
-# reports 4. The expected count is the DV-owned table value below, which
-# matches that documented figure and which the bench's request-port
-# declaration follows (`tb/smc_tb_signal_list.svh`,
-# `tb_ndmreset_request [NDM_CLUSTER_COUNT-1:0]`). The port width is derived
-# from this table value, not the other way round, so the compare below is
-# DV-owned golden against DUT register, never RTL against RTL.
+# supplies no expected value. The programmer's guide states that this harness
+# reports 4; the bench's request port (`tb/smc_tb_signal_list.svh`,
+# `tb_ndmreset_request [NDM_CLUSTER_COUNT-1:0]`) is declared from this value.
 NDM_CLUSTER_COUNT = 4
 #
 # What the RDL DOES state is the register's contract, and that is checked too:

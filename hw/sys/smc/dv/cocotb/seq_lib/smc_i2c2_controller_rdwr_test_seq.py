@@ -2,10 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C2 as the bus controller: a write and a two-byte read against I2C1.
 
-Instance 2 has only ever been a target. Its controller state machine has never
-acknowledged a byte and has never clocked one in, so the acknowledge and read
-phases of `i2c_controller_fsm` are dark on that instance while instance 0
-reaches all of them.
+This leaf makes instance 2 the controller, so its `i2c_controller_fsm` passes
+through the acknowledge and read phases.
 
 `+smc_i2c_shared_bus` puts the three instances on one open-drain bus, so making
 I2C2 the controller is a matter of which instance gets `CTRL.ENABLEHOST`. I2C1
