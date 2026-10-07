@@ -134,11 +134,7 @@ class dtp_jtag2axi_dbg_disable_matrix_test_seq extends dtp_jtag2axi_base_test_se
     string row_labels[$];
     sep_lifecycle_ctrl_pkg::dbg_disable_t d;
     seed_scenario_rng();
-    // Every bridge's bundle must be plumbed; the pass starts on targets[0].
-    for (int unsigned i = 0; i < NumTargets; i++) void'(select_target(i));
-    void'(select_target(0));
-    enable_all_debug();
-    reset_to_rti();
+    begin_all_bridges_pass();
 
     row_bits.push_back('0);
     row_labels.push_back("all_clear");

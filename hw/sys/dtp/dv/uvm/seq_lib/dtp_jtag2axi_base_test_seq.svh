@@ -123,6 +123,16 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     return targets[idx];
   endfunction
 
+  // Open a pass over every bridge: every bridge's bundle must be plumbed,
+  // and the pass starts on targets[0] with every debug path enabled and the
+  // TAP in Run-Test/Idle.
+  task begin_all_bridges_pass();
+    for (int unsigned i = 0; i < NumTargets; i++) void'(select_target(i));
+    void'(select_target(0));
+    enable_all_debug();
+    reset_to_rti();
+  endtask
+
   // Every pass opens with the burst baseline and the geometry gate: the
   // three *_JTAG2AXI_CAPS TDRs are read and their bus type, address size,
   // and data size compared with the dtp_types table (CHK-J2A-GEOMETRY), so
@@ -446,6 +456,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     if (name == "" || test_cfg == null || !test_cfg.requires_axi_id(name, DtpJ2aBusReqCheckId))
       return;
     use_target(dtp_j2a_target_by_name(name));
+    m_ledger_target = name;
     void'(port_history(name));
     foreach (axi_ports[p]) begin
       port = port_history(p);
@@ -454,7 +465,6 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
       m_ledger_writes[p] = port.count(1'b0);
       m_ledger_reads[p]  = port.count(1'b1);
     end
-    m_ledger_target = name;
     if (test_cfg.j2a_bus_req_negative)
       `uvm_info(get_type_name(),
                 "NEGATIVE VALIDATION: bus-request address expectations will be corrupted", UVM_LOW)
@@ -484,10 +494,14 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     return ok;
   endfunction
 
+  // The test requires CHK-J2A-BUS-REQ on the ledger bridge's checker, so
+  // the records of every port land there.
   function bit record_bus_field(string name, string field, bit [63:0] observed, bit [63:0] expected,
                                 string context_s);
     string detail = $sformatf("%s target=%s field=%s", context_s, name, field);
-    return axi_evidence.expect_equal(DtpJ2aBusReqCheckId, observed, expected, detail);
+    return target_evidence[m_ledger_target].expect_equal(
+        DtpJ2aBusReqCheckId, observed, expected, detail
+    );
   endfunction
 
   // Wait until the port behind `t` has completed more than `completed`
@@ -553,6 +567,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
                     bit [7:0] wstrb = '0, int unsigned size = 0, bit use_default_size = 1'b1,
                     bit arm_intent = 1'b1);
     int unsigned eff_size = use_default_size ? t.default_size : size;
+    ocah_axi_config cfg = target_cfgs[t.name];
     `uvm_info(get_type_name(), $sformatf(
                                    "%s SINGLE_OP %s addr=0x%0h data=0x%0h wstrb=0x%0h size=%0d",
                                    t.name, op.name(), addr, data, wstrb, eff_size), UVM_MEDIUM)
@@ -563,10 +578,9 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     // target's disable is asserted (the no-activity evidence owns that
     // case; a dangling intent would false-fail at check_phase).
     if (op == DTP_J2A_OP_WRITE && target_enabled(t) && arm_intent)
-      axi_cfg.arm_expected_write(addr & bit_mask(t.addr_width), data & bit_mask(t.data_width),
-                                 wstrb);
+      cfg.arm_expected_write(addr & bit_mask(t.addr_width), data & bit_mask(t.data_width), wstrb);
     if (op == DTP_J2A_OP_READ && target_enabled(t) && arm_intent)
-      axi_cfg.arm_expected_read(addr & bit_mask(t.addr_width));
+      cfg.arm_expected_read(addr & bit_mask(t.addr_width));
     begin
       dtp_jtag2axi_single_op_seq req = dtp_jtag2axi_single_op_seq::type_id::create("single_op");
       req.target = t;

@@ -2034,11 +2034,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   // this).
   task body();
     seed_scenario_rng();
-    // Every bridge's bundle must be plumbed; the pass starts on targets[0].
-    for (int unsigned i = 0; i < NumTargets; i++) void'(select_target(i));
-    void'(select_target(0));
-    enable_all_debug();
-    reset_to_rti();
+    begin_all_bridges_pass();
     case (scenario)
       "backpressure_aw_before_w":   run_backpressure_aw_before_w();
       "backpressure_long_stall":    run_backpressure_long_stall();
