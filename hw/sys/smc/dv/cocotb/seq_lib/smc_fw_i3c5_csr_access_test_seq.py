@@ -28,8 +28,6 @@ import cocotb
 from .smc_addr_map import smc_addr, smc_indexed_addr
 from .smc_fw_image_boot_seq import scratch_addr, smc_fw_image_boot_seq
 from .smc_i3c_to_fabric_test_seq import (
-    HC_CONTROL_OFFSET,
-    HCI_VERSION_OFFSET,
     I3C_HC_CONTROL_BUS_ENABLE,
     I3C_HC_CONTROL_ENABLED,
     I3C_HC_CONTROL_RESET,
@@ -37,9 +35,13 @@ from .smc_i3c_to_fabric_test_seq import (
 )
 
 I3C_INSTANCE = 5
-I3C_CSR_WINDOW = smc_indexed_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_BASE_ADDR", I3C_INSTANCE)
 I3C_CSR_NUM = smc_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_NUM")
-I3C_HC_CONTROL = I3C_CSR_WINDOW + HC_CONTROL_OFFSET
+I3C_HCI_VERSION = smc_indexed_addr(
+    "SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HCI_VERSION_BASE_ADDR", I3C_INSTANCE
+)
+I3C_HC_CONTROL = smc_indexed_addr(
+    "SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HC_CONTROL_BASE_ADDR", I3C_INSTANCE
+)
 
 # The image's loads and stores in the window: HCI_VERSION, HC_CONTROL at entry,
 # after BUS_ENABLE and after the restore; the BUS_ENABLE and restore stores.
@@ -84,6 +86,19 @@ class smc_fw_i3c5_csr_access_test_seq(smc_fw_image_boot_seq):
         self.access_ok = False
         self.values_ok = False
 
+    async def body(self) -> None:
+        try:
+            await super().body()
+        finally:
+            if self.base_counts[0]:
+                reads, writes = i3c_csr_counts()
+                cocotb.log.info(
+                    "I3C CSR port accesses since release, per instance 0..%d: reads %s writes %s",
+                    I3C_CSR_NUM - 1,
+                    [now - then for now, then in zip(reads, self.base_counts[0], strict=True)],
+                    [now - then for now, then in zip(writes, self.base_counts[1], strict=True)],
+                )
+
     async def before_boot(self) -> None:
         for index in PUBLISHED:
             await self.csr_write(f"I3C5_SCRATCH{index}_CLEAR", scratch_addr(index), 0)
@@ -122,10 +137,9 @@ class smc_fw_i3c5_csr_access_test_seq(smc_fw_image_boot_seq):
                 f"RDL gives 0x{expected:08x}"
             )
         cocotb.log.info(
-            "CHK-FW-I3C5-HCI-VERSION: the CPU read HCI_VERSION at window 0x%08x + RDL offset "
-            "0x%03x as 0x%08x == base_registers.rdl reset 0x%08x",
-            I3C_CSR_WINDOW,
-            HCI_VERSION_OFFSET,
+            "CHK-FW-I3C5-HCI-VERSION: the CPU read HCI_VERSION at 0x%08x as 0x%08x == "
+            "base_registers.rdl reset 0x%08x",
+            I3C_HCI_VERSION,
             self.published[4],
             I3C_HCI_VERSION_RESET,
         )
