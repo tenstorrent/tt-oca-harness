@@ -159,9 +159,8 @@ buffers controlled by the `core2pad_en_o` signals. Connect multiplexed UART,
 I2C, I3C, and SPI pins to external devices according to the function assignments
 in the GPIO table.
 
-`spi_enable_i` hands the SPI pads to the SPI host. The adopter must change it
-only while the SPI host is idle, since the pad outputs can glitch while their
-owner changes. In the SMU it is constant, set by whether the SMU has the SEP.
+`spi_enable_i` hands the SPI pads to the SPI host. The adopter should not change
+it while the SPI host is active, or the pad outputs can glitch. In the SMU it is constant, set by whether the SMU has the SEP.
 
 The SMC padring drives one GPIO pad per `u_gpio_interface` instance, so the
 adopter must integrate `smc_pkg::NumGpioWraps` pads: 61 bonded pads
@@ -652,18 +651,11 @@ interfaces. The telemetry interface group (`telemetry_atdata_i`, `telemetry_atid
 clock domain with separate `rst_telemetry_ni` reset. Connect these signals to ATB trace
 sources for debug data collection.
 
-The adopter must not assert `rst_telemetry_ni` while `rst_primary_smc_clk_no` is
-deasserted; assert it only together with, or while, the primary reset is asserted. The
-telemetry receivers are reset by the primary reset, and asserting `rst_telemetry_ni`
-alone clears the ATB FIFOs while the receivers are still reading from them, which can
-corrupt a received telemetry packet.
-
-Either reset clears the SMC side of the telemetry interface, so `telemetry_atready_o`
-and `telemetry_afvalid_o` can change asynchronously to `clk_telemetry_i` when
-`rst_primary_smc_clk_no` asserts. The ATB sources that sample them must be held in reset
-whenever `rst_primary_smc_clk_no` is asserted. Deriving both `rst_telemetry_ni` and the
-ATB source resets from `rst_primary_smc_clk_no`, resynchronized to `clk_telemetry_i`,
-meets both requirements.
+How `rst_telemetry_ni` and the ATB source resets are generated is up to the adopter.
+Whatever the mechanism, `rst_telemetry_ni` must not assert unless
+`rst_primary_smc_clk_no` is also asserted, and the ATB sources must be held in reset
+whenever `rst_primary_smc_clk_no` is asserted. One way to meet these is to derive both
+resets from `rst_primary_smc_clk_no`.
 
 At the SMC boundary, `ext_debug_bus_i` is 512 bits wide; the SMU concatenates
 the adopter-visible 128-bit input with the SEP's internal 384-bit bus before

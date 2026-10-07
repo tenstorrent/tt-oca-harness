@@ -1461,8 +1461,8 @@ hardware request remains asserted. In the SMC this includes the pads with
 permanently selected hardware functions: the I3C pads, and the isolate-request,
 boot-stall and cool-reset-out signals.
 
-Do not change a pad's owner while the current owner is active, or the pad output
-can glitch. This applies to `interface_enable`, `lsio_select`, `lsio_disable`,
+Software should not change a pad's owner while the current owner is active, or
+the pad output can glitch. This applies to `interface_enable`, `lsio_select`, `lsio_disable`,
 the `DATA_CTRL_ENABLE.use_reg_*` bits, `TIMER_GPIO_ENABLE.GPIO_ENABLE` and
 `AVS_CONFIG.AVS_GPIO_ENABLE`.
 
