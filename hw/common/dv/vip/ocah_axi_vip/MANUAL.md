@@ -686,6 +686,8 @@ reset that ends between two clock edges. The SV-UVM
 `ocah_axi_responder_ops_test` proves the errored-beat word, the W-before-AW
 order and the USER streams on the harness bus; the SV-UVM master holds
 `aresetn` high across an item, so only the cocotb realization drops a reset.
+The SV-UVM responder serves one write and one read at a time, so it has no
+outstanding depth and no response delay (see "Outstanding depth" above).
 `check_response=1` (default) escalates a non-OKAY response to `uvm_error`;
 `allow_timeout=1` downgrades a watchdog expiry to a returned result with
 `timed_out` set.
