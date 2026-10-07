@@ -13,7 +13,7 @@ include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 ## position would depend on the targets passed.
 .PHONY: ocah-lint-bender-sources
 ocah-lint-bender-sources:
-	cd "$(OCAH_ROOT)" && python3 scripts/ci/check_bender_sources.py "$(OCAH_ROOT)"
+	cd "$(OCAH_ROOT)" && python3 scripts/ci/check_bender_sources.py
 
 OCAH_PHONY += ocah-lint-bender-sources
 
