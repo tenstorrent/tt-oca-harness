@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DTP open-source JTAG IDCODE field test.
+"""DTP JTAG IDCODE field test.
 
 Reads and verifies the IEEE 1149.1 IDCODE register on the primary TAP through
 the shared ocah_jtag_vip BFM.

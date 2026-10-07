@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DTP JTAG types and helpers shared by the OSS cocotb tests.
+"""DTP JTAG types and helpers shared by the cocotb tests.
 
 The DTP instantiates one JTAG Interface Unit as its primary debug access point
 (`hw/sys/dtp/doc/jtag.adoc`, "DTP JTAG Topology"). The instruction and JTAG2AXI
