@@ -37,6 +37,11 @@
 //                skipped on the observed side too, so the pairing cannot
 //                slide out of step.
 //
+//   regblock_wide every catalogued single-beat read or write is paired with
+//                its predicted response, including accesses that return errors.
+//                Reads also compare the complete predicted 64-bit value;
+//                only OKAY writes update the reference model's shadow.
+//
 // Accesses outside those windows carry no data contract here and are skipped
 // on the observed side. The cocotb twin is env/smc_scoreboard.py (its SysAxi
 // expected-value checks).
@@ -181,10 +186,7 @@ class smc_scoreboard extends ocah_scoreboard;
     foreach (cfg.required_features[i]) begin
       if (cfg.required_features[i] == SmcFeatureRegblockWide) enabled = 1'b1;
     end
-    if (!enabled || t.direction != OCAH_AXI_DIR_READ || !smc_is_regblock_wide_access(
-            t, entry, index
-        ))
-      return;
+    if (!enabled || !smc_is_regblock_wide_access(t, entry, index)) return;
     push_observed(SmcFeatureRegblockWide, t);
   endfunction
 
@@ -267,15 +269,21 @@ class smc_scoreboard extends ocah_scoreboard;
   endfunction
 
   protected function void compare_regblock_wide_pair(ocah_axi_item obs, ocah_axi_item exp);
-    bit passed = obs.address === exp.address && obs.size == exp.size &&
-                 obs.expected_beats == 1 && exp.expected_beats == 1 &&
-                 obs.data_words.size() == 1 && exp.data_words.size() == 1 && obs.is_ok();
-    if (passed && obs.data_words[0] !== exp.data_words[0]) passed = 1'b0;
+    string access_kind = obs.direction == OCAH_AXI_DIR_READ ? "read" : "write";
+    bit passed = obs.direction == exp.direction && obs.address === exp.address &&
+                 obs.size == exp.size && obs.expected_beats == 1 && exp.expected_beats == 1 &&
+                 obs.data_words.size() == 1 && exp.data_words.size() == 1 &&
+                 obs.resp_list.size() == 1 && exp.resp_list.size() == 1 &&
+                 !obs.timed_out && !obs.any_resp_xz();
+    if (passed && obs.resp_list[0] != exp.resp_list[0]) passed = 1'b0;
+    if (passed && obs.direction == OCAH_AXI_DIR_READ && obs.data_words[0] !== exp.data_words[0])
+      passed = 1'b0;
     record_compare(
         SmcFeatureRegblockWide, passed, $sformatf(
-        "addr=0x%0h data=0x%016h resp=OKAY", exp.address, exp.first_data()), $sformatf(
+        "addr=0x%0h data=0x%016h resp=%s", exp.address, exp.first_data(), exp.worst_resp().name()),
+        $sformatf(
         "addr=0x%0h data=0x%016h resp=%s", obs.address, obs.first_data(), obs.worst_resp().name()),
-        "wide register-block read");
+        {"wide register-block ", access_kind});
   endfunction
 
   // Register identity for the evidence line: the scratch domain, or the

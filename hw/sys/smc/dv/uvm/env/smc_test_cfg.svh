@@ -37,6 +37,7 @@ class smc_test_cfg extends ocah_test_cfg;
   bit mutex_scoreboard_negative;  // +SMC_MUTEX_SCOREBOARD_NEGATIVE
   bit spm_mem_scoreboard_negative;  // +SMC_SPM_MEM_SCOREBOARD_NEGATIVE
   bit regblock_wide_scoreboard_negative;  // +SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE
+  bit regblock_wide_response_negative;  // +SMC_REGBLOCK_WIDE_RESPONSE_NEGATIVE
   bit regblock_wide_sequence_negative;  // +SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE
 
   function new(string name = "smc_test_cfg");
@@ -56,6 +57,8 @@ class smc_test_cfg extends ocah_test_cfg;
             ocah_knobs::is_set("SMC_SPM_MEM_SCOREBOARD_NEGATIVE");
     regblock_wide_scoreboard_negative =
             ocah_knobs::is_set("SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE");
+    regblock_wide_response_negative =
+            ocah_knobs::is_set("SMC_REGBLOCK_WIDE_RESPONSE_NEGATIVE");
     regblock_wide_sequence_negative =
             ocah_knobs::is_set("SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE");
   endfunction

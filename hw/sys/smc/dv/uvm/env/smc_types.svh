@@ -149,10 +149,11 @@ function automatic bit smc_regblock_wide_lookup(
   return 1'b0;
 endfunction
 
+// Catalogued single-beat reads and writes reach response grading regardless
+// of response. The model updates its shadow only for an OKAY write.
 function automatic bit smc_is_regblock_wide_access(
     ocah_axi_item t, output smc_regblock_wide_entry_t entry, output int unsigned index);
   if (!smc_regblock_wide_lookup(t.address, entry, index)) return 1'b0;
-  if (t.direction == OCAH_AXI_DIR_WRITE && !t.is_ok()) return 1'b0;
   return t.data_words.size() == 1 && t.beat_count() == 1;
 endfunction
 
