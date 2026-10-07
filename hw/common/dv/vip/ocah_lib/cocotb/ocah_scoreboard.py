@@ -20,10 +20,10 @@ that ends with zero comparisons fails the run, so a scenario cannot pass
 without exercising what it claims to check. The scoreboard holds no
 expected-value state: prediction is the reference model's job.
 
-The SV-UVM twin is ``ocah_scoreboard``. There a mismatch or an unpaired item is
-a ``uvm_error`` that fails the run by itself; here both fold into the feature's
-record, because a logged error does not fail a cocotb run. Pure Python apart
-from the PyUVM component bases, so the pairing contract is validated
+The SV-UVM twin is ``ocah_scoreboard``, whose record counts mismatches and
+unpaired items the same way; there each is also a ``uvm_error`` that fails the
+run by itself, while a logged error does not fail a cocotb run. Pure Python
+apart from the PyUVM component bases, so the pairing contract is validated
 simulator-free (``examples/example_ocah_lib_selftest.py``).
 """
 

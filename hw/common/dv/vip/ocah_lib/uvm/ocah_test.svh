@@ -19,7 +19,9 @@
 // build_phase, walk the reset ladder in bring_up(), name its virtual
 // sequencer in scenario_sequencer(), and plumb the scenario sequence in
 // plumb_scenario_seq(); a thin scenario test overrides create_scenario_seq()
-// and the knob-name hooks and inherits run_phase().
+// and the knob-name hooks and inherits run_phase(). A scenario whose seeded
+// iterations are the rows of one pass runs run_single_scenario() from its
+// run_phase() instead.
 
 class ocah_test extends uvm_test;
   `uvm_component_utils(ocah_test)
@@ -111,23 +113,37 @@ class ocah_test extends uvm_test;
   endfunction
 
   task run_looped_scenario();
-    int unsigned loops  = loop_count(specific_loops_knob(), group_loops_knob(),
-                                         default_loops());
+    run_scenario_passes(loop_count(specific_loops_knob(), group_loops_knob(), default_loops()));
+  endtask
+
+  // One pass of create_scenario_seq() at the runner seed, after bring_up().
+  task run_single_scenario();
+    run_scenario_passes(1);
+  endtask
+
+  // Plumb one sequence and start it on the scenario sequencer, or on `seqr`
+  // when given. The cocotb twin is OcahTest.start_seq.
+  task start_seq(ocah_sequence seq, uvm_sequencer_base seqr = null);
+    if (seq == null) `uvm_fatal(get_type_name(), "start_seq() was handed a null sequence")
+    if (seqr == null) seqr = scenario_sequencer();
+    if (seqr == null) `uvm_fatal(get_type_name(), "scenario_sequencer() returned null")
+    plumb_scenario_seq(seq);
+    seq.start(seqr);
+  endtask
+
+  protected task run_scenario_passes(int unsigned loops);
     int unsigned seed   = base_seed();
     int unsigned rcount = random_count();
-    uvm_sequencer_base seqr = scenario_sequencer();
-    if (seqr == null) `uvm_fatal(get_type_name(), "scenario_sequencer() returned null")
     bring_up();
     for (int unsigned idx = 0; idx < loops; idx++) begin
       ocah_sequence seq = create_scenario_seq();
       if (seq == null)
         `uvm_fatal(get_type_name(),
-                   "looped test must override create_scenario_seq() (or run_phase())")
+                   "scenario test must override create_scenario_seq() (or run_phase())")
       seq.scenario_seed = seed + idx;
       seq.random_count  = rcount;
       seq.loop_index    = idx;
       pre_scenario_pass(idx);
-      plumb_scenario_seq(seq);
       `uvm_info(get_type_name(), $sformatf(
                 "scenario pass %0d/%0d: %s scenario_seed=%0d random_count=%0d",
                 idx + 1,
@@ -136,7 +152,7 @@ class ocah_test extends uvm_test;
                 seq.scenario_seed,
                 rcount
                 ), UVM_LOW)
-      seq.start(seqr);
+      start_seq(seq);
     end
   endtask
 

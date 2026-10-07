@@ -65,10 +65,10 @@ flow:
   `<dut>_base_test_seq` extends `ocah_sequence`, `<dut>_virtual_sequencer`
   extends `ocah_sequencer`, `<dut>_scoreboard` extends `ocah_scoreboard`, and
   invariant subscribers extend `ocah_subscriber`. The library owns the seed
-  and knob accessors, the looped-scenario runner, the pass banner, and the
-  scoreboard feature registry, so a bench writes none of them. The cocotb
-  twin is the Python package `ocah_lib` under the same directory, with
-  identical basenames (`OcahTest`, `OcahSequence`, ...).
+  and knob accessors, the looped and single-pass scenario runners, the pass
+  banner, and the scoreboard feature registry, so a bench writes none of
+  them. The cocotb twin is the Python package `ocah_lib` under the same
+  directory, with identical basenames (`OcahTest`, `OcahSequence`, ...).
 . *Two configuration levels.* `<dut>_test_cfg` (extends `ocah_test_cfg`) is
   the only object the seed touches: the base test fills it from the knobs,
   seeds it, and randomizes it once (clock and protocol timing included).
