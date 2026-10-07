@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[dtp-dv-verification-plan]]
-== DTP OCAH Open-Source Verification Plan
+== DTP Verification Plan
 
 === Overview
 
@@ -61,7 +61,7 @@ disables (full debug access) by default; gating scenarios assert exactly the
 target's disable field and settle four toggling TCK cycles (the TB margin over
 the DUT's 2-stage TCK-domain synchronizers).
 . *Coverage*: the covergroups of the `cov/sv/` modules are the functional coverage model,
-collected on VCS; Verilator does not compile SystemVerilog covergroups and collects the modules' `cover property` points instead (see `DTP_FCOV.adoc`).
+collected on VCS; the covergroups compile only under `ifndef VERILATOR`, so Verilator collects the modules' `cover property` points instead (see `DTP_FCOV.adoc`).
 . *Scenario expansion*: multi-scenario families are expanded into separate, named test
 cases (see Naming Rules) so each scenario is independently selectable in the
 testlists.
@@ -93,8 +93,8 @@ the same VIP interfaces `tb_top.sv` instantiates.
 |Boundary scan loopback |OCAH-local scan responder in `cocotb/env/` and `uvm/env/`
 |STAP host ports |`ocah_jtag_vip` reactive slave devices (one downstream TAP per port, test-attached; wire loopback otherwise)
 |IEEE 1687 iJTAG SIB networks |OCAH-local iJTAG SIB model in `cocotb/env/` and `uvm/env/`
-|OCAH CTP protocol |OCAH-local CTP BFM in `cocotb/env/` and `uvm/env/`
-|OCAH CTM routing |OCAH-local CTM BFM and monitors in `cocotb/env/` and `uvm/env/`
+|OCAH CTP protocol |OCAH-local `DtpXtrigBfm` in `cocotb/env/` / no BFM: the SV-UVM cross-trigger sequences drive and sample the CTP pins through the DUT-local `dtp_xtrig_if`
+|OCAH CTM routing |OCAH-local CTM model and `DtpXtrigBfm` pin sampling in `cocotb/env/` / `dtp_xtrig_ctm_model` in `uvm/env/`, with the CTM pins driven and sampled through `dtp_xtrig_if` by the cross-trigger sequences
 |===
 
 [[dtp-vplan-scope]]
@@ -234,7 +234,7 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 |F1.1 TAP state machine: all sixteen states and legal TMS arcs, one-hot state |`dtp_sanity_test` |smoke, functional, basic_jtag |`cg_tap_state`, `cg_tap_arc`, `cg_tap_smoke` `cp_reset_source` `tms5` |`CHK-TAP-STATE` (SV-UVM aggregate from `dtp_tap_fsm_checker`; cocotb per raw TMS step), `CHK-TAP-RESET-TLR`, `CHK-TAP-GOTO`, `CHK-TAP-VISIT-ALL`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-IDCODE-RAW`, `CHK-IDCODE-STABLE`, `CHK-IDCODE-MARKER`, `CHK-IR-DECODE`, `CHK-BYPASS-LATENCY`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`; `ast_tap_*` formal corroboration |YES
 |F1.2 TAP reset: TRST, power-on reset, five TMS-high clocks; power-on reset and TRST each force Test-Logic-Reset alone |`dtp_jtag_trst_test`, `dtp_jtag_trst_por_independence_test`, `dtp_jtag_tlr_reset_test` |basic_jtag |`cg_tap_smoke` `cp_reset_source`, `cp_trst_from_state` and the `cp_idcode_read` read after each reset |`CHK-TAP-TRST-ASYNC`, `CHK-TAP-TRST-TLR`, `CHK-TAP-POR-TLR`, `CHK-RESET-COUNT`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-TLR-TDR-DEFAULT`, `CHK-TLR-RESUME`, `CHK-IDCODE-RAW`, `CHK-IDCODE-RECOVERY`; `idcode` scoreboard feature |YES
 |F1.3 IDCODE: default after reset, explicit load, field values, marker bit |`dtp_jtag_idcode_test` |smoke, functional, basic_jtag |`cg_tap_smoke` `cp_idcode_read` and `cp_idcode_marker`; `cg_dr_scan` `cp_dr_instruction` `idcode` |`CHK-IDCODE-MARKER`, `CHK-IDCODE-MANUFACTURER`, `CHK-IDCODE-PART-NUMBER`, `CHK-IDCODE-VERSION`, `CHK-IDCODE-RAW`, `CHK-IDCODE-STABLE`, `CHK-IDCODE-RECOVERY`, `CHK-RESET-COUNT`; `idcode` scoreboard feature |YES
-|F1.4 Instruction decode; BYPASS, INV_BYPASS, ZERO_LENGTH_BYPASS; undefined opcodes select BYPASS |`dtp_jtag_bypass_test`, `dtp_jtag_inv_bypass_test`, `dtp_jtag_zero_length_bypass_test`, `dtp_jtag_undef_instr_test` |basic_jtag |`cg_jtag_instruction` `cp_opcode`, `cp_category`, and `cp_ir_update`; `cg_dr_scan` `cp_dr_instruction` BYPASS, INV_BYPASS, ZERO_LENGTH_BYPASS, reserved, and undefined bins and `cp_zero_length_path`; `cg_instruction_gate` `cx_gate_disabled` |`CHK-IR-DECODE`, `+CHK-BYPASS-<opcode>+`, `CHK-BYPASS-DELAY`, `CHK-BYPASS-LATENCY`, `CHK-INV-BYPASS`, `CHK-ZLB-PASSTHROUGH`, `CHK-ZLB-CHAIN-ALIGN`, `CHK-SCAN-CHAIN`, `CHK-UNDEF-NO-SELECT`; `ir_decode` and `bypass` scoreboard features |YES for instruction decode, BYPASS, INV_BYPASS and undefined opcodes selecting BYPASS; NO for ZERO_LENGTH_BYPASS, which `dtp_jtag_zero_length_bypass_test` drives
+|F1.4 Instruction decode; BYPASS, INV_BYPASS, ZERO_LENGTH_BYPASS; undefined opcodes select BYPASS |`dtp_jtag_bypass_test`, `dtp_jtag_inv_bypass_test`, `dtp_jtag_zero_length_bypass_test`, `dtp_jtag_undef_instr_test` |basic_jtag |`cg_jtag_instruction` `cp_opcode`, `cp_category`, and `cp_ir_update`; `cg_dr_scan` `cp_dr_instruction` BYPASS, INV_BYPASS, ZERO_LENGTH_BYPASS, reserved, and undefined bins and `cp_zero_length_path`; `cg_instruction_gate` `cx_gate_disabled` |`CHK-IR-DECODE`, `+CHK-BYPASS-<opcode>+`, `CHK-BYPASS-DELAY`, `CHK-BYPASS-LATENCY`, `CHK-INV-BYPASS`, `CHK-ZLB-PASSTHROUGH`, `CHK-ZLB-CHAIN-ALIGN`, `CHK-SCAN-CHAIN`, `CHK-UNDEF-NO-SELECT`; `ir_decode` and `bypass` scoreboard features |YES
 |F1.5 Boundary-scan instructions: SAMPLE/PRELOAD, EXTEST, INTEST, CLAMP, HIGHZ, EXTEST_TRAIN, EXTEST_PULSE |`dtp_jtag_sample_preload_test`, `dtp_jtag_extest_test`, `dtp_jtag_intest_test`, `dtp_jtag_clamp_test`, `dtp_jtag_highz_test`, `dtp_jtag_ac_extest_train_test`, `dtp_jtag_ac_extest_pulse_test` |basic_jtag |`cg_jtag_instruction` `cp_opcode` boundary-scan opcodes; `cg_dr_scan` `cp_dr_instruction` boundary-scan bins |`CHK-BSR-LOOPBACK`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-BSR-RTI`, `CHK-BYPASS-DELAY`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-SCAN-COUNT` cross-check against the DUT's exported TAP state, `CHK-IR-DECODE` |YES, against the compact identity BSR loopback in `tb_top`; not a boundary-cell model
 |F1.6 RUNBIST; TMP CLAMP_HOLD and CLAMP_RELEASE |`dtp_jtag_runbist_test`, `dtp_jtag_clamp_hold_test`, `dtp_jtag_clamp_release_test` |basic_jtag |`cg_jtag_instruction` `cp_opcode`; `cg_dr_scan` `cp_dr_instruction` `runbist`, `clamp_hold`, and `clamp_release`; `cg_instruction_gate` `cx_gate_disabled` RUNBIST bins; `cg_tmp` `cp_change` and `cp_bypass` |`CHK-RUNBIST-RESPONSE`, `CHK-RUNBIST-DR-LEN`, `CHK-DFT-RUNBIST`, `CHK-DFT-SIB-SELECT`, `CHK-DFT-SCAN-CTRL`, `CHK-TMP-PERSIST`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-BSR-LOOPBACK`, `CHK-BYPASS-DELAY`, `CHK-IR-DECODE` |YES
 |F2.1 TMP_STATUS: reset value, persistence across the system reset and Test-Logic-Reset, the TMP conditional reset `chrst_n`, BYPASS escape and recovery |`dtp_jtag_tmp_status_register_smoke_test`, `dtp_jtag_tmp_status_chrst_n_in_persistence_test`, `dtp_jtag_tmp_status_bypass_escape_test` |debug_tdr; smoke also carries `dtp_jtag_tmp_status_register_smoke_test` |`cg_tmp` `cp_read_value`, `cp_read_match`, `cp_change`, `cp_bypass`, `cp_tlr`, and `cp_sys_reset` |`CHK-TMP-PERSIST`, `CHK-TMP-ESCAPE`, `CHK-TMP-CHRST`, `CHK-DBG-TDR`, `CHK-BYPASS-DELAY`, `CHK-RESET-COUNT`, `CHK-TAP-RESET-TLR` in both realizations |YES
@@ -248,17 +248,17 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 |F3.4 The external STAP return path follows `stap_host`: the host scan controls and the PTAP chain return (`jtag_stap_host_scan_in_i` while enabled, `jtag_stap_host_scan_out_o` while disabled); the STAP chain and the host scan controls move only while the PTAP 3DCR SELECT is set |`dtp_ext_stap_scan_test`, `dtp_stap_chain_hold_test` |scan, dbg_disable |`cg_stap_chain` `x_chain`; `cg_dbg_disable_scan` `x_cell` and `x_sequence` for `stap_host` |`CHK-SCAN-CHAIN` segment readback and marker position, `CHK-SCAN-OBS` PTAP 3DCR with SELECT=0, `CHK-SCAN-WIN` |YES, against the 7-bit host segment in `tb_top`
 |F3.5 3DCR `config_hold` and `tms_hold` |`dtp_3dcr_config_hold_test`, `dtp_3dcr_tms_hold_test` |scan |`cg_3dcr_hold` `x_hold`; `cg_stap_3dcr` `x_config` |`CHK-SCAN-CHAIN` chain readbacks after TLR/TRST, `CHK-SCAN-OBS` PTAP 3DCR over the TDR return path, `CHK-SCAN-WIN` parked TMS polarity |YES
 |F3.6 Every scan-side disable field gates exactly its path, with no replay after release and full recovery |`dtp_scan_dbg_disable_matrix_test` |scan, dbg_disable |`DtpDbgDisableFcov`: the sixteen scan-side cells; `cg_dbg_disable_scan` `x_cell`, `cp_mask`, `x_field_isolation`, and `x_sequence` |`CHK-SCAN-WIN`, `CHK-SCAN-LEN`, `CHK-SCAN-CHAIN` in both realizations; ledger `require_cells` (cocotb) |YES
-|F4.1 Single-operation write and read on the SMC fabric, SMC OTP, and SEP OTP bridges, with data verification |`+dtp_jtag2axi_<target>_single_write_test+`, `+dtp_jtag2axi_<target>_single_write_data_verify_test+`, `+dtp_jtag2axi_<target>_single_write_read_test+` |jtag2axi; functional also carries `dtp_jtag2axi_smc_axi_single_write_test` and `dtp_jtag2axi_smc_axi_single_write_read_test`, and smoke `dtp_jtag2axi_smc_axi_single_write_read_test` |`cg_jtag2axi_single_op` `x_op_shape` and `x_target_addr`; `cg_jtag2axi_response` `x_target_outcome` `success`; `cg_jtag2axi_poll` `x_target_capture` and `x_target_wait` |`CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-COMPLETION`, `CHK-J2A-BUS-REQ`, `CHK-AXI-RDATA` (read-back scenarios), `CHK-AXI-WMEM` (write-read and data-verify scenarios, against the stimulus); `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` on the reads, `CHK-AXI-NONVAC`, and the `jtag2axi_req` and `jtag2axi_status` scoreboard features (SV-UVM) |YES
-|F4.2 Series operations: INCR, NO_INCR, WITH_ERROR_STATUS, narrow beat offset, size field wider than the bus, randomized sequences, per-bridge independence, the SERIES_CTRL status held until `SERIES_CTRL.reset` |`+dtp_jtag2axi_<target>_series_write_{incr,no_incr,incr_with_error}_test+`, `+dtp_jtag2axi_<target>_series_write_read_{incr,no_incr,incr_with_error}_test+`, `+dtp_jtag2axi_<target>_random_ops_test+`, `+dtp_jtag2axi_<target>_read_random_ops_test+`, `dtp_jtag2axi_smc_axi_series_write_incr_narrow_test`, `dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test`, `dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test`, `dtp_jtag2axi_series_corner_all_bridges_test` |jtag2axi |`cg_jtag2axi_series` `x_mode_dir`, `x_target_status_step`, `cp_shape`, and `x_mode_beat` `after_fault` |`CHK-J2A-BUS-REQ` (every scenario but the series corner), `CHK-AXI-RDATA` (write-read and read random operations), `CHK-AXI-WMEM` (every series write beat and with-error recovery write, against the stimulus), `CHK-J2A-MEM-IMAGE` (random write operations), `CHK-J2A-SERIES-ADDR` (incrementing and narrow write-read, narrow write, series corner), `CHK-AXI-STRB` (narrow write, random write operations, with-error recovery writes), `CHK-AXI-COMPLETION`, `CHK-J2A-STATUS-BIT` (the WITH_ERROR_STATUS bit on every shift of the with-error series), `CHK-J2A-FAULT-STATUS` (the SERIES_CTRL captures of the series corner); `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb; credits where strobe or response credits are armed); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` (SV-UVM single operations and the narrow write); `CHK-AXI-NONVAC` (SV-UVM, and cocotb on the with-error series); `jtag2axi_req` and `jtag2axi_status` scoreboard features (SV-UVM) |YES for INCR, NO_INCR, WITH_ERROR_STATUS, the narrow beat offset and randomized sequences; NO for per-bridge independence and the SERIES_CTRL status held until `SERIES_CTRL.reset`, which `dtp_jtag2axi_series_corner_all_bridges_test` drives
-|F4.3 Response status: SLVERR and DECERR on single and series operations, the error-status TDR, recovery after an error |`+dtp_jtag2axi_<target>_error_{single_write,single_read,series_incr_write,series_incr_read,series_no_incr_write,series_no_incr_read,series_incr_write_with_status,series_incr_read_with_status}_test+`, `+dtp_jtag2axi_<target>_series_write{,_read}_incr_with_error_test+`, `dtp_jtag2axi_decode_error_decerr_write_test`, `dtp_jtag2axi_decode_error_decerr_read_test`, `dtp_jtag2axi_decode_error_mixed_test` |jtag2axi |`cg_jtag2axi_response` `x_target_outcome` `slverr` and `decerr`; `cg_jtag2axi_recovery` `x_target_prior_path`; `cg_jtag2axi_series` `x_mode_beat` `fault` |Armed non-OKAY response (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM), `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-COMPLETION`, `CHK-AXI-STRB` (scenarios with a single-operation write), `CHK-AXI-RDATA` (scenarios with reads), `CHK-AXI-WMEM` (recovery writes and the with-error series write beats, against the stimulus), `CHK-J2A-BUS-REQ` (every scenario but the decode-error ones, fault beats included), `CHK-J2A-FAULT-STATUS` (the sequence's judgement of the SINGLE_OP or SERIES_CTRL status: the injected code right after the fault beat, OKAY after a plain series beat before it), `CHK-J2A-STATUS-BIT` (the per-shift status bit of the with-error series and of the with-status error series), `CHK-J2A-ERR-RDATA` (the seeded word of the errored read beat on the single-read, plain series read, and decode-error read scenarios), `CHK-J2A-SERIES-ADDR` (the SERIES_CTRL address after the plain series error beats and after the fault beat of the with-status write error); `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR` and `CHK-AXI-WDATA` on the single-operation writes, `CHK-AXI-RADDR` on the reads, and the `jtag2axi_req` and `jtag2axi_status` scoreboard features (SV-UVM) |YES
-|F4.4 Backpressure and reset recovery: AW-before-W skew, long READY stalls, reset around the data phase, narrow and back-to-back resets, resets inside a running CDC clear sequence, a TAP reset with a request held on the fabric, TAP and system resets with every CDC FIFO entry holding a payload |`dtp_jtag2axi_backpressure_aw_before_w_test`, `dtp_jtag2axi_backpressure_long_stall_test`, `dtp_jtag2axi_backpressure_abort_at_data_w_test`, `dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test`, `dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test`, `dtp_jtag2axi_series_corner_all_bridges_test` |jtag2axi |`cg_jtag2axi_backpressure` `x_target_handshake`; `cg_jtag2axi_reset` `x_target_phase` and `cp_spacing`; `cg_jtag2axi_cdc` `x_target_clear`; `cg_jtag2axi_poll` `x_target_wait` `long_wait`; `cg_jtag2axi_response` and `cg_jtag2axi_recovery` `reset_discard` bins |`CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-WMEM` (the backpressured and recovery writes against the stimulus, and the entry sweep's errored writes against the slot's prior word), `CHK-AXI-RDATA` on the long-stall, back-to-back, narrow-reset and series-corner leaves; `CHK-J2A-STALL-FSM`, `CHK-J2A-STALL-BUSY`, `CHK-J2A-STALL-HOLD` on the two backpressure leaves; `CHK-J2A-ABORT-MIDFLIGHT` on the two reset-abort leaves; `CHK-J2A-ABORT-FSM` on the two reset-abort leaves, the back-to-back leaf and the series-corner leaf's entry sweep; `CHK-J2A-ABORT-ESCAPE` on the two reset-abort leaves; `CHK-J2A-SERIES-ADDR` and `CHK-J2A-FAULT-STATUS` on the abort-at-data-W leaf's series leg; `CHK-J2A-ABORT-RECOVERY`, `CHK-RESET-COUNT` on the three system-reset leaves and the entry sweep; `CHK-J2A-CDC-CLEAR` on the three system-reset leaves, the narrow-reset leaf's TAP-reset legs and the entry sweep; `CHK-J2A-CDC-PHASE` on the back-to-back leaf; `CHK-J2A-ORPHAN-DRAIN`, `CHK-J2A-ORPHAN-DISCARD`, `CHK-J2A-ORPHAN-ORDER` on the narrow-reset leaf's TAP-reset legs; `CHK-J2A-ERR-RDATA` on the entry sweep's errored reads; on the back-to-back leaf's armed SLVERR, the TAP-reset legs' armed SLVERR and DECERR, and the entry sweep's armed codes, `CHK-AXI-RESP-EXPECTED` (cocotb) and `CHK-AXI-ERR-INJ` (SV-UVM); `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` on the reads (SV-UVM); `CHK-AXI-NONVAC` (SV-UVM, and cocotb on the entry sweep); the `jtag2axi_req` and `jtag2axi_status` scoreboard features (SV-UVM) |YES
-|F4.5 Each bridge's disable field: a gated bridge latches no TDR update, drops buffered requests, and generates no AXI traffic; release without replay; recovery |`+dtp_jtag2axi_<target>_{write,read,error}_security_gating_test+`, `dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test`, `dtp_jtag2axi_dbg_disable_matrix_test` |jtag2axi, dbg_disable |`DtpDbgDisableFcov`: the six bridge cells; `cg_dbg_disable_jtag2axi` `x_cell`, `cp_mask`, and `x_field_isolation`; `cg_jtag2axi_gating` `x_target_event` |`CHK-J2A-GATE-TDR` (every gated SINGLE_OP capture repeats the image captured before the disable), `CHK-AXI-RESP`, `CHK-AXI-COMPLETION`, `CHK-AXI-NONVAC` (the directed gating scenarios, and the matrix in SV-UVM), `CHK-AXI-STRB` (write and error gating, the matrix), `CHK-AXI-RDATA` (read gating, the matrix), and on the error gating scenarios the armed non-OKAY response (`CHK-AXI-RESP-EXPECTED` and `CHK-AXI-CREDITS` cocotb, `CHK-AXI-ERR-INJ` SV-UVM), `CHK-AXI-WMEM` (the recovery writes, against the stimulus), and `CHK-J2A-FAULT-STATUS`; `CHK-AXI-NOACT`, `CHK-AXI-STREAM-MIN`, and `CHK-AXI-BLOCKED` on the matrix (cocotb); `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-EXACT`, `CHK-AXI-WADDR` and `CHK-AXI-WDATA` with `CHK-AXI-STRB`, and `CHK-AXI-RADDR` with `CHK-AXI-RDATA` (SV-UVM); the write gating scenarios' queued series beats for the dropped buffered requests, with `CHK-AXI-WMEM` on their recovery write; the `jtag2axi_req` and `jtag2axi_status` scoreboard features (SV-UVM), `jtag2axi_req` proving no transaction while disabled; ledger `require_cells` (cocotb) |YES
-|F5.1 CTP wire-OR mode: pulse routing, configurable stretcher, inversion, the shared open-drain wire |`dtp_xtrig_wire_or_test`, `dtp_xtrig_wire_or_bus_test`, `dtp_ctm_wire_or_cla_to_ctp_test`, `dtp_ctm_wire_or_ctp_to_cla_test`, `dtp_ctm_wire_or_cla_to_cla_test`, `dtp_ctm_wire_or_ctp_to_ctp_test`, `dtp_ctm_rand_wire_or_only_test` |xtrig; smoke also carries `dtp_xtrig_wire_or_test` |`cg_ctp` `x_direction_mode_inversion` wire-OR bins and `x_mode_inversion_stretch`; `cg_ctp_wire_or_rx` `x_sense_listeners` and `x_sense_origin` |`CHK-XTRIG-SIGNAL`, `CHK-XTRIG-STRETCH` (width and pulse count), `CHK-XTRIG-ROUTE-MODEL` (the fired outputs and one assertion per routed output), `CHK-XTRIG-WIRE`; `xtrig_csr` scoreboard feature (SV-UVM) |YES
+|F4.1 Single-operation write and read on the SMC fabric, SMC OTP, and SEP OTP bridges, with data verification |`+dtp_jtag2axi_<target>_single_write_test+`, `+dtp_jtag2axi_<target>_single_write_data_verify_test+`, `+dtp_jtag2axi_<target>_single_write_read_test+` |jtag2axi; functional also carries `dtp_jtag2axi_smc_axi_single_write_test` and `dtp_jtag2axi_smc_axi_single_write_read_test`, and smoke `dtp_jtag2axi_smc_axi_single_write_read_test` |`cg_jtag2axi_single_op` `x_op_shape` and `x_target_addr`; `cg_jtag2axi_response` `x_target_outcome` `success`; `cg_jtag2axi_poll` `x_target_capture` and `x_target_wait` |`CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-COMPLETION`, `CHK-J2A-BUS-REQ`, `CHK-AXI-RDATA` (read-back scenarios), `CHK-AXI-WMEM` (write-read and data-verify scenarios, against the stimulus), the `jtag2axi_req` and `jtag2axi_status` scoreboard features; `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` on the reads, and `CHK-AXI-NONVAC` (SV-UVM) |YES
+|F4.2 Series operations: INCR, NO_INCR, WITH_ERROR_STATUS, narrow beat offset, size field wider than the bus, randomized sequences, per-bridge independence, the SERIES_CTRL status held until `SERIES_CTRL.reset` |`+dtp_jtag2axi_<target>_series_write_{incr,no_incr,incr_with_error}_test+`, `+dtp_jtag2axi_<target>_series_write_read_{incr,no_incr,incr_with_error}_test+`, `+dtp_jtag2axi_<target>_random_ops_test+`, `+dtp_jtag2axi_<target>_read_random_ops_test+`, `dtp_jtag2axi_smc_axi_series_write_incr_narrow_test`, `dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test`, `dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test`, `dtp_jtag2axi_series_corner_all_bridges_test` |jtag2axi |`cg_jtag2axi_series` `x_mode_dir`, `x_target_status_step`, `cp_shape`, and `x_mode_beat` `after_fault` |`CHK-J2A-BUS-REQ` (every scenario but the series corner), `CHK-AXI-RDATA` (write-read and read random operations), `CHK-AXI-WMEM` (every series write beat and with-error recovery write, against the stimulus), `CHK-J2A-MEM-IMAGE` (random write operations), `CHK-J2A-SERIES-ADDR` (incrementing and narrow write-read, narrow write, series corner), `CHK-AXI-STRB` (narrow write, random write operations, with-error recovery writes), `CHK-AXI-COMPLETION`, `CHK-J2A-STATUS-BIT` (the WITH_ERROR_STATUS bit on every shift of the with-error series), `CHK-J2A-FAULT-STATUS` (the SERIES_CTRL captures of the series corner), the `jtag2axi_req` and `jtag2axi_status` scoreboard features; `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb; credits where strobe or response credits are armed); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` (SV-UVM single operations and the narrow write); `CHK-AXI-NONVAC` (SV-UVM, and cocotb on the with-error series) |YES
+|F4.3 Response status: SLVERR and DECERR on single and series operations, the error-status TDR, recovery after an error |`+dtp_jtag2axi_<target>_error_{single_write,single_read,series_incr_write,series_incr_read,series_no_incr_write,series_no_incr_read,series_incr_write_with_status,series_incr_read_with_status}_test+`, `+dtp_jtag2axi_<target>_series_write{,_read}_incr_with_error_test+`, `dtp_jtag2axi_decode_error_decerr_write_test`, `dtp_jtag2axi_decode_error_decerr_read_test`, `dtp_jtag2axi_decode_error_mixed_test` |jtag2axi |`cg_jtag2axi_response` `x_target_outcome` `slverr` and `decerr`; `cg_jtag2axi_recovery` `x_target_prior_path`; `cg_jtag2axi_series` `x_mode_beat` `fault` |Armed non-OKAY response (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM), `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-COMPLETION`, `CHK-AXI-STRB` (scenarios with a single-operation write), `CHK-AXI-RDATA` (scenarios with reads), `CHK-AXI-WMEM` (recovery writes and the with-error series write beats, against the stimulus), `CHK-J2A-BUS-REQ` (every scenario but the decode-error ones, fault beats included), `CHK-J2A-FAULT-STATUS` (the sequence's judgement of the SINGLE_OP or SERIES_CTRL status: the injected code right after the fault beat, OKAY after a plain series beat before it), `CHK-J2A-STATUS-BIT` (the per-shift status bit of the with-error series and of the with-status error series), `CHK-J2A-ERR-RDATA` (the seeded word of the errored read beat on the single-read, plain series read, and decode-error read scenarios), `CHK-J2A-SERIES-ADDR` (the SERIES_CTRL address after the plain series error beats and after the fault beat of the with-status write error), the `jtag2axi_req` and `jtag2axi_status` scoreboard features; `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR` and `CHK-AXI-WDATA` on the single-operation writes and `CHK-AXI-RADDR` on the reads (SV-UVM) |YES
+|F4.4 Backpressure and reset recovery: AW-before-W skew, long READY stalls, reset around the data phase, narrow and back-to-back resets, resets inside a running CDC clear sequence, a TAP reset with a request held on the fabric, TAP and system resets with every CDC FIFO entry holding a payload |`dtp_jtag2axi_backpressure_aw_before_w_test`, `dtp_jtag2axi_backpressure_long_stall_test`, `dtp_jtag2axi_backpressure_abort_at_data_w_test`, `dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test`, `dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test`, `dtp_jtag2axi_series_corner_all_bridges_test` |jtag2axi |`cg_jtag2axi_backpressure` `x_target_handshake`; `cg_jtag2axi_reset` `x_target_phase` and `cp_spacing`; `cg_jtag2axi_cdc` `x_target_clear`; `cg_jtag2axi_poll` `x_target_wait` `long_wait`; `cg_jtag2axi_response` and `cg_jtag2axi_recovery` `reset_discard` bins |`CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-WMEM` (the backpressured and recovery writes against the stimulus, and the entry sweep's errored writes against the slot's prior word), `CHK-AXI-RDATA` on the long-stall, back-to-back, narrow-reset and series-corner leaves; `CHK-J2A-STALL-FSM`, `CHK-J2A-STALL-BUSY`, `CHK-J2A-STALL-HOLD` on the two backpressure leaves; `CHK-J2A-ABORT-MIDFLIGHT` on the two reset-abort leaves; `CHK-J2A-ABORT-FSM` on the two reset-abort leaves, the back-to-back leaf and the series-corner leaf's entry sweep; `CHK-J2A-ABORT-ESCAPE` on the two reset-abort leaves; `CHK-J2A-SERIES-ADDR` and `CHK-J2A-FAULT-STATUS` on the abort-at-data-W leaf's series leg; `CHK-J2A-ABORT-RECOVERY`, `CHK-RESET-COUNT` on the three system-reset leaves and the entry sweep; `CHK-J2A-CDC-CLEAR` on the three system-reset leaves, the narrow-reset leaf's TAP-reset legs and the entry sweep; `CHK-J2A-CDC-PHASE` on the back-to-back leaf; `CHK-J2A-ORPHAN-DRAIN`, `CHK-J2A-ORPHAN-DISCARD`, `CHK-J2A-ORPHAN-ORDER` on the narrow-reset leaf's TAP-reset legs; `CHK-J2A-ERR-RDATA` on the entry sweep's errored reads; on the back-to-back leaf's armed SLVERR, the TAP-reset legs' armed SLVERR and DECERR, and the entry sweep's armed codes, `CHK-AXI-RESP-EXPECTED` (cocotb) and `CHK-AXI-ERR-INJ` (SV-UVM); `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` on the reads (SV-UVM); `CHK-AXI-NONVAC` (SV-UVM, and cocotb on the entry sweep); the `jtag2axi_req` and `jtag2axi_status` scoreboard features |YES
+|F4.5 Each bridge's disable field: a gated bridge latches no TDR update, drops buffered requests, and generates no AXI traffic; release without replay; recovery |`+dtp_jtag2axi_<target>_{write,read,error}_security_gating_test+`, `dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test`, `dtp_jtag2axi_dbg_disable_matrix_test` |jtag2axi, dbg_disable |`DtpDbgDisableFcov`: the six bridge cells; `cg_dbg_disable_jtag2axi` `x_cell`, `cp_mask`, and `x_field_isolation`; `cg_jtag2axi_gating` `x_target_event` |`CHK-J2A-GATE-TDR` (every gated SINGLE_OP capture repeats the image captured before the disable), `CHK-AXI-RESP`, `CHK-AXI-COMPLETION`, `CHK-AXI-NONVAC` (the directed gating scenarios, and the matrix in SV-UVM), `CHK-AXI-STRB` (write and error gating, the matrix), `CHK-AXI-RDATA` (read gating, the matrix), and on the error gating scenarios the armed non-OKAY response (`CHK-AXI-RESP-EXPECTED` and `CHK-AXI-CREDITS` cocotb, `CHK-AXI-ERR-INJ` SV-UVM), `CHK-AXI-WMEM` (the recovery writes, against the stimulus), and `CHK-J2A-FAULT-STATUS`; `CHK-AXI-NOACT`, `CHK-AXI-STREAM-MIN`, and `CHK-AXI-BLOCKED` on the matrix (cocotb); `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-EXACT`, `CHK-AXI-WADDR` and `CHK-AXI-WDATA` with `CHK-AXI-STRB`, and `CHK-AXI-RADDR` with `CHK-AXI-RDATA` (SV-UVM); the write gating scenarios' queued series beats for the dropped buffered requests, with `CHK-AXI-WMEM` on their recovery write; the `jtag2axi_req` and `jtag2axi_status` scoreboard features, `jtag2axi_req` proving no transaction while disabled; ledger `require_cells` (cocotb) |YES
+|F5.1 CTP wire-OR mode: pulse routing, configurable stretcher, inversion, the shared open-drain wire |`dtp_xtrig_wire_or_test`, `dtp_xtrig_wire_or_bus_test`, `dtp_ctm_wire_or_cla_to_ctp_test`, `dtp_ctm_wire_or_ctp_to_cla_test`, `dtp_ctm_wire_or_cla_to_cla_test`, `dtp_ctm_wire_or_ctp_to_ctp_test`, `dtp_ctm_rand_wire_or_only_test` |xtrig; smoke also carries `dtp_xtrig_wire_or_test` |`cg_ctp` `x_direction_mode_inversion` wire-OR bins and `x_mode_inversion_stretch`; `cg_ctp_wire_or_rx` `x_sense_listeners` and `x_sense_origin` |`CHK-XTRIG-SIGNAL`, `CHK-XTRIG-STRETCH` (width and pulse count), `CHK-XTRIG-ROUTE-MODEL` (the fired outputs and one assertion per routed output), `CHK-XTRIG-WIRE`; `xtrig_csr` scoreboard feature |YES
 |F5.2 CTP point-to-point four-phase handshake: a request held until its acknowledge and released by it, an acknowledge raised by a request and dropped after it, STATUS through each phase |`dtp_xtrig_p2p_test`, `dtp_ctm_p2p_cla_to_ctp_test`, `dtp_ctm_p2p_ctp_to_cla_test`, `dtp_ctm_p2p_ctp_to_ctp_test`, `dtp_ctm_rand_p2p_only_test` |xtrig |`cg_ctp_p2p` `x_phase_inversion`; `cg_ctp` `x_direction_mode_inversion` point-to-point bins; `cg_xtrig_csr_read` `cp_status` |`CHK-XTRIG-SIGNAL` (each handshake phase at the CTP endpoints), `CHK-XTRIG-CSR` (STATUS, `dtp_xtrig_p2p_test`), `CHK-XTRIG-ROUTE-MODEL` |YES
 |F5.3 CTM routing: every source and destination index, fanout, isolation of unrouted ports |`dtp_xtrig_rand_test`, `dtp_xtrig_rand_deterministic_dst_port_sweep_test`, `dtp_ctm_p2p_cla_to_cla_test`, `dtp_ctm_rand_all_scenarios_test`, `dtp_ctm_rand_cla_to_ctp_test`, `dtp_ctm_rand_ctp_to_cla_test`, `dtp_ctm_rand_all_source_select_coverage_test` |xtrig |`cg_ctm` `cp_source_index`, `cp_dest_index`, and `cp_dest_fanin`; `cg_ctm_route` `x_cla_to_ctp` and `x_ctp_to_cla`; `cg_ctm_fanout` `cp_fanout` and `x_source_dest_fanout` |`CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION`, `CHK-XTRIG-CSR` |YES
-|F5.4 CSR map: CTP CONFIG and STATUS, CTM source selects, STRETCH_MULT; readback, byte enables, reserved bits, holes, no aliasing, reset defaults |`dtp_xtrig_rand_deterministic_csr_sweep_test`, `dtp_ctm_rand_deterministic_csr_sweep_test`, `dtp_xtrig_reg_stall_test` |xtrig |`cg_xtrig_csr_write` `cp_region`, `x_register_strobe`, and `x_region_resp`; `cg_xtrig_csr_read` `cp_region`, `x_region_resp`, and `cp_reset_value` |`CHK-XTRIG-CSR`, `CHK-XTRIG-AXIL`, `CHK-XTRIG-QUIET` and `CHK-XTRIG-SIGNAL` (`dtp_xtrig_reg_stall_test`); `xtrig_csr` scoreboard feature, and `xtrig_decode` on the two sweeps (SV-UVM) |YES
-|F5.5 AXI4-Lite CSR port: registered channels, channel skew, demux pending-W admission, read-decode backpressure, several accesses outstanding with the responses held, the demux AW lock, every AxPROT value, unaligned and high addresses; unmapped addresses complete with DECERR |`dtp_xtrig_axi_channel_skew_test`, `dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test`, `dtp_xtrig_axi_channel_skew_read_decode_backpressure_test`, `dtp_xtrig_axi_outstanding_test` |xtrig |`cg_xtrig_axil_flow` `cp_flow`; `cg_xtrig_csr_write` `cp_order`, `cp_resp`, and `cp_wait`; `cg_xtrig_csr_read` `cp_resp` and `cp_wait` |`CHK-XTRIG-AXIL` (with the spill-register and port stall counters), `CHK-XTRIG-CSR`, `CHK-XTRIG-AW-LOCK` (the demux pending-W state, the demux AW lock and the demux open-write counters), `CHK-XTRIG-AR-STALL` (the demux open-read counters and the port AR stall counter); `xtrig_csr` scoreboard feature, and `xtrig_decode` on the read-decode backpressure test (SV-UVM) and the outstanding test |YES
-|F5.6 CTP and CTM reset recovery in each mode |`dtp_xtrig_reset_test`, `dtp_ctm_reset_wire_or_mode_test`, `dtp_ctm_reset_p2p_mode_test`, `dtp_ctm_reset_all_modes_test` |xtrig |`cg_ctp_reset` `cp_system_reset`, `cp_config_reset`, and `cp_recovery`; `cg_xtrig_csr_read` `cp_reset_value` |`CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-QUIET`, `CHK-XTRIG-SIGNAL` (each watched observable active before the reset), `CHK-RESET-COUNT`; the `xtrig_csr` shadow (SV-UVM) is cleared on every reset |YES
+|F5.4 CSR map: CTP CONFIG and STATUS, CTM source selects, STRETCH_MULT; readback, byte enables, reserved bits, holes, no aliasing, reset defaults |`dtp_xtrig_rand_deterministic_csr_sweep_test`, `dtp_ctm_rand_deterministic_csr_sweep_test`, `dtp_xtrig_reg_stall_test` |xtrig |`cg_xtrig_csr_write` `cp_region`, `x_register_strobe`, and `x_region_resp`; `cg_xtrig_csr_read` `cp_region`, `x_region_resp`, and `cp_reset_value` |`CHK-XTRIG-CSR`, `CHK-XTRIG-AXIL`, `CHK-XTRIG-QUIET` and `CHK-XTRIG-SIGNAL` (`dtp_xtrig_reg_stall_test`); `xtrig_csr` scoreboard feature, and `xtrig_decode` on the two sweeps |YES
+|F5.5 AXI4-Lite CSR port: registered channels, channel skew, demux pending-W admission, read-decode backpressure, several accesses outstanding with the responses held, the demux AW lock, every AxPROT value, unaligned and high addresses; unmapped addresses complete with DECERR |`dtp_xtrig_axi_channel_skew_test`, `dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test`, `dtp_xtrig_axi_channel_skew_read_decode_backpressure_test`, `dtp_xtrig_axi_outstanding_test` |xtrig |`cg_xtrig_axil_flow` `cp_flow`; `cg_xtrig_csr_write` `cp_order`, `cp_resp`, and `cp_wait`; `cg_xtrig_csr_read` `cp_resp` and `cp_wait` |`CHK-XTRIG-AXIL` (with the spill-register and port stall counters), `CHK-XTRIG-CSR`, `CHK-XTRIG-AW-LOCK` (the demux pending-W state, the demux AW lock and the demux open-write counters), `CHK-XTRIG-AR-STALL` (the demux open-read counters and the port AR stall counter); `xtrig_csr` scoreboard feature, and `xtrig_decode` on the read-decode backpressure and outstanding tests |YES
+|F5.6 CTP and CTM reset recovery in each mode |`dtp_xtrig_reset_test`, `dtp_ctm_reset_wire_or_mode_test`, `dtp_ctm_reset_p2p_mode_test`, `dtp_ctm_reset_all_modes_test` |xtrig |`cg_ctp_reset` `cp_system_reset`, `cp_config_reset`, and `cp_recovery`; `cg_xtrig_csr_read` `cp_reset_value` |`CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-QUIET`, `CHK-XTRIG-SIGNAL` (each watched observable active before the reset), `CHK-RESET-COUNT`; the `xtrig_csr` shadow is cleared on every reset |YES
 |F5.7 Clock-stop aggregation: registered `stop_clks_o` from `jtag_clock_stop` OR any `xtrig_clk_stop_req_i` bit; `cla_clock_stop` status from the CLA requests alone |`dtp_dbg_ctrl_clk_stop_cla_clock_stop_test`, `dtp_dbg_ctrl_clk_stop_random_clock_stop_test` (shared with F2.3) |debug_tdr |`cg_clock_stop` `cp_req_source` and `x_aggregation`; `cg_debug_control` `x_readback` |As F2.3 |YES
 |===
 
@@ -433,6 +433,7 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 
 ==== XTRIG, CTP, and CTM Scenarios
 
+[[dtp-vplan-ctm-port-naming]]
 CTM port naming follows the cross-trigger matrix register map
 (`hw/ip/cross_trigger/cross_trigger_matrix/regs/cross_trigger_matrix.rdl`): a
 CT_Src port is a matrix output, the port that delivers a trigger, and a CT_Dst
@@ -510,8 +511,8 @@ procedure ends by checking scoreboard/reference-model errors are zero.
 [arabic]
 . Pulse `pwr_on_rst_ni` and `rst_n_i`, set every `dbg_disable_i` field to 1, and reset the primary TAP to Test-Logic-Reset. The disables stay set for the pass, since the random walks shift random TDI into whatever instruction they load.
 . Walk a fixed TMS sequence from Test-Logic-Reset that takes all 32 legal transitions and returns to Test-Logic-Reset.
-. Through `OcahJtagMasterDriver`, sequence TLR → RTI → Select-DR → Capture-DR → Shift-DR → Update-DR → RTI, sampling `jtag_ptap_state_o` after each TCK.
-. Drive an IR scan RTI → Select-DR → Select-IR → Capture-IR → Shift-IR (6 bits, BYPASS 0x00) → Update-IR → RTI.
+. Through `OcahJtagMasterDriver`, sequence TLR → RTI → Select-DR → Capture-DR → Shift-DR → Exit1-DR → Update-DR → RTI, sampling `jtag_ptap_state_o` after each TCK.
+. Drive an IR scan RTI → Select-DR → Select-IR → Capture-IR → Shift-IR (6 bits, BYPASS 0x00) → Exit1-IR → Update-IR → RTI.
 . With BYPASS active, run directed and seeded 64-bit DR scans and confirm the single-TCK TDI-to-TDO delay.
 . Force TLR with five TMS=1 cycles and step to Run-Test/Idle; a 32-bit DR scan with no IR load reads IDCODE. Read IDCODE again through explicit IR loads with a BYPASS load between the reads.
 . Drive randomized raw-TMS paths with random TDI through DR/IR/pause/update legs.
@@ -630,8 +631,8 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 . Without loading any IR, perform a 32-bit DR scan through `OcahJtagMasterDriver` and capture TDO.
 . Decode and check fields `SI_REV[31:28]`, `PART_NUM[27:12]`, `MFR_ID[11:1]`, and `MARKER[0] == 1`.
 . Load a seeded instruction other than IDCODE, hold `pwr_on_rst_ni` low for 2..8 TCK periods with TRST_N high and TCK idle, step Test-Logic-Reset to Run-Test/Idle with TMS low, and perform a 32-bit DR scan with no IR load: it reads IDCODE.
-. Explicitly load IDCODE (IR=0x01); repeat the 32-bit DR scan.
-. Force TLR again and re-read; require an identical value on every read.
+. For each of `DTP_IDCODE_READS_PER_LOOP` reads (default 4), precondition the TAP with a seeded choice of a TAP reset, a TAP reset followed by a random TMS walk, a load of an instruction other than IDCODE, or a BYPASS scan (the first read always takes the reset and the walk), and check the DUT's exported TAP state against the tracked state (`CHK-TAP-STATE`); then explicitly load IDCODE (IR=0x01) and repeat the 32-bit DR scan.
+. Require an identical value on every read.
 
 *Checkers*:
 
@@ -1351,7 +1352,7 @@ a. Verify TMP_STATUS[1] = 0 after the escape.
 *Test Coverage*:
 
 * IC_RESET (IR=0x0D) TDR independently overrides each chiplet reset domain across three slices — SMC (nearest TDI), SEP, and External (nearest TDO) — all enabled in this bench (`IcResetSmcEnable`, `IcResetSepEnable`, `IcResetExtEnable` in `tb/dtp_dv_cfg_pkg.sv`), one port each
-* Active-low `reset_enable` per IEEE 1149.1 §17: `reset_enable=1` (default) disables the override (upstream reset passes through), `reset_enable=0` enables it; the PTAP exports `jtag_ic_reset_ovrd_o[n] = !reset_enable[n]` and `jtag_ic_reset_ctrl_n_o[n] = reset_control[n]`
+* Active-low `reset_enable` per IEEE 1149.1 §17: `reset_enable=1` (default) disables the override (upstream reset passes through), `reset_enable=0` enables it; each slice leaves DTP on its struct port, `jtag_ic_reset_smc_o`, `jtag_ic_reset_sep_o`, or `jtag_ic_reset_ext_o`, with `.ovrd = !reset_enable` and `.val = reset_control`
 * RESET_HOLD = 0 keeps every reset_enable and reset_control bit across TLR (PTAP document, "PTAP IC_RESET fields" table)
 * Four directed reset_hold=0 patterns give every slice each of its four reset_enable/reset_control values
 * RESET_HOLD = 1 allows TLR to restore the default all-ones value; TRST always restores defaults
@@ -1363,8 +1364,8 @@ a. Verify TMP_STATUS[1] = 0 after the escape.
 . Load IC_RESET (IR=0x0D) via `OcahJtagMasterDriver`.
 . Verify the default all-ones IC_RESET value and deasserted flattened SMC/SEP/EXT outputs.
 . For each SMC, SEP, and External slice, shift in RESET_ENABLE=0 (enable override) and RESET_CONTROL=0 (drive reset low); Update-DR.
-a. Verify `jtag_ic_reset_ovrd_o[0]` = 1 (= `!reset_enable[0]`) and `jtag_ic_reset_ctrl_n_o[0]` = 0.
-b. Set RESET_ENABLE[0]=1 (disable override); verify `jtag_ic_reset_ovrd_o[0]` = 0 (upstream reset passes through), confirming the active-low `ovrd_o = !reset_enable` mapping.
+a. Verify the slice's `jtag_ic_reset_<slice>_o.ovrd` = 1 (= `!reset_enable`) and `.val` = 0.
+b. Set the slice's RESET_ENABLE=1 (disable override); verify `.ovrd` = 0 (upstream reset passes through), confirming the active-low `.ovrd = !reset_enable` mapping.
 . For each of four directed patterns, in which the SMC, SEP, and External slices take successive (reset_enable, reset_control) values of 00, 01, 10, and 11 so that every slice takes all four: set RESET_HOLD=0 with the pattern, Update-DR, force TLR (Test-Logic-Reset), and re-read IC_RESET.
 a. Verify the programmed pattern is preserved on the slice outputs while the TAP is in Test-Logic-Reset, and in the readback.
 . Repeat reset_hold=0 TLR preservation with seeded random enable/control patterns.
@@ -1376,13 +1377,13 @@ a. Verify the programmed pattern is preserved on the slice outputs while the TAP
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ic_reset_polarity_chk` |`jtag_ic_reset_ovrd_o[n]` == `!reset_enable[n]` (active-low enable per 1149.1 §17); `jtag_ic_reset_ctrl_n_o[n]` == `reset_control[n]`
+|`ic_reset_polarity_chk` |On every slice, `jtag_ic_reset_<slice>_o.ovrd` == `!reset_enable` (active-low enable per 1149.1 §17) and `jtag_ic_reset_<slice>_o.val` == `reset_control`
 |`ic_reset_slice_chk` |Each slice (SMC/SEP/EXT) overrides independently of the other two
 |`ic_reset_hold_chk` |RESET_HOLD=0 preserves the register and the slice outputs across TLR; RESET_HOLD=1 lets TLR restore defaults and deassert the outputs; TRST restores defaults; the outputs are judged before the readback, whose Update-DR writes the expected value back
 |`ic_reset_random_hold_chk` |Seeded random reset_hold=0 enable/control patterns preserve across TLR, on the slice outputs and in the readback
 |===
 
-*Pass Criteria*: Each slice (SMC/SEP/EXT) is independently overridden with the active-low `reset_enable` correctly mapped to `ovrd_o = !reset_enable`, and RESET_HOLD correctly controls TLR preservation/default restore behavior, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Each slice (SMC/SEP/EXT) is independently overridden with the active-low `reset_enable` correctly mapped to `.ovrd = !reset_enable`, and RESET_HOLD correctly controls TLR preservation/default restore behavior, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -1735,7 +1736,7 @@ b. RD_PL_DEPTH and WR_PL_DEPTH == their `+SMC_OTP_*+` pipeline-depth parameters.
 NOTE: Every JTAG2AXI scenario in this section and in <<sec-3-jtag2axi-read-scenarios>> and
 <<sec-4-jtag2axi-error-backpressure-cdc-and-decode-scenarios>> opens each pass with the geometry gate of the JTAG2AXI base
 sequence: it reads the three `*_JTAG2AXI_CAPS` TDRs and records `CHK-J2A-GEOMETRY` for the bus type,
-address size, and data size of each bridge against the DV geometry table. A DUT that publishes a
+address size, data size, and write and read pipeline depths of each bridge against the DV geometry table. A DUT that publishes a
 different geometry fails the pass before any bridge
 request is packed with the table's field widths.
 
@@ -2102,8 +2103,8 @@ c. Verify exactly one write completed, no request activity followed it, and the 
 
 * JTAG2AXI single-op AXI4-Lite write through the SMC OTP bridge (SMC_OTP_AXI_SINGLE_OP, IR=0x1C)
 * 32-bit address / 32-bit data field formatting consistent with the SMC OTP CAPS TDR (IR=0x1B, AXI4-Lite, 32/32)
-* Address/data/wstrb delivery to the AXI-Lite subordinate on `axil_smc_otp_jtag_req_o`
-* Op-status settles at OKAY (0b00) within the poll bound (`CHK-AXI-COMPLETION`); the Busy (0b11) capture before completion is the stall scenarios' evidence (section 4). OKAY is the all-zero encoding, so the responder burst count (`CHK-AXI-NONVAC`) and the memory compare corroborate it
+* Address/data/wstrb delivery to the AXI-Lite subordinate on `axil_smc_otp_jtag_req_o` at every legal size and with partial strobes: five directed cases (sizes 0, 1, and 2 at full strobe, then a 4-byte word under strobe `0x5` and under strobe `0xA`), then `DTP_RANDOM_COUNT` seeded cases, each with a seeded size of 0 to 2, seeded address bits above the responder window, seeded data, and a seeded nonzero strobe within the size
+* Op-status settles at OKAY (0b00) within the poll bound (`CHK-AXI-COMPLETION`); the Busy (0b11) capture before completion is the stall scenarios' evidence (section 4). OKAY is the all-zero encoding, so the responder burst count (`CHK-AXI-NONVAC` in SV-UVM, `CHK-AXI-STREAM-MIN` in cocotb) and the memory compare corroborate it
 
 *Test Procedure*:
 
@@ -2111,14 +2112,14 @@ c. Verify exactly one write completed, no request activity followed it, and the 
 . Load and verify the bridge CAPS:
 a. Load SMC_OTP_JTAG2AXI_CAPS (IR=0x1B) via `OcahJtagMasterDriver` and read the 14-bit CAPS TDR.
 b. Verify bus_type = AXI4-Lite, ADDR_SIZE = 32, DATA_SIZE = 32.
-. Issue the single write:
+. For each case, issue the single write:
 a. Load SMC_OTP_AXI_SINGLE_OP (IR=0x1C).
-b. Shift in the 32-bit target address, 32-bit write data, wstrb = all-ones, op = 0b10 (Write); Update-DR.
+b. Shift in the case's 32-bit target address, write data, size, and wstrb, and op = 0b10 (Write); Update-DR.
 . Poll for completion:
 a. Re-enter Capture-DR/Shift-DR and read the op-status field until not Busy (0b11).
 b. Verify op = 0b00 (OKAY).
 . Verify the side effect:
-a. Confirm the AXI-Lite subordinate received exactly one write, at the target address with the expected data and wstrb (`CHK-J2A-BUS-REQ`).
+a. Confirm the AXI-Lite subordinate received exactly one write for the case, at the target address with the case's size, strobed data, and wstrb (`CHK-J2A-BUS-REQ`), and that its memory holds the strobed bytes.
 b. Confirm the captured B-response is OKAY.
 
 *Checkers*:
@@ -2128,10 +2129,10 @@ b. Confirm the captured B-response is OKAY.
 |Checker |Description
 |`smc_otp_axi_wr_caps_chk` |CAPS TDR reports bus_type=AXI4-Lite, 32-bit address/data
 |`smc_otp_axi_wr_status_chk` |Op-status settles at OKAY (0b00), corroborated by the responder burst count and the memory compare
-|`smc_otp_axi_wr_data_chk` |AXI-Lite subordinate holds the written address/data/wstrb
+|`smc_otp_axi_wr_data_chk` |AXI-Lite subordinate holds the strobed bytes of every case at its address
 |===
 
-*Pass Criteria*: The AXI4-Lite single write completes with OKAY status and the SMC OTP subordinate captures the correct address and data, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Every AXI4-Lite single write, at every size and strobe, completes with OKAY status and the SMC OTP subordinate captures the correct address and strobed data, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -2397,8 +2398,8 @@ a. With all disables clear, verify a legal write again completes with OKAY.
 
 * JTAG2AXI single-op AXI4-Lite write through the SEP OTP bridge (SEP_OTP_AXI_SINGLE_OP, IR=0x22)
 * 32-bit address / 32-bit data field formatting consistent with the SEP OTP CAPS TDR (IR=0x21, AXI4-Lite, 32/32)
-* Address/data/wstrb delivery to the AXI-Lite subordinate on `axil_sep_otp_jtag_req_o`
-* Op-status settles at OKAY (0b00) within the poll bound (`CHK-AXI-COMPLETION`); the Busy (0b11) capture before completion is the stall scenarios' evidence (section 4). OKAY is the all-zero encoding, so the responder burst count (`CHK-AXI-NONVAC`) and the memory compare corroborate it
+* Address/data/wstrb delivery to the AXI-Lite subordinate on `axil_sep_otp_jtag_req_o` at every legal size and with partial strobes: five directed cases (sizes 0, 1, and 2 at full strobe, then a 4-byte word under strobe `0x5` and under strobe `0xA`), then `DTP_RANDOM_COUNT` seeded cases, each with a seeded size of 0 to 2, seeded address bits above the responder window, seeded data, and a seeded nonzero strobe within the size
+* Op-status settles at OKAY (0b00) within the poll bound (`CHK-AXI-COMPLETION`); the Busy (0b11) capture before completion is the stall scenarios' evidence (section 4). OKAY is the all-zero encoding, so the responder burst count (`CHK-AXI-NONVAC` in SV-UVM, `CHK-AXI-STREAM-MIN` in cocotb) and the memory compare corroborate it
 
 *Test Procedure*:
 
@@ -2406,14 +2407,14 @@ a. With all disables clear, verify a legal write again completes with OKAY.
 . Load and verify the bridge CAPS:
 a. Load SEP_OTP_JTAG2AXI_CAPS (IR=0x21) via `OcahJtagMasterDriver` and read the 14-bit CAPS TDR.
 b. Verify bus_type = AXI4-Lite, ADDR_SIZE = 32, DATA_SIZE = 32.
-. Issue the single write:
+. For each case, issue the single write:
 a. Load SEP_OTP_AXI_SINGLE_OP (IR=0x22).
-b. Shift in the 32-bit target address, 32-bit write data, wstrb = all-ones, op = 0b10 (Write); Update-DR.
+b. Shift in the case's 32-bit target address, write data, size, and wstrb, and op = 0b10 (Write); Update-DR.
 . Poll for completion:
 a. Re-enter Capture-DR/Shift-DR and read the op-status field until not Busy (0b11).
 b. Verify op = 0b00 (OKAY).
 . Verify the side effect:
-a. Confirm the AXI-Lite subordinate received exactly one write, at the target address with the expected data and wstrb (`CHK-J2A-BUS-REQ`).
+a. Confirm the AXI-Lite subordinate received exactly one write for the case, at the target address with the case's size, strobed data, and wstrb (`CHK-J2A-BUS-REQ`), and that its memory holds the strobed bytes.
 b. Confirm the captured B-response is OKAY.
 
 *Checkers*:
@@ -2423,10 +2424,10 @@ b. Confirm the captured B-response is OKAY.
 |Checker |Description
 |`sep_otp_axi_wr_caps_chk` |CAPS TDR reports bus_type=AXI4-Lite, 32-bit address/data
 |`sep_otp_axi_wr_status_chk` |Op-status settles at OKAY (0b00), corroborated by the responder burst count and the memory compare
-|`sep_otp_axi_wr_data_chk` |AXI-Lite subordinate holds the written address/data/wstrb
+|`sep_otp_axi_wr_data_chk` |AXI-Lite subordinate holds the strobed bytes of every case at its address
 |===
 
-*Pass Criteria*: The AXI4-Lite single write completes with OKAY status and the SEP OTP subordinate captures the correct address and data, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Every AXI4-Lite single write, at every size and strobe, completes with OKAY status and the SEP OTP subordinate captures the correct address and strobed data, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -3106,6 +3107,7 @@ b. Shift SMC_OTP_AXI_SERIES_DATA_INCR once to launch the read and wait for the A
 *Test Coverage*:
 
 * The effective transfer size on a 32-bit bridge: the 2-bit size field at its maximum, 3 (8 bytes), selects one full 32-bit beat
+* The SMC OTP bridge stands for both OTP bridges: the SEP OTP bridge is the same `jtag2axi` module at the same 32-bit data width, and the bridge derives its size limit from the data width alone
 * Full 32-bit writes and reads on every beat, compared by the shared AXI scoreboard
 * A SERIES_DATA_INCR register of 32 payload bits and a series address that advances by 4 bytes per beat
 * Per-beat read data integrity against the data words written through the bridge
@@ -3569,7 +3571,7 @@ a. Verify no AXI-Lite transaction issues on `axil_sep_otp_jtag_req_o` across the
 *Test Coverage*:
 
 * JTAG2AXI single-op write through the SMC fabric AXI4 debug bridge (SMC_AXI_SINGLE_OP, IR=0x28) targeting an error-generating region
-* AXI4 subordinate returns a non-OKAY write response (BRESP = SLVERR or DECERR) captured in op[1:0] (0b10 / 0b01)
+* AXI4 subordinate returns a non-OKAY write response (BRESP = SLVERR or DECERR) captured in op[1:0] (0b01 / 0b10)
 * No spurious or partial write side effect lands at the targeted error address on `axi_smc_dbg_req_o`
 * Bridge does not hang or corrupt internal state; a subsequent legal write completes with OKAY
 
@@ -4875,7 +4877,7 @@ c. After the clear and queued: release the stall.
 
 *Test Coverage*:
 
-* JTAG2AXI single-op write on each of the three bridges (SMC fabric AXI4, SMC OTP and SEP OTP AXI4-Lite) answered with DECERR by that target's `ocah_axi_vip` responder; the bridge ports leave the DTP straight into the responders, so the DTP boundary has no address decoder and no unmapped address, and an interconnect's decode-miss and default-slave behaviour is SoC-level verification
+* JTAG2AXI single-op write on each of the three bridges (SMC fabric AXI4, SMC OTP and SEP OTP AXI4-Lite) answered with DECERR by that target's `ocah_axi_vip` responder; the bridge ports leave the DTP straight into the responders, so the DTP boundary has no address decoder and no unmapped address, and the decode-miss and default-subordinate behaviour of the interconnect behind each bridge is integration-level verification, SMC-level for the SMC fabric
 * The write status captures DECERR in op[1:0] and the scoreboard classifies the observed DECERR as the armed response
 * The errored slot keeps its prior word (the responder drops an armed write beat)
 * Bridge recovers and accepts a subsequent legal write on every target
@@ -4911,7 +4913,7 @@ c. After the clear and queued: release the stall.
 
 *Test Coverage*:
 
-* JTAG2AXI single-op read on each of the three bridges (SMC fabric AXI4, SMC OTP and SEP OTP AXI4-Lite) answered with DECERR by that target's `ocah_axi_vip` responder; the bridge ports leave the DTP straight into the responders, so the DTP boundary has no address decoder and no unmapped address, and an interconnect's decode-miss and default-slave behaviour is SoC-level verification
+* JTAG2AXI single-op read on each of the three bridges (SMC fabric AXI4, SMC OTP and SEP OTP AXI4-Lite) answered with DECERR by that target's `ocah_axi_vip` responder; the bridge ports leave the DTP straight into the responders, so the DTP boundary has no address decoder and no unmapped address, and the decode-miss and default-subordinate behaviour of the interconnect behind each bridge is integration-level verification, SMC-level for the SMC fabric
 * The read status captures DECERR in op[1:0], and the read-data field returns the RDATA of the errored beat (the bridge latches the beat's data with its status): the word the responder drove on that beat, not the preloaded slot value
 * Bridge recovers and accepts a subsequent legal read on every target
 
@@ -5084,7 +5086,7 @@ b. Issue a SINGLE_OP read. An OKAY read returns, on the lanes its address and si
 
 * SELECT_IJTAG (IR=0x1A) with every SIB control bit driven to 0 yields the minimum-length scan chain
 * DR chain length equals the SIB-control bits only (3 bits for sec_dft, dft, dfd) with none of the bench's instrument stubs (4, 5, 6 bits behind sec_dft, dft, dfd) inserted
-* None of `jtag_dfd_host_scan_ctrl_o`, `jtag_dft_host_scan_ctrl_o`, `jtag_dft_secure_host_scan_ctrl_o` assert during Shift-DR
+* No SIB's host `select` (in `jtag_dfd_host_scan_ctrl_o`, `jtag_dft_host_scan_ctrl_o`, `jtag_dft_secure_host_scan_ctrl_o`) asserts during the scan, and a gated SIB keeps all four of its controls quiet
 * Closed SIBs bypass their instrument stubs so no stub capture/update occurs, whatever disable mask is in force (the stubs are the bench's 4-, 5-, and 6-bit registers behind the SIBs; see Verification Scope)
 
 *Test Procedure*:
@@ -5108,7 +5110,7 @@ b. Verify the latency equals the 3 SIB-control bits only (no instrument register
 |`sib_all_off_data_chk` |`CHK-SCAN-CHAIN`: the captured SIB states (all 0) and the marker passthrough match the SIB reference model on every scan, including the transition from the seeded open set
 |===
 
-*Pass Criteria*: Chain length collapses to the SIB-control bits, all instrument scan controls stay inactive, and observed data matches the SIB reference model, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Chain length collapses to the SIB-control bits, every SIB's host `select` stays low, and observed data matches the SIB reference model, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5125,7 +5127,7 @@ b. Verify the latency equals the 3 SIB-control bits only (no instrument register
 * SELECT_IJTAG (IR=0x1A) with all SIB bits = 1 produces the full-length iJTAG scan chain
 * DR chain length equals sum of SIB bits plus all three instrument register widths (3 SIBs {plus} 3 instruments)
 * All three scan controls (`jtag_dfd_host_scan_ctrl_o`, `jtag_dft_host_scan_ctrl_o`, `jtag_dft_secure_host_scan_ctrl_o`) assert during Shift-DR
-* Asserting all three SIB disables (`dbg_disable_i.dft_secure`, `dbg_disable_i.dft_nonsecure`, `dbg_disable_i.dfd`) forces the SIBs closed even when the scan pattern requests all-ON, collapsing the chain
+* Asserting each SIB's disable alone (`dbg_disable_i.dft_secure`, `dbg_disable_i.dft_nonsecure`, or `dbg_disable_i.dfd`) and all three together, in a seeded order, forces the gated SIBs closed even when the scan pattern requests all-ON, removing their instruments from the chain
 * Access is restored when the disables clear
 
 *Test Procedure*:
@@ -5137,10 +5139,10 @@ b. Verify the latency equals the 3 SIB-control bits only (no instrument register
 . Measure DR chain length by shifting a known marker and counting the delay.
 a. Verify length equals the sum of SIB bits plus all three instrument register widths.
 . Verify all three host scan-control outputs assert during Shift-DR and instrument data is captured correctly per the SIB model.
-. Security gating:
-a. Assert `dbg_disable_i.{dft_secure,dft_nonsecure,dfd} = 1`.
+. Security gating, for each of four gate vectors in a seeded order: `dbg_disable_i.dft_secure` alone, `dbg_disable_i.dft_nonsecure` alone, `dbg_disable_i.dfd` alone, and all three:
+a. Drive the vector's disables with every other disable clear.
 b. Re-shift the all-ON pattern; Update-DR.
-c. Verify chain length collapses to SIB bits only and no instrument scan control pulses across the whole gated window.
+c. Verify the chain loses exactly the gated SIBs' instruments (SIB bits only when all three are gated) and none of a gated SIB's scan controls pulse across the whole gated window.
 . Clear the disables; re-shift all-ON and confirm full chain and all scan controls restored.
 
 *Checkers*:
@@ -5149,10 +5151,10 @@ c. Verify chain length collapses to SIB bits only and no instrument scan control
 |===
 |Checker |Description
 |`sib_all_on_reset_chk` |`CHK-SCAN-RESET`: every iJTAG host scan output and the extended STAP host scan output is a resolved 0 before the first scan
-|`sib_all_on_len_chk` |Full chain length matches sum of SIB bits plus all three instrument widths
-|`sib_all_on_ctrl_chk` |All three host scan-control outputs assert during Shift-DR
-|`sib_all_on_gate_chk` |Asserted SIB disables force every SIB closed; chain collapses despite all-ON request
-|`sib_all_on_restore_chk` |Full chain and scan controls restored after the disables clear
+|`sib_all_on_len_chk` |`CHK-SCAN-LEN`: full chain length matches sum of SIB bits plus all three instrument widths
+|`sib_all_on_ctrl_chk` |`CHK-SCAN-WIN`: all three host scan-control outputs assert during Shift-DR
+|`sib_all_on_gate_chk` |`CHK-SCAN-WIN`, `CHK-SCAN-LEN`, and `CHK-SCAN-CHAIN`: each gate vector forces exactly its gated SIBs closed and keeps their controls quiet; the chain loses their instruments despite the all-ON request
+|`sib_all_on_restore_chk` |`CHK-SCAN-LEN` and `CHK-SCAN-WIN`: full chain and scan controls restored after the disables clear
 |===
 
 *Pass Criteria*: The all-ON chain reaches full length with every scan control active, collapses to SIB bits when the SIB disables are asserted, and recovers when they clear, with zero scoreboard/reference-model errors.
@@ -5170,7 +5172,7 @@ c. Verify chain length collapses to SIB bits only and no instrument scan control
 
 * Every combination of closed, open, and gated SIBs walked exhaustively, the 8 on/off patterns (sec_dft x dft x dfd) with every disable clear among them, closing `cg_ijtag_sib` `cp_pattern` and `x_gating` in every pass
 * Predicted chain length matches sum of (SIB bit {plus} instrument stub width when SIB ON and ungated, else SIB bit only); the stubs are 4, 5, 6 bits wide behind sec_dft, dft, dfd, so every open subset has a distinct length
-* Only enabled, ungated instruments receive their host scan-control assertions
+* Only open, ungated instruments see their host `select`, and a gated SIB keeps all four of its controls quiet
 * Randomized per-SIB disables (`dft_secure`, `dft_nonsecure`, `dfd`) force gated SIBs closed regardless of scan pattern
 * Capture/update data tracks the SIB reference model across mixed configurations: a SIB captures its effective state, an open instrument stub captures the value the previous scan latched into it
 
@@ -5185,7 +5187,7 @@ c. Under a temporal window over that scan, verify `select` pulses only for the o
 . For 16 additional randomized iterations:
 a. Drive a random per-SIB disable mask and a random SIB pattern; Update-DR.
 b. Verify gated SIBs (those with their `dbg_disable_i` field asserted) stay closed despite the requested pattern.
-c. Verify chain length accounts for forced-closed SIBs and only non-gated enabled instruments receive scan control.
+c. Verify chain length accounts for forced-closed SIBs and only non-gated enabled instruments see their `select`.
 . Compare the captured bits of every scan against the OCAH-local SIB model for each configuration.
 
 *Checkers*:
@@ -5234,12 +5236,12 @@ a. Verify `jtag_dft_secure_host_scan_ctrl_o` asserts and shift a test pattern th
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`dft_access_chk` |Secure and non-secure DFT chains each accessible via their SIB with correct scan controls
-|`dft_parallel_chk` |Both DFT SIBs open simultaneously; chain length sums both instruments
-|`dft_nonsecure_gate_chk` |Non-secure DFT SIB forced closed under `dbg_disable_i.dft_nonsecure`
-|`dft_secure_gate_chk` |Secure DFT SIB forced closed under `dbg_disable_i.dft_secure`
-|`dft_isolation_chk` |Gating one DFT SIB leaves the other accessible
-|`dft_gate_restore_chk` |Both DFT SIBs restored, without TAP reset, after their disables clear
+|`dft_access_chk` |`CHK-SCAN-WIN` and `CHK-SCAN-CHAIN`: secure and non-secure DFT chains each accessible via their SIB with correct scan controls
+|`dft_parallel_chk` |`CHK-SCAN-LEN`: both DFT SIBs open simultaneously; chain length sums both instruments
+|`dft_nonsecure_gate_chk` |`CHK-SCAN-WIN` and `CHK-SCAN-CHAIN`: non-secure DFT SIB forced closed under `dbg_disable_i.dft_nonsecure`
+|`dft_secure_gate_chk` |`CHK-SCAN-WIN` and `CHK-SCAN-CHAIN`: secure DFT SIB forced closed under `dbg_disable_i.dft_secure`
+|`dft_isolation_chk` |`CHK-SCAN-WIN` and `CHK-SCAN-LEN`: gating one DFT SIB leaves the other accessible
+|`dft_gate_restore_chk` |`CHK-SCAN-WIN` and `CHK-SCAN-LEN`: both DFT SIBs restored, without TAP reset, after their disables clear
 |===
 
 *Pass Criteria*: Secure and non-secure DFT instruments are independently reachable in the same scan flow, each gated by exactly its own disable field and restored when it clears, with zero scoreboard/reference-model errors.
@@ -5258,6 +5260,7 @@ a. Verify `jtag_dft_secure_host_scan_ctrl_o` asserts and shift a test pattern th
 * DFD instrument reachable through the iJTAG network when its SIB is open (SELECT_IJTAG, IR=0x1A)
 * `jtag_dfd_host_scan_ctrl_o` asserts shift control and data shifts correctly through `jtag_dfd_host_scan_out_o` / `jtag_dfd_host_scan_in_i`
 * `dbg_disable_i.dfd = 1` forces the DFD SIB closed (gated), restored when the disable clears
+* Eight seeded iterations request the DFD SIB open beside seeded DFT SIB requests under a seeded `dbg_disable_i.dfd`
 
 *Test Procedure*:
 
@@ -5266,6 +5269,7 @@ a. Verify `jtag_dft_secure_host_scan_ctrl_o` asserts and shift a test pattern th
 . Verify `jtag_dfd_host_scan_ctrl_o` asserts; shift a known pattern out on `jtag_dfd_host_scan_out_o` and read it back through `jtag_dfd_host_scan_in_i` via the OCAH-local SIB model.
 . Assert `dbg_disable_i.dfd = 1`; attempt to open the DFD SIB.
 a. Verify the SIB stays closed and none of the DFD scan controls pulse across the whole gated window.
+. For eight seeded iterations, request the DFD SIB open with seeded requests for the two DFT SIBs under a seeded `dbg_disable_i.dfd`, and verify the chain length, the scan-control window, and the captures against the SIB model.
 . Clear the disable without reset; verify the gated open attempt did not stick, then re-open the DFD SIB and verify DFD access is restored.
 
 *Checkers*:
@@ -5273,10 +5277,10 @@ a. Verify the SIB stays closed and none of the DFD scan controls pulse across th
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`dfd_access_chk` |DFD scan data shifts correctly when the SIB is open and ungated
-|`dfd_gate_chk` |DFD SIB forced closed and its scan controls never pulse while `dbg_disable_i.dfd` is asserted
-|`dfd_stored_chk` |A gated Update-DR does not modify stored SIB state (no delayed open after release)
-|`dfd_restore_chk` |DFD access resumes, without TAP reset, after the disable clears
+|`dfd_access_chk` |`CHK-SCAN-WIN` and `CHK-SCAN-CHAIN`: DFD scan data shifts correctly when the SIB is open and ungated
+|`dfd_gate_chk` |`CHK-SCAN-WIN` and `CHK-SCAN-CHAIN`: DFD SIB forced closed and its scan controls never pulse while `dbg_disable_i.dfd` is asserted
+|`dfd_stored_chk` |`CHK-SCAN-WIN`: a gated Update-DR does not modify stored SIB state (no delayed open after release)
+|`dfd_restore_chk` |`CHK-SCAN-WIN` and `CHK-SCAN-LEN`: DFD access resumes, without TAP reset, after the disable clears
 |===
 
 *Pass Criteria*: DFD is reachable when ungated and forced closed when `dbg_disable_i.dfd` is asserted, recovering without reset when the disable clears, with zero scoreboard/reference-model errors.
@@ -5611,7 +5615,7 @@ b. Assert the four STAP disables; under a temporal window over a maintain scan, 
 
 * Deterministic one-hot rows for `stap_io`, `stap_smc`, `stap_sep`, `stap_extra`, `stap_host`, `dft_secure`, `dft_nonsecure`, and `dfd`, plus the all-clear and all-disabled boundary masks and seeded multi-hot masks
 * Per row: each iJTAG SIB requested open follows its disable (temporal window: a gated SIB's four scan controls never pulse, an effective SIB's select is seen high); each STAP configured through composed TAP_3DCR scans follows its disable (a gated port never forwards and its gated 3DCR write is ignored, verified by chain readback); the extended host scan interface follows `stap_host`
-* After the all-disabled row: releasing every disable without reset shows no gated open attempt stuck (release without replay), and a full all-clear row recovers
+* After the all-disabled row: a gated open of all three SIBs, attempted under all eight gate fields after a sanctioned close, does not stick once every disable releases without reset (release without replay), and a full all-clear row recovers
 * Mixed rows prove unrelated-resource isolation; in cocotb every checker-verified outcome samples its `DtpDbgDisableFcov` ledger cell, and the test requires all sixteen scan-side cells and emits the JSON coverage artifact; in both realizations `dtp_scan_fcov` records the same cells, the mask class, isolation, release, and recovery at the signal level in `cg_dbg_disable_scan`
 
 *Test Procedure*:
@@ -5620,7 +5624,7 @@ b. Assert the four STAP disables; under a temporal window over a maintain scan, 
 . For each row mask (all-clear, one-hot per field, seeded multi-hot, all-disabled last): drive the full disable vector and settle four toggling TCK cycles.
 . iJTAG evidence: request all three SIBs open inside a temporal window and check each SIB's allowed/blocked outcome against the reference model.
 . STAP evidence: with every disable clear, flush the TAP_3DCR chain, set the PTAP SELECT in a scan of its own, open all four SIBs and write all four 3DCR payloads in composed scans, then assert the row mask and run a windowed maintain scan; check per-port forwarding vs quiet with `tms` parked at the stored `tms_hold=1`, the host scan-control window, and the chain readback; then attempt a clearing 3DCR write under the mask and verify by chain readback that the gated ports ignore it and the ungated ports accept it.
-. After the final all-disabled row: clear all disables, observe without reprogramming, and verify no SIB select pulses (no delayed open); then rerun the all-clear row as recovery.
+. After the final all-disabled row, prove release without replay: with every disable clear, close all three SIBs in a sanctioned scan; assert all eight gate fields and attempt to open all three SIBs under a temporal window in which none of their scan controls pulse; release every disable without reset and verify, in a windowed close-everything scan, that no SIB select pulses (no delayed open). Then rerun the all-clear row as recovery.
 . In cocotb, emit the `DtpDbgDisableFcov` JSON artifact and require all sixteen scan-side cells.
 
 *Checkers*:
@@ -5628,12 +5632,12 @@ b. Assert the four STAP disables; under a temporal window over a maintain scan, 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`scan_matrix_ijtag_chk` |Each SIB's select/window outcome follows exactly its disable field
-|`scan_matrix_stap_chk` |Each STAP's forwarding outcome follows exactly its disable field; gated 3DCR writes are ignored
-|`scan_matrix_host_chk` |The extended host scan controls follow `stap_host`
-|`scan_matrix_readback_chk` |Composed chain readbacks match the reference model under every mask
-|`scan_matrix_noreplay_chk` |No gated open attempt sticks after the disables release
-|`scan_matrix_recovery_chk` |The all-clear row fully recovers after the all-disabled row
+|`scan_matrix_ijtag_chk` |`CHK-SCAN-WIN`, `CHK-SCAN-LEN`, and `CHK-SCAN-CHAIN`: each SIB's select/window outcome follows exactly its disable field
+|`scan_matrix_stap_chk` |`CHK-SCAN-WIN` and `CHK-SCAN-CHAIN`: each STAP's forwarding outcome follows exactly its disable field; gated 3DCR writes are ignored
+|`scan_matrix_host_chk` |`CHK-SCAN-WIN`: the extended host scan controls follow `stap_host`
+|`scan_matrix_readback_chk` |`CHK-SCAN-CHAIN`: composed chain readbacks match the reference model under every mask
+|`scan_matrix_noreplay_chk` |`CHK-SCAN-WIN`: no gated open attempt sticks after the disables release
+|`scan_matrix_recovery_chk` |`CHK-SCAN-WIN`, `CHK-SCAN-LEN`, and `CHK-SCAN-CHAIN`: the all-clear row fully recovers after the all-disabled row
 |===
 
 *Pass Criteria*: Every row mask produces the per-field allowed/blocked outcomes with temporal-window evidence, no delayed effects, and full recovery, closing all sixteen scan-side cells of `DtpDbgDisableFcov` and `cg_dbg_disable_scan`, with zero scoreboard/reference-model errors.
@@ -5649,7 +5653,7 @@ b. Assert the four STAP disables; under a temporal window over a maintain scan, 
 
 *Test Coverage*:
 
-* With PTAP_3DCR.SELECT=0 the STAP chain's select, capture, shift and update strobes stay low through IR and DR scans under any instruction, so no STAP SIB or 3DCR changes
+* With PTAP_3DCR.SELECT=0 the STAP chain's select, capture, shift and update strobes stay low through IR and DR scans under IDCODE and BYPASS, so no STAP SIB or 3DCR changes
 * All-ones data, which would open every SIB and select every STAP were the chain clocked, is shifted under IDCODE and BYPASS in DR scans of 3, 4, 8 and a seeded 9 to 32 bits
 * Once SELECT is set in a TAP_3DCR scan of its own, a composed chain readback shows every SIB closed
 
@@ -5721,7 +5725,7 @@ a. Verify the port's `ct_dst` rises exactly three clocks after the pull and once
 |`ctp_wire_or_busy_chk` |STATUS.BUSY reads 1 while a pulse of STRETCH_MULT >= 8 is active and 0 after it ends; the registered BUSY has the enable's width (STRETCH_MULT{plus}1) and rises in the same cycle for every stretch
 |===
 
-*Pass Criteria*: Wire-OR pulse stretching, input synchronization, and BUSY tracking match the reference model for both stretch settings, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Wire-OR pulse stretching, input synchronization, and BUSY tracking match the reference model for every stretch setting exercised, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5867,7 +5871,7 @@ f. P2P draws: route the CTP to the internal CT, raise CT_Req_in at the port's ac
 * Per-byte byte-enable writes that random selection can miss in the CTP generated regblock
 * Reserved-bit / legal-mask behavior and aliasing checks across CTP CSRs
 * The hole word of every CTP window, which reads 0 and ignores writes
-* Generated routing state produced by each programmed value
+* Routing after the sweep: one seeded CTP, programmed wire-OR with a seeded STRETCH_MULT, delivers one stretched pulse of an internal cross trigger
 
 *Test Procedure*:
 
@@ -5923,7 +5927,7 @@ c. Observe the CTP/CTM BFM outputs and verify exactly the programmed destination
 d. Pulse the internal CT acknowledge for that destination; every route of the sweep is wire-OR, where the acknowledge is unused, so the pulse is stimulus only.
 . Repeat across all configured destination-port selections.
 . Route each CTP to itself in point-to-point mode: program its CT_SRC register with its own input bit, raise its CT_Req_in as the four-phase sender, and verify exactly its CT_Req_out asserts, once, and completes the handshake with the bench while every other output stays idle.
-. Compare the full toggle sequence against the reference model and disable routing on exit.
+. Compare the full toggle sequence against the reference model.
 
 *Checkers*:
 
@@ -6103,7 +6107,7 @@ b. Verify RVALID/RDATA/RRESP stayed stable across the hold.
 
 NOTE: In the CTM entries that follow, `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT+` is
 the register of output port `dst`, and each set bit names a source input port
-(see the port-naming note at the head of this section).
+(see <<dtp-vplan-ctm-port-naming,the CTM port-naming note>>).
 
 [[sec-611-dtp_ctm_wire_or_cla_to_ctp_test]]
 ===== 6.11 `dtp_ctm_wire_or_cla_to_ctp_test`
@@ -6776,7 +6780,7 @@ e. Sample the CTP source x CLA destination cross of `cg_ctm_route` for every rou
 * Reserved bits read back as zero and are unaffected by writes
 * The hole word of every `+CT_SRC[N]+` slot, which reads 0 and ignores writes
 * A seeded word of the matrix aperture past the `+CT_SRC[N]+` registers and one past the last CTP window, whose write and read each complete with DECERR
-* Internal route decode tracks each programmed `CT_DST_SELECT` value
+* Route decode of the seeded multi-bit `CT_DST_SELECT` on two swept output registers: an input the select names fires the output, and an input it does not name leaves it quiet
 
 *Test Procedure*:
 
@@ -6824,15 +6828,13 @@ c. Write all ones to the hole word past the register in its slot and read 0 back
 *Test Procedure*:
 
 [arabic]
-. Assert power-on reset, bring the XTRIG CSR path to idle, and disable all CTM source routing.
 . For every defined CTM source index, via `OcahAxiLiteMasterAgent`:
 a. Write a single-destination `CT_DST_SELECT` mask, read back, and compare the defined destination-select field.
 b. Write a paired-destination mask, read back, and compare.
 c. Write an inverted-destination mask, read back, and compare.
 d. Confirm the written value affects only this source register and no neighboring `+CT_SRC[N]_CONFIG_0+` (no aliasing).
-e. Program a single-destination route from the source, pulse it, and judge the output window against the CTM model.
+e. Clear every CTM source select, program a single-destination route from the source, pulse it, and judge the output window against the CTM model.
 . Sample per-source select coverage so every `CT_SRC1..25_CONFIG_0` mapping is touched.
-. Disable all CTM source routing again before test exit.
 
 *Checkers*:
 
@@ -6897,7 +6899,7 @@ e. Program a single-destination route from the source, pulse it, and judge the o
 * A write, a read and a second write to one register block a cycle apart, on a CTP and on the matrix, swept across their launch offsets, so the block holds a read and a write together and the crossbar demux holds an AW the block refuses (the demux AW lock)
 * Two reads held behind RREADY, a third read waiting at a register block, and a write to the same block landing while that read's response waits, so the block holds two accesses
 * Every AxPROT bit set and cleared on both address channels; a read and a write to an unmapped word with every address bit above the CSR map set, each behind a mapped access, answered DECERR; a write at an unaligned address with the strobe from that byte up waiting in the AW spill register; a read of every register-holding subordinate at an unaligned byte address, answered OKAY with the word that contains it
-* Every CT_SRC select holding a drawn mask while the bursts run, so the held read data carries the upper select bits; no trigger is pulsed, and the selects read 0 again at the end
+* Every CT_SRC select holding a drawn mask while the bursts run, so the held read data carries the upper select bits; no trigger is pulsed, and every select is written back to 0 at the end
 * A write to the matrix and one to an unmapped word with W three cycles behind AW, and two matrix reads one cycle apart
 
 *Test Procedure*:
@@ -7311,7 +7313,7 @@ is checked.
 
 === Regression Groups
 
-The simulation groups below come from `testlists/all.toml`;
+The simulation groups below come from `testlists/all.toml` and the per-area lists it includes;
 `testlists/formal.toml` carries the formal item `dtp_tap_fpv` in its own
 `smoke` group (<<dtp-formal-plan>>).
 
@@ -7344,5 +7346,5 @@ Each row names the level that owns the behaviour the bench cannot reach
 |The JTAG2AXI bridge ports end in bench responders that map every address |Fabric address decode and the default subordinate are SMC-level; the decode scenarios prove responder-injected DECERR handling on every bridge
 |The DUT is elaborated from the bench configuration table, and the DFT ports are driven inactive |Entries are closed for that configuration; other DTP parameterizations are integration level, and DFT-mode behaviour is scan-insertion level
 |The bring-up startup vector clears all debug disables |Gating behavior is only observable under explicit disable stimulus; the `dbg_disable` group drives directed and seeded disable vectors and closes the 22-cell coverage contract
-|SV covergroups are not supported by Verilator |Under Verilator the `cov/sv/` modules record their cover-property points; their covergroups, the functional coverage model, are collected on VCS (see `DTP_FCOV.adoc`)
+|The `cov/sv/` covergroups compile only under `ifndef VERILATOR` |Under Verilator the modules record their cover-property points; the covergroups, the functional coverage model, are collected on VCS (see `DTP_FCOV.adoc`)
 |===
