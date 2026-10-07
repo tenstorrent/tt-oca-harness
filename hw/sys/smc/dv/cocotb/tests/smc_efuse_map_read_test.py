@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap: SMC_EFUSE_MAP direct read."""
+"""SMC_EFUSE_MAP direct read over SEP_IN AXI."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_efuse_map_read_test(smc_base_test):
-    """P1 coverage-gap depth: SMC_EFUSE_MAP direct read."""
+    """Read the SMC_EFUSE_MAP words and compare each against its expected word."""
 
     required_evidence = ("CHK-EFUSE-MAP-READ",)
     min_evidence = 1

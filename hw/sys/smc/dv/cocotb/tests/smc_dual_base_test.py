@@ -38,8 +38,6 @@ assert _EFUSE_DIR.is_dir(), f"eFuse tooling not found at {_EFUSE_DIR}"
 
 # Clock periods in ns, the pll_wrap values of hw/sys/smc/dv/cocotb/env/
 # smc_env_cfg.py; the bench drives both instances' oscillators from one set.
-# The settle is 500 ref cycles because powergood_stable is the end of a
-# reset-sync chain and is still low at 200.
 REF_CLK_PERIOD_NS = PLL_REF_CLK_PERIOD_NS
 SMC_CLK_PERIOD_NS = pll_sys_clk_period_ns()
 PERIPH_CLK_PERIOD_NS = PLL_PERIPH_CLK_PERIOD_NS

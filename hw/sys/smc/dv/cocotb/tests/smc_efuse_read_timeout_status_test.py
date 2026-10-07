@@ -31,9 +31,8 @@ class smc_efuse_read_timeout_status_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_efuse_read_timeout_status_test_seq("efuse_read_tmo_status_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # Gate on the emitted tokens, not on a flag the sequence set: each leg
-        # raises on failure, so a relayed boolean could only report that the
-        # line was reached.
+        # Each leg raises on failure and emits its token only after its compare
+        # passed, so the tokens are the record of which legs ran.
         required = (
             "CHK-EFUSE-TMO-RD-STATUS-ARM",
             "CHK-EFUSE-TMO-RD-STATUS-SET",

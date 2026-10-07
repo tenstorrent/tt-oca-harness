@@ -26,8 +26,9 @@ class smc_mailbox_multi_instance_test(smc_base_test):
             SmcProtocolVipKind.MAILBOX,
             type(self).__name__,
             # Directed stimulus floor: 32 outbound + 32 inbound mailbox STATUS
-            # reads plus the 3 sweep prologue accesses. Literal here, not read
-            # from `seq.accesses`.
+            # reads plus the 3 sweep prologue accesses; a floor taken from
+            # `seq.accesses` would shrink with a sequence that stopped issuing
+            # them.
             min_csr_accesses=67,
             csr_accesses=seq.accesses,
             proxy=False,
