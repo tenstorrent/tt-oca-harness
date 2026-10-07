@@ -23,9 +23,9 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_edge_detector.sv
       - upstream/hw/ip/prim/rtl/prim_fifo_sync.sv
       - upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
-  # prim_generic cells that the current synth overlay replaces.
-  # Add a cell here only if the overlay supplies a replacement.
-  - target: all(any(dtp, cross_trigger, drbg, uart, system_timer_octs, entropy_source, sep, smc, opentitan_smu, smu, key_manager), not(synth))
+  # prim_generic cells that the current synth overlay replaces; the emulation
+  # view keeps them. Add a cell here only if the overlay supplies a replacement.
+  - target: all(any(dtp, cross_trigger, drbg, uart, system_timer_octs, entropy_source, sep, smc, opentitan_smu, smu, key_manager), any(not(synth), emulation))
     files:
       - upstream/hw/ip/prim_generic/rtl/prim_and2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_buf.sv

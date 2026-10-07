@@ -15,6 +15,10 @@ OCAH_FLOW_COMMON_BENDER_TARGETS ?= -t axi_rtl -t apb_rtl -t common_cells_rtl \
 
 # Defines shared by lint and synth so both see the same design.
 OCAH_FLOW_COMMON_DEFINES ?= -D SYNTHESIS=1
+
+# Targets of the integrator-facing emulation view (<block>.emul.f).
+OCAH_EMUL_BENDER_TARGETS := -t synth -t emulation
+
 OCAH_VENDOR_DEFINES_SVH := $(OCAH_ROOT)/hw/common/defs/ocah_vendor_defines.svh
 
 # Insert the mapping header after +define+/+incdir+ lines so a single-unit
@@ -92,7 +96,7 @@ endif
 	@cd "$(OCAH_ROOT)" && $(call ocah_bender_flist,-t synth,$(FLOW_BENDER_TARGETS)) \
 		> "$(OCAH_INTEGRATION_SYNTH_FLIST)"
 	@sed -i 's|$(OCAH_ROOT)/||g' "$(OCAH_INTEGRATION_SYNTH_FLIST)"
-	@cd "$(OCAH_ROOT)" && $(call ocah_bender_flist,-t synth -t emulation,$(FLOW_BENDER_TARGETS)) \
+	@cd "$(OCAH_ROOT)" && $(call ocah_bender_flist,$(OCAH_EMUL_BENDER_TARGETS),$(FLOW_BENDER_TARGETS)) \
 		> "$(OCAH_INTEGRATION_EMUL_FLIST)"
 	@sed -i 's|$(OCAH_ROOT)/||g' "$(OCAH_INTEGRATION_EMUL_FLIST)"
 

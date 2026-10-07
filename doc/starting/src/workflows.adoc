@@ -549,6 +549,27 @@ in https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/synth/yosys/REA
 The yosys flow is still WIP, as timing constraints are not yet integrated/pipe cleaned.
 ====
 
+== Emulation elaboration
+
+OCAH also provides a Vivado flow that elaborates a block's emulation view, the
+same Bender targets integrators receive as `integration/filelists/<block>.emul.f`.
+It is only a readiness check: it runs `synth_design -rtl` to confirm that Vivado
+reads and elaborates the sources, and does not synthesize, implement or time the
+design.
+
+`make ocah-emul-vivado-all` requires a licensed `vivado` on `PATH`; the container
+does not provide it.
+
+```bash
+make ocah-emul-vivado-all BLOCK=smu
+make ocah-emul-vivado-all BLOCK=smu OCAH_VIVADO_INPUT=script
+```
+
+By default Vivado reads the Bender file list; `OCAH_VIVADO_INPUT=script` reads
+Bender's Vivado script instead. `BLOCK` is a `flow.mk` top that includes the flow
+(only `smu` today). Details are in
+https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/emul/vivado/README.md[`flows/emul/vivado/README.md`].
+
 [[linting]]
 == Linting
 
