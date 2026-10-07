@@ -8,7 +8,9 @@
 // internal ports' mode and route signals into vectors, and checked with cross_trigger_network as
 // the formal top. Every property body is a boolean over current and one-cycle-past values
 // (hw/common/dv/docs/formal-property-style.adoc); the state machines are stated as their exact
-// next-state functions.
+// next-state functions of the handshake controller's own inputs, which the port core gates: wire-OR
+// mode masks the source and holds the sender in reset, and the synchronized request and
+// acknowledge pass only from two cycles after the point-to-point input enable rises.
 
 `include "ocah_fv_macros.svh"
 
@@ -25,6 +27,10 @@ module dtp_ctn_xtrig_props #(
   input logic [15:0]           stretch_mult_i,    // u_core.stretch_mult_i
   // External port 0: handshake controller
   input logic                  ct_src_i,          // u_core.ct_src_i
+  input logic                  hs_src_i,          // u_handshake_ctrl.ct_src_i
+  input logic                  hs_sender_reset_i, // u_handshake_ctrl.reset_i
+  input logic                  hs_req_in_i,       // u_handshake_ctrl.ct_req_in_sync_i
+  input logic                  hs_ack_in_i,       // u_handshake_ctrl.ct_ack_in_sync_i
   input logic [1:0]            sender_state_i,    // u_handshake_ctrl.sender_state_q
   input logic [1:0]            receiver_state_i,  // u_handshake_ctrl.receiver_state_q
   input logic                  hs_req_out_i,      // u_handshake_ctrl.ct_req_out_q
@@ -100,35 +106,35 @@ module dtp_ctn_xtrig_props #(
                   sender_state_i <= SWaitAckDeassert &&
                   `OCAH_FV_IMPLIES($past(rst_ni),
                                    sender_state_i == sender_next($past(sender_state_i),
-                                                                 $past(ct_src_i),
-                                                                 $past(ack_in_sync_i),
-                                                                 $past(hs_reset_i))),
+                                                                 $past(hs_src_i),
+                                                                 $past(hs_ack_in_i),
+                                                                 $past(hs_sender_reset_i))),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_receiver_states,
                   receiver_state_i <= RWaitReqDeassert &&
                   `OCAH_FV_IMPLIES($past(rst_ni),
                                    receiver_state_i == receiver_next($past(receiver_state_i),
-                                                                     $past(req_in_sync_i))),
+                                                                     $past(hs_req_in_i))),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_req_stable_until_ack,
                   hs_req_out_i == (sender_state_i == SReqAsserted) &&
-                  `OCAH_FV_IMPLIES($past(rst_ni) && $past(hs_req_out_i) && !$past(ack_in_sync_i) &&
-                                   !$past(hs_reset_i),
+                  `OCAH_FV_IMPLIES($past(rst_ni) && $past(hs_req_out_i) && !$past(hs_ack_in_i) &&
+                                   !$past(hs_sender_reset_i),
                                    hs_req_out_i),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_ack_mirrors_req,
                   hs_ack_out_i == (receiver_state_i == RAckAsserted) &&
                   `OCAH_FV_IMPLIES($past(rst_ni) && $past(receiver_state_i) == RIdle &&
-                                   $past(req_in_sync_i),
+                                   $past(hs_req_in_i),
                                    hs_ack_out_i) &&
                   `OCAH_FV_IMPLIES($past(rst_ni) && $past(receiver_state_i) == RAckAsserted &&
-                                   !$past(req_in_sync_i),
+                                   !$past(hs_req_in_i),
                                    !hs_ack_out_i),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_dst_is_one_pulse,
                   !($past(rst_ni) && hs_dst_i && $past(hs_dst_i)) &&
                   `OCAH_FV_IMPLIES($past(rst_ni) && `OCAH_FV_ROSE(hs_dst_i),
-                                   $past(receiver_state_i) == RIdle && $past(req_in_sync_i)),
+                                   $past(receiver_state_i) == RIdle && $past(hs_req_in_i)),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_busy_lags_state,
                   `OCAH_FV_IMPLIES($past(rst_ni),
@@ -136,10 +142,10 @@ module dtp_ctn_xtrig_props #(
                                                  $past(receiver_state_i) != RIdle)),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_reset_recovers_sender,
-                  `OCAH_FV_IMPLIES($past(rst_ni) && $past(hs_reset_i),
+                  `OCAH_FV_IMPLIES($past(rst_ni) && $past(hs_sender_reset_i),
                                    sender_state_i == SIdle && !hs_req_out_i &&
                                    receiver_state_i == receiver_next($past(receiver_state_i),
-                                                                     $past(req_in_sync_i))),
+                                                                     $past(hs_req_in_i))),
                   clk_i, rst_ni)
 
   // ---- Port core: mode multiplexers, wire-OR edge detect, status --------------------------
@@ -151,6 +157,8 @@ module dtp_ctn_xtrig_props #(
                                    ack_out_dout_en_i == !$past(mode_wire_or_i) &&
                                    req_out_dout_en_i ==
                                    ($past(mode_wire_or_i) ? $past(stretch_active_i) : 1'b1)) &&
+                  hs_src_i == (ct_src_i && !mode_wire_or_i) &&
+                  hs_sender_reset_i == (hs_reset_i || mode_wire_or_i) &&
                   int_mode_wire_or_i == '1 && ctm_src_req_i == int_req_out_dout_en_i,
                   clk_i, rst_ni)
   // The optional inversion sits after the synchronizer: INVERT=0 senses the raw wire, INVERT=1
