@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SRAM data reaches the flash through the Secure DMA and SPI TX FIFO, paced by the TX watermark.
 
+OCAH provenance: ``spi_ot_dma_tx_test`` checks the raw SRAM-to-SPI byte
+stream, DMA done, and no error.
+
 SPI DMA-TX breadth: the TX complement of
 `sep_spi_ot_dma_rx_test` (SPI RX FIFO -> DMA -> SRAM). Here SRAM -> Secure DMA (hardware
 handshake) -> OT SPI host TX FIFO -> flash: the OT SPI TX watermark drives
