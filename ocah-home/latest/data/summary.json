@@ -1,7 +1,7 @@
 {
   "dut_status": [
     {
-      "coverage_total_percent": 71.38,
+      "coverage_total_percent": 16.6,
       "flow": "aou",
       "framework": "uvm",
       "pass_rate": 100.0,
@@ -105,17 +105,12 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-07T11:10:12+00:00",
+  "generated_at": "2026-10-07T12:12:03+00:00",
   "results": [
     {
       "coverage": {
         "effective_metrics": {
-          "branch": 87.06,
-          "condition": 84.51,
-          "fsm_state": 36.62,
-          "functional": 55.44,
-          "line": 90.83,
-          "toggle": 73.82
+          "functional": 16.6
         }
       },
       "flow": "aou",
