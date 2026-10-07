@@ -41,26 +41,32 @@ sources:
       - upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
   # prim_flop_2sync instantiates prim_cdc_rand_delay when SIMULATION is
-  # defined; the dtp, cross_trigger, uart and system_timer_octs graphs receive
-  # prim_flop_2sync above but not the any(opentitan_smu, sep, smu) file set
-  # that carries the delay model.
-  - target: all(any(dtp, cross_trigger, uart, system_timer_octs), simulation)
+  # defined. The synthesis branch is a pass-through, so this one entry is
+  # ungated: simulation and synthesis filelists take it from the same position.
+  - target: any(dtp, cross_trigger, uart, system_timer_octs, drbg, opentitan_smu, sep, smu)
     files:
       - upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
 
-  # Standalone entropy_source IP bench. Keep this closure separate from the
-  # subsystem-wide OpenTitan graph below.
+  # prim_mubi_pkg for the standalone entropy_source bench. Subsystem graphs get
+  # the same file from the register-interface package.
   - target: entropy_source
     files:
       - upstream/hw/ip/prim/rtl/prim_mubi_pkg.sv
+  # Helpers shared with the subsystem graph.
+  - target: any(entropy_source, drbg, opentitan_smu, sep, smu)
+    files:
       - upstream/hw/ip/prim/rtl/prim_sha2_pkg.sv
-      - upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_max_tree.sv
       - upstream/hw/ip/prim/rtl/prim_sha2_pad.sv
       - upstream/hw/ip/prim/rtl/prim_sha2.sv
       - upstream/hw/ip/prim/rtl/prim_sha2_32.sv
       - upstream/hw/ip/prim/rtl/prim_sparse_fsm_flop.sv
       - upstream/hw/ip/prim/rtl/prim_sum_tree.sv
+  # Entropy-source RTL shared with SEP and SMU. drbg instantiates CSRNG and
+  # EDN directly and does not compile these.
+  - target: any(entropy_source, opentitan_smu, sep, smu)
+    files:
+      - upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
       - upstream/hw/ip/entropy_src/rtl/entropy_src_adaptp_ht.sv
       - upstream/hw/ip/entropy_src/rtl/entropy_src_cntr_reg.sv
       - upstream/hw/ip/entropy_src/rtl/entropy_src_markov_ht.sv
@@ -95,11 +101,11 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_cipher_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_lfsr.sv
 
-  - target: any(sep, smc, sep_wrapper, smu_wrapper, opentitan_smu, smu)
+  - target: any(drbg, sep, smc, sep_wrapper, smu_wrapper, opentitan_smu, smu)
     files:
       - upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
 
-  - target: any(smc, sep_wrapper, smu_wrapper)
+  - target: any(drbg, sep, smc, sep_wrapper, smu_wrapper, opentitan_smu, smu)
     files:
       - upstream/hw/ip/prim_generic/rtl/prim_rom.sv
 
@@ -108,13 +114,14 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_pad_wrapper_pkg.sv
       - upstream/hw/ip/prim_generic/rtl/prim_pad_wrapper.sv
 
-  - target: any(sep_wrapper, smc_wrapper, smu_wrapper)
+  - target: any(drbg, sep, sep_wrapper, smc_wrapper, smu_wrapper, opentitan_smu, smu)
     files:
       - upstream/hw/ip/prim/rtl/prim_ram_1p.sv
       - upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv
 
-  # I3C DAT/DCT/RLT table memories instantiated by smc_ip_integration.
-  - target: any(smc_wrapper, smu_wrapper)
+  # I3C DAT/DCT/RLT table memories instantiated by smc_ip_integration, and the
+  # same cells in the OpenTitan subsystem graph.
+  - target: any(drbg, sep, smc_wrapper, smu_wrapper, opentitan_smu, smu)
     files:
       - upstream/hw/ip/prim/rtl/prim_ram_2p_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_ram_2p.sv
@@ -127,12 +134,8 @@ sources:
   - target: any(drbg, opentitan_smu, sep, smu)
     files:
       # Primitive packages.
-      - upstream/hw/ip/prim/rtl/prim_sha2_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_secded_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_trivium_pkg.sv
-      - upstream/hw/ip/prim/rtl/prim_ram_1p_pkg.sv
-      - upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
-      - upstream/hw/ip/prim/rtl/prim_ram_2p_pkg.sv
 
       # CSRNG/entropy/EDN. entropy_src_pkg comes from the vendored IP.
       - upstream/hw/ip/entropy_src/rtl/entropy_src_pkg.sv
@@ -199,7 +202,6 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_mubi4_sync.sv
       - upstream/hw/ip/prim/rtl/prim_mubi4_sender.sv
       - upstream/hw/ip/prim/rtl/prim_mubi8_sync.sv
-      - upstream/hw/ip/prim/rtl/prim_max_tree.sv
       - upstream/hw/ip/prim/rtl/prim_onehot_check.sv
       - upstream/hw/ip/prim/rtl/prim_onehot_enc.sv
       - upstream/hw/ip/prim/rtl/prim_onehot_mux.sv
@@ -215,40 +217,17 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_enc.sv
       - upstream/hw/ip/prim/rtl/prim_secded_inv_64_57_dec.sv
       - upstream/hw/ip/prim/rtl/prim_secded_inv_64_57_enc.sv
-      - upstream/hw/ip/prim/rtl/prim_sha2.sv
-      - upstream/hw/ip/prim/rtl/prim_sha2_32.sv
-      - upstream/hw/ip/prim/rtl/prim_sha2_pad.sv
       - upstream/hw/ip/prim/rtl/prim_slicer.sv
-      - upstream/hw/ip/prim/rtl/prim_sparse_fsm_flop.sv
-      - upstream/hw/ip/prim/rtl/prim_sum_tree.sv
       - upstream/hw/ip/prim/rtl/prim_sync_reqack.sv
       - upstream/hw/ip/prim/rtl/prim_sync_reqack_data.sv
       - upstream/hw/ip/prim/rtl/prim_subreg_shadow.sv
       - upstream/hw/ip/prim/rtl/prim_subst_perm.sv
       - upstream/hw/ip/prim/rtl/prim_trivium.sv
       - upstream/hw/ip/prim/rtl/prim_xoshiro256pp.sv
-      - upstream/hw/ip/prim_generic/rtl/prim_rom.sv
       - upstream/hw/ip/prim/rtl/prim_flop_macros.sv
-      - upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
       - upstream/hw/ip/prim/rtl/prim_fifo_async_simple.sv
-      - upstream/hw/ip/prim/rtl/prim_ram_1p.sv
-      - upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv
       - upstream/hw/ip/prim/rtl/prim_ram_1p_scr.sv
       - upstream/hw/ip/prim/rtl/prim_ram_1r1w.sv
-      - upstream/hw/ip/prim/rtl/prim_ram_2p.sv
-
-  # The packages and primitives above are shared with `drbg`; the IP cores below
-  # are not, except for CSRNG and EDN.
-  - target: any(opentitan_smu, sep, smu)
-    files:
-      # Entropy source helpers instantiated by SEP wrappers.
-      - upstream/hw/ip/entropy_src/rtl/entropy_src_adaptp_ht.sv
-      - upstream/hw/ip/entropy_src/rtl/entropy_src_cntr_reg.sv
-      - upstream/hw/ip/entropy_src/rtl/entropy_src_markov_ht.sv
-      - upstream/hw/ip/entropy_src/rtl/entropy_src_repcnt_ht.sv
-      - upstream/hw/ip/entropy_src/rtl/entropy_src_watermark_reg.sv
-      - upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
-      - upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm.sv
 
   # drbg.sv instantiates csrng and edn directly, without the surrounding SEP
   # crypto complex.
