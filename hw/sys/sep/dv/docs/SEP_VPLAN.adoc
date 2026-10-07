@@ -18786,7 +18786,7 @@ the test does.
 |Graded leg: Non-OKAY response sets host_path_err and BUS_ERROR (`sep_cpu_bridge_fault_matrix_rand_test`)
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Order of bark against a takeable PIC interrupt
-|Is a bark or a takeable PIC interrupt taken first, and does an NMI pre-empt a running external handler? (`hw/sys/sep/doc/interrupts.adoc`, "NMI — Watchdog Timer Bark".)
+|Is a bark or a takeable PIC interrupt taken first, and does an NMI preempt a running external handler? (`hw/sys/sep/doc/interrupts.adoc`, "NMI — Watchdog Timer Bark".)
 |-
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Boundary input reach
