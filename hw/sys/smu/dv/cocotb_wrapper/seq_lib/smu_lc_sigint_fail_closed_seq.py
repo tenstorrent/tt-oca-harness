@@ -20,14 +20,16 @@ only from the integrity error.
 
 S1, legal pair: ``lc_sigint_err_o`` is 0 and ``lc_state_o`` carries the TEST_DEV word; an SMC
     OTP write of MAP SPARE[0], its readback and a read of JTAG_PUBLIC_IDENTITY word 0 return
-    SUCCESS.
+    SUCCESS, and a SEP OTP write of a non-zero pattern to MAP SPARE0 reads back that pattern.
 S2, broken pair: once ``lc_state_o`` and the SMC's LC_STATE input -- the forced net, so a
-    precondition rather than a check -- carry the broken pair, ``lc_sigint_err_o`` is 1; an SMC OTP read of SPARE[0] is refused with 0xBADCAB1E, a write
-    of a second pattern to it is refused, and the JTAG_PUBLIC_IDENTITY read that PROD still
-    admits is refused; a SEP OTP read of SPARE0 returns SUCCESS.
+    precondition rather than a check -- carry the broken pair, ``lc_sigint_err_o`` is 1; an
+    SMC OTP read of SPARE[0] is refused with 0xBADCAB1E, a write of a second pattern to it is
+    refused, and the JTAG_PUBLIC_IDENTITY read that PROD still admits is refused; a SEP OTP
+    read of SPARE0 returns SUCCESS with the S1 pattern, so the SEP bridge is live and not
+    answering zeros.
 S3, pair released: ``lc_sigint_err_o`` is 0 and ``lc_state_o`` carries the TEST_DEV word
-    again; SPARE[0] reads back the S1 pattern, so the refused write did not land, and the
-    JTAG_PUBLIC_IDENTITY read returns SUCCESS.
+    again; SPARE[0] reads back the S1 pattern, so the refused write did not land, the
+    JTAG_PUBLIC_IDENTITY read returns SUCCESS, and SEP SPARE0 still reads the S1 pattern.
 """
 
 from __future__ import annotations
@@ -59,6 +61,7 @@ LC_PAIR_FLIP = 0x10
 LC_BROKEN = LC_TEST_DEV ^ LC_PAIR_FLIP
 PATTERN_KEEP = 0x5EC1_0A7E
 PATTERN_REFUSED = 0x0BAD_F00D
+SEP_PATTERN = 0x3C5A_A5C3
 INJECT_TAKE_CYCLES = 16
 
 
@@ -114,6 +117,8 @@ class smu_lc_sigint_fail_closed_seq(smu_otp_prod_error_resp_seq):
             (await self._otp_op(jtag, smc, J2A_OP_WRITE, SMC_EFUSE_SPARE0, PATTERN_KEEP))[0],
             await self._otp_op(jtag, smc, J2A_OP_READ, SMC_EFUSE_SPARE0),
             (await self._otp_op(jtag, smc, J2A_OP_READ, SMC_PUBLIC_IDENTITY))[0],
+            (await self._otp_op(jtag, sep, J2A_OP_WRITE, SEP_EFUSE_SPARE0, SEP_PATTERN))[0],
+            await self._otp_op(jtag, sep, J2A_OP_READ, SEP_EFUSE_SPARE0),
         )
         self.log.info("OBSERVATION CHK-LC-SIGINT-LEGAL-PAIR pins=%s ops=%s", pins, ops)
         sb.expect_eq(
@@ -121,7 +126,13 @@ class smu_lc_sigint_fail_closed_seq(smu_otp_prod_error_resp_seq):
             (pins, ops),
             (
                 (0, LC_TEST_DEV, LC_TEST_DEV),
-                (J2A_STATUS_SUCCESS, (J2A_STATUS_SUCCESS, PATTERN_KEEP), J2A_STATUS_SUCCESS),
+                (
+                    J2A_STATUS_SUCCESS,
+                    (J2A_STATUS_SUCCESS, PATTERN_KEEP),
+                    J2A_STATUS_SUCCESS,
+                    J2A_STATUS_SUCCESS,
+                    (J2A_STATUS_SUCCESS, SEP_PATTERN),
+                ),
             ),
             evidence="CHK-LC-SIGINT-LEGAL-PAIR",
         )
@@ -157,11 +168,16 @@ class smu_lc_sigint_fail_closed_seq(smu_otp_prod_error_resp_seq):
         )
         sep_rd = await self._otp_op(jtag, sep, J2A_OP_READ, SEP_EFUSE_SPARE0)
         held = self._rd("lc_sigint_err_o")
-        self.log.info("OBSERVATION CHK-LC-SIGINT-SEP-OTP-OPEN %s sigint=%d", sep_rd, held)
+        self.log.info(
+            "OBSERVATION CHK-LC-SIGINT-SEP-OTP-OPEN status=%d data=0x%08x sigint=%d",
+            sep_rd[0],
+            sep_rd[1],
+            held,
+        )
         sb.expect_eq(
             "CHK-LC-SIGINT-SEP-OTP-OPEN",
-            (sep_rd[0], held),
-            (J2A_STATUS_SUCCESS, 1),
+            (sep_rd, held),
+            ((J2A_STATUS_SUCCESS, SEP_PATTERN), 1),
             evidence="CHK-LC-SIGINT-SEP-OTP-OPEN",
         )
         self.steps["S2"] = True
@@ -171,6 +187,7 @@ class smu_lc_sigint_fail_closed_seq(smu_otp_prod_error_resp_seq):
         ops = (
             await self._otp_op(jtag, smc, J2A_OP_READ, SMC_EFUSE_SPARE0),
             (await self._otp_op(jtag, smc, J2A_OP_READ, SMC_PUBLIC_IDENTITY))[0],
+            await self._otp_op(jtag, sep, J2A_OP_READ, SEP_EFUSE_SPARE0),
         )
         self.log.info("OBSERVATION CHK-LC-SIGINT-RELEASED pins=%s ops=%s", pins, ops)
         sb.expect_eq(
@@ -178,7 +195,11 @@ class smu_lc_sigint_fail_closed_seq(smu_otp_prod_error_resp_seq):
             (pins, ops),
             (
                 (0, LC_TEST_DEV, LC_TEST_DEV),
-                ((J2A_STATUS_SUCCESS, PATTERN_KEEP), J2A_STATUS_SUCCESS),
+                (
+                    (J2A_STATUS_SUCCESS, PATTERN_KEEP),
+                    J2A_STATUS_SUCCESS,
+                    (J2A_STATUS_SUCCESS, SEP_PATTERN),
+                ),
             ),
             evidence="CHK-LC-SIGINT-RELEASED",
         )
