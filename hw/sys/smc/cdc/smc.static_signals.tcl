@@ -99,6 +99,9 @@ if { [sizeof_collection $gpio_qs_field_storage_pins] > 0 } {
 
 _smc_static_pin {u_smc_peripherals/u_avsbus_controller/u_avsbus_controller_reg_inst/field_storage.AVS_CONFIG.AVS_GPIO_ENABLE.value/Q}
 
+# System timer pad ownership, set once before the timers synchronize
+_smc_static_pin {u_smc_peripherals/u_system_timer_octs/u_reg/field_storage.TIMER_GPIO_ENABLE.GPIO_ENABLE.value/Q}
+
 _smc_static_port {spi_enable_i}
 
 # -----------------------------------------------------------------------------

@@ -9,11 +9,12 @@
 # ${PREFIX} re-anchors hierarchical filter fields at the parent instance path. A parent
 # run that replays this block predefines PREFIX and apply_prefix before sourcing this
 # file; in the block's own run PREFIX is "". ${BLOCKINST} is the containing instance of a
-# block-top violation (the design name here, the instance path at the parent).
+# block-top violation (the design name here, the instance path at the parent). ${DESIGN}
+# is the top design name of the current run.
 if { ![info exists PREFIX] } { set PREFIX "" }
 if { [info procs apply_prefix] eq "" } {
     proc apply_prefix { filter } {
-        set out [string map [list {${PREFIX}} $::PREFIX] $filter]
+        set out [string map [list {${PREFIX}} $::PREFIX {${DESIGN}} $::env(DESIGN_NAME)] $filter]
         if { $::PREFIX eq "" } {
             set bi $::env(DESIGN_NAME)
         } else {

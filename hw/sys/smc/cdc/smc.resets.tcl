@@ -182,8 +182,8 @@ set_rdc_define_assertion_sequence \
     -from_reset {POWERGOOD_RESET_N POWERGOOD_STABLE_N} \
     -to_reset {COLD_RESET_DEGLITCH_N COLD_RESET_N COLD_RESET_N_REF_CLK COLD_RESET_N_SMC_CLK}
 
-# COLD_DEGLITCH => COLD: in the functional mode the rstbypass mux passes the deglitched
-# reset straight to stable_cold_rst_no.
+# COLD_DEGLITCH => COLD: outside scan mode, the deglitched reset asserting forces
+# stable_cold_rst_no low at once; the extend counter only delays release.
 set_rdc_define_assertion_sequence \
     -from_reset {COLD_RESET_DEGLITCH_N} \
     -to_reset {COLD_RESET_N COLD_RESET_N_REF_CLK COLD_RESET_N_SMC_CLK}
@@ -242,10 +242,11 @@ set_rdc_define_assertion_sequence \
     -to_reset {AVS_APB_CLK_RESET_N AVS_CLK_RESET_N AVS_PRE_DIV_CLK_RESET_N}
 
 # Telemetry reset pairing. rst_telemetry_ni is a chip-level input that passes through smu.sv
-# and smc.sv untouched. The integrator guide requires the adopter to assert it only while
-# PRIMARY is asserted (doc/integrator/src/smu-smc.adoc, Telemetry and Debug Integration).
-# This command declares PRIMARY -> TELEMETRY; the TELEMETRY -> PRIMARY direction is an
-# asyncrst_assert_sequence below.
+# and smc.sv untouched. The integrator guide requires the adopter to assert it whenever
+# PRIMARY asserts and never on its own (doc/integrator/src/smu-smc.adoc, Telemetry and Debug
+# Integration). This command declares PRIMARY -> TELEMETRY, which the ATB FIFOs also get from
+# their rst_ni & rst_telemetry_ni reset and the afvalid synchronizers rely on the adopter for.
+# The TELEMETRY -> PRIMARY direction is an asyncrst_assert_sequence below.
 set_rdc_define_assertion_sequence \
     -from_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK PRIMARY_RESET_N_REF_CLK PRIMARY_RESET_N_PERIPH_CLK} \
     -to_reset {TELEMETRY_RESET_N}
