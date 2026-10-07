@@ -3,7 +3,7 @@
 //
 // dtp_ijtag_sib_random_test — exhaustive 8-pattern iJTAG SIB sweep plus 16 seeded pattern/mask
 // combinations with temporal-window outcome proofs
-// (looped runner with per-pass family evidence, 16-pass floor).
+// (looped runner with per-pass family evidence).
 
 class dtp_ijtag_sib_random_test extends dtp_base_test;
   `uvm_component_utils(dtp_ijtag_sib_random_test)

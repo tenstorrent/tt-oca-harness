@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_ctm_rand_wire_or_only_test — seeded random multicast wire-OR route mix
-// (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass floor).
+// (looped runner with per-pass CHK-XTRIG-* evidence).
 
 class dtp_ctm_rand_wire_or_only_test extends dtp_xtrig_base_test;
   `uvm_component_utils(dtp_ctm_rand_wire_or_only_test)

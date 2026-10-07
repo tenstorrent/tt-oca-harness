@@ -20,8 +20,9 @@
 // covered a scan, and classifies each sample by that exported state: the
 // samples in Capture-DR through Update-DR, and those in Run-Test/Idle, each
 // with every observable's high count among them; it keeps the state and the
-// observable values of the latest sample too. Publishes nothing and checks
-// nothing: the scenario reads the counts and records the evidence.
+// observable values of the latest sample too. Publishes nothing and records
+// no evidence: the scenario reads the counts and records it. An X sample of
+// a counted observable is an error, since a zero count would absorb it.
 
 class dtp_scan_window_monitor extends ocah_subscriber #(ocah_jtag_event);
   `uvm_component_utils(dtp_scan_window_monitor)
@@ -31,6 +32,11 @@ class dtp_scan_window_monitor extends ocah_subscriber #(ocah_jtag_event);
   virtual dtp_scan_if  scan_vif;
   virtual dtp_tb_if    tb_vif;
   virtual ocah_jtag_if jtag_vif;
+  // The primary TAP's TCK period, set by dtp_env.
+  time                 tck_period;
+
+  // TCK periods close_window() waits for the STEP events it is owed.
+  localparam int unsigned CloseWindowTckPeriods = 4;
 
   protected bit          m_active;
   protected string       m_signals[$];
@@ -138,10 +144,28 @@ class dtp_scan_window_monitor extends ocah_subscriber #(ocah_jtag_event);
   endfunction
 
   // End the window once the STEP of every TCK cycle that rose inside it has
-  // arrived; return the TCK-cycle count and per-signal high counts.
+  // arrived; return the TCK-cycle count and per-signal high counts. Each
+  // STEP follows its rise by half a TCK period, so a STEP still missing
+  // CloseWindowTckPeriods TCK periods later means TCK stopped high.
   task close_window(output int unsigned edges, output int unsigned counts[string]);
     if (!m_active) `uvm_fatal(get_type_name(), "scan window was never opened")
-    wait (m_edges >= m_rises);
+    if (tck_period == 0) `uvm_fatal(get_type_name(), "tck_period not set by the env")
+    fork
+      begin
+        fork
+          wait (m_edges >= m_rises);
+          #(CloseWindowTckPeriods * tck_period);
+        join_any
+        disable fork;
+      end
+    join
+    if (m_edges < m_rises)
+      `uvm_fatal(get_type_name(), $sformatf(
+                 "scan window: %0d TCK rises but %0d STEP events after %0d TCK periods",
+                 m_rises,
+                 m_edges,
+                 CloseWindowTckPeriods
+                 ))
     stop_window(edges, counts);
   endtask
 

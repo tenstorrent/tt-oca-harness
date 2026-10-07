@@ -61,15 +61,15 @@ class dtp_jtag_ic_reset_test_seq extends dtp_debug_tdr_base_test_seq;
     seed_scenario_rng();
     attach_family_checker(required);
 
+    log_step("1", "Reset TAP and verify all IC_RESET fields default to 1");
     reset_to_tlr();
     read_ic_reset(observed, default_value);
     family_check("CHK-DBG-TDR", "IC_RESET default", observed, default_value);
     expect_default_outputs("after reset");
 
-    // Each slice through override active and inactive states.
+    log_step("2", "Loop each slice through override active and inactive states");
     foreach (port_names[p]) begin
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/3: JTAG override for %s", p + 1, port_names[p]), UVM_LOW)
+      log_iteration(p + 1, 3, $sformatf("JTAG override for %s", port_names[p]));
       reset_enable  = '1;
       reset_control = '1;
       reset_enable[port_indices[p]]  = 1'b0;
@@ -82,9 +82,9 @@ class dtp_jtag_ic_reset_test_seq extends dtp_debug_tdr_base_test_seq;
       expect_slice(port_names[p], 1'b0, 1'b1, $sformatf("%s override released", port_names[p]));
     end
 
-    // reset_hold=0 preserves enable/control bits through a TMS TLR. Each
-    // port's {reset_enable, reset_control} is rotated so each slice takes
-    // all four values across the four patterns.
+    // Each port's {reset_enable, reset_control} is rotated so each slice
+    // takes all four values across the four patterns.
+    log_step("3", "Verify reset_hold=0 preserves enable/control bits and outputs through TLR");
     for (int unsigned rotation = 0; rotation < 4; rotation++) begin
       string context_s = $sformatf("reset_hold=0 directed pattern#%0d", rotation + 1);
       foreach (port_names[p]) begin
@@ -93,7 +93,7 @@ class dtp_jtag_ic_reset_test_seq extends dtp_debug_tdr_base_test_seq;
         reset_enable[port_indices[p]]  = slice_value[1];
         reset_control[port_indices[p]] = slice_value[0];
       end
-      `uvm_info(get_type_name(), $sformatf("Iteration %0d/4: %s", rotation + 1, context_s), UVM_LOW)
+      log_iteration(rotation + 1, 4, context_s);
       write_ic_reset(1'b0, reset_enable, reset_control, held_pattern);
       wait_sys_cycles();
       expect_slices(reset_enable, reset_control, context_s);
@@ -107,17 +107,12 @@ class dtp_jtag_ic_reset_test_seq extends dtp_debug_tdr_base_test_seq;
                    context_s);
     end
 
-    // Seeded random reset_hold=0 preservation patterns.
+    log_step("4", "Run seeded random reset_hold=0 preservation patterns");
     for (int unsigned idx = 1; idx <= random_count; idx++) begin
-      reset_enable  = 3'($urandom);
-      reset_control = 3'($urandom);
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: hold=0 enable=0b%03b control=0b%03b",
-                idx,
-                random_count,
-                reset_enable,
-                reset_control
-                ), UVM_LOW)
+      reset_enable  = IcResetPorts'($urandom);
+      reset_control = IcResetPorts'($urandom);
+      log_iteration(idx, random_count, $sformatf(
+                    "hold=0 enable=0b%03b control=0b%03b", reset_enable, reset_control));
       write_ic_reset(1'b0, reset_enable, reset_control, held_pattern);
       wait_sys_cycles();
       expect_slices(reset_enable, reset_control, $sformatf("reset_hold=0 iteration=%0d", idx));
@@ -132,16 +127,17 @@ class dtp_jtag_ic_reset_test_seq extends dtp_debug_tdr_base_test_seq;
                    $sformatf("iteration=%0d", idx));
     end
 
-    // reset_hold=1 lets a TMS TLR restore the default image.
+    log_step("5", "Verify reset_hold=1 lets TLR restore defaults");
     write_ic_reset(1'b1, '0, '0, held_pattern);
     if (held_pattern == default_value)
-      `uvm_error("debug_tdr_chk", "clearable IC_RESET pattern unexpectedly equals the default")
+      `uvm_fatal(get_type_name(), "clearable IC_RESET pattern equals the default image")
     goto_tlr_via_tms();
     expect_default_outputs("reset_hold=1 in Test-Logic-Reset");
     tlr_to_rti();
     expected = dtp_ic_reset_after_tlr(1'b1, held_pattern, default_value);
     read_ic_reset(observed, expected);
     family_check("CHK-DBG-TDR", "IC_RESET reset_hold=1 TLR clear", observed, expected);
+    log_step("6", "Verify TRST always restores reset_hold and enable/control defaults");
 
     // TRST always restores reset_hold and enable/control defaults.
     write_ic_reset(1'b0, '0, '0, held_pattern);

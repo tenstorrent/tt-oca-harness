@@ -190,34 +190,31 @@ class dtp_base_test_seq extends ocah_sequence;
   // DTP-local TAP helpers and checks.
   // ------------------------------------------------------------------
 
-  // `checker_tag` because bare `checker` is an IEEE 1800 reserved word.
+  // The exported TAP state is `expected` after an operation. A mismatch
+  // records a CHK-TAP-STATE FAIL through the env recorder, beside the
+  // per-cycle records of dtp_tap_fsm_checker. `checker_tag` names the VPLAN
+  // checker (bare `checker` is an IEEE 1800 reserved word).
   function void check_state(dtp_tap_state_e expected, string checker_tag, string what);
-    if (tb_vif.tap_state !== expected)
-      `uvm_error(checker_tag, $sformatf(
-                 "%s: expected TAP state %s (0x%04h), got 0x%04h",
-                 what,
-                 expected.name(),
-                 expected,
-                 tb_vif.tap_state
-                 ))
-    else
+    string ctx;
+    if (tb_vif.tap_state === expected) begin
       `uvm_info(checker_tag, $sformatf("%s: TAP state %s as expected", what, expected.name()),
                 UVM_MEDIUM)
+      return;
+    end
+    ctx = $sformatf("%s %s expected_state=%s", checker_tag, what, expected.name());
+    if (evidence == null) `uvm_fatal(get_type_name(), "evidence recorder not plumbed by the test")
+    void'(evidence.expect_equal("CHK-TAP-STATE", 64'(tb_vif.tap_state), 64'(expected), ctx));
   endfunction
 
   // CHK-RESET-COUNT: the tb_top assertion counter of a reset this sequence
-  // drove advanced by exactly one across the pulse, so a reset claim rests
-  // on a reset that happened rather than on the checks it withdrew.
+  // drove advanced by exactly one across the pulse.
   function void check_reset_counted(string which, logic [31:0] before_count,
                                     logic [31:0] after_count, string context_s);
     string ctx = $sformatf(
         "%s before=%0d after=%0d %s", which, before_count, after_count, context_s
     );
-    if (evidence != null)
-      void'(evidence.expect_equal("CHK-RESET-COUNT", 64'(after_count - before_count), 64'd1, ctx));
-    else if (after_count !== before_count + 32'd1)
-      `uvm_error("reset_count_chk", {"reset assertion counter did not advance: ", ctx})
-    else `uvm_info("reset_count_chk", {"reset counted: ", ctx}, UVM_MEDIUM)
+    if (evidence == null) `uvm_fatal(get_type_name(), "evidence recorder not plumbed by the test")
+    void'(evidence.expect_equal("CHK-RESET-COUNT", 64'(after_count - before_count), 64'd1, ctx));
   endfunction
 
   // Power-on/system reset sequencing (DTP-local, via dtp_tb_if), the same
@@ -426,26 +423,9 @@ class dtp_base_test_seq extends ocah_sequence;
   // TDI-to-TDO delay: observed = {pattern[width-2:0], 1'b0} LSB-first.
   task check_bypass_latency(input bit [63:0] pattern, input int unsigned width,
                             output bit [63:0] observed);
-    bit [63:0] expected;
-    expected = ocah_jtag_checker::predict_bypass_tdo(pattern, width);
     shift_dr(pattern, width, observed);
-    if (evidence != null) begin
-      void'(evidence.check_bypass_latency(observed, pattern, width));
-    end else if (observed !== expected)
-      `uvm_error("sanity_bypass_latency_chk", $sformatf(
-                 "BYPASS TDI-to-TDO latency not 1 TCK: pattern=0x%016h width=%0d expected=0x%016h observed=0x%016h",
-                 pattern,
-                 width,
-                 expected,
-                 observed
-                 ))
-    else
-      `uvm_info("sanity_bypass_latency_chk", $sformatf(
-                "BYPASS 1-TCK latency OK: pattern=0x%016h width=%0d observed=0x%016h",
-                pattern,
-                width,
-                observed
-                ), UVM_MEDIUM)
+    if (evidence == null) `uvm_fatal(get_type_name(), "evidence recorder not plumbed by the test")
+    void'(evidence.check_bypass_latency(observed, pattern, width));
   endtask
 
   // ------------------------------------------------------------------

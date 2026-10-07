@@ -13,7 +13,7 @@
 //     including the two-outstanding write and read pairs and pipelined
 //     accesses with several in flight,
 //   * the CTM routing model (env dtp_xtrig_ctm_model, the cocotb
-//     DtpCtmRefModel twin) compared against the DUT output vector on every
+//     DtpXtrigCtmModel twin) compared against the DUT output vector on every
 //     programmed route,
 //   * the cross-trigger pin surface over dtp_xtrig_if (CTM src/dst req-ack
 //     pairs for the internal CTs, CTP pad din/dout/en quartets), with
@@ -58,13 +58,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   localparam int unsigned XtrigNumIntCt = DtpXtrigNumIntCt;
   localparam int unsigned XtrigNumCtmPorts = DtpXtrigNumCtmPorts;
 
-  localparam bit [63:0] XtrigCtpBase = DtpXtrigCtpBase;
-  localparam int unsigned XtrigCtpStride = DtpXtrigCtpStride;
   localparam bit [63:0] XtrigUnmappedBase = DtpXtrigUnmappedBase;
-
-  localparam int unsigned CtpConfigOffset = DtpCtpConfigOffset;
-  localparam int unsigned CtpStatusOffset = DtpCtpStatusOffset;
-  localparam int unsigned CtpStretchOffset = DtpCtpStretchOffset;
 
   localparam bit [31:0] CtpConfigModeMask = DtpCtpConfigModeMask;
   localparam bit [31:0] CtpConfigInvertMask = DtpCtpConfigInvertMask;
@@ -309,7 +303,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
 
   function void attach_xtrig_checker(string required_ids[$]);
     m_check = ocah_checker::type_id::create({get_name(), ".xtrig"});
-    m_check.name_tag = "dtp_xtrig";
+    m_check.name_tag = $sformatf("dtp_xtrig.pass%0d", loop_index);
     m_check.required_ids = required_ids;
     m_negative = test_cfg.xtrig_checker_negative;
     if (m_negative)
@@ -338,6 +332,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
       ChkAwLock:     return 8;
       ChkArStall:    return 9;
       ChkWire:       return 10;
+      ChkResetCount: return 11;
       default:       return 0;
     endcase
   endfunction
@@ -362,10 +357,8 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   // advanced by one across the reset.
   function void check_xtrig_reset_counted(string which, logic [31:0] before_count,
                                           logic [31:0] after_count, string context_s);
-    string ctx = $sformatf(
-        "%s before=%0d after=%0d %s", which, before_count, after_count, context_s
-    );
-    void'(m_check.expect_equal(ChkResetCount, 64'(after_count - before_count), 64'd1, ctx));
+    check_evidence(ChkResetCount, which, 64'(after_count - before_count), 64'd1, $sformatf(
+                   "before=%0d after=%0d %s", before_count, after_count, context_s));
   endfunction
 
   // ------------------------------------------------------------------
@@ -376,15 +369,15 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   endfunction
 
   static function bit [63:0] ctp_config_addr(int unsigned ctp_idx);
-    return XtrigCtpBase + ctp_idx * XtrigCtpStride + CtpConfigOffset;
+    return dtp_xtrig_ctp_config_addr(ctp_idx);
   endfunction
 
   static function bit [63:0] ctp_status_addr(int unsigned ctp_idx);
-    return XtrigCtpBase + ctp_idx * XtrigCtpStride + CtpStatusOffset;
+    return dtp_xtrig_ctp_status_addr(ctp_idx);
   endfunction
 
   static function bit [63:0] ctp_stretch_addr(int unsigned ctp_idx);
-    return XtrigCtpBase + ctp_idx * XtrigCtpStride + CtpStretchOffset;
+    return dtp_xtrig_ctp_stretch_addr(ctp_idx);
   endfunction
 
   static function bit [63:0] ctm_hole_addr(int unsigned src_idx);
@@ -705,15 +698,19 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   // ------------------------------------------------------------------
   // Cross-trigger pin surface over dtp_xtrig_if.
   // ------------------------------------------------------------------
-  // Quiesce every stimulus vector; the wire pulls and the group describe the
-  // board and stay.
-  task clear_xtrig_inputs();
+  // Quiesce every stimulus vector in the current time step; the wire pulls
+  // and the group describe the board and stay.
+  function void quiesce_xtrig_inputs();
     xtrig_vif.xtrig_ctm_src_ack         <= '0;
     xtrig_vif.xtrig_ctm_dst_req         <= '0;
     xtrig_vif.xtrig_ctp_wire_ext_assert <= '0;
     xtrig_vif.xtrig_ctp_req_in_din      <= '0;
     xtrig_vif.xtrig_ctp_ack_in_din      <= '0;
     xtrig_vif.xtrig_ctp_ack_out_din     <= '0;
+  endfunction
+
+  task clear_xtrig_inputs();
+    quiesce_xtrig_inputs();
     wait_sys_cycles(1);
   endtask
 
@@ -944,8 +941,10 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   // live window, which the scenario started over `watched` before the
   // traffic the reset lands on, shows every watched observable active
   // (CHK-XTRIG-SIGNAL), and none of them moves while the reset holds or for
-  // cycles + 2 cycles after release (CHK-XTRIG-QUIET). The reset is counted
-  // (CHK-RESET-COUNT) and the CSR shadows reset with the DUT.
+  // cycles + 2 cycles after release (CHK-XTRIG-QUIET). The inputs drop in
+  // the time step the reset asserts, so the reset lands while a held request
+  // is still on its pad. The reset is counted (CHK-RESET-COUNT) and the CSR
+  // shadows reset with the DUT.
   task reset_window(string label, string watched[$], int unsigned cycles = 3);
     logic [31:0] before_count;
     require_pulse_mode_lanes("reset_window");
@@ -958,7 +957,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
                      64'(m_live_activity[watched[i]] != 0), 64'd1);
     end
     before_count = tb_vif.sys_rst_assert_count;
-    clear_xtrig_inputs();
+    quiesce_xtrig_inputs();
     tb_vif.sys_rst_n <= 1'b0;
     wait_sys_cycles(1);
     start_activity_window_on(watched);
@@ -1427,6 +1426,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
                        64'(input_at >= 0 && input_at < request_at), 64'd1, $sformatf(
                        "input@%0d request@%0d", input_at, request_at));
     end
+    check_same_cycle_rise(predicted, label);
     // Isolation: no unselected output fired anywhere in the window, and the
     // selected outputs are idle again at its end.
     check_evidence(ChkIsolation, {label, ".unselected_quiet"}, 64'(fired & ~intent), 64'd0,
@@ -1434,6 +1434,36 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     check_evidence(ChkIsolation, {label, ".selected_deasserted"}, 64'(level_vector() & intent),
                    64'd0, $sformatf("mode=%0d", mode));
   endtask
+
+  // CHK-XTRIG-ROUTE-MODEL `<label>.multicast_same_cycle`: the predicted
+  // outputs that select the same inputs start requesting in the same window
+  // cycle. Observed is the number of distinct first-rise cycles of one such
+  // group.
+  function void check_same_cycle_rise(bit [31:0] predicted, string label);
+    int unsigned ports[$];
+    int unsigned groups[bit [31:0]][$];
+    port_bits(predicted & CtmSelectMask, ports);
+    foreach (ports[i]) begin
+      bit [31:0] select = ctm_model.select[ports[i]];
+      int unsigned members[$];
+      if (groups.exists(select)) members = groups[select];
+      members.push_back(ports[i]);
+      groups[select] = members;
+    end
+    foreach (groups[select]) begin
+      int unsigned members[$] = groups[select];
+      bit cycles[int];
+      string first_rise = "";
+      if (members.size() < 2) continue;
+      foreach (members[k]) begin
+        int at = window_first_rise("ctm_port_request", members[k]);
+        cycles[at] = 1'b1;
+        first_rise = {first_rise, (k == 0) ? "" : ",", $sformatf("%0d@%0d", members[k], at)};
+      end
+      check_evidence(ChkRouteModel, {label, ".multicast_same_cycle"}, 64'(cycles.num()), 64'd1,
+                     $sformatf("select=0x%07h first_rise=%s", select, first_rise));
+    end
+  endfunction
 
   // Pulse `input_mask` through the programmed routes and judge the output
   // window. The model programmed alongside the CSRs predicts the DUT output

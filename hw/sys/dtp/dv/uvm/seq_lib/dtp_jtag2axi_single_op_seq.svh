@@ -14,14 +14,10 @@
 class dtp_jtag2axi_single_op_seq extends dtp_jtag_op_seq;
   `uvm_object_utils(dtp_jtag2axi_single_op_seq)
 
-  dtp_j2a_target_t target;
-  dtp_j2a_op_e     op = DTP_J2A_OP_NOP;
-  bit [63:0]       addr;
-  bit [63:0]       data;
-  bit [7:0]        wstrb;
-  int unsigned     size;
+  dtp_j2a_target_t  target;
+  dtp_j2a_request_t request;
   // Result.
-  bit              captured[];
+  bit               captured[];
 
   function new(string name = "dtp_jtag2axi_single_op_seq");
     super.new(name);
@@ -30,7 +26,7 @@ class dtp_jtag2axi_single_op_seq extends dtp_jtag_op_seq;
   virtual task do_op();
     bit dr[];
     bit [63:0] ir_captured;
-    dtp_j2a_pack_single_op(target, op, addr, data, wstrb, size, dr);
+    dtp_j2a_pack_single_op(target, request, dr);
     ir_scan(64'(target.single_op_instr), DtpIrWidth, ir_captured);
     dr_scan_wide(dr, captured);
   endtask

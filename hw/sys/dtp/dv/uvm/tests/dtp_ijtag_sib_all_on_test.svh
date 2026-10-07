@@ -3,7 +3,7 @@
 //
 // dtp_ijtag_sib_all_on_test — all iJTAG SIBs open; each direct disable gates its SIB in a seeded
 // order while the others stay effective
-// (looped runner with per-pass family evidence, 16-pass floor).
+// (looped runner with per-pass family evidence).
 
 class dtp_ijtag_sib_all_on_test extends dtp_base_test;
   `uvm_component_utils(dtp_ijtag_sib_all_on_test)

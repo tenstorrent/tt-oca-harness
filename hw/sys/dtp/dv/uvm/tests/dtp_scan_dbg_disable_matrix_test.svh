@@ -16,8 +16,8 @@ class dtp_scan_dbg_disable_matrix_test extends dtp_base_test;
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();
-    dtp_dbg_disable_scan_matrix_test_seq seq =
-            dtp_dbg_disable_scan_matrix_test_seq::type_id::create(
+    dtp_scan_dbg_disable_matrix_test_seq seq =
+            dtp_scan_dbg_disable_matrix_test_seq::type_id::create(
         "seq"
     );
     seq.multi_hot_rows = test_cfg.scan_matrix_multi_hot_rows;

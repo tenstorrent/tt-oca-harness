@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// XTRIG CTP protocol scenarios — the SV analogue of the CTP scenario set in
-// the cocotb dtp_xtrig_base_test_seq. One parameterized sequence,
+// XTRIG CTP protocol scenarios. The cocotb twin is
+// seq_lib/dtp_xtrig_route_test_seq.py. One parameterized sequence,
 // dispatched on `scenario`:
 //
 //   wire_or         pulse stretching (enable and busy widths = stretch+1,
 //                   aligned rise), BUSY over the CSR for wide pulses,
 //                   busy-clear status, and external-to-internal
 //                   synchronization on a seeded CTP/internal pair
+//   wire_or_bus     several CTPs on one shared wire-OR wire: the
+//                   transmitter's pull, a chiplet's pull, and both merged
+//                   reach every member once
 //   p2p             point-to-point req/ack handshakes in both directions
 //                   with STATUS BUSY/REQ_OUT/ACK_IN/REQ_IN/ACK_OUT read at
 //                   every phase
@@ -25,8 +28,8 @@
 //                   point-to-point mode
 //
 // Every scenario draws its ports per pass from the seeded scenario RNG (per
-// spec, every CTP and internal CT is interchangeable), so the 16-pass floor
-// covers different port/stretch combinations.
+// spec, every CTP and internal CT is interchangeable), so the passes cover
+// different port/stretch combinations.
 
 class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
   `uvm_object_utils(dtp_xtrig_route_test_seq)
@@ -125,27 +128,21 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
         | ctm_model.route(member_ports);
     transmit_intent = (32'd1 << external_ctp_port(tx)) | listener_outputs;
 
-    `uvm_info(
-        get_type_name(),
-        "Step 1: the transmitter pulls the wire: every member, itself included, receives once",
-        UVM_LOW)
+    log_step("1", "the transmitter pulls the wire: every member, itself included, receives once");
     open_route_window();
     pulse_ctm_dst_req(32'd1 << int_src, 1);
     check_output_mask(transmit_intent, CtpModeWireOr, transmit_predicted, "wire_or_bus.transmit",
                       IsolationTailCycles + stretch, 32'd1 << internal_ct_port(int_src));
     check_shared_wire_receive(members, "xtrig_ctp_req_out_dout_en", tx, "wire_or_bus.transmit");
 
-    `uvm_info(get_type_name(), "Step 2: a chiplet pulls the wire: every member receives once",
-              UVM_LOW)
+    log_step("2", "a chiplet pulls the wire: every member receives once");
     open_route_window();
     pull_ctp_wire(puller, $urandom_range(5, 1));
     check_output_mask(listener_outputs, CtpModeWireOr, ctm_model.route(member_ports),
                       "wire_or_bus.chiplet");
     check_shared_wire_receive(members, "xtrig_ctp_wire_ext_assert", puller, "wire_or_bus.chiplet");
 
-    `uvm_info(get_type_name(),
-              "Step 3: the transmitter pulls while a chiplet holds the wire: one merged assertion",
-              UVM_LOW)
+    log_step("3", "the transmitter pulls while a chiplet holds the wire: one merged assertion");
     open_route_window();
     xtrig_vif.xtrig_ctp_wire_ext_assert <= XtrigNumCtp'(32'd1 << puller);
     wait_sys_cycles($urandom_range(3, 1));
@@ -218,8 +215,7 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
     // a different CTP/internal combination.
     configure_ctp_mode_for_port(ctp_port, CtpModeP2p, 16'd0);
 
-    `uvm_info(get_type_name(),
-              "Step 1: internal trigger asserts CT_Req_out and BUSY until CT_Ack_in", UVM_LOW)
+    log_step("1", "internal trigger asserts CT_Req_out and BUSY until CT_Ack_in");
     program_route(int_port, 32'd1 << ctp_port, "p2p.internal_to_ctp");
     idle_inputs();
     log_xtrig_sample("p2p.before_request");
@@ -249,9 +245,7 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
     check_evidence(ChkSignal, "p2p.request_done.req_out_idle", 64'(req_out_active), 64'd0,
                    $sformatf("cycles=%0d", window_cycles));
 
-    `uvm_info(get_type_name(),
-              "Step 2: external CT_Req_in asserts CT_Ack_out, delivers the trigger, then idles",
-              UVM_LOW)
+    log_step("2", "external CT_Req_in asserts CT_Ack_out, delivers the trigger, then idles");
     program_route(ctp_port, 32'd1 << int_port, "p2p.ctp_to_internal");
     log_xtrig_sample("p2p.before_response");
     check_evidence(ChkSignal, "p2p.internal_idle_before", 64'(xtrig_pin("xtrig_ctm_src_req"
@@ -299,9 +293,7 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
     do int_b = $urandom_range(XtrigNumIntCt - 1); while (int_b == int_idx);
     do int_c = $urandom_range(XtrigNumIntCt - 1); while (int_c inside {int_idx, int_b});
 
-    `uvm_info(get_type_name(),
-              "Step 1: stall the acknowledge of a P2P handshake and recover through CONFIG.RESET",
-              UVM_LOW)
+    log_step("1", "stall the acknowledge of a P2P handshake and recover through CONFIG.RESET");
     configure_ctp_mode_for_port(ctp_port, CtpModeP2p, 16'd0);
     program_route(int_port, 32'd1 << ctp_port, "reset.deadlock_setup");
     idle_inputs();
@@ -342,10 +334,8 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
                      "cycles=%0d", window_cycles));
     verify_route(int_port, 32'd1 << ctp_port, CtpModeP2p, "reset.post_config_reset");
 
-    `uvm_info(
-        get_type_name(),
-        "Step 2: system reset while an inverted wire-OR pulse and a P2P receive are active on two CTPs and an internal CT has pulsed",
-        UVM_LOW)
+    log_step("2",
+             "system reset while an inverted wire-OR pulse and a P2P receive are active on two CTPs and an internal CT has pulsed");
     start_live_window(reset_signals);
     program_ctp(ctp_b, CtpModeWireOr, 1'b1, 1'b0, ResetHoldStretch);
     program_ctm_src(ctp_b, 32'd1 << internal_ct_port(int_b));
@@ -399,16 +389,14 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
         default: ;
       endcase
       int_idx = $urandom_range(XtrigNumIntCt - 1);
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: ctp=%0d mode=%0d invert=%0d stretch=%0d internal=%0d",
-                idx + 1,
-                random_count,
-                ctp_idx,
-                mode,
-                invert,
-                stretch,
-                int_idx
-                ), UVM_LOW)
+      log_iteration(idx + 1, random_count, $sformatf(
+                    "ctp=%0d mode=%0d invert=%0d stretch=%0d internal=%0d",
+                    ctp_idx,
+                    mode,
+                    invert,
+                    stretch,
+                    int_idx
+                    ));
       if (mode == CtpModeWireOr) begin
         verify_wire_or_pulse(ctp_idx, int_idx, stretch, invert, label);
         continue;
@@ -433,13 +421,8 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
     // Seeded per-pass source: the output sweep stays exhaustive while
     // each loop drives it from a different internal CT.
     for (int unsigned output_port = 0; output_port < XtrigNumCtmPorts; output_port++) begin
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: input port %0d -> output port %0d",
-                output_port + 1,
-                XtrigNumCtmPorts,
-                input_port,
-                output_port
-                ), UVM_LOW)
+      log_iteration(output_port + 1, XtrigNumCtmPorts, $sformatf(
+                    "input port %0d -> output port %0d", input_port, output_port));
       verify_route(input_port, 32'd1 << output_port, CtpModeWireOr, $sformatf(
                    "dst_sweep.port%0d", output_port));
       if (!is_ctp_port(output_port)) pulse_ctm_src_ack(32'd1 << int_idx_from_port(output_port), 1);
@@ -449,8 +432,7 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
     // on its own CT_Req_out once, without feeding back.
     for (int unsigned ctp_idx = 0; ctp_idx < XtrigNumCtp; ctp_idx++) begin
       int unsigned port = external_ctp_port(ctp_idx);
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: CTP %0d -> itself", ctp_idx + 1, XtrigNumCtp, ctp_idx), UVM_LOW)
+      log_iteration(ctp_idx + 1, XtrigNumCtp, $sformatf("CTP %0d -> itself", ctp_idx));
       verify_route(port, 32'd1 << port, CtpModeP2p, $sformatf("dst_sweep.self%0d", ctp_idx));
     end
   endtask

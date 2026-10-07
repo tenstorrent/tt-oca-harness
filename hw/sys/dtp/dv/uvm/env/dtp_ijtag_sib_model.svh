@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// DTP iJTAG SIB reference model (env/dtp_scan_ref_model.py parity): the
-// three SIBs and the instrument stubs tb_top places behind them. The
-// SELECT_IJTAG data register is, TDI to TDO, one SIB flop per SIB with the
+// DTP iJTAG SIB reference model (the cocotb twin is
+// env/dtp_ijtag_sib_model.py): the three SIBs and the instrument stubs
+// tb_top places behind them. The SELECT_IJTAG data register is, TDI to TDO, one SIB flop per SIB with the
 // SIB's instrument spliced TDO-side of its flop while the SIB is open; scan
 // registers shift MSB-first, so an instrument's MSB is TDI-nearest. A SIB's
 // update register holds the sanctioned open bit through a gate: the gate
@@ -11,7 +11,8 @@
 // bit takes effect again when the gate clears. Test-Logic-Reset clears the
 // SIB and instrument update registers. A scan's chain layout is the
 // effective state before its Update-DR. Plain model class, built with
-// new(); no reporting. Types come from dtp_types.svh.
+// new(); it records no evidence and reports only a fatal on misuse. Types
+// come from dtp_types.svh.
 
 // Reference state for the iJTAG SIBs and their instrument stubs.
 class dtp_ijtag_sib_model;
@@ -21,6 +22,14 @@ class dtp_ijtag_sib_model;
     bit          is_inst;  // 0 = the SIB flop, 1 = an instrument flop
     int unsigned bit_idx;  // instrument register bit held by the flop
   } layout_entry_t;
+
+  // Predicted outcome of programming one SIB pattern under a disable mask.
+  typedef struct {
+    bit          requested[DtpIjtagSibCount];
+    bit          gated[DtpIjtagSibCount];
+    bit          effective[DtpIjtagSibCount];
+    int unsigned chain_len;
+  } sib_state_t;
 
   bit stored[DtpIjtagSibCount];
   bit [63:0] instruments[DtpIjtagSibCount];
@@ -59,17 +68,17 @@ class dtp_ijtag_sib_model;
   // requested/gated/effective per SIB and the chain length after
   // programming `pattern` under `d`: a gated SIB reads closed whatever it
   // stores, so the outcome follows the request masked by the gates.
-  static function void state(
-      bit [DtpIjtagSibCount-1:0] pattern, sep_lifecycle_ctrl_pkg::dbg_disable_t d,
-      output bit requested[DtpIjtagSibCount], output bit gated[DtpIjtagSibCount],
-      output bit effective[DtpIjtagSibCount], output int unsigned chain_len);
-    pattern_bits(pattern, requested);
-    gates(d, gated);
-    chain_len = DtpIjtagSibCount;
+  static function sib_state_t state(bit [DtpIjtagSibCount-1:0] pattern,
+                                    sep_lifecycle_ctrl_pkg::dbg_disable_t d);
+    sib_state_t s;
+    pattern_bits(pattern, s.requested);
+    gates(d, s.gated);
+    s.chain_len = DtpIjtagSibCount;
     for (int unsigned i = 0; i < DtpIjtagSibCount; i++) begin
-      effective[i] = requested[i] & ~gated[i];
-      if (effective[i]) chain_len += DtpIjtagInstrumentWidths[i];
+      s.effective[i] = s.requested[i] & ~s.gated[i];
+      if (s.effective[i]) s.chain_len += DtpIjtagInstrumentWidths[i];
     end
+    return s;
   endfunction
 
   // Stored SIB state masked by the gates: the chain as it shifts.

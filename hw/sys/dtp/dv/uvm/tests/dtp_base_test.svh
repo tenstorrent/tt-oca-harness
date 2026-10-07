@@ -118,7 +118,22 @@ class dtp_base_test extends ocah_test;
     dtp_seq.scan_window  = m_env.m_scan_window;
     dtp_seq.fsm_checker  = m_env.m_fsm_checker;
     if ($cast(scan_seq, seq)) plumb_stap_ds(scan_seq);
-    if ($cast(j2a_seq, seq)) j2a_seq.axi_ports = m_env.m_axi_port_history;
+    if ($cast(j2a_seq, seq)) plumb_jtag2axi(j2a_seq);
+  endfunction
+
+  // Hand a JTAG2AXI sequence every bridge's port history and evidence
+  // bundle, keyed by bridge name; the sequence selects the bridge it judges.
+  virtual function void plumb_jtag2axi(dtp_jtag2axi_base_test_seq seq);
+    seq.axi_ports = m_env.m_axi_port_history;
+    foreach (m_env.m_axi_port_history[name]) begin
+      ocah_axi_uvm_pkg::ocah_axi_config    cfg;
+      ocah_axi_uvm_pkg::ocah_axi_checker   evidence;
+      ocah_axi_uvm_pkg::ocah_axi_ref_model ref_model;
+      m_env.axi_bundle(name, cfg, evidence, ref_model);
+      seq.target_cfgs[name]       = cfg;
+      seq.target_evidence[name]   = evidence;
+      seq.target_ref_models[name] = ref_model;
+    end
   endfunction
 
   // Hand a scan sequence the downstream device configurations the scan
@@ -134,7 +149,7 @@ class dtp_base_test extends ocah_test;
   endfunction
 
   // Fresh scan-reconstruction window per pass: the builder's bounded
-  // history would otherwise saturate across the 16-pass floor and freeze
+  // history would otherwise saturate across passes and freeze
   // the newest-scan-length evidence on a stale item (the cocotb flow
   // likewise starts a fresh monitor per pass).
   virtual function void pre_scenario_pass(int unsigned idx);

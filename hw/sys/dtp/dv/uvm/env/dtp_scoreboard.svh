@@ -318,8 +318,7 @@ class dtp_scoreboard extends ocah_scoreboard;
     if (!exp.compare) return;
     t        = dtp_j2a_target_by_name(exp.target);
     status_o = dtp_bits_field(obs.tdo_bits, 0, 2);
-    if (status_o !== 64'(exp.status) && !(exp.alt_valid && status_o === 64'(exp.alt_status)))
-      diff = {diff, " status"};
+    if (status_o !== 64'(exp.status)) diff = {diff, " status"};
     if (exp.compare_rdata) begin
       int unsigned data_off = 2 + t.size_bits + t.wstrb_bits;
       rdata_o = dtp_bits_field(obs.tdo_bits, data_off, t.data_width) & exp.rdata_mask;

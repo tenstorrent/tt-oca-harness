@@ -29,18 +29,13 @@ class dtp_jtag_highz_test_seq extends dtp_jtag_base_test_seq;
     seed_scenario_rng();
     attach_family_checker(required);
     reset_to_tlr();
-    `uvm_info(get_type_name(), "Step 1: EXTEST loopback before HIGHZ", UVM_LOW)
+    log_step("1", "EXTEST loopback before HIGHZ");
     check_loopback_scan(6'(EXTEST_INSTR), 64'h0F);
-    `uvm_info(get_type_name(),
-              "Step 2: HIGHZ decodes and scans the one-bit bypass across the pattern classes",
-              UVM_LOW)
+    log_step("2", "HIGHZ decodes and scans the one-bit bypass across the pattern classes");
     check_bypass_patterns(6'(HIGHZ_INSTR), 64);
-    `uvm_info(get_type_name(),
-              "Step 3: HIGHZ scan: boundary-scan select low, TAP strobes pulsing, bypass TDO",
-              UVM_LOW)
+    log_step("3", "HIGHZ scan: boundary-scan select low, TAP strobes pulsing, bypass TDO");
     check_bsr_scan_ctrl(6'(HIGHZ_INSTR), random_pattern(64), 64, DTP_SCAN_CTRL_UNSELECTED);
-    `uvm_info(get_type_name(), "Step 4: EXTEST after HIGHZ re-selects the looped-back chain",
-              UVM_LOW)
+    log_step("4", "EXTEST after HIGHZ re-selects the looped-back chain");
     check_bsr_scan_ctrl(6'(EXTEST_INSTR), random_pattern(DtpBsrModelLen));
     check_bypass_delay(6'(CLAMP_INSTR), 64'h0F0F_F0F0);
     load_ir(6'(IDCODE_INSTR));

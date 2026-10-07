@@ -2,8 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // DTP virtual sequencer: one typed handle per agent sequencer and one per
-// responder sequence, wired by dtp_env in connect_phase, and nothing else.
-// Scenario virtual sequences (dtp_base_test_seq family) run on it and start
+// responder sequence, wired by dtp_env in connect_phase, and the XTRIG CTP
+// shadow (programmed CTP mode and polarity) that the cross-trigger
+// sequences share across passes; the cocotb realization keeps that shadow
+// on DtpEnvCfg. Scenario virtual sequences (dtp_base_test_seq family) run
+// on it and start
 // reusable sequences on the handle each step needs: JTAG operations on
 // m_jtag_seqr, CSR AXI-Lite operations on m_xtrig_seqr, responder backdoor
 // and injection through the slave sequences. In the cocotb realization the

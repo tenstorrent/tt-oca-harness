@@ -2468,7 +2468,7 @@ module dtp_uvm_top
   import uvm_pkg::*;
 
   // System clock with the period the env publishes on dtp_tb_if from the
-  // seeded test cfg (10..100 ns); TCK is bit-banged by the VIP driver.
+  // seeded test cfg (dtp_test_cfg sys_clk_c); TCK is bit-banged by the VIP driver.
   always #(u_tb_if.clk_period_ns * 0.5ns) u_tb_if.clk = ~u_tb_if.clk;
 
   // Non-reusable test classes compile as part of this top (module scope).

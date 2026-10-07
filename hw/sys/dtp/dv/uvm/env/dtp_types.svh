@@ -194,8 +194,6 @@ typedef enum int unsigned {
   DTP_DBG_PATH_SEP_OTP_JTAG2AXI = 10
 } dtp_dbg_path_e;
 
-localparam int unsigned DtpDbgPathCount = 11;
-
 function automatic bit dtp_dbg_path_disabled(sep_lifecycle_ctrl_pkg::dbg_disable_t d,
                                              dtp_dbg_path_e p);
   case (p)
@@ -296,9 +294,8 @@ localparam int unsigned DtpJ2aSeriesLaunchCycles = 5;
 // (three synchronizer stages on the gray pointer, then the FIFO pop), the
 // bridge steps from its response wait through its status update into the
 // status register, and the first crossing edge adds up to one TCK of phase;
-// measured from
-// the scan's start. A status capture whose scan starts inside this window
-// after a completion is not checkable.
+// measured from the scan's start. A status capture whose scan starts inside
+// this window after a completion is not checkable.
 localparam int unsigned DtpJ2aStatusSettleTck = 8;
 // *_JTAG2AXI_CAPS[13:0] (PTAP document, "*_JTAG2AXI_CAPS" table).
 localparam int unsigned DtpJtag2AxiCapsLen = 14;
@@ -446,12 +443,17 @@ function automatic dtp_j2a_target_t dtp_j2a_target_smc_axi();
   return t;
 endfunction
 
-// Target by name ("smc_otp", "sep_otp", "smc_axi").
+// Target by name ("smc_otp", "sep_otp", "smc_axi"); any other name is a
+// configuration defect.
 function automatic dtp_j2a_target_t dtp_j2a_target_by_name(string name);
   case (name)
     "smc_axi": return dtp_j2a_target_smc_axi();
     "sep_otp": return dtp_j2a_target_sep_otp();
-    default:   return dtp_j2a_target_smc_otp();
+    "smc_otp": return dtp_j2a_target_smc_otp();
+    default: begin
+      `uvm_fatal("dtp_types", {"unknown JTAG2AXI bridge ", name})
+      return dtp_j2a_target_smc_otp();
+    end
   endcase
 endfunction
 
@@ -553,19 +555,56 @@ function automatic bit [63:0] dtp_j2a_strobe_lanes(bit [7:0] strb);
   return lanes;
 endfunction
 
+// Which JTAG2AXI register a DR scan addressed, from the active instruction.
+typedef enum int unsigned {
+  DTP_J2A_SCAN_NONE = 0,
+  DTP_J2A_SCAN_SINGLE_OP,
+  DTP_J2A_SCAN_SERIES_CTRL,
+  DTP_J2A_SCAN_SERIES_DATA_INCR,
+  DTP_J2A_SCAN_SERIES_DATA_NO_INCR,
+  DTP_J2A_SCAN_SERIES_DATA_WITH_STATUS
+} dtp_j2a_scan_kind_e;
+
+// One JTAG2AXI request: the fields of a DR scan's TDI image, as the bridge
+// latches them at Update-DR.
+typedef struct {
+  dtp_j2a_scan_kind_e kind;
+  dtp_j2a_op_e        op;              // SINGLE_OP and SERIES_CTRL op field
+  bit [63:0]          addr;
+  bit [63:0]          data;
+  bit [7:0]           wstrb;
+  int unsigned        size;
+  int unsigned        pipeline_depth;  // SERIES_CTRL
+  bit                 series_reset;    // SERIES_CTRL
+  bit                 incr;            // series data: advance the address
+} dtp_j2a_request_t;
+
+// A SINGLE_OP request.
+function automatic dtp_j2a_request_t dtp_j2a_single_op_request(
+    dtp_j2a_op_e op, bit [63:0] addr, bit [63:0] data = '0, bit [7:0] wstrb = '0,
+    int unsigned size = 0);
+  dtp_j2a_request_t r;
+  r.kind  = DTP_J2A_SCAN_SINGLE_OP;
+  r.op    = op;
+  r.addr  = addr;
+  r.data  = data;
+  r.wstrb = wstrb;
+  r.size  = size;
+  return r;
+endfunction
+
 // SINGLE_OP DR packing, the *_AXI_SINGLE_OP table order LSB-first:
 // OP | SIZE | WSTRB | DATA | ADDR.
-function automatic void dtp_j2a_pack_single_op(dtp_j2a_target_t t, dtp_j2a_op_e op, bit [63:0] addr,
-                                               bit [63:0] data, bit [7:0] wstrb, int unsigned size,
+function automatic void dtp_j2a_pack_single_op(dtp_j2a_target_t t, dtp_j2a_request_t r,
                                                ref bit dr[]);
   int unsigned offset = 0;
   dr = new[dtp_j2a_single_op_len(t)];
   foreach (dr[i]) dr[i] = 1'b0;
-  for (int unsigned i = 0; i < 2; i++) dr[offset++] = (int'(op) >> i) & 1'b1;
-  for (int unsigned i = 0; i < t.size_bits; i++) dr[offset++] = (size >> i) & 1'b1;
-  for (int unsigned i = 0; i < t.wstrb_bits; i++) dr[offset++] = (wstrb >> i) & 1'b1;
-  for (int unsigned i = 0; i < t.data_width; i++) dr[offset++] = (data >> i) & 1'b1;
-  for (int unsigned i = 0; i < t.addr_width; i++) dr[offset++] = (addr >> i) & 1'b1;
+  for (int unsigned i = 0; i < 2; i++) dr[offset++] = (int'(r.op) >> i) & 1'b1;
+  for (int unsigned i = 0; i < t.size_bits; i++) dr[offset++] = (r.size >> i) & 1'b1;
+  for (int unsigned i = 0; i < t.wstrb_bits; i++) dr[offset++] = (r.wstrb >> i) & 1'b1;
+  for (int unsigned i = 0; i < t.data_width; i++) dr[offset++] = (r.data >> i) & 1'b1;
+  for (int unsigned i = 0; i < t.addr_width; i++) dr[offset++] = (r.addr >> i) & 1'b1;
 endfunction
 
 function automatic void dtp_j2a_unpack_single_op(
@@ -581,57 +620,34 @@ endfunction
 
 // SERIES_CTRL packing, the *_AXI_SERIES_CTRL table order LSB-first:
 // OP | SIZE | PL_DEPTH | ADDR | RESET.
-function automatic bit [63:0] dtp_j2a_pack_series_ctrl(dtp_j2a_target_t t, dtp_j2a_op_e op,
-                                                       bit [63:0] addr, int unsigned pipeline_depth,
-                                                       int unsigned size, bit series_reset);
+function automatic bit [63:0] dtp_j2a_pack_series_ctrl(dtp_j2a_target_t t, dtp_j2a_request_t r);
   int unsigned size_off     = 2;
   int unsigned pl_depth_off = size_off + t.size_bits;
   int unsigned addr_off     = pl_depth_off + 2;
   int unsigned reset_off    = addr_off + t.addr_width;
-  return (64'(int'(op)) & 64'h3) | ((64'(size) & ocah_rng::bit_mask(
+  return (64'(int'(r.op)) & 64'h3) | ((64'(r.size) & ocah_rng::bit_mask(
       t.size_bits
-  )) << size_off) | ((64'(pipeline_depth) & 64'h3) << pl_depth_off) | ((addr & ocah_rng::bit_mask(
+  )) << size_off) | ((64'(r.pipeline_depth) & 64'h3) << pl_depth_off) |
+      ((r.addr & ocah_rng::bit_mask(
       t.addr_width
-  )) << addr_off) | (64'(series_reset) << reset_off);
+  )) << addr_off) | (64'(r.series_reset) << reset_off);
 endfunction
 
-function automatic void dtp_j2a_unpack_series_ctrl(
-    dtp_j2a_target_t t, bit [63:0] value, output bit series_reset, output bit [63:0] addr,
-    output int unsigned pipeline_depth, output int unsigned size, output dtp_j2a_status_e status);
+// Decode a captured SERIES_CTRL word: the settled status sits in the OP
+// field, the rest of the word is the request the bridge holds.
+function automatic dtp_j2a_status_e dtp_j2a_unpack_series_ctrl(dtp_j2a_target_t t, bit [63:0] value,
+                                                               output dtp_j2a_request_t r);
   int unsigned size_off     = 2;
   int unsigned pl_depth_off = size_off + t.size_bits;
   int unsigned addr_off     = pl_depth_off + 2;
   int unsigned reset_off    = addr_off + t.addr_width;
-  status         = dtp_j2a_status_e'(value & 64'h3);
-  size           = int'((value >> size_off) & ocah_rng::bit_mask(t.size_bits));
-  pipeline_depth = int'((value >> pl_depth_off) & 64'h3);
-  addr           = (value >> addr_off) & ocah_rng::bit_mask(t.addr_width);
-  series_reset   = value[reset_off];
+  r.kind           = DTP_J2A_SCAN_SERIES_CTRL;
+  r.size           = int'((value >> size_off) & ocah_rng::bit_mask(t.size_bits));
+  r.pipeline_depth = int'((value >> pl_depth_off) & 64'h3);
+  r.addr           = (value >> addr_off) & ocah_rng::bit_mask(t.addr_width);
+  r.series_reset   = value[reset_off];
+  return dtp_j2a_status_e'(value & 64'h3);
 endfunction
-
-// Which JTAG2AXI register a DR scan addressed, from the active instruction.
-typedef enum int unsigned {
-  DTP_J2A_SCAN_NONE = 0,
-  DTP_J2A_SCAN_SINGLE_OP,
-  DTP_J2A_SCAN_SERIES_CTRL,
-  DTP_J2A_SCAN_SERIES_DATA_INCR,
-  DTP_J2A_SCAN_SERIES_DATA_NO_INCR,
-  DTP_J2A_SCAN_SERIES_DATA_WITH_STATUS
-} dtp_j2a_scan_kind_e;
-
-// One decoded JTAG2AXI request: the TDI image of a DR scan, as the bridge
-// latches it at Update-DR.
-typedef struct {
-  dtp_j2a_scan_kind_e kind;
-  dtp_j2a_op_e        op;              // SINGLE_OP and SERIES_CTRL op field
-  bit [63:0]          addr;
-  bit [63:0]          data;
-  bit [7:0]           wstrb;
-  int unsigned        size;
-  int unsigned        pipeline_depth;  // SERIES_CTRL
-  bit                 series_reset;    // SERIES_CTRL
-  bit                 incr;            // series data: advance the address
-} dtp_j2a_request_t;
 
 // The bridge and register a 6-bit instruction selects; SCAN_NONE when the
 // instruction is not a JTAG2AXI register.
@@ -657,6 +673,18 @@ function automatic bit [63:0] dtp_bits_field(ref bit bits[$], input int unsigned
   for (int unsigned i = 0; i < width && i < 64; i++)
   if (offset + i < bits.size()) value[i] = bits[offset+i];
   return value;
+endfunction
+
+// Hex image of an LSB-first shift image, without leading zeros.
+function automatic string dtp_bits_hex(bit bits[]);
+  string s = "";
+  for (int d = (int'(bits.size()) + 3) / 4 - 1; d >= 0; d--) begin
+    int unsigned nibble = 0;
+    for (int unsigned b = 0; b < 4; b++)
+    if (4 * d + b < bits.size() && bits[4*d+b]) nibble |= 1 << b;
+    if (s.len() > 0 || nibble != 0) s = {s, $sformatf("%0h", nibble)};
+  end
+  return (s.len() > 0) ? s : "0";
 endfunction
 
 // Decode the TDI image of a SINGLE_OP scan (inverse of dtp_j2a_pack_single_op).
@@ -786,7 +814,6 @@ localparam int unsigned DtpIjtagSibCount = 3;
 // Instrument stub widths behind each SIB (tb_top), dtp_ijtag_sib_e order:
 // every subset of open SIBs sums to a distinct chain length.
 localparam int unsigned DtpIjtagInstrumentWidths[DtpIjtagSibCount] = '{4, 5, 6};
-localparam int unsigned DtpIjtagChainLenMax = DtpIjtagSibCount + 4 + 5 + 6;
 // A latency-measuring scan shifts a marker word ahead of the chain's
 // maintain image; the marker's MSB is set, so the stream's highest set bit
 // lands at chain_len + DtpScanMarkerWidth - 1.
@@ -835,6 +862,20 @@ typedef struct {
   bit stap_sel;
   bit tms_hold;
 } dtp_stap_3dcr_state_t;
+
+// End state one composed STAP chain scan writes. A negative int field and an
+// absent associative entry keep the stored value; a spliced downstream TAP
+// takes its ds_values entry as its selected register (IR scans: its
+// instruction).
+typedef struct {
+  int                   ptap_select = -1;
+  int                   ptap_config_hold = -1;
+  bit [63:0]            ptap_instr;  // IR scans
+  int                   sib_en[int];
+  dtp_stap_3dcr_state_t payloads[int];
+  bit [63:0]            ds_values[int];
+  int                   host_segment = -1;
+} dtp_stap_scan_update_t;
 
 // Downstream STAP TAP device map, the parity contract with the cocotb
 // env/dtp_stap_ds_agent.py: IR width 5, IDCODE at opcode 0x1, one writable
@@ -1077,6 +1118,34 @@ typedef struct {
   int unsigned        data_width;
   int unsigned        id_width;
 } dtp_axi_port_t;
+
+// tb_top drives the XTRIG CSR port axil_xtrig_req_i with a
+// dtp_pkg::dtp_axil_32_32_req_t: 32-bit address and data.
+localparam int unsigned DtpXtrigCsrAddrWidth = 32;
+localparam int unsigned DtpXtrigCsrDataWidth = 32;
+
+// Descriptor of the port of JTAG2AXI bridge `target`, its geometry taken
+// from the bridge target: the passive observer of the port, or with
+// `responder` set the memory-backed responder behind it.
+function automatic dtp_axi_port_t dtp_j2a_port(string target, bit responder);
+  dtp_j2a_target_t t = dtp_j2a_target_by_name(target);
+  bit fabric = (target == "smc_axi");
+  dtp_axi_port_t p;
+  if (responder) begin
+    p.name     = {"m_", target, "_slave"};
+    p.vif_key  = {target, "_slave_vif"};
+    p.name_tag = {"dtp_", target, "_slave"};
+  end else begin
+    p.name     = {"m_", target, fabric ? "" : "_axi"};
+    p.vif_key  = fabric ? "m_axi_vif" : {target, "_axil_vif"};
+    p.name_tag = {"dtp_", target, fabric ? "" : "_axil"};
+  end
+  p.protocol   = t.protocol;
+  p.addr_width = t.addr_width;
+  p.data_width = t.data_width;
+  p.id_width   = fabric ? dtp_dv_cfg_pkg::SmcAxiIdWidth : 0;
+  return p;
+endfunction
 
 // ---------------------------------------------------------------------------
 // Evidence policy carried from the test cfg to the env cfg.

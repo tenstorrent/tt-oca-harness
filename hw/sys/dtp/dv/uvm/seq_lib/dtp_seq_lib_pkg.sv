@@ -14,8 +14,11 @@
 //     system-domain helpers; the family layers (basic JTAG, JTAG2AXI, debug
 //     TDR, scan network, cross-trigger) add their evidence helpers; the
 //     concrete scenarios extend a family layer and never a VIP sequence.
-// Pin-level driving lives in the VIP drivers; per-cycle FSM legality, scan
-// reconstruction, and the always-on scoreboard live in dtp_env_pkg.
+// The VIP drivers drive the protocol pins; the scenario layer drives only
+// the DTP-local TB interface pins dtp_base_test_seq names (reset ladder,
+// dbg_disable stimulus, cross-trigger pins, TRST in the reset family).
+// Per-cycle FSM legality, scan reconstruction, and the always-on scoreboard
+// live in dtp_env_pkg.
 //
 // Include order is load-bearing: operations first, then the base virtual
 // sequence, then each family base before its scenarios.
@@ -90,6 +93,7 @@ package dtp_seq_lib_pkg;
   `include "dtp_jtag2axi_error_test_seq.svh"
   `include "dtp_jtag2axi_otp_axi_test_seq.svh"
   `include "dtp_jtag2axi_robustness_test_seq.svh"
+  `include "dtp_jtag2axi_dbg_disable_matrix_test_seq.svh"
 
   // Debug-TDR scenarios (TMP / IC_RESET / DEBUG_CONTROL / CAPS).
   `include "dtp_jtag_tmp_status_register_smoke_test_seq.svh"
@@ -105,11 +109,10 @@ package dtp_seq_lib_pkg;
   `include "dtp_dbg_smc_otp_jtag2axi_caps_test_seq.svh"
   `include "dtp_dbg_sep_otp_jtag2axi_caps_test_seq.svh"
 
-  // Scan-network scenarios (iJTAG SIBs / STAP 3DCR / dbg_disable matrices).
+  // Scan-network scenarios (iJTAG SIBs / STAP 3DCR / dbg_disable matrix).
   `include "dtp_ijtag_scan_test_seq.svh"
   `include "dtp_stap_scan_test_seq.svh"
-  `include "dtp_dbg_disable_scan_matrix_test_seq.svh"
-  `include "dtp_dbg_disable_jtag2axi_matrix_test_seq.svh"
+  `include "dtp_scan_dbg_disable_matrix_test_seq.svh"
 
   // Cross-trigger scenarios (XTRIG CSR / CTP protocols / CTM routing).
   `include "dtp_xtrig_base_test_seq.svh"

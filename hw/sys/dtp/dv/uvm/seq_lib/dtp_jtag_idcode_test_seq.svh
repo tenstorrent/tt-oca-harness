@@ -14,7 +14,7 @@
 // (CHK-IDCODE-STABLE) with the IEEE 1149.1 fields decoding to the expected
 // marker/version/part/manufacturer values. Read count per pass comes from
 // test_cfg.idcode_reads_per_loop (+DTP_IDCODE_READS_PER_LOOP, default 4,
-// minimum 2 for the stability check).
+// minimum 1).
 
 class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
   `uvm_object_utils(dtp_jtag_idcode_test_seq)
@@ -117,15 +117,10 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
     por_ctx     = $sformatf("preload=0x%02h por_cycles=%0d", por_preload, por_cycles);
     load_ir(por_preload);
     pulse_por(por_cycles, state_under_por, trst_n_under_por);
-    if (state_under_por !== TEST_LOGIC_RESET || trst_n_under_por !== 1'b1)
-      `uvm_error("jtag_idcode_chk", $sformatf(
-                 "power-on reset: TAP state 0x%04h TRST_N %0b, expected Test-Logic-Reset with TRST_N high (%s)",
-                 state_under_por,
-                 trst_n_under_por,
-                 por_ctx
-                 ))
-    step(1'b0);
-    check_state(RUN_TEST_IDLE, "jtag_idcode_chk", "after TLR->RTI step");
+    check_tap_state("CHK-TAP-POR-TLR", state_under_por, TEST_LOGIC_RESET, {"during POR ", por_ctx});
+    family_check("CHK-TAP-POR-TLR", "TRST_N deasserted during POR", 64'(trst_n_under_por), 64'd1,
+                 por_ctx);
+    tms_expect(1'b0, RUN_TEST_IDLE);
     shift_dr(64'h0, 32, observed);
     reads.push_back(observed[31:0]);
     seen_values[observed[31:0]] = 1'b1;
@@ -148,8 +143,8 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
 
     // IEEE 1149.1 field decode of the first read: marker (bit 0),
     // manufacturer [11:1], part number [27:12], version [31:28].
-    family_check("CHK-IDCODE-MARKER", "IDCODE marker bit", 64'(reads[0][0]), 64'(ExpectedIdcode[0]),
-                 $sformatf("raw=0x%08h bit=0", reads[0]));
+    family_check("CHK-IDCODE-MARKER", "IDCODE marker bit", 64'(reads[0][0]), 64'd1, $sformatf(
+                 "raw=0x%08h bit=0", reads[0]));
     family_check("CHK-IDCODE-MANUFACTURER", "IDCODE manufacturer field", 64'(reads[0][11:1]),
                  64'(ExpectedIdcode[11:1]), $sformatf("raw=0x%08h", reads[0]));
     family_check("CHK-IDCODE-PART-NUMBER", "IDCODE part-number field", 64'(reads[0][27:12]),
