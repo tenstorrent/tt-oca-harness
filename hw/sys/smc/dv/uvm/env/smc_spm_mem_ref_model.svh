@@ -7,19 +7,12 @@
 // strobed writes it observes; for every OKAY single-beat read inside the
 // window it publishes one expected ocah_axi_item with the predicted word.
 //
-// A SHADOW PER WORD ADDRESS IS THE WHOLE POINT. The scenario writes several
-// window edges before reading any of them back, so if two "distinct" edge
-// addresses decoded onto one physical location the second write would
-// overwrite the first and this model -- which keeps them apart -- would
-// disagree with the read. A model that predicted per access instead of per
-// address could not see that.
+// The shadow is keyed per word address: the scenario writes several window
+// edges before reading any of them back, so two edge addresses that decode
+// onto one physical location show up as a mismatch on the first read-back.
 //
-// An address read before anything wrote it predicts zero. That is NOT a claim
-// about SRAM power-on content: nothing in this bench establishes it, and the
-// scenarios write before they read, so the branch is unreachable there. It is
-// deliberately a fail-loud default rather than "adopt whatever was observed",
-// which would make the first read of every location a compare that cannot
-// fail.
+// An address read before anything wrote it predicts zero; the scenarios write
+// before they read, and the bench makes no claim about SRAM power-on content.
 //
 // The shadow is cleared on cold reset only to keep it from carrying state
 // across a reset the bench sequenced; SPM contents themselves are not claimed
@@ -95,10 +88,10 @@ class smc_spm_mem_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi_ite
     return next;
   endfunction
 
-  // Deliberately the cold counter alone, NOT smc_csr_reset_epoch: SPM is an
-  // SRAM, and nothing in this bench establishes that a cool reset (or a cold
-  // one) clears its contents. The clear here only keeps the shadow from
-  // carrying state across a reset the bench sequenced.
+  // The shadow re-baselines on the cold counter alone: SPM is an SRAM and
+  // nothing in this bench establishes that a cool or cold reset clears its
+  // contents; the clear only keeps the shadow from carrying state across a
+  // reset the bench sequenced.
   protected function void sync_cold_reset();
     if (tb_vif.cold_rst_assert_count !== m_cold_rst_seen) begin
       m_cold_rst_seen = tb_vif.cold_rst_assert_count;

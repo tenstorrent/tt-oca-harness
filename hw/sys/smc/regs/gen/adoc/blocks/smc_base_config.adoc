@@ -15,11 +15,11 @@ Base-address, region-size, per-block clock-gating enable, and interrupt configur
 | 0x8 | <<reg-{regmap-instance}-smc_base_config-LOCAL_BASE,LOCAL_BASE>> | R a| -
 | 0x10 | <<reg-{regmap-instance}-smc_base_config-REGION_SIZE,REGION_SIZE>> | RW a| -
 | 0x18 | <<reg-{regmap-instance}-smc_base_config-CLOCK_GATE_CONTROL,CLOCK_GATE_CONTROL>> | RW a| -
-| 0x20 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SYS_AXI_CTRL,HANG_DET_SYS_AXI_CTRL>> | RW a| AXI hang detector control.
+| 0x20 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SYS_AXI_CTRL,HANG_DET_SYS_AXI_CTRL>> | RW a| AXI hang detector control and interrupt status.
 | 0x28 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD,HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD>> | RW a| Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.
-| 0x30 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SEP_AXI_CTRL,HANG_DET_SEP_AXI_CTRL>> | RW a| AXI hang detector control.
+| 0x30 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SEP_AXI_CTRL,HANG_DET_SEP_AXI_CTRL>> | RW a| AXI hang detector control and interrupt status.
 | 0x38 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD,HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD>> | RW a| Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.
-| 0x40 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_DATA_ACCEL_CTRL,HANG_DET_DATA_ACCEL_CTRL>> | RW a| AXI hang detector control.
+| 0x40 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_DATA_ACCEL_CTRL,HANG_DET_DATA_ACCEL_CTRL>> | RW a| AXI hang detector control and interrupt status.
 | 0x48 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD,HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD>> | RW a| Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.
 |===
 
@@ -84,12 +84,14 @@ Base-address, region-size, per-block clock-gating enable, and interrupt configur
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:9 | `Reserved` | - | - a| Reserved
+| 31:13 | `Reserved` | - | - a| Reserved
+| 12 | `irq` | R | 0x0 a| Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.
+| 11:9 | `Reserved` | - | - a| Reserved
 | 8 | `irq_test` | RW | 0x0 a| Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.
 | 7:5 | `Reserved` | - | - a| Reserved
 | 4 | `irq_en` | RW | 0x0 a| Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `enable` | RW | 0x0 a| When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.
+| 0 | `enable` | RW | 0x0 a| When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.
 |===
 
 [#reg-{regmap-instance}-smc_base_config-HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD]
@@ -108,12 +110,14 @@ Base-address, region-size, per-block clock-gating enable, and interrupt configur
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:9 | `Reserved` | - | - a| Reserved
+| 31:13 | `Reserved` | - | - a| Reserved
+| 12 | `irq` | R | 0x0 a| Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.
+| 11:9 | `Reserved` | - | - a| Reserved
 | 8 | `irq_test` | RW | 0x0 a| Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.
 | 7:5 | `Reserved` | - | - a| Reserved
 | 4 | `irq_en` | RW | 0x0 a| Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `enable` | RW | 0x0 a| When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.
+| 0 | `enable` | RW | 0x0 a| When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.
 |===
 
 [#reg-{regmap-instance}-smc_base_config-HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD]
@@ -132,12 +136,14 @@ Base-address, region-size, per-block clock-gating enable, and interrupt configur
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:9 | `Reserved` | - | - a| Reserved
+| 31:13 | `Reserved` | - | - a| Reserved
+| 12 | `irq` | R | 0x0 a| Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.
+| 11:9 | `Reserved` | - | - a| Reserved
 | 8 | `irq_test` | RW | 0x0 a| Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.
 | 7:5 | `Reserved` | - | - a| Reserved
 | 4 | `irq_en` | RW | 0x0 a| Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `enable` | RW | 0x0 a| When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.
+| 0 | `enable` | RW | 0x0 a| When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.
 |===
 
 [#reg-{regmap-instance}-smc_base_config-HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD]

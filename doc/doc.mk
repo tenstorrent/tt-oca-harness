@@ -51,7 +51,7 @@ endif
 
 ## Verification dashboard data.
 #
-# doc/trm/src/dashboard.adoc fetches this JSON in the browser at page load.
+# doc/home/src/dashboard.adoc fetches this JSON in the browser at page load.
 OCAH_DASHBOARD_DATA_DIR ?= $(OCAH_DOC_DIR)/_build/dashboard-data
 OCAH_DASHBOARD_DATA_REF ?= origin/dv-dashboard-data
 OCAH_DASHBOARD_PUBLISHERS ?= vcs

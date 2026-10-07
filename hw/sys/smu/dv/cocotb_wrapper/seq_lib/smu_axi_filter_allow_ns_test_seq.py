@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: inbound allow_ns admit/block via JTAG2AXI + s_axi.
 
-Honest SEP=1 scope (no sep_in_master, no Force):
+Scope on the SEP=1 wrapper (no sep_in_master, no Force):
   S1  allow_ns=0  — secure prot OKAY, nonsecure DECERR on VERSION_LO window
   S2  dual-slot   — inst0 secure + inst1 NS overlap admits both prot[1]
   S3  clear       — BLOCK_BY_DEFAULT DECERR for both

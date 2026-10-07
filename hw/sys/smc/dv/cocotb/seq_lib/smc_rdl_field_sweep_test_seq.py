@@ -153,7 +153,7 @@ _EXCLUDED: dict[str, str] = {
 }
 
 # Low pattern per register. Default 0. CPU_CTRL.WDT_TIMEOUT is the max_count of
-# the second watchdog stage (smc_cpu_ctrl_wrap.sv:147-160): while the cluster
+# the second watchdog stage (smc_cpu_ctrl_wrap.sv max_count): while the cluster
 # watchdog is idle the counter reloads max_count every clock, so a 0 makes
 # cycle_count 0 and asserts wdt_second_timeout_o. Its low leg writes the RDL
 # reset instead, which is also what the restore leg puts back.
@@ -179,10 +179,11 @@ _SEMA_STEP = 1
 _MUTEX_FREE = 1
 _MUTEX_HELD = 0
 
-# doc/trm/src/architecture.adoc, CPU_CTRL.REFERENCE_COUNTER: a free-running
-# counter on the always-on reference clock, "advancing continuously from reset".
-# cpu_ctrl.rdl makes the field `sw = rw; hw = rw`, so software both reads it and
-# loads it, and the counter resumes from the loaded value.
+# doc/trm/src/clock_domains.adoc (Reference Counter),
+# CPU_CTRL.REFERENCE_COUNTER: a free-running counter on the always-on reference
+# clock, "advancing continuously from reset". cpu_ctrl.rdl makes the field `sw =
+# rw; hw = rw`, so software both reads it and loads it, and the counter resumes
+# from the loaded value.
 _REF_COUNTER_SETTLE = 64
 
 # The straps block belongs to the open integration, not to smc.sv; the SMC map

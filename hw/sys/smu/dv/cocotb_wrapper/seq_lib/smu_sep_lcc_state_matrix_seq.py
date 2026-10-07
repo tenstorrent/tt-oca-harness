@@ -12,8 +12,9 @@ what that state is expected to do. The eFuse image is the one LCC input firmware
 cannot drive -- it is sampled before the CPU runs -- so it has to come from the
 testbench side; everything downstream of it is still driven by the firmware.
 
-Per Table 50 the demotes gate feat_ctrl[15:0] and feat_ctrl[31:16] in TEST_DEV
-and PROD but have no entry in PROD_END. The check that can fail is a delta
+Per the per-LC-state feature control profile
+(``hw/sys/sep/doc/lifecycle_controller.adoc``) the demotes gate feat_ctrl[15:0]
+and feat_ctrl[31:16] in TEST_DEV and PROD but have no entry in PROD_END. The check that can fail is a delta
 against the reset baseline: PROD starts closed and must open; PROD_END must
 stay closed. TEST_DEV's baseline is already ~(sip_dis | sys_dis), and
 RMA_CHIPLET's feat_ctrl is all-ones by state, so those two cannot show a

@@ -7,6 +7,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
+from ._hang_status import check_hang_status
 from .smc_addr_map import (
     DMA_CONFIG_ENABLED_ND,
     DMA_CTRL_CONFIG,
@@ -214,12 +215,22 @@ class smc_hang_detector_data_timeout_test_seq(SmcCsrSeq):
             assert self._bit(dut.tb_axi_hang_irq_sys, "tb_axi_hang_irq_sys") == 0
             self.fire_ok = True
             cocotb.log.info("CHK-HANG-DATA-TIMEOUT-FIRE: data=1 OR=1 sep=0 sys=0 after DMA stall")
+            await check_hang_status(self.csr_read, "DATA_TIMEOUT_FIRE", {"DATA"})
+            cocotb.log.info(
+                "CHK-HANG-DATA-TIMEOUT-STATUS-FIRE: only HANG_DET_DATA_ACCEL_CTRL.irq read 1 "
+                "during the stall"
+            )
 
         await self._hold_dma_until(dut, "DATA_STALL_DMA", _expect_fire)
         await self._await_irq(dut, "tb_axi_hang_irq_data", 0, _IRQ_BOUND, "DATA_TIMEOUT_DROP")
         assert self._bit(dut.tb_axi_hang_irq, "tb_axi_hang_irq") == 0
         self.drop_ok = True
         cocotb.log.info("CHK-HANG-DATA-TIMEOUT-DROP: data=0 OR=0 after R/B completion")
+        await check_hang_status(self.csr_read, "DATA_TIMEOUT_DROP", set())
+        cocotb.log.info(
+            "CHK-HANG-DATA-TIMEOUT-STATUS-DROP: every HANG_DET_*_CTRL.irq read 0 after R/B "
+            "completion"
+        )
         await self._wait_dma_done(baseline_done)
 
         await self.csr_write("HANG_DATA_THR0", HANG_DET_DATA_ACCEL_TIMEOUT, 0)

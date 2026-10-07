@@ -100,10 +100,8 @@ async def check_diagnostic_observability() -> None:
       no step in a diagnostic CSR test re-asserts either. These are ``== 1``
       (deasserted) expectations, so they are not idle/negative checks.
 
-    ``tb_sync_irq`` is NOT sampled or logged here: this path has no
-    independently sourced expectation for it, and logging it as "observed" reads
-    as a check that does not exist. SMC interrupt-aggregate observability is
-    owned by ``smc_irq_observe_test_seq``.
+    ``tb_sync_irq`` is not sampled here: SMC interrupt-aggregate observability
+    is owned by ``smc_irq_observe_test_seq``.
     """
     dut = cocotb.top
 

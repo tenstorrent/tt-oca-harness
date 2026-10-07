@@ -147,6 +147,14 @@ doc_render/
 # lands wherever the simulator was started from (repo root for
 # `docker-run.sh vp-run .../sep-vp`, virtual_platform/ under pytest).
 och_sep_ss.log
+
+# Vivado writes its scratch directory, journals and logs into the current
+# working directory.
+.Xil/
+vivado*.jou
+vivado*.log
+vivado*.str
+vivado*.backup.*
 # Nix Builds and Direnv Cache
 local/
 .direnv/

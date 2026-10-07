@@ -28,7 +28,8 @@ class smc_register_boundary_depth_test(smc_base_test):
             SmcProtocolVipKind.CSR,
             type(self).__name__,
             # Directed stimulus floor: 16 SEP_IN AXI boundary RO/RW restore
-            # accesses. Literal here, not read from `seq.accesses`.
+            # accesses; a floor taken from `seq.accesses` would shrink with a
+            # sequence that stopped issuing them.
             min_csr_accesses=16,
             csr_accesses=seq.accesses,
             proxy=False,

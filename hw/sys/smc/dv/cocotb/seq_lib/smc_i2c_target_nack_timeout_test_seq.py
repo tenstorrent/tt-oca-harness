@@ -5,8 +5,7 @@
 `TARGET_TIMEOUT_CTRL` is the cumulative limit on how long this target may
 stretch within one transaction. `i2c.rdl` states the consequence: past that
 limit the target "will NACK incoming data bytes or release the SDA line for
-outgoing data bytes". Every stretch leaf so far is released by software before
-any limit applies, so the expiry had never been reached.
+outgoing data bytes".
 
 Both halves of that sentence are driven, one per direction, with the limit set
 short enough that nothing has to wait for it:

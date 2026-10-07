@@ -293,11 +293,8 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         gap = round((meas["active_ns"] - gate_off_ns) / self.cfg.smc_clk_period_ns)
         rb = await self.csr_read(
             "P2_ZREG_IMM_RB", ZEROER_CTRL_DEST_ADDR, expected=val, length=8
-        )  # The `expected=` is what enforces the compare that
-        # CHK-ZEROER-REGCLK-ACCESS-COMPLETE reports as `match=`: the scoreboard
-        # applies an exact 64-bit comparison and raises on mismatch, so the
-        # printed field describes a verdict that was actually applied
-        # ([NO-ALWAYS-PASS-CHECKER]).
+        )  # `expected=` makes the scoreboard compare the readback;
+        # CHK-ZEROER-REGCLK-ACCESS-COMPLETE reports it as `match=`.
         assert 0 <= gap <= P2_IMMEDIATE_GAP_BOUND_SMC, (
             f"{label}: bus_active followed the gate-off sample by {gap} smc cycles, "
             f"outside [0, {P2_IMMEDIATE_GAP_BOUND_SMC}]; the access was not issued at "
@@ -453,9 +450,8 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
             "pending access to be serviced has a finite bound, a "
             "fail-on-expiry path, and a last-state diagnostic",
         )
-        # Measured margins, not a restatement of the configuration: each cell's
-        # observed ungate delta against the bound that governed it, plus the
-        # observed service cycles against the service bound.
+        # Each cell's observed ungate delta and service cycles, reported against
+        # their bounds.
         ungate_used = [
             v for r in results.values() for k, v in r.items() if k.startswith("resume_delta")
         ]
@@ -498,13 +494,8 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         # `assert_fence_progress` requires strictly increasing simulation
         # timestamps, so a P2 phase that consumed no DUT time fails here.
         p2_times = cg.assert_fence_progress(p2_fence, expected_p2_pre_pass)
-        # Loop-integrity guards: `len(results) == 3` and a non-empty
-        # `resume_deltas` hold by construction over three straight-line cells
-        # and catch an edit that drops a cell ([NO-ALWAYS-PASS-CHECKER]). The
-        # DUT-sensitive content is the per-cell `delta <= P2_UNGATE_BOUND_SMC`
-        # asserts, the three `expected=` readbacks (cell-unique values, last
-        # write wins for back-to-back), the service-bound assert above, and the
-        # gated-baseline versus in-access contrast below.
+        # `len(results) == 3` and a non-empty `resume_deltas` catch an edit that
+        # drops a cell.
         assert len(results) == 3, f"P2 sweep observed {len(results)}/3 cells"
         resume_deltas = [
             v for r in results.values() for k, v in r.items() if k.startswith("resume_delta")
@@ -695,9 +686,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         assert edges == IDLE_OBSERVE, f"reg_clk gated during reset: edges={edges}"
         # The token carries the two measured edge counts: S4 with reset
         # asserted against S1's gated idle window, under the same cg_en=1 /
-        # bus-idle programming. The fail-capable compare is the exact
-        # `edges == IDLE_OBSERVE` above: a DUT that kept reg_clk gated through
-        # reset returns 0 there ([NO-ALWAYS-PASS-CHECKER]).
+        # bus-idle programming.
         cg.emit_chk(
             self.chk_seen,
             "CHK-ZREG-RESET-OVERRIDE",
@@ -709,10 +698,8 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         )
         cg.mark_fence(self.fence, "reset-override-observed")
         dut.rst_cool_ni.value = 1
-        # Bounded AND fail-on-expiry, matching the assert twin above: a reset
-        # that never deasserts must fail at the wait that expired, not later in
-        # some other phase running against a DUT still held in reset
-        # ([TIMEOUT-MUST-FAIL]).
+        # A primary reset that never deasserts fails here; every later phase
+        # assumes the DUT is out of reset.
         last_primary = None
         for _ in range(BUSY_TIMEOUT_SMC):
             last_primary = int(dut.rst_primary_smc_clk_no.value)
@@ -739,13 +726,11 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
                 "reset-override-observed",
             ],
         )
-        # Refactor guards: `idle_enabled == 0` restates S1's assert,
-        # `disable_cg_enabled == IDLE_OBSERVE` restates S3's, and
-        # `post_resume > 0` / `enabled_hits == post_resume` restate S2's. They
-        # fail if a refactor drops an upstream assert; the non-vacuity claim
-        # rests on the measured contrast those values carry into the token:
-        # idle 0/IDLE_OBSERVE against disable_cg IDLE_OBSERVE/IDLE_OBSERVE on
-        # one probe.
+        # `idle_enabled == 0` restates S1's assert, `disable_cg_enabled ==
+        # IDLE_OBSERVE` restates S3's, and `post_resume > 0` / `enabled_hits ==
+        # post_resume` restate S2's; the token below carries the measured
+        # contrast: idle 0/IDLE_OBSERVE against disable_cg
+        # IDLE_OBSERVE/IDLE_OBSERVE on one probe.
         assert idle_enabled == 0 and disable_cg_enabled == IDLE_OBSERVE, (
             f"NONVAC contrast absent on tb_zeroer_gated_reg_clk: "
             f"idle_enabled={idle_enabled}/{IDLE_OBSERVE} "

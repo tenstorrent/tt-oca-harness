@@ -10,8 +10,8 @@
 // `sw=rw; hw=r; onwrite=woset;` with reset 0, one bit per subsystem, and each
 // lock's description names the register it guards and the per-bit hold rule:
 // SS_CONFIG_LOCK "lock[s] down SS config. If bit 0 is written, then bit 0 of
-// other SS config cannot be written to again" (reset_unit.rdl:20-27), and
-// SS_COLD_RESET_LOCK the same for SS cold reset (reset_unit.rdl:89-96). So a
+// other SS config cannot be written to again" (reset_unit.rdl SS_CONFIG_LOCK),
+// and SS_COLD_RESET_LOCK the same for SS cold reset. So a
 // locked bit keeps its value on read-back. The RDL does not state how the
 // bus answers a write that hits locked bits; CHK-CSR-RESP requires OKAY there
 // as this bench's working assumption, recorded in the VPLAN row.

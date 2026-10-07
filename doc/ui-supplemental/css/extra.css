@@ -11,7 +11,7 @@
    Home/Products/Services/Download not otherwise replaced) -- explicit
    exceptions for every real item we've added. */
 .navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu):not(.datasheets-menu):not(.versions-menu),
-.navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.guides-menu):not(.downloads-menu):not(.datasheets-menu):not(.versions-menu) {
+.navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.repo-links):not(.guides-menu):not(.downloads-menu):not(.datasheets-menu):not(.versions-menu) {
     display: none !important;
 }
 
@@ -90,6 +90,69 @@
 
 .navbar-end .navbar-item.tt-link img {
     display: block;
+}
+
+/* GitHub repository and Discussions links: monochrome icons in the navbar
+   text color, set off from the menus by a thin divider. The icons are CSS
+   masks so they take currentColor. */
+.navbar-end .navbar-item.repo-links {
+    display: flex !important;
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px 0 14px;
+}
+
+.navbar-end .navbar-item.repo-links::before {
+    content: "";
+    width: 1px;
+    height: 20px;
+    margin-right: 8px;
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+.navbar-end .repo-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    color: var(--oca-text);
+    font-family: var(--oca-font-body);
+    text-decoration: none;
+}
+
+.navbar-end .repo-link:hover {
+    color: var(--oca-green);
+    background-color: rgba(16, 53, 37, 0.08);
+}
+
+.navbar-end .repo-link:focus-visible {
+    outline: 2px solid var(--oca-green);
+    outline-offset: 1px;
+}
+
+.repo-icon {
+    width: 20px;
+    height: 20px;
+    background-color: currentColor;
+    -webkit-mask: center / contain no-repeat;
+    mask: center / contain no-repeat;
+}
+
+.repo-icon-github {
+    -webkit-mask-image: url("../img/vendor/octicons/mark-github-16.svg");
+    mask-image: url("../img/vendor/octicons/mark-github-16.svg");
+}
+
+.repo-icon-discussions {
+    -webkit-mask-image: url("../img/vendor/octicons/comment-discussion-16.svg");
+    mask-image: url("../img/vendor/octicons/comment-discussion-16.svg");
+}
+
+.repo-link-label {
+    display: none;
 }
 
 /* ========================================
@@ -761,14 +824,32 @@
     background-color: var(--oca-cream) !important;
 }
 
-/* Give the Tenstorrent icon a visual separator and center it in the mobile
-   menu, rather than a full-width list row. */
+/* In the mobile menu, set the repository links and the Tenstorrent icon off
+   from the menu list with one separator and center them, rather than as
+   full-width list rows. The repository links gain text labels there. */
 @media (max-width: 1023px) {
+    .navbar-end .navbar-item.repo-links {
+        justify-content: center;
+        gap: 16px;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 12px 0 0;
+        margin-top: 4px;
+    }
+
+    .navbar-end .navbar-item.repo-links::before {
+        display: none;
+    }
+
+    .navbar-end .repo-link {
+        padding: 0 10px;
+    }
+
+    .repo-link-label {
+        display: inline;
+    }
+
     .navbar-end .navbar-item.tt-link {
         justify-content: center;
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
-        padding-top: 12px;
-        margin-top: 4px;
     }
 }
 

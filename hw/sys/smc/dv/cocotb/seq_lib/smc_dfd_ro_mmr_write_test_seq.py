@@ -7,24 +7,21 @@ volatility comes from the generated register map through
 :mod:`seq_lib.smc_rdl_regmap`. The vendored RTL is not a source for any value
 this sequence programs or compares against.
 
-The two MMR write sweeps on this branch drive the registers that have a
-software-writable field. The registers that have none -- the signal
+The two MMR write sweeps drive the registers that have a software-writable
+field. This sequence writes the registers that have none -- the signal
 snapshots, the timestamps, the counters' hardware-driven halves, the sink's
-data port and write pointer -- are never written at all, so the write decode
-of their addresses is never exercised and the ``sw = r`` half of their
-contract is never tested.
+data port and write pointer -- so the write decode of their addresses and the
+``sw = r`` half of their contract are exercised.
 
-This sequence writes all of them. What it holds the DUT to is the contract
-itself: a register the RDL makes read-only must not take the value, and a bit
-no field of a register occupies must read 0.
+What it holds the DUT to is the contract itself: a register the RDL makes
+read-only must not take the value, and a bit no field of a register occupies
+must read 0.
 
-Some of these registers are hardware-driven and free-running, so "unchanged"
-is not a claim that can be made about them. Rather than carry a hand-written
-exclusion list that would rot, the sequence measures it: every register is
-read twice before the write, and only the ones that returned the same value
-both times are held to returning it again afterwards. The rest are still
-written -- the decode is exercised either way -- and are held to the
-undeclared-bits rule only.
+Some of these registers are hardware-driven and free-running, so the sequence
+measures which hold still: every register is read twice before the write, and
+only the ones that returned the same value both times are held to returning
+it again afterwards. The rest are still written -- the decode is exercised
+either way -- and are held to the undeclared-bits rule only.
 
 The CLA is left disarmed throughout, and the sequence checks that before it
 starts, so the hardware-driven registers are as quiescent as this bench can

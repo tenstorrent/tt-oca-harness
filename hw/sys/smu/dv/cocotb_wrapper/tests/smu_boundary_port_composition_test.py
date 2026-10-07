@@ -11,10 +11,9 @@ table's literal widths, the parameter defaults in
 external interrupt count and system AXI input ID width, and the generated
 `reset_unit` register header for `SS_CONFIG`. cocotb/seq_lib/smu_compose_helpers.py
 names the source of each constant. The SMN struct widths and the
-crossbar-side and SEP-side ID widths have no specification in this tree and
-are logged as observations, not compared. The `SMU-<feature>.S<n>` ids the CHK-SMU-*
-evidence tokens are named after are the ids the coverage policies' deferral
-rationales use; no document in this tree defines them.
+crossbar-side and SEP-side ID widths have no specified value and are logged as
+observations, not compared. The CHK-SMU-* evidence tokens are named after the
+`SMU-<feature>.S<n>` ids the coverage policies' deferral rationales use.
 
 On the `--dut smu` production wrapper built with compile_smu_chiplet:
 every named port is read on the elaborated `smu` instance for its specified

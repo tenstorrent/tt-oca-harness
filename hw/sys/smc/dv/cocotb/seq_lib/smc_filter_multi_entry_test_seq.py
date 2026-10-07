@@ -78,7 +78,7 @@ from smc_reg import (  # noqa: E402
 )
 
 # PeakRDL-traceable FILTER_CONFIG addresses (filter_ctrl.rdl) and RDL reset
-# (FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT = 0x3000). Per slot the sweep checks
+# (FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT). Per slot the sweep checks
 # the full 64-bit RDL reset content, then a (direction,index)-unique signature
 # read back at that offset WHILE THE OTHER 31 SIGNATURES ARE STILL RESIDENT --
 # so slot i's evidence cannot be produced by slot j -- then the restored reset
@@ -140,11 +140,10 @@ def _slot_signature(index: int, outbound: bool) -> int:
     ``read_allowed``/``write_allowed`` encode the direction and
     ``src_id``/``group_id`` encode the index in two independent nibbles that
     move in opposite directions, so no two of the 32 slots share a value.
-    ``entry_enabled`` (rdl:34), ``allow_ns`` (rdl:40), ``allow_burst``
-    (rdl:64) and the write-once ``locked`` (rdl:71) are left at
-    their reset value: the sweep must not arm or lock a filter.
-    ``data_bus_width`` (rdl:46) is ``sw=r``, which is why the expected
-    readback is the RDL default OR-ed with the signature.
+    ``entry_enabled``, ``allow_ns``, ``allow_burst`` and the write-once
+    ``locked`` are left at their reset value: the sweep must not arm or lock a
+    filter. ``data_bus_width`` is ``sw=r``, which is why the expected readback
+    is the RDL default OR-ed with the signature.
     """
     return reg_field_pack(
         _FILTER_CONFIG_STRUCT,

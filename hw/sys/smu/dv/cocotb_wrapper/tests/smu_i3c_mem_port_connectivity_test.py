@@ -13,7 +13,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_i3c_mem_port_connectivity_test(smu_base_test):
-    """FAB_SMC_031 delivery-only via J2A; no Force / no sep_in."""
+    """FAB_SMC_031 delivery-only via J2A."""
 
     use_shared_env = True
 

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Mailbox CTRL.wflush empties the write FIFO it claims to flush.
 
-CTRL cannot be a readback test at all. `axil_mailbox.rdl:195-208` makes both
+CTRL cannot be a readback test at all. `axil_mailbox.rdl` makes both
 its fields `sw = w; hw = r`: they are flush strobes, not storage, so a
 write/read-back pair would compare against whatever the register file returns
 for a write-only address and prove nothing. What is testable is the effect, and
@@ -21,8 +21,8 @@ So the property is a transition, and it needs the level to be *up* first:
 4. Write CTRL.wflush. STATUS must return to 0.
 
 Every address and field mask comes from the generated maps -- `smc_addr.h` for
-the addresses, `axil_mailbox.h` for the bit masks -- rather than from offsets
-added to a base ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+the addresses, `axil_mailbox.h` for the bit masks
+([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 
 Nothing in this bench drains the outbound write FIFO on its own: its far side
 is the paired inbound port's read side, which is read only by an explicit

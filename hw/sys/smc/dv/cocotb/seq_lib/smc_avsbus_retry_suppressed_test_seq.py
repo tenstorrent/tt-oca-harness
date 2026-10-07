@@ -6,8 +6,7 @@
 answers with a retry budget to spend. `AVS_CFG_0.MAX_RETRIES` also takes 0,
 which the design reads as "programmed to suppress retries": the failing reply
 is pushed to the readback FIFO as it stands and the controller carries on
-instead of resending. That answer had never been asked for, so nothing showed
-that a budget of 0 suppresses anything.
+instead of resending.
 
 The failure is produced the same way -- the bench holds the AVSBus sdata pad
 at its idle-high level, so every received subframe carries the Frame Valid bit

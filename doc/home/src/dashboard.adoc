@@ -3,6 +3,7 @@
 
 [[verification-dashboard]]
 = Verification Dashboard
+:page-aliases: ocah-docs::dashboard.adoc
 :doctype: book
 
 The tables below are rendered in the browser from the DV data published to the

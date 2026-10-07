@@ -38,31 +38,24 @@ from smc_reg import (  # noqa: E402
 ZEROER_DEST_ADDR = ZEROER_CTRL_DEST_ADDR_REG_ADDR
 ZEROER_SIZE = ZEROER_CTRL_SIZE_REG_ADDR
 ZEROER_CTRL_STATUS = ZEROER_CTRL_CTRL_STATUS_REG_ADDR
-# CTRL_STATUS start value packed from the generated ZEROER_CTRL field layout
-# (int_en at bit 0 — the write side effect that starts the FSM), not a literal.
+# CTRL_STATUS start value packed from the generated ZEROER_CTRL field layout:
+# INT_EN at bit 0 carries the write side effect that starts the FSM.
 ZEROER_CTRL_STATUS_START = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1)
 # --- CTRL_STATUS readback expectation (S4) ----------------------------------
-# Packed from the same generated field layout, never a literal, and every bit of
-# the 64-bit word except STATUS is accounted for:
+# Packed from the same generated field layout; every bit of the 64-bit word
+# except STATUS is accounted for:
 #
 #   INT_EN[0]  = 1  -- ``hw/ip/zeroer/regs/zeroer_ctrl.rdl``: ``sw = rw; hw = r``.
 #                     Software owns the field and hardware never writes it, so it
 #                     holds the 1 that S3 wrote to arm the completion interrupt.
 #   all other bits  = 0 -- the RDL declares no field there (``rsvd_0[31:1]`` and
 #                     nothing above bit 32), so reserved-zero.
-#   STATUS[32]      -- NOT compared to a level. The RDL
-#                     (``hw/ip/zeroer/regs/zeroer_ctrl.rdl``) describes the field
-#                     as "whether zeroer has completed" while the implemented
-#                     field is observed to read the opposite way round, and that
-#                     disagreement is an open specification issue (#1234). This
-#                     testcase therefore transcribes neither reading: S4 masks
-#                     the bit out of its exact compare, and S5 requires the bit
-#                     to LEAVE the level it rests at while a zeroing is in flight
-#                     and to RETURN to that level once the zeroing completes.
-#                     That proves the field follows the zeroer's activity and is
-#                     not tied or unconnected, without asserting which level
-#                     means busy. Once #1234 settles the description, S4 can
-#                     compare the bit exactly against the RDL.
+#   STATUS[32]      -- NOT compared to a level. S4 masks the bit out of its
+#                     exact compare, and S5 requires the bit to LEAVE the level
+#                     it rests at while a zeroing is in flight and to RETURN to
+#                     that level once the zeroing completes. That proves the
+#                     field follows the zeroer's activity and is not tied or
+#                     unconnected, without asserting which level means busy.
 ZEROER_CTRL_STATUS_ARMED = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1)
 
 OUTPUT_FABRIC_NEIGHBOUR_ADDR = OUTPUT_FABRIC_ADDR + 8
@@ -88,14 +81,11 @@ BUSY_PROBE_BEATS = BUSY_PROBE_SIZE // 8
 # Bound is a liveness ceiling, not a checked quantity: expiry FAILS.
 BUSY_PROBE_ASSERT_CYCLES = 400
 BUSY_PROBE_CLEAR_CYCLES = 4000
-# STATUS is bit 32 of the 64-bit CTRL_STATUS word, packed from the generated
-# field layout rather than shifted by hand.
+# STATUS is bit 32 of the 64-bit CTRL_STATUS word.
 STATUS_BM = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", status=1)
 
-# Coverage contract for SMC-ZEROER-WRITE-STREAM.S1. Kept as an independent
-# literal: ``cells_hit`` is built from the individual observations in ``body``
-# (one append per passing comparison), so ``satisfied`` compares two sets that
-# can genuinely differ. Never assign ``cells_hit`` from this tuple.
+# Coverage cells of SMC-ZEROER-WRITE-STREAM.S1. ``cells_hit`` is built from the
+# per-cell comparisons in ``body``, never from this tuple.
 REQUIRED_COVERAGE_CELLS = (
     "zeroer-region-zeroed",
     "zeroer-neighbours-untouched",
@@ -143,13 +133,11 @@ def _coverage_report_dirs() -> list[Path]:
 
 
 def _run_seed() -> int:
-    """Seed actually applied to this run, from the harness variable the TB reads.
+    """Seed applied to this run, from the harness variable the TB reads.
 
     ``smc_base_test.random_seed()`` reads ``RANDOM_SEED`` and the runner exports
-    it (``tools/dv/runlib/stages.py``). ``SEED`` is never set by the harness, so
-    an artifact stamped from it would carry the default ``1`` while the run used
-    a different seed ([SEED-REPRODUCIBLE]). Absent is a failure, not a default:
-    an artifact that names the wrong seed cannot be reproduced.
+    it (``tools/dv/runlib/stages.py``); ``SEED`` is never set by the harness. An
+    unset value raises.
     """
     raw = os.environ.get("RANDOM_SEED")
     assert raw, (
@@ -161,12 +149,10 @@ def _run_seed() -> int:
 
 
 def _emit_functional_coverage_report(cells_hit: list[str]) -> Path:
-    """Write FL-required functional-coverage-report for WRITE-STREAM.S1 cells.
+    """Write the functional-coverage-report for the WRITE-STREAM.S1 cells.
 
-    ``cells_hit`` MUST come from the caller's per-cell observations; this
-    function never derives it from ``REQUIRED_COVERAGE_CELLS``: deriving it there
-    would make ``satisfied`` an ``expected >= expected`` tautology
-    ([NO-FABRICATED-VERDICT]).
+    ``cells_hit`` comes from the caller's per-cell observations, never from
+    ``REQUIRED_COVERAGE_CELLS``.
     """
     payload = {
         "artifact_type": "functional-coverage-report",
@@ -300,14 +286,10 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         )
         await self.csr_write("ZEROER_DEST_ADDR", ZEROER_DEST_ADDR, OUTPUT_FABRIC_ADDR, length=8)
         await self.csr_write("ZEROER_SIZE", ZEROER_SIZE, len(ZEROER_POISON), length=8)
-        # Read both command words back before the trigger. `expected=` is the
-        # compare: the scoreboard applies an exact 64-bit equality and raises on
-        # mismatch, so a command register that dropped the write, aliased onto
-        # its sibling, or returned a reset value is caught here rather than
-        # showing up later as an unexplained wrong-sized operation. Neither
-        # register carries a write side effect (only CTRL_STATUS does --
-        # zeroer_ctrl.rdl gives INT_EN wr_swacc), so the readbacks cannot start
-        # the FSM early.
+        # Read both command words back before the trigger; `expected=` makes the
+        # scoreboard apply an exact 64-bit compare. Neither register carries a
+        # write side effect (only CTRL_STATUS does -- zeroer_ctrl.rdl gives
+        # INT_EN wr_swacc), so the readbacks cannot start the FSM early.
         dest_rb = await self.csr_read(
             "ZEROER_DEST_ADDR_RB", ZEROER_DEST_ADDR, expected=OUTPUT_FABRIC_ADDR, length=8
         )
@@ -440,12 +422,11 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         Without this, every STATUS observation in the testcase is taken with the
         zeroer idle, and a STATUS bit tied off, undriven, or never connected
         through the hwif path passes identically to a working flag -- a constant
-        is simultaneously "not busy", "not completed" and "field absent"
-        ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). A field that changes level while a
-        zeroing is in flight and changes back when it completes is the only
-        observation that separates those. Which level means busy is not
-        asserted: the RDL description and the implemented field disagree on it
-        (#1234), so the idle level is whatever S4 recorded.
+        is simultaneously "not busy", "not completed" and "field absent". A
+        field that changes level while a zeroing is in flight and changes back
+        when it completes is the only observation that separates those. Which
+        level means busy is not asserted; the idle level is whatever S4
+        recorded.
         """
         # Sampled here rather than inherited from the caller's earlier read, so
         # the idle leg is observed at the point the lifecycle claims it.

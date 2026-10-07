@@ -367,7 +367,8 @@ class SmcXxxAgent(uvm_agent):
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.sequencer = uvm_sequencer("sequencer", self)
         self.driver = SmcXxxDriver("driver", self)
-        # NOTE: do NOT touch self.driver.ap here
+        # driver.ap is created in the driver's build_phase, which runs after
+        # this one; read it in connect_phase
 
     def connect_phase(self):
         self.driver.seq_item_port.connect(self.sequencer.seq_item_export)
@@ -690,7 +691,7 @@ on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
 . `hw/common/dv/vip/ocah_axi_vip/uvm/ocah_axi_uvm_pkg.sv` — the shared
   SV-UVM AXI VIP (items, configs, master driver and sequence API, passive
   monitor, agents, environments) with its interface, SVA, and coverage
-  collateral. The SEP_IN AXI4 ingress is the first driven interface: the
+  collateral. The SEP_IN AXI4 ingress is the driven interface: the
   active `ocah_axi_master_env` issues the traffic and a monitor-only passive
   `ocah_axi_env` feeds the SMC scoreboard.
 . `tb/smc_tb_if.sv` — the SMC-local TB interface: the wait-math clock periods,
@@ -734,8 +735,8 @@ Logical item names stay framework-neutral and match the VPLAN scenarios, and
 the UVM class name equals the scenario name (testlist
 `name = "smc_register_sanity_test"`,
 `module = { cocotb = "smc_register_sanity_test", uvm = "smc_register_sanity_test" }`),
-so `--items <name>` selects the same scenario in either realization. The
-first bound scenario is `smc_register_sanity_test` (TC_SMC_P0_006): SEP_IN
+so `--items <name>` selects the same scenario in either realization.
+`smc_register_sanity_test` (TC_SMC_P0_006) is one bound scenario: SEP_IN
 idle-read, directed and seeded-random write/readback, and restore of
 `SCRATCH_COLD[0..1]` and `SCRATCH_COLD_WARM[0]` after the warm-domain
 release, with the non-vacuity count of real CSR accesses as evidence. Every looped UVM test runs at least 16

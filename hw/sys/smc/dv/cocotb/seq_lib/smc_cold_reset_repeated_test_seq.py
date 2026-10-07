@@ -70,10 +70,6 @@ class smc_cold_reset_repeated_test_seq(SmcResetSeqBase):
     # de-glitch to appear is still inside the checked window.
     MID_ASSERT_HOLD_REF_CYCLES = 32
 
-    # `_send` (with its `expect_*` keyword guard), `_hold_raw` and
-    # `_wait_released` come from SmcResetSeqBase so the guard is defined once
-    # for the whole reset family ([REUSE-AND-LAYERING]).
-
     def __init__(self, name: str = "smc_cold_reset_repeated_test_seq") -> None:
         super().__init__(name)
         #: `skip_mem_repair_o` sampled with the isolate pin left undriven.
@@ -213,10 +209,8 @@ class smc_cold_reset_repeated_test_seq(SmcResetSeqBase):
 
         `fuse_sense_done` is cleared by `rst_primary_smc_clk_no`, which every
         cold assert above drives low, so the sense FSM has to re-run and
-        re-complete after the last release. Nothing in this package observed
-        that re-completion, and nothing observed it with the repair path
-        enabled -- the isolate pin is still held low here, so
-        `skip_mem_repair_o` must read 0 at the moment sense completes rather
+        re-complete after the last release. The isolate pin is held low here,
+        so `skip_mem_repair_o` must read 0 at the moment sense completes rather
         than the 1 the floating pad produces.
         """
         last = -1

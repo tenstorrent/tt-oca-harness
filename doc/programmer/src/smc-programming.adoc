@@ -1989,9 +1989,11 @@ able to assert the interrupt. Use `irq_test` only to verify the interrupt path
 during bring-up.
 
 On the combined interrupt, read the three `HANG_DET_*_CTRL` registers to
-identify the stalled master. There is no status to clear: the interrupt drops
-when that master's bus makes progress, or when its `enable` or `irq_en` is
-cleared. The CPU AXI master is covered by the watchdog instead.
+identify the stalled master: `irq` reads 1 for each detector whose interrupt is
+asserted, from a timeout or from `irq_test`. `irq` is a live level, so there is
+nothing to clear: a timeout drops when that master's bus makes progress, a test
+assertion drops when `irq_test` is cleared, and either drops when its `enable`
+or `irq_en` is cleared. The CPU AXI master is covered by the watchdog instead.
 
 [[smc-dfd-capture]]
 ==== Design-for-Debug and CLA

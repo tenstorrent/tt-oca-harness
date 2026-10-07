@@ -7,17 +7,14 @@ Samples the tb_top GPIO observability outputs: the three OR-of-vector aggregates
 ``tb_gpio_pad2core_en_any``) and the raw pad-output vectors they reduce
 (``tb_core2pad_o`` / ``tb_core2pad_en_o``).
 
-**This testcase's checker is the cross-sample pad-bus compare, and nothing else.**
-Resolvability is a precondition, not the contract: under Verilator, a 2-state
-simulator, ``sig.value.is_resolvable`` cannot be False, so ``assert
-item.resolvable`` has no FAIL-ON path there.
+The checker is the cross-sample compare of the raw pad vectors. Under
+Verilator, a 2-state simulator, ``sig.value.is_resolvable`` is never False, so
+``assert item.resolvable`` cannot fail there.
 
-The three aggregates are **not** checked here and carry no claim. They are
-OR-reductions over the whole pad bus, which also carries idle-high LSIO pads (e.g.
-UART TX): they read 1 from reset onward and no frontdoor stimulus can drive any of
-them to 0, so a stuck-at-1, undriven or mis-bound net reads exactly like the real
-aggregate and no positive control for them can exist
-(``[NEGATIVE-NEEDS-POSITIVE-CONTROL]``). All three are declared in
+The three aggregates are OR-reductions over the whole pad bus, which also carries
+idle-high LSIO pads (e.g. UART TX): they read 1 from reset onward and no
+frontdoor stimulus drives any of them to 0, so a stuck-at-1, undriven or
+mis-bound net reads exactly like the real aggregate. All three are declared in
 ``env.smc_probe_liveness.UNBACKABLE_PROBES``; the scoreboard logs their value as
 an OBSERVED-ONLY diagnostic and refuses any stated expectation on them.
 
@@ -35,7 +32,7 @@ fails. The expectation comes from an *earlier* sample under a stimulus that cann
 change it -- not from the sample being checked.
 
 The pad *value* vector is reported but not compared across samples: it carries
-free-running DUT outputs (the AVSBus clock is ``core2pad_o[49]``, tb_top.sv:818),
+free-running DUT outputs (the AVSBus clock is ``core2pad_o[49]``, see tb_top.sv),
 so an exact cross-sample expectation on it would be flaky rather than proof.
 
 Per-pad *level* behaviour under GPIO CSR programming remains

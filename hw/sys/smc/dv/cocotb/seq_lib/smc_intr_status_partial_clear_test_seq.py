@@ -5,12 +5,10 @@
 Three blocks carry an interrupt status register whose bits software raises
 through the matching `INTR_TEST` register and clears by writing a one back:
 the I2C `INTR_STATE`, the log engine `INTR_STATUS` and the telemetry receiver
-`INTR_STATUS`. Every leaf that touches them raises the whole declared mask and
-then clears the whole declared mask, so no write has ever carried a zero over a
-bit that was set, and the half of the contract that says such a bit *stays* set
-has never been exercised on any instance.
+`INTR_STATUS`.
 
-This leaf drives that half. On each instance of each of the three registers it
+This leaf drives the half of that contract in which a set bit that a write
+carries a zero over *stays* set. On each instance of each of the three registers it
 
 * reads the register and requires it clear, so every bit it goes on to see set
   is one this sequence raised;

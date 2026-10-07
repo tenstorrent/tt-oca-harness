@@ -24,27 +24,9 @@
 /* I3C controller instances in the SMC; must match smc_config_pkg::NumI3c. */
 #define I3C_NUM_CONTROLLERS 6
 
-/* Command wait bound; 0 = unbounded, which is what every caller gets today.
- *
- * The unit is NOT milliseconds despite the name. wait_command() (tt_i3c.c)
- * loads this straight into a counter that it decrements once per poll of
- * MST_STATUS0, so the unit is "number of status polls" and the wall-clock
- * meaning depends on the CPU clock and the MMIO read cost.
- *
- * Leaving this at 0 means a stalled I3C command does not fail -- it spins
- * until the outer simulation timeout, with nothing in the log naming the
- * command that hung.
- *
- * Setting it needs a measured figure that does not exist yet. For scale, the
- * i3c_error_abort_fifo test polls the same kind of completion with its own
- * bounds of 2,000,000 (response) and 200,000 (threshold) and reports
- * bounds_ok=1, i.e. neither expired in a real run -- but that only shows those
- * bounds are large enough, not how many polls a command actually consumes, so
- * it is not a basis for a tight bound here. Getting the real number means
- * instrumenting this loop to record its iteration count and re-running.
- *
- * Note the production bootrom's i3c_target_driver.h carries the same constant,
- * the same 0, and the same "in ms" comment. */
+/* Bound handed to I3C_Driver::wait_command(). Each driver defines its unit and
+ * the meaning of 0; the in-tree HCI driver ignores it and bounds the wait by
+ * I3C_POLL_LIMIT. */
 #define I3C_CMD_TIMEOUT_MS 0u
 
 /* FIFO threshold (default) used during initialization. */

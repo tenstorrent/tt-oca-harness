@@ -30,11 +30,7 @@ class smc_axi_error_response_depth_test(smc_base_test):
         # Byte golden. `expected_bytes` is CLOCK_GATE_CONTROL's reset word
         # composed from the generated RDL field symbols; `observed_bytes` is the
         # word the DUT returned on the alive sentinel. The scoreboard compares
-        # them (env/smc_scoreboard.py:861-867), so this record carries a
-        # fail-capable, DUT-sensitive payload rather than resting on
-        # `csr_accesses >= min_csr_accesses`, which is `5 >= 5` on every run --
-        # `seq.accesses` is the sequence's own counter and
-        # `assert_all_reachable` already pinned it to exactly that number.
+        # them.
         assert seq.sentinel_word is not None, "sequence recorded no sentinel word"
         await self.record_protocol_vip(
             SmcProtocolVipKind.AXI,

@@ -7,8 +7,7 @@ Access-port identity: the sweep runs on
 ``bus_name = "SEP_IN AXI"`` (``env/smc_sys_axi_agent.py``), and ``tb_top.sv``
 wires the top-level ``s_axi_*`` pins into ``smc.sep_axi_in_req_i``. This is NOT
 the SYS_IN ingress port -- that one is ``env.sys_in_axi_agent``, which this test
-never starts -- so this run gives no SYS_IN decode coverage. The
-``sys_axi_agent`` handle name is misleading; see the sequence docstring.
+never starts -- so this run gives no SYS_IN decode coverage.
 """
 
 from __future__ import annotations

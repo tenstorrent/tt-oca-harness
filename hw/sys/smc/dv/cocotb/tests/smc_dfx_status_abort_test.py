@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DFX STATUS_SMU abort pins. Not DEBUG_CTRL reset reads."""
+"""Drive the mem_repair_abort and mbist_abort pins and check the STATUS_SMU sticky bits."""
 
 from __future__ import annotations
 

@@ -2,10 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Clearing the hang detector's enable while it has fired, and irq_test with it clear.
 
-`HANG_DET_CTRL.enable` reads: "When 0, it is held at 0 and irq_o is forced
-low", and `irq_test` is "Gated by enable and irq_en". The hang detector leaves
-so far clear `enable` only while the detector is quiet, and drive `irq_test`
-only with `enable` set, so two cases the RDL settles have never run:
+`HANG_DET_CTRL.enable` reads: "When 0, the counter reloads from the threshold
+and irq_o is forced low", and `irq_test` is "Gated by enable and irq_en". Two
+cases follow from those two sentences:
 
 * **Disabled while fired.** The SEP detector times out on a read held at
   its R channel. With the read still held, `enable` is cleared and `irq_en`
@@ -24,6 +23,7 @@ import cocotb
 from cocotb.triggers import RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from ._hang_status import check_hang_status
 from ._one_shot import _OneShot
 from .smc_addr_map import (
     HANG_DET_ARMED,
@@ -99,6 +99,7 @@ class smc_hang_detector_disable_test_seq(smc_hang_detector_timeout_test_seq):
                 "the SEP hang interrupt stayed high with enable cleared and the read still "
                 "held; the RDL forces irq_o low when enable is 0"
             )
+            await check_hang_status(self._jtag_read, "DISABLED_MID_STALL", set())
             await self._hold_low(dut, "DISABLED_MID_STALL")
             self.disabled_drop = True
 
@@ -108,6 +109,10 @@ class smc_hang_detector_disable_test_seq(smc_hang_detector_timeout_test_seq):
             "enable with irq_en kept dropped its interrupt and held it low for %d cycles "
             "while the read stayed held",
             _QUIET_CYCLES,
+        )
+        cocotb.log.info(
+            "CHK-HANG-DISABLE-STATUS: HANG_DET_SEP_AXI_CTRL.irq read 0 with enable cleared "
+            "and the read still held"
         )
 
         await self.csr_write(

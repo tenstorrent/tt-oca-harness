@@ -28,15 +28,14 @@ from smc_reg import (  # noqa: E402
     SMC_CPU_CTRL_WDT_TIMEOUT_REG_ADDR,
 )
 
-# Spec-anchored reset constants. Each read verifies SMC_CPU_CTRL decode at
-# 0xC0039000+ AND full RDL reset content — not merely OKAY. The addresses are
-# CPU_CTRL's own, not BASE_CONFIG's.
+# Spec-anchored reset constants. Each read verifies CPU_CTRL decode and the full
+# RDL reset content.
 #
 # The access width is per-register: CORE_RESET_PULSE_COUNT.core_resets_done has
 # RDL reset 0xF at bits [35:32], is declared ``regwidth = 64; accesswidth = 64``
-# (cpu_ctrl.rdl:89-91) and sits 8-byte aligned (0x28), so it is read as one
-# AxSIZE=8 beat and never masked to [31:0] ([EXACT-EXPECTATION]). The other four
-# defaults are zero above bit 31, so their AxSIZE stays 4.
+# in cpu_ctrl.rdl and sits 8-byte aligned, so it is read as one AxSIZE=8 beat
+# and never masked to [31:0] ([EXACT-EXPECTATION]). The other four defaults are
+# zero above bit 31, so their AxSIZE stays 4.
 CPU_CTRL_READS = [
     ("RESET_VECTOR_0", SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR, CPU_CTRL_RESET_VECTOR_REG_DEFAULT, 4),
     ("RESET_CTRL", SMC_CPU_CTRL_RESET_CTRL_REG_ADDR, CPU_CTRL_RESET_CTRL_REG_DEFAULT, 4),
@@ -68,6 +67,3 @@ class smc_cpu_to_sep_axi_test_seq(SmcCsrSeq):
             await self.csr_read(name, addr, expected=expected, length=length)
         await self.csr_write_readback("CPU_CTRL_SCRATCH_0", CPU_CTRL_SCRATCH_0, CPU_PATTERN)
         await self.csr_restore("CPU_CTRL_SCRATCH_0", CPU_CTRL_SCRATCH_0)
-        # Closing gate is DUT-sensitive: every read above carried an independent
-        # RDL reset expectation via the scoreboard, and scratch write/readback
-        # checked the programmed pattern. Do not assert on self.accesses alone.

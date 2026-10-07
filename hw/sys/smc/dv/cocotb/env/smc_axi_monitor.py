@@ -72,14 +72,12 @@ class SmcAxiMonitor(uvm_component):
         self.pending_ar: dict[int | None, deque[int | None]] = {}
         self.pending_aw: dict[int | None, deque[int | None]] = {}
         self.resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
-        # DECERR is a hard protocol failure wherever the RDL declares a block.
-        # It is by design only in deadspace -- the gaps between the windows the
-        # generated map declares, and everything outside the map -- which is
-        # derived here from the neighbouring RDL windows, never listed, so a
-        # DECERR inside a live window is never excused by a hand-written range.
-        # A test that deliberately provokes DECERR inside a declared window
-        # (an unimplemented `external` region, an integration error slave)
-        # registers those addresses in `expected_decerr_addrs`.
+        # DECERR is a protocol failure inside any RDL-declared window. Deadspace
+        # -- the gaps between the generated map's windows and everything outside
+        # the map -- is derived from the RDL windows (smc_deadspace_ranges). A
+        # test that provokes DECERR inside a declared window (an unimplemented
+        # `external` region, an integration error slave) registers those
+        # addresses in `expected_decerr_addrs`.
         check_rdl_windows()
         self.rdl_windows = smc_rdl_windows()
         self.deadspace_ranges = smc_deadspace_ranges()

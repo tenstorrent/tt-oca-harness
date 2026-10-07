@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""GPIO_CTRL window routing sweep (TC_SMC_P1CG_07).
+"""GPIO_CTRL window routing sweep.
 
 Sweeps every bootrom ``EXTERNAL_MANDATORY_GPIO_CTRL_N`` CONTROL address. The
 OSS tree carries no GPIO pad block behind that window (``memmap.adoc`` lists it

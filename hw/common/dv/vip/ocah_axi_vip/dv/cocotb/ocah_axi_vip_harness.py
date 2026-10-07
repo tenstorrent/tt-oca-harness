@@ -188,7 +188,7 @@ def upper_lanes(handle: Any, width: int) -> int | None:
         return None
 
 
-def build_wire_slave(dut):
+def build_wire_slave(dut, *, max_outstanding: int | None = None):
     """Attach the fault-slave agent to the t_axi nets and idle the requester side."""
     slave = OcahAxiSlaveAgent.from_prefix(
         dut,
@@ -198,6 +198,7 @@ def build_wire_slave(dut):
         reset_active_level=False,
         size=2**16,
         name="harness_t_axi_slave",
+        max_outstanding=max_outstanding,
     )
     for name in ("awvalid", "wvalid", "arvalid"):
         getattr(dut, f"t_axi_{name}").value = 0

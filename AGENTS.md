@@ -435,7 +435,7 @@ Whatever the testbench, these hold:
 | `hw/top/` | Top-level integration and wrapper sources |
 | `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `starting` |
 | `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
-| `flows/` | Lint, format and synthesis flow makefiles; `synth/constraints/` shared SDC code and `cdc/` shared CDC/RDC sign-off collateral |
+| `flows/` | Lint, format, synthesis and emulation flow makefiles; `synth/constraints/` shared SDC code and `cdc/` shared CDC/RDC sign-off collateral |
 | `virtual_platform/` | SystemC virtual platform: the `tt-oca-harness-model` submodule that provides `sep-vp`, `smc-vp` and `smu-vp`, the `sepvp` Python runner and its pytest suite, and the Makefile that builds them and their dependencies |
 | `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches |
 | `tools/` | Register, doc, DV and container tooling |
@@ -714,6 +714,7 @@ statement has the companion's own documentation.
 | Verilator `--public-flat-rw` build | `make lint-verilator-public-all BLOCK=smu` builds the block's packages under the flag cocotb's Verilator runner forces |
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
 | Structural synthesis readiness | Select `flows/synth/yosys/scripts/readiness.tcl` as the synthesis driver; commands, scope and warning-review requirements are in `flows/synth/yosys/README.md` |
+| Vivado elaboration | `make emul-vivado-all BLOCK=smu` elaborates the emulation view (the `<block>.emul.f` targets) with Vivado from the Bender file list, or from Bender's Vivado script with `OCAH_VIVADO_INPUT=script`; needs a licensed `vivado` on `PATH`. See `flows/emul/vivado/README.md` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | SystemVerilog comments | `make lint-sv-comments` checks the `//` header and parameter/port clauses of every source the RTL Modules Reference documents; `tools/doc/check_sv_comments.py <files>` checks individual files |
 | SystemVerilog enums | `make lint-sv-enums` checks that every enum member outside `vendor/` and `regs/gen/` is UPPER_SNAKE_CASE and every enum type is lower_snake_case with an `_e` suffix; `scripts/ci/check_sv_enums.py <files>` checks individual files |

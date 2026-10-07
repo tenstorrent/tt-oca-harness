@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""mem_repair_abort_i / mbist_abort_i to STATUS_SMU sticky bits. Not DEBUG_CTRL reset reads."""
+"""mem_repair_abort_i / mbist_abort_i to the STATUS_SMU sticky bits."""
 
 from __future__ import annotations
 
@@ -19,11 +19,10 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # `mem_repair_abort_i` / `mbist_abort_i` -> the STATUS_SMU sticky bit -> one
 # SEP_IN AXI-Lite read; the pins are driven from this coroutine and the bit is
 # sticky, so a healthy DUT shows the new word on the FIRST read after the drive
-# and every stage below costs exactly one access. The bound is
-# tight rather than generous: it is the only check here on how long the pin
-# takes to reach the status word, and its expiry is a FAILURE, never a pass
-# ([TIMEOUT-MUST-FAIL]). The observed poll count is carried into every token so
-# a run that needed more than one poll is visible instead of being absorbed.
+# and every stage below costs exactly one access. The bound is the only check
+# here on how long the pin takes to reach the status word, and its expiry is a
+# FAILURE, never a pass ([TIMEOUT-MUST-FAIL]). The observed poll count is
+# carried into every token.
 _MAX_STATUS_POLLS = 4
 # Value-checked reads this sequence must book with the scoreboard: the two
 # sticky readbacks that carry `expected=`.
@@ -59,13 +58,9 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
         await self.wait_fuse_sense_done()
         assert hasattr(dut, "tb_mem_repair_abort"), "tb_mem_repair_abort missing"
         assert hasattr(dut, "tb_mbist_abort"), "tb_mbist_abort missing"
-        # TB deposit. `tb_mem_repair_abort` / `tb_mbist_abort` are top-level TB
-        # input ports (tb_top.sv:179-180) wired to `.mem_repair_abort_i` /
-        # `.mbist_abort_i` (tb_top.sv:1316,1319) with no other driver, so
-        # reading them back would only observe this coroutine's own write and
-        # could not fail on anything the DUT did ([NO-ALWAYS-PASS-CHECKER]).
-        # The deposit is instead validated by its effect: the STATUS_SMU compare
-        # in the next statement is what fails if the pins are not at 0.
+        # `tb_mem_repair_abort` / `tb_mbist_abort` are top-level TB inputs wired
+        # to `.mem_repair_abort_i` / `.mbist_abort_i` with no other driver; the
+        # STATUS_SMU compare in the next statement fails if the pins are not at 0.
         dut.tb_mem_repair_abort.value = 0
         dut.tb_mbist_abort.value = 0
 
@@ -121,11 +116,10 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
             both_sticky,
         )
 
-        # Reconciliation against the SCOREBOARD, not against this sequence's own
-        # counters. `csr_read` never compares `expected` itself -- the only
-        # value compare is `smc_scoreboard.py:711-718` -- so without these two
-        # legs a mis-bound analysis path would run every stage above with no
-        # compare at all and the sequence could not tell ([NO-ZERO-ACTIVITY-PASS]).
+        # `csr_read` never compares `expected` itself; the scoreboard performs
+        # the value compares, and these two legs require it to have seen this
+        # sequence's accesses and both ``expected=`` reads
+        # ([NO-ZERO-ACTIVITY-PASS]).
         sb = self.env.scoreboard
         assert sb.sys_axi_checks_seen >= self.accesses, (
             f"DFX_STATUS_ABORT: the scoreboard checked only "

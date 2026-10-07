@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP_IN accesses to the documented BEU window answer DECERR at the reset aperture.
 
-THIS TESTCASE DOES NOT PROVE ANY BEU PROPERTY, AND DOES NOT CLAIM TO.
-
 The address map places one Bus Error Unit per core at
 ``0xC801_0000 + core*0x1000``. At the generated resets -- ``LOCAL_BASE``
 ``0xC000_0000``, ``GLOBAL_BASE`` ``0x4000_0000``, ``REGION_SIZE`` 16 MiB,

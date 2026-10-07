@@ -11,16 +11,14 @@
 // value on the register's byte lanes; the scoreboard pairs it with the
 // observed read.
 //
-// Two catalogue properties are honoured here rather than in the sequence:
+// Two catalogue properties are modelled here:
 //
 //   * a `SMC_REG_KIND_RW_RESTORE` entry is software storage, so an observed
-//     strobed write updates its shadow and later reads follow the write --
-//     that is what makes the prediction survive the 16 scenario passes of
-//     one simulation instead of only being true for a "first" read;
-//   * a `SMC_REG_KIND_RO_STATIC` entry is `sw=r` in the RDL, so a write can
-//     never change what it reads back and the shadow deliberately ignores
-//     writes to it. A DUT that let a write land on such a register is a
-//     defect this model reports through the next read.
+//     strobed write updates its shadow and later reads follow the write
+//     across every scenario pass of one simulation;
+//   * a `SMC_REG_KIND_RO_STATIC` entry is `sw=r` in the RDL, so a write never
+//     changes what it reads back and the shadow ignores writes to it; a write
+//     that lands on such a register is reported through the next read.
 //
 // A decode-only entry (`has_default == 0`) produces no expected item at all:
 // its OKAY response and access count are the only evidence the bench claims,

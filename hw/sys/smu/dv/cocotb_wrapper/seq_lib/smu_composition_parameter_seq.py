@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_composition_parameter_test (SMU_102).
+"""Sequence for smu_composition_parameter_test.
 
 Passive parameter and connection inspection of the elaborated wrapper: the
 SEP security-disable token as it reaches the SEP eFuse controller,

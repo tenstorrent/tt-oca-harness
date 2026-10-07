@@ -266,11 +266,9 @@ class smc_i2c_p0_rdwr_test_seq(SmcCsrSeq):
 
         # ---- Read leg: I2C0 host reads a byte back out of the I2C1 target ----
         #
-        # The write proof above is only half of what this testcase claims: the
-        # read direction needs its own frame and its own compare, or a DUT with
-        # a wholly broken read path passes. Preload the target's TX FIFO before
-        # the read frame is queued so the target does not have to clock-stretch,
-        # which is the same ordering smc_i2c_p0_conti_test_seq uses.
+        # The read direction has its own frame and its own compare. The target's
+        # TX FIFO is preloaded before the read frame is queued so the target does
+        # not clock-stretch, the same ordering smc_i2c_p0_conti_test_seq uses.
         txdata1 = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TXDATA_BASE_ADDR", 1)
         fifo0 = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 0)
         fifo1 = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 1)

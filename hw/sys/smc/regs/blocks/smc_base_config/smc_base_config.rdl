@@ -137,10 +137,10 @@ addrmap smc_base_config {
     };
 
     reg HANG_DET_CTRL {
-        desc = "AXI hang detector control.";
+        desc = "AXI hang detector control and interrupt status.";
         field {
             sw = rw; hw = r;
-            desc = "When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.";
+            desc = "When 1, the timeout counter runs. When 0, the counter reloads from the threshold and irq_o is forced low.";
         } enable[0:0] = 0x0;
         field {
             sw = rw; hw = r;
@@ -150,6 +150,10 @@ addrmap smc_base_config {
             sw = rw; hw = r;
             desc = "Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.";
         } irq_test[8:8] = 0x0;
+        field {
+            sw = r; hw = w;
+            desc = "Reads 1 while this detector's interrupt is asserted, from a timeout or from irq_test, and 0 while enable or irq_en is clear. A live level, not a latch: it clears when the interrupt drops. Writes are ignored.";
+        } irq[12:12] = 0x0;
     };
 
     reg HANG_DET_TIMEOUT_THRESHOLD {

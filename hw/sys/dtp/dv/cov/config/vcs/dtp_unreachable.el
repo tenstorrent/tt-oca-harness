@@ -3,7 +3,7 @@
 // Format Version: 2
 // ExclMode: default
 //==================================================
-CHECKSUM: "974425857 795511"
+CHECKSUM: "974425857 1854703041"
 INSTANCE: dtp_uvm_top.u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.i_r_spill_reg.spill_register_flushable_i
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 data_i.data [26] "logic data_i.data[31:0]"
@@ -21,6 +21,22 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 data_o.data [30] "logic data_o.data[31:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 data_o.data [30] "logic data_o.data[31:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 gen_spill_reg.a_data_q.data [26] "logic gen_spill_reg.a_data_q.data[31:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 gen_spill_reg.a_data_q.data [26] "logic gen_spill_reg.a_data_q.data[31:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 gen_spill_reg.a_data_q.data [30] "logic gen_spill_reg.a_data_q.data[31:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 gen_spill_reg.a_data_q.data [30] "logic gen_spill_reg.a_data_q.data[31:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 gen_spill_reg.b_data_q.data [26] "logic gen_spill_reg.b_data_q.data[31:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 gen_spill_reg.b_data_q.data [26] "logic gen_spill_reg.b_data_q.data[31:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 gen_spill_reg.b_data_q.data [30] "logic gen_spill_reg.b_data_q.data[31:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 gen_spill_reg.b_data_q.data [30] "logic gen_spill_reg.b_data_q.data[31:0]"
 CHECKSUM: "974425857 795511"
 INSTANCE: dtp_uvm_top.u_dut.u_cross_trigger_network.u_axil_xbar.gen_mst_port_mux[0].i_axi_lite_mux.gen_no_mux.i_r_spill_reg.spill_register_flushable_i
 ANNOTATION: "VC_COV_UNR"
@@ -11685,8 +11701,6 @@ ANNOTATION: "VC_COV_UNR"
 Block 13 "31198963" "read_pointer_n = (read_pointer_q + 1);"
 ANNOTATION: "VC_COV_UNR"
 Block 17 "45301810" "status_cnt_n = status_cnt_q;"
-ANNOTATION: "VC_COV_UNR"
-Block 21 "3678887519" "status_cnt_n = status_cnt_q;"
 CHECKSUM: "2472113747 422625962"
 INSTANCE: dtp_uvm_top.u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.i_r_fifo
 ANNOTATION: "VC_COV_UNR"
@@ -11749,8 +11763,6 @@ ANNOTATION: "VC_COV_UNR"
 Branch 1 "648026959" "(pop_i && (~empty_o))" (1) "(pop_i && (~empty_o)) 1,0"
 ANNOTATION: "VC_COV_UNR"
 Branch 2 "3174745807" "(((push_i && pop_i) && (~full_o)) && (~empty_o))" (0) "(((push_i && pop_i) && (~full_o)) && (~empty_o)) 1"
-ANNOTATION: "VC_COV_UNR"
-Branch 3 "2247249798" "((FALL_THROUGH && (status_cnt_q == 2'b0)) && push_i)" (0) "((FALL_THROUGH && (status_cnt_q == 2'b0)) && push_i) 1,1"
 CHECKSUM: "2472113747 1380895879"
 INSTANCE: dtp_uvm_top.u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_err_slv.i_b_fifo
 ANNOTATION: "VC_COV_UNR"
@@ -11767,7 +11779,7 @@ ANNOTATION: "VC_COV_UNR"
 Branch 2 "3174745807" "(((push_i && pop_i) && (~full_o)) && (~empty_o))" (0) "(((push_i && pop_i) && (~full_o)) && (~empty_o)) 1"
 ANNOTATION: "VC_COV_UNR"
 Branch 3 "2247249798" "((FALL_THROUGH && (status_cnt_q == 2'b0)) && push_i)" (1) "((FALL_THROUGH && (status_cnt_q == 2'b0)) && push_i) 1,0"
-CHECKSUM: "493237764 839981001"
+CHECKSUM: "3735329837 839981001"
 INSTANCE: dtp_uvm_top.u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_err_slv
 ANNOTATION: "VC_COV_UNR"
 Branch 2 "2620844533" "r_busy_q" (1) "r_busy_q 1,1,0,-"
@@ -14814,13 +14826,9 @@ Condition 1 "3544627547" "(push_i && ((~full_o))) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 2 "2732119959" "(write_pointer_q == (FifoDepth[0] - 1)) 1 -1" (1 "0")
 ANNOTATION: "VC_COV_UNR"
-Condition 3 "906770606" "(pop_i && ((~empty_o))) 1 -1" (2 "10")
-ANNOTATION: "VC_COV_UNR"
 Condition 4 "2027833649" "(read_pointer_n == (FifoDepth[0] - 1)) 1 -1" (1 "0")
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (3 "1101")
-ANNOTATION: "VC_COV_UNR"
-Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (4 "1110")
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (5 "1111")
 ANNOTATION: "VC_COV_UNR"
@@ -14835,8 +14843,6 @@ ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (1 "0111")
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (2 "1011")
-ANNOTATION: "VC_COV_UNR"
-Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (3 "1101")
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (4 "1110")
 ANNOTATION: "VC_COV_UNR"
@@ -14871,8 +14877,6 @@ ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (2 "1011")
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (3 "1101")
-ANNOTATION: "VC_COV_UNR"
-Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (4 "1110")
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (5 "1111")
 CHECKSUM: "2472113747 4272615794"
@@ -25357,7 +25361,7 @@ CHECKSUM: "3309705632 1972481257"
 INSTANCE: dtp_uvm_top.u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux
 ANNOTATION: "VC_COV_UNR"
 Condition 2 "434159482" "(((~gen_demux.w_fifo_empty)) & ((~gen_demux.b_fifo_full)) & mst_resps_i[gen_demux.w_select].w_ready) 1 -1" (3 "110")
-CHECKSUM: "493237764 1521198537"
+CHECKSUM: "3735329837 1521198537"
 INSTANCE: dtp_uvm_top.u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_err_slv
 ANNOTATION: "VC_COV_UNR"
 Condition 1 "423765036" "(((!w_fifo_empty)) && ((!b_fifo_full))) 1 -1" (2 "10")
@@ -37419,7 +37423,7 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 mst_resp_i.b.resp [1] "logic mst_resp_i.b.resp[1:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 mst_resp_i.b.resp [1] "logic mst_resp_i.b.resp[1:0]"
-CHECKSUM: "493237764 2646885977"
+CHECKSUM: "3735329837 2646885977"
 INSTANCE: dtp_uvm_top.u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_err_slv
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 test_i "logic test_i"
@@ -40666,8 +40670,10 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
 Condition 48 "459235620" "(decoded_req & decoded_req_is_wr) 1 -1" (1 "01")
-CHECKSUM: "970615646 3331895896"
+CHECKSUM: "2231544113 3331895896"
 INSTANCE: dtp_uvm_top.u_dut.u_cross_trigger_network.u_ctm
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 axil_resp_o.r.resp [0] "logic axil_resp_o.r.resp[1:0]"
@@ -40709,7 +40715,7 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 axil_resp_o.b.resp [1] "logic axil_resp_o.b.resp[1:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 axil_resp_o.b.resp [1] "logic axil_resp_o.b.resp[1:0]"
-CHECKSUM: "2218429091 176340070"
+CHECKSUM: "1790303334 176340070"
 INSTANCE: dtp_uvm_top.u_dut.u_cross_trigger_network
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 test_en_i "logic test_en_i"
@@ -51122,6 +51128,8 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
 Condition 20 "3188783039" "(cpuif_req_masked & (cpuif_addr == 4'h8)) 1 -1" (1 "01")
@@ -51133,6 +51141,8 @@ ANNOTATION: "VC_COV_UNR"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
@@ -51146,6 +51156,8 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
 Condition 20 "3188783039" "(cpuif_req_masked & (cpuif_addr == 4'h8)) 1 -1" (1 "01")
@@ -51157,6 +51169,8 @@ ANNOTATION: "VC_COV_UNR"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
@@ -51170,6 +51184,8 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
 Condition 20 "3188783039" "(cpuif_req_masked & (cpuif_addr == 4'h8)) 1 -1" (1 "01")
@@ -51181,6 +51197,8 @@ ANNOTATION: "VC_COV_UNR"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
@@ -51194,6 +51212,8 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
 Condition 20 "3188783039" "(cpuif_req_masked & (cpuif_addr == 4'h8)) 1 -1" (1 "01")
@@ -51205,6 +51225,8 @@ ANNOTATION: "VC_COV_UNR"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
@@ -51218,6 +51240,8 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
 Condition 20 "3188783039" "(cpuif_req_masked & (cpuif_addr == 4'h8)) 1 -1" (1 "01")
@@ -51229,6 +51253,8 @@ ANNOTATION: "VC_COV_UNR"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
@@ -51242,6 +51268,8 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
 Condition 20 "3188783039" "(cpuif_req_masked & (cpuif_addr == 4'h8)) 1 -1" (1 "01")
@@ -51253,6 +51281,8 @@ ANNOTATION: "VC_COV_UNR"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
@@ -51266,6 +51296,8 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
 Condition 20 "3188783039" "(cpuif_req_masked & (cpuif_addr == 4'h8)) 1 -1" (1 "01")
@@ -51277,6 +51309,8 @@ ANNOTATION: "VC_COV_UNR"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
@@ -51290,6 +51324,8 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
 Condition 20 "3188783039" "(cpuif_req_masked & (cpuif_addr == 4'h8)) 1 -1" (1 "01")
@@ -51301,6 +51337,8 @@ ANNOTATION: "VC_COV_UNR"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 ANNOTATION: "VC_COV_UNR"
 Condition 18 "1845445664" "(cpuif_req_masked & (cpuif_addr == 4'h4) & ((!cpuif_req_is_wr))) 1 -1" (1 "011")
 ANNOTATION: "VC_COV_UNR"
@@ -58119,6 +58157,10 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 data_d[7].id [1] "logic data_d[7].id[1:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 data_d[7].id [1] "logic data_d[7].id[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 data_d[0].cache [1] "logic data_d[0].cache[3:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 data_d[0].burst [0] "logic data_d[0].burst[1:0]"
 CHECKSUM: "2119109210 2374750744"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_src
 ANNOTATION: "VC_COV_UNR"
@@ -62363,6 +62405,8 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 data_d[7].user [0] "logic data_d[7].user[0:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 data_d[7].user [0] "logic data_d[7].user[0:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 data_d[0].last "logic data_d[0].last"
 CHECKSUM: "3725904770 2920411870"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a.i_state_transition_cdc_dst.i_sync
 ANNOTATION: "VC_COV_UNR"
@@ -66949,6 +66993,10 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 data_d[7].id [1] "logic data_d[7].id[1:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 data_d[7].id [1] "logic data_d[7].id[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 data_d[0].cache [1] "logic data_d[0].cache[3:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 data_d[0].burst [0] "logic data_d[0].burst[1:0]"
 CHECKSUM: "2119109210 294233018"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_src
 ANNOTATION: "VC_COV_UNR"
@@ -70677,6 +70725,10 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 data_d[7].id [0] "logic data_d[7].id[0:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 data_d[7].id [0] "logic data_d[7].id[0:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 data_d[0].cache [1] "logic data_d[0].cache[3:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 data_d[0].burst [0] "logic data_d[0].burst[1:0]"
 CHECKSUM: "2119109210 2450497839"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_src
 ANNOTATION: "VC_COV_UNR"
@@ -73619,6 +73671,8 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 data_d[7].user [11] "logic data_d[7].user[11:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 data_d[7].user [11] "logic data_d[7].user[11:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 data_d[0].last "logic data_d[0].last"
 CHECKSUM: "2119109210 793677398"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b.i_src
 ANNOTATION: "VC_COV_UNR"
@@ -73874,28 +73928,38 @@ Transition WAIT_ISOLATE_ACK->IDLE "3->0"
 Fsm initiator_state_q "659400750"
 ANNOTATION: "VC_COV_UNR"
 Transition WAIT_ISOLATE_PHASE_ACK->IDLE "2->0"
-CHECKSUM: "1719173482 1582151648"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_CLEAR_ACK "6"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_ISOLATE_ACK "3"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition CLEAR->POST_CLEAR "4->7"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition ISOLATE->CLEAR "1->4"
+CHECKSUM: "357498311 3294061647"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
 ANNOTATION: "VC_COV_UNR"
 Block 39 "2209402464" "active_instr_len_tclk = 1;"
 ANNOTATION: "VC_COV_UNR"
-Block 42 "1125696592" "active_instr_len_tclk = SHARED_SR_LEN;"
+Block 42 "365188843" "active_instr_len_tclk = SharedSrLen;"
 ANNOTATION: "VC_COV_UNR"
-Block 81 "112410037" "series_data_errstat_incr_stat_bit_tclk = 1'b0;"
+Block 81 "3615490460" "series_data_errstat_incr_stat_bit_tclk = 1'b0;"
 ANNOTATION: "VC_COV_UNR"
-Block 315 "4070146593" "incr_addr_bit = 1'b0;"
-CHECKSUM: "1719173482 3190305597"
+Block 315 "598392328" "incr_addr_bit = 1'b0;"
+CHECKSUM: "357498311 607314066"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
 ANNOTATION: "VC_COV_UNR"
 Block 39 "2209402464" "active_instr_len_tclk = 1;"
 ANNOTATION: "VC_COV_UNR"
-Block 42 "1125696592" "active_instr_len_tclk = SHARED_SR_LEN;"
+Block 42 "365188843" "active_instr_len_tclk = SharedSrLen;"
 ANNOTATION: "VC_COV_UNR"
-Block 81 "112410037" "series_data_errstat_incr_stat_bit_tclk = 1'b0;"
+Block 81 "3615490460" "series_data_errstat_incr_stat_bit_tclk = 1'b0;"
 ANNOTATION: "VC_COV_UNR"
-Block 315 "4070146593" "incr_addr_bit = 1'b0;"
-ANNOTATION: "VC_COV_UNR"
-Block 219 "207519731" "axi_state_d_tclk = AXI_IDLE;"
+Block 315 "598392328" "incr_addr_bit = 1'b0;"
 CHECKSUM: "813668340 2707430895"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_dst
 ANNOTATION: "VC_COV_UNR"
@@ -82666,6 +82730,12 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 mem_q[0].id [1] "logic mem_q[0].id[1:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 mem_q[0].id [1] "logic mem_q[0].id[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 status_cnt_n [1] "logic status_cnt_n[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 status_cnt_n [1] "logic status_cnt_n[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 status_cnt_q [1] "logic status_cnt_q[1:0]"
 CHECKSUM: "2472113747 436810260"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_aw_ft_reg.i_fifo
 ANNOTATION: "VC_COV_UNR"
@@ -83872,6 +83942,12 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 mem_q[0].id [1] "logic mem_q[0].id[1:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 mem_q[0].id [1] "logic mem_q[0].id[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 status_cnt_n [1] "logic status_cnt_n[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 status_cnt_n [1] "logic status_cnt_n[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 status_cnt_q [1] "logic status_cnt_q[1:0]"
 CHECKSUM: "2472113747 236245061"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_w_ft_reg.i_fifo
 ANNOTATION: "VC_COV_UNR"
@@ -84088,6 +84164,12 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 mem_q[0].user [11] "logic mem_q[0].user[11:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 mem_q[0].user [11] "logic mem_q[0].user[11:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 0to1 status_cnt_n [1] "logic status_cnt_n[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 status_cnt_n [1] "logic status_cnt_n[1:0]"
+ANNOTATION: "VC_COV_UNR"
+Toggle 1to0 status_cnt_q [1] "logic status_cnt_q[1:0]"
 CHECKSUM: "2472113747 436810260"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_aw_ft_reg.i_fifo
 ANNOTATION: "VC_COV_UNR"
@@ -89602,6 +89684,18 @@ CHECKSUM: "2697825409 1271450499"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
 Block 54 "1343361510" "receiver_clear_out = 1'b0;"
+ANNOTATION: "VC_COV_UNR"
+Block 6 "2264545159" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 12 "16000130" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 13 "736195929" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 19 "1092806484" "initiator_state_d = POST_CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 25 "1059418043" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 26 "3803788988" "initiator_state_d = POST_CLEAR;"
 CHECKSUM: "2697825409 1271450499"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
@@ -89654,6 +89748,18 @@ CHECKSUM: "2697825409 1271450499"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
 Block 54 "1343361510" "receiver_clear_out = 1'b0;"
+ANNOTATION: "VC_COV_UNR"
+Block 6 "2264545159" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 12 "16000130" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 13 "736195929" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 19 "1092806484" "initiator_state_d = POST_CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 25 "1059418043" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 26 "3803788988" "initiator_state_d = POST_CLEAR;"
 CHECKSUM: "2697825409 1271450499"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
@@ -90658,6 +90764,18 @@ CHECKSUM: "2697825409 1271450499"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
 Block 54 "1343361510" "receiver_clear_out = 1'b0;"
+ANNOTATION: "VC_COV_UNR"
+Block 6 "2264545159" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 12 "16000130" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 13 "736195929" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 19 "1092806484" "initiator_state_d = POST_CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 25 "1059418043" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 26 "3803788988" "initiator_state_d = POST_CLEAR;"
 CHECKSUM: "2697825409 1271450499"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
@@ -91180,7 +91298,7 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 data_o.id [0] "logic data_o.id[0:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 data_o.id [0] "logic data_o.id[0:0]"
-CHECKSUM: "1404198170 2956291194"
+CHECKSUM: "4175005557 2956291194"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 test_en_i "logic test_en_i"
@@ -93854,6 +93972,18 @@ CHECKSUM: "2697825409 1271450499"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
 Block 54 "1343361510" "receiver_clear_out = 1'b0;"
+ANNOTATION: "VC_COV_UNR"
+Block 6 "2264545159" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 12 "16000130" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 13 "736195929" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 19 "1092806484" "initiator_state_d = POST_CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 25 "1059418043" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 26 "3803788988" "initiator_state_d = POST_CLEAR;"
 CHECKSUM: "2697825409 1271450499"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
@@ -93874,6 +94004,18 @@ CHECKSUM: "2697825409 1271450499"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
 Block 54 "1343361510" "receiver_clear_out = 1'b0;"
+ANNOTATION: "VC_COV_UNR"
+Block 6 "2264545159" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 12 "16000130" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 13 "736195929" "initiator_state_d = CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 19 "1092806484" "initiator_state_d = POST_CLEAR;"
+ANNOTATION: "VC_COV_UNR"
+Block 25 "1059418043" "initiator_isolate_out = 1'b1;"
+ANNOTATION: "VC_COV_UNR"
+Block 26 "3803788988" "initiator_state_d = POST_CLEAR;"
 CHECKSUM: "3850978244 346978337"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_ar_ft_reg
 ANNOTATION: "VC_COV_UNR"
@@ -97912,6 +98054,10 @@ CHECKSUM: "2697825409 1307102318"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "350595075" "(receiver_phase_req && receiver_phase_ack) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 1 "3212245207" "(initiator_phase_transition_ack && isolate_ack_i) 1 -1" (3 "11")
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "2416646446" "(initiator_phase_transition_ack && clear_ack_i) 1 -1" (3 "11")
 CHECKSUM: "2697825409 1307102318"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
@@ -97924,6 +98070,10 @@ CHECKSUM: "2697825409 1307102318"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "350595075" "(receiver_phase_req && receiver_phase_ack) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 1 "3212245207" "(initiator_phase_transition_ack && isolate_ack_i) 1 -1" (3 "11")
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "2416646446" "(initiator_phase_transition_ack && clear_ack_i) 1 -1" (3 "11")
 CHECKSUM: "2697825409 1307102318"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
@@ -97936,6 +98086,10 @@ CHECKSUM: "2697825409 1307102318"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "350595075" "(receiver_phase_req && receiver_phase_ack) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 1 "3212245207" "(initiator_phase_transition_ack && isolate_ack_i) 1 -1" (3 "11")
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "2416646446" "(initiator_phase_transition_ack && clear_ack_i) 1 -1" (3 "11")
 CHECKSUM: "2697825409 1307102318"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
@@ -97956,6 +98110,10 @@ CHECKSUM: "2697825409 1307102318"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "350595075" "(receiver_phase_req && receiver_phase_ack) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 1 "3212245207" "(initiator_phase_transition_ack && isolate_ack_i) 1 -1" (3 "11")
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "2416646446" "(initiator_phase_transition_ack && clear_ack_i) 1 -1" (3 "11")
 CHECKSUM: "2697825409 1307102318"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
@@ -97968,18 +98126,18 @@ CHECKSUM: "2697825409 1307102318"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "350595075" "(receiver_phase_req && receiver_phase_ack) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 1 "3212245207" "(initiator_phase_transition_ack && isolate_ack_i) 1 -1" (3 "11")
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "2416646446" "(initiator_phase_transition_ack && clear_ack_i) 1 -1" (3 "11")
 CHECKSUM: "3850978244 563225942"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_aw_ft_reg
 ANNOTATION: "VC_COV_UNR"
 Condition 1 "3803106099" "(valid_i & ((~fifo_full))) 1 -1" (2 "10")
-ANNOTATION: "VC_COV_UNR"
-Condition 2 "689602637" "(ready_i & ((~fifo_empty))) 1 -1" (2 "10")
 CHECKSUM: "3850978244 563225942"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_w_ft_reg
 ANNOTATION: "VC_COV_UNR"
 Condition 1 "3803106099" "(valid_i & ((~fifo_full))) 1 -1" (2 "10")
-ANNOTATION: "VC_COV_UNR"
-Condition 2 "689602637" "(ready_i & ((~fifo_empty))) 1 -1" (2 "10")
 CHECKSUM: "3850978244 563225942"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_ar_ft_reg
 ANNOTATION: "VC_COV_UNR"
@@ -97988,14 +98146,10 @@ CHECKSUM: "3850978244 563225942"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_aw_ft_reg
 ANNOTATION: "VC_COV_UNR"
 Condition 1 "3803106099" "(valid_i & ((~fifo_full))) 1 -1" (2 "10")
-ANNOTATION: "VC_COV_UNR"
-Condition 2 "689602637" "(ready_i & ((~fifo_empty))) 1 -1" (2 "10")
 CHECKSUM: "3850978244 563225942"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_w_ft_reg
 ANNOTATION: "VC_COV_UNR"
 Condition 1 "3803106099" "(valid_i & ((~fifo_full))) 1 -1" (2 "10")
-ANNOTATION: "VC_COV_UNR"
-Condition 2 "689602637" "(ready_i & ((~fifo_empty))) 1 -1" (2 "10")
 CHECKSUM: "3850978244 563225942"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_ar_ft_reg
 ANNOTATION: "VC_COV_UNR"
@@ -98012,49 +98166,45 @@ CHECKSUM: "3850978244 563225942"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_ar_ft_reg
 ANNOTATION: "VC_COV_UNR"
 Condition 1 "3803106099" "(valid_i & ((~fifo_full))) 1 -1" (2 "10")
-CHECKSUM: "1719173482 2569842621"
+CHECKSUM: "357498311 2238901397"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
 ANNOTATION: "VC_COV_UNR"
 Branch 1 "2462657691" "select_AXISingleOp_i" (6) "select_AXISingleOp_i 0,0,1,-,0,0"
 ANNOTATION: "VC_COV_UNR"
 Branch 2 "3111420334" "((active_instr_len_tclk == 7'b0) && ((((select_AXISingleOp_i || select_AXISeriesCtrl_i) || select_AXISeriesDataIncr_i) || select_AXISeriesDataNoIncr_i) || select_AXISeriesDataWithErrorStatus_i))" (0) "((active_instr_len_tclk == 7'b0) && ((((select_AXISingleOp_i || select_AXISeriesCtrl_i) || select_AXISeriesDataIncr_i) || select_AXISeriesDataNoIncr_i) || select_AXISeriesDataWithErrorStatus_i)) 1"
 ANNOTATION: "VC_COV_UNR"
-Branch 3 "2148169336" "(active_instr_len_tclk > SHARED_SR_LEN)" (0) "(active_instr_len_tclk > SHARED_SR_LEN) 1"
+Branch 3 "3216027897" "(active_instr_len_tclk > SharedSrLen)" (0) "(active_instr_len_tclk > SharedSrLen) 1"
 ANNOTATION: "VC_COV_UNR"
-Branch 4 "3428340742" "capture_en_i" (2) "capture_en_i 0,1,0"
+Branch 4 "3370954298" "capture_en_i" (2) "capture_en_i 0,1,0"
 ANNOTATION: "VC_COV_UNR"
-Branch 8 "548701755" "(current_mapped_data_len_local < SHARED_SR_LEN)" (1) "(current_mapped_data_len_local < SHARED_SR_LEN) 0"
+Branch 8 "4209544856" "(current_mapped_data_len_local < SharedSrLen)" (1) "(current_mapped_data_len_local < SharedSrLen) 0"
 ANNOTATION: "VC_COV_UNR"
-Branch 26 "3696533593" "(update_en_i && (!security_disable_i))" (13) "(update_en_i && (!security_disable_i)) 1,0,-,-,0,-,-,-,-,1,1,-,0,-,-,-,-,-,-"
+Branch 26 "2135351192" "(update_en_i && (!security_disable_i))" (13) "(update_en_i && (!security_disable_i)) 1,0,-,-,0,-,-,-,-,1,1,-,0,-,-,-,-,-,-"
 ANNOTATION: "VC_COV_UNR"
-Branch 33 "2525113115" "select_AXISingleOp_i" (22) "select_AXISingleOp_i 0,-,-,-,0,-,-,0,-,-,-,1,-,-,-,0,-,-"
+Branch 33 "3766005092" "select_AXISingleOp_i" (22) "select_AXISingleOp_i 0,-,-,-,0,-,-,0,-,-,-,1,-,-,-,0,-,-"
 ANNOTATION: "VC_COV_UNR"
-Branch 34 "1758482982" "(BYTE_OFFSET_BITS != 0)" (1) "(BYTE_OFFSET_BITS != 0) 0"
-ANNOTATION: "VC_COV_UNR"
-Branch 16 "1055319648" "axi_state_q_tclk" (3) "axi_state_q_tclk AXI_IDLE ,0,1,0,0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
-ANNOTATION: "VC_COV_UNR"
-Branch 16 "1055319648" "axi_state_q_tclk" (5) "axi_state_q_tclk AXI_IDLE ,0,0,-,-,1,1,0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
-CHECKSUM: "1719173482 267488768"
+Branch 34 "3485254830" "(ByteOffsetBits != 0)" (1) "(ByteOffsetBits != 0) 0"
+CHECKSUM: "357498311 1198256725"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
 ANNOTATION: "VC_COV_UNR"
 Branch 1 "2462657691" "select_AXISingleOp_i" (6) "select_AXISingleOp_i 0,0,1,-,0,0"
 ANNOTATION: "VC_COV_UNR"
 Branch 2 "3111420334" "((active_instr_len_tclk == 7'b0) && ((((select_AXISingleOp_i || select_AXISeriesCtrl_i) || select_AXISeriesDataIncr_i) || select_AXISeriesDataNoIncr_i) || select_AXISeriesDataWithErrorStatus_i))" (0) "((active_instr_len_tclk == 7'b0) && ((((select_AXISingleOp_i || select_AXISeriesCtrl_i) || select_AXISeriesDataIncr_i) || select_AXISeriesDataNoIncr_i) || select_AXISeriesDataWithErrorStatus_i)) 1"
 ANNOTATION: "VC_COV_UNR"
-Branch 3 "2148169336" "(active_instr_len_tclk > SHARED_SR_LEN)" (0) "(active_instr_len_tclk > SHARED_SR_LEN) 1"
+Branch 3 "3216027897" "(active_instr_len_tclk > SharedSrLen)" (0) "(active_instr_len_tclk > SharedSrLen) 1"
 ANNOTATION: "VC_COV_UNR"
-Branch 4 "3428340742" "capture_en_i" (2) "capture_en_i 0,1,0"
+Branch 4 "3370954298" "capture_en_i" (2) "capture_en_i 0,1,0"
 ANNOTATION: "VC_COV_UNR"
-Branch 8 "548701755" "(current_mapped_data_len_local < SHARED_SR_LEN)" (1) "(current_mapped_data_len_local < SHARED_SR_LEN) 0"
+Branch 8 "4209544856" "(current_mapped_data_len_local < SharedSrLen)" (1) "(current_mapped_data_len_local < SharedSrLen) 0"
 ANNOTATION: "VC_COV_UNR"
-Branch 26 "3696533593" "(update_en_i && (!security_disable_i))" (3) "(update_en_i && (!security_disable_i)) 1,0,-,-,1,1,-,-,-,-,-,-,-,-,-,-,-,-,-"
+Branch 26 "2135351192" "(update_en_i && (!security_disable_i))" (3) "(update_en_i && (!security_disable_i)) 1,0,-,-,1,1,-,-,-,-,-,-,-,-,-,-,-,-,-"
 ANNOTATION: "VC_COV_UNR"
-Branch 26 "3696533593" "(update_en_i && (!security_disable_i))" (13) "(update_en_i && (!security_disable_i)) 1,0,-,-,0,-,-,-,-,1,1,-,0,-,-,-,-,-,-"
+Branch 26 "2135351192" "(update_en_i && (!security_disable_i))" (13) "(update_en_i && (!security_disable_i)) 1,0,-,-,0,-,-,-,-,1,1,-,0,-,-,-,-,-,-"
 ANNOTATION: "VC_COV_UNR"
-Branch 33 "2525113115" "select_AXISingleOp_i" (22) "select_AXISingleOp_i 0,-,-,-,0,-,-,0,-,-,-,1,-,-,-,0,-,-"
+Branch 33 "3766005092" "select_AXISingleOp_i" (22) "select_AXISingleOp_i 0,-,-,-,0,-,-,0,-,-,-,1,-,-,-,0,-,-"
 ANNOTATION: "VC_COV_UNR"
-Branch 34 "1758482982" "(BYTE_OFFSET_BITS != 0)" (1) "(BYTE_OFFSET_BITS != 0) 0"
-CHECKSUM: "1719173482 4126884869"
+Branch 34 "3485254830" "(ByteOffsetBits != 0)" (1) "(ByteOffsetBits != 0) 0"
+CHECKSUM: "357498311 884625925"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi
 ANNOTATION: "VC_COV_UNR"
 Branch 1 "2462657691" "select_AXISingleOp_i" (2) "select_AXISingleOp_i 0,0,1,1,-,-"
@@ -98063,29 +98213,33 @@ Branch 1 "2462657691" "select_AXISingleOp_i" (6) "select_AXISingleOp_i 0,0,1,-,0
 ANNOTATION: "VC_COV_UNR"
 Branch 2 "2457204516" "((active_instr_len_tclk == 8'b0) && ((((select_AXISingleOp_i || select_AXISeriesCtrl_i) || select_AXISeriesDataIncr_i) || select_AXISeriesDataNoIncr_i) || select_AXISeriesDataWithErrorStatus_i))" (0) "((active_instr_len_tclk == 8'b0) && ((((select_AXISingleOp_i || select_AXISeriesCtrl_i) || select_AXISeriesDataIncr_i) || select_AXISeriesDataNoIncr_i) || select_AXISeriesDataWithErrorStatus_i)) 1"
 ANNOTATION: "VC_COV_UNR"
-Branch 3 "2148169336" "(active_instr_len_tclk > SHARED_SR_LEN)" (0) "(active_instr_len_tclk > SHARED_SR_LEN) 1"
+Branch 3 "3216027897" "(active_instr_len_tclk > SharedSrLen)" (0) "(active_instr_len_tclk > SharedSrLen) 1"
 ANNOTATION: "VC_COV_UNR"
-Branch 4 "3485511369" "capture_en_i" (2) "capture_en_i 0,1,0"
+Branch 4 "1340747565" "capture_en_i" (2) "capture_en_i 0,1,0"
 ANNOTATION: "VC_COV_UNR"
 Branch 7 "2752186660" "(current_mapped_data_len_local > DATA_WIDTH)" (0) "(current_mapped_data_len_local > DATA_WIDTH) 1"
 ANNOTATION: "VC_COV_UNR"
-Branch 8 "548701755" "(current_mapped_data_len_local < SHARED_SR_LEN)" (1) "(current_mapped_data_len_local < SHARED_SR_LEN) 0"
+Branch 8 "4209544856" "(current_mapped_data_len_local < SharedSrLen)" (1) "(current_mapped_data_len_local < SharedSrLen) 0"
 ANNOTATION: "VC_COV_UNR"
-Branch 19 "2362615980" "(current_axi_axsize_tclk > MAX_AXSIZE)" (0) "(current_axi_axsize_tclk > MAX_AXSIZE) 1"
+Branch 19 "2651822427" "(current_axi_axsize_tclk > MaxAxSize)" (0) "(current_axi_axsize_tclk > MaxAxSize) 1"
 ANNOTATION: "VC_COV_UNR"
-Branch 26 "3696533593" "(update_en_i && (!security_disable_i))" (3) "(update_en_i && (!security_disable_i)) 1,0,-,-,1,1,-,-,-,-,-,-,-,-,-,-,-,-,-"
+Branch 26 "2135351192" "(update_en_i && (!security_disable_i))" (3) "(update_en_i && (!security_disable_i)) 1,0,-,-,1,1,-,-,-,-,-,-,-,-,-,-,-,-,-"
 ANNOTATION: "VC_COV_UNR"
-Branch 26 "3696533593" "(update_en_i && (!security_disable_i))" (10) "(update_en_i && (!security_disable_i)) 1,0,-,-,0,-,-,-,-,1,1,1,-,-,-,-,-,-,-"
+Branch 26 "2135351192" "(update_en_i && (!security_disable_i))" (10) "(update_en_i && (!security_disable_i)) 1,0,-,-,0,-,-,-,-,1,1,1,-,-,-,-,-,-,-"
 ANNOTATION: "VC_COV_UNR"
-Branch 26 "3696533593" "(update_en_i && (!security_disable_i))" (13) "(update_en_i && (!security_disable_i)) 1,0,-,-,0,-,-,-,-,1,1,-,0,-,-,-,-,-,-"
+Branch 26 "2135351192" "(update_en_i && (!security_disable_i))" (13) "(update_en_i && (!security_disable_i)) 1,0,-,-,0,-,-,-,-,1,1,-,0,-,-,-,-,-,-"
 ANNOTATION: "VC_COV_UNR"
-Branch 33 "2525113115" "select_AXISingleOp_i" (9) "select_AXISingleOp_i 0,-,-,-,0,-,-,1,1,-,-,-,-,-,-,-,-,-"
+Branch 33 "3766005092" "select_AXISingleOp_i" (9) "select_AXISingleOp_i 0,-,-,-,0,-,-,1,1,-,-,-,-,-,-,-,-,-"
 ANNOTATION: "VC_COV_UNR"
-Branch 33 "2525113115" "select_AXISingleOp_i" (14) "select_AXISingleOp_i 0,-,-,-,0,-,-,0,-,-,-,1,1,-,-,-,-,-"
+Branch 33 "3766005092" "select_AXISingleOp_i" (14) "select_AXISingleOp_i 0,-,-,-,0,-,-,0,-,-,-,1,1,-,-,-,-,-"
 ANNOTATION: "VC_COV_UNR"
-Branch 33 "2525113115" "select_AXISingleOp_i" (22) "select_AXISingleOp_i 0,-,-,-,0,-,-,0,-,-,-,1,-,-,-,0,-,-"
+Branch 33 "3766005092" "select_AXISingleOp_i" (22) "select_AXISingleOp_i 0,-,-,-,0,-,-,0,-,-,-,1,-,-,-,0,-,-"
 ANNOTATION: "VC_COV_UNR"
-Branch 34 "1758482982" "(BYTE_OFFSET_BITS != 0)" (1) "(BYTE_OFFSET_BITS != 0) 0"
+Branch 34 "3485254830" "(ByteOffsetBits != 0)" (1) "(ByteOffsetBits != 0) 0"
+ANNOTATION: "VC_COV_UNR"
+Branch 16 "1709732032" "axi_state_q_tclk" (3) "axi_state_q_tclk AXI_IDLE ,0,1,0,0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 16 "1709732032" "axi_state_q_tclk" (5) "axi_state_q_tclk AXI_IDLE ,0,0,-,-,1,1,0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
 CHECKSUM: "974425857 2476580373"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_dst.i_spill_register
 ANNOTATION: "VC_COV_UNR"
@@ -98190,7 +98344,7 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 gen_spill_reg.b_data_q.id [0] "logic gen_spill_reg.b_data_q.id[0:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 gen_spill_reg.b_data_q.id [0] "logic gen_spill_reg.b_data_q.id[0:0]"
-CHECKSUM: "1719173482 3047888931"
+CHECKSUM: "357498311 1710099946"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
 ANNOTATION: "VC_COV_UNR"
 Condition 4 "1414840331" "((active_instr_len_tclk == 7'b0) && (select_AXISingleOp_i || select_AXISeriesCtrl_i || select_AXISeriesDataIncr_i || select_AXISeriesDataNoIncr_i || select_AXISeriesDataWithErrorStatus_i)) 1 -1" (2 "10")
@@ -98199,9 +98353,9 @@ Condition 4 "1414840331" "((active_instr_len_tclk == 7'b0) && (select_AXISingleO
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4274977743" "(active_instr_len_tclk == 7'b0) 1 -1" (2 "1")
 ANNOTATION: "VC_COV_UNR"
-Condition 7 "770171670" "((current_len > 7'b0) && (current_len <= SHARED_SR_LEN)) 1 -1" (1 "01")
+Condition 7 "3082843087" "((current_len > 7'b0) && (current_len <= SharedSrLen)) 1 -1" (1 "01")
 ANNOTATION: "VC_COV_UNR"
-Condition 7 "770171670" "((current_len > 7'b0) && (current_len <= SHARED_SR_LEN)) 1 -1" (2 "10")
+Condition 7 "3082843087" "((current_len > 7'b0) && (current_len <= SharedSrLen)) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 52 "977940918" "((axi_state_q_tclk == AXI_SEND_ADDR_R) && src_req.ar_valid && src_resp.ar_ready && current_tx_is_series_read_tclk) 1 -1" (1 "0111")
 ANNOTATION: "VC_COV_UNR"
@@ -98213,20 +98367,8 @@ Condition 87 "1973234139" "((axi_state_q_tclk == AXI_WAIT_BRESP) && src_resp.b_v
 ANNOTATION: "VC_COV_UNR"
 Condition 89 "323899124" "((axi_state_q_tclk == AXI_WAIT_RDATA) && src_resp.r_valid && src_req.r_ready && src_resp.r.last) 1 -1" (1 "0111")
 ANNOTATION: "VC_COV_UNR"
-Condition 156 "2737123548" "(req_fifo_full_internal_tclk || (series_request_fifo_count_tclk >= series_request_max_entries_tclk)) 1 -1" (3 "10")
-ANNOTATION: "VC_COV_UNR"
-Condition 9 "594013796" "(ctrl_flush_pulse_tclk && (axi_state_q_tclk != AXI_IDLE) && current_tx_is_series_read_tclk && ((!current_is_series_data_with_error_status_op_tclk))) 1 -1" (2 "1011")
-ANNOTATION: "VC_COV_UNR"
-Condition 22 "2742256144" "(single_tx_op_tclk == JTAG_OP_READ) 1 -1" (1 "0")
-ANNOTATION: "VC_COV_UNR"
-Condition 75 "2303033675" "((axi_state_q_tclk == AXI_UPDATE_STATUS) && current_incr_series_addr_tclk && ((!current_tx_is_from_single_buffer_tclk))) 1 -1" (3 "110")
-ANNOTATION: "VC_COV_UNR"
-Condition 83 "2481371926" "(current_tx_is_from_single_buffer_tclk && ((!current_tx_is_series_read_tclk))) 1 -1" (1 "01")
-ANNOTATION: "VC_COV_UNR"
-Condition 83 "2481371926" "(current_tx_is_from_single_buffer_tclk && ((!current_tx_is_series_read_tclk))) 1 -1" (2 "10")
-ANNOTATION: "VC_COV_UNR"
-Condition 84 "3420037644" "(current_incr_series_addr_tclk && ((!current_tx_is_from_single_buffer_tclk)) && ((axi_state_q_tclk == AXI_UPDATE_STATUS) || ((axi_state_q_tclk == AXI_WAIT_BRESP) && src_resp.b_valid && src_req.b_ready) || ((axi_state_q_tclk == AXI_WAIT_RDATA) && src_resp.r_valid && src_req.r_ready && src_resp.r.last))) 1 -1" (2 "101")
-CHECKSUM: "1719173482 3047888931"
+Condition 152 "2737123548" "(req_fifo_full_internal_tclk || (series_request_fifo_count_tclk >= series_request_max_entries_tclk)) 1 -1" (3 "10")
+CHECKSUM: "357498311 1710099946"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
 ANNOTATION: "VC_COV_UNR"
 Condition 4 "1414840331" "((active_instr_len_tclk == 7'b0) && (select_AXISingleOp_i || select_AXISeriesCtrl_i || select_AXISeriesDataIncr_i || select_AXISeriesDataNoIncr_i || select_AXISeriesDataWithErrorStatus_i)) 1 -1" (2 "10")
@@ -98235,15 +98377,15 @@ Condition 4 "1414840331" "((active_instr_len_tclk == 7'b0) && (select_AXISingleO
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4274977743" "(active_instr_len_tclk == 7'b0) 1 -1" (2 "1")
 ANNOTATION: "VC_COV_UNR"
-Condition 7 "770171670" "((current_len > 7'b0) && (current_len <= SHARED_SR_LEN)) 1 -1" (1 "01")
+Condition 7 "3082843087" "((current_len > 7'b0) && (current_len <= SharedSrLen)) 1 -1" (1 "01")
 ANNOTATION: "VC_COV_UNR"
-Condition 7 "770171670" "((current_len > 7'b0) && (current_len <= SHARED_SR_LEN)) 1 -1" (2 "10")
+Condition 7 "3082843087" "((current_len > 7'b0) && (current_len <= SharedSrLen)) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 52 "977940918" "((axi_state_q_tclk == AXI_SEND_ADDR_R) && src_req.ar_valid && src_resp.ar_ready && current_tx_is_series_read_tclk) 1 -1" (1 "0111")
 ANNOTATION: "VC_COV_UNR"
 Condition 54 "294484968" "((axi_state_q_tclk == AXI_WAIT_RDATA) && src_resp.r_valid && src_req.r_ready && src_resp.r.last && current_tx_is_series_read_tclk) 1 -1" (1 "01111")
 ANNOTATION: "VC_COV_UNR"
-Condition 63 "395745632" "((update_register_q_tclk[AXISERIESCTRL_PD_HIGH:AXISERIESCTRL_PD_LOW] > FIFO_DEPTH) ? FIFO_DEPTH[(PIPELINE_DEPTH_FIELD_BITS - 1):0] : update_register_q_tclk[AXISERIESCTRL_PD_HIGH:AXISERIESCTRL_PD_LOW]) 1 -1" (2 "1")
+Condition 63 "3499204576" "((update_register_q_tclk[AxiSeriesCtrlPdHigh:AxiSeriesCtrlPdLow] > FIFO_DEPTH) ? FIFO_DEPTH[(PipelineDepthFieldBits - 1):0] : update_register_q_tclk[AxiSeriesCtrlPdHigh:AxiSeriesCtrlPdLow]) 1 -1" (2 "1")
 ANNOTATION: "VC_COV_UNR"
 Condition 77 "1132851201" "((axi_state_q_tclk == AXI_WAIT_RDATA) && src_resp.r_valid && src_req.r_ready && src_resp.r.last && current_tx_is_series_read_tclk && ((!current_is_series_data_with_error_status_op_tclk))) 1 -1" (1 "011111")
 ANNOTATION: "VC_COV_UNR"
@@ -98251,8 +98393,8 @@ Condition 87 "1973234139" "((axi_state_q_tclk == AXI_WAIT_BRESP) && src_resp.b_v
 ANNOTATION: "VC_COV_UNR"
 Condition 89 "323899124" "((axi_state_q_tclk == AXI_WAIT_RDATA) && src_resp.r_valid && src_req.r_ready && src_resp.r.last) 1 -1" (1 "0111")
 ANNOTATION: "VC_COV_UNR"
-Condition 156 "2737123548" "(req_fifo_full_internal_tclk || (series_request_fifo_count_tclk >= series_request_max_entries_tclk)) 1 -1" (3 "10")
-CHECKSUM: "1719173482 2704243693"
+Condition 152 "2737123548" "(req_fifo_full_internal_tclk || (series_request_fifo_count_tclk >= series_request_max_entries_tclk)) 1 -1" (3 "10")
+CHECKSUM: "357498311 3828155932"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi
 ANNOTATION: "VC_COV_UNR"
 Condition 4 "3046886006" "((active_instr_len_tclk == 8'b0) && (select_AXISingleOp_i || select_AXISeriesCtrl_i || select_AXISeriesDataIncr_i || select_AXISeriesDataNoIncr_i || select_AXISeriesDataWithErrorStatus_i)) 1 -1" (2 "10")
@@ -98261,15 +98403,15 @@ Condition 4 "3046886006" "((active_instr_len_tclk == 8'b0) && (select_AXISingleO
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "343754766" "(active_instr_len_tclk == 8'b0) 1 -1" (2 "1")
 ANNOTATION: "VC_COV_UNR"
-Condition 7 "2296628768" "((current_len > 8'b0) && (current_len <= SHARED_SR_LEN)) 1 -1" (1 "01")
+Condition 7 "2301948586" "((current_len > 8'b0) && (current_len <= SharedSrLen)) 1 -1" (1 "01")
 ANNOTATION: "VC_COV_UNR"
-Condition 7 "2296628768" "((current_len > 8'b0) && (current_len <= SHARED_SR_LEN)) 1 -1" (2 "10")
+Condition 7 "2301948586" "((current_len > 8'b0) && (current_len <= SharedSrLen)) 1 -1" (2 "10")
 ANNOTATION: "VC_COV_UNR"
 Condition 52 "977940918" "((axi_state_q_tclk == AXI_SEND_ADDR_R) && src_req.ar_valid && src_resp.ar_ready && current_tx_is_series_read_tclk) 1 -1" (1 "0111")
 ANNOTATION: "VC_COV_UNR"
 Condition 54 "294484968" "((axi_state_q_tclk == AXI_WAIT_RDATA) && src_resp.r_valid && src_req.r_ready && src_resp.r.last && current_tx_is_series_read_tclk) 1 -1" (1 "01111")
 ANNOTATION: "VC_COV_UNR"
-Condition 63 "395745632" "((update_register_q_tclk[AXISERIESCTRL_PD_HIGH:AXISERIESCTRL_PD_LOW] > FIFO_DEPTH) ? FIFO_DEPTH[(PIPELINE_DEPTH_FIELD_BITS - 1):0] : update_register_q_tclk[AXISERIESCTRL_PD_HIGH:AXISERIESCTRL_PD_LOW]) 1 -1" (2 "1")
+Condition 63 "3499204576" "((update_register_q_tclk[AxiSeriesCtrlPdHigh:AxiSeriesCtrlPdLow] > FIFO_DEPTH) ? FIFO_DEPTH[(PipelineDepthFieldBits - 1):0] : update_register_q_tclk[AxiSeriesCtrlPdHigh:AxiSeriesCtrlPdLow]) 1 -1" (2 "1")
 ANNOTATION: "VC_COV_UNR"
 Condition 77 "1132851201" "((axi_state_q_tclk == AXI_WAIT_RDATA) && src_resp.r_valid && src_req.r_ready && src_resp.r.last && current_tx_is_series_read_tclk && ((!current_is_series_data_with_error_status_op_tclk))) 1 -1" (1 "011111")
 ANNOTATION: "VC_COV_UNR"
@@ -98277,8 +98419,10 @@ Condition 87 "1973234139" "((axi_state_q_tclk == AXI_WAIT_BRESP) && src_resp.b_v
 ANNOTATION: "VC_COV_UNR"
 Condition 89 "323899124" "((axi_state_q_tclk == AXI_WAIT_RDATA) && src_resp.r_valid && src_req.r_ready && src_resp.r.last) 1 -1" (1 "0111")
 ANNOTATION: "VC_COV_UNR"
-Condition 156 "2737123548" "(req_fifo_full_internal_tclk || (series_request_fifo_count_tclk >= series_request_max_entries_tclk)) 1 -1" (3 "10")
-CHECKSUM: "1404198170 1330320602"
+Condition 152 "2737123548" "(req_fifo_full_internal_tclk || (series_request_fifo_count_tclk >= series_request_max_entries_tclk)) 1 -1" (3 "10")
+ANNOTATION: "VC_COV_UNR"
+Condition 22 "2072724897" "(single_tx_op_tclk == JtagOpRead) 1 -1" (1 "0")
+CHECKSUM: "4175005557 1698393031"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap
 ANNOTATION: "VC_COV_UNR"
 Condition 20 "632465468" "(stap_select && (dr_scan_ctrl.select | ir_scan_ctrl.select)) 1 -1" (2 "10")
@@ -98397,6 +98541,8 @@ Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1"
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (4 "1110")
 ANNOTATION: "VC_COV_UNR"
+Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (1 "0111")
+ANNOTATION: "VC_COV_UNR"
 Condition 6 "443396747" "(FALL_THROUGH && (status_cnt_q == 2'b0) && push_i) 1 -1" (1 "-01")
 CHECKSUM: "2472113747 1109548800"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_w_ft_reg.i_fifo
@@ -98430,6 +98576,8 @@ ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (3 "1101")
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (4 "1110")
+ANNOTATION: "VC_COV_UNR"
+Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (1 "0111")
 ANNOTATION: "VC_COV_UNR"
 Condition 6 "443396747" "(FALL_THROUGH && (status_cnt_q == 2'b0) && push_i) 1 -1" (1 "-01")
 CHECKSUM: "2472113747 1109548800"
@@ -98488,6 +98636,10 @@ ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (3 "1101")
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (4 "1110")
+ANNOTATION: "VC_COV_UNR"
+Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (1 "0111")
+ANNOTATION: "VC_COV_UNR"
+Condition 6 "443396747" "(FALL_THROUGH && (status_cnt_q == 2'b0) && push_i) 1 -1" (1 "-01")
 CHECKSUM: "2472113747 1109548800"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_w_ft_reg.i_fifo
 ANNOTATION: "VC_COV_UNR"
@@ -98502,6 +98654,10 @@ ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (3 "1101")
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (4 "1110")
+ANNOTATION: "VC_COV_UNR"
+Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (1 "0111")
+ANNOTATION: "VC_COV_UNR"
+Condition 6 "443396747" "(FALL_THROUGH && (status_cnt_q == 2'b0) && push_i) 1 -1" (1 "-01")
 CHECKSUM: "2472113747 1109548800"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_ar_ft_reg.i_fifo
 ANNOTATION: "VC_COV_UNR"
@@ -98516,14 +98672,16 @@ ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (3 "1101")
 ANNOTATION: "VC_COV_UNR"
 Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (4 "1110")
+ANNOTATION: "VC_COV_UNR"
+Condition 5 "4268026192" "(push_i && pop_i && ((~full_o)) && ((~empty_o))) 1 -1" (1 "0111")
+ANNOTATION: "VC_COV_UNR"
+Condition 6 "443396747" "(FALL_THROUGH && (status_cnt_q == 2'b0) && push_i) 1 -1" (1 "-01")
 CHECKSUM: "134688471 3107074185"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_write_fork
 ANNOTATION: "vcs_gen_start:i=0:vcs_gen_end:VC_COV_UNR"
 Condition 6 "3481493689" "(valid_i && ready_o) 1 -1" (1 "01")
 ANNOTATION: "vcs_gen_start:i=1:vcs_gen_end:VC_COV_UNR"
 Condition 7 "2816938662" "(valid_i && ready_o) 1 -1" (1 "01")
-ANNOTATION: "VC_COV_UNR"
-Condition 4 "2724835038" "(valid_i && (oup_ready == all_ones)) 1 -1" (1 "01")
 CHECKSUM: "134688471 3107074185"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_write_fork
 ANNOTATION: "vcs_gen_start:i=0:vcs_gen_end:VC_COV_UNR"
@@ -98553,37 +98711,11 @@ Condition 3 "1324655787" "(rvalid_o & rready_i & ((~gen_normal_fifo.under_rst)))
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "1324655787" "(rvalid_o & rready_i & ((~gen_normal_fifo.under_rst))) 1 -1" (3 "110")
 CHECKSUM: "3284088591 1164256385"
-INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw
-ANNOTATION: "VC_COV_UNR"
-Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
-CHECKSUM: "3284088591 1164256385"
-INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w
-ANNOTATION: "VC_COV_UNR"
-Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
-CHECKSUM: "3284088591 1164256385"
-INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar
-ANNOTATION: "VC_COV_UNR"
-Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
-CHECKSUM: "3284088591 1164256385"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b
 ANNOTATION: "VC_COV_UNR"
 Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
 CHECKSUM: "3284088591 1164256385"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r
-ANNOTATION: "VC_COV_UNR"
-Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
-ANNOTATION: "VC_COV_UNR"
-Condition 2 "2130046893" "(dst_ready_i & ((!s_dst_isolate_req))) 1 -1" (2 "10")
-CHECKSUM: "3284088591 1164256385"
-INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw
-ANNOTATION: "VC_COV_UNR"
-Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
-CHECKSUM: "3284088591 1164256385"
-INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w
-ANNOTATION: "VC_COV_UNR"
-Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
-CHECKSUM: "3284088591 1164256385"
-INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar
 ANNOTATION: "VC_COV_UNR"
 Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
 CHECKSUM: "3284088591 1164256385"
@@ -98594,20 +98726,6 @@ CHECKSUM: "3284088591 1164256385"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r
 ANNOTATION: "VC_COV_UNR"
 Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
-ANNOTATION: "VC_COV_UNR"
-Condition 2 "2130046893" "(dst_ready_i & ((!s_dst_isolate_req))) 1 -1" (2 "10")
-CHECKSUM: "3284088591 1164256385"
-INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw
-ANNOTATION: "VC_COV_UNR"
-Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
-CHECKSUM: "3284088591 1164256385"
-INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w
-ANNOTATION: "VC_COV_UNR"
-Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
-CHECKSUM: "3284088591 1164256385"
-INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar
-ANNOTATION: "VC_COV_UNR"
-Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
 CHECKSUM: "3284088591 1164256385"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b
 ANNOTATION: "VC_COV_UNR"
@@ -98616,8 +98734,6 @@ CHECKSUM: "3284088591 1164256385"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r
 ANNOTATION: "VC_COV_UNR"
 Condition 1 "869045239" "(src_valid_i & ((!s_src_isolate_req))) 1 -1" (2 "10")
-ANNOTATION: "VC_COV_UNR"
-Condition 2 "2130046893" "(dst_ready_i & ((!s_dst_isolate_req))) 1 -1" (2 "10")
 CHECKSUM: "974425857 2887839829"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_dst.i_spill_register
 ANNOTATION: "VC_COV_UNR"
@@ -102172,7 +102288,7 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 gen_spill_reg.b_data_q.id [1] "logic gen_spill_reg.b_data_q.id[1:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 gen_spill_reg.b_data_q.id [1] "logic gen_spill_reg.b_data_q.id[1:0]"
-CHECKSUM: "2859552286 2730259494"
+CHECKSUM: "3560455992 2730259494"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.u_smc_otp_2axi_caps_reg
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 dummy_req.r_ready "logic dummy_req.r_ready"
@@ -102618,7 +102734,7 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 dummy_req.aw.addr [31] "logic dummy_req.aw.addr[31:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 dummy_req.aw.addr [31] "logic dummy_req.aw.addr[31:0]"
-CHECKSUM: "2859552286 2730259494"
+CHECKSUM: "3560455992 2730259494"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.u_sep_otp_2axi_caps_reg
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 dummy_req.r_ready "logic dummy_req.r_ready"
@@ -103064,7 +103180,7 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 dummy_req.aw.addr [31] "logic dummy_req.aw.addr[31:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 dummy_req.aw.addr [31] "logic dummy_req.aw.addr[31:0]"
-CHECKSUM: "2859552286 2325793382"
+CHECKSUM: "3560455992 2325793382"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.u_smc_2axi_caps_reg
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 dummy_req.r_ready "logic dummy_req.r_ready"
@@ -104242,7 +104358,7 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 dummy_req.aw.id [1] "logic dummy_req.aw.id[1:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 dummy_req.aw.id [1] "logic dummy_req.aw.id[1:0]"
-CHECKSUM: "1719173482 1009589673"
+CHECKSUM: "357498311 1009589673"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 test_en_i "logic test_en_i"
@@ -105808,7 +105924,7 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 ar_buf.id [1] "logic ar_buf.id[1:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 ar_buf.id [1] "logic ar_buf.id[1:0]"
-CHECKSUM: "1719173482 3246283817"
+CHECKSUM: "357498311 3246283817"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 test_en_i "logic test_en_i"
@@ -106850,15 +106966,7 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 ar_buf.id [0] "logic ar_buf.id[0:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 ar_buf.id [0] "logic ar_buf.id[0:0]"
-ANNOTATION: "VC_COV_UNR"
-Toggle 0to1 series_reads_in_flight_tclk [1] "logic series_reads_in_flight_tclk[1:0]"
-ANNOTATION: "VC_COV_UNR"
-Toggle 1to0 series_reads_in_flight_tclk [1] "logic series_reads_in_flight_tclk[1:0]"
-ANNOTATION: "VC_COV_UNR"
-Toggle 0to1 series_reads_in_flight_tclk_d [1] "logic series_reads_in_flight_tclk_d[1:0]"
-ANNOTATION: "VC_COV_UNR"
-Toggle 1to0 series_reads_in_flight_tclk_d [1] "logic series_reads_in_flight_tclk_d[1:0]"
-CHECKSUM: "1719173482 1593867146"
+CHECKSUM: "357498311 1593867146"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 test_en_i "logic test_en_i"
@@ -111208,6 +111316,18 @@ Transition WAIT_ISOLATE_ACK->IDLE "3->0"
 Fsm initiator_state_q "659400750"
 ANNOTATION: "VC_COV_UNR"
 Transition WAIT_ISOLATE_PHASE_ACK->IDLE "2->0"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_CLEAR_ACK "6"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_ISOLATE_ACK "3"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition CLEAR->POST_CLEAR "4->7"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition ISOLATE->CLEAR "1->4"
 CHECKSUM: "2697825409 659400750"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 Fsm initiator_state_q "659400750"
@@ -111231,6 +111351,18 @@ Transition WAIT_ISOLATE_ACK->IDLE "3->0"
 Fsm initiator_state_q "659400750"
 ANNOTATION: "VC_COV_UNR"
 Transition WAIT_ISOLATE_PHASE_ACK->IDLE "2->0"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_CLEAR_ACK "6"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_ISOLATE_ACK "3"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition CLEAR->POST_CLEAR "4->7"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition ISOLATE->CLEAR "1->4"
 CHECKSUM: "2697825409 659400750"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 Fsm initiator_state_q "659400750"
@@ -111312,6 +111444,18 @@ Transition WAIT_ISOLATE_ACK->IDLE "3->0"
 Fsm initiator_state_q "659400750"
 ANNOTATION: "VC_COV_UNR"
 Transition WAIT_ISOLATE_PHASE_ACK->IDLE "2->0"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_CLEAR_ACK "6"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_ISOLATE_ACK "3"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition CLEAR->POST_CLEAR "4->7"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition ISOLATE->CLEAR "1->4"
 CHECKSUM: "2697825409 659400750"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 Fsm initiator_state_q "659400750"
@@ -111393,6 +111537,18 @@ Transition WAIT_ISOLATE_ACK->IDLE "3->0"
 Fsm initiator_state_q "659400750"
 ANNOTATION: "VC_COV_UNR"
 Transition WAIT_ISOLATE_PHASE_ACK->IDLE "2->0"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_CLEAR_ACK "6"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+State WAIT_ISOLATE_ACK "3"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition CLEAR->POST_CLEAR "4->7"
+Fsm initiator_state_q "659400750"
+ANNOTATION: "VC_COV_UNR"
+Transition ISOLATE->CLEAR "1->4"
 CHECKSUM: "2697825409 659400750"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 Fsm initiator_state_q "659400750"
@@ -111637,28 +111793,30 @@ Transition WAIT_CLEAR_PHASE_ACK->IDLE "5->0"
 Fsm initiator_state_q "659400750"
 ANNOTATION: "VC_COV_UNR"
 Transition WAIT_ISOLATE_PHASE_ACK->IDLE "2->0"
-CHECKSUM: "1719173482 3437789738"
+CHECKSUM: "357498311 2318195184"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi
 ANNOTATION: "VC_COV_UNR"
 Block 30 "2919387791" "mapped_data_bits_local = DATA_WIDTH;"
 ANNOTATION: "VC_COV_UNR"
 Block 39 "2830219498" "active_instr_len_tclk = 1;"
 ANNOTATION: "VC_COV_UNR"
-Block 42 "1125696592" "active_instr_len_tclk = SHARED_SR_LEN;"
+Block 42 "365188843" "active_instr_len_tclk = SharedSrLen;"
 ANNOTATION: "VC_COV_UNR"
 Block 72 "3729211455" "current_mapped_data_len_local = DATA_WIDTH;"
 ANNOTATION: "VC_COV_UNR"
-Block 81 "112410037" "series_data_errstat_incr_stat_bit_tclk = 1'b0;"
+Block 81 "3615490460" "series_data_errstat_incr_stat_bit_tclk = 1'b0;"
 ANNOTATION: "VC_COV_UNR"
-Block 256 "1825529934" "current_axi_axsize_tclk = MAX_AXSIZE;"
+Block 256 "2280455332" "current_axi_axsize_tclk = MaxAxSize;"
 ANNOTATION: "VC_COV_UNR"
 Block 306 "1637782753" "current_mapped_data_len_local = DATA_WIDTH;"
 ANNOTATION: "VC_COV_UNR"
-Block 315 "4070146593" "incr_addr_bit = 1'b0;"
+Block 315 "598392328" "incr_addr_bit = 1'b0;"
 ANNOTATION: "VC_COV_UNR"
 Block 398 "3495871407" "mapped_len_for_capture_local = DATA_WIDTH;"
 ANNOTATION: "VC_COV_UNR"
 Block 420 "1872876435" "mapped_data_bits_cap_local = DATA_WIDTH;"
+ANNOTATION: "VC_COV_UNR"
+Block 219 "2791700581" "axi_state_d_tclk = AXI_IDLE;"
 CHECKSUM: "3725904770 2920411870"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_src.gen_sync[0].i_sync
 ANNOTATION: "VC_COV_UNR"
@@ -112517,6 +112675,14 @@ ANNOTATION: "VC_COV_UNR"
 Branch 0 "2699411035" "initiator_state_q" (15) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,0,-,-,-"
 ANNOTATION: "VC_COV_UNR"
 Branch 3 "2956354956" "receiver_phase_req" (4) "receiver_phase_req 1,default,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (2) "initiator_state_q ISOLATE ,-,1,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (6) "initiator_state_q WAIT_ISOLATE_ACK ,-,-,-,-,1,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (10) "initiator_state_q CLEAR ,-,-,-,-,-,-,1,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (14) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,1,-,-,-"
 CHECKSUM: "2697825409 521200875"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
@@ -112541,6 +112707,14 @@ ANNOTATION: "VC_COV_UNR"
 Branch 0 "2699411035" "initiator_state_q" (15) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,0,-,-,-"
 ANNOTATION: "VC_COV_UNR"
 Branch 3 "2956354956" "receiver_phase_req" (4) "receiver_phase_req 1,default,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (2) "initiator_state_q ISOLATE ,-,1,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (6) "initiator_state_q WAIT_ISOLATE_ACK ,-,-,-,-,1,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (10) "initiator_state_q CLEAR ,-,-,-,-,-,-,1,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (14) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,1,-,-,-"
 CHECKSUM: "2697825409 521200875"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
@@ -112565,6 +112739,14 @@ ANNOTATION: "VC_COV_UNR"
 Branch 0 "2699411035" "initiator_state_q" (15) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,0,-,-,-"
 ANNOTATION: "VC_COV_UNR"
 Branch 3 "2956354956" "receiver_phase_req" (4) "receiver_phase_req 1,default,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (2) "initiator_state_q ISOLATE ,-,1,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (6) "initiator_state_q WAIT_ISOLATE_ACK ,-,-,-,-,1,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (10) "initiator_state_q CLEAR ,-,-,-,-,-,-,1,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (14) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,1,-,-,-"
 CHECKSUM: "2697825409 521200875"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
@@ -112605,6 +112787,14 @@ ANNOTATION: "VC_COV_UNR"
 Branch 0 "2699411035" "initiator_state_q" (15) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,0,-,-,-"
 ANNOTATION: "VC_COV_UNR"
 Branch 3 "2956354956" "receiver_phase_req" (4) "receiver_phase_req 1,default,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (2) "initiator_state_q ISOLATE ,-,1,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (6) "initiator_state_q WAIT_ISOLATE_ACK ,-,-,-,-,1,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (10) "initiator_state_q CLEAR ,-,-,-,-,-,-,1,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (14) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,1,-,-,-"
 CHECKSUM: "2697825409 521200875"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
@@ -112629,6 +112819,14 @@ ANNOTATION: "VC_COV_UNR"
 Branch 0 "2699411035" "initiator_state_q" (15) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,0,-,-,-"
 ANNOTATION: "VC_COV_UNR"
 Branch 3 "2956354956" "receiver_phase_req" (4) "receiver_phase_req 1,default,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (2) "initiator_state_q ISOLATE ,-,1,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (6) "initiator_state_q WAIT_ISOLATE_ACK ,-,-,-,-,1,-,-,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (10) "initiator_state_q CLEAR ,-,-,-,-,-,-,1,-,-,-,-,-,-"
+ANNOTATION: "VC_COV_UNR"
+Branch 0 "2699411035" "initiator_state_q" (14) "initiator_state_q WAIT_CLEAR_ACK ,-,-,-,-,-,-,-,-,-,1,-,-,-"
 CHECKSUM: "1762849086 1643469273"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.gen_stap_io.u_stap_io.u_sib_mux_pre.u_scan_reg
 ANNOTATION: "VC_COV_UNR"
@@ -112693,7 +112891,7 @@ ANNOTATION: "VC_COV_UNR"
 Condition 3 "1947639602" "(client_scan_ctrl_i.shift_en && client_scan_ctrl_i.select && ((!security_disable_i))) 1 -1" (2 "101")
 ANNOTATION: "VC_COV_UNR"
 Condition 4 "2255044721" "(client_scan_ctrl_i.update_en && client_scan_ctrl_i.select && ((!security_disable_i))) 1 -1" (2 "101")
-CHECKSUM: "3727780056 501317893"
+CHECKSUM: "282421448 501317893"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 test_en_i "logic test_en_i"
@@ -113131,7 +113329,7 @@ ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 axil_sep_otp_jtag_req_o.aw.prot [2] "logic axil_sep_otp_jtag_req_o.aw.prot[2:0]"
 ANNOTATION: "VC_COV_UNR"
 Toggle 1to0 axil_sep_otp_jtag_req_o.aw.prot [2] "logic axil_sep_otp_jtag_req_o.aw.prot[2:0]"
-CHECKSUM: "1260940317 920999053"
+CHECKSUM: "662344282 920999053"
 INSTANCE: dtp_uvm_top.u_dut
 ANNOTATION: "VC_COV_UNR"
 Toggle 0to1 axi_smc_dbg_req_o.ar.user [0] "logic axi_smc_dbg_req_o.ar.user[11:0]"
@@ -113593,8 +113791,3 @@ CHECKSUM: "2659862932 751751605"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_series_rsp_fifo
 ANNOTATION: "VC_COV_UNR"
 Condition 2 "803322985" "(wvalid_i & wready_o) 1 -1" (2 "10")
-CHECKSUM: "1719173482 2358895553"
-INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
-Fsm sticky_axi_status_tclk_d "1843354804"
-ANNOTATION: "VC_COV_UNR"
-State CAPTURE_STATUS_BUSY_OR_FULL "3"

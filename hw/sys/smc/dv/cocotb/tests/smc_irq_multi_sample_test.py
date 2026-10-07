@@ -16,11 +16,10 @@ class smc_irq_multi_sample_test(smc_base_test):
     required_evidence = ("CHK-IRQ-MULTI-SAMPLE-STABLE",)
     min_evidence = 1
 
-    # Both proof legs of this testcase (the scoreboard idle compare and the
-    # sequence's cross-gap stability compare) are satisfied by a tied-off probe
-    # -- a dead net is perfectly stable. These controls prove each aggregate
-    # able to read 1 in the same run and credit the liveness ledger the
-    # scoreboard consults ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+    # The scoreboard idle compare and the sequence's cross-gap stability compare
+    # both pass on a tied-off probe, since a dead net is stable. These controls
+    # drive each aggregate to 1 in the same run and credit the liveness ledger
+    # the scoreboard consults.
     probe_positive_controls = ("sync_irq", "uart_irq_any", "gpio_irq_any")
 
     async def run_scenario(self) -> None:

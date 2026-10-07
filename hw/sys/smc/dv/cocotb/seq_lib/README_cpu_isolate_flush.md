@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # CPU AXI-isolate forced-reset recovery
 
-This note records the problem, behavior, limits, and directed tests for the
-SMC CPU reset-timeout recovery change. It is implementation and test context,
-not a software interface specification.
+This note records the problem, behavior, limits, and directed tests of the
+SMC CPU reset-timeout recovery. It is implementation and test context, not a
+software interface specification.
 
 ## Problem
 
@@ -26,8 +26,8 @@ count falls on the last accepted W beat.
 If `CPU_CTRL.RESET_TIMEOUT` expires with `timeout_mode=1`, the reset must be
 applied even when draining has not completed. The reset CPU can forget an
 outstanding transaction and stop accepting or producing the beat needed to
-clear a pending count. Before this change, the isolate could then remain in
-`Drain`, `drained_o` would remain low, and the CPU AXI paths would not reopen.
+clear a pending count. Without the flush, the isolate then remains in `Drain`,
+`drained_o` stays low, and the CPU AXI paths do not reopen.
 
 ## Recovery behavior
 
@@ -89,21 +89,22 @@ separate, so a dead read does not necessarily block writes, and vice versa.
 Only the missing response or a reset that also covers the affected endpoint
 and fabric state can clear this residual.
 
-For a request held valid without `ready`, recovery is intentionally deferred.
-There is no protocol-safe way for the isolate to make the receiving endpoint
-accept the request.
+For a request held valid without `ready`, the isolate defers recovery: there
+is no protocol-safe way for it to make the receiving endpoint accept the
+request.
 
 A B/R response that the CPU presents toward live fabric cannot be preserved.
 The force-mode reset reaches the CPU about a cycle after the flush starts, so
 the beat is withdrawn without `ready` with or without the flush. The flush
 masks it immediately instead of letting the reset drop it a cycle later.
 Without the flush, the same withdrawal leaves the affected L2 read or
-write channel in `Drain` permanently. That blocked later fabric reads or
+write channel in `Drain` permanently. That blocks later fabric reads or
 writes into the CPU, and every later drain handshake, until a primary reset.
 Holding the presented beat would not make the outcome AXI-clean: the rest of
 the burst is lost with the CPU, and a master that never accepts would keep the
 shared response path blocked. Arbiters that check request stability, such as
-`rr_arb_tree` in the front-port demux, flag this withdrawal (issue #2449).
+`rr_arb_tree` in the front-port demux, flag this withdrawal as a
+request-stability violation.
 
 In practice, this requires the fabric side to stop accepting L2 responses for
 the whole reset timeout, which means a hung or severely stalled fabric-side

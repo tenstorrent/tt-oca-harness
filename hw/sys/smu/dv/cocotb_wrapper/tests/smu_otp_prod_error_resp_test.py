@@ -20,7 +20,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_otp_prod_error_resp_test(smu_base_test):
-    """SMC and SEP OTP JTAG2AXI refusals under PROD; no Force."""
+    """SMC and SEP OTP JTAG2AXI refusals under PROD."""
 
     use_shared_env = True
 

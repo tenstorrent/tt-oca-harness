@@ -9,10 +9,8 @@ import cocotb
 from .smc_addr_map import cpu_ctrl_u32, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# Addresses come from the generated map, not from literals: a hardcoded base
-# such as `0xC003_9080` has to be tracked by hand when the block moves. The
-# indexed macro `SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(idx) = 0xC0039080 +
-# idx * 0x8` (smc_addr.h:2325) is the authority for both base and stride
+# The indexed macro `SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(idx)` in the
+# generated smc_addr.h is the authority for both base and stride
 # ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 SCRATCH_WRITES = [
     (
@@ -50,11 +48,9 @@ assert sum(1 for _v in DUMMY_ROM_RESETS.values() if _v) >= 3, (
     f"DUMMY_ROM resets are no longer discriminating: {DUMMY_ROM_RESETS}"
 )
 _ROM_PROBE = 0xA5A5_5A5A_C3C3_3C3C
-# CORE_RESET_PULSE_COUNT is NOT swept: cpu_ctrl.rdl gives it
-# `sw = ['r','rw']` / `hw = ['r','w']`, i.e. it carries hardware-driven fields
-# (core_resets_done). A register the hardware drives cannot be held to its RDL
-# reset, and masking it correctly would need field masks this testcase does not
-# import.
+# CORE_RESET_PULSE_COUNT carries hardware-driven fields (core_resets_done;
+# cpu_ctrl.rdl `sw = ['r','rw']` / `hw = ['r','w']`), so it cannot be held to
+# its RDL reset and is left out of the sweep.
 
 
 class smc_cpu_ctrl_scratch_window_test_seq(SmcCsrSeq):
@@ -96,11 +92,6 @@ class smc_cpu_ctrl_scratch_window_test_seq(SmcCsrSeq):
 
         await self._dummy_rom_sweep()
 
-        # `self.accesses` is bumped by this sequence's own csr_* calls, so
-        # asserting it against a literal only restates the loop above and cannot
-        # fail on anything the DUT did ([NO-ALWAYS-PASS-CHECKER]).
-        # `assert_all_reachable` cross-checks the same count against the
-        # scoreboard, so a mis-bound analysis path fails.
         expected = len(SCRATCH_WRITES) * 5 + len(DUMMY_ROM_RESETS) * 5 + DUMMY_ROM_NULL_COUNT
         self.assert_all_reachable(expected, "CPU_CTRL_SCRATCH_WINDOW")
 

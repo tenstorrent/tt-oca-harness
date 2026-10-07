@@ -12,7 +12,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_i2c_p0_rdwr_test(smc_base_test):
-    """Commercial P0 intent: internal dual-controller write/read proof."""
+    """I2C0 host write and read to the I2C1 target on the shared bus."""
 
     required_evidence = (
         "CHK-I2C-P0-RDWR-READ",
@@ -26,8 +26,7 @@ class smc_i2c_p0_rdwr_test(smc_base_test):
         seq = smc_i2c_p0_rdwr_test_seq("i2c_p0_rdwr_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         assert seq.transfer_ok, "I2C0→I2C1 P0 write transfer did not complete"
-        # Both directions, because the claim names both. Without this the read
-        # half could be dropped from the sequence and nothing would notice.
+        # The evidence claim covers both directions.
         assert seq.read_ok, "I2C0←I2C1 P0 read transfer did not complete"
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,

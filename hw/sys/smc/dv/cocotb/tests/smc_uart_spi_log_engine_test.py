@@ -45,9 +45,8 @@ class smc_uart_spi_log_engine_test(smc_base_test):
     )
     min_evidence = 12
 
-    # No AUTO-COVERAGE-STAMP: this scenario records its own protocol VIP item
-    # from measured counts below, so the base-test activity stamp would only add
-    # a second, weaker record of the same traffic.
+    # This scenario records its own protocol VIP item from the measured counts
+    # below, so the base-test activity stamp is off.
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

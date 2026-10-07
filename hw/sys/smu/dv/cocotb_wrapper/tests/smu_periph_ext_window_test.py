@@ -11,7 +11,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_periph_ext_window_test(smu_base_test):
-    """The 0xC040_0000 peripheral window over J2A; no Force / no sep_in."""
+    """The 0xC040_0000 peripheral window over J2A."""
 
     use_shared_env = True
 
