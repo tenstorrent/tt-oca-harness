@@ -8,15 +8,15 @@
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/dashboard-data/history.json",
-    "history_points": 23,
+    "history_points": 24,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/dashboard-data/summary.json",
     "tests": {
       "failing": 2,
       "incomplete_runs": 0,
-      "pass_rate": 99.2,
-      "passing": 248,
+      "pass_rate": 99.21,
+      "passing": 252,
       "skipped": 0,
-      "total": 250,
+      "total": 254,
       "unknown": 0
     }
   },
@@ -31,14 +31,14 @@
     "combined: native status=FAIL",
     "combined: normalized status=FAIL"
   ],
-  "generated_at": "2026-10-07T07:00:58.153510+00:00",
+  "generated_at": "2026-10-07T17:01:54.545596+00:00",
   "git": {
-    "commit": "0f08c6bdc93fff9dc3da2fb95edbe0872d904c33",
-    "requested_ref": "0f08c6bdc93fff9dc3da2fb95edbe0872d904c33"
+    "commit": "ac8f673b100219434b28f2a75dd80db4de0cd191",
+    "requested_ref": "ac8f673b100219434b28f2a75dd80db4de0cd191"
   },
   "jenkins": {
-    "build_number": "36",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smu/job/dashboard/36/",
+    "build_number": "37",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smu/job/dashboard/37/",
     "job_name": "tt-oca-harness/smu/dashboard",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smu/job/dashboard/"
   },

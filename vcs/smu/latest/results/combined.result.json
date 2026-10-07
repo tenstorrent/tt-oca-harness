@@ -8,16 +8,16 @@
     "run_dir": "vcs/smu/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-3fd72ab25675479d",
+    "comparison_key": "COVCMP-4672676ffe8abf1d",
     "details_available": true,
     "effective_metrics": {
-      "assertion": 95.04,
+      "assertion": 95.08,
       "branch": 100.0,
       "condition": 100.0,
       "functional": 100.0,
       "line": 100.0,
       "toggle": 99.34,
-      "user": 97.1963
+      "user": 97.2222
     },
     "holes_summary": {
       "accepted": 0,
@@ -44,7 +44,7 @@
     "policy_application": "artifacts/smu/coverage/report/policy-application.json",
     "policy_thresholds": [
       {
-        "actual_percent": 97.1963,
+        "actual_percent": 97.2222,
         "id": "user",
         "max_unclassified_points": null,
         "met": false,
@@ -56,13 +56,13 @@
       }
     ],
     "raw_metrics": {
-      "assertion": 95.04,
+      "assertion": 95.08,
       "branch": 50.0,
-      "condition": 40.0,
+      "condition": 60.0,
       "functional": 70.0,
       "line": 75.0,
       "toggle": 66.95,
-      "user": 97.1963
+      "user": 97.2222
     },
     "report": "artifacts/smu/coverage/report",
     "source_manifest": "vcs/smu/runs/combined/cov/coverage.json",
@@ -74,7 +74,7 @@
     "target": "compile_smu_chiplet",
     "threshold": 0.0,
     "threshold_met": false,
-    "total_percent": 99.06
+    "total_percent": 99.07
   },
   "failure_buckets": [
     {
@@ -88,11 +88,11 @@
   ],
   "flow": "smu",
   "framework": "",
-  "generated_at": "2026-10-07T07:00:56+00:00",
+  "generated_at": "2026-10-07T17:01:53+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "0f08c6bdc93fff9dc3da2fb95edbe0872d904c33",
-    "short_sha": "0f08c6bd"
+    "sha": "ac8f673b100219434b28f2a75dd80db4de0cd191",
+    "short_sha": "ac8f673b"
   },
   "junit_xml": {
     "missing": 0,
@@ -101,10 +101,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-07T07:00:54.890982+00:00",
+    "generated_at": "2026-10-07T17:01:52.816352+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "0f08c6bdc93fff9dc3da2fb95edbe0872d904c33",
+      "commit": "ac8f673b100219434b28f2a75dd80db4de0cd191",
       "dirty": "false"
     },
     "label": "combine",
@@ -123,15 +123,15 @@
   "tests": {
     "completed": true,
     "failing": 1,
-    "pass_rate": 99.2,
-    "passing": 124,
-    "total": 125
+    "pass_rate": 99.21,
+    "passing": 126,
+    "total": 127
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 12.85,
-    "end_time": "2026-10-07T07:00:53.757579+00:00",
-    "start_time": "2026-10-07T07:00:40.893174+00:00"
+    "duration_sec": 7.13,
+    "end_time": "2026-10-07T17:01:52.293887+00:00",
+    "start_time": "2026-10-07T17:01:45.156347+00:00"
   },
   "tool": "vcs"
 }
