@@ -79,6 +79,8 @@ sources = [
   # `smc` Bender target that normally carries it is not in the SEP build.
   "hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
+  # BH-SMC responder on the SEP->SMC AXI (docs/SEP_TB_ARCH.adoc, HDL Top port table).
+  "hw/sys/sep/dv/tb/sep_smc_route_mem.sv",
   # FCOV covergroup sampler (VCS only; the module is `ifndef VERILATOR`).
   "hw/sys/sep/dv/cov/sv/sep_fcov.sv",
   # Clean-room AXI4 protocol checker, instantiated on the m_axi and s_axi
@@ -664,6 +666,8 @@ sources = [
   # `smc` Bender target that normally carries it is not in the SEP build.
   "hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
+  # BH-SMC responder on the SEP->SMC AXI (docs/SEP_TB_ARCH.adoc, HDL Top port table).
+  "hw/sys/sep/dv/tb/sep_smc_route_mem.sv",
   "hw/sys/sep/dv/cov/sv/sep_fcov.sv",
   # IC_RESET TDR storage for the SEP slice (same entry as the DUT [build]).
   "hw/ip/jtag/jtag_ptap/rtl/jtag_ic_reset_reg.sv",
