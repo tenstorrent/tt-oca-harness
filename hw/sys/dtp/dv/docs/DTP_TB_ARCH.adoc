@@ -667,39 +667,28 @@ realization. To add the SV-UVM twin of a cocotb scenario:
 
 === Overlaying a Commercial VIP (`DTP_OVERLAY_TESTS`)
 
-The SV-UVM realization can host a commercial protocol VIP as a passive
-overlay: an adopter-side build variation that adds vendor protocol monitors
-to the stock tests without editing this tree. The seam is the
-`DTP_OVERLAY_TESTS` compile hook at the end of `uvm/tests/dtp_tests.sv`:
-defined to the quoted name of an include file on the overlay's own include
-path, that file compiles into the test manifest. The OSS filelists leave it
-undefined.
+An optional protocol backend follows the Template Contract in the
+`ocah_jtag_vip` README and reaches the SV-UVM build through the runner's
+adopter overlay layer (`run_dv.py --overlay`, described in
+`tools/dv/doc/run-dv.adoc`), which carries the backend sources, include
+directories, gate defines, simulator flags, factory overrides, and runtime
+environment. The bench runs unchanged without the overlay. The DTP specifics
+are where each hook sits:
 
-An overlay is three adopter-owned files kept outside this repository, since
-vendor VIP collateral cannot be committed here:
+[cols=",,",options="header",]
+|===
+|Port |Interface instance carrying the vendor nest |`dtp_env` member the override replaces
+|Primary TAP |`u_jtag_if` (`ocah_jtag_if`) |`m_jtag_env` (`ocah_jtag_master_env`)
+|XTRIG CSR AXI-Lite initiator |`u_xtrig_master_if` |`m_xtrig_master_env` (`ocah_axi_master_env`)
+|Observed SMC fabric AXI4 manager port |`u_m_axi_if` |`m_smc_axi_env` (`ocah_axi_env`)
+|Observed SMC OTP and SEP OTP AXI-Lite ports |`u_smc_otp_axil_if`, `u_sep_otp_axil_if` |`m_smc_otp_axi_env`, `m_sep_otp_axi_env` (`ocah_axi_env`)
+|Observed XTRIG CSR AXI-Lite port |`u_xtrig_axil_if` |`m_xtrig_axi_env` (`ocah_axi_env`)
+|===
 
-[arabic]
-. *Wiring top* — a second elaboration top that taps the observed port's pins
-  (for example `dtp_uvm_top.m_axi_*`, the SMC fabric AXI4 manager port) into
-  the vendor interface with continuous assigns, as a pure observer, and
-  publishes the virtual interface through `uvm_config_db`. Nothing in the
-  overlay drives DUT or responder signals.
-. *Overlay test* — the hook's include file: a class extending any stock test
-  (for example `dtp_jtag2axi_smc_axi_single_write_test`) whose `build_phase`
-  additionally creates the vendor env in passive mode, configured to the
-  observed port geometry (SMC fabric: AXI4, 56-bit address, 64-bit data,
-  2-bit ID). The stock scenario, evidence arming, and looped runner are
-  inherited unchanged, so the in-repo `CHK-*` checkers and the vendor monitor
-  run side by side on the same traffic. Select the overlay class per run with
-  `--plusarg +UVM_TESTNAME=<overlay class>` on the stock `--items` name: the
-  runner emits the testlist-mapped test name only when none is supplied, and
-  a `+uvm_set_type_override` cannot swap the test itself because the
-  simulator-shipped UVM library applies command-line factory overrides only
-  after `run_test()` has created the test.
-. *Vendor package compile unit* — the vendor library analyzed into the same
-  work library before `dtp_uvm_compile.f`, then both tops elaborated
-  (`dtp_uvm_top` plus the wiring top).
-
-A vendor library brings its own compile-unit requirements (packer-size
-defines applied to every analysis step, macro-header ordering, an
-installation-root variable); those live in the overlay's build recipe.
+The four observed ports share one class, so a type override of
+`ocah_axi_env` replaces all four and an instance override names one member.
+An adopter test class compiles in through `DTP_OVERLAY_TESTS` at the end of
+`uvm/tests/dtp_tests.sv`: the overlay defines it to the quoted name of an
+include file on one of its include directories. Select such a class on a
+stock `--items` name with `--plusarg +UVM_TESTNAME=<class>`; the runner
+emits the testlist-mapped test name only when none is supplied.
