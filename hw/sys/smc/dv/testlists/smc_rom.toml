@@ -8,7 +8,8 @@ schema_version = 1
 # the named strap plusargs. `occp_rom` runs every ROM case except
 # smc_occp_ring_buffer_stress_test, left out for its runtime (run it by name);
 # it includes smc_occp_dual_unsecure_boot_test, whose full payload transfer
-# takes hours. `sanity` is the dual-SMC bring-up set that `all` also enrolls.
+# takes hours. `sanity` is the dual-SMC bring-up set; it is held out of `all`,
+# which elaborates one target per run.
 
 [[tests]]
 name = "smc_dual_elaboration_test"
@@ -494,8 +495,10 @@ timeout_sec = 57600
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
-# 600 writes into 512 slots. The ring keeps one slot empty, so the ROM must hand back
-# the newest 511 and the oldest 89 writes must be gone.
+# 600 writes into 512 slots; the ring keeps one slot empty, so at most 511 are retained.
+# The firmware checks only the number of successful reads and that the reads after
+# them report an empty buffer; it logs the entry values without comparing them, so
+# which 511 entries the ROM hands back is not checked.
 args = [
     "+BOOT_I3C",
     "+FORCE_STATUS_REPORTING",

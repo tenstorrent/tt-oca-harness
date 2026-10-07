@@ -50,8 +50,8 @@ waiver for a `user` point |`user` family of a `--dut smc --items hosted fw
 --cov` run, Verilator or VCS
 |Phase 2 functional coverage |The named set in <<smc-fcov-phase2>> |Not collected
 |Line / branch / expression |Targets, not gates: the figures the coverage set
-measures, read from the run of record. No floor is set |`--coverage-line`,
-`--coverage-expr`
+measures on the run <<smc-fcov-owners>> names (its commit and simulator). No
+floor is set |`--coverage-line`, `--coverage-expr`
 |Condition / FSM / toggle / assertion / covergroups |Commercial sign-off |VCS
 |===
 

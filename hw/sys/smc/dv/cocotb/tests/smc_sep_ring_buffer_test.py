@@ -19,8 +19,9 @@ under test:
 
 Gating follows the rom-only family: poll both instances' scratch 0, fail on TEST_FAIL from
 either, pass on TEST_PASS. The firmware walks min(count, 511) entries and then requires ten
-further reads to return 0. The entries this driver wrote are logged so a failure can be
-read against them by hand.
+further reads to return 0. It logs the entry values but compares none of them, so neither
+side checks which entries the ROM returns. The entries this driver wrote are logged so a
+failure can be read against them by hand.
 
 Plusargs:
     +rom_bin64=<image>        target production ROM               (required)
