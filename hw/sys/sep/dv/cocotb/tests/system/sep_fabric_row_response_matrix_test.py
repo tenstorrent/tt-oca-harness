@@ -40,8 +40,9 @@ reserved span after it, answers DECERR with 0xBADCAB1E, and no baseline register
 moves. The baseline control write of ``SEP_IRQ_ENABLE`` reads back.
 
 CHK-ROW-BURST / CHK-ROW-BURST-CONTROL: an SI burst to the crypto region answers
-DECERR on B, or on every one of its AxLEN + 1 R beats (no early burst
-termination, IHI 0022 A3.4.1), and lands no beat (``hw/sys/sep/doc/crypto.adoc``,
+DECERR on its single B response, or on every one of its AxLEN + 1 R beats
+(no early burst termination, IHI 0022 A3.4.1; the RRESP of each beat comes
+from the SI bus monitor in order), and lands no beat (``hw/sys/sep/doc/crypto.adoc``,
 Single-Beat Access Only); a single beat at the same address answers its 32-bit
 cell.
 
@@ -726,7 +727,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                             for a, (v, m) in snap.items()
                             if (after[a][0] & m) != (v & m)
                         ]
-                        resp_ok = s.resp_code == DECERR and len(s.resp_list) == 1
+                        # A write burst has one B response, so the DECERR on B
+                        # carries the write claim.
+                        resp_ok = s.resp_code == DECERR
                         n_dec = 1 if resp_ok else 0
                     else:
                         resp_ok = len(beats) == nbeats and all(b == DECERR for b in beats)
