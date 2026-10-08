@@ -35,7 +35,8 @@ The model of every expected value is the stimulus itself (the seeded words the
 firmware stages) and the RDL field layout; no expected value is read from the
 DUT. cpu run mode, ``+skip_fuse_sense``, BH-SMC through the SMC aperture
 plusargs of the testlist entry. The X checks on copied register words read the
-SRAM write data and run on VCS.
+SRAM write data and run on VCS. Out of reset, an X or Z on the DMA done or
+error interrupt bit fails the leaf (CHK-DMA-IRQ).
 """
 
 from __future__ import annotations
@@ -381,15 +382,24 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             )
 
     async def _irq_edges(self) -> None:
-        """Rising edges of the DMA done and error interrupts."""
+        """Rising edges of the DMA done and error interrupts.
+
+        Out of reset, an X or Z on either interrupt bit is recorded in
+        ``irq_xz``, and the leaf fails on it."""
         dut = cocotb.top
         prev = 0
         while True:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             v = dut.sep_internal_interrupts_probe_o.value
-            cur = int(v) if v.is_resolvable else 0
-            now = ((cur >> IRQ_DONE) & 1) | (((cur >> IRQ_ERROR) & 1) << 1)
+            bits = v.binstr
+            done_b, err_b = bits[-1 - IRQ_DONE], bits[-1 - IRQ_ERROR]
+            if done_b not in "01" or err_b not in "01":
+                rst = dut.rst_ni.value
+                if rst.is_resolvable and int(rst) == 1:
+                    self.irq_xz.append((get_sim_time("ps"), done_b, err_b))
+                continue
+            now = int(done_b) | (int(err_b) << 1)
             rise = now & ~prev
             if rise:
                 self.irq_edges.append((get_sim_time("ps"), rise))
@@ -1083,6 +1093,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         self.recs: list[tuple[int, str]] = []
         self.sram_wr: list = []
         self.irq_edges: list = []
+        self.irq_xz: list[tuple[int, str, str]] = []
         dtcm = self._stage_dtcm()
         self.taps = start_taps("PR-OUT", "PR-EXT", "PR-EXT-RSP", "PR-SMC", "PR-ROM", "PR-DMACSR")
         # CHK-DMA-AXPROT: the AxPROT the DMA master drives, before its window remap.
@@ -1112,6 +1123,10 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             log_axprot(self.logger, self.dma_raw, "dma", "ar", "na")
             log_axprot(self.logger, self.dma_raw, "dma", "aw", "na")
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
+        assert not self.irq_xz, (
+            "CHK-DMA-IRQ FAIL: X/Z on the DMA done or error interrupt out of reset "
+            f"(time_ps, done, error): {self.irq_xz[:4]}"
+        )
         # CHK-DMA-AXPROT: every raw DMA read and write carries the stated AxPROT.
         for ch in ("ar", "aw"):
             check_axprot(self.logger, "CHK-DMA-AXPROT", self.dma_raw, "dma", ch, AXPROT_DMA)
