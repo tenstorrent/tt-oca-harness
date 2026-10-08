@@ -108,6 +108,8 @@ in {
       vale
       # Synthesis
       pdk-ciel
+      # ciel builds
+      magic-vlsi
       yosys
       # Formal DV
       sby

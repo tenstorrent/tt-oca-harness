@@ -19,6 +19,7 @@ ocah-format-nix:
 
 ## Check Nix Infrastructure files formatting without modification
 ## @param OCAH_FORMAT_NIX_FILES='flake.nix ocah_deps.nix' Restrict format checks to these files
+.PHONY: ocah-format-nix-check
 ocah-format-nix-check:
 	$(OCAH_ROOT)/scripts/docker-run.sh nix-fmt-check -- $(OCAH_FORMAT_NIX_FILES)
 

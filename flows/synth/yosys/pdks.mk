@@ -55,6 +55,6 @@ ${PDK_SENTINEL}: ocah-synth-pdk
 ocah-synth-pdks-clean:
 	rm -rf $(PDK_ROOT)
 
-OCAH_PHONY += ocah-synth-pdks-all ocah-synth-pdk ocah-synth-pdks-clean
+OCAH_PHONY += ocah-synth-pdks ocah-synth-pdk ocah-synth-pdks-clean
 
 endif
