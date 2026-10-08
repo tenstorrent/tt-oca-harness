@@ -1381,7 +1381,7 @@ Shared rules:
 * Randomized stimulus is a pure function of the seed. `--stage sim --seed N` replays a leaf. A per-seed value is not evidence.
 * A read-back of each programmed filter register sits between its write and the first dependent transaction, because the specification states no ordering between a CSR write and the next transaction.
 * Every check logs `CHK-<NAME> PASS: ...` or `CHK-<NAME> FAIL: ...` with the values it compared. A leaf fails when a named check line is missing from `results.xml`.
-* A `no_cpu` leaf uses target `lsu_stub_all_live`, group `cpu_stub` and `testlists/system.toml`. A `cpu` leaf uses a firmware image, group `cpu` and `testlists/cpu.toml`.
+* A `no_cpu` leaf runs on Verilator on target `lsu_stub_all_live` and on VCS on `--target default` (the shared Phase 3 testlist-entry rule), group `cpu_stub` and `testlists/system.toml`. A `cpu` leaf uses a firmware image, group `cpu` and `testlists/cpu.toml`.
 * Tool "Both" means Verilator and VCS. Covergroup collection is VCS only.
 
 [[sep_fabric_inbound_rebase_test]]
@@ -1391,7 +1391,7 @@ Shared rules:
 
 *Area*: Fabric and remap
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`, group `cpu_stub`, `testlists/system.toml`), real PROD fuse sense (no `+skip_fuse_sense`) with a pinned image: PROD, SEC_DIS 0, and fixed `SIP_DIS` and `SYS_DIS` values whose DBG_1 bit 0 is clear in both, 3 seeds. Tool: Verilator and VCS.
+*Run mode*: `no_cpu` (Verilator on `lsu_stub_all_live`, VCS on `--target default` per the shared Phase 3 testlist-entry rule, group `cpu_stub`, `testlists/system.toml`), real PROD fuse sense (no `+skip_fuse_sense`) with a pinned image: PROD, SEC_DIS 0, and fixed `SIP_DIS` and `SYS_DIS` values whose DBG_1 bit 0 is clear in both, 3 seeds. Tool: Verilator and VCS.
 
 *Source Module*: `sep_fabric_inbound_rebase_test`
 
@@ -1472,7 +1472,7 @@ Shared rules:
 
 *Area*: Fabric and remap
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`, group `cpu_stub`, `testlists/system.toml`), real PROD fuse sense (no `+skip_fuse_sense`) with a pinned image: PROD, SEC_DIS 0, and fixed `SIP_DIS` and `SYS_DIS` values whose DBG_1 bit 0 is clear in both, 4 seeds. Tool: Verilator and VCS.
+*Run mode*: `no_cpu` (Verilator on `lsu_stub_all_live`, VCS on `--target default` per the shared Phase 3 testlist-entry rule, group `cpu_stub`, `testlists/system.toml`), real PROD fuse sense (no `+skip_fuse_sense`) with a pinned image: PROD, SEC_DIS 0, and fixed `SIP_DIS` and `SYS_DIS` values whose DBG_1 bit 0 is clear in both, 4 seeds. Tool: Verilator and VCS.
 
 *Source Module*: `sep_fabric_filter_match_priority_rand_test`
 
@@ -1574,7 +1574,7 @@ The open tests keep the rest. Functional coverage: `sep_filter_match_cg` (`cp_fa
 
 *Area*: Fabric and remap
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`, group `cpu_stub`, `testlists/system.toml`), real PROD fuse sense (no `+skip_fuse_sense`) with a pinned image: PROD, SEC_DIS 0, and fixed `SIP_DIS` and `SYS_DIS` values whose DBG_1 bit 0 is clear in both, then one DEMOTE_1 write for the no-bypass leg, 4 seeds. Tool: Verilator and VCS. VCS is required for the X check on the PR-OUT capture.
+*Run mode*: `no_cpu` (Verilator on `lsu_stub_all_live`, VCS on `--target default` per the shared Phase 3 testlist-entry rule, group `cpu_stub`, `testlists/system.toml`), real PROD fuse sense (no `+skip_fuse_sense`) with a pinned image: PROD, SEC_DIS 0, and fixed `SIP_DIS` and `SYS_DIS` values whose DBG_1 bit 0 is clear in both, then one DEMOTE_1 write for the no-bypass leg, 4 seeds. Tool: Verilator and VCS. VCS is required for the X check on the PR-OUT capture.
 
 *Source Module*: `sep_fabric_outbound_route_attr_test`
 
@@ -1639,7 +1639,7 @@ The open tests keep the rest. Functional coverage: `sep_filter_match_cg` (`cp_fa
 
 *Area*: Fabric and remap
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`, group `cpu_stub`, `testlists/system.toml`), `+skip_fuse_sense`, 4 seeds. Tool: Verilator and VCS. VCS is required for the X check on AxCACHE at the alias remap output.
+*Run mode*: `no_cpu` (Verilator on `lsu_stub_all_live`, VCS on `--target default` per the shared Phase 3 testlist-entry rule, group `cpu_stub`, `testlists/system.toml`), `+skip_fuse_sense`, 4 seeds. Tool: Verilator and VCS. VCS is required for the X check on AxCACHE at the alias remap output.
 
 *Source Module*: `sep_fabric_alias_remap_attr_rand_test`
 
@@ -1694,7 +1694,7 @@ The open tests keep the rest. Functional coverage: `sep_filter_match_cg` (`cp_fa
 
 *Area*: Fabric and remap
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`, group `cpu_stub`, `testlists/system.toml`), `+skip_fuse_sense`, 3 seeds, one testlist entry. The seed draws configuration A (base `0x4000_0000`, size `0x0100_0000`) or configuration B (base `0x9000_0000`, size `0x0100_0000`), and the leaf drives the aperture inputs through BH-SMC before it releases reset. Tool: Verilator and VCS. VCS is required for the X check on the SMC read data of CHK-SMC-ROUTE.
+*Run mode*: `no_cpu` (Verilator on `lsu_stub_all_live`, VCS on `--target default` per the shared Phase 3 testlist-entry rule, group `cpu_stub`, `testlists/system.toml`), `+skip_fuse_sense`, 3 seeds, one testlist entry. The seed draws configuration A (base `0x4000_0000`, size `0x0100_0000`) or configuration B (base `0x9000_0000`, size `0x0100_0000`), and the leaf drives the aperture inputs through BH-SMC before it releases reset. Tool: Verilator and VCS. VCS is required for the X check on the SMC read data of CHK-SMC-ROUTE.
 
 *Source Module*: `sep_fabric_smc_route_test`
 
@@ -1747,7 +1747,7 @@ The open tests keep the rest. Functional coverage: `sep_filter_match_cg` (`cp_fa
 
 *Area*: Fabric and remap
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), real PROD fuse sense, 3 seeds
+*Run mode*: `no_cpu` (Verilator on `lsu_stub_all_live`, VCS on `--target default` per the shared Phase 3 testlist-entry rule), real PROD fuse sense, 3 seeds
 
 *Source Module*: `sep_fabric_extension_port_window_test`
 
@@ -1802,7 +1802,7 @@ The open tests keep the rest. Functional coverage: `sep_filter_match_cg` (`cp_fa
 
 *Area*: Fabric and remap
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), real PROD fuse sense, 4 seeds. The Key Manager leg holds KM in reset with no KM image. VCS is required for the X check.
+*Run mode*: `no_cpu` (Verilator on `lsu_stub_all_live`, VCS on `--target default` per the shared Phase 3 testlist-entry rule), real PROD fuse sense, 4 seeds. The Key Manager leg holds KM in reset with no KM image. VCS is required for the X check.
 
 *Source Module*: `sep_fabric_row_response_matrix_test`
 
