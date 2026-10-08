@@ -73,10 +73,14 @@ jobs:
             system: x86_64-linux
             runner: ubuntu-latest-16-cores
             timeout: 240
+            max_jobs: auto
+            cores: 0
           - arch: arm64
             system: aarch64-linux
             runner: ubuntu-24.04-arm
             timeout: 360
+            max_jobs: 2
+            cores: 2
     runs-on: ${{ matrix.runner }}
     timeout-minutes: ${{ matrix.timeout }}
     outputs:
@@ -97,6 +101,24 @@ jobs:
               hw/sys/sep/bootrom/prod/tools/tt-oca-manifest \
               virtual_platform/tt-oca-harness-model
 
+      # The standard arm64 runner has 4 cores and 16 GB, too little disk for
+      # the build closure and too little memory for a compiler per core in
+      # every concurrent derivation. Reclaim the preinstalled toolchains, add
+      # swap, and cap parallelism in the matrix.
+      - name: Free disk space and add swap
+        if: matrix.arch != 'amd64'
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache /usr/local/share/boost
+          sudo swapoff -a
+          sudo rm -f /swapfile /mnt/swapfile
+          sudo fallocate -l 16G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+          df -h /
+
       - name: Set up QEMU for the x86_64-linux tag derivation
         if: matrix.arch != 'amd64'
         uses: docker/setup-qemu-action@v3
@@ -107,7 +129,8 @@ jobs:
         uses: cachix/install-nix-action@v31.11.1
         with:
           extra_nix_config: |
-            max-jobs = auto
+            max-jobs = ${{ matrix.max_jobs }}
+            cores = ${{ matrix.cores }}
             ${{ matrix.arch != 'amd64' && 'extra-platforms = x86_64-linux' || '' }}
 
       - name: Ensure skopeo
