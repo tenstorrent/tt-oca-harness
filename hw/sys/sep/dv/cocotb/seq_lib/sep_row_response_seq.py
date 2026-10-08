@@ -36,6 +36,7 @@ from env.sep_decode_resp import MapRow, expected_unbacked, sep_map_rows
 from sep_reg_meta import (
     _IPXACT_NS,
     HMAC,
+    KM_MAILBOX_SEP,
     SEP_RESET_CTRL,
     _ipxact_num,
     _iter_ipxact_registers,
@@ -116,7 +117,12 @@ KM_BASELINE = (
     sep_reg.KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_ADDR,
 )
 KM_IRQ_ENABLE = sep_reg.KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_ADDR
-KM_IRQ_ENABLE_CTL = 0x1C
+# The control write sets the error and flush enables of SEP_IRQ_ENABLE.
+KM_IRQ_ENABLE_CTL = (
+    KM_MAILBOX_SEP.field_mask("SEP_IRQ_ENABLE", "inbound_overflow_en")
+    | KM_MAILBOX_SEP.field_mask("SEP_IRQ_ENABLE", "outbound_underflow_en")
+    | KM_MAILBOX_SEP.field_mask("SEP_IRQ_ENABLE", "flushed_by_km_en")
+)
 
 # HMAC CFG one-hot fields (hmac.hjson, CFG): an unsupported value maps to None.
 HMAC_CFG = sep_reg.HMAC_CFG_REG_ADDR
