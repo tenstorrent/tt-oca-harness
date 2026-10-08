@@ -45,6 +45,8 @@ Checkers:
   CHK-OUT-NOEXTRA   no PR-OUT capture for LSU reads of the cold scratch word
                     and SEP_SW_DEBUG behind a pair that covers them; control:
                     an SMU read captures.
+  CHK-OUT-LOCAL-DATA each of those local reads answers OKAY and returns the
+                    seeded value staged in the register field.
   CHK-OUT-CAPTURE   each PR-OUT capture carries the predicted address, the
                     issued AxPROT, AxUSER 0 for AP and STEE and the issued
                     AxUSER for SMU, and the issued W data and strobe. X or Z
@@ -65,7 +67,7 @@ from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, lc_state_name
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import AP_OUTPUT_REMAP_CTRL_0, SEP_CPU_CTRL, sym
+from sep_reg_meta import AP_OUTPUT_REMAP_CTRL_0, SEP_CPU_CTRL, RegBlock, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import AP_BASE, REMAP_ATTRS, REMAP_STRIDE, STEE_BASE
@@ -102,6 +104,7 @@ IN_REGION = 0x100  # word address a inside a remap region (below 0x8_0000)
 COLD_SCRATCH = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
 SW_DEBUG = SEP_CPU_CTRL.addr("SEP_SW_DEBUG")
 SW_DEBUG_FIELD = SEP_CPU_CTRL.field_mask("SEP_SW_DEBUG", "sep_sw_debug")
+SCRATCH_FIELD = RegBlock("SEP_SCRATCH_COLD").field_mask("SCRATCH_0_", "data") & 0xFFFF_FFFF
 SMU_BASE_REG = SEP_CPU_CTRL.addr("SMU_GLOBAL_BASE_ADDR")
 SMU_SIZE_REG = SEP_CPU_CTRL.addr("SMU_REGION_SIZE")
 REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
@@ -138,7 +141,7 @@ class _Cfg:
         self.ap = self._draw_class(rng, "ap", AP_REGION_BASE, AP_BASE)
         self.stee = self._draw_class(rng, "stee", STEE_REGION_BASE, STEE_BASE)
         self.dir_first_write = bool(rng.getrandbits(1))
-        self._rng = rng
+        self.rng = rng
 
     @staticmethod
     def _bad_target(t: int) -> bool:
@@ -162,11 +165,11 @@ class _Cfg:
 
     def prot(self, prot1: int) -> int:
         """AxPROT with bit 1 forced and bits 0 and 2 seeded."""
-        return (self._rng.getrandbits(3) & 0b101) | (prot1 << 1)
+        return (self.rng.getrandbits(3) & 0b101) | (prot1 << 1)
 
     def wdata(self) -> int:
         while True:
-            d = self._rng.getrandbits(64)
+            d = self.rng.getrandbits(64)
             if (d & 0xFFFF_FFFF) not in _MBX_MAGIC and (d >> 32) not in _MBX_MAGIC:
                 return d
 
@@ -209,6 +212,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         "CHK-OUT-USER",
         "CHK-OUT-NOBYPASS",
         "CHK-OUT-NOEXTRA",
+        "CHK-OUT-LOCAL-DATA",
         "CHK-OUT-CAPTURE",
     )
 
@@ -561,10 +565,11 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
     async def _local_leg(self) -> None:
         """Step 14."""
         await self._program_pair(PAIR_LOCAL, LOCAL_LO, LOCAL_HI)
-        rng = self.tcfg._rng
-        m_scratch = rng.getrandbits(32) | 1
+        rng = self.tcfg.rng
+        m_scratch = (rng.getrandbits(32) | 1) & SCRATCH_FIELD
         m_dbg = (rng.getrandbits(32) | 1) & SW_DEBUG_FIELD
-        for addr, m in ((COLD_SCRATCH, m_scratch), (SW_DEBUG, m_dbg)):
+        staged = {COLD_SCRATCH: (m_scratch, SCRATCH_FIELD), SW_DEBUG: (m_dbg, SW_DEBUG_FIELD)}
+        for addr, (m, _mask) in staged.items():
             seq = SepAxiAccessSeq("stage", op=SepAxiOp.WRITE, addr=addr, wdata=m, length=4, size=2)
             await self.start_seq(seq)
             assert seq.resp_ok, f"stage write 0x{addr:x} not OKAY"
@@ -588,6 +593,13 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 (seq.rdata >> 32) & 0xFFFF_FFFF,
                 seen,
             )
+            m, mask = staged[addr]
+            got = seq.rdata & mask
+            rline = (
+                f"{name} addr=0x{addr:x} resp={_rname(seq.resp_code)} got=0x{got:x} want=0x{m:x}"
+            )
+            assert seq.resp_code == RESP_OKAY and got == m, f"CHK-OUT-LOCAL-DATA FAIL: {rline}"
+            self.logger.info("CHK-OUT-LOCAL-DATA PASS: %s", rline)
         # Capture control: the SMU pair is enabled.
         _, beats = await self._cell(
             "smu",
@@ -674,7 +686,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         self.logger.info("outbound route attr: %s", cfg.summary())
         self.n_capture = 0
         self.n_expect = 0
-        self._stack_prot1 = {"ap": cfg._rng.getrandbits(1), "stee": cfg._rng.getrandbits(1)}
+        self._stack_prot1 = {"ap": cfg.rng.getrandbits(1), "stee": cfg.rng.getrandbits(1)}
 
         await self._bring_up()
         self.out = SepFabricTap("PR-OUT").start()
