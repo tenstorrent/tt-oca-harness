@@ -689,7 +689,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             r["rng1_diff"],
             r["rng2_diff"],
         )
-        refused = (r["pre"] & ST3) == 0 and bool(r["st"] & ST_ERROR) and bool(r["ec"] & EC_BUS)
+        refused = (r["pre"] & ST3) == 0 and self._bus_error(r)
         control = self._done_ok(r, "ctl_pre", "ctl_st", "ctl_ec")
         ok = (
             r["rb1_bad"] == 0
@@ -740,8 +740,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             "OBS-CPU-SRC-ID: cpu_store_to_smu user=%s (value logged)", [b.user for b in cpu]
         )
         self.logger.info(
-            "CHK-DMA-USER PASS: dst=smu stack_resp=DECERR dma_status=0x%08x error_code=0x%08x "
+            "CHK-DMA-USER PASS: dst=smu stack_bus_error=%d dma_status=0x%08x error_code=0x%08x "
             "control_complete=1 control_status=0x%08x",
+            int(self._bus_error(r)),
             r["st"],
             r["ec"],
             r["ctl_st"],
