@@ -44,7 +44,7 @@ from __future__ import annotations
 
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
-from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, granule8
+from env.sep_fabric_common import FILTER_ADDR_MASK, RESP_DECERR, RESP_OKAY, granule8
 from env.sep_fabric_common import resp_name as _rname
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -64,11 +64,10 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     ALIAS_STRIDE,
     OUTFILT_ENTRIES,
 )
-from seq_lib.sep_fabric_filter_bank_seq import ADDR_MASK as _FILTER_ADDR_MASK
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 
 # The 56-bit filter address field (START_ADDR / END_ADDR).
-ADDR_MASK: int = _FILTER_ADDR_MASK
+ADDR_MASK: int = FILTER_ADDR_MASK
 TEST = "sep_fabric_alias_remap_attr_rand_test"
 
 _META = LOCAL_MASTER_ALIAS_REMAP_CTRL_0

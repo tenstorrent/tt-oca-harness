@@ -21,7 +21,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-ADDR_MASK = (1 << 56) - 1
+from env.sep_filter_model import ADDR_MASK
+
 # The peripheral crossbar forwards a local address below this limit to the
 # local crossbar and answers DECERR at or above it (fabric.adoc, "Fabric
 # Topology", input fabric). The fabric tests and models take it from here.

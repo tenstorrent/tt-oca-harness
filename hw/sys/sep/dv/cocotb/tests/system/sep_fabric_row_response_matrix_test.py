@@ -69,6 +69,7 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import KMAC, OTBN
 from seq_lib import sep_row_response_seq as rr
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_addr_handshake, take_handshake
+from seq_lib.sep_fabric_deadspace_seq import in_crypto_region
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 
@@ -698,7 +699,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     max_len = min(255, (page_end - start) // 8 - 1)
                     axlen = self.rng.randrange(1, max_len + 1)
                     nbeats = axlen + 1
-                    assert rr.in_crypto_region(start) and row.base <= start <= row.end
+                    assert in_crypto_region(start) and row.base <= start <= row.end
                     close_graded_window(self.logger)
                     snap = await self._snapshot(key)
                     wdata = 0

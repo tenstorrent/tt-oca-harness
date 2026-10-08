@@ -38,9 +38,9 @@ from sep_reg_meta import (
     HMAC,
     KM_MAILBOX_SEP,
     SEP_RESET_CTRL,
-    _ipxact_num,
-    _iter_ipxact_registers,
+    ipxact_num,
     iter_addrs,
+    iter_ipxact_registers,
     sep_reg,
 )
 
@@ -93,9 +93,6 @@ LIVE_SI_ROWS = (
     "km_mbox",
     "abr",
 )
-# The crypto region (hw/sys/sep/doc/crypto.adoc, Single-Beat Access Only).
-CRYPTO_LO = 0x1090_0000
-CRYPTO_HI = 0x1094_FFFF
 # The burst windows of the burst leg.
 BURST_ROWS = ("otbn", "hmac", "kmac", "esrc", "abr")
 # Units whose holes answer OKAY with 0: their live word needs a non-zero value.
@@ -221,17 +218,17 @@ def all_regs() -> tuple[Reg, ...]:
     """Every register of the generated IP-XACT, with its field attributes."""
     names = {addr: name for _block, name, addr in iter_addrs()}
     regs = []
-    for addr, width, nodes in _iter_ipxact_registers():
+    for addr, width, nodes in iter_ipxact_registers():
         fields = []
         for f in nodes:
             rst = f.find(f"{NS}resets/{NS}reset/{NS}value")
             fields.append(
                 Field(
                     f.findtext(NS + "name") or "",
-                    _ipxact_num(f.findtext(NS + "bitOffset")) or 0,
-                    _ipxact_num(f.findtext(NS + "bitWidth")) or 1,
+                    ipxact_num(f.findtext(NS + "bitOffset")) or 0,
+                    ipxact_num(f.findtext(NS + "bitWidth")) or 1,
                     f.findtext(NS + "access") or "read-write",
-                    None if rst is None else _ipxact_num(rst.text),
+                    None if rst is None else ipxact_num(rst.text),
                     (f.findtext(NS + "volatile") or "") == "true",
                     f.find(NS + "readAction") is not None,
                     (f.findtext(NS + "modifiedWriteValue") or "") in ("oneToClear", "oneToSet"),
@@ -402,7 +399,3 @@ def word_reset(addr: int) -> int:
 def expected_cell(addr: int, op: str):
     """The table cell for an unbacked 32-bit word (``env.sep_decode_resp``)."""
     return expected_unbacked(addr, op)
-
-
-def in_crypto_region(addr: int) -> bool:
-    return CRYPTO_LO <= addr <= CRYPTO_HI

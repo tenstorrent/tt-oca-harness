@@ -58,7 +58,13 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
-from env.sep_fabric_common import OUTBOUND_MBX_MAGIC, RESP_DECERR, RESP_OKAY, granule8
+from env.sep_fabric_common import (
+    FILTER_ADDR_MASK,
+    OUTBOUND_MBX_MAGIC,
+    RESP_DECERR,
+    RESP_OKAY,
+    granule8,
+)
 from env.sep_fabric_common import resp_name as _rname
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -71,7 +77,6 @@ from sep_reg_meta import AP_OUTPUT_REMAP_CTRL_0, SEP_CPU_CTRL, RegBlock, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import AP_BASE, REMAP_ATTRS, REMAP_STRIDE, STEE_BASE
-from seq_lib.sep_fabric_filter_bank_seq import ADDR_MASK as _FILTER_ADDR_MASK
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccDemoteSeq
 from seq_lib.sep_outbound_remap_seq import (
@@ -82,7 +87,7 @@ from seq_lib.sep_outbound_remap_seq import (
 )
 
 # The 56-bit filter address field (START_ADDR / END_ADDR).
-ADDR_MASK: int = _FILTER_ADDR_MASK
+ADDR_MASK: int = FILTER_ADDR_MASK
 TEST = "sep_fabric_outbound_route_attr_test"
 
 _MAX_SENSE_CYCLES = 20_000

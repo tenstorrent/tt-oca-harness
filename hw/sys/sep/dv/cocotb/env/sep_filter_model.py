@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 
 GRANULE_4K = 0x1000
 GRANULE_8B = 0x8
+# The 56-bit SEP global address; the fabric models and hooks take it from here.
 ADDR_MASK = (1 << 56) - 1
 
 # Match terms, reported in the order a failing entry is described.
@@ -107,8 +108,6 @@ class FilterVerdict:
     lowest_cover_fails: list[str] = field(default_factory=list)
     fallthrough: bool = False
     """The lowest covering entry failed a match term and a higher entry matched."""
-    hides_allow: bool = False
-    """The winner blocks while a higher matching entry would admit."""
 
     @property
     def resp(self) -> str:
@@ -157,14 +156,6 @@ class FilterModel:
         if winner is None:
             return FilterVerdict(False, None, "no_match", lowest_cover, lowest_fails)
         allowed = self.entries[winner].permits(write)
-        hides = False
-        if not allowed:
-            for e in self.entries[winner + 1 :]:
-                if not e.failed_terms(addr, prot1=prot1, user=user, axlen=axlen) and e.permits(
-                    write
-                ):
-                    hides = True
-                    break
         return FilterVerdict(
             allowed,
             winner,
@@ -172,12 +163,7 @@ class FilterModel:
             lowest_cover,
             lowest_fails,
             fallthrough=lowest_cover is not None and lowest_cover != winner,
-            hides_allow=hides,
         )
-
-    def admitted_range(self, idx: int) -> tuple[int, int]:
-        """The widened range of one entry."""
-        return self.entries[idx].widened
 
 
 def _selftest() -> None:
@@ -221,7 +207,7 @@ def _selftest() -> None:
             allow_burst=True,
         ),
     )
-    assert m.admitted_range(2) == (0x8000_2000, 0x8000_3FFF)
+    assert m.entries[2].widened == (0x8000_2000, 0x8000_3FFF)
     assert not m.verdict(0x8000_1FFC, write=False).allowed
     assert m.verdict(0x8000_3FFC, write=False).allowed
     # Source ID: 0 is a wildcard; a non-zero value matches AxUSER[3:0] only.

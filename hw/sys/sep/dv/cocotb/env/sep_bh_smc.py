@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import cocotb
 
-ADDR_MASK = (1 << 56) - 1
+from env.sep_filter_model import ADDR_MASK
 
 
 def drive_bh_smc(base: int, size: int, dut=None) -> None:
