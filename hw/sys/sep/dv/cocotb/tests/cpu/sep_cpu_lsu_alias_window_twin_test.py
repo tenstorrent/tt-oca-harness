@@ -93,6 +93,7 @@ _SRAM_WORDS: dict[str, int] = {
 _HEX = r"0x([0-9a-f]{8})"
 _RE_PARAMS = re.compile(
     rf"TWIN-PARAMS scratch={_HEX} csid={_HEX} sram_start={_HEX} sram_end={_HEX} marker={_HEX}"
+    rf" local_base={_HEX}"
 )
 _RE_STATIC = re.compile(rf"TWIN unit=(\w+) d1={_HEX} a={_HEX} d2={_HEX}\n")
 _RE_SRAM = re.compile(rf"TWIN unit=(\w+) d1={_HEX} a={_HEX}\n")
@@ -149,7 +150,15 @@ class SepAliasTwinCfg:
         return cls(seed, *vals)
 
     def param_words(self) -> list[int]:
-        return [_PARAM_MAGIC, self.scratch, self.csid, self.sram_start, self.sram_end, self.marker]
+        return [
+            _PARAM_MAGIC,
+            self.scratch,
+            self.csid,
+            self.sram_start,
+            self.sram_end,
+            self.marker,
+            _LOCAL_BASE,
+        ]
 
 
 @pyuvm.test()

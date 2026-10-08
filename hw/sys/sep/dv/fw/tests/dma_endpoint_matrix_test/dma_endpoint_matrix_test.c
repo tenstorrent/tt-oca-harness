@@ -71,15 +71,19 @@ enum {
     PFILT_GRP,
     PSMC_OFF,
     PSMC_LEN,
+    PSMC_BASE, // SMC aperture base: the testlist plusarg
+    PIRQ_DONE, // PIC source of the DMA done interrupt
+    PIRQ_ERR,  // PIC source of the DMA error interrupt
     P_COUNT
 };
 
 // Committed defaults: a directed image that runs stand-alone.
 volatile uint32_t g_p[P_COUNT] = {
-    P_MAGIC_WORD, 0x3210u,     0x0u,    0x1234567u,  32u,     0x0000u,     0x0u,    32u,     0x0u,
-    0x1000u,      16u,         0x2000u, 16u,         0x3000u, 32u,         0x4000u, 0x5000u, 32u,
-    0x6000u,      0x7000u,     0x0u,    0xC0u,       0x100u,  0x80004000u, 0x210u,  8u,      8u,
-    8u,           0x11111111u, 0x2u,    0x33333333u, 0x5u,    0xAu,        0x1000u, 64u,
+    P_MAGIC_WORD, 0x3210u, 0x0u,    0x1234567u,  32u,         0x0000u, 0x0u,        32u,
+    0x0u,         0x1000u, 16u,     0x2000u,     16u,         0x3000u, 32u,         0x4000u,
+    0x5000u,      32u,     0x6000u, 0x7000u,     0x0u,        0xC0u,   0x100u,      0x80004000u,
+    0x210u,       8u,      8u,      8u,          0x11111111u, 0x2u,    0x33333333u, 0x5u,
+    0xAu,         0x1000u, 64u,     0x40000000u, 9u,          11u,
 };
 
 // ---- Address map ----
@@ -104,8 +108,6 @@ volatile uint32_t g_p[P_COUNT] = {
 #define AP_REGION SEP_TOP_AP_REGION_BASE_ADDR
 // Byte span of one AP output-remap region: the AP window over its regions.
 #define AP_SPAN (SEP_TOP_AP_REGION_SIZE / SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_NUM)
-// The SMC aperture of the testlist entry (+sep_smc_aperture_base=40000000).
-#define SMC_BASE 0x40000000u
 #define ROM_BASE SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
 #define DMA_CSR_WORD SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR
 #define FILT_IN0_CFG SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
@@ -129,10 +131,6 @@ volatile uint32_t g_p[P_COUNT] = {
 #define POLL_ITERS 20000
 #define IRQ_WAIT_ITERS 100000
 #define MARK_SPIN 300
-
-// PIC sources of the secure DMA done and error interrupts.
-#define EXT_INT_DMA_DONE 9
-#define EXT_INT_DMA_ERROR 11
 
 static inline uint32_t rd(uint32_t a) {
     return *(volatile uint32_t *)a;
@@ -835,7 +833,7 @@ static void smc_legs(void) {
         return;
     }
     uint32_t len = g_p[PSMC_LEN], n = len / 4u;
-    uint32_t smc = SMC_BASE + g_p[PSMC_OFF];
+    uint32_t smc = g_p[PSMC_BASE] + g_p[PSMC_OFF];
     stage_src(SRAM + B_SMC_SRC, n, 0x70u);
     stage_dst_not(SRAM + B_SMC_DST, n, 0x70u);
     mark('G', "smc_w");
@@ -929,14 +927,14 @@ static void nc_legs(void) {
     kv("csr", csr0);
     end();
 
-    pic_register_handler(EXT_INT_DMA_DONE, dma_nc_isr);
-    pic_register_handler(EXT_INT_DMA_ERROR, dma_nc_isr);
-    pic_set_gateway(EXT_INT_DMA_DONE, 0, 0);
-    pic_set_gateway(EXT_INT_DMA_ERROR, 0, 0);
-    pic_set_priority(EXT_INT_DMA_DONE, 1);
-    pic_set_priority(EXT_INT_DMA_ERROR, 1);
-    pic_enable_source(EXT_INT_DMA_DONE);
-    pic_enable_source(EXT_INT_DMA_ERROR);
+    pic_register_handler(g_p[PIRQ_DONE], dma_nc_isr);
+    pic_register_handler(g_p[PIRQ_ERR], dma_nc_isr);
+    pic_set_gateway(g_p[PIRQ_DONE], 0, 0);
+    pic_set_gateway(g_p[PIRQ_ERR], 0, 0);
+    pic_set_priority(g_p[PIRQ_DONE], 1);
+    pic_set_priority(g_p[PIRQ_ERR], 1);
+    pic_enable_source(g_p[PIRQ_DONE]);
+    pic_enable_source(g_p[PIRQ_ERR]);
 
     uint32_t d = SRAM + B_NC;
     uint32_t stage = ~rom0;
@@ -978,8 +976,8 @@ static void nc_legs(void) {
     }
 
     pic_disable_interrupts();
-    pic_disable_source(EXT_INT_DMA_DONE);
-    pic_disable_source(EXT_INT_DMA_ERROR);
+    pic_disable_source(g_p[PIRQ_DONE]);
+    pic_disable_source(g_p[PIRQ_ERR]);
 
     mark('C', "nc_ctl_end");
     rec("NCCTL2");
@@ -1002,6 +1000,9 @@ int main(void) {
     kv("form", g_p[P_FORM]);
     kv("smu", g_p[PSMU]);
     kv("smc_off", g_p[PSMC_OFF]);
+    kv("smc_base", g_p[PSMC_BASE]);
+    kv("irq_done", g_p[PIRQ_DONE]);
+    kv("irq_err", g_p[PIRQ_ERR]);
     end();
 
     dma_init();

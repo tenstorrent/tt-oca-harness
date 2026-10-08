@@ -34,3 +34,17 @@ def drive_bh_smc(base: int, size: int, dut=None) -> None:
     dut.bh_smc_base_i.value = base & ADDR_MASK
     dut.bh_smc_size_i.value = size & ADDR_MASK
     dut.bh_smc_en_i.value = 1
+
+
+def aperture_plusargs() -> tuple[int, int]:
+    """``(base, size)`` of the run's ``+sep_smc_aperture_base/size`` plusargs.
+
+    Raises when the run passes either plusarg without a hex value or omits it.
+    """
+    vals = []
+    for name in ("sep_smc_aperture_base", "sep_smc_aperture_size"):
+        arg = cocotb.plusargs.get(name)
+        if not isinstance(arg, str):
+            raise RuntimeError(f"+{name}=<hex> is required by this leaf")
+        vals.append(int(arg, 16) & ADDR_MASK)
+    return vals[0], vals[1]

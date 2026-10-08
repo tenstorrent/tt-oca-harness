@@ -49,6 +49,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from env.sep_bh_smc import aperture_plusargs
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_fabric_common import RESP_DECERR
@@ -120,9 +121,6 @@ EXT_TOP_WORD = sym("SEP_TOP_REG_MAP_BASE_ADDR") + LOCAL_ALIAS_SPAN - 8
 EXT_TOP_ALIAS = SEP_CPU_CTRL.reset("SEP_LOCAL_BASE_ADDR") + LOCAL_ALIAS_SPAN - 8
 # The console word the bench responder decodes (tb/sep_outbound_mbx.sv, StdoutLo).
 STDOUT = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
-# The SMC aperture of the testlist entry (+sep_smc_aperture_base/size).
-SMC_BASE = 0x4000_0000
-SMC_SIZE = 0x0100_0000
 # Region index bits of the AP output remap (generated map, sep_outbound_remap_seq).
 AP_IDX_START = IDX_START
 SCRATCH_BANK = sym("SEP_SCRATCH_COLD_REG_MAP_SIZE")
@@ -146,7 +144,7 @@ P_FIELDS = (
     "magic order form seed p0_len p0_sram p0_scr p1_len p1_scr p1_sram p2_len p2_sram "
     "p3_len p3_sram pd_len pd_src pd_dst pa_len pa_os pa_od ap_off_lo ap_off_hi ap_intra "
     "smu reg_order reg_len0 reg_len1 reg_len2 reg_last0 reg_last1 reg_last2 filt_src "
-    "filt_grp smc_off smc_len"
+    "filt_grp smc_off smc_len smc_base irq_done irq_err"
 ).split()
 PAIR_NAMES = (
     ("sram", "scratch"),
@@ -197,9 +195,13 @@ class DmaEpCfg:
     p: dict
 
     @classmethod
-    def from_seed(cls, seed: int) -> "DmaEpCfg":
+    def from_seed(cls, seed: int, smc_base: int, smc_size: int) -> "DmaEpCfg":
+        """The SMC aperture comes from the testlist plusargs, not from the seed."""
+        assert smc_base + smc_size <= 1 << 32, "the firmware addresses the SMC aperture in 32 bits"
         rng = SepSeededRng(seed)
-        p = {"magic": P_MAGIC_WORD}
+        p = {"magic": P_MAGIC_WORD, "smc_base": smc_base}
+        # PIC sources of the DMA done and error interrupts (interrupts.adoc).
+        p["irq_done"], p["irq_err"] = PIC_DMA_DONE, PIC_DMA_ERROR
         order = [0, 1, 2, 3]
         rng.shuffle(order)
         p["order"] = sum(v << (4 * k) for k, v in enumerate(order))
@@ -245,7 +247,7 @@ class DmaEpCfg:
         p["filt_grp"] = rng.randrange(1, 16)
         ln = rng.randrange(16, 1025, 4)
         p["smc_len"] = ln
-        p["smc_off"] = rng.randrange(0, SMC_SIZE - ln + 1, 4)
+        p["smc_off"] = rng.randrange(0, smc_size - ln + 1, 4)
         return cls(p)
 
     def words(self) -> list[int]:
@@ -892,7 +894,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         p, seed = self.ep.p, self.ep.p["seed"]
         _, r, text = self._one("SMC")
         ln, n = p["smc_len"], p["smc_len"] // 4
-        addr = SMC_BASE + p["smc_off"]
+        addr = p["smc_base"] + p["smc_off"]
         m = model_words(seed, 0x70, n)
         assert r["fuse"] & SEP_CPU_CTRL.field_mask(
             "SMC_FUSE_SENSE_STATUS", "smc_fuse_sense_done"
@@ -1065,7 +1067,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
 
     # ---- scenario ----
     def _stage_dtcm(self) -> str:
-        self.ep = DmaEpCfg.from_seed(self.random_seed())
+        self.ep = DmaEpCfg.from_seed(self.random_seed(), *aperture_plusargs())
         patched = os.path.join(os.getcwd(), "sep_dtcm_dma_ep.hex")
         patch_param_block(_DTCM_HEX, patched, P_MAGIC_WORD, self.ep.words())
         self.logger.info(
@@ -1115,7 +1117,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             check_axprot(self.logger, "CHK-DMA-AXPROT", self.dma_raw, "dma", ch, AXPROT_DMA)
 
         _, prm, _ = self._one("PARAMS")
-        for k in ("seed", "order", "form", "smu", "smc_off"):
+        for k in ("seed", "order", "form", "smu", "smc_off", "smc_base", "irq_done", "irq_err"):
             assert prm[k] == self.ep.p[k], (
                 f"firmware ran {k}=0x{prm[k]:x}, patched 0x{self.ep.p[k]:x}"
             )
