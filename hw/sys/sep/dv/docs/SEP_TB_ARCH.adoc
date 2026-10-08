@@ -205,7 +205,8 @@ Observation probe groups:
 ** PR-CPU (`pr_cpu_lsu_*`, `pr_cpu_ifu_*`): AxPROT of the raw CPU LSU (AR, AW)
    and IFU (AR) requests in `u_sep_cpu` (`lsu_axi_req_raw`, `ifu_axi_req_raw`),
    before any remap; tied to 0 on the CPU stub build. Log-only (`OBS-AXPROT`).
-   Owner: `sep_cpu_lsu_alias_window_twin_test`.
+   Owners: `sep_cpu_lsu_alias_window_twin_test` (LSU, IFU),
+   `sep_cpu_ifu_lsu_alias_remap_matrix_test` (IFU).
 ** PR-DMA-RAW (`pr_dma_raw_*`): AxPROT of the raw secure DMA master request
    (`u_sep_dma_wrap.dma_axi_req_raw`), AR and AW. Log-only (`OBS-AXPROT`).
    Owner: `sep_fabric_dma_endpoint_matrix_test`.
