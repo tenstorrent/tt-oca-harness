@@ -48,15 +48,20 @@
           findutils
           curl
           cacert
+          coreutils
         ]
         ++ ocah.ocah_pkgs
-        ++ extraDeps;
+        ++ extraDeps
+        # Libraries for Python Packages
+        ++ pkgs.steam-run-free.args.multiPkgs pkgs
+        ++ [pkgs.stdenv.cc.cc.lib];
       config = {
         # Convert ocah_env attrset to Docker ENV strings, then append container-specific vars.
         Env = builtins.attrValues (builtins.mapAttrs (e: v: "${e}=${v}") (ocah.ocah_env
           // {
             inherit PS1;
             TMPDIR = "/tmp";
+            LD_LIBRARY_PATH = "/lib";
           }));
         Labels = {
           "org.opencontainers.image.source" = "https://github.com/tenstorrent/tt-oca-harness";
