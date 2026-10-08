@@ -1119,6 +1119,118 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "and back to set",
         ),
     ],
+    "smu_isolation_retention_test": [
+        (
+            "CHK-ISO-RETAIN-S1",
+            "ISO_RETAIN_S1",
+            "ISOLATE_REQ_REG, PINEN, SMC and SMCEN read their programmed values after a cool reset",
+        ),
+        (
+            "CHK-ISO-RETAIN-S2",
+            "ISO_RETAIN_S2",
+            "ISOLATE_REQ_REG, SMC and SMCEN read 0 after a cold reset with GPIO 53 low",
+        ),
+        (
+            "CHK-ISO-RETAIN-S3",
+            "ISO_RETAIN_S3",
+            "ISOLATE_REQ_PINEN_REG reads 0 after a cold reset with GPIO 53 low and keeps its "
+            "value after one with GPIO 53 high",
+        ),
+        (
+            "CHK-ISO-RETAIN-S4",
+            "ISO_RETAIN_S4",
+            "both FLR counters keep 5 and 7 across a cool reset and read 0 after a cold reset",
+        ),
+    ],
+    "smu_ndm_reset_handshake_test": [
+        (
+            "CHK-NDM-REQUEST-S1",
+            "NDM_REQUEST_S1",
+            "NDMRESET_REQUEST follows request pin 0 and pin 3 high and low",
+        ),
+        (
+            "CHK-NDM-REQUEST-S2",
+            "NDM_REQUEST_S2",
+            "NDMRESET_REQUEST reads 0xF with all four request pins high",
+        ),
+        ("CHK-NDM-REQUEST-S3", "NDM_REQUEST_S3", "NDMRESET_CLUSTER_COUNT reads 4"),
+        (
+            "CHK-NDM-REQUEST-S4",
+            "NDM_REQUEST_S4",
+            "NDMRESET_REQUEST reads 0 with all request pins low",
+        ),
+        (
+            "CHK-NDM-PROCESS-S1",
+            "NDM_PROCESS_S1",
+            "NDMRESET_PROCESS bit 0 and bit 3 drive only their own process lane",
+        ),
+        (
+            "CHK-NDM-PROCESS-S2",
+            "NDM_PROCESS_S2",
+            "NDMRESET_PROCESS stores 32 bits and only bits 3:0 reach the port",
+        ),
+        (
+            "CHK-NDM-PROCESS-S3",
+            "NDM_PROCESS_S3",
+            "NDMRESET_PROCESS and the process port read 0 after a cold reset",
+        ),
+    ],
+    "smu_reset_csr_access_test": [
+        (
+            "CHK-CSR-RESET-VALUES-S2",
+            "CSR_RESET_VALUES_S2",
+            "isolation registers and both FLR counters read 0 after the bring-up cold reset",
+        ),
+        (
+            "CHK-CSR-RESET-VALUES-S3",
+            "CSR_RESET_VALUES_S3",
+            "NDMRESET_REQUEST and NDMRESET_PROCESS read 0 and NDMRESET_CLUSTER_COUNT reads 4",
+        ),
+        (
+            "CHK-CSR-RESET-VALUES-S4",
+            "CSR_RESET_VALUES_S4",
+            "SYNC_REG reads 0 and ISOLATE_REQ_VIS reads the pin level and 1 on bits 4 and 8",
+        ),
+        (
+            "CHK-CSR-ACCESS-S1",
+            "CSR_ACCESS_S1",
+            "random data reads back masked from SS_CONFIG, SS_WARM_RESET_N, NDMRESET_PROCESS "
+            "and the FLR counter",
+        ),
+        (
+            "CHK-CSR-ACCESS-S2",
+            "CSR_ACCESS_S2",
+            "read-only registers keep their value after a write of all ones",
+        ),
+        (
+            "CHK-CSR-ACCESS-S3",
+            "CSR_ACCESS_S3",
+            "defined reset-unit registers keep their value across accesses to unmapped offsets",
+        ),
+        (
+            "CHK-SYNC-IRQ-S1",
+            "SYNC_IRQ_S1",
+            "sync_irq_o follows SYNC_REG.sync written 1 then 0",
+        ),
+        (
+            "CHK-SYNC-IRQ-S2",
+            "SYNC_IRQ_S2",
+            "SYNC_REG and sync_irq_o read 0 after a primary reset",
+        ),
+    ],
+    "smu_dtp_sysreset_stop_clks_test": [
+        (
+            "CHK-DTP-SYSRESET-S1",
+            "DTP_SYSRESET_S1",
+            "dtp_stop_clks_o reads 1 with jtag_clock_stop set and 0 on every clk_smu_i edge "
+            "inside the primary reset",
+        ),
+        (
+            "CHK-DTP-SYSRESET-S2",
+            "DTP_SYSRESET_S2",
+            "dtp_stop_clks_o returns to 1 three clk_smu_i cycles after the primary reset releases",
+        ),
+    ],
     "smu_smc_cool_reset_pin_test": [
         (
             "CHK-SMU-COOL-PIN-DEGLITCH",
