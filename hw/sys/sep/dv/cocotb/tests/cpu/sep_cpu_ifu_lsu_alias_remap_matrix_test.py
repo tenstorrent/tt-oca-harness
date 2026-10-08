@@ -45,6 +45,8 @@ class sep_cpu_ifu_lsu_alias_remap_matrix_test(sep_base_test):
     """Alias-window LSU and IFU accesses reach SEP SRAM; other accesses pass through unchanged."""
 
     build_env = False
+    # The leaf's own graded record; the base-class records do not count.
+    required_evidence = ("CHK-IFU-AXPROT",)
 
     def build_phase(self) -> None:
         super().build_phase()
