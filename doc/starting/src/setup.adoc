@@ -86,10 +86,12 @@ which let you run `docker` without `sudo`.
 
 Install Git by running `xcode-select --install`, then install
 https://podman.io/docs/installation#macos[Podman]. Podman runs containers in a
-Linux virtual machine; create and start it:
+Linux virtual machine. The default machine has 2 GB of memory, short of
+xref:dependencies.adoc#system-requirements[Dependencies], so set `--memory`
+(in MB) to match:
 
 ```bash
-podman machine init
+podman machine init --memory 16384
 podman machine start
 ```
 
@@ -219,6 +221,10 @@ new location with `podman info | grep -i graphroot`.
 `podman: command not found` or `podman or docker is required`::
 Step 1 is incomplete, or on macOS the Podman machine is not running. Run
 `podman machine start`.
+
+`Killed signal terminated program lto1`::
+The Podman machine is short of memory. Stop it, run
+`podman machine set --memory 16384` and start it again.
 
 [[alternative-setups]]
 == Alternative setups

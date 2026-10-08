@@ -7,8 +7,8 @@
 === Captured straps
 
 The ROM reads the captured GPIO straps through the SMC mandatory window.
-`include/sep_smc_interface.h` defines the SEP-visible offsets and bit
-positions.
+`include/sep_smc_map.h` takes the SEP-visible offsets from the generated SMC
+map, and `include/sep_smc_interface.h` defines the bit positions.
 
 [cols="2,1,1,4",options="header"]
 |===
