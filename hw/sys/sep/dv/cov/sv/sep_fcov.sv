@@ -2673,6 +2673,23 @@ module sep_fcov (
   localparam logic [31:0] FShimLast    = 32'(SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR +
                                              SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_SIZE - 1);
   localparam logic [31:0] FExtFirst = FShimLast + 32'd1;
+  // Unit classes by aperture: the scratch banks, the system CSRs (alias remap
+  // control to CPU control) and the mailboxes.
+  localparam logic [31:0] FScrBase = FapBaseSepScratchCold;
+  localparam logic [31:0] FScrLast = FapLastSepScratchWarm;
+  localparam logic [31:0] FSysBase = FapBaseLocalMasterAliasRemapCtrl;
+  localparam logic [31:0] FSysLast = FapLastSepCpuCtrl;
+  localparam logic [31:0] FMbxBase = FapBaseAxilMailbox;
+  localparam logic [31:0] FMbxLast = FapLastAxilMailbox;
+  // OTBN registers: the OTBN aperture below IMEM.
+  localparam logic [31:0] FOtbnRegLast = 32'(SEP_TOP_OTBN_IMEM_BASE_ADDR) - 32'd1;
+  // The SMU aperture at its RDL reset (SEP_CPU_CTRL).
+  localparam logic [55:0] FSmuResetBase = 56'(SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_DEFAULT);
+  localparam logic [55:0] FSmuResetSize = 56'(SEP_CPU_CTRL_SMU_REGION_SIZE_REG_DEFAULT);
+  // The peripheral crossbar forwards a local address below this limit to the
+  // local crossbar and answers DECERR at or above it (fabric.adoc, "Fabric
+  // Topology", input fabric).
+  localparam logic [55:0] FXbarLimit = 56'h4000_0000;
   localparam logic [31:0] FExtTopWord = FExtEnd - 32'd7;
   localparam logic [31:0] FDmaCsrBase = SECURE_DMA_REG_MAP_BASE_ADDR;
   localparam logic [31:0] FDmaCsrEnd = SECURE_DMA_REG_MAP_BASE_ADDR + SECURE_DMA_REG_MAP_SIZE - 1;
@@ -3396,7 +3413,7 @@ module sep_fcov (
       else if (si_off == (sep_size_i - 56'd1)) ap_in_cls = 3'd5;
       else if ((si_resp == FRespOkay) && si_c.xb && in_rng(l, FSramBase, FSramEnd))
         ap_in_cls = 3'd1;
-      else if ((si_resp == FRespOkay) && si_c.csr && in_rng(l, 32'h1080_2000, 32'h1080_20FF))
+      else if ((si_resp == FRespOkay) && si_c.csr && in_rng(l, FScrBase, FScrLast))
         ap_in_cls = 3'd2;
     end
     if ((si_c.addr == (sep_base_i + sep_size_i)) && (si_resp == FRespDecerr)) ap_out_cls = 3'd1;
@@ -3405,17 +3422,16 @@ module sep_fcov (
       if (si_in_win && (si_c.xb_addr == 32'(si_c.addr - sep_base_i))) ap_tr_cls = 3'd1;
       if (!si_in_win && (si_c.xb_addr == si_c.addr[31:0])) ap_tr_cls = 3'd2;
     end
-    if ((si_local < 56'h4000_0000) && si_c.xb) ap_lim_cls = 3'd1;
-    if ((si_local >= 56'h4000_0000) && (si_resp == FRespDecerr) && !si_c.xb) ap_lim_cls = 3'd2;
+    if ((si_local < FXbarLimit) && si_c.xb) ap_lim_cls = 3'd1;
+    if ((si_local >= FXbarLimit) && (si_resp == FRespDecerr) && !si_c.xb) ap_lim_cls = 3'd2;
     // Destination class by the local address (memory_map.adoc).
-    if (si_local < 56'h4000_0000) begin
-      if (in_rng(l, 32'h10A0_0000, 32'h10A0_FFFF)) cls = 2'd0;
-      else if (in_rng(l, 32'h10A1_0000, 32'h10A4_FFFF) || in_rng(l, 32'h1080_2000, 32'h1080_20FF))
-        cls = 2'd1;
+    if (si_local < FXbarLimit) begin
+      if (in_rng(l, FMbxBase, FMbxLast)) cls = 2'd0;
+      else if (in_rng(l, FSysBase, FSysLast) || in_rng(l, FScrBase, FScrLast)) cls = 2'd1;
       else if (in_rng(
               l, FRomBase, FRomEnd
           ) || in_rng(
-              l, 32'h1080_3000, 32'h1080_3FFF
+              l, FapBaseSepResetCtrl, FapLastSepResetCtrl
           ) || in_rng(
               l, FApBase, FApEnd
           ) || in_rng(
@@ -3431,7 +3447,7 @@ module sep_fcov (
     end
     // Crypto-region burst (crypto.adoc, Single-Beat Access Only).
     if ((si_c.len != 8'd0) && in_rng(
-            si_c.addr[31:0], 32'h1090_0000, 32'h1094_FFFF
+            si_c.addr[31:0], FapBaseOtbn, FapLastAbr
         ) && (si_c.addr[55:32] == '0) && si_f.win && si_f.perm) begin
       ap_burst_hit = (si_resp == FRespDecerr);
       ap_burst_bad = (si_resp != FRespDecerr);
@@ -4226,7 +4242,7 @@ module sep_fcov (
   // local alias window and translated = SRAM base + offset), 2 neither.
   function automatic logic [1:0] alias_form(input logic [31:0] raw, input logic [31:0] xl);
     if (raw == xl) return 2'd0;
-    if ((raw >= 32'hD000_0000) && (xl == FSramBase + (raw - local_base_i[31:0]))) return 2'd1;
+    if ((raw >= local_base_i[31:0]) && (xl == FSramBase + (raw - local_base_i[31:0]))) return 2'd1;
     return 2'd2;
   endfunction
 
@@ -4234,13 +4250,13 @@ module sep_fcov (
   // reset_ctrl, 4 smc, 5 ap, 6 smu, 7 ext, 8 sys_csr, 0 other.
   function automatic logic [3:0] dma_cls(input logic [31:0] a);
     if (in_rng(a, FSramBase, FSramEnd)) return 4'd1;
-    if (in_rng(a, 32'h1080_3000, 32'h1080_3FFF)) return 4'd3;
+    if (in_rng(a, FapBaseSepResetCtrl, FapLastSepResetCtrl)) return 4'd3;
     if ((smc_size_i != '0) && in_smc_ap({24'd0, a})) return 4'd4;
     if (in_rng(a, FApBase, FApEnd)) return 4'd5;
     if (in_smu_ap({24'd0, a})) return 4'd6;
     if (in_rng(a, FExtBase, FExtEnd)) return 4'd7;
-    if (in_rng(a, 32'h10A1_0000, 32'h10A4_FFFF)) return 4'd8;
-    if (in_rng(a, 32'h1080_0000, 32'h10FF_FFFF)) return 4'd2;
+    if (in_rng(a, FSysBase, FSysLast)) return 4'd8;
+    if (in_rng(a, FapBaseSecureDma, FApBase - 32'd1)) return 4'd2;
     return 4'd0;
   endfunction
 
@@ -4381,7 +4397,7 @@ module sep_fcov (
   wire [31:0] lq_a = lq_c.addr;
   wire sil_out_local = lq_done && own_route && alive_out_q && (lq_resp == FRespOkay) && !lq_c.out &&
                        lq_c.rt && (lq_c.sel == SelLocal) &&
-                       (in_rng(lq_a, 32'h1080_2000, 32'h1080_20FF) || in_rng(lq_a, 32'h10A1_0000, 32'h10A4_FFFF));
+                       (in_rng(lq_a, FScrBase, FScrLast) || in_rng(lq_a, FSysBase, FSysLast));
   fres_t lq_of;
   assign lq_of = f_eval(out_f, 32, lq_c.po_addr, lq_dir_w, lq_c.prot[1], 4'd0, 8'd0);
   wire sil_out_deny  = lq_done && own_route && alive_out_q && (lq_resp == FRespDecerr) && !lq_c.out &&
@@ -4408,7 +4424,7 @@ module sep_fcov (
   wire sil_in_filter  = si_done && own_match && alive_xb_q && (si_resp == FRespDecerr) && !si_c.xb &&
                         !si_c.csr && !(si_f.win && si_f.perm);
   wire sil_in_rebase  = si_done && own_rebase && alive_xb_q && (si_resp == FRespDecerr) && !si_c.xb &&
-                        !si_c.csr && si_f.win && si_f.perm && (si_local >= 56'h4000_0000);
+                        !si_c.csr && si_f.win && si_f.perm && (si_local >= FXbarLimit);
   wire sil_dma_rom    = dma_run_end && own_dma && alive_rom_q && nc_rom_q && !nc_rom_seen_q;
   wire sil_dma_csr    = dma_run_end && own_dma && alive_dcsr_q && nc_csr_q && !nc_csr_seen_q;
 
@@ -4524,7 +4540,7 @@ module sep_fcov (
             lq_a, lq_dir_w, lq_resp, lq_a[2] ? lq_rdata[63:32] : lq_rdata[31:0]) : 8'hFF, {
             1'b0, lq_dir_w}, ro, na_sample, own_row);
         if (in_rng(
-                lq_a, 32'h1090_0000, 32'h1090_3FFF
+                lq_a, FapBaseOtbn, FOtbnRegLast
             ) && fcov_crypto_reg_addr(
                 {lq_a[31:2], 2'b00}
             ) && (lq_resp == FRespOkay)) begin
@@ -4550,7 +4566,7 @@ module sep_fcov (
           logic       own_c;
           own_c = (c == 3'd2) ? own_alias : own_route;
           u_sep_fabric_outbound_route_cg.sample({c, w}, own_c,
-                                                ((c == 3'd1) && (smu_base_i == 56'h8000_0000) && (smu_size_i == 56'h4000_0000))
+                                                ((c == 3'd1) && (smu_base_i == FSmuResetBase) && (smu_size_i == FSmuResetSize))
                 ? ((oa[55:3] == smu_base_i[55:3]) ? 2'd1 :
                    (oa[55:3] == (smu_base_i + smu_size_i - 56'd1) >> 3) ? 2'd2 : 2'd0) : 2'd0,
                                                 own_route, 4'd0, 1'b0, 1'b0, 4'd0, 1'b0);

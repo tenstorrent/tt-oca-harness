@@ -52,7 +52,7 @@ from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare, lane32
 from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, feat_ctrl_expected
-from env.sep_rebase_model import rebase
+from env.sep_rebase_model import XBAR_LIMIT, rebase
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import SEP_CPU_CTRL, sym
@@ -94,7 +94,6 @@ RESET_CTRL_SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
 AP_REGION = sym("AP_REGION_MEM_BASE_ADDR")
 STEE_REGION = sym("STEE_REGION_MEM_BASE_ADDR")
 STEE_LAST = STEE_REGION + sym("STEE_REGION_MEM_SIZE") - 1
-XBAR_LIMIT = 0x4000_0000
 ABOVE_LIMIT = XBAR_LIMIT + 0x100
 _DCCM = sym("SEP_DCCM_MEM_BASE_ADDR")
 CPU_RESOURCES = (

@@ -58,6 +58,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
+from env.sep_decode_resp import logical_region
 from env.sep_fabric_common import RESP_DECERR, RESP_OKAY
 from env.sep_fabric_common import RESP_NAME as _RN
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -81,6 +82,21 @@ _SYS_DIS = 0x00FF_00FF_00FF_00FF
 SI_PROT = 0b010
 OKAY, DECERR = RESP_OKAY, RESP_DECERR
 AXI_INCR = 1
+# The inbound entry admits the whole SEP Local region of the CPU logical map.
+_SEP_LOCAL = logical_region("logical:sep_local")
+
+
+def _kmac_prefix_count() -> int:
+    """Number of KMAC PREFIX registers in the generated register map."""
+    n = 0
+    while True:
+        try:
+            KMAC.addr(f"PREFIX_{n}_")
+        except KeyError:
+            return n
+        n += 1
+
+
 _HMAC_POLL = 200
 
 # Hole neighbours: a stable register of the same unit with no read side effect.
@@ -272,8 +288,8 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         await bank.program(
             0,
             FilterEntry(
-                start=0x1000_0000,
-                end=0x1FFF_FFFF,
+                start=_SEP_LOCAL[0],
+                end=_SEP_LOCAL[1],
                 enabled=True,
                 read_allowed=True,
                 write_allowed=True,
@@ -408,7 +424,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         self.regval[rr.HMAC_CFG] = cur & 0xFFFF_FFFF
         hval = rr.hmac_cfg_reference(self.rng)
         await self._lsu_write_reg(rr.HMAC_CFG, hval, "HMAC CFG reference")
-        k = self.rng.randrange(0, 10)
+        k = self.rng.randrange(0, _kmac_prefix_count())
         self.kmac_ref = KMAC.addr(f"PREFIX_{k}_")
         kval = self.rng.randrange(1, 1 << 32)
         await self._lsu_write_reg(self.kmac_ref, kval, "KMAC PREFIX reference")

@@ -1,7 +1,84 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Written by cov/tools/gen_fcov_crypto_reg_addrs.py from sep_reg.svh. Do not edit.
+// Written by cov/tools/gen_fcov_crypto_reg_addrs.py from sep_reg.svh and
+// sep_memory_map.py. Do not edit.
+//
+// First and last byte of each unit aperture (memory_map.adoc, SEP Component
+// Address Map).
+localparam logic [31:0] FapBaseSepSram = 32'h1000_0000;
+localparam logic [31:0] FapLastSepSram = 32'h1003_FFFF;
+localparam logic [31:0] FapBaseSepBootRom = 32'h1004_0000;
+localparam logic [31:0] FapLastSepBootRom = 32'h1004_FFFF;
+localparam logic [31:0] FapBaseSecureDma = 32'h1080_0000;
+localparam logic [31:0] FapLastSecureDma = 32'h1080_0FFF;
+localparam logic [31:0] FapBaseWdtTimer = 32'h1080_1000;
+localparam logic [31:0] FapLastWdtTimer = 32'h1080_1FFF;
+localparam logic [31:0] FapBaseSepScratchCold = 32'h1080_2000;
+localparam logic [31:0] FapLastSepScratchCold = 32'h1080_203F;
+localparam logic [31:0] FapBaseSepScratchWarm = 32'h1080_2080;
+localparam logic [31:0] FapLastSepScratchWarm = 32'h1080_20BF;
+localparam logic [31:0] FapBaseSepResetCtrl = 32'h1080_3000;
+localparam logic [31:0] FapLastSepResetCtrl = 32'h1080_3FFF;
+localparam logic [31:0] FapBaseOtbn = 32'h1090_0000;
+localparam logic [31:0] FapLastOtbn = 32'h1090_FFFF;
+localparam logic [31:0] FapBaseAes = 32'h1091_0000;
+localparam logic [31:0] FapLastAes = 32'h1091_0FFF;
+localparam logic [31:0] FapBaseHmac = 32'h1091_1000;
+localparam logic [31:0] FapLastHmac = 32'h1091_2FFF;
+localparam logic [31:0] FapBaseKmac = 32'h1091_3000;
+localparam logic [31:0] FapLastKmac = 32'h1091_3FFF;
+localparam logic [31:0] FapBaseCsrng = 32'h1091_5000;
+localparam logic [31:0] FapLastCsrng = 32'h1091_57FF;
+localparam logic [31:0] FapBaseEdn = 32'h1091_5800;
+localparam logic [31:0] FapLastEdn = 32'h1091_5FFF;
+localparam logic [31:0] FapBaseEntropySource = 32'h1091_6000;
+localparam logic [31:0] FapLastEntropySource = 32'h1091_6FFF;
+localparam logic [31:0] FapBaseTrng = 32'h1091_7000;
+localparam logic [31:0] FapLastTrng = 32'h1091_7FFF;
+localparam logic [31:0] FapBaseSepLifecycleCtrl = 32'h1091_8000;
+localparam logic [31:0] FapLastSepLifecycleCtrl = 32'h1091_FFFF;
+localparam logic [31:0] FapBaseKmMailboxSep = 32'h1092_0000;
+localparam logic [31:0] FapLastKmMailboxSep = 32'h1092_0FFF;
+localparam logic [31:0] FapBaseSepEfuseMap = 32'h1093_0000;
+localparam logic [31:0] FapLastSepEfuseMap = 32'h1093_03FF;
+localparam logic [31:0] FapBaseEfuseInterfaceCtrl = 32'h1093_0400;
+localparam logic [31:0] FapLastEfuseInterfaceCtrl = 32'h1093_04FF;
+localparam logic [31:0] FapBaseEfuseMmr = 32'h1093_0500;
+localparam logic [31:0] FapLastEfuseMmr = 32'h1093_05FF;
+localparam logic [31:0] FapBaseAbr = 32'h1094_0000;
+localparam logic [31:0] FapLastAbr = 32'h1094_FFFF;
+localparam logic [31:0] FapBaseEntropyPool = 32'h1095_0000;
+localparam logic [31:0] FapLastEntropyPool = 32'h1095_FFFF;
+localparam logic [31:0] FapBaseAxilMailbox = 32'h10A0_0000;
+localparam logic [31:0] FapLastAxilMailbox = 32'h10A0_FFFF;
+localparam logic [31:0] FapBaseLocalMasterAliasRemapCtrl = 32'h10A1_0000;
+localparam logic [31:0] FapLastLocalMasterAliasRemapCtrl = 32'h10A1_01FF;
+localparam logic [31:0] FapBaseApOutputRemapCtrl = 32'h10A1_0200;
+localparam logic [31:0] FapLastApOutputRemapCtrl = 32'h10A1_027F;
+localparam logic [31:0] FapBaseSteeOutputRemapCtrl = 32'h10A1_0300;
+localparam logic [31:0] FapLastSteeOutputRemapCtrl = 32'h10A1_037F;
+localparam logic [31:0] FapBaseOutboundFilterCtrl = 32'h10A2_0000;
+localparam logic [31:0] FapLastOutboundFilterCtrl = 32'h10A2_03FF;
+localparam logic [31:0] FapBaseInboundFilterCtrl = 32'h10A2_1000;
+localparam logic [31:0] FapLastInboundFilterCtrl = 32'h10A2_11FF;
+localparam logic [31:0] FapBaseSepCpuCtrl = 32'h10A3_0000;
+localparam logic [31:0] FapLastSepCpuCtrl = 32'h10A3_1FFF;
+localparam logic [31:0] FapBaseSpiController = 32'h10B0_0000;
+localparam logic [31:0] FapLastSpiController = 32'h10BF_FFFF;
+localparam logic [31:0] FapBaseApRegion = 32'h1100_0000;
+localparam logic [31:0] FapLastApRegion = 32'h117F_FFFF;
+localparam logic [31:0] FapBaseSteeRegion = 32'h1180_0000;
+localparam logic [31:0] FapLastSteeRegion = 32'h11FF_FFFF;
+localparam logic [31:0] FapBaseSepExternal = 32'h2000_0000;
+localparam logic [31:0] FapLastSepExternal = 32'h3FFF_FFFF;
+localparam logic [31:0] FapBaseSepIccm = 32'hC000_0000;
+localparam logic [31:0] FapLastSepIccm = 32'hC003_FFFF;
+localparam logic [31:0] FapBaseSepDccm = 32'hC004_0000;
+localparam logic [31:0] FapLastSepDccm = 32'hC005_FFFF;
+localparam logic [31:0] FapBasePic = 32'hC008_0000;
+localparam logic [31:0] FapLastPic = 32'hC008_7FFF;
+
 // 1 when the 32-bit address is a register or lies in a memory window of the
 // OTBN, HMAC, KMAC, entropy source or ABR unit; 0 for every other address of
 // those units (a hole).

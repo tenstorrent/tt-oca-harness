@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Write tb/sep_fcov_crypto_reg_addrs.svh from the generated register header.
+"""Write tb/sep_fcov_crypto_reg_addrs.svh from the generated register map.
 
 The FCOV sampler classifies the start of an inbound burst into the crypto
 region as a register or a hole (``sep_fabric_inbound_aperture_cg.cp_burst_region``).
@@ -9,13 +9,22 @@ The include lists every ``*_REG_ADDR`` symbol and every ``*_MEM_BASE_ADDR`` /
 ``*_MEM_SIZE`` memory window (OTBN IMEM and DMEM, the HMAC and KMAC message
 FIFOs, the KMAC state, the ABR key and message windows) of the OTBN, HMAC,
 KMAC, entropy source and ABR units of ``hw/sys/sep/regs/gen/svh/sep_reg.svh``
-by name, so a moved register or window keeps its class. Run it after a register change;
-``--check`` exits 1 when the committed include differs from the header.
+by name, so a moved register or window keeps its class.
+
+The include also gives the first and last byte of each unit aperture of the
+``sep-components`` view of ``hw/sys/sep/regs/gen/py/sep_memory_map.py``
+(``FapBase<Unit>`` / ``FapLast<Unit>``). The FCOV samplers classify addresses
+by these apertures; the register-block sizes of ``sep_top_addrmap_pkg`` are
+smaller than the apertures.
+
+Run it after a register or map change; ``--check`` exits 1 when the committed
+include differs from the generated map.
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import pathlib
 import re
 import sys
@@ -24,6 +33,22 @@ UNITS = ("OTBN", "HMAC", "KMAC", "ENTROPY_SOURCE", "ABR")
 ROOT = pathlib.Path(__file__).resolve().parents[6]
 SVH = ROOT / "hw/sys/sep/regs/gen/svh/sep_reg.svh"
 OUT = ROOT / "hw/sys/sep/dv/tb/sep_fcov_crypto_reg_addrs.svh"
+MAP_PY = ROOT / "hw/sys/sep/regs/gen/py/sep_memory_map.py"
+
+
+def apertures() -> list[tuple[str, int, int]]:
+    """``(CamelName, base, last)`` of every unit aperture of the component view."""
+    spec = importlib.util.spec_from_file_location("sep_memory_map", MAP_PY)
+    assert spec is not None and spec.loader is not None, MAP_PY
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    out = []
+    for row in mod.VIEWS["sep-components"]["rows"]:
+        if row["kind"] != "node":
+            continue
+        unit = row["key"].split(":", 1)[1]
+        out.append(("".join(w.capitalize() for w in unit.split("_")), row["base"], row["end"]))
+    return out
 
 
 def render() -> str:
@@ -37,7 +62,19 @@ def render() -> str:
         "// SPDX-License-Identifier: Apache-2.0",
         "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
         "//",
-        "// Written by cov/tools/gen_fcov_crypto_reg_addrs.py from sep_reg.svh. Do not edit.",
+        "// Written by cov/tools/gen_fcov_crypto_reg_addrs.py from sep_reg.svh and",
+        "// sep_memory_map.py. Do not edit.",
+        "//",
+        "// First and last byte of each unit aperture (memory_map.adoc, SEP Component",
+        "// Address Map).",
+    ]
+    for name, base, last in apertures():
+        lines += [
+            f"localparam logic [31:0] FapBase{name} = 32'h{base >> 16:04X}_{base & 0xFFFF:04X};",
+            f"localparam logic [31:0] FapLast{name} = 32'h{last >> 16:04X}_{last & 0xFFFF:04X};",
+        ]
+    lines += [
+        "",
         "// 1 when the 32-bit address is a register or lies in a memory window of the",
         "// OTBN, HMAC, KMAC, entropy source or ABR unit; 0 for every other address of",
         "// those units (a hole).",

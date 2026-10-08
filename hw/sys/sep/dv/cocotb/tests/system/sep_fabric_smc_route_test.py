@@ -62,6 +62,7 @@ from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
 from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LCC_FEAT_CTRL
+from env.sep_rebase_model import XBAR_LIMIT
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import SEP_CPU_CTRL
@@ -74,8 +75,6 @@ TEST = "sep_fabric_smc_route_test"
 
 SMC_SIZE = 0x0100_0000
 CFG = {"A": 0x4000_0000, "B": 0x9000_0000}
-# The peripheral crossbar answers DECERR at or above this local address.
-XBAR_LIMIT = 0x4000_0000
 # The SMU window at its RDL reset aperture, and an SMU-window word outside both
 # SMC apertures.
 SMU_BASE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")

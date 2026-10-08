@@ -66,6 +66,7 @@ from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_filter_model import TERM_SRC, FilterEntry, FilterModel, FilterVerdict
 from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, feat_ctrl_expected
+from env.sep_rebase_model import XBAR_LIMIT
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import SEP_CPU_CTRL, sym
@@ -116,8 +117,8 @@ EXT_BASE = sym("SEP_EXTERNAL_REG_MAP_BASE_ADDR")
 EXT_END = EXT_BASE + sym("SEP_EXTERNAL_REG_MAP_SIZE") - 1
 SHIM_BASE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR")
 SHIM_SIZE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE")
-# A word at the crossbar limit 0x4000_0000 (fabric.adoc, output fabric).
-XBAR_LIMIT_WORD = 0x4000_0000 + 0x100
+# A word above the peripheral crossbar limit (input fabric).
+XBAR_LIMIT_WORD = XBAR_LIMIT + 0x100
 SMU_BASE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
 SMU_END = SMU_BASE + SEP_CPU_CTRL.reset("SMU_REGION_SIZE") - 1
 # Stores below this stay clear of the console word the bench responder decodes
