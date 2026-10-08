@@ -484,10 +484,11 @@ void smc_inbound_filter_open_range_burst(uintptr_t start, size_t length, uint8_t
 traffic to the inbound default, which blocks it; make sure no other entry
 permits it. On the SMC outbound filter the same entry does not block non-secure
 traffic, because unmatched traffic passes; add matching deny entries for it,
-accounting for entry priority. AXI-Lite filters check AxPROT instead: with
-<code>awprot_requirement</code> and <code>arprot_requirement</code> at <code>0x1</code> (data, secure,
-privileged) and both <code>write_filter_enable</code> and <code>read_filter_enable</code> set, only
-transactions whose three PROT bits equal <code>0x1</code> are allowed.</p>
+accounting for entry priority. The SMC GPIO&#8217;s AXI-Lite access filter checks
+AxPROT instead: with <code>awprot_requirement</code> and <code>arprot_requirement</code> at <code>0x1</code>
+(data, secure, privileged) and both <code>write_filter_enable</code> and
+<code>read_filter_enable</code> set, only transactions whose three PROT bits equal <code>0x1</code>
+are allowed. The SEP load/store, debug and DMA masters all drive <code>0x1</code>.</p>
 </div>
 <div class="admonitionblock note">
 <table>

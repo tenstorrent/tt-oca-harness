@@ -711,6 +711,57 @@ core and its buses run on the SEP clock. <code>mpc_reset_run_req_i</code> passes
 synchronizer in <code>sep_cpu</code>; the core synchronizes the NMI, timer, software
 interrupt and the other halt and run requests itself.</p>
 </div>
+<div class="paragraph">
+<p>Every SEP bus master drives a fixed AxPROT, shown in
+<a href="#sep-cpu-axprot-table">Table 1</a>. The value does not follow the hart&#8217;s privilege mode,
+so a U-mode load still issues as privileged. The upstream VeeR EL2 port
+documentation lists <code>0b100</code> for IFU reads and <code>0b000</code> for the LSU and debug
+masters; the core drives the values in the table. The core ignores AxPROT on its
+DMA slave port.</p>
+</div>
+<table id="sep-cpu-axprot-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. AxPROT driven by the SEP bus masters</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 33.3335%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Master</th>
+<th class="tableblock halign-left valign-top">AWPROT</th>
+<th class="tableblock halign-left valign-top">ARPROT</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IFU, to the boot ROM and SEP SRAM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">not issued</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b101</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Privileged, secure, instruction</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LSU, to the boot ROM and local crossbar</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Privileged, secure, data</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug system bus</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Privileged, secure, data</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA master</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Privileged, secure, data</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 <div class="sect1">
@@ -720,8 +771,8 @@ interrupt and the other halt and run requests itself.</p>
 <p>The SEP build configures the core as follows. Optional VeeR capabilities must
 not be assumed to be present merely because the core supports them.</p>
 </div>
-<table id="trm-table-1" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. SEP processor configuration</caption>
+<table id="trm-table-2" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SEP processor configuration</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -778,8 +829,8 @@ The Boot ROM chapter describes secure boot and execution unlock.</p>
 storage. Their memory macros connect through the SEP CPU memory interface.
 The instruction cache is disabled in this configuration.</p>
 </div>
-<table id="trm-table-2" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. SEP closely coupled memories</caption>
+<table id="trm-table-3" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SEP closely coupled memories</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -817,8 +868,8 @@ contains eight 32-bit data fields in 64-bit register slots, giving an 8-byte
 stride. Both banks reset their data to zero. Hardware exposes the field values,
 but the current system CSR logic does not use them to control behavior.</p>
 </div>
-<table id="trm-table-3" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Scratch-bank reset behavior</caption>
+<table id="trm-table-4" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Scratch-bank reset behavior</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -862,15 +913,15 @@ these reset boundaries.</p>
 <li><strong>SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x8</li>
 </ul>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-4">
-<caption class="title"><a href="#trm-table-4">Table 4</a>. SEP Scratch Address Map register list</caption>
+<table id="trm-table-5">
+<caption class="title"><a href="#trm-table-5">Table 5</a>. SEP Scratch Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x38</td><td><a href="#sep_scratch-SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="SCRATCH_8_"></span><h3 id="sep_scratch-SCRATCH_8_" data-register-alias="SCRATCH_8_">SCRATCH[8]</h3>
-<table id="trm-table-5">
-<caption class="title"><a href="#trm-table-5">Table 5</a>. sep_scratch.SCRATCH[8] fields</caption>
+<table id="trm-table-6">
+<caption class="title"><a href="#trm-table-6">Table 6</a>. sep_scratch.SCRATCH[8] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register for the CPU</td></tr>
@@ -1011,8 +1062,8 @@ The scratch-bank register layout appears under Local Memory above.</p>
 <h2 id="regmap-sep_cpu_ctrl">SEP CPU Control Address Map</h2>
 <p>SEP CPU control and status registers: PKA and crypto configuration, boot and fast-memory enables, fuse-sense status, and interrupt controls.</p>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-6">
-<caption class="title"><a href="#trm-table-6">Table 6</a>. SEP CPU Control Address Map register list</caption>
+<table id="trm-table-7">
+<caption class="title"><a href="#trm-table-7">Table 7</a>. SEP CPU Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x8</td><td><a href="#sep_cpu_ctrl-CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</a></td><td>RW</td><td>TODO: clock-gate control - placeholder fields, not yet implemented.</td></tr>
 <tr><td>0x10</td><td><a href="#sep_cpu_ctrl-REFERENCE_COUNTER">REFERENCE_COUNTER</a></td><td>RW</td><td>-</td></tr>
@@ -1051,28 +1102,28 @@ The scratch-bank register layout appears under Local Memory above.</p>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="CLOCK_GATE_CTRL"></span><h3 id="sep_cpu_ctrl-CLOCK_GATE_CTRL" data-register-alias="CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</h3>
-<table id="trm-table-7">
-<caption class="title"><a href="#trm-table-7">Table 7</a>. sep_cpu_ctrl.CLOCK_GATE_CTRL fields</caption>
+<table id="trm-table-8">
+<caption class="title"><a href="#trm-table-8">Table 8</a>. sep_cpu_ctrl.CLOCK_GATE_CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>pka_cg_enable</td><td>RW</td><td>0x0</td><td>Reserved - PKA clock-gate enable, not yet implemented.</td></tr>
 </table>
 <span id="REFERENCE_COUNTER"></span><h3 id="sep_cpu_ctrl-REFERENCE_COUNTER" data-register-alias="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
-<table id="trm-table-8">
-<caption class="title"><a href="#trm-table-8">Table 8</a>. sep_cpu_ctrl.REFERENCE_COUNTER fields</caption>
+<table id="trm-table-9">
+<caption class="title"><a href="#trm-table-9">Table 9</a>. sep_cpu_ctrl.REFERENCE_COUNTER fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,<br>then poll this register until the readback reflects the written value before<br>writing again. The counter keeps advancing, so the readback is at or just<br>above the written value rather than equal to it.</td></tr>
 </table>
 <span id="TIMEOUT_INTERRUPT"></span><h3 id="sep_cpu_ctrl-TIMEOUT_INTERRUPT" data-register-alias="TIMEOUT_INTERRUPT">TIMEOUT_INTERRUPT</h3>
-<table id="trm-table-9">
-<caption class="title"><a href="#trm-table-9">Table 9</a>. sep_cpu_ctrl.TIMEOUT_INTERRUPT fields</caption>
+<table id="trm-table-10">
+<caption class="title"><a href="#trm-table-10">Table 10</a>. sep_cpu_ctrl.TIMEOUT_INTERRUPT fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>reserved</td><td>R</td><td>0x0</td><td>Reserved - timeout interrupt status not yet implemented.</td></tr>
 </table>
 <span id="PKA_CTRL"></span><h3 id="sep_cpu_ctrl-PKA_CTRL" data-register-alias="PKA_CTRL">PKA_CTRL</h3>
-<table id="trm-table-10">
-<caption class="title"><a href="#trm-table-10">Table 10</a>. sep_cpu_ctrl.PKA_CTRL fields</caption>
+<table id="trm-table-11">
+<caption class="title"><a href="#trm-table-11">Table 11</a>. sep_cpu_ctrl.PKA_CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2</td><td>pka_noise_src_valid</td><td>RW</td><td>0x0</td><td>Reserved - PKA noise source valid, not yet implemented.</td></tr>
@@ -1080,85 +1131,85 @@ The scratch-bank register layout appears under Local Memory above.</p>
 <tr><td>0</td><td>pka_dpa_disable</td><td>RW</td><td>0x0</td><td>Reserved - disable DPA countermeasures in PKA, not yet implemented.</td></tr>
 </table>
 <span id="TIMEOUT_COUNT_DMA"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_DMA" data-register-alias="TIMEOUT_COUNT_DMA">TIMEOUT_COUNT_DMA</h3>
-<table id="trm-table-11">
-<caption class="title"><a href="#trm-table-11">Table 11</a>. sep_cpu_ctrl.TIMEOUT_COUNT_DMA fields</caption>
+<table id="trm-table-12">
+<caption class="title"><a href="#trm-table-12">Table 12</a>. sep_cpu_ctrl.TIMEOUT_COUNT_DMA fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <span id="TIMEOUT_COUNT_SYS_IN"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_SYS_IN" data-register-alias="TIMEOUT_COUNT_SYS_IN">TIMEOUT_COUNT_SYS_IN</h3>
-<table id="trm-table-12">
-<caption class="title"><a href="#trm-table-12">Table 12</a>. sep_cpu_ctrl.TIMEOUT_COUNT_SYS_IN fields</caption>
+<table id="trm-table-13">
+<caption class="title"><a href="#trm-table-13">Table 13</a>. sep_cpu_ctrl.TIMEOUT_COUNT_SYS_IN fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <span id="TIMEOUT_COUNT_MAILBOX_INBOUND"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_MAILBOX_INBOUND" data-register-alias="TIMEOUT_COUNT_MAILBOX_INBOUND">TIMEOUT_COUNT_MAILBOX_INBOUND</h3>
-<table id="trm-table-13">
-<caption class="title"><a href="#trm-table-13">Table 13</a>. sep_cpu_ctrl.TIMEOUT_COUNT_MAILBOX_INBOUND fields</caption>
+<table id="trm-table-14">
+<caption class="title"><a href="#trm-table-14">Table 14</a>. sep_cpu_ctrl.TIMEOUT_COUNT_MAILBOX_INBOUND fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <span id="TIMEOUT_COUNT_MAILBOX_OUTBOUND"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_MAILBOX_OUTBOUND" data-register-alias="TIMEOUT_COUNT_MAILBOX_OUTBOUND">TIMEOUT_COUNT_MAILBOX_OUTBOUND</h3>
-<table id="trm-table-14">
-<caption class="title"><a href="#trm-table-14">Table 14</a>. sep_cpu_ctrl.TIMEOUT_COUNT_MAILBOX_OUTBOUND fields</caption>
+<table id="trm-table-15">
+<caption class="title"><a href="#trm-table-15">Table 15</a>. sep_cpu_ctrl.TIMEOUT_COUNT_MAILBOX_OUTBOUND fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <span id="TIMEOUT_COUNT_ENTROPY_WRITE"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_ENTROPY_WRITE" data-register-alias="TIMEOUT_COUNT_ENTROPY_WRITE">TIMEOUT_COUNT_ENTROPY_WRITE</h3>
-<table id="trm-table-15">
-<caption class="title"><a href="#trm-table-15">Table 15</a>. sep_cpu_ctrl.TIMEOUT_COUNT_ENTROPY_WRITE fields</caption>
+<table id="trm-table-16">
+<caption class="title"><a href="#trm-table-16">Table 16</a>. sep_cpu_ctrl.TIMEOUT_COUNT_ENTROPY_WRITE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <span id="TIMEOUT_COUNT_ENTROPY_READ"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_ENTROPY_READ" data-register-alias="TIMEOUT_COUNT_ENTROPY_READ">TIMEOUT_COUNT_ENTROPY_READ</h3>
-<table id="trm-table-16">
-<caption class="title"><a href="#trm-table-16">Table 16</a>. sep_cpu_ctrl.TIMEOUT_COUNT_ENTROPY_READ fields</caption>
+<table id="trm-table-17">
+<caption class="title"><a href="#trm-table-17">Table 17</a>. sep_cpu_ctrl.TIMEOUT_COUNT_ENTROPY_READ fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <span id="TIMEOUT_COUNT_FILTER_OUT"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_FILTER_OUT" data-register-alias="TIMEOUT_COUNT_FILTER_OUT">TIMEOUT_COUNT_FILTER_OUT</h3>
-<table id="trm-table-17">
-<caption class="title"><a href="#trm-table-17">Table 17</a>. sep_cpu_ctrl.TIMEOUT_COUNT_FILTER_OUT fields</caption>
+<table id="trm-table-18">
+<caption class="title"><a href="#trm-table-18">Table 18</a>. sep_cpu_ctrl.TIMEOUT_COUNT_FILTER_OUT fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <span id="TIMEOUT_COUNT_ALIAS_REMAP"></span><h3 id="sep_cpu_ctrl-TIMEOUT_COUNT_ALIAS_REMAP" data-register-alias="TIMEOUT_COUNT_ALIAS_REMAP">TIMEOUT_COUNT_ALIAS_REMAP</h3>
-<table id="trm-table-18">
-<caption class="title"><a href="#trm-table-18">Table 18</a>. sep_cpu_ctrl.TIMEOUT_COUNT_ALIAS_REMAP fields</caption>
+<table id="trm-table-19">
+<caption class="title"><a href="#trm-table-19">Table 19</a>. sep_cpu_ctrl.TIMEOUT_COUNT_ALIAS_REMAP fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout count not yet implemented.</td></tr>
 </table>
 <span id="TIMEOUT_ENABLE"></span><h3 id="sep_cpu_ctrl-TIMEOUT_ENABLE" data-register-alias="TIMEOUT_ENABLE">TIMEOUT_ENABLE</h3>
-<table id="trm-table-19">
-<caption class="title"><a href="#trm-table-19">Table 19</a>. sep_cpu_ctrl.TIMEOUT_ENABLE fields</caption>
+<table id="trm-table-20">
+<caption class="title"><a href="#trm-table-20">Table 20</a>. sep_cpu_ctrl.TIMEOUT_ENABLE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>reserved</td><td>RW</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
 </table>
 <span id="TIMEOUT_CLEAR"></span><h3 id="sep_cpu_ctrl-TIMEOUT_CLEAR" data-register-alias="TIMEOUT_CLEAR">TIMEOUT_CLEAR</h3>
-<table id="trm-table-20">
-<caption class="title"><a href="#trm-table-20">Table 20</a>. sep_cpu_ctrl.TIMEOUT_CLEAR fields</caption>
+<table id="trm-table-21">
+<caption class="title"><a href="#trm-table-21">Table 21</a>. sep_cpu_ctrl.TIMEOUT_CLEAR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>reserved</td><td>W 1P</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
 </table>
 <span id="TIMEOUT_MODE"></span><h3 id="sep_cpu_ctrl-TIMEOUT_MODE" data-register-alias="TIMEOUT_MODE">TIMEOUT_MODE</h3>
-<table id="trm-table-21">
-<caption class="title"><a href="#trm-table-21">Table 21</a>. sep_cpu_ctrl.TIMEOUT_MODE fields</caption>
+<table id="trm-table-22">
+<caption class="title"><a href="#trm-table-22">Table 22</a>. sep_cpu_ctrl.TIMEOUT_MODE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>reserved</td><td>W</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
 </table>
 <span id="SEP_TEST_CTRL"></span><h3 id="sep_cpu_ctrl-SEP_TEST_CTRL" data-register-alias="SEP_TEST_CTRL">SEP_TEST_CTRL</h3>
-<table id="trm-table-22">
-<caption class="title"><a href="#trm-table-22">Table 22</a>. sep_cpu_ctrl.SEP_TEST_CTRL fields</caption>
+<table id="trm-table-23">
+<caption class="title"><a href="#trm-table-23">Table 23</a>. sep_cpu_ctrl.SEP_TEST_CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>fast_spi_en</td><td>R</td><td>0x0</td><td>Fast SPI Enable</td></tr>
 <tr><td>30</td><td>fast_iccm_en</td><td>R</td><td>0x0</td><td>Fast ICCM Enable</td></tr>
@@ -1169,115 +1220,115 @@ The scratch-bank register layout appears under Local Memory above.</p>
 <tr><td>25:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <span id="SEP_GLOBAL_BASE_ADDR"></span><h3 id="sep_cpu_ctrl-SEP_GLOBAL_BASE_ADDR" data-register-alias="SEP_GLOBAL_BASE_ADDR">SEP_GLOBAL_BASE_ADDR</h3>
-<table id="trm-table-23">
-<caption class="title"><a href="#trm-table-23">Table 23</a>. sep_cpu_ctrl.SEP_GLOBAL_BASE_ADDR fields</caption>
+<table id="trm-table-24">
+<caption class="title"><a href="#trm-table-24">Table 24</a>. sep_cpu_ctrl.SEP_GLOBAL_BASE_ADDR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>55:0</td><td>addr</td><td>RW</td><td>0x0</td><td>-</td></tr>
 </table>
 <span id="SEP_LOCAL_BASE_ADDR"></span><h3 id="sep_cpu_ctrl-SEP_LOCAL_BASE_ADDR" data-register-alias="SEP_LOCAL_BASE_ADDR">SEP_LOCAL_BASE_ADDR</h3>
-<table id="trm-table-24">
-<caption class="title"><a href="#trm-table-24">Table 24</a>. sep_cpu_ctrl.SEP_LOCAL_BASE_ADDR fields</caption>
+<table id="trm-table-25">
+<caption class="title"><a href="#trm-table-25">Table 25</a>. sep_cpu_ctrl.SEP_LOCAL_BASE_ADDR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>55:0</td><td>addr</td><td>RW</td><td>0xD0000000</td><td>-</td></tr>
 </table>
 <span id="SEP_REGION_SIZE"></span><h3 id="sep_cpu_ctrl-SEP_REGION_SIZE" data-register-alias="SEP_REGION_SIZE">SEP_REGION_SIZE</h3>
-<table id="trm-table-25">
-<caption class="title"><a href="#trm-table-25">Table 25</a>. sep_cpu_ctrl.SEP_REGION_SIZE fields</caption>
+<table id="trm-table-26">
+<caption class="title"><a href="#trm-table-26">Table 26</a>. sep_cpu_ctrl.SEP_REGION_SIZE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>31:0</td><td>size</td><td>RW</td><td>0x1000000</td><td>-</td></tr>
 </table>
 <span id="SMU_GLOBAL_BASE_ADDR"></span><h3 id="sep_cpu_ctrl-SMU_GLOBAL_BASE_ADDR" data-register-alias="SMU_GLOBAL_BASE_ADDR">SMU_GLOBAL_BASE_ADDR</h3>
-<table id="trm-table-26">
-<caption class="title"><a href="#trm-table-26">Table 26</a>. sep_cpu_ctrl.SMU_GLOBAL_BASE_ADDR fields</caption>
+<table id="trm-table-27">
+<caption class="title"><a href="#trm-table-27">Table 27</a>. sep_cpu_ctrl.SMU_GLOBAL_BASE_ADDR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>55:0</td><td>addr</td><td>RW</td><td>0x80000000</td><td>-</td></tr>
 </table>
 <span id="SMU_REGION_SIZE"></span><h3 id="sep_cpu_ctrl-SMU_REGION_SIZE" data-register-alias="SMU_REGION_SIZE">SMU_REGION_SIZE</h3>
-<table id="trm-table-27">
-<caption class="title"><a href="#trm-table-27">Table 27</a>. sep_cpu_ctrl.SMU_REGION_SIZE fields</caption>
+<table id="trm-table-28">
+<caption class="title"><a href="#trm-table-28">Table 28</a>. sep_cpu_ctrl.SMU_REGION_SIZE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>31:0</td><td>size</td><td>RW</td><td>0x40000000</td><td>-</td></tr>
 </table>
 <span id="SMC_FUSE_SENSE_STATUS"></span><h3 id="sep_cpu_ctrl-SMC_FUSE_SENSE_STATUS" data-register-alias="SMC_FUSE_SENSE_STATUS">SMC_FUSE_SENSE_STATUS</h3>
-<table id="trm-table-28">
-<caption class="title"><a href="#trm-table-28">Table 28</a>. sep_cpu_ctrl.SMC_FUSE_SENSE_STATUS fields</caption>
+<table id="trm-table-29">
+<caption class="title"><a href="#trm-table-29">Table 29</a>. sep_cpu_ctrl.SMC_FUSE_SENSE_STATUS fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>smc_fuse_sense_done</td><td>R</td><td>0x0</td><td>This bit indicates when SMC&#x27;s fuse sense is completed. While fuse sense if ongoing, SMC fabric will be in reset. Any requests to the SMC will hang.<br>When this is 1, it is safe to send requests to the SMC.</td></tr>
 </table>
 <span id="SEP_FUSE_SENSE_STATUS"></span><h3 id="sep_cpu_ctrl-SEP_FUSE_SENSE_STATUS" data-register-alias="SEP_FUSE_SENSE_STATUS">SEP_FUSE_SENSE_STATUS</h3>
-<table id="trm-table-29">
-<caption class="title"><a href="#trm-table-29">Table 29</a>. sep_cpu_ctrl.SEP_FUSE_SENSE_STATUS fields</caption>
+<table id="trm-table-30">
+<caption class="title"><a href="#trm-table-30">Table 30</a>. sep_cpu_ctrl.SEP_FUSE_SENSE_STATUS fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>sep_fuse_sense_done</td><td>R</td><td>0x0</td><td>This reg is used to indicate the fuse sense status of SEP.</td></tr>
 </table>
 <span id="SEP_SW_DEBUG"></span><h3 id="sep_cpu_ctrl-SEP_SW_DEBUG" data-register-alias="SEP_SW_DEBUG">SEP_SW_DEBUG</h3>
-<table id="trm-table-30">
-<caption class="title"><a href="#trm-table-30">Table 30</a>. sep_cpu_ctrl.SEP_SW_DEBUG fields</caption>
+<table id="trm-table-31">
+<caption class="title"><a href="#trm-table-31">Table 31</a>. sep_cpu_ctrl.SEP_SW_DEBUG fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>31:0</td><td>sep_sw_debug</td><td>RW</td><td>0x0</td><td>software writtable debug information. This reg is routed to CLA</td></tr>
 </table>
 <span id="SEP_NMI_VEC"></span><h3 id="sep_cpu_ctrl-SEP_NMI_VEC" data-register-alias="SEP_NMI_VEC">SEP_NMI_VEC</h3>
-<table id="trm-table-31">
-<caption class="title"><a href="#trm-table-31">Table 31</a>. sep_cpu_ctrl.SEP_NMI_VEC fields</caption>
+<table id="trm-table-32">
+<caption class="title"><a href="#trm-table-32">Table 32</a>. sep_cpu_ctrl.SEP_NMI_VEC fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>31:1</td><td>nmi_vec</td><td>RW</td><td>0x60000080</td><td>NMI vector address [31:1] for VeeR-EL2 CPU. Bit 0 is always 0 (aligned).<br>Address where CPU jumps on Non-Maskable Interrupt. This is used for the<br>WDT Bark interrupt. The reset value does not point at a valid handler --<br>see the register description for the required programming order.</td></tr>
 <tr><td>0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved, bit 0 is always 0 (aligned)</td></tr>
 </table>
 <span id="SEP_NMI_VEC_LOCK"></span><h3 id="sep_cpu_ctrl-SEP_NMI_VEC_LOCK" data-register-alias="SEP_NMI_VEC_LOCK">SEP_NMI_VEC_LOCK</h3>
-<table id="trm-table-32">
-<caption class="title"><a href="#trm-table-32">Table 32</a>. sep_cpu_ctrl.SEP_NMI_VEC_LOCK fields</caption>
+<table id="trm-table-33">
+<caption class="title"><a href="#trm-table-33">Table 33</a>. sep_cpu_ctrl.SEP_NMI_VEC_LOCK fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Lock the NMI vector address. Once locked, the NMI vector address cannot be changed.<br>The NMI interrupt is used for the WDT Bark interrupt.</td></tr>
 </table>
 <span id="EXT_TRNG_SRC_SEL"></span><h3 id="sep_cpu_ctrl-EXT_TRNG_SRC_SEL" data-register-alias="EXT_TRNG_SRC_SEL">EXT_TRNG_SRC_SEL</h3>
-<table id="trm-table-33">
-<caption class="title"><a href="#trm-table-33">Table 33</a>. sep_cpu_ctrl.EXT_TRNG_SRC_SEL fields</caption>
+<table id="trm-table-34">
+<caption class="title"><a href="#trm-table-34">Table 34</a>. sep_cpu_ctrl.EXT_TRNG_SRC_SEL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>sel</td><td>RW</td><td>0x7</td><td>TRNG source select per stream. Bit N selects the source for stream N<br>(bit0 = Key Manager, bit1 = crypto blocks, bit2 = entropy pool).<br>0 = internal DRBG output, 1 = external TRNG (default).</td></tr>
 </table>
 <span id="EXT_TRNG_SRC_SEL_LOCK"></span><h3 id="sep_cpu_ctrl-EXT_TRNG_SRC_SEL_LOCK" data-register-alias="EXT_TRNG_SRC_SEL_LOCK">EXT_TRNG_SRC_SEL_LOCK</h3>
-<table id="trm-table-34">
-<caption class="title"><a href="#trm-table-34">Table 34</a>. sep_cpu_ctrl.EXT_TRNG_SRC_SEL_LOCK fields</caption>
+<table id="trm-table-35">
+<caption class="title"><a href="#trm-table-35">Table 35</a>. sep_cpu_ctrl.EXT_TRNG_SRC_SEL_LOCK fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Lock TRNG source selection. Once set, cannot be cleared by software.</td></tr>
 </table>
 <span id="KM_WIPE_CTRL"></span><h3 id="sep_cpu_ctrl-KM_WIPE_CTRL" data-register-alias="KM_WIPE_CTRL">KM_WIPE_CTRL</h3>
-<table id="trm-table-35">
-<caption class="title"><a href="#trm-table-35">Table 35</a>. sep_cpu_ctrl.KM_WIPE_CTRL fields</caption>
+<table id="trm-table-36">
+<caption class="title"><a href="#trm-table-36">Table 36</a>. sep_cpu_ctrl.KM_WIPE_CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>wipe_state</td><td>RW</td><td>0x0</td><td>Key Manager wipe state. A rising edge zeroes all KPV entries and sets the WIPE_STATE interrupt status.</td></tr>
 </table>
 <span id="DMA_BUS_ERR_STATUS"></span><h3 id="sep_cpu_ctrl-DMA_BUS_ERR_STATUS" data-register-alias="DMA_BUS_ERR_STATUS">DMA_BUS_ERR_STATUS</h3>
-<table id="trm-table-36">
-<caption class="title"><a href="#trm-table-36">Table 36</a>. sep_cpu_ctrl.DMA_BUS_ERR_STATUS fields</caption>
+<table id="trm-table-37">
+<caption class="title"><a href="#trm-table-37">Table 37</a>. sep_cpu_ctrl.DMA_BUS_ERR_STATUS fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1</td><td>host_path_err</td><td>R</td><td>0x0</td><td>DMA-master-path fault: either the fabric returned a non-OKAY AXI response<br>to a DMA transfer, or a TL-UL command-integrity check failed on a command<br>issued by the DMA. The latter is a fault-detection event with no other<br>reporting path.</td></tr>
 <tr><td>0</td><td>reg_path_err</td><td>R</td><td>0x0</td><td>Register-path bus error: a CPU access to a Secure DMA register returned<br>a TL-UL error response (unmapped or misaligned offset). The faulting<br>access also received SLVERR synchronously.</td></tr>
 </table>
 <span id="DMA_BUS_ERR_CLEAR"></span><h3 id="sep_cpu_ctrl-DMA_BUS_ERR_CLEAR" data-register-alias="DMA_BUS_ERR_CLEAR">DMA_BUS_ERR_CLEAR</h3>
-<table id="trm-table-37">
-<caption class="title"><a href="#trm-table-37">Table 37</a>. sep_cpu_ctrl.DMA_BUS_ERR_CLEAR fields</caption>
+<table id="trm-table-38">
+<caption class="title"><a href="#trm-table-38">Table 38</a>. sep_cpu_ctrl.DMA_BUS_ERR_CLEAR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>clr</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.</td></tr>
 </table>
 <span id="PERIPH_BUS_ERR_STATUS"></span><h3 id="sep_cpu_ctrl-PERIPH_BUS_ERR_STATUS" data-register-alias="PERIPH_BUS_ERR_STATUS">PERIPH_BUS_ERR_STATUS</h3>
-<table id="trm-table-38">
-<caption class="title"><a href="#trm-table-38">Table 38</a>. sep_cpu_ctrl.PERIPH_BUS_ERR_STATUS fields</caption>
+<table id="trm-table-39">
+<caption class="title"><a href="#trm-table-39">Table 39</a>. sep_cpu_ctrl.PERIPH_BUS_ERR_STATUS fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>6</td><td>wdt</td><td>R</td><td>0x0</td><td>Watchdog timer register bridge error.</td></tr>
@@ -1289,8 +1340,8 @@ The scratch-bank register layout appears under Local Memory above.</p>
 <tr><td>0</td><td>aes</td><td>R</td><td>0x0</td><td>AES register bridge error.</td></tr>
 </table>
 <span id="PERIPH_BUS_ERR_CLEAR"></span><h3 id="sep_cpu_ctrl-PERIPH_BUS_ERR_CLEAR" data-register-alias="PERIPH_BUS_ERR_CLEAR">PERIPH_BUS_ERR_CLEAR</h3>
-<table id="trm-table-39">
-<caption class="title"><a href="#trm-table-39">Table 39</a>. sep_cpu_ctrl.PERIPH_BUS_ERR_CLEAR fields</caption>
+<table id="trm-table-40">
+<caption class="title"><a href="#trm-table-40">Table 40</a>. sep_cpu_ctrl.PERIPH_BUS_ERR_CLEAR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>6</td><td>wdt</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.</td></tr>
@@ -1302,8 +1353,8 @@ The scratch-bank register layout appears under Local Memory above.</p>
 <tr><td>0</td><td>aes</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.</td></tr>
 </table>
 <span id="SEP_VERSION_ID"></span><h3 id="sep_cpu_ctrl-SEP_VERSION_ID" data-register-alias="SEP_VERSION_ID">SEP_VERSION_ID</h3>
-<table id="trm-table-40">
-<caption class="title"><a href="#trm-table-40">Table 40</a>. sep_cpu_ctrl.SEP_VERSION_ID fields</caption>
+<table id="trm-table-41">
+<caption class="title"><a href="#trm-table-41">Table 41</a>. sep_cpu_ctrl.SEP_VERSION_ID fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>31:0</td><td>version_id</td><td>R</td><td>0xDEADBEEF</td><td>Version ID for the CPU</td></tr>

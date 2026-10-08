@@ -39,7 +39,7 @@
             <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
           </div>
         </div>
-        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.2">
           <a class="navbar-link" href="#">Version</a>
           <div class="navbar-dropdown"></div>
         </div>
@@ -135,15 +135,15 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.1 — switch documentation">
-    <span class="version">0.5.1</span>
+  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.2 — switch documentation">
+    <span class="version">0.5.2</span>
   </button>
   <ul class="components">
     <li class="component">
       <span class="title">Application Notes</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.2</a>
         </li>
       </ul>
     </li>
@@ -151,7 +151,7 @@
       <span class="title">Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+          <a href="../../../ocah-starting/0.5/index.html">0.5.2</a>
         </li>
       </ul>
     </li>
@@ -159,7 +159,7 @@
       <span class="title">Integrator Guide</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.2</a>
         </li>
       </ul>
     </li>
@@ -167,7 +167,7 @@
       <span class="title">Open Chiplet Atlas (OCA) Harness</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+          <a href="../../../ocah-home/0.5/index.html">0.5.2</a>
         </li>
       </ul>
     </li>
@@ -175,7 +175,7 @@
       <span class="title">Programmer&#x27;s Guide</span>
       <ul class="versions">
         <li class="version is-current is-latest">
-          <a href="../index.html">0.5.1</a>
+          <a href="../index.html">0.5.2</a>
         </li>
       </ul>
     </li>
@@ -183,7 +183,7 @@
       <span class="title">Technical Reference Manual</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+          <a href="../../../ocah-docs/0.5/index.html">0.5.2</a>
         </li>
       </ul>
     </li>
@@ -455,8 +455,8 @@ vectors.</p>
 <h3 id="captured-straps"><a class="anchor" href="#captured-straps"></a><a class="link" href="#captured-straps">3.1. Captured straps</a></h3>
 <div class="paragraph">
 <p>The ROM reads the captured GPIO straps through the SMC mandatory window.
-<code>include/sep_smc_interface.h</code> defines the SEP-visible offsets and bit
-positions.</p>
+<code>include/sep_smc_map.h</code> takes the SEP-visible offsets from the generated SMC
+map, and <code>include/sep_smc_interface.h</code> defines the bit positions.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -969,7 +969,8 @@ manifest and transport processing, not the extent of ROM coverage.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>SEP reaches SMC resources through its outbound AXI path at
-<code>SEP_SMC_GLOBAL_BASE</code>, <code>0x4000_0000</code>. The offsets and status bits in
+<code>SEP_SMC_GLOBAL_BASE</code>, <code>0x4000_0000</code>. The offsets in <code>include/sep_smc_map.h</code>,
+taken from the generated SMC map, and the status bits in
 <code>include/sep_smc_interface.h</code> form the SEP side of the interface contract.
 They are SEP-visible offsets and must not be replaced with SMC-local absolute
 addresses.</p>

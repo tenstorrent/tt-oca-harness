@@ -730,7 +730,9 @@ in this wrapper. The upstream SoC control and system ports are tied off; their A
 additional SEP routes. Reachability is governed by the SEP fabric and filters.</p>
 </div>
 <div class="paragraph">
-<p>The master path leaves AxUSER at zero. The register and host bridges latch
+<p>The master path leaves AxUSER at zero and drives AxPROT <code>0b001</code> (privileged,
+secure, data), the value the SEP CPU&#8217;s LSU drives; TL-UL carries no protection
+attributes, so the wrapper sets it. The register and host bridges latch
 faults on <code>dma_reg_bus_err_o</code> and <code>dma_host_intg_err_o</code>, cleared through
 <code>DMA_BUS_ERR_CLEAR</code>; local alert receivers aggregate the core alerts into
 <code>dma_alert_o</code>. Selecting the tied-off CTN or SYS address space does not complete.</p>

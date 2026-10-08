@@ -265,6 +265,57 @@ core and its buses run on the SEP clock. <code>mpc_reset_run_req_i</code> passes
 synchronizer in <code>sep_cpu</code>; the core synchronizes the NMI, timer, software
 interrupt and the other halt and run requests itself.</p>
 </div>
+<div class="paragraph">
+<p>Every SEP bus master drives a fixed AxPROT, shown in
+<a href="#sep-cpu-axprot-table">AxPROT driven by the SEP bus masters</a>. The value does not follow the hart&#8217;s privilege mode,
+so a U-mode load still issues as privileged. The upstream VeeR EL2 port
+documentation lists <code>0b100</code> for IFU reads and <code>0b000</code> for the LSU and debug
+masters; the core drives the values in the table. The core ignores AxPROT on its
+DMA slave port.</p>
+</div>
+<table id="sep-cpu-axprot-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. AxPROT driven by the SEP bus masters</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 33.3335%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Master</th>
+<th class="tableblock halign-left valign-top">AWPROT</th>
+<th class="tableblock halign-left valign-top">ARPROT</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IFU, to the boot ROM and SEP SRAM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">not issued</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b101</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Privileged, secure, instruction</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LSU, to the boot ROM and local crossbar</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Privileged, secure, data</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug system bus</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Privileged, secure, data</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA master</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Privileged, secure, data</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 <div class="sect1">
@@ -275,7 +326,7 @@ interrupt and the other halt and run requests itself.</p>
 not be assumed to be present merely because the core supports them.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. SEP processor configuration</caption>
+<caption class="title">Table 2. SEP processor configuration</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -333,7 +384,7 @@ storage. Their memory macros connect through the SEP CPU memory interface.
 The instruction cache is disabled in this configuration.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. SEP closely coupled memories</caption>
+<caption class="title">Table 3. SEP closely coupled memories</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -372,7 +423,7 @@ stride. Both banks reset their data to zero. Hardware exposes the field values,
 but the current system CSR logic does not use them to control behavior.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Scratch-bank reset behavior</caption>
+<caption class="title">Table 4. Scratch-bank reset behavior</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">

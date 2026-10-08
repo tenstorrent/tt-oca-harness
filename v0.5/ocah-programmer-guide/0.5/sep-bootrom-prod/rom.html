@@ -39,7 +39,7 @@
             <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
           </div>
         </div>
-        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.1">
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.2">
           <a class="navbar-link" href="#">Version</a>
           <div class="navbar-dropdown"></div>
         </div>
@@ -135,15 +135,15 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.1 — switch documentation">
-    <span class="version">0.5.1</span>
+  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.2 — switch documentation">
+    <span class="version">0.5.2</span>
   </button>
   <ul class="components">
     <li class="component">
       <span class="title">Application Notes</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-appnotes/0.5/index.html">0.5.1</a>
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.2</a>
         </li>
       </ul>
     </li>
@@ -151,7 +151,7 @@
       <span class="title">Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-starting/0.5/index.html">0.5.1</a>
+          <a href="../../../ocah-starting/0.5/index.html">0.5.2</a>
         </li>
       </ul>
     </li>
@@ -159,7 +159,7 @@
       <span class="title">Integrator Guide</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.1</a>
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.2</a>
         </li>
       </ul>
     </li>
@@ -167,7 +167,7 @@
       <span class="title">Open Chiplet Atlas (OCA) Harness</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-home/0.5/index.html">0.5.1</a>
+          <a href="../../../ocah-home/0.5/index.html">0.5.2</a>
         </li>
       </ul>
     </li>
@@ -175,7 +175,7 @@
       <span class="title">Programmer&#x27;s Guide</span>
       <ul class="versions">
         <li class="version is-current is-latest">
-          <a href="../index.html">0.5.1</a>
+          <a href="../index.html">0.5.2</a>
         </li>
       </ul>
     </li>
@@ -183,7 +183,7 @@
       <span class="title">Technical Reference Manual</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-docs/0.5/index.html">0.5.1</a>
+          <a href="../../../ocah-docs/0.5/index.html">0.5.2</a>
         </li>
       </ul>
     </li>
@@ -510,7 +510,8 @@ configured to read the same header (<code>STATUS_VALUES_PATH</code>), and <a hre
 generated from it by <code>hw/sys/sep/doc/gen_status_table.py</code>.</p>
 </li>
 <li>
-<p>SEP↔SMC interface contract: <code>hw/sys/sep/bootrom/prod/include/sep_smc_interface.h</code> and the
+<p>SEP↔SMC interface contract: <code>hw/sys/sep/bootrom/prod/include/sep_smc_map.h</code>,
+<code>hw/sys/sep/bootrom/prod/include/sep_smc_interface.h</code> and the
 SMC Boot ROM chapter (<code>hw/sys/smc/doc/rom.adoc</code>).</p>
 </li>
 </ul>
@@ -1024,8 +1025,8 @@ base (<code>0x40000000 + 0x60000</code> on the SEP side).</p>
 <div class="sect2">
 <h3 id="smc-window-layout"><a class="anchor" href="#smc-window-layout"></a><a class="link" href="#smc-window-layout">4.2. SMC Window Layout</a></h3>
 <div class="paragraph">
-<p>Offsets below are relative to <code>SEP_SMC_GLOBAL_BASE</code> (<code>0x40000000</code>) and form part of the
-SEP↔SMC interface contract (<code>sep_smc_interface.h</code>).</p>
+<p>Offsets below are relative to <code>SEP_SMC_GLOBAL_BASE</code> (<code>0x40000000</code>). <code>sep_smc_map.h</code> computes
+them from the generated SMC map; the values shown are those of the open map.</p>
 </div>
 <table id="tbl:smc_window" class="tableblock frame-ends grid-rows stretch">
 <caption class="title">Table 5. SMC resources accessed by the SEP ROM</caption>
@@ -1669,9 +1670,12 @@ and ahead of every fuse consumer in the flow.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S09] clocks</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>pll_init()</code>: if the <code>bl0_pll_clk</code> strap is clear, stay on the 100 MHz
 reference clock. If set: read the target sysclk frequency from the <code>SYSCLK_FREQ_MHZ</code> fuse
-field (blank fuses fall back to refclk with a warning), poll PLL lock detect, then switch the
-clock mux to the PLL. The resulting sysclk frequency parameterizes the SPI clock divider
-(<a href="#sec:spi">SPI Initialization and Manifest Transfer</a>). The PLL and the mux are SMC-owned; SEP has none of its own.</p></td>
+field (blank fuses fall back to refclk with a warning), then call
+<code>sep_pll_lock_and_select()</code> to wait for lock, switch the clock mux to the PLL and return the
+resulting sysclk frequency, which parameterizes the SPI clock divider (<a href="#sec:spi">SPI Initialization and Manifest Transfer</a>). The PLL and
+the mux are SMC-owned adopter IP, so the open ROM links a weak <code>sep_pll_lock_and_select()</code> that
+touches no hardware, reports <code>REF_CLK_SELECTED</code> and returns the 100 MHz reference clock; a build
+with a PLL driver overrides it through <code>OCAH_FW_OVERLAY_SOURCES_sep</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S10] <code>bl0_state</code></p></td>
@@ -6102,8 +6106,9 @@ denotes a following 16-bit payload word.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S09] clocks</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLL_CLK_INIT</code>; then <code>WAIT_FOR_PLL_LOCK</code> before the lock poll, or
-<code>PLL_FUSES_BLANK</code> and <code>REF_CLK_SELECTED</code>; then <code>INFO_EXT</code> (MHz)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLL_CLK_INIT</code>; then <code>WAIT_FOR_PLL_LOCK</code> before the lock poll (followed by
+<code>REF_CLK_SELECTED</code> when no PLL driver is linked), or <code>PLL_FUSES_BLANK</code> and <code>REF_CLK_SELECTED</code>;
+then <code>INFO_EXT</code> (MHz)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLL_FUSES_BLANK</code> (WARN); — for
 the lock poll (unbounded; hang is the failure mode)</p></td>
 </tr>

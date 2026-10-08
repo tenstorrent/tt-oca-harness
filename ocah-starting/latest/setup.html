@@ -277,13 +277,13 @@ cannot use a container.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">macOS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Supported</strong> with Podman. On Macs with Apple silicon (M-series) the x86_64 image
-  runs under emulation, which is noticeably slower.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Supported</strong> with Podman. On Macs with Apple silicon (M-series) Podman pulls the
+  native arm64 image.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Not documented.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Linux, arm64</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Not tested. The image is built for x86_64 only.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Supported.</strong> CI builds and checks the arm64 image on arm64 runners.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Not documented.</p></td>
 </tr>
 <tr>
@@ -551,7 +551,8 @@ and are less tested.</p>
 <h3 id="building-the-image"><a class="anchor" href="#building-the-image"></a><a class="link" href="#building-the-image">3.1. Building the container image yourself</a></h3>
 <div class="paragraph">
 <p>Build the image locally only when you are changing its definition. The build runs
-on x86_64 Linux, uses many cores and takes a long time:</p>
+on x86_64 or arm64 Linux, builds the image for the host&#8217;s architecture, uses
+many cores and takes a long time:</p>
 </div>
 <div class="listingblock">
 <div class="content">
