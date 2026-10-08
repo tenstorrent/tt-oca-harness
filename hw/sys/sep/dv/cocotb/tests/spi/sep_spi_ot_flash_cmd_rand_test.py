@@ -201,6 +201,8 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
     """The BFM sees exactly EXPECTED_OPS, and the program, erase and protect results match."""
 
     build_env = False
+    # The leaf's own graded records; the base-class records do not count.
+    required_evidence = ("CHK-READ", "CHK-RAND-REP")
 
     def build_phase(self) -> None:
         super().build_phase()

@@ -218,7 +218,7 @@ means that the record is stale, and the record is what needs the edit.
 |Open-source files |PyUVM test under `cocotb/tests/`, stimulus in `cocotb/seq_lib/`, shared helpers on `sep_base_test` / `cocotb/env/`
 |Testlist enrollment |Leaf entry in the owning `testlists/*.toml` and in `testlists/all.toml`
 |Evidence |Every checker needs a positive log line naming the contract, as `CHK-<ID> PASS`
-|Evidence gate |A clean exit is not a pass: every graded contract logs `CHK-<ID> PASS`, and `sep_base_test` fails a leaf that graded nothing of its own. <<sep-vplan-evidence-gate>> describes the mechanism, its `EVIDENCE_SUMMARY` line, the `min_evidence` / `required_evidence` knobs and the exemption list
+|Evidence gate |A clean exit is not a pass: every graded contract logs `CHK-<ID> PASS`, and `sep_base_test` fails a leaf that emits no `CHK-<ID> PASS` record. The shared base-class records count toward that floor, so a leaf whose own checks sit beside them names them in `required_evidence`. <<sep-vplan-evidence-gate>> describes the mechanism, its `EVIDENCE_SUMMARY` line, the `min_evidence` / `required_evidence` knobs and the exemption list
 |===
 
 === BFM Policy
