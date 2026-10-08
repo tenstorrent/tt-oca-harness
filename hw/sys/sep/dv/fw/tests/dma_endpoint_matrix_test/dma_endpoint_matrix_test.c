@@ -17,8 +17,9 @@
 // Every DMA run is one chunk (CHUNK_DATA_SIZE equals TOTAL_DATA_SIZE) at a
 // 4-byte transfer width. Before GO the CPU clears STATUS DONE, ERROR and
 // CHUNK_DONE and the DMA bus-error latch, and records the three bits as `pre`.
-// The not-connected legs wait in a wfi loop for the DMA interrupt, so no CPU
-// access reaches the DMA CSR between GO and the interrupt.
+// The not-connected legs wait for the DMA interrupt in a bounded loop that
+// reads only a DTCM flag, so no CPU access reaches the DMA CSR between GO and
+// the interrupt.
 
 #include <stdint.h>
 
@@ -109,7 +110,7 @@ volatile uint32_t g_p[P_COUNT] = {
     (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm)
 #define DONE_OR_ERR (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)
 #define POLL_ITERS 20000
-#define WFI_ITERS 20000
+#define IRQ_WAIT_ITERS 100000
 #define MARK_SPIN 300
 
 // PIC sources of the secure DMA done and error interrupts.
@@ -868,9 +869,19 @@ static uint32_t nc_run(uint32_t src, uint32_t dst) {
     g_isr_ec = 0u;
     pic_enable_interrupts();
     dma_go();
-    for (uint32_t t = 0; t < WFI_ITERS && !g_fired; t++) __asm__ volatile("wfi");
+    // Bounded wait: a missed interrupt ends in a named failure, not a hang.
+    for (uint32_t t = 0; t < IRQ_WAIT_ITERS && !g_fired; t++) {
+    }
     pic_disable_interrupts();
-    if (!g_fired) return 2u;
+    if (!g_fired) {
+        sep_mbx_puts("FAIL: DMA not-connected leg: done/error interrupt did not fire, src=");
+        sep_mbx_puthex(src);
+        sep_mbx_puts(" dst=");
+        sep_mbx_puthex(dst);
+        sep_mbx_putc('\n');
+        g_err++;
+        return 2u;
+    }
     return (g_isr_st & SECURE_DMA__STATUS__ERROR_bm) ? 1u : 0u;
 }
 
