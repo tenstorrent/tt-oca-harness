@@ -71,8 +71,9 @@ Catalog source: `githubnext/agentics/weekly-issue-activity`
 
 `.github/workflows/weekly-issue-activity.lock.yml` reads repository
 issues from the Issues API, plots opened/closed volume and
-time-to-close, and opens a discussion in that category. Each Tuesday
-adds a discussion; earlier weeks stay open. The category
+time-to-close, and opens a discussion in that category. A new
+summary closes earlier discussions in the category as outdated, so
+they leave the discussions home. The category
 name must match a repository discussion category exactly. A name that
 does not match falls back to Announcements, which is the discussions
 home. It does not read GitHub Insights or Project 291 Insights.

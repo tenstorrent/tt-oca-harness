@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP BYPASS instruction test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from env.dtp_types import DTP_FEATURE_BYPASS, DTP_FEATURE_IR_DECODE
@@ -10,7 +12,7 @@ from seq_lib.dtp_jtag_bypass_test_seq import dtp_jtag_bypass_test_seq
 
 @pyuvm.test()
 class dtp_jtag_bypass_test(dtp_base_test):
-    """Run the DTP VPLAN BYPASS scenario."""
+    """Both BYPASS encodings capture 0 and delay TDI by one TCK."""
 
     required_features = (DTP_FEATURE_IR_DECODE, DTP_FEATURE_BYPASS)
 

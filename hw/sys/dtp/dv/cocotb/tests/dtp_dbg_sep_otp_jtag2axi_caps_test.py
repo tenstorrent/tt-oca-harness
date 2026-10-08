@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP SEP OTP JTAG2AXI_CAPS test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_dbg_sep_otp_jtag2axi_caps_test_seq import (
@@ -11,7 +13,7 @@ from seq_lib.dtp_dbg_sep_otp_jtag2axi_caps_test_seq import (
 
 @pyuvm.test()
 class dtp_dbg_sep_otp_jtag2axi_caps_test(dtp_base_test):
-    """Run the DTP VPLAN SEP OTP JTAG2AXI_CAPS scenario."""
+    """SEP_OTP_JTAG2AXI_CAPS matches the SEP OTP bridge; writes are rejected."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

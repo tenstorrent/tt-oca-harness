@@ -95,8 +95,8 @@ class smc_clk_running_test_seq(SmcCsrSeq):
         assert (rb & DMA_CG_EN) == (DMA_CG_EN if dma_en else 0)
         assert (rb & ZEROER_CG_EN) == (ZEROER_CG_EN if zeroer_en else 0)
         assert ((rb & CG_HYST_MASK) >> CG_HYST_SHIFT) == hyst
-        # Programmed word returned alongside the read-back so callers can log the
-        # two quantities that were compared instead of a literal `match=1`.
+        # Returns the programmed word with the read-back so the caller can log
+        # both compared quantities.
         return nxt, rb
 
     async def _program_output_fabric_pass_all(self) -> None:
@@ -134,11 +134,8 @@ class smc_clk_running_test_seq(SmcCsrSeq):
     async def _read_bytes(self, addr: int, length: int, *, check_golden: bool = False) -> bytes:
         """Frontdoor JTAG-AXI read; optionally compared against the golden model.
 
-        The consumer for the ``update_golden`` bookkeeping the payload writes
-        already do: without a `check_golden` read the model is written and never
-        read back, which leaves "memory-model UPDATE" records in the kept log
-        that read like data-integrity checking while nothing is compared
-        ([NO-DUMMY-DEAD-CODE]).
+        With ``check_golden`` the scoreboard compares the read data against the
+        model the ``update_golden`` payload writes updated.
         """
         assert self.env is not None
         item_name = f"jtag_clk_run_rd_0x{addr:x}"
@@ -242,11 +239,9 @@ class smc_clk_running_test_seq(SmcCsrSeq):
         dma_rb = int((rb & DMA_CG_EN) != 0)
         zeroer_rb = int((rb & ZEROER_CG_EN) != 0)
         hyst_rb = (rb & CG_HYST_MASK) >> CG_HYST_SHIFT
-        # Print the compared quantities, not a literal `match=1`: the programmed
-        # word, the read-back word, the three decoded fields and the two sampled
-        # probe levels. `_program_cg` has already asserted each field equal, so
-        # this line evidences the match it claims instead of asserting a
-        # comparison result as a constant ([NO-DUMMY-DEAD-CODE]).
+        # The token carries the programmed word, the read-back word, the three
+        # decoded fields and the two sampled probe levels; `_program_cg` has
+        # asserted each field equal.
         cg.emit_chk(
             self.chk_seen,
             "CHK-CG-ENABLE-READBACK",
@@ -363,10 +358,8 @@ class smc_clk_running_test_seq(SmcCsrSeq):
         # ---- S4: bounded DMA completion wait ----
         cg.log_step("S4", "bounded wait for DMA transfer completion")
         done_cyc = await self._wait_dma_done(baseline_done)
-        # Measured, not asserted-by-literal: the observed completion cycle and
-        # the bound it was measured against. A constant such as
-        # `fail_on_expiry=1` in this token would evidence nothing
-        # ([NO-DUMMY-DEAD-CODE]); the bounded waits that do raise on expiry are
+        # The token carries the observed completion cycle and the bound it was
+        # measured against; the bounded waits that raise on expiry are
         # `_wait_dma_busy`, `_wait_dma_done` and `cg.wait_gated_off`.
         assert 0 <= done_cyc < DMA_DONE_TIMEOUT_SMC, (
             f"DMA completion cycle {done_cyc} outside the bound {DMA_DONE_TIMEOUT_SMC}"
@@ -385,8 +378,7 @@ class smc_clk_running_test_seq(SmcCsrSeq):
         # ---- S5: golden consumer for the payload writes -------------------
         # The two payload writes update the TB-local golden; predict the DMA
         # outcome into the model *before* reading the destination back, so the
-        # scoreboard compare is DUT-vs-prediction and the model bookkeeping is
-        # a real data check instead of dead records ([NO-DUMMY-DEAD-CODE]).
+        # scoreboard compares the DUT against the prediction.
         cg.log_step("S5", "golden check: DMA destination holds the payload")
         self.memory_model.write(DMA_DST_ADDR, DMA_PAYLOAD, region=DMA_MODEL_REGION)
         moved = await self._read_bytes(DMA_DST_ADDR, len(DMA_PAYLOAD), check_golden=True)

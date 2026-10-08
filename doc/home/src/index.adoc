@@ -18,6 +18,10 @@ value-differentiating application logic.
 * xref:ocah-programmer-guide::index.adoc[Programmer's Guide]
 * xref:ocah-appnotes::index.adoc[Application Notes]
 
+[.home-guides]
+.Verification
+* xref:dashboard.adoc[Dashboard]
+
 image::oca-banner.png[OCA banner,width=600]
 
 [NOTE]

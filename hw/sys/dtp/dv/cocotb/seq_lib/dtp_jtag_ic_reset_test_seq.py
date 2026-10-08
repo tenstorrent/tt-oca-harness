@@ -55,7 +55,7 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
             )
 
     async def expect_default_outputs(self, *, context: str) -> None:
-        """Record that all one-port OSS slices are deasserted."""
+        """Record that every one-port reset slice is deasserted."""
         for name in self.PORTS:
             await self.expect_slice(name, ovrd=0, ctrl_n=1, context=context)
 
@@ -113,7 +113,7 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
             )
             self.log_ic_reset("Held pattern before TLR", held_pattern)
             await self.expect_slices(held_enable, held_control, context=context)
-            await self.drive_tlr_without_trst()
+            await self.reset_tap_by_tms()
             await self.expect_slices(
                 held_enable, held_control, context=f"{context} in Test-Logic-Reset"
             )
@@ -152,7 +152,7 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
             await self.expect_slices(
                 reset_enable, reset_control, context=f"reset_hold=0 iteration={idx}"
             )
-            await self.drive_tlr_without_trst()
+            await self.reset_tap_by_tms()
             await self.expect_slices(
                 reset_enable,
                 reset_control,
@@ -177,7 +177,7 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
         )
         self.log_ic_reset("Clearable pattern before TLR", clearable_pattern)
         assert clearable_pattern != default_value
-        await self.drive_tlr_without_trst()
+        await self.reset_tap_by_tms()
         await self.expect_default_outputs(context="reset_hold=1 in Test-Logic-Reset")
         expected = ic_reset_after_tlr(1, clearable_pattern, default_value)
         cleared = await self.read_ic_reset(shift_value=expected)

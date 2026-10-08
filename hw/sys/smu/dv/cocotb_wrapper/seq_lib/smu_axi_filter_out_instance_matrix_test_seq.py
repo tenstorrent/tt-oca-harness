@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: outbound filter instance CSR DECODE (FAB_SMC_025 S1).
 
-SEP=1 honest scope (no sep_in / no Force / no ext_out peer):
+Scope on the SEP=1 wrapper (no sep_in, no Force, no ext_out peer):
   S1  J2A program then readback on instances 0/1/8/15 (DECODE independence)
   S2  not covered: identical_struct_in_vs_out needs an ext_out peer
   S3  not covered: outbound pairwise isolation needs an ext_out peer

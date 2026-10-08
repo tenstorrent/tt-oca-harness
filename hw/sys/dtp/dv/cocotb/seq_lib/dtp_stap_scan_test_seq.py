@@ -34,16 +34,13 @@ the STAP chain untouched while the PTAP 3DCR select is clear.
 from __future__ import annotations
 
 from env.dtp_dbg_disable import STAP_DISABLE
-from env.dtp_scan_ref_model import (
-    SCAN_MARKER_WIDTH,
-    STAP_HOST_SEGMENT_WIDTH,
-    STAP_ORDER,
-    Stap3dcrState,
-)
+from env.dtp_ijtag_sib_model import SCAN_MARKER_WIDTH
+from env.dtp_stap_3dcr_model import STAP_HOST_SEGMENT_WIDTH, STAP_ORDER, DtpStap3dcrState
 from env.dtp_stap_ds_agent import STAP_DS_TDR_NAME
 from env.dtp_types import DTP_IR_WIDTH, DtpJtagInstr
 from ocah_jtag_vip import OcahJtagState
 
+from .dtp_jtag_base_test_seq import SCAN_LENGTH_CHECK_IDS
 from .dtp_scan_base_test_seq import dtp_scan_base_test_seq
 
 
@@ -98,8 +95,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         return required
 
     async def body(self) -> None:
-        # Scenario-owned Shift-x exits: skip the scan-count cross-check.
-        await self.attach_family_checker(self.required_ids(), use_monitor=False)
+        await self.attach_family_checker(self.required_ids() | SCAN_LENGTH_CHECK_IDS)
         self.attach_downstream_taps()
         await self.enable_all_debug()
         await self.reset_to_tlr()
@@ -141,6 +137,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         v_recover = ds_rng.getrandbits(tdr_width) if downstream else None
 
         async def configure(context: str, dbg: dict[str, int] | None = None) -> None:
+            """Open the STAP's SIB, then write its 3DCR to SELECTED_PAYLOAD."""
             await self.stap_chain_write(
                 ptap_select=1,
                 ptap_config_hold=1,
@@ -169,8 +166,10 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             await self.stap_ds_load_ir(target, tdr, dbg_disable=dbg, context=f"{context}.load_ir")
             seq.clear_updates()
             await self.stap_ds_write_tdr(target, value, dbg_disable=dbg, context=f"{context}.write")
-            seq.check_last_update(tdr, value, context=f"{context} stap={target}")
-            seq.check_update_count(1, reg_name=tdr, context=f"{context} stap={target}")
+            seq.check_last_update(tdr, self.ds_expected(value), context=f"{context} stap={target}")
+            seq.check_update_count(
+                self.ds_expected(1), reg_name=tdr, context=f"{context} stap={target}"
+            )
             await self.stap_ds_read_tdr(
                 target, check_id=check_id, dbg_disable=dbg, context=f"{context}.read"
             )
@@ -198,7 +197,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             # Step 1 leaves the device in Run-Test/Idle, in lockstep with the
             # PTAP, so the park has to move it into Test-Logic-Reset.
             ds_seq.check_state(
-                OcahJtagState.RUN_TEST_IDLE,
+                self.ds_expected_state(OcahJtagState.RUN_TEST_IDLE),
                 check_id="CHK-DS-PARKED-TLR",
                 context=f"{stap}.pre_gate",
             )
@@ -245,12 +244,12 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             # the downstream TAP from Run-Test/Idle into Test-Logic-Reset,
             # checked after the scan; it latches nothing and keeps the written
             # value.
-            ds_seq.check_update_count(0, reg_name=tdr, context=f"{stap}.gated")
+            ds_seq.check_update_count(self.ds_expected(0), reg_name=tdr, context=f"{stap}.gated")
             ds_seq.check_register(
-                tdr, v_select, check_id="CHK-DS-TDR-HOLD", context=f"{stap}.gated"
+                tdr, self.ds_expected(v_select), check_id="CHK-DS-TDR-HOLD", context=f"{stap}.gated"
             )
             ds_seq.check_state(
-                OcahJtagState.TEST_LOGIC_RESET,
+                self.ds_expected_state(OcahJtagState.TEST_LOGIC_RESET),
                 check_id="CHK-DS-PARKED-TLR",
                 context=f"{stap}.gated",
             )
@@ -315,7 +314,9 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
                 dbg={disable_field: 1},
             )
         if downstream:
-            ds_seq.check_update_count(0, reg_name=tdr, context=f"{stap}.isolation")
+            ds_seq.check_update_count(
+                self.ds_expected(0), reg_name=tdr, context=f"{stap}.isolation"
+            )
 
         self.log_step(5, "Full recovery: fresh configuration after clearing %s", disable_field)
         await self.enable_all_debug()
@@ -545,7 +546,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         for step, r in enumerate(rounds, start=1):
             ctx = f"sweep.round{r}"
             payloads = {
-                name: vars(Stap3dcrState.from_value((r + idx) % 8))
+                name: vars(DtpStap3dcrState.from_value((r + idx) % 8))
                 for idx, name in enumerate(STAP_ORDER)
             }
             self.log_step(step, "STAP 3DCR payloads %s, enabled then gated", payloads)

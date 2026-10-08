@@ -28,8 +28,10 @@ from pathlib import Path
 import cocotb
 
 from .smc_addr_map import (
+    _REPO,
     DFX_STATUS_IDLE,
     gpio_intf_u32,
+    reg_field_encode,
     smc_addr,
     smc_indexed_addr,
 )
@@ -40,7 +42,11 @@ from .smc_i3c_to_fabric_test_seq import (
     I3C_HCI_VERSION_RESET,
     _i3c_multifield_reg_from_rdl,
 )
-from .smc_output_fabric_vip_utils import reg_field_pack
+
+_I2C_H = _REPO / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c.h"
+_TELEMETRY_RECEIVER_H = (
+    _REPO / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
+)
 
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -333,7 +339,7 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
                 (
                     f"I2C{idx}_TARGET_ID",
                     smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", idx),
-                    reg_field_pack("I2C_TARGET_ID_reg_t", address0=0x21 + idx, mask0=0x7F),
+                    reg_field_encode(_I2C_H, "I2C", "TARGET_ID", address0=0x21 + idx, mask0=0x7F),
                     _I2C_TARGET_ID_RESET,
                 )
                 for idx in range(I2C_NUM)
@@ -393,7 +399,7 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
         # INTR_ENABLE has two rw bits (MISSING_LAST, BUFFER_THRESHOLD); the three
         # non-zero combinations give one distinct pattern per receiver.
         telemetry_patterns = [
-            reg_field_pack("TELEMETRY_RECEIVER_INTR_ENABLE_reg_t", **fields)
+            reg_field_encode(_TELEMETRY_RECEIVER_H, "TELEMETRY_RECEIVER", "INTR_ENABLE", **fields)
             for fields in (
                 {"missing_last": 1},
                 {"buffer_threshold": 1},

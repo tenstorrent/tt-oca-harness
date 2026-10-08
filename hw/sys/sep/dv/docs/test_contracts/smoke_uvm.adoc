@@ -1,0 +1,638 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// tag::smoke[]
+[[sep-vplan-area-0]]
+==== 0. Smoke
+
+[[sep_axi_smoke_test]]
+===== 0.1 `sep_axi_smoke_test`
+
+*Phase*: 1
+
+*Area*: Smoke
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_axi_smoke_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Objective*: Proves the SEP register fabric decodes and responds on the CPU LSU bus with no CPU booted.
+
+*Test Coverage*: LSU-splice reset-value decode of `SEP_LOCAL_BASE_ADDR` plus masked write/readback of four CSRs.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu` mode; the cocotb AXI driver owns the CPU LSU splice.
+. Read `SEP_LOCAL_BASE_ADDR` and require its reset value.
+. For each of four read/write registers, write a distinct pattern and read it back, masking the comparison to the implemented field bits.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-DECODE
+|The reset-value read returns the specified non-zero reset value, proving real decode rather than an unmapped-address zero.
+|CHK-WR-RB
+|Each read/write register returns exactly the pattern written, masked to its implemented bits. Note the `SEP_NMI_VEC` pattern already has bit 0 clear, so the reserved-bit mask is a no-op here and this test does not exercise reserved-bit behaviour; `sep_reg_bit_bash_rand_test` CHK-RESERVED does.
+|CHK-RESP
+|Every read beat returns `OKAY` and no transaction decode-errors. The cited tally covers read beats; write responses are enforced by the scoreboard line under CHK-NONVAC, which fails any non-OKAY item.
+|CHK-NONVAC
+|The scoreboard performed a non-zero number of value comparisons.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence*: one aggregate record, `CHK-AXI-SMOKE` (`cocotb/seq_lib/sep_axi_smoke_seq.py`), covers CHK-DECODE and CHK-WR-RB. CHK-RESP and CHK-NONVAC are enforced in `check_phase` of the shared scoreboard (`cocotb/env/sep_scoreboard.py`).
+
+'''''
+
+[[sep_hello_world_test]]
+===== 0.2 `sep_hello_world_test`
+
+*Phase*: 1
+
+*Area*: Smoke
+
+*Run mode*: `cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_hello_world_test`
+
+*BFM / Model*: ocah_axi_vip, CPU FW, `tb/sep_outbound_mbx.sv` (console + verdict mailbox; OKAY / zero read data for any address)
+
+*Objective*: The minimum proof that the CPU boot path works end to end: firmware is compiled for the VeeR EL2 core, loaded into tightly-coupled memory, and the released core fetches, executes and prints over the firmware console.
+
+*Test Coverage*: TCM load, CPU release, console banner and PASS magic.
+
+*Test Procedure*:
+
+[arabic]
+. Build the firmware image and stage it into instruction and data tightly-coupled memory.
+. Release the CPU in `cpu` mode.
+. Wait for the console banner.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-BOOT
+|The core boots from tightly-coupled memory and reaches the firmware entry point, proven by console output that only executed code can produce.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
+[[sep_cpu_trace_diag_test]]
+===== 0.3 `sep_cpu_trace_diag_test`
+
+*Phase*: 1
+
+*Area*: Smoke
+
+*Run mode*: `cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_cpu_trace_diag_test`
+
+*BFM / Model*: ocah_axi_vip, CPU FW, `tb/sep_outbound_mbx.sv` (console + verdict mailbox; OKAY / zero read data for any address)
+
+*Objective*: Prove the processor-state monitor reconstructs a known call chain and one breakpoint trap against architectural ground truth. `sep_hello_world_test` only needs the monitor for "PC advanced"; this leaf is the audit that the trap record, symbolization, and shadow stack are the events the core actually took.
+
+*Test Coverage*: Known noinline call chain plus one `ebreak`; monitor trap, symbol, and stack depth vs CSR `mepc`/`mcause`.
+
+*Test Procedure*:
+
+[arabic]
+. Build `fw/tests/cpu_trace_diag_test` and boot it from ICCM (`rst_vec` = ICCM base).
+. Firmware prints the banner, installs `mtvec`, and runs the noinline chain `main` → `diag_leaf1` → `diag_leaf2` → `diag_leaf3`.
+. The innermost frame takes one uncompressed `ebreak`. The handler records `mcause` / `mepc`, advances `mepc` by 4, and `mret`s. Firmware prints those CSRs and returns PASS only when the chain result is 7 and exactly one breakpoint trap was taken.
+. Cross-check the monitor against that console ground truth.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-TRAP-EVENT
+|The monitor captured exactly one exception retirement, cause = breakpoint (3), and it is not an interrupt.
+|CHK-TRAP-SYM
+|The firmware-printed `mepc` symbolizes into `diag_leaf3`. Ground truth is the CSR the handler read, not the trace port's retirement PC.
+|CHK-CHAIN-SYM
+|Retired PCs cover `main`, `diag_leaf1`, `diag_leaf2`, and `diag_leaf3`.
+|CHK-DEPTH
+|While the trap frame is live, the shadow call stack holds exactly the named chain, each frame resolved through the firmware symbol listing: the crt0 call from `_start` into `main`, then `main` -> `diag_leaf1` -> `diag_leaf2` -> `diag_leaf3` (each call site inside the caller, each target the callee's entry), and the breakpoint trap inside `diag_leaf3` as the innermost frame. A stale, missing or extra frame fails even at the same depth. The stack is the snapshot at the breakpoint push, not the run-global maximum.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence*: the firmware prints `CHK-CHAIN PASS` (the call chain returns its summed constant) and `CHK-TRAP PASS` (exactly one breakpoint trap, `mcause` 3), and a failure of either turns the completion magic to FAIL. They make sure the firmware ran the chain and the trap that CHK-CHAIN-SYM, CHK-TRAP-EVENT and CHK-TRAP-SYM check against the trace monitor.
+
+'''''
+
+[[sep_boot_rom_smoke_test]]
+===== 0.4 `sep_boot_rom_smoke_test`
+
+*Phase*: 1
+
+*Area*: Smoke
+
+*Run mode*: `cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_boot_rom_smoke_test`
+
+*BFM / Model*: ocah_axi_vip, CPU FW, `tb/sep_outbound_mbx.sv` (console + verdict mailbox; OKAY / zero read data for any address)
+
+*Objective*: Proves the CPU instruction fetch unit can fetch and retire instructions out of the boot ROM.
+
+*Test Coverage*: IFU fetch and retirement from the boot ROM.
+
+*Test Procedure*:
+
+[arabic]
+. Stage a four-instruction program into the boot ROM at a known address.
+. Release the CPU and direct fetch at that address.
+. Confirm each instruction address retired.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-ROM-EXEC
+|All four boot-ROM fetch addresses are reached and retired on the core's retired-instruction trace. Instruction *content* is not compared here — a ROM returning different but sequentially-executable words at the same four addresses would pass; content is covered by `sep_boot_rom_lsu_read_test`.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
+[[sep_sram_smoke_test]]
+===== 0.5 `sep_sram_smoke_test`
+
+*Phase*: 1
+
+*Area*: Smoke
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_sram_smoke_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Objective*: Proves the SEP local fabric routes to the SRAM and that the SRAM stores.
+
+*Test Coverage*: Fabric route to SRAM; store and readback.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu` mode.
+. Read the target location and require zero.
+. Write a 64-bit pattern; read it back.
+. Write a 32-bit pattern to the upper half; read the full 64 bits back.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-RESET-READ
+|A read of the target location before any write returns zero with an `OKAY` response — the decode and liveness anchor for the write/readback that follows. This is not an SRAM reset property: the macro has no array reset, and the zero comes from simulator memory initialisation, so this leg would not reproduce on silicon.
+|CHK-STORE
+|A 64-bit write stores and reads back exactly.
+|CHK-LANE
+|A genuine 4-byte beat (`AxSIZE=2`) to the upper half changes only those lanes; the lower four survive.
+|CHK-RESP
+|Every read beat returns `OKAY` and no access decodes to `DECERR`. The cited tally covers read beats only — write responses are counted but their code is inspected for `DECERR` alone, so an `SLVERR` on a write would leave that line unchanged. Write responses are enforced separately, by the scoreboard line quoted under CHK-NONVAC.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence*: one aggregate record, `CHK-SRAM-SMOKE` (`cocotb/seq_lib/sep_sram_smoke_seq.py`), covers CHK-RESET-READ (the `expected=0` read), CHK-STORE (64-bit write and readback) and CHK-LANE (the 4-byte beat at `size=2`). CHK-RESP is enforced by the shared scoreboard.
+
+'''''
+
+[[sep_km_mem_smoke_test]]
+===== 0.6 `sep_km_mem_smoke_test`
+
+*Phase*: 1
+
+*Area*: Smoke
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_km_mem_smoke_test`
+
+*BFM / Model*: ocah_axi_vip, KM path / golden
+
+*Objective*: Proves the Key Manager's private instruction ROM and data SRAM are wired and alive, and that the SRAM read path descrambles each response with the address of its own read.
+
+*Test Coverage*: Key Manager instruction ROM and data SRAM reachability; SRAM scrambler read-back of consecutive reads of different words; the stored representation of a scrambled store; SRAM read-response latency (measured, not graded).
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu` mode and stage the small Key Manager ROM image (`cocotb/tests/km_fw/km_rom.S`).
+. Release the Key Manager from software reset.
+. The image writes the KMCSR SRAM scrambler key, sets `SCRAMBLER_CTRL.ENABLE` (LOCK clear), stores four different plaintexts to four different SRAM words (two adjacent, one mid-window, the last word of the window), and loads them back with four consecutive loads. It clears ENABLE, stores the four loaded values to SRAM words 1..4, and stores the marker to word 0 last.
+. Poll SRAM word 0 for the marker, bounded, or fail.
+. Read the traffic counters, SRAM words 0..97 (`km_sram_probe_o`), and the tb read-latency monitor at the wrapper SRAM port.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-KM-MEM
+|SRAM word 0 holds the image's marker within a fixed cycle bound after release. The KM ROM request count, the KM SRAM request count and the KM SRAM write count are each non-zero, and word 0 holds exactly the marker the image stores last. A processor held in reset fetches nothing and fails.
+|CHK-KM-SRAM-SCR-RT
+|Four consecutive loads of four different SRAM words, each written with a different plaintext through the enabled scrambler, return exactly those plaintexts (SRAM words 1..4). At least four SRAM reads are accepted while the KMCSR scrambler enable is set, so the loads went through the descrambler. The scrambler tweaks its key with the word address (`hw/ip/scrambler/doc/architecture.adoc`, Address Tweaking), so a response descrambled with another read's address returns a different word and fails the compare. On this image no response arrives in the same cycle as a new accepted read of a different address (the logged back-to-back count), so a descramble that takes the address at response time instead of at accept is not exercised.
+|CHK-KM-SRAM-SCR-STORED
+|With the scrambler enabled, "all write data transactions will have both the address and data scrambled" (`hw/ip/scrambler/doc/architecture.adoc`). The tb_top scrambled-write monitor keeps the physical word address and data of each KM SRAM write accepted at the wrapper port while the scrambler enable is set, and the macro array word at each kept address. Exactly the four plaintext stores are kept. They reach four different physical rows, and not every row is its logical word (`0x40`, `0x41`, `0xffe`, `0x1fff`). No kept write carries one of the four plaintexts, and the array word at each kept row equals the kept data, so the check reads the rows the stores reached. No probed SRAM word (words 0..97) other than the result words 1..4 holds a plaintext. A scrambler that passes the data through writes a plaintext and fails.
+|===
+
+The `KM-SRAM-RD-LAT` log line is a measurement, not a checker: the count of KM SRAM reads the wrapper accepts (`req && !we && gnt`), the count that return `rvalid` exactly one cycle later, the count of cycles where `rvalid` and the one-cycle-earlier accept disagree, and the count of `rvalid` cycles that also accept a read of a different address.
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Probe*: `km_sram_rd_*_count_o` / `km_sram_scr_rd_count_o` (`tb/tb_top.sv`) count KM SRAM read accepts and their accept-to-`rvalid` latency at the wrapper port. Observation-only: they read DUT nets and drive nothing.
+
+*Probe*: `km_sram_scr_wr_count_o` / `km_sram_scr_wr_addr_o` / `km_sram_scr_wr_data_o` / `km_sram_scr_wr_cell_o` (`tb/tb_top.sv`) keep the count, and the physical word address and data of the first four, of the KM SRAM writes accepted at the wrapper port while the KM scrambler is enabled, and read the macro array word at each kept address. Observation-only: they read DUT nets and the macro array and drive nothing.
+
+*Why the latency is logged, not graded*: `km_sram_interface` descrambles a read response with the address it captures on the accepting edge. That is correct only while the SRAM answers at least one cycle after the accept; a response in the accept cycle would be descrambled with the previous read's address. The integrator guide (`doc/integrator/src/smu-sep.adoc`) states that requirement, and the `km_sram_interface` assertion `ReadCompletesAfterAccept_A` fails a response in the accept cycle. `prim_assert.sv` withholds `OCAH_OT_INC_ASSERT` when `VERILATOR` is defined, so the assertion exists only in the VCS build. The test does not grade the latency itself. The `KM-SRAM-RD-LAT` log line records the accept, one-cycle-later and mismatch counts as the measured precondition. The verdict on the read path is the data round trip in CHK-KM-SRAM-SCR-RT: a response descrambled with the wrong address fails that compare.
+
+*Evidence*: `CHK-KM-MEM`, `CHK-KM-SRAM-SCR-RT` and `CHK-KM-SRAM-SCR-STORED` are each their own record (`cocotb/tests/km/sep_km_mem_smoke_test.py`); `KM-SRAM-RD-LAT` is a logged measurement. The latency counters are the tb_top KM SRAM read-timing monitor (`km_sram_rd_*_count_o`, `km_sram_scr_rd_count_o`), and the scrambled-store rows come from the scrambled-write monitor (`km_sram_scr_wr_*_o`): observation-only reads of the wrapper `km_sram_mem_req` / `km_sram_mem_rsp` nets, the KM scrambler enable and the macro array.
+
+*Not claimed*: a KM SRAM read latency. The requirement is at least one cycle, which `ReadCompletesAfterAccept_A` checks in the VCS build; the test logs the measured value. The descramble address under back-to-back reads of different words: this image produces none. A ciphertext value or a physical row: both come from the scrambler key and are logged, not compared against a golden. The scrambler key is not locked here, so the lock path stays with the `rom_main` leaves.
+
+'''''
+
+[[sep_otbn_mem_smoke_test]]
+===== 0.7 `sep_otbn_mem_smoke_test`
+
+*Phase*: 1
+
+*Area*: Smoke
+
+*Run mode*: `no_cpu` (`target = "lsu_stub_all_live"`, `+skip_fuse_sense`)
+
+*Source Module*: `sep_otbn_mem_smoke_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Objective*: Proves the OTBN instruction and data memories are writable and readable over the CPU LSU frontdoor at the 32-bit access width OTBN's own program-load driver uses.
+
+*Test Coverage*: OTBN IMEM/DMEM 32-bit LSU write and read.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu` mode.
+. Read OTBN `STATUS` and require it to be neither `LOCKED` nor executing.
+. Write a known word to the OTBN instruction memory base; read it back.
+. Write a known word to the OTBN data memory base; read it back.
+. Read the instruction and data memory request and write counters.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-IMEM
+|The instruction-memory word reads back exactly as written.
+|CHK-DMEM
+|The data-memory word reads back exactly as written.
+|CHK-ARRIVED
+|Both memories saw exactly the issued accesses — 2 SRAM requests each, of which 1 is a write — proven by the counters rather than by the readback alone.
+|CHK-WRESP
+|Both write responses are `OKAY`.
+|CHK-PRECOND
+|OTBN is neither `LOCKED` nor executing when the memories are accessed, so a bus access to them is legal. This is an exclusion, not an exact-state check: any other `STATUS` value is acceptable. Bus access is diverted and flagged illegal only while OTBN executes.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). It covers CHK-ARRIVED as the exact request/write counter compare. It covers CHK-IMEM, CHK-DMEM and CHK-WRESP through the shared scoreboard: the sequence's two readbacks carry the written word as their expected value, and every write response must be `OKAY`. The record fails unless the scoreboard judged exactly those two readbacks and rejected no access since the sequence started, and its PASS line logs both readback values. CHK-PRECOND is the STATUS gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`.
+
+*Scope limit*: OTBN sits in `StatusBusySecWipeInt` (`0x04`) for the whole of this
+test — leaving that state needs EDN entropy to reseed URND, and the `no_cpu`
+smoke configuration never brings EDN up. The internal wipe does not touch
+IMEM/DMEM, which is why every access completes OKAY. `CHK-PRECOND` excludes only
+the states that would invalidate the access (`LOCKED`, and `BusyExecute`, in which
+the core owns these memories and a bus request is diverted to a dummy response
+and flagged illegal); it does not pin `STATUS`, and it does not detect a change
+from `BusySecWipeInt` to `IDLE` or `BusyExecute`.
+
+*Design context, not a claim*: accesses drive `AxSIZE=2` (4-byte beats). These
+memories are 32-bit SECDED words and reject the 64-bit default beat with SLVERR;
+the 32-bit width is what OTBN's own program-load driver issues. This leaf does
+not grade that rejection.
+
+'''''
+
+[[sep_efuse_sense_test]]
+===== 0.8 `sep_efuse_sense_test`
+
+*Phase*: 1
+
+*Area*: Smoke
+
+*Run mode*: `no_cpu`, real fuse sense
+
+*Source Module*: `sep_efuse_sense_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Objective*: Proves the eFuse sense sequence runs to completion at reset and that what landed in the shadow registers matches the programmed image word for word.
+
+*Test Coverage*: Reset sense-done; shadow words match the programmed image.
+
+*Test Procedure*:
+
+[arabic]
+. Stage an eFuse image and bring up with real fuse sense — no skip plusarg.
+. Wait for sense-done.
+. Compare all shadow words against the staged image.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-SENSE-DONE
+|The sense sequence completes rather than hanging.
+|CHK-IMAGE-MATCH
+|Every sensed shadow word equals the staged image, and the comparison is required to span the whole image — the word count is asserted, so an empty field table could not report "0 words, 0 error(s)" and pass. The compare is a passive hierarchical read of the shadow-register output — read-only observation, no write, force or deposit — rather than the software-visible register path. That path is proven separately by `sep_efuse_image_test`, which reads the same registers over the bus.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence*: one aggregate record, `CHK-SENSE` (`cocotb/tests/efuse/sep_efuse_sense_test.py`), covers CHK-SENSE-DONE and CHK-IMAGE-MATCH. The record refuses to pass under `+skip_fuse_sense`, which would skip the shadow compare.
+
+'''''
+
+[[sep_spi_flash_jedec_smoke_test]]
+===== 0.9 `sep_spi_flash_jedec_smoke_test`
+
+*Phase*: 1
+
+*Area*: Smoke
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_spi_flash_jedec_smoke_test`
+
+*BFM / Model*: ocah_axi_vip, ocah_spi_vip
+
+*Objective*: Proves the OpenTitan SPI host controller is configured, clocks a real command out, and receives a real reply.
+
+*Test Coverage*: SPI host clocks a JEDEC READ ID against the flash BFM.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu` mode.
+. Configure the SPI host: clock divider, chip-select timing, enable.
+. Issue the JEDEC identify command through the command and transmit registers.
+. Read the received identifier out of the receive register.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-JEDEC-ID
+|The received identifier equals the flash model's device identifier.
+|CHK-RESP
+|Every read beat returns `OKAY` and no access decodes to `DECERR`. The cited tally covers read beats only — write responses are counted but their code is inspected for `DECERR` alone, so an `SLVERR` on a write would leave that line unchanged. Write responses are enforced separately, by the scoreboard line quoted under CHK-NONVAC.
+|CHK-NONVAC
+|The scoreboard performed a non-zero number of checks.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence*: one aggregate record, `CHK-JEDEC` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`), covers CHK-JEDEC-ID. CHK-RESP and CHK-NONVAC are enforced by the shared scoreboard.
+
+'''''
+
+[[sep_rom_sanity_test]]
+===== 0.10 `sep_rom_sanity_test`
+
+*Phase*: 1
+
+*Area*: Smoke
+
+*Run mode*: `cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_rom_sanity_test`
+
+*BFM / Model*: ocah_axi_vip, CPU FW, `tb/sep_outbound_mbx.sv` (console + verdict mailbox; OKAY / zero read data for any address)
+
+*Objective*: Proves the CPU fetch unit executes real code out of the boot ROM across the main RISC-V instruction formats.
+
+*Test Coverage*: Boot-ROM fetch across the main RV32 instruction formats.
+
+*Test Procedure*:
+
+[arabic]
+. Initialise the fabric filter.
+. Call seven ROM functions through pointers at known offsets: immediate arithmetic, a multi-instruction chain, argument passthrough, an upper-immediate load, a jump, a no-operation sled, and a two-register add.
+. Compare each return value with its expected value.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-IFU-TYPES
+|All seven functions fetch and execute correctly, each returning its distinct expected value across the immediate, upper-immediate, register and jump formats.
+|CHK-ALL
+|The test passes only if all seven match; a partial result is a failure. The host also counts the seven per-function lines itself, so a firmware that stopped calling into the ROM partway cannot pass on the completion magic alone.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence*: CHK-IFU-TYPES is the firmware console (`fw/tests/rom_sanity_test/rom_sanity_test.c`): one `[PASS] IFU` or `[FAIL] IFU` line per function, from a compare of the return value with its expected value, and a non-zero error count turns the completion magic to FAIL. CHK-ALL is the host-side `CHK-ALL` record (`cocotb/tests/cpu/sep_rom_sanity_test.py`), which counts seven `[PASS] IFU` lines and requires the `PASS: 7/7` summary.
+
+'''''
+
+[[sep_hmac_kmac_cpu_crypto_smoke_test]]
+===== 0.11 `sep_hmac_kmac_cpu_crypto_smoke_test`
+
+*Phase*: 1
+
+*Area*: Smoke
+
+*Run mode*: `cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
+
+*Source Module*: `sep_hmac_kmac_cpu_crypto_smoke_test`
+
+*BFM / Model*: ocah_axi_vip, CPU FW, `tb/sep_outbound_mbx.sv` (console + verdict mailbox; OKAY / zero read data for any address)
+
+*Objective*: Brings the HMAC, KMAC and AES engines up over the real CPU-to-fabric path, as a complement to the sideload tests which drive them from the Key Manager. The AES leg is the CPU-owned data path specifically: firmware stages the plaintext in SRAM, hands it to the engine, writes the ciphertext back to SRAM, and recovers the plaintext from there, so SRAM is on the path in both directions rather than the block living in registers.
+
+*Test Coverage*: HMAC, KMAC and an AES-128-ECB SRAM round trip over the CPU fabric path.
+
+*Test Procedure*:
+
+[arabic]
+. HMAC: configure for SHA-256; start; feed the message with queue backpressure; process; poll done; read done again and require it still set; write-one-to-clear it and require it read clear; read and byte-swap the digest. Repeat for three messages.
+. KMAC: poll idle; configure for the customisable mode with software-supplied entropy; set the entropy-ready bit (it is set, never read back); load the seed and prefix; start; feed the message with its length encoding; process; poll done; read done again and require it still set; write-one-to-clear it and require it read clear; read the unmasked digest.
+. Entropy first: AES masking reseeds its PRNG from the crypto-EDN leg, and `STATUS.IDLE`, `INPUT_READY` and `OUTPUT_VALID` all stay low until that reseed completes, so the firmware programs the ESRC/CSRNG/EDN stack before touching AES. The HMAC and KMAC legs above do not need it -- KMAC is driven with software entropy -- so a failure here is reported as a missing prerequisite rather than as an AES defect. Under Verilator the ring oscillators do not self-oscillate, so the testbench supplies the raw noise (`+esrc_noise_force`).
+. AES: release the engine's software reset; stage the FIPS-197 C.1 plaintext block into SRAM; read it back out of SRAM into the engine; configure AES-128-ECB encrypt; run; store the ciphertext to SRAM; compare it against the published vector.
+. Reconfigure the same engine for decrypt, feed the ciphertext back from SRAM, run, store the recovered block to SRAM, and compare it against the original plaintext read from SRAM.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-HMAC-EMPTY
+|The empty-message digest equals the independent software value.
+|CHK-HMAC-SHORT
+|A short message digest equals the software value.
+|CHK-HMAC-MULTI
+|A longer message digest equals the software value.
+|CHK-RW1C
+|Both engines' done events still read set on a second read after the poll, so a read does not clear them and they do not drop by themselves; they then clear on write-one-to-clear.
+|CHK-KMAC-LIVE
+|KMAC completes with clean error status and a non-zero digest. Golden-checked KMAC is `sep_kmac_mode_strength_rand_test`.
+|CHK-CPU-AES-ENC
+|The ciphertext the engine produced from the SRAM-staged plaintext equals the published FIPS-197 C.1 AES-128 vector, word for word. An absolute value, so this leg cannot be satisfied by a round trip that is self-consistent but wrong -- an engine that encrypted with the wrong key or the wrong number of rounds fails here even though its own decrypt would undo it.
+|CHK-CPU-AES-RT
+|Feeding that ciphertext back from SRAM under `operation=DECRYPT` recovers the original plaintext, compared against the block re-read from SRAM rather than against the firmware's own constant. This is the direction the AXI leaf cannot claim: the data crosses CPU stores and loads to SRAM on both sides of the engine, so a broken CPU-to-SRAM path fails it while the register-resident AXI walk would still pass.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Not claimed*: AES breadth on this path -- one key size in one mode (AES-128-ECB),
+where the mode x key-size x operation matrix belongs to
+<<sep_aes_mode_keysize_rand_test>>. The quality of the masking PRNG and of its
+reseed is not graded: the entropy stack is a precondition for the engine to
+complete at all, and no checker here reads an entropy value. `+esrc_noise_force`
+supplies the raw ring-oscillator noise, so this leaf makes no claim about the
+physical noise source. The KMAC leg stays completion-and-non-degeneracy only;
+the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
+
+'''''
+// end::smoke[]
+
+// tag::sv-uvm-smoke[]
+[[sv-uvm-smoke]]
+=== SystemVerilog UVM Smoke Set
+
+The SV-UVM realization runs a smoke set of the cocotb scenarios on the same
+testbench top, for adopters with a commercial UVM simulator. It is VCS only and
+sits outside the three phases. A scenario keeps its cocotb name; its testlist
+entry binds both implementations
+(`module = { cocotb = "...", uvm = "..." }`), and the SV-UVM class name is the
+`uvm` entry (`+UVM_TESTNAME`). `--framework uvm --items all` runs every bound
+scenario. The class library and run recipes are in
+<<sep-uvm-realization,SEP_TB_ARCH>>.
+
+Each bound scenario proves the contract of its cocotb procedure. A row names
+only what the SV-UVM pass adds or names differently; a row with nothing to add
+reads "Same as the cocotb procedure."
+
+Every scenario except `sep_efuse_sense_test` runs with `+skip_fuse_sense`.
+Under that plusarg `hw/ip/efuse/rtl/efuse_shadow_regs.sv` sets
+`sep_fuse_sense_done_o` one cycle after reset with no sense, so the
+fabric-release wait in those scenarios is a bring-up gate and records no check.
+Only `sep_efuse_sense_test`, which runs the real sense, grades
+CHK-FUSE-SENSE-DONE.
+
+[cols="2,5",options="header"]
+|===
+|Scenario |SV-UVM contract
+
+|<<sep_axi_smoke_test,`sep_axi_smoke_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`, `+SEP_AXI_SMOKE_TEST_LOOPS`).
+Adds `+SEP_RANDOM_COUNT` seeded random patterns per register (five by default),
+and a restore readback of each reset value (CHK-CSR-RANDOM-READBACK,
+CHK-CSR-RESTORE). CHK-DECODE, CHK-WR-RB and CHK-RESP are named
+CHK-CSR-RESET-VALUE, CHK-CSR-READBACK and CHK-CSR-RESP. The scoreboard check is
+CHK-SB-CPU-CTRL-CSR, and CHK-NONVAC requires the scoreboard compares of a pass
+to equal the predicted reads it issued. `+SEP_CSR_SCOREBOARD_NEGATIVE` corrupts
+the prediction, and the run must FAIL.
+
+|<<sep_sram_smoke_test,`sep_sram_smoke_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_MEMORY_TEST_LOOPS`, `+SEP_SRAM_SMOKE_TEST_LOOPS`), each
+on its own SRAM word so every read before a write sees the zero fill. Adds
+`+SEP_RANDOM_COUNT` seeded random rounds per pass (five by default): a 64-bit write and readback, then a 4-byte
+beat to a seeded half and a full-word readback (CHK-RANDOM-STORE,
+CHK-RANDOM-LANE). CHK-RESP is the sequence's own check: every access returns
+`OKAY` and every read returns one beat. There is no aggregate CHK-SRAM-SMOKE
+record; each checker is its own record.
+
+|<<sep_address_map_test,`sep_address_map_test`>>
+|Same as the cocotb procedure, over sixteen passes by default
+(`+SEP_ADDRESS_MAP_TEST_LOOPS`). A table in the scenario sequence gives the
+access class of each `sep_cpu_ctrl` register, transcribed from
+`sep_cpu_ctrl.rdl`. CHK-ADDRMAP names the reset compares, and CHK-CSR-RESP the
+response of each sweep access. Adds `+SEP_RANDOM_COUNT`
+seeded random patterns per storage register, a readback after each restore,
+and a read of `0x10A3_0170` after the hole write that must return zero. The
+scoreboard check CHK-SB-CPU-CTRL-CSR is required.
+
+|<<sep_periph_bus_err_misaligned_test,`sep_periph_bus_err_misaligned_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
+`+SEP_PERIPH_BUS_ERR_MISALIGNED_TEST_LOOPS`). The R beats come from the master
+driver, not a bus monitor. Adds an OKAY check on each status read (CHK-CSR-RESP), and, at the end of each pass,
+a clear through `PERIPH_BUS_ERR_CLEAR.hmac` and `DMA_BUS_ERR_CLEAR.clr` with
+both registers read back as 0 (CHK-MISALIGN-CLEAR).
+
+|<<sep_clock_uvm_wdt_rst_input_reset_path_test,`sep_clock_uvm_wdt_rst_input_reset_path_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
+`+SEP_CLOCK_UVM_WDT_RST_INPUT_RESET_PATH_TEST_LOOPS`). Adds a second CHK-ASSERT read after a seeded extra hold of
+0 to 15 system clocks. Each pass releases the main reset after the
+CHK-ISOLATION control, and the next pass's CHK-BASELINE proves both resets
+recovered.
+
+|<<sep_irq_ip_to_aggregator_test,`sep_irq_ip_to_aggregator_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
+`+SEP_IRQ_IP_TO_AGGREGATOR_TEST_LOOPS`). Each source's walk is graded under
+CHK-BASE, CHK-SET, CHK-ISO and CHK-CLR, and CHK-AGG requires all ten sources
+to pass all four. Each walk ends with `INTR_ENABLE` back at 0. The DMA hole
+write carries a seeded random word. Adds an OKAY check on every other access (CHK-CSR-RESP).
+
+|<<sep_otbn_mem_smoke_test,`sep_otbn_mem_smoke_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_CRYPTO_TEST_LOOPS`, `+SEP_OTBN_MEM_SMOKE_TEST_LOOPS`).
+Adds `+SEP_RANDOM_COUNT` seeded
+random words per memory (five by default) after the directed word, each written
+and read back at the memory base. CHK-IMEM, CHK-DMEM and CHK-ARRIVED are
+recorded under CHK-OTBN-MEM, together with the read responses; the counters are
+graded as the increments of each pass. The STATUS read response is CHK-CSR-RESP.
+
+|<<sep_efuse_sense_test,`sep_efuse_sense_test`>>
+|Same as the cocotb procedure, over sixteen passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_EFUSE_LCC_TEST_LOOPS`, `+SEP_EFUSE_SENSE_TEST_LOOPS`);
+the sense runs once at bring-up and each pass compares the held shadow again.
+The staged image is the committed default preload (`+sep_efuse_hex`).
+CHK-SENSE-DONE is named CHK-FUSE-SENSE-DONE. CHK-SENSE compares the whole
+shadow probe with the committed expected shadow
+`tb/efuse_preloads/sep_efuse_default.shadow.hex` (`+sep_efuse_shadow_hex`),
+written by `cocotb/env/sep_efuse_default_shadow.py` and kept current by
+`cocotb/env/run_golden_selftests.py`. The word count is asserted against the
+256-word fuse map of `hw/sys/sep/doc/otp_fuse_controller.adoc`: the probe is
+8192 bits wide, and the file holds one data line of 2048 hex digits that loads
+with no X and at least one non-zero word.
+
+|<<sep_km_mem_smoke_test,`sep_km_mem_smoke_test`>>
+|Same as the cocotb procedure, over sixteen passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_KM_TEST_LOOPS`, `+SEP_KM_MEM_SMOKE_TEST_LOOPS`). Each
+pass after the first starts with a primary reset, and its marker poll also
+waits for the image's nine SRAM stores, because the SRAM keeps the words of the
+pass before. CHK-KM-MEM adds a control: the KM ROM request count is 0 while the
+KM is held in software reset. The KM release write records CHK-CSR-RESP.
+|===
+// end::sv-uvm-smoke[]

@@ -30,8 +30,9 @@ class smc_filter_multi_entry_test(smc_base_test):
             SmcProtocolVipKind.OUTPUT_FABRIC,
             type(self).__name__,
             # Directed stimulus floor: 32 slots x 3 value-checked reads (RDL
-            # reset, per-slot signature readback, restore readback). Literal
-            # here, not read from the sequence.
+            # reset, per-slot signature readback, restore readback); a floor
+            # derived from the sequence would shrink with a sequence that
+            # stopped issuing them.
             min_csr_accesses=96,
             csr_accesses=seq.value_checks_measured,
             proxy=False,

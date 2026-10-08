@@ -61,7 +61,6 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
         ):
             assert hasattr(dut, port), f"missing TB port {port}"
 
-        # Ensure functional mode first, configure otherwise-gating preconditions.
         dut.tb_test_en_i.value = 0
         cg.log_step(
             "S1",
@@ -101,7 +100,6 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
         )
         cg.mark_fence(self.fence, "all-gated-off-observed")
 
-        # Positive control taken. Now assert DFT bypass.
         dut.tb_test_en_i.value = 1
         # Bounded settle, not a magic delay: poll for the first SMC rise that
         # samples the DMA gated clock enabled, then start the counted window
@@ -193,10 +191,9 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
         )
         cg.mark_fence(self.fence, "bypass-released-regated-observed")
 
-        # Order PLUS strictly increasing simulation timestamps. The bare order
-        # check is satisfied by construction in a straight-line body and cannot
-        # fail on any RTL; `assert_fence_progress` adds the DUT-time claim and
-        # returns the timestamps so they can be carried in the token below.
+        # Fence order plus strictly increasing simulation timestamps;
+        # `assert_fence_progress` returns the timestamps carried in the token
+        # below.
         fence_times = cg.assert_fence_progress(
             self.fence,
             [

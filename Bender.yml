@@ -658,7 +658,8 @@ sources:
   # Adopter synthesis and emulation flows read `+define+` lines from the
   # generated filelist; SYNTHESIS selects the implementation view and EMULATION
   # the emulation view in every source they compile. The emulation view keeps
-  # the synth file set but must not define SYNTHESIS. Bender drops a fileless
+  # the synth file set plus the generic prim cells that synthesis replaces with
+  # technology cells, and must not define SYNTHESIS. Bender drops a fileless
   # group's defines, so each group carries the vendor alias header, which
   # compiles as an empty unit.
   - target: all(synth, not(emulation))
@@ -671,7 +672,7 @@ sources:
       EMULATION: 1
     files:
       - hw/common/defs/ocah_vendor_defines.svh
-  - target: all(any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source), not(synth))
+  - target: all(any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source), any(not(synth), emulation))
     files:
       - hw/common/ocah_prim_generic/rtl/prim_and3.sv
       - hw/common/ocah_prim_generic/rtl/prim_ao222.sv
@@ -1204,6 +1205,10 @@ sources:
           # --- SEP integration: KV shim + crypto wrapper ---
           - hw/sys/sep/rtl/sep_abr_kv_shim.sv
           - hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv
+  # Instantiated by the SMC subsystem and by sep_wrapper.
+  - target: any(smc, sep_wrapper)
+    files:
+      - hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
   - target: smc
     files:
       - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg.sv
@@ -1516,7 +1521,6 @@ sources:
       - hw/sys/smc/rtl/smc_misc/rtl/smc_misc_wrap.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_version_id_wrap.sv
       - hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_wrapper.sv
-      - hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
       - hw/sys/smc/rtl/smc_peripherals/rtl/smc_padring.sv
       - hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv
       - hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals_cdc.sv
@@ -1567,7 +1571,6 @@ sources:
       - hw/top/sep_ip_integration.sv
   - target: sep_wrapper
     files:
-      - hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
       - hw/top/sep_wrapper.sv
   - target: any(smc_wrapper, smu_wrapper)
     files:

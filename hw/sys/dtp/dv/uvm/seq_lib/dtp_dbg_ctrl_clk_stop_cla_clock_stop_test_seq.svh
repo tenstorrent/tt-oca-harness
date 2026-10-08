@@ -30,11 +30,13 @@ class dtp_dbg_ctrl_clk_stop_cla_clock_stop_test_seq extends dtp_debug_tdr_base_t
     attach_family_checker(required);
     off_edge_start = stop_clks_off_edge_count();
 
+    log_step("1", "Reset TAP and clear clock-stop requests");
     reset_to_tlr();
     set_clk_stop_requests('0);
     read_debug_control(readback);
     family_check("CHK-DBG-TDR", "DEBUG_CONTROL reset", readback, 64'd0);
 
+    log_step("2", "Set CLA_CLOCK_STOP_EN and check exported enable");
     control_value = pack_debug_control(.cla_clock_stop_en(1'b1));
     write_debug_control(control_value);
     wait_sys_cycles();
@@ -44,11 +46,12 @@ class dtp_dbg_ctrl_clk_stop_cla_clock_stop_test_seq extends dtp_debug_tdr_base_t
     // Request line 0 alone, then a seeded nonzero request mask: any asserted
     // CLA request must stop the clocks, so repeated loops cover different
     // aggregation inputs.
+    log_step("3", "Drive request line 0, then a seeded mask; expect stop and status");
     request_masks[0] = NumClkStopReq'(1);
     request_masks[1] = NumClkStopReq'($urandom_range((1 << NumClkStopReq) - 1, 1));
     foreach (request_masks[idx]) begin
       ctx = $sformatf("xtrig_clk_stop_req=0x%03h", request_masks[idx]);
-      `uvm_info(get_type_name(), $sformatf("Iteration %0d/2: %s", idx + 1, ctx), UVM_LOW)
+      log_iteration(idx + 1, 2, ctx);
       set_clk_stop_requests(request_masks[idx]);
       wait_for_signal_value("stop_clks", 1'b1, .context_s(ctx));
 
@@ -65,12 +68,13 @@ class dtp_dbg_ctrl_clk_stop_cla_clock_stop_test_seq extends dtp_debug_tdr_base_t
                               "request cleared");
     end
 
+    log_step("4", "Clear CLA_CLOCK_STOP_EN");
     clear_value = pack_debug_control();
     write_debug_control(clear_value);
     wait_sys_cycles();
     expect_dbg_signal("cla_clock_stop_en", 1'b0, "enable cleared");
 
-    // Enable-off leg: a seeded request with CLA_CLOCK_STOP_EN clear.
+    log_step("5", "Drive a seeded CLA request with CLA_CLOCK_STOP_EN clear");
     en_off_mask = NumClkStopReq'($urandom_range((1 << NumClkStopReq) - 1, 1));
     ctx = $sformatf("cla_clock_stop_en=0 xtrig_clk_stop_req=0x%03h", en_off_mask);
     set_clk_stop_requests(en_off_mask);
@@ -89,8 +93,9 @@ class dtp_dbg_ctrl_clk_stop_cla_clock_stop_test_seq extends dtp_debug_tdr_base_t
     check_debug_control_bit(readback, DbgClaClockStopBit, 1'b0, "DEBUG_CONTROL.cla_clock_stop",
                             "cla_clock_stop_en=0 released");
 
-    // JTAG-only leg: every read shifts jtag_value back in, so JTAG_CLOCK_STOP
-    // stays set across the leg.
+    // Every read shifts jtag_value back in, so JTAG_CLOCK_STOP stays set
+    // across the leg.
+    log_step("6", "Set JTAG_CLOCK_STOP alone, then add and clear a seeded CLA request");
     jtag_value = pack_debug_control(.jtag_clock_stop(1'b1));
     write_debug_control(jtag_value);
     wait_sys_cycles();

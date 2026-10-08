@@ -47,54 +47,55 @@ class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq extends dtp_debug_tdr_bas
   task body();
     string required[$] = {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN", "CHK-DBG-STOP-EDGE"};
     bit [NumClkStopReq-1:0] directed_reqs[$];
+    bit [NumClkStopReq-1:0] even_reqs = '0;
     int unsigned iteration = 0;
     int unsigned off_edge_start;
     seed_scenario_rng();
     attach_family_checker(required);
     off_edge_start = stop_clks_off_edge_count();
 
+    log_step("1", "Reset TAP");
     reset_to_tlr();
+    log_step("2", "Walk seeded request vectors with DEBUG_CONTROL cleared");
     check_stop_clks_walk();
 
     directed_reqs.push_back('0);
-    for (int unsigned idx = 0; idx < NumClkStopReq; idx++)
+    for (int unsigned idx = 0; idx < NumClkStopReq; idx++) begin
       directed_reqs.push_back(NumClkStopReq'(1) << idx);
+      even_reqs[idx] = (idx % 2 == 0);
+    end
     directed_reqs.push_back('1);
-    directed_reqs.push_back(NumClkStopReq'(9'b101010101));
-    directed_reqs.push_back(NumClkStopReq'(9'b010101010));
+    directed_reqs.push_back(even_reqs);
+    directed_reqs.push_back(~even_reqs);
 
+    log_step("3", "Run deterministic per-request and all-control sweep");
     foreach (directed_reqs[r]) begin
       for (int unsigned js = 0; js <= 1; js++) begin
         for (int unsigned ce = 0; ce <= 1; ce++) begin
           iteration++;
-          `uvm_info(get_type_name(), $sformatf(
-                    "Iteration %0d/%0d: directed req=0x%03h jtag_stop=%0d cla_stop_en=%0d",
-                    iteration,
-                    directed_reqs.size() * 4,
-                    directed_reqs[r],
-                    js,
-                    ce
-                    ), UVM_LOW)
+          log_iteration(
+              iteration, directed_reqs.size() * 4, $sformatf(
+              "directed req=0x%03h jtag_stop=%0d cla_stop_en=%0d", directed_reqs[r], js, ce));
           check_combo(bit'(js), bit'(ce), directed_reqs[r], $sformatf("directed#%0d", iteration));
         end
       end
     end
 
+    log_step("4", "Run seeded random clock-stop combinations");
     for (int unsigned idx = 1; idx <= random_count; idx++) begin
       bit jtag_clock_stop = bit'($urandom_range(1));
       bit cla_clock_stop_en = bit'($urandom_range(1));
       bit [NumClkStopReq-1:0] clk_stop_req = NumClkStopReq'($urandom);
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: random req=0x%03h jtag_stop=%0d cla_stop_en=%0d",
-                idx,
-                random_count,
-                clk_stop_req,
-                jtag_clock_stop,
-                cla_clock_stop_en
-                ), UVM_LOW)
+      log_iteration(idx, random_count, $sformatf(
+                    "random req=0x%03h jtag_stop=%0d cla_stop_en=%0d",
+                    clk_stop_req,
+                    jtag_clock_stop,
+                    cla_clock_stop_en
+                    ));
       check_combo(jtag_clock_stop, cla_clock_stop_en, clk_stop_req, $sformatf("random#%0d", idx));
     end
 
+    log_step("5", "Cleanup clock-stop request and DEBUG_CONTROL");
     set_clk_stop_requests('0);
     write_debug_control(pack_debug_control());
     wait_sys_cycles();

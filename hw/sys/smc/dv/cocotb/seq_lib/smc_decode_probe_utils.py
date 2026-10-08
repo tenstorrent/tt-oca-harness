@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared SEP_IN AXI decode probes for the address-map testcases.
 
-Three probe shapes, each fail-capable on its own:
+Probe shapes, each fail-capable on its own:
 
 * ``read_reset`` -- an exact compare of a register against its generated
   reset value. Only registers whose reset is non-zero, or which sit next to a
@@ -49,7 +49,7 @@ _EXTERNAL_DRAIN_CYCLES = 8
 
 
 class SmcDecodeProbeSeq(SmcCsrSeq):
-    """CSR sequence base with the three decode probe shapes and a cell ledger."""
+    """CSR sequence base with the decode probe shapes and a cell ledger."""
 
     def __init__(self, name: str) -> None:
         super().__init__(name)

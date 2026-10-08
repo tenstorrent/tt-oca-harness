@@ -32,10 +32,8 @@ class smc_reset_unit_lock_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_reset_unit_lock_test_seq("reset_unit_lock_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # Gate on the emitted tokens rather than on a boolean the sequence set:
-        # each leg raises on failure, so a relayed flag could only ever report
-        # that the line was reached. Required per pair, so a pair silently
-        # dropped from LOCK_PAIRS fails here instead of shrinking the test.
+        # Each leg raises on failure and emits its tokens only after its compares
+        # passed; the tokens are required per LOCK_PAIRS entry.
         required = [
             f"{tok}[{label}]"
             for label, _, _, _ in LOCK_PAIRS

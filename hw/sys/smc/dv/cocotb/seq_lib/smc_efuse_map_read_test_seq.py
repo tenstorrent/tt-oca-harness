@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_EFUSE_MAP direct read (TC_SMC_P1CG_04).
+"""SMC_EFUSE_MAP direct read.
 
 ``CHIP_CONFIG_*`` mirrors eFuse fields; this test reads the structured
 SMC_EFUSE_MAP window (PeakRDL map) itself over real SEP_IN AXI.
 
 **Proof class: transport.** Every expectation below is the word the bench-wide
-``+smc_efuse_hex`` preload (``smc_sim_cfg.toml:132-134``) deposited into the
+``+smc_efuse_hex`` preload (``smc_sim_cfg.toml``) deposited into the
 eFuse bank model at time 0, so what is proven is that the map window decodes and
 returns the sensed word -- not that fuse *programming* works. The bank itself is
 a declared simulation stand-in for the OTP macro (see
@@ -18,24 +18,25 @@ literal and none is locked to an observed read:
 * readable words -- ``efuse_preload_word_at(addr)`` parses
   ``hw/sys/smc/dv/assets/smc_efuse_default.hex`` at run time and indexes it by
   ``(addr - SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR)/4``, the same word ordering
-  ``efuse_bank_model.sv:140-160`` uses. Regenerating the asset moves the
+  ``efuse_bank_model.sv`` uses. Regenerating the asset moves the
   expectation with it instead of leaving a stale literal asserting a false
   identity.
 * read-locked words -- ``efuse_map_read_locked()`` reads the ``*_READ_LOCK`` bit
   out of the *preloaded* ``LOCKS`` word using the generated bit position from
   ``regs/gen/c/blocks/smc_efuse_map.h``; SPEC then fixes the data a blocked read
   returns: "When a request is blocked, the error slave returns an error response
-  with data value `0xbadcab1e`" (``architecture.adoc:297-299``), and
-  ``lock[0] = 1`` is "read-locked" (``architecture.adoc:198``).
+  with data value `0xbadcab1e`" (``architecture.adoc``, Lifecycle State
+  (LC_STATE) Effects), and ``lock[0] = 1`` is "read-locked"
+  (``architecture.adoc``, Access Permissions and Security).
 
 Every row carries an exact, independently sourced expectation: a "map read"
 with ``expected=None`` compares nothing while counting toward the stimulus
 floor, and would let a region returning the ``0xBADCAB1E`` blocked signature
 pass unnoticed ([NO-ALWAYS-PASS-CHECKER]). ``RESERVED_0`` is not read: its
 block comes from the hardware field-map lock (``rule_t.lock[0]``,
-``architecture.adoc:179-201``), which is fused into the array rather than
-published in any artifact this testbench can read, so no expectation for it can
-be derived independently of the DUT.
+``architecture.adoc``, Access Permissions and Security), which is fused into
+the array rather than published in any artifact this testbench can read, so no
+expectation for it can be derived independently of the DUT.
 """
 
 from __future__ import annotations
@@ -61,8 +62,9 @@ def _map_expect(addr: int, lock_field: str | None) -> int:
 
     The LOCKS half is sound in the blocking direction only: SPEC says the guard
     enforces "whichever is more restrictive" of the software LOCKS CSR and the
-    fused hardware field map (``architecture.adoc:203-226``), so a set LOCKS bit
-    always blocks, while a clear one still leaves the fused lock free to block.
+    fused hardware field map (``architecture.adoc``, Hardware vs. Software
+    Locks), so a set LOCKS bit always blocks, while a clear one still leaves the
+    fused lock free to block.
     A region that is clear here and nevertheless answers with the blocked
     signature fails this compare.
     """

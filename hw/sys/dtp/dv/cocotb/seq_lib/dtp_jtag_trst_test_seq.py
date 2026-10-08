@@ -20,8 +20,7 @@ from __future__ import annotations
 import random
 
 from env.dtp_tap_device import DTP_DEFAULT_IDCODE
-from env.dtp_types import DtpTapState
-from ocah_jtag_vip import OcahJtagChecker
+from ocah_jtag_vip import OcahJtagChecker, OcahJtagState
 
 from .dtp_jtag_base_test_seq import NON_IDCODE_PRELOADS, dtp_jtag_base_test_seq
 
@@ -33,11 +32,12 @@ class dtp_jtag_trst_test_seq(dtp_jtag_base_test_seq):
 
     async def reset_from(
         self,
-        state: DtpTapState,
+        state: OcahJtagState,
         rng: random.Random,
         checker: OcahJtagChecker,
     ) -> tuple[int, bool]:
         """From ``state``, assert TRST_N, judge the reset, release, and read IDCODE."""
+        self.log_step(1, "Park the TAP in %s with a non-IDCODE instruction", state.name)
         await self.reset_to_tlr()
         await self.load_ir(rng.choice(NON_IDCODE_PRELOADS))
         await self.goto_tap_state(state)
@@ -45,20 +45,23 @@ class dtp_jtag_trst_test_seq(dtp_jtag_base_test_seq):
         cycles = rng.randint(2, 8)
         item = await self.assert_trst(cycles=cycles)
         context = f"trst_from={state.name} cycles={cycles}"
-        checker.check_reset_to_tlr(
+        self.log_step(2, "TRST_N low: Test-Logic-Reset before any TCK edge and under TMS low")
+        self.check_tap_state(
+            "CHK-TAP-TRST-ASYNC",
             item.reset_state,
-            check_id="CHK-TAP-TRST-ASYNC",
+            OcahJtagState.TEST_LOGIC_RESET,
             context=f"before any TCK edge {context}",
         )
-        checker.check_reset_to_tlr(
+        self.check_tap_state(
+            "CHK-TAP-TRST-TLR",
             item.result,
-            check_id="CHK-TAP-TRST-TLR",
+            OcahJtagState.TEST_LOGIC_RESET,
             context=f"after TMS-low TCK cycles under TRST {context}",
         )
-        self.record_tap_state(item.result, DtpTapState.TEST_LOGIC_RESET)
         await self.deassert_trst(cycles=rng.randint(1, 3))
 
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        self.log_step(3, "TRST_N released; Run-Test/Idle by TMS, then IDCODE with no IR load")
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
         idcode = await self.shift_dr(0, 32)
         self.family_check(
             "CHK-IDCODE-RAW",
@@ -82,7 +85,7 @@ class dtp_jtag_trst_test_seq(dtp_jtag_base_test_seq):
             },
         )
 
-        states = [state for state in DtpTapState if state != DtpTapState.TEST_LOGIC_RESET]
+        states = [state for state in OcahJtagState if state != OcahJtagState.TEST_LOGIC_RESET]
         rng.shuffle(states)
 
         trst_cycles: list[int] = []
@@ -93,7 +96,7 @@ class dtp_jtag_trst_test_seq(dtp_jtag_base_test_seq):
             trst_cycles.append(cycles)
             idcode_ok += int(recovered)
 
-        non_reset_states = len(DtpTapState) - 1
+        non_reset_states = len(OcahJtagState) - 1
         checker.expect_true(
             "CHK-NONVAC",
             len(set(states)) == non_reset_states

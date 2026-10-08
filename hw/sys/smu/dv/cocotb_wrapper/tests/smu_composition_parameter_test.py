@@ -9,9 +9,8 @@ count; `hw/sys/sep/doc/security_disable.adoc` states the token width. Those
 are the goldens the evidence tokens rest on, together with plumbing compares
 of one parameter read at the wrapper and at the instance that consumes it.
 
-No specification in this tree states the packed layout of the build
-configuration struct, so `CFG` is compared only as a whole between the wrapper
-and `smu`; each parameter is proven where an instance consumes it.
+`CFG` is compared only as a whole between the wrapper and `smu`; each
+parameter is proven where an instance consumes it.
 
 On the `--dut smu` production wrapper (compile_smu_chiplet, +expected_sep=1):
 reads the 256-bit SEP_SEC_DISABLE_TOKEN at the SEP eFuse controller that

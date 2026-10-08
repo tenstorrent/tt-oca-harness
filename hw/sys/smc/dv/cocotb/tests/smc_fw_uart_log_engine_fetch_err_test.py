@@ -26,7 +26,8 @@ CHK-FW-LOG-ENGINE-SPM-PATTERN, CHK-FW-LOG-ENGINE-FETCH-DECERR.
 Requires the staged image and a held boot:
   +smc_scratch_ram_hex=uart_log_engine_fetch_err.ecc.hex   (bare basename; staged by c_compile)
   +smc_hold_cpu_boot
-Must NOT use +skip_fuse_sense -- see dv_policy 1.6.
+Must not use +skip_fuse_sense: a run with the fuse sense skipped is not
+evidence for the fuse-derived boot path.
 """
 
 from __future__ import annotations
@@ -69,8 +70,8 @@ class smc_fw_uart_log_engine_fetch_err_test(smc_base_test):
         seq = smc_fw_log_engine_test_seq(
             "fw_uart_log_engine_fetch_err_seq",
             tag="LOG-ENGINE-FETCH-ERR",
-            # PASS landed 1.80 ms after release in the reference run (~3600 polls at a
-            # 5 ns clk_smc_i); 40_000 is ~11x that.
+            # The image reaches PASS about 1.8 ms after release (~3600 polls);
+            # 40_000 is ~11x that.
             poll_iterations=40_000,
             spm_pattern=bytes(0xD0 + i for i in range(GOOD_XFER_LEN)),
             engines=(

@@ -40,12 +40,12 @@ from pathlib import Path
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
-from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_bootrom_addr
+from .smc_addr_map import _REPO, _field_mask, smc_addr
 
 # --- eFuse preload asset (authoritative source for map-read expectations) ---
 #
-# The bench-wide ``+smc_efuse_hex`` plusarg (``smc_sim_cfg.toml:132-134``) makes
-# ``efuse_bank_model.sv:140-160`` ``$readmemh`` this file into the bank storage
+# The bench-wide ``+smc_efuse_hex`` plusarg (``smc_sim_cfg.toml``) makes
+# ``efuse_bank_model.sv`` ``$readmemh`` this file into the bank storage
 # at time 0, one 32-bit word per line, word ``n`` backing
 # ``SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR + 4*n``. Tests that want an exact expectation
 # for a map read derive it from this file at run time, so the expectation
@@ -110,9 +110,9 @@ def efuse_map_read_locked(lock_field_symbol: str) -> bool:
 
 # Data returned on a blocked eFuse read. SPEC: "When a request is blocked, the
 # error slave returns an error response with data value 0xbadcab1e"
-# (hw/ip/efuse/doc/architecture.adoc:354-356). That sentence describes the JTAG
-# lifecycle error slave; it states no response code for a lock-blocked
-# SMC_EFUSE_MAP read.
+# (hw/ip/efuse/doc/architecture.adoc, Lifecycle State (LC_STATE) Effects). That
+# sentence describes the JTAG lifecycle error slave; it states no response code
+# for a lock-blocked SMC_EFUSE_MAP read.
 EFUSE_BLOCKED_READ_DATA = 0xBADCAB1E
 
 # Positive-control stimulus target, addressed by generated symbol (no hand
@@ -127,9 +127,7 @@ EFUSE_BLOCKED_READ_DATA = 0xBADCAB1E
 # to the eFuse leg, and ``efuse_interface_controller.sv`` decodes anything
 # outside [SMC_EFUSE_MAP .. EFUSE_INTERFACE_CTRL] to ``SHIM_SEL``, i.e. straight
 # out on ``efuse_bank_ctrl_req_o``.
-EFUSE_SHIM_CTRL_WINDOW = smc_bootrom_addr(
-    "SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR"
-)
+EFUSE_SHIM_CTRL_WINDOW = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR")
 
 # Offset 0 of that window is implemented by ``efuse_shim_ctrl_reg``
 # (``hw/ip/efuse/dv/models/regs/efuse_shim_ctrl.rdl``) as EFUSE_BANK_INIT_TIME,
@@ -151,7 +149,7 @@ EFUSE_BANK_INIT_TIME_RESET = _field_mask(
 # Module-private: use the public
 # ``prove_efuse_bank_axil_activity(..., record=False)`` / :func:
 # ``consume_positive_control`` API below instead of reaching in from another
-# module ([REUSE-AND-LAYERING]).
+# module.
 _POSITIVE_CONTROL: list[str] = []
 
 

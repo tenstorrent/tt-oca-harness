@@ -92,12 +92,11 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         )
         await self._check_write("PROD", SMC_EFUSE_MAP_LOCKS, expect_block=True)
 
-        # Positive control for the block above, in this same run and on the
-        # SAME address, with the lifecycle state the only thing that changed.
-        # Without it a DECERR from a wedged JTAG path, or an address that
-        # answers DECERR unconditionally, satisfies the PROD legs identically.
-        # Sense has completed, so the allowed read must complete OKAY at the
-        # eFuse controller; SLVERR would be the shadow window refusing it.
+        # Positive control on the same address, with only the lifecycle state
+        # changed: a DECERR from a wedged JTAG path, or from an address that
+        # answers DECERR unconditionally, satisfies the PROD legs too. Sense has
+        # completed, so the allowed read completes OKAY at the eFuse controller;
+        # SLVERR is the shadow window refusing it.
         dut.tb_lc_state.value = pack_lc_state(LC_TEST_DEV)
         await ClockCycles(dut.clk_smc_i, 20)
         _, dev_code = await self._read(SMC_EFUSE_MAP_LOCKS)

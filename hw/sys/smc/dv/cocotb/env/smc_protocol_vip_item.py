@@ -79,7 +79,7 @@ class SmcProtocolVipItem(uvm_sequence_item):
         self.min_fabric_accesses: int = 0
         self.fabric_access_label: str = ""
         self.fabric_access_source: str = ""
-        # U6-3 optional byte-level golden (None = no golden gate).
+        # Optional byte-level golden (None = no golden gate).
         self.expected_bytes: bytes | None = None
         self.observed_bytes: bytes | None = None
 

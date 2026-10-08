@@ -23,7 +23,7 @@ python3 hw/sys/sep/dv/cocotb/env/run_golden_selftests.py               # golden-
 python3 tools/dv/run_dv.py --dut sep --build-only                      # filelist and Verilator build
 python3 tools/dv/run_dv.py --dut sep --items smoke                     # the pull-request gate
 python3 tools/dv/run_dv.py --dut sep --items all --regress \
-  --sim-jobs 8 --build-jobs 24                                         # every graded test
+  --sim-jobs 8 --build-jobs 24                                         # 133 graded entries; Verilator runs 132 and logs the VCS-only entry as skipped_wrong_tool
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke     # the SV-UVM subset, on VCS
 ```
 
@@ -59,9 +59,10 @@ evidence from `results.xml`. A clean simulator exit is not evidence.
 
 | Document | What it covers |
 | --- | --- |
-| [`docs/index.adoc`](docs/index.adoc) | The SEP DV book: the three documents below |
+| [`docs/index.adoc`](docs/index.adoc) | The SEP DV book: the three top-level documents below |
 | [`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc) | VIP selection, testbench hierarchy, HDL top and its probe exceptions, run modes and RTL targets, eFuse content selection, memory, eFuse and SPI models, CPU-trace reconstruction, Boot ROM and Key Manager `rom_main` builds, the SV-UVM realization and adding a scenario |
-| [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc) | Every test with its procedure, checkers and pass criteria; the evidence gate; the regression groups; the SV-UVM smoke set; known limitations |
+| [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc) | Verification strategy, scope, traceability, testcase summaries, shared Phase 3 rules, regression groups, SV-UVM smoke set and known limitations; includes the testcase contracts below |
+| [`docs/test_contracts/`](docs/test_contracts/) | Detailed testcase procedures, checkers, controls, logged proof and pass criteria, split by verification area and included by `SEP_VPLAN.adoc` |
 | [`docs/SEP_FCOV.adoc`](docs/SEP_FCOV.adoc) | Functional coverage plan, code-coverage collection, the compile-time scope and the exclusion lists, closure policy |
 | [`doc/integrator/src/defines.adoc`](../../../../doc/integrator/src/defines.adoc) | Project defines chapter of the Integrator Guide |
 | [`../doc/index.adoc`](../doc/index.adoc) | Design specification |
@@ -83,8 +84,8 @@ evidence from `results.xml`. A clean simulator exit is not evidence.
 
 | Variable | When it is needed |
 |---|---|
-| `PATH` | `uv`, `verilator`, `python3`, `bender` and `ccache`; a RISC-V GCC for `--items all`, `cpu`, `rom_fw` and `--tag boot` |
-| `RISCV_TOOLCHAIN`, `RISCV_PREFIX` | Optional override for `--stage c_compile`. Unset, the stage probes a site toolchain, then a local xPack install, then the container |
+| `PATH` | `uv`, `verilator`, `python3`, `bender` and `ccache` |
+| `RISCV_TOOLCHAIN`, `RISCV_PREFIX` | Optional host-toolchain override for `--stage c_compile`. When unset, required RISC-V builds run through `scripts/docker-run.sh` in the `ocah-container` image |
 | `OCAH_DV_SKIP_UV` | `1` on a host that already supplies the `dv` dependency group. It skips only the uv re-execution |
 | `OCAH_ROOT` | Firmware `make` by hand only (`OCAH_ROOT="$PWD"` from the repository root) |
 | `TMPDIR` | Large local scratch for sim and build temporaries |

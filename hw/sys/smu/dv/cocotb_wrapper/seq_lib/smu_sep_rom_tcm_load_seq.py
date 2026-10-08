@@ -4,7 +4,7 @@
 
 Every other real-firmware anchor here has its ICCM/DCCM placed by the testbench
 backdoor, because the product boot path (ROM -> SPI flash -> manifest -> BL1)
-needs the SPI flash models that this tree excludes. That backdoor is the same
+needs a SPI flash model the bench does not provide. That backdoor is the same
 one the OSS SEP DV testbench uses, but it does hide one real step: the CPU
 loading its own TCM.
 

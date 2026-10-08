@@ -84,9 +84,7 @@ LSR_DR = _field_mask(_UART_H, "UART_16550_MAIN__LSR__DR_bm")
 #     * `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)
 #     * `0x0` - Modem Status Interrupt                       (priority 5)
 #
-# Lower number = higher priority. The priority table below is DERIVED from this
-# ranking rather than written out per pair, so the expected winner of every
-# contest traces to the register description and not to the RTL's encoder.
+# Lower number = higher priority; _IIR_PRIORITY carries this ranking.
 _INTR_MODEM = 0x0
 _INTR_THRE = 0x1
 _INTR_RDR = 0x2
@@ -152,7 +150,7 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
         return iir
 
     async def _expect_id(self, label: str, expect: int, iters: int = 64) -> int:
-        """Return the MEASURED IIR id so tokens and gates carry real values."""
+        """Poll IIR until an interrupt is pending and return its id, which must be ``expect``."""
         iir = await self._poll_iir(label, iters)
         if not _iir_pending(iir) or _iir_id(iir) != expect:
             raise AssertionError(
@@ -215,12 +213,10 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
                 mapped_id,
             )
 
-        # Reception Timeout. uart_16550_main.rdl's IER declares exactly five
-        # enables (ERBFI/ETBEI/ELSI/EDSSI/EFEI) and NONE of them is a Reception
-        # Timeout enable, so the register description supports no gated-negative
-        # leg for this source and none is claimed. What IS spec-stated is
-        # ITR.TRTI: "Test Reception Timeout Interrupt. Writing a `1` forces the
-        # interrupt and writing `0` releases it." Both directions are checked.
+        # Reception Timeout: IER has no enable for it (uart_16550_main.rdl lists
+        # ERBFI/ETBEI/ELSI/EDSSI/EFEI), so there is no gated leg. ITR.TRTI: "Test
+        # Reception Timeout Interrupt. Writing a `1` forces the interrupt and
+        # writing `0` releases it." Both directions are checked.
         await self.csr_write("TO_IER", UART_IER, IER_ERBFI)
         await self.csr_write("TO_ITR", UART_ITR, ITR_TRTI)
         to_id = await self._expect_id("TO_MAP", _INTR_TIMEOUT)
@@ -242,8 +238,7 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
         await self.csr_write("LCR_DLAB", UART_LCR, LCR_WLS | LCR_DLAB)
         # DLL/DLH/FCR are the write-only aliases of the RBR/IER/IIR addresses in
         # the 16550 map; the labels name both the register written and the symbol
-        # addressed, so every register name in the kept log resolves to a symbol
-        # in this file.
+        # addressed.
         await self.csr_write("DLL_via_UART_RBR", UART_RBR, 1)
         await self.csr_write("DLH_via_UART_IER", UART_IER, 0)
         await self.csr_write("LCR_8N1", UART_LCR, LCR_WLS)
@@ -331,10 +326,8 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
 
     async def _test_priority(self) -> None:
         await self._clear_status()
-        # (name, IER enables, ITR forces, the two contending IIR ids). The
-        # expected winner is NOT written out per row: it is computed from the
-        # RDL's priority ranking (_IIR_PRIORITY), so the golden traces to
-        # uart_16550_main.rdl IIR.INTERRUPT_ID rather than to the RTL encoder.
+        # (name, IER enables, ITR forces, the two contending IIR ids); the
+        # expected winner comes from _IIR_PRIORITY.
         pairs = [
             ("LSR_vs_RDR", IER_ELSI | IER_ERBFI, ITR_TLSI | ITR_TRBFI, (_INTR_LSR, _INTR_RDR)),
             ("RDR_vs_THRE", IER_ERBFI | IER_ETBEI, ITR_TRBFI | ITR_TTBEI, (_INTR_RDR, _INTR_THRE)),

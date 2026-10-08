@@ -10,7 +10,7 @@ from pathlib import Path
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
-from ocah_lib import OcahSequence, OcahTest
+from ocah_lib import OcahRng, OcahSequence, OcahTest
 from pyuvm import ConfigDB, uvm_sequencer
 
 # The cocotb runner only puts the test dir on sys.path; make the DV root (env/,
@@ -23,7 +23,7 @@ if _dv_root_str not in sys.path:
 from env.dtp_dbg_disable import DBG_DISABLE_FIELDS, format_dbg_disable
 from env.dtp_env import DtpEnv
 from env.dtp_env_cfg import DtpEnvCfg
-from env.dtp_scan_ref_model import STAP_ORDER
+from env.dtp_stap_3dcr_model import STAP_ORDER
 from env.dtp_tb_if import DtpTbIf
 from env.dtp_types import (
     DTP_FEATURE_IR_DECODE,
@@ -46,9 +46,10 @@ class dtp_base_test(OcahTest):
     # instruction, so ir_decode is the default.
     required_features: tuple[str, ...] = (DTP_FEATURE_IR_DECODE,)
 
-    # Shared-VIP AXI scoreboard adoption: opt-in per test.
-    # Tests that enable it declare the CHK-* IDs that must execute and the
-    # minimum compared-transaction count per JTAG2AXI stream.
+    # Shared-VIP AXI scoreboard: opt-in per test. When enabled, passive bus
+    # monitors and the JTAG2AXI reference model compare every bridge
+    # transaction. Tests that enable it declare the CHK-* IDs that must execute
+    # and the minimum compared-transaction count per JTAG2AXI stream.
     use_axi_scoreboard = False
     axi_checker_required_ids: tuple[str, ...] = ()
     axi_checker_stream_minimums: dict[str, int] | None = None
@@ -57,15 +58,14 @@ class dtp_base_test(OcahTest):
     # scoreboard.
     axi_checker_target_required_ids: tuple[str, ...] = ()
 
-    # Downstream STAP TAPs: the STAP host ports (env.dtp_scan_ref_model
+    # Downstream STAP TAPs: the STAP host ports (env.dtp_stap_3dcr_model
     # STAP_ORDER names) that get a reactive ocah_jtag_vip slave device spliced
     # behind them for this test. Default empty keeps every port's wire
-    # loopback; the STAP-selection and zero-length-bypass scenarios attach
-    # all four.
+    # loopback.
     stap_ds_attach: tuple[str, ...] = ()
     # Extended STAP host segment: True places the tb_top host segment behind
     # the extended STAP host scan interface for this test. Default False
-    # keeps the host scan loopback; the extended-STAP scenario sets it.
+    # keeps the host scan loopback.
     stap_host_segment = False
 
     # Knob names of the DTP loop policy; the library resolves the per-test
@@ -79,6 +79,7 @@ class dtp_base_test(OcahTest):
     def build_phase(self) -> None:
         self.cfg = DtpEnvCfg("cfg")
         self.cfg.randomize_timing(self.base_seed())
+        self.cfg.resp_user_seed = OcahRng.salted_seed(self.base_seed(), "resp_user")
         self.logger.info(
             "DTP timing: jtag_period=%dns sys_clk_period=%dns (seed=%d)",
             self.cfg.jtag_period_ns,
@@ -145,7 +146,7 @@ class dtp_base_test(OcahTest):
         startup = {name: 0 for name in DBG_DISABLE_FIELDS}
         tb.set_dbg_disable_vector(startup)
         self.logger.info("dbg_disable startup vector: %s", format_dbg_disable(startup))
-        cocotb.start_soon(Clock(tb.clk, self.cfg.sys_clk_period_ns, units="ns").start())
+        cocotb.start_soon(Clock(tb.clk, self.cfg.sys_clk_period_ns, unit="ns").start())
         await ClockCycles(tb.clk, 5)
         tb.check_dv_cfg()
         tb.por_rst_n.value = 1

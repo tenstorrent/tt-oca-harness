@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Real LCC / feat_ctrl ungating for SMU (no Force, no placeholder).
+"""LCC feat_ctrl ungating for SMU (no Force).
 
 Under ``smu #(.CFG(smu_pkg::NoSepCfg))`` there is no LCC in the DUT: ``gen_no_sep`` ties
 ``sep_dbg_disable`` to ``'0``, so nothing is disabled and JTAG2AXI is open.

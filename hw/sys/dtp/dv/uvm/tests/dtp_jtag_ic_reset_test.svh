@@ -3,7 +3,7 @@
 //
 // dtp_jtag_ic_reset_test — IC_RESET active-low enable polarity, slice outputs, reset_hold
 // TLR-preservation (directed + seeded random), and TRST default restore
-// (looped runner with per-pass family evidence, 16-pass floor).
+// (looped runner with per-pass family evidence).
 
 class dtp_jtag_ic_reset_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag_ic_reset_test)

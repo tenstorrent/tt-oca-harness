@@ -8,10 +8,10 @@ natively over SEP_IN AXI, which reaches the reset unit without a firmware image
 
 The semantics come from the RDL and the RTL. Both lock fields
 are `sw = rw; hw = r; onwrite = woset;` with reset 0, one bit per subsystem
-(`reset_unit.rdl:18-26` and `:87-95`), and both are consumed the same way in
-`smc_subsystem_resets.sv`:
+(`reset_unit.rdl` SS_CONFIG_LOCK and SS_COLD_RESET_LOCK), and both are consumed
+the same way in `smc_subsystem_resets.sv`:
 
-    config_filtered_wr_mask = (~ss_config_lock) & ss_config_wr_mask     (:81)
+    config_filtered_wr_mask = (~ss_config_lock) & ss_config_wr_mask
     ... the same gate on SS_COLD_RESET_N with ~ss_cold_reset_lock
 
 Two consequences hold for both pairs, so one sequence covers both:

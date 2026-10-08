@@ -115,7 +115,7 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.allow_timeout: bool = False
         self.timed_out: bool = False
         self.timeout_ns: int | None = None
-        # U1-3: TB-local SmcMemoryModel golden (not a DUT backdoor).
+        # TB-local SmcMemoryModel golden.
         # OKAY WR with update_golden updates the model; OKAY RD with
         # check_golden compares rdata against the model in the scoreboard.
         self.update_golden: bool = False

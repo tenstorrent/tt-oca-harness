@@ -170,7 +170,7 @@ if [[ "$ENGINE" == podman ]]; then
     # /etc/subuid or no entry yields 0, which correctly disables the flag.
     _subuids="$(awk -F: -v u="$(id -un)" -v n="$_uid" \
       '$1 == u || $1 == n { c += $3 } END { print c + 0 }' \
-      /etc/subuid 2>/dev/null)"
+      /etc/subuid 2>/dev/null || true)"
     if [[ "${_subuids:-0}" -gt "$_uid" ]]; then
       PODMAN_RUN_FLAGS="--userns=keep-id"
     fi
@@ -207,7 +207,8 @@ ensure_network() {
 # reading stdin from /dev/null so an unexpected password prompt fails fast
 # instead of hanging CI, and only re-exec on success. A one-shot guard var
 # prevents looping. Opt out with OCAH_SKIP_GID_FIXUP=1.
-if [[ "$ENGINE" == podman && "$NEEDS_ENGINE" == 1 && "${OCAH_SKIP_GID_FIXUP:-0}" != 1 && -z "${_OCAH_GID_FIXED:-}" ]]; then
+if [[ "$ENGINE" == podman && "$NEEDS_ENGINE" == 1 && "${OCAH_SKIP_GID_FIXUP:-0}" != 1 && -z "${_OCAH_GID_FIXED:-}" ]] &&
+  command -v getent >/dev/null 2>&1; then
   _pw_gid="$(getent passwd "$(id -u)" | cut -d: -f4)"
   if [[ -n "$_pw_gid" && "$_pw_gid" != "$(id -g)" ]]; then
     _pw_grp="$(getent group "$_pw_gid" | cut -d: -f1)"
@@ -284,8 +285,9 @@ run_image() {
   # The image's python carries the uv workspace members as editable installs
   # resolved through $REPO_ROOT when they are imported (nix/load-uv-env.nix), so
   # it has to name the repository as the container sees it, not as the host does.
-  "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${net_flags[@]}" "${USER_FLAGS[@]}" "${GIT_ENGINE_MOUNT[@]}" \
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm ${f[@]+"${f[@]}"} \
+    ${net_flags[@]+"${net_flags[@]}"} ${USER_FLAGS[@]+"${USER_FLAGS[@]}"} \
+    ${GIT_ENGINE_MOUNT[@]+"${GIT_ENGINE_MOUNT[@]}"} \
     -e "REPO_ROOT=${RUN_ROOT}" \
     -v "${ROOT}:${RUN_ROOT}${VOL}" -w "$RUN_ROOT" "$image" "$@"
 }
@@ -311,9 +313,12 @@ nixos_run() {
 }
 
 image_hash() {
-  local flake_output
+  local flake_output platforms=""
   flake_output=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
-  nixos_run "nix eval \$(pwd)#containerHashes.$flake_output" | tr -d '"'
+  # The tag is read from a built x86_64-linux derivation. On an arm64 host the
+  # NixOS container is aarch64-linux and builds it under the engine's emulation.
+  case "$(uname -m)" in arm64 | aarch64) platforms="--extra-platforms x86_64-linux" ;; esac
+  nixos_run "nix eval $platforms \$(pwd)#containerHashes.$flake_output" | tr -d '"'
 }
 
 # Open a shell in the Nix Container - even on a nix-enabled host
@@ -546,8 +551,9 @@ run_image_1to1() {
     f=(-it)
     shift
   }
-  "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${net_flags[@]}" "${USER_FLAGS[@]}" "${GIT_ENGINE_MOUNT[@]}" \
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm ${f[@]+"${f[@]}"} \
+    ${net_flags[@]+"${net_flags[@]}"} ${USER_FLAGS[@]+"${USER_FLAGS[@]}"} \
+    ${GIT_ENGINE_MOUNT[@]+"${GIT_ENGINE_MOUNT[@]}"} \
     -e "REPO_ROOT=${ROOT}" \
     -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
@@ -584,7 +590,7 @@ doc_setup() {
     make "$setup_target"
 }
 
-# Stage verification dashboard JSON into a built site tree. doc/trm/src/
+# Stage verification dashboard JSON into a built site tree. doc/home/src/
 # dashboard.adoc fetches this at page load; without it the page renders its
 # unavailable state.
 doc_stage_dashboard_data() {
@@ -628,10 +634,10 @@ doc_html() {
   fi
   doc_release_enabled && release_args=(--attribute release)
   [[ "${OCAH_ANTORA_KROKI_OFFLINE:-}" == true ]] && kroki_args=(--attribute "kroki-server-url=http://kroki:8001")
-  run --net "$NETWORK" antora --cache-dir /tmp/antora "${release_args[@]}" "${kroki_args[@]}" --attribute "basedir=${basedir}" "$playbook"
-  # Only the TRM carries the dashboard page; staging elsewhere would leave a
-  # stray ocah-docs/ tree inside another book's site.
-  if [ "$product" = trm ]; then
+  run --net "$NETWORK" antora --cache-dir /tmp/antora ${release_args[@]+"${release_args[@]}"} ${kroki_args[@]+"${kroki_args[@]}"} --attribute "basedir=${basedir}" "$playbook"
+  # Only the Home and TRM playbooks carry Home and its dashboard page; staging
+  # elsewhere would leave a stray ocah-home/ tree inside another book's site.
+  if [[ "$product" == trm || "$product" == home ]]; then
     doc_stage_dashboard_data "${ROOT}/${basedir}/_build/html_antora"
   fi
 }
@@ -651,9 +657,9 @@ doc_html_all() {
   doc_setup home
   doc_setup starting
   rtl_modules_reference
-  run "${net_args[@]}" env \
+  run ${net_args[@]+"${net_args[@]}"} env \
     SITE_SEARCH_PROVIDER=lunr \
-    antora --cache-dir /tmp/antora "${release_args[@]}" "${kroki_args[@]}" antora-playbook.yml
+    antora --cache-dir /tmp/antora ${release_args[@]+"${release_args[@]}"} ${kroki_args[@]+"${kroki_args[@]}"} antora-playbook.yml
 }
 
 doc_pdf() {

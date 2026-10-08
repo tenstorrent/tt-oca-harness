@@ -34,14 +34,12 @@ FUSE_SENSE_BOUND_CYCLES = 5000
 # Expiry for a release that is expected to happen. The gate path once the stall
 # input clears is prim_sync3 (3) + sticky flop (1) + 16-stage pipe = 20 clk_smc,
 # with the DTP export or pad path in front of it; runs on this bench measure
-# 2-21 clk_smu. This is a generous timeout, not a claim about the latency.
+# 2-21 clk_smu.
 FUSE_GATE_RELEASE_BOUND_CYCLES = 256
-# A level that must not move is watched for this long. The window is only
-# meaningful while it exceeds the real release latency -- otherwise "still 0
-# after N cycles" degrades to "not released yet" and the hold checks cannot
-# fail. Do not trust that from the derivation above: every sequence that
-# measures a release calls assert_hold_window_covers() on the measurement, so a
-# release that grew past this window fails the run instead of hollowing it out.
+# A level that must not move is watched for this long. The window is meaningful
+# only while it exceeds the real release latency -- otherwise "still 0 after N
+# cycles" is "not released yet" and the hold checks cannot fail -- so
+# assert_hold_window_covers() checks every measured release against it.
 FUSE_GATE_HOLD_CYCLES = 64
 
 
@@ -51,9 +49,8 @@ def assert_hold_window_covers(release_cycles: int, *, label: str, log=None) -> N
     The hold checks assert that ``smc_fuse_reset_n_delayed_o`` stays at 0 for
     ``FUSE_GATE_HOLD_CYCLES`` while the stall is asserted. That is evidence only
     if a gate which ignored the stall would have released inside the window, so
-    the window has to exceed the real release latency of this DUT. This ties the
-    two together on the same run rather than on a comment: the release the
-    sequence just measured is checked against the window the hold checks use.
+    the window has to exceed the real release latency of this DUT: the release
+    the sequence just measured is checked against the window the hold checks use.
     """
     if release_cycles >= FUSE_GATE_HOLD_CYCLES:
         raise AssertionError(

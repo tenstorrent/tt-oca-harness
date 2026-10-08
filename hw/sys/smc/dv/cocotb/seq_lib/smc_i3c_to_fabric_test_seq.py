@@ -37,16 +37,11 @@ I3C_CG_EN_RESET = _field_mask(
 # ``HCI_VERSION``; the generated doc ``.../src/rdl/docs/README.md`` tables the
 # same reset).
 #
-# Parsed from the RDL so that:
-#   * the expected value is independent of this DUT -- a wrong constant in the
-#     RTL readback mux (``I3CCSR.sv``) is caught rather than mirrored
-#     ([INDEPENDENT-EXPECTED-MODEL]);
-#   * the register identity printed in the log derives from the same symbol that
-#     formed the address -- window base (generated ``smc_addr.h``) plus the
-#     HCI_VERSION offset from the RDL -- instead of an implicit "offset 0"
-#     assumption ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
-# A generated Python map for this vendor core (``I3CCSR_reg.py``) is not checked
-# in under this repo, so the RDL itself is the authoritative in-repo source.
+# The expected value is therefore independent of the RTL readback mux
+# (``I3CCSR.sv``), and the register identity printed in the log derives from the
+# same symbols that formed the address: the window base from the generated
+# ``smc_addr.h`` plus the HCI_VERSION offset from the RDL
+# ([INDEPENDENT-EXPECTED-MODEL], [ADDRESS-FROM-AUTHORITATIVE-MAP]).
 _I3C_BASE_RDL = (
     Path(__file__).resolve().parents[6]
     / "vendor"
@@ -232,10 +227,9 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
             f"I3C HCI_VERSION mismatch: got 0x{rdata & 0xFFFF_FFFF:08X}, "
             f"expected 0x{I3C_HCI_VERSION_RESET:08X}"
         )
-        # Emitted only after the resp==OKAY and exact-data asserts above pass.
-        # Scope note: this proves the fabric decodes/routes the I3C0 CSR window
-        # and the core returns its HCI_VERSION -- it is not a claim about I3C
-        # bus protocol behaviour.
+        # CSR-window decode only: the fabric routes the I3C0 window and the core
+        # returns HCI_VERSION; nothing here is a claim about I3C bus protocol
+        # behaviour.
         cocotb.log.info(
             "CHK-I3C0-HCI-VERSION: HCI_VERSION @ window 0x%08x + RDL offset "
             "0x%03x = 0x%08x resp=OKAY rdata=0x%08X == 0x%08X "

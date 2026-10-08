@@ -669,7 +669,7 @@ module axi_burst_splitter_gran_counters #(
     );
     assign cnt_free[i] = (cnt_oup[i] == '0);
   end
-  assign cnt_inp = {1'b0, alloc_pld_out.len} + 1;
+  assign cnt_inp = {1'b0, alloc_pld_out.len} + 1'b1;
 
   lzc #(
     .WIDTH  ( MaxTxns ),
@@ -712,7 +712,7 @@ module axi_burst_splitter_gran_counters #(
   assign alloc_gnt   = idq_inp_gnt & |(cnt_free);
   assign cnt_gnt_o   = idq_oup_gnt & idq_oup_valid;
   logic [8:0] read_len;
-  assign read_len    = cnt_oup[cnt_r_idx] - 1;
+  assign read_len    = cnt_oup[cnt_r_idx] - 1'b1;
   assign cnt_len_o   = read_len[7:0];
 
   assign idq_oup_pop = cnt_req_i & cnt_gnt_o & cnt_dec_i & (cnt_len_o < cnt_delta_i);

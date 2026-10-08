@@ -26,9 +26,6 @@ class smc_telemetry_receiver_csr_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_telemetry_receiver_csr_test_seq("smc_telemetry_receiver_csr_test_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # The gate is the measured PROBE_ID word, not a flag the sequence set
-        # for itself: the sequence cannot make this true by reaching the end
-        # ([NO-ALWAYS-PASS-CHECKER]).
         assert seq.probe_id_readback == 0x05, (
             f"TELEMETRY_0 TELEMETRY_PROBE_ID read back "
             f"{seq.probe_id_readback!r}; the ATB message this testcase framed "

@@ -5,24 +5,17 @@
 
 `smu_wrapper_cov_scope.hier` is passed to VCS at compile time as `-cm_hier`
 plus `-cm_common_hier` (`[coverage.vcs]` in `smu_sim_cfg.toml`), so what it
-drops never enters the coverage database. `gen_smu_cov_scope.py` writes it
-from the build filelists; regenerate it after a build and `--rebuild`, and
-`--check` tells whether the committed file is stale. The contents are not
-fingerprinted, and VCS accepts a stale file silently.
+drops never enters the coverage database. The file is generated from the
+build filelists; its contents are not fingerprinted and VCS accepts a stale
+file silently, so a build that changes the filelists needs a regenerated file
+and `--rebuild`. Any build produces the filelists the generator reads:
 
-    python3 tools/dv/run_dv.py --dut smu --items smoke      # any build
-    python3 nonfree/hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_scope.py
+    python3 tools/dv/run_dv.py --dut smu --items smoke
 
 ## Generators
 
-Every `.hier` and `.el` file in this directory is generated. The generators
-are the `hw/sys/smu/dv/cov/config/vcs/` scripts of the `nonfree` companion,
-which this README names by file name: `gen_smu_cov_scope.py`,
-`gen_smu_cov_toggle_exclusions.py`, `gen_smu_wrapper_toggle_exclusions.py` and
-`gen_smu_wrapper_group_exclusions.py`. The commands in this README run them
-from the repository root with the companion at `nonfree/`. Each takes
-`--check`, which exits 1 when the committed file differs from what it would
-write. The facts stay here: the class tables below state what each class
+Every `.hier` and `.el` file in this directory is generated, and the
+generators are not part of the open tree. The facts stay here: the class tables below state what each class
 excludes, why, and what retires it. A reader without the companion derives
 the same files from the same merged database: urg's `-dump full_exclusions`
 templates carry every checksum and signature, the run's raw report
@@ -74,7 +67,7 @@ measurement of its own. Quote the flow with the number.
 
 Toggle covers every net of the units the scope keeps, in both directions, as
 on the SMC scope. `-cm_tgl portsonly` is not used: with `u_smu` graded the
-kept population is no longer one wiring module, and `smu.sv` and
+kept population is not one wiring module, and `smu.sv` and
 `smu_axi_xbar.sv` hold the region registers, address decode and ID
 remapping whose internal nets a ports-only count would hide. SMC grades a
 unit of OpenTitan origin on its ports only, at report time; no unit the SMU
@@ -93,10 +86,9 @@ generate. Every port is a point-to-point connection to a subsystem port, so
 the wrapper's ports are graded per field, with the fields below left out
 through
 `smu_wrapper_toggle_exclusions.el` (`-elfile`, named by the policy's
-`[[native_files]]`). `gen_smu_wrapper_toggle_exclusions.py` writes that file
-from urg's `-dump full_exclusions tgl` template of the merged database, so the
-module checksum and every field signature come from urg, and `--check` tells
-whether the committed file is stale.
+`[[native_files]]`). The file is written from urg's `-dump full_exclusions
+tgl` template of the merged database, so the module checksum and every field
+signature come from urg.
 
 | Class | Fields | Why they are not the wrapper's to toggle | Retired by |
 |---|---|---|---|
@@ -118,16 +110,11 @@ field that stays uncovered is a stimulus gap for a leaf on this bench.
 leaves out toggle points of `smu`, `smu_wrapper` and `smu_axi_xbar`, the
 condition rows of the lifecycle integrity error, and the line block,
 condition row and branch arm of the crossbar's zero-size aperture rule, each
-for a stated fact. `gen_smu_cov_toggle_exclusions.py` writes
-it from urg's `-dump full_exclusions` templates of the merged database and the
-run's raw report, so every checksum and signature comes from urg, and
-`--check` tells whether the committed file is stale:
+for a stated fact. The file is written from urg's `-dump full_exclusions`
+templates of the merged database and the run's raw report, so every checksum
+and signature comes from urg:
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+cond+branch -report <dir>
-    python3 nonfree/hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_toggle_exclusions.py \
-        fullexclude_module.tgl <run dir>/cov/report_raw/modinfo.txt \
-        --cond fullexclude_module.cond --branch fullexclude_module.branch \
-        --line fullexclude_module.line
 
 The file is generated from an `all` run, the coverage set: a point `all`
 leaves uncovered is uncovered in `hosted` too, so the file holds for both.
@@ -181,11 +168,11 @@ the report covers none of its first line's statements. Fields
 | `BENCH-NO-ECC-INJECTION` | bench scope: `smc_cluster_ded_o`, a registered OR of the SMC cluster's uncorrectable ECC flags (`smc_4core_cpu.sv` 191-196); this bench cannot corrupt a cluster memory word | an ECC injection path such as the SMC bench's `tb_cpu_ecc_poke_*` (`hw/sys/smc/dv/tb/tb_top.sv` 1087-1088) |
 | `TRNG-B-ACCEPT` | BREADY on the external TRNG port, the ready of the B slots of the cut in front of it (`sep_crypto_axi_interconnect.sv` 1042-1058), which falls only with both holding a response: the port's responder admits one write at a time (`hw/top/sep_ip_integration.sv` 761-771, `prim_axi_lite_err_slv` MAX_TRANS default 1; `axi_err_slv.sv` 48, 86-100), the converters above pass B through, the crypto demux parks it only behind another crypto target's response into a spilled port (268-295), and every SEP initiator takes write responses as they arrive | a TRNG responder that admits more than one write, or a TRNG window initiator that holds write responses back |
 | `BENCH-SMC-EXTERNAL-DEPTH` | bench scope: AWREADY of the SMC external window, the AW spill ready of the adopter-side window demux (`hw/top/smc_ip_integration.sv` 214-240, MaxTrans 1, SpillAw 1), which falls only with two writes queued behind a held response; the window's responders take each request as it comes, and with ext_in's responses held (`smu_smc_inbound_window_sweep_test` S4) the SMC local crossbar's eight writes to its peripheral port (`smc_local_xbar_pkg.sv` 285-288) leave six responses in its port cut and the peripheral crossbar's two port cuts (`smc_periph_axi_lite_xbar_pkg.sv` 100-103) and two writes at the window | an adopter responder that holds a request or a response, or an initiator reaching the window with more writes in flight than the SMC local crossbar admits |
-| `KM-RESET-OVERRIDE-X` | the Key Manager port's override in the IC_RESET SEP slice: applying and lifting it leaves `u_km_rom.req_i` (`hw/top/sep_ip_integration.sv` 273) X on a four-state simulator and `prim_rom`'s `noXOnCsI` (re-armed by `tb_wrapper_top.sv` 498-506) fails the run, so `smu_jtag_reset_override_test` stages and releases the port's control without applying it; a design question about the Key Manager's reset through `sep_reset_ctrl.sv` (280-297) | a Key Manager whose ROM request is defined after a JTAG override reset |
+| `KM-RESET-OVERRIDE-X` | the Key Manager port's override in the IC_RESET SEP slice: applying and lifting it leaves `u_km_rom.req_i` (`hw/top/sep_ip_integration.sv` 273) X on a four-state simulator and `prim_rom`'s `noXOnCsI` (re-armed by `tb_wrapper_top.sv` 498-506) fails the run, so `smu_jtag_reset_override_test` stages and releases the port's control without applying it | a Key Manager whose ROM request is defined after a JTAG override reset |
 | `SMC-EXTERNAL-WINDOW` | address bits [29:23] of the SMC external window: the SMC peripheral crossbar sends only `0xC040_0000`-`0xC07F_FFFF` there (`smc_periph_axi_lite_xbar.sv` 145-149) | an SMC external window that moves or grows past 4 MiB |
 | `XBAR-CONNECTIVITY` | the crossbar output ID carries the input port index in bits [9:8]; `smu_axi_xbar_pkg.sv` (127-133) routes ext_in (port 2) nowhere near `ext_out` and smc_out (port 1) nowhere near `smc_in`, so bit 9 on `ext_out` and past it, and bit 8 on `smc_in` and past it, stay 0 | a connectivity matrix that adds either route |
 | `APERTURE-ALIGNMENT` | `smc_base_config.rdl` (38) requires GLOBAL_BASE and LOCAL_BASE to be aligned to REGION_SIZE; JTAG2AXI reaches BASE_CONFIG through the local window, so no size below 128 KiB can be followed by another setting, and base, rule start and rule end bits [16:0] stay 0; LOCAL_BASE is fixed at `0xC000_0000`, so REGION_SIZE[31] is never legal. Takes only those bits | a programmable LOCAL_BASE or a BASE_CONFIG path outside the local window |
-| `ZERO-APERTURE-REJECTED` | the zero-size arm of the aperture rule in `smu_axi_xbar.sv` (72-74), taken as its line block, the `size == '0` condition row and the branch arm: a zero region size forms a rule with `start == end`, and the address decoder's map check accepts only `start < end` or `end == 0` (`addr_decode_dync.sv` 150), so a zero-size SEP or SMC aperture cannot be programmed on this bench (#2605); the SEP point is Phase 2 in `SMU_FCOV.adoc` | an aperture encoding the decoder accepts for zero size |
+| `ZERO-APERTURE-REJECTED` | the zero-size arm of the aperture rule in `smu_axi_xbar.sv` (72-74), taken as its line block, the `size == '0` condition row and the branch arm: a zero region size forms a rule with `start == end`, and the address decoder's map check accepts only `start < end` or `end == 0` (`addr_decode_dync.sv` 150), so a zero-size SEP or SMC aperture cannot be programmed on this bench; the SEP point is Phase 2 in `SMU_FCOV.adoc` | an aperture encoding the decoder accepts for zero size |
 
 The SEP aperture takes no class: SEP firmware images program the region size
 and `smu_dtp_sep_dm_sba_test` walks the base and size. On the SEP's outbound
@@ -211,14 +198,12 @@ inside RTL is graded wherever the elaboration instantiates it, so the six
 `i3c_target_fsm.sv` land in urg's GROUP score beside the wrapper's own
 `cov/sv` covergroups, and none of the wrapper leaves drive an I3C bus event.
 `smu_wrapper_group_exclusions.el` (`-elfile`, named by the policy's
-`[[native_files]]`) drops them at report time.
-`gen_smu_wrapper_group_exclusions.py` writes that file from urg's
+`[[native_files]]`) drops them at report time. The file is written from urg's
 `-dump full_exclusions group` template of the merged database, so the
-definition checksum and every instance path come from urg, and `--check`
-tells whether the committed file is stale. Every covergroup under `u_dut`
-must fall in a class the script names; one that does not stops the script,
-so a covergroup a future vendored block adds is a decision, not a silent
-inclusion.
+definition checksum and every instance path come from urg. Every covergroup
+under `u_dut` must fall in a class the table below names; generation fails on
+one that does not, so a covergroup a future vendored block adds is a decision,
+not a silent inclusion.
 
 | Class | Covergroups | Why they are not the wrapper's to fill |
 |---|---|---|
@@ -228,19 +213,13 @@ What remains in GROUP is the `u_smu_*_fcov::cg_*` set, the covergroup half of
 the wrapper's functional coverage; `cov/sv` cover properties are the other
 half and are read under `assertion`.
 
-## The companion bench's exclusion set
+## The graded population
 
-The companion carries an SV-UVM bench for the SMU, and it grades a different
-top from the one `--dut smu` builds. That bench has its own coverage
-regression configuration and its own exclusion set, several of whose file
-names read like the classes here; this policy reads none of them, and the
-runner merges none of them with the files here. The two flows therefore
-answer over two populations, and the figure
-`hw/sys/smu/dv/docs/SMU_COVERAGE_POLICY.adoc` quotes is the `run_dv.py` one:
-scoped by `smu_wrapper_cov_scope.hier` at compile time and graded after the
-lists `smu_wrapper_coverage_policy.toml` names. A file under that bench whose
-name resembles a class here is not in this population, and an exclusion
-accepted on one flow argues nothing on the other.
+The figure `hw/sys/smu/dv/docs/SMU_COVERAGE_POLICY.adoc` quotes is the
+`run_dv.py` one, scoped by `smu_wrapper_cov_scope.hier` at compile time and
+graded after the lists `smu_wrapper_coverage_policy.toml` names. No other
+exclusion set is merged into it, and an exclusion accepted on another flow
+argues nothing here.
 
 ## Reading a finished run
 
@@ -248,8 +227,8 @@ accepted on one flow argues nothing on the other.
 python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov
 ```
 
-`all` is the coverage set, as it is for SEP: the 120 leaves of the package
-regression, including the SEP firmware and lifecycle leaves whose images the
+`all` is the coverage set, as it is for SEP: the whole package regression,
+including the SEP firmware and lifecycle leaves whose images the
 `c_compile` stage builds with the RISC-V toolchain. `hosted` is the
 toolchain-free subset the workflows run and leaves that stimulus out.
 

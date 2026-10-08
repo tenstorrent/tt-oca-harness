@@ -12,3 +12,5 @@
 ** xref:ocah-integrator-guide::index.adoc[Integrator Guide]
 ** xref:ocah-programmer-guide::index.adoc[Programmer's Guide]
 ** xref:ocah-appnotes::index.adoc[Application Notes]
+* Verification
+** xref:dashboard.adoc[Dashboard]

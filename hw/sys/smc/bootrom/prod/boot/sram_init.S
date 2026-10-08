@@ -26,23 +26,23 @@ __metal_clear_coordination_scratch_regs:
     mv      t6, ra
 
     /* Scratch Register 9: SMC status to SEP */
-    li      t0, SMC_SCRATCH_BASE_ADDR + (SMC_SCRATCH_SMC_STATUS_TO_SEP * 8)
+    li      t0, SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(SMC_SCRATCH_SMC_STATUS_TO_SEP)
     sd      zero, 0(t0)
 
     /* Scratch Register 8: manifest address */
-    li      t0, SMC_SCRATCH_BASE_ADDR + (SMC_SCRATCH_MANIFEST_ADDR * 8)
+    li      t0, SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(SMC_SCRATCH_MANIFEST_ADDR)
     sd      zero, 0(t0)
 
     /* Scratch Register 11: status buffer address */
-    li      t0, SMC_SCRATCH_BASE_ADDR + (SMC_SCRATCH_STATUS_BUFFER_ADDR * 8)
+    li      t0, SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(SMC_SCRATCH_STATUS_BUFFER_ADDR)
     sd      zero, 0(t0)
 
     /* Scratch Register 13: SEP safe SRAM start */
-    li      t0, SMC_SCRATCH_BASE_ADDR + (SMC_SCRATCH_SEP_SAFE_SRAM_START * 8)
+    li      t0, SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(SMC_SCRATCH_SEP_SAFE_SRAM_START)
     sd      zero, 0(t0)
 
     /* Scratch Register 14: SEP safe SRAM size */
-    li      t0, SMC_SCRATCH_BASE_ADDR + (SMC_SCRATCH_SEP_SAFE_SRAM_SIZE * 8)
+    li      t0, SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(SMC_SCRATCH_SEP_SAFE_SRAM_SIZE)
     sd      zero, 0(t0)
 
     mv      ra, t6

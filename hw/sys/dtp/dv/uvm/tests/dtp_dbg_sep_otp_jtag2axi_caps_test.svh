@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_dbg_sep_otp_jtag2axi_caps_test — SEP OTP JTAG2AXI_CAPS geometry, stability, and read-only checks
-// (looped runner with per-pass family evidence, 16-pass floor).
+// dtp_dbg_sep_otp_jtag2axi_caps_test — SEP OTP JTAG2AXI_CAPS geometry,
+// stability, and read-only checks (looped runner with per-pass family
+// evidence).
 
 class dtp_dbg_sep_otp_jtag2axi_caps_test extends dtp_base_test;
   `uvm_component_utils(dtp_dbg_sep_otp_jtag2axi_caps_test)

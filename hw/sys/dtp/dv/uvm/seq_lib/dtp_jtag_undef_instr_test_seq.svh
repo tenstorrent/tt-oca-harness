@@ -18,12 +18,17 @@ class dtp_jtag_undef_instr_test_seq extends dtp_debug_tdr_base_test_seq;
   endfunction
 
   // Reserved/undefined opcodes that fall back to BYPASS (dtp_types.py
-  // UNDEFINED_BYPASS_INSTRS).
+  // UNDEFINED_BYPASS_INSTRS): the UNDEFINED_BYPASS_* and RISCV_RESERVED_*
+  // members of dtp_jtag_instr_e, in encoding order.
   protected function void undefined_opcodes(ref bit [IrWidth-1:0] opcodes[$]);
+    dtp_jtag_instr_e instr = instr.first();
     opcodes.delete();
-    opcodes.push_back(6'h0F);
-    for (int unsigned op = 6'h10; op <= 6'h17; op++) opcodes.push_back(6'(op));
-    for (int unsigned op = 6'h2D; op <= 6'h3C; op++) opcodes.push_back(6'(op));
+    do begin
+      string name = instr.name();
+      if (name.substr(0, 16) == "UNDEFINED_BYPASS_" || name.substr(0, 14) == "RISCV_RESERVED_")
+        opcodes.push_back(instr);
+      instr = instr.next();
+    end while (instr != instr.first());
   endfunction
 
   task body();
@@ -43,28 +48,23 @@ class dtp_jtag_undef_instr_test_seq extends dtp_debug_tdr_base_test_seq;
     seed_scenario_rng();
     attach_family_checker(required);
     undefined_opcodes(opcodes);
-    `uvm_info(get_type_name(), "Step 1: Reset TAP", UVM_LOW)
+    log_step("1", "Reset TAP");
     reset_to_tlr();
 
-    `uvm_info(get_type_name(),
-              "Step 2: Each reserved opcode decodes, scans the bypass, raises no host select",
-              UVM_LOW)
+    log_step("2", "Each reserved opcode decodes, scans the bypass, raises no host select");
     foreach (opcodes[i]) begin
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: reserved opcode 0x%02h", i + 1, opcodes.size(), opcodes[i]),
-                UVM_LOW)
+      log_iteration(i + 1, opcodes.size(), $sformatf("reserved opcode 0x%02h", opcodes[i]));
       check_bypass_no_host_select(opcodes[i], 64'hA5A5_5A5A_C3C3_3C3C);
       check_bypass_delay(opcodes[i], random_pattern(32), 32);
     end
 
-    `uvm_info(get_type_name(), "Step 3: Debug-TDR pin outputs show the reset image", UVM_LOW)
+    log_step("3", "Debug-TDR pin outputs show the reset image");
     snapshot_debug_outputs(snapshot);
     debug_output_defaults(defaults);
     check_debug_outputs(NoHostSelectCheckId, snapshot, defaults,
                         "after every reserved-opcode scan");
 
-    `uvm_info(get_type_name(), "Step 4: Seeded opcode sample: directed-pattern bypass sweep",
-              UVM_LOW)
+    log_step("4", "Seeded opcode sample: directed-pattern bypass sweep");
     sample_count = (random_count < opcodes.size()) ? random_count : opcodes.size();
     opcodes.shuffle();
     for (int unsigned i = 0; i < sample_count; i++) check_bypass_patterns(opcodes[i], 32);

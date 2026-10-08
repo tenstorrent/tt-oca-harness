@@ -16,7 +16,7 @@
 CHECKSUM: "2718539751 3972236298"
 
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap
-ANNOTATION: "SEP-DMA-LSIO-TIED: hw/sys/sep/rtl/sep.sv:1106 ties lsio_trigger[10:1] to zero; only bit 0 carries the SPI trigger (:1104). NOT waived: bit 0, which is a live peripheral request."
+ANNOTATION: "SEP-DMA-LSIO-TIED: hw/sys/sep/rtl/sep.sv:1196 ties lsio_trigger[10:1] to zero; only bit 0 carries the SPI trigger (:1194). NOT waived: bit 0, which is a live peripheral request."
 Toggle lsio_trigger_i [1] "logic lsio_trigger_i[10:0]"
 Toggle lsio_trigger_i [2] "logic lsio_trigger_i[10:0]"
 Toggle lsio_trigger_i [3] "logic lsio_trigger_i[10:0]"

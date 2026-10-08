@@ -2,13 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Do the OTP bridges still work when the lifecycle posture has closed the fabric one?
 
-sep_lifecycle_ctrl.sv:232-237 derives ``dbg_disable.smc_jtag2axi`` from the
-Case-2 gating term while hardwiring ``smc_otp_jtag2axi`` and
-``sep_otp_jtag2axi`` to 1'b0: the OTP bridges are outside the lifecycle debug
-ladder by construction. That is a claim about three ports at once, and nothing
-in the suite exercises it -- the OTP leaves all run with an eFuse image that
-leaves debug open, so "the OTP bridge answered" never happens while the fabric
-bridge is shut.
+The ``dbg_disable`` derivation in ``sep_lifecycle_ctrl.sv`` takes
+``smc_jtag2axi`` from the Case-2 gating term and hardwires ``smc_otp_jtag2axi``
+and ``sep_otp_jtag2axi`` to 1'b0: the OTP bridges are outside the lifecycle
+debug ladder. The other OTP leaves run with an eFuse image that leaves debug
+open, so this sequence is the one that observes an OTP bridge completing while
+the fabric bridge is shut.
 
 This anchor runs with the PROD_END SEP shadow image, where
 seq_lib.smu_lifecycle_table gives ``smc_jtag2axi`` disabled, and then:
@@ -21,8 +20,8 @@ seq_lib.smu_lifecycle_table gives ``smc_jtag2axi`` disabled, and then:
   the SEP eFuse MAP LC_STATE word must read the PROD_END encoding the image
   programmed, and the eFuse bank-control shim CSR must read its RDL reset.
 
-The SEP eFuse bank-control leg is the last step on purpose. The SEP eFuse
-interface controller (efuse_interface_controller.sv:243-258, 295) routes every
+The SEP eFuse bank-control leg is the last step. The SEP eFuse interface
+controller (``efuse_interface_controller.sv``) routes every
 address outside the eFuse MAP/MMR window to ``SHIM_SEL``, which leaves the SEP
 on ``efuse_bank_ctrl_req_o`` and therefore crosses the SMU boundary. So a SEP
 OTP JTAG2AXI access to the shim window is the one stimulus on this bench that
@@ -100,9 +99,7 @@ SMC_EFUSE_SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 
 #: SMC CPU_CTRL scratch0, SMC-local. A benign always-mapped fabric target; the
 #: point is whether the bridge launches, not what it returns.
-FABRIC_PROBE_ADDR = smc_indexed_addr(
-    "SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0
-)  # SMC CPU_CTRL scratch0
+FABRIC_PROBE_ADDR = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0)
 
 SEP_SPARE_PATTERN = 0x5A5A_A5A5
 SMC_SPARE_PATTERN = 0x1234_ABCD
@@ -160,7 +157,7 @@ class SmuOtpBridgesUnderDbgDisableSeq:
         return value
 
     async def _sep_otp_wr(self, jtag, addr: int, data: int, name: str) -> None:
-        """SEP OTP SINGLE_OP write. smu_jtag_helpers carries the read leg only."""
+        """SEP OTP SINGLE_OP write; polls the capture until the status leaves BUSY."""
         raw = pack_otp_single_op(J2A_OP_WRITE, addr, data, wstrb=0xF, size=SMC_OTP_AXSIZE_4B)
         await jtag.write("SEP_OTP_AXI_SINGLE_OP", raw)
         require_jtag_tdo_resolved(f"SEP OTP J2A WR issue {name}")

@@ -20,17 +20,16 @@ import cocotb
 from env.dtp_jtag_item import DtpJtagItem
 from env.dtp_scan_model import DtpScanModel
 from env.dtp_scan_window_monitor import DtpScanControlWindowMonitor, DtpTapShiftMonitor
-from env.dtp_tap_device import DTP_BSR_MODEL_LEN, DtpTapDevice
+from env.dtp_tap_device import DTP_BSR_MODEL_LEN, dtp_tap_device
 from env.dtp_tb_if import JTAG_SIGNAL_MAP
-from env.dtp_types import (
-    DTP_IR_WIDTH,
-    RESET_COUNT_CHECK_ID,
-    DtpJtagInstr,
-    DtpScanCtrlExpect,
-    DtpTapFsm,
-    DtpTapState,
+from env.dtp_types import DTP_IR_WIDTH, RESET_COUNT_CHECK_ID, DtpJtagInstr, DtpScanCtrlExpect
+from ocah_jtag_vip import (
+    OcahJtagChecker,
+    OcahJtagMasterMonitor,
+    OcahJtagState,
+    jtag_tms_path,
+    next_jtag_state,
 )
-from ocah_jtag_vip import OcahJtagChecker, OcahJtagMasterMonitor
 from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
@@ -56,6 +55,11 @@ SCAN_CTRL_CHECK_IDS: dict[str, tuple[str, str]] = {
     DFT_SCAN_CTRL: ("CHK-DFT-SIB-SELECT", "CHK-DFT-SCAN-CTRL"),
 }
 NO_HOST_SELECT_CHECK_ID = "CHK-UNDEF-NO-SELECT"
+# Per-scan length evidence finalize_family_checker records from the DUT's
+# Shift-x episodes when the scan monitors run.
+SCAN_LENGTH_CHECK_IDS: frozenset[str] = frozenset(
+    {"CHK-SCAN-COUNT", "CHK-SCAN-IR-LEN", "CHK-SCAN-DR-LEN"}
+)
 # Instructions other than IDCODE, which a TAP reset or a power-on reset must
 # replace with IDCODE.
 NON_IDCODE_PRELOADS: tuple[DtpJtagInstr, ...] = (
@@ -64,7 +68,7 @@ NON_IDCODE_PRELOADS: tuple[DtpJtagInstr, ...] = (
     DtpJtagInstr.SAMPLE_PRELOAD,
 )
 # The register map the driver's TDR accesses shift, by register name.
-TAP_REGISTERS = DtpTapDevice()
+TAP_REGISTERS = dtp_tap_device()
 
 
 class dtp_jtag_base_test_seq(dtp_base_test_seq):
@@ -116,9 +120,8 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         raw TMS walks through Shift-x between scans do not disturb the
         evidence.
 
-        DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 is the documented negative-
-        validation hook: every integer family expectation is corrupted so the
-        run must FAIL, proving the evidence path gates pass/fail end to end.
+        DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 corrupts every integer family
+        expectation, so the run must fail.
         """
         checker = OcahJtagChecker(
             name=f"{self.get_name()}.checker",
@@ -153,10 +156,9 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         *,
         context: str = "",
     ) -> None:
-        """Record one named family comparison; plain assert when unattached."""
+        """Record one named family comparison on the attached family checker."""
         if self.tap_checker is None:
-            self.assert_equal(name, observed, expected, context)
-            return
+            raise RuntimeError(f"{self.get_name()}: attach_family_checker() before {check_id}")
         if self._family_negative and isinstance(expected, int):
             expected = expected ^ 1
         self.tap_checker.expect_equal(
@@ -164,14 +166,15 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         )
 
     def check_reset_counted(self, counter: str, before: int, after: int, context: str) -> None:
-        """Record ``CHK-RESET-COUNT`` on the attached checker; plain assert when unattached.
+        """Record ``CHK-RESET-COUNT`` on the attached checker.
 
         The record bypasses ``family_check``, so
         DTP_JTAG_FAMILY_CHECKER_NEGATIVE does not corrupt it.
         """
         if self.tap_checker is None:
-            super().check_reset_counted(counter, before, after, context)
-            return
+            raise RuntimeError(
+                f"{self.get_name()}: attach_family_checker() before {RESET_COUNT_CHECK_ID}"
+            )
         self.tap_checker.expect_equal(
             RESET_COUNT_CHECK_ID,
             after - before,
@@ -233,25 +236,53 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
             )
         checker.finalize()
 
-    def record_tap_state(self, observed: int, expected: DtpTapState) -> None:
-        """Check the observed DUT TAP state and record the visit."""
-        assert observed == int(expected), (
-            f"TAP state mismatch: expected {expected.name} "
-            f"(0x{int(expected):04x}), got 0x{observed:04x}"
+    def record_tap_state(self, state: OcahJtagState) -> None:
+        """Track ``state`` as the TAP's current state and record the visit."""
+        self.current_tap_state = state
+        self.visited_tap_states.add(state)
+        self.log.info("Visited TAP state %-16s (0x%04x)", state.name, int(state))
+
+    def check_tap_state(
+        self, check_id: str, observed: int, expected: OcahJtagState, *, context: str
+    ) -> None:
+        """Record the DUT's exported TAP state against ``expected``, then track ``expected``.
+
+        The attached checker's TAP reference model follows the tracked state.
+        """
+        self.family_check(
+            check_id,
+            "TAP state",
+            observed,
+            int(expected),
+            context=f"expected={expected.name} {context}".strip(),
         )
-        self.current_tap_state = expected
-        self.visited_tap_states.add(expected)
-        self.log.info("Visited TAP state %-16s (0x%04x)", expected.name, observed)
+        self._require_tap_checker().sync_state(expected)
+        self.record_tap_state(expected)
 
     async def reset_to_tlr(self) -> None:
-        """Drive the TAP to Test-Logic-Reset and check the observed state."""
+        """Drive the TAP to Test-Logic-Reset; the TAP checker records ``CHK-TAP-RESET-TLR``."""
         item = await self.reset_tap()
-        if self.tap_checker is not None:
-            self.tap_checker.check_reset_to_tlr(item.result)
-        self.record_tap_state(item.result, DtpTapState.TEST_LOGIC_RESET)
+        self._require_tap_checker().check_reset_to_tlr(item.result)
+        self.record_tap_state(OcahJtagState.TEST_LOGIC_RESET)
+
+    async def reset_tap_by_tms(self) -> None:
+        """Enter Test-Logic-Reset with five TMS-high clocks, TRST untouched.
+
+        The TAP checker records ``CHK-TAP-TLR-TMS5``. The TAP stays there, TCK
+        idle, until the next operation.
+        """
+        for _ in range(5):
+            item = await self.tms_step(1)
+        self._require_tap_checker().check_tms_ones_to_tlr(5, item.result)
+        self.record_tap_state(OcahJtagState.TEST_LOGIC_RESET)
+
+    def _require_tap_checker(self) -> OcahJtagChecker:
+        if self.tap_checker is None:
+            raise RuntimeError(f"{self.get_name()}: attach_family_checker() before a TAP check")
+        return self.tap_checker
 
     async def tms_expect(
-        self, tms: int, expected: DtpTapState | None = None, *, tdi: int = 0
+        self, tms: int, expected: OcahJtagState | None = None, *, tdi: int = 0
     ) -> None:
         """Drive one raw TMS cycle and check the next TAP state.
 
@@ -262,12 +293,19 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         if expected is None:
             if previous is None:
                 raise RuntimeError("current TAP state is unknown; call reset_to_tlr() first")
-            expected = DtpTapFsm.get_next_state(previous, tms)
+            expected = next_jtag_state(previous, tms)
         item = await self.tms_step(tms, tdi=tdi)
-        if self.tap_checker is not None:
-            self.tap_checker.check_state_step(tms, item.result)
-        self.record_tap_state(item.result, expected)
-        if previous is not None and DtpTapFsm.get_next_state(previous, tms) == expected:
+        self._require_tap_checker().check_state_step(tms, item.result)
+        if item.result != int(expected):
+            self.family_check(
+                "CHK-TAP-STATE",
+                "TAP state",
+                item.result,
+                int(expected),
+                context=f"expected={expected.name} tms={tms & 0x1} source=sequence",
+            )
+        self.record_tap_state(expected)
+        if previous is not None and next_jtag_state(previous, tms) == expected:
             self.visited_tap_arcs.add((previous, tms & 0x1))
 
     def _op_scan_mark(self, *, is_ir: bool) -> int | None:
@@ -303,12 +341,12 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
                 context=f"kind={kind} source=jtag_ptap_state_o {context}",
             )
 
-    async def load_ir(self, instr: DtpJtagInstr | int, *, back_to_rti: bool = True):
+    async def load_ir(self, instr: DtpJtagInstr | int, *, back_to_rti: bool = True) -> DtpJtagItem:
         """Load a raw IR opcode, keeping the attached TAP checker in sync."""
         before = self._op_scan_mark(is_ir=True)
         item = await super().load_ir(instr, back_to_rti=back_to_rti)
         if back_to_rti and self.tap_checker is not None:
-            self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+            self.tap_checker.sync_state(OcahJtagState.RUN_TEST_IDLE)
         if self.family_monitor is not None:
             self._expected_ir_widths.append(DTP_IR_WIDTH)
         self.check_op_scan_length(
@@ -316,12 +354,12 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         )
         return item
 
-    async def shift_ir(self, value: int, width: int, *, back_to_rti: bool = True):
+    async def shift_ir(self, value: int, width: int, *, back_to_rti: bool = True) -> DtpJtagItem:
         """Shift a raw IR value, keeping the attached TAP checker in sync."""
         before = self._op_scan_mark(is_ir=True)
         item = await super().shift_ir(value, width, back_to_rti=back_to_rti)
         if back_to_rti and self.tap_checker is not None:
-            self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+            self.tap_checker.sync_state(OcahJtagState.RUN_TEST_IDLE)
         if self.family_monitor is not None:
             self._expected_ir_widths.append(width)
         self.check_op_scan_length(
@@ -329,12 +367,12 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         )
         return item
 
-    async def shift_dr(self, value: int, width: int, *, back_to_rti: bool = True):
+    async def shift_dr(self, value: int, width: int, *, back_to_rti: bool = True) -> DtpJtagItem:
         """Shift raw DR data, keeping the attached TAP checker in sync."""
         before = self._op_scan_mark(is_ir=False)
         item = await super().shift_dr(value, width, back_to_rti=back_to_rti)
         if back_to_rti and self.tap_checker is not None:
-            self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+            self.tap_checker.sync_state(OcahJtagState.RUN_TEST_IDLE)
         if self.family_monitor is not None:
             self._expected_dr_widths.append(width)
         self.check_op_scan_length(
@@ -374,15 +412,15 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
 
     async def goto_run_test_idle(self) -> None:
         """Enter Run-Test/Idle from the current tracked TAP state."""
-        await self.goto_tap_state(DtpTapState.RUN_TEST_IDLE)
+        await self.goto_tap_state(OcahJtagState.RUN_TEST_IDLE)
 
-    async def goto_tap_state(self, target_state: DtpTapState) -> None:
+    async def goto_tap_state(self, target_state: OcahJtagState) -> None:
         """Navigate to a TAP state from the current state using raw TMS cycles."""
         if self.current_tap_state is None:
             await self.reset_to_tlr()
 
         assert self.current_tap_state is not None
-        path = DtpTapFsm.get_tms_path(self.current_tap_state, target_state)
+        path = jtag_tms_path(self.current_tap_state, target_state)
         self.log.info(
             "Navigating TAP %-16s -> %-16s with TMS %s",
             self.current_tap_state.name,
@@ -395,20 +433,19 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
     async def goto_random_tap_state(
         self,
         *,
-        rng: random.Random | None = None,
-        exclude: set[DtpTapState] | None = None,
-    ) -> DtpTapState:
+        rng: random.Random,
+        exclude: set[OcahJtagState] | None = None,
+    ) -> OcahJtagState:
         """Choose and navigate to a random TAP state from the current state."""
-        rand = rng or random
         excluded = set(exclude or set())
         if self.current_tap_state is not None:
             excluded.add(self.current_tap_state)
 
-        choices = [state for state in DtpTapState if state not in excluded]
+        choices = [state for state in OcahJtagState if state not in excluded]
         if not choices:
             raise ValueError("no TAP state choices remain after exclusions")
 
-        target = rand.choice(choices)
+        target = rng.choice(choices)
         await self.goto_tap_state(target)
         return target
 
@@ -416,20 +453,19 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         self,
         cycles: int,
         *,
-        rng: random.Random | None = None,
-        start_state: DtpTapState | None = None,
+        rng: random.Random,
+        start_state: OcahJtagState | None = None,
         random_tdi: bool = False,
-    ) -> DtpTapState:
+    ) -> OcahJtagState:
         """Drive random TMS bits (and TDI bits with ``random_tdi``) and check each DUT state."""
-        rand = rng or random
         if start_state is not None:
             await self.goto_tap_state(start_state)
         elif self.current_tap_state is None:
             await self.reset_to_tlr()
 
         for _ in range(cycles):
-            tms = rand.randint(0, 1)
-            await self.tms_expect(tms, tdi=rand.randint(0, 1) if random_tdi else 0)
+            tms = rng.randint(0, 1)
+            await self.tms_expect(tms, tdi=rng.randint(0, 1) if random_tdi else 0)
 
         assert self.current_tap_state is not None
         return self.current_tap_state
@@ -525,7 +561,8 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         *,
         random_count: int | None = None,
     ) -> None:
-        """Check one-bit bypass behavior across reference-like pattern classes."""
+        """Check one-bit bypass behavior across the directed corner patterns (edge,
+        alternating, walking one and zero) and the seeded random ones."""
         for pattern in self.directed_patterns(
             width,
             rng=self.rng(f"bypass_{int(instr):02x}"),
@@ -603,7 +640,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         pattern: int,
         width: int = DTP_BSR_MODEL_LEN,
     ) -> None:
-        """Check a compact OSS scan loopback instruction with the local scan model.
+        """Check a boundary-scan loopback instruction with the 8-bit loopback model.
 
         The looped-back chain returns the same TDO as the one-bit bypass
         register, so this proves the data path only; chain selection is
@@ -642,7 +679,9 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         self._last_window = DtpScanControlWindowMonitor(self.cfg.tb_if, signals).start()
         return self._last_window
 
-    def check_window_shifted(self, check_id: str, monitor, *, context: str) -> None:
+    def check_window_shifted(
+        self, check_id: str, monitor: DtpScanControlWindowMonitor, *, context: str
+    ) -> None:
         """Record that the DUT's TAP shifted inside the closed window.
 
         Its exported state visited Shift-DR or Shift-IR, so the counts judged
@@ -768,7 +807,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         """
         window = self._last_window
         assert window is not None, "no scan window was opened"
-        returned = window.last_state == int(DtpTapState.RUN_TEST_IDLE)
+        returned = window.last_state == int(OcahJtagState.RUN_TEST_IDLE)
         self.family_check(
             check_id,
             f"{signal} high outside Run-Test/Idle",

@@ -12,7 +12,6 @@
 #include "i3c_controller_driver.h"
 /* read_reg / write_reg (via smc_reg_access.h). */
 #include "smc_defines.h"
-/* smc_addr.h supplies the wrapper base without smc_top_regs.h and its conflicting I3C types. */
 #include "smc_addr.h"
 
 #pragma GCC diagnostic push
@@ -775,7 +774,7 @@ I3C_Driver *I3C_GetDriverInstance(uint8_t controller_id) {
     return drv;
 }
 
-/* Keeps hci_setdasa linked for -Wunused-function; nothing calls it through this pointer yet. */
+/* Reference that keeps hci_setdasa past -Wunused-function. */
 I3C_Status (*const i3c_hci_setdasa_ref)(I3C_Driver *, uint8_t, uint8_t, uint8_t) = hci_setdasa;
 
 #pragma GCC diagnostic pop

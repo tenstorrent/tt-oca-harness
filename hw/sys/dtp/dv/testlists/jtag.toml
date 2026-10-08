@@ -9,7 +9,7 @@ name = "dtp_sanity_test"
 module = { cocotb = "dtp_sanity_test", uvm = "dtp_sanity_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci"]
+tags = ["smoke", "ci", "basic_jtag"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -17,7 +17,7 @@ name = "dtp_jtag_idcode_test"
 module = { cocotb = "dtp_jtag_idcode_test", uvm = "dtp_jtag_idcode_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "jtag"]
+tags = ["smoke", "ci", "jtag", "basic_jtag"]
 run_modes = ["smoke"]
 
 [[tests]]

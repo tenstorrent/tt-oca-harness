@@ -42,6 +42,13 @@ OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
 UV = uv
 PYTHON ?= $(UV) --project "$(OCAH_ROOT)" run --locked python3
 
+# Generated SMC and leaf-IP register headers. The overlay input must be an
+# explicit make command-line assignment; this discards an ambient environment
+# value while preserving a command-line override.
+OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_smc :=
+include $(OCAH_ROOT)/hw/common/dv/fw/reg_includes.mk
+REG_INCLUDE_DIRS := $(call ocah_fw_reg_includes,smc)
+
 ifneq ($(RISCV_TOOLCHAIN),)
   _TC_PREFIX := $(RISCV_TOOLCHAIN)/
 else
@@ -70,7 +77,6 @@ DRIVERS_DIR := $(PROD_DIR)/drivers
 LIB_DIR    := $(PROD_DIR)/lib
 BOOT_DIR   := $(PROD_DIR)/boot
 LINKER_DIR := $(PROD_DIR)/linker
-REG_DIR    := $(PROD_DIR)/registers
 SCRIPTS_DIR := $(PROD_DIR)/scripts
 
 BUILD_DIR  := $(PROD_DIR)/build
@@ -92,6 +98,7 @@ else
     OUT_DIR := $(BUILD_DIR)/$(BUILD_TYPE)$(OUT_VARIANT)
 endif
 OBJ_DIR    := $(OUT_DIR)/obj
+GENERATED_DIR := $(OUT_DIR)/generated
 BIN_DIR    := $(OUT_DIR)/bin
 HEX_DIR    := $(OUT_DIR)/hex
 DISASM_DIR := $(OUT_DIR)/disasm
@@ -178,7 +185,8 @@ INCLUDES := \
     -I$(LIB_DIR)/include \
     -I$(LINKER_DIR) \
     -I$(LINKER_DIR)/$(CHIP_ARCH) \
-    -I$(REG_DIR)
+    $(REG_INCLUDE_DIRS) \
+    -I$(GENERATED_DIR)
 
 EXTRA_DEFINES ?=
 
@@ -242,15 +250,17 @@ SMC_FW_OVERLAY_OBJS := $(patsubst %.c,$(OBJ_DIR)/drivers/%.o, \
                            $(notdir $(SMC_FW_OVERLAY_SOURCES)))
 ALL_OBJS += $(SMC_FW_OVERLAY_OBJS)
 
-BUILD_FLAGS := SOURCE_OVERLAY=$(OCAH_FW_OVERLAY_SOURCES_smc)
+BUILD_FLAGS := SOURCE_OVERLAY=$(OCAH_FW_OVERLAY_SOURCES_smc) \
+               REG_OVERLAY=$(strip $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_smc))
 FLAGS_STAMP := $(OUT_DIR)/.build_flags
 
 # An object carries no record of the flags that produced it, and Make compares
-# only timestamps, so changing ENABLE_RELEASE_PRINTS, EXTRA_DEFINES or the
-# injected overlay sources over a populated build directory relinks objects from
-# the previous configuration and reports success. Every object depends on this
-# stamp, whose content is that configuration.
-BUILD_CONFIG_SIG := $(strip $(DEFINES)) | $(strip $(notdir $(SMC_FW_OVERLAY_SOURCES)))
+# only timestamps, so changing ENABLE_RELEASE_PRINTS, EXTRA_DEFINES, the injected
+# overlay sources or the register overlay over a populated build directory
+# relinks objects from the previous configuration and reports success. Every
+# object depends on this stamp, whose content is that configuration.
+BUILD_CONFIG_SIG := $(strip $(DEFINES)) | $(strip $(notdir $(SMC_FW_OVERLAY_SOURCES))) | \
+                    $(strip $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_smc))
 CONFIG_STAMP     := $(OUT_DIR)/.config.stamp
 $(shell mkdir -p $(OUT_DIR) && \
     { [ "$$(cat $(CONFIG_STAMP) 2>/dev/null)" = '$(BUILD_CONFIG_SIG)' ] || \
@@ -288,6 +298,8 @@ toolchain-images:
 	    ROM_PADDING_SELFTEST="$(ROM_PADDING_SELFTEST)" I3C_CORE="$(I3C_CORE)" \
 	    EXTRA_DEFINES="$(EXTRA_DEFINES)" \
 	    OCAH_FW_OVERLAY_SOURCES_smc="$(OCAH_FW_OVERLAY_SOURCES_smc)" \
+	    OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_smc="$(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_smc)" \
+	    BUILD_DIR="$(BUILD_DIR)" \
 	    RISCV_PREFIX=riscv64-unknown-elf- toolchain-images-build; \
 	else \
 	  echo "error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset" >&2; \
@@ -385,6 +397,21 @@ $(OBJ_DIR)/drivers/$(notdir $(basename $(1))).o: $(1) $(CONFIG_STAMP) | $(OBJ_DI
 	@$$(GCC) $$(CFLAGS) $$(DEPFLAGS) $$(INCLUDES) $$(DEFINES) -c $(1) -o $$@
 endef
 $(foreach src,$(SMC_FW_OVERLAY_SOURCES),$(eval $(call SMC_FW_OVERLAY_RULE,$(src))))
+
+# The assembly sources read register-field masks from the generated headers,
+# which also declare C types, so the masks are copied into a macro-only header.
+# Each field header resolves along the include path, as the compiler would.
+ASM_REG_FIELD_HEADERS := dfx_ctrl_status.h smc_efuse_map.h zeroer_ctrl.h
+ASM_REG_FIELD_SOURCES := $(foreach h,$(ASM_REG_FIELD_HEADERS),$(firstword $(wildcard \
+                             $(addsuffix /$(h),$(patsubst -I%,%,$(REG_INCLUDE_DIRS))))))
+ASM_REG_DEFS := $(GENERATED_DIR)/smc_rom_asm_reg_defs.h
+
+$(ASM_REG_DEFS): $(SCRIPTS_DIR)/gen_asm_reg_defs.py $(ASM_REG_FIELD_SOURCES) $(CONFIG_STAMP)
+	@mkdir -p $(@D)
+	@echo "GEN $@"
+	@python3 $< --output $@ $(ASM_REG_FIELD_SOURCES)
+
+$(MAIN_ASM_OBJS) $(BOOT_ASM_OBJS): $(ASM_REG_DEFS)
 
 -include $(ALL_OBJS:.o=.d)
 

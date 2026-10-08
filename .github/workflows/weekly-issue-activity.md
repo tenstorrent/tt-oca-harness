@@ -45,7 +45,7 @@ safe-outputs:
     title-prefix: "[weekly-issue-activity] "
     category: "Weekly issue activity"
     fallback-to-issue: false
-    close-older-discussions: false
+    close-older-discussions: true
     expires: false
     max: 1
 

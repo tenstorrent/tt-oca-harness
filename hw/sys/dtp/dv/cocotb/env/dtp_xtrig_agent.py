@@ -20,6 +20,7 @@ from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
 from ocah_axi_vip import OcahAxiLiteMasterAgent, OcahAxiLiteMonitor
 from pyuvm import ConfigDB, uvm_agent, uvm_analysis_port
 
+from .dtp_tb_if import DtpTbIf
 from .dtp_xtrig_types import (
     XTRIG_CTP_STATUS_ACK_IN,
     XTRIG_CTP_STATUS_ACK_OUT,
@@ -30,9 +31,66 @@ from .dtp_xtrig_types import (
     XTRIG_NUM_INT_CT,
 )
 
+__all__ = [
+    "DtpXtrigActivityWindow",
+    "DtpXtrigAgent",
+    "DtpXtrigBfm",
+    "DtpXtrigPulse",
+    "XTRIG_SAMPLE_NAMES",
+]
 
-def _int(signal) -> int:
-    return int(signal.value)
+# Every cross-trigger observable and counter ``DtpXtrigBfm.sample`` returns.
+XTRIG_SAMPLE_NAMES: tuple[str, ...] = (
+    "xtrig_ctm_src_req",
+    "xtrig_ctm_dst_ack",
+    "xtrig_ctm_src_ack",
+    "xtrig_ctm_dst_req",
+    "xtrig_ctp_req_out_dout",
+    "xtrig_ctp_req_out_dout_en",
+    "xtrig_ctp_req_out_din",
+    "xtrig_ctp_req_out_din_en",
+    "xtrig_ctp_wire_ext_assert",
+    "xtrig_ctp_wire_pull",
+    "xtrig_ctp_wire_group",
+    "xtrig_ctp_wire_mismatch",
+    "xtrig_ctp_ct_dst",
+    "xtrig_int_ct_dst",
+    "xtrig_ctp_req_in_dout",
+    "xtrig_ctp_req_in_dout_en",
+    "xtrig_ctp_req_in_din",
+    "xtrig_ctp_req_in_din_en",
+    "xtrig_ctp_ack_in_dout",
+    "xtrig_ctp_ack_in_dout_en",
+    "xtrig_ctp_ack_in_din",
+    "xtrig_ctp_ack_in_din_en",
+    "xtrig_ctp_ack_out_dout",
+    "xtrig_ctp_ack_out_dout_en",
+    "xtrig_ctp_ack_out_din",
+    "xtrig_ctp_ack_out_din_en",
+    "xtrig_axil_awvalid_count",
+    "xtrig_axil_wvalid_count",
+    "xtrig_axil_arvalid_count",
+    "xtrig_axil_aw_stall_count",
+    "xtrig_axil_ar_stall_count",
+    "xtrig_axil_w_stall_count",
+    "xtrig_axil_aw_open_stall_count",
+    "xtrig_axil_aw_open_accept_count",
+    "xtrig_axil_ar_open_stall_count",
+    "xtrig_axil_ar_open_accept_count",
+    "xtrig_axil_spill_err_count",
+    "xtrig_axil_w_spill_full_count",
+    "xtrig_axil_r_spill_full_count",
+    "xtrig_demux_aw_stall_count",
+    "xtrig_demux_w_stall_count",
+    "xtrig_demux_ar_stall_count",
+    "xtrig_demux_aw_open_stall_count",
+    "xtrig_demux_aw_open_accept_count",
+    "xtrig_demux_ar_open_stall_count",
+    "xtrig_demux_ar_open_accept_count",
+    "xtrig_demux_aw_lock",
+    "xtrig_demux_w_pending",
+    "xtrig_ctp_busy",
+)
 
 
 @dataclass(frozen=True)
@@ -133,7 +191,7 @@ class DtpXtrigActivityWindow:
 class DtpXtrigBfm:
     """Drive and sample DTP XTRIG CTM/CTP pins through dtp_xtrig_if."""
 
-    def __init__(self, tb_if) -> None:
+    def __init__(self, tb_if: DtpTbIf) -> None:
         self.tb_if = tb_if
         self.pins = tb_if.xtrig
         self.clk = tb_if.clk
@@ -152,58 +210,7 @@ class DtpXtrigBfm:
 
     async def sample(self) -> dict[str, int]:
         await ReadOnly()
-        names = (
-            "xtrig_ctm_src_req",
-            "xtrig_ctm_dst_ack",
-            "xtrig_ctm_src_ack",
-            "xtrig_ctm_dst_req",
-            "xtrig_ctp_req_out_dout",
-            "xtrig_ctp_req_out_dout_en",
-            "xtrig_ctp_req_out_din",
-            "xtrig_ctp_req_out_din_en",
-            "xtrig_ctp_wire_ext_assert",
-            "xtrig_ctp_wire_pull",
-            "xtrig_ctp_wire_group",
-            "xtrig_ctp_wire_mismatch",
-            "xtrig_ctp_ct_dst",
-            "xtrig_int_ct_dst",
-            "xtrig_ctp_req_in_dout",
-            "xtrig_ctp_req_in_dout_en",
-            "xtrig_ctp_req_in_din",
-            "xtrig_ctp_req_in_din_en",
-            "xtrig_ctp_ack_in_dout",
-            "xtrig_ctp_ack_in_dout_en",
-            "xtrig_ctp_ack_in_din",
-            "xtrig_ctp_ack_in_din_en",
-            "xtrig_ctp_ack_out_dout",
-            "xtrig_ctp_ack_out_dout_en",
-            "xtrig_ctp_ack_out_din",
-            "xtrig_ctp_ack_out_din_en",
-            "xtrig_axil_awvalid_count",
-            "xtrig_axil_wvalid_count",
-            "xtrig_axil_arvalid_count",
-            "xtrig_axil_aw_stall_count",
-            "xtrig_axil_ar_stall_count",
-            "xtrig_axil_w_stall_count",
-            "xtrig_axil_aw_open_stall_count",
-            "xtrig_axil_aw_open_accept_count",
-            "xtrig_axil_ar_open_stall_count",
-            "xtrig_axil_ar_open_accept_count",
-            "xtrig_axil_spill_err_count",
-            "xtrig_axil_w_spill_full_count",
-            "xtrig_axil_r_spill_full_count",
-            "xtrig_demux_aw_stall_count",
-            "xtrig_demux_w_stall_count",
-            "xtrig_demux_ar_stall_count",
-            "xtrig_demux_aw_open_stall_count",
-            "xtrig_demux_aw_open_accept_count",
-            "xtrig_demux_ar_open_stall_count",
-            "xtrig_demux_ar_open_accept_count",
-            "xtrig_demux_aw_lock",
-            "xtrig_demux_w_pending",
-            "xtrig_ctp_busy",
-        )
-        sample = {name: self.tb_if.sample(name) for name in names if self.tb_if.has(name)}
+        sample = {name: self.tb_if.sample(name) for name in XTRIG_SAMPLE_NAMES}
         await NextTimeStep()
         return sample
 
@@ -217,14 +224,14 @@ class DtpXtrigBfm:
         ctp_mask &= (1 << XTRIG_NUM_CTP) - 1
         int_mask &= (1 << XTRIG_NUM_INT_CT) - 1
         self.pins.xtrig_ctp_wire_ext_assert.value = (
-            _int(self.pins.xtrig_ctp_wire_ext_assert) | ctp_mask
+            self.tb_if.sample("xtrig_ctp_wire_ext_assert") | ctp_mask
         )
-        self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) | int_mask
+        self.pins.xtrig_ctm_dst_req.value = self.tb_if.sample("xtrig_ctm_dst_req") | int_mask
         await ClockCycles(self.clk, cycles)
         self.pins.xtrig_ctp_wire_ext_assert.value = (
-            _int(self.pins.xtrig_ctp_wire_ext_assert) & ~ctp_mask
+            self.tb_if.sample("xtrig_ctp_wire_ext_assert") & ~ctp_mask
         )
-        self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) & ~int_mask
+        self.pins.xtrig_ctm_dst_req.value = self.tb_if.sample("xtrig_ctm_dst_req") & ~int_mask
 
     def set_ctp_wire_pull(self, mask: int) -> None:
         """Rest each CTP's private wire at the level of its bit in ``mask``."""
@@ -247,25 +254,19 @@ class DtpXtrigBfm:
         """Hold (``True``) or release the system reset."""
         self.tb_if.sys_rst_n.value = 0 if active else 1
 
-    async def drive_internal_dst_pulse(self, int_idx: int, cycles: int = 1) -> None:
-        mask = 1 << int_idx
-        self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) | mask
-        await ClockCycles(self.clk, cycles)
-        self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) & ~mask
-
     async def pull_ctp_wire(self, ctp_idx: int, cycles: int = 2) -> None:
         """The chiplet on CTP ``ctp_idx``'s wire pulls it for ``cycles`` clocks."""
         await self.pulse_input_mask(1 << ctp_idx, 0, cycles=cycles)
 
     async def drive_ctp_p2p_req_in(self, ctp_idx: int, value: int) -> None:
         mask = 1 << ctp_idx
-        current = _int(self.pins.xtrig_ctp_req_in_din)
+        current = self.tb_if.sample("xtrig_ctp_req_in_din")
         self.pins.xtrig_ctp_req_in_din.value = (current | mask) if value else (current & ~mask)
         await ClockCycles(self.clk, 1)
 
     async def drive_ctp_p2p_ack_in(self, ctp_idx: int, value: int) -> None:
         mask = 1 << ctp_idx
-        current = _int(self.pins.xtrig_ctp_ack_in_din)
+        current = self.tb_if.sample("xtrig_ctp_ack_in_din")
         self.pins.xtrig_ctp_ack_in_din.value = (current | mask) if value else (current & ~mask)
         await ClockCycles(self.clk, 1)
 
@@ -388,7 +389,5 @@ class DtpXtrigAgent(uvm_agent):
         self.bfm.init_signals()
         self.cfg.xtrig_axil = self.axil
         self.cfg.xtrig_bfm = self.bfm
-        self.cfg.xtrig_num_ctp = XTRIG_NUM_CTP
-        self.cfg.xtrig_num_int_ct = XTRIG_NUM_INT_CT
         await self.cfg.reset_done.wait()
         self.logger.info("DTP XTRIG shared AXI-Lite master and GPIO BFM ready")

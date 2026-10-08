@@ -57,7 +57,7 @@ class smc_static_cg_sanity_test(smc_base_test):
             # fails the record.
             min_csr_accesses=52,
             csr_accesses=seq.accesses,
-            # Two JTAG-AXI payload writes (`_write_bytes` at seq:270-271) seed
+            # Two JTAG-AXI payload writes (`_write_bytes` in the sequence body) seed
             # the DMA source and destination. Declaring both the floor and the
             # exact count makes the scoreboard compare its own per-bus tally
             # against a number this call site did not measure.

@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""U7-1 / P2-7: a corrupted scratch ECC codeword reaching the CPU's ECC logic.
+"""A corrupted scratch ECC codeword reaching the CPU's ECC logic.
 
 Scratch bank0 stores the full 72-bit codeword (SMC_4CORE_SCRATCH_RAM_DATA_WIDTH
-= 72), so XORing bits into the macro array is a real fault rather than a faked
-read response -- the same posture the SEP testbench uses when it writes
-codewords into its macro arrays directly. The poke lands before boot release so
+= 72), so XORing bits into the macro array corrupts the stored codeword itself
+rather than a read response. The poke lands before boot release so
 the corrupted word is read by the reset-vector fetch itself; poking after the
 line is cached is not observed.
 

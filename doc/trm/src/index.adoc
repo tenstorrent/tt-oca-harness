@@ -67,7 +67,6 @@ endif::release[]
 ** xref:smn.adoc[System Management Network (SMN)]
 ** xref:aou.adoc[AXI-over-UCIe Bridge (AoU)]
 * xref:ip-reference.adoc[IP Reference] - Reference documentation for reusable IP blocks
-* xref:dashboard.adoc[Verification Dashboard]
 * Appendices
 ** xref:register-field-access.adoc[Register Field Access Notation] - How to read the Access column of the generated register and field tables
 ** xref:referenced-documents.adoc[Referenced Documents] - Specifications and external design documentation cited throughout this manual

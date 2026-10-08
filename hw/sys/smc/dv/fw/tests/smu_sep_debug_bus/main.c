@@ -175,8 +175,7 @@ int main(void) {
         SMC_DELAY_ITERS(256);
     }
     if ((st & 1ULL) == 0ULL || (((snap >> 48) & 0xFFFFULL) != (uint64_t)DEBUG_BUS_MARKER_TRACE16)) {
-        /* Publish the live CLA state, match and mask for diagnosis. Do not
-         * re-arm an always-on match: that would no longer check the marker PC. */
+        /* Publish the live CLA state, match and mask for diagnosis. */
         uint64_t match_rb = SMC_RD64_LOHI(CLA_MATCH0_LO, CLA_MATCH0_HI);
         uint64_t mask_rb = SMC_RD64_LOHI(CLA_MASK0_LO, CLA_MASK0_HI);
         SMC_WR32(DEBUG_BUS_SMC_SCRATCH9, (uint32_t)((snap >> 48) & 0xFFFFULL));

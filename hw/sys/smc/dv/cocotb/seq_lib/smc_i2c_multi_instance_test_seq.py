@@ -22,9 +22,10 @@ from pathlib import Path
 
 import cocotb
 
-from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_addr_map import _REPO, reg_field_encode, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_output_fabric_vip_utils import reg_field_pack
+
+_I2C_H = _REPO / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c.h"
 
 # Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
@@ -65,7 +66,7 @@ def _target_id_addr(idx: int) -> int:
 
 def _target_id_pattern(idx: int) -> int:
     """Distinct 7-bit target address per controller, packed from the generated layout."""
-    return reg_field_pack("I2C_TARGET_ID_reg_t", address0=0x21 + idx, mask0=0x7F)
+    return reg_field_encode(_I2C_H, "I2C", "TARGET_ID", address0=0x21 + idx, mask0=0x7F)
 
 
 I2C_CORESIDENT = [

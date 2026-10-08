@@ -329,9 +329,9 @@ module smc_uvm_top
     // Evidence only. The OCCP boot flow has two failure modes that look
     // identical from the outside -- "the bytes never arrived" and "the bytes
     // arrived but did not execute" -- and nothing else on this top can tell
-    // them apart. The decode below is only known-correct at offset 0, so this is
-    // evidence for triage and never a gate -- see smc_dual_axi_sram_probe_test,
-    // which measures both the striped decode and the AXI path into this window.
+    // them apart. The decode is smc_scratch_map_pkg's, which
+    // smc_dual_axi_sram_probe_test cross-checks against the AXI path into this
+    // window; this port is evidence for triage and never a gate.
     //
     // Strictly a read. It must never be used to deposit the payload, flush a
     // cache, or otherwise help the DUT reach a pass -- that would hide the very
@@ -360,7 +360,8 @@ module smc_uvm_top
     // the TX_PORT offset (0x088). Captures the first words of each transfer;
     // for a 100-byte OCCP WRITE frame the first 8 DWORDs cover the 8-byte
     // request header, the 12 metadata bytes, and the first 12 payload bytes --
-    // exactly the boundary where the data goes missing.
+    // the header/payload boundary, so a payload lost between the controller's
+    // SRAM read and the bus shows up here.
     output logic [31:0] tb_bfm_i3c_tx_count /*verilator public_flat_rw*/,
     output logic [31:0] tb_bfm_i3c_tx_word_0 /*verilator public_flat_rw*/,
     output logic [31:0] tb_bfm_i3c_tx_word_1 /*verilator public_flat_rw*/,
@@ -544,8 +545,8 @@ module smc_uvm_top
     end else begin : gen_tel2_absent
         assign tb_telemetry2_atready = 1'b0;
     end
-    // Receivers past index 2 keep the AT tie-off; the AF channel of every
-    // receiver except 0 keeps its ready high, exactly as before the lift.
+    // Receivers past index 2 are tied idle (atdata/atid 0, atvalid 0); the AF
+    // channel of every receiver except 0 holds afready high.
     for (genvar tel_i = 3; tel_i < smc_config_pkg::NumTelemetryReceivers; tel_i++) begin : gen_tel_at_tie
         assign tb_telemetry_atdata[tel_i] = '0;
         assign tb_telemetry_atid[tel_i] = '0;
@@ -582,8 +583,8 @@ module smc_uvm_top
     localparam int unsigned I2c0SdaPad = 38;
     localparam int unsigned I2c0SmbAlertPad = 39;
     localparam int unsigned I2c0SmbSusPad = 40;
-    // I2C1 pads (padring: 37+4*i / 38+4*i). Commercial TB shorts I2C0/1/2
-    // SCL/SDA via tranif1 for internal P0 controller↔target loops.
+    // I2C1/I2C2 pads (padring: 37+4*i / 38+4*i). +smc_i2c_shared_bus joins
+    // them to the I2C0 open-drain bus for controller-to-target loops.
     localparam int unsigned I2c1SclPad = 41;
     localparam int unsigned I2c1SdaPad = 42;
     localparam int unsigned I2c1SmbAlertPad = 43;
@@ -615,7 +616,7 @@ module smc_uvm_top
     bit tb_hold_ext_boot /*verilator public_flat_rw*/;
     // ext_interrupts_i[16:2], PLIC sources 3-17; bits 1 and 0 keep their own pins.
     bit [16:2] tb_ext_interrupts_hi_i /*verilator public_flat_rw*/;
-    // +smc_uart_cross_3to0: short commercial UART pairs 0↔3 and 1↔2
+    // +smc_uart_cross_3to0: cross-wire UART pairs 0↔3 and 1↔2
     // (TX of each into RX of the peer).
     bit tb_uart_cross_3to0;
     initial begin
@@ -641,8 +642,8 @@ module smc_uvm_top
     // or cocotb side may pull a line low.
     //
     // +smc_i2c_shared_bus: OR I2C1/I2C2 open-drain pulls into the same resolved
-    // bus and drive those pads with that value (commercial tranif1 short).
-    // Default off so existing I2C0↔VIP tests stay isolated.
+    // bus and drive those pads with that value. Default off, so I2C0↔VIP
+    // tests see an isolated bus.
     logic tb_i2c_shared_bus;
     logic tb_i2c1_scl_dut_low;
     logic tb_i2c1_sda_dut_low;
@@ -667,8 +668,8 @@ module smc_uvm_top
     assign tb_i2c0_sda = !(tb_i2c0_sda_dut_low || tb_i2c0_sda_ext_low ||
                            (tb_i2c_shared_bus && (tb_i2c1_sda_dut_low ||
                                                   tb_i2c2_sda_dut_low)));
-    // SMBus sideband OD (commercial tranif1 on i2c_smbus_alert / suspend):
-    // wrap *_no is 0 while that controller asserts the open-drain line.
+    // SMBus sideband open-drain resolve: wrap *_no is 0 while that controller
+    // asserts the open-drain line.
     logic tb_i2c0_smbalert_dut_low;
     logic tb_i2c1_smbalert_dut_low;
     logic tb_i2c2_smbalert_dut_low;
@@ -706,6 +707,33 @@ module smc_uvm_top
                                   !u_dut.u_smc.u_smc_peripherals.i3c_sda_to_pad[0];
     assign tb_i3c0_scl = !(tb_i3c0_scl_dut_low || tb_i3c0_scl_ext_low);
     assign tb_i3c0_sda = !(tb_i3c0_sda_dut_low || tb_i3c0_sda_ext_low);
+
+    for (genvar i = 0; i < smc_config_pkg::NumI3c; i++) begin : gen_i3c_csr_count
+        logic [31:0] reads_q;
+        logic [31:0] writes_q;
+        always_ff @(posedge u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.clk_i or
+                    negedge u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.rst_ni) begin
+            if (!u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.rst_ni) begin
+                reads_q  <= '0;
+                writes_q <= '0;
+            end else begin
+                if (u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.gen_i3c_inst[i]
+                        .u_i3c_wrapper.rvalid_o &&
+                    u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.gen_i3c_inst[i]
+                        .u_i3c_wrapper.rready_i) begin
+                    reads_q <= reads_q + 32'd1;
+                end
+                if (u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.gen_i3c_inst[i]
+                        .u_i3c_wrapper.bvalid_o &&
+                    u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.gen_i3c_inst[i]
+                        .u_i3c_wrapper.bready_i) begin
+                    writes_q <= writes_q + 32'd1;
+                end
+            end
+        end
+        assign tb_i3c_csr_read_count[i*32 +: 32]  = reads_q;
+        assign tb_i3c_csr_write_count[i*32 +: 32] = writes_q;
+    end
 
     // ------------------------------------------------------------------
     // Pad injection (KNOWN RISK).
@@ -763,7 +791,7 @@ module smc_uvm_top
             tb_pad_drive_val[I2c2SclPad] = tb_i2c0_scl;
             tb_pad_drive_en[I2c2SdaPad]  = 1'b1;
             tb_pad_drive_val[I2c2SdaPad] = tb_i2c0_sda;
-            // Shared SMBus alert / suspend (commercial i2c_smbus_alert/suspend).
+            // Shared SMBus alert / suspend lines.
             tb_pad_drive_en[I2c0SmbAlertPad]  = 1'b1;
             tb_pad_drive_val[I2c0SmbAlertPad] = tb_i2c_smbalert;
             tb_pad_drive_en[I2c1SmbAlertPad]  = 1'b1;
@@ -2404,10 +2432,9 @@ module smc_uvm_top
     // target's production ROM drives it from set_gpio_status(OCCP_ERROR_NONE)
     // (bootrom/prod/lib/src/occp.c) on the success path of OCCP init.
     //
-    // The undriven value is 0, matching the reference environment's pulldown
-    // on this pad. It must NOT default high: a target that never asserts
-    // readiness would then be indistinguishable from one that does, and in
-    // silicon a real host would hang forever waiting for it.
+    // The undriven value is 0 (pulldown). It must NOT default high: a target
+    // that never asserts readiness would then be indistinguishable from one
+    // that does, and in silicon a real host would hang forever waiting for it.
     // ==================================================================
 
     /* verilator public_module */
@@ -3545,8 +3572,7 @@ module smc_dual_inst
     logic clk_ref;
     logic clk_periph;
 
-    // Idle inbound buses. Declared rather than inlined as '0 so the struct
-    // types are explicit at the tie-off site.
+    // Idle inbound buses.
     smc_sys_in_56_64_6_12_axi_req_t sys_axi_idle_req;
     smc_jtag_56_64_2_12_axi_req_t   jtag_axi_idle_req;
     smc_axil_32_32_req_t            axil_idle_req;

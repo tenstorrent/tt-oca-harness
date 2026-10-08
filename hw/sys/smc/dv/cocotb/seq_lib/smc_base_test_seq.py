@@ -3,9 +3,7 @@
 """Base sequence for SMC OSS PyUVM tests.
 
 Agent-agnostic: child sequences override ``body`` and dispatch their own item
-type to whichever sequencer they were started on. Keeping the base minimal
-lets the same base host i2c, reset, axi, gpio, ... future agents without
-type leakage.
+type to whichever sequencer they were started on.
 """
 
 from __future__ import annotations

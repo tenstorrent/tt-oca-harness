@@ -35,10 +35,10 @@ class smc_gpio_irq_active_test(smc_base_test):
             SmcProtocolVipKind.GPIO_IRQ,
             type(self).__name__,
             csr_accesses=seq.accesses,
-            # Fail-capable stimulus floor, written out here rather than read back
-            # from `seq.accesses`: composition is the GPIO0 DATA_CTRL
-            # active-low-IRQ write plus the MAILBOX_IRQEN decode read
-            # (smc_gpio_irq_active_test_seq, directed, no polling).
+            # Fail-capable stimulus floor: the GPIO0 DATA_CTRL active-low-IRQ
+            # write plus the MAILBOX_IRQEN decode read (smc_gpio_irq_active_test_seq,
+            # directed, no polling); a floor taken from `seq.accesses` would
+            # shrink with a sequence that stopped issuing them.
             min_csr_accesses=2,
             proxy=False,
             details="GPIO0 external active-low drive toggled GPIO IRQ aggregate",

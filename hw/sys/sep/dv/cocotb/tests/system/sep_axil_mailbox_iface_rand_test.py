@@ -2,6 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """axil_mailbox TX: STATUS and WIRQT follow the depth golden; read-empty and write-full give SLVERR.
 
+OCAH provenance: ``sep_mailbox_64bit_data_test`` checks 64-bit mailbox data,
+``sep_mailbox_misc_regs_test`` checks mailbox CSRs, and
+``sep_fabric_mailbox_fifo_closure_test`` checks FIFO, interrupt, error and
+flush behavior.
+
 no_cpu host-AXI test of the SEP axil_mailbox mechanics over the CPU-LSU master,
 on the outbound_mailbox_0 aperture (0x10A0_0000) -- the SEP/CPU side of the
 two-port cross-FIFO, reachable with no inbound filter. This is the TX-path test:

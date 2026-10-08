@@ -33,8 +33,8 @@ from pathlib import Path
 
 import cocotb
 
+from .smc_addr_map import _REPO, reg_field_encode
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_output_fabric_vip_utils import reg_field_pack
 
 # Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
@@ -78,7 +78,7 @@ from smc_reg import (  # noqa: E402
 )
 
 # PeakRDL-traceable FILTER_CONFIG addresses (filter_ctrl.rdl) and RDL reset
-# (FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT = 0x3000). Per slot the sweep checks
+# (FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT). Per slot the sweep checks
 # the full 64-bit RDL reset content, then a (direction,index)-unique signature
 # read back at that offset WHILE THE OTHER 31 SIGNATURES ARE STILL RESIDENT --
 # so slot i's evidence cannot be produced by slot j -- then the restored reset
@@ -121,7 +121,7 @@ _OUTBOUND_FILTER_CONFIG = (
 )
 
 
-_FILTER_CONFIG_STRUCT = "FILTER_CTRL_FILTER_CONFIG_reg_t"
+_FILTER_CTRL_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
 
 #: Accesses issued per slot, spread over the five phases: reset read,
 #: signature write, co-resident signature readback, restore write, restore
@@ -140,14 +140,15 @@ def _slot_signature(index: int, outbound: bool) -> int:
     ``read_allowed``/``write_allowed`` encode the direction and
     ``src_id``/``group_id`` encode the index in two independent nibbles that
     move in opposite directions, so no two of the 32 slots share a value.
-    ``entry_enabled`` (rdl:34), ``allow_ns`` (rdl:40), ``allow_burst``
-    (rdl:64) and the write-once ``locked`` (rdl:71) are left at
-    their reset value: the sweep must not arm or lock a filter.
-    ``data_bus_width`` (rdl:46) is ``sw=r``, which is why the expected
-    readback is the RDL default OR-ed with the signature.
+    ``entry_enabled``, ``allow_ns``, ``allow_burst`` and the write-once
+    ``locked`` are left at their reset value: the sweep must not arm or lock a
+    filter. ``data_bus_width`` is ``sw=r``, which is why the expected readback
+    is the RDL default OR-ed with the signature.
     """
-    return reg_field_pack(
-        _FILTER_CONFIG_STRUCT,
+    return reg_field_encode(
+        _FILTER_CTRL_H,
+        "FILTER_CTRL",
+        "FILTER_CONFIG",
         read_allowed=0 if outbound else 1,
         write_allowed=1 if outbound else 0,
         src_id=index & 0xF,

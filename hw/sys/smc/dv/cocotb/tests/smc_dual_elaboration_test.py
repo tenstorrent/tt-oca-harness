@@ -32,9 +32,9 @@ REQUIRED_EVIDENCE = (
     "CHK-DUAL-RESET",
 )
 
-# Both instances must clear fuse sense within this many clk_smc cycles. The
-# single-instance smc_cpu_firmware_boot_test uses a 200k-cycle bound for the
-# same eFuse responder; keep it.
+# Both instances must clear fuse sense within this many clk_smc cycles, the
+# bound the single-instance smc_cpu_firmware_boot_test uses for the same eFuse
+# responder.
 FUSE_SENSE_BOUND = 200_000
 
 

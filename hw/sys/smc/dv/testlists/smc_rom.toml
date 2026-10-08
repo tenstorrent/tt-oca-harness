@@ -2,14 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 schema_version = 1
 
-# SMC ROM/OCCP catalog: the 34 testcases ported from
-# `Main_SMC_BL0_Regression_Small`, plus the two dual-SMC infrastructure tests.
-# The dual harness forces per-instance straps before their capture window;
-# +BOOT_I3C selects I3C, while supported named strap plusargs are applied by
-# smc_dual_base_test. The `occp_rom` group runs 33 of the 34 ROM cases, including
-# smc_occp_dual_unsecure_boot_test, whose full payload transfer takes hours.
-# smc_occp_ring_buffer_stress_test is left out for its runtime; run it by name.
-# `sanity` preserves the three-leaf dual-SMC bring-up set enrolled in `all`.
+# SMC ROM/OCCP catalog: the ROM/OCCP testcases plus the two dual-SMC
+# infrastructure tests. The dual harness forces per-instance straps before
+# their capture window; +BOOT_I3C selects I3C, and smc_dual_base_test applies
+# the named strap plusargs. `occp_rom` runs every ROM case except
+# smc_occp_ring_buffer_stress_test, left out for its runtime (run it by name);
+# it includes smc_occp_dual_unsecure_boot_test, whose full payload transfer
+# takes hours. `sanity` is the dual-SMC bring-up set; it is held out of `all`,
+# which elaborates one target per run.
 
 [[tests]]
 name = "smc_dual_elaboration_test"
@@ -72,15 +72,12 @@ firmware = { name = "occp_sanity", mode = "occp_rom_only" }
 #   +bfm_rom_hex        controller: the occp_sanity DV image, applied to u_bfm
 #                       only, at #0.3 so it wins over the shared load
 #   +occp_case          label for the driver's log and assertion text
-#   +rom_test_timeout   the reference environment's value. occp_sanity names no
-#                       override, so it takes the 200 ms baseline that
-#                       smc_rom_test_template carries in `run_flags`
+#   +rom_test_timeout   200 ms, the family baseline
 #   +fuse_transport_timeout
-#                       the reference's +FORCE_MIN_TRANSPORT_TIMEOUT: pin the
-#                       OCCP transport timeout fuse at its minimum instead of
-#                       randomising it. This is the only BL0 member that asks
-#                       for it, and without it the fuse is unprogrammed on half
-#                       the runs, which is a different ROM path
+#                       pin the OCCP transport timeout fuse at its minimum
+#                       instead of randomising it; without it the fuse is
+#                       unprogrammed on half the runs, which is a different
+#                       ROM path
 args = [
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_sanity.rom.hex",
@@ -251,9 +248,8 @@ timeout_sec = 7200
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_jump_invalid_region_test", mode = "occp_rom_only" }
-# The reference passes +SECURE_MODE=0 here. TEST_DEV is this bench's default
-# lifecycle, which is the unsecure posture, so no plusarg is needed; +lc_state
-# would select a different one.
+# TEST_DEV, this bench's default lifecycle, is the unsecure posture this test
+# needs; +lc_state selects another.
 args = [
     "+BOOT_I3C",
     "+rom_bin64=prod_rom.bin64",
@@ -271,7 +267,7 @@ timeout_sec = 7200
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_register_access_test", mode = "occp_rom_only" }
-# Same +SECURE_MODE=0 note as smc_occp_jump_invalid_region_test above.
+# Same lifecycle note as smc_occp_jump_invalid_region_test above.
 args = [
     "+BOOT_I3C",
     "+rom_bin64=prod_rom.bin64",
@@ -289,10 +285,6 @@ timeout_sec = 7200
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_validate_boot_invalid_region_test", mode = "occp_rom_only" }
-# The reference also passes +SEP_RING_BUFFER_RANDOM_DISABLE, which turns OFF its
-# random SEP ring-buffer injection. This bench has no such injection, so the
-# knob has nothing to disable -- and the random coverage it suppresses is absent
-# here too.
 args = [
     "+BOOT_I3C",
     "+rom_bin64=prod_rom.bin64",
@@ -310,11 +302,7 @@ timeout_sec = 7200
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_secure_access_test", mode = "occp_rom_only" }
-# The reference names no +SECURE_MODE, so its lifecycle posture is whatever
-# smc_api defaults to; this entry takes the TEST_DEV default. If the firmware
-# needs a secure lifecycle to reach its checks, add +lc_state=1 as
-# smc_occp_jump_rejection_test does.
-# Same +SEP_RING_BUFFER_RANDOM_DISABLE note as the entry above.
+# Runs on the TEST_DEV default lifecycle.
 args = [
     "+BOOT_I3C",
     "+rom_bin64=prod_rom.bin64",
@@ -323,9 +311,8 @@ args = [
     "+rom_test_timeout=200000000",
 ]
 
-# The status-reporting members below. The reference runs them on the same smc_rom_only
-# driver as the entries above -- no status monitor participates in its gate, and the
-# firmware images self-report through scratch 0 exactly as the rest of the family does.
+# The status-reporting members below run on the same rom-only driver as the entries
+# above: the firmware images self-report through scratch 0 like the rest of the family.
 
 [[tests]]
 name = "smc_occp_boot_sequence_status_test"
@@ -470,8 +457,8 @@ timeout_sec = 172800
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_ring_buffer_stress_test", mode = "occp_rom_only" }
-# The controller drives the ROM's own status ring buffer here. This is not the SEP ring
-# buffer family, which needs an AXI driver this bench does not have yet.
+# The controller drives the ROM's own status ring buffer, not the SEP ring
+# buffer that smc_sep_ring_buffer_test covers.
 args = [
     "+BOOT_I3C",
     "+rom_bin64=prod_rom.bin64",
@@ -489,8 +476,7 @@ timeout_sec = 21600
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
-# No +sep_rb_entries: the count is randomised 1..512 from the run seed, as the reference
-# randomises its own NUM_ENTRIES. This is the only member that varies run to run.
+# No +sep_rb_entries: the count is drawn 1..512 from the run seed.
 args = [
     "+BOOT_I3C",
     "+FORCE_STATUS_REPORTING",
@@ -509,8 +495,10 @@ timeout_sec = 57600
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
-# 600 into 512 slots, the reference's overflow count. The ring keeps one slot empty, so
-# the ROM must hand back the newest 511 and the oldest 89 writes must be gone.
+# 600 writes into 512 slots; the ring keeps one slot empty, so at most 511 are retained.
+# The firmware checks only the number of successful reads and that the reads after
+# them report an empty buffer; it logs the entry values without comparing them, so
+# which 511 entries the ROM hands back is not checked.
 args = [
     "+BOOT_I3C",
     "+FORCE_STATUS_REPORTING",
@@ -551,7 +539,7 @@ timeout_sec = 7200
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_jump_reject", mode = "occp_rom_only" }
-# +lc_state=1 is the reference's +SECURE_MODE=1: is_secure_mode() in
+# +lc_state=1 selects a secure lifecycle: is_secure_mode() in
 # fw/common/occp/occp_interfaces.c reads CHIP_CONFIG.LC_STATE and treats 1 and 8 as secure.
 # Without it this test runs on the unsecure default and the ROM has no reason to reject
 # the jump, so the entry would pass for the wrong reason.
@@ -573,7 +561,7 @@ timeout_sec = 7200
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_master", mode = "occp_rom_only" }
-# No +lc_state: the illegal value is drawn from 0x9..0xF per run, as the reference does.
+# No +lc_state: the illegal value is drawn from 0x9..0xF per run.
 args = [
     "+BOOT_I3C",
     "+rom_bin64=prod_rom.bin64",
@@ -679,9 +667,9 @@ timeout_sec = 21600
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_secure_boot_test", mode = "occp_payload" }
-# +lc_state=1 is the reference's +SECURE_MODE=1, and it is what makes this test differ
-# from the unsecure boot flow: on a secure lifecycle the ROM publishes a manifest instead
-# of jumping, and the testbench stands in for the SEP that would boot it.
+# +lc_state=1 selects a secure lifecycle, which is what makes this test differ from the
+# unsecure boot flow: on a secure lifecycle the ROM publishes a manifest instead of
+# jumping, and the testbench stands in for the SEP that would boot it.
 args = [
     "+BOOT_I3C",
     "+rom_bin64=prod_rom.bin64",
@@ -689,9 +677,7 @@ args = [
     "+occp_payload_bin=hello_world.sram.bin",
     "+occp_payload_sym=hello_world.sram.sym",
     "+lc_state=1",
-    # The reference names no override, so this is the 200 ms template baseline. Note it
-    # then doubles its own bound for the post-manifest boot phase; here one bound covers
-    # both phases, so this is the tighter of the two.
+    # One 200 ms bound covers both the transfer and the post-manifest boot phase.
     "+rom_test_timeout=200000000",
 ]
 

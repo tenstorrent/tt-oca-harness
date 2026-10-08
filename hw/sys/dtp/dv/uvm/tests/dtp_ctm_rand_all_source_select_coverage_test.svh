@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_ctm_rand_all_source_select_coverage_test — per-source CTM select masks with neighbor no-aliasing reads
-// (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass floor).
+// dtp_ctm_rand_all_source_select_coverage_test — per-source CTM select masks
+// with neighbor no-aliasing reads (looped runner with per-pass CHK-XTRIG-*
+// evidence).
 
 class dtp_ctm_rand_all_source_select_coverage_test extends dtp_xtrig_base_test;
   `uvm_component_utils(dtp_ctm_rand_all_source_select_coverage_test)

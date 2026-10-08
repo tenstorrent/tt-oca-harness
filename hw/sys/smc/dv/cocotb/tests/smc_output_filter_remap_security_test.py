@@ -37,12 +37,9 @@ from smc_base_test import smc_base_test
 #   output_fabric_pass_all_cfg_seq       6 filter CSR writes
 # + output_fabric_block_write_cfg_seq    6 filter CSR writes
 OUTPUT_FILTER_MIN_CSR_ACCESSES = 12
-# Independent literal floor for the non-CSR fabric traffic: pass-phase JTAG-AXI
-# write + read, block-phase blocked JTAG-AXI write + follow-up read. The OBSERVED
-# count is measured by the scoreboard's per-bus tally inside record_protocol_vip
-# (driver-stamped, one per completed access), never passed in from here -- a
-# constant used as both the observation and the floor would make the scoreboard
-# assert `4 >= 4` ([NO-ALWAYS-PASS-CHECKER]).
+# Floor for the JTAG-AXI fabric traffic: pass-phase write + read, block-phase
+# blocked write + follow-up read. record_protocol_vip measures the observed count
+# from the scoreboard's per-bus tally (driver-stamped, one per completed access).
 OUTPUT_FILTER_MIN_JTAG_AXI_ACCESSES = 4
 
 
@@ -102,11 +99,9 @@ class smc_output_filter_remap_security_test(smc_base_test):
             f"last_addr/last_wdata match"
         )
 
-        # Phase-boundary snapshot, X-aware. This is the LEFT-hand side of the
-        # block-phase fence below, not a decoration: the pass-phase write is
-        # required to have advanced the responder write counter by exactly one
-        # here, which is the positive control for the "blocked write produces no
-        # beat" negative leg that follows.
+        # Phase-boundary snapshot, X-aware: the pass-phase write must have
+        # advanced the responder write counter by exactly one; it is the positive
+        # control for the "blocked write produces no beat" leg below.
         mid_writes, mid_reads = output_responder_counts()
         assert mid_writes == start_writes + 1, (
             f"pass-phase output-fabric write did not advance the SYS_OUT "
@@ -191,18 +186,16 @@ class smc_output_filter_remap_security_test(smc_base_test):
             type(self).__name__,
             csr_accesses=pass_seq.accesses + block_seq.accesses,
             min_csr_accesses=OUTPUT_FILTER_MIN_CSR_ACCESSES,
-            # The four JTAG-AXI accesses are reported in their own field rather
-            # than folded into csr_accesses, which would label fabric traffic as
-            # CSR traffic. The observed count is MEASURED by
-            # record_protocol_vip from the scoreboard's JTAG AXI tally; only the
-            # floor is written here.
+            # The four JTAG-AXI accesses are fabric traffic and are reported in
+            # their own field; record_protocol_vip measures the observed count
+            # from the scoreboard's JTAG AXI tally, so only the floor is given.
             min_fabric_accesses=OUTPUT_FILTER_MIN_JTAG_AXI_ACCESSES,
             fabric_access_label="jtag_axi_accesses",
             fabric_bus="JTAG AXI",
             # No access on this path runs with allow_timeout, so an expiry raises
             # in SmcSysAxiAgent._timed_event and control cannot reach this record
             # with a timeout counted: nothing here measures timeouts, and `None`
-            # renders `n/a` instead of an unmeasured 0 ([EXACT-EXPECTATION]).
+            # renders `n/a`.
             timeouts=None,
             proxy=False,
             details="Output filter pass/read-only behavior checked with responder counters",

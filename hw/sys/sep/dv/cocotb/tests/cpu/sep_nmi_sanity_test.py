@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A WDT bark fires the NMI into the handler at SEP_NMI_VEC, and SEP_NMI_VEC locks sticky.
 
+OCAH provenance: ``sep_nmi_sanity_test`` checks the NMI vector, lock and
+watchdog-bark delivery.
+
 The nmi_sanity firmware checks the NMI mechanism on bare ``sep``: trampoline alignment,
 SEP_NMI_VEC reset default / writeback / sticky lock, and that a WDT bark fires the NMI into the
 registered handler (hw/sys/sep/rtl/sep.sv connects ``nmi_int_i`` to ``intr_wdog_timer_bark``

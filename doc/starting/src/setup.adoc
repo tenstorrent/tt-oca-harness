@@ -9,86 +9,64 @@
 This document is currently under development.
 ====
 
-== Repository
+OCAH workflows need a RISC-V cross-compiler, EDA tools (Verilator, Slang, Verible,
+Yosys), Python tooling and documentation tools. The recommended way to get all of
+them is the *prebuilt OCAH container*: you install a container engine, and the
+project's `scripts/docker-run.sh` downloads the exact image that CI tests against.
+You do not install or configure any of the tools yourself.
 
-To clone the repository, ensure that you have `git` installed (`sudo apt install git`),
-and then run the following commands:
+Follow <<quick-start>> from top to bottom. The other setups, described under
+<<alternative-setups>>, are for contributors who need to change the toolchain or
+cannot use a container.
 
-```bash
-git clone https://github.com/tenstorrent/tt-oca-harness.git
+[[supported-platforms]]
+== Supported platforms
 
-cd tt-oca-harness
-```
-
-The repository contains a Python environment used for scripting workflows. Some of
-these workflows are contained within submodules, meaning the Python environment requires
-the submodules to be initialised. The container image tag needs them too: once you
-modify any file, `docker-run.sh` fails with `Failed to fetch git repository` if they
-are missing. To initialise them, run the following command:
-
-```bash
-git submodule update --init --recursive
-```
-
-== Toolchain access
-
-Most OCAH workflows require a RISC-V cross-compiler, EDA tools (Yosys, Verilator,
-Slang, Verible), and documentation tools (Antora, Asciidoctor). There are three
-ways to get these:
-
-[cols="1,3",options="header"]
+[cols="2,3,3",options="header"]
 |===
-| Method | Summary
+| Host | Prebuilt container (recommended) | Native installation
 
-| <<container,*Container (recommended)*>>
-| A Nix-built container image bundles all EDA and firmware tools. No individual
-  tool installs needed beyond a container engine (Podman or Docker). This is the
-  primary supported method for the initial release.
+| Linux, x86_64 (for example Ubuntu 24.04 LTS or later)
+| *Supported.* This is what CI uses.
+| Documented for Ubuntu 26.04 LTS. Other distributions should work, but package names differ.
 
-| <<native,*Native*>>
-| Install each tool individually on the host. Gives the most control but requires
-  the most setup. See <<native,*this section*>> for the (Ubuntu) native path and
-  refer to xref:dependencies.adoc[Dependencies] for version requirements.
+| macOS
+| *Supported* with Podman. On Macs with Apple silicon (M-series) the x86_64 image
+  runs under emulation, which is noticeably slower.
+| Not documented.
 
-| <<nix-develop,*Nix Development Shell*>>
-| `nix develop` provides the same tool set as the container, directly on the host,
-  via the Nix package manager. Available but not first-class supported — useful on
-  NixOS or hosts that already have Nix installed.
+| Linux, arm64
+| Not tested. The image is built for x86_64 only.
+| Not documented.
+
+| Windows
+| Not tested.
+| Not documented.
 |===
 
-[[container]]
-== Container (recommended)
+The container needs about 10 GB of free disk space for the image, on top of the
+general CPU, memory and storage requirements listed in
+xref:dependencies.adoc[Dependencies].
 
-The container is the primary toolchain access method for the initial release. It
-is built from the Nix flake in this repository, and CI publishes that image to the
-GitHub Container Registry. You can pull the exact image CI verified rather than
-build it yourself (see <<pulling>>); `docker-run.sh` builds it locally on first use
-when no registry is configured.
+[[quick-start]]
+== Quick start: the prebuilt container (recommended)
 
-The container bundles:
+Do these steps once per machine, in order.
 
-* RISC-V cross-compiler (`riscv64-unknown-elf-gcc` + picolibc) — making a native
-  RISC-V toolchain install optional for firmware workflows
-* `yosys` + `yosys-slang` for synthesis
-* `slang`, `verilator`, `verible` for lint
-* `antora` for documentation
+[[container-engine-setup]]
+=== Step 1: Install Git and a container engine
 
-Tools that must be installed natively even when using the container: Python /
-`uv` (for register generation and DV Python tooling), `bender` (IP dependency
-management), and `git`.
+The container engine runs the OCAH image. Podman is recommended; Docker also
+works. If both are installed, `docker-run.sh` uses Podman.
 
-=== Container engine setup
+==== On Linux (Ubuntu)
 
-Install a container engine (Podman or Docker):
-
-* https://podman.io/docs/installation#ubuntu[*Podman*] (recommended)
-* https://docs.docker.com/engine/install/ubuntu/[*Docker*]
-
-If you installed Podman, also install `fuse-overlayfs` and register the Docker
-Hub registry:
+Install Git, Podman and `fuse-overlayfs`, then allow short image names to resolve
+to Docker Hub:
 
 ```bash
-sudo apt install -y fuse-overlayfs
+sudo apt update
+sudo apt install -y git podman fuse-overlayfs
 
 sudo mkdir -p /etc/containers/registries.conf.d
 cat <<'EOF' | sudo tee /etc/containers/registries.conf.d/docker.conf
@@ -96,58 +74,191 @@ unqualified-search-registries = ["docker.io"]
 EOF
 ```
 
-[[pulling]]
-=== Pulling the prebuilt image
+On other distributions, follow the
+https://podman.io/docs/installation[Podman installation guide].
 
-CI builds the OCAH container and publishes it to the GitHub Container Registry,
-so you normally do not need to build it yourself. Point `docker-run.sh` at the
-registry and it pulls the exact image CI verified:
+To use Docker instead, follow the
+https://docs.docker.com/engine/install/[Docker Engine installation guide] and its
+https://docs.docker.com/engine/install/linux-postinstall/[post-installation steps],
+which let you run `docker` without `sudo`.
+
+==== On macOS
+
+Install Git by running `xcode-select --install`, then install
+https://podman.io/docs/installation#macos[Podman]. Podman runs containers in a
+Linux virtual machine. The default machine has 2 GB of memory, short of
+xref:dependencies.adoc#system-requirements[Dependencies], so set `--memory`
+(in MB) to match:
+
+```bash
+podman machine init --memory 16384
+podman machine start
+```
+
+After a reboot, run `podman machine start` again before using the container.
+
+=== Step 2: Get the repository
+
+Clone the repository and initialise its submodules:
+
+```bash
+git clone https://github.com/tenstorrent/tt-oca-harness.git
+cd tt-oca-harness
+git submodule update --init --recursive
+```
+
+The submodules are required: the Python environment uses them, and
+`docker-run.sh` reads them to identify the image.
+
+=== Step 3: Select the prebuilt image
+
+Tell `docker-run.sh` to download the image CI publishes instead of building it.
+Add these two lines to your shell startup file, `~/.bashrc` on Linux or `~/.zshrc`
+on macOS:
 
 ```bash
 export OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container
-export OCAH_IMAGE_WITH_UV=true            # the variant CI publishes
-./scripts/docker-run.sh verify           # pulls once; run/shell then reuse it
+export OCAH_IMAGE_WITH_UV=true
 ```
 
-The image is tagged with a hash of the Nix flake, which `docker-run.sh`
-evaluates before every command. Without Nix on the host it evaluates the hash in
-a throwaway `nixos/nix` container, which takes several minutes each time even
-when the image is already loaded; installing Nix keeps it fast.
+Then open a new terminal, or run `source ~/.bashrc` (`source ~/.zshrc` on macOS),
+so they take effect. `OCAH_IMAGE_WITH_UV=true` selects the image variant CI
+publishes, which already contains the project's Python packages.
+
+[[pulling]]
+=== Step 4: Download and check the image
+
+From the repository root, run:
+
+```bash
+./scripts/docker-run.sh verify
+```
+
+The first run downloads the image, which takes a while. When it finishes, it
+prints the version of the RISC-V compiler inside the container, beginning
+`riscv64-unknown-elf-gcc`. Seeing that version means the setup works.
+
+Two things are normal and do not mean anything is wrong:
+
+* Before every command, `docker-run.sh` computes which image matches your
+  checkout. Without Nix installed on your machine this takes several minutes each
+  time, even once the image is downloaded. <<nix-speedup>> removes the wait.
+* Later commands reuse the downloaded image. It is downloaded again only when you
+  update to a commit that changes the toolchain.
+
+[IMPORTANT]
+====
+If the output contains `absent locally and in cache; building`, press `Ctrl+C`.
+There is no published image for your checkout, so `docker-run.sh` has started
+building one from source, which occupies the machine for a long time. This
+happens when CI has not yet published the image for the commit you are on, or
+when your checkout changes a file that defines the image, such as `flake.lock`,
+`ocah_deps.nix`, `uv.lock` or a file under `nix/`. Interrupting `docker-run.sh`
+does not always stop the build, so check `podman ps` (or `docker ps`) and stop
+any container still running. Then check out the latest `main`, or wait for CI to
+publish the image.
+====
 
 Published images are listed on the
 https://github.com/orgs/tenstorrent/packages/container/package/ocah-container[`ocah-container` package page].
-Build the image locally only when you are changing its definition. See
-`scripts/docker.md` for the full set of container commands and environment
-variables.
+No login is needed to download them.
 
-=== Using the container
+=== Step 5: Use the container
 
-All container interaction goes through `scripts/docker-run.sh`. The image is
-pulled (or, with no registry configured, built) automatically on first use:
+All container use goes through `scripts/docker-run.sh`, run from the repository
+root. To work interactively, open a shell inside the container:
 
 ```bash
-# Open an interactive shell (builds the image if needed)
-./scripts/docker-run.sh shell # use shell-here for 1:1 paths
+./scripts/docker-run.sh shell
+```
 
-# Run a command inside the container
+The prompt changes to `OCAH-Container >` and every OCAH tool is available, so you
+can run any `make` target the rest of this guide describes. Run `make help` to
+list them, and `exit` to leave the container.
+
+To run a single command without opening a shell:
+
+```bash
 ./scripts/docker-run.sh run make dv-fw-tests TARGET=smc
+```
 
-# Run with 1:1 host paths (needed for workflows using absolute paths)
+Some workflows, such as synthesis, write absolute paths into their files. Run
+those with `run-here`, which mounts the repository at the same path it has on
+your machine (`shell-here` is the interactive equivalent):
+
+```bash
 ./scripts/docker-run.sh run-here make ocah-synth-yosys-all
 ```
 
-To pre-build the image explicitly (e.g. before going offline):
+See `scripts/docker.md` for every container command and environment variable.
+
+[[nix-speedup]]
+=== Optional: make container commands start faster
+
+The image's tag is a hash of the toolchain definition. Without Nix on the host,
+`docker-run.sh` computes it in a temporary container that downloads the
+definition again every time, which is why each command waits several minutes.
+Installing https://nixos.org/download/[Nix] on the host keeps that download
+cached, so commands start in seconds. Nothing else changes: you keep using the
+prebuilt image exactly as above.
+
+[[troubleshooting]]
+=== Troubleshooting
+
+`Failed to fetch git repository`::
+The submodules are missing. Run `git submodule update --init --recursive`.
+
+`Error: workdir "..." does not exist on container`::
+You reached the repository through a symbolic link. Change to its real path with
+`cd "$(pwd -P)"` and run the command again.
+
+`no space left on device` while downloading the image::
+Rootless Podman stores images under `~/.local/share/containers`, which may be on
+a small or quota-limited home filesystem. Move the store to a larger filesystem
+by setting `graphroot` in `~/.config/containers/storage.conf`, then confirm the
+new location with `podman info | grep -i graphroot`.
+
+`podman: command not found` or `podman or docker is required`::
+Step 1 is incomplete, or on macOS the Podman machine is not running. Run
+`podman machine start`.
+
+`Killed signal terminated program lto1`::
+The Podman machine is short of memory. Stop it, run
+`podman machine set --memory 16384` and start it again.
+
+[[alternative-setups]]
+== Alternative setups
+
+The setups below are for contributors who change the toolchain itself or cannot
+use a container. They take considerably more effort than the prebuilt container
+and are less tested.
+
+[[building-the-image]]
+=== Building the container image yourself
+
+Build the image locally only when you are changing its definition. The build runs
+on x86_64 Linux, uses many cores and takes a long time:
 
 ```bash
 ./scripts/docker-run.sh build
 ```
 
-To bundle UV dependencies in with the container, for a fully offline system, set
-`OCAH_IMAGE_WITH_UV=true` before building
+With `OCAH_IMAGE_WITH_UV=true` it builds the variant that bundles the Python
+packages, for fully offline use; otherwise it builds the default variant, which
+installs them on demand. `docker-run.sh` also builds the image automatically
+whenever `OCAH_CONTAINER_REGISTRY_IMAGE` is unset and no matching image is loaded
+or cached.
+See `nix/nix-infrastructure.md` for how the image is defined.
 
 [[native]]
-== Native Installation
-=== Python
+=== Native installation (Ubuntu)
+
+A native installation puts every tool directly on the host. It gives the most
+control but needs the most setup, and you are responsible for matching the
+versions in xref:dependencies.adoc[Dependencies]. These instructions are written
+for Ubuntu 26.04 LTS.
+
+==== Python
 
 We recommend the use of pyenv to ensure the correct version of python is in use.
 To install pyenv, visit https://github.com/pyenv/pyenv[their GitHub page],
@@ -183,7 +294,8 @@ pyenv shell 3.11
 pip install uv
 ```
 
-=== Package Dependencies
+[[package-dependencies]]
+==== Package Dependencies
 
 Once the repository is cloned, install the required open source tools:
 
@@ -219,11 +331,10 @@ uv sync # or `make uv-sync`
 ```
 
 [[nix-develop]]
-== Nix Development Shell (available, not first-class supported)
+=== Nix development shell
 
 If you have https://nixos.org/download/[Nix] installed, the dev shell provides
-the same tool set as the container directly on the host — no container engine
-needed:
+the same tool set as the container directly on the host, with no container engine:
 
 ```bash
 nix develop    # activates the dev shell; tools are then available on PATH

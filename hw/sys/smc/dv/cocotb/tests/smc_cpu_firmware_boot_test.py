@@ -54,14 +54,11 @@ class smc_cpu_firmware_boot_test(smc_base_test):
                     seq.fuse_saw_high = True
                     return
         except Exception:  # noqa: BLE001 — watcher must not kill the test
-            # The legitimate stop is task cancellation, which is a
-            # BaseException in cocotb 2.x and therefore never reaches here; so
-            # anything caught below is a real watcher defect. It is logged with
-            # its traceback before returning, instead of vanishing into a silent
-            # `return`, so a broken watcher is visible in the kept log
-            # ([MUST-FAIL-ON-MISMATCH]). It is still not fatal on its own
-            # because `_wait_fuse_sense_transition` (seq:52-90) re-derives the
-            # same 0->1 edge and raises when it cannot.
+            # Task cancellation is a BaseException in cocotb 2.x and never
+            # reaches this handler, so anything caught here is a watcher defect.
+            # It is logged with its traceback; it is not fatal because
+            # `_wait_fuse_sense_transition` in the sequence re-derives the same
+            # 0->1 edge and raises when it cannot.
             cocotb.log.exception(
                 "fuse-sense watcher aborted (saw_low=%s saw_high=%s); the "
                 "sequence must now re-derive the tb_fuse_sense_done 0->1 edge "

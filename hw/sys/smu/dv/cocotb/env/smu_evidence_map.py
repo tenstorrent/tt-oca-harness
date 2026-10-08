@@ -160,6 +160,21 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "programmed target, and a following access leaves by the default path",
         ),
     ],
+    "smu_axi_out_outstanding_test": [
+        (
+            "CHK-AXIOUT-OUTSTANDING",
+            "CHK-AXIOUT-OUTSTANDING",
+            "an iDMA copy against a responder of depth 8 that delays every response "
+            "completes intact with more than 3 and at most 8 writes and reads in flight "
+            "at once, counted at the wires and by the responder",
+        ),
+        (
+            "CHK-AXIOUT-OUTSTANDING-ORDER",
+            "CHK-AXIOUT-OUTSTANDING-ORDER",
+            "every R beat carries the data of the oldest outstanding read of its RID, "
+            "every B answers an outstanding write of its BID, and none is left over",
+        ),
+    ],
     "smu_smc_inbound_window_sweep_test": [
         (
             "CHK-SMC-WINDOW-PROT",
@@ -238,6 +253,40 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-OTP-PROD-SMC-SERIES",
             "an SMC OTP series read of JTAG_PUBLIC_IDENTITY with pipeline depth 3 completes "
             "with SUCCESS",
+        ),
+    ],
+    "smu_lc_sigint_fail_closed_test": [
+        (
+            "CHK-LC-SIGINT-LEGAL-PAIR",
+            "CHK-LC-SIGINT-LEGAL-PAIR",
+            "with the legal TEST_DEV pair lc_sigint_err_o is 0, an SMC OTP write and "
+            "readback of MAP SPARE[0] and a JTAG_PUBLIC_IDENTITY read return SUCCESS, and a "
+            "SEP OTP write of a non-zero pattern to SPARE0 reads back that pattern",
+        ),
+        (
+            "CHK-LC-SIGINT-RAISED",
+            "CHK-LC-SIGINT-RAISED",
+            "with the n rail of LC_STATE bit 0 inverted at the SMC's LC_STATE input, "
+            "lc_sigint_err_o is 1",
+        ),
+        (
+            "CHK-LC-SIGINT-SMC-OTP-CLOSED",
+            "CHK-LC-SIGINT-SMC-OTP-CLOSED",
+            "under the broken pair the SMC OTP read of SPARE[0] is refused with 0xBADCAB1E, "
+            "the write is refused, and the JTAG_PUBLIC_IDENTITY read is refused",
+        ),
+        (
+            "CHK-LC-SIGINT-SEP-OTP-OPEN",
+            "CHK-LC-SIGINT-SEP-OTP-OPEN",
+            "under the broken pair a SEP OTP read of SPARE0 returns SUCCESS with the "
+            "pattern written in S1 while lc_sigint_err_o is still 1",
+        ),
+        (
+            "CHK-LC-SIGINT-RELEASED",
+            "CHK-LC-SIGINT-RELEASED",
+            "with the legal pair restored lc_sigint_err_o is 0, SPARE[0] reads back the "
+            "pattern written before the fault, JTAG_PUBLIC_IDENTITY returns SUCCESS, and "
+            "SEP SPARE0 still reads the S1 pattern",
         ),
     ],
     "smu_smc_fabric_test": [
@@ -1362,9 +1411,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     # --- P0 composition and bring-up leaves on the production wrapper ---
     # These set use_shared_env = True, so prove_mapped_features runs for them
     # and every row below has to be logged by a passing compare.
-    # CHK-NONVAC is deliberately not a row here: SmuScoreboard.check_phase logs
-    # it after run_phase has already run the prover, and its own zero-check
-    # refusal covers the same ground.
+    # CHK-NONVAC has no row here: SmuScoreboard.check_phase logs it after
+    # run_phase has run the prover, so a row for it could never be proved, and
+    # its own zero-check refusal covers the same ground.
     "smu_boundary_port_composition_test": [
         (
             "CHK-SMU-EXT-SMN-S4",

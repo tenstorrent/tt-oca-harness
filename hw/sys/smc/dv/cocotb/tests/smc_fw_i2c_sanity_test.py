@@ -23,7 +23,8 @@ Requires the staged image, a held boot and the shared pad bus:
   +smc_scratch_ram_hex=i2c_sanity.ecc.hex   (bare basename; staged by c_compile)
   +smc_hold_cpu_boot
   +smc_i2c_shared_bus
-Must NOT use +skip_fuse_sense -- see dv_policy 1.6.
+Must not use +skip_fuse_sense: a run with the fuse sense skipped is not
+evidence for the fuse-derived boot path.
 """
 
 from __future__ import annotations

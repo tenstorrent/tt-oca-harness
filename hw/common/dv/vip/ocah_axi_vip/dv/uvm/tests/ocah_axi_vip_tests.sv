@@ -22,3 +22,4 @@ import ocah_axi_vip_seq_lib_pkg::*;
 `include "ocah_axi_pipeline_test.svh"
 `include "ocah_axi_pipeline_missing_rlast_test.svh"
 `include "ocah_axi_struct_bridge_test.svh"
+`include "ocah_axi_responder_ops_test.svh"

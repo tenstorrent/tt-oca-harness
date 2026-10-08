@@ -63,7 +63,7 @@ static void wait_live_ack(uint32_t req) {
         }
         if (ack == LIVE_ACK_FAIL) {
             write_scratch(2, ack);
-            fail_gpio(0xBAD00101u, "LIVE TB ack FAIL (needs nonfree observer)");
+            fail_gpio(0xBAD00101u, "LIVE TB ack FAIL (pad observer reported a mismatch)");
         }
     }
     write_scratch(2, req);

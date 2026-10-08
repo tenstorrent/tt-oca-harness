@@ -4,8 +4,8 @@
 // Reusable JTAG operation: write a PTAP test data register by instruction:
 // a plain 6-bit IR load followed by a DR scan of `width` bits shifting
 // `value` in; the register latches on Update-DR. Started by
-// dtp_base_test_seq::write_tdr(). The cocotb twin is
-// seq_lib/dtp_jtag_write_tdr_seq.py.
+// dtp_base_test_seq::write_tdr(). The cocotb realization is
+// dtp_base_test_seq.write_tdr.
 
 class dtp_jtag_write_tdr_seq extends dtp_jtag_op_seq;
   `uvm_object_utils(dtp_jtag_write_tdr_seq)

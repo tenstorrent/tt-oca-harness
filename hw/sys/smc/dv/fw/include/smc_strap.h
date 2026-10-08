@@ -29,9 +29,8 @@ typedef enum {
 // Captured straps, presented to firmware as two read-only words: bit N of STRAPS_LO is
 // GPIO N, and STRAPS_HI continues at GPIO 32.
 //
-// Not smc_top_regs.h's SMC_RESET_UNIT_STRAPS_LO (0xC0002090). That register moved out of
-// the reset unit into the external supplementary region and no longer exists; the generated
-// header still carries the old macro.
+// The straps are not in the reset unit's register map; firmware reads them from the external
+// mandatory region at these addresses.
 #define SMC_STRAPS_LO_REG_ADDR SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR
 #define SMC_STRAPS_HI_REG_ADDR SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_BASE_ADDR
 #define SMC_STRAPS_LO_BIT_COUNT 32

@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[verification-dashboard]]
+= Verification Dashboard
+:page-aliases: ocah-docs::dashboard.adoc
+:doctype: book
+
+The tables below are rendered in the browser from the DV data published to the
+https://github.com/tenstorrent/tt-oca-harness/tree/dv-dashboard-data[`dv-dashboard-data`]
+branch, which carries one directory per block and verification configuration.
+A block verified by more than one framework or simulator reports once for each,
+except on a simulator where it also publishes a merged series with test counts:
+that series stands in for the others there, and its block page lists them all.
+
+ifdef::backend-html5[]
+++++
+<div class="dashboard">
+  <div id="dashboard-status" class="dashboard-status">Loading dashboard data&hellip;</div>
+
+  <h3>Chip-Level</h3>
+  <div class="dashboard-table-scroll">
+    <table class="dashboard-table dashboard-table-series">
+      <thead id="dashboard-chip-head"></thead>
+      <tbody id="dashboard-chip-rows"></tbody>
+    </table>
+  </div>
+
+  <h3>Block-Level</h3>
+  <div class="dashboard-table-scroll">
+    <table class="dashboard-table dashboard-table-series">
+      <thead id="dashboard-block-head"></thead>
+      <tbody id="dashboard-block-rows"></tbody>
+    </table>
+  </div>
+
+  <p class="dashboard-legend">
+    <span class="dash-pass">&nbsp;&nbsp;&nbsp;</span> Meets target &nbsp;
+    <span class="dash-warn">&nbsp;&nbsp;&nbsp;</span> Below target, in progress &nbsp;
+    <span class="dash-fail">&nbsp;&nbsp;&nbsp;</span> Needs attention
+  </p>
+
+  <p class="dashboard-more"><a href="dashboard-trends.html">Verification trends over time &#8594;</a></p>
+
+  <noscript>
+    <p class="dashboard-status dashboard-status-error">
+      This dashboard renders live regression data with JavaScript. With
+      scripting disabled, read the published data directly from the
+      <a href="https://github.com/tenstorrent/tt-oca-harness/tree/dv-dashboard-data"><code>dv-dashboard-data</code></a>
+      branch.
+    </p>
+  </noscript>
+</div>
+<script src="../../_/js/dashboard.js"></script>
+++++
+endif::[]
+
+ifndef::backend-html5[]
+[NOTE]
+====
+The verification dashboard renders live regression data in the browser and has
+no static equivalent in this PDF. See the Verification Dashboard page of the
+published HTML documentation for current figures.
+====
+endif::[]

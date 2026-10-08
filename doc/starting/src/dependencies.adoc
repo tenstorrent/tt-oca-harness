@@ -12,12 +12,11 @@ This document is currently under development.
 This section outlines the system requirements and dependencies for the
 OCAH project. To install the required packages, refer to xref:setup.adoc[Environment Setup].
 
+[[system-requirements]]
 == System Requirements
 
-* *Linux Distribution*: The xref:setup.adoc#native[Native Installation guide] is written
-for Ubuntu 26.04 LTS, but most modern distributions should be compatible, though package
-installation instructions may vary. Development on MacOS _should_ also be possible, though
-you will need to handle package installation yourself.
+* *Operating System*: x86_64 Linux or macOS with the prebuilt container. See
+xref:setup.adoc#supported-platforms[Supported platforms] for what each setup supports.
 * *Python*: Version 3.11 - 3.13 (3.14+ is not supported at this time)
 * *CPU*: Multi-core processor (8+ cores recommended for simulation and synthesis)
 * *Memory*: Minimum 16GB RAM recommended for full builds, 32GB recommended for large designs
