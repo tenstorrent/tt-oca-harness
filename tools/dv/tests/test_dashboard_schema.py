@@ -194,6 +194,10 @@ RUN_METADATA_FIELDS = {
 }
 JUNIT_FIELDS = {"total", "missing"}
 DUTS = ("cross_trigger_port", "dtp", "sep", "smc")
+RUN_START = "2026-10-03T10:03:00+00:00"
+NEXT_RUN_START = "2026-10-04T10:03:00+00:00"
+COLLECTED_AT = "2026-10-04T12:00:00+00:00"
+RECOLLECTED_AT = "2026-10-05T12:00:00+00:00"
 
 
 class ContractCase(unittest.TestCase):
@@ -294,30 +298,23 @@ class TrendHistory(ContractCase):
         self.assertEqual(len(same), 16)
 
     def test_identity_follows_the_run_start_not_the_collection(self):
-        def point_id(collected="2026-10-04T12:00:00+00:00", **kwargs):
+        def point_id(collected=COLLECTED_AT, **kwargs):
             records = self.records(**kwargs)
             for record in records:
                 record["generated_at"] = collected
             return make_trend_point(make_summary(records))["id"]
 
-        night = point_id(start_time="2026-10-03T10:03:00+00:00")
-        self.assertEqual(
-            night,
-            point_id(collected="2026-10-05T12:00:00+00:00", start_time="2026-10-03T10:03:00+00:00"),
-        )
-        self.assertNotEqual(night, point_id(start_time="2026-10-04T10:03:00+00:00"))
+        run = point_id(start_time=RUN_START)
+        self.assertEqual(run, point_id(collected=RECOLLECTED_AT, start_time=RUN_START))
+        self.assertNotEqual(run, point_id(start_time=NEXT_RUN_START))
         self.assertNotEqual(
-            point_id(run_metadata={"generated_at": "2026-10-03T10:03:00+00:00"}),
-            point_id(run_metadata={"generated_at": "2026-10-04T10:03:00+00:00"}),
+            point_id(run_metadata={"generated_at": RUN_START}),
+            point_id(run_metadata={"generated_at": NEXT_RUN_START}),
         )
 
     def test_update_keeps_two_runs_of_one_run_dir_and_revision(self):
-        first = update_history(
-            None, make_summary(self.records(start_time="2026-10-03T10:03:00+00:00"))
-        )
-        second = update_history(
-            first, make_summary(self.records(start_time="2026-10-04T10:03:00+00:00"))
-        )
+        first = update_history(None, make_summary(self.records(start_time=RUN_START)))
+        second = update_history(first, make_summary(self.records(start_time=NEXT_RUN_START)))
         self.assertEqual(len(second["points"]), 2)
 
     def test_update_replaces_the_point_of_identical_inputs_only(self):
