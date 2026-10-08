@@ -34,11 +34,24 @@ def parse_hex_cells(path: str) -> dict:
 
 
 def find_magic(cells: dict, magic_le: bytes) -> int:
-    """Return the byte address where the little-endian magic bytes start."""
-    for base in sorted(cells):
-        if all(cells.get(base + i) == magic_le[i] for i in range(len(magic_le))):
-            return base
-    raise RuntimeError("param-block magic not found in DTCM image")
+    """Return the byte address where the little-endian magic bytes start.
+
+    The magic must occur exactly once: a second match would leave the patch
+    target ambiguous.
+    """
+    hits = [
+        base
+        for base in sorted(cells)
+        if all(cells.get(base + i) == magic_le[i] for i in range(len(magic_le)))
+    ]
+    if not hits:
+        raise RuntimeError("param-block magic not found in DTCM image")
+    if len(hits) > 1:
+        raise RuntimeError(
+            f"param-block magic found {len(hits)} times in DTCM image at "
+            + ", ".join(f"0x{h:x}" for h in hits)
+        )
+    return hits[0]
 
 
 def _rewrite(src: str, dst: str, patches: dict) -> None:
