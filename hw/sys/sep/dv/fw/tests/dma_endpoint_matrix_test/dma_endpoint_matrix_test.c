@@ -29,6 +29,9 @@
 #include "sep_pic.h"
 #include "filter_ctrl.h"
 #include "output_remap.h"
+#include "aes.h"
+#include "aon_timer.h"
+#include "sep_scratch.h"
 
 // ---- Parameter block (the host patches it; keep in step with the test) ----
 #define P_MAGIC_WORD 0xDAE9D0A3u
@@ -85,6 +88,14 @@ volatile uint32_t g_p[P_COUNT] = {
 #define SCRATCH SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR
 #define WDT_REGWEN SEP_TOP_WDT_TIMER_WDOG_REGWEN_BASE_ADDR
 #define AES_AUX_REGWEN SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR
+// The REGWEN field of each register source as it reads from reset.
+#define WDT_REGWEN_SET (AON_TIMER__WDOG_REGWEN__REGWEN_reset << AON_TIMER__WDOG_REGWEN__REGWEN_bp)
+#define AES_AUX_REGWEN_SET \
+    (AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset << AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_bp)
+// A scratch register is 8 bytes; its DATA field fills the low lane only.
+#define SCRATCH_STRIDE \
+    (SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1) - SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
+#define SCRATCH_FIELD_LANE(a) (((a) % SCRATCH_STRIDE) < (SEP_SCRATCH__SCRATCH__DATA_bw / 8u))
 #define EXT_WORD (SEP_TOP_SEP_EXTERNAL_BASE_ADDR + 0x100u)
 // Top word of the 768 MiB local alias span (hw/sys/sep/doc/fabric.adoc, SEP CPU
 // local-alias traffic), through the alias window.
@@ -282,7 +293,7 @@ static void pair_sram_to_scratch(void) {
     uint32_t x = seed_of(0x10u);
     for (uint32_t i = 0; i < n; i++) {
         uint32_t m = lcg(&x);
-        if (((dst + 4u * i) & 4u) == 0u) wr(dst + 4u * i, ~m);
+        if (SCRATCH_FIELD_LANE(dst + 4u * i)) wr(dst + 4u * i, ~m);
     }
     mark('G', "pair_sram_scratch");
     uint32_t st = dma_run(src, dst, len, 1, 1);
@@ -291,7 +302,7 @@ static void pair_sram_to_scratch(void) {
     for (uint32_t i = 0; i < n; i++) {
         uint32_t a = dst + 4u * i;
         uint32_t m = lcg(&x);
-        if ((a & 4u) == 0u) {
+        if (SCRATCH_FIELD_LANE(a)) {
             uint32_t v = rd(a);
             h = fnv(h, v);
             ng++;
@@ -321,7 +332,7 @@ static void pair_scratch_to_sram(void) {
     uint32_t x = seed_of(0x11u);
     for (uint32_t i = 0; i < n; i++) {
         uint32_t m = lcg(&x);
-        if (((src + 4u * i) & 4u) == 0u) wr(src + 4u * i, m);
+        if (SCRATCH_FIELD_LANE(src + 4u * i)) wr(src + 4u * i, m);
     }
     stage_dst_not(dst_d, n, 0x11u);
     mark('G', "pair_scratch_sram");
@@ -331,7 +342,7 @@ static void pair_scratch_to_sram(void) {
     for (uint32_t i = 0; i < n; i++) {
         uint32_t v = rd(dst_d + 4u * i);
         uint32_t m = lcg(&x);
-        if (((src + 4u * i) & 4u) == 0u) {
+        if (SCRATCH_FIELD_LANE(src + 4u * i)) {
             h = fnv(h, v);
             ng++;
             if (v != m) bad++;
@@ -353,13 +364,15 @@ static void pair_scratch_to_sram(void) {
     dma_clear();
 }
 
-// A register source at a fixed address. Bit 0 reads 1 from reset and the
-// leaf never writes the register; the destination is staged with bit 0 = 0.
-static void pair_reg_to_sram(int id, uint32_t reg, uint32_t len, uint32_t off, const char *leg) {
+// A register source at a fixed address. Its REGWEN field (`set`) reads set
+// from reset and the leaf never writes the register; the destination is
+// staged with that field clear.
+static void pair_reg_to_sram(int id, uint32_t reg, uint32_t set, uint32_t len, uint32_t off,
+                             const char *leg) {
     uint32_t n = len / 4u;
     uint32_t dst = sram_side(id, off), dst_d = SRAM + off;
     uint32_t x = seed_of(0x10u + (uint32_t)id);
-    for (uint32_t i = 0; i < n; i++) wr(dst_d + 4u * i, lcg(&x) & ~1u);
+    for (uint32_t i = 0; i < n; i++) wr(dst_d + 4u * i, lcg(&x) & ~set);
     uint32_t pre_v = rd(reg);
     mark('G', leg);
     uint32_t st = dma_run(reg, dst, len, 0, 1);
@@ -370,7 +383,7 @@ static void pair_reg_to_sram(int id, uint32_t reg, uint32_t len, uint32_t off, c
         dor |= v;
         dand &= v;
         h = fnv(h, v);
-        if ((v & 1u) != 1u) nb0++;
+        if ((v & set) != set) nb0++;
     }
     rec("PAIR");
     kv("id", (uint32_t)id);
@@ -1002,10 +1015,12 @@ int main(void) {
             pair_scratch_to_sram();
             break;
         case 2:
-            pair_reg_to_sram(2, WDT_REGWEN, g_p[P2_LEN], g_p[P2_SRAM], "pair_wdt_sram");
+            pair_reg_to_sram(2, WDT_REGWEN, WDT_REGWEN_SET, g_p[P2_LEN], g_p[P2_SRAM],
+                             "pair_wdt_sram");
             break;
         case 3:
-            pair_reg_to_sram(3, AES_AUX_REGWEN, g_p[P3_LEN], g_p[P3_SRAM], "pair_aes_sram");
+            pair_reg_to_sram(3, AES_AUX_REGWEN, AES_AUX_REGWEN_SET, g_p[P3_LEN], g_p[P3_SRAM],
+                             "pair_aes_sram");
             break;
         default:
             sep_mbx_puts("FAIL: bad pair order\n");

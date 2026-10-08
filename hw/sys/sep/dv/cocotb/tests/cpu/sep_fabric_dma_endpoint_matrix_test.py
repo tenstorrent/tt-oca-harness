@@ -154,6 +154,18 @@ PAIR_NAMES = (
     ("wdt_regwen", "sram"),
     ("aes_ctrl_aux_regwen", "sram"),
 )
+# Register-source pairs: the single REGWEN field, set from reset (RDL reset).
+_WDT_REGWEN = RegBlock("WDT_TIMER")
+_AES_REGWEN = RegBlock("AES")
+REG_SRC_BIT = {
+    2: _WDT_REGWEN.reset("WDOG_REGWEN") & _WDT_REGWEN.mask("WDOG_REGWEN"),
+    3: _AES_REGWEN.reset("CTRL_AUX_REGWEN") & _AES_REGWEN.mask("CTRL_AUX_REGWEN"),
+}
+# A scratch register is 8 bytes; its DATA field fills the low lane only.
+SCRATCH_STRIDE = sym("SEP_SCRATCH_COLD_SCRATCH_1__REG_ADDR") - sym(
+    "SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR"
+)
+SCRATCH_FIELD_BYTES = RegBlock("SEP_SCRATCH_COLD").field_width("SCRATCH_0_", "data") // 8
 PAIR_LEG = ("pair_sram_scratch", "pair_scratch_sram", "pair_wdt_sram", "pair_aes_sram")
 
 
@@ -481,7 +493,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             if pid in (0, 1):
                 m = model_words(seed, 0x10 + pid, n)
                 scr = SCRATCH + (p["p0_scr"] if pid == 0 else p["p1_scr"])
-                graded = [m[i] for i in range(n) if ((scr + 4 * i) & 4) == 0]
+                graded = [
+                    m[i] for i in range(n) if (scr + 4 * i) % SCRATCH_STRIDE < SCRATCH_FIELD_BYTES
+                ]
                 exp = fnv(graded)
                 ok = r["ng"] == len(graded) and r["nbad"] == 0 and r["dsum"] == exp
                 assert ok, (
@@ -503,11 +517,12 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             else:
                 nw, xz = self._xz_free(self._sram_in(leg_i))
                 xz_graded = "vcs" in str(getattr(cocotb, "SIM_NAME", "") or "").lower()
+                bit = REG_SRC_BIT[pid]
                 ok = (
-                    (r["regpre"] & 1) == 1
-                    and (r["regpost"] & 1) == 1
+                    (r["regpre"] & bit) == bit
+                    and (r["regpost"] & bit) == bit
                     and r["nbit0bad"] == 0
-                    and (r["dand"] & 1) == 1
+                    and (r["dand"] & bit) == bit
                     and xz == 0
                     and nw >= n
                 )
@@ -523,8 +538,8 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                     ln,
                     nw,
                     int(bool(xz_graded)),
-                    r["dor"] & ~1,
-                    r["dand"] & ~1,
+                    r["dor"] & ~bit,
+                    r["dand"] & ~bit,
                 )
 
         # Outbound legs: completion and the PR-OUT beats of each leg.
