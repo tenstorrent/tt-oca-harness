@@ -12,6 +12,7 @@ This document is currently under development.
 This section outlines the system requirements and dependencies for the
 OCAH project. To install the required packages, refer to xref:setup.adoc[Environment Setup].
 
+[[system-requirements]]
 == System Requirements
 
 * *Operating System*: x86_64 Linux or macOS with the prebuilt container. See
