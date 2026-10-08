@@ -27,7 +27,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-pic[programming guidance]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-pic[programming guidance]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-pic[programming guidance]
 endif::backend-pdf[]
 for this block.
 
@@ -194,7 +194,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-configuration-straps[configuration strap section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-configuration-straps[configuration strap section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-configuration-straps[configuration strap section]
 endif::backend-pdf[]
 of the Programmer's Guide describes reading them.
 
@@ -217,7 +217,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#dtp-sep-reset-vector[redirect procedure].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-sep-reset-vector[redirect procedure].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-sep-reset-vector[redirect procedure].
 endif::backend-pdf[]
 
 

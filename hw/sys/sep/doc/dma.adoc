@@ -21,7 +21,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-dma[programming guidance]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-dma[programming guidance]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-dma[programming guidance]
 endif::backend-pdf[]
 for this block.
 
@@ -85,7 +85,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-dma[SEP DMA section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-dma[SEP DMA section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-dma[SEP DMA section]
 endif::backend-pdf[]
 of the Programmer's Guide gives the copy, hashing, handshake and abort
 sequences.

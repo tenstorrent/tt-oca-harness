@@ -199,6 +199,6 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-gpio-access-filter[GPIO access filtering procedure]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-gpio-access-filter[GPIO access filtering procedure]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-gpio-access-filter[GPIO access filtering procedure]
 endif::backend-pdf[]
 in the Programmer's Guide gives the setup and readback requirements.

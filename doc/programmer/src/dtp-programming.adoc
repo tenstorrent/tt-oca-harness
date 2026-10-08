@@ -19,7 +19,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:ip:cross_trigger_network/doc/index.adoc#ctn-address-allocation-table[CTN address allocation table]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/cross_trigger_network/doc/index.html#ctn-address-allocation-table[CTN address allocation table]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/cross_trigger_network/doc/index.html#ctn-address-allocation-table[CTN address allocation table]
 endif::backend-pdf[]
 lists the CTM and CTP windows. Firmware and an external debugger share this
 window, and whichever of them programs cross triggers follows the sequence
@@ -63,7 +63,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:ip:cross_trigger_network/doc/index.adoc#ctn-matrix-port-indices-table[CTM port index table]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/cross_trigger_network/doc/index.html#ctn-matrix-port-indices-table[CTM port index table]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/cross_trigger_network/doc/index.html#ctn-matrix-port-indices-table[CTM port index table]
 endif::backend-pdf[]
 maps port indices to external and internal CTPs.
 
@@ -107,7 +107,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:ip:cross_trigger_network/doc/index.adoc#sip-cross-trigger-topology-figure[example SiP cross-trigger topology]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/cross_trigger_network/doc/index.html#sip-cross-trigger-topology-figure[example SiP cross-trigger topology]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/cross_trigger_network/doc/index.html#sip-cross-trigger-topology-figure[example SiP cross-trigger topology]
 endif::backend-pdf[]
 links six chiplets: Chiplets 0, 1 and 2 share a wire-OR line, and
 point-to-point pairs link Chiplet 0 with Chiplets 3 and 4, and Chiplet 3 with
@@ -233,14 +233,14 @@ ifdef::backend-html5[]
 xref:ocah-docs:ip:jtag_ptap/doc/index.adoc#ptap-debug-control-fields-table[DEBUG_CONTROL fields table]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/jtag_ptap/doc/index.html#ptap-debug-control-fields-table[DEBUG_CONTROL fields table]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/jtag_ptap/doc/index.html#ptap-debug-control-fields-table[DEBUG_CONTROL fields table]
 endif::backend-pdf[]
 and the
 ifdef::backend-html5[]
 xref:ocah-docs:ip:jtag_ptap/doc/index.adoc#ptap-jtag-caps-fields-table[JTAG_CAPS fields table]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/jtag_ptap/doc/index.html#ptap-jtag-caps-fields-table[JTAG_CAPS fields table]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/jtag_ptap/doc/index.html#ptap-jtag-caps-fields-table[JTAG_CAPS fields table]
 endif::backend-pdf[]
 define the fields.
 
@@ -284,7 +284,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:ip:jtag_intf_unit/doc/index.adoc#jiu-ijtag-network[iJTAG network description]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/jtag_intf_unit/doc/index.html#jiu-ijtag-network[iJTAG network description]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/jtag_intf_unit/doc/index.html#jiu-ijtag-network[iJTAG network description]
 endif::backend-pdf[]
 gives the SIB bit map and segment ports.
 
@@ -336,7 +336,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:dtp:clk_rst.adoc#dtp-ic-reset-overrides[IC_RESET override description]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/dtp/clk_rst.html#dtp-ic-reset-overrides[IC_RESET override description]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/dtp/clk_rst.html#dtp-ic-reset-overrides[IC_RESET override description]
 endif::backend-pdf[]
 gives the TDR slice order.
 
@@ -374,6 +374,6 @@ ifdef::backend-html5[]
 xref:ocah-docs:smc:cpu.adoc#smc-debug-command-cmderr[SMC Debug Module description]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/smc/cpu.html#smc-debug-command-cmderr[SMC Debug Module description]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/smc/cpu.html#smc-debug-command-cmderr[SMC Debug Module description]
 endif::backend-pdf[]
 gives the full write behavior.

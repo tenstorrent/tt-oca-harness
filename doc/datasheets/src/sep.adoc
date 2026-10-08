@@ -205,7 +205,7 @@ VERIFICATION AND MATURITY
 
 [.beta-note]
 --
-The OCAH https://tenstorrent.github.io/tt-oca-harness/ocah-home/latest/dashboard.html[verification dashboard]
+The OCAH https://docs.tenstorrent.com/tt-oca-harness/ocah-home/latest/dashboard.html[verification dashboard]
 publishes the current verification and maturity status.
 The open-source cocotb/PyUVM environment runs against the SEP integration
 wrapper, combining the SEP RTL with memory macros and a generic eFuse model.
@@ -237,7 +237,7 @@ DELIVERABLES
 [.datasheet-section]
 RESOURCES
 
-Documentation: https://tenstorrent.github.io/tt-oca-harness/[tenstorrent.github.io/tt-oca-harness] +
+Documentation: https://docs.tenstorrent.com/tt-oca-harness/[docs.tenstorrent.com/tt-oca-harness] +
 SEP source documentation: `hw/sys/sep/doc/` +
 RTL and registers: `hw/sys/sep/rtl/`, `hw/sys/sep/regs/` +
 Boot firmware: `hw/sys/sep/bootrom/` +
