@@ -302,7 +302,8 @@ path.
 SEP outbound traffic carries a source ID in AxUSER. Both AP- and STEE-controlled
 remappers replace it with `OTHERS`. Other traffic retains the initiator's ID:
 the CPU masters drive SEP's ID, while the secure DMA master leaves AxUSER at
-zero (`OTHERS`). AxPROT, including NS, passes unchanged. The outbound filter
+zero (`OTHERS`). AxPROT, including NS, passes unchanged; the initiators' values
+are in <<sep-cpu-axprot-table>>. The outbound filter
 checks address, NS and source ID after remapping. The Programmer's Guide
 describes how to
 ifdef::backend-html5[]

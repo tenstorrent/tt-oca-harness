@@ -56,6 +56,24 @@ core and its buses run on the SEP clock. `mpc_reset_run_req_i` passes a two-flop
 synchronizer in `sep_cpu`; the core synchronizes the NMI, timer, software
 interrupt and the other halt and run requests itself.
 
+Every SEP bus master drives a fixed AxPROT, shown in
+<<sep-cpu-axprot-table>>. The value does not follow the hart's privilege mode,
+so a U-mode load still issues as privileged. The upstream VeeR EL2 port
+documentation lists `0b100` for IFU reads and `0b000` for the LSU and debug
+masters; the core drives the values in the table. The core ignores AxPROT on its
+DMA slave port.
+
+[[sep-cpu-axprot-table]]
+.AxPROT driven by the SEP bus masters
+[cols="2,1,1,2",options="header"]
+|===
+|Master |AWPROT |ARPROT |Meaning
+|IFU, to the boot ROM and SEP SRAM |not issued |`0b101` |Privileged, secure, instruction
+|LSU, to the boot ROM and local crossbar |`0b001` |`0b001` |Privileged, secure, data
+|Debug system bus |`0b001` |`0b001` |Privileged, secure, data
+|Secure DMA master |`0b001` |`0b001` |Privileged, secure, data
+|===
+
 [[cpu-feature-summary]]
 == Processor Core
 
