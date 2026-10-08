@@ -198,7 +198,7 @@ VERIFICATION AND MATURITY
 
 [.beta-note]
 --
-The OCAH https://tenstorrent.github.io/tt-oca-harness/ocah-home/latest/dashboard.html[verification dashboard]
+The OCAH https://docs.tenstorrent.com/tt-oca-harness/ocah-home/latest/dashboard.html[verification dashboard]
 publishes the current verification and maturity status.
 Hosted cocotb/PyUVM smoke and regression exercise the no-SEP configuration,
 covering SMC/DTP composition, direct external AXI, filters, ID conversion,
@@ -227,7 +227,7 @@ DELIVERABLES
 [.datasheet-section]
 RESOURCES
 
-Documentation: https://tenstorrent.github.io/tt-oca-harness/[tenstorrent.github.io/tt-oca-harness] +
+Documentation: https://docs.tenstorrent.com/tt-oca-harness/[docs.tenstorrent.com/tt-oca-harness] +
 SMU documentation: Technical Reference Manual +
 Core and reference wrapper RTL: `hw/sys/smu/rtl/`, `hw/top/` +
 Verification: `hw/sys/smu/dv/` +

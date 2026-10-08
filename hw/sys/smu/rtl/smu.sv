@@ -508,6 +508,10 @@ module smu #(
   // =========================================================================
   // SMU AXI Crossbar signals
   // =========================================================================
+  // External inbound AXI, after the SMU boundary cut
+  smu_axi_xbar_pkg::axi_56_64_req_t   smu_axi_in_cut_req;
+  smu_axi_xbar_pkg::axi_56_64_resp_t  smu_axi_in_cut_resp;
+
   // SEP outbound AXI (manager into xbar)
   sep_pkg::sep_system_peripherals_outbound_axi_req_t   sep_smn_outbound_axi_req;
   sep_pkg::sep_system_peripherals_outbound_axi_resp_t  sep_smn_outbound_axi_resp;
@@ -853,6 +857,28 @@ module smu #(
   );
 
   //--------------------------------------------------------------------------
+  // External inbound AXI boundary cut
+  //--------------------------------------------------------------------------
+
+  axi_cut #(
+    .Bypass     (1'b0),
+    .aw_chan_t  (smu_axi_xbar_pkg::axi_56_64_aw_chan_t),
+    .w_chan_t   (smu_axi_xbar_pkg::axi_56_64_w_chan_t),
+    .b_chan_t   (smu_axi_xbar_pkg::axi_56_64_b_chan_t),
+    .ar_chan_t  (smu_axi_xbar_pkg::axi_56_64_ar_chan_t),
+    .r_chan_t   (smu_axi_xbar_pkg::axi_56_64_r_chan_t),
+    .axi_req_t  (smu_axi_xbar_pkg::axi_56_64_req_t),
+    .axi_resp_t (smu_axi_xbar_pkg::axi_56_64_resp_t)
+  ) u_smu_axi_in_cut (
+    .clk_i      (clk_smu_i),
+    .rst_ni     (rst_primary_smc_clk_no),
+    .slv_req_i  (smu_axi_in_req_i),
+    .slv_resp_o (smu_axi_in_resp_o),
+    .mst_req_o  (smu_axi_in_cut_req),
+    .mst_resp_i (smu_axi_in_cut_resp)
+  );
+
+  //--------------------------------------------------------------------------
   // SEP-dependent logic (if/else based on CFG.SEP)
   //--------------------------------------------------------------------------
 
@@ -1036,8 +1062,8 @@ module smu #(
       .sep_out_resp_o         (sep_out_xbar_resp),
       .smc_out_req_i          (smc_out_xbar_req),
       .smc_out_resp_o         (smc_out_xbar_resp),
-      .ext_in_req_i           (smu_axi_in_req_i),
-      .ext_in_resp_o          (smu_axi_in_resp_o),
+      .ext_in_req_i           (smu_axi_in_cut_req),
+      .ext_in_resp_o          (smu_axi_in_cut_resp),
       // Target ports
       .sep_in_req_o           (xbar_to_sep_req),
       .sep_in_resp_i          (xbar_to_sep_resp),
@@ -1246,8 +1272,8 @@ module smu #(
     ) u_iw_conv_smc_in (
       .clk_i      (clk_smu_i),
       .rst_ni     (rst_primary_smc_clk_no),
-      .slv_req_i  (smu_axi_in_req_i),
-      .slv_resp_o (smu_axi_in_resp_o),
+      .slv_req_i  (smu_axi_in_cut_req),
+      .slv_resp_o (smu_axi_in_cut_resp),
       .mst_req_o  (smc_sys_axi_in_req),
       .mst_resp_i (smc_sys_axi_in_resp)
     );

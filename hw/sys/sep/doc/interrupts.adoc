@@ -349,7 +349,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-memory-errors[memory error handling section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-memory-errors[memory error handling section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-memory-errors[memory error handling section]
 endif::backend-pdf[]
 of the Programmer's Guide gives the enable and service sequence.
 
@@ -435,7 +435,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-pic[PIC section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-pic[PIC section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-pic[PIC section]
 endif::backend-pdf[]
 of the Programmer's Guide gives the programming and per-source service
 rules.

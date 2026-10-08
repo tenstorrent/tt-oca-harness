@@ -201,18 +201,20 @@ set_output_delay 0 -clock [get_clock SPICLK] [get_ports {spi_rxd_o*}] -add_delay
 set_output_delay 0 -clock [get_clock SPICLK] [get_ports spi_rxds_o] -add_delay
 set_output_delay 0 -clock [get_clock SPICLK] [get_ports spi_mem_rebar_ipad_o] -add_delay
 
-# I3C — data-memory read response bus (struct-flattened port names). Tied or driven
+# I3C DAT/DCT/RLT memory interfaces (struct-flattened port names). Tied or driven
 # from the memory controller in chip context; stamp PERIPHERALCLK for block CDC SETUP.
-set i3c_dmem_ports [get_ports -quiet "i3c_dat_mem_src_i*"]
-if {[sizeof_collection $i3c_dmem_ports] > 0} {
-    set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_dmem_ports -add_delay
-    puts "INFO: set_input_delay PERIPHERALCLK on i3c_dat_mem_src_i* ([sizeof_collection $i3c_dmem_ports] ports)"
-}
-
-set i3c_dct_mem_ports [get_ports -quiet "i3c_dct_mem_src_i*"]
-if {[sizeof_collection $i3c_dct_mem_ports] > 0} {
-    set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_dct_mem_ports -add_delay
-    puts "INFO: set_input_delay PERIPHERALCLK on i3c_dct_mem_src_i* ([sizeof_collection $i3c_dct_mem_ports] ports)"
+# Guarded with -quiet since I3C is a configurable peripheral count.
+foreach mem {dat dct rlt} {
+    set i3c_mem_src_ports [get_ports -quiet "i3c_${mem}_mem_src_i*"]
+    if {[sizeof_collection $i3c_mem_src_ports] > 0} {
+        set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_mem_src_ports -add_delay
+        puts "INFO: set_input_delay PERIPHERALCLK on i3c_${mem}_mem_src_i* ([sizeof_collection $i3c_mem_src_ports] ports)"
+    }
+    set i3c_mem_sink_ports [get_ports -quiet "i3c_${mem}_mem_sink_o*"]
+    if {[sizeof_collection $i3c_mem_sink_ports] > 0} {
+        set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_mem_sink_ports -add_delay
+        puts "INFO: set_output_delay PERIPHERALCLK on i3c_${mem}_mem_sink_o* ([sizeof_collection $i3c_mem_sink_ports] ports)"
+    }
 }
 
 # SMC control/status signals

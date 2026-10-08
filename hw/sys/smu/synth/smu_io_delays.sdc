@@ -33,6 +33,7 @@ set_output_delay [expr $clock_periods(REFCLK_PERIOD)*0.5]       -clock [get_cloc
 
 set_output_delay [expr $clock_periods(REFCLK_PERIOD)*0.5]       -clock [get_clock REFCLK] [get_ports rst_primary_ref_clk_no] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports rst_primary_smc_clk_no] -add_delay
+set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] [get_ports rst_primary_periph_clk_no] -add_delay
 
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports rst_cool_n_from_pin_i] -add_delay
 
@@ -146,28 +147,28 @@ set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_cloc
 # memory
 # set the outputs to lower delay, they should go direct to the memory macro
 # set the inputs to higher delay to emulate the access time of the memory
-# - ROMs will have a large access time (70%), SRAMs will have a smaller access time (50%)
+# - ROMs will have a large access time (70%), SRAMs will have a smaller access time (60%)
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMUCLK] [filter_collection [get_ports {smc_rom_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.7]       -clock [get_clock SMUCLK] [get_ports {smc_rom_intf_rsp_i*}] -add_delay
 
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMUCLK] [filter_collection [get_ports {smc_scratch_ram_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_scratch_ram_intf_rsp_i*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.6]       -clock [get_clock SMUCLK] [get_ports {smc_scratch_ram_intf_rsp_i*}] -add_delay
 
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMUCLK] [filter_collection [get_ports {smc_l1_icache_tag_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_l1_icache_tag_intf_rsp_i*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.6]       -clock [get_clock SMUCLK] [get_ports {smc_l1_icache_tag_intf_rsp_i*}] -add_delay
 
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMUCLK] [filter_collection [get_ports {smc_l1_icache_data_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_l1_icache_data_intf_rsp_i*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.6]       -clock [get_clock SMUCLK] [get_ports {smc_l1_icache_data_intf_rsp_i*}] -add_delay
 
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMUCLK] [filter_collection [get_ports {smc_l1_dcache_tag_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_l1_dcache_tag_intf_rsp_i*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.6]       -clock [get_clock SMUCLK] [get_ports {smc_l1_dcache_tag_intf_rsp_i*}] -add_delay
 
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMUCLK] [filter_collection [get_ports {smc_l1_dcache_data_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_l1_dcache_data_intf_rsp_i*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.6]       -clock [get_clock SMUCLK] [get_ports {smc_l1_dcache_data_intf_rsp_i*}] -add_delay
 
 # Trace Memory
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMUCLK] [get_ports {trace_mem_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {trace_mem_resp_i*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.6]       -clock [get_clock SMUCLK] [get_ports {trace_mem_resp_i*}] -add_delay
 
 # OCTS
 # Quasi-static: a chiplet identity strap, settled before the timer comes out of
@@ -180,40 +181,28 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {ext_debug_bus_i*}] -add_delay
 
 # Test
-cdc_pinned_port_delay set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports test_en_i] -add_delay
-cdc_pinned_port_delay set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports scan_rst_ni] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports test_en_i] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports scan_rst_ni] -add_delay
 
 # Memory Init
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports smc_init_mem_done_o] -add_delay
 
-# I3C DAT/DCT memory interfaces (see the same construct in the SMC block
-# SDC). I/O delays are stamped on PERIPHERALCLK for both directions - the
-# `_src_i` inputs and the `_sink_o` responses (real `smu` top-level outputs)
-# - guarded with `-quiet` since I3C is a configurable peripheral count.
-set i3c_dmem_src_ports [get_ports -quiet "i3c_dat_mem_src_i*"]
-if {[sizeof_collection $i3c_dmem_src_ports] > 0} {
-    set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_dmem_src_ports -add_delay
+# I3C DAT/DCT/RLT memory interfaces (struct-flattened port names). Tied or driven
+# from the memory controller in chip context; stamp PERIPHERALCLK for block CDC SETUP.
+# Guarded with -quiet since I3C is a configurable peripheral count.
+foreach mem {dat dct rlt} {
+    set i3c_mem_src_ports [get_ports -quiet "i3c_${mem}_mem_src_i*"]
+    if {[sizeof_collection $i3c_mem_src_ports] > 0} {
+        set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_mem_src_ports -add_delay
+        puts "INFO: set_input_delay PERIPHERALCLK on i3c_${mem}_mem_src_i* ([sizeof_collection $i3c_mem_src_ports] ports)"
+    }
+    set i3c_mem_sink_ports [get_ports -quiet "i3c_${mem}_mem_sink_o*"]
+    if {[sizeof_collection $i3c_mem_sink_ports] > 0} {
+        set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_mem_sink_ports -add_delay
+        puts "INFO: set_output_delay PERIPHERALCLK on i3c_${mem}_mem_sink_o* ([sizeof_collection $i3c_mem_sink_ports] ports)"
+    }
 }
-set i3c_dmem_sink_ports [get_ports -quiet "i3c_dat_mem_sink_o*"]
-if {[sizeof_collection $i3c_dmem_sink_ports] > 0} {
-    set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_dmem_sink_ports -add_delay
-}
-set i3c_dctmem_src_ports [get_ports -quiet "i3c_dct_mem_src_i*"]
-if {[sizeof_collection $i3c_dctmem_src_ports] > 0} {
-    set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_dctmem_src_ports -add_delay
-}
-set i3c_dctmem_sink_ports [get_ports -quiet "i3c_dct_mem_sink_o*"]
-if {[sizeof_collection $i3c_dctmem_sink_ports] > 0} {
-    set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_dctmem_sink_ports -add_delay
-}
-set i3c_rltmem_src_ports [get_ports -quiet "i3c_rlt_mem_src_i*"]
-if {[sizeof_collection $i3c_rltmem_src_ports] > 0} {
-    set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_rltmem_src_ports -add_delay
-}
-set i3c_rltmem_sink_ports [get_ports -quiet "i3c_rlt_mem_sink_o*"]
-if {[sizeof_collection $i3c_rltmem_sink_ports] > 0} {
-    set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_rltmem_sink_ports -add_delay
-}
+
 
 
 ########################################################

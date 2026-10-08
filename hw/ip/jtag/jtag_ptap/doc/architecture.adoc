@@ -282,7 +282,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#dtp-ptap-tdr-access[TDR access sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ptap-tdr-access[TDR access sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ptap-tdr-access[TDR access sequence]
 endif::backend-pdf[]
 for this register.
 
@@ -312,7 +312,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#dtp-ptap-tdr-access[TDR access sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ptap-tdr-access[TDR access sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ptap-tdr-access[TDR access sequence]
 endif::backend-pdf[]
 for this register.
 
@@ -355,7 +355,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#dtp-ptap-tdr-access[TDR access sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ptap-tdr-access[TDR access sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ptap-tdr-access[TDR access sequence]
 endif::backend-pdf[]
 for this register.
 
@@ -372,7 +372,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#dtp-ptap-tdr-access[TDR access sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ptap-tdr-access[TDR access sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ptap-tdr-access[TDR access sequence]
 endif::backend-pdf[]
 for these registers.
 
@@ -397,7 +397,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#dtp-runbist[BIST execution sequence].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-runbist[BIST execution sequence].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-runbist[BIST execution sequence].
 endif::backend-pdf[]
 
 ifdef::backend-html5[]

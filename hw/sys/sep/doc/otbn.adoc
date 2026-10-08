@@ -101,7 +101,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-otbn[programming guidance]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-otbn[programming guidance]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-otbn[programming guidance]
 endif::backend-pdf[]
 for this block.
 The

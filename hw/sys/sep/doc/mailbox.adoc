@@ -72,7 +72,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-smc-mailbox-protocol[mailbox usage rules].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-mailbox-protocol[mailbox usage rules].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-mailbox-protocol[mailbox usage rules].
 endif::backend-pdf[]
 
 Mailbox type is a configuration, not a hardware variant. Every mailbox is an
