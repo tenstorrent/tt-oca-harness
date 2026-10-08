@@ -86,14 +86,21 @@ which let you run `docker` without `sudo`.
 
 Install Git by running `xcode-select --install`, then install
 https://podman.io/docs/installation#macos[Podman]. Podman runs containers in a
-Linux virtual machine; create and start it:
+Linux virtual machine. Give that machine 8 GB of memory when you create it, then
+start it:
 
 ```bash
-podman machine init
+podman machine init --memory 8192
 podman machine start
 ```
 
-After a reboot, run `podman machine start` again before using the container.
+A machine created without `--memory` has 2 GB of memory and no swap. Firmware
+builds compile several files at once, and on Apple silicon each compiler process
+also emulates the x86_64 image, so that default runs out of memory and the build
+stops with `Killed signal terminated program lto1`. Resize an existing machine
+with `podman machine stop`, `podman machine set --memory 8192` and
+`podman machine start`. After a reboot, run `podman machine start` again before
+using the container.
 
 === Step 2: Get the repository
 
@@ -219,6 +226,12 @@ new location with `podman info | grep -i graphroot`.
 `podman: command not found` or `podman or docker is required`::
 Step 1 is incomplete, or on macOS the Podman machine is not running. Run
 `podman machine start`.
+
+`Killed signal terminated program lto1`::
+The Podman machine ran out of memory during a firmware build. Stop it, run
+`podman machine set --memory 8192` and start it again, as described under
+<<container-engine-setup>>. Building with fewer parallel jobs
+(`OCAH_DV_FW_JOBS=2`) also fits in a smaller machine.
 
 [[alternative-setups]]
 == Alternative setups
