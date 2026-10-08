@@ -776,6 +776,12 @@ jobs:
         run: |
           uv run --no-project --python 3.11 \
             hw/sys/sep/dv/cocotb/env/sep_generate_efuse_preload.py --selftest
+      # The SEP FCOV sampler classifies crypto-window addresses from an include
+      # written from sep_reg.svh; check it against the header regenerated above.
+      - name: SEP FCOV crypto register include matches the regenerated header
+        run: |
+          uv run --no-project --python 3.11 \
+            hw/sys/sep/dv/cov/tools/gen_fcov_crypto_reg_addrs.py --check
 
   # Re-clones every vendor_package remote, applies patches/, and fails if
   # the committed upstream/ tree does not match. Catches a patch that no
