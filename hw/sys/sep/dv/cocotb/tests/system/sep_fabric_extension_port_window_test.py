@@ -232,11 +232,11 @@ class sep_fabric_extension_port_window_test(sep_base_test):
                 f"CHK-EXT-PORT FAIL: {tag} PR-EXT W strb=0x{w.strb:02x} data=0x{w.data:016x} "
                 f"last={w.last}; expected strb=0x{strb:02x} data_on_lanes=0x{want:016x} last=1"
             )
-            data_ok = "1"
+            data_ok = str(int(ok))
             seen_strb = f"0x{w.strb:02x}"
         self.logger.info(
             "CHK-EXT-PORT PASS: init=%s dir=%s issued=0x%08X seen=0x%08X size=%d len=0 strb=%s "
-            "data_ok=%s port_resp=DECERR t_port=%dps t_init=%dps init_resp=DECERR",
+            "data_ok=%s port_resp=%s t_port=%dps t_init=%dps init_resp=%s",
             c["init"],
             d,
             c["addr"],
@@ -244,8 +244,10 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             b.size,
             seen_strb,
             data_ok,
+            RESP_NAME.get(r.resp, r.resp),
             r.t_ps,
             c["t_init"],
+            RESP_NAME.get(c["resp"], c["resp"]),
         )
 
     def _check_reach(self, c: dict) -> None:
@@ -260,11 +262,12 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "DECERR, the response of the bench port"
         )
         self.logger.info(
-            "CHK-EXT-REACH PASS: dir=%s class=%s issued=0x%08X xbar_seen=0x%08X init_resp=DECERR",
+            "CHK-EXT-REACH PASS: dir=%s class=%s issued=0x%08X xbar_seen=0x%08X init_resp=%s",
             d,
             c["cls"],
             c["addr"],
             c["xext"][0],
+            RESP_NAME.get(c["resp"], c["resp"]),
         )
 
     async def _bring_up(self) -> None:
@@ -476,11 +479,17 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "a refused burst never reaches the port"
         )
         self.logger.info(
-            "CHK-EXT-BURST PASS: dir=W len=3 xbar_seen=%d init_resp=DECERR denied_resp=DECERR "
-            "denied_xbar_seen=0 beats_seen=%d data_ok=1 denied_ext_seen=0 port_reply=DECERR "
+            "CHK-EXT-BURST PASS: dir=W len=3 xbar_seen=%d init_resp=%s denied_resp=%s "
+            "denied_xbar_seen=%d beats_seen=%d data_ok=%d denied_ext_seen=%d port_reply=%s "
             "port_reply_beats=%d",
             len(wb_x),
+            RESP_NAME.get(wb.resp_code, wb.resp_code),
+            RESP_NAME.get(wd.resp_code, wd.resp_code),
+            len(wd_x),
             len(wb_w),
+            int(w_ok),
+            len(wd_ext),
+            ",".join(sorted({RESP_NAME.get(r.resp, str(r.resp)) for r in wb_rep})),
             len(wb_rep),
         )
 
@@ -526,11 +535,16 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "a refused burst never reaches the port"
         )
         self.logger.info(
-            "CHK-EXT-BURST PASS: dir=R len=7 xbar_seen=%d init_resp=DECERR denied_resp=DECERR "
-            "denied_xbar_seen=0 beats_seen=na data_ok=na admitted_beats=%d denied_beats=%d "
-            "denied_ext_seen=0 port_reply=DECERR port_reply_beats=%d",
+            "CHK-EXT-BURST PASS: dir=R len=7 xbar_seen=%d init_resp=%s denied_resp=%s "
+            "denied_xbar_seen=%d beats_seen=na data_ok=na admitted_beats=%d denied_beats=%d "
+            "denied_ext_seen=%d port_reply=%s port_reply_beats=%d",
             len(rb_x),
+            RESP_NAME.get(rb.resp_code, rb.resp_code),
+            ",".join(sorted({RESP_NAME.get(r, str(r)) for r in denied_r})),
+            len(rd_x),
             len(rb_beats),
             len(denied_r),
+            len(rd_ext),
+            ",".join(sorted({RESP_NAME.get(r.resp, str(r.resp)) for r in rb_rep})),
             len(rb_rep),
         )
