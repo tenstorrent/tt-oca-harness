@@ -335,14 +335,16 @@ Validating configs in hw/common/dv/configs
   simulators.toml  OK
   executors.toml   OK
   parsers.toml     OK
-  dtp              OK
-  dtp_uvm          OK
+  ...
   sep              OK
-  smc_wrapper      OK
+  sep (uvm)        OK
+  smc              OK
+  smc (uvm)        OK
   smu              OK
-  smu_wrapper      OK
+  smu (uvm)        OK
+  ...
 
-Result: 6 DUT(s): 6 OK, 0 FAILED
+Result: 22 DUT(s), 30 view(s): 30 OK, 0 FAILED
 ```
 
 Use the `--doctor` flag to check the testbench environment for an individual
@@ -395,7 +397,7 @@ groups     : all=... cpu=... cpu_stub=...
 To run an individual set of tests, list them using the `--items` flag.
 
 ```bash
-./tools/dv/run_dv.py --dut smc_wrapper --items octs_sanity_test smc_axil_idle_test
+./tools/dv/run_dv.py --dut smc --items smc_octs_sanity_test smc_axil_idle_test
 ...
 ```
 
