@@ -280,6 +280,8 @@ def make_trend_point(summary: dict[str, Any]) -> dict[str, Any]:
                 "comparison_key": (result.get("coverage") or {}).get("comparison_key"),
                 "git": (result.get("git") or {}).get("sha")
                 or (result.get("git") or {}).get("commit"),
+                "start_time": (result.get("timing") or {}).get("start_time")
+                or (result.get("run_metadata") or {}).get("generated_at"),
             }
             for result in summary.get("results") or []
         ],
