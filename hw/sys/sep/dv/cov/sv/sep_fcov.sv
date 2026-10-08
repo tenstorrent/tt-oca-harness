@@ -3851,22 +3851,25 @@ module sep_fcov (
   //
   // Rows and cells are the generated table
   // (hw/sys/sep/regs/gen/adoc/memory_map.adoc): {base, end, decoded extent}.
+  // The base and the decoded extent of a unit row come from
+  // sep_top_addrmap_pkg; the aperture end of each row and the Reserved rows
+  // (13..20) have no generated symbol and are copied from that table.
   // ---------------------------------------------------------------------
   localparam int unsigned NRows = 21;
   localparam logic [31:0] RowBase[NRows] = '{
-      32'h1080_0000,
-      32'h1080_1000,
-      32'h1080_3000,
-      32'h1090_0000,
-      32'h1091_0000,
-      32'h1091_1000,
-      32'h1091_3000,
-      32'h1091_5000,
-      32'h1091_5800,
-      32'h1091_6000,
-      32'h1091_8000,
-      32'h1092_0000,
-      32'h1094_0000,
+      32'(SEP_TOP_SECURE_DMA_BASE_ADDR),
+      32'(SEP_TOP_WDT_TIMER_BASE_ADDR),
+      32'(SEP_TOP_SEP_RESET_CTRL_BASE_ADDR),
+      32'(SEP_TOP_OTBN_BASE_ADDR),
+      32'(SEP_TOP_AES_BASE_ADDR),
+      32'(SEP_TOP_HMAC_BASE_ADDR),
+      32'(SEP_TOP_KMAC_BASE_ADDR),
+      32'(SEP_TOP_CSRNG_BASE_ADDR),
+      32'(SEP_TOP_EDN_BASE_ADDR),
+      32'(SEP_TOP_ENTROPY_SOURCE_BASE_ADDR),
+      32'(SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR),
+      32'(SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR),
+      32'(SEP_TOP_ABR_BASE_ADDR),
       32'h1005_0000,
       32'h1080_4000,
       32'h1091_4000,
@@ -3900,19 +3903,19 @@ module sep_fcov (
       32'h1FFF_FFFF
   };
   localparam logic [31:0] RowExt[NRows] = '{
-      32'h150,
-      32'h38,
-      32'h8,
-      32'hC000,
-      32'h8C,
-      32'h2000,
-      32'h1000,
-      32'h60,
-      32'h48,
-      32'h17C,
-      32'h18,
-      32'h1C,
-      32'hC018,
+      32'(SEP_TOP_SECURE_DMA_SIZE),
+      32'(SEP_TOP_WDT_TIMER_SIZE),
+      32'(SEP_TOP_SEP_RESET_CTRL_SIZE),
+      32'(SEP_TOP_OTBN_SIZE),
+      32'(SEP_TOP_AES_SIZE),
+      32'(SEP_TOP_HMAC_SIZE),
+      32'(SEP_TOP_KMAC_SIZE),
+      32'(SEP_TOP_CSRNG_SIZE),
+      32'(SEP_TOP_EDN_SIZE),
+      32'(SEP_TOP_ENTROPY_SOURCE_SIZE),
+      32'(SEP_TOP_SEP_LIFECYCLE_CTRL_SIZE),
+      32'(SEP_TOP_KM_MAILBOX_SEP_SIZE),
+      32'(SEP_TOP_ABR_SIZE),
       32'h0,
       32'h0,
       32'h0,
@@ -4339,11 +4342,9 @@ module sep_fcov (
   // that the decode refused, then an OKAY LSU read of the live reference.
   logic [3:1] na_wr_q;
   function automatic logic [1:0] na_unit(input logic [31:0] a);
-    if (in_rng(a, 32'h1080_3008, 32'h1080_3FFF)) return 2'd1;
-    if (in_rng(a, 32'h1091_1000, 32'h1091_2FFF) && !fcov_crypto_reg_addr({a[31:2], 2'b00}))
-      return 2'd2;
-    if (in_rng(a, 32'h1091_3000, 32'h1091_3FFF) && !fcov_crypto_reg_addr({a[31:2], 2'b00}))
-      return 2'd3;
+    if (in_rng(a, RowBase[2] + RowExt[2], RowEnd[2])) return 2'd1;
+    if (in_rng(a, RowBase[5], RowEnd[5]) && !fcov_crypto_reg_addr({a[31:2], 2'b00})) return 2'd2;
+    if (in_rng(a, RowBase[6], RowEnd[6]) && !fcov_crypto_reg_addr({a[31:2], 2'b00})) return 2'd3;
     return 2'd0;
   endfunction
   function automatic logic [1:0] na_ref(input logic [31:0] a);
@@ -4514,9 +4515,10 @@ module sep_fcov (
       if (lq_done) begin
         logic [2:0] ro;
         ro = 3'd0;
-        if (in_rng(lq_a, 32'h1080_3000, 32'h1080_3007)) ro = {2'd1, lq_dir_w};
-        else if (in_rng(lq_a, 32'h1080_3008, 32'h1080_300F)) ro = {2'd2, lq_dir_w};
-        else if (in_rng(lq_a, 32'h1080_3010, 32'h1080_3FFF)) ro = {2'd3, lq_dir_w};
+        if (in_rng(lq_a, RowBase[2], RowBase[2] + RowExt[2] - 1)) ro = {2'd1, lq_dir_w};
+        else if (in_rng(lq_a, RowBase[2] + RowExt[2], RowBase[2] + 2 * RowExt[2] - 1))
+          ro = {2'd2, lq_dir_w};
+        else if (in_rng(lq_a, RowBase[2] + 2 * RowExt[2], RowEnd[2])) ro = {2'd3, lq_dir_w};
         u_sep_aperture_reserved_access_cg.sample(
             ((lq_c.size == 3'd2) && ((row_of(lq_a) == 2) || !lq_dir_w)) ? row_cell(
             lq_a, lq_dir_w, lq_resp, lq_a[2] ? lq_rdata[63:32] : lq_rdata[31:0]) : 8'hFF, {

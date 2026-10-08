@@ -86,8 +86,14 @@ volatile uint32_t g_p[P_COUNT] = {
 #define WDT_REGWEN SEP_TOP_WDT_TIMER_WDOG_REGWEN_BASE_ADDR
 #define AES_AUX_REGWEN SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR
 #define EXT_WORD (SEP_TOP_SEP_EXTERNAL_BASE_ADDR + 0x100u)
-#define EXT_TOP_ALIAS 0xFFFFFFF8u
+// Top word of the 768 MiB local alias span (hw/sys/sep/doc/fabric.adoc, SEP CPU
+// local-alias traffic), through the alias window.
+#define LOCAL_ALIAS_SPAN 0x30000000u
+#define EXT_TOP_ALIAS ((uint32_t)SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR_reset + LOCAL_ALIAS_SPAN - 8u)
 #define AP_REGION SEP_TOP_AP_REGION_BASE_ADDR
+// Byte span of one AP output-remap region: the AP window over its regions.
+#define AP_SPAN (SEP_TOP_AP_REGION_SIZE / SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_NUM)
+// The SMC aperture of the testlist entry (+sep_smc_aperture_base=40000000).
 #define SMC_BASE 0x40000000u
 #define ROM_BASE SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
 #define DMA_CSR_WORD SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR
@@ -522,7 +528,7 @@ static void out_entry_check(uint32_t i, uint64_t start, uint64_t endv, uint32_t 
 
 static uint64_t ap_out_addr(void) {
     uint64_t off = ((uint64_t)g_p[PAP_OFF_HI] << 32) | g_p[PAP_OFF_LO];
-    return (off & ~0x7FFFFull) | (g_p[PAP_INTRA] & 0x7FFFFu);
+    return (off & ~(uint64_t)(AP_SPAN - 1u)) | (g_p[PAP_INTRA] & (AP_SPAN - 1u));
 }
 
 // ---- Step 6: outbound legs ----
@@ -557,7 +563,7 @@ static void outbound_legs(void) {
 
     stage_src(SRAM + B_OUT, 2u, 0x50u);
     mark('G', "out_ap");
-    uint32_t st = dma_run(SRAM + B_OUT, AP_REGION + (g_p[PAP_INTRA] & 0x7FFFFu), 8u, 1, 1);
+    uint32_t st = dma_run(SRAM + B_OUT, AP_REGION + (g_p[PAP_INTRA] & (AP_SPAN - 1u)), 8u, 1, 1);
     rec("OUT");
     sep_mbx_puts(" tgt=ap");
     rec_run(st);

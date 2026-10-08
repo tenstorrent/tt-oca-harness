@@ -81,6 +81,7 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     F_WRITE_ALLOWED,
 )
 from seq_lib.sep_irq_aggregator_seq import PIC_DMA_DONE, PIC_DMA_ERROR, agg_from_pic
+from seq_lib.sep_outbound_remap_seq import IDX_START
 
 _TEST = "sep_fabric_dma_endpoint_matrix_test"
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -112,15 +113,19 @@ EXT_WORD = sym("SEP_EXTERNAL_REG_MAP_BASE_ADDR") + 0x100
 CFG_FIELDS = INBOUND_FILTER_CTRL_0.mask32("FILTER_CONFIG")
 REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
 REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "valid")
-EXT_TOP_ALIAS = 0xFFFF_FFF8
-EXT_TOP_WORD = 0x3FFF_FFF8
-STDOUT = 0x8000_0000
+# The local alias span is 768 MiB from the SEP map base (fabric.adoc, SEP CPU
+# local-alias traffic); its top word, direct and through the alias window.
+LOCAL_ALIAS_SPAN = 0x3000_0000
+EXT_TOP_WORD = sym("SEP_TOP_REG_MAP_BASE_ADDR") + LOCAL_ALIAS_SPAN - 8
+EXT_TOP_ALIAS = SEP_CPU_CTRL.reset("SEP_LOCAL_BASE_ADDR") + LOCAL_ALIAS_SPAN - 8
+# The console word the bench responder decodes (tb/sep_outbound_mbx.sv, StdoutLo).
+STDOUT = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
 # The SMC aperture of the testlist entry (+sep_smc_aperture_base/size).
 SMC_BASE = 0x4000_0000
 SMC_SIZE = 0x0100_0000
-# fabric.adoc, Address Remapping: sixteen regions over the AP window.
-AP_IDX_START = 19
-SCRATCH_BANK = 64
+# Region index bits of the AP output remap (generated map, sep_outbound_remap_seq).
+AP_IDX_START = IDX_START
+SCRATCH_BANK = sym("SEP_SCRATCH_COLD_REG_MAP_SIZE")
 # Registers of the register-endpoint leg, in firmware id order.
 REG_ADDR = (SCRATCH, RegBlock("SPI_CONTROLLER").addr("CSID"), SEP_CPU_CTRL.addr("SEP_SW_DEBUG"))
 REG_NAME = ("scratch0", "spi_csid", "sep_sw_debug")

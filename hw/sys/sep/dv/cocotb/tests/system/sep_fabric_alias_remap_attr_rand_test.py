@@ -53,7 +53,7 @@ from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LCC_FEAT_CTRL
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import LOCAL_MASTER_ALIAS_REMAP_CTRL_0, SEP_CPU_CTRL
+from sep_reg_meta import LOCAL_MASTER_ALIAS_REMAP_CTRL_0, SEP_CPU_CTRL, sep_reg
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
@@ -72,7 +72,12 @@ ADDR_MASK: int = _FILTER_ADDR_MASK
 TEST = "sep_fabric_alias_remap_attr_rand_test"
 
 _META = LOCAL_MASTER_ALIAS_REMAP_CTRL_0
-N_REGIONS = 16
+# One region per LOCAL_MASTER_ALIAS_REMAP_CTRL instance of the generated map.
+N_REGIONS = sum(
+    1
+    for k in range(64)
+    if hasattr(sep_reg, f"LOCAL_MASTER_ALIAS_REMAP_CTRL_{k}__REG_MAP_BASE_ADDR")
+)
 PAGE = 0x1000
 START_FIELD = _META.field_mask("REGION_REGION_START", "start_addr")
 END_FIELD = _META.field_mask("REGION_REGION_END", "end_addr")

@@ -374,7 +374,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     f"0x{back & rr.SW_RESET_N_FIELDS:02x}; the reference cannot show an alias"
                 )
             self.logger.info(
-                "CTL-ROW-NOALIAS LOG: unit=reset_ctrl wrote=0x%02x read=0x%02x", value, back & 0x7F
+                "CTL-ROW-NOALIAS LOG: unit=reset_ctrl wrote=0x%02x read=0x%02x",
+                value,
+                back & rr.SW_RESET_N_FIELDS,
             )
         self.noalias_ctl.add("reset_ctrl")
 

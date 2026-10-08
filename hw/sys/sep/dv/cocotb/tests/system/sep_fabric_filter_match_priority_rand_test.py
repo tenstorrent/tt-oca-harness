@@ -116,14 +116,17 @@ EXT_BASE = sym("SEP_EXTERNAL_REG_MAP_BASE_ADDR")
 EXT_END = EXT_BASE + sym("SEP_EXTERNAL_REG_MAP_SIZE") - 1
 SHIM_BASE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR")
 SHIM_SIZE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE")
-XBAR_LIMIT_WORD = 0x4000_0100
+# A word at the crossbar limit 0x4000_0000 (fabric.adoc, output fabric).
+XBAR_LIMIT_WORD = 0x4000_0000 + 0x100
 SMU_BASE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
 SMU_END = SMU_BASE + SEP_CPU_CTRL.reset("SMU_REGION_SIZE") - 1
-# The bench responder decodes stores to the first SMU page as console output.
-SMU_SAFE_LO = 0x8000_2000
+# Stores below this stay clear of the console word the bench responder decodes
+# at the SMU base (tb/sep_outbound_mbx.sv, StdoutLo).
+SMU_SAFE_LO = SMU_BASE + 0x2000
 
 # Output remap region 0 (hw/ip/output_remap/regs/gen/adoc/output_remap.adoc).
 REGION_BITS = 19
+# Test-chosen non-identity remap offsets (any offset with bits 55:19 set).
 AP_OFFSET = 0x20_0000_0000
 STEE_OFFSET = 0x28_0000_0000
 if IDX_START != REGION_BITS:
