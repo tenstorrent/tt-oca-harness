@@ -635,6 +635,17 @@
 `SEP_TB_OUT(logic [63:0], pr_ext_wdata_o)
 `SEP_TB_OUT(logic [7:0], pr_ext_wstrb_o)
 `SEP_TB_OUT(logic, pr_ext_wlast_o)
+// PR-EXT reply: the B and R channels of the AXI Extension port, wrapper net
+// u_dut.axi_extension_axi_resp (READY from u_dut.axi_extension_axi_req).
+`SEP_TB_OUT(logic, pr_ext_bvalid_o)
+`SEP_TB_OUT(logic, pr_ext_bready_o)
+`SEP_TB_OUT(logic [1:0], pr_ext_bresp_o)
+`SEP_TB_OUT(logic [5:0], pr_ext_bid_o)
+`SEP_TB_OUT(logic, pr_ext_rvalid_o)
+`SEP_TB_OUT(logic, pr_ext_rready_o)
+`SEP_TB_OUT(logic [1:0], pr_ext_rresp_o)
+`SEP_TB_OUT(logic [5:0], pr_ext_rid_o)
+`SEP_TB_OUT(logic, pr_ext_rlast_o)
 // PR-DMACSR: the request at the DMA CSR target port (sep.sv dma_csr_req).
 `SEP_TB_OUT(logic, pr_dmacsr_awvalid_o)
 `SEP_TB_OUT(logic, pr_dmacsr_awready_o)

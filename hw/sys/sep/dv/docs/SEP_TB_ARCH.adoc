@@ -182,7 +182,9 @@ Observation probe groups:
 ** PR-SMC (`pr_smc_*`): `sep_ext_to_smc_axi_req_o`, same fields. Owners:
    `sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test`.
 ** PR-EXT (`pr_ext_*`): the AXI Extension port, wrapper net
-   `u_dut.axi_extension_axi_req`, same fields. Owners:
+   `u_dut.axi_extension_axi_req`, same fields; and its replies (monitor
+   PR-EXT-RSP): B (`resp`, `id`) and R (`resp`, `id`, `last`) from
+   `u_dut.axi_extension_axi_resp`, with READY from the request net. Owners:
    `sep_fabric_extension_port_window_test`,
    `sep_fabric_filter_match_priority_rand_test`,
    `sep_fabric_dma_endpoint_matrix_test`.
