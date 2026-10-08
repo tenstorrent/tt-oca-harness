@@ -207,7 +207,7 @@
 |A TXDATA write past `STATUS.TXFULL` latches exactly `ERROR_STATUS.OVERFLOW`; `CONTROL.SW_RST` plus write-one-to-clear then lets a flash status read complete.
 |===
 
-*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0. The flash BFM logs no error: a frame its handler dropped on an exception fails the leaf (`SPI-BFM FAIL`).
 
 '''''
 
@@ -273,7 +273,7 @@
 |The seed varies the programmed address, word count and payload. The opcode sequence is fixed, and the BFM golden requires that exact observed order.
 |===
 
-*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0. The flash BFM logs no error: a frame its handler dropped on an exception fails the leaf (`SPI-BFM FAIL`).
 
 *Scope*: the transaction-order golden requires the BFM-visible opcode sequence
 (JEDEC, WREN, RDSR, WRDI, program/read, FAST_READ, neighbour program/read, erase,

@@ -80,6 +80,7 @@ import cocotb
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_log_error_counter import attach_error_counter
 from env.sep_seeded_rng import SepSeededRng
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
@@ -246,6 +247,9 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             verbose=True,
         )
         # BFM memory inits to 0xFF (erased); the firmware programs + verifies.
+        # The BFM logs and drops a frame whose handler raised; such an error
+        # fails the leaf.
+        bfm_errors = attach_error_counter(flash.log)
         await flash.start()
         dtcm_hex, cfg = self._stage_dtcm()
         try:
@@ -260,6 +264,10 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 progress_every=_PROGRESS_EVERY,
             )
             self._golden_check(flash, cfg)
+            assert not bfm_errors.records, (
+                f"SPI-BFM FAIL: the flash model logged {len(bfm_errors.records)} error(s): "
+                f"{bfm_errors.records[:3]}"
+            )
         finally:
             await flash.stop()
 
