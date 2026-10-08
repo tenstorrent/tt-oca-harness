@@ -123,7 +123,7 @@ XBAR_LIMIT_WORD = XBAR_LIMIT + 0x100
 SMU_BASE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
 SMU_END = SMU_BASE + SEP_CPU_CTRL.reset("SMU_REGION_SIZE") - 1
 # Stores below this stay clear of the console word the bench responder decodes
-# at the SMU base (tb/sep_outbound_mbx.sv, StdoutLo).
+# at the SMU base (tb/sep_outbound_mbx.sv, StdoutAddr).
 SMU_SAFE_LO = SMU_BASE + 0x2000
 
 # Output remap region 0 (hw/ip/output_remap/regs/gen/adoc/output_remap.adoc).

@@ -120,7 +120,7 @@ REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "va
 LOCAL_ALIAS_SPAN = 0x3000_0000
 EXT_TOP_WORD = sym("SEP_TOP_REG_MAP_BASE_ADDR") + LOCAL_ALIAS_SPAN - 8
 EXT_TOP_ALIAS = SEP_CPU_CTRL.reset("SEP_LOCAL_BASE_ADDR") + LOCAL_ALIAS_SPAN - 8
-# The console word the bench responder decodes (tb/sep_outbound_mbx.sv, StdoutLo).
+# The console word the bench responder decodes (tb/sep_outbound_mbx.sv, StdoutAddr).
 STDOUT = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
 # Region index bits of the AP output remap (generated map, sep_outbound_remap_seq).
 AP_IDX_START = IDX_START
