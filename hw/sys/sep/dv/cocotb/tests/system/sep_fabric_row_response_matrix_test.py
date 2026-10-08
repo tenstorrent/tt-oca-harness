@@ -285,8 +285,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         inv: set[tuple[str, str, str, str]] = set()
         for d in ("R", "W"):
             inv.add(("reset_ctrl", "past", d, "LSU"))
-            inv.add((f"rsvd_{0x1080_4000:08x}", "reserved", d, "LSU"))
+            inv.add((f"rsvd_{rr.past_bounds('reset_ctrl')[2]:08x}", "reserved", d, "LSU"))
             for base in rr.RESERVED_BASES:
+                rr.reserved_row(base)
                 inv.add((f"rsvd_{base:08x}", "reserved", d, "SI"))
             for k in rr.HOLE_ROWS:
                 inv.add((k, "hole", d, "SI"))
@@ -314,14 +315,16 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             f"rsvd=0x{ref & ~rr.SW_RESET_N_FIELDS & 0xFFFF_FFFF:08x}",
         )
         self._walk("reset_ctrl", "live", "R", "LSU")
-        drawn = 0x1080_3010 + 8 * self.rng.randrange(0, (0x1080_3FF0 - 0x1080_3010) // 8 + 1)
-        pairs = (0x1080_3008, drawn, 0x1080_3FF8, 0x1080_4000)
+        first, last, nxt = rr.past_bounds("reset_ctrl")
+        rr.reserved_row(nxt)
+        drawn = (first + 8) + 8 * self.rng.randrange(0, ((last - 8) - (first + 8)) // 8 + 1)
+        pairs = (first, drawn, last, nxt)
         self.logger.info("ROW-RAND LOG: reset_ctrl drawn pair 0x%08x", drawn)
         for op in (SepAxiOp.READ, SepAxiOp.WRITE):
             d = "R" if op is SepAxiOp.READ else "W"
             for word in pairs:
-                row = "reset_ctrl" if word < 0x1080_4000 else f"rsvd_{0x1080_4000:08x}"
-                kind = "past" if word < 0x1080_4000 else "reserved"
+                row = "reset_ctrl" if word < nxt else f"rsvd_{nxt:08x}"
+                kind = "past" if word < nxt else "reserved"
                 for a in (word, word + 4):
                     wd = ((self.rng.getrandbits(25) << 7) | 0x01) if op is SepAxiOp.WRITE else None
                     resp, rdata = await self._lsu(op, a, wdata=wd or 0, expect="err")
@@ -334,8 +337,8 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         for size in (0, 1, 2, 3):
             for _ in range(2):
                 n = 1 << size
-                lo = (0x1080_3008 + n - 1) & ~(n - 1)
-                a = lo + n * self.rng.randrange(0, (0x1080_4000 - lo) // n)
+                lo = (first + n - 1) & ~(n - 1)
+                a = lo + n * self.rng.randrange(0, (nxt - lo) // n)
                 wd = (self.rng.getrandbits(8 * n - 7) << 7) | 0x01
                 expect = "err" if size == 2 else "any"
                 resp, rdata = await self._lsu(SepAxiOp.WRITE, a, size=size, wdata=wd, expect=expect)
@@ -591,9 +594,12 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             " ".join(f"{n}=0x{baseline[a]:x}" for n, a in zip(names, rr.KM_BASELINE)),
             s.rdata & 0xFFFF_FFFF,
         )
-        d1 = 0x20 + 8 * self.rng.randrange(0, (0xFF0 - 0x20) // 8 + 1)
-        d2 = 0x1092_1000 + 8 * self.rng.randrange(0, (0x1092_FFF8 - 0x1092_1000) // 8 + 1)
-        pairs = (base + 0x1C, base + 0xFF8, base + d1, d2)
+        first, last, nxt = rr.past_bounds("km_mbox")
+        rsvd_last = rr.reserved_row(nxt).end + 1 - 8
+        lo1 = ((first + 7) & ~7) - base
+        d1 = lo1 + 8 * self.rng.randrange(0, ((last - 8 - base) - lo1) // 8 + 1)
+        d2 = nxt + 8 * self.rng.randrange(0, (rsvd_last - nxt) // 8 + 1)
+        pairs = (first, last, base + d1, d2)
         self.logger.info("ROW-RAND LOG: km pairs %s", [hex(p) for p in pairs])
         lines = []
         for op in (SepAxiOp.READ, SepAxiOp.WRITE):
@@ -615,8 +621,8 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                         and (exp.rdata is None or got == exp.rdata)
                         and same
                     )
-                    row = "km_mbox" if a < 0x1092_1000 else f"rsvd_{0x1092_1000:08x}"
-                    kind = "past" if a < 0x1092_1000 else "reserved"
+                    row = "km_mbox" if a < nxt else f"rsvd_{nxt:08x}"
+                    kind = "past" if a < nxt else "reserved"
                     self._walk(row, kind, d, "SI")
                     line = (
                         f"off=0x{a - base:x} dir={d} resp={_RN.get(s.resp_code)} "

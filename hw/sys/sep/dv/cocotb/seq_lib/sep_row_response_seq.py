@@ -35,6 +35,7 @@ from functools import lru_cache
 from env.sep_decode_resp import MapRow, expected_unbacked, sep_map_rows
 from sep_reg_meta import (
     _IPXACT_NS,
+    HMAC,
     SEP_RESET_CTRL,
     _ipxact_num,
     _iter_ipxact_registers,
@@ -46,21 +47,22 @@ NS = _IPXACT_NS
 
 # Row keys and the base address of their row in the generated table.
 ROW_BASE = {
-    "dma": 0x1080_0000,
-    "wdt": 0x1080_1000,
-    "reset_ctrl": 0x1080_3000,
-    "otbn": 0x1090_0000,
-    "aes": 0x1091_0000,
-    "hmac": 0x1091_1000,
-    "kmac": 0x1091_3000,
-    "csrng": 0x1091_5000,
-    "edn": 0x1091_5800,
-    "esrc": 0x1091_6000,
-    "lc": 0x1091_8000,
-    "km_mbox": 0x1092_0000,
-    "abr": 0x1094_0000,
+    "dma": sep_reg.SECURE_DMA_REG_MAP_BASE_ADDR,
+    "wdt": sep_reg.WDT_TIMER_REG_MAP_BASE_ADDR,
+    "reset_ctrl": sep_reg.SEP_RESET_CTRL_REG_MAP_BASE_ADDR,
+    "otbn": sep_reg.OTBN_REG_MAP_BASE_ADDR,
+    "aes": sep_reg.AES_REG_MAP_BASE_ADDR,
+    "hmac": sep_reg.HMAC_REG_MAP_BASE_ADDR,
+    "kmac": sep_reg.KMAC_REG_MAP_BASE_ADDR,
+    "csrng": sep_reg.CSRNG_REG_MAP_BASE_ADDR,
+    "edn": sep_reg.EDN_REG_MAP_BASE_ADDR,
+    "esrc": sep_reg.ENTROPY_SOURCE_REG_MAP_BASE_ADDR,
+    "lc": sep_reg.SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR,
+    "km_mbox": sep_reg.KM_MAILBOX_SEP_REG_MAP_BASE_ADDR,
+    "abr": sep_reg.ABR_REG_MAP_BASE_ADDR,
 }
-# The 8 Reserved rows this leaf grades, by base address.
+# The 8 Reserved rows this leaf grades, by base address. Each must be a
+# Reserved row of the generated table (checked by ``reserved_row``).
 RESERVED_BASES = (
     0x1005_0000,
     0x1080_4000,
@@ -118,8 +120,11 @@ KM_IRQ_ENABLE_CTL = 0x1C
 
 # HMAC CFG one-hot fields (hmac.hjson, CFG): an unsupported value maps to None.
 HMAC_CFG = sep_reg.HMAC_CFG_REG_ADDR
-_HMAC_DS_LSB, _HMAC_DS_W, _HMAC_DS_NONE = 5, 4, 0x8
-_HMAC_KL_LSB, _HMAC_KL_W, _HMAC_KL_NONE = 9, 6, 0x20
+_HMAC_DS_LSB = HMAC.field_lsb("CFG", "digest_size")
+_HMAC_DS_W = HMAC.field_width("CFG", "digest_size")
+_HMAC_KL_LSB = HMAC.field_lsb("CFG", "key_length")
+_HMAC_KL_W = HMAC.field_width("CFG", "key_length")
+_HMAC_DS_NONE, _HMAC_KL_NONE = 0x8, 0x20
 _HMAC_DS_LEGAL = (0x1, 0x2, 0x4)
 _HMAC_KL_LEGAL = (0x1, 0x2, 0x4, 0x8, 0x10)
 
@@ -256,6 +261,20 @@ def map_row(key_or_base) -> MapRow:
         if row.base == base:
             return row
     raise KeyError(f"no memory-map row at 0x{base:08x}")
+
+
+def reserved_row(base: int) -> MapRow:
+    """The Reserved row at ``base``; raises if the table has another row there."""
+    row = map_row(base)
+    if row.unit != "Reserved":
+        raise KeyError(f"memory-map row at 0x{base:08x} is {row.unit!r}, not Reserved")
+    return row
+
+
+def past_bounds(key: str) -> tuple[int, int, int]:
+    """First past-extent byte, last 8-byte word of the row, and the next row base."""
+    row = map_row(key)
+    return row.base + row.extent, row.end + 1 - 8, row.end + 1
 
 
 def row_regs(key: str) -> tuple[Reg, ...]:
