@@ -184,11 +184,13 @@ module sep_fcov (
   input sep_pkg::sep_32_64_6_12_axi_resp_t dma_csr_resp_i,
   input wire        irq_dma_error_i,
   // rom_req: the boot ROM macro port (PR-ROM). tcm_*: the CPU TCM macro
-  // port enables (the DMA TCM cells only).
+  // port enables of the ICCM and the DCCM, apart (the DMA TCM cells only).
   input sep_pkg::sep_sram_req_t rom_req_i,
   input sep_pkg::sep_sram_rsp_t rom_rsp_i,
-  input wire        tcm_clken_i,
-  input wire        tcm_wren_i,
+  input wire        iccm_clken_i,
+  input wire        iccm_wren_i,
+  input wire        dccm_clken_i,
+  input wire        dccm_wren_i,
   // in_filter / out_filter: FILTER_CONFIG, START_ADDR, END_ADDR of every entry.
   input wire [15:0]       in_f_en_i,
   input wire [15:0]       in_f_rd_i,
@@ -4266,6 +4268,10 @@ module sep_fcov (
   // DMA TCM cell: a DMA request into ICCM or DCCM, confirmed by tcm activity.
   logic       tcm_pend_q;
   logic [1:0] tcm_cell_q;
+  // The enable of the range that the pending DMA access addresses:
+  // tcm_cell_q[0] is 0 for the ICCM range and 1 for the DCCM range.
+  wire tcm_clken = tcm_cell_q[0] ? dccm_clken_i : iccm_clken_i;
+  wire tcm_wren  = tcm_cell_q[0] ? dccm_wren_i : iccm_wren_i;
   always_ff @(posedge clk_i) begin
     if (in_reset) begin
       irq_dma_done_q2 <= 1'b0;
@@ -4319,14 +4325,14 @@ module sep_fcov (
           tcm_pend_q <= 1'b1;
           tcm_cell_q <= {dq_aw_hs, 1'b1};
         end
-      end else if (tcm_pend_q && (tcm_clken_i === 1'b1) && ((tcm_wren_i === 1'b1) == tcm_cell_q[1])) begin
+      end else if (tcm_pend_q && (tcm_clken === 1'b1) && ((tcm_wren === 1'b1) == tcm_cell_q[1])) begin
         tcm_pend_q <= 1'b0;
       end else if (dq_b_hs || dq_r_end) begin
         tcm_pend_q <= 1'b0;
       end
     end
   end
-  wire tcm_hit = tcm_pend_q && (tcm_clken_i === 1'b1) && ((tcm_wren_i === 1'b1) == tcm_cell_q[1]) &&
+  wire tcm_hit = tcm_pend_q && (tcm_clken === 1'b1) && ((tcm_wren === 1'b1) == tcm_cell_q[1]) &&
                  !(dq_ar_hs || dq_aw_hs);
 
   // Non-aliasing: a gap, tail or hole write of {reset control, HMAC, KMAC}
