@@ -12,8 +12,12 @@
 //   * Every response is OKAY with the request ID.
 //   * A write beat merges its strobed bytes into a sparse 64-bit word store
 //     keyed by address bits [55:3], so a later read returns the written data.
-//   * The read data of a beat is taken from the store when the beat is
-//     presented.
+//   * The read data of a beat is taken from the store when the beat is loaded:
+//     at the AR handshake for the first beat, and at the R handshake of the
+//     previous beat for each later beat. A write that lands after that load
+//     does not change the beat.
+//   * An INCR burst aligns every beat after the first to its AxSIZE (IHI 0022
+//     A3.4.1), so an unaligned start does not shift the later beats.
 //   * A word that no write has touched reads {~a, a}, where a is the low 32
 //     bits of the 8-byte-aligned address. The value is known, so a VCS X check
 //     on the SMC read data cannot be satisfied by an unwritten word.
@@ -45,7 +49,9 @@ module sep_smc_route_mem #(
 
   function automatic logic [55:0] next_addr(input logic [55:0] addr, input logic [2:0] size,
                                             input logic [1:0] burst);
-    next_addr = (burst == axi_pkg::BURST_FIXED) ? addr : addr + (56'd1 << size);
+    logic [55:0] step;
+    step = 56'd1 << size;
+    next_addr = (burst == axi_pkg::BURST_FIXED) ? addr : (addr & ~(step - 56'd1)) + step;
   endfunction
 
   // Write channel.
