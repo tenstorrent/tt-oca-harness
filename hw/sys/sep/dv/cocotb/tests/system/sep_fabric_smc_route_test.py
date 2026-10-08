@@ -33,9 +33,11 @@ Checks:
   outside the SMC aperture, outside the SMU window, below ``0x1_0000_0000`` and
   outside the AP and STEE regions, so the route demux returns it to the
   peripheral crossbar, which answers DECERR at or above ``0x4000_0000``
-  (``hw/sys/sep/doc/fabric.adoc``, output fabric). Read and write answer DECERR
-  with no PR-SMC and no PR-OUT handshake. Control: the aperture words drive
-  PR-SMC and the SMU-window control read drives PR-OUT in the same leaf.
+  (``hw/sys/sep/doc/fabric.adoc``, output fabric). The leg runs while the
+  enabled outbound pair admits the word, so a route to the SMN shows a PR-OUT
+  handshake. Read and write answer DECERR with no PR-SMC and no PR-OUT
+  handshake. Control: the aperture words drive PR-SMC and the SMU-window control
+  read drives PR-OUT in the same leaf.
 * CHK-SMC-FIRST-MATCH (configuration B): the aperture words inside the SMU window
   reach PR-SMC and not PR-OUT; the SMU-window word outside the aperture reaches
   PR-OUT and not PR-SMC.
@@ -227,6 +229,32 @@ class sep_fabric_smc_route_test(sep_base_test):
             await self._edge_word("CHK-SMC-ROUTE", last, MARK_ROUTE[1]),
         ]
         ctl = await self._smu_read(expect_error=False)
+
+        # Static-row leg: one word above the aperture top, outside the SMU
+        # window, returns to the peripheral crossbar. The enabled outbound pair
+        # admits it, so a route that sends it to the SMN shows a PR-OUT handshake.
+        assert not (SMU_BASE <= above <= SMU_LAST) and XBAR_LIMIT <= above < 1 << 32
+        assert CFG["A"] <= above <= SMU_LAST
+        m = self._mark()
+        try:
+            rd = await self._lsu(SepAxiOp.READ, above, ungraded=True)
+            wr_m = self._mark()
+            wr = await self._lsu(SepAxiOp.WRITE, above, data=MARK_ABOVE, ungraded=True)
+        except Exception as exc:
+            raise AssertionError(
+                f"CHK-SMC-STATIC-ROW FAIL: above=0x{above:08x}: no response within the bound ({exc})"
+            ) from exc
+        # Counted before the unfiltered leg, so its accesses cannot add to them.
+        above_rd = {
+            "smc": self.taps["PR-SMC"].count(m["PR-SMC"], "ar"),
+            "out": self.taps["PR-OUT"].count(m["PR-OUT"], "ar"),
+            "resp": rd.resp_code,
+        }
+        above_wr = {
+            "smc": self.taps["PR-SMC"].count(wr_m["PR-SMC"], "aw"),
+            "out": self.taps["PR-OUT"].count(wr_m["PR-OUT"], "aw"),
+            "resp": wr.resp_code,
+        }
         close_graded_window(self.logger)
         assert ctl["resp"] == RESP_OKAY, (
             f"CHK-SMC-ROUTE FAIL: control read 0x{SMU_PROBE:08x} resp={RESP_NAME[ctl['resp']]}, "
@@ -243,30 +271,7 @@ class sep_fabric_smc_route_test(sep_base_test):
             await self._edge_word("CHK-SMC-ROUTE", last, MARK_UNFILT[1]),
         ]
         deny = await self._smu_read(expect_error=True)
-
-        # Static-row leg: one word above the aperture top, outside every
-        # outbound window, returns to the peripheral crossbar.
-        assert not (SMU_BASE <= above <= SMU_LAST) and XBAR_LIMIT <= above < 1 << 32
-        m = self._mark()
-        try:
-            rd = await self._lsu(SepAxiOp.READ, above, ungraded=True)
-            wr_m = self._mark()
-            wr = await self._lsu(SepAxiOp.WRITE, above, data=MARK_ABOVE, ungraded=True)
-        except Exception as exc:
-            raise AssertionError(
-                f"CHK-SMC-STATIC-ROW FAIL: above=0x{above:08x}: no response within the bound ({exc})"
-            ) from exc
         close_graded_window(self.logger)
-        above_rd = {
-            "smc": self.taps["PR-SMC"].count(m["PR-SMC"], "ar"),
-            "out": self.taps["PR-OUT"].count(m["PR-OUT"], "ar"),
-            "resp": rd.resp_code,
-        }
-        above_wr = {
-            "smc": self.taps["PR-SMC"].count(wr_m["PR-SMC"], "aw"),
-            "out": self.taps["PR-OUT"].count(wr_m["PR-OUT"], "aw"),
-            "resp": wr.resp_code,
-        }
 
         # CHK-SMC-ROUTE grading.
         assert control_out >= 1 and control_smc == 0, (
