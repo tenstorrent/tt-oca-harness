@@ -202,6 +202,13 @@ Observation probe groups:
    (`u_inbound_filter`, net `smn_inbound_filtered_axi_req`), before the
    global-to-local remap: AW and AR address, global. Owner:
    `sep_fabric_inbound_rebase_test`.
+** PR-CPU (`pr_cpu_lsu_*`, `pr_cpu_ifu_*`): AxPROT of the raw CPU LSU (AR, AW)
+   and IFU (AR) requests in `u_sep_cpu` (`lsu_axi_req_raw`, `ifu_axi_req_raw`),
+   before any remap; tied to 0 on the CPU stub build. Log-only (`OBS-AXPROT`).
+   Owner: `sep_cpu_lsu_alias_window_twin_test`.
+** PR-DMA-RAW (`pr_dma_raw_*`): AxPROT of the raw secure DMA master request
+   (`u_sep_dma_wrap.dma_axi_req_raw`), AR and AW. Log-only (`OBS-AXPROT`).
+   Owner: `sep_fabric_dma_endpoint_matrix_test`.
 ** PR-ALIAS (`pr_alias_in_*`, `pr_alias_out_*`): the request at the input and
    at the output of the local-master alias remap
    (`u_local_master_remap_wrap`): address, AxCACHE and AxPROT. Owner:
