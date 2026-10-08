@@ -9432,8 +9432,8 @@ vectors.</p>
 <h4 id="captured-straps"><a class="anchor" href="#captured-straps"></a><a class="link" href="#captured-straps">B.3.1. Captured straps</a></h4>
 <div class="paragraph">
 <p>The ROM reads the captured GPIO straps through the SMC mandatory window.
-<code>include/sep_smc_interface.h</code> defines the SEP-visible offsets and bit
-positions.</p>
+<code>include/sep_smc_map.h</code> takes the SEP-visible offsets from the generated SMC
+map, and <code>include/sep_smc_interface.h</code> defines the bit positions.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -9940,7 +9940,8 @@ manifest and transport processing, not the extent of ROM coverage.</p>
 <h3 id="sep-prod-rom-smc-coordination"><a class="anchor" href="#sep-prod-rom-smc-coordination"></a><a class="link" href="#sep-prod-rom-smc-coordination">B.6. SMC coordination</a></h3>
 <div class="paragraph">
 <p>SEP reaches SMC resources through its outbound AXI path at
-<code>SEP_SMC_GLOBAL_BASE</code>, <code>0x4000_0000</code>. The offsets and status bits in
+<code>SEP_SMC_GLOBAL_BASE</code>, <code>0x4000_0000</code>. The offsets in <code>include/sep_smc_map.h</code>,
+taken from the generated SMC map, and the status bits in
 <code>include/sep_smc_interface.h</code> form the SEP side of the interface contract.
 They are SEP-visible offsets and must not be replaced with SMC-local absolute
 addresses.</p>
