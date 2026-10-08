@@ -46,8 +46,9 @@ Read data with an X or Z bit fails the read in the AXI master (VCS; Verilator is
 2-state).
 
 Run mode: no_cpu, ``lsu_stub_all_live``, ``+skip_fuse_sense``. RANDCFG: the
-configuration is the only draw. The configuration bins close over a merge of
-regressions.
+configuration is the only draw. One run covers the checks of its configuration
+only. Both configurations are covered by seed draws over merged regressions; no
+testlist entry forces a configuration.
 """
 
 from __future__ import annotations
