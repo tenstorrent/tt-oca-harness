@@ -327,16 +327,29 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             req, gnt, we = dut.pr_sram_req_o.value, dut.pr_sram_gnt_o.value, dut.pr_sram_we_o.value
-            if not (req.is_resolvable and gnt.is_resolvable and int(req) and int(gnt)):
+            # An X or Z on the handshake, or on WE or ADDR of a granted
+            # request, hides an SRAM write, so it fails the leaf.
+            if not (req.is_resolvable and gnt.is_resolvable):
+                msg = f"PR-SRAM X/Z FAIL: req={req} gnt={gnt} t={get_sim_time('ps')}ps"
+                self.logger.error(msg)
+                raise AssertionError(msg)
+            if not (int(req) and int(gnt)):
                 continue
-            if not (we.is_resolvable and int(we)):
+            addr = dut.pr_sram_addr_o.value
+            if not (we.is_resolvable and addr.is_resolvable):
+                msg = (
+                    f"PR-SRAM X/Z FAIL: granted request we={we} addr={addr} "
+                    f"t={get_sim_time('ps')}ps"
+                )
+                self.logger.error(msg)
+                raise AssertionError(msg)
+            if not int(we):
                 continue
             strb = dut.pr_sram_strb_o.value
             bits = str(dut.pr_sram_wdata_o.value)
-            addr = dut.pr_sram_addr_o.value
             self.sram_wr.append(
                 (
-                    int(addr) if addr.is_resolvable else None,
+                    int(addr),
                     int(strb) if strb.is_resolvable else None,
                     bits,
                 )
