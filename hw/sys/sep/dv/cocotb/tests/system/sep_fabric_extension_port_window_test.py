@@ -367,13 +367,17 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         wb = await self._access(
             "SI", SepAxiOp.WRITE, wr_burst_addr, 3, data=wr_burst_data, nbeats=4
         )
+        wb_t = get_sim_time("ps")
+        wb_rep = self._since(m, "PR-EXT-RSP", "b")
         wb_x = [b.addr for b in self._since(m, "PR-XEXT", "aw")]
         wb_aw = self._since(m, "PR-EXT", "aw")
         wb_w = self._since(m, "PR-EXT", "w")
         m = self._mark()
         self.env.ext_axi_monitor.start_beat_capture()
         rb = await self._access("SI", SepAxiOp.READ, rd_burst_addr, 3, nbeats=8)
+        rb_t = get_sim_time("ps")
         rb_beats = self.env.ext_axi_monitor.take_beat_capture()
+        rb_rep = self._since(m, "PR-EXT-RSP", "r")
         rb_x = [b.addr for b in self._since(m, "PR-XEXT", "ar")]
         rb_ar = self._since(m, "PR-EXT", "ar")
         close_graded_window(self.logger)
@@ -448,21 +452,43 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             + f"; expected AW addr=0x{wr_burst_addr:x} len=3 size=3 and beats "
             + ",".join(f"0x{v:016x}" for v in want_beats)
         )
+        # The DECERR the initiator receives is the port's reply: one B on the
+        # port, DECERR, before the initiator's response.
+        assert len(wb_rep) == 1 and wb_rep[0].resp == RESP_DECERR and wb_rep[0].t_ps < wb_t, (
+            "CHK-EXT-BURST FAIL: dir=W admitted port reply "
+            + "; ".join(r.fmt() for r in wb_rep)
+            + f" t_init={wb_t}ps; expected one DECERR B on PR-EXT before the initiator response"
+        )
         assert wd.resp_code == RESP_DECERR and not wd_x, (
             f"CHK-EXT-BURST FAIL: dir=W denied resp={RESP_NAME.get(wd.resp_code)} "
             f"xbar_seen={len(wd_x)}; expected DECERR with PR-XEXT silent"
         )
         self.logger.info(
             "CHK-EXT-BURST PASS: dir=W len=3 xbar_seen=%d init_resp=DECERR denied_resp=DECERR "
-            "denied_xbar_seen=0 beats_seen=%d data_ok=1 denied_ext_seen=%d",
+            "denied_xbar_seen=0 beats_seen=%d data_ok=1 denied_ext_seen=%d port_reply=DECERR "
+            "port_reply_beats=%d",
             len(wb_x),
             len(wb_w),
             len(wd_ext),
+            len(wb_rep),
         )
 
         # CHK-EXT-BURST, read.
-        assert rb_beats and all(r == RESP_DECERR for r in rb_beats), (
-            f"CHK-EXT-BURST FAIL: dir=R admitted R beats {rb_beats}, expected DECERR on every beat"
+        assert len(rb_beats) == 8 and all(r == RESP_DECERR for r in rb_beats), (
+            f"CHK-EXT-BURST FAIL: dir=R admitted R beats {rb_beats}, expected 8, DECERR on every beat"
+        )
+        # The DECERR is the port's reply: eight R beats on the port, all
+        # DECERR, RLAST on the eighth only, before the initiator's response.
+        assert (
+            len(rb_rep) == 8
+            and all(r.resp == RESP_DECERR for r in rb_rep)
+            and [r.last for r in rb_rep] == [0] * 7 + [1]
+            and all(r.t_ps < rb_t for r in rb_rep)
+        ), (
+            "CHK-EXT-BURST FAIL: dir=R admitted port reply "
+            + "; ".join(r.fmt() for r in rb_rep)
+            + f" t_init={rb_t}ps; expected 8 DECERR R beats on PR-EXT, RLAST on beat 8, before "
+            "the initiator response"
         )
         assert rb.resp_code == RESP_DECERR and rb_x == [rd_burst_addr], (
             f"CHK-EXT-BURST FAIL: dir=R admitted resp={RESP_NAME.get(rb.resp_code)} "
@@ -480,16 +506,17 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             + f"; expected AR addr=0x{rd_burst_addr:x} len=7 size=3"
         )
         denied_r = rd_beats
-        assert denied_r and all(r == RESP_DECERR for r in denied_r) and not rd_x, (
+        assert len(denied_r) == 8 and all(r == RESP_DECERR for r in denied_r) and not rd_x, (
             f"CHK-EXT-BURST FAIL: dir=R denied R beats={denied_r} xbar_seen={len(rd_x)}; "
-            "expected DECERR on every R beat with PR-XEXT silent"
+            "expected 8 R beats, DECERR on every beat, with PR-XEXT silent"
         )
         self.logger.info(
             "CHK-EXT-BURST PASS: dir=R len=7 xbar_seen=%d init_resp=DECERR denied_resp=DECERR "
             "denied_xbar_seen=0 beats_seen=na data_ok=na admitted_beats=%d denied_beats=%d "
-            "denied_ext_seen=%d",
+            "denied_ext_seen=%d port_reply=DECERR port_reply_beats=%d",
             len(rb_x),
             len(rb_beats),
             len(denied_r),
             len(rd_ext),
+            len(rb_rep),
         )
