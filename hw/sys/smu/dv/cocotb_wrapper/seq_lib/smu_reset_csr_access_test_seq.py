@@ -282,7 +282,6 @@ class smu_reset_csr_access_test_seq:
         await self._open_tap()
 
     async def run(self) -> None:
-        dut = self.dut
         sb = self.sb
         await self.cfg.reset_done.wait()
         await self._open_tap()

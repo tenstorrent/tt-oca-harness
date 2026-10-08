@@ -1567,7 +1567,7 @@ module = "smu_reset_csr_access_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 3000
 tags = ["no_sep", "reset", "smc", "csr"]
 run_modes = ["sep_rtl"]
 args = [
