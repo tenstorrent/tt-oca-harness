@@ -24,6 +24,11 @@ class FieldCompare:
     expect: int
     mask: int
 
+    def __post_init__(self) -> None:
+        # A compare on no field bits cannot fail, so it is a test error.
+        if self.mask == 0:
+            raise ValueError("field_compare: field mask is 0, the compare cannot fail")
+
     @property
     def ok(self) -> bool:
         return (self.got & self.mask) == (self.expect & self.mask)
