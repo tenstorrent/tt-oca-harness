@@ -127,7 +127,9 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             wdata=data,
             length=(1 << size) * nbeats,
             size=size,
-            expect_error=expect_decerr and not ungraded,
+            # Only the s_axi scoreboard reads expect_error; the SI response is
+            # graded by the caller.
+            expect_error=init != "SI" and expect_decerr and not ungraded,
             prot=SI_PROT if init == "SI" else None,
             **kw,
         )
