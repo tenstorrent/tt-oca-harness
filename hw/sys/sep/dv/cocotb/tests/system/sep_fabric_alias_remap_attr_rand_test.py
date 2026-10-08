@@ -245,7 +245,11 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         assert len(outs) >= 1, f"PR-ALIAS output shows no {ch} request for 0x{addr:x}"
         # The output beat of this request is the first output beat at or after
         # the input handshake (the remap holds one request at a time per channel).
-        out = next((b for b in outs if b.t_ps >= ins[0].t_ps), outs[-1])
+        out = next((b for b in outs if b.t_ps >= ins[0].t_ps), None)
+        assert out is not None, (
+            f"PR-ALIAS output shows no {ch} request at or after the input handshake "
+            f"for 0x{addr:x} (t_in={ins[0].t_ps} ps)"
+        )
         return seq.resp_code, ins[0], out
 
     async def _class_pair(self, cls: str, *, write: bool, valid: bool, cache: int) -> None:
@@ -305,6 +309,7 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             f"expect={'0x%x' % cfg.cacheable if hit else _hx(ci)} hit={int(hit)}"
         )
         assert ci is not None and co is not None, f"CHK-ALIAS-CACHE FAIL: X/Z AxCACHE: {line}"
+        assert ci == issued, f"CHK-ALIAS-CACHE FAIL: remap input differs from issued: {line}"
         want = cfg.cacheable if hit else ci
         assert co == want, f"CHK-ALIAS-CACHE FAIL: {line}"
         if hit and (ci ^ cfg.cacheable) != 0xF:
