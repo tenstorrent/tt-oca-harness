@@ -2,9 +2,34 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Written by cov/tools/gen_fcov_crypto_reg_addrs.py from sep_reg.svh. Do not edit.
-// 1 when the 32-bit address is a register of the OTBN, HMAC, KMAC, entropy
-// source or ABR window; 0 for every other address of those windows (a hole).
+// 1 when the 32-bit address is a register or lies in a memory window of the
+// OTBN, HMAC, KMAC, entropy source or ABR unit; 0 for every other address of
+// those units (a hole).
 function automatic bit fcov_crypto_reg_addr(input logic [31:0] a);
+  if (a >= OTBN_IMEM_MEM_BASE_ADDR && a - OTBN_IMEM_MEM_BASE_ADDR < OTBN_IMEM_MEM_SIZE) return 1'b1;
+  if (a >= OTBN_DMEM_MEM_BASE_ADDR && a - OTBN_DMEM_MEM_BASE_ADDR < OTBN_DMEM_MEM_SIZE) return 1'b1;
+  if (a >= HMAC_MSG_FIFO_MEM_BASE_ADDR && a - HMAC_MSG_FIFO_MEM_BASE_ADDR < HMAC_MSG_FIFO_MEM_SIZE)
+    return 1'b1;
+  if (a >= KMAC_STATE_MEM_BASE_ADDR && a - KMAC_STATE_MEM_BASE_ADDR < KMAC_STATE_MEM_SIZE)
+    return 1'b1;
+  if (a >= KMAC_MSG_FIFO_MEM_BASE_ADDR && a - KMAC_MSG_FIFO_MEM_BASE_ADDR < KMAC_MSG_FIFO_MEM_SIZE)
+    return 1'b1;
+  if (a >= ABR_MLDSA_PUBKEY_MEM_BASE_ADDR && a - ABR_MLDSA_PUBKEY_MEM_BASE_ADDR < ABR_MLDSA_PUBKEY_MEM_SIZE)
+    return 1'b1;
+  if (a >= ABR_MLDSA_SIGNATURE_MEM_BASE_ADDR && a - ABR_MLDSA_SIGNATURE_MEM_BASE_ADDR < ABR_MLDSA_SIGNATURE_MEM_SIZE)
+    return 1'b1;
+  if (a >= ABR_MLDSA_PRIVKEY_OUT_MEM_BASE_ADDR && a - ABR_MLDSA_PRIVKEY_OUT_MEM_BASE_ADDR < ABR_MLDSA_PRIVKEY_OUT_MEM_SIZE)
+    return 1'b1;
+  if (a >= ABR_MLDSA_PRIVKEY_IN_MEM_BASE_ADDR && a - ABR_MLDSA_PRIVKEY_IN_MEM_BASE_ADDR < ABR_MLDSA_PRIVKEY_IN_MEM_SIZE)
+    return 1'b1;
+  if (a >= ABR_MLKEM_MSG_MEM_BASE_ADDR && a - ABR_MLKEM_MSG_MEM_BASE_ADDR < ABR_MLKEM_MSG_MEM_SIZE)
+    return 1'b1;
+  if (a >= ABR_MLKEM_DECAPS_KEY_MEM_BASE_ADDR && a - ABR_MLKEM_DECAPS_KEY_MEM_BASE_ADDR < ABR_MLKEM_DECAPS_KEY_MEM_SIZE)
+    return 1'b1;
+  if (a >= ABR_MLKEM_ENCAPS_KEY_MEM_BASE_ADDR && a - ABR_MLKEM_ENCAPS_KEY_MEM_BASE_ADDR < ABR_MLKEM_ENCAPS_KEY_MEM_SIZE)
+    return 1'b1;
+  if (a >= ABR_MLKEM_CIPHERTEXT_MEM_BASE_ADDR && a - ABR_MLKEM_CIPHERTEXT_MEM_BASE_ADDR < ABR_MLKEM_CIPHERTEXT_MEM_SIZE)
+    return 1'b1;
   case (a)
     OTBN_INTR_STATE_REG_ADDR, OTBN_INTR_ENABLE_REG_ADDR, OTBN_INTR_TEST_REG_ADDR,
     OTBN_ALERT_TEST_REG_ADDR, OTBN_CMD_REG_ADDR, OTBN_CTRL_REG_ADDR,

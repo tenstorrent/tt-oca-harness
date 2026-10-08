@@ -5,9 +5,11 @@
 
 The FCOV sampler classifies the start of an inbound burst into the crypto
 region as a register or a hole (``sep_fabric_inbound_aperture_cg.cp_burst_region``).
-The include lists every ``*_REG_ADDR`` symbol of the OTBN, HMAC, KMAC,
-entropy source and ABR windows of ``hw/sys/sep/regs/gen/svh/sep_reg.svh`` by
-name, so a moved register keeps its class. Run it after a register change;
+The include lists every ``*_REG_ADDR`` symbol and every ``*_MEM_BASE_ADDR`` /
+``*_MEM_SIZE`` memory window (OTBN IMEM and DMEM, the HMAC and KMAC message
+FIFOs, the KMAC state, the ABR key and message windows) of the OTBN, HMAC,
+KMAC, entropy source and ABR units of ``hw/sys/sep/regs/gen/svh/sep_reg.svh``
+by name, so a moved register or window keeps its class. Run it after a register change;
 ``--check`` exits 1 when the committed include differs from the header.
 """
 
@@ -27,18 +29,26 @@ OUT = ROOT / "hw/sys/sep/dv/tb/sep_fcov_crypto_reg_addrs.svh"
 def render() -> str:
     text = SVH.read_text()
     names: list[str] = []
+    windows: list[str] = []
     for unit in UNITS:
         names += re.findall(rf"^localparam int unsigned ({unit}_\w+_REG_ADDR)\s", text, re.M)
+        windows += re.findall(rf"^localparam int unsigned ({unit}_\w+)_MEM_BASE_ADDR\s", text, re.M)
     lines = [
         "// SPDX-License-Identifier: Apache-2.0",
         "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
         "//",
         "// Written by cov/tools/gen_fcov_crypto_reg_addrs.py from sep_reg.svh. Do not edit.",
-        "// 1 when the 32-bit address is a register of the OTBN, HMAC, KMAC, entropy",
-        "// source or ABR window; 0 for every other address of those windows (a hole).",
+        "// 1 when the 32-bit address is a register or lies in a memory window of the",
+        "// OTBN, HMAC, KMAC, entropy source or ABR unit; 0 for every other address of",
+        "// those units (a hole).",
         "function automatic bit fcov_crypto_reg_addr(input logic [31:0] a);",
-        "  case (a)",
     ]
+    for w in windows:
+        cond = f"  if (a >= {w}_MEM_BASE_ADDR && a - {w}_MEM_BASE_ADDR < {w}_MEM_SIZE)"
+        # The layout verible-verilog-format keeps (100-column limit).
+        one = f"{cond} return 1'b1;"
+        lines += [one] if len(one) <= 100 else [cond, "    return 1'b1;"]
+    lines.append("  case (a)")
     for i in range(0, len(names), 3):
         chunk = names[i : i + 3]
         sep = ":" if i + 3 >= len(names) else ","
