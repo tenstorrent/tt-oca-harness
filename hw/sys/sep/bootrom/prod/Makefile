@@ -229,7 +229,7 @@ OTBN_APP_C   := $(OTBN_APP_DIR)/rsa_3072_app_otbn.c
 
 # Optional absolute .c paths from an adopter overlay build. Their strong symbols
 # override the weak stubs in src/, such as the external flash controller hooks in
-# src/sep_spi.c or ot_spi_select_pad_mux() for a wrapper with shared SPI pads.
+# src/sep_spi.c.
 SEP_FW_OVERLAY_SOURCES := $(OCAH_FW_OVERLAY_SOURCES_sep)
 SEP_FW_OVERLAY_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(SEP_FW_OVERLAY_SOURCES)))
 OBJS += $(SEP_FW_OVERLAY_OBJS)
