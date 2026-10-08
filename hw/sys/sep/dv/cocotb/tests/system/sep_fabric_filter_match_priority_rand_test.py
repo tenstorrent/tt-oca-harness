@@ -323,9 +323,11 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             mem_ok = p.cls in ("sram", "scratch")
             old = self._mget(p.addr, nb) if mem_ok else 0
             wdata = self._fresh(nb, old) if p.write else 0
+            mf = self.taps["PR-INFLT"].mark()
             seq = await self._si(p, wdata)
             resp = seq.resp_code
             target_seen, out_seen = self._seen(mark, p)
+            inflt = self.taps["PR-INFLT"].count(mf, "aw" if p.write else "ar")
             if not p.write:
                 data = seq.rdata
             if mem_ok:
@@ -353,6 +355,11 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             else:
                 assert target_seen == 0, (
                     f"{self._chk} FAIL: probe {tag}: refused but {target_seen} PR-XEXT/PR-CSR handshake(s)"
+                )
+                # The refusal comes from the filter: nothing leaves it.
+                assert inflt == 0, (
+                    f"{self._chk} FAIL: probe {tag}: refused but {inflt} PR-INFLT request(s) left "
+                    "the inbound filter"
                 )
             if readback is not None:
                 want = self._mget(p.addr, nb)
@@ -761,6 +768,20 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                             f"CHK-RESET-DENY-ARMED FAIL: wide control in {cls} p{prot1} "
                             f"addr=0x{p.addr:08x} resp={_RESP.get(seq.resp_code)} pr_inflt_ar={inflt}; "
                             "expected OKAY after the filter admits the read"
+                        )
+                        wide_ok += 1
+                        wide_seen += inflt
+                    # The write classes of the armed run: each write passes the
+                    # filter and its unit answers OKAY.
+                    for cls in ("mbox", "crypto"):
+                        p = self._p_in(cls, True, prot1)
+                        m = self.taps["PR-INFLT"].mark()
+                        seq = await self._si(p, self.rng.getrandbits(32))
+                        inflt = self.taps["PR-INFLT"].count(m, "aw")
+                        assert seq.resp_code == RESP_OKAY and inflt >= 1, (
+                            f"CHK-RESET-DENY-ARMED FAIL: wide control in {cls} write p{prot1} "
+                            f"addr=0x{p.addr:08x} resp={_RESP.get(seq.resp_code)} pr_inflt_aw={inflt}; "
+                            "expected OKAY after the filter admits the write"
                         )
                         wide_ok += 1
                         wide_seen += inflt
