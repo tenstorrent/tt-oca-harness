@@ -23,10 +23,8 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
   localparam int unsigned SafeStateReads = 5;
   // The final status read checks the Zeroer after the catalogued writes.
   localparam int unsigned FinalStateReads = 1;
-  // Baseline, full, single-byte, seeded sparse, null-strobe and restore each
-  // end in a predicted read; fixed sparse strobes add one read apiece.
-  localparam int unsigned BaseReadsPerRegister = 6;
-  // Those six reads pair with five writes; fixed sparse strobes add one pair.
+  // Six base reads and five base writes are graded per word; each fixed
+  // sparse strobe adds a write response and a predicted read.
   localparam int unsigned BaseAccessesPerRegister = 11;
   // The scenario and its lane-coverage claim require all seven selected words.
   localparam int unsigned CatalogEntries = 7;
@@ -134,7 +132,7 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
     bit [7:0] lane_coverage;
     bit [63:0] pattern;
     bit [63:0] status_word;
-    int unsigned predicted_reads;
+    int unsigned predicted_comparisons;
     int unsigned predicted_accesses = SafeStateReads + FinalStateReads;
     int unsigned compare_target;
     int unsigned mismatch_before;
@@ -154,13 +152,13 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
       valid_sparse_strobes(entries[i].rw_lane_mask, valid);
       if (valid.size() == 0)
         `uvm_fatal(get_type_name(), {entries[i].name, " has no valid sparse strobe"})
-      predicted_reads += BaseReadsPerRegister + fixed.size();
+      predicted_comparisons += BaseAccessesPerRegister + 2 * fixed.size();
       predicted_accesses += BaseAccessesPerRegister + 2 * fixed.size();
     end
-    check_min_activity(SmcFeatureRegblockWide, predicted_reads);
+    check_min_activity(SmcFeatureRegblockWide, predicted_comparisons);
     wait_fuse_sense_done();
     mismatch_before = scoreboard.mismatch_count(SmcFeatureRegblockWide);
-    compare_target  = scoreboard.compare_count(SmcFeatureRegblockWide) + predicted_reads;
+    compare_target  = scoreboard.compare_count(SmcFeatureRegblockWide) + predicted_comparisons;
     accesses_before = mem_accesses;
 
     // The catalogued words are side-effect-free only while the Zeroer is idle and

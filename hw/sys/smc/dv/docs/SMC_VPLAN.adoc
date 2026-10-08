@@ -12957,7 +12957,8 @@ realization.
 *Source Module*: `smc_regblock_sparse_strobe_test` (UVM-only independent scenario)
 
 *BFM / Model*: ocah_axi_vip (AXI, SEP_IN); `smc_regblock_wide_ref_model`
-predicts each read from accepted writes and generated RW masks.
+predicts each read from accepted writes and generated RW masks, and predicts
+an OKAY response for every catalogued read and write.
 
 *Objective*: Single-byte, non-contiguous and null write strobes update exactly
 the strobed RW bytes of selected 64-bit register-block words.
@@ -12974,6 +12975,12 @@ the strobed RW bytes of selected 64-bit register-block words.
   a predicted read. Passes 0 to 3 use all-ones, all-zeros, `0x55` and `0xAA`
   data; later passes use seeded data.
 * Every SEP_IN byte lane is strobed at least once across the selected words.
+
+*Expectation Sources*: The catalogued words use the generated field masks and
+defaults. The generated implementations of Zeroer, SMC base-config and
+alias-remap drive `cpuif_wr_err = '0`, so writes reaching these register blocks
+do not produce a register-block write error. This does not define the response
+of an access rejected earlier in the fabric.
 
 *Test Procedure*:
 
@@ -12997,8 +13004,8 @@ scoreboard results and access counts.
 |`CHK-REGBLOCK-WIDE-RESTORE-NONVAC` |At least one restore per pass changes an RW value
 |`CHK-REGBLOCK-WIDE-NO-ZEROER-START` |The Zeroer reads idle (`CTRL_STATUS.STATUS = 0`) after the last catalogued write
 |`CHK-REGBLOCK-WIDE-LANE-COVERAGE` |All eight SEP_IN byte lanes were strobed
-|`CHK-SB-REGBLOCK-WIDE` |Each catalogued read matches the passive model's predicted 64-bit value
-|`CHK-REGBLOCK-WIDE-SCOREBOARD` |Every predicted read was compared with no new mismatch
+|`CHK-SB-REGBLOCK-WIDE` |Each catalogued read and write returns OKAY; each read also matches the passive model's predicted 64-bit value
+|`CHK-REGBLOCK-WIDE-SCOREBOARD` |Every predicted read and write was compared with no new mismatch
 |`CHK-NONVAC` |The number of SEP_IN accesses equals the declared scenario
 |`CHK-SB-MIN-ACTIVITY`, `CHK-MEM-RESP`, `CHK-FUSE-SENSE-DONE` |Scenario volume, frontdoor responses and bring-up completed as declared
 |===
@@ -13011,14 +13018,22 @@ operational state. `RESET_VECTOR_0` through `RESET_VECTOR_3` are excluded
 because a later core reset that does not also assert warm reset can consume a
 test pattern as a boot address. `DFX_CTRL.DEBUG_CTRL` is excluded because its
 field behavior is outside this CSR byte-enable claim.
+The scenario does not induce a non-OKAY response from the catalogued blocks.
+The response negative proves the response comparison can fail, not how the model
+handles a real error response; the error-read path has no directed run here.
 
 *Pass Criteria*: all checks hold on every pass;
 `+SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE` must fail `regblock_wide`
 comparisons. `+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
 full-write expectation and must fail `CHK-REGBLOCK-WIDE-FULL-RW` while the
-scoreboard records no mismatch. Enrolled only in `csr_uvm_extended`, outside
-`all`, `hosted` and `ci`; run on demand. This card records what a run must
-show, not a pass.
+scoreboard records no mismatch.
+`+SMC_REGBLOCK_WIDE_RESPONSE_NEGATIVE`, used alone, changes only predicted
+write responses to SLVERR and must fail every catalogued write comparison and
+no read comparison: 50 write mismatches per pass (35 base writes and 15 fixed
+sparse writes).
+The sequence and end-of-run scoreboard summary also report those mismatches.
+Enrolled only in `csr_uvm_extended`, outside `all`, `hosted` and `ci`;
+run on demand. This card records what a run must show, not a pass.
 
 '''''
 
