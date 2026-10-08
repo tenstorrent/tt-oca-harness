@@ -26,8 +26,8 @@ Evidence anchors: the SI responses and read data, the LSU read-back, PR-XEXT
 (``xbar_ext_in_*``, the ``ext`` initiator of the local crossbar), PR-CSR
 (``sys_csr_axil_*``, the system-CSR AXI-Lite port) and PR-INFLT (``pr_inflt_*``,
 the request out of the inbound filter, global address). A refusal at the
-crossbar limit shows the request leaving the filter on PR-INFLT, so the DECERR
-is the crossbar's, not the filter's. The responses of the
+crossbar limit or to an unreachable unit shows the request leaving the filter
+on PR-INFLT, so the DECERR is not the filter's. The responses of the
 in-window edge reads and of the read at ``0x3FFF_FFF8`` are logged only: the
 specification states no response for those local addresses.
 
@@ -313,7 +313,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         seq = await self._si(SepAxiOp.READ, g, length=8)
         if seq.resp_code != RESP_OKAY or seq.rdata != self.d.m1:
             raise AssertionError(
-                f"CHK-REBASE-UNREACH FAIL: cfg={cfg} control read 0x{g:x} "
+                f"CTL-REBASE-UNREACH FAIL: cfg={cfg} control read 0x{g:x} "
                 f"resp={_RESP.get(seq.resp_code)} rdata=0x{seq.rdata:x} staged=0x{self.d.m1:x}; "
                 "the entry that covers the units does not admit a live unit"
             )
@@ -348,20 +348,23 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
             ga = g + local
             assert rebase(ga, self.ap_base, self.ap_size).local == local
             for direction in ("R", "W"):
-                mark = self.xext.mark()
-                if direction == "R":
-                    seq = await self._si(SepAxiOp.READ, ga, length=4)
-                else:
-                    shift = 32 if local & 4 else 0
-                    seq = await self._si(SepAxiOp.WRITE, ga, length=4, wdata=wdata[unit] << shift)
-                seen = self.xext.since(mark)
-                line = (
-                    f"cfg={cfg} unit={unit} dir={direction} global=0x{ga:x} "
-                    f"resp={_RESP.get(seq.resp_code)} control_resp={_RESP.get(ctl_resp)} "
-                    f"control_rdata=0x{ctl_data:x} xext_logged={[hex(b.addr or 0) for b in seen]}"
+                shift = 32 if local & 4 else 0
+                # The crossbar forwards these local addresses to the local
+                # crossbar, so PR-XEXT may show them; the PR-INFLT beat shows
+                # that the entry admitted the request.
+                line = await self._expect_refused(
+                    "CHK-REBASE-UNREACH",
+                    ga,
+                    length=4,
+                    direction=direction,
+                    wdata=wdata[unit] << shift,
+                    admitted=True,
+                    xext_silent=False,
+                    extra=(
+                        f" cfg={cfg} unit={unit} control_resp={_RESP.get(ctl_resp)} "
+                        f"control_rdata=0x{ctl_data:x}"
+                    ),
                 )
-                if seq.resp_code != RESP_DECERR:
-                    raise AssertionError(f"CHK-REBASE-UNREACH FAIL: {line}")
                 self.logger.info("CHK-REBASE-UNREACH PASS: %s", line)
         self._close()
 
@@ -379,13 +382,15 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         wdata: int = 0,
         csr: bool = False,
         admitted: bool = False,
+        xext_silent: bool = True,
         extra: str = "",
     ) -> str:
         """A request that must answer DECERR with no PR-XEXT (and PR-CSR) handshake.
 
         ``admitted``: the request must also leave the inbound filter exactly once
         on PR-INFLT, with the issued global address, so the refusal comes from
-        past the filter."""
+        past the filter. ``xext_silent=False``: the PR-XEXT count is logged, not
+        graded."""
         mx = self.xext.mark()
         mc = self.csr.mark()
         mf = self.inflt.mark()
@@ -400,7 +405,12 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
             f"{extra}"
         )
         bad_filter = admitted and f_addrs != [ga & ADDR_56]
-        if seq.resp_code != RESP_DECERR or nx != 0 or (csr and nc != 0) or bad_filter:
+        if (
+            seq.resp_code != RESP_DECERR
+            or (xext_silent and nx != 0)
+            or (csr and nc != 0)
+            or bad_filter
+        ):
             raise AssertionError(f"{chk} FAIL: {line}")
         return line
 
@@ -625,7 +635,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         )
         if below_seen != [n]:
             raise AssertionError(
-                f"CHK-REBASE-XBAR-LIMIT FAIL: control read 0x{ga:x} expected PR-XEXT 0x{n:x}, "
+                f"CTL-REBASE-XBAR-LIMIT FAIL: control read 0x{ga:x} expected PR-XEXT 0x{n:x}, "
                 f"saw {[hex(a or 0) for a in below_seen]}"
             )
         ga = G + XBAR_LIMIT
@@ -655,7 +665,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
             _, rb_lo, rb_hi = await self.infilt.read_entry(idx)
             if (rb_lo, rb_hi) != (lo, hi):
                 raise AssertionError(
-                    f"CHK-REBASE-ABOVE FAIL: entry {idx} read back START=0x{rb_lo:x} "
+                    f"CTL-REBASE-ABOVE FAIL: entry {idx} read back START=0x{rb_lo:x} "
                     f"END=0x{rb_hi:x}, programmed 0x{lo:x}..0x{hi:x}"
                 )
         for addr in [ABOVE_LIMIT] + [a for _, a in CPU_RESOURCES]:

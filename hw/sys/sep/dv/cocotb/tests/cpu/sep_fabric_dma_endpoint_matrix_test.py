@@ -1010,7 +1010,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 f"error_code=0x{r['ec']:08x}; expected STATUS.ERROR and ERROR_CODE.BUS_ERROR only"
             )
             self.logger.info(
-                "CHK-DMA-NOTCONN LOG: %s end=error dma_status=0x%08x error_code=0x%08x",
+                "CTL-DMA-NOTCONN LOG: %s end=error dma_status=0x%08x error_code=0x%08x",
                 tgt,
                 r["st"],
                 r["ec"],

@@ -753,7 +753,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     for cls in ("sram", "scratch"):
                         r = await self._run(self._p_in(cls, False, prot1))
                         assert r.resp == RESP_OKAY and r.target_seen >= 1, (
-                            f"CHK-RESET-DENY-ARMED FAIL: wide control in {cls} p{prot1}"
+                            f"CTL-RESET-DENY-ARMED FAIL: wide control in {cls} p{prot1}"
                         )
                         wide_ok += 1
                         wide_seen += r.target_seen
@@ -766,7 +766,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                         seq = await self._si(p)
                         inflt = self.taps["PR-INFLT"].count(m, "ar")
                         assert seq.resp_code == RESP_OKAY and inflt >= 1, (
-                            f"CHK-RESET-DENY-ARMED FAIL: wide control in {cls} p{prot1} "
+                            f"CTL-RESET-DENY-ARMED FAIL: wide control in {cls} p{prot1} "
                             f"addr=0x{p.addr:08x} resp={_RESP.get(seq.resp_code)} pr_inflt_ar={inflt}; "
                             "expected OKAY after the filter admits the read"
                         )
@@ -780,7 +780,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                         seq = await self._si(p, self.rng.getrandbits(32))
                         inflt = self.taps["PR-INFLT"].count(m, "aw")
                         assert seq.resp_code == RESP_OKAY and inflt >= 1, (
-                            f"CHK-RESET-DENY-ARMED FAIL: wide control in {cls} write p{prot1} "
+                            f"CTL-RESET-DENY-ARMED FAIL: wide control in {cls} write p{prot1} "
                             f"addr=0x{p.addr:08x} resp={_RESP.get(seq.resp_code)} pr_inflt_aw={inflt}; "
                             "expected OKAY after the filter admits the write"
                         )
@@ -799,14 +799,14 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     )
                     hits = sum(1 for a in addrs if a == (p.addr & M32))
                     assert hits == 1, (
-                        f"CHK-RESET-DENY FAIL: PR-EXT control shows {hits} request(s) at 0x{p.addr:08x}"
+                        f"CTL-RESET-DENY FAIL: PR-EXT control shows {hits} request(s) at 0x{p.addr:08x}"
                     )
                     ext_ctrl_seen += hits
                 else:
                     for cls in ("smu", "ap"):
                         r = await self._run(self._p_out(cls, False, prot1))
                         assert r.resp == RESP_OKAY and r.out_seen >= 1, (
-                            f"CHK-RESET-DENY-ARMED FAIL: wide control out {cls} p{prot1}"
+                            f"CTL-RESET-DENY-ARMED FAIL: wide control out {cls} p{prot1}"
                         )
                         wide_ok += 1
                 await bank.set_enabled(k, False)
