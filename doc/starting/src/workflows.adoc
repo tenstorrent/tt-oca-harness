@@ -212,7 +212,8 @@ Build products land under `build/release/` (or `build/debug/` with `BUILD_TYPE=d
 `hw/sys/sep/bootrom/prod/` is a self-contained production boot ROM for the SEP subsystem (VeeR EL2), with its own includes, drivers, and link script.
 It implements the full secure-boot flow — manifest loading, RSA-3072 signature verification on OTBN, optional AES payload decryption, PMP setup, and lifecycle enforcement — and uses weak stubs so the open tree links cleanly.
 A build that carries its own drivers overrides the stubs at link time: it passes the driver sources as `OCAH_FW_OVERLAY_SOURCES_sep`, and the include flags (`-I<dir>`) for their register headers as `OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep`, on the `make` command line.
-The Makefile ignores both variables when they are set only in the environment, so a value exported in a shell cannot change an open-tree ROM.
+The ROM takes the SMC registers it reaches through its SMC window from the generated SMC map; a build against another SMC map passes the include flags for that map as `OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_smc`.
+The Makefile ignores these variables when they are set only in the environment, so a value exported in a shell cannot change an open-tree ROM.
 See https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/README.md[`hw/sys/sep/bootrom/prod/README.md`] and
 the
 ifdef::backend-html5[]

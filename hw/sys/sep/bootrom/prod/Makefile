@@ -53,9 +53,11 @@ MANIFEST_PYTHON ?= $(UV) --project "$(OCAH_ROOT)" run --locked --group manifest 
 # assignments discard ambient environment values while preserving command-line
 # overrides.
 OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep :=
+OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_smc :=
 OCAH_FW_OVERLAY_SOURCES_sep :=
 include $(OCAH_ROOT)/hw/common/dv/fw/reg_includes.mk
-REG_INCLUDE_DIRS := $(call ocah_fw_reg_includes,sep)
+# The SMC map places the SMC registers SEP reaches through its SMC window.
+REG_INCLUDE_DIRS := $(call ocah_fw_reg_includes,sep) $(call ocah_fw_reg_includes,smc)
 
 ROM_BASE  ?= 0x10040000
 DCCM_BASE ?= 0xC0040000
@@ -342,6 +344,7 @@ toolchain-images: key-digests
 	    BOOT_OT_SPI_USE_PIO="$(BOOT_OT_SPI_USE_PIO)" \
 	    BOOT_OT_SPI_PROFILE="$(BOOT_OT_SPI_PROFILE)" \
 	    OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep="$(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep)" \
+	    OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_smc="$(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_smc)" \
 	    OCAH_FW_OVERLAY_SOURCES_sep="$(OCAH_FW_OVERLAY_SOURCES_sep)" \
 	    RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf \
 	    toolchain-images-build; \
@@ -368,6 +371,7 @@ BUILD_FLAGS := CTRL_OT=$(BOOT_SPI_CONTROLLER_OT) USE_PIO=$(BOOT_OT_SPI_USE_PIO) 
 	ICCM_FULL=$(ROM_ICCM_CLEAR_FULL) \
 	DCCM_SCRUB=$(DCCM_SCRUB_BYTES) SRAM_SCRUB=$(SRAM_SCRUB_BYTES) \
 	REG_OVERLAY=$(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep) \
+	SMC_REG_OVERLAY=$(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_smc) \
 	SOURCE_OVERLAY=$(OCAH_FW_OVERLAY_SOURCES_sep) \
 	OCA_CLASSIC=$(OCA_SUPPORT_CLASSIC) OCA_PQC=$(OCA_SUPPORT_PQC) \
 	OCA_TOC_MAX=$(OCA_TOC_MAX_IMAGES) ENTROPY=$(SEP_ENTROPY_BRINGUP) \
@@ -398,6 +402,15 @@ $(OBJS): $(FLAGS_STAMP)
 # it at the new one (seen: bl0_state.lc_state read as garbage after a rebase, failing
 # the manifest usage-constraint check). Header edits now rebuild dependents.
 -include $(OBJS:.o=.d)
+
+# smc_base_config.h also declares C types, which vector.S cannot read, so the
+# SMC local base sep_smc_map.h needs is copied into a macro-only header.
+SMC_BASE_CONFIG_H := $(firstword $(wildcard $(addsuffix /smc_base_config.h,$(patsubst -I%,%,$(REG_INCLUDE_DIRS)))))
+SMC_LOCAL_BASE_H := $(BUILD_DIR)/smc_local_base.h
+$(SMC_LOCAL_BASE_H): $(SMC_BASE_CONFIG_H) $(FLAGS_STAMP) | $(BUILD_DIR)
+	grep -E '^#define SMC_BASE_CONFIG__LOCAL_BASE__BASE_reset 0x[0-9a-fA-F]+$$' "$<" > "$@"
+
+$(OBJS): $(SMC_LOCAL_BASE_H)
 
 # Static version header.
 $(BUILD_DIR)/bl0_version.h: | $(BUILD_DIR)
