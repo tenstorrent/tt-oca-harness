@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import RisingEdge
+from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
 
@@ -35,8 +36,25 @@ async def capture_addr_handshake(channel: str, prefix: str = "s_axi") -> dict[st
             return {f: int(sig[f].value) for f in ("addr", "len", "size", "burst")}
 
 
-def take_handshake(task) -> dict[str, int] | None:
-    """Result of a ``capture_addr_handshake`` task, or None when none was seen."""
+async def capture_resp_handshake(channel: str, prefix: str = "s_axi") -> int:
+    """Simulation time (ps) of the next B handshake, or of the R handshake with RLAST.
+
+    ``channel`` is ``"b"`` or ``"r"``. Start it with ``cocotb.start_soon`` before
+    the access and read it with :func:`take_handshake` after it. The time is the
+    clock edge at which the initiator port accepted its response.
+    """
+    dut = cocotb.top
+    valid = getattr(dut, f"{prefix}_{channel}valid")
+    ready = getattr(dut, f"{prefix}_{channel}ready")
+    last = getattr(dut, f"{prefix}_rlast") if channel == "r" else None
+    while True:
+        await RisingEdge(dut.clk_i)
+        if valid.value == 1 and ready.value == 1 and (last is None or last.value == 1):
+            return int(get_sim_time("ps"))
+
+
+def take_handshake(task):
+    """Result of a ``capture_*_handshake`` task, or None when none was seen."""
     if task.done():
         return task.result()
     if hasattr(task, "cancel"):

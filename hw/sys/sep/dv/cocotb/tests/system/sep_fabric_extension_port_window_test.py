@@ -40,8 +40,8 @@ address classes are fixed loops.
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
-from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
@@ -50,7 +50,7 @@ from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, feat_ctrl_expected
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
-from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_resp_handshake, take_handshake
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 
@@ -144,6 +144,18 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             self.env.axi_monitor.release_expected_decerr(1)
         return seq
 
+    async def _timed(self, init: str, op: SepAxiOp, *args, **kw) -> tuple[SepAxiAccessSeq, int]:
+        """One access and the time its initiator port accepted the B or the last R beat."""
+        ch = "b" if op is SepAxiOp.WRITE else "r"
+        prefix = "m_axi" if init == "SI" else "s_axi"
+        hs = cocotb.start_soon(capture_resp_handshake(ch, prefix=prefix))
+        seq = await self._access(init, op, *args, **kw)
+        t = take_handshake(hs)
+        assert t is not None, (
+            f"CHK-EXT-PORT FAIL: init={init} dir={ch}: no response handshake seen on {prefix}"
+        )
+        return seq, t
+
     def _mark(self) -> dict[str, int]:
         return {n: t.mark() for n, t in self.taps.items()}
 
@@ -154,8 +166,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         self, init: str, op: SepAxiOp, cls: str, addr: int, size: int, data: int
     ) -> dict:
         m = self._mark()
-        seq = await self._access(init, op, addr, size, data=data)
-        t_init = get_sim_time("ps")
+        seq, t_init = await self._timed(init, op, addr, size, data=data)
         ch = "aw" if op is SepAxiOp.WRITE else "ar"
         return {
             "init": init,
@@ -364,18 +375,16 @@ class sep_fabric_extension_port_window_test(sep_base_test):
 
         # Steps 7 and 8: admitted SI bursts.
         m = self._mark()
-        wb = await self._access(
+        wb, wb_t = await self._timed(
             "SI", SepAxiOp.WRITE, wr_burst_addr, 3, data=wr_burst_data, nbeats=4
         )
-        wb_t = get_sim_time("ps")
         wb_rep = self._since(m, "PR-EXT-RSP", "b")
         wb_x = [b.addr for b in self._since(m, "PR-XEXT", "aw")]
         wb_aw = self._since(m, "PR-EXT", "aw")
         wb_w = self._since(m, "PR-EXT", "w")
         m = self._mark()
         self.env.ext_axi_monitor.start_beat_capture()
-        rb = await self._access("SI", SepAxiOp.READ, rd_burst_addr, 3, nbeats=8)
-        rb_t = get_sim_time("ps")
+        rb, rb_t = await self._timed("SI", SepAxiOp.READ, rd_burst_addr, 3, nbeats=8)
         rb_beats = self.env.ext_axi_monitor.take_beat_capture()
         rb_rep = self._since(m, "PR-EXT-RSP", "r")
         rb_x = [b.addr for b in self._since(m, "PR-XEXT", "ar")]

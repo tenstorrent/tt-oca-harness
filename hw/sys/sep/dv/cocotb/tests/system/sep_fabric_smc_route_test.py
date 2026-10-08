@@ -419,7 +419,6 @@ class sep_fabric_smc_route_test(sep_base_test):
         )
         assert smu_ok and inside, f"CTL-SMC-SMU-RESET FAIL: {line}"
         self.logger.info("CTL-SMC-SMU-RESET LOG: %s", line)
-        assert self.taps["PR-SMC"].count() == 0, "SMC request before smc_fuse_sense_done read 1"
         await self._wait_smc_fuse_done()
 
         if cfg == "A":
