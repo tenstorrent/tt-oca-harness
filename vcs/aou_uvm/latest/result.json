@@ -26,10 +26,15 @@
       "report": "vcs/aou_uvm/runs/cov/axi4_fc/aou_axi4_fc_merged.txt",
       "total_bins": 696
     },
-    "comparison_key": "COVCMP-6028457dc4e0f0f1",
+    "comparison_key": "COVCMP-b24e223dc1811bc4",
     "details_available": true,
     "effective_metrics": {
-      "functional": 16.6
+      "branch": 83.04,
+      "condition": 83.88,
+      "fsm_state": 44.83,
+      "functional": 55.44,
+      "line": 84.49,
+      "toggle": 73.88
     },
     "holes_summary": {
       "accepted": 0,
@@ -46,23 +51,28 @@
     },
     "policy_thresholds": [],
     "raw_metrics": {
-      "functional": 16.6
+      "branch": 83.04,
+      "condition": 83.88,
+      "fsm_state": 44.83,
+      "functional": 55.44,
+      "line": 84.49,
+      "toggle": 73.88
     },
     "report": "vcs/aou_uvm/runs/cov/report",
     "status": "PASS",
     "target": "default",
     "threshold": null,
     "threshold_met": null,
-    "total_percent": 16.6
+    "total_percent": 70.93
   },
   "failure_buckets": [],
   "flow": "aou",
   "framework": "uvm",
-  "generated_at": "2026-10-07T12:12:03+00:00",
+  "generated_at": "2026-10-08T03:11:39+00:00",
   "git": {
     "branch": "verification",
-    "sha": "c14f848999e984554165bd4b9f4c87a03cbb71e2",
-    "short_sha": "c14f848"
+    "sha": "47400e896f644778035f5634bcc7eaf50efd06ae",
+    "short_sha": "47400e8"
   },
   "junit_xml": {
     "missing": 0,
@@ -75,11 +85,11 @@
   },
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-07T12:12:03+00:00",
+    "generated_at": "2026-10-08T03:11:39+00:00",
     "git": {
       "branch": "verification",
       "remote": "git@aus-gitlab.local.tenstorrent.com:arch/aou-rtl",
-      "sha": "c14f848999e984554165bd4b9f4c87a03cbb71e2"
+      "sha": "47400e896f644778035f5634bcc7eaf50efd06ae"
     },
     "label": "p0",
     "result_json": "vcs/aou_uvm/dashboard-data/result.json",
@@ -105,7 +115,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 202.0,
+      "duration_sec": 1539.0,
       "name": "ucie_axi_fdi_aou_flits_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -115,7 +125,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 15.0,
+      "duration_sec": 365.0,
       "name": "aou_credit_encoding_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -125,7 +135,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 22.0,
+      "duration_sec": 16.0,
       "name": "aou_zero_wreq_credit_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -135,7 +145,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 14.0,
+      "duration_sec": 13.0,
       "name": "aou_zero_rreq_credit_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -145,7 +155,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 27.0,
+      "duration_sec": 15.0,
       "name": "aou_zero_wdata_credit_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -155,7 +165,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 24.0,
+      "duration_sec": 17.0,
       "name": "aou_zero_rdata_credit_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -165,7 +175,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 22.0,
+      "duration_sec": 13.0,
       "name": "aou_zero_wresp_credit_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -175,7 +185,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 41.0,
+      "duration_sec": 29.0,
       "name": "ucie_axi_fdi_aou_wr1b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -185,7 +195,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 36.0,
+      "duration_sec": 18.0,
       "name": "aou_write_4b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -195,7 +205,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 18.0,
+      "duration_sec": 17.0,
       "name": "aou_write_8b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -205,7 +215,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 19.0,
+      "duration_sec": 16.0,
       "name": "aou_write_16b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -215,7 +225,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 19.0,
+      "duration_sec": 17.0,
       "name": "aou_write_32b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -225,7 +235,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 37.0,
+      "duration_sec": 39.0,
       "name": "ucie_axi_fdi_aou_1wrrd_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -245,7 +255,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 14.0,
+      "duration_sec": 18.0,
       "name": "aou_burst_write_2_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -255,7 +265,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 15.0,
+      "duration_sec": 21.0,
       "name": "aou_burst_write_4_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -265,7 +275,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 17.0,
+      "duration_sec": 21.0,
       "name": "aou_burst_write_8_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -275,7 +285,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 19.0,
+      "duration_sec": 24.0,
       "name": "aou_burst_write_16_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -285,7 +295,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 52.0,
+      "duration_sec": 61.0,
       "name": "ucie_axi_fdi_aou_wrrd_long_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -295,7 +305,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 28.0,
+      "duration_sec": 32.0,
       "name": "aou_wstrb_all_ones_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -305,7 +315,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 41.0,
+      "duration_sec": 48.0,
       "name": "aou_wstrb_partial_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -315,7 +325,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 27.0,
+      "duration_sec": 36.0,
       "name": "aou_bresp_okay_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -325,7 +335,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 25.0,
+      "duration_sec": 35.0,
       "name": "ucie_axi_fdi_aou_rd1b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -335,7 +345,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 15.0,
+      "duration_sec": 30.0,
       "name": "aou_read_2b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -345,7 +355,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 12.0,
+      "duration_sec": 31.0,
       "name": "aou_read_4b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -355,7 +365,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 13.0,
+      "duration_sec": 26.0,
       "name": "aou_read_8b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -365,7 +375,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 14.0,
+      "duration_sec": 28.0,
       "name": "aou_read_16b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -375,7 +385,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 14.0,
+      "duration_sec": 32.0,
       "name": "aou_read_128b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -385,7 +395,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 13.0,
+      "duration_sec": 39.0,
       "name": "aou_burst_read_2_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -395,7 +405,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 14.0,
+      "duration_sec": 38.0,
       "name": "aou_burst_read_4_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -405,7 +415,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 17.0,
+      "duration_sec": 32.0,
       "name": "aou_burst_read_8_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -415,7 +425,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 19.0,
+      "duration_sec": 34.0,
       "name": "aou_burst_read_16_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -425,7 +435,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 23.0,
+      "duration_sec": 38.0,
       "name": "aou_rlast_single_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -435,7 +445,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 25.0,
+      "duration_sec": 37.0,
       "name": "aou_rlast_burst_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -445,7 +455,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 25.0,
+      "duration_sec": 44.0,
       "name": "aou_rresp_okay_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -455,7 +465,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 28.0,
+      "duration_sec": 44.0,
       "name": "aou_multi_wresp_flit_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -465,7 +475,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 256.0,
+      "duration_sec": 277.0,
       "name": "aou_rx_crossflit_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -475,7 +485,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 375.0,
+      "duration_sec": 437.0,
       "name": "ucie_axi_fdi_aou_random_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -485,7 +495,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 11.0,
+      "duration_sec": 23.0,
       "name": "aou_msgcredit_encoding_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -495,7 +505,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 268.0,
+      "duration_sec": 307.0,
       "name": "aou_loopback_256b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -505,7 +515,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 362.0,
+      "duration_sec": 395.0,
       "name": "aou_loopback_1024b_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -515,7 +525,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 53.0,
+      "duration_sec": 62.0,
       "name": "aou_aligned_addr_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -525,7 +535,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 86.0,
+      "duration_sec": 104.0,
       "name": "aou_outstanding_2wr_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -535,7 +545,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 93.0,
+      "duration_sec": 113.0,
       "name": "aou_outstanding_2rd_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -545,7 +555,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 92.0,
+      "duration_sec": 118.0,
       "name": "aou_mixed_outstanding_2w2r_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -555,7 +565,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 35.0,
+      "duration_sec": 60.0,
       "name": "aou_three_granule_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -565,7 +575,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 104.0,
+      "duration_sec": 127.0,
       "name": "aou_eight_granule_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -575,7 +585,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 128.0,
+      "duration_sec": 165.0,
       "name": "aou_zero_len_burst_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -585,7 +595,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 32.0,
+      "duration_sec": 45.0,
       "name": "aou_bypass_512_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -595,7 +605,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 160.0,
+      "duration_sec": 188.0,
       "name": "aou_split_bypass_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -605,7 +615,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 30.0,
+      "duration_sec": 51.0,
       "name": "aou_early_bresp_disabled_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -615,7 +625,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 76.0,
+      "duration_sec": 95.0,
       "name": "aou_agg_disabled_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -625,7 +635,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 23.0,
+      "duration_sec": 26.0,
       "name": "aou_agg_enabled_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -635,7 +645,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 10.0,
+      "duration_sec": 33.0,
       "name": "aou_int_w1c_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -645,7 +655,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 8.0,
+      "duration_sec": 23.0,
       "name": "aou_reg_ip_version_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -655,7 +665,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 7.0,
+      "duration_sec": 23.0,
       "name": "aou_reg_con0_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -665,7 +675,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 6.0,
+      "duration_sec": 35.0,
       "name": "aou_reg_init_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -675,7 +685,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 6.0,
+      "duration_sec": 27.0,
       "name": "aou_reg_int_mask_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -685,7 +695,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 7.0,
+      "duration_sec": 28.0,
       "name": "aou_reg_lp_linkreset_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -695,7 +705,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 8.0,
+      "duration_sec": 29.0,
       "name": "aou_reg_dest_rp_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -705,7 +715,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 7.0,
+      "duration_sec": 23.0,
       "name": "aou_reg_prior_rp_axi_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -715,7 +725,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 7.0,
+      "duration_sec": 35.0,
       "name": "aou_reg_prior_timer_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -725,7 +735,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 6.0,
+      "duration_sec": 27.0,
       "name": "aou_reg_axi_split_tr_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -735,7 +745,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 9.0,
+      "duration_sec": 32.0,
       "name": "aou_reg_error_info_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -745,7 +755,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 7.0,
+      "duration_sec": 27.0,
       "name": "aou_reg_early_resp_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -755,7 +765,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 8.0,
+      "duration_sec": 45.0,
       "name": "aou_reg_reset_values_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -765,7 +775,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 23.0,
+      "duration_sec": 58.0,
       "name": "aou_lp_mode_disabled_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -775,7 +785,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 3944.0,
+      "duration_sec": 4388.0,
       "name": "ucie_axi_fdi_aou_random_bidir_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -785,7 +795,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 12.0,
+      "duration_sec": 51.0,
       "name": "ucie_axi_fdi_invalid_msgs_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -795,7 +805,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 8.0,
+      "duration_sec": 19.0,
       "name": "ucie_axi_fdi_invalid_msgs_en2dis_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -805,7 +815,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 23.0,
+      "duration_sec": 26.0,
       "name": "aou_agg_enabled_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -815,7 +825,7 @@
     {
       "attempt": 0,
       "category": "p0",
-      "duration_sec": 17.0,
+      "duration_sec": 26.0,
       "name": "aou_early_bresp_bufferable_test",
       "reason": "TEST PASSED banner, UVM_ERROR=0, UVM_FATAL=0",
       "seed": null,
@@ -824,9 +834,9 @@
     }
   ],
   "timing": {
-    "duration_sec": 7617.0,
-    "end_time": "2026-10-07T12:11:44Z",
-    "start_time": "2026-10-07T10:04:46Z"
+    "duration_sec": 10981.0,
+    "end_time": "2026-10-08T03:10:16Z",
+    "start_time": "2026-10-08T00:07:07Z"
   },
   "tool": "vcs"
 }
