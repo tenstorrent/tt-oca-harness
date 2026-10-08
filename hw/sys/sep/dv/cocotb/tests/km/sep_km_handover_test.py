@@ -16,8 +16,18 @@ Checkers:
   CHK-INHIBIT     the first CMD_EXEC_ROM returns rc=0; the later handover
                   commands in the same epoch return RC_FAILURE.
   CHK-INHIBIT-RST a warm reset clears the inhibit; CMD_EXEC_ROM returns rc=0.
+  CHK-EMPTY-RST   after a warm reset with no image loaded, CMD_SRAM_EXEC still
+                  returns RC_INVALID_ARG, so the CHK-EXEC success comes from the
+                  load and not from the warm reset.
   CHK-LOAD        CMD_SRAM_LOAD_EXEC returns rc=0, then the image and CRC-32C
                   stream in.
+  CHK-COMMIT      after the stream, the ROM flushes the mailbox
+                  (SEP_IRQ_STATUS.FLUSHED_BY_KM sets). rom_handover_load_and_exec
+                  stores the image size only after the CRC matches, and the
+                  flush in rom_handover_finish comes after that store. The warm
+                  reset waits for this flush: an empty inbound FIFO only shows
+                  that the ROM read the CRC word, and a reset in the few cycles
+                  before the store leaves the size at 0.
   CHK-EXEC        CMD_SRAM_EXEC returns rc=0 after a warm reset. It grades the
                   firmware response only; the loaded image's execution is not
                   observed.
@@ -33,6 +43,7 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_CMD_EXEC_ROM,
     KM_CMD_SRAM_EXEC,
     KM_CMD_SRAM_LOAD_EXEC,
+    KM_IRQ_FLUSHED_BY_KM,
     KM_RC_FAILURE,
     KM_RC_INVALID_ARG,
     KM_RC_SUCCESS,
@@ -127,10 +138,29 @@ class sep_km_handover_test(sep_base_test):
         # New epoch so the load is not inhibited by the EXEC_ROM above.
         await self._warm_reset_km()
 
+        # --- CHK-EMPTY-RST: a warm reset alone stores no image -------------
+        rc, _ = await self.km.send_raw_expect_rc(KM_CMD_SRAM_EXEC, [])
+        assert rc == KM_RC_INVALID_ARG, (
+            f"CHK-EMPTY-RST FAIL: CMD_SRAM_EXEC after a warm reset with no image rc={rc}, "
+            f"expected {KM_RC_INVALID_ARG}"
+        )
+        self.logger.info(
+            "CHK-EMPTY-RST PASS: CMD_SRAM_EXEC after a warm reset with no image returned "
+            "RC_INVALID_ARG"
+        )
+
         # --- CHK-LOAD: stream the 14-word blob and accept the RESP before it --
         seq = await self.km.send_command(KM_CMD_SRAM_LOAD_EXEC, [_FW_WORDS])
         rc, _ = await self.km.recv_resp_cmd(KM_CMD_SRAM_LOAD_EXEC, seq)
         assert rc == KM_RC_SUCCESS, f"CHK-LOAD FAIL: CMD_SRAM_LOAD_EXEC rc={rc} before stream"
+        # The boot flush left FLUSHED_BY_KM set; clear it so only the handover
+        # flush can set it again.
+        await self.km.write_irq_status(1 << KM_IRQ_FLUSHED_BY_KM)
+        irq = await self.km.read_irq_status()
+        assert not irq & (1 << KM_IRQ_FLUSHED_BY_KM), (
+            f"CHK-COMMIT FAIL: FLUSHED_BY_KM still set after W1C before the stream "
+            f"(SEP_IRQ_STATUS=0x{irq:08x})"
+        )
         await self.km.post_raw_words(list(_MUTABLE_FW_BLOB_SMALL) + [_blob_crc()])
         for _ in range(20_000):
             if await self.km.read_status() & (1 << KM_STATUS_INBOUND_EMPTY):
@@ -141,6 +171,21 @@ class sep_km_handover_test(sep_base_test):
         self.logger.info(
             "CHK-LOAD PASS: CMD_SRAM_LOAD_EXEC rc=0 then streamed %d words + CRC-32C",
             _FW_WORDS,
+        )
+
+        # --- CHK-COMMIT: the ROM stored the size and reached the flush -------
+        for _ in range(20_000):
+            irq = await self.km.read_irq_status()
+            if irq & (1 << KM_IRQ_FLUSHED_BY_KM):
+                break
+            await ClockCycles(cocotb.top.clk_i, 20)
+        else:
+            raise AssertionError(
+                "CHK-COMMIT FAIL: FLUSHED_BY_KM never set after the image stream "
+                f"(SEP_IRQ_STATUS=0x{irq:08x})"
+            )
+        self.logger.info(
+            "CHK-COMMIT PASS: FLUSHED_BY_KM set after the stream (SEP_IRQ_STATUS=0x%08x)", irq
         )
 
         # --- CHK-EXEC: warm reset, then CMD_SRAM_EXEC -------------------------
