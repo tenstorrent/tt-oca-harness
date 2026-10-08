@@ -463,13 +463,16 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"CHK-EXT-BURST FAIL: dir=W denied resp={RESP_NAME.get(wd.resp_code)} "
             f"xbar_seen={len(wd_x)}; expected DECERR with PR-XEXT silent"
         )
+        assert not wd_ext, (
+            f"CHK-EXT-BURST FAIL: dir=W denied burst left {len(wd_ext)} PR-EXT capture(s); "
+            "a refused burst never reaches the port"
+        )
         self.logger.info(
             "CHK-EXT-BURST PASS: dir=W len=3 xbar_seen=%d init_resp=DECERR denied_resp=DECERR "
-            "denied_xbar_seen=0 beats_seen=%d data_ok=1 denied_ext_seen=%d port_reply=DECERR "
+            "denied_xbar_seen=0 beats_seen=%d data_ok=1 denied_ext_seen=0 port_reply=DECERR "
             "port_reply_beats=%d",
             len(wb_x),
             len(wb_w),
-            len(wd_ext),
             len(wb_rep),
         )
 
@@ -510,13 +513,16 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"CHK-EXT-BURST FAIL: dir=R denied R beats={denied_r} xbar_seen={len(rd_x)}; "
             "expected 8 R beats, DECERR on every beat, with PR-XEXT silent"
         )
+        assert not rd_ext, (
+            f"CHK-EXT-BURST FAIL: dir=R denied burst left {len(rd_ext)} PR-EXT capture(s); "
+            "a refused burst never reaches the port"
+        )
         self.logger.info(
             "CHK-EXT-BURST PASS: dir=R len=7 xbar_seen=%d init_resp=DECERR denied_resp=DECERR "
             "denied_xbar_seen=0 beats_seen=na data_ok=na admitted_beats=%d denied_beats=%d "
-            "denied_ext_seen=%d port_reply=DECERR port_reply_beats=%d",
+            "denied_ext_seen=0 port_reply=DECERR port_reply_beats=%d",
             len(rb_x),
             len(rb_beats),
             len(denied_r),
-            len(rd_ext),
             len(rb_rep),
         )
