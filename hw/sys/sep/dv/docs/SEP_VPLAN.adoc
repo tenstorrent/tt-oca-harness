@@ -1004,7 +1004,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, SMC aperture drawn per seed
 |LSU master, SMC aperture drive and SMC responder (BH-SMC, added hook), SMC request probe (observation tap)
-|Proves that the first and last word of the SMC aperture, as the SMC supplies it, match first in the route order and go to the SMC port, and that the word above the aperture top does not reach the SMC port. The `rom_fw` boot tests grade the basic route and the unfiltered path.
+|Proves that the first and last word of the SMC aperture, as the SMC supplies it, match first in the route order and go to the SMC port, and that the word above the aperture top does not reach the SMC port and answers DECERR from the peripheral crossbar with PR-OUT silent. The `rom_fw` boot tests grade the basic route and the unfiltered path.
 
 |<<sep_fabric_extension_port_window_test,`sep_fabric_extension_port_window_test`>>
 |3
@@ -1028,7 +1028,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, `+skip_fuse_sense`, SMC aperture plusargs
 |DMA firmware master, outbound filter source-ID model, request probes (observation taps), SMC aperture plusargs and SMC memory model (BH-SMC, added hook)
-|Proves that the DMA reaches the scratch, WDT, AES register, register and outbound targets, does not reach its own CSR or the boot ROM, and leaves AxUSER at zero in the outbound source-ID stack. The SMC leg runs on every seed through BH-SMC, a top-port drive. Extends the open DMA tests and the Phase 3 DMA transfer and TCM tests with the remaining endpoint pairs only.
+|Proves that the DMA reaches the scratch, WDT, AES register, register and outbound targets, does not reach its own CSR or the boot ROM (each such run ends in a DMA bus error), gets a DMA bus error from the DECERR extension port, leaves AxUSER at zero in the outbound source-ID stack, and that CPU beats carry a non-zero source ID. The SMC leg runs on every seed through BH-SMC, a top-port drive. Extends the open DMA tests and the Phase 3 DMA transfer and TCM tests with the remaining endpoint pairs only.
 |===
 
 [[phase2-mailbox-irq-pic]]
@@ -2625,8 +2625,8 @@ the test does.
 |No entry grades these bits. The open KMAC tests grade the keyed digest.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |DMA and CPU debug not-connected response
-|What response does the DMA receive on its not-connected cells (DMA CSR, entropy pool, boot ROM), and what does the CPU debug master receive on its not-connected cells (boot ROM, CPU TCM)?
-|`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-NOTCONN) grades that the request does not reach the target, only the rom_src and dma_csr_src legs, and only for runs that end in done or error. The rom_dst leg grades the PR-ROM silence and the dma_csr_src leg grades the PR-DMACSR silence, and PR-ROM and PR-DMACSR are observation taps the test adds to the SEP_TB_ARCH observation-probe list
+|What bus response code does the DMA receive on its not-connected cells (DMA CSR, entropy pool, boot ROM), and what does the CPU debug master receive on its not-connected cells (boot ROM, CPU TCM)? The DMA outcome is stated: no DMA path reaches these targets (`hw/sys/sep/doc/assets/sep_axi_connectivity.svg`), so the transfer ends in a bus error (`secure_dma.adoc`, `STATUS.ERROR`, `ERROR_CODE.BUS_ERROR`).
+|`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-NOTCONN) grades that the request does not reach the target and that each run ends with `STATUS.ERROR` and `ERROR_CODE.BUS_ERROR` and no other defined `ERROR_CODE` bit; the bus response code is logged. The rom_dst leg grades the PR-ROM silence and the dma_csr_src leg grades the PR-DMACSR silence, and PR-ROM and PR-DMACSR are observation taps the test adds to the SEP_TB_ARCH observation-probe list
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Initiator arbitration and outstanding limits
 |What is the arbitration policy between the five initiators, the outstanding limit per initiator and per target, and the starvation rule?
@@ -2642,7 +2642,7 @@ the test does.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Source ID value of the CPU masters
 |What is the numeric value of `SepSourceId`? The OTHERS value of zero is used only for remapped and DMA traffic.
-|-
+|`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER, CHK-DMA-SMC) grades that the CPU beats on PR-OUT and PR-SMC carry a source ID AxUSER[3:0] other than 0 (`fabric.adoc`, "Transaction Routing": the CPU masters drive SEP's ID) and logs the value.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Overlapping alias remap entries
 |Which entry applies when two or more valid alias remap entries cover one address? No draw overlaps valid entries.
@@ -2674,7 +2674,7 @@ the test does.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Local address below `0x1_0000_0000` outside the SMC, SMU, AP and STEE windows
 |Where does an address such as `0x0000_0000` to `0x0FFF_FFFF` go? Local requests in that class are logged and not graded. No address separates a moved SMU aperture from a fixed one, so no leaf writes `SMU_GLOBAL_BASE_ADDR` or `SMU_REGION_SIZE`.
-|-
+|`sep_fabric_smc_route_test` (CHK-SMC-STATIC-ROW) grades the word above the SMC aperture top in configuration A (`0x4100_0000`): the output fabric returns an address outside every outbound window to the peripheral crossbar (`fabric.adoc`, output fabric), which answers DECERR at or above `0x4000_0000`, so the request answers DECERR with PR-OUT and PR-SMC silent.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Burst to a register region outside the crypto region
 |What does a burst to a register region outside the crypto region return? Bursts to register regions are not driven, so the burst-to-single conversion beyond two beats stays ungraded.
