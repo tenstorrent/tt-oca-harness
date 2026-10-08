@@ -544,6 +544,14 @@ class sep_base_test(uvm_test):
             await ClockCycles(cocotb.top.clk_i, 2)
             self._jtag_sw_rst_hold(park, False)
 
+    def suppress_host_axi_transaction_info(self) -> None:
+        """Suppress per-access host AXI INFO while retaining errors and summaries."""
+        axi_driver = self.env.axi_agent.driver
+        axi_driver.logger.setLevel(logging.WARNING)
+        axi_backend = axi_driver.axi.driver.backend
+        axi_backend.read_if.log.setLevel(logging.WARNING)
+        axi_backend.write_if.log.setLevel(logging.WARNING)
+
     async def bring_up_and_wait_fuse_sense(self, *, max_cycles: int = 20_000) -> None:
         """Alias for ``bring_up_no_cpu``; both gate on real fuse-sense-done."""
         await self.bring_up_no_cpu(max_cycles=max_cycles)

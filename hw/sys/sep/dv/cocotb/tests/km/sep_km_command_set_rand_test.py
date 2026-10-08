@@ -277,6 +277,10 @@ class sep_km_command_set_rand_test(sep_base_test):
         self.write_efuse_image(image)
         await self.bring_up_no_cpu(park=("otbn", "kmac", "hmac"))
 
+        # Checker and monitor summaries carry the retained evidence. Per-access
+        # INFO records do not and dominate the log during the long mailbox waits.
+        self.suppress_host_axi_transaction_info()
+
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
 
