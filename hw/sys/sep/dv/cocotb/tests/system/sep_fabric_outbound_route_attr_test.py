@@ -56,7 +56,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
-from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, granule8
+from env.sep_fabric_common import OUTBOUND_MBX_MAGIC, RESP_DECERR, RESP_OKAY, granule8
 from env.sep_fabric_common import resp_name as _rname
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -108,7 +108,7 @@ REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "o
 REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "valid")
 REGION_MASK = (1 << IDX_START) - 1
 # sep_outbound_mbx latches its completion state on these 32-bit write words.
-_MBX_MAGIC = (0xA5A5_5A5A, 0xCAFE_BABE, 0xDEAD_BEEF)
+_MBX_MAGIC = OUTBOUND_MBX_MAGIC
 
 # Outbound entry pairs: entries 0 and 1 are the source-ID stack.
 PAIR_SMU = (2, 3)
