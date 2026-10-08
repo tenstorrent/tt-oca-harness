@@ -7,9 +7,9 @@
       "total": 1,
       "unknown": 0
     },
-    "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/dashboard-data/history.json",
-    "history_points": 13,
-    "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/dashboard-data/summary.json",
+    "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/weekly/vcs/aou_uvm/dashboard-data/history.json",
+    "history_points": 14,
+    "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/weekly/vcs/aou_uvm/dashboard-data/summary.json",
     "tests": {
       "failing": 0,
       "incomplete_runs": 0,
@@ -21,19 +21,19 @@
     }
   },
   "errors": [],
-  "generated_at": "2026-10-08T03:11:40.752295+00:00",
+  "generated_at": "2026-10-08T08:41:58.800762+00:00",
   "git": {
-    "commit": "47400e896f644778035f5634bcc7eaf50efd06ae",
-    "harness_commit": "6504994a24094a1d5036fae9a3f610a7d0d46d54",
-    "nonfree_commit": "fd6c6807a19820ca2e2f1b7dfe8aa492f5796d48",
+    "commit": "3e5193951b62d033d09c5237853f5d1b74324dba",
+    "harness_commit": "6b12ede4598c37fbaab5377e8259418980d07ab2",
+    "nonfree_commit": "0bd4bd56182b7132c9c4d0277ca544a29a31dbcb",
     "remote": "git@aus-gitlab.local.tenstorrent.com:arch/aou-rtl",
     "requested_ref": "verification"
   },
   "jenkins": {
-    "build_number": "19",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/aou/job/uvm/19/",
-    "job_name": "tt-oca-harness/aou/uvm",
-    "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/aou/job/uvm/"
+    "build_number": "20",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/aou/job/weekly/20/",
+    "job_name": "tt-oca-harness/aou/weekly",
+    "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/aou/job/weekly/"
   },
   "matrix": [
     {
@@ -43,10 +43,10 @@
       "mode": "regression",
       "native_result": "",
       "native_status": "PASS",
-      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/dashboard-data/result.json",
+      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/weekly/vcs/aou_uvm/dashboard-data/result.json",
       "normalized_status": "PASS",
       "profile": "aou_uvm",
-      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/runs",
+      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/weekly/vcs/aou_uvm/runs",
       "runner_rc": 0,
       "tool": "vcs"
     }
