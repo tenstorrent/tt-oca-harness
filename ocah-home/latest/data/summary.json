@@ -33,7 +33,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 89.26,
+      "coverage_total_percent": 90.0,
       "flow": "sep",
       "framework": "cocotb",
       "pass_rate": 100.0,
@@ -41,7 +41,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 34.6,
+      "coverage_total_percent": 34.95,
       "flow": "sep",
       "framework": "uvm",
       "pass_rate": 100.0,
@@ -49,7 +49,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 89.34,
+      "coverage_total_percent": 90.09,
       "flow": "sep",
       "framework": "",
       "pass_rate": 100.0,
@@ -105,7 +105,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-07T17:01:54+00:00",
+  "generated_at": "2026-10-08T02:02:43+00:00",
   "results": [
     {
       "coverage": {
@@ -171,12 +171,12 @@
     {
       "coverage": {
         "effective_metrics": {
-          "branch": 90.05,
-          "condition": 79.86,
+          "branch": 91.35,
+          "condition": 79.67,
           "fsm_state": 88.36,
           "functional": 100.0,
-          "line": 94.86,
-          "toggle": 82.45
+          "line": 95.4,
+          "toggle": 85.24
         }
       },
       "flow": "sep",
@@ -186,12 +186,12 @@
     {
       "coverage": {
         "effective_metrics": {
-          "branch": 52.71,
-          "condition": 25.07,
+          "branch": 53.66,
+          "condition": 25.15,
           "fsm_state": 37.09,
           "functional": 10.27,
-          "line": 67.26,
-          "toggle": 15.22
+          "line": 67.79,
+          "toggle": 15.73
         }
       },
       "flow": "sep",
@@ -201,12 +201,12 @@
     {
       "coverage": {
         "effective_metrics": {
-          "branch": 90.05,
-          "condition": 79.87,
+          "branch": 91.4,
+          "condition": 79.69,
           "fsm_state": 88.73,
           "functional": 100.0,
-          "line": 94.86,
-          "toggle": 82.51
+          "line": 95.42,
+          "toggle": 85.3
         }
       },
       "flow": "sep",
