@@ -416,19 +416,20 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
     async def _otbn_cache_leg(self) -> None:
         """Step 9: OTBN register access with AxCACHE 0x0, 0x2, 0x3 and 0xF."""
         ie = OTBN.addr("INTR_ENABLE")
+        done = OTBN.field_mask("INTR_ENABLE", "done")
         st = OTBN.addr("STATUS")
         for c in (0x0, 0x2, 0x3, 0xF):
             rresp, v = await self._lsu(SepAxiOp.READ, ie, cache=c)
-            w = (~v) & 0x1
+            w = (~v) & done
             bresp, _ = await self._lsu(SepAxiOp.WRITE, ie, wdata=w, cache=c)
             _r, back = await self._lsu(SepAxiOp.READ, ie, cache=c)
             await self._lsu(SepAxiOp.READ, st, cache=c)
             self.regval[ie] = w
             line = (
                 f"init=LSU arcache=0x{c:x} awcache=0x{c:x} rresp={_RN[rresp]} "
-                f"bresp={_RN[bresp]} readback=0x{back & 1:x}"
+                f"bresp={_RN[bresp]} readback=0x{back & done:x}"
             )
-            if (back & 1) == w:
+            if (back & done) == w:
                 self.logger.info("CHK-ROW-CACHE PASS: %s", line)
             else:
                 self._fail("CHK-ROW-CACHE", line + f" written=0x{w:x}")

@@ -821,9 +821,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         ln, n = p["smc_len"], p["smc_len"] // 4
         addr = SMC_BASE + p["smc_off"]
         m = model_words(seed, 0x70, n)
-        assert r["fuse"] & 1, (
-            f"CHK-DMA-SMC FAIL: smc_fuse_sense_done reads 0 after {r['polls']} polls"
-        )
+        assert r["fuse"] & SEP_CPU_CTRL.field_mask(
+            "SMC_FUSE_SENSE_STATUS", "smc_fuse_sense_done"
+        ), f"CHK-DMA-SMC FAIL: smc_fuse_sense_done reads 0 after {r['polls']} polls"
         assert self._done_ok(r, "w_pre", "w_st", "w_ec") and self._done_ok(
             r, "r_pre", "r_st", "r_ec"
         ), f"CHK-DMA-SMC FAIL: SMC legs did not complete: {text}"
