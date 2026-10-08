@@ -56,7 +56,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 317
+expected_count = 322
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -307,6 +307,8 @@ tests = [
     "smc_multi_reset_csr_persistence_test",
     "smc_mutex_semaphore_test",
     "smc_ndm_reset_test",
+    "smc_ndm_process_extra_bits_test",
+    "smc_sync_reg_irq_test",
     "smc_occp_sanity_secure_error_test",
     "smc_octs_credit_expired_test",
     "smc_octs_primary_start_test",
@@ -328,9 +330,12 @@ tests = [
     "smc_register_sanity_test",
     "smc_remap_cla_test",
     "smc_reset_recovery_matrix_test",
+    "smc_reset_pin_deglitch_test",
+    "smc_reset_sync_async_assert_test",
     "smc_reset_sync_edge_test",
     "smc_reset_unit_lock_test",
     "smc_reset_unit_sanity_test",
+    "smc_scratch_banks_test",
     "smc_sep_in_axi_flow_control_test",
     "smc_sep_in_axi_shape_test",
     "smc_sideband_protocol_smoke_test",

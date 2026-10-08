@@ -73,6 +73,15 @@ timeout_sec = 1800
 tags = ["ci", "reset", "wdt"]
 run_modes = ["smoke"]
 
+# scratch_cold / scratch_cold_warm reset value and per-register independence.
+[[tests]]
+name = "smc_scratch_banks_test"
+module = "smc_scratch_banks_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "scratch"]
+run_modes = ["smoke"]
+
 # BFM: NDM pin → REQUEST/IRQ[11] → PROCESS CSR (no Force/FW).
 [[tests]]
 name = "smc_ndm_reset_test"
@@ -234,4 +243,36 @@ module = "smc_cool_reset_zero_delay_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_ndm_process_extra_bits_test"
+module = "smc_ndm_process_extra_bits_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "ndm_extra"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sync_reg_irq_test"
+module = "smc_sync_reg_irq_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "sync_irq"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_reset_pin_deglitch_test"
+module = "smc_reset_pin_deglitch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "deglitch"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_reset_sync_async_assert_test"
+module = "smc_reset_sync_async_assert_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "sync"]
 run_modes = ["smoke"]
