@@ -30,7 +30,10 @@
 #define WINDOW_BASE SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR_reset
 #define SRAM_BASE SEP_TOP_SEP_SRAM_BASE_ADDR
 #define SRAM_SIZE SEP_TOP_SEP_SRAM_SIZE
-#define ALIAS_OF(direct) ((direct) + (WINDOW_BASE - SRAM_BASE))
+// The alias window maps onto the local region, whose direct addresses begin
+// at 0x1000_0000 (hw/sys/sep/doc/fabric.adoc, SEP CPU local-alias traffic).
+#define LOCAL_BASE 0x10000000u
+#define ALIAS_OF(direct) ((direct) + (WINDOW_BASE - LOCAL_BASE))
 
 // One static word per unit class. The cold scratch word and the SPI host CSID
 // are writable; SEP_VERSION_ID and COMPONENT_ID are read-only; AES

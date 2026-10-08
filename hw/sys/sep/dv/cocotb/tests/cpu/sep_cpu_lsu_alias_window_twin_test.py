@@ -72,7 +72,10 @@ _PARAM_MAGIC = 0xA7C1D3E5
 _SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 _SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
 _WINDOW_BASE = sym("SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_DEFAULT")
-_ALIAS_DELTA = _WINDOW_BASE - _SRAM_BASE
+# The alias window maps onto the local region, whose direct addresses begin at
+# the SEP map base (fabric.adoc, SEP CPU local-alias traffic: 0x1000_0000).
+_LOCAL_BASE = sym("SEP_TOP_REG_MAP_BASE_ADDR")
+_ALIAS_DELTA = _WINDOW_BASE - _LOCAL_BASE
 
 # Unit class -> (direct address, writable). The firmware reads the same words.
 _UNITS: dict[str, tuple[int, bool]] = {
