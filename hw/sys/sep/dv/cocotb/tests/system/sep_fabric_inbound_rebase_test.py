@@ -582,8 +582,10 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
                         f"the limit: resp={_RESP.get(seq.resp_code)} seen={seen}"
                     )
                 seen_by[name] = "none"
-        above = await self._expect_refused("CHK-REBASE-EDGE", G + SIZE_B, length=1)
-        below = await self._expect_refused("CHK-REBASE-EDGE", G - 1, length=1)
+        # Entries 0 and 1 admit both words, so each must leave the filter once
+        # (PR-INFLT) and be refused past it, at or above the crossbar limit.
+        above = await self._expect_refused("CHK-REBASE-EDGE", G + SIZE_B, length=1, admitted=True)
+        below = await self._expect_refused("CHK-REBASE-EDGE", G - 1, length=1, admitted=True)
         self._close()
         self.logger.info(
             "CHK-REBASE-EDGE PASS: size=0x%x bottom_seen=%s top_seen=%s last_byte_seen=%s "
