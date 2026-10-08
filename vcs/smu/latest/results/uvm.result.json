@@ -4,13 +4,13 @@
     "coverage_policy_application": "artifacts/smu/coverage/report/policy-application.json",
     "coverage_report": "artifacts/smu/coverage/report",
     "coverage_summary": "artifacts/smu/coverage/report/summary.json",
-    "log": "vcs/smu/runs/uvm/smu_boot_stall_jtag_cold_reset_matrix_test/seed_1533796561/attempt_0/logs/smu_boot_stall_jtag_cold_reset_matrix_test.log",
+    "log": "vcs/smu/runs/uvm/smu_ext_boot_seq_gate_test/seed_2137917227/attempt_0/logs/smu_ext_boot_seq_gate_test.log",
     "regression_json": "vcs/smu/runs/uvm/stages/regress/regression.json",
     "result_json": "vcs/smu/runs/uvm/result.json",
     "run_dir": "vcs/smu/runs/uvm"
   },
   "coverage": {
-    "comparison_key": "COVCMP-318aa56eed80d73f",
+    "comparison_key": "COVCMP-09927fb6517ca602",
     "details_available": true,
     "effective_metrics": {
       "assertion": 59.02,
@@ -90,11 +90,11 @@
   ],
   "flow": "smu",
   "framework": "uvm",
-  "generated_at": "2026-10-07T17:01:53+00:00",
+  "generated_at": "2026-10-08T05:57:41+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "ac8f673b100219434b28f2a75dd80db4de0cd191",
-    "short_sha": "ac8f673b"
+    "sha": "4ac7a3f0273d219b8d4ecc3dce742000aa42666e",
+    "short_sha": "4ac7a3f0"
   },
   "junit_xml": {
     "missing": 0,
@@ -107,10 +107,10 @@
   },
   "run_metadata": {
     "executor": "lsf",
-    "generated_at": "2026-10-07T13:35:13.540233+00:00",
+    "generated_at": "2026-10-07T23:15:37.624144+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "ac8f673b100219434b28f2a75dd80db4de0cd191",
+      "commit": "4ac7a3f0273d219b8d4ecc3dce742000aa42666e",
       "dirty": "false"
     },
     "label": "all",
@@ -136,59 +136,59 @@
   "tests_detail": [
     {
       "attempt": 0,
+      "category": "smc_under_smu",
+      "duration_sec": 8.296,
+      "name": "smu_ext_boot_seq_gate_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2137917227,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
       "category": "dtp_under_smu",
-      "duration_sec": 23.678,
+      "duration_sec": 25.868,
       "name": "smu_boot_stall_jtag_cold_reset_matrix_test",
       "reason": "positive pass evidence matched",
-      "seed": 1533796561,
+      "seed": 395230854,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 16.883,
+      "duration_sec": 16.368,
       "name": "smu_dtp_jtag_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 184480131,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "smc_under_smu",
-      "duration_sec": 8.287,
-      "name": "smu_ext_boot_seq_gate_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1943820900,
+      "seed": 427059137,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "dtp_under_smu",
-      "duration_sec": 23.432,
+      "duration_sec": 29.339,
       "name": "smu_jtag_reset_override_test",
       "reason": "positive pass evidence matched",
-      "seed": 1972345981,
+      "seed": 1430379832,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "dtp_under_smu",
-      "duration_sec": 88.276,
+      "duration_sec": 106.79,
       "name": "smu_smc_dtp_jtag2axi_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 1385307461,
+      "seed": 90439302,
       "stage": "sim",
       "status": "PASS"
     }
   ],
   "timing": {
-    "duration_sec": 314.786,
-    "end_time": "2026-10-07T13:35:13.470941+00:00",
-    "start_time": "2026-10-07T13:30:22.283580+00:00"
+    "duration_sec": 341.084,
+    "end_time": "2026-10-07T23:15:37.469273+00:00",
+    "start_time": "2026-10-07T23:04:20.961170+00:00"
   },
   "tool": "vcs"
 }
