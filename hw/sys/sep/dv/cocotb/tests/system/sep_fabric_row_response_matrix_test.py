@@ -253,8 +253,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         )
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
-        sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
-        feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
+        # The image carries no SEC_DIS token, so the golden takes SEC_DIS 0 from
+        # the image, not from the DUT.
+        feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=0)
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)
         self.logger.info(
