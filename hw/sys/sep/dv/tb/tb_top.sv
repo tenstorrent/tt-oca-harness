@@ -1671,6 +1671,35 @@ module sep_uvm_top
     assign pr_inflt_arvalid_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar_valid;
     assign pr_inflt_arready_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_resp.ar_ready;
     assign pr_inflt_araddr_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.addr[55:0];
+    // PR-CPU: AxPROT of the raw CPU LSU and IFU requests, before any remap.
+`ifndef SEP_CPU_STUB
+    assign pr_cpu_lsu_awvalid_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw_valid;
+    assign pr_cpu_lsu_awready_o = `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw.aw_ready;
+    assign pr_cpu_lsu_awprot_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.prot;
+    assign pr_cpu_lsu_arvalid_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar_valid;
+    assign pr_cpu_lsu_arready_o = `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw.ar_ready;
+    assign pr_cpu_lsu_arprot_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.prot;
+    assign pr_cpu_ifu_arvalid_o = `SEP_CORE.u_sep_cpu.ifu_axi_req_raw.ar_valid;
+    assign pr_cpu_ifu_arready_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp_raw.ar_ready;
+    assign pr_cpu_ifu_arprot_o  = `SEP_CORE.u_sep_cpu.ifu_axi_req_raw.ar.prot;
+`else
+    assign pr_cpu_lsu_awvalid_o = 1'b0;
+    assign pr_cpu_lsu_awready_o = 1'b0;
+    assign pr_cpu_lsu_awprot_o  = '0;
+    assign pr_cpu_lsu_arvalid_o = 1'b0;
+    assign pr_cpu_lsu_arready_o = 1'b0;
+    assign pr_cpu_lsu_arprot_o  = '0;
+    assign pr_cpu_ifu_arvalid_o = 1'b0;
+    assign pr_cpu_ifu_arready_o = 1'b0;
+    assign pr_cpu_ifu_arprot_o  = '0;
+`endif
+    // PR-DMA-RAW: AxPROT of the raw secure DMA master request.
+    assign pr_dma_raw_awvalid_o = `SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw.aw_valid;
+    assign pr_dma_raw_awready_o = `SEP_CORE.u_sep_dma_wrap.dma_axi_resp_raw.aw_ready;
+    assign pr_dma_raw_awprot_o  = `SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw.aw.prot;
+    assign pr_dma_raw_arvalid_o = `SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw.ar_valid;
+    assign pr_dma_raw_arready_o = `SEP_CORE.u_sep_dma_wrap.dma_axi_resp_raw.ar_ready;
+    assign pr_dma_raw_arprot_o  = `SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw.ar.prot;
     // PR-ALIAS input: the request into u_local_master_remap_wrap.
     assign pr_alias_in_awvalid_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_req.aw_valid;
     assign pr_alias_in_awready_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_resp.aw_ready;

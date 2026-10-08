@@ -47,7 +47,7 @@ from pathlib import Path
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
-from env.sep_fabric_tap import SepFabricTap
+from env.sep_fabric_tap import SepFabricTap, log_axprot
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
@@ -186,6 +186,9 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
         self.sb.expected_line = _BANNER
         dtcm = self._stage_dtcm()
         sram = SepFabricTap("PR-SRAM").start()
+        # Log-only: the AxPROT the core drives; the firmware runs in M-mode only.
+        cpu_lsu = SepFabricTap("PR-CPU-LSU", xz_fail=False).start()
+        cpu_ifu = SepFabricTap("PR-CPU-IFU", xz_fail=False).start()
         try:
             await self.boot_firmware(
                 self.sb,
@@ -200,6 +203,11 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
         finally:
             close_graded_window(self.logger)
             await sram.stop()
+            await cpu_lsu.stop()
+            await cpu_ifu.stop()
+            log_axprot(self.logger, cpu_lsu, "lsu", "ar", "M")
+            log_axprot(self.logger, cpu_lsu, "lsu", "aw", "M")
+            log_axprot(self.logger, cpu_ifu, "ifu", "ar", "M")
 
         # Grade the printed values first: a firmware that trapped part way still
         # names the first word whose alias read went wrong.

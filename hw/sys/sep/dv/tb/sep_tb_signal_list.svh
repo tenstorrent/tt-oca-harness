@@ -661,6 +661,25 @@
 `SEP_TB_OUT(logic, pr_inflt_arvalid_o)
 `SEP_TB_OUT(logic, pr_inflt_arready_o)
 `SEP_TB_OUT(logic [55:0], pr_inflt_araddr_o)
+// PR-CPU: AxPROT of the raw CPU LSU (AR, AW) and IFU (AR) requests, before any
+// remap (u_sep_cpu lsu_axi_req_raw, ifu_axi_req_raw); tied to 0 on the CPU stub build.
+`SEP_TB_OUT(logic, pr_cpu_lsu_awvalid_o)
+`SEP_TB_OUT(logic, pr_cpu_lsu_awready_o)
+`SEP_TB_OUT(logic [2:0], pr_cpu_lsu_awprot_o)
+`SEP_TB_OUT(logic, pr_cpu_lsu_arvalid_o)
+`SEP_TB_OUT(logic, pr_cpu_lsu_arready_o)
+`SEP_TB_OUT(logic [2:0], pr_cpu_lsu_arprot_o)
+`SEP_TB_OUT(logic, pr_cpu_ifu_arvalid_o)
+`SEP_TB_OUT(logic, pr_cpu_ifu_arready_o)
+`SEP_TB_OUT(logic [2:0], pr_cpu_ifu_arprot_o)
+// PR-DMA-RAW: AxPROT of the raw secure DMA master request, before its window
+// remap (u_sep_dma_wrap dma_axi_req_raw).
+`SEP_TB_OUT(logic, pr_dma_raw_awvalid_o)
+`SEP_TB_OUT(logic, pr_dma_raw_awready_o)
+`SEP_TB_OUT(logic [2:0], pr_dma_raw_awprot_o)
+`SEP_TB_OUT(logic, pr_dma_raw_arvalid_o)
+`SEP_TB_OUT(logic, pr_dma_raw_arready_o)
+`SEP_TB_OUT(logic [2:0], pr_dma_raw_arprot_o)
 // PR-ALIAS input: the request into u_local_master_remap_wrap.
 `SEP_TB_OUT(logic, pr_alias_in_awvalid_o)
 `SEP_TB_OUT(logic, pr_alias_in_awready_o)
