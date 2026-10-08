@@ -8,6 +8,33 @@ Releases before 1.0.0 are early-stage: public interfaces (register maps, RTL
 ports) may change between minor versions. A patch stays compatible with the
 minor release it updates.
 
+## [0.5.2] - 2026-10-08 (Beta)
+
+### Changed
+
+- SMC and SEP production ROMs take register definitions and SMC window offsets
+  from the generated headers instead of hardcoded copies (#2992, #2994, #2549).
+- The two longest SEP key-manager tests log less and run in under half the
+  time (#2996).
+- Weekly issue summaries close the earlier ones again (#2987).
+
+### Fixed
+
+- Container: `perl` on `PATH`, which cocotb's Verilator runner needs. DV runs in
+  the container failed with `No such file or directory: 'perl'` (#3000).
+- Starting guide: Podman machine on macOS sized to the memory requirement. The
+  2 GB default fails firmware builds with `Killed signal terminated program lto1`
+  (#2993).
+- Starting guide: `run_dv.py` examples use the `smc` DUT and describe only wave
+  options that exist (#2999).
+
+### RTL bugs
+
+RTL bugs fixed on `main` since v0.5.1. Each entry is the issue and the pull
+request that closed it.
+
+None.
+
 ## [0.5.1] - 2026-10-07 (Beta)
 
 ### Added
@@ -89,5 +116,6 @@ First public release of the Open Chiplet Atlas (OCA) Harness.
 - Lint, format and DV tooling, and a Nix-based reproducible environment with a
   container for the RISC-V firmware toolchain.
 
+[0.5.2]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.2
 [0.5.1]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.1
 [0.5.0]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.0
