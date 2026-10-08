@@ -1077,7 +1077,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
-|Prove the PIC delivers every source in the firmware catalog (eleven) to the CPU with one-hot claim and RW1C clear; the seed sets only the order of the extras.
+|Prove the PIC delivers every source in the firmware catalog (eleven) to the CPU with one-hot claim and its clear: write-one-to-clear of `INTR_STATE` or IRQS for the event-type sources and the mailbox, and `INTR_TEST` back to 0 with a write-one clear of `STATUS` for the three DMA sources, whose `INTR_STATE` is read-only; the seed sets only the order of the extras.
 |<<sep_spi_ot_host_csr_irq_rand_test,`sep_spi_ot_host_csr_irq_rand_test`>>
 |2
 |no_cpu, +skip_fuse_sense
