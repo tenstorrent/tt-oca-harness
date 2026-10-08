@@ -804,6 +804,14 @@ static void smc_legs(void) {
         fs = rd(SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR);
         if (fs & SEP_CPU_CTRL__SMC_FUSE_SENSE_STATUS__SMC_FUSE_SENSE_DONE_bm) break;
     }
+    // A request to the SMC before smc_fuse_sense_done hangs, so the SMC legs
+    // run only after the poll sees it.
+    if (!(fs & SEP_CPU_CTRL__SMC_FUSE_SENSE_STATUS__SMC_FUSE_SENSE_DONE_bm)) {
+        sep_mbx_puts(
+            "FAIL: smc_fuse_sense_done still 0 after the bounded poll; SMC legs skipped\n");
+        g_err++;
+        return;
+    }
     uint32_t len = g_p[PSMC_LEN], n = len / 4u;
     uint32_t smc = SMC_BASE + g_p[PSMC_OFF];
     stage_src(SRAM + B_SMC_SRC, n, 0x70u);
