@@ -672,11 +672,10 @@ script. Run the following command to see all available options:</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./tools/dv/run_dv.py --help
-usage: run_dv.py [options]
+usage: run_dv.py --dut NAME [--framework NAME] [--items ITEM ...] [options]
+       run_dv.py --list | --validate-configs | --doctor [options]
 
-Native OSS DV/FV launcher for listing DUTs, validating configs, and running simulation or formal flows.
-
-options:
+Native OSS DV/FV launcher.
 ...</code></pre>
 </div>
 </div>
@@ -696,14 +695,16 @@ Validating configs in hw/common/dv/configs
   simulators.toml  OK
   executors.toml   OK
   parsers.toml     OK
-  dtp              OK
-  dtp_uvm          OK
+  ...
   sep              OK
-  smc_wrapper      OK
+  sep (uvm)        OK
+  smc              OK
+  smc (uvm)        OK
   smu              OK
-  smu_wrapper      OK
+  smu (uvm)        OK
+  ...
 
-Result: 6 DUT(s): 6 OK, 0 FAILED</code></pre>
+Result: 22 DUT(s), 30 view(s): 30 OK, 0 FAILED</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -762,7 +763,7 @@ groups     : all=... cpu=... cpu_stub=...</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./tools/dv/run_dv.py --dut smc_wrapper --items octs_sanity_test smc_axil_idle_test
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./tools/dv/run_dv.py --dut smc --items smc_octs_sanity_test smc_axil_idle_test
 ...</code></pre>
 </div>
 </div>
@@ -777,25 +778,24 @@ flag to see usage.</p>
 <div class="sect2">
 <h3 id="visual-debugging-and-waveform-viewer"><a class="anchor" href="#visual-debugging-and-waveform-viewer"></a><a class="link" href="#visual-debugging-and-waveform-viewer">4.2. Visual Debugging and Waveform Viewer</a></h3>
 <div class="paragraph">
-<p>When debugging particularly difficuly RTL issues, it is useful to be able to view the signals
+<p>When debugging particularly difficult RTL issues, it is useful to be able to view the signals
 travelling between components. For this, a wave trace may be generated and inspected. To
 generate a trace, use the <code>--waves</code> argument.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./tools/dv/run_dv.py --waves ...
-...</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./tools/dv/run_dv.py --dut smc --items smc_octs_sanity_test --waves</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>We use <a href="https://surfer-project.org/">Surfer</a> for viewing wave traces, but if you prefer a
-different program, the program suggested may be overridden with <code>--wave-viewer-binary</code>.</p>
+<p>Each test writes its trace to a <code>waves/</code> directory beside its results in the run
+directory, with a <code>debug_context.json</code> listing the trace files and a command to open them.
+We use <a href="https://surfer-project.org/">Surfer</a>, which the container includes, for viewing
+wave traces; open a trace with <code>surfer &lt;trace&gt;</code>.</p>
 </div>
 <div class="paragraph">
-<p>To automatically open your chosen viewer on test completion, use the <code>--open-waves</code> flag.</p>
-</div>
-<div class="paragraph">
-<p>The <code>--waves-on-fail</code> flag may be used instead of <code>--waves</code>, to only generate wave traces for failing tests.</p>
+<p>The <code>--waves-on-fail</code> flag may be used instead of <code>--waves</code>; it reruns only the tests that
+did not pass, with waves enabled.</p>
 </div>
 </div>
 <div class="sect2">
