@@ -1647,6 +1647,16 @@ module sep_uvm_top
     assign pr_ext_wdata_o  = u_dut.axi_extension_axi_req.w.data;
     assign pr_ext_wstrb_o  = u_dut.axi_extension_axi_req.w.strb;
     assign pr_ext_wlast_o  = u_dut.axi_extension_axi_req.w.last;
+    // PR-EXT reply: the B and R channels of the AXI Extension port.
+    assign pr_ext_bvalid_o = u_dut.axi_extension_axi_resp.b_valid;
+    assign pr_ext_bready_o = u_dut.axi_extension_axi_req.b_ready;
+    assign pr_ext_bresp_o  = u_dut.axi_extension_axi_resp.b.resp;
+    assign pr_ext_bid_o    = u_dut.axi_extension_axi_resp.b.id;
+    assign pr_ext_rvalid_o = u_dut.axi_extension_axi_resp.r_valid;
+    assign pr_ext_rready_o = u_dut.axi_extension_axi_req.r_ready;
+    assign pr_ext_rresp_o  = u_dut.axi_extension_axi_resp.r.resp;
+    assign pr_ext_rid_o    = u_dut.axi_extension_axi_resp.r.id;
+    assign pr_ext_rlast_o  = u_dut.axi_extension_axi_resp.r.last;
     // PR-DMACSR: the request at the DMA CSR target port (sep.sv dma_csr_req).
     assign pr_dmacsr_awvalid_o = `SEP_CORE.dma_csr_req.aw_valid;
     assign pr_dmacsr_awready_o = `SEP_CORE.dma_csr_rsp.aw_ready;

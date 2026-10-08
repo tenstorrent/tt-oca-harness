@@ -21,7 +21,9 @@ Checks:
   address, and the SI receives the port DECERR. PR-XEXT is the anchor, because
   the fabric also answers DECERR for its own errors.
 * CHK-EXT-PORT: each LSU and SI single beat leaves on PR-EXT once, with the
-  issued address, AxSIZE, AxLEN 0, strobe and write data.
+  issued address, AxSIZE, AxLEN 0, strobe and write data, and the port returns
+  exactly one reply beat (PR-EXT B or R), DECERR, before the initiator's
+  response. So the DECERR the initiator receives is the port's reply.
 * CHK-EXT-SHIM: the first and last byte of the shim window give no PR-EXT
   capture for either initiator and direction. Control: the first word above the
   shim gives a capture in the same leaf. The shim responses are logged only.
@@ -39,6 +41,7 @@ address classes are fixed loops.
 from __future__ import annotations
 
 import pyuvm
+from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
@@ -152,6 +155,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
     ) -> dict:
         m = self._mark()
         seq = await self._access(init, op, addr, size, data=data)
+        t_init = get_sim_time("ps")
         ch = "aw" if op is SepAxiOp.WRITE else "ar"
         return {
             "init": init,
@@ -166,6 +170,8 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "ext": self._since(m, "PR-EXT", ch),
             "ext_w": self._since(m, "PR-EXT", "w"),
             "ext_all": self._since(m, "PR-EXT"),
+            "reply": self._since(m, "PR-EXT-RSP", "b" if op is SepAxiOp.WRITE else "r"),
+            "t_init": t_init,
         }
 
     def _check_port(self, c: dict) -> None:
@@ -184,6 +190,19 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         assert b.addr == c["addr"] and b.size == c["size"] and b.len == 0, (
             f"CHK-EXT-PORT FAIL: {tag} PR-EXT {b.fmt()}; expected addr=0x{c['addr']:x} "
             f"size={c['size']} len=0"
+        )
+        # The DECERR the initiator receives is the port's reply: exactly one
+        # reply beat on the port, DECERR, before the initiator's response.
+        rep = c["reply"]
+        assert len(rep) == 1, (
+            f"CHK-EXT-PORT FAIL: {tag} PR-EXT reply beats={len(rep)}, expected 1: "
+            + "; ".join(r.fmt() for r in rep)
+        )
+        r = rep[0]
+        assert r.resp == RESP_DECERR and r.t_ps < c["t_init"], (
+            f"CHK-EXT-PORT FAIL: {tag} port_resp={RESP_NAME.get(r.resp, 'X')} "
+            f"t_port={r.t_ps}ps t_init={c['t_init']}ps; expected a DECERR port reply "
+            "before the initiator response"
         )
         strb = _strb(c["addr"], c["size"])
         data_ok = "na"
@@ -208,7 +227,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             seen_strb = f"0x{w.strb:02x}"
         self.logger.info(
             "CHK-EXT-PORT PASS: init=%s dir=%s issued=0x%08X seen=0x%08X size=%d len=0 strb=%s "
-            "data_ok=%s init_resp=DECERR",
+            "data_ok=%s port_resp=DECERR t_port=%dps t_init=%dps init_resp=DECERR",
             c["init"],
             d,
             c["addr"],
@@ -216,6 +235,8 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             b.size,
             seen_strb,
             data_ok,
+            r.t_ps,
+            c["t_init"],
         )
 
     def _check_reach(self, c: dict) -> None:
@@ -263,7 +284,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         self.csr = _Csr(self)
         await self._bring_up()
         self.inf = SepFilterBank(self, "in")
-        self.taps = start_taps("PR-EXT", "PR-XEXT")
+        self.taps = start_taps("PR-EXT", "PR-EXT-RSP", "PR-XEXT")
 
         # Step 2: inbound entry 0 over the whole window, bursts allowed.
         await self.inf.program(
