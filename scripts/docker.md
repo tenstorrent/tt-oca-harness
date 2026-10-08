@@ -78,8 +78,13 @@ The relevant flake outputs are:
 
 | Flake output | Image name | When used |
 |---|---|---|
-| `dockerContainers.x86_64-linux.without_uv_deps` | `ocah-container` | Default (`OCAH_IMAGE_WITH_UV=false`) |
-| `dockerContainers.x86_64-linux.with_uv_deps` | `ocah-uv-container` | `OCAH_IMAGE_WITH_UV=true` |
+| `dockerContainers.<system>.without_uv_deps` | `ocah-container` | Default (`OCAH_IMAGE_WITH_UV=false`) |
+| `dockerContainers.<system>.with_uv_deps` | `ocah-uv-container` | `OCAH_IMAGE_WITH_UV=true` |
+
+`build` uses `aarch64-linux` as `<system>` on an arm64 host and `x86_64-linux`
+otherwise. Both images carry the tag of the `x86_64-linux` build, so on an
+arm64 host evaluating the tag builds one small `x86_64-linux` derivation under
+emulation, and a tarball cache names the arm64 image with an `-arm64` suffix.
 
 The image tag is computed at runtime by evaluating
 `#containerHashes.{without,with}_uv_deps` from the flake:
@@ -134,6 +139,14 @@ The image name is `ocah-container` (or `ocah-uv-container` when
 `ensure` matches against this hash so a stale locally-loaded image is never
 silently reused. Registry pulls use this same content tag and retag the image
 with its local name, so all existing commands continue to work unchanged.
+
+The registry tag is a multi-architecture index of the x86_64 and arm64 images,
+each also published as `<hash>-amd64` and `<hash>-arm64`, so a pull selects the
+host's architecture. The local match is by tag alone. An image of the other
+architecture already loaded under the tag, such as one pulled before the arm64
+image was published, keeps running under emulation, with the engine warning that
+the image platform does not match. Remove it with `podman rmi` (or
+`docker rmi`) and the next command pulls the native one.
 
 ## Bubblewrap backend
 

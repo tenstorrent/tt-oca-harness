@@ -65,6 +65,18 @@ NIXOS_IMAGE="${OCAH_NIXOS_IMAGE:-docker.io/nixos/nix:latest}"
 IMAGE_WITH_UV="${OCAH_IMAGE_WITH_UV:-false}"
 NETWORK="${OCAH_NETWORK:-ocah-docs-net}"
 REGISTRY_IMAGE="${OCAH_CONTAINER_REGISTRY_IMAGE:-}"
+# The image contents follow the host CPU, but every platform takes its tag from
+# the x86_64-linux build. On an arm64 host the NixOS container is aarch64-linux
+# and builds that derivation under the engine's emulation.
+IMAGE_SYSTEM=x86_64-linux
+NIX_PLATFORMS=""
+CACHE_ARCH_SUFFIX=""
+case "$(uname -m)" in arm64 | aarch64)
+  IMAGE_SYSTEM=aarch64-linux
+  NIX_PLATFORMS="--extra-platforms x86_64-linux"
+  CACHE_ARCH_SUFFIX="-arm64"
+  ;;
+esac
 NIX_CONFIG="experimental-features = nix-command flakes
 max-jobs = ${OCAH_NIX_MAX_JOBS:-auto}"
 
@@ -313,12 +325,9 @@ nixos_run() {
 }
 
 image_hash() {
-  local flake_output platforms=""
+  local flake_output
   flake_output=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
-  # The tag is read from a built x86_64-linux derivation. On an arm64 host the
-  # NixOS container is aarch64-linux and builds it under the engine's emulation.
-  case "$(uname -m)" in arm64 | aarch64) platforms="--extra-platforms x86_64-linux" ;; esac
-  nixos_run "nix eval $platforms \$(pwd)#containerHashes.$flake_output" | tr -d '"'
+  nixos_run "nix eval $NIX_PLATFORMS \$(pwd)#containerHashes.$flake_output" | tr -d '"'
 }
 
 # Open a shell in the Nix Container - even on a nix-enabled host
@@ -335,7 +344,7 @@ nixos_shell() {
 }
 
 image_cache_tar() {
-  echo "${DOCKER_CACHE_DIR}/${NIX_IMAGE_NAME##*/}-${IMAGE_HASH:-$(image_hash)}.tar.gz"
+  echo "${DOCKER_CACHE_DIR}/${NIX_IMAGE_NAME##*/}-${IMAGE_HASH:-$(image_hash)}${CACHE_ARCH_SUFFIX}.tar.gz"
 }
 
 # Build the nix container image and publish it to the shared tarball cache when
@@ -349,7 +358,7 @@ build_image() {
     mkdir -p local
     image_location="local/nix-container-image.tar.gz"
   fi
-  nixos_run "nix build \$(pwd)#dockerContainers.x86_64-linux.$flake_output &&
+  nixos_run "nix build $NIX_PLATFORMS \$(pwd)#dockerContainers.$IMAGE_SYSTEM.$flake_output &&
         cp -f --update=all \$(readlink result) $image_location &&
         echo \"Built Container Image\" &&
         rm -f result ||
