@@ -28,8 +28,10 @@ PR-ROM     ``pr_rom``       as PR-SRAM
 ========== ================ ==================================================
 
 A field that resolves to X or Z is recorded as None, so a check that needs a
-known value fails on it instead of reading 0. Verilator is 2-state; the X
-checks of the leaves therefore run on VCS.
+known value fails on it instead of reading 0. A VALID or READY that resolves to
+X or Z while the monitor runs fails the leaf with ``TAP-XZ FAIL``, so a check
+that counts no handshake cannot pass on an unknown handshake. Verilator is
+2-state; the X checks of the leaves therefore run on VCS.
 
 Usage::
 
@@ -43,6 +45,7 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 
 import cocotb
@@ -85,6 +88,14 @@ def _val(sig) -> int | None:
 def _hi(sig) -> bool:
     v = sig.value
     return v.is_resolvable and int(v) == 1
+
+
+def _known(sig) -> bool:
+    return sig is None or sig.value.is_resolvable
+
+
+class TapXZError(AssertionError):
+    """A tap handshake signal resolved to X or Z."""
 
 
 @dataclass
@@ -147,6 +158,14 @@ class SepFabricTap:
             await RisingEdge(clk)
             await ReadOnly()
             for ch, (valid, ready, flds) in self._sigs.items():
+                if not (_known(valid) and _known(ready)):
+                    msg = (
+                        f"TAP-XZ FAIL: {self.name} {ch} valid={valid.value} "
+                        f"ready={'na' if ready is None else ready.value} "
+                        f"t={get_sim_time('ps')}ps"
+                    )
+                    logging.getLogger("cocotb.sep_fabric_tap").error(msg)
+                    raise TapXZError(msg)
                 if _hi(valid) and (ready is None or _hi(ready)):
                     t = get_sim_time("ps")
                     self.beats.append(
