@@ -588,8 +588,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         self._close()
         self.logger.info(
             "CHK-REBASE-EDGE PASS: size=0x%x bottom_seen=%s top_seen=%s last_byte_seen=%s "
-            "above_resp=DECERR above_xext=0 below_resp=DECERR below_xext=0 control_seen=%d "
-            "above=[%s] below=[%s]",
+            "control_seen=%d above=[%s] below=[%s]",
             SIZE_B,
             seen_by["bottom"],
             seen_by["top"],
@@ -636,8 +635,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         )
         self._close()
         self.logger.info(
-            "CHK-REBASE-XBAR-LIMIT PASS: below_seen=0x%x local=0x%x resp=DECERR xbar_ext_in=0 "
-            "csr_seen=0 inflt=1 [%s]",
+            "CHK-REBASE-XBAR-LIMIT PASS: below_seen=0x%x local=0x%x [%s]",
             below_seen[0],
             XBAR_LIMIT,
             lim,

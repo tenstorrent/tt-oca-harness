@@ -197,6 +197,7 @@ class sep_fabric_smc_route_test(sep_base_test):
             v = await self.csr._rd(SMC_FUSE_STATUS)
             if v & SMC_FUSE_DONE:
                 self.logger.info("SMC-FUSE-DONE LOG: status=0x%08x reads=%d", v, n)
+                self.fuse_done = int(bool(v & SMC_FUSE_DONE))
                 return n
             await ClockCycles(cocotb.top.clk_i, _FUSE_POLL_GAP)
         raise AssertionError(
@@ -295,7 +296,7 @@ class sep_fabric_smc_route_test(sep_base_test):
             self.logger.info(
                 "CHK-SMC-ROUTE PASS: addr=0x%08X smc_aw=%d smc_ar=%d out_seen=%d control_out=%d "
                 "control_smc=%d rdata=0x%08X wr=0x%08X unfilt_smc=%d unfilt_rdata=0x%08X "
-                "deny_resp=%s deny_out=%d fuse_done=1",
+                "deny_resp=%s deny_out=%d fuse_done=%d",
                 c["addr"],
                 c["smc_aw"],
                 c["smc_ar"],
@@ -308,6 +309,7 @@ class sep_fabric_smc_route_test(sep_base_test):
                 u["rdata"],
                 RESP_NAME[deny["resp"]],
                 deny["out_ar"],
+                self.fuse_done,
             )
 
         control_smc_seen = sum(c["smc_aw"] + c["smc_ar"] for c in route + unfilt)
@@ -326,10 +328,13 @@ class sep_fabric_smc_route_test(sep_base_test):
                 "the aperture words must drive PR-SMC and the control read PR-OUT"
             )
             self.logger.info(
-                "CHK-SMC-STATIC-ROW PASS: above=0x%08X dir=%s smc_seen=0 out_seen=0 resp=DECERR "
+                "CHK-SMC-STATIC-ROW PASS: above=0x%08X dir=%s smc_seen=%d out_seen=%d resp=%s "
                 "control_smc=%d control_out=%d",
                 above,
                 d,
+                cell["smc"],
+                cell["out"],
+                RESP_NAME.get(cell["resp"], cell["resp"]),
                 control_smc_seen,
                 control_out,
             )
@@ -361,13 +366,16 @@ class sep_fabric_smc_route_test(sep_base_test):
             f"out_ar={ctl['out_ar']} smc={control_smc}; expected OKAY on PR-OUT only"
         )
         self.logger.info(
-            "CHK-SMC-FIRST-MATCH PASS: smc_base=0x%08X smu_base=0x%08X smc_seen=%d out_seen=0 "
-            "control_out=%d control_smc=0 rdata=%s fuse_done=1",
+            "CHK-SMC-FIRST-MATCH PASS: smc_base=0x%08X smu_base=0x%08X smc_seen=%d out_seen=%d "
+            "control_out=%d control_smc=%d rdata=%s fuse_done=%d",
             base,
             self.smu_base,
             sum(c["smc_aw"] + c["smc_ar"] for c in cells),
+            sum(c["out_aw"] + c["out_ar"] for c in cells),
             ctl["out_ar"],
+            control_smc,
             ",".join(f"0x{c['rdata']:08X}" for c in cells),
+            self.fuse_done,
         )
         for idx in (0, 1):
             await self.outf.set_enabled(idx, False)

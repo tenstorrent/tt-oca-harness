@@ -419,10 +419,11 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "control is dead"
         )
         self.logger.info(
-            "CHK-EXT-SHIM PASS: first=0x%08X last=0x%08X seen=0 next_word_seen=%d requests=%d",
+            "CHK-EXT-SHIM PASS: first=0x%08X last=0x%08X seen=%d next_word_seen=%d requests=%d",
             EXT_BASE,
             SHIM_LAST,
-            min(next_word_seen, 1),
+            sum(n for _i, _o, _a, n in shim),
+            next_word_seen,
             len(shim),
         )
 

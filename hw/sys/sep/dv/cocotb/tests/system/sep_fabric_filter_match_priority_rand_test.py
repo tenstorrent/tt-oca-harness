@@ -814,9 +814,16 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         assert st1["ext_seen"] == 0, f"CHK-RESET-DENY-ARMED FAIL: PR-EXT saw {st1['ext_seen']}"
         assert min(armed_ns["in"] + armed_ns["out"]) > 0
         self.logger.info(
-            "CHK-RESET-DENY-ARMED PASS: entries=48 enabled=0 range_end=2^48-1 armed_ns0=%d armed_ns1=%d "
+            "CHK-RESET-DENY-ARMED PASS: entries=%d enabled=%d range_end=0x%x armed_ns0=%d armed_ns1=%d "
             "probes=%d prot1_0=%d prot1_1=%d decerr=%d target_seen=%d wide_ctrl_okay=%d "
             "wide_ctrl_seen=%d wide_ctrl_in=sram,scratch,mbox,crypto,fpage,cpuctrl",
+            sum(self._bank(i).n for i in ("in", "out")),
+            sum(
+                int(e.enabled)
+                for i in ("in", "out")
+                for e in self._bank(i).model.entries[: self._bank(i).n]
+            ),
+            ARMED_END,
             armed_ns["in"][0] + armed_ns["out"][0],
             armed_ns["in"][1] + armed_ns["out"][1],
             probes,
