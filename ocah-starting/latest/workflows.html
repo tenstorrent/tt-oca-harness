@@ -460,7 +460,10 @@ toolchain settings, and link scripts.</p>
 <p><code>prod/</code> — self-contained production boot ROM with its own includes and drivers
   (not shared with <code>dv/fw/</code>). It implements the OCCP target-side protocol and uses weak
 stubs so the open tree links cleanly. Adopters can supply strong-symbol replacements as
-explicit command-line overlay sources with <code>OCAH_FW_OVERLAY_SOURCES_smc</code>.</p>
+explicit command-line overlay sources with <code>OCAH_FW_OVERLAY_SOURCES_smc</code>, and the include
+flags (<code>-I&lt;dir&gt;</code>) for their generated register headers with
+<code>OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_smc</code>; those directories come ahead of the open generated
+headers. The Makefile ignores both variables when they are set only in the environment.</p>
 </li>
 </ul>
 </div>
