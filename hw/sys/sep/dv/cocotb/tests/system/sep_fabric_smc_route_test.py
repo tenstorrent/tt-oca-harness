@@ -29,10 +29,13 @@ Checks:
   accesses still pass with every outbound entry disabled, and an SMU-window read
   then answers DECERR with PR-OUT silent. Control: the SMU-window read with the
   pair enabled answers OKAY on PR-OUT and not on PR-SMC.
-* CHK-SMC-STATIC-ROW (configuration A): the word one above the aperture top, in
-  the static SMC row, gives no PR-SMC handshake on read and on write. Its response
-  and its PR-OUT count are logged only: the specification gives two conflicting
-  rules for an address outside every window.
+* CHK-SMC-STATIC-ROW (configuration A): the word one above the aperture top lies
+  outside the SMC aperture, outside the SMU window, below ``0x1_0000_0000`` and
+  outside the AP and STEE regions, so the route demux returns it to the
+  peripheral crossbar, which answers DECERR at or above ``0x4000_0000``
+  (``hw/sys/sep/doc/fabric.adoc``, output fabric). Read and write answer DECERR
+  with no PR-SMC and no PR-OUT handshake. Control: the aperture words drive
+  PR-SMC and the SMU-window control read drives PR-OUT in the same leaf.
 * CHK-SMC-FIRST-MATCH (configuration B): the aperture words inside the SMU window
   reach PR-SMC and not PR-OUT; the SMU-window word outside the aperture reaches
   PR-OUT and not PR-SMC.
@@ -71,6 +74,8 @@ RESP_NAME = {-1: "TIMEOUT", 0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
 SMC_SIZE = 0x0100_0000
 CFG = {"A": 0x4000_0000, "B": 0x9000_0000}
+# The peripheral crossbar answers DECERR at or above this local address.
+XBAR_LIMIT = 0x4000_0000
 # The SMU window at its RDL reset aperture, and an SMU-window word outside both
 # SMC apertures.
 SMU_BASE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
@@ -239,8 +244,9 @@ class sep_fabric_smc_route_test(sep_base_test):
         ]
         deny = await self._smu_read(expect_error=True)
 
-        # Static-row leg: one word above the aperture top. Its response is not
-        # stated, so it is logged; a missing response fails the check.
+        # Static-row leg: one word above the aperture top, outside every
+        # outbound window, returns to the peripheral crossbar.
+        assert not (SMU_BASE <= above <= SMU_LAST) and XBAR_LIMIT <= above < 1 << 32
         m = self._mark()
         try:
             rd = await self._lsu(SepAxiOp.READ, above, ungraded=True)
@@ -305,17 +311,22 @@ class sep_fabric_smc_route_test(sep_base_test):
                 f"CHK-SMC-STATIC-ROW FAIL: above=0x{above:08x} dir={d} smc_seen={cell['smc']}; "
                 "only the supplied aperture may reach the SMC port"
             )
-            assert control_smc_seen > 0, (
-                "CHK-SMC-STATIC-ROW FAIL: the aperture control drove no PR-SMC"
+            assert cell["resp"] == RESP_DECERR and cell["out"] == 0, (
+                f"CHK-SMC-STATIC-ROW FAIL: above=0x{above:08x} dir={d} "
+                f"resp={RESP_NAME.get(cell['resp'], cell['resp'])} out_seen={cell['out']}; "
+                "expected DECERR from the peripheral crossbar with PR-OUT silent"
+            )
+            assert control_smc_seen > 0 and control_out >= 1, (
+                f"CHK-SMC-STATIC-ROW FAIL: controls smc={control_smc_seen} out={control_out}; "
+                "the aperture words must drive PR-SMC and the control read PR-OUT"
             )
             self.logger.info(
-                "CHK-SMC-STATIC-ROW PASS: above=0x%08X dir=%s smc_seen=0 out_seen=%d resp=%s "
-                "control_smc=%d",
+                "CHK-SMC-STATIC-ROW PASS: above=0x%08X dir=%s smc_seen=0 out_seen=0 resp=DECERR "
+                "control_smc=%d control_out=%d",
                 above,
                 d,
-                cell["out"],
-                RESP_NAME[cell["resp"]],
                 control_smc_seen,
+                control_out,
             )
 
     async def _config_b(self, base: int) -> None:
