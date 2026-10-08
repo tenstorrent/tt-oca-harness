@@ -51,7 +51,7 @@ consumes the fuse DFT disables; they leave the SMU for adopter DFT insertion.
 The `demote` and `lock` bits of DEMOTE_1 and DEMOTE_2 are set-only: firmware
 can set `demote` only while `lock` is clear, and both hold until SEP cold
 reset. The demote bits feed the feature control decode and, through the
-differential encoders, the Key Manager and the SEP outputs.
+differential encoders, the Key Manager KDF and the SEP outputs.
 
 [[lc-state-machine]]
 == Lifecycle States
