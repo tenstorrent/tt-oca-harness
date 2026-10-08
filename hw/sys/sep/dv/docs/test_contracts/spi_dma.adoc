@@ -234,7 +234,7 @@
 . READ ID, then prove WEL set by WREN and cleared by WRDI.
 . Program, FAST_READ, and sector-erase with neighbour intact.
 . After the erase: prove WEL consumed; the controller delivers a page program with WEL clear (the device model refuses it); opcode `0x35` returns the seeded status-register-2 value.
-. `ERROR_STATUS` is zero after that sequence. Then inject underflow, reserved `COMMAND.SPEED`, and an out-of-range chip-select, each exclusive and recovered; READ ID works again.
+. `ERROR_STATUS` is zero after that sequence. Then inject underflow, reserved `COMMAND.SPEED`, and an out-of-range chip-select, each exclusive; after each, pulse `CONTROL.SW_RST`, read `ERROR_STATUS` and require the class still set, then write-one-to-clear and require 0; READ ID works again.
 
 *Checkers*:
 
@@ -262,11 +262,11 @@
 |CHK-RDSR2
 |Opcode `0x35` returns the seeded non-zero status-register-2 value. A decode that folds `0x35` onto `0x05` returns the write-enable SR1 encoding (`0x02`) and fails. A receive path that returns all-zero also fails. The firmware does not re-read SR1 on this step; the fail cases are the two wrong bytes, not a live SR1 compare.
 |CHK-ERR-UNDERFLOW
-|Reading `RXDATA` with the receive FIFO empty latches exactly `ERROR_STATUS.UNDERFLOW`, then write-one-to-clear releases it.
+|Reading `RXDATA` with the receive FIFO empty latches exactly `ERROR_STATUS.UNDERFLOW`. It still reads set after the `CONTROL.SW_RST` pulse, which clears internal state and not registers, so the write-one-to-clear that follows is what releases it.
 |CHK-ERR-CMDINVAL
-|A command with the reserved speed encoding latches exactly `ERROR_STATUS.CMDINVAL`, then write-one-to-clear releases it.
+|A command with the reserved speed encoding latches exactly `ERROR_STATUS.CMDINVAL`. It still reads set after the `CONTROL.SW_RST` pulse, which clears internal state and not registers, so the write-one-to-clear that follows is what releases it.
 |CHK-ERR-CSIDINVAL
-|A segment whose chip-select is outside `NumCS` — driven at the top of the 32-bit `CSID` field, so the stimulus assumes no particular `NumCS` — latches exactly `ERROR_STATUS.CSIDINVAL`, then write-one-to-clear releases it.
+|A segment whose chip-select is outside `NumCS` — driven at the top of the 32-bit `CSID` field, so the stimulus assumes no particular `NumCS` — latches exactly `ERROR_STATUS.CSIDINVAL`. It still reads set after the `CONTROL.SW_RST` pulse, which clears internal state and not registers, so the write-one-to-clear that follows is what releases it.
 |CHK-ERR-RECOVER
 |READ ID completes with the BFM JEDEC identity after the three injections, so the host was released rather than left disabled.
 |CHK-RAND-REP
