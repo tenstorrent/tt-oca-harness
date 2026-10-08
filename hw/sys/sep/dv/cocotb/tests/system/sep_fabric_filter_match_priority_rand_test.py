@@ -795,13 +795,16 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             f"CHK-RESET-DENY FAIL: ext_seen={st0['ext_seen']} ext_ctrl_seen={ext_ctrl_seen}"
         )
         self.logger.info(
-            "CHK-RESET-DENY PASS: inst=out probes=%d prot1_0=%d prot1_1=%d decerr=%d target_seen=0 "
-            "readback_same=%d ext_seen=0 ext_ctrl_seen=1",
+            "CHK-RESET-DENY PASS: inst=out probes=%d prot1_0=%d prot1_1=%d decerr=%d target_seen=%d "
+            "readback_same=%d ext_seen=%d ext_ctrl_seen=%d",
             st0["out_probes"],
             st0["out_p0"],
             st0["out_p1"],
             st0["out_decerr"],
+            st0["out_seen"],
             st0["rb_same"],
+            st0["ext_seen"],
+            ext_ctrl_seen,
         )
         # CHK-RESET-DENY-ARMED.
         probes = st1["in_probes"] + st1["out_probes"]
@@ -813,15 +816,17 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         assert min(armed_ns["in"] + armed_ns["out"]) > 0
         self.logger.info(
             "CHK-RESET-DENY-ARMED PASS: entries=48 enabled=0 range_end=2^48-1 armed_ns0=%d armed_ns1=%d "
-            "probes=%d prot1_0=%d prot1_1=%d decerr=%d target_seen=0 wide_ctrl_resp=OKAY wide_ctrl_seen=%d "
-            "wide_ctrl_in=sram,scratch,mbox,crypto,fpage,cpuctrl",
+            "probes=%d prot1_0=%d prot1_1=%d decerr=%d target_seen=%d wide_ctrl_okay=%d "
+            "wide_ctrl_seen=%d wide_ctrl_in=sram,scratch,mbox,crypto,fpage,cpuctrl",
             armed_ns["in"][0] + armed_ns["out"][0],
             armed_ns["in"][1] + armed_ns["out"][1],
             probes,
             st1["in_p0"] + st1["out_p0"],
             st1["in_p1"] + st1["out_p1"],
             decerr,
-            wide_seen + wide_ok,
+            st1["in_seen"] + st1["out_seen"],
+            wide_ok,
+            wide_seen,
         )
         # Steps 11 and 12: the seeded control entry per instance.
         self._chk = "CHK-RESET-DENY-CONTROL"
@@ -847,7 +852,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                 inst,
                 cls,
                 prot1,
-                min(seen, 1),
+                seen,
             )
             await bank.set_enabled(k, False)
         # Step 13: every entry back to reset.
