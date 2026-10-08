@@ -17,14 +17,14 @@
 #ifndef SMC_ROM_DEFS_H
 #define SMC_ROM_DEFS_H
 
+/* Preprocessor-only, so it is also safe to include from assembly. */
+#include "smc_addr.h"
+
 /*
  * Register Address Definitions
- * These are extracted from registers/smc_top_regs.h to avoid complex includes in assembly
  */
-/* SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR in regs/gen/c/smc_addr.h */
-#define SMC_STRAPS_LO_REG_ADDR 0xC0403000
-/* SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_BASE_ADDR in regs/gen/c/smc_addr.h */
-#define SMC_STRAPS_HI_REG_ADDR 0xC0403004
+#define SMC_STRAPS_LO_REG_ADDR SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR
+#define SMC_STRAPS_HI_REG_ADDR SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_BASE_ADDR
 
 /*
  * Strap Bit Definitions
@@ -105,8 +105,8 @@
 /*
  * SRAM Definitions
  */
-#define SMC_SRAM_BASE 0xC0060000    /* SPM_MEMORY_MEM_BASE_ADDR - physical SRAM start */
-#define SMC_SRAM_SIZE (1024 * 1024) /* 1 MB total SRAM size */
+#define SMC_SRAM_BASE SMC_TOP_SPM_MEMORY_BASE_ADDR /* physical SRAM start */
+#define SMC_SRAM_SIZE SMC_TOP_SPM_MEMORY_SIZE
 
 /* ROM-owned memory regions (protected from OCCP access) */
 #define SMC_ROM_DATA_BASE 0xC0060000 /* ROM .data section start */
@@ -129,7 +129,6 @@
  * Scratchpad Register Definitions. Moved here since they are used in both C and assembly.
  * For SMC/SEP coordination per SMC ROM Boot Architecture Specification
  */
-#define SMC_SCRATCH_BASE_ADDR 0xC0039080 /* SMC_CPU_CTRL_SCRATCH_0__REG_ADDR */
 #define SMC_SCRATCH_MANIFEST_ADDR \
     8 /* Manifest address handoff to SEP (stored as offset from SMC_SRAM_BASE) */
 #define SMC_SCRATCH_SMC_STATUS_TO_SEP 9 /* SMC Status to SEP coordination */
@@ -140,13 +139,6 @@
 #define SMC_SCRATCH_SEP_SAFE_SRAM_SIZE 14 /* SEP safe SRAM size in bytes */
 #define SMC_SCRATCH_MBIST_FAILURE 10      /* MBIST failure register value */
 #define SMC_SCRATCH_MBIST_STATUS 15 /* MBIST/memory repair status for early boot diagnostics */
-
-/* DFX_CTRL_STATUS bit masks */
-#define DFT_STATUS_MEM_REPAIR_DONE_MASK 0x1
-#define DFT_STATUS_MEM_REPAIR_SUCCESS_MASK 0x2
-#define DFT_STATUS_MBIST_DONE_MASK 0x10
-#define DFT_STATUS_MBIST_PASS_MASK 0x100
-#define DFT_STATUS_MBIST_ABORT_MASK 0x1000
 
 /* Early boot MBIST/memory repair status codes */
 #define MBIST_STATUS_RUNNING 0x12345678
@@ -172,19 +164,10 @@
 
 /*
  * AXI Zeroer Control FSM Register Definitions
- * From AXI_DATA_ACCEL_AXI_ZEROER_CTRL_*_REG_ADDR
  */
-#define SMC_ZEROER_DEST_ADDR_REG 0xC0038200
-#define SMC_ZEROER_SIZE_REG 0xC0038208
-#define SMC_ZEROER_CTRL_STATUS_REG 0xC0038210
-
-/* AXI Zeroer Control Status Register Bits */
-#define SMC_ZEROER_CTRL_START_BIT 0
-#define SMC_ZEROER_STATUS_BUSY_BIT 32
-
-/* AXI Zeroer Control Values */
-#define SMC_ZEROER_START_VALUE 1
-#define SMC_ZEROER_BUSY_MASK (1ULL << SMC_ZEROER_STATUS_BUSY_BIT)
+#define SMC_ZEROER_DEST_ADDR_REG SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR
+#define SMC_ZEROER_SIZE_REG SMC_TOP_ZEROER_CTRL_SIZE_BASE_ADDR
+#define SMC_ZEROER_CTRL_STATUS_REG SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR
 
 /*
  * Boot Flow Constants
@@ -234,40 +217,36 @@
 /*
  * Assembly-specific definitions
  *
- * The regular definitions above are included when assembling and work fine
- * with RISC-V %hi()/%lo() operators. This section only contains values that
- * need special handling for assembly compatibility - specifically, expressions
- * that need to be pre-calculated to literal values.
+ * The regular definitions above are also visible to the assembler. The *_VAL
+ * names below are the ones the assembly sources use: literal boot-interface
+ * values, aliases of the definitions above, and register-field masks that the
+ * build copies out of the generated field headers, which also declare C types.
  */
 #ifdef __ASSEMBLER__
-/* Pre-calculated values for expressions that can't be evaluated by assembler */
-#define SMC_STRAPS_LO_REG_ADDR_VAL 0xC0403000
-#define SMC_STRAPS_HI_REG_ADDR_VAL 0xC0403004
-/* Literal addresses for assembly, which cannot include the generated headers because their C
- * typedefs do not assemble. Nothing cross-checks these against the register map, so keep them in
- * step with regs/gen/c/smc_addr.h by hand:
- *   SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR
- *   SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR
- *   SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(15), whose stride is 8 bytes, not 4
- */
-#define SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR_VAL 0xC0007070
-#define DFX_CTRL_STATUS_SMU_REG_ADDR_VAL 0xC000B800
-#define SMC_SCRATCH_MBIST_STATUS_ADDR_VAL 0xC00390F8
+#include "smc_rom_asm_reg_defs.h"
+
+#define SMC_STRAPS_LO_REG_ADDR_VAL SMC_STRAPS_LO_REG_ADDR
+#define SMC_STRAPS_HI_REG_ADDR_VAL SMC_STRAPS_HI_REG_ADDR
+#define SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR_VAL SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR
+#define DFX_CTRL_STATUS_SMU_REG_ADDR_VAL SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR
+#define SMC_SCRATCH_MBIST_STATUS_ADDR_VAL \
+    SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(SMC_SCRATCH_MBIST_STATUS)
 #define ROM_PADDING_TRAP_STATUS_VAL 0xBADF00D0
 #define SMC_STRAP_MEM_REPAIR_BYPASS_MASK_VAL 0x00002000
 #define SMC_STRAP_MEM_BIST_BYPASS_MASK_VAL 0x00400000 /* (1U << (54 - 32)) */
-#define SMC_EFUSE_SMC_CONFIG_SRAM_AUTO_ZERO_DISABLE_MASK_VAL 0x80
-#define SMC_ZEROER_DEST_ADDR_REG_VAL 0xC0038200
-#define SMC_ZEROER_SIZE_REG_VAL 0xC0038208
-#define SMC_ZEROER_CTRL_STATUS_REG_VAL 0xC0038210
-#define SMC_ZEROER_BUSY_MASK_VAL 0x100000000
-#define SMC_SRAM_SIZE_VAL 0x100000                           /* (1024 * 1024) = 1 MB */
+#define SMC_EFUSE_SMC_CONFIG_SRAM_AUTO_ZERO_DISABLE_MASK_VAL \
+    SMC_EFUSE_MAP__SMC_CONFIG__SRAM_AUTO_ZERO_DISABLE_bm
+#define SMC_ZEROER_DEST_ADDR_REG_VAL SMC_ZEROER_DEST_ADDR_REG
+#define SMC_ZEROER_SIZE_REG_VAL SMC_ZEROER_SIZE_REG
+#define SMC_ZEROER_CTRL_STATUS_REG_VAL SMC_ZEROER_CTRL_STATUS_REG
+#define SMC_ZEROER_BUSY_MASK_VAL ZEROER_CTRL__CTRL_STATUS__STATUS_bm
+#define SMC_SRAM_SIZE_VAL SMC_SRAM_SIZE
 #define SMC_STRAP_SRAM_AUTO_ZERO_DISABLE_MASK_VAL 0x04000000 /* (1U << 26) */
-#define DFT_STATUS_MEM_REPAIR_DONE_MASK_VAL 0x1
-#define DFT_STATUS_MEM_REPAIR_SUCCESS_MASK_VAL 0x2
-#define DFT_STATUS_MBIST_DONE_MASK_VAL 0x10
-#define DFT_STATUS_MBIST_PASS_MASK_VAL 0x100
-#define DFT_STATUS_MBIST_ABORT_MASK_VAL 0x1000
+#define DFT_STATUS_MEM_REPAIR_DONE_MASK_VAL DFX_CTRL_STATUS__STATUS__MEM_REPAIR_DONE_bm
+#define DFT_STATUS_MEM_REPAIR_SUCCESS_MASK_VAL DFX_CTRL_STATUS__STATUS__MEM_REPAIR_SUCCESS_bm
+#define DFT_STATUS_MBIST_DONE_MASK_VAL DFX_CTRL_STATUS__STATUS__MBIST_DONE_bm
+#define DFT_STATUS_MBIST_PASS_MASK_VAL DFX_CTRL_STATUS__STATUS__MBIST_PASS_bm
+#define DFT_STATUS_MBIST_ABORT_MASK_VAL DFX_CTRL_STATUS__STATUS__MBIST_ABORT_bm
 #define MBIST_STATUS_RUNNING_VAL 0x12345678
 #define MBIST_STATUS_PASSED_VAL 0x600DCAFE
 #define MBIST_STATUS_FAILED_VAL 0xDEADBEEF
@@ -275,7 +254,8 @@
 #define MBIST_STATUS_MEM_REPAIR_FAILED_VAL 0xBADC0FFE
 #define MBIST_STATUS_MEM_REPAIR_BYPASSED_VAL 0x12340001
 #define MBIST_STATUS_MEM_BIST_BYPASSED_VAL 0x12340002
-#define SMC_EFUSE_SMC_CONFIG_DFT_IGNORE_ERROR_MASK_VAL 0x8000
+#define SMC_EFUSE_SMC_CONFIG_DFT_IGNORE_ERROR_MASK_VAL \
+    SMC_EFUSE_MAP__SMC_CONFIG__DFT_IGNORE_ERROR_bm
 #endif
 
 #endif /* SMC_ROM_DEFS_H */

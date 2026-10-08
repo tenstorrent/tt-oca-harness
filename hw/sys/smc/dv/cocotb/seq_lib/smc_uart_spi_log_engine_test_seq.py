@@ -7,9 +7,23 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
-from .smc_addr_map import smc_indexed_addr
+from .smc_addr_map import _REPO, reg_field_encode, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_output_fabric_vip_utils import reg_field_pack
+
+_UART_LOG_ENGINE_CTRL_H = (
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
+    / "uart_log_engine_ctrl.h"
+)
+_UART_16550_MAIN_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main.h"
+)
 
 # Every expected value below is derived from the register definition and, for
 # the modem-status pair, from the pad level this test drives.
@@ -24,7 +38,9 @@ UART_LOG_ENGINE_CTRL_CTRL = smc_indexed_addr(
 )
 
 # UART0 pad function enable: ``UART_LOG_ENGINE_CTRL.CTRL.UART_EN``.
-UART_LOG_ENGINE_CTRL_UART_EN = reg_field_pack("UART_LOG_ENGINE_CTRL_CTRL_reg_t", uart_en=1)
+UART_LOG_ENGINE_CTRL_UART_EN = reg_field_encode(
+    _UART_LOG_ENGINE_CTRL_H, "UART_LOG_ENGINE_CTRL", "CTRL", uart_en=1
+)
 
 # --- UART_MSR: field contract + the CTS pad level this test drives -----------
 #
@@ -65,8 +81,8 @@ UART_LOG_ENGINE_CTRL_UART_EN = reg_field_pack("UART_LOG_ENGINE_CTRL_CTRL_reg_t",
 # enable (``uart_log_engine_ctrl.rdl``: "When set, the pad-mux downstream will
 # be forced to accept UART traffic"). The register is read at its RDL reset 0x0
 # before UART_EN = 1 is written.
-MSR_DCTS = reg_field_pack("UART_16550_MAIN_MSR_reg_t", dcts=1)
-MSR_CTS = reg_field_pack("UART_16550_MAIN_MSR_reg_t", cts=1)
+MSR_DCTS = reg_field_encode(_UART_16550_MAIN_H, "UART_16550_MAIN", "MSR", dcts=1)
+MSR_CTS = reg_field_encode(_UART_16550_MAIN_H, "UART_16550_MAIN", "MSR", cts=1)
 # The bits every MSR compare is masked to: the two this test drives and reads.
 MSR_LIVE_MASK = MSR_DCTS | MSR_CTS
 

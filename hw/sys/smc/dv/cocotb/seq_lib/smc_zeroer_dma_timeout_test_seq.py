@@ -13,6 +13,7 @@ import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
+from .smc_addr_map import _REPO, reg_field_encode
 
 # Shared output-fabric VIP layer: fabric window, filter pass-all programming and
 # the X-aware responder sampling all live there (no local re-implementation).
@@ -21,7 +22,6 @@ from .smc_output_fabric_vip_utils import (
     check_output_responder_delta,
     output_fabric_pass_all_cfg_seq,
     output_responder_counts,
-    reg_field_pack,
 )
 
 # Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
@@ -38,9 +38,10 @@ from smc_reg import (  # noqa: E402
 ZEROER_DEST_ADDR = ZEROER_CTRL_DEST_ADDR_REG_ADDR
 ZEROER_SIZE = ZEROER_CTRL_SIZE_REG_ADDR
 ZEROER_CTRL_STATUS = ZEROER_CTRL_CTRL_STATUS_REG_ADDR
+_ZEROER_CTRL_H = _REPO / "hw" / "ip" / "zeroer" / "regs" / "gen" / "c" / "zeroer_ctrl.h"
 # CTRL_STATUS start value packed from the generated ZEROER_CTRL field layout:
 # INT_EN at bit 0 carries the write side effect that starts the FSM.
-ZEROER_CTRL_STATUS_START = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1)
+ZEROER_CTRL_STATUS_START = reg_field_encode(_ZEROER_CTRL_H, "ZEROER_CTRL", "CTRL_STATUS", int_en=1)
 # --- CTRL_STATUS readback expectation (S4) ----------------------------------
 # Packed from the same generated field layout; every bit of the 64-bit word
 # except STATUS is accounted for:
@@ -56,7 +57,7 @@ ZEROER_CTRL_STATUS_START = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_e
 #                     that level once the zeroing completes. That proves the
 #                     field follows the zeroer's activity and is not tied or
 #                     unconnected, without asserting which level means busy.
-ZEROER_CTRL_STATUS_ARMED = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1)
+ZEROER_CTRL_STATUS_ARMED = reg_field_encode(_ZEROER_CTRL_H, "ZEROER_CTRL", "CTRL_STATUS", int_en=1)
 
 OUTPUT_FABRIC_NEIGHBOUR_ADDR = OUTPUT_FABRIC_ADDR + 8
 OUTPUT_FABRIC_MODEL_REGION = "zeroer_output_fabric"
@@ -82,7 +83,7 @@ BUSY_PROBE_BEATS = BUSY_PROBE_SIZE // 8
 BUSY_PROBE_ASSERT_CYCLES = 400
 BUSY_PROBE_CLEAR_CYCLES = 4000
 # STATUS is bit 32 of the 64-bit CTRL_STATUS word.
-STATUS_BM = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", status=1)
+STATUS_BM = reg_field_encode(_ZEROER_CTRL_H, "ZEROER_CTRL", "CTRL_STATUS", status=1)
 
 # Coverage cells of SMC-ZEROER-WRITE-STREAM.S1. ``cells_hit`` is built from the
 # per-cell comparisons in ``body``, never from this tuple.

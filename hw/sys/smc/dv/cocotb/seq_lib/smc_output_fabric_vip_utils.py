@@ -4,9 +4,7 @@
 
 from __future__ import annotations
 
-import re
 import sys
-from functools import lru_cache
 from pathlib import Path
 
 import cocotb
@@ -14,6 +12,7 @@ from cocotb.triggers import ClockCycles
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
+from .smc_addr_map import _REPO, reg_field_encode
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
@@ -46,66 +45,16 @@ OUTPUT_FABRIC_MODEL_REGION = "output_fabric"
 OUTPUT_FABRIC_MODEL_BASE = 0x0200_0000
 OUTPUT_FABRIC_MODEL_SIZE = 0x0001_0000
 
-# --- Register field packing from the generated register header ---------------
-# Bit positions on the proof path are never hand-packed: they are computed from
-# the generated C bitfield structs in the flattened SMC register header
-# (``hw/sys/smc/bootrom/prod/registers/smc_top_regs.h``, the same authoritative
-# map ``smc_addr_map.smc_bootrom_addr`` already reads). PeakRDL emits the fields
-# LSB-first, so member order gives the bit offsets.
-_REPO = Path(__file__).resolve().parents[6]
-_SMC_TOP_REGS_H = _REPO / "hw" / "sys" / "smc" / "bootrom" / "prod" / "registers" / "smc_top_regs.h"
-_BITFIELD_STRUCT_RE = re.compile(r"typedef\s+struct\s*\{(.*?)\}\s*(\w+)\s*;", re.S)
-_BITFIELD_MEMBER_RE = re.compile(r"uint(?:8|16|32|64)_t\s+(\w+)\s*:\s*(\d+)\s*;")
-
-
-@lru_cache(maxsize=1)
-def _bitfield_layouts() -> dict[str, dict[str, tuple[int, int]]]:
-    """``{struct: {field: (lsb, width)}}`` for every generated bitfield struct."""
-    text = _SMC_TOP_REGS_H.read_text(encoding="utf-8")
-    out: dict[str, dict[str, tuple[int, int]]] = {}
-    for body, name in _BITFIELD_STRUCT_RE.findall(text):
-        members = _BITFIELD_MEMBER_RE.findall(body)
-        if not members:
-            continue
-        layout: dict[str, tuple[int, int]] = {}
-        lsb = 0
-        for field, width in members:
-            layout[field] = (lsb, int(width))
-            lsb += int(width)
-        out[name] = layout
-    if not out:
-        raise RuntimeError(f"no generated bitfield structs parsed from {_SMC_TOP_REGS_H}")
-    return out
-
-
-def reg_field_pack(struct: str, **fields: int) -> int:
-    """Pack ``field=value`` into a register word using the generated layout."""
-    layouts = _bitfield_layouts()
-    try:
-        layout = layouts[struct]
-    except KeyError as exc:
-        raise KeyError(f"{struct} not in {_SMC_TOP_REGS_H}") from exc
-    value = 0
-    for field, field_value in fields.items():
-        try:
-            lsb, width = layout[field]
-        except KeyError as exc:
-            raise KeyError(f"{struct}.{field} not in {_SMC_TOP_REGS_H}") from exc
-        assert 0 <= field_value < (1 << width), (
-            f"{struct}.{field}={field_value} does not fit in {width} bit(s)"
-        )
-        value |= field_value << lsb
-    return value
-
-
-_FILTER_CONFIG_STRUCT = "FILTER_CTRL_FILTER_CONFIG_reg_t"
+_FILTER_CTRL_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
 # data_bus_width=3 selects 8-byte beats (the SYS/SEP AXI data width used by
 # every fabric access in these tests).
 _FILTER_DATA_BUS_WIDTH_8B = 3
 
 # Pass single-beat and burst read/write traffic.
-PASS_ALL_CONFIG = reg_field_pack(
-    _FILTER_CONFIG_STRUCT,
+PASS_ALL_CONFIG = reg_field_encode(
+    _FILTER_CTRL_H,
+    "FILTER_CTRL",
+    "FILTER_CONFIG",
     read_allowed=1,
     write_allowed=1,
     entry_enabled=1,
@@ -113,8 +62,10 @@ PASS_ALL_CONFIG = reg_field_pack(
     allow_burst=1,
 )
 # Reads only: write_allowed / allow_burst cleared.
-READ_ONLY_CONFIG = reg_field_pack(
-    _FILTER_CONFIG_STRUCT,
+READ_ONLY_CONFIG = reg_field_encode(
+    _FILTER_CTRL_H,
+    "FILTER_CTRL",
+    "FILTER_CONFIG",
     read_allowed=1,
     entry_enabled=1,
     data_bus_width=_FILTER_DATA_BUS_WIDTH_8B,

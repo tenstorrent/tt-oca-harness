@@ -14,7 +14,7 @@ low is worse than leaving them idle -- it is what makes the ROM skip the check.
 
 Contracts with hw/sys/smc/bootrom/prod:
     smc_rom_defs.h   SMC_SCRATCH_MBIST_STATUS = 15, where the ROM records the outcome
-    smc_rom_defs.h   DFT_STATUS_* masks in DFX_CTRL_STATUS, which the ROM reads
+    smc_rom_defs.h   DFT_STATUS_*_MASK_VAL, the DFX_CTRL_STATUS masks the ROM reads
 
 The status codes below are the ROM's, not this driver's: it only decides which failure to
 report and then checks what the ROM wrote.

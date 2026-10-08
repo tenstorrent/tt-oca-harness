@@ -35,12 +35,9 @@ _ALIAS_REMAP_H = _REPO / "hw" / "ip" / "axi_alias_remap" / "regs" / "gen" / "c" 
 _DMA_CTRL_H = (
     _REPO / "vendor" / "pulp-platform" / "idma" / "overlay" / "rdl" / "gen" / "c" / "dma_ctrl.h"
 )
-# Flattened EXTERNAL_MANDATORY / instance symbols not exported by PeakRDL smc_addr.h.
-_BOOTROM_REGS_H = _REPO / "hw" / "sys" / "smc" / "bootrom" / "prod" / "registers" / "smc_top_regs.h"
+_GPIO_CTRL_ADDR_H = _REPO / "hw" / "ip" / "gpio" / "regs" / "gen" / "c" / "gpio_ctrl_addr.h"
 
 _SIMPLE_DEFINE_RE = re.compile(r"^\s*#define\s+(\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$")
-# Bootrom style: #define NAME (0xC0400100)
-_PAREN_DEFINE_RE = re.compile(r"^\s*#define\s+(\w+)\s+\((0x[0-9A-Fa-f]+|\d+)\)\s*$")
 # PeakRDL indexed macros, e.g.:
 #   #define FOO_BASE_ADDR(idx) (0xC0015000 + (idx * 0x00000020))
 # Optional trailing space before the outer closing paren is allowed.
@@ -50,7 +47,7 @@ _INDEXED_DEFINE_RE = re.compile(
 )
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=None)
 def _parse_simple_defines(path: Path) -> dict[str, int]:
     text = path.read_text(encoding="utf-8")
     out: dict[str, int] = {}
@@ -63,7 +60,7 @@ def _parse_simple_defines(path: Path) -> dict[str, int]:
     return out
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=None)
 def _parse_indexed_bases(path: Path) -> dict[str, tuple[int, int]]:
     """Return {name: (base, stride)} for PeakRDL ``NAME(idx) (base + (idx * stride))``."""
     text = path.read_text(encoding="utf-8")
@@ -72,19 +69,6 @@ def _parse_indexed_bases(path: Path) -> dict[str, tuple[int, int]]:
         m = _INDEXED_DEFINE_RE.match(line)
         if m:
             out[m.group(1)] = (int(m.group(2), 0), int(m.group(3), 0))
-    return out
-
-
-@lru_cache(maxsize=1)
-def _parse_paren_defines(path: Path) -> dict[str, int]:
-    text = path.read_text(encoding="utf-8")
-    out: dict[str, int] = {}
-    for line in text.splitlines():
-        m = _PAREN_DEFINE_RE.match(line)
-        if m:
-            out[m.group(1)] = int(m.group(2), 0)
-    if not out:
-        raise RuntimeError(f"no parenthesized #define constants parsed from {path}")
     return out
 
 
@@ -103,45 +87,28 @@ def smc_addr_symbols(pattern: str) -> tuple[str, ...]:
     return tuple(name for name in _parse_simple_defines(_SMC_ADDR_H) if rx.fullmatch(name))
 
 
-def smc_indexed_addr(symbol: str, idx: int = 0) -> int:
-    """Evaluate a PeakRDL indexed ``SMC_TOP_*_BASE_ADDR(idx)`` macro."""
-    table = _parse_indexed_bases(_SMC_ADDR_H)
+def smc_indexed_addr(symbol: str, idx: int = 0, header: Path = _SMC_ADDR_H) -> int:
+    """Evaluate a PeakRDL indexed ``*_BASE_ADDR(idx)`` macro, from ``smc_addr.h`` by default."""
+    table = _parse_indexed_bases(header)
     try:
         base, stride = table[symbol]
     except KeyError as exc:
-        raise KeyError(f"{symbol}(idx) not in {_SMC_ADDR_H}") from exc
+        raise KeyError(f"{symbol}(idx) not in {header}") from exc
     return base + idx * stride
 
 
-def smc_bootrom_addr(symbol: str) -> int:
-    """Return a flattened absolute from bootrom ``smc_top_regs.h``."""
-    table = _parse_paren_defines(_BOOTROM_REGS_H)
-    try:
-        return table[symbol]
-    except KeyError as exc:
-        raise KeyError(f"{symbol} not in {_BOOTROM_REGS_H}") from exc
+def external_gpio_ctrl_indices() -> tuple[int, ...]:
+    """GPIO_CTRL instance indices of the external mandatory window."""
+    return tuple(range(smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_NUM")))
 
 
 def external_gpio_ctrl_addr(idx: int) -> int:
-    """EXTERNAL_MANDATORY GPIO_CTRL_N CONTROL (bootrom map; not in PeakRDL)."""
-    return smc_bootrom_addr(f"SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_{idx}__CONTROL_BASE_ADDR")
-
-
-@lru_cache(maxsize=1)
-def external_gpio_ctrl_indices() -> tuple[int, ...]:
-    """Sorted GPIO_CTRL instance indices present in the bootrom map."""
-    table = _parse_paren_defines(_BOOTROM_REGS_H)
-    prefix = "SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_"
-    suffix = "__CONTROL_BASE_ADDR"
-    idxs: list[int] = []
-    for name in table:
-        if name.startswith(prefix) and name.endswith(suffix):
-            mid = name[len(prefix) : -len(suffix)]
-            if mid.isdigit():
-                idxs.append(int(mid))
-    if not idxs:
-        raise RuntimeError("no EXTERNAL_MANDATORY GPIO_CTRL_* in bootrom map")
-    return tuple(sorted(idxs))
+    """Absolute CONTROL register address of external mandatory GPIO_CTRL ``idx``."""
+    if idx not in external_gpio_ctrl_indices():
+        raise KeyError(f"GPIO_CTRL {idx} is not in the external mandatory window")
+    return smc_indexed_addr(
+        "SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR", idx
+    ) + _field_mask(_GPIO_CTRL_ADDR_H, "GPIO_CTRL_CONTROL_BASE_ADDR")
 
 
 def dma_ctrl_offset(symbol: str) -> int:
@@ -159,6 +126,24 @@ def _field_mask(path: Path, symbol: str) -> int:
         return table[symbol]
     except KeyError as exc:
         raise KeyError(f"{symbol} not in {path}") from exc
+
+
+def reg_field_encode(header: Path, block: str, reg: str, **fields: int) -> int:
+    """Encode ``field=value`` pairs into a register word from generated ``_bm``/``_bp`` macros.
+
+    ``header`` is the owner-generated C header and ``block``/``reg`` the upper-case
+    PeakRDL prefix, e.g. ``FILTER_CTRL``/``FILTER_CONFIG``; field names are matched
+    case-insensitively against ``<BLOCK>__<REG>__<FIELD>_bm`` and ``_bp``.
+    """
+    word = 0
+    for field, value in fields.items():
+        name = f"{block}__{reg}__{field.upper()}"
+        mask = _field_mask(header, f"{name}_bm")
+        lsb = _field_mask(header, f"{name}_bp")
+        if value < 0 or (value << lsb) & ~mask:
+            raise ValueError(f"{name}={value:#x} does not fit mask {mask:#x}")
+        word |= value << lsb
+    return word
 
 
 # --- Absolute addresses used by SMC clock-gating / DMA activity tests ---

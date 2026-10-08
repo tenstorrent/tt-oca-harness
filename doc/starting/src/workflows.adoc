@@ -158,7 +158,10 @@ toolchain settings, and link scripts.
 * `prod/` — self-contained production boot ROM with its own includes and drivers
   (not shared with `dv/fw/`). It implements the OCCP target-side protocol and uses weak
 stubs so the open tree links cleanly. Adopters can supply strong-symbol replacements as
-explicit command-line overlay sources with `OCAH_FW_OVERLAY_SOURCES_smc`.
+explicit command-line overlay sources with `OCAH_FW_OVERLAY_SOURCES_smc`, and the include
+flags (`-I<dir>`) for their generated register headers with
+`OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_smc`; those directories come ahead of the open generated
+headers. The Makefile ignores both variables when they are set only in the environment.
 
 Build the dummy ROM with its standalone Makefile:
 

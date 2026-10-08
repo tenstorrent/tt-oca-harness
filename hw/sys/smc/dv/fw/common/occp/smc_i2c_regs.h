@@ -3,8 +3,7 @@
 
 /*
  * I2C wrapper registers for the OCCP DV firmware. The SMC block headers do not cover the I2C
- * wrapper, and the boot ROM's smc_top_regs.h, the source of this subset, has I3C register types
- * that collide with headers this firmware already includes.
+ * wrapper.
  */
 
 #ifndef SMC_I2C_REGS_H

@@ -748,13 +748,6 @@ module sep_ip_integration
 `endif  // SEP_ABR_EN
 
 
-  ///////////////
-  // SPI Logic //
-  ///////////////
-
-  sep_32_64_6_12_axi_req_t  cdns_xip_axi_req;
-  sep_32_64_6_12_axi_resp_t cdns_xip_axi_resp;
-
   //=========================================================================
   // External TRNG -- terminated with a DECERR slave; entropy-stream/irq/
   // alarm outputs are idled.
