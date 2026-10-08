@@ -371,7 +371,7 @@ ensure_image() {
   flake_hash=$IMAGE_HASH
   IMAGE="${NIX_IMAGE_NAME}:${flake_hash}"
   # Test for an exact image already loaded in the selected engine.
-  if "$ENGINE" ${PODMAN_STORAGE_FLAGS} images | grep -qE "${NIX_IMAGE_NAME} *${flake_hash}"; then
+  if "$ENGINE" ${PODMAN_STORAGE_FLAGS} image inspect "$IMAGE" >/dev/null 2>&1; then
     return 0
   fi
 
