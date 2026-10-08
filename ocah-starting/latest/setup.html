@@ -345,11 +345,13 @@ which let you run <code>docker</code> without <code>sudo</code>.</p>
 <div class="paragraph">
 <p>Install Git by running <code>xcode-select --install</code>, then install
 <a href="https://podman.io/docs/installation#macos">Podman</a>. Podman runs containers in a
-Linux virtual machine; create and start it:</p>
+Linux virtual machine. The default machine has 2 GB of memory, short of
+<a href="dependencies.html#system-requirements" class="xref page">Dependencies</a>, so set <code>--memory</code>
+(in MB) to match:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">podman machine init
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">podman machine init --memory 16384
 podman machine start</code></pre>
 </div>
 </div>
@@ -526,6 +528,11 @@ new location with <code>podman info | grep -i graphroot</code>.</p>
 <dd>
 <p>Step 1 is incomplete, or on macOS the Podman machine is not running. Run
 <code>podman machine start</code>.</p>
+</dd>
+<dt class="hdlist1"><code>Killed signal terminated program lto1</code></dt>
+<dd>
+<p>The Podman machine is short of memory. Stop it, run
+<code>podman machine set --memory 16384</code> and start it again.</p>
 </dd>
 </dl>
 </div>
