@@ -314,11 +314,10 @@ script. Run the following command to see all available options:
 
 ```bash
 ./tools/dv/run_dv.py --help
-usage: run_dv.py [options]
+usage: run_dv.py --dut NAME [--framework NAME] [--items ITEM ...] [options]
+       run_dv.py --list | --validate-configs | --doctor [options]
 
-Native OSS DV/FV launcher for listing DUTs, validating configs, and running simulation or formal flows.
-
-options:
+Native OSS DV/FV launcher.
 ...
 ```
 
@@ -335,14 +334,16 @@ Validating configs in hw/common/dv/configs
   simulators.toml  OK
   executors.toml   OK
   parsers.toml     OK
-  dtp              OK
-  dtp_uvm          OK
+  ...
   sep              OK
-  smc_wrapper      OK
+  sep (uvm)        OK
+  smc              OK
+  smc (uvm)        OK
   smu              OK
-  smu_wrapper      OK
+  smu (uvm)        OK
+  ...
 
-Result: 6 DUT(s): 6 OK, 0 FAILED
+Result: 22 DUT(s), 30 view(s): 30 OK, 0 FAILED
 ```
 
 Use the `--doctor` flag to check the testbench environment for an individual
@@ -395,7 +396,7 @@ groups     : all=... cpu=... cpu_stub=...
 To run an individual set of tests, list them using the `--items` flag.
 
 ```bash
-./tools/dv/run_dv.py --dut smc_wrapper --items octs_sanity_test smc_axil_idle_test
+./tools/dv/run_dv.py --dut smc --items smc_octs_sanity_test smc_axil_idle_test
 ...
 ```
 
@@ -406,21 +407,21 @@ flag to see usage.
 
 === Visual Debugging and Waveform Viewer
 
-When debugging particularly difficuly RTL issues, it is useful to be able to view the signals
+When debugging particularly difficult RTL issues, it is useful to be able to view the signals
 travelling between components. For this, a wave trace may be generated and inspected. To
 generate a trace, use the `--waves` argument.
 
 ```bash
-./tools/dv/run_dv.py --waves ...
-...
+./tools/dv/run_dv.py --dut smc --items smc_octs_sanity_test --waves
 ```
 
-We use https://surfer-project.org/[Surfer] for viewing wave traces, but if you prefer a
-different program, the program suggested may be overridden with `--wave-viewer-binary`.
+Each test writes its trace to a `waves/` directory beside its results in the run
+directory, with a `debug_context.json` listing the trace files and a command to open them.
+We use https://surfer-project.org/[Surfer], which the container includes, for viewing
+wave traces; open a trace with `surfer <trace>`.
 
-To automatically open your chosen viewer on test completion, use the `--open-waves` flag.
-
-The `--waves-on-fail` flag may be used instead of `--waves`, to only generate wave traces for failing tests.
+The `--waves-on-fail` flag may be used instead of `--waves`; it reruns only the tests that
+did not pass, with waves enabled.
 
 === References
 
