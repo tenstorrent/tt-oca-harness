@@ -41,7 +41,8 @@ Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CTL-FILTER-RAND (stimulus
 completeness, no DUT claim), CHK-RESET-DENY, CHK-RESET-DENY-ARMED,
 CHK-RESET-DENY-CONTROL, CHK-GRANULE. CTL-FILTER-ACTIVE is the bring-up
 precondition. The inbound cells that open tests grade run as controls and log
-CTL-FILTER-CELL / CTL-RESET-DENY lines.
+CTL-FILTER-CELL / CTL-RESET-DENY lines. Every admitted outbound probe must
+show PR-OUT handshakes only at its predicted outbound address.
 
 Not graded here: ``group_id`` (random value, logged), the ``locked`` bit, the
 filter register storage, the SEP debug bypass, the response of the
@@ -395,11 +396,14 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     f"{self._chk} FAIL: probe {tag}: admitted but no PR-OUT handshake"
                 )
                 addrs = self.taps["PR-OUT"].addrs(mark[2], "aw" if p.write else "ar")
-                self.logger.info(
-                    "probe %s PR-OUT addr=%s",
-                    tag,
-                    [hex(a) if a is not None else "X" for a in addrs],
+                shown = [hex(a) if a is not None else "X" for a in addrs]
+                # The outbound filter checks the remapped address, and PR-OUT
+                # carries it (fabric.adoc, Address Remapping).
+                assert addrs and all(a == p.faddr for a in addrs), (
+                    f"{self._chk} FAIL: probe {tag}: PR-OUT addr={shown}, expected the remap "
+                    f"target 0x{p.faddr:x}"
                 )
+                self.logger.info("probe %s PR-OUT addr=%s target=0x%x", tag, shown, p.faddr)
             else:
                 assert out_seen == 0, (
                     f"{self._chk} FAIL: probe {tag}: refused but {out_seen} PR-OUT handshake(s)"
