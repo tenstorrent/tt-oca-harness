@@ -328,7 +328,9 @@ _dummy_int_handler:
     # Disable this interrupt source at PIC to prevent infinite re-entry.
     # Source 0 is the tied no-interrupt source, so its MEIE word is reserved.
     beqz    t0, .L_dummy_int_done
-    slli    t2, t0, 2               # t2 = claimid * 4
+    # The MEIE word stride comes from the generated register map.
+    li      t1, (SEP_TOP_PIC_MEIE_BASE_ADDR(1) - SEP_TOP_PIC_MEIE_BASE_ADDR(0))
+    mul     t2, t0, t1              # t2 = claimid * MEIE stride
     li      t1, SEP_TOP_PIC_MEIE_BASE_ADDR(0)
     add     t1, t1, t2              # t1 = MEIE for this claim
     sw      zero, 0(t1)             # Disable interrupt source
