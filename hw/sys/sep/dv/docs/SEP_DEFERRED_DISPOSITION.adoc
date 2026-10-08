@@ -28,10 +28,13 @@ graded values are seeded stimulus, RDL reset values, firmware console lines
 or direct register reads. The `smc_fuse_sense_done` value that
 `sep_fabric_smc_route_test` and `sep_fabric_dma_endpoint_matrix_test` read is
 a testbench-driven SEP top input (`tb/tb_top.sv`), not SEP OTP data. The CPU
-local-alias remap that `sep_cpu_lsu_alias_window_twin_test` grades takes only
+local-alias remap that `sep_cpu_lsu_alias_window_twin_test` and
+`sep_cpu_ifu_lsu_alias_remap_matrix_test` grade takes only
 `SEP_LOCAL_BASE_ADDR` and fixed window constants
-(`hw/sys/sep/rtl/sep_cpu.sv`, `u_lsu_local_alias_remap`); no LC or fuse input
-reaches it.
+(`hw/sys/sep/rtl/sep_cpu.sv`, `u_lsu_local_alias_remap`,
+`u_ifu_local_alias_remap`); `SEP_LOCAL_BASE_ADDR` is a plain `sw = rw`
+register (`hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl`), and the
+IFU AxPROT is a core output; no LC or fuse input reaches them.
 
 |Why the real path is not needed
 |A test that does not need fuse content may use `+skip_fuse_sense`. The real
@@ -39,10 +42,11 @@ sense path and the shadow are graded by the eFuse and LCC tests, which run
 without the plusarg.
 
 |Scope
-|The `+skip_fuse_sense` entry in the testlist `args` of these eight tests:
+|The `+skip_fuse_sense` entry in the testlist `args` of these nine tests:
 `sep_fabric_alias_remap_attr_rand_test`, `sep_fabric_smc_route_test`
 (`testlists/system.toml`); `sep_cpu_lsu_alias_window_twin_test`,
 `sep_fabric_dma_endpoint_matrix_test`, `sep_dma_basic_test`,
+`sep_cpu_ifu_lsu_alias_remap_matrix_test`,
 `sep_pic_irq_source_map_delivery_test` (`testlists/cpu.toml`);
 `sep_spi_ot_dma_tx_test`, `sep_spi_ot_flash_cmd_rand_test`
 (`testlists/spi.toml`).
@@ -55,10 +59,10 @@ without the plusarg.
 |===
 |Stand-in |Command |Expected
 
-|`+skip_fuse_sense` on the eight leaves
+|`+skip_fuse_sense` on the nine leaves
 |`grep -A8 'name = "<test>"' hw/sys/sep/dv/testlists/*.toml` for each test of
 the scope, then `grep -n 'BRINGUP LOG: feat_ctrl'` in any log of
 `sep_fabric_smc_route_test`
-|`+skip_fuse_sense` in the `args` of each of the eight entries, and
+|`+skip_fuse_sense` in the `args` of each of the nine entries, and
 `feat_ctrl=0x0000000000000000`, the reset decode.
 |===
