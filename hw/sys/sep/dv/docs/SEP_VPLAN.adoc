@@ -866,7 +866,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
-|Proves the CPU-side address alias window remaps both data and instruction accesses to physical SRAM.
+|Proves the CPU-side address alias window remaps both data and instruction accesses to physical SRAM, and that every IFU read carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`).
 |<<sep_fabric_inbound_filter_rule_matrix_test,`sep_fabric_inbound_filter_rule_matrix_test`>>
 |2
 |no_cpu, real PROD fuse sense
@@ -1023,13 +1023,13 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, `+skip_fuse_sense`
 |CPU LSU firmware master, direct-address twin model
-|Proves that an address in the 768 MiB local alias window answers as its direct twin on the scratch, AES, system CSR, SPI host, entropy source and SRAM targets. Extends the open alias matrix test with the unit classes and the window edges only.
+|Proves that an address in the 768 MiB local alias window answers as its direct twin on the scratch, AES, system CSR, SPI host, entropy source and SRAM targets, and that every LSU read and write carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`). Extends the open alias matrix test with the unit classes and the window edges only.
 
 |<<sep_fabric_dma_endpoint_matrix_test,`sep_fabric_dma_endpoint_matrix_test`>>
 |3
 |cpu, `+skip_fuse_sense`, SMC aperture plusargs
 |DMA firmware master, outbound filter source-ID model, request probes (observation taps), SMC aperture plusargs and SMC memory model (BH-SMC, added hook)
-|Proves that the DMA reaches the scratch, WDT, AES register, register and outbound targets, does not reach its own CSR or the boot ROM (each such run ends in a DMA bus error), gets a DMA bus error from the DECERR extension port, leaves AxUSER at zero in the outbound source-ID stack, and that CPU beats carry a non-zero source ID. The SMC leg runs on every seed through BH-SMC, a top-port drive. Extends the open DMA tests and the Phase 3 DMA transfer and TCM tests with the remaining endpoint pairs only.
+|Proves that the DMA reaches the scratch, WDT, AES register, register and outbound targets, does not reach its own CSR or the boot ROM (each such run ends in a DMA bus error), gets a DMA bus error from the DECERR extension port, leaves AxUSER at zero in the outbound source-ID stack, drives the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`) on every read and write, and that CPU beats carry a non-zero source ID. The SMC leg runs on every seed through BH-SMC, a top-port drive. Extends the open DMA tests and the Phase 3 DMA transfer and TCM tests with the remaining endpoint pairs only.
 |===
 
 [[phase2-mailbox-irq-pic]]

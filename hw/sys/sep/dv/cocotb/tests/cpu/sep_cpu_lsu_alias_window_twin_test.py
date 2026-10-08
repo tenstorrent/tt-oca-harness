@@ -47,7 +47,7 @@ from pathlib import Path
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
-from env.sep_fabric_tap import SepFabricTap, log_axprot
+from env.sep_fabric_tap import AXPROT_LSU, SepFabricTap, check_axprot, log_axprot
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
@@ -153,7 +153,7 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
     """An alias read of each local unit class and SRAM edge word equals its direct twin."""
 
     build_env = False
-    required_evidence = ("CHK-TWIN", "CHK-TWIN-WR")
+    required_evidence = ("CHK-TWIN", "CHK-TWIN-WR", "CHK-CPU-AXPROT")
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -186,8 +186,8 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
         self.sb.expected_line = _BANNER
         dtcm = self._stage_dtcm()
         sram = SepFabricTap("PR-SRAM").start()
-        # Log-only: the AxPROT the core drives; the firmware runs in M-mode only.
-        cpu_lsu = SepFabricTap("PR-CPU-LSU", xz_fail=False).start()
+        # CHK-CPU-AXPROT grades the LSU AxPROT; the IFU AxPROT is logged only here.
+        cpu_lsu = SepFabricTap("PR-CPU-LSU").start()
         cpu_ifu = SepFabricTap("PR-CPU-IFU", xz_fail=False).start()
         try:
             await self.boot_firmware(
@@ -208,6 +208,10 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
             log_axprot(self.logger, cpu_lsu, "lsu", "ar", "M")
             log_axprot(self.logger, cpu_lsu, "lsu", "aw", "M")
             log_axprot(self.logger, cpu_ifu, "ifu", "ar", "M")
+
+        # CHK-CPU-AXPROT: every LSU read and write carries the stated AxPROT.
+        for ch in ("ar", "aw"):
+            check_axprot(self.logger, "CHK-CPU-AXPROT", cpu_lsu, "lsu", ch, AXPROT_LSU)
 
         # Grade the printed values first: a firmware that trapped part way still
         # names the first word whose alias read went wrong.

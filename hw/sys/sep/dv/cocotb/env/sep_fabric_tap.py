@@ -19,9 +19,9 @@ PR-SMC     ``pr_smc``       as PR-OUT
 PR-EXT     ``pr_ext``       as PR-OUT (32-bit address)
 PR-EXT-RSP ``pr_ext``       b: resp id; r: resp id last (the PR-EXT replies)
 PR-DMACSR  ``pr_dmacsr``    aw, ar: addr
-PR-CPU-LSU ``pr_cpu_lsu``   aw, ar: prot (raw CPU LSU request; log-only)
-PR-CPU-IFU ``pr_cpu_ifu``   ar: prot (raw CPU IFU request; log-only)
-PR-DMA-RAW ``pr_dma_raw``   aw, ar: prot (raw DMA master request; log-only)
+PR-CPU-LSU ``pr_cpu_lsu``   aw, ar: prot (raw CPU LSU request; graded)
+PR-CPU-IFU ``pr_cpu_ifu``   ar: prot (raw CPU IFU request; graded)
+PR-DMA-RAW ``pr_dma_raw``   aw, ar: prot (raw DMA master request; graded)
 PR-INFLT   ``pr_inflt``     aw, ar: addr (global, out of the inbound filter)
 PR-ALIAS   ``pr_alias_in``, aw, ar: addr cache prot (input and output of the
            ``pr_alias_out`` local-master alias remap)
@@ -224,6 +224,36 @@ def log_axprot(logger, tap: "SepFabricTap", master: str, ch: str, mode: str) -> 
         prot,
         len(vals),
         "{" + ",".join(f"0b{v:03b}" for v in known) + ("" if None not in vals else ",X") + "}",
+    )
+
+
+# AxPROT of the SEP bus masters, from ``hw/sys/sep/doc/cpu.adoc``, table
+# ``sep-cpu-axprot-table``: bit 0 privileged, bit 1 non-secure, bit 2 instruction.
+AXPROT_IFU_AR = 0b101  # IFU reads: privileged, secure, instruction
+AXPROT_LSU = 0b001  # LSU reads and writes: privileged, secure, data
+AXPROT_DMA = 0b001  # secure DMA master reads and writes: privileged, secure, data
+
+
+def check_axprot(logger, chk: str, tap: "SepFabricTap", master: str, ch: str, expect: int) -> None:
+    """Grade every AxPROT a master drove on one channel against ``expect``.
+
+    Fails when the channel carried no beat, when any beat holds X or Z, or
+    when any beat differs from ``expect``.
+    """
+    vals = [b.prot for b in tap.beats if b.ch == ch]
+    bad = [v for v in vals if v != expect]
+    seen = (
+        "{" + ",".join("X" if v is None else f"0b{v:03b}" for v in sorted(set(vals), key=str)) + "}"
+    )
+    if not vals or bad:
+        msg = (
+            f"{chk} FAIL: master={master} ch={ch} count={len(vals)} mismatches={len(bad)} "
+            f"seen={seen} expect=0b{expect:03b} (cpu.adoc, sep-cpu-axprot-table)"
+        )
+        logger.error(msg)
+        raise AssertionError(msg)
+    logger.info(
+        f"{chk} PASS: master={master} ch={ch} prot={seen} count={len(vals)} expect=0b{expect:03b}"
     )
 
 

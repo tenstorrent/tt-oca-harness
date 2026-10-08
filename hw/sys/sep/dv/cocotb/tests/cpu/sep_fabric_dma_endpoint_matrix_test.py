@@ -51,7 +51,14 @@ from cocotb.triggers import ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
-from env.sep_fabric_tap import SepFabricTap, log_axprot, start_taps, stop_taps
+from env.sep_fabric_tap import (
+    AXPROT_DMA,
+    SepFabricTap,
+    check_axprot,
+    log_axprot,
+    start_taps,
+    stop_taps,
+)
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -273,6 +280,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         "CHK-DMA-EP-FILT",
         "CHK-DMA-SMC",
         "CHK-DMA-NOTCONN",
+        "CHK-DMA-AXPROT",
     )
 
     def build_phase(self) -> None:
@@ -1057,8 +1065,8 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         self.irq_edges: list = []
         dtcm = self._stage_dtcm()
         self.taps = start_taps("PR-OUT", "PR-EXT", "PR-EXT-RSP", "PR-SMC", "PR-ROM", "PR-DMACSR")
-        # Log-only: the AxPROT the DMA master drives, before its window remap.
-        self.dma_raw = SepFabricTap("PR-DMA-RAW", xz_fail=False).start()
+        # CHK-DMA-AXPROT: the AxPROT the DMA master drives, before its window remap.
+        self.dma_raw = SepFabricTap("PR-DMA-RAW").start()
         mons = [
             cocotb.start_soon(self._console()),
             cocotb.start_soon(self._sram_writes()),
@@ -1081,6 +1089,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         log_axprot(self.logger, self.dma_raw, "dma", "ar", "na")
         log_axprot(self.logger, self.dma_raw, "dma", "aw", "na")
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
+        # CHK-DMA-AXPROT: every raw DMA read and write carries the stated AxPROT.
+        for ch in ("ar", "aw"):
+            check_axprot(self.logger, "CHK-DMA-AXPROT", self.dma_raw, "dma", ch, AXPROT_DMA)
 
         _, prm, _ = self._one("PARAMS")
         for k in ("seed", "order", "form", "smu", "smc_off"):
