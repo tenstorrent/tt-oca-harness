@@ -62,8 +62,11 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     ALIAS_STRIDE,
     OUTFILT_ENTRIES,
 )
+from seq_lib.sep_fabric_filter_bank_seq import ADDR_MASK as _FILTER_ADDR_MASK
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 
+# The 56-bit filter address field (START_ADDR / END_ADDR).
+ADDR_MASK: int = _FILTER_ADDR_MASK
 TEST = "sep_fabric_alias_remap_attr_rand_test"
 
 _META = LOCAL_MASTER_ALIAS_REMAP_CTRL_0
@@ -76,7 +79,6 @@ CACHE_FIELD = _META.field_mask("REGION_REGION_ATTRS", "cacheable")
 CACHE_LSB = _META.field_lsb("REGION_REGION_ATTRS", "cacheable")
 VALID_FIELD = _META.field_mask("REGION_REGION_ATTRS", "valid")
 ATTRS_FIELDS = OFFSET_FIELD | CACHE_FIELD | VALID_FIELD
-ADDR_MASK = (1 << 56) - 1
 
 # The SMU window at its reset aperture (sep_cpu_ctrl.adoc, SMU_GLOBAL_BASE_ADDR
 # and SMU_REGION_SIZE). The test never writes the aperture registers.

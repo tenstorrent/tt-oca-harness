@@ -47,7 +47,12 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     OUTFILT_ENTRIES,
 )
 
-ADDR_HI_MASK = (1 << 24) - 1
+# The START_ADDR / END_ADDR field (the same width in both banks), and its part
+# above bit 31, which the hi word of each register holds.
+ADDR_MASK: int = INBOUND_FILTER_CTRL_0.field_mask("START_ADDR", "start_addr")
+ADDR_HI_MASK = ADDR_MASK >> 32
+SRC_ID_MASK = (1 << INBOUND_FILTER_CTRL_0.field_width("FILTER_CONFIG", "src_id")) - 1
+GROUP_ID_MASK = (1 << INBOUND_FILTER_CTRL_0.field_width("FILTER_CONFIG", "group_id")) - 1
 # RDL reset values of START_ADDR and END_ADDR (the same in both banks).
 START_RESET = INBOUND_FILTER_CTRL_0.reset("START_ADDR")
 END_RESET = INBOUND_FILTER_CTRL_0.reset("END_ADDR")
@@ -55,7 +60,9 @@ END_RESET = INBOUND_FILTER_CTRL_0.reset("END_ADDR")
 
 def config_word(e: FilterEntry) -> int:
     """FILTER_CONFIG lo word of ``e``. ``locked`` (hi word) is never set."""
-    v = ((e.src_id & 0xF) << F_SRC_ID_LSB) | ((e.group_id & 0xF) << F_GROUP_ID_LSB)
+    v = ((e.src_id & SRC_ID_MASK) << F_SRC_ID_LSB) | (
+        (e.group_id & GROUP_ID_MASK) << F_GROUP_ID_LSB
+    )
     if e.enabled:
         v |= F_ENTRY_ENABLED
     if e.read_allowed:

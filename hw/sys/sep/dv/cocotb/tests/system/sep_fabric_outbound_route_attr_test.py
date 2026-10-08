@@ -67,6 +67,7 @@ from sep_reg_meta import AP_OUTPUT_REMAP_CTRL_0, SEP_CPU_CTRL, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import AP_BASE, REMAP_ATTRS, REMAP_STRIDE, STEE_BASE
+from seq_lib.sep_fabric_filter_bank_seq import ADDR_MASK as _FILTER_ADDR_MASK
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccDemoteSeq
 from seq_lib.sep_outbound_remap_seq import (
@@ -76,6 +77,8 @@ from seq_lib.sep_outbound_remap_seq import (
     STEE_REGION_BASE,
 )
 
+# The 56-bit filter address field (START_ADDR / END_ADDR).
+ADDR_MASK: int = _FILTER_ADDR_MASK
 TEST = "sep_fabric_outbound_route_attr_test"
 
 _MAX_SENSE_CYCLES = 20_000
@@ -84,7 +87,6 @@ _MAX_SENSE_CYCLES = 20_000
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0C
 _SYS_DIS = 0x00FF_00FF_00FF_00FC
 
-ADDR_MASK = (1 << 56) - 1
 SMU_BASE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
 SMU_SIZE = SEP_CPU_CTRL.reset("SMU_REGION_SIZE")
 SMU_LAST = SMU_BASE + SMU_SIZE - 1
