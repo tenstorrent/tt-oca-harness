@@ -1073,21 +1073,24 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             cocotb.start_soon(self._irq_edges()),
         ]
         close_graded_window(self.logger)
-        await self.boot_firmware(
-            self.sb,
-            _ITCM_HEX,
-            dtcm,
-            rst_vec=_ICCM_BASE >> 1,
-            max_run_cycles=_MAX_RUN_CYCLES,
-            no_boot_cycles=_NO_BOOT_CYCLES,
-        )
-        close_graded_window(self.logger)
-        for m in mons:
-            m.cancel()
-        await stop_taps(self.taps)
-        await self.dma_raw.stop()
-        log_axprot(self.logger, self.dma_raw, "dma", "ar", "na")
-        log_axprot(self.logger, self.dma_raw, "dma", "aw", "na")
+        try:
+            await self.boot_firmware(
+                self.sb,
+                _ITCM_HEX,
+                dtcm,
+                rst_vec=_ICCM_BASE >> 1,
+                max_run_cycles=_MAX_RUN_CYCLES,
+                no_boot_cycles=_NO_BOOT_CYCLES,
+            )
+        finally:
+            # The window, the monitors and the taps close on every exit.
+            close_graded_window(self.logger)
+            for m in mons:
+                m.cancel()
+            await stop_taps(self.taps)
+            await self.dma_raw.stop()
+            log_axprot(self.logger, self.dma_raw, "dma", "ar", "na")
+            log_axprot(self.logger, self.dma_raw, "dma", "aw", "na")
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
         # CHK-DMA-AXPROT: every raw DMA read and write carries the stated AxPROT.
         for ch in ("ar", "aw"):
