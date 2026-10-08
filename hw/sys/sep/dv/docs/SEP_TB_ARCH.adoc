@@ -358,8 +358,9 @@ tests declare `firmware = { name = "rom_main", mode = "km_rom_main" }`
 
 `ext_boot_seq_done_i` is held at 1. Fuse-sense policy is test metadata, not a
 run mode. A test that does not need fuse content may add `+skip_fuse_sense`
-to the `args` of its testlist entry to bypass the slow sense path; such a test
-grades no fuse- or LC-derived value (<<sep-deferred-disposition>>). Real eFuse
+to the `args` of its testlist entry to bypass the slow sense path; it must then
+grade no fuse- or LC-derived value. <<sep-standin-skip-fuse-sense>> records the
+claim and scope of this bypass for the leaves it lists. Real eFuse
 tests omit that bypass and let the RTL fuse-sense FSM finish against the
 generic eFuse model.
 

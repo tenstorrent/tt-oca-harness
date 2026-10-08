@@ -88,8 +88,9 @@ are in <<sep-vplan-phase3-proposed>>. The parked-test rule of Phase 3 is in
   fail on a broken DUT. Prefer source-derived expected values from the
   register export and architecture docs.
 . *Bring-up*: drive `ext_boot_seq_done_i`. A test that does not need
-  fuse content may use `+skip_fuse_sense`; such a test grades no fuse- or
-  LC-derived value (<<sep-deferred-disposition>>). Hold the CPU off for
+  fuse content may use `+skip_fuse_sense`; it must then grade no fuse- or
+  LC-derived value. <<sep-standin-skip-fuse-sense>> records the claim and
+  scope of this bypass for the leaves it lists. Hold the CPU off for
   `no_cpu` runs. With `+skip_fuse_sense` and no
   `+sep_shadow_reg_preload`, the eFuse shadow is all zero except
   `LC_STATE` raw `4'hF`, which is INVALID. `FEAT_CTRL` is then zero, so
