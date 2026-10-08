@@ -26,7 +26,7 @@ Extent, Hole in Extent, live word), with X or Z in an error payload failing on
 VCS. A hole write leaves its neighbour register unchanged; the in-extent write
 of the same data to the neighbour changes it (control).
 
-CHK-ROW-RAND: stimulus completeness. Every inventory cell was walked.
+CTL-ROW-RAND: stimulus completeness. Every inventory cell was walked.
 
 CHK-ROW-NOALIAS: a reset-control gap or tail write and an HMAC or KMAC hole
 write leave the live reference register (``SW_RESET_N``, HMAC ``CFG``, a KMAC
@@ -99,7 +99,6 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
 
     required_evidence = (
         "CHK-ROW",
-        "CHK-ROW-RAND",
         "CHK-ROW-NOALIAS",
         "CHK-ROW-CACHE",
         "CHK-ROW-KM",
@@ -828,9 +827,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         missing = sorted(inventory - self.walked)
         extra = sorted(self.walked - inventory)
         if missing or extra:
-            self._fail("CHK-ROW-RAND", f"{line} missing={missing} extra={extra}")
+            self._fail("CTL-ROW-RAND", f"{line} missing={missing} extra={extra}")
         else:
-            self.logger.info("CHK-ROW-RAND PASS: %s", line)
+            self.logger.info("CTL-ROW-RAND LOG: %s", line)
 
         if self.fails:
             raise AssertionError(f"{len(self.fails)} check failure(s); first: {self.fails[0]}")

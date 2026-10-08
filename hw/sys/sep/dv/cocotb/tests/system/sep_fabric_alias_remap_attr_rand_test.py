@@ -36,7 +36,7 @@ Checkers:
   CHK-ALIAS-CLASS  per class, direction and run (valid 1 and valid 0): the
                    admitted address of the pair of probes is the model address.
   CHK-ALIAS-CACHE  per probe: the AxCACHE at the alias remap output.
-  CHK-ALIAS-RAND   stimulus completeness: at least one hit, one miss and one
+  CTL-ALIAS-RAND   stimulus completeness: at least one hit, one miss and one
                    AxCACHE override ran (no DUT claim).
 """
 
@@ -212,7 +212,7 @@ def attrs_word(offset: int, cacheable: int, valid: bool) -> int:
 class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
     """Alias remap boundary classes, AxCACHE override and valid gate."""
 
-    required_evidence = ("CHK-ALIAS-CLASS", "CHK-ALIAS-CACHE", "CHK-ALIAS-RAND")
+    required_evidence = ("CHK-ALIAS-CLASS", "CHK-ALIAS-CACHE")
 
     async def _probe(
         self, addr: int, *, write: bool, cache: int, expect_okay: bool
@@ -409,9 +409,9 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             f"cache_override={self.n_override}"
         )
         assert self.n_hit >= 1 and self.n_miss >= 1 and self.n_override >= 1, (
-            f"CHK-ALIAS-RAND FAIL: {line}"
+            f"CTL-ALIAS-RAND FAIL: {line}"
         )
-        self.logger.info("CHK-ALIAS-RAND PASS: %s", line)
+        self.logger.info("CTL-ALIAS-RAND LOG: %s", line)
 
 
 def _rname(code: int) -> str:

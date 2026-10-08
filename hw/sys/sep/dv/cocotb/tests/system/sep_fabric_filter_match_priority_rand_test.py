@@ -37,7 +37,7 @@ Legs:
 * leg 4, granule: seven (granule, shape, instance) cells probed at the widened
   edges.
 
-Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CHK-FILTER-RAND (stimulus
+Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CTL-FILTER-RAND (stimulus
 completeness, no DUT claim), CHK-RESET-DENY, CHK-RESET-DENY-ARMED,
 CHK-RESET-DENY-CONTROL, CHK-GRANULE. CTL-FILTER-ACTIVE is the bring-up
 precondition. The inbound cells that open tests grade run as controls and log
@@ -180,7 +180,6 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
     required_evidence = (
         "CHK-FILTER-CELL",
         "CHK-FILTER-SRC",
-        "CHK-FILTER-RAND",
         "CHK-RESET-DENY",
         "CHK-RESET-DENY-ARMED",
         "CHK-RESET-DENY-CONTROL",
@@ -1367,10 +1366,10 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             line = " ".join(f"{k}={v}" for k, v in s.items())
             zero = [k for k in s if s[k] == 0]
             assert not zero, (
-                f"CHK-FILTER-RAND FAIL: seed={self.random_seed()} inst={inst} zero={zero} {line}"
+                f"CTL-FILTER-RAND FAIL: seed={self.random_seed()} inst={inst} zero={zero} {line}"
             )
             self.logger.info(
-                "CHK-FILTER-RAND PASS: seed=%d inst=%s %s", self.random_seed(), inst, line
+                "CTL-FILTER-RAND LOG: seed=%d inst=%s %s", self.random_seed(), inst, line
             )
 
         close_graded_window(self.logger)
