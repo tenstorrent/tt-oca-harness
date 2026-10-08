@@ -705,7 +705,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         assert self.n_expect > 0 and self.n_capture == self.n_expect, (
             f"CHK-OUT-CAPTURE FAIL: {line}"
         )
-        self.logger.info("CHK-OUT-CAPTURE PASS: %s", line)
+        self.logger.info("OUT-CAPTURE-SUMMARY LOG: %s", line)
 
 
 def _hx(v) -> str:
