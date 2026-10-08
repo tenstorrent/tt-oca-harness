@@ -61,7 +61,9 @@ Address-space ID `0x7` selects the core's internal host port, the only route
 in this wrapper. The upstream SoC control and system ports are tied off; their ASIDs do not provide
 additional SEP routes. Reachability is governed by the SEP fabric and filters.
 
-The master path leaves AxUSER at zero. The register and host bridges latch
+The master path leaves AxUSER at zero and drives AxPROT `0b001` (privileged,
+secure, data), the value the SEP CPU's LSU drives; TL-UL carries no protection
+attributes, so the wrapper sets it. The register and host bridges latch
 faults on `dma_reg_bus_err_o` and `dma_host_intg_err_o`, cleared through
 `DMA_BUS_ERR_CLEAR`; local alert receivers aggregate the core alerts into
 `dma_alert_o`. Selecting the tied-off CTN or SYS address space does not complete.
