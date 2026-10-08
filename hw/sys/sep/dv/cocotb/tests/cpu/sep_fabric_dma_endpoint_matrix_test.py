@@ -749,7 +749,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
 
     def _chk_ep_reg(self) -> None:
-        p, seed = self.ep.p, self.ep.p["seed"]
+        p = self.ep.p
         _, pre_r, _ = self._one("REGPRE")
         for rid in range(3):
             leg_r = self._leg_index(f"reg_r_{REG_NAME[rid]}")
@@ -794,7 +794,6 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 f"sram_writes={nw} xz={xz}"
             )
             # The source words before the last one have no approved anchor.
-            _ = model_words(seed, 0x60 + rid, n)
             self.logger.info(
                 "CHK-DMA-EP-REG PASS: reg=%s dir=W words=%d conserve=1 readback=0x%08x expect=0x%08x",
                 REG_NAME[rid],

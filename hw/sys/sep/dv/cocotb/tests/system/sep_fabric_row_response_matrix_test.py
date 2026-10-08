@@ -76,7 +76,7 @@ _SYS_DIS = 0x00FF_00FF_00FF_00FF
 # AxPROT of every SI request: data, non-secure, unprivileged. Entry 0 sets
 # allow_ns to AxPROT[1].
 SI_PROT = 0b010
-OKAY, SLVERR, DECERR = 0, 2, 3
+OKAY, DECERR = 0, 3
 _RN = {-1: "TIMEOUT", 0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 AXI_INCR = 1
 _HMAC_POLL = 200

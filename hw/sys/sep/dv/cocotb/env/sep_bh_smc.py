@@ -18,7 +18,7 @@ responder stays idle.
 
 The responder stores written bytes and returns them. A word that no write has
 touched reads ``{~a, a}``, where ``a`` is the low 32 bits of the 8-byte-aligned
-address (:func:`smc_unwritten_word`).
+address.
 """
 
 from __future__ import annotations
@@ -34,17 +34,3 @@ def drive_bh_smc(base: int, size: int, dut=None) -> None:
     dut.bh_smc_base_i.value = base & ADDR_MASK
     dut.bh_smc_size_i.value = size & ADDR_MASK
     dut.bh_smc_en_i.value = 1
-
-
-def release_bh_smc(dut=None) -> None:
-    """Leave the hook to the plusargs or to its idle state."""
-    dut = dut if dut is not None else cocotb.top
-    dut.bh_smc_en_i.value = 0
-    dut.bh_smc_base_i.value = 0
-    dut.bh_smc_size_i.value = 0
-
-
-def smc_unwritten_word(addr: int) -> int:
-    """The 64-bit word the responder returns for an address no write touched."""
-    a = addr & 0xFFFF_FFF8
-    return ((~a & 0xFFFF_FFFF) << 32) | a
