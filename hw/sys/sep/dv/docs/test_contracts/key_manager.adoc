@@ -679,7 +679,7 @@ another mailbox command.
 
 *Objective*: the handover mailbox contract, a SRAM load, and `CMD_SRAM_EXEC` after warm reset.
 
-*Test Coverage*: `CMD_EXEC_ROM` inhibit; `CMD_SRAM_LOAD_EXEC` 14-word stream; `CMD_SRAM_EXEC` after warm reset.
+*Test Coverage*: `CMD_EXEC_ROM` inhibit; `CMD_SRAM_LOAD_EXEC` 14-word stream; the handover mailbox flush after the stream; `CMD_SRAM_EXEC` after warm reset.
 
 *Test Procedure*:
 
@@ -691,8 +691,12 @@ another mailbox command.
 . `CMD_EXEC_ROM` succeeds once; a later `CMD_SRAM_LOAD_EXEC`, `CMD_SRAM_EXEC`
 and `CMD_EXEC_ROM` each return the failure code. A warm reset clears the
 inhibit.
+. Warm-reset the KM again. `CMD_SRAM_EXEC` with no image loaded returns the
+invalid-argument code.
 . On a fresh epoch, send `CMD_SRAM_LOAD_EXEC` with `FW_WORDS=14`, receive
-success, then stream the 14-word blob plus CRC-32C.
+success, clear `SEP_IRQ_STATUS.FLUSHED_BY_KM`, then stream the 14-word blob
+plus CRC-32C.
+. Wait for `FLUSHED_BY_KM` to set again.
 . Warm-reset the KM. `CMD_SRAM_EXEC` returns success.
 
 *Checkers*:
@@ -710,8 +714,12 @@ success, then stream the 14-word blob plus CRC-32C.
 |The first `CMD_EXEC_ROM` succeeds; later handover commands return the failure code.
 |CHK-INHIBIT-RST
 |A warm reset clears the inhibit; `CMD_EXEC_ROM` succeeds again.
+|CHK-EMPTY-RST
+|After a warm reset with no image loaded, `CMD_SRAM_EXEC` returns the invalid-argument code. This is the control for CHK-EXEC: the same command after the same kind of reset is refused until the load stores an image size. A wrong DUT accepts `CMD_SRAM_EXEC` after any warm reset. Evidence: `CHK-EMPTY-RST PASS: CMD_SRAM_EXEC after a warm reset with no image returned RC_INVALID_ARG`.
 |CHK-LOAD
 |`CMD_SRAM_LOAD_EXEC` returns success before the stream; the 14-word image plus CRC-32C is posted.
+|CHK-COMMIT
+|After the stream the KM flushes the mailbox: `SEP_IRQ_STATUS.FLUSHED_BY_KM`, cleared before the stream, sets again. `rom_handover_load_and_exec` stores the image size only after the CRC-32C matches, and the flush in `rom_handover_finish` follows that store, so the flush shows that the size is stored. The warm reset of CHK-EXEC waits for it. An empty inbound FIFO is not that gate: the ROM empties the FIFO when it reads the CRC word, before it stores the size, and a reset in that window leaves the size at 0. A wrong DUT never flushes after a good stream, or flushes with no stored size, and then CHK-EXEC returns the invalid-argument code. Anchor: `SEP_IRQ_STATUS` read over the SEP bus. Control: the read after the clear shows the bit at 0. Evidence: `CHK-COMMIT PASS: FLUSHED_BY_KM set after the stream (SEP_IRQ_STATUS=<value>)`.
 |CHK-EXEC
 |After a warm reset `CMD_SRAM_EXEC` returns success.
 |===
@@ -722,8 +730,11 @@ success, then stream the 14-word blob plus CRC-32C.
 
 *Anti-vacuity*: inhibit cells assert the failure code, not "not success". The
 load response is taken before the stream, matching the ROM handler. CHK-EMPTY
-refuses `CMD_SRAM_EXEC` with no image, so CHK-EXEC success is against that
-refusal, not an always-success command.
+refuses `CMD_SRAM_EXEC` with no image after the cold boot, and CHK-EMPTY-RST
+refuses it after a warm reset with no image, so the CHK-EXEC success after a
+warm reset comes from the load, not from the reset or an always-success command. CHK-COMMIT clears `FLUSHED_BY_KM`
+before the stream and reads it back at 0, so the bit it waits for comes from
+the handover flush and not from the boot flush.
 
 '''''
 
