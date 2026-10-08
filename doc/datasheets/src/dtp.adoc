@@ -198,7 +198,7 @@ VERIFICATION AND MATURITY
 
 [.beta-note]
 --
-The OCAH https://tenstorrent.github.io/tt-oca-harness/ocah-home/latest/dashboard.html[verification dashboard]
+The OCAH https://docs.tenstorrent.com/tt-oca-harness/ocah-home/latest/dashboard.html[verification dashboard]
 publishes the current verification and maturity status.
 The repository's open-source PyUVM environment exercises TAP operation,
 standard and optional instructions, JTAG-to-AXI data and error paths,
@@ -230,7 +230,7 @@ DELIVERABLES
 [.datasheet-section]
 RESOURCES
 
-Documentation: https://tenstorrent.github.io/tt-oca-harness/[tenstorrent.github.io/tt-oca-harness] +
+Documentation: https://docs.tenstorrent.com/tt-oca-harness/[docs.tenstorrent.com/tt-oca-harness] +
 DTP source documentation: `hw/sys/dtp/doc/` +
 RTL: `hw/sys/dtp/rtl/` +
 Verification: `hw/sys/dtp/dv/` +

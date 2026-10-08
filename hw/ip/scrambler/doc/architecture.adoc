@@ -28,7 +28,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#memory-scrambler-provisioning[Memory Scrambler Provisioning]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#memory-scrambler-provisioning[Memory Scrambler Provisioning]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#memory-scrambler-provisioning[Memory Scrambler Provisioning]
 endif::backend-pdf[]
 section of the Key Manager Application ROM appendix in the Programmer's Guide
 gives the order.

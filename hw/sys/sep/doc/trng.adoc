@@ -44,7 +44,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#ocah-trng-bring-up[programming guidance]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#ocah-trng-bring-up[programming guidance]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#ocah-trng-bring-up[programming guidance]
 endif::backend-pdf[]
 for this block.
 
@@ -178,7 +178,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-trng-recovery[TRNG recovery sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-trng-recovery[TRNG recovery sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-trng-recovery[TRNG recovery sequence]
 endif::backend-pdf[]
 is in the Programmer's Guide.
 

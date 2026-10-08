@@ -183,7 +183,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
 endif::backend-pdf[]
 of the Programmer's Guide for the full target list, build variables, and
 architecture.
@@ -220,7 +220,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
 endif::backend-pdf[]
 of the Programmer's Guide for the full target list, build variables, key
 provisioning, and boot flow.
@@ -276,7 +276,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
 endif::backend-pdf[]
 of the Programmer's Guide describes the firmware.
 

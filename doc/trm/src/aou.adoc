@@ -27,7 +27,7 @@ include::../modules/aou/partials/pdf/ppa-appendices.adoc[leveloffset=+1]
 
 Register programming, activation and deactivation flows, and the debug
 features are in the
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#aou-software-operation-guide[AoU Programming Guide chapter of the Programmer's Guide].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#aou-software-operation-guide[AoU Programming Guide chapter of the Programmer's Guide].
 
 For references from all TRM chapters, see
 <<trm-referenced-documents,Referenced Documents>>.

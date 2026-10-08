@@ -49,7 +49,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-dfd-capture[capture set-up sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-dfd-capture[capture set-up sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-dfd-capture[capture set-up sequence]
 endif::backend-pdf[]
 is in the Programmer's Guide.
 

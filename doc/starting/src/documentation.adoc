@@ -29,7 +29,7 @@ In most cases documentation it is built in two formats:
 
 Material intended only to be viewed via the website will not be built as downloadable PDFs
 
-Documents are published in GitHub Pages at [https://tenstorrent.github.io/tt-oca-harness/](https://tenstorrent.github.io/tt-oca-harness/)
+Documents are published in GitHub Pages at [https://docs.tenstorrent.com/tt-oca-harness/](https://docs.tenstorrent.com/tt-oca-harness/)
 
 Downloadable PDFs are also accessible from the above location.
 

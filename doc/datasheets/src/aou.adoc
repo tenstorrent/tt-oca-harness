@@ -205,7 +205,7 @@ DELIVERABLES
 [.datasheet-section]
 RESOURCES
 
-Documentation: https://tenstorrent.github.io/tt-oca-harness/[OCAH documentation] +
+Documentation: https://docs.tenstorrent.com/tt-oca-harness/[OCAH documentation] +
 Protocol: https://cdn.sanity.io/files/jpb4ed5r/production/25de1707769f21e4a3916103371d1fb419cadac0.pdf[AoU TRM] +
 RTL and registers: `vendor/tenstorrent/aou-rtl/upstream/` +
 OCAH flow: `vendor/tenstorrent/aou-rtl/overlay/flow.mk`

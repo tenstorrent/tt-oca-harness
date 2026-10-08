@@ -84,14 +84,14 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM]
 endif::backend-pdf[]
 and
 ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM]
 endif::backend-pdf[]
 appendices of the Programmer's Guide cover the details this note summarizes. The SEP BL1 and SMC BL1 steps in this note are an
 example integration, built on the interfaces the ROMs and the hardware provide;
@@ -282,7 +282,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sec:secure_boot[Secure Boot Decision]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sec:secure_boot[Secure Boot Decision]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sec:secure_boot[Secure Boot Decision]
 endif::backend-pdf[]
 section of the SEP Boot ROM appendix in the Programmer's Guide specifies this
 decision as requirements.
@@ -753,7 +753,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
 endif::backend-pdf[]
 of the Programmer's Guide lists the set. The distributing agent must therefore drive the bus as a controller. In
 this example that agent is SMC BL1 on chiplet 0, which can run only once chiplet
@@ -897,7 +897,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
 endif::backend-pdf[]
 of the Programmer's Guide is the authority for these values:
 
