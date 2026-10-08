@@ -98,6 +98,14 @@ SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
 SCRATCH_BASE = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
 SCRATCH_BYTES = sym("SEP_SCRATCH_COLD_REG_MAP_SIZE")
+# Entry ranges of a scratch cell are placed from the scratch-cold base to the
+# end of the scratch-warm block: the filter compares addresses only, and the
+# block above holds the ranges that do not cover the probe. No probe targets
+# scratch-warm.
+SCRATCH_PLACE_LO = SCRATCH_BASE
+SCRATCH_PLACE_HI = (
+    sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR") + sym("SEP_SCRATCH_WARM_REG_MAP_SIZE") - 1
+)
 MBOX_WORD = sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR")
 CRYPTO_WORD = sym("AES_REG_MAP_BASE_ADDR")
 CPU_CTRL_WORD = SEP_CPU_CTRL.addr("SEP_GLOBAL_BASE_ADDR")
@@ -107,8 +115,8 @@ EXT_END = EXT_BASE + sym("SEP_EXTERNAL_REG_MAP_SIZE") - 1
 SHIM_BASE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR")
 SHIM_SIZE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE")
 XBAR_LIMIT_WORD = 0x4000_0100
-SMU_BASE = 0x8000_0000
-SMU_END = 0xBFFF_FFFF
+SMU_BASE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
+SMU_END = SMU_BASE + SEP_CPU_CTRL.reset("SMU_REGION_SIZE") - 1
 # The bench responder decodes stores to the first SMU page as console output.
 SMU_SAFE_LO = 0x8000_2000
 
@@ -492,7 +500,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         if p.cls == "sram":
             return SRAM_BASE, SRAM_BASE + SRAM_SIZE - 1
         if p.cls == "scratch":
-            return SCRATCH_BASE, SCRATCH_BASE + 0xBF
+            return SCRATCH_PLACE_LO, SCRATCH_PLACE_HI
         if p.cls == "smu":
             return SMU_SAFE_LO, SMU_END
         base = p.faddr & ~((1 << REGION_BITS) - 1)
