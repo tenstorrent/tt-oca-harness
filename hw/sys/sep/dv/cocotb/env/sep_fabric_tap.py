@@ -18,6 +18,7 @@ PR-OUT     ``pr_out``       aw, ar: addr id user cache prot len size burst;
 PR-SMC     ``pr_smc``       as PR-OUT
 PR-EXT     ``pr_ext``       as PR-OUT (32-bit address)
 PR-DMACSR  ``pr_dmacsr``    aw, ar: addr
+PR-INFLT   ``pr_inflt``     aw, ar: addr (global, out of the inbound filter)
 PR-ALIAS   ``pr_alias_in``, aw, ar: addr cache prot (input and output of the
            ``pr_alias_out`` local-master alias remap)
 PR-XEXT    ``xbar_ext_in``  aw, ar: addr (approved probe)
@@ -61,6 +62,7 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
     "PR-SMC": ("pr_smc", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS}, "axi"),
     "PR-EXT": ("pr_ext", {"aw": _AXI_FULL, "ar": _AXI_FULL, "w": _W_FIELDS}, "axi"),
     "PR-DMACSR": ("pr_dmacsr", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
+    "PR-INFLT": ("pr_inflt", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
     "PR-ALIAS-IN": (
         "pr_alias_in",
         {"aw": ("addr", "cache", "prot"), "ar": ("addr", "cache", "prot")},
