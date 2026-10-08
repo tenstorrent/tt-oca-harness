@@ -1654,6 +1654,13 @@ module sep_uvm_top
     assign pr_dmacsr_arvalid_o = `SEP_CORE.dma_csr_req.ar_valid;
     assign pr_dmacsr_arready_o = `SEP_CORE.dma_csr_rsp.ar_ready;
     assign pr_dmacsr_araddr_o  = `SEP_CORE.dma_csr_req.ar.addr[31:0];
+    // PR-INFLT: the request out of u_inbound_filter, before the global-to-local remap.
+    assign pr_inflt_awvalid_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.aw_valid;
+    assign pr_inflt_awready_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_resp.aw_ready;
+    assign pr_inflt_awaddr_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.aw.addr[55:0];
+    assign pr_inflt_arvalid_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar_valid;
+    assign pr_inflt_arready_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_resp.ar_ready;
+    assign pr_inflt_araddr_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.addr[55:0];
     // PR-ALIAS input: the request into u_local_master_remap_wrap.
     assign pr_alias_in_awvalid_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_req.aw_valid;
     assign pr_alias_in_awready_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_resp.aw_ready;

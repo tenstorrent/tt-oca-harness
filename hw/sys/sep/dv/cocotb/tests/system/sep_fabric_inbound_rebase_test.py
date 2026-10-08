@@ -23,8 +23,11 @@ before the first dependent SI request. Expected local addresses come from
 ``env.sep_rebase_model``; filter verdicts rest on the programmed entries only.
 
 Evidence anchors: the SI responses and read data, the LSU read-back, PR-XEXT
-(``xbar_ext_in_*``, the ``ext`` initiator of the local crossbar) and PR-CSR
-(``sys_csr_axil_*``, the system-CSR AXI-Lite port). The responses of the
+(``xbar_ext_in_*``, the ``ext`` initiator of the local crossbar), PR-CSR
+(``sys_csr_axil_*``, the system-CSR AXI-Lite port) and PR-INFLT (``pr_inflt_*``,
+the request out of the inbound filter, global address). A refusal at the
+crossbar limit shows the request leaving the filter on PR-INFLT, so the DECERR
+is the crossbar's, not the filter's. The responses of the
 in-window edge reads and of the read at ``0x3FFF_FFF8`` are logged only: the
 specification states no response for those local addresses.
 
@@ -377,20 +380,29 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         direction: str = "R",
         wdata: int = 0,
         csr: bool = False,
+        admitted: bool = False,
         extra: str = "",
     ) -> str:
-        """A request that must answer DECERR with no PR-XEXT (and PR-CSR) handshake."""
+        """A request that must answer DECERR with no PR-XEXT (and PR-CSR) handshake.
+
+        ``admitted``: the request must also leave the inbound filter exactly once
+        on PR-INFLT, with the issued global address, so the refusal comes from
+        past the filter."""
         mx = self.xext.mark()
         mc = self.csr.mark()
+        mf = self.inflt.mark()
         op = SepAxiOp.READ if direction == "R" else SepAxiOp.WRITE
         seq = await self._si(op, ga, length=length, wdata=wdata)
         nx = self.xext.count(mx)
         nc = self.csr.count(mc)
+        f_addrs = self.inflt.addrs(mf, "ar" if direction == "R" else "aw")
         line = (
             f"addr=0x{ga:x} dir={direction} resp={_RESP.get(seq.resp_code)} "
-            f"xbar_ext_in={nx} csr_seen={nc}{extra}"
+            f"xbar_ext_in={nx} csr_seen={nc} inflt={[hex(a) if a is not None else 'X' for a in f_addrs]}"
+            f"{extra}"
         )
-        if seq.resp_code != RESP_DECERR or nx != 0 or (csr and nc != 0):
+        bad_filter = admitted and f_addrs != [ga & ADDR_56]
+        if seq.resp_code != RESP_DECERR or nx != 0 or (csr and nc != 0) or bad_filter:
             raise AssertionError(f"{chk} FAIL: {line}")
         return line
 
@@ -406,6 +418,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         self.outfilt = SepFilterBank(self, "out")
         self.xext = SepFabricTap("PR-XEXT").start()
         self.csr = SepFabricTap("PR-CSR").start()
+        self.inflt = SepFabricTap("PR-INFLT").start()
 
         # Step 2.
         base0, size0 = await self._read_aperture()
@@ -618,11 +631,13 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
             )
         ga = G + XBAR_LIMIT
         assert self._local(ga) == XBAR_LIMIT
-        lim = await self._expect_refused("CHK-REBASE-XBAR-LIMIT", ga, length=8, csr=True)
+        lim = await self._expect_refused(
+            "CHK-REBASE-XBAR-LIMIT", ga, length=8, csr=True, admitted=True
+        )
         self._close()
         self.logger.info(
             "CHK-REBASE-XBAR-LIMIT PASS: below_seen=0x%x local=0x%x resp=DECERR xbar_ext_in=0 "
-            "csr_seen=0 [%s]",
+            "csr_seen=0 inflt=1 [%s]",
             below_seen[0],
             XBAR_LIMIT,
             lim,
@@ -634,10 +649,10 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         above_ranges = ((ABOVE_LIMIT, ABOVE_LIMIT + 0xFF), (0xC000_0000, 0xCFFF_FFFF))
         for idx, (lo, hi) in enumerate(above_ranges):
             await self.infilt.program(idx, _entry(lo, hi))
-        # Control of the refusals below: both entries hold their programmed
-        # range and admit it. The ranges are 8-byte aligned, so the 8-byte
-        # granule leaves START_ADDR and END_ADDR unchanged, and the model admits
-        # every probed address through them.
+        # Both entries hold their programmed range and admit every probed
+        # address (8-byte aligned ranges, so the 8-byte granule leaves START_ADDR
+        # and END_ADDR unchanged). Each refusal below must also show the request
+        # leaving the filter on PR-INFLT.
         for idx, (lo, hi) in enumerate(above_ranges):
             _, rb_lo, rb_hi = await self.infilt.read_entry(idx)
             if (rb_lo, rb_hi) != (lo, hi):
@@ -657,6 +672,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
             ABOVE_LIMIT,
             length=8,
             csr=True,
+            admitted=True,
             extra=f" control_seen={control_seen}",
         )
         self.logger.info("CHK-REBASE-ABOVE PASS: %s", line)
@@ -669,6 +685,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
                     direction=direction,
                     wdata=d.cpu_res_word,
                     csr=True,
+                    admitted=True,
                     extra=f" control_seen={control_seen} unit={name}",
                 )
                 self.logger.info("CHK-REBASE-ABOVE PASS: %s", line)
@@ -684,3 +701,4 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         )
         await self.xext.stop()
         await self.csr.stop()
+        await self.inflt.stop()

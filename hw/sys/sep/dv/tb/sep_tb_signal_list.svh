@@ -642,6 +642,14 @@
 `SEP_TB_OUT(logic, pr_dmacsr_arvalid_o)
 `SEP_TB_OUT(logic, pr_dmacsr_arready_o)
 `SEP_TB_OUT(logic [31:0], pr_dmacsr_araddr_o)
+// PR-INFLT: the request out of the inbound filter (u_inbound_filter), before
+// the global-to-local remap; it carries the global address.
+`SEP_TB_OUT(logic, pr_inflt_awvalid_o)
+`SEP_TB_OUT(logic, pr_inflt_awready_o)
+`SEP_TB_OUT(logic [55:0], pr_inflt_awaddr_o)
+`SEP_TB_OUT(logic, pr_inflt_arvalid_o)
+`SEP_TB_OUT(logic, pr_inflt_arready_o)
+`SEP_TB_OUT(logic [55:0], pr_inflt_araddr_o)
 // PR-ALIAS input: the request into u_local_master_remap_wrap.
 `SEP_TB_OUT(logic, pr_alias_in_awvalid_o)
 `SEP_TB_OUT(logic, pr_alias_in_awready_o)
