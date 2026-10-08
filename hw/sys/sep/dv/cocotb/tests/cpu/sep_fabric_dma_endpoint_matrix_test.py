@@ -51,6 +51,7 @@ from cocotb.triggers import ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_fabric_common import RESP_DECERR
 from env.sep_fabric_tap import (
     AXPROT_DMA,
     SepFabricTap,
@@ -106,7 +107,6 @@ ST_CHUNK = SECURE_DMA.field_mask("STATUS", "chunk_done")
 ST3 = ST_DONE | ST_ERROR | ST_CHUNK
 EC_BUS = SECURE_DMA.field_mask("ERROR_CODE", "bus_error")
 EC_DEFINED = SECURE_DMA.mask("ERROR_CODE")
-RESP_DECERR = 3
 SRC_ID = 0xF  # AxUSER[3:0]: the source ID
 LOCAL_ALIAS = SEP_CPU_CTRL.reset("SEP_LOCAL_BASE_ADDR")
 EXT_WORD = sym("SEP_EXTERNAL_REG_MAP_BASE_ADDR") + 0x100

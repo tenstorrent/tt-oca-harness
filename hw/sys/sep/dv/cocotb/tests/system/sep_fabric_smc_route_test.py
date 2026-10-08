@@ -57,6 +57,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bh_smc import drive_bh_smc
+from env.sep_fabric_common import RESP_DECERR, RESP_NAME, RESP_OKAY
 from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
 from env.sep_filter_model import FilterEntry
@@ -70,9 +71,6 @@ from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 
 TEST = "sep_fabric_smc_route_test"
 
-RESP_OKAY = 0
-RESP_DECERR = 3
-RESP_NAME = {-1: "TIMEOUT", 0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
 SMC_SIZE = 0x0100_0000
 CFG = {"A": 0x4000_0000, "B": 0x9000_0000}

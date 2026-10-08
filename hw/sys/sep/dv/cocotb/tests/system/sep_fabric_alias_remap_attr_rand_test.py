@@ -44,6 +44,8 @@ from __future__ import annotations
 
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
+from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, granule8
+from env.sep_fabric_common import resp_name as _rname
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
@@ -90,8 +92,6 @@ REGION_FLOOR = SMU_LO + 0x1000
 
 CACHE_VALUES = (0x0, 0x2, 0x3, 0xF)
 CLASSES = ("below", "start", "mid", "end_m1", "end", "above")
-RESP_OKAY = 0
-RESP_DECERR = 3
 # AxPROT of every probe: data, non-secure, unprivileged. The outbound entry
 # takes allow_ns = AxPROT[1].
 PROBE_PROT = 0b010
@@ -100,10 +100,6 @@ PROBE_PROT = 0b010
 def translate(src: int, offset: int) -> int:
     """``((src >> 12) + (O >> 12)) << 12 | src[11:0]`` (alias_remap.adoc, offset)."""
     return ((((src >> 12) + (offset >> 12)) << 12) | (src & (PAGE - 1))) & ADDR_MASK
-
-
-def granule8(addr: int) -> tuple[int, int]:
-    return addr & ~0x7 & ADDR_MASK, addr | 0x7
 
 
 class _Cfg:
@@ -412,10 +408,6 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             f"CTL-ALIAS-RAND FAIL: {line}"
         )
         self.logger.info("CTL-ALIAS-RAND LOG: %s", line)
-
-
-def _rname(code: int) -> str:
-    return {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}.get(code, f"none({code})")
 
 
 def _hx(v) -> str:

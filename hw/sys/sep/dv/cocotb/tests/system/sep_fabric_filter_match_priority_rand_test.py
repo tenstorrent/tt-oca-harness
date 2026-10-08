@@ -60,6 +60,8 @@ from dataclasses import dataclass, replace
 
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
+from env.sep_fabric_common import RESP_DECERR, RESP_OKAY
+from env.sep_fabric_common import RESP_NAME as _RESP
 from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_filter_model import TERM_SRC, FilterEntry, FilterModel, FilterVerdict
@@ -81,9 +83,6 @@ from seq_lib.sep_outbound_remap_seq import (
 
 TEST = "sep_fabric_filter_match_priority_rand_test"
 
-RESP_OKAY = 0
-RESP_DECERR = 3
-_RESP = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", -1: "NONE"}
 AXI_BURST_INCR = 1
 M32 = 0xFFFF_FFFF
 M64 = (1 << 64) - 1

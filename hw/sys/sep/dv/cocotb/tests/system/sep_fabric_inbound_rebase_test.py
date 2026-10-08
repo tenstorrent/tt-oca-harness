@@ -45,6 +45,8 @@ import cocotb
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_image import SepEfuseImage
+from env.sep_fabric_common import RESP_DECERR, RESP_OKAY
+from env.sep_fabric_common import RESP_NAME as _RESP
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare, lane32
@@ -59,9 +61,6 @@ from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 
 TEST_NAME = "sep_fabric_inbound_rebase_test"
 
-RESP_OKAY = 0
-RESP_DECERR = 3
-_RESP = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", -1: "NONE"}
 
 # Pinned bring-up image: PROD, and SIP_DIS / SYS_DIS with DBG_1 bit 0 clear in
 # both. The image seed is a constant, so every run senses the same image.

@@ -56,6 +56,8 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
+from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, granule8
+from env.sep_fabric_common import resp_name as _rname
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
@@ -114,17 +116,6 @@ PAIR_AP = (4, 5)
 PAIR_STEE = (6, 7)
 PAIR_LOCAL = (8, 9)
 PAIR_UNTRANSLATED = (10, 11)
-
-RESP_OKAY = 0
-RESP_DECERR = 3
-
-
-def _rname(code: int) -> str:
-    return {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}.get(code, f"none({code})")
-
-
-def granule8(addr: int) -> tuple[int, int]:
-    return addr & ~0x7 & ADDR_MASK, addr | 0x7
 
 
 class _Cls:

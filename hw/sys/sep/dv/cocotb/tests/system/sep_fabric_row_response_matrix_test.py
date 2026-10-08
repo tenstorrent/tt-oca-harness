@@ -57,6 +57,8 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
+from env.sep_fabric_common import RESP_DECERR, RESP_OKAY
+from env.sep_fabric_common import RESP_NAME as _RN
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected
@@ -76,8 +78,7 @@ _SYS_DIS = 0x00FF_00FF_00FF_00FF
 # AxPROT of every SI request: data, non-secure, unprivileged. Entry 0 sets
 # allow_ns to AxPROT[1].
 SI_PROT = 0b010
-OKAY, DECERR = 0, 3
-_RN = {-1: "TIMEOUT", 0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
+OKAY, DECERR = RESP_OKAY, RESP_DECERR
 AXI_INCR = 1
 _HMAC_POLL = 200
 

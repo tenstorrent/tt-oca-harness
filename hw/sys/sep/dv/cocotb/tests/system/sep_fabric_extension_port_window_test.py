@@ -43,6 +43,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
+from env.sep_fabric_common import RESP_DECERR, RESP_NAME
 from env.sep_fabric_tap import start_taps, stop_taps
 from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
 from env.sep_filter_model import FilterEntry
@@ -56,9 +57,6 @@ from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 
 TEST = "sep_fabric_extension_port_window_test"
 
-RESP_OKAY = 0
-RESP_DECERR = 3
-RESP_NAME = {-1: "TIMEOUT", 0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 AXI_BURST_INCR = 1
 
 EXT_BASE = sym("SEP_EXTERNAL_REG_MAP_BASE_ADDR")
