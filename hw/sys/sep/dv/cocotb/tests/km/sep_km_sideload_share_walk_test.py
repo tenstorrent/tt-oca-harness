@@ -91,8 +91,6 @@ Ordering that the compares rely on:
 
 from __future__ import annotations
 
-import logging
-
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
@@ -830,11 +828,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
 
         # Checker and monitor summaries carry the retained evidence. Per-access
         # INFO records do not and dominate the log during the long mailbox waits.
-        axi_driver = self.env.axi_agent.driver
-        axi_driver.logger.setLevel(logging.WARNING)
-        axi_backend = axi_driver.axi.driver.backend
-        axi_backend.read_if.log.setLevel(logging.WARNING)
-        axi_backend.write_if.log.setLevel(logging.WARNING)
+        self.suppress_host_axi_transaction_info()
 
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
