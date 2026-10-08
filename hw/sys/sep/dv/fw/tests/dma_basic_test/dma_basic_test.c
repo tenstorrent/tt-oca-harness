@@ -758,6 +758,16 @@ static int chk_host_intg(void) {
     for (volatile uint32_t i = 0; i < HOSTINTG_ARM_SPIN; i++) {
     }
 
+    // Control: with the inject pin high and no DMA command issued yet, the
+    // latch is still clear, so the error below comes from the DMA command.
+    bus = rd(status_addr);
+    if (bus != 0) {
+        sep_mbx_puts("FAIL: CHK-HOSTINTG DMA_BUS_ERR_STATUS=");
+        sep_mbx_puthex(bus);
+        sep_mbx_puts(" with the inject pin high before GO, expected 0\n");
+        return 1;
+    }
+
     // The engine must actually terminate: a DMA that issues one command and
     // then wedges still latches host_path_err, so the error alone does not
     // prove liveness.
@@ -823,8 +833,9 @@ static int chk_host_intg(void) {
     }
     wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     if (!e) {
-        sep_mbx_puts("CHK-HOSTINTG PASS: exclusive host_path_err after injected "
-                     "command integrity; CLEAR; recovery copy matches source\n");
+        sep_mbx_puts("CHK-HOSTINTG PASS: STATUS 0 with the pin high before GO; exclusive "
+                     "host_path_err after injected command integrity; CLEAR; recovery copy "
+                     "matches source\n");
     }
     return e;
 }
