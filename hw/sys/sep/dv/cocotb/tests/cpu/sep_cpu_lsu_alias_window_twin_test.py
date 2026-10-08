@@ -105,7 +105,8 @@ def _word_fields(addr: int) -> tuple[int, int]:
 
     A 32-bit CPU load of a 64-bit register returns its bits [31:0]. A field with
     no RDL reset contributes 0 to the reset; the leaf grades a reset only for AES
-    ``CTRL_SHADOWED``, whose fields all declare one.
+    ``CTRL_SHADOWED``, ``SEP_VERSION_ID`` and the entropy source ``COMPONENT_ID``,
+    whose fields all declare one.
     """
     _width, fields = register_fields(addr)
     mask = 0
@@ -251,14 +252,10 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
             if writable:
                 expect = seeded[unit]
                 src = "seeded"
-            elif unit == "aes_word":
+            else:
+                # Every field of these read-only words declares an RDL reset.
                 expect = rdl_reset
                 src = "rdl_reset"
-            else:
-                # Read-only word with no graded value: the direct read is the
-                # reference of the alias read.
-                expect = d1
-                src = "direct"
             cmp_d1 = field_compare(d1, expect, mask)
             cmp_a = field_compare(a, d1, mask)
             cmp_d2 = field_compare(d2, d1, mask)
