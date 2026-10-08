@@ -40,13 +40,14 @@ reserved span after it, answers DECERR with 0xBADCAB1E, and no baseline register
 moves. The baseline control write of ``SEP_IRQ_ENABLE`` reads back.
 
 CHK-ROW-BURST / CHK-ROW-BURST-CONTROL: an SI burst to the crypto region answers
-DECERR on B or on every R beat and lands no beat (``hw/sys/sep/doc/crypto.adoc``,
+DECERR on B, or on every one of its AxLEN + 1 R beats (no early burst
+termination, IHI 0022 A3.4.1), and lands no beat (``hw/sys/sep/doc/crypto.adoc``,
 Single-Beat Access Only); a single beat at the same address answers its 32-bit
 cell.
 
 Not graded: the Forwarded and adopter-defined rows; the response of a burst to
-a register region outside the crypto region and the beat count of a refused
-burst (the specification states neither); any AxSIZE 3 access.
+a register region outside the crypto region (the specification states none);
+any AxSIZE 3 access.
 """
 
 from __future__ import annotations
