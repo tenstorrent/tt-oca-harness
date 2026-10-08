@@ -82,7 +82,6 @@ from .smc_addr_map import (
     gpio_intf_u32,
     reset_unit_u32,
     smc_addr,
-    smc_bootrom_addr,
     smc_indexed_addr,
 )
 from .smc_base_test_seq import smc_base_test_seq
@@ -138,10 +137,8 @@ ITR_TTBEI = _field_mask(_UART_H, "UART_16550_MAIN__ITR__TTBEI_bm")
 # that behavioural responder: `u_smc.smc_external_req_o.ar_valid` asserted, i.e.
 # `tb_axil_external_active` is alive. `pll_wrap` is a declared behavioural stub
 # (``[BEHAVIORAL-STUB-DECLARED]``); no claim is made here about PLL behaviour.
-EXTERNAL_PLL_CGM0_STATUS = smc_bootrom_addr(
-    "SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_PLL_CNTL_CGM_0_STATUS_BASE_ADDR"
-)
-EXTERNAL_PLL_CGM0_STATUS_EXPECTED = 0
+EXTERNAL_PLL_WRAP = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_BASE_ADDR")
+EXTERNAL_PLL_WRAP_EXPECTED = 0
 
 GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 # DATA_CTRL field bits by symbol from generated hw/ip/gpio/regs/gen/c/gpio_intf.h.
@@ -405,9 +402,9 @@ async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
     sampler = cocotb.start_soon(_count_probe_high(dut, "axil_external_active", hits))
     try:
         rdata = await seq.csr_read(
-            "EXTERNAL_PLL_CGM0_STATUS",
-            EXTERNAL_PLL_CGM0_STATUS,
-            expected=EXTERNAL_PLL_CGM0_STATUS_EXPECTED,
+            "EXTERNAL_PLL_WRAP",
+            EXTERNAL_PLL_WRAP,
+            expected=EXTERNAL_PLL_WRAP_EXPECTED,
         )
         await ClockCycles(dut.clk_smc_i, _PULSE_DRAIN_CYCLES)
     finally:
@@ -415,7 +412,7 @@ async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
 
     assert hits[0] > 0, (
         "tb_axil_external_active never sampled 1 while a real SEP_IN AXI read "
-        f"of the adopter external window @ 0x{EXTERNAL_PLL_CGM0_STATUS:08x} was "
+        f"of the adopter external window @ 0x{EXTERNAL_PLL_WRAP:08x} was "
         "in flight: the activity probe is stuck at 0 / undriven / mis-tied, so "
         "any idle == 0 assertion on it is vacuous"
     )
@@ -423,8 +420,7 @@ async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
 
     credit_probe(
         "axil_external_active",
-        f"{hits[0]} clk_smc_i cycle(s) high during a SEP_IN AXI read @ "
-        f"0x{EXTERNAL_PLL_CGM0_STATUS:08x}",
+        f"{hits[0]} clk_smc_i cycle(s) high during a SEP_IN AXI read @ 0x{EXTERNAL_PLL_WRAP:08x}",
     )
     cocotb.log.info(
         "CHK-PROBE-AXIL-EXTERNAL-ALIVE: tb_axil_external_active observed 1 for "
@@ -433,9 +429,9 @@ async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
         "%d cycle(s); the probe reads both levels, so an idle "
         "tb_axil_external_active==0 compare is fail-capable",
         hits[0],
-        EXTERNAL_PLL_CGM0_STATUS,
+        EXTERNAL_PLL_WRAP,
         rdata,
-        EXTERNAL_PLL_CGM0_STATUS_EXPECTED,
+        EXTERNAL_PLL_WRAP_EXPECTED,
         idle_cycles,
     )
 

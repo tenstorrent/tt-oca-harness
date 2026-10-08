@@ -12,7 +12,6 @@
 #include "i3c_controller_driver.h"
 /* read_reg / write_reg (via smc_reg_access.h). */
 #include "smc_defines.h"
-/* smc_addr.h supplies the wrapper base without smc_top_regs.h and its conflicting I3C types. */
 #include "smc_addr.h"
 
 #pragma GCC diagnostic push

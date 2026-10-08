@@ -8,7 +8,7 @@ from pathlib import Path
 
 import cocotb
 
-from .smc_addr_map import _field_mask, smc_bootrom_addr, smc_indexed_addr
+from .smc_addr_map import _field_mask, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 _UART0 = 0  # UART_LOG_ENGINE_WRAP idx
@@ -31,6 +31,7 @@ _UART_LOG_ENGINE_CTRL_H = (
     / "uart_log_engine_ctrl.h"
 )
 _LOG_ENGINE_H = _REPO / "hw" / "ip" / "uart" / "log_engine" / "regs" / "gen" / "c" / "log_engine.h"
+_LOG_ENGINE_ADDR_H = _LOG_ENGINE_H.with_name("log_engine_addr.h")
 
 UART_LOG_ENGINE_CTRL_MASK = _field_mask(
     _UART_LOG_ENGINE_CTRL_H, "UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm"
@@ -121,9 +122,8 @@ UART_LOG_READS = [
     ),
     (
         "LOG_ENGINE_LOG_CTRL_0",
-        smc_bootrom_addr(
-            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__LOG_ENGINE_LOG_CTRL_0__BASE_ADDR"
-        ),
+        smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR", _UART0)
+        + smc_indexed_addr("LOG_ENGINE_LOG_CTRL_BASE_ADDR", 0, _LOG_ENGINE_ADDR_H),
         None,
     ),
 ]

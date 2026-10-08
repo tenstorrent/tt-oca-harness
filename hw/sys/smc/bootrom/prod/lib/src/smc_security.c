@@ -6,12 +6,14 @@
  */
 
 #include "smc_security.h"
+#include "chip_config.h"
+#include "smc_addr.h"
 #include "smc_defines.h"
 
 /* Read the raw 8-bit differentially encoded LC_STATE register value. */
 static uint8_t smc_security_read_lc_state_raw(void) {
-    return (uint8_t)(read_reg(SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_ADDR) &
-                     CHIP_CONFIG_LC_STATE_LC_STATE_MASK);
+    return (uint8_t)(read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR) &
+                     CHIP_CONFIG__LC_STATE__LC_STATE_bm);
 }
 
 /* Get the current lifecycle (LC) state from hardware */

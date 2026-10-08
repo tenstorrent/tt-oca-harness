@@ -123,7 +123,7 @@ instance counts come from `smc_top_addrmap_pkg`; a unit's aperture is the
 `Size` column and its top the `Decoded Extent` column of
 `regs/gen/adoc/memory_map.adoc`, whose functional-organization table also
 gives the layout regions. Placements inside the adopter external window are
-the reference integration's, from `bootrom/prod/registers/smc_top_regs.h`
+the reference integration's, from `regs/gen/c/smc_addr.h`
 (`SMC_TOP_SMC_EXTERNAL_*`). A collector attributes a response to an address
 only while exactly one transaction is outstanding in that direction, so an
 overlapped burst under-counts rather than pairing one access's response with

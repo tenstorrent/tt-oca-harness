@@ -11,8 +11,8 @@
 // column of the generated component map (regs/gen/adoc/memory_map.adoc), which
 // the package does not carry, and the layout regions are that file's
 // functional-organization table. Placements inside the adopter external window
-// are the reference integration's, from the generated boot ROM register header
-// (bootrom/prod/registers/smc_top_regs.h, SMC_TOP_SMC_EXTERNAL_*). A cell is
+// are the reference integration's, from the generated SMC address header
+// (regs/gen/c/smc_addr.h, SMC_TOP_SMC_EXTERNAL_*). A cell is
 // hit when a transaction to the window completed, not when its address was
 // merely presented.
 //
@@ -556,7 +556,7 @@ module smc_map_fcov (
   // ------------------------------------------------------------------
   // AXI-Lite external window: mandatory blocks with the captured straps,
   // per-pad control stride and the supplementary region. Offsets are the
-  // reference placement in smc_top_regs.h (SMC_TOP_SMC_EXTERNAL_MANDATORY_*).
+  // reference placement in smc_addr.h (SMC_TOP_SMC_EXTERNAL_MANDATORY_*).
   //
   // The window belongs to the adopter: SMC routes every access in it to the
   // external AXI-Lite port and specifies nothing behind it (memmap.adoc,

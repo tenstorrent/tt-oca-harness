@@ -7,7 +7,14 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "chip_config.h"
+#include "gpio_ctrl.h"
+#include "gpio_ctrl_addr.h"
+#include "gpio_intf.h"
+#include "gpio_intf_addr.h"
+#include "i2c.h"
 #include "i3c_target_driver.h"
+#include "smc_addr.h"
 #include "smc_rom_defs.h"
 #include "smc_defines.h"
 #include "smc_security.h"
@@ -183,16 +190,16 @@ static Occp_ErrMsgID smc_occp_validate_body(uint8_t *buffer, size_t length, bool
 
 static int error_response_sent = 0;
 
-static bool enable_gpio_hw_override(uint8_t gpio_num) {
-    GPIO_CTRL_CONTROL_reg_u gpio_ctrl;
-    gpio_ctrl.val =
-        read_gpio_shim(gpio_num, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__CONTROL_REG_OFFSET);
-    gpio_ctrl.f.hw2_ovrd = 1;
-    write_gpio_shim(gpio_num, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__CONTROL_REG_OFFSET,
-                    gpio_ctrl.val);
+_Static_assert(GPIO_CTRL_SIZE <= SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_STRIDE,
+               "a GPIO_CTRL block must fit in its SMC external-window slot");
 
-    gpio_ctrl.val =
-        read_gpio_shim(gpio_num, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_0__CONTROL_REG_OFFSET);
+static bool enable_gpio_hw_override(uint8_t gpio_num) {
+    gpio_ctrl__CONTROL_t gpio_ctrl;
+    gpio_ctrl.w = read_gpio_shim(gpio_num, GPIO_CTRL_CONTROL_BASE_ADDR);
+    gpio_ctrl.f.hw2_ovrd = 1;
+    write_gpio_shim(gpio_num, GPIO_CTRL_CONTROL_BASE_ADDR, gpio_ctrl.w);
+
+    gpio_ctrl.w = read_gpio_shim(gpio_num, GPIO_CTRL_CONTROL_BASE_ADDR);
     if (gpio_ctrl.f.hw2_ovrd != 1) {
         simputshex32("Failed to enable GPIO hw2_ovrd for gpio: ", gpio_num);
         return false;
@@ -250,24 +257,24 @@ static void enable_observation_gpio_overrides(void) {
  * otherwise clear GPIO to indicate error.
  */
 static void set_gpio_status(occp_error_code_t status) {
-    GPIO_INTF_DATA_CTRL_reg_u gpio_control;
+    gpio_intf__DATA_CTRL_t gpio_control;
 
-    gpio_control.val = read_gpio(58, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_58__CONTROL_REG_OFFSET);
+    gpio_control.w = read_gpio(58, GPIO_INTF_DATA_CTRL_BASE_ADDR);
     gpio_control.f.interface_enable = 1; // Enable the interface
     gpio_control.f.enable_rx_tx = 1;     // Enable Tx
 
     if (status == OCCP_ERROR_NONE) {
         // Set GPIO to indicate success
         gpio_control.f.core2pad = 1; // Register driven data send to pad
-        write_gpio(58, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_58__CONTROL_REG_OFFSET,
-                   gpio_control.val); // Write control register to enable GPIO
+        write_gpio(58, GPIO_INTF_DATA_CTRL_BASE_ADDR,
+                   gpio_control.w); // Write control register to enable GPIO
         simputs("OCCP: GPIO set to indicate success\n");
     } else {
 
         // Clear GPIO to indicate error
         gpio_control.f.core2pad = 0; // Set chip to pad mode
-        write_gpio(58, SMC_EXTERNAL_MANDATORY_GPIO_CTRL_58__CONTROL_REG_OFFSET,
-                   gpio_control.val); // Write control register to enable GPIO
+        write_gpio(58, GPIO_INTF_DATA_CTRL_BASE_ADDR,
+                   gpio_control.w); // Write control register to enable GPIO
         simputs("OCCP: GPIO set to indicate error\n");
     }
 }
@@ -1672,8 +1679,8 @@ static uint64_t smc_occp_determine_i3c_address(uint8_t efuse_slot_id) {
 
     if (pid0 == 0x0) {
         determined_pid = smc_strap_get_chip_id();
-        CHIP_CONFIG_CHIP_ID_reg_u chip_id = {0};
-        chip_id.val = read_reg(SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_ADDR);
+        chip_config__CHIP_ID_t chip_id = {0};
+        chip_id.w = read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR);
         determined_pid |= (chip_id.f.chip_id << 5);
         simputs("No 64-bit I3C/I2C ID found in eFuses, using straps and RESET_UNIT_CHIP_ID\n");
         simputshex64("Determined I3C/I2C ID from Straps: ", determined_pid);
@@ -1880,16 +1887,13 @@ static int smc_occp_flush_interface_fifo(interface_driver_t drv, driver_type_t d
                 // reset timeout if we read a byte
                 timeout_counter = 0;
             } else {
-                uintptr_t intr_state_addr = SMC_I2C_WRAP_I2C_0__REG_MAP_BASE_ADDR +
-                                            (uintptr_t)i2c_drv->ctx.controller_id *
-                                                (uintptr_t)(SMC_I2C_WRAP_I2C_1__REG_MAP_BASE_ADDR -
-                                                            SMC_I2C_WRAP_I2C_0__REG_MAP_BASE_ADDR) +
-                                            SMC_I2C_WRAP_I2C_0__INTR_STATE_REG_OFFSET;
-                I2C_INTR_STATE_reg_u intr_state = {.val = read_reg(intr_state_addr)};
-                if (intr_state.f.unexp_stop) {
-                    I2C_INTR_STATE_reg_u clr = {.val = 0};
-                    clr.f.unexp_stop = 1;
-                    write_reg(intr_state_addr, clr.val);
+                uintptr_t intr_state_addr = SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(
+                    (uintptr_t)i2c_drv->ctx.controller_id);
+                i2c__INTR_STATE_t intr_state = {.w = read_reg(intr_state_addr)};
+                if (intr_state.f.UNEXP_STOP) {
+                    i2c__INTR_STATE_t clr = {.w = 0};
+                    clr.f.UNEXP_STOP = 1;
+                    write_reg(intr_state_addr, clr.w);
                 }
                 timeout_counter++;
             }

@@ -31,6 +31,7 @@ import cocotb
 from cocotb.triggers import FallingEdge, NextTimeStep, ReadOnly, RisingEdge
 
 from .smc_addr_map import (
+    _REPO,
     INBOUND0_END,
     INBOUND0_FILTER_CONFIG,
     INBOUND0_START,
@@ -41,6 +42,7 @@ from .smc_addr_map import (
     ZEROER_CTRL_SIZE,
     ZEROER_CTRL_STATUS,
     efuse_ifc_u32,
+    reg_field_encode,
     smc_addr,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -50,7 +52,6 @@ from .smc_output_fabric_vip_utils import (
     check_output_responder_delta,
     output_fabric_model,
     output_responder_counts,
-    reg_field_pack,
 )
 
 PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
@@ -74,8 +75,9 @@ REQ_ERR_CLR = efuse_ifc_u32(
 # ZEROER_CTRL CTRL_STATUS is a 64-bit word: STATUS mirrors the Zeroer's busy
 # output and INT_EN is the write side effect that starts the FSM. Both masks
 # come from the generated field layout.
-ZEROER_STATUS_BUSY = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", status=1)
-ZEROER_START = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1)
+_ZEROER_CTRL_H = _REPO / "hw" / "ip" / "zeroer" / "regs" / "gen" / "c" / "zeroer_ctrl.h"
+ZEROER_STATUS_BUSY = reg_field_encode(_ZEROER_CTRL_H, "ZEROER_CTRL", "CTRL_STATUS", status=1)
+ZEROER_START = reg_field_encode(_ZEROER_CTRL_H, "ZEROER_CTRL", "CTRL_STATUS", int_en=1)
 # The start control zeroes one 64-bit beat at the output fabric, so the
 # operation is exactly one AXI write on the SYS_OUT responder.
 ZEROER_CONTROL_SIZE = 8

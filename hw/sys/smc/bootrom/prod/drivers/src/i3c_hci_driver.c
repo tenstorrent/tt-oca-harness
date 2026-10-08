@@ -17,24 +17,19 @@
 #if defined(I3C_USE_HCI_CORE)
 
 #include "i3c_target_driver.h"
-#include "smc_defines.h" /* read_reg / write_reg and the generated register map */
+#include "oca_i3c_wrap.h"
+#include "smc_addr.h"
+#include "smc_defines.h" /* read_reg / write_reg */
 #include "virt_console.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 
 /*--------------------------------------------------------------------------
- *  Addressing. The I3CCSR block starts at the wrap base (CSR sub-offset 0);
- *  instance 1 is instance 0 + 0x1000. So any instance-N register =
- *  <instance-0 absolute addr> + N*0x1000.
- *
- *  The register map models the I3C CSR block as an opaque window (only
- *  OCA_I3C_WRAP_*_REG_MAP_BASE_ADDR is generated), so the per-register
- *  offsets below are spelled out locally. They are the I3CCSR offsets of the
- *  vendored i3c-core (verified against the address decode in
- *  vendor/chipsalliance/i3c-core/upstream/src/csr/I3CCSR.sv).
+ *  Addressing. Any instance-N register = <instance-0 absolute addr> + N *
+ *  the generated I3C CSR instance stride.
  *------------------------------------------------------------------------*/
-#define I3C_INST_STRIDE 0x1000u
+#define I3C_INST_STRIDE SMC_TOP_OCA_I3C_WRAP_I3C_CSR_STRIDE
 #define I3C_A(id, abs0) ((uint64_t)(abs0) + (uint64_t)(id)*I3C_INST_STRIDE)
 
 static inline void hw(uint8_t id, uint64_t abs0, uint32_t v) {
@@ -44,99 +39,127 @@ static inline uint32_t hr(uint8_t id, uint64_t abs0) {
     return read_reg(I3C_A(id, abs0));
 }
 
-/* instance-0 absolute register addresses (window base + I3CCSR offset) */
-#define I3C0_CSR_BASE OCA_I3C_WRAP_0_REG_MAP_BASE_ADDR
-#define R_HC_CONTROL (I3C0_CSR_BASE + 0x004u)  /* I3CBase HC_CONTROL */
-#define R_STBY_CR (I3C0_CSR_BASE + 0x184u)     /* I3C_EC StdbyCtrlMode STBY_CR_CONTROL */
-#define R_PIO_CONTROL (I3C0_CSR_BASE + 0x0B0u) /* PIOControl PIO_CONTROL */
-#define R_PIO_INTR (I3C0_CSR_BASE + 0x0A0u)    /* PIOControl PIO_INTR_STATUS */
-#define R_PIO_INTR_SE (I3C0_CSR_BASE + 0x0A4u) /* PIOControl PIO_INTR_STATUS_ENABLE */
-#define R_PIO_INTR_GE (I3C0_CSR_BASE + 0x0A8u) /* PIOControl PIO_INTR_SIGNAL_ENABLE */
-#define R_CMD_PORT (I3C0_CSR_BASE + 0x080u)    /* PIOControl COMMAND_PORT */
-#define R_RESP_PORT (I3C0_CSR_BASE + 0x084u)   /* PIOControl RESPONSE_PORT */
-#define R_TX_PORT (I3C0_CSR_BASE + 0x088u)     /* PIOControl TX_DATA_PORT */
-#define R_RX_PORT (I3C0_CSR_BASE + 0x088u)     /* PIOControl RX_DATA_PORT (same port) */
-#define R_DBTC (I3C0_CSR_BASE + 0x094u)        /* PIOControl DATA_BUFFER_THLD_CTRL */
-#define R_QTC (I3C0_CSR_BASE + 0x090u)         /* PIOControl QUEUE_THLD_CTRL */
-#define R_DAT_BASE (I3C0_CSR_BASE + 0x400u)    /* DAT table */
-#define R_DCT_BASE (I3C0_CSR_BASE + 0x800u)    /* DCT table */
+/* Instance-0 address of an I3CCSR register in the generated SMC map. */
+#define I3C0_REG(reg) SMC_TOP_OCA_I3C_WRAP_I3C_CSR_##reg##_BASE_ADDR(0)
+#define R_HC_CONTROL I3C0_REG(I3CBASE_HC_CONTROL)
+#define R_STBY_CR I3C0_REG(I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL)
+#define R_PIO_CONTROL I3C0_REG(PIOCONTROL_PIO_CONTROL)
+#define R_PIO_INTR I3C0_REG(PIOCONTROL_PIO_INTR_STATUS)
+#define R_PIO_INTR_SE I3C0_REG(PIOCONTROL_PIO_INTR_STATUS_ENABLE)
+#define R_PIO_INTR_GE I3C0_REG(PIOCONTROL_PIO_INTR_SIGNAL_ENABLE)
+#define R_CMD_PORT I3C0_REG(PIOCONTROL_COMMAND_PORT)
+#define R_RESP_PORT I3C0_REG(PIOCONTROL_RESPONSE_PORT)
+#define R_TX_PORT I3C0_REG(PIOCONTROL_TX_DATA_PORT)
+#define R_RX_PORT I3C0_REG(PIOCONTROL_RX_DATA_PORT)
+#define R_DBTC I3C0_REG(PIOCONTROL_DATA_BUFFER_THLD_CTRL)
+#define R_QTC I3C0_REG(PIOCONTROL_QUEUE_THLD_CTRL)
+#define R_DAT_BASE I3C0_REG(DAT)
 /* SOC management interface bus-timing registers (open-drain init set) */
-#define R_T_R (I3C0_CSR_BASE + 0x32Cu)
-#define R_T_F (I3C0_CSR_BASE + 0x330u)
-#define R_T_SU_DAT (I3C0_CSR_BASE + 0x334u)
-#define R_T_HD_DAT (I3C0_CSR_BASE + 0x33Cu)
-#define R_T_HIGH (I3C0_CSR_BASE + 0x340u)
-#define R_T_HIGH_OD (I3C0_CSR_BASE + 0x344u)
-#define R_T_HIGH_INIT_OD (I3C0_CSR_BASE + 0x348u)
-#define R_T_LOW (I3C0_CSR_BASE + 0x350u)
-#define R_T_LOW_OD (I3C0_CSR_BASE + 0x354u)
-#define R_T_HD_STA (I3C0_CSR_BASE + 0x35Cu)
-#define R_T_SU_STA (I3C0_CSR_BASE + 0x368u)
-#define R_T_SU_STO (I3C0_CSR_BASE + 0x370u)
-#define R_T_HD_RSTA (I3C0_CSR_BASE + 0x364u)
-#define R_T_DS_OD (I3C0_CSR_BASE + 0x378u)
-#define R_T_FREE (I3C0_CSR_BASE + 0x37Cu)
-#define R_T_AVAL (I3C0_CSR_BASE + 0x384u)
-#define R_T_IDLE (I3C0_CSR_BASE + 0x388u)
+#define R_T_R I3C0_REG(I3C_EC_SOCMGMTIF_T_R_REG)
+#define R_T_F I3C0_REG(I3C_EC_SOCMGMTIF_T_F_REG)
+#define R_T_SU_DAT I3C0_REG(I3C_EC_SOCMGMTIF_T_SU_DAT_REG)
+#define R_T_HD_DAT I3C0_REG(I3C_EC_SOCMGMTIF_T_HD_DAT_REG)
+#define R_T_HIGH I3C0_REG(I3C_EC_SOCMGMTIF_T_HIGH_REG)
+#define R_T_HIGH_OD I3C0_REG(I3C_EC_SOCMGMTIF_T_HIGH_OD_REG)
+#define R_T_HIGH_INIT_OD I3C0_REG(I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG)
+#define R_T_LOW I3C0_REG(I3C_EC_SOCMGMTIF_T_LOW_REG)
+#define R_T_LOW_OD I3C0_REG(I3C_EC_SOCMGMTIF_T_LOW_OD_REG)
+#define R_T_HD_STA I3C0_REG(I3C_EC_SOCMGMTIF_T_HD_STA_REG)
+#define R_T_SU_STA I3C0_REG(I3C_EC_SOCMGMTIF_T_SU_STA_REG)
+#define R_T_SU_STO I3C0_REG(I3C_EC_SOCMGMTIF_T_SU_STO_REG)
+#define R_T_HD_RSTA I3C0_REG(I3C_EC_SOCMGMTIF_T_HD_RSTA_REG)
+#define R_T_DS_OD I3C0_REG(I3C_EC_SOCMGMTIF_T_DS_OD_REG)
+#define R_T_FREE I3C0_REG(I3C_EC_SOCMGMTIF_T_FREE_REG)
+#define R_T_AVAL I3C0_REG(I3C_EC_SOCMGMTIF_T_AVAL_REG)
+#define R_T_IDLE I3C0_REG(I3C_EC_SOCMGMTIF_T_IDLE_REG)
 
 /*--------------------------------------------------------------------------
- *  Field positions (verified against the vendored i3c-core I3CCSR map)
+ *  Field masks and positions from the generated i3c-core field header. Its
+ *  register-file prefixes carry the RTL parameters, so a parameter change
+ *  fails the build here instead of silently moving a field.
  *------------------------------------------------------------------------*/
-#define HC_BUS_ENABLE (1u << 31)
-#define HC_MODE_PIO (1u << 6)                       /* mode_selector = 1 (PIO) */
-#define STBYCR_ENABLE_INIT(v) ((uint32_t)(v) << 30) /* 3 = MODE_CONTROLLER (active) */
-#define STBYCR_TARGET_XACT (1u << 12)
-#define PIO_EN (1u << 0)
-#define PIO_RS (1u << 1)
-/* PIO_INTR_STATUS bits (same layout as PIO_INTR_STATUS_ENABLE) */
-#define PI_TX_THLD (1u << 0)
-#define PI_RX_THLD (1u << 1)
-#define PI_CMD_QUEUE_READY (1u << 3)
-#define PI_RESP_READY (1u << 4)
+#define HCI_BASE_FIELD(f) \
+    BASEREGS_PIO_OFFSET_80_EXT_OFFSET_100_DAT_TABLE_SIZE_7F_DAT_OFFSET_400_DCT_TABLE_SIZE_7F_DCT_OFFSET_800_MIPI_COMMANDS_35__##f
+#define HCI_PIO_FIELD(f) \
+    PIOREGS_CMD_FIFO_SIZE_40_RESP_FIFO_SIZE_40_IBI_FIFO_SIZE_40_TX_FIFO_SIZE_5_RX_FIFO_SIZE_5_EXT_IBI_SIZE_0__##f
+#define HCI_PIO_INTR_FIELD(f) \
+    HCI_PIO_FIELD( \
+        PIO_INTR_STATUS_CMD_QUEUE_READY_STAT_D0716A40_IBI_STATUS_THLD_STAT_A69A4555_RESP_READY_STAT_976AF25D_RX_THLD_STAT_0F2071BF_TRANSFER_ABORT_STAT_1FE261AD_TRANSFER_ERR_STAT_8815D17D_TX_THLD_STAT_9FE979F6__##f)
+#define HCI_STBY_FIELD(f) \
+    STANDBYCONTROLLERMODEREGISTERS_PID_HI_RESET_7FFF_PID_LO_RESET_5A00A5_VIRTUAL_PID_HI_RESET_7FFF_VIRTUAL_PID_LO_RESET_5A10A5_RX_FIFO_SIZE_5_TX_FIFO_SIZE_5_IBI_FIFO_SIZE_5__##f
+#define HCI_TTI_FIELD(f) \
+    TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_5_TX_DESC_FIFO_SIZE_5_RX_FIFO_SIZE_5_TX_FIFO_SIZE_5_IBI_FIFO_SIZE_5__##f
+
+#define HC_BUS_ENABLE HCI_BASE_FIELD(HC_CONTROL__BUS_ENABLE_bm)
+#define HC_MODE_PIO HCI_BASE_FIELD(HC_CONTROL__MODE_SELECTOR_bm) /* mode_selector = 1 (PIO) */
+#define STBYCR_ENABLE_INIT(v) \
+    ((uint32_t)(v) << HCI_STBY_FIELD( \
+         STBY_CR_CONTROL__STBY_CR_ENABLE_INIT_bp)) /* 3 = MODE_CONTROLLER (active) */
+#define STBYCR_TARGET_XACT HCI_STBY_FIELD(STBY_CR_CONTROL__TARGET_XACT_ENABLE_bm)
+#define PIO_EN HCI_PIO_FIELD(PIO_CONTROL__ENABLE_bm)
+#define PIO_RS HCI_PIO_FIELD(PIO_CONTROL__RS_bm)
+/* PIO_INTR_STATUS bits */
+#define PI_TX_THLD HCI_PIO_INTR_FIELD(TX_THLD_STAT_bm)
+#define PI_RX_THLD HCI_PIO_INTR_FIELD(RX_THLD_STAT_bm)
+#define PI_CMD_QUEUE_READY HCI_PIO_INTR_FIELD(CMD_QUEUE_READY_STAT_bm)
+#define PI_RESP_READY HCI_PIO_INTR_FIELD(RESP_READY_STAT_bm)
+/* PIO_INTR_STATUS_ENABLE bits */
+#define PIE_TX_THLD HCI_PIO_FIELD(PIO_INTR_STATUS_ENABLE__TX_THLD_STAT_EN_bm)
+#define PIE_RX_THLD HCI_PIO_FIELD(PIO_INTR_STATUS_ENABLE__RX_THLD_STAT_EN_bm)
+#define PIE_CMD_QUEUE_READY HCI_PIO_FIELD(PIO_INTR_STATUS_ENABLE__CMD_QUEUE_READY_STAT_EN_bm)
+#define PIE_RESP_READY HCI_PIO_FIELD(PIO_INTR_STATUS_ENABLE__RESP_READY_STAT_EN_bm)
 /* DATA_BUFFER_THLD_CTRL / QUEUE_THLD_CTRL field shifts */
-#define DBTC_TX_BUF_SHIFT 0
-#define DBTC_RX_BUF_SHIFT 8
-#define QTC_CMD_EMPTY_SHIFT 0
-#define QTC_RESP_BUF_SHIFT 8
+#define DBTC_TX_BUF_SHIFT HCI_PIO_FIELD(DATA_BUFFER_THLD_CTRL__TX_BUF_THLD_bp)
+#define DBTC_RX_BUF_SHIFT HCI_PIO_FIELD(DATA_BUFFER_THLD_CTRL__RX_BUF_THLD_bp)
+#define QTC_CMD_EMPTY_SHIFT HCI_PIO_FIELD(QUEUE_THLD_CTRL__CMD_EMPTY_BUF_THLD_bp)
+#define QTC_RESP_BUF_SHIFT HCI_PIO_FIELD(QUEUE_THLD_CTRL__RESP_BUF_THLD_bp)
 
 /* RESPONSE_PORT descriptor decode */
 #define RESP_ERR(r) (((r) >> 28) & 0xFu)
 #define RESP_LEN(r) ((r)&0xFFFFu)
 
 /* ---- Target (subordinate / TTI) registers + fields ---- */
-#define R_STBY_DEV_ADDR (I3C0_CSR_BASE + 0x188u) /* StdbyCtrlMode STBY_CR_DEVICE_ADDR */
-#define R_TTI_INTR (I3C0_CSR_BASE + 0x220u)      /* TTI INTERRUPT_STATUS */
-#define R_TTI_INTR_EN (I3C0_CSR_BASE + 0x224u)   /* TTI INTERRUPT_ENABLE */
-#define R_TTI_RX_DATA (I3C0_CSR_BASE + 0x274u)   /* TTI RX_DATA_PORT */
-#define R_TTI_TX_DATA (I3C0_CSR_BASE + 0x27Cu)   /* TTI TX_DATA_PORT */
-#define R_TTI_RX_DESC (I3C0_CSR_BASE + 0x270u)   /* TTI RX_DESC_QUEUE_PORT */
-#define R_TTI_TX_DESC (I3C0_CSR_BASE + 0x278u)   /* TTI TX_DESC_QUEUE_PORT */
-#define R_TTI_DBTC (I3C0_CSR_BASE + 0x290u)      /* TTI DATA_BUFFER_THLD_CTRL */
-#define R_TTI_QTC (I3C0_CSR_BASE + 0x28Cu)       /* TTI QUEUE_THLD_CTRL */
+#define R_STBY_DEV_ADDR I3C0_REG(I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR)
+#define R_TTI_INTR I3C0_REG(I3C_EC_TTI_INTERRUPT_STATUS)
+#define R_TTI_INTR_EN I3C0_REG(I3C_EC_TTI_INTERRUPT_ENABLE)
+#define R_TTI_RX_DATA I3C0_REG(I3C_EC_TTI_RX_DATA_PORT)
+#define R_TTI_TX_DATA I3C0_REG(I3C_EC_TTI_TX_DATA_PORT)
+#define R_TTI_RX_DESC I3C0_REG(I3C_EC_TTI_RX_DESC_QUEUE_PORT)
+#define R_TTI_TX_DESC I3C0_REG(I3C_EC_TTI_TX_DESC_QUEUE_PORT)
+#define R_TTI_DBTC I3C0_REG(I3C_EC_TTI_DATA_BUFFER_THLD_CTRL)
+#define R_TTI_QTC I3C0_REG(I3C_EC_TTI_QUEUE_THLD_CTRL)
 /* TTI_QUEUE_STATUS reports queue levels rather than edge-gated interrupt thresholds. */
-#define R_TTI_QUEUE_STATUS (I3C0_CSR_BASE + 0x210u)
-#define TTI_RX_DESC_QUEUE_EMPTY (1u << 1) /* QUEUE_STATUS.RX_DESC_QUEUE_EMPTY */
-#define TTI_TX_DESC_QUEUE_FULL (1u << 2)  /* QUEUE_STATUS.TX_DESC_QUEUE_FULL  */
-#define TTI_TX_DATA_QUEUE_FULL (1u << 6)  /* QUEUE_STATUS.TX_DATA_QUEUE_FULL  */
-#define TTI_RX_DATA_QUEUE_EMPTY (1u << 5) /* QUEUE_STATUS.RX_DATA_QUEUE_EMPTY */
+#define R_TTI_QUEUE_STATUS I3C0_REG(I3C_EC_TTI_QUEUE_STATUS)
+#define TTI_RX_DESC_QUEUE_EMPTY HCI_TTI_FIELD(QUEUE_STATUS__RX_DESC_QUEUE_EMPTY_bm)
+#define TTI_TX_DESC_QUEUE_FULL HCI_TTI_FIELD(QUEUE_STATUS__TX_DESC_QUEUE_FULL_bm)
+#define TTI_TX_DATA_QUEUE_FULL HCI_TTI_FIELD(QUEUE_STATUS__TX_DATA_QUEUE_FULL_bm)
+#define TTI_RX_DATA_QUEUE_EMPTY HCI_TTI_FIELD(QUEUE_STATUS__RX_DATA_QUEUE_EMPTY_bm)
 /* TTI_DATA_QUEUE_DEPTH reports the current DWORD entry counts of the target data queues. */
-#define R_TTI_DATA_QUEUE_DEPTH (I3C0_CSR_BASE + 0x218u)
-#define TTI_RX_DATA_QUEUE_DEPTH(d) ((d)&0xFFu) /* RX_DATA_QUEUE_DEPTH[7:0], in DWORDs */
+#define R_TTI_DATA_QUEUE_DEPTH I3C0_REG(I3C_EC_TTI_DATA_QUEUE_DEPTH)
+#define TTI_RX_DATA_QUEUE_DEPTH(d) \
+    (((d)&HCI_TTI_FIELD(DATA_QUEUE_DEPTH__RX_DATA_QUEUE_DEPTH_bm)) >> \
+     HCI_TTI_FIELD(DATA_QUEUE_DEPTH__RX_DATA_QUEUE_DEPTH_bp)) /* in DWORDs */
+/* TTI DATA_BUFFER_THLD_CTRL / QUEUE_THLD_CTRL field shifts */
+#define TTI_DBTC_TX_DATA_SHIFT HCI_TTI_FIELD(DATA_BUFFER_THLD_CTRL__TX_DATA_THLD_bp)
+#define TTI_DBTC_RX_DATA_SHIFT HCI_TTI_FIELD(DATA_BUFFER_THLD_CTRL__RX_DATA_THLD_bp)
+#define TTI_QTC_TX_DESC_SHIFT HCI_TTI_FIELD(QUEUE_THLD_CTRL__TX_DESC_THLD_bp)
+#define TTI_QTC_RX_DESC_SHIFT HCI_TTI_FIELD(QUEUE_THLD_CTRL__RX_DESC_THLD_bp)
+#define TTI_QTC_IBI_SHIFT HCI_TTI_FIELD(QUEUE_THLD_CTRL__IBI_THLD_bp)
 
 /* STBY_CR_DEVICE_ADDR fields */
-#define STBY_STATIC_ADDR(a) (((uint32_t)(a)&0x7Fu) << 0)
-#define STBY_STATIC_ADDR_VALID (1u << 15)
+#define STBY_STATIC_ADDR(a) \
+    (((uint32_t)(a) << HCI_STBY_FIELD(STBY_CR_DEVICE_ADDR__STATIC_ADDR_bp)) & \
+     HCI_STBY_FIELD(STBY_CR_DEVICE_ADDR__STATIC_ADDR_bm))
+#define STBY_STATIC_ADDR_VALID HCI_STBY_FIELD(STBY_CR_DEVICE_ADDR__STATIC_ADDR_VALID_bm)
 /* STBY_CR_CONTROL extra fields (target) */
-#define STBYCR_DAA_SETDASA_EN (1u << 14)
-#define STBYCR_DAA_ENTDAA_EN (1u << 15)
+#define STBYCR_DAA_SETDASA_EN HCI_STBY_FIELD(STBY_CR_CONTROL__DAA_SETDASA_ENABLE_bm)
+#define STBYCR_DAA_ENTDAA_EN HCI_STBY_FIELD(STBY_CR_CONTROL__DAA_ENTDAA_ENABLE_bm)
 #define STBYCR_SCM_RUNNING STBYCR_ENABLE_INIT(0x2u) /* enable_init = 0b10 (SCM_RUNNING) */
 
-/* TTI INTERRUPT_STATUS bits */
-#define TTI_TX_DATA_THLD (1u << 8)
-#define TTI_RX_DATA_THLD (1u << 9)
-#define TTI_TX_DESC_THLD (1u << 10)
-#define TTI_RX_DESC_THLD (1u << 11)
-#define TTI_TX_DESC_COMPLETE (1u << 26)
+/* TTI INTERRUPT_ENABLE bits */
+#define TTI_RX_DATA_THLD_EN HCI_TTI_FIELD(INTERRUPT_ENABLE__RX_DATA_THLD_STAT_EN_bm)
+#define TTI_RX_DESC_THLD_EN HCI_TTI_FIELD(INTERRUPT_ENABLE__RX_DESC_THLD_STAT_EN_bm)
+#define TTI_TX_DESC_COMPLETE_EN HCI_TTI_FIELD(INTERRUPT_ENABLE__TX_DESC_COMPLETE_EN_bm)
 /* TTI RX descriptor: byte count [15:0], rx_error [31:20] */
 #define TTI_RXDESC_LEN(d) ((d)&0xFFFFu)
 #define TTI_RXDESC_ERR(d) (((d) >> 20) & 0xFFFu)
@@ -304,14 +327,15 @@ static I3C_Status hci_target_start(I3C_Driver *drv) {
     /* bus timing (must match the controller's) */
     hci_program_od_timing(id);
     /* TTI thresholds: tx_data=1, rx_data=1; tx_desc=1, rx_desc=1, ibi=1 */
-    hw(id, R_TTI_DBTC, (1u << 0) | (1u << 8));
-    hw(id, R_TTI_QTC, (1u << 0) | (1u << 8) | (1u << 24));
+    hw(id, R_TTI_DBTC, (1u << TTI_DBTC_TX_DATA_SHIFT) | (1u << TTI_DBTC_RX_DATA_SHIFT));
+    hw(id, R_TTI_QTC,
+       (1u << TTI_QTC_TX_DESC_SHIFT) | (1u << TTI_QTC_RX_DESC_SHIFT) | (1u << TTI_QTC_IBI_SHIFT));
     /* TTI interrupt status enables (so we can poll the status bits). The TX threshold (watermark)
      * interrupts are intentionally NOT enabled: target TX arming uses the QUEUE_STATUS level
      * (see hci_target_tx), and leaving the level-triggered TX_*_THLD_STAT enabled would hold the
      * shared i3c irq_o asserted on an idle/empty TX queue. RX threshold + TX_DESC_COMPLETE
      * remain. */
-    hw(id, R_TTI_INTR_EN, TTI_RX_DATA_THLD | TTI_RX_DESC_THLD | TTI_TX_DESC_COMPLETE);
+    hw(id, R_TTI_INTR_EN, TTI_RX_DATA_THLD_EN | TTI_RX_DESC_THLD_EN | TTI_TX_DESC_COMPLETE_EN);
     return I3C_OK;
 }
 
@@ -381,7 +405,7 @@ static I3C_Status hci_target_tx(I3C_Driver *drv, const uint8_t *data, size_t len
 
 /* Target receives an inbound write. The OCCP layer reads ONE I3C write frame across multiple
  * calls (header, then body), but the i3c-core emits a single RX descriptor for the whole
- * frame. Waiting for TTI_RX_DESC_THLD on EVERY call and capping the read at the descriptor
+ * frame. Waiting for RX_DESC_THLD_STAT on EVERY call and capping the read at the descriptor
  * length would make call 1 consume the descriptor + read the header, and call 2 hang forever
  * waiting for a second descriptor that never comes (the body bytes sit in the RX DATA queue;
  * TTI_INTERRUPT_STATUS.RX_DESC_THLD is write-edge-gated and cannot re-assert for a tail).
@@ -674,7 +698,7 @@ static I3C_Status I3C_Start(I3C_Driver *drv) {
     hw(id, R_STBY_CR, STBYCR_ENABLE_INIT(3u) | STBYCR_TARGET_XACT);
 
     /* PIO interrupt STATUS enables (so PIO_INTR_STATUS reflects the events we poll) */
-    hw(id, R_PIO_INTR_SE, PI_TX_THLD | PI_RX_THLD | PI_RESP_READY | PI_CMD_QUEUE_READY);
+    hw(id, R_PIO_INTR_SE, PIE_TX_THLD | PIE_RX_THLD | PIE_RESP_READY | PIE_CMD_QUEUE_READY);
 
     /* Open-drain bus timing (boot defaults; required to drive SCL) */
     hci_program_od_timing(id);

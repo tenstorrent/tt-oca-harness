@@ -33,8 +33,8 @@ from pathlib import Path
 
 import cocotb
 
+from .smc_addr_map import _REPO, reg_field_encode
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_output_fabric_vip_utils import reg_field_pack
 
 # Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
@@ -121,7 +121,7 @@ _OUTBOUND_FILTER_CONFIG = (
 )
 
 
-_FILTER_CONFIG_STRUCT = "FILTER_CTRL_FILTER_CONFIG_reg_t"
+_FILTER_CTRL_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
 
 #: Accesses issued per slot, spread over the five phases: reset read,
 #: signature write, co-resident signature readback, restore write, restore
@@ -145,8 +145,10 @@ def _slot_signature(index: int, outbound: bool) -> int:
     filter. ``data_bus_width`` is ``sw=r``, which is why the expected readback
     is the RDL default OR-ed with the signature.
     """
-    return reg_field_pack(
-        _FILTER_CONFIG_STRUCT,
+    return reg_field_encode(
+        _FILTER_CTRL_H,
+        "FILTER_CTRL",
+        "FILTER_CONFIG",
         read_allowed=0 if outbound else 1,
         write_allowed=1 if outbound else 0,
         src_id=index & 0xF,

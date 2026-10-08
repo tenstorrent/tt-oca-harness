@@ -8,7 +8,6 @@
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
-/* Do not include smc_top_regs.h: its I3C types collide with headers this firmware includes. */
 #include "smc_strap.h"
 
 typedef enum { IFACE_I2C0 = 0, IFACE_I2C1 = 1 } iface_id_t;
