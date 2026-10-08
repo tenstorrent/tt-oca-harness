@@ -1357,6 +1357,10 @@ The frontdoor anchors are approved: the LSU and SI responses and read data, the 
 |PR-SMC |`sep_ext_to_smc_axi_req_o`. |observation tap
 |PR-DMACSR |The request at the DMA CSR target port. |observation tap
 |PR-ALIAS |The request at the input and at the output of the local-master alias remap: address and AxCACHE. |observation tap
+|PR-EXT-RSP |The B and R reply of the AXI Extension port: response, ID and, on R, RLAST. |observation tap
+|PR-INFLT |The AW and AR address out of the inbound filter (`smn_inbound_filtered_axi_req`), before the global-to-local remap. |observation tap
+|PR-CPU |The AxPROT of the raw CPU LSU (AR, AW) and IFU (AR) requests in `u_sep_cpu`, before any remap. |observation tap
+|PR-DMA-RAW |The AxPROT of the raw secure DMA master request (`u_sep_dma_wrap.dma_axi_req_raw`), AR and AW. |observation tap
 |BH-SMC |The drive of `smc_global_base_addr_i` and `smc_region_size_i`, from plusargs or from the leaf before reset release, and an SMC responder on `sep_ext_to_smc_axi`, in the `lsu_stub_all_live` target of `sep_fabric_smc_route_test` and in the `cpu` run mode of `sep_fabric_dma_endpoint_matrix_test`. The default bench ties both inputs to 0 and the SMC responder exists in the `rom_boot` target only. |added hook: top-port drive of `smc_global_base_addr_i`, `smc_region_size_i` and `sep_ext_to_smc_axi_resp_i`
 |===
 
