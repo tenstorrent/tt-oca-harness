@@ -307,12 +307,12 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
     # -------------------------------------------------------------------- legs
     async def _reset_ctrl_leg(self) -> None:
         """Steps 4 to 6: reset-control cells, no-alias draws and the control."""
-        _r, ref = await self._lsu(SepAxiOp.READ, rr.SW_RESET_N)
+        resp, ref = await self._lsu(SepAxiOp.READ, rr.SW_RESET_N)
         got = ref & rr.SW_RESET_N_FIELDS
         self._row_line(
-            got == rr.SW_RESET_N_REF,
+            resp == OKAY and got == rr.SW_RESET_N_REF,
             f"row=reset_ctrl kind=live init=LSU dir=R size=2 addr=0x{rr.SW_RESET_N:08x} "
-            f"wdata=na resp=OKAY rdata=0x{ref & 0xFFFF_FFFF:08x} expect=OKAY/0x{rr.SW_RESET_N_REF:02x} "
+            f"wdata=na resp={_RN.get(resp, resp)} rdata=0x{ref & 0xFFFF_FFFF:08x} expect=OKAY/0x{rr.SW_RESET_N_REF:02x} "
             f"field_mask=0x{rr.SW_RESET_N_FIELDS:02x} lsu_before=na lsu_after=na "
             f"rsvd=0x{ref & ~rr.SW_RESET_N_FIELDS & 0xFFFF_FFFF:08x}",
         )
@@ -795,7 +795,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 if rr.live_word(k) is not None
             ),
         )
-        assert rr.live_word("abr") is None, "ABR now has a non-zero-reset stable register"
+        assert rr.live_word("abr") is None, (
+            "ABR has a non-zero-reset stable register; the leaf has no ABR live cell"
+        )
 
         await self._bring_up()
         await self._program_entry()
