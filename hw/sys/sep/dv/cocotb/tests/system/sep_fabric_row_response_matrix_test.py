@@ -337,8 +337,11 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         for size in (0, 1, 2, 3):
             for _ in range(2):
                 n = 1 << size
-                lo = (first + n - 1) & ~(n - 1)
-                a = lo + n * self.rng.randrange(0, (nxt - lo) // n)
+                # AxSIZE 0 and 1 draw 4-byte-aligned addresses, so the data
+                # lies on the byte lanes of SW_RESET_N[6:0].
+                step = max(n, 4)
+                lo = (first + step - 1) & ~(step - 1)
+                a = lo + step * self.rng.randrange(0, (nxt - lo) // step)
                 wd = (self.rng.getrandbits(8 * n - 7) << 7) | 0x01
                 expect = "err" if size == 2 else "any"
                 resp, rdata = await self._lsu(SepAxiOp.WRITE, a, size=size, wdata=wd, expect=expect)
