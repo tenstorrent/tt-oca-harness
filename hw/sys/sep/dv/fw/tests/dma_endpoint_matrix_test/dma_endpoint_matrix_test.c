@@ -92,7 +92,7 @@ volatile uint32_t g_p[P_COUNT] = {
 #define ROM_BASE SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
 #define DMA_CSR_WORD SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR
 #define FILT_IN0_CFG SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
-#define N_OUT_ENTRIES 32u
+#define N_OUT_ENTRIES SEP_TOP_OUTBOUND_FILTER_CTRL_NUM
 
 // SRAM bands (offsets from SRAM) of the legs whose offsets are not seeded.
 #define B_EXT 0x8000u
@@ -774,8 +774,10 @@ static void reg_legs(void) {
 
     // Inbound entry 0 FILTER_CONFIG with seeded src_id and group_id; the
     // entry stays disabled.
-    uint32_t fw = ((g_p[PFILT_SRC] & 0xFu) << FILTER_CTRL__FILTER_CONFIG__SRC_ID_bp) |
-                  ((g_p[PFILT_GRP] & 0xFu) << FILTER_CTRL__FILTER_CONFIG__GROUP_ID_bp) |
+    uint32_t fw = ((g_p[PFILT_SRC] << FILTER_CTRL__FILTER_CONFIG__SRC_ID_bp) &
+                   FILTER_CTRL__FILTER_CONFIG__SRC_ID_bm) |
+                  ((g_p[PFILT_GRP] << FILTER_CTRL__FILTER_CONFIG__GROUP_ID_bp) &
+                   FILTER_CTRL__FILTER_CONFIG__GROUP_ID_bm) |
                   ((uint32_t)FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_reset
                    << FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp);
     mark('C', "filt_set");

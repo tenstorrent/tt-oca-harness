@@ -130,6 +130,9 @@ _HMAC_DS_LSB = HMAC.field_lsb("CFG", "digest_size")
 _HMAC_DS_W = HMAC.field_width("CFG", "digest_size")
 _HMAC_KL_LSB = HMAC.field_lsb("CFG", "key_length")
 _HMAC_KL_W = HMAC.field_width("CFG", "key_length")
+_HMAC_SWAP_FIELDS = tuple(
+    HMAC.field_mask("CFG", f) for f in ("endian_swap", "digest_swap", "key_swap")
+)
 _HMAC_DS_NONE, _HMAC_KL_NONE = 0x8, 0x20
 _HMAC_DS_LEGAL = (0x1, 0x2, 0x4)
 _HMAC_KL_LEGAL = (0x1, 0x2, 0x4, 0x8, 0x10)
@@ -378,7 +381,10 @@ def write_readback(addr: int, current: int, wdata: int) -> tuple[int, int]:
 
 def hmac_cfg_reference(rng) -> int:
     """A legal HMAC CFG value with hmac_en and sha_en clear, unlike its reset value."""
-    swaps = rng.getrandbits(3) << 2
+    bits = rng.getrandbits(len(_HMAC_SWAP_FIELDS))
+    swaps = 0
+    for i, m in enumerate(_HMAC_SWAP_FIELDS):
+        swaps |= m if (bits >> i) & 1 else 0
     ds = rng.choice(_HMAC_DS_LEGAL)
     kl = rng.choice(_HMAC_KL_LEGAL)
     return swaps | (ds << _HMAC_DS_LSB) | (kl << _HMAC_KL_LSB)
