@@ -171,10 +171,17 @@ jobs:
             skopeo copy --insecure-policy --override-arch "$ARCH" \
               "docker://${content_ref}" "docker://${arch_ref}"
           else
-            archive=$(nix build \
-              ".#dockerContainers.${SYSTEM}.with_uv_deps" \
-              --no-link \
-              --print-out-paths)
+            # A dropped cache.nixos.org download fails the whole build, and a
+            # rerun keeps every path the failed attempt already realised.
+            archive=""
+            for attempt in 1 2 3; do
+              archive=$(nix build \
+                ".#dockerContainers.${SYSTEM}.with_uv_deps" \
+                --no-link \
+                --print-out-paths) && break
+              echo "nix build attempt ${attempt} failed" >&2
+            done
+            [ -n "$archive" ]
             # docker-archive reads the gzip archive; skopeo relays its compressed
             # layers to the registry without unpacking them to disk. A dropped
             # blob upload is retried, since failing here discards the whole build.
