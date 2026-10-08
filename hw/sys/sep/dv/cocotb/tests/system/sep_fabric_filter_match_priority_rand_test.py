@@ -110,6 +110,9 @@ MBOX_WORD = sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR")
 CRYPTO_WORD = sym("AES_REG_MAP_BASE_ADDR")
 CPU_CTRL_WORD = SEP_CPU_CTRL.addr("SEP_GLOBAL_BASE_ADDR")
 FILTER_PAGE_WORD = INFILT_BASE
+# Inbound register classes of the deny probes; their unit sits behind no
+# PR-XEXT or PR-CSR tap, so their allow control reads PR-INFLT.
+REG_CLASSES = ("mbox", "crypto", "fpage", "cpuctrl")
 EXT_BASE = sym("SEP_EXTERNAL_REG_MAP_BASE_ADDR")
 EXT_END = EXT_BASE + sym("SEP_EXTERNAL_REG_MAP_SIZE") - 1
 SHIM_BASE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR")
@@ -745,6 +748,21 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                         )
                         wide_ok += 1
                         wide_seen += r.target_seen
+                    # The register classes that the armed run also counts: each
+                    # read passes the filter (PR-INFLT) and its unit answers OKAY,
+                    # so their armed DECERR does not come from decode.
+                    for cls in REG_CLASSES:
+                        p = self._p_in(cls, False, prot1)
+                        m = self.taps["PR-INFLT"].mark()
+                        seq = await self._si(p)
+                        inflt = self.taps["PR-INFLT"].count(m, "ar")
+                        assert seq.resp_code == RESP_OKAY and inflt >= 1, (
+                            f"CHK-RESET-DENY-ARMED FAIL: wide control in {cls} p{prot1} "
+                            f"addr=0x{p.addr:08x} resp={_RESP.get(seq.resp_code)} pr_inflt_ar={inflt}; "
+                            "expected OKAY after the filter admits the read"
+                        )
+                        wide_ok += 1
+                        wide_seen += inflt
                     p = self._p_in("ext", False, prot1)
                     m = self.taps["PR-EXT"].mark()
                     seq = await self._si(p, allow_timeout=True)
@@ -795,7 +813,8 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         assert min(armed_ns["in"] + armed_ns["out"]) > 0
         self.logger.info(
             "CHK-RESET-DENY-ARMED PASS: entries=48 enabled=0 range_end=2^48-1 armed_ns0=%d armed_ns1=%d "
-            "probes=%d prot1_0=%d prot1_1=%d decerr=%d target_seen=0 wide_ctrl_resp=OKAY wide_ctrl_seen=%d",
+            "probes=%d prot1_0=%d prot1_1=%d decerr=%d target_seen=0 wide_ctrl_resp=OKAY wide_ctrl_seen=%d "
+            "wide_ctrl_in=sram,scratch,mbox,crypto,fpage,cpuctrl",
             armed_ns["in"][0] + armed_ns["out"][0],
             armed_ns["in"][1] + armed_ns["out"][1],
             probes,
@@ -1306,7 +1325,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         await self._bring_up()
         self.inb = SepFilterBank(self, "in")
         self.outb = SepFilterBank(self, "out")
-        self.taps = start_taps("PR-XEXT", "PR-CSR", "PR-OUT", "PR-EXT", "PR-SRAM")
+        self.taps = start_taps("PR-XEXT", "PR-CSR", "PR-OUT", "PR-EXT", "PR-SRAM", "PR-INFLT")
 
         # Step 2: stage the SRAM pair and the cold scratch word.
         self.s0 = SRAM_BASE + 0x1000 + 16 * self.rng.randrange(0, (SRAM_SIZE - 0x2000) // 16)

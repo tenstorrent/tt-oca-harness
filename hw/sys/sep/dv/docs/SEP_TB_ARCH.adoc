@@ -200,8 +200,9 @@ Observation probe groups:
    `sep_fabric_dma_endpoint_matrix_test`.
 ** PR-INFLT (`pr_inflt_*`): the request out of the inbound filter
    (`u_inbound_filter`, net `smn_inbound_filtered_axi_req`), before the
-   global-to-local remap: AW and AR address, global. Owner:
-   `sep_fabric_inbound_rebase_test`.
+   global-to-local remap: AW and AR address, global. Owners:
+   `sep_fabric_inbound_rebase_test`,
+   `sep_fabric_filter_match_priority_rand_test`.
 ** PR-CPU (`pr_cpu_lsu_*`, `pr_cpu_ifu_*`): AxPROT of the raw CPU LSU (AR, AW)
    and IFU (AR) requests in `u_sep_cpu` (`lsu_axi_req_raw`, `ifu_axi_req_raw`),
    before any remap; tied to 0 on the CPU stub build. Log-only (`OBS-AXPROT`).
