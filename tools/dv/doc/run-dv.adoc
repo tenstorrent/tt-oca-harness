@@ -2830,7 +2830,9 @@ Nested regressions also write `<test>/result.json` rollups. Most subprocess
 stages emit replayable shell scripts; in-process cocotb HDL builds and `clean`
 are exceptions. Environment snapshots redact values when variable names
 indicate licenses, tokens, secrets, passwords, credentials, API keys, private
-keys, or authentication data.
+keys, authentication data, or personal access tokens. `PAT` counts only as a
+whole underscore-separated word of the name, as in `GITHUB_PAT`, so `PATH` and
+`*_PATTERN` keep their values.
 
 `result.json` uses schema version `1` and records the resolved flow, tool,
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
