@@ -58,14 +58,6 @@ page, so the legalizer splits a row that does. Two 256-byte rows cross a page
 on one side only -- first the source, then the destination. Each must arrive
 intact and put one AW per write burst on SYS_OUT, all inside its destination.
 
-The same two rows then run with `CONFIG.DECOUPLE_RW` set. Reads and writes then
-split only at their own page boundary, so the source-split row becomes two read
-bursts and one write burst, and the destination-split row one read burst and
-two write bursts. The first must put exactly one AW on SYS_OUT, with no extra AW
-for its second read burst; the second must put exactly two, with neither held
-back. A coupled source split runs between them and must put only its own AWs on
-SYS_OUT.
-
 **Partial words, a queue behind a stall, and NEXT_ID writes.** A 29-byte row
 runs from a source 3 bytes into a bus word to a destination 5 bytes in, so both
 ends of the row are partial words. It must arrive intact, and the bytes either

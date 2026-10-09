@@ -1,13 +1,8 @@
 # idma (vendored, patched)
 
-Upstream: the [`tenstorrent/tt-iDMA`](https://github.com/tenstorrent/tt-iDMA) fork,
-branch `tt/master`, pinned in the root `Bender.yml`. The fork is
-[`pulp-platform/iDMA`](https://github.com/pulp-platform/iDMA) `v0.6.5-src` plus TT
-commits. One of those commits backports the R-AW channel coupler fixes from upstream
-#80 and #204, which are already in v0.7.0; drop it when the fork moves to v0.7.0 or
-later.
-
-The `-src` tag ships only the iDMA **source** (templates); its `target/rtl/` is empty
+Upstream: [`pulp-platform/iDMA`](https://github.com/pulp-platform/iDMA) @
+`b248755b3265ff88b826eeec5e23eef012ba61b5` (the `v0.6.5-src` release). The `-src`
+tag ships only the iDMA **source** (templates); its `target/rtl/` is empty
 (`.gitignore` only). The sibling `v0.6.5` release does ship a generated `target/rtl`,
 but it is a different, generic config — not the bundle TT compiles — so we vendor the
 source and keep TT's generated RTL as overlay collateral (see below).
@@ -56,10 +51,6 @@ Edits to the `midend/idma_{nd,mp_dist,mp_split}_midend` modules.
 Explicitly sizes backend arithmetic, AXI metadata, register-frontend request
 fields, and neutral payload values at their destination widths.
 
-`overlay/target/rtl/idma_generated.sv` is generated from the templates in `upstream/`,
-but it cannot be regenerated wholesale: its register frontend and `tracer.svh` were
-edited by hand, and its backend modules come from older templates than the ones now in
-`upstream/`. Rerunning the generator would undo those edits and pull in unrelated
-template changes. To bring one template change into the bundle, run the generator with
-and without the change, and apply only the difference between the two outputs to the
-committed file.
+After all five patches are applied, regenerating from the patched templates
+reproduces the generated bundle in `overlay/target/rtl/`. Regenerate from those
+templates rather than hand-editing the generated `idma_*` files.
