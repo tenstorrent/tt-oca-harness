@@ -356,6 +356,10 @@ podman machine start</code></pre>
 </div>
 </div>
 <div class="paragraph">
+<p>Note that the virtual machine has a significant memory overhead, so we recommend
+a Mac with 32GB RAM or more to be able to comfortably develop the OCA Harness.</p>
+</div>
+<div class="paragraph">
 <p>After a reboot, run <code>podman machine start</code> again before using the container.</p>
 </div>
 </div>
@@ -532,7 +536,8 @@ new location with <code>podman info | grep -i graphroot</code>.</p>
 <dt class="hdlist1"><code>Killed signal terminated program lto1</code></dt>
 <dd>
 <p>The Podman machine is short of memory. Stop it, run
-<code>podman machine set --memory 16384</code> and start it again.</p>
+<code>podman machine set --memory 16384</code> and start it again. For synthesis, this error may
+recur, in which case you may need to allocate 32GiB (32768), or 64GiB (65536) instead.</p>
 </dd>
 </dl>
 </div>

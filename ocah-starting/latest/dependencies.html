@@ -262,6 +262,17 @@ OCAH project. To install the required packages, refer to <a href="setup.html" cl
 </li>
 <li>
 <p><strong>Memory</strong>: Minimum 16GB RAM recommended for full builds, 32GB recommended for large designs</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Synthesis is especially memory-hungry. Smaller blocks may be able to be synthesised on 16GB, but larger blocks require more memory. Synthesising the full OCA Harness uses 48GB, so a machine running this would ideally have at least 64GB.</p>
+</li>
+<li>
+<p>Containers on MacOS use additional memory as they run in a virtual machine. A MacOS host
+with 16GB RAM is more likely to run out of memory than an equivalent Linux host.</p>
+</li>
+</ul>
+</div>
 </li>
 <li>
 <p><strong>Storage</strong>: Minimum 50GB available disk space, SSD recommended for build performance</p>
