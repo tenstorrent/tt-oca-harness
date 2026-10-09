@@ -53,21 +53,38 @@ env:
   REGISTRY_IMAGE: ghcr.io/tenstorrent/ocah-container
 
 jobs:
-  # Build the image with Nix and publish it to GHCR under its immutable
-  # content-hash tag. skopeo streams the nix-built archive straight to the
-  # registry, so the build never goes through a container engine.
+  # Build the image for each architecture with Nix and publish it to GHCR under
+  # its content-hash tag with an architecture suffix. skopeo streams the
+  # nix-built archive straight to the registry, so the build never goes through
+  # a container engine. Every architecture shares the tag of the x86_64-linux
+  # build, so arm64 runners build that small derivation under QEMU.
   build-and-publish:
-    name: Build and publish Nix image
+    name: Build and publish Nix image (${{ matrix.arch }})
     # A pull request from a fork gets a read-only GITHUB_TOKEN, so it is
     # granted neither packages: write to publish nor the access a private
     # package needs to pull. Skip rather than fail a contributor's run for
     # something they cannot fix; main republishes the image on merge.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest-16-cores
-    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            system: x86_64-linux
+            runner: ubuntu-latest-16-cores
+            timeout: 240
+            max_jobs: auto
+            cores: 0
+          - arch: arm64
+            system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            timeout: 360
+            max_jobs: 2
+            cores: 2
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ matrix.timeout }}
     outputs:
       image_hash: ${{ steps.build.outputs.image_hash }}
-      image_digest: ${{ steps.build.outputs.image_digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -84,11 +101,37 @@ jobs:
               hw/sys/sep/bootrom/prod/tools/tt-oca-manifest \
               virtual_platform/tt-oca-harness-model
 
+      # The standard arm64 runner has 4 cores and 16 GB, too little disk for
+      # the build closure and too little memory for a compiler per core in
+      # every concurrent derivation. Reclaim the preinstalled toolchains, add
+      # swap, and cap parallelism in the matrix.
+      - name: Free disk space and add swap
+        if: matrix.arch != 'amd64'
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache /usr/local/share/boost
+          sudo swapoff -a
+          sudo rm -f /swapfile /mnt/swapfile
+          sudo fallocate -l 16G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+          df -h /
+
+      - name: Set up QEMU for the x86_64-linux tag derivation
+        if: matrix.arch != 'amd64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: amd64
+
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1
         with:
           extra_nix_config: |
-            max-jobs = auto
+            max-jobs = ${{ matrix.max_jobs }}
+            cores = ${{ matrix.cores }}
+            ${{ matrix.arch != 'amd64' && 'extra-platforms = x86_64-linux' || '' }}
 
       - name: Ensure skopeo
         run: command -v skopeo >/dev/null || { sudo apt-get update && sudo apt-get install -y skopeo; }
@@ -100,6 +143,9 @@ jobs:
 
       - name: Build and publish full image
         id: build
+        env:
+          ARCH: ${{ matrix.arch }}
+          SYSTEM: ${{ matrix.system }}
         run: |
           # The content-hash tag is write-once: the first build to publish a
           # given closure hash is canonical, and the published bytes are what
@@ -112,44 +158,111 @@ jobs:
           image_hash=$(nix eval --raw .#containerHashes.with_uv_deps)
           echo "image_hash=${image_hash}" >> "$GITHUB_OUTPUT"
 
-          registry_ref="${REGISTRY_IMAGE}:${image_hash}"
+          content_ref="${REGISTRY_IMAGE}:${image_hash}"
+          arch_ref="${content_ref}-${ARCH}"
 
-          if digest=$(skopeo inspect --insecure-policy \
-              --format '{{.Digest}}' "docker://${registry_ref}" 2>/dev/null); then
-            echo "already published: ${registry_ref} (${digest}); skipping the build"
+          if skopeo inspect --raw "docker://${arch_ref}" >/dev/null 2>&1; then
+            echo "already published: ${arch_ref}; skipping the build"
+          elif [ "$(skopeo inspect --override-arch "$ARCH" --format '{{.Architecture}}' \
+              "docker://${content_ref}" 2>/dev/null)" = "$ARCH" ]; then
+            # The content tag already holds this architecture's image, either
+            # alone or in an index, so give it its architecture tag unbuilt.
+            echo "${content_ref} already holds ${ARCH}; tagging it ${arch_ref}"
+            skopeo copy --insecure-policy --override-arch "$ARCH" \
+              "docker://${content_ref}" "docker://${arch_ref}"
           else
-            archive=$(nix build \
-              .#dockerContainers.x86_64-linux.with_uv_deps \
-              --no-link \
-              --print-out-paths)
+            # A dropped cache.nixos.org download fails the whole build, and a
+            # rerun keeps every path the failed attempt already realised.
+            archive=""
+            for attempt in 1 2 3; do
+              archive=$(nix build \
+                ".#dockerContainers.${SYSTEM}.with_uv_deps" \
+                --no-link \
+                --print-out-paths) && break
+              echo "nix build attempt ${attempt} failed" >&2
+            done
+            [ -n "$archive" ]
             # docker-archive reads the gzip archive; skopeo relays its compressed
-            # layers to the registry without unpacking them to disk. --digestfile
-            # records the digest of the manifest it actually pushed. A dropped
+            # layers to the registry without unpacking them to disk. A dropped
             # blob upload is retried, since failing here discards the whole build.
-            skopeo copy --insecure-policy --retry-times 3 --digestfile=digest.txt \
-              "docker-archive:${archive}" "docker://${registry_ref}"
-            digest=$(cat digest.txt)
+            skopeo copy --insecure-policy --retry-times 3 \
+              "docker-archive:${archive}" "docker://${arch_ref}"
           fi
+
+          {
+            echo "### Published OCAH container, ${ARCH} (pending verification)"
+            echo
+            echo "- tag: \`${arch_ref}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Point the content-hash tag at an index of the per-architecture images, so a
+  # pull resolves to the host's own architecture.
+  publish-index:
+    name: Publish multi-arch index
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      image_digest: ${{ steps.index.outputs.image_digest }}
+    steps:
+      - name: Ensure skopeo
+        run: command -v skopeo >/dev/null || { sudo apt-get update && sudo apt-get install -y skopeo; }
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish the index
+        id: index
+        env:
+          IMAGE_HASH: ${{ needs.build-and-publish.outputs.image_hash }}
+        run: |
+          content_ref="${REGISTRY_IMAGE}:${IMAGE_HASH}"
+          # The content tag stays write-once in effect: it is rewritten only
+          # when it does not already index exactly these images.
+          wanted=$(for arch in amd64 arm64; do
+            skopeo inspect --raw "docker://${content_ref}-${arch}" | sha256sum | sed 's/^/sha256:/; s/ .*//'
+          done | sort)
+          current=$(skopeo inspect --raw "docker://${content_ref}" 2>/dev/null |
+            jq -r '.manifests[]?.digest' | sort || true)
+          if [ "$current" = "$wanted" ]; then
+            echo "${content_ref} already indexes both architectures"
+          else
+            docker buildx imagetools create --tag "$content_ref" \
+              "${content_ref}-amd64" "${content_ref}-arm64"
+          fi
+          digest=sha256:$(skopeo inspect --raw "docker://${content_ref}" | sha256sum | cut -d' ' -f1)
           echo "image_digest=${digest}" >> "$GITHUB_OUTPUT"
 
           {
-            echo "### Published OCAH container (pending verification)"
+            echo "### Published OCAH container index (pending verification)"
             echo
-            echo "- tag: \`${registry_ref}\`"
+            echo "- tag: \`${content_ref}\`"
             echo "- digest: \`${digest}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Pull the published image on a clean runner and exercise it. Only after this
-  # passes is the consumed :main tag moved.
-  verify-and-promote:
-    name: Verify image and promote main
-    # A pull request from a fork gets a read-only GITHUB_TOKEN, so it is
-    # granted neither packages: write to publish nor the access a private
-    # package needs to pull. Skip rather than fail a contributor's run for
-    # something they cannot fix; main republishes the image on merge.
+  # Pull the published index on a clean runner of each architecture and exercise
+  # the image the engine selects. Only after both pass is the consumed :main tag
+  # moved.
+  verify:
+    name: Verify image (${{ matrix.arch }})
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    needs: build-and-publish
-    runs-on: ubuntu-latest-16-cores
+    needs: publish-index
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            machine: x86_64
+            runner: ubuntu-latest-16-cores
+          - arch: arm64
+            machine: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     steps:
       - name: Checkout
@@ -167,10 +280,19 @@ jobs:
               hw/sys/sep/bootrom/prod/tools/tt-oca-manifest \
               virtual_platform/tt-oca-harness-model
 
+      - name: Set up QEMU for the x86_64-linux tag derivation
+        if: matrix.arch != 'amd64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: amd64
+
       # docker-run.sh resolves the image tag from the flake via `nix eval`, then
       # pulls REGISTRY_IMAGE:<hash>; a native nix keeps that off the container.
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1
+        with:
+          extra_nix_config: |
+            ${{ matrix.arch != 'amd64' && 'extra-platforms = x86_64-linux' || '' }}
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -186,31 +308,40 @@ jobs:
         run: |
           # docker-run.sh pulls REGISTRY_IMAGE:<hash> and tags it locally.
           ./scripts/docker-run.sh verify
+          # Under emulation uname reports the image's architecture, not the
+          # runner's, so a match shows the engine pulled the native image.
           ./scripts/docker-run.sh run sh -ec '
+            test "$(uname -m)" = ${{ matrix.machine }}
             uv --version
             python --version
             verilator --version
             bender --version
           '
 
-      # Move the consumed :main tag onto the verified content only on main. This is
-      # a registry-side manifest copy pinned to the exact digest build-and-publish
-      # pushed, so it needs no local image: docker-run.sh's verify pull auto-selects
-      # podman when present, whose image store the docker daemon cannot see, so a
-      # `docker` re-tag of that pull finds nothing. skopeo talks to the registry
-      # directly and sidesteps the engine entirely.
+  # Move the consumed :main tag onto the verified index only on main. This is a
+  # registry-side copy pinned to the exact digest publish-index pushed, so it
+  # needs no local image: docker-run.sh's verify pull auto-selects podman when
+  # present, whose image store the docker daemon cannot see, so a `docker`
+  # re-tag of that pull finds nothing. skopeo talks to the registry directly and
+  # sidesteps the engine entirely; --all copies every architecture, not only the
+  # runner's.
+  promote:
+    name: Promote main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [publish-index, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
       - name: Ensure skopeo
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: command -v skopeo >/dev/null || { sudo apt-get update && sudo apt-get install -y skopeo; }
 
       - name: Promote verified image to :main
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "$GHCR_TOKEN" | skopeo login ghcr.io -u "${{ github.actor }}" --password-stdin
-          digest="${{ needs.build-and-publish.outputs.image_digest }}"
-          skopeo copy --insecure-policy \
+          digest="${{ needs.publish-index.outputs.image_digest }}"
+          skopeo copy --insecure-policy --all \
             "docker://${REGISTRY_IMAGE}@${digest}" \
             "docker://${REGISTRY_IMAGE}:main"
           {

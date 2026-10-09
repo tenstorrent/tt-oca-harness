@@ -142,7 +142,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-token-matching[token matching section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-token-matching[token matching section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-token-matching[token matching section]
 endif::backend-pdf[]
 of the Programmer's Guide gives the firmware sequence. For the matching
 mechanism, see
@@ -413,7 +413,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#req-SEP-ROM-SB-070[Anti-Rollback]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#req-SEP-ROM-SB-070[Anti-Rollback]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#req-SEP-ROM-SB-070[Anti-Rollback]
 endif::backend-pdf[]
 requirements of the SEP Boot ROM appendix in the Programmer's Guide define the
 check a manifest must pass and how firmware commits new flags.

@@ -15,7 +15,7 @@ OCAH project. To install the required packages, refer to xref:setup.adoc[Environ
 [[system-requirements]]
 == System Requirements
 
-* *Operating System*: x86_64 Linux or macOS with the prebuilt container. See
+* *Operating System*: x86_64 or arm64 Linux, or macOS, with the prebuilt container. See
 xref:setup.adoc#supported-platforms[Supported platforms] for what each setup supports.
 * *Python*: Version 3.11 - 3.13 (3.14+ is not supported at this time)
 * *CPU*: Multi-core processor (8+ cores recommended for simulation and synthesis)

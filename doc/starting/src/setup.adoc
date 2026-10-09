@@ -31,12 +31,12 @@ cannot use a container.
 | Documented for Ubuntu 26.04 LTS. Other distributions should work, but package names differ.
 
 | macOS
-| *Supported* with Podman. On Macs with Apple silicon (M-series) the x86_64 image
-  runs under emulation, which is noticeably slower.
+| *Supported* with Podman. On Macs with Apple silicon (M-series) Podman pulls the
+  native arm64 image.
 | Not documented.
 
 | Linux, arm64
-| Not tested. The image is built for x86_64 only.
+| *Supported.* CI builds and checks the arm64 image on arm64 runners.
 | Not documented.
 
 | Windows
@@ -237,7 +237,8 @@ and are less tested.
 === Building the container image yourself
 
 Build the image locally only when you are changing its definition. The build runs
-on x86_64 Linux, uses many cores and takes a long time:
+on x86_64 or arm64 Linux, builds the image for the host's architecture, uses
+many cores and takes a long time:
 
 ```bash
 ./scripts/docker-run.sh build

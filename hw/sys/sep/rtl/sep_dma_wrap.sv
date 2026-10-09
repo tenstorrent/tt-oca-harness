@@ -5,8 +5,8 @@
 //
 // Register path: 64-bit AXI is downsized to 32 bits, rebased by subtracting
 // SEP_TOP_SECURE_DMA_BASE_ADDR, converted to AXI-Lite and then to TL-UL. Master path:
-// TL-UL is converted to AXI-Lite, then to AXI with AxCACHE 0, upsized to 64 bits, and passed
-// through a window remap that rewrites addresses in
+// TL-UL is converted to AXI-Lite, then to AXI with AxCACHE 0 and AxPROT 3'b001 (privileged,
+// secure, data), upsized to 64 bits, and passed through a window remap that rewrites addresses in
 // [sep_local_base_addr_i, sep_local_base_addr_i + 0x3000_0000) to 0x1000_0000 plus the offset.
 // The CTN and system interfaces and the RACL policies are tied off.
 //
@@ -74,6 +74,10 @@ module sep_dma_wrap #(
   // Local parameter for 32-bit data width
   localparam int unsigned DataWidth32 = 32;
 
+  // TL-UL carries no AxPROT; the DMA acts for SEP firmware, so mark its traffic like the
+  // SEP CPU's LSU. AxPROT filters such as the SMC GPIO's require this exact value.
+  localparam axi_pkg::prot_t DmaAxProt = 3'b001;
+
   /////////////////////////
   // Signal Declarations //
   /////////////////////////
@@ -102,6 +106,7 @@ module sep_dma_wrap #(
   // AXI-Lite intermediate signals for DMA path
   sep_pkg::sep_32_32_axil_req_t  axi_lite_mst_req;
   sep_pkg::sep_32_32_axil_resp_t axi_lite_mst_resp;
+  sep_pkg::sep_32_32_axil_req_t  axi_lite_mst_prot_req;
 
   // DMA AXI signals before local alias remap
   sep_pkg::sep_32_64_3_12_axi_req_t  dma_axi_req_raw;
@@ -270,6 +275,12 @@ module sep_dma_wrap #(
     .err_clr_i       (dma_err_clr_i)
   );
 
+  always_comb begin
+    axi_lite_mst_prot_req         = axi_lite_mst_req;
+    axi_lite_mst_prot_req.aw.prot = DmaAxProt;
+    axi_lite_mst_prot_req.ar.prot = DmaAxProt;
+  end
+
   // Convert AXI-Lite to AXI (before data width conversion)
   axi_lite_to_axi #(
     .AxiDataWidth    (sep_pkg::SEP_32_32_3_12_DATA_WIDTH),
@@ -278,7 +289,7 @@ module sep_dma_wrap #(
     .axi_req_t       (sep_pkg::sep_32_32_3_12_axi_req_t),
     .axi_resp_t      (sep_pkg::sep_32_32_3_12_axi_resp_t)
   ) u_axi_lite_to_axi_dma (
-    .slv_req_lite_i  (axi_lite_mst_req),
+    .slv_req_lite_i  (axi_lite_mst_prot_req),
     .slv_resp_lite_o (axi_lite_mst_resp),
     .slv_aw_cache_i  (4'b0000),  // Non-cacheable
     .slv_ar_cache_i  (4'b0000),  // Non-cacheable

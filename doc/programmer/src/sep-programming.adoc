@@ -220,7 +220,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/interrupts.html#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/sep/interrupts.html#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
 endif::backend-pdf[]
 in the Technical Reference Manual lists the sources. Some of them need
 specific service:
@@ -786,7 +786,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:sep:crypto.adoc#km-key-delivery[Key Manager Key Delivery]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/crypto.html#km-key-delivery[Key Manager Key Delivery]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/sep/crypto.html#km-key-delivery[Key Manager Key Delivery]
 endif::backend-pdf[]
 section of the Technical Reference Manual defines the format. Software on the
 SEP host configures each accelerator to consume the delivered value, as the
@@ -845,7 +845,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:sep:adams_bridge.adoc#abr-seed-word-order[ABR seed word order].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/adams_bridge.html#abr-seed-word-order[ABR seed word order].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/sep/adams_bridge.html#abr-seed-word-order[ABR seed word order].
 endif::backend-pdf[]
 Detect completion from
 `STATUS.VALID` and issue a `zeroize` between back-to-back operations, since the
@@ -928,7 +928,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:sep:otp_fuse_controller.adoc#fuse-controller-otp-fuse-controller-otp[OTP Fuse Controller]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/otp_fuse_controller.html#fuse-controller-otp-fuse-controller-otp[OTP Fuse Controller]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/sep/otp_fuse_controller.html#fuse-controller-otp-fuse-controller-otp[OTP Fuse Controller]
 endif::backend-pdf[]
 chapter of the Technical Reference Manual gives the transition rules.
 
@@ -968,6 +968,6 @@ ifdef::backend-html5[]
 xref:ocah-docs:sep:lifecycle_controller.adoc#demote-lock-behavior[Lifecycle Controller chapter]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/lifecycle_controller.html#demote-lock-behavior[Lifecycle Controller chapter]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/sep/lifecycle_controller.html#demote-lock-behavior[Lifecycle Controller chapter]
 endif::backend-pdf[]
 of the Technical Reference Manual describes what demotion opens.

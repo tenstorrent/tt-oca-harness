@@ -121,7 +121,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-bus-error-units[Bus Error Unit service sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-bus-error-units[Bus Error Unit service sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-bus-error-units[Bus Error Unit service sequence]
 endif::backend-pdf[]
 is in the Programmer's Guide.
 
@@ -502,7 +502,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-interrupt-control[Interrupt Control section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-interrupt-control[Interrupt Control section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-interrupt-control[Interrupt Control section]
 endif::backend-pdf[]
 of the Programmer's Guide gives the PLIC initialization and claim/complete
 sequence, CLINT timer and software interrupt service, and Bus Error Unit

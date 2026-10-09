@@ -78,7 +78,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#dtp-cross-trigger[cross-trigger programming sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-cross-trigger[cross-trigger programming sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-cross-trigger[cross-trigger programming sequence]
 endif::backend-pdf[]
 with reconfiguration and deadlock recovery.
 

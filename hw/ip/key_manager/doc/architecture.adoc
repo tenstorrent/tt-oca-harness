@@ -22,7 +22,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#key-manager-command-summary-table[command summary]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#key-manager-command-summary-table[command summary]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#key-manager-command-summary-table[command summary]
 endif::backend-pdf[]
 in the Programmer's Guide).
 
@@ -39,7 +39,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
 endif::backend-pdf[]
 of the Programmer's Guide defines commands, validation and responses.
 ROM/SRAM parity detects errors but does not correct them; the ROM fault
@@ -436,7 +436,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#km-firmware-kpv-driver[KPV driver]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-firmware-kpv-driver[KPV driver]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-firmware-kpv-driver[KPV driver]
 endif::backend-pdf[]
 in the Key Manager Application ROM appendix of the Programmer's Guide gives
 the erase sequence.
@@ -671,7 +671,7 @@ ifdef::backend-html5[]
 xref:ocah-integrator-guide:ROOT:defines.adoc#sep-defines-km[Key manager defines in the Integrator Guide].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/defines.html#sep-defines-km[Key manager defines in the Integrator Guide].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-integrator-guide/latest/defines.html#sep-defines-km[Key manager defines in the Integrator Guide].
 endif::backend-pdf[]
 
 `SRAM_EXEC_MODE.enable` is set by the stack-less handover assembly
@@ -1139,7 +1139,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#km-seq-sram-fw-handover[SRAM Firmware Handover]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-seq-sram-fw-handover[SRAM Firmware Handover]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-seq-sram-fw-handover[SRAM Firmware Handover]
 endif::backend-pdf[]
 sequence of the Key Manager Application ROM appendix in the Programmer's
 Guide.

@@ -84,19 +84,11 @@ ocah_vhr_compat_opts = \
 ocah_vendor_hjson_rdl_regen_to = cd "$(OCAH_ROOT)" && "$(OCAH_REG_PYTHON)" tools/regs/reggen_wrapper.py --systemrdl $(call ocah_vhr_nameopt,$(1)) $(call ocah_vhr_compat_opts,$(1)) -o "$(2)" "$(call ocah_vhr_hjson,$(1))"$(call ocah_reg_stamp_after,"$(2)")
 ocah_vendor_hjson_rdl_regen = $(call ocah_vendor_hjson_rdl_regen_to,$(1),$(call ocah_vhr_rdl,$(1)))
 
-# Raw C header include guard: upstream peakrdl-rawheader names the guard after
-# the top addrmap, the same <TOP>_H that peakrdl-cheader gives the block's own
-# header, so a file including both silently drops the second. --base-name would
-# rename every macro along with the guard, so the guard is rewritten to the
-# output file name the way cheader derives it; drop this once raw-header does
-# the same. $(1) = peakrdl output, $(2) = header, $(3) = guard.
-ocah_reg_raw_c_guard = sed -e "s/^\#ifndef .*/\#ifndef $(3)/" -e "/^\#define [^ ]* /!s/^\#define .*/\#define $(3)/" -e "s|^\#endif .*|\#endif /* $(3) */|" "$(1)" > "$(2)" && grep -cw "$(3)" "$(2)" | grep -qx 3
-
 define ocah_reg_block_rules
 $(call ocah_reg_raw_c_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(call ocah_reg_gen,$(1))/c" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating raw C address header for $(1)"
-	@$(ocah_sh) '"$(OCAH_REG_PEAKRDL)" raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format c -o "$(call ocah_reg_build,$(1))/raw_c_header.h" $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_c_header.log" && $(call ocah_reg_raw_c_guard,$(call ocah_reg_build,$(1))/raw_c_header.h,$(call ocah_reg_raw_c_output,$(1)),$(shell echo $(notdir $(call ocah_reg_raw_c_output,$(1))) | tr a-z. A-Z_))$(call ocah_reg_stamp_after,"$(call ocah_reg_raw_c_output,$(1))")'
+	@$(ocah_sh) '"$(OCAH_REG_PEAKRDL)" raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format c -o "$(call ocah_reg_raw_c_output,$(1))" $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_c_header.log"$(call ocah_reg_stamp_after,"$(call ocah_reg_raw_c_output,$(1))")'
 
 $(call ocah_reg_svpkg_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(call ocah_reg_gen,$(1))/sv" "$(call ocah_reg_build,$(1))"

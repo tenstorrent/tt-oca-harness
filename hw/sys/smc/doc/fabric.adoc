@@ -372,7 +372,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence].
 endif::backend-pdf[]
 
 ifdef::backend-html5[]
@@ -477,7 +477,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-smc-axi-filters[filter programming rules].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-axi-filters[filter programming rules].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-axi-filters[filter programming rules].
 endif::backend-pdf[]
 
 The inbound filter interface provides 16 independent filter instances,
@@ -634,7 +634,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#axi-filter-example[filter configuration examples],
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#axi-filter-example[filter configuration examples],
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#axi-filter-example[filter configuration examples],
 endif::backend-pdf[]
 including secure-only and AXI-Lite PROT policies.
 

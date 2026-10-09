@@ -31,7 +31,7 @@ ifdef::backend-html5[]
 xref:ocah-integrator-guide::index.adoc#immutable-rom-fw-integration[Immutable ROM FW Integration]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/index.html#immutable-rom-fw-integration[Immutable ROM FW Integration]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-integrator-guide/latest/index.html#immutable-rom-fw-integration[Immutable ROM FW Integration]
 endif::backend-pdf[]
 in the Integrator Guide.
 

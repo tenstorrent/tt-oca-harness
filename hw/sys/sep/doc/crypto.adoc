@@ -78,7 +78,7 @@ ifdef::backend-html5[]
 xref:ocah-integrator-guide:ROOT:smu-sep.adoc#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/smu-sep.html#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-integrator-guide/latest/smu-sep.html#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
 endif::backend-pdf[]
 
 The `sep_crypto` module implements the integration layer, with
@@ -200,7 +200,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-km-delivered-keys[delivered-key section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-km-delivered-keys[delivered-key section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-km-delivered-keys[delivered-key section]
 endif::backend-pdf[]
 of the Programmer's Guide gives the corresponding software configuration.
 

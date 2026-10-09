@@ -231,7 +231,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:smc:cpu.adoc#smc-per-core-reset[SMC CPU reset description]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/smc/cpu.html#smc-per-core-reset[SMC CPU reset description]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/smc/cpu.html#smc-per-core-reset[SMC CPU reset description]
 endif::backend-pdf[]
 in the Technical Reference Manual for the hardware behavior, the drain
 handshake and the associated risks.
@@ -1008,7 +1008,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:ip:uart_16550/doc/index.adoc#uart-interrupt-service-table[UART interrupt service table]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/uart_16550/doc/index.html#uart-interrupt-service-table[UART interrupt service table]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/uart_16550/doc/index.html#uart-interrupt-service-table[UART interrupt service table]
 endif::backend-pdf[]
 in the Technical Reference Manual, and repeat until `IIR.INTERRUPT_PENDING`
 reads one. Reads of `LSR` and `MSR` clear fields, and an `IIR` read acknowledges
@@ -1277,7 +1277,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:ip:log_engine/doc/index.adoc#log-engine-reset[Log Engine reset and disable behavior]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/log_engine/doc/index.html#log-engine-reset[Log Engine reset and disable behavior]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/log_engine/doc/index.html#log-engine-reset[Log Engine reset and disable behavior]
 endif::backend-pdf[]
 in the Technical Reference Manual describes. Reconcile outstanding traffic
 before reusing buffers, and account for characters already sent, since
@@ -1503,7 +1503,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:ip:gpio/doc/index.adoc#gpio-access-control[Register Access Filtering]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/gpio/doc/index.html#gpio-access-control[Register Access Filtering]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/gpio/doc/index.html#gpio-access-control[Register Access Filtering]
 endif::backend-pdf[]
 section of the GPIO chapter in the Technical Reference Manual describes the
 filter hardware.
@@ -1807,7 +1807,7 @@ ifdef::backend-html5[]
 xref:ocah-docs::reset.adoc#ocah-reset[Reset chapter]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/reset.html#ocah-reset[Reset chapter]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/reset.html#ocah-reset[Reset chapter]
 endif::backend-pdf[]
 of the Technical Reference Manual. A debugger can also drive the SMC reset
 ports through <<dtp-ic-reset-overrides>>.
@@ -1866,7 +1866,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:smc:clk_rst.adoc#smc-subsystem-controls[Subsystem Controls and Clock Gating]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/smc/clk_rst.html#smc-subsystem-controls[Subsystem Controls and Clock Gating]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/smc/clk_rst.html#smc-subsystem-controls[Subsystem Controls and Clock Gating]
 endif::backend-pdf[]
 section of the Technical Reference Manual.
 
@@ -1939,7 +1939,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:smc:clk_rst.adoc#smc-function-level-reset[Function Level Reset and Isolation]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/smc/clk_rst.html#smc-function-level-reset[Function Level Reset and Isolation]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/smc/clk_rst.html#smc-function-level-reset[Function Level Reset and Isolation]
 endif::backend-pdf[]
 section of the Technical Reference Manual. To prepare and recover from an FLR:
 
@@ -2008,7 +2008,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:smc:dfd.adoc#smc-dfd-cla[Design-for-Debug chapter]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/smc/dfd.html#smc-dfd-cla[Design-for-Debug chapter]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/smc/dfd.html#smc-dfd-cla[Design-for-Debug chapter]
 endif::backend-pdf[]
 of the Technical Reference Manual. To set up a capture:
 
