@@ -71,18 +71,12 @@ jobs:
         include:
           - arch: amd64
             system: x86_64-linux
-            runner: ubuntu-latest-16-cores
-            timeout: 240
-            max_jobs: auto
-            cores: 0
+            runner: ${{ vars.OCAH_CONTAINER_AMD64_RUNNER || 'ubuntu-latest' }}
           - arch: arm64
             system: aarch64-linux
             runner: ubuntu-24.04-arm
-            timeout: 360
-            max_jobs: 2
-            cores: 2
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: ${{ matrix.timeout }}
+    timeout-minutes: ${{ matrix.runner == 'ubuntu-latest-16-cores' && 240 || 360 }}
     outputs:
       image_hash: ${{ steps.build.outputs.image_hash }}
     steps:
@@ -101,12 +95,12 @@ jobs:
               hw/sys/sep/bootrom/prod/tools/tt-oca-manifest \
               virtual_platform/tt-oca-harness-model
 
-      # The standard arm64 runner has 4 cores and 16 GB, too little disk for
-      # the build closure and too little memory for a compiler per core in
-      # every concurrent derivation. Reclaim the preinstalled toolchains, add
-      # swap, and cap parallelism in the matrix.
+      # A standard runner has 4 cores and 16 GB, too little disk for the build
+      # closure and too little memory for a compiler per core in every
+      # concurrent derivation. Reclaim the preinstalled toolchains, add swap,
+      # and cap parallelism when installing Nix.
       - name: Free disk space and add swap
-        if: matrix.arch != 'amd64'
+        if: matrix.runner != 'ubuntu-latest-16-cores'
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
             /usr/local/.ghcup /opt/hostedtoolcache /usr/local/share/boost
@@ -129,8 +123,8 @@ jobs:
         uses: cachix/install-nix-action@v31.11.1
         with:
           extra_nix_config: |
-            max-jobs = ${{ matrix.max_jobs }}
-            cores = ${{ matrix.cores }}
+            max-jobs = ${{ matrix.runner == 'ubuntu-latest-16-cores' && 'auto' || 2 }}
+            cores = ${{ matrix.runner == 'ubuntu-latest-16-cores' && '0' || 2 }}
             ${{ matrix.arch != 'amd64' && 'extra-platforms = x86_64-linux' || '' }}
 
       - name: Ensure skopeo
@@ -258,7 +252,7 @@ jobs:
         include:
           - arch: amd64
             machine: x86_64
-            runner: ubuntu-latest-16-cores
+            runner: ${{ vars.OCAH_CONTAINER_AMD64_RUNNER || 'ubuntu-latest' }}
           - arch: arm64
             machine: aarch64
             runner: ubuntu-24.04-arm
