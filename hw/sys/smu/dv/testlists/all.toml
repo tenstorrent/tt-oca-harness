@@ -2318,6 +2318,9 @@ args = [
   # cancel. tb_wrapper_top turns the crypto EDN request-hold checks off for
   # it; the pool instance keeps its checks.
   "+sep_edn_jtag_reset_waive",
+  # Releasing km_jtag_rst_n takes the Key Manager out of its software reset.
+  # An empty ROM returns X and the look-ahead read takes u_km_rom.req_i to X.
+  "+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom.parhex",
 ]
 
 # sep_lifecycle_ctrl.sv hardwires dbg_disable.smc_otp_jtag2axi and
