@@ -61,6 +61,7 @@
           // {
             inherit PS1;
             TMPDIR = "/tmp";
+            HOME = "/tmp";
             LD_LIBRARY_PATH = "/lib";
           }));
         Labels = {
