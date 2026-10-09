@@ -154,11 +154,21 @@ class smc_hang_detector_data_timeout_test_seq(SmcCsrSeq):
 
     async def _hold_dma_until(self, dut, name: str, after_accept) -> None:
         dut.tb_output_axi_resp_hold.value = 1
+        accept = None
         try:
+            # AR/AW can complete on the cycle the programming write starts the
+            # DMA. The watch is armed before that write so it is already
+            # sampling when the handshake arrives; started afterwards it takes
+            # its first sample a clock late and the one-cycle pulse is gone.
+            accept = cocotb.start_soon(
+                self._await_output_accept(dut, _ACCEPT_BOUND, f"{name}_ACCEPT")
+            )
             await self._program_dma()
-            await self._await_output_accept(dut, _ACCEPT_BOUND, f"{name}_ACCEPT")
+            await accept
             await after_accept()
         finally:
+            if accept is not None and not accept.done():
+                accept.kill()
             dut.tb_output_axi_resp_hold.value = 0
 
     async def body(self) -> None:
