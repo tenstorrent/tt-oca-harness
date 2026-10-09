@@ -156,9 +156,7 @@ when your checkout changes a file that defines the image, such as `flake.lock`,
 `ocah_deps.nix`, `uv.lock` or a file under `nix/`. Interrupting `docker-run.sh`
 does not always stop the build, so check `podman ps` (or `docker ps`) and stop
 any container still running. Then check out the latest `main`, or wait for CI to
-publish the image. Unless you are testing a change to the image itself, you can
-instead set `OCAH_IMAGE_FALLBACK=main`, which runs the image CI last verified on
-`main` while yours is unpublished.
+publish the image, or use the <<image-fallback,`main` image>> meanwhile.
 ====
 
 Published images are listed on the
@@ -191,6 +189,16 @@ your machine (`shell-here` is the interactive equivalent):
 ```bash
 ./scripts/docker-run.sh run-here make ocah-synth-yosys-all
 ```
+
+[[image-fallback]]
+`docker-run.sh` always runs the image built from your checkout's toolchain
+definition. When that image is not published yet, which is the case for a few
+hours after a commit changes the toolchain, it builds the image instead. Unless
+you are testing that change, set `OCAH_IMAGE_FALLBACK=main` to run the image CI
+last verified on `main` instead. `docker-run.sh` then warns that the image may
+not match your checkout and names the image it used. It falls back only when the
+registry has no image for your checkout; any other download error still leads
+to a build.
 
 Each toolchain change downloads a new image, and the old ones stay on disk. To
 manage them:
