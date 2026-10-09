@@ -7,6 +7,8 @@ Run from the repository root:
     python3 -m unittest discover tools/dv/tests
 """
 
+from __future__ import annotations
+
 import gzip
 import io
 import json
