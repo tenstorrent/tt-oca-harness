@@ -447,7 +447,7 @@ when your checkout changes a file that defines the image, such as <code>flake.lo
 <code>ocah_deps.nix</code>, <code>uv.lock</code> or a file under <code>nix/</code>. Interrupting <code>docker-run.sh</code>
 does not always stop the build, so check <code>podman ps</code> (or <code>docker ps</code>) and stop
 any container still running. Then check out the latest <code>main</code>, or wait for CI to
-publish the image.</p>
+publish the image, or use the <a href="#image-fallback"><code>main</code> image</a> meanwhile.</p>
 </div>
 </td>
 </tr>
@@ -493,8 +493,67 @@ your machine (<code>shell-here</code> is the interactive equivalent):</p>
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./scripts/docker-run.sh run-here make ocah-synth-yosys-all</code></pre>
 </div>
 </div>
+<div class="sect3">
+<h4 id="image-fallback"><a class="anchor" href="#image-fallback"></a><a class="link" href="#image-fallback">2.5.1. Which image runs</a></h4>
+<div class="paragraph">
+<p>The image is tagged with a hash of your checkout&#8217;s toolchain definition. Before
+each command, <code>docker-run.sh</code> takes the first of these that works:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The image with that tag, if it is already downloaded.</p>
+</li>
+<li>
+<p>The image with that tag from the registry.</p>
+</li>
+<li>
+<p>The image with that tag from the image cache named by <code>OCAH_DOCKER_CACHE_DIR</code>,
+or from an earlier <code>docker-run.sh build</code>.</p>
+</li>
+<li>
+<p>With <code>OCAH_IMAGE_FALLBACK=main</code> set, the <code>main</code> image: the last image CI
+verified on <code>main</code>. It downloads the current one, or uses one downloaded
+earlier if it cannot, and warns that it may not match your checkout, naming
+the image&#8217;s digest. It falls back only when the registry has no image for your
+checkout, or when <code>OCAH_CONTAINER_REGISTRY_IMAGE</code> is unset; a failed login or
+an unreachable registry skips it.</p>
+</li>
+<li>
+<p>A build from source, the default when nothing above applies.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>For a few hours after a commit changes the toolchain, CI has not published its
+image, so without <code>OCAH_IMAGE_FALLBACK=main</code> that commit is built. The <code>main</code>
+image suits any work that does not depend on the toolchain change. Once CI
+publishes the image, the next command downloads it.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="managing-downloaded-images"><a class="anchor" href="#managing-downloaded-images"></a><a class="link" href="#managing-downloaded-images">2.5.2. Managing downloaded images</a></h4>
+<div class="paragraph">
+<p>Each toolchain change downloads a new image, and the old ones stay on disk:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./scripts/docker-run.sh images      # list downloaded images, their architecture, and which is yours
+./scripts/docker-run.sh refresh     # download your checkout's image again and replace the local one
+./scripts/docker-run.sh prune       # remove every OCAH image except your checkout's and main's
+./scripts/docker-run.sh rmi &lt;tag&gt;   # remove the OCAH images with that tag</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An image already downloaded is used whatever its architecture, so an x86_64
+image downloaded before the arm64 one was published keeps running under
+emulation on an arm64 machine. <code>refresh</code> replaces it with the native one. It
+keeps the old image if a running container still uses it, so that container is
+not affected.</p>
+</div>
 <div class="paragraph">
 <p>See <code>scripts/docker.md</code> for every container command and environment variable.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
