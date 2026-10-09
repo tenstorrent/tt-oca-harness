@@ -571,3 +571,37 @@ timeout_sec = 3600
 tags = ["fabric", "decode", "memory_map", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+
+[[tests]]
+# Secure DMA copy and hash matrix: widths, address modes, chunks, beat shape on the DMA master and the destination image. The seed draws the transfer.
+name = "sep_dma_transfer_matrix_rand_test"
+module = "system.sep_dma_transfer_matrix_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["dma", "transfer", "hash", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Secure DMA interrupts and configuration errors from a cold reset. Real PROD fuse sense: the leaf pulses rst_ni.
+name = "sep_dma_irq_error_lock_rand_test"
+module = "system.sep_dma_irq_error_lock_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["dma", "irq", "error", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Secure DMA ABORT at a drawn phase, the quiet bus after the abort and the next clean transfer. Real PROD fuse sense: the leaf pulses rst_ni.
+name = "sep_dma_abort_recovery_rand_test"
+module = "system.sep_dma_abort_recovery_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["dma", "abort", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"

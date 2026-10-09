@@ -25,6 +25,17 @@ localparam int unsigned FcovOwnSepFabricRowResponseMatrixTest = 231;
 localparam int unsigned FcovOwnSepCpuLsuAliasWindowTwinTest = 232;
 localparam int unsigned FcovOwnSepFabricDmaEndpointMatrixTest = 233;
 
+// SPI and DMA (VPLAN 4.7 to 4.15).
+localparam int unsigned FcovOwnSepSpiPadSpeedDirMatrixTest = 407;
+localparam int unsigned FcovOwnSepSpiPadTimingCfgRandTest = 408;
+localparam int unsigned FcovOwnSepSpiFifoStallWatermarkRandTest = 409;
+localparam int unsigned FcovOwnSepSpiOtHostCsrIrqRandTest = 410;
+localparam int unsigned FcovOwnSepSpiColdResetValuesRandTest = 411;
+localparam int unsigned FcovOwnSepDmaTransferMatrixRandTest = 412;
+localparam int unsigned FcovOwnSepDmaIrqErrorLockRandTest = 413;
+localparam int unsigned FcovOwnSepDmaAbortRecoveryRandTest = 414;
+localparam int unsigned FcovOwnSepSpiDmaHandshakeRandTest = 415;
+
 // Memory, boot, reset (VPLAN 5.25): owner of
 // sep_fabric_dedicated_port_cg.cp_tcm_dma_dir_range.
 localparam int unsigned FcovOwnSepTcmDmaApertureEccTest = 525;

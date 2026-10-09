@@ -1311,6 +1311,36 @@ module sep_uvm_top
     assign dma_busy_probe_o =
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.status.busy.q;
 
+    // Secure DMA master taps (read-only XMR, no force). dma_axi_req is the
+    // request after u_dma_local_alias_remap; the layout is in the signal list.
+    assign dma_axi_req_probe_o = {
+        `SEP_CORE.dma_axi_resp.b.resp,
+        `SEP_CORE.dma_axi_req.b_ready,
+        `SEP_CORE.dma_axi_resp.b_valid,
+        `SEP_CORE.dma_axi_req.w.last,
+        `SEP_CORE.dma_axi_req.w.strb,
+        `SEP_CORE.dma_axi_resp.w_ready,
+        `SEP_CORE.dma_axi_req.w_valid,
+        `SEP_CORE.dma_axi_req.aw.size,
+        `SEP_CORE.dma_axi_req.aw.len,
+        `SEP_CORE.dma_axi_req.aw.addr[31:0],
+        `SEP_CORE.dma_axi_resp.aw_ready,
+        `SEP_CORE.dma_axi_req.aw_valid,
+        `SEP_CORE.dma_axi_req.ar.size,
+        `SEP_CORE.dma_axi_req.ar.len,
+        `SEP_CORE.dma_axi_req.ar.addr[31:0],
+        `SEP_CORE.dma_axi_resp.ar_ready,
+        `SEP_CORE.dma_axi_req.ar_valid
+    };
+    assign dma_status_probe_o = {
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_chunk_done_qs,
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_sha2_digest_valid_qs,
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_error_qs,
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_aborted_qs,
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_done_qs,
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_busy_qs
+    };
+
     // Fabric-slot W channel, sampled at the AXI-Lite port of each of the 96
     // remap/filter slot register blocks in sep_system_csr (the block that
     // applies WSTRB). A beat counts as fill when a byte lane whose WSTRB bit is

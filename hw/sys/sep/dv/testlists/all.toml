@@ -35,16 +35,18 @@ tests = ["sep_axi_smoke_test"]
 # target and states firmware rather than hardware contracts. `all` is the
 # coverage set.
 #
-# Two members are pinned to one simulator, so a single-simulator run of `all`
-# logs the other as skipped_wrong_tool:
+# Three members are pinned to one simulator, so a single-simulator run of `all`
+# logs the members pinned to the other simulator as skipped_wrong_tool:
 # - sep_km_ic_reset_release_test, VCS only (km.toml). Its contract is the
 #   prim_rom noXOnCsI assertion. Verilator is two-state and prim_assert.sv
 #   compiles RTL assertions out under it, so that check cannot fail there.
 # - sep_abr_absent_decerr_test, Verilator only (crypto.toml). It needs the
 #   lsu_stub_abr_absent model, and the VCS coverage run elaborates only the
 #   `default` target, which keeps Adams Bridge.
+# - sep_spi_cold_reset_values_rand_test, VCS only (spi.toml). It reads SPI host
+#   state after rst_ni, and Verilator is two-state.
 name = "all"
-expected_count = 142
+expected_count = 150
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -188,6 +190,14 @@ tests = [
     "sep_fabric_row_response_matrix_test",
     "sep_cpu_lsu_alias_window_twin_test",
     "sep_fabric_dma_endpoint_matrix_test",
+    "sep_spi_pad_speed_dir_matrix_test",
+    "sep_spi_pad_timing_cfg_rand_test",
+    "sep_spi_fifo_stall_watermark_rand_test",
+    "sep_spi_cold_reset_values_rand_test",
+    "sep_dma_transfer_matrix_rand_test",
+    "sep_dma_irq_error_lock_rand_test",
+    "sep_dma_abort_recovery_rand_test",
+    "sep_spi_dma_handshake_rand_test",
 ]
 
 [[groups]]
@@ -343,6 +353,14 @@ tests = [
     "sep_fabric_smc_route_test",
     "sep_fabric_extension_port_window_test",
     "sep_fabric_row_response_matrix_test",
+    "sep_spi_pad_speed_dir_matrix_test",
+    "sep_spi_pad_timing_cfg_rand_test",
+    "sep_spi_fifo_stall_watermark_rand_test",
+    "sep_spi_cold_reset_values_rand_test",
+    "sep_dma_transfer_matrix_rand_test",
+    "sep_dma_irq_error_lock_rand_test",
+    "sep_dma_abort_recovery_rand_test",
+    "sep_spi_dma_handshake_rand_test",
 ]
 
 [[groups]]
@@ -580,4 +598,21 @@ tests = [
     "sep_fabric_row_response_matrix_test",
     "sep_cpu_lsu_alias_window_twin_test",
     "sep_fabric_dma_endpoint_matrix_test",
+]
+
+[[groups]]
+# Convenience group of the SPI and DMA Phase 3 tests.
+# It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
+name = "phase3_spi_dma"
+expected_count = 9
+tests = [
+    "sep_spi_pad_speed_dir_matrix_test",
+    "sep_spi_pad_timing_cfg_rand_test",
+    "sep_spi_fifo_stall_watermark_rand_test",
+    "sep_spi_ot_host_csr_irq_rand_test",
+    "sep_spi_cold_reset_values_rand_test",
+    "sep_dma_transfer_matrix_rand_test",
+    "sep_dma_irq_error_lock_rand_test",
+    "sep_dma_abort_recovery_rand_test",
+    "sep_spi_dma_handshake_rand_test",
 ]

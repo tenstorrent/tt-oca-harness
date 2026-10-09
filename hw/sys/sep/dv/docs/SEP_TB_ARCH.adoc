@@ -168,7 +168,19 @@ Observation probe groups:
 * The DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`).
 * SPI-to-DMA transmit pacing probes (`spi_tx_qd_probe_o`,
   `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`). Owner:
-  `sep_spi_ot_dma_tx_test`.
+  `sep_spi_ot_dma_tx_test`. Users: `sep_dma_transfer_matrix_rand_test`,
+  `sep_dma_irq_error_lock_rand_test`, `sep_dma_abort_recovery_rand_test`,
+  `sep_spi_dma_handshake_rand_test` and the FCOV sampler (`u_sep_fcov`).
+* Secure DMA master tap (`dma_axi_req_probe_o`): the DMA master request after
+  the DMA local-alias remap (net `dma_axi_req`, response `dma_axi_resp`): AR
+  and AW VALID, READY, address, AxLEN and AxSIZE; W VALID, READY, WSTRB and
+  WLAST; B VALID, READY and BRESP (`env/sep_dma_tap.py` records the
+  handshakes). Owners: `sep_dma_transfer_matrix_rand_test`,
+  `sep_dma_abort_recovery_rand_test`.
+* Secure DMA status tap (`dma_status_probe_o`): the stored level of each
+  STATUS bit (BUSY, DONE, ABORTED, ERROR, SHA2_DIGEST_VALID, CHUNK_DONE) on
+  each clock. Owners: `sep_dma_transfer_matrix_rand_test`,
+  `sep_dma_abort_recovery_rand_test`.
 * Adams Bridge ML-KEM seed Z words (`abr_mlkem_seed_z_probe_o`).
 * Fabric-slot register-block W-channel counters (`fabric_slot_w_*`).
 * Fabric port taps, each a read-only copy of a DUT net with the AW and AR
@@ -285,7 +297,18 @@ Exceptions (a closed set):
   (`spi_lsio_trigger_probe_o`) and the DMA `STATUS.busy` flop
   (`dma_busy_probe_o`). `STATUS.TXQD` is readable, but a CPU read cannot
   sample it on each clock of a DMA transfer, and no CSR shows the trigger.
-  Read-only; no force. Owner: `sep_spi_ot_dma_tx_test`.
+  Read-only; no force. Owner: `sep_spi_ot_dma_tx_test`. Users:
+  `sep_dma_transfer_matrix_rand_test`, `sep_dma_irq_error_lock_rand_test`,
+  `sep_dma_abort_recovery_rand_test`, `sep_spi_dma_handshake_rand_test` and
+  the FCOV sampler (`u_sep_fcov`).
+* *Secure DMA master and status taps* — the DMA master AR, AW, W and B
+  channels after the DMA local-alias remap (`dma_axi_req_probe_o`) and the
+  stored STATUS bits of the DMA (`dma_status_probe_o`). The destination image
+  and STATUS are readable through the frontdoor, but no CSR shows the AxLEN,
+  the address and the write strobes of each DMA beat, and a CPU read cannot
+  sample STATUS on each clock to order DONE, CHUNK_DONE and the last beat.
+  Read-only; no force. Owners: `sep_dma_transfer_matrix_rand_test`,
+  `sep_dma_abort_recovery_rand_test`.
 * *Crypto reset-sequencer probes* — the per-domain gated resets, the
   `isolated_o` completion bits and the host `isolate_req_i` bits at the crypto
   AXI interconnect (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`,
