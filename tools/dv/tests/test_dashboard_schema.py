@@ -251,6 +251,26 @@ class NormalizedRecord(ContractCase):
             (2, 1, 1),
         )
 
+    def test_a_skipped_flow_stays_out_of_the_flow_pass_rate(self):
+        summary = make_summary(self.records(("PASS", "PASS", "SKIP")))
+        self.assertEqual(
+            summary["flows"],
+            {
+                "total": 3,
+                "passing": 2,
+                "failing": 0,
+                "skipped": 1,
+                "unknown": 0,
+                "pass_rate": 100.0,
+            },
+        )
+        self.assertEqual(make_trend_point(summary)["flow_pass_rate"], 100.0)
+
+    def test_every_flow_skipped_leaves_no_flow_pass_rate(self):
+        summary = make_summary(self.records(("SKIP", "SKIP")))
+        self.assertEqual(summary["flows"]["skipped"], 2)
+        self.assertIsNone(summary["flows"]["pass_rate"])
+
 
 class AggregateSummary(ContractCase):
     def test_summary_carries_the_documented_fields(self):

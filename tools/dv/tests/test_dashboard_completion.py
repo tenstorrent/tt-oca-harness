@@ -143,6 +143,12 @@ class DashboardCompletion(unittest.TestCase):
         self.assertEqual(summary["tests"]["incomplete_runs"], 0)
         self.assertNotIn("incomplete", _status_cards(summary))
 
+    def test_the_flow_card_names_the_skipped_flows(self):
+        passed = self.record(completed=True, total=4, passing=4, flow="alpha", status="PASS")
+        skipped = self.record(completed=True, total=0, passing=0, flow="beta", status="SKIP")
+        self.assertIn("1 / 2 passing; 1 skipped", _status_cards(make_summary([passed, skipped])))
+        self.assertNotIn("skipped", _status_cards(make_summary([passed])))
+
     def test_html_marks_the_incomplete_run(self):
         record = self.collect_interrupted_run()
         summary = make_summary([record])
