@@ -136,7 +136,6 @@ jobs:
       OCAH_ENGINE: docker
       OCAH_IMAGE_WITH_UV: "true"
       OCAH_CONTAINER_REGISTRY_IMAGE: ghcr.io/tenstorrent/ocah-container
-      OCAH_IMAGE_FALLBACK: build
     steps:
       # A local composite action is loaded from the checked-out tree, so the
       # checkout cannot live inside it.
@@ -204,7 +203,6 @@ jobs:
       OCAH_ENGINE: docker
       OCAH_IMAGE_WITH_UV: "true"
       OCAH_CONTAINER_REGISTRY_IMAGE: ghcr.io/tenstorrent/ocah-container
-      OCAH_IMAGE_FALLBACK: build
     steps:
       # A local composite action is loaded from the checked-out tree, so the
       # checkout cannot live inside it.

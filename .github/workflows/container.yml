@@ -299,7 +299,6 @@ jobs:
         env:
           OCAH_IMAGE_WITH_UV: "true"
           OCAH_CONTAINER_REGISTRY_IMAGE: ${{ env.REGISTRY_IMAGE }}
-          OCAH_IMAGE_FALLBACK: build
         run: |
           # docker-run.sh pulls REGISTRY_IMAGE:<hash> and tags it locally.
           ./scripts/docker-run.sh verify

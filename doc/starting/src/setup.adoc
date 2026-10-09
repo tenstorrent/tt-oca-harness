@@ -145,21 +145,20 @@ Two things are normal and do not mean anything is wrong:
   time, even once the image is downloaded. <<nix-speedup>> removes the wait.
 * Later commands reuse the downloaded image. It is downloaded again only when you
   update to a commit that changes the toolchain.
-* A warning that `docker-run.sh` is using an image `which may not match this
-  checkout` means CI has not yet published the image for your commit, which
-  happens for a few hours after a change to the toolchain. It runs the image CI
-  last verified on `main` instead, which is fine unless you are testing that
-  change.
 
 [IMPORTANT]
 ====
 If the output contains `absent locally and in cache; building`, press `Ctrl+C`.
-There is no image for your checkout and no `main` image to fall back to, so
-`docker-run.sh` has started building one from source, which occupies the machine
-for a long time. Interrupting `docker-run.sh` does not always stop the build, so
-check `podman ps` (or `docker ps`) and stop any container still running. Then
-check that you can reach the registry and that `OCAH_IMAGE_FALLBACK` is not set
-to `build`.
+There is no published image for your checkout, so `docker-run.sh` has started
+building one from source, which occupies the machine for a long time. This
+happens when CI has not yet published the image for the commit you are on, or
+when your checkout changes a file that defines the image, such as `flake.lock`,
+`ocah_deps.nix`, `uv.lock` or a file under `nix/`. Interrupting `docker-run.sh`
+does not always stop the build, so check `podman ps` (or `docker ps`) and stop
+any container still running. Then check out the latest `main`, or wait for CI to
+publish the image. Unless you are testing a change to the image itself, you can
+instead set `OCAH_IMAGE_FALLBACK=main`, which runs the image CI last verified on
+`main` while yours is unpublished.
 ====
 
 Published images are listed on the
@@ -250,10 +249,8 @@ many cores and takes a long time:
 With `OCAH_IMAGE_WITH_UV=true` it builds the variant that bundles the Python
 packages, for fully offline use; otherwise it builds the default variant, which
 installs them on demand. `docker-run.sh` also builds the image automatically
-whenever `OCAH_CONTAINER_REGISTRY_IMAGE` is unset and neither a matching image
-nor a `main` image is loaded or cached. To test a change to the image before CI publishes it, set
-`OCAH_IMAGE_FALLBACK=build`; otherwise `docker-run.sh` runs the `main` image
-instead.
+whenever `OCAH_CONTAINER_REGISTRY_IMAGE` is unset and no matching image is loaded
+or cached.
 See `nix/nix-infrastructure.md` for how the image is defined.
 
 [[native]]

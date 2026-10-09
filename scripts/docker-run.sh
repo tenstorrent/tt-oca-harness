@@ -11,8 +11,8 @@
 #                   file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
 #   build           (re)build nix container image + publish to shared tarball cache
 #   ensure          make nix container image available (registry -> cache ->
-#                   registry :main -> build); auto-run by run/run-here/shell/verify,
-#                   so bare `run` works on a fresh host
+#                   build, or :main with OCAH_IMAGE_FALLBACK=main); auto-run by
+#                   run/run-here/shell/verify, so bare `run` works on a fresh host
 #   image-hash      print the nix-derived image tag; identifies the image exactly
 #   images          list local OCAH images and their architecture
 #   refresh         pull this checkout's tag again and replace the local image
@@ -39,10 +39,9 @@
 #      OCAH_CONTAINER_REGISTRY_IMAGE
 #                               optional registry repository, without a tag;
 #                               e.g. ghcr.io/tenstorrent/ocah-container
-#      OCAH_IMAGE_FALLBACK     what ensure does when this checkout's image is
-#                               neither loaded, published nor cached: `main`
-#                               runs the registry's :main (default), `build`
-#                               builds the exact image
+#      OCAH_IMAGE_FALLBACK     what ensure does when the registry has no image
+#                               for this checkout yet: `build` builds it
+#                               (default), `main` runs the registry's :main
 #      OCAH_ENGINE             force `podman` or `docker` instead of preferring
 #                               whichever is found first (CI pins this so a
 #                               runner image shipping both is deterministic)
@@ -110,7 +109,7 @@ IMAGE=""
 # same content-addressed tag before falling back to the existing cache/build
 # paths. Registry acquisition remains opt-in.
 DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-}"
-IMAGE_FALLBACK="${OCAH_IMAGE_FALLBACK:-main}"
+IMAGE_FALLBACK="${OCAH_IMAGE_FALLBACK:-build}"
 case "$IMAGE_FALLBACK" in
 main | build) ;;
 *)
@@ -393,7 +392,7 @@ build_image() {
 # local image, optionally pulls the same content tag from a configured registry,
 # then retains the existing tarball-cache and local-build fallbacks.
 ensure_image() {
-  local flake_hash registry_ref
+  local flake_hash registry_ref pull_log unpublished=1
   [[ -z "$IMAGE" ]] || return 0
   [[ -n "$IMAGE_HASH" ]] || IMAGE_HASH=$(image_hash)
   flake_hash=$IMAGE_HASH
@@ -406,10 +405,16 @@ ensure_image() {
   if [[ -n "$REGISTRY_IMAGE" ]]; then
     registry_ref="${REGISTRY_IMAGE%/}:${flake_hash}"
     echo "docker-run: pulling $registry_ref" >&2
-    if "$ENGINE" ${PODMAN_STORAGE_FLAGS} pull "$registry_ref"; then
+    pull_log=$(mktemp)
+    if "$ENGINE" ${PODMAN_STORAGE_FLAGS} pull "$registry_ref" 2>&1 | tee "$pull_log" >&2; then
+      rm -f "$pull_log"
       "$ENGINE" ${PODMAN_STORAGE_FLAGS} tag "$registry_ref" "$IMAGE"
       return 0
     fi
+    # Both engines report a tag the registry does not hold as "manifest
+    # unknown"; any other failure leaves the registry's state unknown.
+    grep -qi 'manifest unknown' "$pull_log" || unpublished=0
+    rm -f "$pull_log"
     echo "docker-run: registry pull failed; trying local cache/build sources" >&2
   fi
 
@@ -433,8 +438,11 @@ ensure_image() {
       fi
     fi
   fi
-  if [[ "$IMAGE_FALLBACK" == main ]] && use_main_image; then
+  if [[ "$unpublished" == 1 && "$IMAGE_FALLBACK" == main ]] && use_main_image; then
     return 0
+  fi
+  if [[ "$unpublished" == 1 && -n "$REGISTRY_IMAGE" && "$IMAGE_FALLBACK" == build ]]; then
+    echo "docker-run: OCAH_IMAGE_FALLBACK=main runs the image CI last verified on main instead" >&2
   fi
   echo "docker-run: $IMAGE (hash $flake_hash) absent locally and in cache; building" >&2
   build_image
@@ -444,7 +452,7 @@ ensure_image() {
 # hours after the image inputs change. Until then, run the last image CI
 # verified on main: the registry's :main, or the copy of it pulled earlier.
 use_main_image() {
-  local main_image="${NIX_IMAGE_NAME}:main"
+  local main_image="${NIX_IMAGE_NAME}:main" digest
   if [[ -n "$REGISTRY_IMAGE" ]]; then
     echo "docker-run: pulling ${REGISTRY_IMAGE%/}:main instead" >&2
     if "$ENGINE" ${PODMAN_STORAGE_FLAGS} pull "${REGISTRY_IMAGE%/}:main"; then
@@ -452,8 +460,10 @@ use_main_image() {
     fi
   fi
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} image inspect "$main_image" >/dev/null 2>&1 || return 1
-  echo "docker-run: warning: using $main_image, which may not match this checkout;" \
-    "set OCAH_IMAGE_FALLBACK=build to build $IMAGE instead" >&2
+  digest=$("$ENGINE" ${PODMAN_STORAGE_FLAGS} image inspect \
+    --format '{{range .RepoDigests}}{{println .}}{{end}}' "$main_image" | head -n 1)
+  echo "docker-run: warning: using $main_image (${digest:-no registry digest})," \
+    "which may not match this checkout" >&2
   IMAGE=$main_image
 }
 
