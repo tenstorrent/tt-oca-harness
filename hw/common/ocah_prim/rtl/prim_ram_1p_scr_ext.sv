@@ -22,7 +22,7 @@
 module prim_ram_1p_scr_ext
   import prim_ram_1p_pkg::*;
 
-  `include "prim_assert.sv"
+  `include "ocah_assert.svh"
   import prim_ram_1p_adv_ext_pkg::*;
 #(
   parameter  int DEPTH                  = 16*1024,  // Logical depth; must be a power of 2 if
@@ -126,9 +126,9 @@ module prim_ram_1p_scr_ext
   //////////////////////
 
   // The depth needs to be a power of 2 in case address scrambling is turned on
-  `OCAH_OT_ASSERT_INIT(DepthPow2Check_A, NUM_ADDR_SCR_ROUNDS <= '0 || 2**$clog2(DEPTH) == DEPTH)
-  `OCAH_OT_ASSERT_INIT(DiffWidthMinimum_A, DIFF_WIDTH >= 4)
-  `OCAH_OT_ASSERT_INIT(DiffWidthWithParity_A, ENABLE_PARITY && (DIFF_WIDTH == 8) || !ENABLE_PARITY)
+  `OCAH_ASSERT_STATIC(DepthPow2Check_A, NUM_ADDR_SCR_ROUNDS <= '0 || 2**$clog2(DEPTH) == DEPTH)
+  `OCAH_ASSERT_STATIC(DiffWidthMinimum_A, DIFF_WIDTH >= 4)
+  `OCAH_ASSERT_STATIC(DiffWidthWithParity_A, ENABLE_PARITY && (DIFF_WIDTH == 8) || !ENABLE_PARITY)
 
   /////////////////////////////////////////
   // Pending Write and Address Registers //

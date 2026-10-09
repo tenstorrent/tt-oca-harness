@@ -9,6 +9,8 @@
 // ports are tied off, and the SMC connects to the external AXI ports through ID-width
 // converters instead of the crossbar.
 
+`include "ocah_assert.svh"
+
 module smu #(
   parameter int unsigned CFG_IDX = 0,  // Selects the smu_pkg::SmuConfigs preset that CFG
                                        // defaults to, 0 for DefaultCfg and 1 for NoSepCfg; a
@@ -1374,50 +1376,48 @@ module smu #(
   // Configuration Checks
   //--------------------------------------------------------------------------
 
-  if (CFG_IDX >= smu_pkg::NumSmuConfigs) begin : gen_cfg_idx_check
-    $error("smu: CFG_IDX must be less than smu_pkg::NumSmuConfigs");
-  end
+  // verilog_format: off
+  `OCAH_ASSERT_STATIC(CfgIdx_A, CFG_IDX < smu_pkg::NumSmuConfigs,
+                      "CFG_IDX must be less than smu_pkg::NumSmuConfigs")
 
-  if (CFG.NUM_INT_TO_SMC < 1 || CFG.NUM_INT_TO_SMC > NumExtInterrupts) begin : gen_num_int_to_smc_check
-    $error("smu: CFG.NUM_INT_TO_SMC must be 1 to NumExtInterrupts");
-  end
+  `OCAH_ASSERT_STATIC(NumIntToSmc_A,
+                      CFG.NUM_INT_TO_SMC >= 1 && CFG.NUM_INT_TO_SMC <= NumExtInterrupts,
+                      "CFG.NUM_INT_TO_SMC must be 1 to NumExtInterrupts")
 
-  if (CFG.XTRIG_NUM_INT_CT < 1 || CFG.XTRIG_NUM_INT_CT > smu_pkg::XtrigIntCtModeWidth)
-  begin : gen_xtrig_num_int_ct_check
-    $error("smu: CFG.XTRIG_NUM_INT_CT must be 1 to XtrigIntCtModeWidth");
-  end
+  `OCAH_ASSERT_STATIC(
+      XtrigNumIntCt_A,
+      CFG.XTRIG_NUM_INT_CT >= 1 && CFG.XTRIG_NUM_INT_CT <= smu_pkg::XtrigIntCtModeWidth,
+      "CFG.XTRIG_NUM_INT_CT must be 1 to XtrigIntCtModeWidth")
 
-  if (CFG.JTAG_NUM_EXTRA_STAPS > 15) begin : gen_jtag_num_extra_staps_check
-    $error("smu: CFG.JTAG_NUM_EXTRA_STAPS must be at most 15");
-  end
+  `OCAH_ASSERT_STATIC(JtagNumExtraStaps_A, CFG.JTAG_NUM_EXTRA_STAPS <= 15,
+                      "CFG.JTAG_NUM_EXTRA_STAPS must be at most 15")
 
-  if (!CFG.JTAG_BSR_ENABLE &&
-      (CFG.JTAG_EXTEST_TRAIN_ENABLE || CFG.JTAG_EXTEST_PULSE_ENABLE || CFG.JTAG_INTEST_ENABLE))
-  begin : gen_jtag_bsr_check
-    $error("smu: CFG.JTAG_EXTEST_TRAIN/EXTEST_PULSE/INTEST_ENABLE need CFG.JTAG_BSR_ENABLE");
-  end
+  `OCAH_ASSERT_STATIC(
+      JtagBsr_A,
+      CFG.JTAG_BSR_ENABLE ||
+      !(CFG.JTAG_EXTEST_TRAIN_ENABLE || CFG.JTAG_EXTEST_PULSE_ENABLE || CFG.JTAG_INTEST_ENABLE),
+      "CFG.JTAG_EXTEST_TRAIN/EXTEST_PULSE/INTEST_ENABLE need CFG.JTAG_BSR_ENABLE")
 
-  if (CFG.EXT_TRNG_NUM_AXIS != sep_crypto_pkg::SepCryptoEdnEndpointCount)
-  begin : gen_ext_trng_num_axis_check
-    $error("smu: CFG.EXT_TRNG_NUM_AXIS must equal SepCryptoEdnEndpointCount");
-  end
+  `OCAH_ASSERT_STATIC(ExtTrngNumAxis_A,
+                      CFG.EXT_TRNG_NUM_AXIS == sep_crypto_pkg::SepCryptoEdnEndpointCount,
+                      "CFG.EXT_TRNG_NUM_AXIS must equal SepCryptoEdnEndpointCount")
 
-  if (CFG.SMC_EFUSE_SHIM_SIZE == 0 ||
-      CFG.SMC_EFUSE_SHIM_SIZE >= smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE)
-  begin : gen_smc_efuse_shim_size_check
-    $error("smu: CFG.SMC_EFUSE_SHIM_SIZE must be non-zero and smaller than smc_external");
-  end
+  `OCAH_ASSERT_STATIC(
+      SmcEfuseShimSize_A,
+      CFG.SMC_EFUSE_SHIM_SIZE != 0 &&
+      CFG.SMC_EFUSE_SHIM_SIZE < smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE,
+      "CFG.SMC_EFUSE_SHIM_SIZE must be non-zero and smaller than smc_external")
 
-  if (CFG.SEP && (CFG.SEP_EFUSE_SHIM_SIZE == 0 ||
-      CFG.SEP_EFUSE_SHIM_SIZE >
-          sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR -
-          sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR))
-  begin : gen_sep_efuse_shim_size_check
-    $error("smu: CFG.SEP_EFUSE_SHIM_SIZE must be non-zero and end below the XIP window");
-  end
+  `OCAH_ASSERT_STATIC(
+      SepEfuseShimSize_A,
+      !CFG.SEP || (CFG.SEP_EFUSE_SHIM_SIZE != 0 &&
+                   CFG.SEP_EFUSE_SHIM_SIZE <=
+                       sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR -
+                       sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR),
+      "CFG.SEP_EFUSE_SHIM_SIZE must be non-zero and end below the XIP window")
 
-  if (CFG.SEP && CFG.SEP_ABR_SRAM_LATENCY < 1) begin : gen_sep_abr_sram_latency_check
-    $error("smu: CFG.SEP_ABR_SRAM_LATENCY must be at least 1");
-  end
+  `OCAH_ASSERT_STATIC(SepAbrSramLatency_A, !CFG.SEP || CFG.SEP_ABR_SRAM_LATENCY >= 1,
+                      "CFG.SEP_ABR_SRAM_LATENCY must be at least 1")
+  // verilog_format: on
 
 endmodule

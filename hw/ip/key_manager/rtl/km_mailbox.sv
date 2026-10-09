@@ -67,6 +67,7 @@ module km_mailbox
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   //=========================================================================
   // Local Parameters
@@ -733,8 +734,8 @@ module km_mailbox
   // Assertions
   //=========================================================================
 
-  `OCAH_OT_ASSERT_INIT(MAILBOX_DEPTH_GT_0, MAILBOX_DEPTH > 0)
-  `OCAH_OT_ASSERT_INIT(MAILBOX_DEPTH_LE_256, MAILBOX_DEPTH <= 256)
+  `OCAH_ASSERT_STATIC(MAILBOX_DEPTH_GT_0, MAILBOX_DEPTH > 0)
+  `OCAH_ASSERT_STATIC(MAILBOX_DEPTH_LE_256, MAILBOX_DEPTH <= 256)
 
   // Accepted KM FIFO AR implies an R beat the next cycle.
   `OCAH_OT_ASSERT(KmFifoReadCompletesAfterAccept_A, km_fifo_ar_handshake |=> km_fifo_r_valid_q,

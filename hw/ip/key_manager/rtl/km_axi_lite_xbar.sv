@@ -66,7 +66,7 @@ module km_axi_lite_xbar
   input  axil_resp_t otp_resp_i  // OTP/eFuse pass-through port response.
 );
 
-  `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   //=========================================================================
   // Type Definitions for Crossbar
@@ -207,8 +207,8 @@ module km_axi_lite_xbar
     return 1'b1;
   endfunction
 
-  `OCAH_OT_ASSERT_INIT(AddrMapAligned_A, km_addr_map_aligned())
-  `OCAH_OT_ASSERT_INIT(AddrMapDisjoint_A, km_addr_map_disjoint())
+  `OCAH_ASSERT_STATIC(AddrMapAligned_A, km_addr_map_aligned())
+  `OCAH_ASSERT_STATIC(AddrMapDisjoint_A, km_addr_map_disjoint())
 
   //=========================================================================
   // Internal Crossbar Signals

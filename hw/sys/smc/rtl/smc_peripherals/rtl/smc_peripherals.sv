@@ -15,6 +15,8 @@
 // peripheral completes with SLVERR and read data 0xBADCAB1E instead of stalling. The DTP
 // CSR, smc_external, eFuse shim and JTAG eFuse AXI-Lite ports each pass through an axi_cut.
 
+`include "ocah_assert.svh"
+
 module smc_peripherals #(
   parameter int unsigned MAX_TRANS = 2,  // Maximum outstanding transactions of the padring
                                          // GPIO demux and of each GPIO interface.
@@ -866,8 +868,8 @@ module smc_peripherals #(
   /////////////
 
   // Protect against truncation from casts
-  `OCAH_OT_ASSERT_INIT(PadringGpioBaseFits_A, smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0
-                       ) < (64'd1 << gpio_pkg::AddrWidth))
+  `OCAH_ASSERT_STATIC(PadringGpioBaseFits_A, smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0
+                      ) < (64'd1 << gpio_pkg::AddrWidth))
 
   smc_padring #(
     .MAX_TRANS                  (MAX_TRANS), // threaded from smc_wrapper (was hardcoded 2)
@@ -1029,15 +1031,15 @@ module smc_peripherals #(
     .clk_o(gated_clk_periph_i2c)
   );
 
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(
       I2cCtrlBaseFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR < (64'd1 << i2c_wrap_pkg::RegAddrWidth))
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(
       I2cCtrlSizeFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE < (64'd1 << i2c_wrap_pkg::RegAddrWidth))
-  `OCAH_OT_ASSERT_INIT(I2c0BaseFits_A, smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0
-                       ) < (64'd1 << i2c_wrap_pkg::RegAddrWidth))
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(I2c0BaseFits_A, smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0
+                      ) < (64'd1 << i2c_wrap_pkg::RegAddrWidth))
+  `OCAH_ASSERT_STATIC(
       I2c0SizeFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE < (64'd1 << i2c_wrap_pkg::RegAddrWidth))
 
@@ -1096,31 +1098,31 @@ module smc_peripherals #(
     .clk_o(gated_clk_periph_uart)
   );
 
-  `OCAH_OT_ASSERT_INIT(UartLogEngineWrapBaseFits_A,
-                       smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_BASE_ADDR(0
-                       ) < (64'd1 << uart_wrap_pkg::RegAddrWidth))
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(UartLogEngineWrapBaseFits_A,
+                      smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_BASE_ADDR(0
+                      ) < (64'd1 << uart_wrap_pkg::RegAddrWidth))
+  `OCAH_ASSERT_STATIC(
       UartLogEngineWrapSizeFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_SIZE < (64'd1 << uart_wrap_pkg::RegAddrWidth))
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(
       UartBaseFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0
       ) < (64'd1 << uart_wrap_pkg::RegAddrWidth))
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(
       UartSizeFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SIZE < (64'd1 << uart_wrap_pkg::RegAddrWidth))
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(
       LogEngineBaseFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0
       ) < (64'd1 << uart_wrap_pkg::RegAddrWidth))
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(
       LogEngineSizeFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE < (64'd1 << uart_wrap_pkg::RegAddrWidth))
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(
       UartLogEngineCtrlBaseFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_BASE_ADDR(
       0) < (64'd1 << uart_wrap_pkg::RegAddrWidth))
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(
       UartLogEngineCtrlSizeFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_SIZE < (64'd1 << uart_wrap_pkg::RegAddrWidth))
 
@@ -1197,11 +1199,11 @@ module smc_peripherals #(
     .clk_o(gated_clk_telemetry)
   );
 
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(
       TelemetryRxBaseFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0
       ) < (64'd1 << telemetry_receiver_wrap_pkg::RegAddrWidth))
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(
       TelemetryRxSizeFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE < (64'd1 << telemetry_receiver_wrap_pkg::RegAddrWidth))
 

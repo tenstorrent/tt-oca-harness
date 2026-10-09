@@ -12,6 +12,7 @@
 // locked_field_access_interrupt_o reports locked-field APB hits.
 
 `include "prim_assert.sv"
+`include "ocah_assert.svh"
 
 module efuse_shadow_regs
 #(
@@ -772,13 +773,13 @@ module efuse_shadow_regs
   assign is_lc_state_access_o = is_lc_state_access;
   assign is_read_locked_o = read_locked;
 
-  `OCAH_OT_ASSERT_INIT(Class1ShadowRangesValid_A,
+  `OCAH_ASSERT_STATIC(Class1ShadowRangesValid_A,
       efuse_pkg::shadow_range_map_is_valid(CLASS1_SHADOW_RANGES, NumShadowWords))
-  `OCAH_OT_ASSERT_INIT(Class1ShadowCountFits_A,
+  `OCAH_ASSERT_STATIC(Class1ShadowCountFits_A,
       ActualNumClass1ShadowWords <= NumShadowWords)
-  `OCAH_OT_ASSERT_INIT(SecretShadowRangesValid_A,
+  `OCAH_ASSERT_STATIC(SecretShadowRangesValid_A,
       efuse_pkg::shadow_range_map_is_valid(SECRET_SHADOW_RANGES, NumShadowWords))
-  `OCAH_OT_ASSERT_INIT(NumShadowWordsFitsWordCounter_A,
+  `OCAH_ASSERT_STATIC(NumShadowWordsFitsWordCounter_A,
       $clog2(NumShadowWords + 1) <= $bits(efuse_word_counter_t))
 
   for (genvar i = 0; i < NumShadowWords; i++) begin : gen_secret_word_assert

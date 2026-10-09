@@ -38,6 +38,8 @@
 // and is never bufferable or cacheable. AHB-Lite has no security attribute, so
 // AxPROT[1] (non-secure) is not carried.
 
+`include "ocah_assert.svh"
+
 module axi_lite_to_ahb #(
   parameter int unsigned AXI_ADDR_WIDTH        = 32,
   parameter int unsigned AXI_DATA_WIDTH        = 32,    // Must be 32
@@ -86,9 +88,8 @@ module axi_lite_to_ahb #(
   localparam int unsigned AxiStrbWidth = AXI_DATA_WIDTH / 8;
   localparam int unsigned AhbLanes = AHB_DATA_WIDTH / AXI_DATA_WIDTH;
 
-  if (AXI_DATA_WIDTH != 32 || !(AHB_DATA_WIDTH inside {32, 64})) begin : gen_unsupported_width
-    $error("axi_lite_to_ahb: AXI_DATA_WIDTH must be 32 and AHB_DATA_WIDTH 32 or 64");
-  end
+  `OCAH_ASSERT_STATIC(DataWidth_A, AXI_DATA_WIDTH == 32 && AHB_DATA_WIDTH inside {32, 64},
+                      "AXI_DATA_WIDTH must be 32 and AHB_DATA_WIDTH 32 or 64")
 
   // FSM States
   typedef enum logic [2:0] {

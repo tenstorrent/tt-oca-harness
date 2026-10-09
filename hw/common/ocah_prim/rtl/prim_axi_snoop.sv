@@ -44,6 +44,7 @@ module prim_axi_snoop #(
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   ////////////////////////////////////////////////////////////////////////////////
   // Local Parameters and Types
@@ -124,7 +125,7 @@ module prim_axi_snoop #(
   ////////////////////////////////////////////////////////////////////////////////
 
   // Parameter Validation
-  `OCAH_OT_ASSERT_INIT(ValidOutstandingTx_A, OUTSTANDING_TX >= 1)
+  `OCAH_ASSERT_STATIC(ValidOutstandingTx_A, OUTSTANDING_TX >= 1)
 
   // Check for request counter underflow
   `OCAH_OT_ASSERT_NEVER(ReqCountUnderflow_A, ~|req_count_q && ($countones

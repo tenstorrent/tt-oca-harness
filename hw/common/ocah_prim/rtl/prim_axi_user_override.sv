@@ -7,7 +7,9 @@
 // Pass response user fields through unchanged.
 // AXI_USER_WIDTH must cover the override value; wider values are truncated.
 // prim_axi_user_override_struct provides the same function on request and response
-// structs and checks the struct field widths with simulation assertions at time zero.
+// structs and checks the struct field widths at elaboration.
+
+`include "ocah_assert.svh"
 
 module prim_axi_user_override #(
   parameter  int unsigned AXI_ADDR_WIDTH = 64,  // AXI address width.
@@ -257,92 +259,90 @@ module prim_axi_user_override_struct #(
   assign axi_out_req_o.ar.user   = user_t'(AXI_USER_OVERRIDE);
 
   // Assertions to make sure the structs are correct
-  initial begin
-    // User fields
-    assert ($bits(axi_in_req_i.aw.user) == AXI_USER_WIDTH)
-    else $error("axi_in_req_i.aw.user is not the correct width");
-    assert ($bits(axi_in_req_i.w.user) == AXI_USER_WIDTH)
-    else $error("axi_in_req_i.w.user is not the correct width");
-    assert ($bits(axi_in_req_i.ar.user) == AXI_USER_WIDTH)
-    else $error("axi_in_req_i.ar.user is not the correct width");
-    assert ($bits(axi_out_resp_i.b.user) == AXI_USER_WIDTH)
-    else $error("axi_out_resp_i.b.user is not the correct width");
-    assert ($bits(axi_out_resp_i.r.user) == AXI_USER_WIDTH)
-    else $error("axi_out_resp_i.r.user is not the correct width");
+  // User fields
+  `OCAH_ASSERT_STATIC(AxiInReqIAwUserWidth_A, $bits(axi_in_req_i.aw.user) == AXI_USER_WIDTH,
+                      "axi_in_req_i.aw.user is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIWUserWidth_A, $bits(axi_in_req_i.w.user) == AXI_USER_WIDTH,
+                      "axi_in_req_i.w.user is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIArUserWidth_A, $bits(axi_in_req_i.ar.user) == AXI_USER_WIDTH,
+                      "axi_in_req_i.ar.user is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiOutRespIBUserWidth_A, $bits(axi_out_resp_i.b.user) == AXI_USER_WIDTH,
+                      "axi_out_resp_i.b.user is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiOutRespIRUserWidth_A, $bits(axi_out_resp_i.r.user) == AXI_USER_WIDTH,
+                      "axi_out_resp_i.r.user is not the correct width")
 
-    // Address fields
-    assert ($bits(axi_in_req_i.aw.addr) == AXI_ADDR_WIDTH)
-    else $error("axi_in_req_i.aw.addr is not the correct width");
-    assert ($bits(axi_in_req_i.ar.addr) == AXI_ADDR_WIDTH)
-    else $error("axi_in_req_i.ar.addr is not the correct width");
+  // Address fields
+  `OCAH_ASSERT_STATIC(AxiInReqIAwAddrWidth_A, $bits(axi_in_req_i.aw.addr) == AXI_ADDR_WIDTH,
+                      "axi_in_req_i.aw.addr is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIArAddrWidth_A, $bits(axi_in_req_i.ar.addr) == AXI_ADDR_WIDTH,
+                      "axi_in_req_i.ar.addr is not the correct width")
 
-    // Data fields
-    assert ($bits(axi_in_req_i.w.data) == AXI_DATA_WIDTH)
-    else $error("axi_in_req_i.w.data is not the correct width");
-    assert ($bits(axi_out_resp_i.r.data) == AXI_DATA_WIDTH)
-    else $error("axi_out_resp_i.r.data is not the correct width");
+  // Data fields
+  `OCAH_ASSERT_STATIC(AxiInReqIWDataWidth_A, $bits(axi_in_req_i.w.data) == AXI_DATA_WIDTH,
+                      "axi_in_req_i.w.data is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiOutRespIRDataWidth_A, $bits(axi_out_resp_i.r.data) == AXI_DATA_WIDTH,
+                      "axi_out_resp_i.r.data is not the correct width")
 
-    // ID fields
-    assert ($bits(axi_in_req_i.aw.id) == AXI_ID_WIDTH)
-    else $error("axi_in_req_i.aw.id is not the correct width");
-    assert ($bits(axi_in_req_i.ar.id) == AXI_ID_WIDTH)
-    else $error("axi_in_req_i.ar.id is not the correct width");
-    assert ($bits(axi_out_resp_i.b.id) == AXI_ID_WIDTH)
-    else $error("axi_out_resp_i.b.id is not the correct width");
-    assert ($bits(axi_out_resp_i.r.id) == AXI_ID_WIDTH)
-    else $error("axi_out_resp_i.r.id is not the correct width");
+  // ID fields
+  `OCAH_ASSERT_STATIC(AxiInReqIAwIdWidth_A, $bits(axi_in_req_i.aw.id) == AXI_ID_WIDTH,
+                      "axi_in_req_i.aw.id is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIArIdWidth_A, $bits(axi_in_req_i.ar.id) == AXI_ID_WIDTH,
+                      "axi_in_req_i.ar.id is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiOutRespIBIdWidth_A, $bits(axi_out_resp_i.b.id) == AXI_ID_WIDTH,
+                      "axi_out_resp_i.b.id is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiOutRespIRIdWidth_A, $bits(axi_out_resp_i.r.id) == AXI_ID_WIDTH,
+                      "axi_out_resp_i.r.id is not the correct width")
 
-    // Strobe fields
-    assert ($bits(axi_in_req_i.w.strb) == AxiStrbWidth)
-    else $error("axi_in_req_i.w.strb is not the correct width");
+  // Strobe fields
+  `OCAH_ASSERT_STATIC(AxiInReqIWStrbWidth_A, $bits(axi_in_req_i.w.strb) == AxiStrbWidth,
+                      "axi_in_req_i.w.strb is not the correct width")
 
-    // Response fields
-    assert ($bits(axi_out_resp_i.b.resp) == 2)
-    else $error("axi_out_resp_i.b.resp is not the correct width");
-    assert ($bits(axi_out_resp_i.r.resp) == 2)
-    else $error("axi_out_resp_i.r.resp is not the correct width");
+  // Response fields
+  `OCAH_ASSERT_STATIC(AxiOutRespIBRespWidth_A, $bits(axi_out_resp_i.b.resp) == 2,
+                      "axi_out_resp_i.b.resp is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiOutRespIRRespWidth_A, $bits(axi_out_resp_i.r.resp) == 2,
+                      "axi_out_resp_i.r.resp is not the correct width")
 
-    // Control fields
-    assert ($bits(axi_out_resp_i.r.last) == 1)
-    else $error("axi_out_resp_i.r.last is not the correct width");
-    assert ($bits(axi_in_req_i.w.last) == 1)
-    else $error("axi_in_req_i.w.last is not the correct width");
+  // Control fields
+  `OCAH_ASSERT_STATIC(AxiOutRespIRLastWidth_A, $bits(axi_out_resp_i.r.last) == 1,
+                      "axi_out_resp_i.r.last is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIWLastWidth_A, $bits(axi_in_req_i.w.last) == 1,
+                      "axi_in_req_i.w.last is not the correct width")
 
-    // AXI protocol fields
-    assert ($bits(axi_in_req_i.aw.len) == 8)
-    else $error("axi_in_req_i.aw.len is not the correct width");
-    assert ($bits(axi_in_req_i.ar.len) == 8)
-    else $error("axi_in_req_i.ar.len is not the correct width");
-    assert ($bits(axi_in_req_i.aw.size) == 3)
-    else $error("axi_in_req_i.aw.size is not the correct width");
-    assert ($bits(axi_in_req_i.ar.size) == 3)
-    else $error("axi_in_req_i.ar.size is not the correct width");
-    assert ($bits(axi_in_req_i.aw.burst) == 2)
-    else $error("axi_in_req_i.aw.burst is not the correct width");
-    assert ($bits(axi_in_req_i.ar.burst) == 2)
-    else $error("axi_in_req_i.ar.burst is not the correct width");
-    assert ($bits(axi_in_req_i.aw.lock) == 1)
-    else $error("axi_in_req_i.aw.lock is not the correct width");
-    assert ($bits(axi_in_req_i.ar.lock) == 1)
-    else $error("axi_in_req_i.ar.lock is not the correct width");
-    assert ($bits(axi_in_req_i.aw.cache) == 4)
-    else $error("axi_in_req_i.aw.cache is not the correct width");
-    assert ($bits(axi_in_req_i.ar.cache) == 4)
-    else $error("axi_in_req_i.ar.cache is not the correct width");
-    assert ($bits(axi_in_req_i.aw.prot) == 3)
-    else $error("axi_in_req_i.aw.prot is not the correct width");
-    assert ($bits(axi_in_req_i.ar.prot) == 3)
-    else $error("axi_in_req_i.ar.prot is not the correct width");
-    assert ($bits(axi_in_req_i.aw.qos) == 4)
-    else $error("axi_in_req_i.aw.qos is not the correct width");
-    assert ($bits(axi_in_req_i.ar.qos) == 4)
-    else $error("axi_in_req_i.ar.qos is not the correct width");
-    assert ($bits(axi_in_req_i.aw.region) == 4)
-    else $error("axi_in_req_i.aw.region is not the correct width");
-    assert ($bits(axi_in_req_i.ar.region) == 4)
-    else $error("axi_in_req_i.ar.region is not the correct width");
-    assert ($bits(axi_in_req_i.aw.atop) == 6)
-    else $error("axi_in_req_i.aw.atop is not the correct width");
-  end
+  // AXI protocol fields
+  `OCAH_ASSERT_STATIC(AxiInReqIAwLenWidth_A, $bits(axi_in_req_i.aw.len) == 8,
+                      "axi_in_req_i.aw.len is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIArLenWidth_A, $bits(axi_in_req_i.ar.len) == 8,
+                      "axi_in_req_i.ar.len is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIAwSizeWidth_A, $bits(axi_in_req_i.aw.size) == 3,
+                      "axi_in_req_i.aw.size is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIArSizeWidth_A, $bits(axi_in_req_i.ar.size) == 3,
+                      "axi_in_req_i.ar.size is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIAwBurstWidth_A, $bits(axi_in_req_i.aw.burst) == 2,
+                      "axi_in_req_i.aw.burst is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIArBurstWidth_A, $bits(axi_in_req_i.ar.burst) == 2,
+                      "axi_in_req_i.ar.burst is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIAwLockWidth_A, $bits(axi_in_req_i.aw.lock) == 1,
+                      "axi_in_req_i.aw.lock is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIArLockWidth_A, $bits(axi_in_req_i.ar.lock) == 1,
+                      "axi_in_req_i.ar.lock is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIAwCacheWidth_A, $bits(axi_in_req_i.aw.cache) == 4,
+                      "axi_in_req_i.aw.cache is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIArCacheWidth_A, $bits(axi_in_req_i.ar.cache) == 4,
+                      "axi_in_req_i.ar.cache is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIAwProtWidth_A, $bits(axi_in_req_i.aw.prot) == 3,
+                      "axi_in_req_i.aw.prot is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIArProtWidth_A, $bits(axi_in_req_i.ar.prot) == 3,
+                      "axi_in_req_i.ar.prot is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIAwQosWidth_A, $bits(axi_in_req_i.aw.qos) == 4,
+                      "axi_in_req_i.aw.qos is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIArQosWidth_A, $bits(axi_in_req_i.ar.qos) == 4,
+                      "axi_in_req_i.ar.qos is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIAwRegionWidth_A, $bits(axi_in_req_i.aw.region) == 4,
+                      "axi_in_req_i.aw.region is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIArRegionWidth_A, $bits(axi_in_req_i.ar.region) == 4,
+                      "axi_in_req_i.ar.region is not the correct width")
+  `OCAH_ASSERT_STATIC(AxiInReqIAwAtopWidth_A, $bits(axi_in_req_i.aw.atop) == 6,
+                      "axi_in_req_i.aw.atop is not the correct width")
 
 endmodule

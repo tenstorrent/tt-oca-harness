@@ -43,12 +43,13 @@ module prim_fifo_sync_parity #(
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
   `include "prim_fifo_assert.svh"
 
 
   // FIFO is in complete passthrough mode
   if (DEPTH == 0) begin : gen_passthru_fifo
-    `OCAH_OT_ASSERT_INIT(paramCheckPass, PASS == 1)
+    `OCAH_ASSERT_STATIC(paramCheckPass, PASS == 1)
 
     assign depth_o = 1'b0; //output is meaningless
 

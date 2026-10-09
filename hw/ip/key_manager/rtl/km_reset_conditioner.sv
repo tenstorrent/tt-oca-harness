@@ -46,6 +46,7 @@ module km_reset_conditioner
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   //=========================================================================
   // Local Parameters
@@ -135,7 +136,7 @@ module km_reset_conditioner
   // Assertions
   //=========================================================================
 
-  `OCAH_OT_ASSERT_INIT(MinResetCyclesValid_A, MIN_RESET_CYCLES >= 2)
+  `OCAH_ASSERT_STATIC(MinResetCyclesValid_A, MIN_RESET_CYCLES >= 2)
 
   // Warm reset must always be asserted when cold reset is asserted.
   `OCAH_OT_ASSERT(WarmAssertedWhenCold_A, !rst_cold_aasd_no |-> !rst_warm_sync_no, clk_i,

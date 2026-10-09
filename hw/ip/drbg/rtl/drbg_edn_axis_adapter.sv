@@ -34,6 +34,7 @@ module drbg_edn_axis_adapter
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   // Each endpoint FIFO carries {edn_fips, edn_bus} so the per-beat FIPS
   // provenance is preserved on the AXI-Stream tuser sideband.
@@ -84,7 +85,7 @@ module drbg_edn_axis_adapter
     `OCAH_OT_ASSERT(EndpointFifoHealthy_A, !endpoint_fifo_err[i])
   end : gen_endpoints
 
-  `OCAH_OT_ASSERT_INIT(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
-  `OCAH_OT_ASSERT_INIT(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
+  `OCAH_ASSERT_STATIC(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
+  `OCAH_ASSERT_STATIC(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
 
 endmodule : drbg_edn_axis_adapter

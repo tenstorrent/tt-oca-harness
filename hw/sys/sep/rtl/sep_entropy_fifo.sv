@@ -21,6 +21,8 @@
 // acknowledge, and clears on the next ack; the stall detector arms on the first acknowledge
 // after reset or entropy_clear_i.
 
+`include "ocah_assert.svh"
+
 `include "prim_assert.sv"
 
 module sep_entropy_fifo
@@ -74,11 +76,8 @@ module sep_entropy_fifo
 
   // The status-word occupancy field is a fixed 6-bit slot (status_word[5:0]);
   // FIFO_DEPTH must be representable in it.
-  initial begin
-    assert (FIFO_DEPTH <= 63)
-    else
-      $fatal(1, "sep_entropy_fifo: FIFO_DEPTH=%0d exceeds the 6-bit status[5:0] field", FIFO_DEPTH);
-  end
+  `OCAH_ASSERT_STATIC(FifoDepth_A, FIFO_DEPTH <= 63,
+                      "FIFO_DEPTH exceeds the 6-bit status[5:0] field")
 
   // -------------------------------------------------------------------------
   // AXI4 -> AXI-Lite (64-bit) conversion

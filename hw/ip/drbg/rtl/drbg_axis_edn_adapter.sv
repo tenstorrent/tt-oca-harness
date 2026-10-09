@@ -56,6 +56,7 @@ module drbg_axis_edn_adapter
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   localparam int unsigned DataWidth = DrbgAxisDataWidth;
   localparam int unsigned StageWidth = DataWidth + 1;  // {tuser, tdata}
@@ -251,6 +252,6 @@ module drbg_axis_edn_adapter
   `OCAH_OT_ASSERT_KNOWN(AxisEdnRspReadyKnown_A, axis_rsp_o.tready)
   `OCAH_OT_ASSERT(AxisEdnNoReadyDuringClear_A, clear_i |-> !axis_rsp_o.tready)
 
-  `OCAH_OT_ASSERT_INIT(AxisEdnEndpointCount_A, NUM_ENDPOINTS > 0)
+  `OCAH_ASSERT_STATIC(AxisEdnEndpointCount_A, NUM_ENDPOINTS > 0)
 
 endmodule : drbg_axis_edn_adapter

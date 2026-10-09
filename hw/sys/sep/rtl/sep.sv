@@ -15,7 +15,7 @@
 // When unused, tie test_en_i to 1'b0 and scan_rst_ni to 1'b1.
 
 `include "axi/assign.svh"
-`include "prim_assert.sv"
+`include "ocah_assert.svh"
 
 module sep #(
   parameter bit KM_LATCHED_MEM_RDATA = 1'b1,  // 1 if Key Manager ROM/SRAM latch read data for
@@ -1229,48 +1229,46 @@ NumSramDemuxPorts
   assign wdt_timer_rst_req_o  = wdt_timer_rst_req;
   assign security_disable_o   = security_disable;
 
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+  `OCAH_ASSERT_STATIC(
       ExtDebugCpuStatusLaneWidth_A, $bits
       ({sep_cpu_trace_o.trace_rv_i_valid_ip, sep_cpu_trace_o.trace_rv_i_exception_ip, sep_cpu_trace_o.trace_rv_i_interrupt_ip, 13'b0}
           ) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+  `OCAH_ASSERT_STATIC(
       ExtDebugEccPerfLaneWidth_A, $bits
       ({cpu_iccm_ecc_single_error, cpu_iccm_ecc_double_error, cpu_dccm_ecc_single_error, cpu_dccm_ecc_double_error, cpu_dec_tlu_perfcnt0, cpu_dec_tlu_perfcnt1, cpu_dec_tlu_perfcnt2, cpu_dec_tlu_perfcnt3, 8'b0}
           ) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+  `OCAH_ASSERT_STATIC(
       ExtDebugInterruptLaneWidth_A, $bits
       ({intr_wdog_timer_bark, sep_mailbox_interrupt, km_mbox_irq, entropy_source_irq, ext_trng_irq, intr_dma_done, intr_dma_chunk_done, intr_dma_error, 1'b0}
           ) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugResetStatusLaneWidth_A, $bits
-                                    ({sep_reset_n, wdt_timer_rst_req, security_disable, 13'b0})
-                                    == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugTraceAddressLaneWidth_A, $bits
-                                    (sep_cpu_trace_o.trace_rv_i_address_ip[15:0]) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugTraceInsnLaneWidth_A, $bits
-                                    (sep_cpu_trace_o.trace_rv_i_insn_ip[15:0]) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+  `OCAH_ASSERT_STATIC(ExtDebugResetStatusLaneWidth_A, $bits
+                      ({sep_reset_n, wdt_timer_rst_req, security_disable, 13'b0}) == 16)
+  `OCAH_ASSERT_STATIC(ExtDebugTraceAddressLaneWidth_A, $bits
+                      (sep_cpu_trace_o.trace_rv_i_address_ip[15:0]) == 16)
+  `OCAH_ASSERT_STATIC(ExtDebugTraceInsnLaneWidth_A, $bits(sep_cpu_trace_o.trace_rv_i_insn_ip[15:0])
+                      == 16)
+  `OCAH_ASSERT_STATIC(
       ExtDebugTraceExceptionLaneWidth_A, $bits
       ({sep_cpu_trace_o.trace_rv_i_ecause_ip[3:0], sep_cpu_trace_o.trace_rv_i_tval_ip[11:0]}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+  `OCAH_ASSERT_STATIC(
       ExtDebugControlLaneWidth_A, $bits
       ({8'b0, cpu_run_ack_o, debug_mode_status_o, cpu_halt_status_o, cpu_halt_ack_o, 1'b0, debug_brkpt_status, mpc_debug_run_ack, mpc_debug_halt_ack}
           ) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugEfuseLaneWidth_A, $bits({6'b0, sep_efuse_debug}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugSipTokenLaneWidth_A, $bits
-                                    ({10'b0, sep_efuse_token_match_sip_debug}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugChipletTokenLaneWidth_A, $bits
-                                    ({10'b0, sep_efuse_token_match_chiplet_debug}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugRemapLaneWidth_A, $bits
-                                    ({8'b0, local_masters_remap_debug}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
-      ExtDebugOutboundFilterLaneWidth_A, $bits
-      ({{(16 - 2 * $clog2(sep_pkg::OutboundFilterNumFilters)
-       ) {1'b0}}, outbound_write_filter_hit_debug, outbound_read_filter_hit_debug}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
-      ExtDebugInboundFilterLaneWidth_A, $bits
-      ({{(16 - 2 * $clog2(sep_pkg::InboundFilterNumFilters)
-       ) {1'b0}}, inbound_write_filter_hit_debug, inbound_read_filter_hit_debug}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugReservedLanesWidth_A, $bits(160'b0) == 10 * 16)
+  `OCAH_ASSERT_STATIC(ExtDebugEfuseLaneWidth_A, $bits({6'b0, sep_efuse_debug}) == 16)
+  `OCAH_ASSERT_STATIC(ExtDebugSipTokenLaneWidth_A, $bits({10'b0, sep_efuse_token_match_sip_debug})
+                      == 16)
+  `OCAH_ASSERT_STATIC(ExtDebugChipletTokenLaneWidth_A, $bits
+                      ({10'b0, sep_efuse_token_match_chiplet_debug}) == 16)
+  `OCAH_ASSERT_STATIC(ExtDebugRemapLaneWidth_A, $bits({8'b0, local_masters_remap_debug}) == 16)
+  `OCAH_ASSERT_STATIC(ExtDebugOutboundFilterLaneWidth_A, $bits
+                      ({{(16 - 2 * $clog2(sep_pkg::OutboundFilterNumFilters)
+                       ) {1'b0}}, outbound_write_filter_hit_debug, outbound_read_filter_hit_debug})
+                      == 16)
+  `OCAH_ASSERT_STATIC(ExtDebugInboundFilterLaneWidth_A, $bits
+                      ({{(16 - 2 * $clog2(sep_pkg::InboundFilterNumFilters)
+                       ) {1'b0}}, inbound_write_filter_hit_debug, inbound_read_filter_hit_debug})
+                      == 16)
+  `OCAH_ASSERT_STATIC(ExtDebugReservedLanesWidth_A, $bits(160'b0) == 10 * 16)
 
   // External debug bus assignment (24 lanes, 16 bits per lane)
   assign ext_debug_bus_o = {
