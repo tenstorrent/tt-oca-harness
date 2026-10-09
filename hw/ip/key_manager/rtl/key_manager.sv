@@ -157,7 +157,7 @@ module key_manager
   `OCAH_ASSERT_STATIC(OtpRemapBaseAligned_A, (OTP_EFUSE_REMAP_BASE & OtpPageMask) == '0)
   `OCAH_ASSERT_STATIC(OtpMapInPage_A, OtpMapBaseAddr >= OtpBaseAddr && OtpMapEndAddr <= OtpEndAddr)
   `OCAH_ASSERT_STATIC(OtpCtrlInPage_A,
-                       OtpCtrlBaseAddr >= OtpBaseAddr && OtpCtrlEndAddr <= OtpEndAddr)
+                      OtpCtrlBaseAddr >= OtpBaseAddr && OtpCtrlEndAddr <= OtpEndAddr)
   `OCAH_ASSERT_STATIC(OtpMmrInPage_A, OtpMmrBaseAddr >= OtpBaseAddr && OtpMmrEndAddr <= OtpEndAddr)
 
   //=========================================================================
