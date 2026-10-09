@@ -39,7 +39,7 @@
             <a class="navbar-item" href="../../ocah-appnotes/0.5/index.html">Application Notes</a>
           </div>
         </div>
-        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../.." data-snapshot="v0.5.2">
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../.." data-snapshot="v0.5.3">
           <a class="navbar-link" href="#">Version</a>
           <div class="navbar-dropdown"></div>
         </div>
@@ -135,15 +135,15 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.2 — switch documentation">
-    <span class="version">0.5.2</span>
+  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.3 — switch documentation">
+    <span class="version">0.5.3</span>
   </button>
   <ul class="components">
     <li class="component">
       <span class="title">Application Notes</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../ocah-appnotes/0.5/index.html">0.5.2</a>
+          <a href="../../ocah-appnotes/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -151,7 +151,7 @@
       <span class="title">Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../ocah-starting/0.5/index.html">0.5.2</a>
+          <a href="../../ocah-starting/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -159,7 +159,7 @@
       <span class="title">Integrator Guide</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../ocah-integrator-guide/0.5/index.html">0.5.2</a>
+          <a href="../../ocah-integrator-guide/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -167,7 +167,7 @@
       <span class="title">Open Chiplet Atlas (OCA) Harness</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../ocah-home/0.5/index.html">0.5.2</a>
+          <a href="../../ocah-home/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -175,7 +175,7 @@
       <span class="title">Programmer&#x27;s Guide</span>
       <ul class="versions">
         <li class="version is-current is-latest">
-          <a href="index.html">0.5.2</a>
+          <a href="index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -183,7 +183,7 @@
       <span class="title">Technical Reference Manual</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../ocah-docs/0.5/index.html">0.5.2</a>
+          <a href="../../ocah-docs/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -4585,10 +4585,11 @@ void smc_inbound_filter_open_range_burst(uintptr_t start, size_t length, uint8_t
 traffic to the inbound default, which blocks it; make sure no other entry
 permits it. On the SMC outbound filter the same entry does not block non-secure
 traffic, because unmatched traffic passes; add matching deny entries for it,
-accounting for entry priority. AXI-Lite filters check AxPROT instead: with
-<code>awprot_requirement</code> and <code>arprot_requirement</code> at <code>0x1</code> (data, secure,
-privileged) and both <code>write_filter_enable</code> and <code>read_filter_enable</code> set, only
-transactions whose three PROT bits equal <code>0x1</code> are allowed.</p>
+accounting for entry priority. The SMC GPIO&#8217;s AXI-Lite access filter checks
+AxPROT instead: with <code>awprot_requirement</code> and <code>arprot_requirement</code> at <code>0x1</code>
+(data, secure, privileged) and both <code>write_filter_enable</code> and
+<code>read_filter_enable</code> set, only transactions whose three PROT bits equal <code>0x1</code>
+are allowed. The SEP load/store, debug and DMA masters all drive <code>0x1</code>.</p>
 </div>
 <div class="admonitionblock note">
 <table>

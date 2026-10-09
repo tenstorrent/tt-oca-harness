@@ -39,7 +39,7 @@
             <a class="navbar-item" href="../../../../../ocah-appnotes/0.5/index.html">Application Notes</a>
           </div>
         </div>
-        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../../../.." data-snapshot="v0.5.2">
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../../../.." data-snapshot="v0.5.3">
           <a class="navbar-link" href="#">Version</a>
           <div class="navbar-dropdown"></div>
         </div>
@@ -588,15 +588,15 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Technical Reference Manual 0.5.2 — switch documentation">
-    <span class="version">0.5.2</span>
+  <button class="context" aria-label="Technical Reference Manual 0.5.3 — switch documentation">
+    <span class="version">0.5.3</span>
   </button>
   <ul class="components">
     <li class="component">
       <span class="title">Application Notes</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/0.5/index.html">0.5.2</a>
+          <a href="../../../../../ocah-appnotes/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -604,7 +604,7 @@
       <span class="title">Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../../../ocah-starting/0.5/index.html">0.5.2</a>
+          <a href="../../../../../ocah-starting/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -612,7 +612,7 @@
       <span class="title">Integrator Guide</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../../../ocah-integrator-guide/0.5/index.html">0.5.2</a>
+          <a href="../../../../../ocah-integrator-guide/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -620,7 +620,7 @@
       <span class="title">Open Chiplet Atlas (OCA) Harness</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../../../ocah-home/0.5/index.html">0.5.2</a>
+          <a href="../../../../../ocah-home/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -628,7 +628,7 @@
       <span class="title">Programmer&#x27;s Guide</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../../../ocah-programmer-guide/0.5/index.html">0.5.2</a>
+          <a href="../../../../../ocah-programmer-guide/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -636,7 +636,7 @@
       <span class="title">Technical Reference Manual</span>
       <ul class="versions">
         <li class="version is-current is-latest">
-          <a href="../../../index.html">0.5.2</a>
+          <a href="../../../index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -663,7 +663,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">sep_dma_wrap</h1>
-<p>Bridge AXI register and host ports onto the secure_dma TileLink UL core.</p><p>Register path: 64-bit AXI is downsized to 32 bits, rebased by subtracting SEP_TOP_SECURE_DMA_BASE_ADDR, converted to AXI-Lite and then to TL-UL. Master path: TL-UL is converted to AXI-Lite, then to AXI with AxCACHE 0, upsized to 64 bits, and passed through a window remap that rewrites addresses in [sep_local_base_addr_i, sep_local_base_addr_i + 0x3000_0000) to 0x1000_0000 plus the offset. The CTN and system interfaces and the RACL policies are tied off.</p><p>dma_alert_o aggregates the fatal alert pulse with integ_fail of all channels.</p><p>dma_reg_bus_err_o and dma_host_intg_err_o stick until dma_err_clr_i; a fault arriving in the same cycle as the clear still latches. They are not cleared by a CPU-only reset (sep_cpu_reset_n is a subset of this block&#x27;s rst_ni), so firmware must treat an assertion at boot as possibly stale.</p>
+<p>Bridge AXI register and host ports onto the secure_dma TileLink UL core.</p><p>Register path: 64-bit AXI is downsized to 32 bits, rebased by subtracting SEP_TOP_SECURE_DMA_BASE_ADDR, converted to AXI-Lite and then to TL-UL. Master path: TL-UL is converted to AXI-Lite, then to AXI with AxCACHE 0 and AxPROT 3&#x27;b001 (privileged, secure, data), upsized to 64 bits, and passed through a window remap that rewrites addresses in [sep_local_base_addr_i, sep_local_base_addr_i + 0x3000_0000) to 0x1000_0000 plus the offset. The CTN and system interfaces and the RACL policies are tied off.</p><p>dma_alert_o aggregates the fatal alert pulse with integ_fail of all channels.</p><p>dma_reg_bus_err_o and dma_host_intg_err_o stick until dma_err_clr_i; a fault arriving in the same cycle as the clear still latches. They are not cleared by a CPU-only reset (sep_cpu_reset_n is a subset of this block&#x27;s rst_ni), so firmware must treat an assertion at boot as possibly stale.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">

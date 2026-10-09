@@ -40,7 +40,7 @@
             <a class="navbar-item" href="../../../ocah-appnotes/0.5/index.html">Application Notes</a>
           </div>
         </div>
-        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.2">
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="v0.5.3">
           <a class="navbar-link" href="#">Version</a>
           <div class="navbar-dropdown"></div>
         </div>
@@ -136,15 +136,15 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.2 — switch documentation">
-    <span class="version">0.5.2</span>
+  <button class="context" aria-label="Programmer&#x27;s Guide 0.5.3 — switch documentation">
+    <span class="version">0.5.3</span>
   </button>
   <ul class="components">
     <li class="component">
       <span class="title">Application Notes</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-appnotes/0.5/index.html">0.5.2</a>
+          <a href="../../../ocah-appnotes/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -152,7 +152,7 @@
       <span class="title">Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-starting/0.5/index.html">0.5.2</a>
+          <a href="../../../ocah-starting/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -160,7 +160,7 @@
       <span class="title">Integrator Guide</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.2</a>
+          <a href="../../../ocah-integrator-guide/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -168,7 +168,7 @@
       <span class="title">Open Chiplet Atlas (OCA) Harness</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-home/0.5/index.html">0.5.2</a>
+          <a href="../../../ocah-home/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -176,7 +176,7 @@
       <span class="title">Programmer&#x27;s Guide</span>
       <ul class="versions">
         <li class="version is-current is-latest">
-          <a href="../index.html">0.5.2</a>
+          <a href="../index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -184,7 +184,7 @@
       <span class="title">Technical Reference Manual</span>
       <ul class="versions">
         <li class="version is-latest">
-          <a href="../../../ocah-docs/0.5/index.html">0.5.2</a>
+          <a href="../../../ocah-docs/0.5/index.html">0.5.3</a>
         </li>
       </ul>
     </li>
@@ -629,7 +629,8 @@ path.</p>
 <p>SEP outbound traffic carries a source ID in AxUSER. Both AP- and STEE-controlled
 remappers replace it with <code>OTHERS</code>. Other traffic retains the initiator&#8217;s ID:
 the CPU masters drive SEP&#8217;s ID, while the secure DMA master leaves AxUSER at
-zero (<code>OTHERS</code>). AxPROT, including NS, passes unchanged. The outbound filter
+zero (<code>OTHERS</code>). AxPROT, including NS, passes unchanged; the initiators' values
+are in <a href="#sep-cpu-axprot-table">[sep-cpu-axprot-table]</a>. The outbound filter
 checks address, NS and source ID after remapping. The Programmer&#8217;s Guide
 describes how to
 <a href="../index.html#sep-smc-address-remapping" class="xref page">select the outbound path and restrict <code>OTHERS</code> traffic</a>.</p>
