@@ -13,6 +13,11 @@ if {![array exists ::clock_periods]} {
     error "dtp_io_delays.sdc: clock_periods() is empty; source the flow's clock-period definitions first"
 }
 
+if {![array exists ::io_budget]} {
+    source [file normalize [file join [file dirname [info script]] \
+        ../../../../flows/synth/constraints/io_delay_budgets.tcl]]
+}
+
 # Block-top only: these delays anchor the block's own ports. Replayed under a parent
 # they are internal nets whose launch and capture domains come from the real fabric.
 if {[cdc_is_block_top]} {
@@ -24,8 +29,8 @@ if {[info procs cdc_is_block_top] eq ""} {
 
 
 # resets
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports rst_n_i] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports pwr_on_rst_ni] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports rst_n_i] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports pwr_on_rst_ni] -add_delay
 
 # feature control (OTP/fuse bits) -- quasi-static
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.25]      -clock [get_clock DTPCLK] [get_ports {dbg_disable_i*}] -add_delay
@@ -36,7 +41,7 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.25]      -clock [get_cloc
 # downstream TAP's TDO change on the falling edge (-clock_fall); host scan-chain
 # returns change on the rising edge. `.tck` fields carry generated clocks and
 # take no data delay.
-set jtag_io_ext [expr $clock_periods(JTAG_TCK_PERIOD)*0.2]
+set jtag_io_ext [expr $clock_periods(JTAG_TCK_PERIOD)*$io_budget(jtag)]
 
 # JTAG PTAP client interface
 set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] -clock_fall [filter_collection [get_ports {jtag_ptap_client_tap_ctrl_i*}] {name !~ "*tck*"}] -add_delay
@@ -94,19 +99,19 @@ set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_dft_ho
 set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_dft_host_scan_out_o] -add_delay
 
 # SMC fabric debug AXI manager interface (system clock domain)
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {axi_smc_dbg_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {axi_smc_dbg_resp_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports {axi_smc_dbg_req_o*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports {axi_smc_dbg_resp_i*}] -add_delay
 
 # SMC OTP debug AXI-Lite manager interface (system clock domain)
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {axil_smc_otp_jtag_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {axil_smc_otp_jtag_resp_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports {axil_smc_otp_jtag_req_o*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports {axil_smc_otp_jtag_resp_i*}] -add_delay
 
 # SEP OTP debug AXI-Lite manager interface (system clock domain)
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {axil_sep_otp_jtag_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {axil_sep_otp_jtag_resp_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports {axil_sep_otp_jtag_req_o*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports {axil_sep_otp_jtag_resp_i*}] -add_delay
 
 # Clock control
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports stop_clks_o] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports stop_clks_o] -add_delay
 # `cla_clock_stop_en_o` is bit 2 of the DEBUG_CONTROL TDR update register, so it
 # launches from JTAG_TCK like the boot-stall outputs below, not from DTPCLK.
 set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports cla_clock_stop_en_o] -add_delay
@@ -126,42 +131,42 @@ set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports {jtag_ptap_
 set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports {jtag_ptap_inst_decoded_o*}] -add_delay
 
 # Cross trigger CSR AXI-Lite subordinate interface (system clock domain)
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {axil_xtrig_req_i*}] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {axil_xtrig_resp_o*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports {axil_xtrig_req_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports {axil_xtrig_resp_o*}] -add_delay
 
 # Cross trigger matrix interface (async - uses feedthrough clock)
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {xtrig_ctm_src_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctm_src_ack_i*}] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctm_dst_req_i*}] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports {xtrig_ctm_dst_ack_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports {xtrig_ctm_src_req_o*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctm_src_ack_i*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctm_dst_req_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock DTPCLK] [get_ports {xtrig_ctm_dst_ack_o*}] -add_delay
 
 # CLA clock stop interface
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_clk_stop_req_i*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_clk_stop_req_i*}] -add_delay
 
 # Cross trigger port interface - GPIO pad ring (async - feedthrough clock)
 # CT_Req_out
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_out_dout_o*}] -add_delay
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_out_dout_en_o*}] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_out_din_i*}] -add_delay
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_out_din_en_o*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_out_dout_o*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_out_dout_en_o*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_out_din_i*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_out_din_en_o*}] -add_delay
 
 # CT_Req_in
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_in_dout_o*}] -add_delay
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_in_dout_en_o*}] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_in_din_i*}] -add_delay
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_in_din_en_o*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_in_dout_o*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_in_dout_en_o*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_in_din_i*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_req_in_din_en_o*}] -add_delay
 
 # CT_Ack_in
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_in_dout_o*}] -add_delay
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_in_dout_en_o*}] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_in_din_i*}] -add_delay
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_in_din_en_o*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_in_dout_o*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_in_dout_en_o*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_in_din_i*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_in_din_en_o*}] -add_delay
 
 # CT_Ack_out
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_out_dout_o*}] -add_delay
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_out_dout_en_o*}] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_out_din_i*}] -add_delay
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_out_din_en_o*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_out_dout_o*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_out_dout_en_o*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_out_din_i*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_out_din_en_o*}] -add_delay
 
 # DFT
 # `test_en_i`/`scan_rst_ni` are real `dtp` top-level ports; constrained on
