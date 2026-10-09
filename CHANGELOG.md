@@ -8,6 +8,59 @@ Releases before 1.0.0 are early-stage: public interfaces (register maps, RTL
 ports) may change between minor versions. A patch stays compatible with the
 minor release it updates.
 
+## [0.5.3] - 2026-10-09 (Beta)
+
+### Added
+
+- Native arm64 container image, published with the amd64 one under the same
+  tag, so arm64 hosts such as Apple silicon no longer emulate x86_64 (#3012).
+- `scripts/docker-run.sh` commands to list, refresh, prune and remove local
+  images, and `OCAH_IMAGE_FALLBACK=main`, which runs the image CI last verified
+  on `main` while a checkout's image is unpublished (#3027).
+
+### Changed
+
+- Documentation links point at `docs.tenstorrent.com/tt-oca-harness` (#3011).
+- SMU inbound AXI port registered, which adds a cycle of latency, and SMU and
+  SMC I/O delay constraints refreshed (#3007). I/O delay budgets come from a
+  shared `io_delay_budgets.tcl` (#3024).
+- Starting guide: memory requirement raised for synthesis, with a warning for
+  synthesis on macOS (#3026).
+- SEP Boot ROM: obsolete SPI pad-select hook removed (#2998).
+- `peakrdl-rawheader` floats from 0.2.9, and the include-guard rewrite is
+  dropped. Generated headers are unchanged (#3003).
+- SMC regblock-wide scoreboard grades write responses (#2972).
+- DV dashboard: each run gets its own trend point (#3006).
+- Container images for amd64 build on the standard GitHub runner (#3017).
+
+### Fixed
+
+- Container: `HOME` set, so Verilator builds through `ccache` work under Podman.
+  SMC DV runs failed with `ccache: error: not an absolute path: ""` (#3016).
+- Container: Python packages that load native libraries work in the image
+  without bundled uv dependencies, which now includes GNU coreutils (#3010).
+- Container: `make format-nix` warns to run on the host instead of failing
+  (#3023).
+- `scripts/docker-run.sh` finds a loaded image with Docker 29 and later
+  (#3015).
+- Missing `make` aliases restored, and documented `CHECK=1` settings honoured
+  (#3013).
+- Documentation: the `vale` acronym check no longer times out, and PDF builds
+  set a UTF-8 locale (#3021).
+- DV: personal access tokens are redacted in environment snapshots (#3018), and
+  host paths and host names are kept out of dashboard data (#3019).
+- DV: `sep_km_handover_test` waits for the key-manager handover before the warm
+  reset (#2997), and `smu_jtag_reset_override_test` waives the crypto EDN
+  request-hold checks (#2917).
+
+### RTL bugs
+
+RTL bugs fixed on `main` since v0.5.2. Each entry is the issue and the pull
+request that closed it.
+
+- SEP secure DMA drove AxPROT 0, so AXI filters that pass the SEP CPU rejected
+  its transfers. It now drives privileged secure data (#2995, #3005).
+
 ## [0.5.2] - 2026-10-08 (Beta)
 
 ### Changed
@@ -116,6 +169,7 @@ First public release of the Open Chiplet Atlas (OCA) Harness.
 - Lint, format and DV tooling, and a Nix-based reproducible environment with a
   container for the RISC-V firmware toolchain.
 
+[0.5.3]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.3
 [0.5.2]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.2
 [0.5.1]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.1
 [0.5.0]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.0
