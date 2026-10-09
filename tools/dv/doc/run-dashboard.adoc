@@ -464,16 +464,17 @@ record, the staged coverage files, the summary, and the prior history:
   slash follows the word, and across any spaces when the path fills the text
   between two matching quotes in the string.
 * A URL becomes `EXTERNAL_URL` unless it is an `http` or `https` URL on GitHub
-  (`github.com`, `githubusercontent.com`, or `github.io`), which keeps
-  everything but its user name and password. A URL ends at a space unless a
-  path inside it continues past the space by the rule above.
+  (`github.com`, `githubusercontent.com`, or `github.io`) with no port or a
+  numeric one, which keeps everything but its user name and password. A URL
+  ends at a space unless a path inside it continues past the space by the
+  rule above.
 * A `user@host:path` remote becomes `EXTERNAL_URL`, and a `user@host` or
   `port@host` reference becomes `EXTERNAL_HOST`, unless the host is on GitHub.
   A remote's host is a name that starts with a letter, or an IP address. A
-  reference's host is an IPv4 or bracketed IPv6 address, a dotted name that
-  ends in an all-letter label, or one name after a numeric port, as in
-  `27000@licserver01`. `value@100ns`, `smoke@fast`, and `checkout@v4` hold no
-  host.
+  reference's host is an IPv4 address, an IPv6 address in brackets or with
+  `::`, a dotted name that ends in an all-letter label, or one name after a
+  numeric port, as in `27000@licserver01`. An IPv6 address may carry a zone.
+  `value@100ns`, `smoke@fast`, and `checkout@v4` hold no host.
 
 The rewrite is idempotent, and the trend-point ids already in the history stay
 as they are. Two keys of one object that rewrite to the same text are an
@@ -830,8 +831,14 @@ list, run directories, coverage comparison keys, Git revisions, and run start
 times. A record without `timing.start_time` contributes the runner's
 `run_metadata.generated_at` instead; the record's own `generated_at` is the
 collection time and does not contribute. The revision is the collecting
-checkout's `HEAD`, so the start time is what separates two runs whose run
-directories are reused or sanitize to the same string: they are two points.
+checkout's `HEAD`, so when the records carry a run time, the start time is
+what separates two runs whose run directories are reused or sanitize to the
+same string: they are two points. A record with neither time, such as the
+`UNKNOWN` record `collect` writes when it finds no `result.json`, adds nothing
+that separates its runs. Two aggregations at one revision whose records all
+lack both times, and otherwise match after sanitizing, are one point, and the
+later replaces the earlier. A producer that writes records without a runner
+`result.json` keeps its runs apart by setting `timing.start_time`.
 Re-generating an identical ordered input list replaces that point. Reordering
 inputs or passing overlapping patterns can create a different point or
 duplicate DUT records. A coverage-policy change changes a DUT's

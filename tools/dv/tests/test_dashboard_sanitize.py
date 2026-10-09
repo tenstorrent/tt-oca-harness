@@ -35,6 +35,7 @@ from dashboard.sanitize import (  # noqa: E402
     checkout_scrubber,
 )
 from dashboard.schema import make_result, make_summary, read_json, update_history  # noqa: E402
+from runlib.models import ConfigError  # noqa: E402
 
 WORKSPACE = "/site/ci/work/tt-oca-harness"
 INTERNAL_URL = "http://ci.example.internal:8080/job/dtp/42/"
@@ -131,6 +132,9 @@ class ScrubText(TempRoot):
             "https://github.com/o/r/tree/feature@next",
             "//top.dut/x",
             "a@b.@c",
+            "logic [7:0] data; x[a:b:c] y[1:2:3%4] foo@[7:0]",
+            "job@10:15:22 and x@add::y",
+            "https://github.com:443/o/r",
         ):
             with self.subTest(text=text):
                 self.assertEqual(self.scrubber.text(text), text)
@@ -150,6 +154,15 @@ class ScrubText(TempRoot):
                 ),
                 ("mail jdoe@build.example.com.", f"mail {EXTERNAL_HOST}."),
                 ("from jdoe.last@corp.example.com://x", f"from {EXTERNAL_HOST}://x"),
+                ("https://[fe80::1%25en0]/job", EXTERNAL_URL),
+                ("http://[fe80::1%en0]:8080/job/1", EXTERNAL_URL),
+                ("ssh://git@[fe80::1%25eth0]:22/x", EXTERNAL_URL),
+                ("ssh user@[fe80::1%en0] ok", f"ssh {EXTERNAL_HOST} ok"),
+                ("scp git@[fe80::1%eth0]:x .", f"scp {EXTERNAL_URL} ."),
+                ("ssh user@fe80::1%en0 ok", f"ssh {EXTERNAL_HOST} ok"),
+                ("ssh -J jump@fd00::1.", f"ssh -J {EXTERNAL_HOST}."),
+                ("27000@fd00::5", EXTERNAL_HOST),
+                ("https://github.com:ci.example.internal/o/r", EXTERNAL_URL),
                 ("open file:///Users/Alice Smith/x.html now", f"open {EXTERNAL_URL} now"),
                 (f"{INTERNAL_URL}=/Users/Alice Smith/x", EXTERNAL_URL),
                 ("rsync out/ jdoe@build-04:/site/run/", f"rsync out/ {EXTERNAL_URL}"),
@@ -199,10 +212,20 @@ class ScrubText(TempRoot):
             "a@b.@c:5280@lic.example.com",
             "jdoe@build-04:27000@lic.example.com",
             "5280@lic.example.com:jdoe@build-04:/site/x/",
+            "https://[fe80::1%25en0]/job and git@[fe80::1%eth0]:x/",
         ):
             with self.subTest(text=text):
                 once = self.scrubber.text(text)
                 self.assertEqual(self.scrubber.text(once), once)
+
+    def test_a_url_nested_thousands_deep_is_rewritten(self):
+        nested = "https://github.com/o/r?next=" * 3000
+        self.assertScrubs(
+            [
+                (nested + "https://user:secret@github.com/o/r", nested + "https://github.com/o/r"),
+                (nested + INTERNAL_URL, nested + EXTERNAL_URL),
+            ]
+        )
 
     def test_a_path_with_spaces_is_rewritten_whole(self):
         self.assertScrubs(
@@ -433,6 +456,44 @@ class CollectWritesSanitizedRecords(TempRoot):
         self.assertEqual(record["coverage"]["source_manifest"], EXTERNAL_PATH)
         self.assertEqual(record["coverage"]["manifest"], "artifacts/dtp/coverage/coverage.json")
 
+    def test_a_record_that_cannot_be_sanitized_leaves_the_previous_bundle(self):
+        report = self.root / "build" / "run" / "cov" / "report"
+        report.mkdir(parents=True)
+        bundle = self.root / "bundle"
+        colliding = {f"{WORKSPACE}/a": 1, f"{WORKSPACE}/b": 2}
+
+        def collect(summary, **details):
+            (report / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+            (report / "policy-application.json").write_text("{}", encoding="utf-8")
+            (report.parent / "coverage.json").write_text("{}", encoding="utf-8")
+            result = make_result(
+                repo_root=self.root,
+                flow="dtp",
+                kind="sim",
+                status="PASS",
+                tool="vcs",
+                coverage_details={
+                    "report": "build/run/cov/report",
+                    "manifest": "build/run/cov/coverage.json",
+                },
+                **details,
+            )
+            write_result(self.root, result, bundle / "dtp.result.json")
+
+        def files():
+            return {path: path.read_bytes() for path in bundle.rglob("*") if path.is_file()}
+
+        collect({"run": 1})
+        previous = files()
+        for name, summary, details in (
+            ("summary", {"run": 2, "files": colliding}, {}),
+            ("record", {"run": 2}, {"run_metadata": {"env": colliding}}),
+        ):
+            with self.subTest(name):
+                with self.assertRaisesRegex(ConfigError, "rewrite to"):
+                    collect(summary, **details)
+                self.assertEqual(files(), previous)
+
 
 class DashboardSanitizesItsInputs(TempRoot):
     def record(self, reason, start_time):
@@ -579,6 +640,36 @@ class SanitizeCommand(TempRoot):
         self.assertEqual(self.run_command("--root", str(self.workspace)), 0)
         self.assertTrue(link.is_symlink())
         self.assertEqual(read_json(self.plain), {"reason": "hw/a.sv failed"})
+
+    def test_a_rewrite_keeps_a_set_id_mode(self):
+        self.plain.chmod(0o4644)
+        self.assertEqual(self.run_command("--root", str(self.workspace)), 0)
+        self.assertEqual(stat.S_IMODE(self.plain.stat().st_mode), 0o4644)
+
+    def test_a_link_at_a_temporary_name_is_not_followed(self):
+        victim = self.root / "victim"
+        victim.write_text("keep\n", encoding="utf-8")
+        victim.chmod(0o600)
+        (self.root / ".summary.json.tmp").symlink_to(victim)
+        os.link(victim, self.root / ".summary.json.x.tmp")
+        self.assertEqual(self.run_command("--root", str(self.workspace)), 0)
+        self.assertEqual(victim.read_text(encoding="utf-8"), "keep\n")
+        self.assertEqual(stat.S_IMODE(victim.stat().st_mode), 0o600)
+        self.assertFalse(self.plain.is_symlink())
+        self.assertEqual(read_json(self.plain), {"reason": "hw/a.sv failed"})
+
+    def test_a_rewrite_through_a_symlink_keeps_the_format_its_name_gives(self):
+        root = ("--root", str(self.workspace))
+        for name, target, source in (
+            ("link.summary.json.gz", "blob", self.archive),
+            ("link.summary.json", "blob.json.gz", self.plain),
+        ):
+            with self.subTest(link=name):
+                shutil.copyfile(source, self.root / target)
+                (self.root / name).symlink_to(self.root / target)
+                self.files = [str(self.root / name)]
+                self.assertEqual(self.run_command(*root), 0)
+                self.assertEqual(self.run_command("--check", *root), 0)
 
     def test_a_file_named_like_an_option_is_rewritten(self):
         names = ["--check", "--ch", "-h", "--root", "--"]

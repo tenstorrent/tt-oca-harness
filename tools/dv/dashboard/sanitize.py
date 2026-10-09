@@ -22,8 +22,10 @@ import os
 import posixpath
 import re
 import shutil
+import stat
 import subprocess
 import sys
+import tempfile
 import zlib
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -41,19 +43,25 @@ MAX_PASSES = 8
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 _IPV4 = r"\d{1,3}(?:\.\d{1,3}){3}"
-_IPV6 = r"\[[0-9A-Fa-f.]*:[0-9A-Fa-f.]*:[0-9A-Fa-f:.]*\]"
+# A zone ID follows `%`, which a URL encodes as `%25`.
+_ZONE = r"(?:%[\w.~%-]+)?"
+_IPV6 = rf"\[[0-9A-Fa-f.]*:[0-9A-Fa-f.]*:[0-9A-Fa-f:.]*{_ZONE}\]"
+# Without brackets, an IPv6 host needs `::`, so `job@10:15:22` is not one.
+_BARE_IPV6 = rf"[0-9A-Fa-f.:]*::[0-9A-Fa-f.:]*{_ZONE}(?<!\.)(?![\w%:])"
 _USER = r"[\w.-][\w.+-]*"
 # A remote's host starts with a letter or is an IP address, so `value@100ns:` is not one.
 _HOST = rf"(?:[A-Za-z][\w-]*(?:\.[\w-]+)*|{_IPV4}|{_IPV6})"
 _URL_CHARACTER = r"[^\s'\"`<>()\[\]{},;]"
 _URL_END = r"[^\s'\"`<>()\[\]{},;.:]"
+_SCHEME = r"(?<![\w.+@-])(?P<scheme>[A-Za-z][A-Za-z0-9+.-]*)://"
+_NESTED_URL = re.compile(rf"{_SCHEME}(?P<netloc>[^/]*)")
 _URL = re.compile(
-    r"(?<![\w.+@-])(?P<scheme>[A-Za-z][A-Za-z0-9+.-]*)://(?P<rest>"
+    rf"{_SCHEME}(?P<rest>"
     rf"(?:[^\s'\"`<>()\[\]{{}},;/@]*@)?{_IPV6}(?:{_URL_CHARACTER}*{_URL_END})?"
     rf"|{_URL_CHARACTER}*{_URL_END})"
 )
 _SCP_REMOTE = re.compile(rf"(?<![\w.+@-]){_USER}@(?P<host>{_HOST}):(?=[\w.~-])(?!\d+@)[\w./~-]+")
-_AT_IPV6 = re.compile(rf"(?<![\w.+@-]){_USER}@{_IPV6}")
+_AT_IPV6 = re.compile(rf"(?<![\w.+@-]){_USER}@(?:{_IPV6}|{_BARE_IPV6})")
 # After `@`, a host is an IP address, a dotted name from a letter to an all-letter last label,
 # or one name after a numeric port, so `smoke@fast`, `checkout@v4`, and `pkg@1.2.3` are not.
 _DOTTED_HOST = re.compile(rf"{_IPV4}|[A-Za-z][\w-]*(?:\.[\w-]+)*\.[A-Za-z]{{2,}}")
@@ -73,12 +81,26 @@ def _is_public_host(host: str) -> bool:
 
 
 def _url(match: re.Match[str]) -> str:
-    scheme, rest = match.group("scheme"), match.group("rest")
-    netloc, slash, path = rest.partition("/")
-    host = netloc.rpartition("@")[2]
-    if scheme.lower() not in ("http", "https") or not _is_public_host(host.split(":")[0]):
-        return EXTERNAL_URL
-    return f"{scheme}://{host}{slash}{_URL.sub(_url, path)}"
+    # A URL nested in a path runs to the end of the URL around it, so the next scheme after a
+    # host starts the next nested URL. A kept URL keeps its host and a numeric port only.
+    url = match.group(0)
+    parts: list[str] = []
+    tail = 0
+    for nested in _NESTED_URL.finditer(url):
+        if nested.start("netloc") == len(url):
+            break
+        scheme, host = nested["scheme"], nested["netloc"].rpartition("@")[2]
+        name, _, port = host.partition(":")
+        parts.append(url[tail : nested.start()])
+        if (
+            scheme.lower() not in ("http", "https")
+            or not _is_public_host(name)
+            or not (port == "" or port.isdigit())
+        ):
+            return "".join([*parts, EXTERNAL_URL])
+        parts.append(f"{scheme}://{host}")
+        tail = nested.end()
+    return "".join([*parts, url[tail:]])
 
 
 def _scp_remote(match: re.Match[str]) -> str:
@@ -252,17 +274,19 @@ def _read(path: Path) -> Any:
 
 
 def _write(path: Path, data: Any) -> None:
-    path = path.resolve()
     payload = (json.dumps(data, indent=2, sort_keys=True) + "\n").encode("utf-8")
     if path.suffix == ".gz":
         payload = gzip.compress(payload, mtime=0)
-    temporary = path.parent / f".{path.name}.tmp"
+    path = path.resolve()
+    mode = stat.S_IMODE(path.stat().st_mode)
+    descriptor, name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temporary = Path(name)
     try:
-        with temporary.open("wb") as stream:
+        with os.fdopen(descriptor, "wb") as stream:
             stream.write(payload)
             stream.flush()
+            os.fchmod(stream.fileno(), mode)
             os.fsync(stream.fileno())
-        shutil.copymode(path, temporary)
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)
@@ -296,7 +320,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             clean = scrubber.value(data)
             if clean != data and not args.check:
                 _write(path, clean)
-        except (OSError, ValueError, EOFError, zlib.error) as exc:
+        except (OSError, ValueError, EOFError, RecursionError, zlib.error) as exc:
             print(f"ERROR: {path}: {exc}", file=sys.stderr)
             failed += 1
             continue
