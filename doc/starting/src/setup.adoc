@@ -159,7 +159,7 @@ when your checkout changes a file that defines the image, such as `flake.lock`,
 `ocah_deps.nix`, `uv.lock` or a file under `nix/`. Interrupting `docker-run.sh`
 does not always stop the build, so check `podman ps` (or `docker ps`) and stop
 any container still running. Then check out the latest `main`, or wait for CI to
-publish the image.
+publish the image, or use the <<image-fallback,`main` image>> meanwhile.
 ====
 
 Published images are listed on the
@@ -192,6 +192,46 @@ your machine (`shell-here` is the interactive equivalent):
 ```bash
 ./scripts/docker-run.sh run-here make ocah-synth-yosys-all
 ```
+
+[[image-fallback]]
+==== Which image runs
+
+The image is tagged with a hash of your checkout's toolchain definition. Before
+each command, `docker-run.sh` takes the first of these that works:
+
+. The image with that tag, if it is already downloaded.
+. The image with that tag from the registry.
+. The image with that tag from the image cache named by `OCAH_DOCKER_CACHE_DIR`,
+  or from an earlier `docker-run.sh build`.
+. With `OCAH_IMAGE_FALLBACK=main` set, the `main` image: the last image CI
+  verified on `main`. It downloads the current one, or uses one downloaded
+  earlier if it cannot, and warns that it may not match your checkout, naming
+  the image's digest. It falls back only when the registry has no image for your
+  checkout, or when `OCAH_CONTAINER_REGISTRY_IMAGE` is unset; a failed login or
+  an unreachable registry skips it.
+. A build from source, the default when nothing above applies.
+
+For a few hours after a commit changes the toolchain, CI has not published its
+image, so without `OCAH_IMAGE_FALLBACK=main` that commit is built. The `main`
+image suits any work that does not depend on the toolchain change. Once CI
+publishes the image, the next command downloads it.
+
+==== Managing downloaded images
+
+Each toolchain change downloads a new image, and the old ones stay on disk:
+
+```bash
+./scripts/docker-run.sh images      # list downloaded images, their architecture, and which is yours
+./scripts/docker-run.sh refresh     # download your checkout's image again and replace the local one
+./scripts/docker-run.sh prune       # remove every OCAH image except your checkout's and main's
+./scripts/docker-run.sh rmi <tag>   # remove the OCAH images with that tag
+```
+
+An image already downloaded is used whatever its architecture, so an x86_64
+image downloaded before the arm64 one was published keeps running under
+emulation on an arm64 machine. `refresh` replaces it with the native one. It
+keeps the old image if a running container still uses it, so that container is
+not affected.
 
 See `scripts/docker.md` for every container command and environment variable.
 

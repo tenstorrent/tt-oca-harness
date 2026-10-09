@@ -27,6 +27,10 @@ Build locally (below) only when you are changing the container's definition.
 ```bash
 docker-run.sh build
 docker-run.sh ensure
+docker-run.sh images
+docker-run.sh refresh
+docker-run.sh prune
+docker-run.sh rmi TAG
 docker-run.sh verify
 docker-run.sh run CMD...
 docker-run.sh run-here CMD...
@@ -41,7 +45,11 @@ docker-run.sh doc-stage
 | Command | Description |
 |---------|-------------|
 | `build` | Build the container image via Nix and publish it to the shared tarball cache (if `OCAH_DOCKER_CACHE_DIR` is set), or `local/nix-container-image.tar.gz` otherwise. |
-| `ensure` | Make the image available locally: reuse a matching loaded image, optionally pull it from a registry, load the cached tarball, or build. Called automatically by `run`/`run-here`/`shell`/`verify`. |
+| `ensure` | Make the image available locally: reuse a matching loaded image, optionally pull it from a registry, load the cached tarball, or build. With `OCAH_IMAGE_FALLBACK=main` it runs the registry's `:main` instead of building an unpublished tag (see [Unpublished images](#unpublished-images)). Called automatically by `run`/`run-here`/`shell`/`verify`. |
+| `images` | List the local OCAH images with their architecture, marking the one that matches this checkout. |
+| `refresh` | Pull this checkout's tag from the registry again and move the local tag onto it, for example to replace an emulated image with a native one. The old image is removed afterwards unless a container still uses it. |
+| `prune` | Remove every local OCAH image except this checkout's and `:main`. |
+| `rmi TAG` | Remove the local OCAH images tagged `TAG`, under both their local and registry names. |
 | `verify` | Print `riscv64-unknown-elf-gcc --version` and `-print-multi-lib` as a quick sanity check. |
 | `run CMD` | Run `CMD` inside the container with the repo mounted at `/work`. |
 | `run-here CMD` | Run `CMD` with the repo mounted at its own host-absolute path and the caller's `cwd` preserved. Use this when commands embed absolute paths (e.g. bender-generated filelists). |
@@ -60,6 +68,7 @@ docker-run.sh doc-stage
 | `OCAH_IMAGE_WITH_UV` | `false` | When `true`, uses the `ocah-uv-container` image (with uv-installed Python deps bundled) instead of `ocah-container`. |
 | `OCAH_DOCKER_CACHE_DIR` | _(unset)_ | Directory for the shared tarball image cache. When set, `build` publishes there and `ensure` checks it before building. CI sets this via its environment setup. |
 | `OCAH_CONTAINER_REGISTRY_IMAGE` | _(unset)_ | Registry repository without a tag, for example `ghcr.io/tenstorrent/ocah-container`. The Nix content hash is appended as the tag. Unset keeps the previous local/cache/build behavior. |
+| `OCAH_IMAGE_FALLBACK` | `build` | What `ensure` does when the registry has no image for this checkout yet. `build` builds it; `main` runs the registry's `:main`, or the copy of it pulled earlier. See [Unpublished images](#unpublished-images). |
 | `OCAH_DOCKER_UIDGID` | _(auto)_ | `--user` passed to the container engine. Defaults to empty for rootless podman (identity already mapped), or `uid:gid` for docker. Set to empty to run as the image's own default user. |
 | `OCAH_PODMAN_DIR` | _(unset)_ | Explicit base for Podman runtime and storage. When unset, `/tmp/ocah-podman-<uid>` is used only if `XDG_RUNTIME_DIR` is unwritable. |
 | `OCAH_SKIP_GID_FIXUP` | `0` | Set to `1` to skip the automatic re-exec under the passwd primary group (see [GID fixup](#gid-fixup) below). |
@@ -145,8 +154,24 @@ each also published as `<hash>-amd64` and `<hash>-arm64`, so a pull selects the
 host's architecture. The local match is by tag alone. An image of the other
 architecture already loaded under the tag, such as one pulled before the arm64
 image was published, keeps running under emulation, with the engine warning that
-the image platform does not match. Remove it with `podman rmi` (or
-`docker rmi`) and the next command pulls the native one.
+the image platform does not match. `docker-run.sh refresh` replaces it with
+the native one.
+
+### Unpublished images
+
+A commit that changes the image's inputs gets a new tag, which CI publishes
+only after building it, hours later. Until then the registry has no image for
+that checkout, and `ensure` builds it, which occupies the machine for a long
+time.
+
+For work that does not depend on the change to the image, set
+`OCAH_IMAGE_FALLBACK=main`. When the registry reports that it has no image for
+the checkout, `ensure` then pulls the registry's `:main`, the last image CI
+verified and promoted on `main`, and tags it `<image name>:main` locally. It
+prints that image's digest and warns that it may not match the checkout.
+Without `OCAH_CONTAINER_REGISTRY_IMAGE`, or when pulling `:main` fails, it uses
+the `:main` pulled earlier. Any other registry error, such as a failed login, still
+leads to the build. Once CI publishes the tag, the next command pulls it.
 
 ## Bubblewrap backend
 

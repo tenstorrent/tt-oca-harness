@@ -252,8 +252,10 @@ Nix content tag on the next `verify`/`run`/`shell`:
 
 With `OCAH_CONTAINER_REGISTRY_IMAGE` set, `docker-run.sh` first tries that registry tag. With the
 companion's `OCAH_DOCKER_CACHE_DIR` set, it next checks the shared tarball cache; otherwise it
-builds locally from the flake. `scripts/docker.md` is authoritative for the source selection
-controls.
+builds locally from the flake. `OCAH_IMAGE_FALLBACK=main` runs the registry's `:main` instead
+of building a tag CI has not published yet. `scripts/docker.md` is authoritative for the source
+selection controls and documents the `images`, `refresh`, `prune` and `rmi` maintenance
+commands.
 
 > **Any container command can start a full image build.** `run`, `run-here`, `shell`, `verify`
 > and the doc subcommands all go through that same selection, so a routine `make regen-regs`,
