@@ -20,6 +20,9 @@ xref:setup.adoc#supported-platforms[Supported platforms] for what each setup sup
 * *Python*: Version 3.11 - 3.13 (3.14+ is not supported at this time)
 * *CPU*: Multi-core processor (8+ cores recommended for simulation and synthesis)
 * *Memory*: Minimum 16GB RAM recommended for full builds, 32GB recommended for large designs
+** Synthesis is especially memory-hungry. Smaller blocks may be able to be synthesised on 16GB, but larger blocks require more memory. Synthesising the full OCA Harness uses 48GB, so a machine running this would ideally have at least 64GB.
+** Containers on MacOS use additional memory as they run in a virtual machine. A MacOS host
+with 16GB RAM is more likely to run out of memory than an equivalent Linux host.
 * *Storage*: Minimum 50GB available disk space, SSD recommended for build performance
 
 == Software Dependencies
