@@ -54,6 +54,13 @@ localparam bit [31:0] SmcWdtMagicKey = 32'h0051_F15E;
 localparam bit [31:0] SmcWdtFeedMagic = 32'h0D09_F00D;
 localparam int unsigned SmcWdtCores = 4;
 localparam bit [63:0] SmcWdtBytes = smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE;
+localparam int unsigned SmcWdtCtrlOffset = SMC_CLUSTER_CORE0_WDT_CTRL_REG_OFFSET;
+localparam int unsigned SmcWdtCountOffset = SMC_CLUSTER_CORE0_WDT_COUNT_REG_OFFSET;
+localparam int unsigned SmcWdtCountHiOffset = SMC_CLUSTER_CORE0_WDT_COUNT_HI_REG_OFFSET;
+localparam int unsigned SmcWdtScaledCountOffset = SMC_CLUSTER_CORE0_WDT_SCALED_COUNT_REG_OFFSET;
+localparam int unsigned SmcWdtFeedOffset = SMC_CLUSTER_CORE0_WDT_FEED_REG_OFFSET;
+localparam int unsigned SmcWdtKeyOffset = SMC_CLUSTER_CORE0_WDT_KEY_REG_OFFSET;
+localparam int unsigned SmcWdtCmpOffset = SMC_CLUSTER_CORE0_WDT_CMP_REG_OFFSET;
 
 function automatic bit [63:0] smc_wdt_addr(int unsigned core, smc_wdt_reg_e reg_kind);
   case (core)
@@ -621,7 +628,8 @@ function automatic bit smc_is_wdt_csr_access(ocah_axi_item t, output int unsigne
       core = i;
       offset = int'(smc_csr_word_addr(t.address) - base);
       case (offset)
-        'h0, 'h8, 'hc, 'h10, 'h18, 'h1c, 'h20: return 1'b1;
+        SmcWdtCtrlOffset, SmcWdtCountOffset, SmcWdtCountHiOffset, SmcWdtScaledCountOffset,
+        SmcWdtFeedOffset, SmcWdtKeyOffset, SmcWdtCmpOffset: return 1'b1;
         default: return 1'b0;
       endcase
     end
@@ -631,8 +639,8 @@ endfunction
 
 function automatic bit [31:0] smc_wdt_csr_mask(int unsigned offset);
   case (offset)
-    'h0: return ~32'(WDT_CTRL_WDOGIP0_MASK);
-    'h1c, 'h20: return 32'hFFFF_FFFF;
+    SmcWdtCtrlOffset: return ~32'(WDT_CTRL_WDOGIP0_MASK);
+    SmcWdtKeyOffset, SmcWdtCmpOffset: return 32'hFFFF_FFFF;
     default: return 32'h0;
   endcase
 endfunction

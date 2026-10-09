@@ -13,7 +13,7 @@ class smc_wdt_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi_ite
   virtual smc_tb_if tb_vif;
   protected bit unlocked[SmcWdtCores];
   protected bit [31:0] control[SmcWdtCores];
-  protected bit [15:0] compare_value[SmcWdtCores];
+  protected bit [31:0] compare_value[SmcWdtCores];
   protected int unsigned reset_epoch;
   protected int unsigned seen_epoch;
 
@@ -45,7 +45,7 @@ class smc_wdt_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi_ite
     foreach (control[i]) begin
       unlocked[i] = 1'b0;
       control[i] = 32'(WDT_CTRL_REG_DEFAULT);
-      compare_value[i] = 16'(WDT_CMP_REG_DEFAULT);
+      compare_value[i] = 32'(WDT_CMP_REG_DEFAULT) & WDT_CMP_WDOGCMP0_MASK;
     end
   endfunction
 
@@ -64,9 +64,9 @@ class smc_wdt_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi_ite
     end
     if (t.direction == OCAH_AXI_DIR_READ) begin
       case (offset)
-        'h0: value = control[core];
-        'h1c: value = 32'(unlocked[core]);
-        'h20: value = 32'(compare_value[core]);
+        SmcWdtCtrlOffset: value = control[core];
+        SmcWdtKeyOffset: value = 32'(unlocked[core]);
+        SmcWdtCmpOffset: value = compare_value[core];
         default: value = '0;
       endcase
       if (cfg.wdt_csr_scoreboard_negative && smc_wdt_csr_mask(offset) != 0) value ^= 32'h1;
@@ -91,10 +91,12 @@ class smc_wdt_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi_ite
   protected function void apply_write(int unsigned core, int unsigned offset, ocah_axi_item t);
     bit [7:0] lanes = t.strobes.size() != 0 ? t.strobes[0] : 8'hFF;
     bit [63:0] data = t.data_words[0];
-    bit key_write = (offset & 'h38) == 'h18 && lanes[7:4] == 4'hF;
+    int unsigned beat_offset = offset & ~(SmcMemBytes - 1);
+    bit key_write = beat_offset == (SmcWdtKeyOffset & ~(SmcMemBytes - 1)) &&
+                     lanes[SmcWdtKeyOffset % SmcMemBytes +: SmcCsrBytes] == 4'hF;
     bit write_any = 1'b0;
-    case (offset & 'h38)
-      'h0: begin
+    case (beat_offset)
+      SmcWdtCtrlOffset: begin
         write_any = |lanes[3:0];
         if (unlocked[core]) begin
           if (lanes[0])
@@ -104,16 +106,19 @@ class smc_wdt_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi_ite
             control[core] = (control[core] & ~CtrlByte1Fields) | (data[31:0] & CtrlByte1Fields);
         end
       end
-      'h8: write_any = lanes[3:0] == 4'hF || lanes[7:4] == 4'hF;
-      'h10: write_any = lanes[1:0] == 2'b11;
-      'h18: write_any = lanes[3:0] == 4'hF;
-      'h20: begin
+      SmcWdtCountOffset: write_any = lanes[3:0] == 4'hF || lanes[7:4] == 4'hF;
+      SmcWdtScaledCountOffset: write_any = lanes[1:0] == 2'b11;
+      SmcWdtFeedOffset: write_any = lanes[3:0] == 4'hF;
+      SmcWdtCmpOffset: begin
         write_any = lanes[1:0] == 2'b11;
-        if (unlocked[core] && write_any) compare_value[core] = data[15:0];
+        if (unlocked[core] && write_any)
+          compare_value[core] = data[31:0] & WDT_CMP_WDOGCMP0_MASK;
       end
       default: write_any = 1'b0;
     endcase
     if (key_write || write_any)
-      unlocked[core] = key_write && data[63:32] == SmcWdtMagicKey && !write_any;
+      unlocked[core] = key_write &&
+                        data[8 * (SmcWdtKeyOffset % SmcMemBytes) +: 8 * SmcCsrBytes] ==
+                        SmcWdtMagicKey && !write_any;
   endfunction
 endclass : smc_wdt_csr_ref_model

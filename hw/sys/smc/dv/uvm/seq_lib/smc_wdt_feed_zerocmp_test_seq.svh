@@ -29,10 +29,9 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
   localparam int unsigned FeedCases = 2;
   localparam bit [31:0] CountStart = 32'h0100_0000;
   localparam bit [31:0] ScaledStart = 32'h0001_0000;
-  localparam bit [31:0] CompareMax = 32'hFFFF;
+  localparam bit [31:0] CompareMax = WDT_CMP_WDOGCMP0_MASK;
   localparam bit [31:0] CompareReset = 32'(WDT_CMP_REG_DEFAULT);
-  localparam bit [31:0] ScaledCountLimit = 32'h1_0000;
-  localparam bit [31:0] CompareCountWrap = 32'h1_0000;
+  localparam bit [31:0] ScaledCountLimit = WDT_SCALED_COUNT_WDOGS_MASK + 32'd1;
   localparam bit [31:0] AlwaysMask = WDT_CTRL_WDOGENALWAYS_MASK;
   localparam bit [31:0] IpMask = WDT_CTRL_WDOGIP0_MASK;
   localparam bit [31:0] ZeroCmpMask = WDT_CTRL_WDOGZEROCMP_MASK;
@@ -82,7 +81,7 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
   protected task count_side(bit high, output bit [31:0] value);
     real stamp;
     read_count(value, stamp);
-    require_window(value < CompareCountWrap && (high ? value >= IpCompare : value < IpCompare),
+    require_window(value < ScaledCountLimit && (high ? value >= IpCompare : value < IpCompare),
                    "COUNT brackets interrupt observation", $sformatf(
                    "count=%0d cycle=%0f high=%0b", value, stamp, high));
   endtask
@@ -206,7 +205,7 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
       wait_smc_cycles(IpPollIntervalCycles);
     end
     require_window(t0 <= deadline, "count reaches compare before deadline");
-    require_window(c0 >= IpCompare + IpMargin && c0 < CompareCountWrap, "COUNT past compare margin",
+    require_window(c0 >= IpCompare + IpMargin && c0 < ScaledCountLimit, "COUNT past compare margin",
                    $sformatf("count=%0d", c0));
     ctrl_read(AlwaysMask, ctrl, 1'b1);
     count_side(1'b1, c1);

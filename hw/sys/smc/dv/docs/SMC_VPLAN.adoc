@@ -13061,14 +13061,16 @@ clearing of the pending interrupt.
 * Pending interrupt below CMP, above CMP, after clearing while elapsed remains
   asserted, and after feeding then clearing while elapsed is low.
 
-*Expectation Sources*: `wdt.rdl` defines FEED magic, KEY, scaling and zerocmp.
-Its addrmap description defines effective byte enables and unlock consumption;
-`scale_unlocked_reg` in `OCAH4CORECluster_WatchdogTimer.sv` implements the KEY
-magic and relock rule. The passive model predicts CTRL and CMP under those rules.
-`OCAH4CORECluster_WatchdogTimer.sv` qualifies FEED reset by unlock and exact magic,
-resets COUNT on zerocmp and elapsed, and updates the pending interrupt from a
-software write or elapsed. The interrupt remains latched after elapsed ends until
-software clears it.
+*Expectation Sources*: `wdt.rdl` defines effective byte enables and unlock
+consumption in its addrmap description. KEY defines the unlock magic and readback;
+FEED defines the clearing magic, unlock requirement and preservation of pending IP.
+CTRL.wdogscale and SCALED_COUNT define the count shift; CTRL.wdogzerocmp defines
+COUNT reset when compare is reached. CTRL.wdogip0 defines hardware setting while
+the compare condition holds and software clearing below compare. CMP defines the
+comparison value. The passive model predicts CTRL, KEY and CMP under these rules;
+register offsets, field masks and reset values come from generated collateral.
+`hw/sys/smc/doc/watchdog.adoc` describes the KEY/relock and byte-enable rules,
+interrupt setting at or above CMP, and preservation of pending IP across FEED.
 
 *Test Procedure*: Measure a positive running count rate. Exercise valid and invalid
 FEED writes and their unlock consumption, bracket SCALED_COUNT, then sample COUNT
