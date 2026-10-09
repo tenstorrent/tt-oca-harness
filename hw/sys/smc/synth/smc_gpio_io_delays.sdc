@@ -60,6 +60,11 @@ if {![array exists ::clock_periods]} {
     error "smc_gpio_io_delays.sdc: clock_periods() is empty; source the flow's clock-period definitions first"
 }
 
+if {![array exists ::io_budget]} {
+    source [file normalize [file join [file dirname [info script]] \
+        ../../../../flows/synth/constraints/io_delay_budgets.tcl]]
+}
+
 if {[info procs cdc_is_block_top] eq ""} {
     source [file normalize [file join [file dirname [info script]] \
         ../../../../flows/synth/constraints/hier_reuse_procs.tcl]]
@@ -189,8 +194,8 @@ proc smc_gpio_ports {sig bits} {
 # Bits whose source clock is not known at this level take the generic model;
 # the interface sections below own the rest.
 
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5] -clock [get_clock ck_feedthru] [get_ports {lsio_interface_select_o*}] -add_delay
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5] -clock [get_clock ck_feedthru] [get_ports {pad2core_en_o*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)] -clock [get_clock ck_feedthru] [get_ports {lsio_interface_select_o*}] -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)] -clock [get_clock ck_feedthru] [get_ports {pad2core_en_o*}] -add_delay
 
 set spi_out_claimed {}
 set spi_in_claimed  {}
@@ -207,11 +212,11 @@ set core2pad_claimed [concat $spi_out_claimed $uart_tx_rts_bits $uart_rx_cts_bit
                              [list $reserved_out_bit] $clk_source_out_bits]
 set core2pad_generic [remove_from_collection [get_ports {core2pad_o*}] \
                                              [smc_gpio_ports core2pad_o $core2pad_claimed]]
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5] -clock [get_clock ck_feedthru] $core2pad_generic -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)] -clock [get_clock ck_feedthru] $core2pad_generic -add_delay
 
 set core2pad_en_generic [remove_from_collection [get_ports {core2pad_en_o*}] \
                                                 [smc_gpio_ports core2pad_en_o [concat $i3c_bits $i2c_bits]]]
-set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5] -clock [get_clock ck_feedthru] $core2pad_en_generic -add_delay
+set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)] -clock [get_clock ck_feedthru] $core2pad_en_generic -add_delay
 
 set pad2core_claimed [concat $spi_in_claimed [list $spi_cs_in_bit] $spi_clk_claimed \
                              $uart_tx_rts_bits $uart_rx_cts_bits $i3c_bits $i2c_bits \
@@ -219,7 +224,7 @@ set pad2core_claimed [concat $spi_in_claimed [list $spi_cs_in_bit] $spi_clk_clai
                              $misc_smc_in_bits $misc_feedthru_in_bits]
 set pad2core_generic [remove_from_collection [get_ports {pad2core_i*}] \
                                              [smc_gpio_ports pad2core_i $pad2core_claimed]]
-set_input_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5] -clock [get_clock ck_feedthru] $pad2core_generic -add_delay
+set_input_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)] -clock [get_clock ck_feedthru] $pad2core_generic -add_delay
 
 ########################################################
 # SPI -- GPIO 0-10, 54
@@ -258,7 +263,7 @@ if {$gpio_spi_timed} {
 }
 
 # CS in (GPIO 8) is sampled in the SPI controller's register plane.
-set_input_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports pad2core_i [list $spi_cs_in_bit]] -add_delay
+set_input_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports pad2core_i [list $spi_cs_in_bit]] -add_delay
 
 ########################################################
 # UART -- GPIO 11-26, four channels at 11+4u
@@ -356,22 +361,22 @@ set_output_delay -min 0                   -clock [get_clock AVS_CLK_FROM_PERIPHE
 
 # CLOCK and MDATA observe inputs (49-50) and SDATA (51) flop in the AVS divider
 # clock domain; the legal mux modes give each two possible roots.
-set_input_delay [expr $clock_periods(REFCLK_PERIOD)*0.5]        -clock [get_clock AVS_CLK_DIV_CLK_O_FROM_REFCLK]        [smc_gpio_ports pad2core_i $avs_obs_in_bits] -add_delay
-set_input_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK] [smc_gpio_ports pad2core_i $avs_obs_in_bits] -add_delay
+set_input_delay [expr $clock_periods(REFCLK_PERIOD)*$io_budget(default)]        -clock [get_clock AVS_CLK_DIV_CLK_O_FROM_REFCLK]        [smc_gpio_ports pad2core_i $avs_obs_in_bits] -add_delay
+set_input_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*$io_budget(default)] -clock [get_clock AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK] [smc_gpio_ports pad2core_i $avs_obs_in_bits] -add_delay
 
 ########################################################
 # Fixed-domain pads with no protocol section
 ########################################################
 # Reserved (56) and system timer / OCTS (58-59) outputs are driven from the
 # SMCCLK-domain timer; the matching inputs are sampled by `system_timer_octs`.
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports core2pad_o [list $reserved_out_bit]] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports core2pad_o $sys_timer_bits] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports pad2core_i $sys_timer_bits] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports core2pad_o [list $reserved_out_bit]] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports core2pad_o $sys_timer_bits] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports pad2core_i $sys_timer_bits] -add_delay
 
 # Thermal / isolate (52-53) and PLL obs / PVT / straps (55-57) are sampled in
 # the SMCCLK plane; the unbonded pads (61-62) have no known source clock.
-set_input_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock $gpio_sys_clk]     [smc_gpio_ports pad2core_i $misc_smc_in_bits] -add_delay
-set_input_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5] -clock [get_clock ck_feedthru] [smc_gpio_ports pad2core_i $misc_feedthru_in_bits] -add_delay
+set_input_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock $gpio_sys_clk]     [smc_gpio_ports pad2core_i $misc_smc_in_bits] -add_delay
+set_input_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)] -clock [get_clock ck_feedthru] [smc_gpio_ports pad2core_i $misc_feedthru_in_bits] -add_delay
 
 }
 # end of block-top-only smc_gpio_io_delays
