@@ -14,6 +14,7 @@ import io
 import json
 import os
 import shutil
+import stat
 import sys
 import tempfile
 import unittest
@@ -123,6 +124,13 @@ class ScrubText(TempRoot):
             "UVM_INFO @ 0: reporter",
             "8680 ps vs 8681 ps expected (+/- 2 CDC skew)",
             "COVCMP-34c7a9b34b98e3bb",
+            "smoke@fast",
+            "label id_width_rd@version_lo",
+            "uses: actions/checkout@v4",
+            "cocotb@2.0.0.dev0 and pkg@1.x on python@3.x",
+            "https://github.com/o/r/tree/feature@next",
+            "//top.dut/x",
+            "a@b.@c",
         ):
             with self.subTest(text=text):
                 self.assertEqual(self.scrubber.text(text), text)
@@ -136,8 +144,27 @@ class ScrubText(TempRoot):
                 ("git@git.example.internal:group/repo.git", EXTERNAL_URL),
                 ("checkout failed: 27000@licserver01", f"checkout failed: {EXTERNAL_HOST}"),
                 ("LM_LICENSE_FILE=27000@10.0.0.5", f"LM_LICENSE_FILE={EXTERNAL_HOST}"),
+                (
+                    "LM_LICENSE_FILE=27000@lic01:27001@lic02",
+                    f"LM_LICENSE_FILE={EXTERNAL_HOST}:{EXTERNAL_HOST}",
+                ),
+                ("mail jdoe@build.example.com.", f"mail {EXTERNAL_HOST}."),
+                ("from jdoe.last@corp.example.com://x", f"from {EXTERNAL_HOST}://x"),
+                ("open file:///Users/Alice Smith/x.html now", f"open {EXTERNAL_URL} now"),
+                (f"{INTERNAL_URL}=/Users/Alice Smith/x", EXTERNAL_URL),
                 ("rsync out/ jdoe@build-04:/site/run/", f"rsync out/ {EXTERNAL_URL}"),
                 ("x@internal.example@github.com", EXTERNAL_HOST),
+                ("rsync out/ jdoe+ci@build-04:/site/run/", f"rsync out/ {EXTERNAL_URL}"),
+                ("mail user+tag@build.example.internal", f"mail {EXTERNAL_HOST}"),
+                ("27000@lic_server", EXTERNAL_HOST),
+                ("jdoe@build_04.corp.example.com", EXTERNAL_HOST),
+                ("ssh user@[fd00::1]", f"ssh {EXTERNAL_HOST}"),
+                ("http://[fd00::1]:8080/job/1", EXTERNAL_URL),
+                ("https://[2001:db8::1]/x", EXTERNAL_URL),
+                (
+                    "https://github.com/o/r.git:/site/ci/x",
+                    f"https://github.com/o/r.git:{EXTERNAL_PATH}",
+                ),
                 (
                     f"https://github.com/o/r?next={INTERNAL_URL}",
                     f"https://github.com/o/r?next={EXTERNAL_URL}",
@@ -167,10 +194,107 @@ class ScrubText(TempRoot):
             f"git@git.example.internal:group/repo {self.root}/tools/dv/run_dv.py",
             "lock held by name@/opt/x",
             "x@host.example@y",
+            "'/Users/Alice B Smith/x' and /Users/Alice Smith/y to c/d",
+            "a@b.@c",
+            "a@b.@c:5280@lic.example.com",
+            "jdoe@build-04:27000@lic.example.com",
+            "5280@lic.example.com:jdoe@build-04:/site/x/",
         ):
             with self.subTest(text=text):
                 once = self.scrubber.text(text)
                 self.assertEqual(self.scrubber.text(once), once)
+
+    def test_a_path_with_spaces_is_rewritten_whole(self):
+        self.assertScrubs(
+            [
+                ("/Users/Alice Smith/project/result.json", EXTERNAL_PATH),
+                ("missing '/Users/Alice B Smith/x.json'", f"missing '{EXTERNAL_PATH}'"),
+                ("missing '/Users/Alice  Smith/x.json'", f"missing '{EXTERNAL_PATH}'"),
+                ('"/Users/Alice Smith/x" is not readable', f'"{EXTERNAL_PATH}" is not readable'),
+                (
+                    "`/opt/Program Files/bin/vcs` exceeded timeout",
+                    f"`{EXTERNAL_PATH}` exceeded timeout",
+                ),
+                (
+                    "/home/jdoe/My Documents/ws/hw/common/dv/a.sv:12: error",
+                    "hw/common/dv/a.sv:12: error",
+                ),
+            ]
+        )
+
+    def test_text_after_a_path_stays_when_it_is_not_part_of_it(self):
+        self.assertScrubs(
+            [
+                ("copied /a/b to c/d", f"copied {EXTERNAL_PATH} to c/d"),
+                ("/a/b is not in c/d", f"{EXTERNAL_PATH} is not in c/d"),
+                ("cp /site/x hw/common/dv/a.sv", f"cp {EXTERNAL_PATH} hw/common/dv/a.sv"),
+                ("`/site/bin/vcs -f hw/a.f` failed", f"`{EXTERNAL_PATH} -f hw/a.f` failed"),
+                ("'/a/b' and 'c/d'", f"'{EXTERNAL_PATH}' and 'c/d'"),
+            ]
+        )
+
+    def test_a_path_that_follows_a_path_is_rewritten_on_its_own(self):
+        self.assertScrubs(
+            [
+                (
+                    f"{self.root}/hw/common/dv/simv +load=/scratch/jdoe/a.hex",
+                    f"hw/common/dv/simv +load={EXTERNAL_PATH}",
+                ),
+                (
+                    f"vcs {WORKSPACE}/hw/common/dv/a.sv +incdir+/Users/alice/inc",
+                    f"vcs hw/common/dv/a.sv +incdir+{EXTERNAL_PATH}",
+                ),
+                (f"{self.root}/tools/dv FOO=/Users/alice/x", f"tools/dv FOO={EXTERNAL_PATH}"),
+                (f"{WORKSPACE}/hw/common/dv/x=/Users/alice/y", f"hw/common/dv/x={EXTERNAL_PATH}"),
+                (
+                    f"{self.root}/tools/dv/run.py=-f/home/jdoe/a.f",
+                    f"tools/dv/run.py=-f{EXTERNAL_PATH}",
+                ),
+                (
+                    f"{WORKSPACE}/hw/common/dv/x.sv=+incdir+/home/jdoe/inc",
+                    f"hw/common/dv/x.sv=+incdir+{EXTERNAL_PATH}",
+                ),
+                ("/site/ws/label=linux/tt-oca-harness/hw/common/dv/a.sv", "hw/common/dv/a.sv"),
+                ("/home/jdoe/runs/user=jdoe/sim.log", EXTERNAL_PATH),
+                (
+                    f"'{self.root}/hw/common/dv/a.sv vs /home/jdoe/b.sv'",
+                    f"'hw/common/dv/a.sv vs {EXTERNAL_PATH}'",
+                ),
+                (f"'{self.root}/tools:/Users/alice/lib'", f"'tools:{EXTERNAL_PATH}'"),
+                ('"/site/x.log: No such file"', f'"{EXTERNAL_PATH}: No such file"'),
+            ]
+        )
+
+    def test_keys_are_rewritten_like_values(self):
+        value = {
+            f"{WORKSPACE}/.venv/x": 1,
+            f"{self.root}/hw/common/dv/a.sv": {"27000@licserver01": 2},
+            INTERNAL_URL: [{"/opt/x": 1}],
+            "line_percent": 4,
+        }
+        clean = self.scrubber.value(value)
+        self.assertEqual(
+            clean,
+            {
+                EXTERNAL_PATH: 1,
+                "hw/common/dv/a.sv": {EXTERNAL_HOST: 2},
+                EXTERNAL_URL: [{EXTERNAL_PATH: 1}],
+                "line_percent": 4,
+            },
+        )
+        self.assertEqual(self.scrubber.value(clean), clean)
+
+    def test_two_keys_that_rewrite_alike_are_an_error(self):
+        for value in (
+            {"/site/a": 1, "/site/b": 2},
+            {EXTERNAL_PATH: 1, "/site/b": 2},
+            {"hw/a.sv": 1, f"{self.root}/hw/a.sv": 2},
+        ):
+            with self.subTest(keys=list(value)):
+                with self.assertRaises(ValueError) as caught:
+                    self.scrubber.value(value)
+                self.assertNotIn("/site", str(caught.exception))
+                self.assertNotIn(str(self.root), str(caught.exception))
 
     def test_every_string_in_a_json_value_is_rewritten(self):
         value = {
@@ -203,6 +327,18 @@ class CheckoutScrubber(TempRoot):
             for name in ("GIT_DIR", "GIT_WORK_TREE"):
                 os.environ.pop(name, None)
             self.assertEqual(checkout_scrubber(self.root).anchors, frozenset())
+
+    def test_a_checkout_whose_path_has_a_space_becomes_repository_relative(self):
+        root = self.root / "Alice Smith" / "tt-oca-harness (2)"
+        root.mkdir(parents=True)
+        scrubber = checkout_scrubber(root)
+        for text, expected in (
+            (f"{root}/hw/sys/dtp/a.sv:12: error", "hw/sys/dtp/a.sv:12: error"),
+            (f"cd {root}", "cd ."),
+            (f"{root}/../vip/a.sv", EXTERNAL_PATH),
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(scrubber.text(text), expected)
 
     def test_a_checkout_in_a_numbered_workspace_becomes_repository_relative(self):
         root = self.root / "job@2"
@@ -272,6 +408,30 @@ class CollectWritesSanitizedRecords(TempRoot):
             staged["holes_summary"]["samples"],
             [{"source": EXTERNAL_PATH, "native_locator": "hw/a.sv:3"}],
         )
+
+    def test_a_run_recorded_outside_the_checkout_publishes_no_path(self):
+        run = Path(tempfile.mkdtemp()).resolve() / "run"
+        self.addCleanup(shutil.rmtree, run.parent, ignore_errors=True)
+        (run / "cov").mkdir(parents=True)
+        (run / "cov" / "coverage.json").write_text("{}", encoding="utf-8")
+        result = make_result(
+            repo_root=self.root,
+            flow="dtp",
+            kind="sim",
+            status="FAIL",
+            tool="verilator",
+            coverage_details={"manifest": str(run / "cov" / "coverage.json")},
+            artifacts={"run_dir": str(run), "log": str(run / "sim.log")},
+            run_metadata={"run_dir": str(run)},
+        )
+        output = self.root / "bundle" / "dtp.result.json"
+        write_result(self.root, result, output)
+        record = read_json(output)
+        self.assertEqual(record["artifacts"]["run_dir"], EXTERNAL_PATH)
+        self.assertEqual(record["run_metadata"]["run_dir"], EXTERNAL_PATH)
+        self.assertEqual(record["artifacts"]["log"], EXTERNAL_PATH)
+        self.assertEqual(record["coverage"]["source_manifest"], EXTERNAL_PATH)
+        self.assertEqual(record["coverage"]["manifest"], "artifacts/dtp/coverage/coverage.json")
 
 
 class DashboardSanitizesItsInputs(TempRoot):
@@ -377,6 +537,61 @@ class SanitizeCommand(TempRoot):
         self.assertEqual(read_json(self.plain), {"reason": "hw/a.sv failed"})
         archived = json.loads(gzip.decompress(self.archive.read_bytes()))
         self.assertEqual(archived, {"reason": "hw/a.sv failed"})
+
+    def test_a_key_is_checked_and_rewritten(self):
+        keyed = self.root / "keyed.json"
+        keyed.write_text(json.dumps({"/Users/Alice/private": 1}), encoding="utf-8")
+        self.files = [str(keyed)]
+        self.assertEqual(self.run_command("--check"), 1)
+        self.assertEqual(self.run_command(), 0)
+        self.assertEqual(read_json(keyed), {EXTERNAL_PATH: 1})
+        self.assertEqual(self.run_command("--check"), 0)
+
+    def test_a_file_whose_keys_collide_is_left_as_it_was(self):
+        colliding = self.root / "colliding.json"
+        colliding.write_text(json.dumps({"/site/a": 1, "/site/b": 2}), encoding="utf-8")
+        before = colliding.read_bytes()
+        self.files = [str(colliding)]
+        errors = io.StringIO()
+        with redirect_stdout(io.StringIO()), redirect_stderr(errors):
+            status = cli.main(["sanitize", *self.files])
+        self.assertEqual(status, 2)
+        self.assertNotIn("/site", errors.getvalue())
+        self.assertEqual(colliding.read_bytes(), before)
+
+    def test_a_rewrite_keeps_the_file_mode(self):
+        self.plain.chmod(0o640)
+        self.assertEqual(self.run_command("--root", str(self.workspace)), 0)
+        self.assertEqual(stat.S_IMODE(self.plain.stat().st_mode), 0o640)
+
+    def test_a_failed_write_leaves_each_file_as_it_was(self):
+        before = [self.plain.read_bytes(), self.archive.read_bytes()]
+        full = OSError(28, "No space left on device")
+        with mock.patch("dashboard.sanitize.os.fsync", side_effect=full):
+            self.assertEqual(self.run_command("--root", str(self.workspace)), 2)
+        self.assertEqual([self.plain.read_bytes(), self.archive.read_bytes()], before)
+        self.assertEqual(sorted(path.name for path in self.root.rglob(".*.tmp")), [])
+
+    def test_a_rewrite_through_a_symlink_cleans_its_target(self):
+        link = self.root / "link.json"
+        link.symlink_to(self.plain)
+        self.files = [str(link)]
+        self.assertEqual(self.run_command("--root", str(self.workspace)), 0)
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(read_json(self.plain), {"reason": "hw/a.sv failed"})
+
+    def test_a_file_named_like_an_option_is_rewritten(self):
+        names = ["--check", "--ch", "-h", "--root", "--"]
+        for name in names:
+            shutil.copyfile(self.plain, self.root / name)
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(self.root)
+        self.assertEqual(quietly(cli.main, ["sanitize", "--check", "--", *names]), 1)
+        root = ("--root", str(self.workspace))
+        self.assertEqual(quietly(cli.main, ["sanitize", *root, "--", *names]), 0)
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual(read_json(self.root / name), {"reason": "hw/a.sv failed"})
 
 
 if __name__ == "__main__":

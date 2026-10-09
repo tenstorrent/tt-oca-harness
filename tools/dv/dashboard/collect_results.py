@@ -948,8 +948,11 @@ def stage_coverage_artifacts(
 def write_result(repo_root_path: Path, result: dict[str, Any], output: Path) -> None:
     """Stage the coverage files beside `output` and write `result` there, both sanitized."""
     scrubber = checkout_scrubber(repo_root_path)
-    stage_coverage_artifacts(repo_root_path, result, output, scrubber=scrubber)
-    write_json(scrubber.value(result), output)
+    try:
+        stage_coverage_artifacts(repo_root_path, result, output, scrubber=scrubber)
+        write_json(scrubber.value(result), output)
+    except ValueError as exc:
+        raise ConfigError(f"{output}: {exc}") from exc
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

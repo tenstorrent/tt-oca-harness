@@ -3,12 +3,12 @@
 
 """Keep host-specific paths and hosts out of published dashboard data.
 
-Every string in a record, summary, or history is rewritten. A path under a checkout root becomes
-repository-relative, and a path under another checkout keeps its tail from the first top-level
-name Git tracks here. Any other absolute path becomes `EXTERNAL_PATH`, and a URL, remote, or host
-outside GitHub becomes `EXTERNAL_URL` or `EXTERNAL_HOST`. The rewrite is idempotent. `collect`
-and `dashboard` apply it to everything they write; this command applies it to files already
-written:
+Every key and string in a record, summary, or history is rewritten. A path under a checkout root
+becomes repository-relative, and a path under another checkout keeps its tail from the first
+top-level name Git tracks here. Any other absolute path becomes `EXTERNAL_PATH`, and a URL,
+remote, or host outside GitHub becomes `EXTERNAL_URL` or `EXTERNAL_HOST`. The rewrite is
+idempotent. `collect` and `dashboard` apply it to everything they write; this command applies it
+to files already written:
 
     python3 tools/dv/run_dashboard.py sanitize [--check] [--root PATH ...] FILE ...
 """
@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import os
 import posixpath
 import re
 import shutil
@@ -26,6 +27,7 @@ import sys
 import zlib
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 from typing import Any
 
@@ -34,26 +36,35 @@ EXTERNAL_URL = "EXTERNAL_URL"
 EXTERNAL_HOST = "EXTERNAL_HOST"
 
 PUBLIC_HOST_SUFFIXES = ("github.com", "githubusercontent.com", "github.io")
+PLACEHOLDERS = (EXTERNAL_PATH, EXTERNAL_URL, EXTERNAL_HOST)
+MAX_PASSES = 8
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-# A host starts with a letter or is an IPv4 address, so `value@100ns` and `addr@0x20` in log
-# messages are not hosts.
-_HOST = r"(?:[A-Za-z][\w-]*(?:\.[\w-]+)*|\d{1,3}(?:\.\d{1,3}){3})"
-_HOST_NAME = re.compile(_HOST)
+_IPV4 = r"\d{1,3}(?:\.\d{1,3}){3}"
+_IPV6 = r"\[[0-9A-Fa-f.]*:[0-9A-Fa-f.]*:[0-9A-Fa-f:.]*\]"
+_USER = r"[\w.-][\w.+-]*"
+# A remote's host starts with a letter or is an IP address, so `value@100ns:` is not one.
+_HOST = rf"(?:[A-Za-z][\w-]*(?:\.[\w-]+)*|{_IPV4}|{_IPV6})"
+_URL_CHARACTER = r"[^\s'\"`<>()\[\]{},;]"
+_URL_END = r"[^\s'\"`<>()\[\]{},;.:]"
 _URL = re.compile(
-    r"(?<![\w.+-])(?P<scheme>[A-Za-z][A-Za-z0-9+.-]*)://"
-    r"(?P<rest>[^\s'\"`<>()\[\]{},;]*[^\s'\"`<>()\[\]{},;.:])"
+    r"(?<![\w.+@-])(?P<scheme>[A-Za-z][A-Za-z0-9+.-]*)://(?P<rest>"
+    rf"(?:[^\s'\"`<>()\[\]{{}},;/@]*@)?{_IPV6}(?:{_URL_CHARACTER}*{_URL_END})?"
+    rf"|{_URL_CHARACTER}*{_URL_END})"
 )
-_SCP_REMOTE = re.compile(rf"(?<![\w.+-])[\w.-]+@(?P<host>{_HOST}):(?=[\w.~-])[\w./~-]+")
-_AT_REFERENCE = re.compile(r"(?<![\w.+@-])(?>[\w.-]+(?:@[\w-]+(?:\.[\w-]+)*)+)")
-_PATH_CHARACTERS = r"[\w.+%=@-]"
+_SCP_REMOTE = re.compile(rf"(?<![\w.+@-]){_USER}@(?P<host>{_HOST}):(?=[\w.~-])(?!\d+@)[\w./~-]+")
+_AT_IPV6 = re.compile(rf"(?<![\w.+@-]){_USER}@{_IPV6}")
+# After `@`, a host is an IP address, a dotted name from a letter to an all-letter last label,
+# or one name after a numeric port, so `smoke@fast`, `checkout@v4`, and `pkg@1.2.3` are not.
+_DOTTED_HOST = re.compile(rf"{_IPV4}|[A-Za-z][\w-]*(?:\.[\w-]+)*\.[A-Za-z]{{2,}}")
+_PORT_HOST = re.compile(r"\d+@[A-Za-z][\w-]*")
+# A run of name characters joined by `@` is one reference; a trailing dot ends a sentence.
+_AT_RUN = re.compile(r"(?<![\w.+@-])[\w.+-]*@[\w.+@-]*(?<!\.)")
+_PATH_CHARACTERS = r"(?:[\w.+%@-]|=(?!/))"
 # A path starts at `/` that no word character, dot, slash, tilde, or dash precedes, or that a
 # one-letter option such as `-I` or `-f` precedes. Its first component starts with a word
 # character or dot, so `+/-` is not a path.
-_ABSOLUTE_PATH = re.compile(
-    rf"(?:(?<![\w./~-])|(?<=(?<![\w./-])-[A-Za-z]))"
-    rf"/[\w.]{_PATH_CHARACTERS}*(?:/+{_PATH_CHARACTERS}+)*/?"
-)
+_PATH_START = r"(?:(?<![\w./~-])|(?<=(?<![\w./-])-[A-Za-z]))"
 
 
 def _is_public_host(host: str) -> bool:
@@ -74,11 +85,19 @@ def _scp_remote(match: re.Match[str]) -> str:
     return match.group(0) if _is_public_host(match.group("host")) else EXTERNAL_URL
 
 
+def _is_host_reference(left: str, right: str) -> bool:
+    right = right.rstrip(".")
+    return bool(left) and bool(
+        right in PLACEHOLDERS
+        or _DOTTED_HOST.fullmatch(right)
+        or _PORT_HOST.fullmatch(f"{left}@{right}")
+    )
+
+
 def _at_reference(match: re.Match[str]) -> str:
-    hosts = [part for part in match.group(0).split("@")[1:] if _HOST_NAME.fullmatch(part)]
-    if all(_is_public_host(host) for host in hosts):
-        return match.group(0)
-    return EXTERNAL_HOST
+    parts = match.group(0).split("@")
+    hosts = [right for left, right in zip(parts, parts[1:]) if _is_host_reference(left, right)]
+    return match.group(0) if all(_is_public_host(host) for host in hosts) else EXTERNAL_HOST
 
 
 def _exists(path: Path) -> bool:
@@ -107,23 +126,75 @@ class Scrubber:
     anchors: frozenset[str]
 
     def text(self, text: str) -> str:
-        """Return `text` with every URL, absolute path, remote, and host rewritten."""
+        """Return `text` with every URL, absolute path, remote, and host rewritten.
+
+        The passes repeat until the text stops changing: a rewrite can expose a path or host
+        that the earlier pass left, such as the tail of `x.sv=-f/abs/files.f`.
+        """
         if "/" not in text and "@" not in text:
             return text
+        for _ in range(MAX_PASSES):
+            clean = self._rewrite(text)
+            if clean == text:
+                break
+            text = clean
+        return text
+
+    def _rewrite(self, text: str) -> str:
         text = _URL.sub(_url, text)
-        text = _ABSOLUTE_PATH.sub(lambda match: self._path(match.group(0)), text)
+        text = self._external_url_tail.sub(EXTERNAL_URL, text)
+        text = self._absolute_path.sub(lambda match: self._path(match.group(0)), text)
         text = _SCP_REMOTE.sub(_scp_remote, text)
-        return _AT_REFERENCE.sub(_at_reference, text)
+        text = _AT_IPV6.sub(EXTERNAL_HOST, text)
+        return _AT_RUN.sub(_at_reference, text)
 
     def value(self, value: Any) -> Any:
-        """Return a copy of a JSON value with every string, at any depth, rewritten."""
+        """Return a copy of a JSON value with every key and string, at any depth, rewritten.
+
+        Raises `ValueError` when two keys of one object rewrite to the same text.
+        """
         if isinstance(value, str):
             return self.text(value)
         if isinstance(value, dict):
-            return {key: self.value(item) for key, item in value.items()}
+            clean: dict[Any, Any] = {}
+            for key, item in value.items():
+                name = self.text(key) if isinstance(key, str) else key
+                if name in clean:
+                    raise ValueError(f"two keys of one object rewrite to `{name}`")
+                clean[name] = self.value(item)
+            return clean
         if isinstance(value, list):
             return [self.value(item) for item in value]
         return value
+
+    @cached_property
+    def _word(self) -> str:
+        guard = "|".join(["-", r"\.\.?/", *(re.escape(name) + "/" for name in self.anchors)])
+        return rf"(?!{guard})[\w.-]+"
+
+    @cached_property
+    def _external_url_tail(self) -> re.Pattern[str]:
+        # A URL ends at a space, so a spaced path inside it continues as it would after a path.
+        return re.compile(
+            rf"(?<![\w.+@-]){EXTERNAL_URL}(?:\x20{self._word}(?:/+{_PATH_CHARACTERS}+)+)+"
+        )
+
+    @cached_property
+    def _absolute_path(self) -> re.Pattern[str]:
+        # A root matches as written, spaces included. A path continues across spaces into a word
+        # of letters, digits, dots, and dashes: across one space when a slash follows the word,
+        # and across any spaces when the path fills a quoted span. The word is never an option,
+        # `./`, `../`, or a tracked top-level name, and it holds no `+`, `=`, `%`, or `@`, so
+        # `copied /a/b to c/d`, `cp /a/b hw/c`, and `simv +load=/a/b` keep their other text and
+        # their other paths.
+        word = self._word
+        roots = "|".join(map(re.escape, self.roots)) or "(?!)"
+        start = rf"{_PATH_START}(?:(?:{roots})(?!{_PATH_CHARACTERS})|/[\w.]{_PATH_CHARACTERS}*)"
+        whole = rf"{start}(?:\x20+{word}|/+{_PATH_CHARACTERS}+)*/?"
+        spans = [rf"(?<={quote}){whole}(?={quote})" for quote in "'\"`"]
+        return re.compile(
+            "|".join([*spans, rf"{start}(?:\x20{word}(?=/)|/+{_PATH_CHARACTERS}+)*/?"])
+        )
 
     def _path(self, path: str) -> str:
         path = re.sub("/{2,}", "/", path)
@@ -181,11 +252,20 @@ def _read(path: Path) -> Any:
 
 
 def _write(path: Path, data: Any) -> None:
-    text = json.dumps(data, indent=2, sort_keys=True) + "\n"
+    path = path.resolve()
+    payload = (json.dumps(data, indent=2, sort_keys=True) + "\n").encode("utf-8")
     if path.suffix == ".gz":
-        path.write_bytes(gzip.compress(text.encode("utf-8"), mtime=0))
-    else:
-        path.write_text(text, encoding="utf-8")
+        payload = gzip.compress(payload, mtime=0)
+    temporary = path.parent / f".{path.name}.tmp"
+    try:
+        with temporary.open("wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        shutil.copymode(path, temporary)
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:

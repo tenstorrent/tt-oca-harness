@@ -237,11 +237,12 @@ the summary, and the history, `"0.1"` for the manifest;
 `classification.json` carries none. The conversion from the native result is
 lossy: native `ERROR` and `TIMEOUT` collapse into `FAIL`.
 `classification.json` is computed from the native leaf records, which keep
-the distinction. Staged coverage paths are bundle-relative; every other
-native path resolves against the retained run-tree artifact. `collect` and
-`dashboard` sanitize every string they write: an absolute path outside any
-checkout, and a URL or host outside GitHub, becomes a placeholder
-(xref:run-dashboard.adoc#dashboard-sanitize[Published paths and hosts]). The tools do
+the distinction. `collect` and `dashboard` sanitize every key and string they
+write: an absolute path outside any checkout, and a URL or host outside
+GitHub, becomes a placeholder
+(xref:run-dashboard.adoc#dashboard-sanitize[Published paths and hosts]).
+Staged coverage paths are bundle-relative; every other native path that is
+not a placeholder resolves against the retained run-tree artifact. The tools do
 not enforce the schema version; the workflow gates each record on it, on its
 `flow`, and on its `status` vocabulary, the summary and the history on the
 DUT count, and publishes

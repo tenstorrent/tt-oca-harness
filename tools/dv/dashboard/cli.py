@@ -117,7 +117,8 @@ def main(argv: list[str] | None = None) -> int:
         return sanitize.main(
             [
                 *(["--check"] if args.check else []),
-                *[option for root in args.root for option in ("--root", root)],
+                *(f"--root={root}" for root in args.root),
+                "--",
                 *args.files,
             ]
         )

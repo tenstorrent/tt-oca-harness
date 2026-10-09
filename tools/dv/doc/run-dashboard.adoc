@@ -448,8 +448,8 @@ reports do not appear as source changes.
 [[dashboard-sanitize]]
 === Published paths and hosts
 
-`collect` and `dashboard` rewrite every string in the normalized record, the
-staged coverage files, the summary, and the prior history:
+`collect` and `dashboard` rewrite every key and string in the normalized
+record, the staged coverage files, the summary, and the prior history:
 
 * A path under the checkout becomes repository-relative.
 * A path under another checkout keeps its tail from the first top-level name
@@ -457,18 +457,34 @@ staged coverage files, the summary, and the prior history:
   tail exist here: `<other checkout>/hw/sys/dtp/dv/x.sv` becomes
   `hw/sys/dtp/dv/x.sv`. A tail that climbs out of the checkout with `..` is
   not kept.
-* Any other absolute path becomes `EXTERNAL_PATH`.
+* Any other absolute path becomes `EXTERNAL_PATH`. A checkout root matches with
+  any spaces it holds. Any other path continues across a space into a word of
+  letters, digits, `_`, `.`, and `-` that does not start with `-` and is not
+  `./`, `../`, or a top-level name Git tracks here: across one space when a
+  slash follows the word, and across any spaces when the path fills the text
+  between two matching quotes in the string.
 * A URL becomes `EXTERNAL_URL` unless it is an `http` or `https` URL on GitHub
   (`github.com`, `githubusercontent.com`, or `github.io`), which keeps
-  everything but its user name and password.
+  everything but its user name and password. A URL ends at a space unless a
+  path inside it continues past the space by the rule above.
 * A `user@host:path` remote becomes `EXTERNAL_URL`, and a `user@host` or
   `port@host` reference becomes `EXTERNAL_HOST`, unless the host is on GitHub.
-  A host starts with a letter or is an IPv4 address, so `value@100ns` is not
-  one.
+  A remote's host is a name that starts with a letter, or an IP address. A
+  reference's host is an IPv4 or bracketed IPv6 address, a dotted name that
+  ends in an all-letter label, or one name after a numeric port, as in
+  `27000@licserver01`. `value@100ns`, `smoke@fast`, and `checkout@v4` hold no
+  host.
 
-The rewrite is idempotent and changes no keys, and the trend-point ids already
-in the history stay as they are. `sanitize` applies the same rewrite in place to
-files already written, gzipped archives included. `--root` names another
+The rewrite is idempotent, and the trend-point ids already in the history stay
+as they are. Two keys of one object that rewrite to the same text are an
+error: `sanitize` names the file, leaves it unchanged, and exits `2`, and
+`collect` and `dashboard` fail. A run whose record held an absolute `run_dir`
+gets a new trend-point id the next time `dashboard` reads it, from the old
+record or a new collection, so it adds one point instead of replacing its old
+one.
+
+`sanitize` applies the same rewrite in place to files already written, gzipped
+archives included, and replaces each file atomically. `--root` names another
 checkout whose paths become repository-relative, and `--check` rewrites nothing
 and exits `1` when a file would change:
 
@@ -557,11 +573,13 @@ repository-root-relative.
 
 The collector treats the selected file's parent as the available run root.
 When a downloaded artifact has been relocated, native paths that begin under
-the recorded `run_dir` are rebased onto this available root. The original
-`run_dir` string remains the recorded run identity; normalized
+the recorded `run_dir` are rebased onto this available root. The recorded
+`run_dir` string, sanitized, remains the run identity: normalized
 `artifacts.run_dir` carries it into trend-point identity and `run_metadata`
-retains it for inspection. A standalone exported copy still loses automatic discovery of
-regression, leaf, and JUnit material because those files are not beside it.
+retains it for inspection. A `run_dir` the runner recorded outside any
+checkout is `EXTERNAL_PATH` in both (<<dashboard-sanitize>>). A standalone
+exported copy still loses automatic discovery of regression, leaf, and JUnit
+material because those files are not beside it.
 
 `--framework` names the framework view to collect for a DUT that implements
 more than one test framework (for example `--dut dtp --framework uvm`); when
@@ -622,8 +640,10 @@ Only the coverage manifest and the report's summary and policy-application
 files are copied. The coverage details files, the annotated sources, and the
 merged database run to tens of megabytes per DUT and stay in the run tree, as
 do native logs, result fragments, JUnit files, waveforms, and run directories.
-Every such path is rebased onto the selected run root, so it resolves while
-that tree is available at the place it was collected from; the
+Every such path is rebased onto the selected run root. Under a root inside a
+checkout it is repository-relative and resolves while that tree is available
+at the place it was collected from; under a root outside any checkout it is
+published as `EXTERNAL_PATH` (<<dashboard-sanitize>>). The
 <<Continuous integration>> section states where the published records expect
 it.
 
@@ -698,10 +718,10 @@ hole samples, and the merged database remain only in the run tree.
 |The native run identity is nested under `run_metadata`: run directory,
 result path, label, tool and tool version, executor, run time, and Git
 information. Selected native artifacts are copied into the dashboard record's
-top-level `artifacts`. `run_metadata.run_dir` preserves the original run
-identity even when artifact paths are rebased to an explicit download root;
-top-level `artifacts.run_dir` preserves the same value for dashboard/trend
-consumers.
+top-level `artifacts`. `run_metadata.run_dir` keeps the recorded run
+identity, sanitized, even when artifact paths are rebased to an explicit
+download root; top-level `artifacts.run_dir` carries the same value for
+dashboard/trend consumers.
 |===
 
 The collector performs only shallow native validation: the input must be a JSON
@@ -809,12 +829,14 @@ Each point receives an identifier derived from the ordered collected-result
 list, run directories, coverage comparison keys, Git revisions, and run start
 times. A record without `timing.start_time` contributes the runner's
 `run_metadata.generated_at` instead; the record's own `generated_at` is the
-collection time and does not contribute. Two runs into one run directory at
-one revision are therefore two points. Re-generating an identical ordered
-input list replaces that point. Reordering inputs or passing overlapping
-patterns can create a different point or duplicate DUT records. A
-coverage-policy change changes a DUT's `comparison_key`, so its points before
-and after the change are separate series.
+collection time and does not contribute. The revision is the collecting
+checkout's `HEAD`, so the start time is what separates two runs whose run
+directories are reused or sanitize to the same string: they are two points.
+Re-generating an identical ordered input list replaces that point. Reordering
+inputs or passing overlapping patterns can create a different point or
+duplicate DUT records. A coverage-policy change changes a DUT's
+`comparison_key`, so its points before and after the change are separate
+series.
 
 History storage has no retention limit. The HTML renders the last 20 stored
 points without sorting them chronologically, so archive or prune the JSON
@@ -896,7 +918,8 @@ allowlist. Review the complete source tree before publishing it.
 The machine-readable outputs are the contract for external consumers: CI
 assertions, website pipelines, and scripts. This section lists the fields a
 parser may rely on, per file. Fields not listed are either absent, copied
-verbatim from tool-specific native material, or subject to change.
+from tool-specific native material with every string sanitized
+(<<dashboard-sanitize>>), or subject to change.
 
 Two parsing rules apply everywhere:
 
@@ -972,8 +995,9 @@ files. Absence of optional `run.json` is not a warning.
 
 Coverage staging rewrites: when `collect` copies coverage output into the
 bundle, `coverage.report`, `coverage.manifest`, `coverage.summary`, and
-`coverage.policy_application` become bundle-relative staged paths, and each
-original value is preserved under the same name with a `source_` prefix
+`coverage.policy_application` become bundle-relative staged paths, and the
+run-tree path each replaces is kept, sanitized, under the same name with a
+`source_` prefix
 (`coverage.source_report`, ...). `coverage.raw_metrics` and
 `coverage.effective_metrics` map metric families to percentages before and
 after accepted waivers.
@@ -1040,8 +1064,9 @@ primary table for per-DUT parsing.
 |`failure_buckets` |array |Buckets merged across records: `kind`,
 `signature`, `count`, `flows`, `affected`, and up to five `examples`.
 
-|`results` |array |The complete normalized input records, embedded verbatim.
-`summary.json` is therefore self-contained — and grows with its inputs.
+|`results` |array |The complete normalized input records, sanitized
+(<<dashboard-sanitize>>). `summary.json` is therefore self-contained, and it
+grows with its inputs.
 |===
 
 Each `dut_status` row carries: `flow`, `kind`, `framework`, `tool`, `status`,
@@ -1723,7 +1748,9 @@ Place generated HTML beside the normalized results and the staged
 run-directory links are not copied by the collector: they point into the run
 tree the record was collected from, relative to the repository root
 (`weekly-runs/<artifact name>/...` for a hosted weekly). Extract the retained
-run-tree artifact at that path, or read the record where it was collected.
+run-tree artifact at that path. A link to `EXTERNAL_PATH` names a file in a
+tree that sat outside any checkout; extract that tree under the checkout and
+collect it again, or read the native `result.json` where it was collected.
 `artifacts.run_dir` is the recorded run identity, not a path to open.
 
 === A DUT name is not linked to its report
@@ -1753,7 +1780,7 @@ The pipeline has these constraints:
   is not parallel wall-clock duration.
 * Only the coverage manifest, summary, and policy application are staged;
   every other path resolves against the run tree the record was collected
-  from.
+  from, or is `EXTERNAL_PATH` when that tree was outside any checkout.
 * Per-DUT HTML is not automatically linked from the aggregate dashboard.
 * Unmatched result paths produce an empty successful dashboard.
 * Trend history grows without a retention policy.
@@ -1762,8 +1789,13 @@ The pipeline has these constraints:
 * Local publication does not constrain name/timestamp paths; all publication
   replaces destination trees non-atomically and has no secret scan.
 * Sanitizing recognizes absolute paths, URLs, and `user@host` references. A
-  relative path, a bare internal host name, or another site-specific value,
-  such as a branch name, is published as written. `publish` writes its
+  relative path, a bare internal host name, a scheme-relative `//host/path`,
+  or another site-specific value, such as a branch name, is published as
+  written. So are a one-word host in a `user@host` reference, as in
+  `ssh jdoe@build-04`, a host after `@` that starts with a digit, and the rest
+  of a path after a space or a character the rule above does not continue
+  across, as in a run directory that ends in `John Smith`, or in
+  `Bob's Work/x`. `publish` writes its
   manifest's `source` as an absolute path, and nothing sanitizes it.
 
 There is no database service or live dashboard server. Retention is a CI
