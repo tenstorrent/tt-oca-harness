@@ -242,8 +242,10 @@ run <code>scripts/update_integration_symlinks.py</code> to regenerate the index.
 </div>
 <div class="paragraph">
 <p>The constraints for each system build on shared code, linked at
-<code>integration/constraints/shared</code>. This consists of four files:
+<code>integration/constraints/shared</code>. This consists of five files:
 <code>clock_periods.tcl</code> (which sets the target clock periods every block reads),
+<code>io_delay_budgets.tcl</code> (which sets the fraction of a period each kind of port
+reserves outside the block),
 <code>async_clock_groups.tcl</code> (which defines clock groups with default bounds),
 <code>cdc_max_delay_procs.tcl</code> (which defines procs for emitting CDC constraints)
 and <code>hier_reuse_procs.tcl</code> (which lets a parent replay a block&#8217;s constraints
@@ -275,7 +277,8 @@ per-instance bounds below are not masked by a false path.</p>
 </li>
 <li>
 <p><code>&lt;block&gt;_io_delays.sdc</code>:
-The input and output delays on the block&#8217;s ports.
+The input and output delays on the block&#8217;s ports, sized from
+<code>io_delay_budgets.tcl</code>, which the file sources itself.
 The CDC/RDC sign-off run reads the same three files, without the max-delay
 layer below (see <a href="#cdc-signoff-collateral">CDC/RDC sign-off collateral</a>).</p>
 </li>
