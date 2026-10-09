@@ -4,15 +4,20 @@
 
 # Helper for running repo commands in the OCAH nix-built container.
 #
-#   Usage: docker-run.sh <build|ensure|image-hash|verify|run CMD...|run-here CMD...|shell|shell-here|nixos-shell|nix-fmt|nix-fmt-check|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes|starting|datasheets]|doc-stage>
+#   Usage: docker-run.sh <build|ensure|image-hash|images|refresh|prune|rmi TAG|verify|run CMD...|run-here CMD...|shell|shell-here|nixos-shell|nix-fmt|nix-fmt-check|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes|starting|datasheets]|doc-stage>
 #   'doc-html all'  builds the real combined multi-book site (antora-playbook.yml) -- this
 #                   is what gets deployed
 #   'doc-stage'     adds PDFs + .nojekyll on top of an already-built combined site -- pure
 #                   file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
 #   build           (re)build nix container image + publish to shared tarball cache
-#   ensure          make nix container image available (cache -> build); auto-run
-#                   by run/run-here/shell/verify, so bare `run` works on a fresh host
+#   ensure          make nix container image available (registry -> cache ->
+#                   registry :main -> build); auto-run by run/run-here/shell/verify,
+#                   so bare `run` works on a fresh host
 #   image-hash      print the nix-derived image tag; identifies the image exactly
+#   images          list local OCAH images and their architecture
+#   refresh         pull this checkout's tag again and replace the local image
+#   prune           remove local OCAH images other than this checkout's and :main
+#   rmi TAG         remove the local OCAH images tagged TAG
 #   verify          gcc version + multilibs
 #   shell           interactive shell
 #   nixos-shell     Open an interactive shell in the NixOS build container - useful
@@ -34,6 +39,10 @@
 #      OCAH_CONTAINER_REGISTRY_IMAGE
 #                               optional registry repository, without a tag;
 #                               e.g. ghcr.io/tenstorrent/ocah-container
+#      OCAH_IMAGE_FALLBACK     what ensure does when this checkout's image is
+#                               neither loaded, published nor cached: `main`
+#                               runs the registry's :main (default), `build`
+#                               builds the exact image
 #      OCAH_ENGINE             force `podman` or `docker` instead of preferring
 #                               whichever is found first (CI pins this so a
 #                               runner image shipping both is deterministic)
@@ -92,14 +101,23 @@ submodule_safe_dirs() {
 
 NIX_IMAGE_NAME=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "ocah-uv-container" || echo "ocah-container")
 # Evaluating the hash takes minutes on a host without nix, so one invocation
-# evaluates it at most once.
+# evaluates it at most once, and resolves the image at most once.
 IMAGE_HASH=""
+IMAGE=""
 
 # A built image can be cached as a tarball on shared storage, keyed by the flake
 # output hash. When a registry repository is configured, ensure can pull that
 # same content-addressed tag before falling back to the existing cache/build
 # paths. Registry acquisition remains opt-in.
 DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-}"
+IMAGE_FALLBACK="${OCAH_IMAGE_FALLBACK:-main}"
+case "$IMAGE_FALLBACK" in
+main | build) ;;
+*)
+  echo "error: OCAH_IMAGE_FALLBACK must be 'main' or 'build', not '$IMAGE_FALLBACK'" >&2
+  exit 1
+  ;;
+esac
 
 # Will this invocation actually need a container engine? run/run-here/verify/shell
 # can be served by the bubblewrap backend (see below), in which case no engine -
@@ -376,6 +394,7 @@ build_image() {
 # then retains the existing tarball-cache and local-build fallbacks.
 ensure_image() {
   local flake_hash registry_ref
+  [[ -z "$IMAGE" ]] || return 0
   [[ -n "$IMAGE_HASH" ]] || IMAGE_HASH=$(image_hash)
   flake_hash=$IMAGE_HASH
   IMAGE="${NIX_IMAGE_NAME}:${flake_hash}"
@@ -414,8 +433,101 @@ ensure_image() {
       fi
     fi
   fi
+  if [[ "$IMAGE_FALLBACK" == main ]] && use_main_image; then
+    return 0
+  fi
   echo "docker-run: $IMAGE (hash $flake_hash) absent locally and in cache; building" >&2
   build_image
+}
+
+# The registry holds this tree's tag only once CI has built it, which takes
+# hours after the image inputs change. Until then, run the last image CI
+# verified on main: the registry's :main, or the copy of it pulled earlier.
+use_main_image() {
+  local main_image="${NIX_IMAGE_NAME}:main"
+  if [[ -n "$REGISTRY_IMAGE" ]]; then
+    echo "docker-run: pulling ${REGISTRY_IMAGE%/}:main instead" >&2
+    if "$ENGINE" ${PODMAN_STORAGE_FLAGS} pull "${REGISTRY_IMAGE%/}:main"; then
+      "$ENGINE" ${PODMAN_STORAGE_FLAGS} tag "${REGISTRY_IMAGE%/}:main" "$main_image"
+    fi
+  fi
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} image inspect "$main_image" >/dev/null 2>&1 || return 1
+  echo "docker-run: warning: using $main_image, which may not match this checkout;" \
+    "set OCAH_IMAGE_FALLBACK=build to build $IMAGE instead" >&2
+  IMAGE=$main_image
+}
+
+# --- local image maintenance ------------------------------------------------
+# Every tag of an OCAH image in the engine's store, local and registry names.
+ocah_image_refs() {
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} images --format '{{.Repository}}:{{.Tag}}' |
+    grep -E '(^|/)ocah(-uv)?-container:' | grep -v ':<none>$' || true
+}
+
+image_id() {
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} image inspect --format '{{.Id}}' "$1" 2>/dev/null || true
+}
+
+remove_ref() {
+  echo "docker-run: removing $1" >&2
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} rmi "$1" >/dev/null ||
+    echo "docker-run: warning: could not remove $1; a container may still use it" >&2
+}
+
+list_images() {
+  local ref note
+  [[ -n "$IMAGE_HASH" ]] || IMAGE_HASH=$(image_hash)
+  echo "this checkout: ${NIX_IMAGE_NAME}:${IMAGE_HASH}"
+  while read -r ref; do
+    [[ -n "$ref" ]] || continue
+    note=""
+    [[ "${ref##*:}" == "$IMAGE_HASH" ]] && note="  <- this checkout"
+    printf '%-75s %s%s\n' "$ref" \
+      "$("$ENGINE" ${PODMAN_STORAGE_FLAGS} image inspect --format '{{.Architecture}}' "$ref")" "$note"
+  done < <(ocah_image_refs)
+}
+
+# Pull this checkout's tag again and move the local tag onto it. The old image
+# stays until the new one is tagged, and is removed only if nothing still uses
+# it, so a container started from it keeps running.
+refresh_image() {
+  local registry_ref old
+  [[ -n "$REGISTRY_IMAGE" ]] || {
+    echo "error: refresh pulls from OCAH_CONTAINER_REGISTRY_IMAGE, which is unset; use build" >&2
+    return 1
+  }
+  [[ -n "$IMAGE_HASH" ]] || IMAGE_HASH=$(image_hash)
+  IMAGE="${NIX_IMAGE_NAME}:${IMAGE_HASH}"
+  registry_ref="${REGISTRY_IMAGE%/}:${IMAGE_HASH}"
+  old=$(image_id "$IMAGE")
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} pull "$registry_ref"
+  "$ENGINE" ${PODMAN_STORAGE_FLAGS} tag "$registry_ref" "$IMAGE"
+  if [[ -n "$old" && "$old" != "$(image_id "$IMAGE")" ]]; then
+    "$ENGINE" ${PODMAN_STORAGE_FLAGS} rmi "$old" >/dev/null 2>&1 || true
+  fi
+}
+
+# Remove every OCAH image except this checkout's and main's.
+prune_images() {
+  local ref
+  [[ -n "$IMAGE_HASH" ]] || IMAGE_HASH=$(image_hash)
+  while read -r ref; do
+    case "${ref##*:}" in "" | "$IMAGE_HASH" | main) continue ;; esac
+    remove_ref "$ref"
+  done < <(ocah_image_refs)
+}
+
+remove_images() {
+  local tag="$1" ref found=""
+  while read -r ref; do
+    [[ -n "$ref" && "${ref##*:}" == "$tag" ]] || continue
+    found=1
+    remove_ref "$ref"
+  done < <(ocah_image_refs)
+  [[ -n "$found" ]] || {
+    echo "error: no local OCAH image is tagged '$tag'" >&2
+    return 1
+  }
 }
 
 # --- bubblewrap backend -----------------------------------------------------
@@ -765,6 +877,16 @@ nix-fmt-check)
   ;;
 ensure) ensure_image ;;
 image-hash) image_hash ;;
+images) list_images ;;
+refresh) refresh_image ;;
+prune) prune_images ;;
+rmi)
+  [[ -n "${2:-}" ]] || {
+    echo "error: rmi requires a tag" >&2
+    exit 1
+  }
+  remove_images "$2"
+  ;;
 verify)
   run riscv64-unknown-elf-gcc --version
   echo ---
@@ -798,7 +920,7 @@ doc-pdf)
   ;;
 doc-stage) doc_stage ;;
 doc-kroki) doc_kroki ;;
-"" | -h | --help | help) sed -n '7,35p' "$0" ;;
+"" | -h | --help | help) sed -n '7,/^set -euo/{/^set -euo/!p;}' "$0" ;;
 *)
   echo "error: unknown command '$1'" >&2
   exit 1

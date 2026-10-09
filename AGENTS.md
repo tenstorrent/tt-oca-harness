@@ -251,14 +251,18 @@ Nix content tag on the next `verify`/`run`/`shell`:
 ```
 
 With `OCAH_CONTAINER_REGISTRY_IMAGE` set, `docker-run.sh` first tries that registry tag. With the
-companion's `OCAH_DOCKER_CACHE_DIR` set, it next checks the shared tarball cache; otherwise it
-builds locally from the flake. `scripts/docker.md` is authoritative for the source selection
-controls.
+companion's `OCAH_DOCKER_CACHE_DIR` set, it next checks the shared tarball cache. It then falls
+back to the registry's `:main`, the last image CI verified, or to a `:main` pulled earlier, and
+warns that the image may not match the checkout; otherwise it builds locally from the flake.
+`OCAH_IMAGE_FALLBACK=build` skips the `:main` fallback, which is what testing a change to the image
+needs. `scripts/docker.md` is authoritative for the source selection controls and documents the
+`images`, `refresh`, `prune` and `rmi` maintenance commands.
 
 > **Any container command can start a full image build.** `run`, `run-here`, `shell`, `verify`
 > and the doc subcommands all go through that same selection, so a routine `make regen-regs`,
 > doc build or lint run falls back to building the image from source when no image with the
-> tree's tag is loaded, pullable or cached. The fallback announces itself with:
+> tree's tag is loaded, pullable or cached and no `:main` image is available, or when
+> `OCAH_IMAGE_FALLBACK=build`. The fallback announces itself with:
 >
 > ```
 > docker-run: <image>:<tag> (hash <tag>) absent locally and in cache; building
@@ -266,8 +270,8 @@ controls.
 >
 > The build occupies many cores for a long time, and nothing serialises it: every worktree or
 > agent on the host that hits the fallback starts its own. The tag is a hash of the image
-> inputs, so a change to them on `main` leaves every checkout based on it without an image until
-> CI publishes the new tag. An agent that sees this message stops the command and asks the user
+> inputs, so a change to them on `main` leaves every checkout based on it without its exact image
+> until CI publishes the new tag. An agent that sees this message stops the command and asks the user
 > rather than letting the build run. Interrupting `docker-run.sh` does not necessarily stop the
 > build container, so check `podman ps` (or `docker ps`) afterwards. Once one pull or build has
 > loaded a tag, every checkout at that tag using the same engine reuses it. The bubblewrap
