@@ -22,12 +22,13 @@ Real checkers:
   - EXT control=1 staged with enable=0 drives ctrl_n=1 while ovrd stays 1
   - SMC cold_reset port override updates hierarchical SMC slice
   - Clearing TDR restores ovrd=0
-  - Every managed-subsystem cold and warm port and every SEP port but the Key
-    Manager's, in the same two-update order: control staged, override applied,
-    control released under the override, then cleared; the Key Manager port's
-    control is staged and released unapplied. After each update the SMC and
-    SEP slices are read whole: each is a packed struct whose .ovrd half sits
-    above its .val half, the first field of each half nearest TDI, and the
+  - Every managed-subsystem cold and warm port and every SEP port, including
+    the Key Manager, in the same two-update order: control staged, override
+    applied, control released under the override, then cleared. The leaf loads
+    the Key Manager smoke ROM first; an empty ROM returns X and the look-ahead
+    read takes the ROM request to X once km_jtag_rst_n is released. After each
+    update the SMC and SEP slices are read whole: each is a packed struct whose
+    .ovrd half sits above its .val half, the first field of each half nearest TDI, and the
     halves carry the inverse of reset_enable and reset_control
     (doc/integrator/src/smu.adoc, "IC_RESET TDR Structure"), so every
     port's override and value are compared bit by bit.
@@ -269,16 +270,13 @@ class smu_jtag_reset_override_test(smu_base_test):
     async def _walk_ss_and_sep_ports(self, dut, sb, jtag) -> None:
         """Stage, apply, release and clear every SS and SEP port together.
 
-        The Key Manager reset (km_jtag_rst_n, the SEP port nearest the
-        external slice) is staged and released without being applied: after
-        an applied override is lifted, the Key Manager's ROM request reads X on
-        a four-state simulator (see the VPLAN card).
+        km_jtag_rst_n is included. The testlist loads the Key Manager smoke
+        ROM, so the request stays 0 or 1 when that override releases the CPU.
         """
         ss_ports = [SMU_IC_RESET_SMC_SS_COLD0_PORT + i for i in range(SS_PORTS)] + [
             SMU_IC_RESET_SMC_SS_WARM0_PORT + i for i in range(SS_PORTS)
         ]
         sep_ports = [SMU_IC_RESET_EXT_PORT + 1 + i for i in range(SMU_IC_RESET_NUM_SEP_PORTS)]
-        km_port = SMU_IC_RESET_EXT_PORT + 1
         ports = ss_ports + sep_ports
         smc_all = (1 << SMU_IC_RESET_NUM_SMC_PORTS) - 1
         sep_all = (1 << SMU_IC_RESET_NUM_SEP_PORTS) - 1
@@ -287,11 +285,9 @@ class smu_jtag_reset_override_test(smu_base_test):
             ss_mask |= 1 << (port - SMU_IC_RESET_SMC_FUSE_PORT)
         # Port EXT_PORT + 1 + i is the SEP field i places from TDO, which is
         # bit i of each half.
-        sep_mask = sep_all & ~(1 << (km_port - SMU_IC_RESET_EXT_PORT - 1))
         observed = []
         for enable, control in ((1, 0), (0, 0), (0, 1)):
             port_enable = dict.fromkeys(ports, enable)
-            port_enable[km_port] = 1
             word = pack_ic_reset_ports(
                 reset_hold=1,
                 port_enable=port_enable,
@@ -324,8 +320,8 @@ class smu_jtag_reset_override_test(smu_base_test):
         # (readback, smc ovrd pin, smc ovrd, smc val, sep ovrd, sep val)
         want = [
             (True, 0, 0, smc_all & ~ss_mask, 0, 0),
-            (True, ss_mask, ss_mask, smc_all & ~ss_mask, sep_mask, 0),
-            (True, ss_mask, ss_mask, smc_all, sep_mask, sep_all),
+            (True, ss_mask, ss_mask, smc_all & ~ss_mask, sep_all, 0),
+            (True, ss_mask, ss_mask, smc_all, sep_all, sep_all),
             (True, 0, 0, smc_all, 0, sep_all),
         ]
         self.logger.info(
