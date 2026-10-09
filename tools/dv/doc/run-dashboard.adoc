@@ -24,7 +24,7 @@ data. The dashboard workflow itself renders no HTML.
 
 image::dv-dashboard-pipeline.drawio.svg[Static dashboard data pipeline,scaledwidth=95.0%]
 
-The four subcommands communicate only through files:
+The four pipeline subcommands communicate only through files:
 
 [source,text]
 ----
@@ -37,7 +37,9 @@ run_dv.py result.json
 ----
 
 This includes a schema-conversion boundary. The native run result is not the
-same JSON contract consumed by `report` and `dashboard`.
+same JSON contract consumed by `report` and `dashboard`. A fifth subcommand,
+`sanitize`, rewrites files already written
+(<<dashboard-sanitize>>).
 
 The implementation modules are:
 
@@ -66,6 +68,10 @@ and `latest` destinations.
 
 |`dashboard/html.py`
 |Escape values and provide the embedded stylesheet and HTML helpers.
+
+|`dashboard/sanitize.py`
+|Rewrite every string for publication. `collect` and `dashboard` apply it to
+what they write; the `sanitize` subcommand applies it to existing files.
 |===
 
 [[dashboard-terminology]]
@@ -115,7 +121,7 @@ The complete field-by-field JSON contract is in
 [[dashboard-syntax-overview]]
 === Syntax at a Glance
 
-The dashboard CLI has four file-oriented operations:
+The dashboard CLI has five file-oriented operations:
 
 [source,text]
 ----
@@ -142,6 +148,11 @@ run_dashboard.py publish
   --publish-root LOCAL_OR_GS_OR_S3_DESTINATION
   [--name NAME]
   [--timestamp TIMESTAMP]
+
+run_dashboard.py sanitize
+  [--check]
+  [--root CHECKOUT_DIR ...]
+  JSON_OR_GZIPPED_JSON [JSON_OR_GZIPPED_JSON ...]
 ----
 
 Use the shortest path that answers the question:
@@ -434,6 +445,39 @@ The default `collect --output` is `<repo>/reports/latest/<dut>.result.json`.
 Prefer an explicit ignored or out-of-tree staging directory so generated
 reports do not appear as source changes.
 
+[[dashboard-sanitize]]
+=== Published paths and hosts
+
+`collect` and `dashboard` rewrite every string in the normalized record, the
+staged coverage files, the summary, and the prior history:
+
+* A path under the checkout becomes repository-relative.
+* A path under another checkout keeps its tail from the first top-level name
+  that Git tracks in this checkout, when the first two components of that
+  tail exist here: `<other checkout>/hw/sys/dtp/dv/x.sv` becomes
+  `hw/sys/dtp/dv/x.sv`. A tail that climbs out of the checkout with `..` is
+  not kept.
+* Any other absolute path becomes `EXTERNAL_PATH`.
+* A URL becomes `EXTERNAL_URL` unless it is an `http` or `https` URL on GitHub
+  (`github.com`, `githubusercontent.com`, or `github.io`), which keeps
+  everything but its user name and password.
+* A `user@host:path` remote becomes `EXTERNAL_URL`, and a `user@host` or
+  `port@host` reference becomes `EXTERNAL_HOST`, unless the host is on GitHub.
+  A host starts with a letter or is an IPv4 address, so `value@100ns` is not
+  one.
+
+The rewrite is idempotent and changes no keys, and the trend-point ids already
+in the history stay as they are. `sanitize` applies the same rewrite in place to
+files already written, gzipped archives included. `--root` names another
+checkout whose paths become repository-relative, and `--check` rewrites nothing
+and exits `1` when a file would change:
+
+[source,bash]
+----
+python3 tools/dv/run_dashboard.py sanitize --check summary.json data/runs/*.json.gz
+python3 tools/dv/run_dashboard.py sanitize --root /path/to/other/checkout summary.json
+----
+
 == Complete manual workflow
 
 The following example collects two DUTs, creates per-DUT reports, creates an
@@ -555,8 +599,9 @@ Collection performs these steps:
   missing and for each graded attempt that names none. An earlier attempt of a
   retried leaf that left no result is not a warning.
 . Convert the native result to dashboard schema version `"0.2"`.
-. Copy selected coverage output beside the normalized result.
-. Write the normalized result.
+. Copy selected coverage output beside the normalized result, sanitized
+  (<<dashboard-sanitize>>).
+. Write the sanitized normalized result.
 
 Coverage staging uses:
 
@@ -724,7 +769,8 @@ The static page and summary include:
 * coverage closure, policy thresholds, and sampled holes;
 * merged failure buckets;
 * optional coverage trend rows;
-* original normalized results under `summary.json.results`.
+* the normalized results under `summary.json.results`, sanitized
+  (<<dashboard-sanitize>>).
 
 One DUT can contribute one record per framework view (for example `dtp`
 collected once as cocotb and once as UVM). Each record counts as its own flow
@@ -936,9 +982,10 @@ after accepted waivers.
 `regression_json`, `log` (a failing test's log when one exists, else the
 first simulation log), and `coverage_`-prefixed keys mirroring the staged
 coverage paths above. Paths inside the checkout are repository-relative;
-paths in an explicit out-of-tree download root are absolute.
+a path in an explicit out-of-tree download root becomes `EXTERNAL_PATH`
+(<<dashboard-sanitize>>).
 `artifacts.run_dir` is the exception: it remains the native
-recorded identity rather than the selected download path.
+recorded identity, sanitized, rather than the selected download path.
 
 `run_metadata` keys: `run_dir`, `result_json`, `label`, `tool`,
 `tool_version`, `executor`, `generated_at` (native run time), and `git` (the
@@ -1172,7 +1219,27 @@ then counts each attempt as a separate entry.
 |Timestamped history directory/key.
 |===
 
-Normal completion returns `0`, while argparse and explicitly handled
+=== `sanitize`
+
+[cols="<3,<3,<4",options="header"]
+|===
+|Option |Requirement/default |Meaning
+
+|`FILE ...`
+|Required
+|JSON or gzipped JSON files to rewrite in place (<<dashboard-sanitize>>).
+
+|`--root PATH`
+|Optional, repeatable
+|Another checkout whose paths become repository-relative.
+
+|`--check`
+|Default: rewrite
+|Rewrite nothing; exit `1` when any file would change.
+|===
+
+Normal completion returns `0`, and `sanitize --check` returns `1` when a file
+would change, while argparse and explicitly handled
 I/O/configuration/copy/sync failures return `2`. Malformed field types are not
 fully validated and may instead produce an uncaught traceback with another
 nonzero exit. A successfully generated record or dashboard may still contain
@@ -1196,7 +1263,9 @@ Recommended CI assertions include:
 * no expected DUT has `status = "UNKNOWN"`;
 * `summary.json.flows.total` equals the requested DUT count;
 * staged coverage paths exist when coverage was expected;
-* the publication source contains only approved files.
+* the publication source contains only approved files;
+* `sanitize --check` passes over every JSON file `collect` and `dashboard`
+  wrote.
 
 The `dashboard` workflow enforces the schema and count assertions before it
 publishes (see <<Continuous integration>>).
@@ -1692,6 +1761,10 @@ The pipeline has these constraints:
   file inventory may omit the newly written manifest itself.
 * Local publication does not constrain name/timestamp paths; all publication
   replaces destination trees non-atomically and has no secret scan.
+* Sanitizing recognizes absolute paths, URLs, and `user@host` references. A
+  relative path, a bare internal host name, or another site-specific value,
+  such as a branch name, is published as written. `publish` writes its
+  manifest's `source` as an absolute path, and nothing sanitizes it.
 
 There is no database service or live dashboard server. Retention is a CI
 concern: `.github/workflows/dashboard.yml` (see <<Continuous integration>>)

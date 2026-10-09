@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from dashboard.html import COVERAGE_FIELDS, coverage_value, fmt, link, page
+from dashboard.sanitize import REPO_ROOT, checkout_scrubber
 from dashboard.schema import make_summary, read_json, update_history, write_json
 
 
@@ -349,11 +350,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        results = _load_results(args.results)
+        scrubber = checkout_scrubber(REPO_ROOT)
+        results = [scrubber.value(result) for result in _load_results(args.results)]
         summary = make_summary(results)
         history = None
         if args.history_in and Path(args.history_in).is_file():
-            history = read_json(Path(args.history_in).resolve())
+            history = scrubber.value(read_json(Path(args.history_in).resolve()))
         if args.history_out:
             history = update_history(history, summary)
         if args.html_out:

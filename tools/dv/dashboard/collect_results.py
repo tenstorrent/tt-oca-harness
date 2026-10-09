@@ -23,6 +23,7 @@ from runlib.paths import dut_runs_root, dv_root, repo_path, repo_root
 from runlib.results import ITEM_STAGES
 from runlib.site import load_site_layer
 
+from dashboard.sanitize import Scrubber, checkout_scrubber
 from dashboard.schema import STATUS_FAIL, STATUS_PASS, STATUS_UNKNOWN, make_result, write_json
 
 
@@ -881,14 +882,28 @@ _STAGED_REPORT_FILES = (
 )
 
 
+def _stage_file(source: Path, staged: Path, scrubber: Scrubber) -> None:
+    text = source.read_text(encoding="utf-8")
+    try:
+        data = json.loads(text)
+    except ValueError:
+        staged.write_text(scrubber.text(text), encoding="utf-8")
+        return
+    write_json(scrubber.value(data), staged)
+
+
 def stage_coverage_artifacts(
     repo_root_path: Path,
     result: dict[str, Any],
     output: Path,
+    *,
+    scrubber: Scrubber | None = None,
 ) -> None:
+    """Copy the coverage summary, policy application and manifest beside `output`, sanitized."""
     coverage = result.get("coverage")
     if not isinstance(coverage, dict):
         return
+    scrubber = scrubber or checkout_scrubber(repo_root_path)
     flow = str(result.get("flow") or "unknown")
     destination = output.parent / "artifacts" / flow / "coverage"
     destination.mkdir(parents=True, exist_ok=True)
@@ -914,7 +929,7 @@ def stage_coverage_artifacts(
                 if not staged_source.is_file():
                     continue
                 staged = report_destination / filename
-                shutil.copy2(staged_source, staged)
+                _stage_file(staged_source, staged, scrubber)
                 coverage[f"source_{key}"] = coverage.get(key)
                 coverage[key] = str(staged.relative_to(output.parent))
                 artifacts[f"coverage_{key}"] = coverage[key]
@@ -924,10 +939,17 @@ def stage_coverage_artifacts(
         source = repo_path(repo_root_path, manifest_value)
         if source.is_file():
             staged = destination / "coverage.json"
-            shutil.copy2(source, staged)
+            _stage_file(source, staged, scrubber)
             coverage["source_manifest"] = manifest_value
             coverage["manifest"] = str(staged.relative_to(output.parent))
             artifacts["coverage_manifest"] = coverage["manifest"]
+
+
+def write_result(repo_root_path: Path, result: dict[str, Any], output: Path) -> None:
+    """Stage the coverage files beside `output` and write `result` there, both sanitized."""
+    scrubber = checkout_scrubber(repo_root_path)
+    stage_coverage_artifacts(repo_root_path, result, output, scrubber=scrubber)
+    write_json(scrubber.value(result), output)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -975,8 +997,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.output
             else dv_root(repo_root_path) / "reports" / "latest" / f"{flow.name}.result.json"
         )
-        stage_coverage_artifacts(repo_root_path, result, output)
-        write_json(result, output)
+        write_result(repo_root_path, result, output)
         print(f"Wrote result: {output}")
         return 0
     except (ConfigError, OSError) as exc:

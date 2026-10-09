@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import argparse
 
-from . import collect_results, gen_dashboard, gen_report, publish_reports
+from . import collect_results, gen_dashboard, gen_report, publish_reports, sanitize
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -48,6 +48,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     publish.add_argument("--publish-root", required=True)
     publish.add_argument("--name", default="dashboard")
     publish.add_argument("--timestamp")
+
+    clean = subparsers.add_parser(
+        "sanitize", help="rewrite host-specific paths and hosts in published JSON files"
+    )
+    clean.add_argument(
+        "--check", action="store_true", help="rewrite nothing; exit 1 when any file would change"
+    )
+    clean.add_argument(
+        "--root",
+        action="append",
+        default=[],
+        help="another checkout root whose paths become repository-relative (repeatable)",
+    )
+    clean.add_argument("files", nargs="+", help="JSON or gzipped JSON files to rewrite in place")
 
     return parser.parse_args(argv)
 
@@ -97,6 +111,14 @@ def main(argv: list[str] | None = None) -> int:
                 "--name",
                 args.name,
                 *(["--timestamp", args.timestamp] if args.timestamp else []),
+            ]
+        )
+    if args.cmd == "sanitize":
+        return sanitize.main(
+            [
+                *(["--check"] if args.check else []),
+                *[option for root in args.root for option in ("--root", root)],
+                *args.files,
             ]
         )
     return 2
