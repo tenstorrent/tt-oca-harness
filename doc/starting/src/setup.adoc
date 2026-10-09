@@ -192,6 +192,19 @@ your machine (`shell-here` is the interactive equivalent):
 ./scripts/docker-run.sh run-here make ocah-synth-yosys-all
 ```
 
+Each toolchain change downloads a new image, and the old ones stay on disk. To
+manage them:
+
+```bash
+./scripts/docker-run.sh images      # list the downloaded images and their architecture
+./scripts/docker-run.sh refresh     # download your checkout's image again
+./scripts/docker-run.sh prune       # remove all but your checkout's image and main's
+./scripts/docker-run.sh rmi <tag>   # remove one image
+```
+
+`refresh` also replaces an image of the wrong architecture, such as an x86_64
+image running under emulation on an arm64 machine.
+
 See `scripts/docker.md` for every container command and environment variable.
 
 [[nix-speedup]]
