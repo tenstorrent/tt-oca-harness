@@ -63,6 +63,7 @@
             TMPDIR = "/tmp";
             HOME = "/tmp";
             LD_LIBRARY_PATH = "/lib";
+            OCAH_IN_CONTAINER = "1";
           }));
         Labels = {
           "org.opencontainers.image.source" = "https://github.com/tenstorrent/tt-oca-harness";
