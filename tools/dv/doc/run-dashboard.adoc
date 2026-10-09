@@ -760,12 +760,15 @@ python3 tools/dv/run_dashboard.py dashboard \
 
 If `--history-in` is absent or does not name a file, history starts empty.
 Each point receives an identifier derived from the ordered collected-result
-list, run directories, coverage comparison keys, and Git revisions.
-Re-generating an identical ordered input list replaces that point. Reordering
-inputs or passing overlapping patterns can create a different point or
-duplicate DUT records. A coverage-policy change changes a DUT's
-`comparison_key`, so its points before and after the change are separate
-series.
+list, run directories, coverage comparison keys, Git revisions, and run start
+times. A record without `timing.start_time` contributes the runner's
+`run_metadata.generated_at` instead; the record's own `generated_at` is the
+collection time and does not contribute. Two runs into one run directory at
+one revision are therefore two points. Re-generating an identical ordered
+input list replaces that point. Reordering inputs or passing overlapping
+patterns can create a different point or duplicate DUT records. A
+coverage-policy change changes a DUT's `comparison_key`, so its points before
+and after the change are separate series.
 
 History storage has no retention limit. The HTML renders the last 20 stored
 points without sorting them chronologically, so archive or prune the JSON
