@@ -45,7 +45,7 @@ Each backpressured transfer is a 128-row 2D request of single-beat rows, since
 `CONFIG.ENABLE_ND` is set, so there are more requests than the path to SYS_OUT
 holds. The nine transfers stall the read side, the write side and both, in
 three modes: coupled, with the read and write channels decoupled, and with the
-channel coupler sending each AW without waiting for its first read beat
+channel coupler sending each AW without waiting for its write data
 (`CONFIG.DECOUPLE_AW`).
 
 The bench counts cycles at the SYS_OUT boundary where VALID is high and READY
@@ -55,8 +55,16 @@ payload.
 
 **Rows split at a page on one side only.** AXI bursts may not cross a 4 KB
 page, so the legalizer splits a row that does. Two 256-byte rows cross a page
-on one side only -- first the source, then the destination -- so one machine
-has two bursts to issue while the other has one. Both must arrive intact.
+on one side only -- first the source, then the destination. Each must arrive
+intact and put one AW per write burst on SYS_OUT, all inside its destination.
+
+The same two rows then run with `CONFIG.DECOUPLE_RW` set. Reads and writes then
+split only at their own page boundary, so the source-split row becomes two read
+bursts and one write burst, and the destination-split row one read burst and
+two write bursts. The first must put exactly one AW on SYS_OUT, with no extra AW
+for its second read burst; the second must put exactly two, with neither held
+back. A coupled source split runs between them and must put only its own AWs on
+SYS_OUT.
 
 **Partial words, a queue behind a stall, and NEXT_ID writes.** A 29-byte row
 runs from a source 3 bytes into a bus word to a destination 5 bytes in, so both
@@ -158,9 +166,16 @@ _SPLIT_SRC_CROSS = _MODEL_BASE + 0xA000 - 0x80
 _SPLIT_DST_FLAT = _MODEL_BASE + 0xB000
 _SPLIT_SRC_FLAT = _MODEL_BASE + 0xC000
 _SPLIT_DST_CROSS = _MODEL_BASE + 0xE000 - 0x80
+# The same two page splits with DECOUPLE_RW set, and a coupled source split after the first.
+_DSPLIT_SRC_CROSS = _MODEL_BASE + 0x11000 - 0x80
+_DSPLIT_DST_FLAT = _MODEL_BASE + 0x12000
+_DSPLIT_SRC_FLAT = _MODEL_BASE + 0x13000
+_DSPLIT_DST_CROSS = _MODEL_BASE + 0x15000 - 0x80
+_AFTER_SPLIT_SRC = _MODEL_BASE + 0x16000 - 0x80
+_AFTER_SPLIT_DST = _MODEL_BASE + 0x17000
 
 # (mode, CONFIG) for the backpressured transfers. DECOUPLE_AW lets the channel
-# coupler send each AW without waiting for the first read beat of its burst.
+# coupler send each AW without waiting for its write data.
 _BP_MODES = (
     ("COUPLED", DMA_CONFIG_ENABLED_ND),
     ("DECOUPLED", DMA_CONFIG_ENABLED_ND | DMA_CONFIG_DECOUPLE_RW),
@@ -204,6 +219,29 @@ class _StallWatch:
     def stop(self) -> dict[str, int]:
         self._task.cancel()
         return dict(self.stalls)
+
+
+class _AwWatch:
+    """Record the address of every AW handshake at the SYS_OUT boundary."""
+
+    def __init__(self, dut) -> None:
+        self.dut = dut
+        self.addrs: list[int] = []
+        self._task = cocotb.start_soon(self._run())
+
+    async def _run(self) -> None:
+        while True:
+            await RisingEdge(self.dut.clk_smc_i)
+            await ReadOnly()
+            valid = self.dut.tb_output_axi_awvalid.value
+            ready = self.dut.tb_output_axi_awready.value
+            if valid.is_resolvable and ready.is_resolvable and int(valid) and int(ready):
+                addr = self.dut.tb_output_axi_awaddr.value
+                self.addrs.append(int(addr) if addr.is_resolvable else -1)
+
+    def stop(self) -> list[int]:
+        self._task.cancel()
+        return list(self.addrs)
 
 
 def _bp_rows(transfer: int) -> tuple[bytes, ...]:
@@ -497,24 +535,52 @@ class smc_dma_decouple_rw_test_seq(SmcCsrSeq):
             "DMA_STATUS_AFTER_NEXT_ID_WRITES", DMA_CTRL_STATUS_0, expected=status_before
         )
 
-    async def _page_split_transfer(self, tag: str, src: int, dst: int) -> None:
-        """One row whose source and destination cross a 4 KB page at different points."""
+    async def _page_split_transfer(
+        self,
+        tag: str,
+        src: int,
+        dst: int,
+        *,
+        config: int = DMA_CONFIG_ENABLED_ND,
+        write_bursts: int = 2,
+        length: int = _SPLIT_BYTES,
+    ) -> None:
+        """One row whose source and destination cross a 4 KB page at different points.
+
+        `write_bursts` is how many AWs the row must put on SYS_OUT, all inside the
+        destination. With the channels coupled, reads and writes both split at the
+        first page boundary either side meets, so the row is two write bursts. With
+        DECOUPLE_RW the write side splits only at its own boundary.
+        """
         responder = self.cfg.sys_out_mem
         assert responder is not None, "SYS_OUT responder not bound"
-        payload = bytes((0x3D + 7 * i) & 0xFF for i in range(_SPLIT_BYTES))
+        payload = bytes((0x3D + 7 * i) & 0xFF for i in range(length))
         responder.write(src, payload)
-        responder.write(dst, bytes(_SPLIT_BYTES))
+        responder.write(dst, bytes(length))
         baseline = await self.csr_read(f"DMA_DONE_BASE_{tag}", DMA_CTRL_DONE_0)
-        await self.csr_write(f"DMA_CONFIG_{tag}", DMA_CTRL_CONFIG, DMA_CONFIG_ENABLED_ND)
+        await self.csr_write(f"DMA_CONFIG_{tag}", DMA_CTRL_CONFIG, config)
+        await self.csr_read(f"DMA_CONFIG_RB_{tag}", DMA_CTRL_CONFIG, expected=config)
         await self._program(
-            tag, src=src, dst=dst, src_stride=0, dst_stride=0, rows=1, length=_SPLIT_BYTES
+            tag, src=src, dst=dst, src_stride=0, dst_stride=0, rows=1, length=length
         )
-        await self._submit(tag)
-        await self._await_done(baseline + 1, tag)
-        got = responder.read(dst, _SPLIT_BYTES)
+        watch = _AwWatch(cocotb.top)
+        try:
+            await self._submit(tag)
+            await self._await_done(baseline + 1, tag)
+            # An AW issued after the last B, with nothing left to write, lands here too.
+            await ClockCycles(cocotb.top.clk_smc_i, 100)
+        finally:
+            aws = watch.stop()
+        stray = [a for a in aws if not dst <= a < dst + length]
+        assert not stray and len(aws) == write_bursts, (
+            f"[{tag}] expected {write_bursts} AW(s) on SYS_OUT, all inside the {length}-byte "
+            f"destination at 0x{dst:x}; SYS_OUT took {len(aws)}: "
+            f"{', '.join(f'0x{a:x}' for a in aws) or 'none'}"
+        )
+        got = responder.read(dst, length)
         assert got == payload, (
-            f"[{tag}] {_SPLIT_BYTES} bytes from 0x{src:x} to 0x{dst:x}: the destination "
-            f"differs from the source at byte {next(i for i in range(_SPLIT_BYTES) if got[i] != payload[i])}"
+            f"[{tag}] {length} bytes from 0x{src:x} to 0x{dst:x}: the destination "
+            f"differs from the source at byte {next(i for i in range(length) if got[i] != payload[i])}"
         )
         self.page_splits += 1
 
@@ -565,6 +631,19 @@ class smc_dma_decouple_rw_test_seq(SmcCsrSeq):
         await self._unaligned_transfer()
         await self._queued_under_stall()
         await self._next_id_writes()
+        # With DECOUPLE_RW, reads and writes split only at their own page boundary,
+        # so the first row is two read bursts and one write burst, and the second the other way round.
+        # The first row must not put a second AW on SYS_OUT and the second must not
+        # hold its second AW back. The coupled row between them must find nothing
+        # left over from the first.
+        decoupled = DMA_CONFIG_ENABLED_ND | DMA_CONFIG_DECOUPLE_RW
+        await self._page_split_transfer(
+            "DSPLIT_SRC", _DSPLIT_SRC_CROSS, _DSPLIT_DST_FLAT, config=decoupled, write_bursts=1
+        )
+        await self._page_split_transfer("AFTER_DSPLIT", _AFTER_SPLIT_SRC, _AFTER_SPLIT_DST)
+        await self._page_split_transfer(
+            "DSPLIT_DST", _DSPLIT_SRC_FLAT, _DSPLIT_DST_CROSS, config=decoupled, write_bursts=2
+        )
 
         await self.csr_write("DMA_CONFIG_RESTORE", DMA_CTRL_CONFIG, 0)
         restored = await self.csr_read("DMA_CONFIG_RESTORE_RB", DMA_CTRL_CONFIG, expected=0)
@@ -584,12 +663,12 @@ class smc_dma_decouple_rw_test_seq(SmcCsrSeq):
         assert self.rows_checked == expected_rows, (
             f"{self.rows_checked} rows compared, {expected_rows} were moved"
         )
-        assert self.page_splits == 2, f"{self.page_splits} page-split transfers, the leaf runs 2"
+        assert self.page_splits == 5, f"{self.page_splits} page-split transfers, the leaf runs 5"
         assert self.unaligned_ok and self.queued_under_stall, (
             "unaligned or queued-stall leg skipped"
         )
         assert self.next_id_writes == len(_NEXT_ID_WRITTEN), f"{self.next_id_writes} NEXT_ID writes"
-        floor = (9 + len(_BP_MODES) * len(_BP_CASES)) * _ACCESSES_PER_DESCRIPTOR
+        floor = (12 + len(_BP_MODES) * len(_BP_CASES)) * _ACCESSES_PER_DESCRIPTOR
         assert self.accesses >= floor, (
             f"the sequence issued {self.accesses} SEP_IN accesses; its descriptors cannot "
             f"have issued fewer than {floor}"
@@ -624,7 +703,15 @@ class smc_dma_decouple_rw_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-DMA-PAGE-SPLIT: a 256-byte row whose source crossed a 4 KB page and "
-            "whose destination did not, and one the other way round, each arrived intact"
+            "whose destination did not, and one the other way round, each arrived intact "
+            "and put exactly two AWs on SYS_OUT, both inside its destination"
+        )
+        cocotb.log.info(
+            "CHK-DMA-DECOUPLE-RW-PAGE-SPLIT: with DECOUPLE_RW set, the source-split row "
+            "(two read bursts, one write burst) put exactly one AW on SYS_OUT and the "
+            "destination-split row (one read burst, two write bursts) exactly two, all "
+            "inside their destinations; both rows arrived intact, and the coupled row run "
+            "between them put only its own two AWs on SYS_OUT"
         )
         cocotb.log.info(
             "CHK-DMA-LEGALIZER-BACKPRESSURE: %d multi-row 2D transfers ran with the SYS_OUT "

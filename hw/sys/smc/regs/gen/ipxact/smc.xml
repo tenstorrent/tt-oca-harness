@@ -31914,7 +31914,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>DECOUPLE_AW</ipxact:name>
-              <ipxact:description>Write-address decoupling. 0: the write address of each burst is held until the first read data beat of the matching read burst returns. 1: write addresses are issued without waiting for read data.</ipxact:description>
+              <ipxact:description>Write-address decoupling. 0: the write address of each burst is held until the first data beat of that burst is ready to be written. 1: write addresses are issued without waiting for write data.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
