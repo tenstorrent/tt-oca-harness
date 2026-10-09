@@ -170,7 +170,8 @@ Observation probe groups:
   `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`). Owner:
   `sep_spi_ot_dma_tx_test`. Users: `sep_dma_transfer_matrix_rand_test`,
   `sep_dma_irq_error_lock_rand_test`, `sep_dma_abort_recovery_rand_test`,
-  `sep_spi_dma_handshake_rand_test` and the FCOV sampler (`u_sep_fcov`).
+  `sep_spi_dma_handshake_rand_test` and the FCOV sampler (`u_sep_fcov`,
+  which reads `spi_tx_qd_probe_o` and `dma_busy_probe_o`).
 * Secure DMA master tap (`dma_axi_req_probe_o`): the DMA master request after
   the DMA local-alias remap (net `dma_axi_req`, response `dma_axi_resp`): AR
   and AW VALID, READY, address, AxLEN and AxSIZE; W VALID, READY, WSTRB and
@@ -244,7 +245,19 @@ Observation probe groups:
   DUT net.
 * The covergroup sampler's direct reads of the WDT bark interrupt
   (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read
-  `ARSIZE` (owner `sep_axi_partial_lane_read_test`).
+  `ARSIZE` (owner `sep_axi_partial_lane_read_test`); and, for the Phase 2 SPI
+  and DMA groups, of the SPI host
+  (`u_sep_io.u_sep_ot_spi_wrap.u_spi_host`: `active`, `tx_stall`,
+  `rx_stall`, `rx_qd`, `cmd_qd`, `tx_wm`, `tx_empty`, `tx_full`, `rx_wm`,
+  `rx_empty`, `rx_full`, `command_busy` and `reg2hw`), of the secure DMA
+  (`u_sep_dma_wrap.u_secure_dma`: `reg2hw`, and the register nets
+  `u_secure_dma_reg.status_aborted_qs` and
+  `u_secure_dma_reg.error_code_*_error_qs`), of the probes
+  `spi_tx_qd_probe_o` and `dma_busy_probe_o`, and of
+  `sep_internal_interrupts_probe_o` bits 9 and 13 (PIC sources 10 and 14).
+  The DMA master request after the alias remap (`dma_axi_req`) is the
+  existing fabric sampler tap. Owners: the owning tests of the SPI and DMA
+  groups.
 
 Exceptions (a closed set):
 
@@ -300,7 +313,8 @@ Exceptions (a closed set):
   Read-only; no force. Owner: `sep_spi_ot_dma_tx_test`. Users:
   `sep_dma_transfer_matrix_rand_test`, `sep_dma_irq_error_lock_rand_test`,
   `sep_dma_abort_recovery_rand_test`, `sep_spi_dma_handshake_rand_test` and
-  the FCOV sampler (`u_sep_fcov`).
+  the FCOV sampler (`u_sep_fcov`, which reads `spi_tx_qd_probe_o` and
+  `dma_busy_probe_o`).
 * *Secure DMA master and status taps* — the DMA master AR, AW, W and B
   channels after the DMA local-alias remap (`dma_axi_req_probe_o`) and the
   stored STATUS bits of the DMA (`dma_status_probe_o`). The destination image

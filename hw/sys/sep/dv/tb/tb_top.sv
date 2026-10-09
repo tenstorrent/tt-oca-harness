@@ -3729,7 +3729,38 @@ module sep_uvm_top
         .smc_base_i        (u_dut.smc_global_base_addr_i),
         .smc_size_i        (u_dut.smc_region_size_i),
         .smc_fuse_done_i   (u_dut.smc_fuse_sense_done_i),
-        .sep_debug_i       (`SEP_CORE.feat_ctrl.sep_debug)
+        .sep_debug_i       (`SEP_CORE.feat_ctrl.sep_debug),
+
+        // Phase 2 SPI and DMA taps (docs/SEP_FCOV.adoc, SPI and DMA groups,
+        // Sampled signals): read-only, no force.
+        .spi_active_i      (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.active),
+        .spi_tx_stall_i    (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.tx_stall),
+        .spi_rx_stall_i    (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.rx_stall),
+        .spi_tx_qd_i       (spi_tx_qd_probe_o),
+        .spi_rx_qd_i       (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.rx_qd),
+        .spi_cmd_qd_i      (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.cmd_qd),
+        .spi_tx_wm_i       (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.tx_wm),
+        .spi_tx_empty_i    (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.tx_empty),
+        .spi_tx_full_i     (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.tx_full),
+        .spi_rx_wm_i       (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.rx_wm),
+        .spi_rx_empty_i    (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.rx_empty),
+        .spi_rx_full_i     (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.rx_full),
+        .spi_cmd_busy_i    (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.command_busy),
+        .spi_reg2hw_i      (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.reg2hw),
+        .dma_reg2hw_i      (`SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw),
+        .dma_aborted_i     (`SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_aborted_qs),
+        .dma_err_code_i    ({
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_asid_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_range_valid_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_base_limit_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_bus_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_size_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_opcode_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_dst_addr_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_src_addr_error_qs}),
+        .dma_busy_i        (dma_busy_probe_o),
+        .irq_dma_chunk_i   (sep_internal_interrupts_probe_o[9]),
+        .irq_spi_i         (sep_internal_interrupts_probe_o[13])
     );
 `endif
 
