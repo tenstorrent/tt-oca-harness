@@ -42,7 +42,7 @@ ocah-doc-starting-pdf: ocah-doc-starting-setup
 	@echo "Building Getting Started Guide PDF documentation (asciidoctor-pdf)"
 	@mkdir -p "$(OCAH_STARTING_BUILD)/latex"
 	@rm -rf "$(OCAH_STARTING_SRC)/assets" && ln -s ../assets "$(OCAH_STARTING_SRC)/assets"
-	@cd "$(OCAH_STARTING_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
+	@cd "$(OCAH_STARTING_DIR)" && env $(OCAH_DOC_PDF_LOCALE) "$(OCAH_ASCIIDOCTOR_PDF)" \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \
 		$(OCAH_DOC_ASCIIDOCTOR_RELEASE_ARG) \

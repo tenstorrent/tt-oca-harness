@@ -52,7 +52,7 @@ ocah-doc-integrator-pdf: ocah-doc-integrator-setup
 	@echo "Building Integrator Guide PDF documentation (asciidoctor-pdf)"
 	@mkdir -p "$(OCAH_INTEGRATOR_BUILD)/latex"
 	@rm -rf "$(OCAH_INTEGRATOR_SRC)/assets" && ln -s ../assets "$(OCAH_INTEGRATOR_SRC)/assets"
-	@cd "$(OCAH_INTEGRATOR_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
+	@cd "$(OCAH_INTEGRATOR_DIR)" && env $(OCAH_DOC_PDF_LOCALE) "$(OCAH_ASCIIDOCTOR_PDF)" \
 		$(OCAH_ASCIIDOCTOR_PDF_DIAGRAM_ARGS) \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \
