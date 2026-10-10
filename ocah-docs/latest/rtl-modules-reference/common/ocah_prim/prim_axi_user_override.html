@@ -663,7 +663,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_axi_user_override</h1>
-<p>Pass an AXI port through while forcing AW, AR, and W user fields to AXI_USER_OVERRIDE.</p><p>Wire every other channel field straight across; the module is purely combinational. Pass response user fields through unchanged. AXI_USER_WIDTH must cover the override value; wider values are truncated. prim_axi_user_override_struct provides the same function on request and response structs and checks the struct field widths with simulation assertions at time zero.</p>
+<p>Pass an AXI port through while forcing AW, AR, and W user fields to AXI_USER_OVERRIDE.</p><p>Wire every other channel field straight across; the module is purely combinational. Pass response user fields through unchanged. AXI_USER_WIDTH must cover the override value; wider values are truncated. prim_axi_user_override_struct provides the same function on request and response structs and checks the struct field widths at elaboration.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">

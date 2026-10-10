@@ -556,8 +556,8 @@ flags and Verilator lint set it; VCS and Xcelium native compiles do not.</p></td
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_DEBUG_LIVE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">First-party elaboration checks and debug messages. <code>ocah_assert.svh</code> defines
-it when <code>EMULATION</code> is set or <code>SYNTHESIS</code> is absent.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">First-party debug checks and messages. <code>ocah_assert.svh</code> defines it when
+<code>EMULATION</code> is set or <code>SYNTHESIS</code> is absent.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_INC_ASSERT</code></p></td>
@@ -582,6 +582,11 @@ assertion gates give <code>EMULATION</code> the same precedence over <code>SYNTH
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>No define gates the first-party parameter and width checks. <code>OCAH_ASSERT_STATIC</code>
+evaluates them at elaboration in every view and tool, Verilator and synthesis
+included, so a configuration that fails one does not elaborate.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -708,19 +713,9 @@ CPU cluster macros, and the i3c-core configuration.</p>
 <h4 id="smc-defines-hooks"><a class="anchor" href="#smc-defines-hooks"></a><a class="link" href="#smc-defines-hooks">9.2.1. Simulation hooks</a></h4>
 <div class="paragraph">
 <p>The <code>SIMULATION</code> plusargs for the CPU ROM and the eFuse shadow registers are
-listed under <a href="#simulation-define"><code>SIMULATION</code></a>. The SMC RTL also reads these view names:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>smc_4core_cpu</code> prints scratch RAM initialization progress when neither
+listed under <a href="#simulation-define"><code>SIMULATION</code></a>. The SMC RTL also reads these view names:
+<code>smc_4core_cpu</code> prints scratch RAM initialization progress when neither
 <code>SYNTHESIS</code> nor <code>EMULATION</code> is set.</p>
-</li>
-<li>
-<p><code>smc_local_fabric</code> checks its AXI parameter widths at elaboration when
-<code>OCAH_DEBUG_LIVE</code> is defined.</p>
-</li>
-</ul>
 </div>
 <div class="paragraph">
 <p>The <code>prim_flop_2sync</code>, <code>prim_sync3</code> and <code>prim_sync4</code> synchronizers instantiate
@@ -966,14 +961,6 @@ configuration and a trace of BTB events. No OCAH flow sets either.</p>
 <h4 id="sep-defines-checks"><a class="anchor" href="#sep-defines-checks"></a><a class="link" href="#sep-defines-checks">9.4.3. First-party view checks</a></h4>
 <div class="ulist">
 <ul>
-<li>
-<p><code>sep_crypto</code> checks the key manager and eFuse AXI-Lite widths at elaboration
-when <code>OCAH_DEBUG_LIVE</code> is defined.</p>
-</li>
-<li>
-<p><code>sep_local_axi_xbar_wrapper</code> and <code>sep_system_peripherals_xbar_wrapper</code> check
-their AXI parameter widths at elaboration when <code>OCAH_DEBUG_LIVE</code> is defined.</p>
-</li>
 <li>
 <p><code>tlul_rsp_intg_gen</code> asserts that incoming response integrity and user bits
 are zero, where its parameters declare them zero, when <code>OCAH_DEBUG_LIVE</code> is
