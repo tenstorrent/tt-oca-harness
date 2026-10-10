@@ -564,6 +564,16 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             # command queue before the core is enabled again.
             await self.ops.wr(CONTROL, self.ctrl & ~CTRL_SPIEN)
             await self.ops.wait_ready()
+            # Control: a legal COMMAND written with SPIEN=0 raises no error, so
+            # the CMDINVAL below comes from the cell and not from SPIEN=0.
+            await self.ops.wr(COMMAND, Seg(0, DIR_DUMMY, 0).cmd)
+            pre = field_compare(await self._err_status(), 0, ERR_STATUS_MASK)
+            if not pre.ok:
+                raise AssertionError(
+                    f"CTRL-MISSING seed={seed} CHK-SPI-ILLEGAL: legal COMMAND with SPIEN=0 "
+                    f"gave err_status=0x{pre.got:02x}"
+                )
+            await self.ops.wait_ready()
             if not control:
                 self._graded()
             await self.ops.wr(
@@ -611,7 +621,8 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             line = (
                 f"seed={seed} speed={speed} dir={direction} "
                 f"err_status=0x{err.got & err.mask:02x} "
-                f"control_err_status=0x{ctl.got & ctl.mask:02x} err_mask=0x{err.mask:02x} "
+                f"control_err_status=0x{ctl.got & ctl.mask:02x} "
+                f"spien0_legal_err_status=0x{pre.got & pre.mask:02x} err_mask=0x{err.mask:02x} "
                 f"len={self.illegal_lens[(speed, direction)]}"
             )
             if not err.ok or not ctl.ok:
