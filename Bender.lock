@@ -72,6 +72,12 @@ packages:
     source:
       Path: vendor/lowRISC/opentitan
     dependencies: []
+  pdk_ihp_sg13g2:
+    revision: null
+    version: null
+    source:
+      Path: flows/synth/pdk/ihp-sg13g2
+    dependencies: []
   picorv32:
     revision: null
     version: null

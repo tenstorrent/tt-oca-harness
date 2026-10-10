@@ -13,6 +13,7 @@ dependencies:
   idma: { path: "vendor/pulp-platform/idma" }
   opentitan: { path: "vendor/lowRISC/opentitan" }
   picorv32: { path: "vendor/tenstorrent/tt-picorv32" }
+  pdk_ihp_sg13g2: { path: "flows/synth/pdk/ihp-sg13g2" }
 
 # Third-party IP vendored under vendor/<org>/<pkg>/upstream via `bender vendor init`.
 vendor_package:

@@ -10,7 +10,7 @@ include $(OCAH_FORMAT_DIR)/../common.mk
 # Filesystem scopes to lint and format.  The vendor root contributes only
 # hand-authored overlays; upstream and generated overlay files are excluded
 # below.  LINT_PATH / FORMAT_PATH accept one or more repository-relative paths.
-OCAH_VERIBLE_PATHS ?= hw vendor
+OCAH_VERIBLE_PATHS ?= hw vendor flows/synth/pdk
 ifneq ($(BLOCK),)
 LINT_PATH ?= hw/sys/$(BLOCK)
 FORMAT_PATH ?= hw/sys/$(BLOCK)
@@ -44,7 +44,7 @@ OCAH_LINT_VERIBLE_RULES ?= parameter-name-style=parameter_style:ALL_CAPS;localpa
 OCAH_VERIBLE_EMPTY :=
 OCAH_VERIBLE_SPACE := $(OCAH_VERIBLE_EMPTY) $(OCAH_VERIBLE_EMPTY)
 OCAH_VERIBLE_COMMA := ,
-OCAH_LINT_VERIBLE_WAIVER_FILES := $(shell find $(OCAH_ROOT)/hw $(OCAH_ROOT)/vendor \
+OCAH_LINT_VERIBLE_WAIVER_FILES := $(shell find $(addprefix $(OCAH_ROOT)/,$(OCAH_VERIBLE_PATHS)) \
 	-type f -path '*/lint/*.verible.waiver' -not -path '*/upstream/*' | sort)
 OCAH_LINT_VERIBLE_EXTRA_FLAGS ?= $(if $(OCAH_LINT_VERIBLE_WAIVER_FILES),\
 	--waiver_files=$(subst $(OCAH_VERIBLE_SPACE),$(OCAH_VERIBLE_COMMA),$(strip $(OCAH_LINT_VERIBLE_WAIVER_FILES))))
