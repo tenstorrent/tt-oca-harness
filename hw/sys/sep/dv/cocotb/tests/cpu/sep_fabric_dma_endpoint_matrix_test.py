@@ -182,6 +182,11 @@ def model_words(seed: int, tag: int, n: int) -> list[int]:
     return out
 
 
+def scratch_field_words(off: int, n: int) -> list[int]:
+    """Indexes of the n copied words at scratch offset off that land in a DATA lane."""
+    return [i for i in range(n) if (SCRATCH + off + 4 * i) % SCRATCH_STRIDE < SCRATCH_FIELD_BYTES]
+
+
 def fnv(words) -> int:
     h = 0x811C9DC5
     for w in words:
@@ -208,10 +213,14 @@ class DmaEpCfg:
         p["order"] = sum(v << (4 * k) for k, v in enumerate(order))
         p["form"] = rng.getrandbits(4)
         p["seed"] = rng.getrandbits(32) | 1
-        # Scratch pairs: length plus offset stay inside the 64-byte bank.
+        # Scratch pairs: length plus offset stay inside the 64-byte bank, and the
+        # copy holds at least one DATA-lane word, so the pair grades data.
         for k, side in ((0, "p0_scr"), (1, "p1_scr")):
-            off = rng.randrange(0, SCRATCH_BANK, 4)
-            ln = rng.randrange(4, SCRATCH_BANK - off + 1, 4)
+            while True:
+                off = rng.randrange(0, SCRATCH_BANK, 4)
+                ln = rng.randrange(4, SCRATCH_BANK - off + 1, 4)
+                if scratch_field_words(off, ln // 4):
+                    break
             p[f"p{k}_len"] = ln
             p[side] = off
             p[f"p{k}_sram"] = B_PAIR[k] + rng.randrange(0, BAND - ln + 1, 4)
@@ -504,10 +513,12 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             )
             if pid in (0, 1):
                 m = model_words(seed, 0x10 + pid, n)
-                scr = SCRATCH + (p["p0_scr"] if pid == 0 else p["p1_scr"])
-                graded = [
-                    m[i] for i in range(n) if (scr + 4 * i) % SCRATCH_STRIDE < SCRATCH_FIELD_BYTES
-                ]
+                off = p["p0_scr"] if pid == 0 else p["p1_scr"]
+                graded = [m[i] for i in scratch_field_words(off, n)]
+                assert graded, (
+                    f"CHK-DMA-PAIR FAIL: pair {pid} copies no scratch DATA-lane word "
+                    f"(off=0x{off:x} len={ln}), so no data is graded"
+                )
                 exp = fnv(graded)
                 ok = r["ng"] == len(graded) and r["nbad"] == 0 and r["dsum"] == exp
                 assert ok, (
