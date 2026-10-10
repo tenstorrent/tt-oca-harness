@@ -33,27 +33,27 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 90.0,
+      "coverage_total_percent": 90.22,
       "flow": "sep",
       "framework": "cocotb",
       "pass_rate": 100.0,
-      "tests_total": 174,
+      "tests_total": 388,
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 34.95,
+      "coverage_total_percent": 35.11,
       "flow": "sep",
       "framework": "uvm",
       "pass_rate": 100.0,
-      "tests_total": 9,
+      "tests_total": 27,
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 90.09,
+      "coverage_total_percent": 90.3,
       "flow": "sep",
       "framework": "",
       "pass_rate": 100.0,
-      "tests_total": 183,
+      "tests_total": 415,
       "tool": "vcs"
     },
     {
@@ -105,7 +105,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-10T12:26:49+00:00",
+  "generated_at": "2026-10-10T16:42:57+00:00",
   "results": [
     {
       "coverage": {
@@ -176,12 +176,12 @@
     {
       "coverage": {
         "effective_metrics": {
-          "branch": 91.35,
-          "condition": 79.67,
+          "branch": 91.69,
+          "condition": 79.92,
           "fsm_state": 88.36,
           "functional": 100.0,
-          "line": 95.4,
-          "toggle": 85.24
+          "line": 95.55,
+          "toggle": 85.76
         }
       },
       "flow": "sep",
@@ -191,11 +191,11 @@
     {
       "coverage": {
         "effective_metrics": {
-          "branch": 53.66,
+          "branch": 54.49,
           "condition": 25.15,
           "fsm_state": 37.09,
           "functional": 10.27,
-          "line": 67.79,
+          "line": 67.9,
           "toggle": 15.73
         }
       },
@@ -206,12 +206,12 @@
     {
       "coverage": {
         "effective_metrics": {
-          "branch": 91.4,
-          "condition": 79.69,
+          "branch": 91.74,
+          "condition": 79.94,
           "fsm_state": 88.73,
           "functional": 100.0,
-          "line": 95.42,
-          "toggle": 85.3
+          "line": 95.57,
+          "toggle": 85.82
         }
       },
       "flow": "sep",
