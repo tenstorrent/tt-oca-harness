@@ -14,18 +14,6 @@ module sep_wrapper
   import sep_pkg::sep_cpu_trace_t;
   import sep_pkg::sep_lockstep_ctrl_t;
   import sep_pkg::sep_lockstep_status_t;
-  import sep_pkg::sep_sram_req_t;
-  import sep_pkg::sep_sram_rsp_t;
-  import sep_pkg::sep_cpu_tcm_req_t;
-  import sep_pkg::sep_cpu_tcm_rsp_t;
-  import sep_pkg::sep_32_64_6_12_axi_req_t;
-  import sep_pkg::sep_32_64_6_12_axi_resp_t;
-  import sep_crypto_pkg::ext_trng_axis_req_t;
-  import sep_crypto_pkg::ext_trng_axis_rsp_t;
-  import sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t;
-  import sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t;
-  import sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t;
-  import sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t;
   import sep_io_pkg::sep_io_spi_req_t;
   import sep_io_pkg::sep_io_spi_rsp_t;
 #(
@@ -146,14 +134,14 @@ module sep_wrapper
   sep_efuse_pkg::fuse_command_req_t  efuse_shim_command_req;
   sep_efuse_pkg::fuse_command_resp_t efuse_shim_command_resp;
 
-  sep_sram_req_t sep_sram_req;
-  sep_sram_rsp_t sep_sram_rsp;
+  sep_pkg::sep_sram_req_t sep_sram_req;
+  sep_pkg::sep_sram_rsp_t sep_sram_rsp;
 
-  sep_sram_req_t sep_boot_rom_req;
-  sep_sram_rsp_t sep_boot_rom_rsp;
+  sep_pkg::sep_sram_req_t sep_boot_rom_req;
+  sep_pkg::sep_sram_rsp_t sep_boot_rom_rsp;
 
-  sep_cpu_tcm_req_t sep_cpu_tcm_req;
-  sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp;
+  sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req;
+  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp;
 
   logic wdt_timer_rst_req;
 
@@ -165,24 +153,24 @@ module sep_wrapper
   km_intf_pkg::km_sram_mem_req_t km_sram_mem_req;
   km_intf_pkg::km_sram_mem_rsp_t km_sram_mem_rsp;
 
-  sep_32_64_6_12_axi_req_t  axi_extension_axi_req;
-  sep_32_64_6_12_axi_resp_t axi_extension_axi_resp;
+  sep_pkg::sep_32_64_6_12_axi_req_t  axi_extension_axi_req;
+  sep_pkg::sep_32_64_6_12_axi_resp_t axi_extension_axi_resp;
 
   // TRNG AXI-Lite between sep and sep_ip_integration
   sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req;
   sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp;
 
   // TRNG AXI-Stream between sep_ip_integration and sep
-  ext_trng_axis_req_t ext_trng_axis_req [EXT_TRNG_NUM_AXIS-1:0];
-  ext_trng_axis_rsp_t ext_trng_axis_rsp [EXT_TRNG_NUM_AXIS-1:0];
+  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req [EXT_TRNG_NUM_AXIS-1:0];
+  sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp [EXT_TRNG_NUM_AXIS-1:0];
 
   logic ext_trng_irq;
 
   // OTBN SRAM interfaces (sep <-> sep_ip_integration)
-  sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req;
-  sep_crypto_pka_imem_sram_rsp_t sep_crypto_pka_imem_sram_rsp;
-  sep_crypto_pka_dmem_sram_req_t sep_crypto_pka_dmem_sram_req;
-  sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp;
+  sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req;
+  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t sep_crypto_pka_imem_sram_rsp;
+  sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t sep_crypto_pka_dmem_sram_req;
+  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp;
 
   assign wdt_timer_rst_req_o = wdt_timer_rst_req;
 

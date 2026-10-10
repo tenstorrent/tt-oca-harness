@@ -17,23 +17,6 @@ module sep_local_axi_xbar
   import sep_local_axi_xbar_pkg::axi64_resp_t;
   import sep_local_axi_xbar_pkg::axi_out_req_t;
   import sep_local_axi_xbar_pkg::axi_out_resp_t;
-  import sep_local_axi_xbar_pkg::addr_rule_t;
-  import sep_local_axi_xbar_pkg::NumAddrRules;
-  import sep_local_axi_xbar_pkg::xbar_slv_req_t;
-  import sep_local_axi_xbar_pkg::xbar_slv_resp_t;
-  import sep_local_axi_xbar_pkg::xbar_mst_req_t;
-  import sep_local_axi_xbar_pkg::xbar_mst_resp_t;
-  import sep_local_axi_xbar_pkg::XbarCfg;
-  import sep_local_axi_xbar_pkg::Connectivity;
-  import sep_local_axi_xbar_pkg::xbar_slv_aw_chan_t;
-  import sep_local_axi_xbar_pkg::xbar_mst_aw_chan_t;
-  import sep_local_axi_xbar_pkg::xbar_slv_w_chan_t;
-  import sep_local_axi_xbar_pkg::xbar_slv_b_chan_t;
-  import sep_local_axi_xbar_pkg::xbar_mst_b_chan_t;
-  import sep_local_axi_xbar_pkg::xbar_slv_ar_chan_t;
-  import sep_local_axi_xbar_pkg::xbar_mst_ar_chan_t;
-  import sep_local_axi_xbar_pkg::xbar_slv_r_chan_t;
-  import sep_local_axi_xbar_pkg::xbar_mst_r_chan_t;
 (
   input  logic clk_i,                         // System clock.
   input  logic rst_ni,                        // Active-low reset.
@@ -112,7 +95,7 @@ module sep_local_axi_xbar
   // ===========================================================================
   // Address Map Configuration
   // ===========================================================================
-  localparam addr_rule_t [NumAddrRules-1:0] AddrMap = '{
+  localparam sep_local_axi_xbar_pkg::addr_rule_t [sep_local_axi_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
       // cpu_tcm.iccm: 0xc0000000 - 0xc0040000
       '{
           idx: 0,
@@ -227,8 +210,8 @@ module sep_local_axi_xbar
   // ===========================================================================
   // Input Protocol/Width Conversion (to match crossbar)
   // ===========================================================================
-  xbar_slv_req_t  [4:0] xbar_slv_req;
-  xbar_slv_resp_t [4:0] xbar_slv_resp;
+  sep_local_axi_xbar_pkg::xbar_slv_req_t  [4:0] xbar_slv_req;
+  sep_local_axi_xbar_pkg::xbar_slv_resp_t [4:0] xbar_slv_resp;
 
   // Input ifu_sram: Direct connection (AXI4, 64-bit)
   assign xbar_slv_req[0] = ifu_sram_req_i;
@@ -253,27 +236,27 @@ module sep_local_axi_xbar
   // ===========================================================================
   // Crossbar
   // ===========================================================================
-  xbar_mst_req_t  [9:0] xbar_mst_req;
-  xbar_mst_resp_t [9:0] xbar_mst_resp;
+  sep_local_axi_xbar_pkg::xbar_mst_req_t  [9:0] xbar_mst_req;
+  sep_local_axi_xbar_pkg::xbar_mst_resp_t [9:0] xbar_mst_resp;
 
   axi_xbar #(
-    .Cfg          (XbarCfg),
+    .Cfg          (sep_local_axi_xbar_pkg::XbarCfg),
     .ATOPs        (1'b0),
-    .Connectivity (Connectivity),
-    .slv_aw_chan_t(xbar_slv_aw_chan_t),
-    .mst_aw_chan_t(xbar_mst_aw_chan_t),
-    .w_chan_t     (xbar_slv_w_chan_t),
-    .slv_b_chan_t (xbar_slv_b_chan_t),
-    .mst_b_chan_t (xbar_mst_b_chan_t),
-    .slv_ar_chan_t(xbar_slv_ar_chan_t),
-    .mst_ar_chan_t(xbar_mst_ar_chan_t),
-    .slv_r_chan_t (xbar_slv_r_chan_t),
-    .mst_r_chan_t (xbar_mst_r_chan_t),
-    .slv_req_t    (xbar_slv_req_t),
-    .slv_resp_t   (xbar_slv_resp_t),
-    .mst_req_t    (xbar_mst_req_t),
-    .mst_resp_t   (xbar_mst_resp_t),
-    .rule_t       (addr_rule_t)
+    .Connectivity (sep_local_axi_xbar_pkg::Connectivity),
+    .slv_aw_chan_t(sep_local_axi_xbar_pkg::xbar_slv_aw_chan_t),
+    .mst_aw_chan_t(sep_local_axi_xbar_pkg::xbar_mst_aw_chan_t),
+    .w_chan_t     (sep_local_axi_xbar_pkg::xbar_slv_w_chan_t),
+    .slv_b_chan_t (sep_local_axi_xbar_pkg::xbar_slv_b_chan_t),
+    .mst_b_chan_t (sep_local_axi_xbar_pkg::xbar_mst_b_chan_t),
+    .slv_ar_chan_t(sep_local_axi_xbar_pkg::xbar_slv_ar_chan_t),
+    .mst_ar_chan_t(sep_local_axi_xbar_pkg::xbar_mst_ar_chan_t),
+    .slv_r_chan_t (sep_local_axi_xbar_pkg::xbar_slv_r_chan_t),
+    .mst_r_chan_t (sep_local_axi_xbar_pkg::xbar_mst_r_chan_t),
+    .slv_req_t    (sep_local_axi_xbar_pkg::xbar_slv_req_t),
+    .slv_resp_t   (sep_local_axi_xbar_pkg::xbar_slv_resp_t),
+    .mst_req_t    (sep_local_axi_xbar_pkg::xbar_mst_req_t),
+    .mst_resp_t   (sep_local_axi_xbar_pkg::xbar_mst_resp_t),
+    .rule_t       (sep_local_axi_xbar_pkg::addr_rule_t)
   ) u_axi_xbar (
     .clk_i                 (clk_i),
     .rst_ni                (rst_ni),

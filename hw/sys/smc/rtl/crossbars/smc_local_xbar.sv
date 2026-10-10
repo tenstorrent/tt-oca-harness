@@ -25,56 +25,6 @@ module smc_local_xbar
   import smc_local_xbar_pkg::axi_lite32_resp_t;
   import smc_local_xbar_pkg::apb32_req_t;
   import smc_local_xbar_pkg::apb32_resp_t;
-  import smc_local_xbar_pkg::addr_rule_t;
-  import smc_local_xbar_pkg::NumAddrRules;
-  import smc_local_xbar_pkg::xbar_slv_req_t;
-  import smc_local_xbar_pkg::xbar_slv_resp_t;
-  import smc_local_xbar_pkg::xbar_mst_req_t;
-  import smc_local_xbar_pkg::xbar_mst_resp_t;
-  import smc_local_xbar_pkg::XbarCfg;
-  import smc_local_xbar_pkg::Connectivity;
-  import smc_local_xbar_pkg::xbar_slv_aw_chan_t;
-  import smc_local_xbar_pkg::xbar_mst_aw_chan_t;
-  import smc_local_xbar_pkg::xbar_slv_w_chan_t;
-  import smc_local_xbar_pkg::xbar_slv_b_chan_t;
-  import smc_local_xbar_pkg::xbar_mst_b_chan_t;
-  import smc_local_xbar_pkg::xbar_slv_ar_chan_t;
-  import smc_local_xbar_pkg::xbar_mst_ar_chan_t;
-  import smc_local_xbar_pkg::xbar_slv_r_chan_t;
-  import smc_local_xbar_pkg::xbar_mst_r_chan_t;
-  import smc_local_xbar_pkg::xbar_out_local_reg_req_t;
-  import smc_local_xbar_pkg::local_reg_req_t;
-  import smc_local_xbar_pkg::xbar_out_local_reg_resp_t;
-  import smc_local_xbar_pkg::local_reg_resp_t;
-  import smc_local_xbar_pkg::xbar_out_periph_reg_req_t;
-  import smc_local_xbar_pkg::periph_reg_req_t;
-  import smc_local_xbar_pkg::xbar_out_periph_reg_resp_t;
-  import smc_local_xbar_pkg::periph_reg_resp_t;
-  import smc_local_xbar_pkg::periph_reg_stage1_req_t;
-  import smc_local_xbar_pkg::periph_reg_stage1_resp_t;
-  import smc_local_xbar_pkg::periph_reg_stage1_aw_chan_t;
-  import smc_local_xbar_pkg::periph_reg_stage1_w_chan_t;
-  import smc_local_xbar_pkg::xbar_out_periph_reg_w_chan_t;
-  import smc_local_xbar_pkg::periph_reg_stage1_b_chan_t;
-  import smc_local_xbar_pkg::periph_reg_stage1_ar_chan_t;
-  import smc_local_xbar_pkg::periph_reg_stage1_r_chan_t;
-  import smc_local_xbar_pkg::xbar_out_periph_reg_r_chan_t;
-  import smc_local_xbar_pkg::xbar_out_smc_dfd_reg_req_t;
-  import smc_local_xbar_pkg::smc_dfd_reg_req_t;
-  import smc_local_xbar_pkg::xbar_out_smc_dfd_reg_resp_t;
-  import smc_local_xbar_pkg::smc_dfd_reg_resp_t;
-  import smc_local_xbar_pkg::smc_dfd_reg_stage1_req_t;
-  import smc_local_xbar_pkg::smc_dfd_reg_stage1_resp_t;
-  import smc_local_xbar_pkg::smc_dfd_reg_stage2_req_t;
-  import smc_local_xbar_pkg::smc_dfd_reg_stage2_resp_t;
-  import smc_local_xbar_pkg::smc_dfd_reg_stage1_aw_chan_t;
-  import smc_local_xbar_pkg::smc_dfd_reg_stage1_w_chan_t;
-  import smc_local_xbar_pkg::xbar_out_smc_dfd_reg_w_chan_t;
-  import smc_local_xbar_pkg::smc_dfd_reg_stage1_b_chan_t;
-  import smc_local_xbar_pkg::smc_dfd_reg_stage1_ar_chan_t;
-  import smc_local_xbar_pkg::smc_dfd_reg_stage1_r_chan_t;
-  import smc_local_xbar_pkg::xbar_out_smc_dfd_reg_r_chan_t;
-  import smc_local_xbar_pkg::apb_addr_rule_t;
 (
   input  logic clk_i,                   // SMC core clock.
   input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core
@@ -124,7 +74,7 @@ module smc_local_xbar
   // Direct CPU-cluster resources use separate rules so gaps between them
   // decode-error here instead of reaching the cluster. The debug module's
   // hart-facing window has no rule: only the cluster's harts may reach it.
-  localparam addr_rule_t [NumAddrRules-1:0] AddrMap = '{
+  localparam smc_local_xbar_pkg::addr_rule_t [smc_local_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR
@@ -212,8 +162,8 @@ module smc_local_xbar
   // ===========================================================================
   // Input Protocol/Width Conversion (to match crossbar)
   // ===========================================================================
-  xbar_slv_req_t  [2:0] xbar_slv_req;
-  xbar_slv_resp_t [2:0] xbar_slv_resp;
+  smc_local_xbar_pkg::xbar_slv_req_t  [2:0] xbar_slv_req;
+  smc_local_xbar_pkg::xbar_slv_resp_t [2:0] xbar_slv_resp;
 
   // Input system: Direct connection (AXI4, 64-bit)
   assign xbar_slv_req[0] = system_req_i;
@@ -230,27 +180,27 @@ module smc_local_xbar
   // ===========================================================================
   // Crossbar
   // ===========================================================================
-  xbar_mst_req_t  [4:0] xbar_mst_req;
-  xbar_mst_resp_t [4:0] xbar_mst_resp;
+  smc_local_xbar_pkg::xbar_mst_req_t  [4:0] xbar_mst_req;
+  smc_local_xbar_pkg::xbar_mst_resp_t [4:0] xbar_mst_resp;
 
   axi_xbar #(
-    .Cfg          (XbarCfg),
+    .Cfg          (smc_local_xbar_pkg::XbarCfg),
     .ATOPs        (1'b0),
-    .Connectivity (Connectivity),
-    .slv_aw_chan_t(xbar_slv_aw_chan_t),
-    .mst_aw_chan_t(xbar_mst_aw_chan_t),
-    .w_chan_t     (xbar_slv_w_chan_t),
-    .slv_b_chan_t (xbar_slv_b_chan_t),
-    .mst_b_chan_t (xbar_mst_b_chan_t),
-    .slv_ar_chan_t(xbar_slv_ar_chan_t),
-    .mst_ar_chan_t(xbar_mst_ar_chan_t),
-    .slv_r_chan_t (xbar_slv_r_chan_t),
-    .mst_r_chan_t (xbar_mst_r_chan_t),
-    .slv_req_t    (xbar_slv_req_t),
-    .slv_resp_t   (xbar_slv_resp_t),
-    .mst_req_t    (xbar_mst_req_t),
-    .mst_resp_t   (xbar_mst_resp_t),
-    .rule_t       (addr_rule_t)
+    .Connectivity (smc_local_xbar_pkg::Connectivity),
+    .slv_aw_chan_t(smc_local_xbar_pkg::xbar_slv_aw_chan_t),
+    .mst_aw_chan_t(smc_local_xbar_pkg::xbar_mst_aw_chan_t),
+    .w_chan_t     (smc_local_xbar_pkg::xbar_slv_w_chan_t),
+    .slv_b_chan_t (smc_local_xbar_pkg::xbar_slv_b_chan_t),
+    .mst_b_chan_t (smc_local_xbar_pkg::xbar_mst_b_chan_t),
+    .slv_ar_chan_t(smc_local_xbar_pkg::xbar_slv_ar_chan_t),
+    .mst_ar_chan_t(smc_local_xbar_pkg::xbar_mst_ar_chan_t),
+    .slv_r_chan_t (smc_local_xbar_pkg::xbar_slv_r_chan_t),
+    .mst_r_chan_t (smc_local_xbar_pkg::xbar_mst_r_chan_t),
+    .slv_req_t    (smc_local_xbar_pkg::xbar_slv_req_t),
+    .slv_resp_t   (smc_local_xbar_pkg::xbar_slv_resp_t),
+    .mst_req_t    (smc_local_xbar_pkg::xbar_mst_req_t),
+    .mst_resp_t   (smc_local_xbar_pkg::xbar_mst_resp_t),
+    .rule_t       (smc_local_xbar_pkg::addr_rule_t)
   ) u_axi_xbar (
     .clk_i                 (clk_i),
     .rst_ni                (rst_ni),
@@ -285,10 +235,10 @@ module smc_local_xbar
   // ---------------------------------------------------------------------------
   // Conversion chain: axi_to_axi_lite
   // Signal declarations
-  xbar_out_local_reg_req_t  xbar_out_local_reg_req;
-  xbar_out_local_reg_resp_t xbar_out_local_reg_resp;
-  local_reg_req_t  local_reg_req;
-  local_reg_resp_t local_reg_resp;
+  smc_local_xbar_pkg::xbar_out_local_reg_req_t  xbar_out_local_reg_req;
+  smc_local_xbar_pkg::xbar_out_local_reg_resp_t xbar_out_local_reg_resp;
+  smc_local_xbar_pkg::local_reg_req_t  local_reg_req;
+  smc_local_xbar_pkg::local_reg_resp_t local_reg_resp;
 
   // Xbar to chain connection
   assign xbar_out_local_reg_req = xbar_mst_req[2];
@@ -304,10 +254,10 @@ module smc_local_xbar
     .AxiMaxWriteTxns (8),
     .AxiMaxReadTxns  (8),
     .FallThrough     (1'b0),
-    .full_req_t      (xbar_out_local_reg_req_t),
-    .full_resp_t     (xbar_out_local_reg_resp_t),
-    .lite_req_t      (local_reg_req_t),
-    .lite_resp_t     (local_reg_resp_t)
+    .full_req_t      (smc_local_xbar_pkg::xbar_out_local_reg_req_t),
+    .full_resp_t     (smc_local_xbar_pkg::xbar_out_local_reg_resp_t),
+    .lite_req_t      (smc_local_xbar_pkg::local_reg_req_t),
+    .lite_resp_t     (smc_local_xbar_pkg::local_reg_resp_t)
   ) u_local_reg_a2l_1 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
@@ -327,12 +277,12 @@ module smc_local_xbar
   // ---------------------------------------------------------------------------
   // Conversion chain: axi_dw_converter -> axi_to_axi_lite
   // Signal declarations
-  xbar_out_periph_reg_req_t  xbar_out_periph_reg_req;
-  xbar_out_periph_reg_resp_t xbar_out_periph_reg_resp;
-  periph_reg_stage1_req_t  periph_reg_stage1_req;
-  periph_reg_stage1_resp_t periph_reg_stage1_resp;
-  periph_reg_req_t  periph_reg_req;
-  periph_reg_resp_t periph_reg_resp;
+  smc_local_xbar_pkg::xbar_out_periph_reg_req_t  xbar_out_periph_reg_req;
+  smc_local_xbar_pkg::xbar_out_periph_reg_resp_t xbar_out_periph_reg_resp;
+  smc_local_xbar_pkg::periph_reg_stage1_req_t  periph_reg_stage1_req;
+  smc_local_xbar_pkg::periph_reg_stage1_resp_t periph_reg_stage1_resp;
+  smc_local_xbar_pkg::periph_reg_req_t  periph_reg_req;
+  smc_local_xbar_pkg::periph_reg_resp_t periph_reg_resp;
 
   // Xbar to chain connection
   assign xbar_out_periph_reg_req = xbar_mst_req[3];
@@ -346,17 +296,17 @@ module smc_local_xbar
     .AxiMstPortDataWidth (32),
     .AxiAddrWidth        (32),
     .AxiIdWidth          (8),
-    .aw_chan_t           (periph_reg_stage1_aw_chan_t),
-    .mst_w_chan_t        (periph_reg_stage1_w_chan_t),
-    .slv_w_chan_t        (xbar_out_periph_reg_w_chan_t),
-    .b_chan_t            (periph_reg_stage1_b_chan_t),
-    .ar_chan_t           (periph_reg_stage1_ar_chan_t),
-    .mst_r_chan_t        (periph_reg_stage1_r_chan_t),
-    .slv_r_chan_t        (xbar_out_periph_reg_r_chan_t),
-    .axi_mst_req_t       (periph_reg_stage1_req_t),
-    .axi_mst_resp_t      (periph_reg_stage1_resp_t),
-    .axi_slv_req_t       (xbar_out_periph_reg_req_t),
-    .axi_slv_resp_t      (xbar_out_periph_reg_resp_t)
+    .aw_chan_t           (smc_local_xbar_pkg::periph_reg_stage1_aw_chan_t),
+    .mst_w_chan_t        (smc_local_xbar_pkg::periph_reg_stage1_w_chan_t),
+    .slv_w_chan_t        (smc_local_xbar_pkg::xbar_out_periph_reg_w_chan_t),
+    .b_chan_t            (smc_local_xbar_pkg::periph_reg_stage1_b_chan_t),
+    .ar_chan_t           (smc_local_xbar_pkg::periph_reg_stage1_ar_chan_t),
+    .mst_r_chan_t        (smc_local_xbar_pkg::periph_reg_stage1_r_chan_t),
+    .slv_r_chan_t        (smc_local_xbar_pkg::xbar_out_periph_reg_r_chan_t),
+    .axi_mst_req_t       (smc_local_xbar_pkg::periph_reg_stage1_req_t),
+    .axi_mst_resp_t      (smc_local_xbar_pkg::periph_reg_stage1_resp_t),
+    .axi_slv_req_t       (smc_local_xbar_pkg::xbar_out_periph_reg_req_t),
+    .axi_slv_resp_t      (smc_local_xbar_pkg::xbar_out_periph_reg_resp_t)
   ) u_periph_reg_dw_1 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
@@ -375,10 +325,10 @@ module smc_local_xbar
     .AxiMaxWriteTxns (8),
     .AxiMaxReadTxns  (8),
     .FallThrough     (1'b0),
-    .full_req_t      (periph_reg_stage1_req_t),
-    .full_resp_t     (periph_reg_stage1_resp_t),
-    .lite_req_t      (periph_reg_req_t),
-    .lite_resp_t     (periph_reg_resp_t)
+    .full_req_t      (smc_local_xbar_pkg::periph_reg_stage1_req_t),
+    .full_resp_t     (smc_local_xbar_pkg::periph_reg_stage1_resp_t),
+    .lite_req_t      (smc_local_xbar_pkg::periph_reg_req_t),
+    .lite_resp_t     (smc_local_xbar_pkg::periph_reg_resp_t)
   ) u_periph_reg_a2l_2 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
@@ -398,14 +348,14 @@ module smc_local_xbar
   // ---------------------------------------------------------------------------
   // Conversion chain: axi_dw_converter -> axi_to_axi_lite -> axi_lite_to_apb
   // Signal declarations
-  xbar_out_smc_dfd_reg_req_t  xbar_out_smc_dfd_reg_req;
-  xbar_out_smc_dfd_reg_resp_t xbar_out_smc_dfd_reg_resp;
-  smc_dfd_reg_stage1_req_t  smc_dfd_reg_stage1_req;
-  smc_dfd_reg_stage1_resp_t smc_dfd_reg_stage1_resp;
-  smc_dfd_reg_stage2_req_t  smc_dfd_reg_stage2_req;
-  smc_dfd_reg_stage2_resp_t smc_dfd_reg_stage2_resp;
-  smc_dfd_reg_req_t  smc_dfd_reg_req;
-  smc_dfd_reg_resp_t smc_dfd_reg_resp;
+  smc_local_xbar_pkg::xbar_out_smc_dfd_reg_req_t  xbar_out_smc_dfd_reg_req;
+  smc_local_xbar_pkg::xbar_out_smc_dfd_reg_resp_t xbar_out_smc_dfd_reg_resp;
+  smc_local_xbar_pkg::smc_dfd_reg_stage1_req_t  smc_dfd_reg_stage1_req;
+  smc_local_xbar_pkg::smc_dfd_reg_stage1_resp_t smc_dfd_reg_stage1_resp;
+  smc_local_xbar_pkg::smc_dfd_reg_stage2_req_t  smc_dfd_reg_stage2_req;
+  smc_local_xbar_pkg::smc_dfd_reg_stage2_resp_t smc_dfd_reg_stage2_resp;
+  smc_local_xbar_pkg::smc_dfd_reg_req_t  smc_dfd_reg_req;
+  smc_local_xbar_pkg::smc_dfd_reg_resp_t smc_dfd_reg_resp;
 
   // Xbar to chain connection
   assign xbar_out_smc_dfd_reg_req = xbar_mst_req[4];
@@ -419,17 +369,17 @@ module smc_local_xbar
     .AxiMstPortDataWidth (32),
     .AxiAddrWidth        (32),
     .AxiIdWidth          (8),
-    .aw_chan_t           (smc_dfd_reg_stage1_aw_chan_t),
-    .mst_w_chan_t        (smc_dfd_reg_stage1_w_chan_t),
-    .slv_w_chan_t        (xbar_out_smc_dfd_reg_w_chan_t),
-    .b_chan_t            (smc_dfd_reg_stage1_b_chan_t),
-    .ar_chan_t           (smc_dfd_reg_stage1_ar_chan_t),
-    .mst_r_chan_t        (smc_dfd_reg_stage1_r_chan_t),
-    .slv_r_chan_t        (xbar_out_smc_dfd_reg_r_chan_t),
-    .axi_mst_req_t       (smc_dfd_reg_stage1_req_t),
-    .axi_mst_resp_t      (smc_dfd_reg_stage1_resp_t),
-    .axi_slv_req_t       (xbar_out_smc_dfd_reg_req_t),
-    .axi_slv_resp_t      (xbar_out_smc_dfd_reg_resp_t)
+    .aw_chan_t           (smc_local_xbar_pkg::smc_dfd_reg_stage1_aw_chan_t),
+    .mst_w_chan_t        (smc_local_xbar_pkg::smc_dfd_reg_stage1_w_chan_t),
+    .slv_w_chan_t        (smc_local_xbar_pkg::xbar_out_smc_dfd_reg_w_chan_t),
+    .b_chan_t            (smc_local_xbar_pkg::smc_dfd_reg_stage1_b_chan_t),
+    .ar_chan_t           (smc_local_xbar_pkg::smc_dfd_reg_stage1_ar_chan_t),
+    .mst_r_chan_t        (smc_local_xbar_pkg::smc_dfd_reg_stage1_r_chan_t),
+    .slv_r_chan_t        (smc_local_xbar_pkg::xbar_out_smc_dfd_reg_r_chan_t),
+    .axi_mst_req_t       (smc_local_xbar_pkg::smc_dfd_reg_stage1_req_t),
+    .axi_mst_resp_t      (smc_local_xbar_pkg::smc_dfd_reg_stage1_resp_t),
+    .axi_slv_req_t       (smc_local_xbar_pkg::xbar_out_smc_dfd_reg_req_t),
+    .axi_slv_resp_t      (smc_local_xbar_pkg::xbar_out_smc_dfd_reg_resp_t)
   ) u_smc_dfd_reg_dw_1 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
@@ -448,10 +398,10 @@ module smc_local_xbar
     .AxiMaxWriteTxns (8),
     .AxiMaxReadTxns  (8),
     .FallThrough     (1'b0),
-    .full_req_t      (smc_dfd_reg_stage1_req_t),
-    .full_resp_t     (smc_dfd_reg_stage1_resp_t),
-    .lite_req_t      (smc_dfd_reg_stage2_req_t),
-    .lite_resp_t     (smc_dfd_reg_stage2_resp_t)
+    .full_req_t      (smc_local_xbar_pkg::smc_dfd_reg_stage1_req_t),
+    .full_resp_t     (smc_local_xbar_pkg::smc_dfd_reg_stage1_resp_t),
+    .lite_req_t      (smc_local_xbar_pkg::smc_dfd_reg_stage2_req_t),
+    .lite_resp_t     (smc_local_xbar_pkg::smc_dfd_reg_stage2_resp_t)
   ) u_smc_dfd_reg_a2l_2 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
@@ -463,7 +413,7 @@ module smc_local_xbar
   );
 
   // AXI-Lite to APB Bridge (1 APB slave)
-  localparam apb_addr_rule_t [0:0] SmcDfdRegApbAddrMap = '{
+  localparam smc_local_xbar_pkg::apb_addr_rule_t [0:0] SmcDfdRegApbAddrMap = '{
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR
@@ -477,11 +427,11 @@ module smc_local_xbar
     .DataWidth        (32),
     .PipelineRequest  (1'b1),
     .PipelineResponse (1'b1),
-    .axi_lite_req_t   (smc_dfd_reg_stage2_req_t),
-    .axi_lite_resp_t  (smc_dfd_reg_stage2_resp_t),
-    .apb_req_t        (smc_dfd_reg_req_t),
-    .apb_resp_t       (smc_dfd_reg_resp_t),
-    .rule_t           (apb_addr_rule_t)
+    .axi_lite_req_t   (smc_local_xbar_pkg::smc_dfd_reg_stage2_req_t),
+    .axi_lite_resp_t  (smc_local_xbar_pkg::smc_dfd_reg_stage2_resp_t),
+    .apb_req_t        (smc_local_xbar_pkg::smc_dfd_reg_req_t),
+    .apb_resp_t       (smc_local_xbar_pkg::smc_dfd_reg_resp_t),
+    .rule_t           (smc_local_xbar_pkg::apb_addr_rule_t)
   ) u_smc_dfd_reg_l2apb_3 (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),

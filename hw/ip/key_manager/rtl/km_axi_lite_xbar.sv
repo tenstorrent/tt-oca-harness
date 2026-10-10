@@ -19,29 +19,8 @@ module km_axi_lite_xbar
   import km_intf_pkg::km_axil_ar_chan_t;
   import km_intf_pkg::km_axil_r_chan_t;
   import km_intf_pkg::KmAxiAddrWidth;
-  import km_intf_pkg::KmAxiDataWidth;
-  import km_intf_pkg::KpvBaseAddr;
-  import km_intf_pkg::KpvEndAddr;
-  import km_intf_pkg::KmcsrBaseAddr;
-  import km_intf_pkg::KmcsrEndAddr;
-  import km_intf_pkg::DrbgSamplerBaseAddr;
-  import km_intf_pkg::DrbgSamplerEndAddr;
-  import km_intf_pkg::MboxBaseAddr;
-  import km_intf_pkg::MboxEndAddr;
-  import km_intf_pkg::OtbnBaseAddr;
-  import km_intf_pkg::OtbnEndAddr;
-  import km_intf_pkg::AesBaseAddr;
-  import km_intf_pkg::AesEndAddr;
-  import km_intf_pkg::KmacBaseAddr;
-  import km_intf_pkg::KmacEndAddr;
-  import km_intf_pkg::HmacBaseAddr;
-  import km_intf_pkg::HmacEndAddr;
   import km_intf_pkg::OtpBaseAddr;
   import km_intf_pkg::OtpEndAddr;
-  import km_intf_pkg::AbrBaseAddr;
-  import km_intf_pkg::AbrEndAddr;
-  import axi_pkg::xbar_cfg_t;
-  import axi_pkg::NO_LATENCY;
 #(
   parameter type axil_req_t  = km_axil_req_t,         // AXI-Lite request struct type.
   parameter type axil_resp_t = km_axil_resp_t,        // AXI-Lite response struct type.
@@ -113,20 +92,20 @@ module km_axi_lite_xbar
   // =========================================================================
 
   // PULP axi_lite_xbar configuration: 1 slave, 10 masters, zero-latency.
-  localparam xbar_cfg_t XbarCfg = '{
+  localparam axi_pkg::xbar_cfg_t XbarCfg = '{
       NoSlvPorts: 1,  // KM CPU only
       NoMstPorts: 10,  // KPV, KMCSR, DRBG, Mailbox + 5 external (OTBN, AES, KMAC, HMAC, ABR) + OTP
       MaxMstTrans: 2,  // Allow 2 outstanding transactions per master
       MaxSlvTrans: 2,  // Allow 2 outstanding transactions from slave
       FallThrough: 1'b0,  // No fall-through mode
-      LatencyMode: NO_LATENCY,  // Zero latency mode
+      LatencyMode: axi_pkg::NO_LATENCY,  // Zero latency mode
       PipelineStages: 0,  // No pipeline stages
       AxiIdWidthSlvPorts: 1,  // Not used for AXI-Lite, but required
       AxiIdUsedSlvPorts: 1,  // Not used for AXI-Lite, but required
       UniqueIds: 1'b0,  // Not used for AXI-Lite
       SelHashIds: 1'b0,  // Not used for AXI-Lite
       AxiAddrWidth: KmAxiAddrWidth,
-      AxiDataWidth: KmAxiDataWidth,
+      AxiDataWidth: km_intf_pkg::KmAxiDataWidth,
       NoAddrRules:
       10,  // 10 address ranges (KPV, KMCSR, DRBG, MBOX, OTBN, AES, KMAC, HMAC, OTP, ABR)
       default: '0
@@ -141,50 +120,50 @@ module km_axi_lite_xbar
       // Index 0: KPV
       '{
           idx: 0,
-          start_addr: KpvBaseAddr,
-          end_addr: 33'(KpvEndAddr + 1'b1)
+          start_addr: km_intf_pkg::KpvBaseAddr,
+          end_addr: 33'(km_intf_pkg::KpvEndAddr + 1'b1)
       },
       // Index 1: KMCSR
       '{
           idx: 1,
-          start_addr: KmcsrBaseAddr,
-          end_addr: 33'(KmcsrEndAddr + 1'b1)
+          start_addr: km_intf_pkg::KmcsrBaseAddr,
+          end_addr: 33'(km_intf_pkg::KmcsrEndAddr + 1'b1)
       },
       // Index 2: DRBG Sampler
       '{
           idx: 2,
-          start_addr: DrbgSamplerBaseAddr,
-          end_addr: 33'(DrbgSamplerEndAddr + 1'b1)
+          start_addr: km_intf_pkg::DrbgSamplerBaseAddr,
+          end_addr: 33'(km_intf_pkg::DrbgSamplerEndAddr + 1'b1)
       },
       // Index 3: Mailbox
       '{
           idx: 3,
-          start_addr: MboxBaseAddr,
-          end_addr: 33'(MboxEndAddr + 1'b1)
+          start_addr: km_intf_pkg::MboxBaseAddr,
+          end_addr: 33'(km_intf_pkg::MboxEndAddr + 1'b1)
       },
       // Index 4: OTBN
       '{
           idx: 4,
-          start_addr: OtbnBaseAddr,
-          end_addr: 33'(OtbnEndAddr + 1'b1)
+          start_addr: km_intf_pkg::OtbnBaseAddr,
+          end_addr: 33'(km_intf_pkg::OtbnEndAddr + 1'b1)
       },
       // Index 5: AES
       '{
           idx: 5,
-          start_addr: AesBaseAddr,
-          end_addr: 33'(AesEndAddr + 1'b1)
+          start_addr: km_intf_pkg::AesBaseAddr,
+          end_addr: 33'(km_intf_pkg::AesEndAddr + 1'b1)
       },
       // Index 6: KMAC
       '{
           idx: 6,
-          start_addr: KmacBaseAddr,
-          end_addr: 33'(KmacEndAddr + 1'b1)
+          start_addr: km_intf_pkg::KmacBaseAddr,
+          end_addr: 33'(km_intf_pkg::KmacEndAddr + 1'b1)
       },
       // Index 7: HMAC
       '{
           idx: 7,
-          start_addr: HmacBaseAddr,
-          end_addr: 33'(HmacEndAddr + 1'b1)
+          start_addr: km_intf_pkg::HmacBaseAddr,
+          end_addr: 33'(km_intf_pkg::HmacEndAddr + 1'b1)
       },
       // Index 8: OTP/eFuse
       '{
@@ -195,8 +174,8 @@ module km_axi_lite_xbar
       // Index 9: Adams Bridge
       '{
           idx: 9,
-          start_addr: AbrBaseAddr,
-          end_addr: 33'(AbrEndAddr + 1'b1)
+          start_addr: km_intf_pkg::AbrBaseAddr,
+          end_addr: 33'(km_intf_pkg::AbrEndAddr + 1'b1)
       }
   };
 

@@ -111,8 +111,6 @@ module prim_ram_1p_scr_ext
 );
 
   import prim_mubi_pkg::mubi4_t;
-  import prim_mubi_pkg::mubi4_and_hi;
-  import prim_mubi_pkg::mubi4_bool_to_mubi;
   import prim_mubi_pkg::mubi4_or_hi;
   import prim_mubi_pkg::mubi4_test_invalid;
   import prim_mubi_pkg::mubi4_test_true_loose;
@@ -149,8 +147,8 @@ module prim_ram_1p_scr_ext
   logic [MuBi4Width-1:0] read_en_b_buf, write_en_buf_b_d;
   assign gnt_o = req_i & key_valid_i;
 
-  assign read_en = mubi4_bool_to_mubi(gnt_o & ~write_i);
-  assign write_en_d = mubi4_bool_to_mubi(gnt_o & write_i);
+  assign read_en = prim_mubi_pkg::mubi4_bool_to_mubi(gnt_o & ~write_i);
+  assign write_en_d = prim_mubi_pkg::mubi4_bool_to_mubi(gnt_o & write_i);
 
   prim_buf #(
     .Width(MuBi4Width)
@@ -185,7 +183,7 @@ module prim_ram_1p_scr_ext
     .out_o(addr_match_buf)
   );
 
-  assign addr_collision_d = mubi4_and_hi(mubi4_and_hi(mubi4_or_hi(write_en_q,
+  assign addr_collision_d = prim_mubi_pkg::mubi4_and_hi(prim_mubi_pkg::mubi4_and_hi(mubi4_or_hi(write_en_q,
       write_pending_q), read_en_buf), mubi4_t'(addr_match_buf));
 
   // Macro requests and write strobe
@@ -204,7 +202,7 @@ module prim_ram_1p_scr_ext
     ~mubi4_test_true_loose(read_en_buf) & ~intg_error_w_q;
   // New read write collision
   logic rw_collision;
-  assign rw_collision = mubi4_test_true_loose(mubi4_and_hi(write_en_q, read_en_buf));
+  assign rw_collision = mubi4_test_true_loose(prim_mubi_pkg::mubi4_and_hi(write_en_q, read_en_buf));
 
   // Write currently processed inside this module. Although we are sending an immediate d_valid
   // back to the host, the write could take longer due to the scrambling.

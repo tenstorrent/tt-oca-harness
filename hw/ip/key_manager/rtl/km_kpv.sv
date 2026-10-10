@@ -35,10 +35,6 @@
 module km_kpv
   import km_intf_pkg::km_axil_req_t;
   import km_intf_pkg::km_axil_resp_t;
-  import km_kpv_reg_pkg::KM_KPV_REG_MIN_ADDR_WIDTH;
-  import km_kpv_reg_pkg::km_kpv__in_t;
-  import km_kpv_reg_pkg::km_kpv__out_t;
-  import km_kpv_addrmap_pkg::KM_KPV_CTRL_BASE_ADDR;
 #(
   parameter type axil_req_t  = km_axil_req_t,  // KM-side AXI-Lite request type.
   parameter type axil_resp_t = km_axil_resp_t  // KM-side AXI-Lite response type.
@@ -62,7 +58,7 @@ module km_kpv
   `include "prim_assert.sv"
 
   // Internal register address width, from the generated register map.
-  localparam int unsigned AddrW = KM_KPV_REG_MIN_ADDR_WIDTH;
+  localparam int unsigned AddrW = km_kpv_reg_pkg::KM_KPV_REG_MIN_ADDR_WIDTH;
 
   // Key slots in the vault, and the index width that addresses them.
   localparam int unsigned NumSlots = 64;
@@ -114,8 +110,8 @@ module km_kpv
   //==========================================================================
   // KPV register block (KM port) -- CTRL, scrambler, and external key data
   //==========================================================================
-  km_kpv__in_t  kpv_hwif_in;
-  km_kpv__out_t kpv_hwif_out;
+  km_kpv_reg_pkg::km_kpv__in_t  kpv_hwif_in;
+  km_kpv_reg_pkg::km_kpv__out_t kpv_hwif_out;
 
   // Drive warm reset into the KM-port regblock via hwif_in struct field
   assign kpv_hwif_in.WARM_RST_N = warm_rst_ni;
@@ -404,10 +400,10 @@ module km_kpv
   assign km_addr_accept =
         km_reg_awvalid ? km_reg_awaddr : km_reg_araddr;
   assign km_is_key =
-        (km_addr_accept < AddrW'(KM_KPV_CTRL_BASE_ADDR(0)));
+        (km_addr_accept < AddrW'(km_kpv_addrmap_pkg::KM_KPV_CTRL_BASE_ADDR(0)));
   assign km_is_ctrl =
-        (km_addr_accept >= AddrW'(KM_KPV_CTRL_BASE_ADDR(0))) &&
-        (km_addr_accept <= AddrW'(KM_KPV_CTRL_BASE_ADDR(NumSlots-1)));
+        (km_addr_accept >= AddrW'(km_kpv_addrmap_pkg::KM_KPV_CTRL_BASE_ADDR(0))) &&
+        (km_addr_accept <= AddrW'(km_kpv_addrmap_pkg::KM_KPV_CTRL_BASE_ADDR(NumSlots-1)));
   // Key entries are 0x40 apart, so the slot sits above the 6 word/byte bits;
   // CTRL registers are one word apart, so it sits directly above bit 1.
   assign km_slot =

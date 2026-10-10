@@ -14,18 +14,6 @@
 module smc_internal_axi_lite_xbar
   import smc_internal_axi_lite_xbar_pkg::axi_lite64_req_t;
   import smc_internal_axi_lite_xbar_pkg::axi_lite64_resp_t;
-  import smc_internal_axi_lite_xbar_pkg::addr_rule_t;
-  import smc_internal_axi_lite_xbar_pkg::NumAddrRules;
-  import smc_internal_axi_lite_xbar_pkg::xbar_slv_req_t;
-  import smc_internal_axi_lite_xbar_pkg::xbar_slv_resp_t;
-  import smc_internal_axi_lite_xbar_pkg::xbar_mst_req_t;
-  import smc_internal_axi_lite_xbar_pkg::xbar_mst_resp_t;
-  import smc_internal_axi_lite_xbar_pkg::XbarCfg;
-  import smc_internal_axi_lite_xbar_pkg::xbar_slv_aw_chan_t;
-  import smc_internal_axi_lite_xbar_pkg::xbar_slv_w_chan_t;
-  import smc_internal_axi_lite_xbar_pkg::xbar_slv_b_chan_t;
-  import smc_internal_axi_lite_xbar_pkg::xbar_slv_ar_chan_t;
-  import smc_internal_axi_lite_xbar_pkg::xbar_slv_r_chan_t;
 (
   input  logic clk_i,                   // SMC core clock.
   input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core
@@ -76,7 +64,7 @@ module smc_internal_axi_lite_xbar
   // ===========================================================================
   // All boundaries come from smc_top_addrmap_pkg. Array-indexed blocks use
   // _TOTAL_SIZE from the first generated instance.
-  localparam addr_rule_t [NumAddrRules-1:0] AddrMap = '{
+  localparam smc_internal_axi_lite_xbar_pkg::addr_rule_t [smc_internal_axi_lite_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
     // smc_base_config: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_{BASE_ADDR,SIZE}
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR),
@@ -117,8 +105,8 @@ module smc_internal_axi_lite_xbar
   // ===========================================================================
   // Input Protocol/Width Conversion (to match crossbar)
   // ===========================================================================
-  xbar_slv_req_t  [0:0] xbar_slv_req;
-  xbar_slv_resp_t [0:0] xbar_slv_resp;
+  smc_internal_axi_lite_xbar_pkg::xbar_slv_req_t  [0:0] xbar_slv_req;
+  smc_internal_axi_lite_xbar_pkg::xbar_slv_resp_t [0:0] xbar_slv_resp;
 
   // Input local_in: Direct connection (AXI4_LITE, 64-bit)
   assign xbar_slv_req[0] = local_in_req_i;
@@ -127,19 +115,19 @@ module smc_internal_axi_lite_xbar
   // ===========================================================================
   // Crossbar
   // ===========================================================================
-  xbar_mst_req_t  [7:0] xbar_mst_req;
-  xbar_mst_resp_t [7:0] xbar_mst_resp;
+  smc_internal_axi_lite_xbar_pkg::xbar_mst_req_t  [7:0] xbar_mst_req;
+  smc_internal_axi_lite_xbar_pkg::xbar_mst_resp_t [7:0] xbar_mst_resp;
 
   axi_lite_xbar #(
-    .Cfg          (XbarCfg),
-    .aw_chan_t    (xbar_slv_aw_chan_t),
-    .w_chan_t     (xbar_slv_w_chan_t),
-    .b_chan_t     (xbar_slv_b_chan_t),
-    .ar_chan_t    (xbar_slv_ar_chan_t),
-    .r_chan_t     (xbar_slv_r_chan_t),
-    .axi_req_t    (xbar_slv_req_t),
-    .axi_resp_t   (xbar_slv_resp_t),
-    .rule_t       (addr_rule_t)
+    .Cfg          (smc_internal_axi_lite_xbar_pkg::XbarCfg),
+    .aw_chan_t    (smc_internal_axi_lite_xbar_pkg::xbar_slv_aw_chan_t),
+    .w_chan_t     (smc_internal_axi_lite_xbar_pkg::xbar_slv_w_chan_t),
+    .b_chan_t     (smc_internal_axi_lite_xbar_pkg::xbar_slv_b_chan_t),
+    .ar_chan_t    (smc_internal_axi_lite_xbar_pkg::xbar_slv_ar_chan_t),
+    .r_chan_t     (smc_internal_axi_lite_xbar_pkg::xbar_slv_r_chan_t),
+    .axi_req_t    (smc_internal_axi_lite_xbar_pkg::xbar_slv_req_t),
+    .axi_resp_t   (smc_internal_axi_lite_xbar_pkg::xbar_slv_resp_t),
+    .rule_t       (smc_internal_axi_lite_xbar_pkg::addr_rule_t)
   ) u_axi_lite_xbar (
     .clk_i                 (clk_i),
     .rst_ni                (rst_ni),

@@ -20,36 +20,18 @@ module log_engine
   import log_engine_pkg::log_write_axil_resp_t;
   import log_engine_pkg::log_region_size_t;
   import log_engine_pkg::log_fetch_addr_t;
-  import log_engine_pkg::log_write_addr_t;
   import log_engine_pkg::log_len_t;
   import log_engine_pkg::NumLogEntries;
-  import log_engine_pkg::log_index_t;
-  import log_engine_pkg::log_word_t;
-  import log_engine_pkg::LogLenWidth;
-  import log_engine_pkg::log_fetch_data_t;
-  import log_engine_pkg::log_fetch_strb_t;
-  import log_engine_pkg::LogFetchAddrWidth;
-  import log_engine_pkg::LogFetchDataWidth;
   import log_engine_pkg::log_words_fetched_cnt_t;
-  import log_engine_pkg::log_fetch_fsm_state_e;
   import log_engine_pkg::LogWordSize;
   import log_engine_pkg::ST_LOG_FETCH_IDLE;
   import log_engine_pkg::ST_LOG_FETCH_REQ;
   import log_engine_pkg::ST_LOG_FETCH_WAIT;
   import log_engine_pkg::MaxLogRegionSize;
-  import log_engine_pkg::log_word_floor;
-  import log_engine_pkg::log_write_data_t;
-  import log_engine_pkg::log_write_strb_t;
-  import log_engine_pkg::LogWriteAddrWidth;
-  import log_engine_pkg::LogWriteDataWidth;
-  import log_engine_pkg::log_word_byte_ptr_t;
   import log_engine_pkg::log_bytes_written_cnt_t;
-  import log_engine_pkg::log_write_fsm_state_e;
   import log_engine_pkg::ST_LOG_WRITE_IDLE;
   import log_engine_pkg::ST_LOG_WRITE_REQ;
   import log_engine_pkg::ST_LOG_WRITE_WAIT;
-  import log_engine_pkg::MaxLogLen;
-  import log_engine_pkg::LogRegionAlignment;
 #(
   parameter int unsigned FIFO_DEPTH = 4  // Entries in the read-data FIFO between log fetch and UART
                                          // write.
@@ -89,13 +71,13 @@ module log_engine
   logic             log_engine_en;
   log_region_size_t log_region_size;
   log_fetch_addr_t  log_region_addr;
-  log_write_addr_t  log_write_addr;
+  log_engine_pkg::log_write_addr_t  log_write_addr;
   log_len_t         log_lens       [NumLogEntries];   // Used unpacked array to fit structure of
                                                       // u_arbiter_tree.data_i
 
   // Current log entry
   log_len_t         log_len;
-  log_index_t       log_index;
+  log_engine_pkg::log_index_t       log_index;
   logic             log_pending;
   logic             log_write_done;
   logic log_fetch_err, log_write_err;
@@ -104,7 +86,7 @@ module log_engine
   // RDATA FIFO
   logic rdata_fifo_wr_ready, rdata_fifo_wr_valid;
   logic rdata_fifo_rd_ready, rdata_fifo_rd_valid;
-  log_word_t        rdata_fifo_rd_data;
+  log_engine_pkg::log_word_t        rdata_fifo_rd_data;
 
 
   //////////////////////
@@ -123,7 +105,7 @@ module log_engine
 
   prim_arbiter_tree #(
     .N          (NumLogEntries),
-    .DW         (LogLenWidth),
+    .DW         (log_engine_pkg::LogLenWidth),
     .EnDataPort (1'b1)
   ) u_arbiter_tree (
     .clk_i,
@@ -148,11 +130,11 @@ module log_engine
 
   logic log_fetch_mem_req, log_fetch_mem_req_q, log_fetch_mem_wr_en;
   log_fetch_addr_t log_fetch_mem_addr, log_fetch_mem_addr_q;
-  log_fetch_data_t      log_fetch_mem_wr_data;
-  log_fetch_strb_t      log_fetch_mem_wr_byte_en;
+  log_engine_pkg::log_fetch_data_t      log_fetch_mem_wr_data;
+  log_engine_pkg::log_fetch_strb_t      log_fetch_mem_wr_byte_en;
 
   logic                 log_fetch_mem_grant;      // ARREADY
-  log_fetch_data_t      log_fetch_mem_rd_data;
+  log_engine_pkg::log_fetch_data_t      log_fetch_mem_rd_data;
   logic                 log_fetch_mem_resp_valid; // RVALID
 
   log_fetch_axil_req_t  log_fetch_axil_req;
@@ -173,9 +155,9 @@ module log_engine
   end
 
   axi_lite_from_mem #(
-    .MemAddrWidth    (LogFetchAddrWidth),
-    .AxiAddrWidth    (LogFetchAddrWidth),
-    .DataWidth       (LogFetchDataWidth),
+    .MemAddrWidth    (log_engine_pkg::LogFetchAddrWidth),
+    .AxiAddrWidth    (log_engine_pkg::LogFetchAddrWidth),
+    .DataWidth       (log_engine_pkg::LogFetchDataWidth),
     .MaxRequests     (1),
     .AxiProt         (3'h2), // {data access, non-secure, unprivileged}
     .axi_req_t       (log_fetch_axil_req_t),
@@ -208,7 +190,7 @@ module log_engine
   logic log_fetch_done_status, log_fetch_done_status_next;
   log_words_fetched_cnt_t log_words_fetched_cnt, log_words_fetched_cnt_next;
   log_len_t next_log_bytes_fetched;
-  log_fetch_fsm_state_e log_fetch_fsm_state, log_fetch_fsm_state_next;
+  log_engine_pkg::log_fetch_fsm_state_e log_fetch_fsm_state, log_fetch_fsm_state_next;
 
   assign next_log_bytes_fetched =
       log_len_t'(log_words_fetched_cnt + log_words_fetched_cnt_t'(1)) *
@@ -218,8 +200,8 @@ module log_engine
     log_fetch_mem_req        = 1'b0;
     log_fetch_mem_wr_en      = 1'b0;                 // No writes
     log_fetch_mem_addr       = log_word_addr;
-    log_fetch_mem_wr_data    = log_fetch_data_t'(0); // No writes
-    log_fetch_mem_wr_byte_en = log_fetch_strb_t'(0); // No writes
+    log_fetch_mem_wr_data    = log_engine_pkg::log_fetch_data_t'(0); // No writes
+    log_fetch_mem_wr_byte_en = log_engine_pkg::log_fetch_strb_t'(0); // No writes
     rdata_fifo_wr_valid = 1'b0;
 
     log_fetch_done_status_next = log_fetch_done_status;
@@ -293,7 +275,7 @@ module log_engine
   assign max_log_len = log_len_t'(
       supported_log_region_size / log_region_size_t'(NumLogEntries)
   );
-  assign max_transfer_len = log_word_floor(max_log_len);
+  assign max_transfer_len = log_engine_pkg::log_word_floor(max_log_len);
   assign effective_log_len =
       log_len > max_transfer_len ? max_transfer_len : log_len;
   assign log_word_addr =
@@ -319,7 +301,7 @@ module log_engine
   ////////////////
 
   prim_fifo_sync #(
-    .Width             (LogFetchDataWidth),
+    .Width             (log_engine_pkg::LogFetchDataWidth),
     .Pass              (1'b1),
     .Depth             (FIFO_DEPTH),
     .OutputZeroIfEmpty (1'b1),
@@ -346,12 +328,12 @@ module log_engine
   /////////////////////
 
   logic log_write_mem_req, log_write_mem_wr_en;
-  log_write_addr_t log_write_mem_addr;
-  log_write_data_t log_write_mem_wr_data;
-  log_write_strb_t log_write_mem_wr_byte_en;
+  log_engine_pkg::log_write_addr_t log_write_mem_addr;
+  log_engine_pkg::log_write_data_t log_write_mem_wr_data;
+  log_engine_pkg::log_write_strb_t log_write_mem_wr_byte_en;
 
   logic            log_write_mem_grant;      // ARREADY
-  log_write_data_t log_write_mem_rd_data;
+  log_engine_pkg::log_write_data_t log_write_mem_rd_data;
   logic            log_write_mem_resp_valid; // RVALID
 
   log_write_axil_req_t  log_write_axil_req;
@@ -361,9 +343,9 @@ module log_engine
   assign log_write_axil_resp = log_write_axil_resp_i;
 
   axi_lite_from_mem #(
-    .MemAddrWidth    (LogWriteAddrWidth),
-    .AxiAddrWidth    (LogWriteAddrWidth),
-    .DataWidth       (LogWriteDataWidth),
+    .MemAddrWidth    (log_engine_pkg::LogWriteAddrWidth),
+    .AxiAddrWidth    (log_engine_pkg::LogWriteAddrWidth),
+    .DataWidth       (log_engine_pkg::LogWriteDataWidth),
     .MaxRequests     (1),
     .AxiProt         (3'h2), // {data access, non-secure, unprivileged}
     .axi_req_t       (log_write_axil_req_t),
@@ -387,18 +369,18 @@ module log_engine
     .axi_rsp_i       (log_write_axil_resp)
   );
 
-  log_word_byte_ptr_t byte_ptr;
+  log_engine_pkg::log_word_byte_ptr_t byte_ptr;
 
   log_bytes_written_cnt_t log_bytes_written_cnt, log_bytes_written_cnt_next;
-  log_write_fsm_state_e log_write_fsm_state, log_write_fsm_state_next;
+  log_engine_pkg::log_write_fsm_state_e log_write_fsm_state, log_write_fsm_state_next;
 
   always_comb begin
     // Log write request
     log_write_mem_req        = 1'b0;
     log_write_mem_wr_en      = 1'b0;
     log_write_mem_addr       = log_write_addr;
-    log_write_mem_wr_data    = log_write_data_t'(rdata_fifo_rd_data[byte_ptr]);
-    log_write_mem_wr_byte_en = log_write_strb_t'('1);
+    log_write_mem_wr_data    = log_engine_pkg::log_write_data_t'(rdata_fifo_rd_data[byte_ptr]);
+    log_write_mem_wr_byte_en = log_engine_pkg::log_write_strb_t'('1);
     // RDATA FIFO control
     rdata_fifo_rd_ready = 1'b0;
     // Status
@@ -445,7 +427,7 @@ module log_engine
               log_write_fsm_state_next   = ST_LOG_WRITE_IDLE;
             end else begin  // Log write not done
               rdata_fifo_rd_ready =
-                                byte_ptr == log_word_byte_ptr_t'(LogWordSize - 1);
+                                byte_ptr == log_engine_pkg::log_word_byte_ptr_t'(LogWordSize - 1);
 
               log_bytes_written_cnt_next = log_bytes_written_cnt +
                                                          log_bytes_written_cnt_t'(1);
@@ -466,7 +448,7 @@ module log_engine
     end
   end
 
-  assign byte_ptr = log_word_byte_ptr_t'(log_bytes_written_cnt);
+  assign byte_ptr = log_engine_pkg::log_word_byte_ptr_t'(log_bytes_written_cnt);
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
@@ -549,7 +531,7 @@ module log_engine
   always_comb begin
     for (int i = 0; i < NumLogEntries; i++) begin
       log_lens[i] = reg_out.LOG_CTRL[i].LOG_LEN.value;
-      if (log_index == log_index_t'(i)) begin
+      if (log_index == log_engine_pkg::log_index_t'(i)) begin
         reg_in.LOG_CTRL[i].LOG_LEN.hwclr = log_write_done;
       end else begin
         reg_in.LOG_CTRL[i].LOG_LEN.hwclr = 1'b0;
@@ -564,10 +546,10 @@ module log_engine
 
   `OCAH_ASSERT_STATIC(paramCheckNumLogEntries, NumLogEntries > 0)
   `OCAH_ASSERT_STATIC(LogLenMaximumRepresentable_A, $bits(log_len_t)
-                      == 16 && log_len_t'(MaxLogLen) == 16'h8000)
-  `OCAH_ASSERT_STATIC(NonAlignedSlotRoundsDown_A, log_word_floor(log_len_t'(LogWordSize + 7)
-                      ) == log_len_t'(LogWordSize))
-  `OCAH_ASSERT_STATIC(LogRegionAlignmentValid_A, LogRegionAlignment == 128)
+                      == 16 && log_len_t'(log_engine_pkg::MaxLogLen) == 16'h8000)
+  `OCAH_ASSERT_STATIC(NonAlignedSlotRoundsDown_A, log_engine_pkg::log_word_floor(
+                      log_len_t'(LogWordSize + 7)) == log_len_t'(LogWordSize))
+  `OCAH_ASSERT_STATIC(LogRegionAlignmentValid_A, log_engine_pkg::LogRegionAlignment == 128)
 
   `OCAH_OT_ASSERT(SupportedLogRegionWithinMaximum_A,
                   supported_log_region_size <= log_region_size_t'(MaxLogRegionSize))
@@ -580,12 +562,13 @@ module log_engine
   `OCAH_OT_ASSERT(
       MaxLogLenExactFloor_A,
       max_log_len == log_len_t'(supported_log_region_size / log_region_size_t'(NumLogEntries)))
-  `OCAH_OT_ASSERT(MaxTransferLenExactFloor_A, max_transfer_len == log_word_floor(max_log_len))
+  `OCAH_OT_ASSERT(MaxTransferLenExactFloor_A, max_transfer_len == log_engine_pkg::log_word_floor(
+                  max_log_len))
   `OCAH_OT_ASSERT(MaxTransferRemainderBelowBeat_A,
                   max_log_len - max_transfer_len < log_len_t'(LogWordSize))
   `OCAH_OT_ASSERT(
       MisalignedLogRegionRounded_A,
-      log_region_size % log_region_size_t'(LogRegionAlignment) != log_region_size_t'(0) |-> max_transfer_len <= max_log_len)
+      log_region_size % log_region_size_t'(log_engine_pkg::LogRegionAlignment) != log_region_size_t'(0) |-> max_transfer_len <= max_log_len)
   `OCAH_OT_ASSERT(TransferCapacityBeatAligned_A,
                   max_transfer_len % log_len_t'(LogWordSize) == log_len_t'(0))
   `OCAH_OT_ASSERT(EffectiveLogLenWithinSlot_A, effective_log_len <= max_transfer_len)
@@ -593,8 +576,9 @@ module log_engine
                   effective_log_len == (log_len > max_transfer_len ? max_transfer_len : log_len))
   `OCAH_OT_ASSERT(FetchResponseWithinSlot_A,
                   log_fetch_mem_resp_valid |-> next_log_bytes_fetched <= max_transfer_len)
-  `OCAH_OT_ASSERT(FetchWordCounterWithinMaximum_A,
-                  log_words_fetched_cnt < log_words_fetched_cnt_t'(MaxLogLen / LogWordSize))
+  `OCAH_OT_ASSERT(
+      FetchWordCounterWithinMaximum_A,
+      log_words_fetched_cnt < log_words_fetched_cnt_t'(log_engine_pkg::MaxLogLen / LogWordSize))
   `OCAH_ASSERT_STATIC(LogRegionAddrWidth_A, 32 + $bits
                       (reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value) == $bits(log_fetch_addr_t))
 

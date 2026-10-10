@@ -18,7 +18,6 @@ module scrambler_1024x32
   import scrambler_pkg::sbox4;
   import scrambler_pkg::perm32;
   import scrambler_pkg::perm8;
-  import scrambler_pkg::iperm32;
   import scrambler_pkg::iperm8;
   import scrambler_pkg::ibox4;
 #(
@@ -101,7 +100,7 @@ module scrambler_1024x32
 
   // Descramble
   if (BYTE_WISE == 0) begin : gen_descramble_word
-    assign after_iplayer = iperm32(scrambled_read_data_i);
+    assign after_iplayer = scrambler_pkg::iperm32(scrambled_read_data_i);
   end else begin : gen_descramble_bytewise
     assign after_iplayer = {
       iperm8(scrambled_read_data_i[31:24]),

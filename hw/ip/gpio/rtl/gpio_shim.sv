@@ -17,11 +17,6 @@
 module gpio_shim
   import gpio_pkg::gpio_axil_req_t;
   import gpio_pkg::gpio_axil_resp_t;
-  import gpio_pkg::gpio_axil_aw_chan_t;
-  import gpio_pkg::gpio_axil_w_chan_t;
-  import gpio_pkg::gpio_axil_b_chan_t;
-  import gpio_pkg::gpio_axil_ar_chan_t;
-  import gpio_pkg::gpio_axil_r_chan_t;
   import gpio_shim_pkg::gpio_model_ctrl_t;
   import gpio_shim_pkg::gpio_model_status_t;
 #(
@@ -136,11 +131,11 @@ module gpio_shim
   end
 
   axi_lite_demux #(
-    .aw_chan_t   (gpio_axil_aw_chan_t),
-    .w_chan_t    (gpio_axil_w_chan_t),
-    .b_chan_t    (gpio_axil_b_chan_t),
-    .ar_chan_t   (gpio_axil_ar_chan_t),
-    .r_chan_t    (gpio_axil_r_chan_t),
+    .aw_chan_t   (gpio_pkg::gpio_axil_aw_chan_t),
+    .w_chan_t    (gpio_pkg::gpio_axil_w_chan_t),
+    .b_chan_t    (gpio_pkg::gpio_axil_b_chan_t),
+    .ar_chan_t   (gpio_pkg::gpio_axil_ar_chan_t),
+    .r_chan_t    (gpio_pkg::gpio_axil_r_chan_t),
     .axi_req_t   (gpio_axil_req_t),
     .axi_resp_t  (gpio_axil_resp_t),
     .NoMstPorts  (2),

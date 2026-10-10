@@ -15,14 +15,8 @@
 module axi_lite_to_tlul
 	import tlul_pkg::tl_h2d_t;
 	import tlul_pkg::tl_d2h_t;
-	import tlul_pkg::H2D_CMD_INTG_WIDTH;
-	import tlul_pkg::DATA_INTG_WIDTH;
-	import tlul_pkg::tl_h2d_cmd_intg_t;
-	import tlul_pkg::H2D_CMD_MAX_WIDTH;
-	import tlul_pkg::DATA_MAX_WIDTH;
 
 	`include "ocah_assert.svh"
-	import prim_mubi_pkg::mubi4_t;
 	#(
 		parameter int unsigned AXI_ADDR_WIDTH    = 32,
 		parameter int unsigned AXI_DATA_WIDTH    = 32,  // Must be 32 to match TL-UL
@@ -85,8 +79,8 @@ module axi_lite_to_tlul
 	logic                          sticky_err_q, sticky_err_d;
 
 	// Integrity signals
-	logic [H2D_CMD_INTG_WIDTH-1:0] cmd_intg;
-	logic [DATA_INTG_WIDTH-1:0]    data_intg;
+	logic [tlul_pkg::H2D_CMD_INTG_WIDTH-1:0] cmd_intg;
+	logic [tlul_pkg::DATA_INTG_WIDTH-1:0]    data_intg;
 
 	// --------------------------------------------------
 	// FSM Sequential Logic
@@ -254,8 +248,8 @@ module axi_lite_to_tlul
 	always_comb begin
 		// Generate command integrity (SECDED ECC for address, opcode, mask, instr_type)
 		if (ENABLE_CMD_INTG_GEN) begin
-			automatic tl_h2d_cmd_intg_t cmd;
-			automatic logic [H2D_CMD_MAX_WIDTH-1:0] unused_cmd_payload;
+			automatic tlul_pkg::tl_h2d_cmd_intg_t cmd;
+			automatic logic [tlul_pkg::H2D_CMD_MAX_WIDTH-1:0] unused_cmd_payload;
 
 			cmd.addr = tl_o.a_address;
 			cmd.opcode = tl_o.a_opcode;
@@ -263,19 +257,19 @@ module axi_lite_to_tlul
 			cmd.instr_type = tl_o.a_user.instr_type;
 
 			{cmd_intg, unused_cmd_payload} =
-				prim_secded_pkg::prim_secded_inv_64_57_enc(H2D_CMD_MAX_WIDTH'(cmd));
+				prim_secded_pkg::prim_secded_inv_64_57_enc(tlul_pkg::H2D_CMD_MAX_WIDTH'(cmd));
 		end else begin
-			cmd_intg = {H2D_CMD_INTG_WIDTH{1'b1}};
+			cmd_intg = {tlul_pkg::H2D_CMD_INTG_WIDTH{1'b1}};
 		end
 
 		// Generate data integrity (SECDED ECC for data)
 		if (ENABLE_DATA_INTG_GEN) begin
-			automatic logic [DATA_MAX_WIDTH-1:0] unused_data;
+			automatic logic [tlul_pkg::DATA_MAX_WIDTH-1:0] unused_data;
 
 			{data_intg, unused_data} =
-				prim_secded_pkg::prim_secded_inv_39_32_enc(DATA_MAX_WIDTH'(tl_o.a_data));
+				prim_secded_pkg::prim_secded_inv_39_32_enc(tlul_pkg::DATA_MAX_WIDTH'(tl_o.a_data));
 		end else begin
-			data_intg = {DATA_INTG_WIDTH{1'b1}};
+			data_intg = {tlul_pkg::DATA_INTG_WIDTH{1'b1}};
 		end
 	end
 

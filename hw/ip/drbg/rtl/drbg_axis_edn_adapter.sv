@@ -26,7 +26,6 @@
 module drbg_axis_edn_adapter
   import drbg_pkg::drbg_axis_req_t;
   import drbg_pkg::drbg_axis_rsp_t;
-  import drbg_pkg::DrbgAxisDataWidth;
 #(
   parameter int unsigned NUM_ENDPOINTS = 4                  // Number of native EDN clients (e.g.
                                                             // AES, KMAC, OTBN RND/URND).
@@ -60,7 +59,7 @@ module drbg_axis_edn_adapter
   `include "prim_assert.sv"
   `include "ocah_assert.svh"
 
-  localparam int unsigned DataWidth = DrbgAxisDataWidth;
+  localparam int unsigned DataWidth = drbg_pkg::DrbgAxisDataWidth;
   localparam int unsigned StageWidth = DataWidth + 1;  // {tuser, tdata}
   localparam int unsigned StageDepth = 4;
 

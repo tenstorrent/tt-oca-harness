@@ -40,8 +40,6 @@ module km_csr
   import km_intf_pkg::km_axil_req_t;
   import km_intf_pkg::km_axil_resp_t;
   import km_intf_pkg::km_otp_data_t;
-  import km_csr_reg_pkg::km_csr__in_t;
-  import km_csr_reg_pkg::km_csr__out_t;
 #(
   parameter type axil_req_t  = km_axil_req_t,  // AXI-Lite request struct type.
   parameter type axil_resp_t = km_axil_resp_t  // AXI-Lite response struct type.
@@ -206,8 +204,8 @@ module km_csr
   // Register Module Interface Signals
   //=========================================================================
 
-  km_csr__in_t  hwif_in;
-  km_csr__out_t hwif_out;
+  km_csr_reg_pkg::km_csr__in_t  hwif_in;
+  km_csr_reg_pkg::km_csr__out_t hwif_out;
 
   //=========================================================================
   // IRQ Status Register Logic

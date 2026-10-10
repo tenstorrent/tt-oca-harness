@@ -24,31 +24,6 @@ module sep_system_peripherals_xbar
   import sep_system_peripherals_xbar_pkg::axi_out_resp_t;
   import sep_system_peripherals_xbar_pkg::axi_lite64_req_t;
   import sep_system_peripherals_xbar_pkg::axi_lite64_resp_t;
-  import sep_system_peripherals_xbar_pkg::addr_rule_t;
-  import sep_system_peripherals_xbar_pkg::NumAddrRules;
-  import sep_system_peripherals_xbar_pkg::xbar_slv_req_t;
-  import sep_system_peripherals_xbar_pkg::xbar_slv_resp_t;
-  import sep_system_peripherals_xbar_pkg::xbar_mst_req_t;
-  import sep_system_peripherals_xbar_pkg::xbar_mst_resp_t;
-  import sep_system_peripherals_xbar_pkg::XbarCfg;
-  import sep_system_peripherals_xbar_pkg::Connectivity;
-  import sep_system_peripherals_xbar_pkg::xbar_slv_aw_chan_t;
-  import sep_system_peripherals_xbar_pkg::xbar_mst_aw_chan_t;
-  import sep_system_peripherals_xbar_pkg::xbar_slv_w_chan_t;
-  import sep_system_peripherals_xbar_pkg::xbar_slv_b_chan_t;
-  import sep_system_peripherals_xbar_pkg::xbar_mst_b_chan_t;
-  import sep_system_peripherals_xbar_pkg::xbar_slv_ar_chan_t;
-  import sep_system_peripherals_xbar_pkg::xbar_mst_ar_chan_t;
-  import sep_system_peripherals_xbar_pkg::xbar_slv_r_chan_t;
-  import sep_system_peripherals_xbar_pkg::xbar_mst_r_chan_t;
-  import sep_system_peripherals_xbar_pkg::xbar_out_mailbox_req_t;
-  import sep_system_peripherals_xbar_pkg::mailbox_req_t;
-  import sep_system_peripherals_xbar_pkg::xbar_out_mailbox_resp_t;
-  import sep_system_peripherals_xbar_pkg::mailbox_resp_t;
-  import sep_system_peripherals_xbar_pkg::xbar_out_system_csr_req_t;
-  import sep_system_peripherals_xbar_pkg::system_csr_req_t;
-  import sep_system_peripherals_xbar_pkg::xbar_out_system_csr_resp_t;
-  import sep_system_peripherals_xbar_pkg::system_csr_resp_t;
 (
   input  logic clk_i,                         // System clock.
   input  logic rst_ni,                        // Active-low reset.
@@ -87,7 +62,7 @@ module sep_system_peripherals_xbar
   //   - tile_relative : when true (and no *_expr), shift base/end by base_addr_param
   //   - target_slave  : verbatim SV expression for the idx field (may use
   //                     parameters like HAS_* and slave-name tokens in quotes)
-  localparam addr_rule_t [NumAddrRules-1:0] AddrMap = '{
+  localparam sep_system_peripherals_xbar_pkg::addr_rule_t [sep_system_peripherals_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
     // smn_inbound_from_xbar.region_0: 0x00000000 - 0x10802000
     '{idx: 0, start_addr: 56'h0, end_addr: 57'h10802000},
     // smn_inbound_from_xbar.region_1: 0x10802100 - 0x10a00000
@@ -157,8 +132,8 @@ module sep_system_peripherals_xbar
   // ===========================================================================
   // Input Protocol/Width Conversion (to match crossbar)
   // ===========================================================================
-  xbar_slv_req_t  [1:0] xbar_slv_req;
-  xbar_slv_resp_t [1:0] xbar_slv_resp;
+  sep_system_peripherals_xbar_pkg::xbar_slv_req_t  [1:0] xbar_slv_req;
+  sep_system_peripherals_xbar_pkg::xbar_slv_resp_t [1:0] xbar_slv_resp;
 
   // Input sep_local_from_remap: Direct connection (AXI4, 64-bit)
   assign xbar_slv_req[0] = sep_local_from_remap_req_i;
@@ -171,27 +146,27 @@ module sep_system_peripherals_xbar
   // ===========================================================================
   // Crossbar
   // ===========================================================================
-  xbar_mst_req_t  [2:0] xbar_mst_req;
-  xbar_mst_resp_t [2:0] xbar_mst_resp;
+  sep_system_peripherals_xbar_pkg::xbar_mst_req_t  [2:0] xbar_mst_req;
+  sep_system_peripherals_xbar_pkg::xbar_mst_resp_t [2:0] xbar_mst_resp;
 
   axi_xbar #(
-    .Cfg          (XbarCfg),
+    .Cfg          (sep_system_peripherals_xbar_pkg::XbarCfg),
     .ATOPs        (1'b0),
-    .Connectivity (Connectivity),
-    .slv_aw_chan_t(xbar_slv_aw_chan_t),
-    .mst_aw_chan_t(xbar_mst_aw_chan_t),
-    .w_chan_t     (xbar_slv_w_chan_t),
-    .slv_b_chan_t (xbar_slv_b_chan_t),
-    .mst_b_chan_t (xbar_mst_b_chan_t),
-    .slv_ar_chan_t(xbar_slv_ar_chan_t),
-    .mst_ar_chan_t(xbar_mst_ar_chan_t),
-    .slv_r_chan_t (xbar_slv_r_chan_t),
-    .mst_r_chan_t (xbar_mst_r_chan_t),
-    .slv_req_t    (xbar_slv_req_t),
-    .slv_resp_t   (xbar_slv_resp_t),
-    .mst_req_t    (xbar_mst_req_t),
-    .mst_resp_t   (xbar_mst_resp_t),
-    .rule_t       (addr_rule_t)
+    .Connectivity (sep_system_peripherals_xbar_pkg::Connectivity),
+    .slv_aw_chan_t(sep_system_peripherals_xbar_pkg::xbar_slv_aw_chan_t),
+    .mst_aw_chan_t(sep_system_peripherals_xbar_pkg::xbar_mst_aw_chan_t),
+    .w_chan_t     (sep_system_peripherals_xbar_pkg::xbar_slv_w_chan_t),
+    .slv_b_chan_t (sep_system_peripherals_xbar_pkg::xbar_slv_b_chan_t),
+    .mst_b_chan_t (sep_system_peripherals_xbar_pkg::xbar_mst_b_chan_t),
+    .slv_ar_chan_t(sep_system_peripherals_xbar_pkg::xbar_slv_ar_chan_t),
+    .mst_ar_chan_t(sep_system_peripherals_xbar_pkg::xbar_mst_ar_chan_t),
+    .slv_r_chan_t (sep_system_peripherals_xbar_pkg::xbar_slv_r_chan_t),
+    .mst_r_chan_t (sep_system_peripherals_xbar_pkg::xbar_mst_r_chan_t),
+    .slv_req_t    (sep_system_peripherals_xbar_pkg::xbar_slv_req_t),
+    .slv_resp_t   (sep_system_peripherals_xbar_pkg::xbar_slv_resp_t),
+    .mst_req_t    (sep_system_peripherals_xbar_pkg::xbar_mst_req_t),
+    .mst_resp_t   (sep_system_peripherals_xbar_pkg::xbar_mst_resp_t),
+    .rule_t       (sep_system_peripherals_xbar_pkg::addr_rule_t)
   ) u_axi_xbar (
     .clk_i                 (clk_i),
     .rst_ni                (rst_ni),
@@ -221,10 +196,10 @@ module sep_system_peripherals_xbar
   // ---------------------------------------------------------------------------
   // Conversion chain: axi_to_axi_lite
   // Signal declarations
-  xbar_out_mailbox_req_t  xbar_out_mailbox_req;
-  xbar_out_mailbox_resp_t xbar_out_mailbox_resp;
-  mailbox_req_t  mailbox_req;
-  mailbox_resp_t mailbox_resp;
+  sep_system_peripherals_xbar_pkg::xbar_out_mailbox_req_t  xbar_out_mailbox_req;
+  sep_system_peripherals_xbar_pkg::xbar_out_mailbox_resp_t xbar_out_mailbox_resp;
+  sep_system_peripherals_xbar_pkg::mailbox_req_t  mailbox_req;
+  sep_system_peripherals_xbar_pkg::mailbox_resp_t mailbox_resp;
 
   // Xbar to chain connection
   assign xbar_out_mailbox_req = xbar_mst_req[1];
@@ -240,10 +215,10 @@ module sep_system_peripherals_xbar
     .AxiMaxWriteTxns (4),
     .AxiMaxReadTxns  (4),
     .FallThrough     (1'b0),
-    .full_req_t      (xbar_out_mailbox_req_t),
-    .full_resp_t     (xbar_out_mailbox_resp_t),
-    .lite_req_t      (mailbox_req_t),
-    .lite_resp_t     (mailbox_resp_t)
+    .full_req_t      (sep_system_peripherals_xbar_pkg::xbar_out_mailbox_req_t),
+    .full_resp_t     (sep_system_peripherals_xbar_pkg::xbar_out_mailbox_resp_t),
+    .lite_req_t      (sep_system_peripherals_xbar_pkg::mailbox_req_t),
+    .lite_resp_t     (sep_system_peripherals_xbar_pkg::mailbox_resp_t)
   ) u_mailbox_a2l_1 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
@@ -263,10 +238,10 @@ module sep_system_peripherals_xbar
   // ---------------------------------------------------------------------------
   // Conversion chain: axi_to_axi_lite
   // Signal declarations
-  xbar_out_system_csr_req_t  xbar_out_system_csr_req;
-  xbar_out_system_csr_resp_t xbar_out_system_csr_resp;
-  system_csr_req_t  system_csr_req;
-  system_csr_resp_t system_csr_resp;
+  sep_system_peripherals_xbar_pkg::xbar_out_system_csr_req_t  xbar_out_system_csr_req;
+  sep_system_peripherals_xbar_pkg::xbar_out_system_csr_resp_t xbar_out_system_csr_resp;
+  sep_system_peripherals_xbar_pkg::system_csr_req_t  system_csr_req;
+  sep_system_peripherals_xbar_pkg::system_csr_resp_t system_csr_resp;
 
   // Xbar to chain connection
   assign xbar_out_system_csr_req = xbar_mst_req[2];
@@ -282,10 +257,10 @@ module sep_system_peripherals_xbar
     .AxiMaxWriteTxns (4),
     .AxiMaxReadTxns  (4),
     .FallThrough     (1'b0),
-    .full_req_t      (xbar_out_system_csr_req_t),
-    .full_resp_t     (xbar_out_system_csr_resp_t),
-    .lite_req_t      (system_csr_req_t),
-    .lite_resp_t     (system_csr_resp_t)
+    .full_req_t      (sep_system_peripherals_xbar_pkg::xbar_out_system_csr_req_t),
+    .full_resp_t     (sep_system_peripherals_xbar_pkg::xbar_out_system_csr_resp_t),
+    .lite_req_t      (sep_system_peripherals_xbar_pkg::system_csr_req_t),
+    .lite_resp_t     (sep_system_peripherals_xbar_pkg::system_csr_resp_t)
   ) u_system_csr_a2l_1 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),

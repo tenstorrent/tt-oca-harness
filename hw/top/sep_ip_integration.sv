@@ -30,10 +30,6 @@ module sep_ip_integration
   import sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t;
   import sep_crypto_pkg::ext_trng_axis_req_t;
   import sep_crypto_pkg::ext_trng_axis_rsp_t;
-  import sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W;
-  import sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W;
-  import sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W;
-  import sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W;
 #(
   parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SepCryptoEdnEndpointCount,
   parameter bit          ABR_MASKING_EN    = 1'b1
@@ -696,8 +692,8 @@ module sep_ip_integration
   // verilog_format: off
   `OCAH_ASSERT_STATIC(
       AbrWstrobeWidth_A,
-      SEP_CRYPTO_ABR_SIGZ_DATA_W == 8 * SEP_CRYPTO_ABR_SIGZ_WSTRB_W &&
-      SEP_CRYPTO_ABR_PK_DATA_W   == 8 * SEP_CRYPTO_ABR_PK_WSTRB_W,
+      sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W == 8 * sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W &&
+      sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W   == 8 * sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W,
       "ABR sig_z / pk data widths must be 8 bits per wstrobe bit")
   // verilog_format: on
 

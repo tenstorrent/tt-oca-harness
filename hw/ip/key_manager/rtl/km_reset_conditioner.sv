@@ -27,7 +27,6 @@
 
 module km_reset_conditioner
   import prim_mubi_pkg::mubi4_t;
-  import prim_mubi_pkg::mubi4_test_true_strict;
 #(
   parameter int unsigned MIN_RESET_CYCLES = 10  // Minimum warm reset hold in clk_i cycles after the
                                                 // trigger releases; must be at least 2.
@@ -129,7 +128,7 @@ module km_reset_conditioner
   prim_rst_mux2_hf_n u_warm_rst_scan_mux (
     .rst0_ni (warm_rst_n),
     .rst1_ni (scan_rst_ni),
-    .sel_i   (mubi4_test_true_strict(scanmode_i)),
+    .sel_i   (prim_mubi_pkg::mubi4_test_true_strict(scanmode_i)),
     .rst_no  (rst_warm_sync_no)
   );
 
@@ -141,7 +140,7 @@ module km_reset_conditioner
 
   // Warm reset must always be asserted when cold reset is asserted.
   `OCAH_OT_ASSERT(WarmAssertedWhenCold_A, !rst_cold_aasd_no |-> !rst_warm_sync_no, clk_i,
-                  !rst_cold_aasd_no || mubi4_test_true_strict(scanmode_i))
+                  !rst_cold_aasd_no || prim_mubi_pkg::mubi4_test_true_strict(scanmode_i))
 
 endmodule : km_reset_conditioner
 

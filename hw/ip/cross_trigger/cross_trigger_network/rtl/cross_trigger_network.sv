@@ -20,14 +20,6 @@ module cross_trigger_network
     import cross_trigger_network_pkg::DefaultNumClkStopReq;
     import cross_trigger_network_pkg::ctn_axil_req_t;
     import cross_trigger_network_pkg::ctn_axil_resp_t;
-    import cross_trigger_network_pkg::CsrAddrCtmSize;
-    import cross_trigger_network_pkg::CsrAddrCtmRegSize;
-    import cross_trigger_network_pkg::CsrAddrCtpSize;
-    import cross_trigger_network_pkg::ctn_axil_addr_t;
-    import cross_trigger_network_pkg::ctn_axil_data_t;
-    import cross_trigger_network_pkg::ctn_axil_strb_t;
-    import cross_trigger_network_pkg::AxiLiteAddrWidth;
-    import cross_trigger_network_pkg::AxiLiteDataWidth;
 
     `include "axi/typedef.svh"
     `include "prim_assert.sv"
@@ -151,9 +143,9 @@ module cross_trigger_network
     localparam int unsigned NumXbarMstPorts = NUM_CTP + 1;
 
     // Address space sizes
-    localparam int unsigned AddrCtmSize = CsrAddrCtmSize;  // 512 bytes for CTM
-    localparam int unsigned AddrCtmRegSize = CsrAddrCtmRegSize;
-    localparam int unsigned AddrCtpSize = CsrAddrCtpSize;  // 16 bytes per CTP
+    localparam int unsigned AddrCtmSize = cross_trigger_network_pkg::CsrAddrCtmSize;  // 512 bytes for CTM
+    localparam int unsigned AddrCtmRegSize = cross_trigger_network_pkg::CsrAddrCtmRegSize;
+    localparam int unsigned AddrCtpSize = cross_trigger_network_pkg::CsrAddrCtpSize;  // 16 bytes per CTP
 
     `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(CtmRegsFitAperture_A, AddrCtmRegSize <= AddrCtmSize)
 
@@ -162,17 +154,17 @@ module cross_trigger_network
     //--------------------------------------------------------------------------
 
     // Channel types for crossbar
-    `AXI_LITE_TYPEDEF_AW_CHAN_T(xbar_aw_chan_t, ctn_axil_addr_t)
-    `AXI_LITE_TYPEDEF_W_CHAN_T(xbar_w_chan_t, ctn_axil_data_t, ctn_axil_strb_t)
+    `AXI_LITE_TYPEDEF_AW_CHAN_T(xbar_aw_chan_t, cross_trigger_network_pkg::ctn_axil_addr_t)
+    `AXI_LITE_TYPEDEF_W_CHAN_T(xbar_w_chan_t, cross_trigger_network_pkg::ctn_axil_data_t, cross_trigger_network_pkg::ctn_axil_strb_t)
     `AXI_LITE_TYPEDEF_B_CHAN_T(xbar_b_chan_t)
-    `AXI_LITE_TYPEDEF_AR_CHAN_T(xbar_ar_chan_t, ctn_axil_addr_t)
-    `AXI_LITE_TYPEDEF_R_CHAN_T(xbar_r_chan_t, ctn_axil_data_t)
+    `AXI_LITE_TYPEDEF_AR_CHAN_T(xbar_ar_chan_t, cross_trigger_network_pkg::ctn_axil_addr_t)
+    `AXI_LITE_TYPEDEF_R_CHAN_T(xbar_r_chan_t, cross_trigger_network_pkg::ctn_axil_data_t)
 
     // Address map rule type
     typedef struct packed {
         int unsigned idx;
-        logic [AxiLiteAddrWidth-1:0] start_addr;
-        logic [AxiLiteAddrWidth-1:0] end_addr;
+        logic [cross_trigger_network_pkg::AxiLiteAddrWidth-1:0] start_addr;
+        logic [cross_trigger_network_pkg::AxiLiteAddrWidth-1:0] end_addr;
     } xbar_rule_t;
 
     //--------------------------------------------------------------------------
@@ -224,8 +216,8 @@ module cross_trigger_network
         AxiIdUsedSlvPorts:  1,
         UniqueIds:          1'b0,
         SelHashIds:         1'b0,
-        AxiAddrWidth:       AxiLiteAddrWidth,
-        AxiDataWidth:       AxiLiteDataWidth,
+        AxiAddrWidth:       cross_trigger_network_pkg::AxiLiteAddrWidth,
+        AxiDataWidth:       cross_trigger_network_pkg::AxiLiteDataWidth,
         NoAddrRules:        NumXbarMstPorts
     };
 
