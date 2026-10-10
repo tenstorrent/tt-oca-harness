@@ -11,9 +11,7 @@
 // the host update_en.
 // LOCKUP passes through to the nested scan register.
 
-module prim_jtag_sib_mux_post
-  import prim_jtag_pkg::*;
-#(
+module prim_jtag_sib_mux_post #(
   parameter bit  LOCKUP = 0,  // Adds a falling-edge TCK lockup flop on the SIB register's scan
                               // output.
   parameter bit  SAFE_SELECT = 0,  // Flops SIB enable to avoid a race on the host update_en.

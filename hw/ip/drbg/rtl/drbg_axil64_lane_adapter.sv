@@ -15,8 +15,10 @@
 `include "ocah_registers.svh"
 
 module drbg_axil64_lane_adapter
-  import drbg_pkg::*;
-  import axi_pkg::*;
+  import drbg_pkg::drbg_axil64_req_t;
+  import drbg_pkg::drbg_axil64_resp_t;
+  import drbg_pkg::drbg_axil32_req_t;
+  import drbg_pkg::drbg_axil32_resp_t;
 #(
   parameter type axil64_req_t = drbg_axil64_req_t,          // 64-bit AXI-Lite request type.
   parameter type axil64_rsp_t = drbg_axil64_resp_t,         // 64-bit AXI-Lite response type.

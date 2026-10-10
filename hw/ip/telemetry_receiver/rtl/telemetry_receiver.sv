@@ -20,7 +20,15 @@
 `include "ocah_registers.svh"
 
 module telemetry_receiver
-  import telemetry_receiver_pkg::*;
+  import telemetry_receiver_pkg::TelemetryCounterWidth;
+  import telemetry_receiver_pkg::TelemetryDataWidth;
+  import telemetry_receiver_pkg::NumBlocksPerPacket;
+  import telemetry_receiver_pkg::TelemetryPacketWidth;
+  import telemetry_receiver_pkg::axil_req_t;
+  import telemetry_receiver_pkg::axil_resp_t;
+  import telemetry_receiver_pkg::telemetry_data_t;
+  import telemetry_receiver_pkg::atb_id_t;
+  import telemetry_receiver_pkg::NumCounterRegs;
 #(
   parameter int unsigned BUFFER_DEPTH                 = 8,  // Completed-message FIFO depth; must be
                                                             // a power of two and >= 2.
@@ -98,12 +106,12 @@ module telemetry_receiver
 
   // Telemetry message decoding
   typedef struct packed {
-    telemetry_probe_id_t                                   probe_id;
-    telemetry_counter_t [MAX_NUM_COUNTERS_PER_MESSAGE-1:0] counters;
+    telemetry_receiver_pkg::telemetry_probe_id_t                                   probe_id;
+    telemetry_receiver_pkg::telemetry_counter_t [MAX_NUM_COUNTERS_PER_MESSAGE-1:0] counters;
   } telemetry_message_t;
 
-  function automatic telemetry_probe_id_t get_telemetry_probe_id(
-      telemetry_packet_t [MaxNumPacketsPerMessage-1:0] telemetry_packets);
+  function automatic telemetry_receiver_pkg::telemetry_probe_id_t get_telemetry_probe_id(
+      telemetry_receiver_pkg::telemetry_packet_t [MaxNumPacketsPerMessage-1:0] telemetry_packets);
     return telemetry_packets[0][60:56];
   endfunction
 
@@ -116,7 +124,7 @@ module telemetry_receiver
 
   logic last_packet_received;
 
-  telemetry_packet_t [MaxNumPacketsPerMessage-1:0]     received_telemetry_packets;
+  telemetry_receiver_pkg::telemetry_packet_t [MaxNumPacketsPerMessage-1:0]     received_telemetry_packets;
   telemetry_message_t                                  received_telemetry_message;
 
   logic message_buffer_pop;
@@ -159,12 +167,12 @@ module telemetry_receiver
 
   logic end_of_packet, end_of_packet_q;
 
-  assign end_of_packet = &assembly_buffer_wr_ptr[$clog2(NumBeatsPerPacket)-1:0] &&
+  assign end_of_packet = &assembly_buffer_wr_ptr[$clog2(telemetry_receiver_pkg::NumBeatsPerPacket)-1:0] &&
                            telemetry_beat_received;
 
   assign last_packet_received =
         end_of_packet_q &&
-        received_telemetry_packets[(assembly_buffer_wr_ptr_q) / NumBeatsPerPacket].last_packet;
+        received_telemetry_packets[(assembly_buffer_wr_ptr_q) / telemetry_receiver_pkg::NumBeatsPerPacket].last_packet;
 
   assign missing_last_event = assembly_buffer_full_q && !last_packet_received;
 
@@ -230,7 +238,7 @@ module telemetry_receiver
         end
       end
       if (!received_telemetry_message.counters[i].vld) begin
-        received_telemetry_message.counters[i].value = telemetry_counter_val_t'(0);
+        received_telemetry_message.counters[i].value = telemetry_receiver_pkg::telemetry_counter_val_t'(0);
       end
     end
   end
@@ -320,7 +328,7 @@ module telemetry_receiver
   //////////
 
   logic                   [NumCounterRegs-1:0] counter_reg_vlds;
-  telemetry_counter_val_t [NumCounterRegs-1:0] counter_reg_vals;
+  telemetry_receiver_pkg::telemetry_counter_val_t [NumCounterRegs-1:0] counter_reg_vals;
 
   always_comb begin
     for (int i = 0; i < NumCounterRegs; i++) begin
@@ -329,7 +337,7 @@ module telemetry_receiver
         counter_reg_vals[i] = message_buffer_rd_data.counters[i].value;
       end else begin
         counter_reg_vlds[i] = 1'b0;
-        counter_reg_vals[i] = reg_data_t'(0);
+        counter_reg_vals[i] = telemetry_receiver_pkg::reg_data_t'(0);
       end
     end
   end

@@ -11,7 +11,8 @@
 // AXI-Lite CSRs program per-source selects; each CT_Src path registers its OR result.
 
 module cross_trigger_matrix
-  import cross_trigger_matrix_pkg::*;
+  import cross_trigger_matrix_pkg::NumCtDst;
+  import cross_trigger_matrix_pkg::NumCtSrc;
 #(
   parameter type axil_req_t = cross_trigger_matrix_pkg::ctm_axil_req_t,  // CTM AXI-Lite request type.
   parameter type axil_resp_t = cross_trigger_matrix_pkg::ctm_axil_resp_t  // CTM AXI-Lite response type.

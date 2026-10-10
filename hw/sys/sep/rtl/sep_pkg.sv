@@ -355,13 +355,13 @@ SystemCsrDemuxPorts
   // EL2 specific values (computed based on "pt" struct)
   // To use another core, modify the internals of these typedefs but keep the type names
 
-  import el2_pkg::*;
+  import el2_pkg::el2_param_t;
   `include "el2_param.vh"
   ;
 
   parameter int unsigned SEP_CPU_IRQ_WIDTH = pt.PIC_TOTAL_INT;
 
-  typedef el2_trace_pkt_t sep_cpu_trace_t;
+  typedef el2_pkg::el2_trace_pkt_t sep_cpu_trace_t;
 
   // VeeR lockstep control/status. These are carried unconditionally through the
   // hierarchy above sep_cpu so the port footprint does not change with

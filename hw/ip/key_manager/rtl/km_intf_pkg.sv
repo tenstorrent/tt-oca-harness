@@ -18,7 +18,6 @@ package km_intf_pkg;
 
   `include "axi/typedef.svh"
 
-  import axi_pkg::*;
 
   // =========================================================================
   // AXI4-Lite Type Definitions (32-bit)

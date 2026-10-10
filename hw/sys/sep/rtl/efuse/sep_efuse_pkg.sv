@@ -8,7 +8,6 @@
 // register map. Used by sep_efuse_wrapper, sep_lifecycle_ctrl, sep_crypto and sep.
 
 package sep_efuse_pkg;
-  import sep_top_addrmap_pkg::*;
 
   function automatic int unsigned efuse_offset(input longint unsigned addr);
     return int'(addr - sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR);
@@ -359,13 +358,18 @@ package sep_efuse_pkg;
   localparam efuse_pkg::shadow_word_range_map_t Class1ShadowRanges = '{
       efuse_pkg::make_shadow_word_range
       (
-          efuse_offset(SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR), LockFieldBits, NumFuseWordWidth
+          efuse_offset
+          (
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR
+          ),
+          LockFieldBits,
+          NumFuseWordWidth
       ),
       efuse_pkg::make_shadow_word_range
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_lc_state_reg_t
@@ -376,7 +380,7 @@ package sep_efuse_pkg;
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_lc_disable_reg_t
@@ -387,7 +391,7 @@ package sep_efuse_pkg;
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_lc_disable_reg_t
@@ -398,7 +402,7 @@ package sep_efuse_pkg;
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_rma_sip_token_digest_reg_t
@@ -409,7 +413,7 @@ package sep_efuse_pkg;
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_rma_chiplet_token_digest_reg_t
@@ -420,7 +424,7 @@ package sep_efuse_pkg;
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_class_key_reg_t
@@ -431,7 +435,7 @@ package sep_efuse_pkg;
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_chiplet_uid_reg_t
@@ -442,7 +446,7 @@ package sep_efuse_pkg;
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_SIP_UID_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_UID_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_sip_uid_reg_t
@@ -453,7 +457,7 @@ package sep_efuse_pkg;
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_SYS_UID_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_UID_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_sys_uid_reg_t
@@ -471,7 +475,7 @@ package sep_efuse_pkg;
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_chiplet_uid_reg_t
@@ -483,7 +487,7 @@ package sep_efuse_pkg;
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_SIP_UID_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_UID_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_sip_uid_reg_t
@@ -495,7 +499,7 @@ package sep_efuse_pkg;
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_SYS_UID_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_UID_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_sys_uid_reg_t
@@ -507,7 +511,7 @@ package sep_efuse_pkg;
       (
           efuse_offset
           (
-              SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR
+              sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR
           ),
           $bits(
               sep_efuse_map_class_key_reg_t

@@ -11,8 +11,10 @@
 // persistence_mode_o is 1 for Persistence-On and 0 for Persistence-Off.
 
 module jtag_tmp
-  import prim_jtag_pkg::*;
-  import jtag_tmp_pkg::*;
+  import prim_jtag_pkg::jtag_tap_ctrl_t;
+  import jtag_tmp_pkg::tmp_state_e;
+  import jtag_tmp_pkg::TMP_PERSISTENCE_OFF;
+  import jtag_tmp_pkg::TMP_PERSISTENCE_ON;
 (
   input  jtag_tap_ctrl_t  tap_ctrl_i,   // JTAG TAP control; tck clocks the state, trst_n resets it,
                                         // and tms is not used.

@@ -20,11 +20,10 @@
 `include "ocah_registers.svh"
 
 module prim_ram_1p_adv_ext
-  import prim_ram_1p_pkg::*;
-
   `include "prim_assert.sv"
   `include "ocah_assert.svh"
-  import prim_ram_1p_adv_ext_pkg::*;
+  import prim_ram_1p_adv_ext_pkg::prim_ram_1p_adv_ext_req_t;
+  import prim_ram_1p_adv_ext_pkg::prim_ram_1p_adv_ext_rsp_t;
 #(
   parameter  int DEPTH                  = 512,  // Logical memory depth.
   parameter  int INST_DEPTH             = DEPTH,  // Per-tile depth; smaller than DEPTH tiles into
@@ -73,11 +72,8 @@ module prim_ram_1p_adv_ext
 );
 
   import prim_mubi_pkg::mubi4_t;
-  import prim_mubi_pkg::mubi4_and_hi;
-  import prim_mubi_pkg::mubi4_bool_to_mubi;
   import prim_mubi_pkg::mubi4_test_invalid;
   import prim_mubi_pkg::mubi4_test_true_loose;
-  import prim_mubi_pkg::mubi4_test_true_strict;
   import prim_mubi_pkg::MuBi4True;
   import prim_mubi_pkg::MuBi4False;
   import prim_mubi_pkg::MuBi4Width;
@@ -181,8 +177,8 @@ module prim_ram_1p_adv_ext
     for (int i = 0; i < NumRamInst; i++) begin
       // Determine which RAM tile we accessed based on the floped inst_req signal and we really
       // got an rvalid. This determines if we mux the output data of that particular RAM tile.
-      rvalid_inst[i] = mubi4_test_true_strict(
-        mubi4_and_hi(mubi4_bool_to_mubi(inst_req_q[i]), rvalid_sram_q));
+      rvalid_inst[i] = prim_mubi_pkg::mubi4_test_true_strict(
+        prim_mubi_pkg::mubi4_and_hi(prim_mubi_pkg::mubi4_bool_to_mubi(inst_req_q[i]), rvalid_sram_q));
 
       if(rvalid_inst[i]) begin
         rdata_sram = inst_rdata[i];
@@ -190,12 +186,12 @@ module prim_ram_1p_adv_ext
     end
   end
 
-  assign rvalid_sram_d = mubi4_and_hi(req_q, mubi4_t'(~write_q));
+  assign rvalid_sram_d = prim_mubi_pkg::mubi4_and_hi(req_q, mubi4_t'(~write_q));
 
   `OCAH_FF(rvalid_sram_q, rvalid_sram_d, MuBi4False, clk_i, rst_ni)
 
-  assign req_d              = mubi4_bool_to_mubi(req_i);
-  assign write_d            = mubi4_bool_to_mubi(write_i);
+  assign req_d              = prim_mubi_pkg::mubi4_bool_to_mubi(req_i);
+  assign write_d            = prim_mubi_pkg::mubi4_bool_to_mubi(write_i);
   assign addr_d             = addr_i;
   assign rvalid_o           = mubi4_test_true_loose(rvalid_q);
   assign rdata_o            = rdata_q;

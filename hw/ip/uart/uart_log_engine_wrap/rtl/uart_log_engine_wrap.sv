@@ -11,7 +11,13 @@
 // UART serial, modem, DMA and interrupt pins pass to the top unchanged.
 
 module uart_log_engine_wrap
-  import uart_log_engine_wrap_pkg::*;
+  import uart_log_engine_wrap_pkg::RegAddrWidth;
+  import uart_log_engine_wrap_pkg::UART_REG_MAP;
+  import uart_log_engine_wrap_pkg::LOG_ENGINE_REG_MAP;
+  import uart_log_engine_wrap_pkg::CTRL_REG_MAP;
+  import uart_log_engine_wrap_pkg::csr_axil_req_t;
+  import uart_log_engine_wrap_pkg::csr_axil_resp_t;
+  import uart_log_engine_wrap_pkg::UNDEFINED_REG_MAP;
 #(
   parameter int unsigned UART_TX_FIFO_DEPTH    = 32,  // Per-UART TX FIFO depth. Must be a power of
                                                       // 2 from 4 to 4096 inclusive.
@@ -98,8 +104,8 @@ module uart_log_engine_wrap
   csr_axil_req_t  csr_axil_req;
   csr_axil_resp_t csr_axil_resp;
 
-  csr_axil_req_t  [NumRegMaps-1:0] csr_axil_reqs;
-  csr_axil_resp_t [NumRegMaps-1:0] csr_axil_resps;
+  csr_axil_req_t  [uart_log_engine_wrap_pkg::NumRegMaps-1:0] csr_axil_reqs;
+  csr_axil_resp_t [uart_log_engine_wrap_pkg::NumRegMaps-1:0] csr_axil_resps;
 
   uart_16550_pkg::axil_req_t  uart_axil_req;
   uart_16550_pkg::axil_resp_t uart_axil_resp;
@@ -109,7 +115,7 @@ module uart_log_engine_wrap
   // AXI4-Lite Register Demux //
   //////////////////////////////
 
-  uart_log_engine_wrap_reg_map_e csr_axil_aw_select, csr_axil_ar_select;
+  uart_log_engine_wrap_pkg::uart_log_engine_wrap_reg_map_e csr_axil_aw_select, csr_axil_ar_select;
 
   assign csr_axil_req = csr_axil_req_i;
   assign csr_axil_resp_o = csr_axil_resp;
@@ -153,14 +159,14 @@ module uart_log_engine_wrap
   end
 
   axi_lite_demux #(
-    .aw_chan_t       (csr_axil_aw_chan_t),
-    .w_chan_t        (csr_axil_w_chan_t),
-    .b_chan_t        (csr_axil_b_chan_t),
-    .ar_chan_t       (csr_axil_ar_chan_t),
-    .r_chan_t        (csr_axil_r_chan_t),
+    .aw_chan_t       (uart_log_engine_wrap_pkg::csr_axil_aw_chan_t),
+    .w_chan_t        (uart_log_engine_wrap_pkg::csr_axil_w_chan_t),
+    .b_chan_t        (uart_log_engine_wrap_pkg::csr_axil_b_chan_t),
+    .ar_chan_t       (uart_log_engine_wrap_pkg::csr_axil_ar_chan_t),
+    .r_chan_t        (uart_log_engine_wrap_pkg::csr_axil_r_chan_t),
     .axi_req_t       (csr_axil_req_t),
     .axi_resp_t      (csr_axil_resp_t),
-    .NoMstPorts      (NumRegMaps),
+    .NoMstPorts      (uart_log_engine_wrap_pkg::NumRegMaps),
     .MaxTrans        (1),
     .FallThrough     (1'b0),
     .SpillAw         (1'b1),
@@ -182,11 +188,11 @@ module uart_log_engine_wrap
 
   prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH (RegAddrWidth),
-    .AXI_DATA_WIDTH (RegDataWidth),
+    .AXI_DATA_WIDTH (uart_log_engine_wrap_pkg::RegDataWidth),
     .axil_req_t     (csr_axil_req_t),
     .axil_resp_t    (csr_axil_resp_t),
     .RESP           (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH     (RegDataWidth),
+    .RESP_WIDTH     (uart_log_engine_wrap_pkg::RegDataWidth),
     .RESP_DATA      (32'hBADCAB1E),
     .MAX_TRANS      (1)
   ) u_csr_axi_lite_err_slv (

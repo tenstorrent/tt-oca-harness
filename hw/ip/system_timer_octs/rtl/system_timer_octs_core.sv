@@ -20,7 +20,7 @@
 `include "ocah_registers.svh"
 
 module system_timer_octs_core
-    import system_timer_octs_pkg::*;
+    import system_timer_octs_pkg::DataWidth;
 
     `include "prim_assert.sv"
 (

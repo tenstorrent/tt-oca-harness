@@ -26,7 +26,8 @@
 `include "prim_assert.sv"
 
 module sep_entropy_fifo
-  import edn_pkg::*;
+  import edn_pkg::edn_req_t;
+  import edn_pkg::edn_rsp_t;
 #(
   parameter int unsigned FIFO_DEPTH    = 32,  // Pool depth in packed 64-bit entries (default 32);
                                               // at most 63 to fit the status occupancy field.

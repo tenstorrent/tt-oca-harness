@@ -9,7 +9,7 @@
 // bypass_escape_bit_o feeds jtag_tmp so BYPASS can leave persistence-on when set.
 
 module jtag_tmp_status_reg
-  import prim_jtag_pkg::*;
+  import prim_jtag_pkg::jtag_scan_ctrl_t;
 (
   /* verilator lint_off UNUSEDSIGNAL */
   input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.

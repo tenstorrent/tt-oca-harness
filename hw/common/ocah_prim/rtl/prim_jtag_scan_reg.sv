@@ -11,8 +11,6 @@
 // scan_out_o is the serial LSB of the shift flops.
 
 module prim_jtag_scan_reg
-    import prim_jtag_pkg::*;
-
     `include "ocah_assert.svh"
 #(
     parameter bit                LOCKUP = 0,  // Adds a falling-edge TCK lockup flop on scan_out_o.

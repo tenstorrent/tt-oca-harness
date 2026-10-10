@@ -180,6 +180,9 @@ limited in terms of tool support, so we _highly discourage_ their use as
 they are not uniformly supported by open source tools. As an
 alternative, struct types can be used instead to bundle groups of input
 or output signals to make ports more abstract.
+* Refer to a package member as `pkg::name`. Import a member by name only
+where a module uses it often, such as the states of an FSM, and then import
+every literal of that enum. Do not use wildcard `import pkg::*;`.
 * Finite State Machines (FSMs) are powerful sequence control constructs
 but can spiral out of control quickly. Consequences are difficult to
 understand "next state" logic and long timing paths. Separate the

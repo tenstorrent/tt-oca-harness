@@ -33,8 +33,13 @@
 // is acknowledged with no error.
 
 module sep_abr_kv_shim
-  import kv_defines_pkg::*;
-  import abr_wrapper_key_reg_pkg::*;
+  import kv_defines_pkg::kv_read_t;
+  import kv_defines_pkg::kv_rd_resp_t;
+  import kv_defines_pkg::kv_write_t;
+  import kv_defines_pkg::kv_wr_resp_t;
+  import kv_defines_pkg::KV_ENTRY_SIZE_W;
+  import abr_wrapper_key_reg_pkg::abr_wrapper_key__out_t;
+  import abr_wrapper_key_reg_pkg::abr_wrapper_key__in_t;
 #(
   parameter int unsigned SEED_DWORDS       = 8,  // Dwords per seed block (ML-DSA-87 seed, ML-KEM
                                                  // seed D or Z); 8 dwords = 256 bits.

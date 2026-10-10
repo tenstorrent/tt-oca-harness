@@ -14,7 +14,11 @@
 // - BYTE_WISE=1 (per-byte): scramble ends in perm8 x4; descramble starts with iperm8 x4.
 
 module scrambler
-  import scrambler_pkg::*;
+  import scrambler_pkg::sbox4;
+  import scrambler_pkg::perm32;
+  import scrambler_pkg::perm8;
+  import scrambler_pkg::iperm8;
+  import scrambler_pkg::ibox4;
 #(
   parameter int unsigned ADDR_WIDTH = 10,                   // SRAM address width.
                                                             // Selects the address scramble function
@@ -74,21 +78,21 @@ module scrambler
   // Address scramble: select function based on ADDR_WIDTH (generate if-else
   // prunes inactive branches to avoid out-of-range slice warnings).
   if (ADDR_WIDTH == 6) begin : gen_addr_6
-    assign scrambled_addr_o = addr_scramble6(addr_i, scrambler_key_i[5:0]);
+    assign scrambled_addr_o = scrambler_pkg::addr_scramble6(addr_i, scrambler_key_i[5:0]);
   end else if (ADDR_WIDTH == 7) begin : gen_addr_7
-    assign scrambled_addr_o = addr_scramble7(addr_i, scrambler_key_i[6:0]);
+    assign scrambled_addr_o = scrambler_pkg::addr_scramble7(addr_i, scrambler_key_i[6:0]);
   end else if (ADDR_WIDTH == 8) begin : gen_addr_8
-    assign scrambled_addr_o = addr_scramble8(addr_i, scrambler_key_i[7:0]);
+    assign scrambled_addr_o = scrambler_pkg::addr_scramble8(addr_i, scrambler_key_i[7:0]);
   end else if (ADDR_WIDTH == 9) begin : gen_addr_9
-    assign scrambled_addr_o = addr_scramble9(addr_i, scrambler_key_i[8:0]);
+    assign scrambled_addr_o = scrambler_pkg::addr_scramble9(addr_i, scrambler_key_i[8:0]);
   end else if (ADDR_WIDTH == 10) begin : gen_addr_10
-    assign scrambled_addr_o = addr_scramble10(addr_i, scrambler_key_i[9:0]);
+    assign scrambled_addr_o = scrambler_pkg::addr_scramble10(addr_i, scrambler_key_i[9:0]);
   end else if (ADDR_WIDTH == 11) begin : gen_addr_11
-    assign scrambled_addr_o = addr_scramble11(addr_i, scrambler_key_i[10:0]);
+    assign scrambled_addr_o = scrambler_pkg::addr_scramble11(addr_i, scrambler_key_i[10:0]);
   end else if (ADDR_WIDTH == 12) begin : gen_addr_12
-    assign scrambled_addr_o = addr_scramble12(addr_i, scrambler_key_i[11:0]);
+    assign scrambled_addr_o = scrambler_pkg::addr_scramble12(addr_i, scrambler_key_i[11:0]);
   end else if (ADDR_WIDTH == 13) begin : gen_addr_13
-    assign scrambled_addr_o = addr_scramble13(addr_i, scrambler_key_i[12:0]);
+    assign scrambled_addr_o = scrambler_pkg::addr_scramble13(addr_i, scrambler_key_i[12:0]);
   end else begin : gen_addr_passthrough
     assign scrambled_addr_o = addr_i;
   end
@@ -117,7 +121,7 @@ module scrambler
 
   // Descramble
   if (BYTE_WISE == 0) begin : gen_descramble_word
-    assign after_iplayer = iperm32(scrambled_read_data_i);
+    assign after_iplayer = scrambler_pkg::iperm32(scrambled_read_data_i);
   end else begin : gen_descramble_bytewise
     assign after_iplayer = {
       iperm8(scrambled_read_data_i[31:24]),
