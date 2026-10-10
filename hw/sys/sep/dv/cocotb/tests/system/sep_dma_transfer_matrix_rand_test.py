@@ -85,7 +85,7 @@ asserts ``rst_ni``; Verilator and VCS. Graded-window owner code from
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import cocotb
 import pyuvm
@@ -1125,6 +1125,48 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         )
         return words, info
 
+    async def _scrub_digest(self, m: HashMsg, swap: int, run_idx: int, ctrl_state: dict) -> int:
+        """Leave a different digest in the registers before a split-form run.
+
+        The single-chunk run of the same message and swap leaves the golden
+        digest in SHA2_DIGEST. A control hash of the complemented message, in
+        a closed graded window, replaces it, so a split run that writes no
+        digest reads the control digest and fails CHK-DMA-HASH. Returns the
+        next run index.
+        """
+        scrub = replace(m, msg=bytes(b ^ 0xFF for b in m.msg))
+        gold = golden_words(m.alg, m.msg, swap)
+        scrub_gold = golden_words(m.alg, scrub.msg, swap)
+        if scrub_gold == gold:
+            self._ctrl_missing("CHK-DMA-HASH", f"alg={m.alg} scrub digest equals the golden")
+        length = len(m.msg)
+        words_of = [int.from_bytes(scrub.msg[i : i + 4], "little") for i in range(0, length, 4)]
+        self._close()
+        await self.mem.fill(m.src, words_of)
+        words, info = await self._hash_run(scrub, 0, swap, run_idx, ctrl_state)
+        await self.mem.fill(
+            m.src, [int.from_bytes(m.msg[i : i + 4], "little") for i in range(0, length, 4)]
+        )
+        self._open()
+        mism = sum(1 for g, e in zip(words, scrub_gold) if g != e) + abs(
+            len(words) - len(scrub_gold)
+        )
+        self.logger.info(
+            "CTL-DMA-HASH-SCRUB LOG seed=%d alg=%d len=%d swap=%d mismatch=%d done=%d error=%d",
+            self.seed,
+            m.alg,
+            length,
+            swap,
+            mism,
+            info["done"],
+            info["error"],
+        )
+        if mism or info["done"] != 1 or info["error"]:
+            self._ctrl_missing(
+                "CHK-DMA-HASH", f"alg={m.alg} len={length} scrub run mismatch={mism}"
+            )
+        return run_idx + 1
+
     async def _leg_d(self, plan: Plan) -> None:
         run_idx = 0
         ctrl_state: dict = {}
@@ -1140,6 +1182,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             digests: dict[tuple[int, int], tuple[list[int], bool]] = {}
             for split in forms:
                 for swap in m.swaps:
+                    if split:
+                        run_idx = await self._scrub_digest(m, swap, run_idx, ctrl_state)
                     control = is_hash_control(m.alg, length, split, swap)
                     if control:
                         self._close()

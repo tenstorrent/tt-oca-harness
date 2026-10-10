@@ -567,6 +567,9 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             "".join(str(int(f)) for f in filled),
         )
         # Step 9: GO clear, more Rx data.
+        # Control: GO still reads 1 before the clear, so the stop is caused by
+        # the firmware write and not by an engine that cleared GO itself.
+        go_before = int(bool(await self.dma.rd(DMA_CONTROL) & GO_MASK))
         stop_ctrl = self.dma.last_control & ~GO_MASK
         m_trig = self.trig.mark()
         await self.dma.wr(DMA_CONTROL, stop_ctrl)
@@ -582,10 +585,11 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         line = (
             f"n_stop={cfg.n_stop} n_moved={n_moved} chunks_total={n_tot} "
             f"dest_after_clear_sentinel={after_kept} trigger_high_clk={trig_high} "
-            f"window_clks={t_fill} control_after_clear=0x{stop_ctrl:08x} "
+            f"window_clks={t_fill} go_before_clear={go_before} "
+            f"control_after_clear=0x{stop_ctrl:08x} "
             f"moved_unchanged={int(img3[: n_moved * cfg.cw] == img1[: n_moved * cfg.cw])}"
         )
-        if n_moved < 1 or n_moved >= n_tot or trig_high < 1:
+        if n_moved < 1 or n_moved >= n_tot or trig_high < 1 or not go_before:
             self._ctrl_missing("CHK-HS-STOP", line)
         if not after_kept:
             self._fail("CHK-HS-STOP", line)

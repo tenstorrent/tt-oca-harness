@@ -389,8 +389,11 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             edge = "leading" if c.cpha else "trailing"
             line = (
                 f"seed={seed} cpha={c.cpha} clkdiv={div} edge={edge} in_stated_half={stated} "
-                f"in_other_half={other} exempt_first={exempt} mode={c.mode}"
+                f"in_other_half={other} exempt_first={exempt} mosi_xz={run.mosi_xz} "
+                f"mode={c.mode}"
             )
+            if run.mosi_xz:
+                raise AssertionError(f"CHK-SPI-CPHA FAIL {line}")
             if stated + other < 2:
                 raise AssertionError(f"CTRL-MISSING CHK-SPI-CPHA {line}")
             if other:

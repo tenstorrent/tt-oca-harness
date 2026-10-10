@@ -64,6 +64,9 @@ class CsWindow:
     end: int | None = None
     edges: list[tuple[int, int]] = field(default_factory=list)
     mosi_changes: list[int] = field(default_factory=list)
+    # Clocks in the window on which spi_mosi_o was X or Z. A change count
+    # over such a window is incomplete, so a check on MOSI changes needs 0.
+    mosi_xz: int = 0
 
     @property
     def complete(self) -> bool:
@@ -303,6 +306,8 @@ class SepSpiPadSampler:
                     self.high[-1].sck_toggles += 1
             if cs == 1 and self.high:
                 self.high[-1].sck_levels.add(sck)
+            if mosi is None and cs == 0 and self.low:
+                self.low[-1].mosi_xz += 1
             if mosi is not None and self._mosi_level is not None and mosi != self._mosi_level:
                 self.mosi_changes.append(now)
                 if cs == 0 and self.low:

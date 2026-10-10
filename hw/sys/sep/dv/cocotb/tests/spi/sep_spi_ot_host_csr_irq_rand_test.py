@@ -269,26 +269,28 @@ _CMD_KINDS = ("CSIDINVAL", "CMDINVAL", "CMDBUSY")
 
 # L3 pairs: offset -> (low register, high register). Each entry: (name, address,
 # compare mask, write-one-to-clear).
+_SPI_BASE = INTR_STATE
 _STRB_PAIRS = {
-    0x00: (
+    INTR_STATE - _SPI_BASE: (
         ("INTR_STATE", INTR_STATE, INTR_ERROR, True),
         ("INTR_ENABLE", INTR_ENABLE, _R.mask32("INTR_ENABLE"), False),
     ),
-    0x18: (
+    CONFIGOPTS - _SPI_BASE: (
         ("CONFIGOPTS", CONFIGOPTS, _R.mask32("CONFIGOPTS"), False),
         ("CSID", CSID, _R.mask32("CSID"), False),
     ),
-    0x28: (
+    TXDATA - _SPI_BASE: (
         ("TXDATA", TXDATA, 0, False),
         ("ERROR_ENABLE", ERROR_ENABLE, _R.mask32("ERROR_ENABLE"), False),
     ),
-    0x30: (
+    ERROR_STATUS - _SPI_BASE: (
         ("ERROR_STATUS", ERROR_STATUS, ERR_STATUS_MASK, True),
         ("EVENT_ENABLE", EVENT_ENABLE, _R.mask32("EVENT_ENABLE"), False),
     ),
 }
 _STROBES = (0x0F, 0xF0, 0xFF)
-_SPI_BASE = INTR_STATE
+_IE_EVENT = _R.field_mask("INTR_ENABLE", "spi_event")
+_IE_ERROR = _R.field_mask("INTR_ENABLE", "error")
 
 # L4 Tx segment of the SW_RST point, in 32-bit words (8 sck cycles per byte).
 _SWRST_SEG_WORDS = 4
@@ -1047,7 +1049,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"expect={expect_ev} mask_step={mask_step}",
         )
         i = self.intr_en
-        expect_pic = expect_ev & (i >> 1)
+        expect_pic = expect_ev & int(bool(i & _IE_EVENT))
         self._grade(
             "CHK-SPI-LINE",
             pic == expect_pic and twin == expect_ev and error == 0,
@@ -1205,7 +1207,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                         await self._set_ev(0)
                 ist = await self.ops.rd(INTR_STATE)
                 pic = await self._pic14()
-                expect = (ev & (i >> 1)) | (err & i & 1)
+                expect = (ev & int(bool(i & _IE_EVENT))) | (err & int(bool(i & _IE_ERROR)))
                 got_state = (int(bool(ist & INTR_SPI_EVENT)), int(bool(ist & INTR_ERROR)))
                 values = (
                     f"intr_en={i} state={state} pic14={pic} expect={expect} "
@@ -1637,10 +1639,19 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         empty = await self.ops.poll_status(
             lambda s: s.txempty == 1 and s.rxempty == 1, 2_000, "SW_RST: TXEMPTY=1 and RXEMPTY=1"
         )
+        # CONTROL is graded from a read taken while SW_RST is held and the
+        # FIFOs are empty: the release write below rewrites every CONTROL
+        # field, so a read after it cannot show a field that SW_RST cleared.
+        fc = field_compare(
+            await self.ops.rd(CONTROL), sw["control"] | CTRL_SW_RST, _R.mask32("CONTROL")
+        )
+        self.logger.info("L4-SWRST-REG LOG seed=%d reg=CONTROL held %s", self.seed, fc.fields())
+        kept = [fc.ok]
         await self.ops.wr(CONTROL, sw["control"])
         rel = await self.ops.read_status()
-        kept = []
         for name, (addr, value) in armed.items():
+            if name == "CONTROL":
+                continue
             fc = field_compare(await self.ops.rd(addr), value, _R.mask32(name))
             self.logger.info("L4-SWRST-REG LOG seed=%d reg=%s %s", self.seed, name, fc.fields())
             kept.append(fc.ok)
