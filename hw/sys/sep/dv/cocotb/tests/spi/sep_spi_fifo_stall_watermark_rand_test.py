@@ -738,7 +738,10 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         await self._clean()
         self._gate(True)
         mark0 = self.pads.mark()
-        await self.ops.issue_command(command_word(3, speed=0, direction=DIR_TX))
+        # An 8-byte Tx head with one word queued: the core sends that word and
+        # holds the segment in TXSTALL with ACTIVE=1 until one more word arrives.
+        await self.ops.push_tx(self._word())
+        await self.ops.issue_command(command_word(7, speed=0, direction=DIR_TX))
         try:
             st = await self._poll(
                 lambda s: s.active == 1 and s.txstall == 1, 20_000, "ACTIVE=1 and TXSTALL=1", chk
