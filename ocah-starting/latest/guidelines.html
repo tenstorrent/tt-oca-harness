@@ -492,6 +492,11 @@ alternative, struct types can be used instead to bundle groups of input
 or output signals to make ports more abstract.</p>
 </li>
 <li>
+<p>Refer to a package member as <code>pkg::name</code>. Import a member by name only
+where a module uses it often, such as the states of an FSM, and then import
+every literal of that enum. Do not use wildcard <code>import pkg::*;</code>.</p>
+</li>
+<li>
 <p>Finite State Machines (FSMs) are powerful sequence control constructs
 but can spiral out of control quickly. Consequences are difficult to
 understand "next state" logic and long timing paths. Separate the
