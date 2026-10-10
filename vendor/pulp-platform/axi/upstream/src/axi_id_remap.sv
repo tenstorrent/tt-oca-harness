@@ -14,7 +14,7 @@
 // - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
 // - Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Remap AXI IDs from wide IDs at the slave port to narrower IDs at the master port.
 ///
@@ -345,10 +345,10 @@ module axi_id_remap #(
   end
 
   // Registers
-  `FFARN(ar_id_q, ar_id_d, '0, clk_i, rst_ni)
-  `FFARN(ar_prio_q, ar_prio_d, 1'b0, clk_i, rst_ni)
-  `FFARN(aw_id_q, aw_id_d, '0, clk_i, rst_ni)
-  `FFARN(state_q, state_d, Ready, clk_i, rst_ni)
+  `OCAH_FF(ar_id_q, ar_id_d, '0, clk_i, rst_ni)
+  `OCAH_FF(ar_prio_q, ar_prio_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(aw_id_q, aw_id_d, '0, clk_i, rst_ni)
+  `OCAH_FF(state_q, state_d, Ready, clk_i, rst_ni)
 
   // pragma translate_off
   `ifndef VERILATOR
@@ -549,7 +549,7 @@ module axi_id_remap_table #(
   end
 
   // Registers
-  `FFARN(table_q, table_d, '0, clk_i, rst_ni)
+  `OCAH_FF(table_q, table_d, '0, clk_i, rst_ni)
 
   // Assertions
   // pragma translate_off

@@ -5,7 +5,7 @@
 // Author: Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 
 module credit_counter #(
@@ -42,7 +42,7 @@ module credit_counter #(
     else if (increment) credit_d = credit_q + 1;
   end
 
-  `FFARNC(credit_q, credit_d, credit_init_i, InitNumCredits, clk_i, rst_ni)
+  `OCAH_FFARNC(credit_q, credit_d, credit_init_i, InitNumCredits, clk_i, rst_ni)
 
   assign credit_o       = credit_q;
   assign credit_left_o  = (credit_q != '0);

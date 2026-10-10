@@ -11,7 +11,7 @@
 // Authors:
 // - Andreas Kurth <akurth@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 
 /// `stream_to_mem`: Allows to use memories with flow control (`valid`/`ready`) for requests but without flow
@@ -102,7 +102,7 @@ module stream_to_mem #(
     );
 
     // Register
-    `FFARN(cnt_q, cnt_d, '0, clk_i, rst_ni)
+    `OCAH_FF(cnt_q, cnt_d, '0, clk_i, rst_ni)
 
   end else begin : gen_no_buf
     // Control request, memory request, and response interface handshakes.

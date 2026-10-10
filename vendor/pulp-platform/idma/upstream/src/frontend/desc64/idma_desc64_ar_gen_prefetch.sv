@@ -6,7 +6,7 @@
 // - Axel Vanoni <axvanoni@ethz.ch>
 
 `include "common_cells/assertions.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// This module generates AR packets to fetch descriptors from memory
 module idma_desc64_ar_gen_prefetch #(
@@ -231,11 +231,11 @@ end
 
 assign queued_address_ready_o = !take_from_next && (!base_valid_q || next_addr_valid_this_cycle);
 
-`FF(inflight_counter_q, inflight_counter_d, '0)
-`FF(base_addr_q, base_addr_d, '0)
-`FF(next_addr_valid_q, next_addr_valid_d, 1'b0)
-`FF(base_valid_q, base_valid_d, 1'b0)
-`FF(flush_q, flush_d, 1'b0)
+`OCAH_FF(inflight_counter_q, inflight_counter_d, '0, clk_i, rst_ni)
+`OCAH_FF(base_addr_q, base_addr_d, '0, clk_i, rst_ni)
+`OCAH_FF(next_addr_valid_q, next_addr_valid_d, 1'b0, clk_i, rst_ni)
+`OCAH_FF(base_valid_q, base_valid_d, 1'b0, clk_i, rst_ni)
+`OCAH_FF(flush_q, flush_d, 1'b0, clk_i, rst_ni)
 assign flush_d = flush;
 
 stream_fifo #(

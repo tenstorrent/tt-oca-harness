@@ -5,7 +5,7 @@
 // Authors:
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "idma/guard.svh"
 
 /// ND midend for the iDMA. This module takes an n-dimensional transfer and splits it into
@@ -230,9 +230,9 @@ module idma_nd_midend #(
     //--------------------------------------
     // State
     //--------------------------------------
-    `FFL(stride_sel_q, stride_sel_d, nd_req_valid_i, NumDim - 'd1, clk_i, rst_ni)
-    `FFL(src_addr_q,   src_addr_d,   nd_req_valid_i, '0,           clk_i, rst_ni)
-    `FFL(dst_addr_q,   dst_addr_d,   nd_req_valid_i, '0,           clk_i, rst_ni)
+    `OCAH_FFL(stride_sel_q, stride_sel_d, nd_req_valid_i, NumDim - 'd1, clk_i, rst_ni)
+    `OCAH_FFL(src_addr_q,   src_addr_d,   nd_req_valid_i, '0,           clk_i, rst_ni)
+    `OCAH_FFL(dst_addr_q,   dst_addr_d,   nd_req_valid_i, '0,           clk_i, rst_ni)
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin

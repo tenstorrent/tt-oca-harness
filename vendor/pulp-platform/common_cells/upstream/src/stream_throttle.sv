@@ -4,7 +4,7 @@
 //
 // Thomas Benz <tbenz@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Throttles a ready valid handshaked bus. The maximum number of outstanding transfers have to
 /// be set as a compile-time parameter, whereas the number of outstanding transfers can be set
@@ -77,6 +77,6 @@ module stream_throttle #(
     assign req_ready_o = req_ready_i & credit_available;
 
     // state
-    `FF(credit_q, credit_d, '0, clk_i, rst_ni)
+    `OCAH_FF(credit_q, credit_d, '0, clk_i, rst_ni)
 
 endmodule : stream_throttle

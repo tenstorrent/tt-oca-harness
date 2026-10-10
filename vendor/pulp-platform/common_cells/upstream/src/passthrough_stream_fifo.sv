@@ -7,7 +7,7 @@
 // - Tobias Senti <tsenti@ethz.ch>
 
 `include "common_cells/assertions.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Stream FIFO that does not cut the timing path. When full; pushing data is allowed if in
 /// the same cycle data is popped. Creates longer timing paths but can use buffer space more
@@ -109,10 +109,10 @@ module passthrough_stream_fifo #(
     end
 
     // Flip Flops
-    `FF( read_ptr_q,  read_ptr_d, '0, clk_i, rst_ni)
-    `FF(write_ptr_q, write_ptr_d, '0, clk_i, rst_ni)
+    `OCAH_FF( read_ptr_q,  read_ptr_d, '0, clk_i, rst_ni)
+    `OCAH_FF(write_ptr_q, write_ptr_d, '0, clk_i, rst_ni)
 
-    `FFL(data_q, data_d, load_data, '0, clk_i, rst_ni)
+    `OCAH_FFL(data_q, data_d, load_data, '0, clk_i, rst_ni)
 
     // no full push
     `OCAH_PULP_ASSERT_NEVER(CheckFullPush, (!ready_o & valid_i), clk_i, !rst_ni)
