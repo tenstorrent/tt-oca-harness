@@ -41,6 +41,70 @@ localparam int unsigned SmcCsrSize = 2;
 localparam int unsigned SmcMemBytes = SmcSepInBeatBytes;
 localparam int unsigned SmcMemSize = 3;
 
+typedef enum {
+  WDT_CTRL,
+  WDT_COUNT,
+  WDT_KEY,
+  WDT_CMP,
+  WDT_SCALED_COUNT,
+  WDT_FEED
+} smc_wdt_reg_e;
+// KEY and FEED magic values from the wdt.rdl KEY and FEED descriptions.
+localparam bit [31:0] SmcWdtMagicKey = 32'h0051_F15E;
+localparam bit [31:0] SmcWdtFeedMagic = 32'h0D09_F00D;
+localparam int unsigned SmcWdtCores = 4;
+localparam bit [63:0] SmcWdtBytes = smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE;
+localparam int unsigned SmcWdtCtrlOffset = SMC_CLUSTER_CORE0_WDT_CTRL_REG_OFFSET;
+localparam int unsigned SmcWdtCountOffset = SMC_CLUSTER_CORE0_WDT_COUNT_REG_OFFSET;
+localparam int unsigned SmcWdtCountHiOffset = SMC_CLUSTER_CORE0_WDT_COUNT_HI_REG_OFFSET;
+localparam int unsigned SmcWdtScaledCountOffset = SMC_CLUSTER_CORE0_WDT_SCALED_COUNT_REG_OFFSET;
+localparam int unsigned SmcWdtFeedOffset = SMC_CLUSTER_CORE0_WDT_FEED_REG_OFFSET;
+localparam int unsigned SmcWdtKeyOffset = SMC_CLUSTER_CORE0_WDT_KEY_REG_OFFSET;
+localparam int unsigned SmcWdtCmpOffset = SMC_CLUSTER_CORE0_WDT_CMP_REG_OFFSET;
+
+function automatic bit [63:0] smc_wdt_addr(int unsigned core, smc_wdt_reg_e reg_kind);
+  case (core)
+    0: case (reg_kind)
+      WDT_CTRL: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_CTRL_BASE_ADDR;
+      WDT_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_COUNT_BASE_ADDR;
+      WDT_KEY: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_KEY_BASE_ADDR;
+      WDT_CMP: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR;
+      WDT_SCALED_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_SCALED_COUNT_BASE_ADDR;
+      WDT_FEED: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_FEED_BASE_ADDR;
+      default: return '1;
+    endcase
+    1: case (reg_kind)
+      WDT_CTRL: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_CTRL_BASE_ADDR;
+      WDT_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_COUNT_BASE_ADDR;
+      WDT_KEY: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_KEY_BASE_ADDR;
+      WDT_CMP: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_CMP_BASE_ADDR;
+      WDT_SCALED_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_SCALED_COUNT_BASE_ADDR;
+      WDT_FEED: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_FEED_BASE_ADDR;
+      default: return '1;
+    endcase
+    2: case (reg_kind)
+      WDT_CTRL: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_CTRL_BASE_ADDR;
+      WDT_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_COUNT_BASE_ADDR;
+      WDT_KEY: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_KEY_BASE_ADDR;
+      WDT_CMP: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_CMP_BASE_ADDR;
+      WDT_SCALED_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_SCALED_COUNT_BASE_ADDR;
+      WDT_FEED: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_FEED_BASE_ADDR;
+      default: return '1;
+    endcase
+    3: case (reg_kind)
+      WDT_CTRL: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_CTRL_BASE_ADDR;
+      WDT_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_COUNT_BASE_ADDR;
+      WDT_KEY: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_KEY_BASE_ADDR;
+      WDT_CMP: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_CMP_BASE_ADDR;
+      WDT_SCALED_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_SCALED_COUNT_BASE_ADDR;
+      WDT_FEED: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_FEED_BASE_ADDR;
+      default: return '1;
+    endcase
+    default: return '1;
+  endcase
+  return '1;
+endfunction
+
 // Scoreboard feature names (smc_scoreboard predictors; test cfg policy).
 localparam string SmcFeatureScratchCsr = "scratch_csr";
 localparam string SmcFeatureDefaultReg = "default_reg";
@@ -48,6 +112,7 @@ localparam string SmcFeatureLockCsr = "lock_csr";
 localparam string SmcFeatureMutexSema = "mutex_sema";
 localparam string SmcFeatureSpmMem = "spm_mem";
 localparam string SmcFeatureRegblockWide = "regblock_wide";
+localparam string SmcFeatureWdtCsr = "wdt_csr";
 
 localparam bit [63:0] SmcZeroerDestAddr =
     64'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR);
@@ -546,4 +611,36 @@ endfunction
 function automatic bit smc_is_spm_mem_access(ocah_axi_item t);
   if (!smc_is_spm_addr(t.address)) return 1'b0;
   return t.is_ok() && t.data_words.size() == 1 && t.beat_count() == 1;
+endfunction
+
+// A single-beat write or aligned 32-bit read of a defined watchdog register.
+// No response filter: every such access reaches the comparison, and only an
+// OKAY write updates the reference model.
+function automatic bit smc_is_wdt_csr_access(ocah_axi_item t, output int unsigned core,
+                                             output int unsigned offset);
+  bit [63:0] base;
+  if (t.expected_beats != 1 || t.beat_count() != 1 || t.data_words.size() != 1) return 1'b0;
+  if (t.direction == OCAH_AXI_DIR_READ && (t.size != SmcCsrSize || t.address[1:0] != 0))
+    return 1'b0;
+  for (int unsigned i = 0; i < SmcWdtCores; i++) begin
+    base = smc_wdt_addr(i, WDT_CTRL);
+    if (t.address >= base && t.address < base + SmcWdtBytes) begin
+      core = i;
+      offset = int'(smc_csr_word_addr(t.address) - base);
+      case (offset)
+        SmcWdtCtrlOffset, SmcWdtCountOffset, SmcWdtCountHiOffset, SmcWdtScaledCountOffset,
+        SmcWdtFeedOffset, SmcWdtKeyOffset, SmcWdtCmpOffset: return 1'b1;
+        default: return 1'b0;
+      endcase
+    end
+  end
+  return 1'b0;
+endfunction
+
+function automatic bit [31:0] smc_wdt_csr_mask(int unsigned offset);
+  case (offset)
+    SmcWdtCtrlOffset: return ~32'(WDT_CTRL_WDOGIP0_MASK);
+    SmcWdtKeyOffset, SmcWdtCmpOffset: return 32'hFFFF_FFFF;
+    default: return 32'h0;
+  endcase
 endfunction

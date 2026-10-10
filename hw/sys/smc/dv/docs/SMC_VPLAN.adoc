@@ -13037,6 +13037,101 @@ run on demand. This card records what a run must show, not a pass.
 
 '''''
 
+[[sec-smc_wdt_feed_zerocmp_test]]
+====== `smc_wdt_feed_zerocmp_test`
+
+*Source Module*: `smc_wdt_feed_zerocmp_test` (UVM-only independent scenario)
+
+*BFM / Model*: `ocah_axi_vip` on SEP_IN. The passive
+`smc_wdt_csr_ref_model` predicts CTRL (IP masked), KEY and CMP from observed
+writes and predicts OKAY responses for in-scope reads and writes.
+The sequence checks running-count behavior; timing bounds use the count rate
+measured in the same pass.
+
+*Objective*: Check keyed FEED clearing, rejection of the selected one-bit-invalid
+FEED value, unlock consumption, scaled count, sampled compare rollover and software
+clearing of the pending interrupt.
+
+*Test Coverage*:
+
+* Cores 0 through 3 rotate by pass; exercising all four requires four passes.
+* Correct and one-bit-invalid FEED writes from a known COUNT, with KEY readbacks.
+* SCALED_COUNT bracketed by COUNT readings with scale four and no 16-bit wrap.
+* Eight COUNT samples spanning at least two compare periods with zerocmp enabled.
+* Pending interrupt below CMP, above CMP, after clearing while elapsed remains
+  asserted, and after feeding then clearing while elapsed is low.
+
+*Expectation Sources*: `wdt.rdl` defines effective byte enables and unlock
+consumption in its addrmap description. KEY defines the unlock magic and readback;
+FEED defines the clearing magic, unlock requirement and preservation of pending IP.
+CTRL.wdogscale and SCALED_COUNT define the count shift; CTRL.wdogzerocmp defines
+COUNT reset when compare is reached. CTRL.wdogip0 defines hardware setting while
+the compare condition holds and software clearing below compare. CMP defines the
+comparison value. The passive model predicts CTRL, KEY and CMP under these rules;
+register offsets, field masks and reset values come from generated collateral.
+`hw/sys/smc/doc/watchdog.adoc` describes the KEY/relock and byte-enable rules,
+interrupt setting at or above CMP, and preservation of pending IP across FEED.
+
+*Test Procedure*: Measure a positive running count rate. Exercise valid and invalid
+FEED writes and their unlock consumption, bracket SCALED_COUNT, then sample COUNT
+with zerocmp enabled. Disable zerocmp and bracket every interrupt observation with
+COUNT readings on the intended side of CMP and below the 16-bit wrap limit.
+Read CMP after each CMP write. Finally feed the watchdog, disable counting and
+restore CMP. Wait with a bound for all predicted comparisons, then check exact
+access and comparison counts with no new mismatch.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-WDT-FEED-RATE` |Calibration has increasing count and timestamps
+|`CHK-WDT-FEED-CLEAR` |The FEED magic clears the known count within the measured time bound
+|`CHK-WDT-FEED-REJECT` |The selected one-bit-invalid FEED does not decrease COUNT
+|`CHK-WDT-FEED-SCALED` |Scaled count lies between shifted surrounding COUNT readings
+|`CHK-WDT-FEED-ZEROCMP` |All samples are at or below CMP and an observed sample decreases
+|`CHK-WDT-FEED-IP` |Interrupt observations match the compare condition and software-clear phases
+|`CHK-WDT-FEED-WINDOW` |Scaling, sample span, deadline and eight COUNT brackets are valid
+|`CHK-SB-WDT-CSR` |In-scope watchdog accesses return OKAY; CTRL (IP masked), KEY and CMP reads match the passive model
+|`CHK-WDT-CSR-SCOREBOARD` |Each pass completes exactly the predicted comparisons with no new mismatch
+|`CHK-SB-MIN-ACTIVITY` |Completed passes reach the minimum feature comparison count
+|`CHK-NONVAC` |The sequence completes 83 fixed SEP_IN CSR accesses plus every compare-poll read; this checks stimulus accounting, not passive bus activity
+|`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP` |Bring-up and frontdoor responses complete
+|===
+
+*Known Limitations*: Only one invalid FEED and one non-zero scale are checked.
+Zerocmp is sampled, not checked on every clock; sampling phase can hide a rollover,
+which is reported as a failure with timestamps rather than silently adjusting delay.
+Locked FEED, watchdog reset outputs and CPU interrupt
+delivery are outside this scenario.
+Count-rate calibration does not independently grade clock frequency.
+The feature assumes sequential WDT accesses and no writer other than SEP_IN.
+Narrow or 64-bit reads are excluded. COUNT, COUNT_HI, SCALED_COUNT and FEED
+read data are not graded; CTRL IP remains a sequence check. Locked writes,
+incomplete strobes and mid-run warm reset are not exercised. Software uncore
+reset and reset with outstanding WDT traffic are unsupported. Idle warm-reset
+re-baselining is not validated.
+
+*Pass Criteria*: Every checker passes on each pass.
+`+SMC_WDT_FEED_SEQUENCE_NEGATIVE` changes expectations only and fails exactly one
+record each of `CHK-WDT-FEED-CLEAR`,
+`CHK-WDT-FEED-REJECT`, `CHK-WDT-FEED-SCALED`,
+`CHK-WDT-FEED-ZEROCMP` and `CHK-WDT-FEED-IP` per pass.
+The scoreboard records no mismatch in the sequence negative.
+Used alone, `+SMC_WDT_CSR_SCOREBOARD_NEGATIVE` corrupts predicted CTRL/KEY/CMP
+read bit 0 and predicts SLVERR for writes: 59 feature mismatches per pass
+(17 reads and 42 writes), plus one CHK-WDT-CSR-SCOREBOARD failure per pass.
+The 24 fixed response-only reads and compare-poll reads still pass.
+Positive runs complete 83 fixed comparisons plus poll reads per pass.
+No directed run produces a real WDT error response; the negative validates
+comparison sensitivity, not real error-response handling.
+RATE and WINDOW remain unmodified in the negative run: they establish valid
+measurement conditions, and a failed condition records FAIL then terminates
+the pass with a fatal error.
+The leaf runs on demand in `wdt_uvm_extended`, outside `all`, `hosted` and `ci`.
+
+'''''
+
 [[smc-deferred-disposition]]
 ==== SMC deferred and OUT disposition
 

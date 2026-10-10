@@ -34,8 +34,8 @@ schema_version = 1
 #     instance 5's CSR window. It returns to `fw` and `all` when it does.
 #   * scope-named UVM groups -- UVM-only leaves excluded from `all` and
 #     `hosted` because those groups do not run the UVM framework. Each group is
-#     named for the verification scope it exercises (`csr_uvm_extended`) and
-#     runs on demand.
+#     named for the verification scope it exercises (`csr_uvm_extended`,
+#     `wdt_uvm_extended`) and runs on demand.
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
@@ -87,12 +87,30 @@ tools = ["vcs"]
 tags = ["uvm", "csr"]
 run_modes = ["smoke"]
 
+[[tests]]
+# Checks watchdog feed, sampled compare rollover, scaled count and interrupt clearing.
+name = "smc_wdt_feed_zerocmp_test"
+module = { uvm = "smc_wdt_feed_zerocmp_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "wdt"]
+run_modes = ["smoke"]
+
 [[groups]]
 # Wide register-block CSR scenarios.
 name = "csr_uvm_extended"
 expected_count = 1
 tests = [
     "smc_regblock_sparse_strobe_test",
+]
+
+[[groups]]
+# Watchdog UVM-only scenarios.
+name = "wdt_uvm_extended"
+expected_count = 1
+tests = [
+    "smc_wdt_feed_zerocmp_test",
 ]
 
 [[groups]]

@@ -34,6 +34,7 @@ package smc_env_pkg;
   `include "smc_mutex_sema_ref_model.svh"
   `include "smc_spm_mem_ref_model.svh"
   `include "smc_regblock_wide_ref_model.svh"
+  `include "smc_wdt_csr_ref_model.svh"
   `include "smc_scoreboard.svh"
   `include "smc_env.svh"
 
