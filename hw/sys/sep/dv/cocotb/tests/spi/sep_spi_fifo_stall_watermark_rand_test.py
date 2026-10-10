@@ -407,6 +407,8 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         exp_cycles = RX_STALL_BYTES * 8 // LANES[self.speed]
         if drained != RX_STALL_WORDS:
             self._fail(chk, f"drained_words={drained} expect={RX_STALL_WORDS}")
+        if cycles != exp_cycles:
+            self._fail(chk, f"cycles={cycles}/{exp_cycles} drained_words={drained}")
         self.logger.info(
             "%s PASS seed=%d speed=%d rxfull=1 rxstall=1 sck_edges_in_stall=0 "
             "ctrl_toggles_before_rxfull=%d drained_words=%d window_clk=%d rxqd_in_stall=%d "

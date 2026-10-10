@@ -97,7 +97,12 @@ SRAM_SIZE = SRAM_LIMIT - SRAM_BASE + 1
 ASID_SEP = 0x77
 
 EVENTS = ("done", "chunk", "error")
-EVENT_BIT = {"done": 0, "chunk": 1, "error": 2}
+EVENT_BIT = {
+    "done": _D.field_lsb("INTR_ENABLE", "dma_done"),
+    "chunk": _D.field_lsb("INTR_ENABLE", "dma_chunk_done"),
+    "error": _D.field_lsb("INTR_ENABLE", "dma_error"),
+}
+INTR_EN_ALL = _D.mask32("INTR_ENABLE")
 L2_KINDS = ("total", "chunk", "both", "hash_w0", "hash_w1")
 UNLOCK_VALUES = (0x6, 0xF, 0x9, 0x0)
 OUTSIDE_CASES = (("src", "below"), ("src", "above"), ("dst", "below"), ("dst", "above"))
@@ -127,7 +132,7 @@ def _bits(v: int | None) -> str:
 
 def irq_model(event: str, en: int) -> tuple[int | None, int | None, int | None]:
     """Expected (src9, src10, src11); None is a logged, ungraded line."""
-    d, c, e = en & 1, (en >> 1) & 1, (en >> 2) & 1
+    d, c, e = ((en >> EVENT_BIT[k]) & 1 for k in EVENTS)
     if event == "done":
         return d, (None if c else 0), 0
     if event == "chunk":
@@ -145,8 +150,8 @@ class _Cfg:
         self.trials: list[tuple[str, int]] = []
         for ev in EVENTS:
             b = 1 << EVENT_BIT[ev]
-            self.trials.append((ev, rng.choice([v for v in range(8) if not v & b])))
-            self.trials.append((ev, rng.choice([v for v in range(8) if v & b])))
+            self.trials.append((ev, rng.choice([v for v in range(INTR_EN_ALL + 1) if not v & b])))
+            self.trials.append((ev, rng.choice([v for v in range(INTR_EN_ALL + 1) if v & b])))
         rng.shuffle(self.trials)
         self.single = 4 * rng.randrange(4, MAX_BYTES // 4 + 1)
         self.mc_chunk = 4 * rng.randrange(4, 65)
@@ -340,7 +345,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         rsize = c.l2_rec[kind]
         await self._cold_reset()
         await self._base_config(MAX_BYTES // 4)
-        await ops.wr(INTR_ENABLE, 0x7)
+        await ops.wr(INTR_ENABLE, INTR_EN_ALL)
         await ops.program_transfer(src=c.src, dst=c.dst, total=size, chunk=size)
         open_graded_window(TEST, self.logger)
         m = self.irq.mark()
@@ -402,7 +407,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         size = c.l2_size["hash_w0"]
         await self._cold_reset()
         await self._base_config(MAX_BYTES // 4)
-        await ops.wr(INTR_ENABLE, 0x7)
+        await ops.wr(INTR_ENABLE, INTR_EN_ALL)
         await ops.program_transfer(src=c.src, dst=c.dst, total=size, chunk=size, width_enc=2)
         await ops.go(opcode=OP_SHA256, initial=1)
         res = await ops.run_to_done(size, busy=self.busy, tag=" L2 control")
