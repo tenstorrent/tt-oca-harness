@@ -481,12 +481,13 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         self.logger.info(
             "T-FILL LOG seed=%d t_fill_clks=%d polls=%d", cfg.seed, t_fill, len(hs_polls)
         )
-        go1 = self._go_cmp(await self.dma.rd(DMA_CONTROL))
+        # At TOTAL_DATA_SIZE the engine has cleared GO: expected GO=0.
+        go1 = field_compare(await self.dma.rd(DMA_CONTROL), 0, GO_MASK)
         st_total = await self.dma.read_status()
         t1 = self.tw.clk
         while self.tw.clk - t1 < t_fill:
             hs_polls.append(await self.dma.read_status())
-        go2 = self._go_cmp(await self.dma.rd(DMA_CONTROL))
+        go2 = field_compare(await self.dma.rd(DMA_CONTROL), 0, GO_MASK)
         self._probe_log("handshake")
         for i, st in enumerate(hs_polls):
             self.logger.debug("HS-POLL %d %s", i, st.fmt())
@@ -653,8 +654,8 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         # transfer ends, and GO clears, at TOTAL_DATA_SIZE (dma.hjson
         # TOTAL_DATA_SIZE and CONTROL.GO).
         control_normal_go = int(bool(go_nm.got & GO_MASK))
-        go_at_total = int(go1.ok)
-        go_after_wait = int(go2.ok)
+        go_at_total = int(bool(go1.got & GO_MASK))
+        go_after_wait = int(bool(go2.got & GO_MASK))
         line = (
             f"go_held_between_chunks={go_before} go_at_total={go_at_total} "
             f"done_at_total={st_total.done} go_after_wait={go_after_wait} "
