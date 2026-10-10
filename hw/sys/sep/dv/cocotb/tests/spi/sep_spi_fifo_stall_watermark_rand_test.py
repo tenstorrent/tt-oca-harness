@@ -511,9 +511,21 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         await self._clocks(self.tx_gap)
         for w in words[m1:]:
             await self.ops.push_tx(w)
+        # TXSTALL must drop while the segment still runs: a host that holds it
+        # until the segment ends shows its first TXSTALL=0 read with chip
+        # select high. The words left after the last write keep chip select
+        # low for longer than one STATUS read.
         st2 = await self._poll(
-            lambda s: s.txstall == 0, self._seg_bound(4 * m, self.speed), "TXSTALL=0", chk
+            lambda s: s.txstall == 0 or not self.pads.cs_low(),
+            self._seg_bound(4 * m, self.speed),
+            "TXSTALL=0 or chip select high",
+            chk,
         )
+        in_seg = int(self.pads.cs_low())
+        if st2.txstall != 0 or not in_seg:
+            self._fail(
+                chk, f"TXSTALL still set with the data written: in_segment={in_seg} {st2.fmt()}"
+            )
         try:
             await self.ops.wait_segment_done(
                 self.pads, mark, windows=1, bound_clks=self._seg_bound(4 * m, self.speed)
