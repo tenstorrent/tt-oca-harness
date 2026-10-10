@@ -373,9 +373,10 @@ _rsp_t ${protocol}_write_rsp_i,
     logic      rsp_valid;
     logic      rsp_ready;
 
-    // Respone Channel valid and ready -> needed for bursting
-    logic r_chan_valid;
-    logic r_chan_ready;
+    // Write channel valid, ready and first -> needed to send AWs when Ws are available
+    logic w_chan_valid;
+    logic w_chan_ready;
+    logic w_chan_first;
 
     //--------------------------------------
     // Reject Zero Length Transfers
@@ -773,8 +774,9 @@ _rsp_t ${protocol}_write_rsp_i,
         .r_dp_busy_o     ( busy_o.r_dp_busy     ),
         .w_dp_busy_o     ( busy_o.w_dp_busy     ),
         .buffer_busy_o   ( busy_o.buffer_busy   ),
-        .r_chan_ready_o  ( r_chan_ready         ),
-        .r_chan_valid_o  ( r_chan_valid         )
+        .w_chan_valid_o  ( w_chan_valid         ),
+        .w_chan_ready_o  ( w_chan_ready         ),
+        .w_chan_first_o  ( w_chan_first         )
     );
 
     //--------------------------------------
@@ -789,6 +791,28 @@ _rsp_t ${protocol}_write_rsp_i,
 
     if (RAWCouplingAvail) begin : gen_r_aw_coupler
 % if one_read_port and one_write_port and (used_read_protocols[0] == used_write_protocols[0]):
+        // per-transfer decouple_aw tag travelling with the write datapath request
+        logic w_decouple_aw_out;
+
+        // mirrors i_w_dp_req exactly: same depth, same push valid, same pop ready
+        stream_fifo_optimal_wrap #(
+            .Depth     ( NumAxInFlight ),
+            .type_t    ( logic         ),
+            .PrintInfo ( PrintFifoInfo )
+        ) i_w_decouple_aw (
+            .clk_i      ( clk_i               ),
+            .rst_ni     ( rst_ni              ),
+            .testmode_i ( testmode_i          ),
+            .flush_i    ( 1'b0                ),
+            .usage_o    ( /* NOT CONNECTED */ ),
+            .data_i     ( w_req.decouple_aw   ),
+            .valid_i    ( w_valid             ),
+            .ready_o    ( /* NOT CONNECTED */ ),
+            .data_o     ( w_decouple_aw_out   ),
+            .valid_o    ( /* NOT CONNECTED */ ),
+            .ready_i    ( w_dp_req_out_ready  )
+        );
+
         // instantiate the channel coupler
         idma_channel_coupler #(
             .NumAxInFlight   ( NumAxInFlight               ),
@@ -806,10 +830,10 @@ _rsp_t ${protocol}_write_rsp_i,
             .clk_i            ( clk_i                       ),
             .rst_ni           ( rst_ni                      ),
             .testmode_i       ( testmode_i                  ),
-            .r_rsp_valid_i    ( r_chan_valid                ),
-            .r_rsp_ready_i    ( r_chan_ready                ),
-            .r_rsp_first_i    ( r_dp_rsp.first              ),
-            .r_decouple_aw_i  ( r_dp_req_out.decouple_aw    ),
+            .w_req_valid_i    ( w_chan_valid                ),
+            .w_req_ready_i    ( w_chan_ready                ),
+            .w_req_first_i    ( w_chan_first                ),
+            .w_decouple_aw_i  ( w_decouple_aw_out           ),
             .aw_decouple_aw_i ( \
 % if one_write_port:
 w_req.decouple_aw\
