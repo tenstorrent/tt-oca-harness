@@ -7,7 +7,7 @@
 // - Tobias Senti <tsenti@ethz.ch>
 
 `include "idma/guard.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Implementing the transport layer in the iDMA backend.
 module idma_transport_layer_${name_uniqueifier} #(

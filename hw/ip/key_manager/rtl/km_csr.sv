@@ -36,6 +36,8 @@
 //   demotion captures and OTP_READ_LOCK_COLD survive warm reset. Warm reset breaks the
 //   soft reset trigger loop and quiesces the AXI CPUIF state machine.
 
+`include "ocah_registers.svh"
+
 module km_csr
   import km_intf_pkg::km_axil_req_t;
   import km_intf_pkg::km_axil_resp_t;
@@ -873,13 +875,7 @@ module km_csr
   logic vuart_tx_valid_pulse;
 
   // Sample DATA_VALID bit to detect rising edge
-  always_ff @(posedge clk_i or negedge cold_rst_ni) begin
-    if (!cold_rst_ni) begin
-      vuart_tx_data_valid_prev <= 1'b0;
-    end else begin
-      vuart_tx_data_valid_prev <= hwif_out.VUART_TX.data_valid.value;
-    end
-  end
+  `OCAH_FF(vuart_tx_data_valid_prev, hwif_out.VUART_TX.data_valid.value, 1'b0, clk_i, cold_rst_ni)
 
   // Rising edge detection: was 0, now 1
   assign vuart_tx_valid_pulse = hwif_out.VUART_TX.data_valid.value && !vuart_tx_data_valid_prev;

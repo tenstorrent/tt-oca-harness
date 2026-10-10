@@ -12,7 +12,7 @@
 // - Michael Rogenmoser <michaero@iis.ee.ethz.ch>
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 /// AXI4+ATOP slave module which translates AXI bursts into a memory stream.
 /// If both read and write channels of the AXI4+ATOP are active, both will have an
 /// utilization of 50%.
@@ -555,14 +555,14 @@ module axi_to_detailed_mem #(
   };
 
   // Registers
-  `FFARN(meta_sel_q, meta_sel_d, 1'b0, clk_i, rst_ni)
-  `FFARN(sel_lock_q, sel_lock_d, 1'b0, clk_i, rst_ni)
-  `FFARN(rd_meta_q, rd_meta_d, meta_t'{default: '0}, clk_i, rst_ni)
-  `FFARN(wr_meta_q, wr_meta_d, meta_t'{default: '0}, clk_i, rst_ni)
-  `FFARN(r_cnt_q, r_cnt_d, '0, clk_i, rst_ni)
-  `FFARN(w_cnt_q, w_cnt_d, '0, clk_i, rst_ni)
-  `FFARN(collect_b_err_q, collect_b_err_d, '0, clk_i, rst_ni)
-  `FFARN(collect_b_exokay_q, collect_b_exokay_d, 1'b1, clk_i, rst_ni)
+  `OCAH_FF(meta_sel_q, meta_sel_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(sel_lock_q, sel_lock_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(rd_meta_q, rd_meta_d, meta_t'{default: '0}, clk_i, rst_ni)
+  `OCAH_FF(wr_meta_q, wr_meta_d, meta_t'{default: '0}, clk_i, rst_ni)
+  `OCAH_FF(r_cnt_q, r_cnt_d, '0, clk_i, rst_ni)
+  `OCAH_FF(w_cnt_q, w_cnt_d, '0, clk_i, rst_ni)
+  `OCAH_FF(collect_b_err_q, collect_b_err_d, '0, clk_i, rst_ni)
+  `OCAH_FF(collect_b_exokay_q, collect_b_exokay_d, 1'b1, clk_i, rst_ni)
 
   // Assertions
   // pragma translate_off
@@ -864,7 +864,7 @@ module mem_stream_to_banks_detailed #(
     assign mem_req_valid = req_i & cnt_req_ready;
 
     // Register
-    `FFARN(cnt_q, cnt_d, '0, clk_i, rst_ni)
+    `OCAH_FF(cnt_q, cnt_d, '0, clk_i, rst_ni)
   end
 
   // Handle requests.

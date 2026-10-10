@@ -11,6 +11,8 @@
 // their synchronizers carry pad data.
 // ct_dst_o, busy_o, and the pad controls are registered and reset low.
 
+`include "ocah_registers.svh"
+
 module cross_trigger_port_core (
   input  logic        clk_i,            // System clock for the port logic.
   input  logic        rst_ni,           // Active-low asynchronous system reset.
@@ -140,13 +142,7 @@ module cross_trigger_port_core (
   // Wire-OR mode: ct_dst pulses on the falling (assertion) edge of ct_req_out_din.
   logic wire_or_ct_dst;
   logic wire_or_req_out_prev;
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      wire_or_req_out_prev <= 1'b0;
-    end else begin
-      wire_or_req_out_prev <= ct_req_out_din_sync_inv;
-    end
-  end
+  `OCAH_FF(wire_or_req_out_prev, ct_req_out_din_sync_inv, 1'b0, clk_i, rst_ni)
   assign wire_or_ct_dst = ~ct_req_out_din_sync_inv & wire_or_req_out_prev;
 
   // Mode multiplexing for ct_dst output
@@ -155,13 +151,7 @@ module cross_trigger_port_core (
 
   // Register ct_dst output
   logic ct_dst_q;
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      ct_dst_q <= 1'b0;
-    end else begin
-      ct_dst_q <= ct_dst_raw;
-    end
-  end
+  `OCAH_FF(ct_dst_q, ct_dst_raw, 1'b0, clk_i, rst_ni)
   assign ct_dst_o = ct_dst_q;
 
   // Wire-OR mode pad control
@@ -212,25 +202,13 @@ module cross_trigger_port_core (
   assign ct_ack_out_dout_raw    = mode_wire_or_i ? 1'b0 : p2p_ack_out_dout;
 
   // Register all pad control outputs
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      ct_req_out_dout_en_q <= 1'b0;
-      ct_req_out_din_en_q  <= 1'b0;
-      ct_req_out_dout_q    <= 1'b0;
-      ct_req_in_din_en_q   <= 1'b0;
-      ct_ack_in_din_en_q   <= 1'b0;
-      ct_ack_out_dout_en_q <= 1'b0;
-      ct_ack_out_dout_q    <= 1'b0;
-    end else begin
-      ct_req_out_dout_en_q <= ct_req_out_dout_en_raw;
-      ct_req_out_din_en_q  <= ct_req_out_din_en_raw;
-      ct_req_out_dout_q    <= ct_req_out_dout_raw;
-      ct_req_in_din_en_q   <= ct_req_in_din_en_raw;
-      ct_ack_in_din_en_q   <= ct_ack_in_din_en_raw;
-      ct_ack_out_dout_en_q <= ct_ack_out_dout_en_raw;
-      ct_ack_out_dout_q    <= ct_ack_out_dout_raw;
-    end
-  end
+  `OCAH_FF(ct_req_out_dout_en_q, ct_req_out_dout_en_raw, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(ct_req_out_din_en_q, ct_req_out_din_en_raw, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(ct_req_out_dout_q, ct_req_out_dout_raw, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(ct_req_in_din_en_q, ct_req_in_din_en_raw, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(ct_ack_in_din_en_q, ct_ack_in_din_en_raw, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(ct_ack_out_dout_en_q, ct_ack_out_dout_en_raw, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(ct_ack_out_dout_q, ct_ack_out_dout_raw, 1'b0, clk_i, rst_ni)
 
   assign ct_req_out_dout_en_o = ct_req_out_dout_en_q;
   assign ct_req_out_din_en_o  = ct_req_out_din_en_q;
@@ -243,13 +221,7 @@ module cross_trigger_port_core (
   // The synchronized point-to-point pad inputs carry pad data two cycles after the registered
   // input enable rises; until then they carry the level of the disabled pad.
   logic [1:0] p2p_din_valid_q;
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      p2p_din_valid_q <= 2'b00;
-    end else begin
-      p2p_din_valid_q <= {p2p_din_valid_q[0], ct_req_in_din_en_q};
-    end
-  end
+  `OCAH_FF(p2p_din_valid_q, {p2p_din_valid_q[0], ct_req_in_din_en_q}, 2'b00, clk_i, rst_ni)
   assign p2p_din_valid = p2p_din_valid_q[1];
 
   // BUSY signal generation
@@ -261,13 +233,7 @@ module cross_trigger_port_core (
 
   // Register BUSY output
   logic busy_q;
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      busy_q <= 1'b0;
-    end else begin
-      busy_q <= busy_raw;
-    end
-  end
+  `OCAH_FF(busy_q, busy_raw, 1'b0, clk_i, rst_ni)
   assign busy_o = busy_q;
 
   // Status outputs for CSR readback

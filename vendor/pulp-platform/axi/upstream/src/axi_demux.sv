@@ -15,7 +15,7 @@
 // - Andreas Kurth <akurth@iis.ee.ethz.ch>
 
 `include "common_cells/assertions.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 `ifdef QUESTA
 // Derive `TARGET_VSIM`, which is used for tool-specific workarounds in this file, from `QUESTA`,

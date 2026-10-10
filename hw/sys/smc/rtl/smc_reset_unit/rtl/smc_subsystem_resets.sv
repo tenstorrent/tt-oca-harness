@@ -7,6 +7,8 @@
 // Implements the external SS_CONFIG and SS_COLD_RESET_N registers with per-bit write locks
 // and reports the synchronized SS_RESET_COMPLETE inputs.
 
+`include "ocah_registers.svh"
+
 module smc_subsystem_resets (
   input  logic                                   clk_i,  // SMC core clock.
   input  logic                                   rst_primary_ni,  // Primary reset, active-low,
@@ -104,15 +106,10 @@ module smc_subsystem_resets (
   assign config_filtered_wr_mask = (~ss_config_lock) & ss_config_wr_mask;
 
   // group all resets and controls together
-  always_ff @(posedge clk_i or negedge rst_primary_ni) begin
-    if (~rst_primary_ni) begin
-      ss_config_o <= '0;
-    end else begin
-      if (ss_config_wr_en) begin
-        ss_config_o <= (ss_config_wr_data & config_filtered_wr_mask) | (ss_config_o & ~config_filtered_wr_mask);
-      end
-    end
-  end
+  `OCAH_FFL(
+      ss_config_o,
+      (ss_config_wr_data & config_filtered_wr_mask) | (ss_config_o & ~config_filtered_wr_mask),
+      ss_config_wr_en, '0, clk_i, rst_primary_ni)
 
   // Subsystem Cold Reset Register (External Register)
   assign ss_cold_reset_n_wr_data                          = hwif_out_i.SS_COLD_RESET_N.wr_data;
@@ -123,15 +120,10 @@ module smc_subsystem_resets (
   assign cold_reset_filtered_wr_mask = (~ss_cold_reset_lock) & ss_cold_reset_n_wr_mask;
 
   // group all resets and controls together
-  always_ff @(posedge clk_i or negedge rst_primary_ni) begin
-    if (~rst_primary_ni) begin
-      ss_cold_reset_n_n0_scan <= '0;
-    end else begin
-      if (ss_cold_reset_n_wr_en) begin
-        ss_cold_reset_n_n0_scan <= (ss_cold_reset_n_wr_data & cold_reset_filtered_wr_mask) | (ss_cold_reset_n_n0_scan & ~cold_reset_filtered_wr_mask);
-      end
-    end
-  end
+  `OCAH_FFL(
+      ss_cold_reset_n_n0_scan,
+      (ss_cold_reset_n_wr_data & cold_reset_filtered_wr_mask) | (ss_cold_reset_n_n0_scan & ~cold_reset_filtered_wr_mask),
+      ss_cold_reset_n_wr_en, '0, clk_i, rst_primary_ni)
 
   // Subsystem Reset Control
   always_comb begin

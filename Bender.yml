@@ -357,6 +357,7 @@ vendor_package:
 # The assertion macros are included by first-party RTL under every target.
 export_include_dirs:
   - hw/common/assert
+  - hw/common/registers
 
 # RTL sources are partitioned by composable subsystem targets.
 sources:

@@ -12,7 +12,7 @@
 // - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
 // - Andreas Kurth <akurth@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Serialize all AXI transactions to a single ID (zero).
 ///
@@ -186,7 +186,7 @@ module axi_serializer #(
   // Assign as this condition is needed in FSM
   assign wr_fifo_pop = slv_resp_o.b_valid & slv_req_i.b_ready;
 
-  `FFARN(state_q, state_d, AtopIdle, clk_i, rst_ni)
+  `OCAH_FF(state_q, state_d, AtopIdle, clk_i, rst_ni)
 
 // pragma translate_off
 `ifndef VERILATOR

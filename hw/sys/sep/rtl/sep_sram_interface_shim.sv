@@ -8,6 +8,8 @@
 // Every request is granted at once. Reads complete on macro_rvalid_i; writes are
 // acknowledged with rvalid one cycle after the request.
 
+`include "ocah_registers.svh"
+
 module sep_sram_interface_shim
   import sep_pkg::sep_sram_req_t;
   import sep_pkg::sep_sram_rsp_t;
@@ -41,13 +43,7 @@ module sep_sram_interface_shim
   // Generate write response (SRAM macro only generates rvalid for reads)
   logic write_req_q;
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      write_req_q <= 1'b0;
-    end else begin
-      write_req_q <= mem_req_i.req & mem_req_i.wenable;
-    end
-  end
+  `OCAH_FF(write_req_q, mem_req_i.req & mem_req_i.wenable, 1'b0, clk_i, rst_ni)
 
   // Macro Interface assignments
   assign macro_req_o   = mem_req_i.req;

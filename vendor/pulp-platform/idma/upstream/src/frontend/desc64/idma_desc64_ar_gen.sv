@@ -6,7 +6,7 @@
 // - Axel Vanoni <axvanoni@ethz.ch>
 
 `include "common_cells/assertions.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// This module generates AR packets to fetch descriptors from memory
 module idma_desc64_ar_gen #(
@@ -122,9 +122,9 @@ always_comb begin : proc_ar
     axi_ar_chan_o.burst = axi_pkg::BURST_INCR;
 end
 
-`FF(inflight_q, inflight_d, 1'b0)
-`FF(next_addr_from_desc_valid_q, next_addr_from_desc_valid_d, 1'b0)
-`FF(next_addr_q, next_addr_d, '1)
+`OCAH_FF(inflight_q, inflight_d, 1'b0, clk_i, rst_ni)
+`OCAH_FF(next_addr_from_desc_valid_q, next_addr_from_desc_valid_d, 1'b0, clk_i, rst_ni)
+`OCAH_FF(next_addr_q, next_addr_d, '1, clk_i, rst_ni)
 
 assign feedback_addr_o       = ar_addr;
 assign feedback_addr_valid_o = axi_ar_chan_ready_i && axi_ar_chan_valid_o;

@@ -8,7 +8,10 @@
 // time before each command; debug_bus_o exposes shim state.
 // The APB macro interface is foundry-specific in real integrations.
 
-module efuse_interface_shim #(
+`include "ocah_registers.svh"
+
+module efuse_interface_shim
+#(
   parameter int unsigned SHADOW_REG_BITS = 24576,  // Fuse array size in bits; declared but not used
                                                    // in this module.
   parameter type addr_t = logic,        // Type of the byte address register for read commands.
@@ -256,19 +259,12 @@ module efuse_interface_shim #(
   end
 
   // Register the read state
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      efuse_read_state_q <= ST_READ_IDLE;
-      outstanding_accesses_read_q <= efuse_word_counter_t'(0);
-      apb_fuse_bank_req_read_flopped <= EfuseApbReqDefault;
-      fuse_bank_address_read_q <= '0;
-    end else begin
-      efuse_read_state_q <= efuse_read_state_d;
-      outstanding_accesses_read_q <= outstanding_accesses_read_d;
-      apb_fuse_bank_req_read_flopped <= apb_fuse_bank_req_read;
-      fuse_bank_address_read_q <= fuse_bank_address_read_d;
-    end
-  end
+  `OCAH_FF(efuse_read_state_q, efuse_read_state_d, ST_READ_IDLE, clk_i, rst_ni)
+  `OCAH_FF(outstanding_accesses_read_q, outstanding_accesses_read_d, efuse_word_counter_t'(0),
+           clk_i, rst_ni)
+  `OCAH_FF(apb_fuse_bank_req_read_flopped, apb_fuse_bank_req_read, EfuseApbReqDefault, clk_i,
+           rst_ni)
+  `OCAH_FF(fuse_bank_address_read_q, fuse_bank_address_read_d, '0, clk_i, rst_ni)
 
 
   //////////////////////////
@@ -491,19 +487,12 @@ module efuse_interface_shim #(
   end
 
   // Register the write state
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      efuse_write_state_q <= ST_WRITE_IDLE;
-      apb_fuse_bank_req_write_flopped <= EfuseApbReqDefault;
-      apb_fuse_bank_req_write_readback_flopped <= EfuseApbReqDefault;
-      write_readback_phase_en_flopped <= 1'b0;
-    end else begin
-      efuse_write_state_q <= efuse_write_state_d;
-      apb_fuse_bank_req_write_flopped <= apb_fuse_bank_req_write;
-      apb_fuse_bank_req_write_readback_flopped <= apb_fuse_bank_req_write_readback;
-      write_readback_phase_en_flopped <= write_readback_phase_en;
-    end
-  end
+  `OCAH_FF(efuse_write_state_q, efuse_write_state_d, ST_WRITE_IDLE, clk_i, rst_ni)
+  `OCAH_FF(apb_fuse_bank_req_write_flopped, apb_fuse_bank_req_write, EfuseApbReqDefault, clk_i,
+           rst_ni)
+  `OCAH_FF(apb_fuse_bank_req_write_readback_flopped, apb_fuse_bank_req_write_readback,
+           EfuseApbReqDefault, clk_i, rst_ni)
+  `OCAH_FF(write_readback_phase_en_flopped, write_readback_phase_en, 1'b0, clk_i, rst_ni)
 
   ///////////////////////////////////////////////////////////////
   // Demux between read and write generated macro requests

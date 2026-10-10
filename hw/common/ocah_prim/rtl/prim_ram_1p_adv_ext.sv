@@ -17,6 +17,8 @@
 // read-valid controls. rerror_o bit1 is uncorrectable and bit0 is correctable; parity errors
 // set bit1.
 
+`include "ocah_registers.svh"
+
 module prim_ram_1p_adv_ext
   `include "prim_assert.sv"
   `include "ocah_assert.svh"
@@ -142,13 +144,7 @@ module prim_ram_1p_adv_ext
 
   // Flop the instance request signal to know to know which
   // tile to select for read data on the next cycle
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      inst_req_q <= '0;
-    end else begin
-      inst_req_q <= inst_req_d;
-    end
-  end
+  `OCAH_FF(inst_req_q, inst_req_d, '0, clk_i, rst_ni)
 
   // Ensure that only one RAM instance gets activated
   `OCAH_OT_ASSERT(OneHotInstReq_A, $onehot0(inst_req_d))
@@ -192,13 +188,7 @@ module prim_ram_1p_adv_ext
 
   assign rvalid_sram_d = prim_mubi_pkg::mubi4_and_hi(req_q, mubi4_t'(~write_q));
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      rvalid_sram_q <= MuBi4False;
-    end else begin
-      rvalid_sram_q <= rvalid_sram_d;
-    end
-  end
+  `OCAH_FF(rvalid_sram_q, rvalid_sram_d, MuBi4False, clk_i, rst_ni)
 
   assign req_d              = prim_mubi_pkg::mubi4_bool_to_mubi(req_i);
   assign write_d            = prim_mubi_pkg::mubi4_bool_to_mubi(write_i);
@@ -354,28 +344,13 @@ module prim_ram_1p_adv_ext
         .q_o({req_q})
       );
     end else begin: gen_no_prim_flop
-      always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-          write_q <= MuBi4False;
-          req_q   <= MuBi4False;
-        end else begin
-          write_q <= write_buf_d;
-          req_q   <= req_buf_d;
-        end
-      end
+      `OCAH_FF(write_q, write_buf_d, MuBi4False, clk_i, rst_ni)
+      `OCAH_FF(req_q, req_buf_d, MuBi4False, clk_i, rst_ni)
     end
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
-        addr_q  <= '0;
-        wdata_q <= '0;
-        wmask_q <= '0;
-      end else begin
-        addr_q  <= addr_d;
-        wdata_q <= wdata_d;
-        wmask_q <= wmask_d;
-      end
-    end
+    `OCAH_FF(addr_q, addr_d, '0, clk_i, rst_ni)
+    `OCAH_FF(wdata_q, wdata_d, '0, clk_i, rst_ni)
+    `OCAH_FF(wmask_q, wmask_d, '0, clk_i, rst_ni)
   end else begin : gen_dirconnect_input
     assign req_q   = req_buf_d;
     assign write_q = write_buf_d;
@@ -400,13 +375,7 @@ module prim_ram_1p_adv_ext
         .q_o({rvalid_q})
       );
     end else begin: gen_no_prim_rvalid_flop
-      always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-          rvalid_q <= MuBi4False;
-        end else begin
-          rvalid_q <= rvalid_d;
-        end
-      end
+      `OCAH_FF(rvalid_q, rvalid_d, MuBi4False, clk_i, rst_ni)
     end
 
     always_ff @(posedge clk_i or negedge rst_ni) begin

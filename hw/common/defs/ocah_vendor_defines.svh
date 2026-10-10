@@ -152,8 +152,9 @@
     are not on the OCAH compile. Not EMULATION. Leave unset.
   - PULP_DFT: DFT clock-mux in deprecated clock_divider_counter.sv (not on
     the compile). Leave unset.
-  - NO_SYNOPSYS_FF: registers.svh already `define`s it under VERILATOR. Do
-    not restate.
+  - NO_SYNOPSYS_FF: read only by registers.svh, which no OCAH source includes;
+    the vendored sources use ocah_registers.svh, whose sync_set_reset pragmas
+    test VERILATOR. Leave unset.
 
   pulp-platform/axi
   - QUESTA: flattens CDC FIFO payload types in axi_cdc_*.sv. Demux files

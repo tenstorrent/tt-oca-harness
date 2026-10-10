@@ -39,6 +39,8 @@
 // The ROM and SRAM hard macros are instantiated at integration level and connect through
 // the exposed memory ports.
 
+`include "ocah_registers.svh"
+
 module key_manager
   import km_intf_pkg::km_addr_t;
   import km_intf_pkg::km_axil_req_t;
@@ -278,10 +280,7 @@ module key_manager
   // Wipe KPV on either external wipe_state_i or CPU trap.
   // Pulse once on rising edge to avoid repeated full-regfile clears.
   assign wipe_event = wipe_state_i | cpu_trap;
-  always_ff @(posedge clk_i or negedge rst_cold_aasd_n) begin
-    if (!rst_cold_aasd_n) wipe_event_d <= 1'b0;
-    else wipe_event_d <= wipe_event;
-  end
+  `OCAH_FF(wipe_event_d, wipe_event, 1'b0, clk_i, rst_cold_aasd_n)
   assign wipe_pulse = wipe_event & ~wipe_event_d;
 
   //=========================================================================

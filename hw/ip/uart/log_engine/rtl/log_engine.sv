@@ -11,6 +11,8 @@
 // uart_tx_ready_i paces the writes; irq_o signals fetch or write errors; FIFO_DEPTH
 // sizes the read-data FIFO.
 
+`include "ocah_registers.svh"
+
 module log_engine
   import log_engine_pkg::csr_axil_req_t;
   import log_engine_pkg::csr_axil_resp_t;
@@ -144,15 +146,8 @@ module log_engine
   assign log_fetch_axil_resp = log_fetch_axil_resp_i;
 
   // add flop stage to cut timing after large combinational path in arb tree
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (~rst_ni) begin
-      log_fetch_mem_req_q <= 1'b0;
-      log_fetch_mem_addr_q <= '0;
-    end else begin
-      log_fetch_mem_req_q <= log_fetch_mem_req;
-      log_fetch_mem_addr_q <= log_fetch_mem_addr;
-    end
-  end
+  `OCAH_FF(log_fetch_mem_req_q, log_fetch_mem_req, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(log_fetch_mem_addr_q, log_fetch_mem_addr, '0, clk_i, rst_ni)
 
   axi_lite_from_mem #(
     .MemAddrWidth    (log_engine_pkg::LogFetchAddrWidth),
@@ -283,17 +278,10 @@ module log_engine
       log_fetch_addr_t'(max_log_len) * log_fetch_addr_t'(log_index) +
       log_fetch_addr_t'(log_words_fetched_cnt) * log_fetch_addr_t'(LogWordSize);
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (~rst_ni) begin
-      log_fetch_done_status <= 1'b0;
-      log_words_fetched_cnt <= log_words_fetched_cnt_t'(0);
-      log_fetch_fsm_state   <= ST_LOG_FETCH_IDLE;
-    end else begin
-      log_fetch_done_status <= log_fetch_done_status_next;
-      log_words_fetched_cnt <= log_words_fetched_cnt_next;
-      log_fetch_fsm_state   <= log_fetch_fsm_state_next;
-    end
-  end
+  `OCAH_FF(log_fetch_done_status, log_fetch_done_status_next, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(log_words_fetched_cnt, log_words_fetched_cnt_next, log_words_fetched_cnt_t'(0), clk_i,
+           rst_ni)
+  `OCAH_FF(log_fetch_fsm_state, log_fetch_fsm_state_next, ST_LOG_FETCH_IDLE, clk_i, rst_ni)
 
 
   ////////////////
@@ -450,15 +438,9 @@ module log_engine
 
   assign byte_ptr = log_engine_pkg::log_word_byte_ptr_t'(log_bytes_written_cnt);
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (~rst_ni) begin
-      log_bytes_written_cnt <= log_bytes_written_cnt_t'(0);
-      log_write_fsm_state   <= ST_LOG_WRITE_IDLE;
-    end else begin
-      log_bytes_written_cnt <= log_bytes_written_cnt_next;
-      log_write_fsm_state   <= log_write_fsm_state_next;
-    end
-  end
+  `OCAH_FF(log_bytes_written_cnt, log_bytes_written_cnt_next, log_bytes_written_cnt_t'(0), clk_i,
+           rst_ni)
+  `OCAH_FF(log_write_fsm_state, log_write_fsm_state_next, ST_LOG_WRITE_IDLE, clk_i, rst_ni)
 
 
   //////////

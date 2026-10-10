@@ -1,0 +1,351 @@
+diff --git a/src/cdc_2phase_clearable.sv b/src/cdc_2phase_clearable.sv
+index cfaa130..e3cdca0 100644
+--- a/src/cdc_2phase_clearable.sv
++++ b/src/cdc_2phase_clearable.sv
+@@ -48,7 +48,7 @@
+ ///
+ /* verilator lint_off DECLFILENAME */
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "common_cells/assertions.svh"
+ 
+ module cdc_2phase_clearable #(
+@@ -240,7 +240,7 @@ module cdc_2phase_src_clearable #(
+     end
+   end
+ 
+-  `FFNR(data_src_q, data_src_d, clk_i)
++  `OCAH_FFNR(data_src_q, data_src_d, clk_i)
+ 
+   always_ff @(posedge clk_i or negedge rst_ni) begin
+     if (!rst_ni) begin
+@@ -317,7 +317,7 @@ module cdc_2phase_dst_clearable #(
+     end
+   end
+ 
+-  `FFNR(data_dst_q, data_dst_d, clk_i)
++  `OCAH_FFNR(data_dst_q, data_dst_d, clk_i)
+ 
+   always_ff @(posedge clk_i or negedge rst_ni) begin
+     if (!rst_ni) begin
+diff --git a/src/cdc_fifo_gray.sv b/src/cdc_fifo_gray.sv
+index ea69f4f..ea834c2 100644
+--- a/src/cdc_fifo_gray.sv
++++ b/src/cdc_fifo_gray.sv
+@@ -95,7 +95,7 @@
+ ///     -through [get_pins -hierarchical -filter async]
+ /// ```
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "common_cells/assertions.svh"
+ 
+ (* no_ungroup *)
+@@ -197,7 +197,7 @@ module cdc_fifo_gray_src #(
+     data_d                          = data_q;
+     data_d[wptr_bin[LOG_DEPTH-1:0]] = src_data_i;
+   end
+-  `FFLARN(data_q, data_d, src_valid_i & src_ready_o, '0, src_clk_i, src_rst_ni)
++  `OCAH_FFL(data_q, data_d, src_valid_i & src_ready_o, '0, src_clk_i, src_rst_ni)
+ 
+   // Read pointer.
+   for (genvar i = 0; i < PtrWidth; i++) begin : gen_sync
+@@ -214,7 +214,7 @@ module cdc_fifo_gray_src #(
+   assign wptr_next = wptr_bin+1;
+   gray_to_binary #(PtrWidth) i_wptr_g2b (.A(wptr_q), .Z(wptr_bin));
+   binary_to_gray #(PtrWidth) i_wptr_b2g (.A(wptr_next), .Z(wptr_d));
+-  `FFLARN(wptr_q, wptr_d, src_valid_i & src_ready_o, '0, src_clk_i, src_rst_ni)
++  `OCAH_FFL(wptr_q, wptr_d, src_valid_i & src_ready_o, '0, src_clk_i, src_rst_ni)
+   assign async_wptr_o = wptr_q;
+ 
+   // The pointers into the FIFO are one bit wider than the actual address into
+@@ -257,7 +257,7 @@ module cdc_fifo_gray_dst #(
+   assign rptr_next = rptr_bin+1;
+   gray_to_binary #(PtrWidth) i_rptr_g2b (.A(rptr_q), .Z(rptr_bin));
+   binary_to_gray #(PtrWidth) i_rptr_b2g (.A(rptr_next), .Z(rptr_d));
+-  `FFLARN(rptr_q, rptr_d, dst_valid & dst_ready, '0, dst_clk_i, dst_rst_ni)
++  `OCAH_FFL(rptr_q, rptr_d, dst_valid & dst_ready, '0, dst_clk_i, dst_rst_ni)
+   assign async_rptr_o = rptr_q;
+ 
+   // Write pointer.
+diff --git a/src/cdc_fifo_gray_clearable.sv b/src/cdc_fifo_gray_clearable.sv
+index 9e35bea..47c1647 100644
+--- a/src/cdc_fifo_gray_clearable.sv
++++ b/src/cdc_fifo_gray_clearable.sv
+@@ -95,7 +95,7 @@
+ /// -hierarchical -filter async] \ -through [get_pins -hierarchical -filter
+ /// async] ```
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "common_cells/assertions.svh"
+ 
+ (* no_ungroup *)
+@@ -294,7 +294,7 @@ module cdc_fifo_gray_src_clearable #(
+     data_d                          = data_q;
+     data_d[wptr_bin[LOG_DEPTH-1:0]] = src_data_i;
+   end
+-  `FFLARN(data_q, data_d, src_valid_i & src_ready_o, '0, src_clk_i, src_rst_ni)
++  `OCAH_FFL(data_q, data_d, src_valid_i & src_ready_o, '0, src_clk_i, src_rst_ni)
+ 
+   // Read pointer.
+   for (genvar i = 0; i < PtrWidth; i++) begin : gen_sync
+@@ -311,7 +311,7 @@ module cdc_fifo_gray_src_clearable #(
+   assign wptr_next = wptr_bin+1;
+   gray_to_binary #(PtrWidth) i_wptr_g2b (.A(wptr_q), .Z(wptr_bin));
+   binary_to_gray #(PtrWidth) i_wptr_b2g (.A(wptr_next), .Z(wptr_d));
+-  `FFLARNC(wptr_q, wptr_d, src_valid_i & src_ready_o, src_clear_i, '0, src_clk_i, src_rst_ni)
++  `OCAH_FFLARNC(wptr_q, wptr_d, src_valid_i & src_ready_o, src_clear_i, '0, src_clk_i, src_rst_ni)
+   assign async_wptr_o = wptr_q;
+ 
+   // The pointers into the FIFO are one bit wider than the actual address into
+@@ -355,7 +355,7 @@ module cdc_fifo_gray_dst_clearable #(
+   assign rptr_next = rptr_bin+1;
+   gray_to_binary #(PtrWidth) i_rptr_g2b (.A(rptr_q), .Z(rptr_bin));
+   binary_to_gray #(PtrWidth) i_rptr_b2g (.A(rptr_next), .Z(rptr_d));
+-  `FFLARNC(rptr_q, rptr_d, dst_valid & dst_ready, dst_clear_i, '0, dst_clk_i, dst_rst_ni)
++  `OCAH_FFLARNC(rptr_q, rptr_d, dst_valid & dst_ready, dst_clear_i, '0, dst_clk_i, dst_rst_ni)
+   assign async_rptr_o = rptr_q;
+ 
+   // Write pointer.
+diff --git a/src/credit_counter.sv b/src/credit_counter.sv
+index 7862c6c..2bc9881 100644
+--- a/src/credit_counter.sv
++++ b/src/credit_counter.sv
+@@ -5,7 +5,7 @@
+ // Author: Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
+ // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "common_cells/assertions.svh"
+ 
+ module credit_counter #(
+@@ -42,7 +42,7 @@ module credit_counter #(
+     else if (increment) credit_d = credit_q + 1;
+   end
+ 
+-  `FFARNC(credit_q, credit_d, credit_init_i, InitNumCredits, clk_i, rst_ni)
++  `OCAH_FFARNC(credit_q, credit_d, credit_init_i, InitNumCredits, clk_i, rst_ni)
+ 
+   assign credit_o       = credit_q;
+   assign credit_left_o  = (credit_q != '0);
+diff --git a/src/isochronous_4phase_handshake.sv b/src/isochronous_4phase_handshake.sv
+index 7fb2420..ef8167d 100644
+--- a/src/isochronous_4phase_handshake.sv
++++ b/src/isochronous_4phase_handshake.sv
+@@ -22,7 +22,7 @@
+ ///
+ /// If the passing of data is necessary this should be done out side the module, for example:
+ /// ```
+-/// `FFLNR(dst_data_o, src_data_i, (src_valid_i && src_ready_o), src_clk_i)
++/// `OCAH_FFLNR(dst_data_o, src_data_i, (src_valid_i && src_ready_o), src_clk_i)
+ /// ```
+ ///
+ /// This module differs to `isochronous_spill_register` that it doesn't buffer any data
+@@ -38,7 +38,7 @@
+ /// There are _no_ restrictions on which clock domain should be the faster, any integer
+ /// ratio will work.
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "common_cells/assertions.svh"
+ 
+ module isochronous_4phase_handshake (
+@@ -56,16 +56,16 @@ module isochronous_4phase_handshake (
+   logic dst_req_q, dst_ack_q;
+ 
+   // source is making a request
+-  `FFLARN(src_req_q, ~src_req_q, (src_valid_i && src_ready_o), 1'b0, src_clk_i, src_rst_ni)
++  `OCAH_FFL(src_req_q, ~src_req_q, (src_valid_i && src_ready_o), 1'b0, src_clk_i, src_rst_ni)
+   // "synchronize" the acknowledge into the sending clock-domain
+-  `FFARN(src_ack_q, dst_ack_q, 1'b0, src_clk_i, src_rst_ni)
++  `OCAH_FF(src_ack_q, dst_ack_q, 1'b0, src_clk_i, src_rst_ni)
+   // source is ready if the request wasn't yet acknowledged
+   assign src_ready_o = (src_req_q == src_ack_q);
+ 
+   // down-stream circuit is acknowledging the handshake
+-  `FFLARN(dst_ack_q, ~dst_ack_q, (dst_valid_o && dst_ready_i), 1'b0, dst_clk_i, dst_rst_ni)
++  `OCAH_FFL(dst_ack_q, ~dst_ack_q, (dst_valid_o && dst_ready_i), 1'b0, dst_clk_i, dst_rst_ni)
+   // "synchronize" the request into the receiving clock domain
+-  `FFARN(dst_req_q, src_req_q, 1'b0, dst_clk_i, dst_rst_ni)
++  `OCAH_FF(dst_req_q, src_req_q, 1'b0, dst_clk_i, dst_rst_ni)
+   // destination is valid if we didn't yet get acknowledge
+   assign dst_valid_o = (dst_req_q != dst_ack_q);
+ 
+diff --git a/src/isochronous_spill_register.sv b/src/isochronous_spill_register.sv
+index b229f36..5b5d79c 100644
+--- a/src/isochronous_spill_register.sv
++++ b/src/isochronous_spill_register.sv
+@@ -11,7 +11,7 @@
+ //
+ // Florian Zaruba <zarubaf@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "common_cells/assertions.svh"
+ 
+ /// A register with handshakes that completely cuts any combinatorial paths
+@@ -79,12 +79,12 @@ module isochronous_spill_register #(
+     /// empty, otherwise it is full.
+     logic [1:0] rd_pointer_q, wr_pointer_q;
+     // Advance write pointer if we pushed a new item into the FIFO. (Source clock domain)
+-    `FFLARN(wr_pointer_q, wr_pointer_q+1, (src_valid_i && src_ready_o), '0, src_clk_i, src_rst_ni)
++    `OCAH_FFL(wr_pointer_q, wr_pointer_q+1, (src_valid_i && src_ready_o), '0, src_clk_i, src_rst_ni)
+     // Advance read pointer if downstream consumed an item. (Destination clock domain)
+-    `FFLARN(rd_pointer_q, rd_pointer_q+1, (dst_valid_o && dst_ready_i), '0, dst_clk_i, dst_rst_ni)
++    `OCAH_FFL(rd_pointer_q, rd_pointer_q+1, (dst_valid_o && dst_ready_i), '0, dst_clk_i, dst_rst_ni)
+ 
+     T [1:0] mem_d, mem_q;
+-    `FFL(mem_q, mem_d, (src_valid_i && src_ready_o), '0, src_clk_i, src_rst_ni)
++    `OCAH_FFL(mem_q, mem_d, (src_valid_i && src_ready_o), '0, src_clk_i, src_rst_ni)
+     always_comb begin
+       mem_d = mem_q;
+       mem_d[wr_pointer_q[0]] = src_data_i;
+diff --git a/src/passthrough_stream_fifo.sv b/src/passthrough_stream_fifo.sv
+index 6fbf884..83e1f19 100644
+--- a/src/passthrough_stream_fifo.sv
++++ b/src/passthrough_stream_fifo.sv
+@@ -7,7 +7,7 @@
+ // - Tobias Senti <tsenti@ethz.ch>
+ 
+ `include "common_cells/assertions.svh"
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Stream FIFO that does not cut the timing path. When full; pushing data is allowed if in
+ /// the same cycle data is popped. Creates longer timing paths but can use buffer space more
+@@ -109,10 +109,10 @@ module passthrough_stream_fifo #(
+     end
+ 
+     // Flip Flops
+-    `FF( read_ptr_q,  read_ptr_d, '0, clk_i, rst_ni)
+-    `FF(write_ptr_q, write_ptr_d, '0, clk_i, rst_ni)
++    `OCAH_FF( read_ptr_q,  read_ptr_d, '0, clk_i, rst_ni)
++    `OCAH_FF(write_ptr_q, write_ptr_d, '0, clk_i, rst_ni)
+ 
+-    `FFL(data_q, data_d, load_data, '0, clk_i, rst_ni)
++    `OCAH_FFL(data_q, data_d, load_data, '0, clk_i, rst_ni)
+ 
+     // no full push
+     `OCAH_PULP_ASSERT_NEVER(CheckFullPush, (!ready_o & valid_i), clk_i, !rst_ni)
+diff --git a/src/ring_buffer.sv b/src/ring_buffer.sv
+index cf3db75..1c663ba 100644
+--- a/src/ring_buffer.sv
++++ b/src/ring_buffer.sv
+@@ -16,7 +16,7 @@
+ // The read pointer is advanced independently using a dedicated `advance_i` and `step_i`
+ // interface. This decouples read consumption from read address requests.
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "common_cells/assertions.svh"
+ 
+ module ring_buffer #(
+@@ -65,9 +65,9 @@ module ring_buffer #(
+     logic [AddrWidth:0] rptr_d, rptr_q;
+     logic [AddrWidth:0] wptr_d, wptr_q;
+ 
+-    `FF(mem_q, mem_d, '0, clk_i, rst_ni)
+-    `FF(rptr_q, rptr_d, '0, clk_i, rst_ni)
+-    `FF(wptr_q, wptr_d, '0, clk_i, rst_ni)
++    `OCAH_FF(mem_q, mem_d, '0, clk_i, rst_ni)
++    `OCAH_FF(rptr_q, rptr_d, '0, clk_i, rst_ni)
++    `OCAH_FF(wptr_q, wptr_d, '0, clk_i, rst_ni)
+ 
+     ////////////////////////////
+     // State transition logic //
+diff --git a/src/shift_reg_gated.sv b/src/shift_reg_gated.sv
+index f17ae7f..fbe75a0 100644
+--- a/src/shift_reg_gated.sv
++++ b/src/shift_reg_gated.sv
+@@ -10,7 +10,7 @@
+ //
+ // Description: A Simple shift register with ICG for arbitrary depth and types.
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ module shift_reg_gated #(
+   parameter int unsigned Depth = 32'd8,
+@@ -49,11 +49,11 @@ module shift_reg_gated #(
+       end
+ 
+       // shift valid flag without clock gate
+-      `FF(valid_q[i], valid_d[i], '0, clk_i, rst_ni)
++      `OCAH_FF(valid_q[i], valid_d[i], '0, clk_i, rst_ni)
+ 
+       // Gate each shift register with a valid flag to enable the synthsis tools to insert ICG for
+       // better power comsumption.
+-      `FFL(data_q[i], data_d[i], valid_d[i], dtype'('0), clk_i, rst_ni)
++      `OCAH_FFL(data_q[i], data_d[i], valid_d[i], dtype'('0), clk_i, rst_ni)
+     end
+ 
+     // Output the shifted result.
+diff --git a/src/stream_register.sv b/src/stream_register.sv
+index 247ef34..63df310 100644
+--- a/src/stream_register.sv
++++ b/src/stream_register.sv
+@@ -8,7 +8,7 @@
+ // CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ // specific language governing permissions and limitations under the License.
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Register with a simple stream-like ready/valid handshake.
+ /// This register does not cut combinatorial paths on all control signals; if you need a complete
+@@ -34,7 +34,7 @@ module stream_register #(
+     assign ready_o = ready_i | ~valid_o;
+     assign reg_ena = valid_i & ready_o;
+     // Load-enable FFs with synch clear
+-    `FFLARNC(valid_o, valid_i, ready_o, clr_i, 1'b0  , clk_i, rst_ni)
+-    `FFLARNC(data_o,   data_i, reg_ena, clr_i, T'('0), clk_i, rst_ni)
++    `OCAH_FFLARNC(valid_o, valid_i, ready_o, clr_i, 1'b0  , clk_i, rst_ni)
++    `OCAH_FFLARNC(data_o,   data_i, reg_ena, clr_i, T'('0), clk_i, rst_ni)
+ 
+ endmodule
+diff --git a/src/stream_throttle.sv b/src/stream_throttle.sv
+index f464728..e973dda 100644
+--- a/src/stream_throttle.sv
++++ b/src/stream_throttle.sv
+@@ -4,7 +4,7 @@
+ //
+ // Thomas Benz <tbenz@ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Throttles a ready valid handshaked bus. The maximum number of outstanding transfers have to
+ /// be set as a compile-time parameter, whereas the number of outstanding transfers can be set
+@@ -77,6 +77,6 @@ module stream_throttle #(
+     assign req_ready_o = req_ready_i & credit_available;
+ 
+     // state
+-    `FF(credit_q, credit_d, '0, clk_i, rst_ni)
++    `OCAH_FF(credit_q, credit_d, '0, clk_i, rst_ni)
+ 
+ endmodule : stream_throttle
+diff --git a/src/stream_to_mem.sv b/src/stream_to_mem.sv
+index 7af96c0..3144bb1 100644
+--- a/src/stream_to_mem.sv
++++ b/src/stream_to_mem.sv
+@@ -11,7 +11,7 @@
+ // Authors:
+ // - Andreas Kurth <akurth@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "common_cells/assertions.svh"
+ 
+ /// `stream_to_mem`: Allows to use memories with flow control (`valid`/`ready`) for requests but without flow
+@@ -102,7 +102,7 @@ module stream_to_mem #(
+     );
+ 
+     // Register
+-    `FFARN(cnt_q, cnt_d, '0, clk_i, rst_ni)
++    `OCAH_FF(cnt_q, cnt_d, '0, clk_i, rst_ni)
+ 
+   end else begin : gen_no_buf
+     // Control request, memory request, and response interface handshakes.

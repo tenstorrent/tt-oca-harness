@@ -6,7 +6,7 @@
 // - Samuel Riedel <sriedel@iis.ee.ethz.ch>
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Splits DMA transactions along a given region boundaries
 module idma_mp_split_midend #(

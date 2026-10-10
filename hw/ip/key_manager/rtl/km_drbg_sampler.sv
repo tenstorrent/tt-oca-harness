@@ -20,6 +20,8 @@
 // - STATUS (DRBG_READY, PREFETCHED, TIMEOUT_ERR, STREAM_ERR, COUNT_GOOD, COUNT_BAD)
 // - PREFETCH_DATA (read-only)
 
+`include "ocah_registers.svh"
+
 module km_drbg_sampler
   import km_intf_pkg::km_axil_req_t;
   import km_intf_pkg::km_axil_resp_t;
@@ -150,11 +152,8 @@ module km_drbg_sampler
   end
 
   // slot_rdata is datapath (holds random/response data) and must NOT be reset.
-  always_ff @(posedge clk_i) begin
-    if (warm_rst_ni && slot_valid && slot_is_data && data_read_done) begin
-      slot_rdata <= data_read_rdata;
-    end
-  end
+  `OCAH_FFLNR(slot_rdata, data_read_rdata,
+              warm_rst_ni && slot_valid && slot_is_data && data_read_done, clk_i)
 
   //--------------------------------------------------------------------------
   // DATA read FSM and DRBG request
@@ -331,12 +330,10 @@ module km_drbg_sampler
     end
   end
 
-  always_ff @(posedge clk_i) begin
-    if (warm_rst_ni && (state_q == ST_REQUEST || state_q == ST_BYTE_ASSEMBLY) &&
-        tvalid && tready) begin
-      word_reg <= data_word_next;
-    end
-  end
+  `OCAH_FFLNR(
+      word_reg, data_word_next,
+      warm_rst_ni && (state_q == ST_REQUEST || state_q == ST_BYTE_ASSEMBLY) && tvalid && tready,
+      clk_i)
 
   always_comb begin
     state_d = state_q;

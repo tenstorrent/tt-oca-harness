@@ -11,6 +11,7 @@
 // test_en_i freezes the retained digest for DFT; digest_vld_sticky_o marks validity.
 
 `include "prim_assert.sv"
+`include "ocah_registers.svh"
 
 module efuse_token_digest_sha256 (
   input logic clk_i,                    // System clock.
@@ -111,15 +112,8 @@ module efuse_token_digest_sha256 (
     endcase
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      state_q    <= ST_IDLE;
-      word_idx_q <= 3'd0;
-    end else begin
-      state_q    <= state_d;
-      word_idx_q <= word_idx_d;
-    end
-  end
+  `OCAH_FF(state_q, state_d, ST_IDLE, clk_i, rst_ni)
+  `OCAH_FF(word_idx_q, word_idx_d, 3'd0, clk_i, rst_ni)
 
   prim_sha2_32 #(
     .MultimodeEn(0)
@@ -155,13 +149,7 @@ module efuse_token_digest_sha256 (
 
   // The prim_sha2 engine pulses hash_done_o one cycle before it writes the
   // final digest_o, so the updated digest_o is only visible the following cycle.
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      hash_done_q <= 1'b0;
-    end else begin
-      hash_done_q <= hash_done;
-    end
-  end
+  `OCAH_FF(hash_done_q, hash_done, 1'b0, clk_i, rst_ni)
 
   // Ungated latch controls. The digest is captured when hash_done_q marks digest_o valid.
   // The sticky valid opens on either event, with start_i taking priority so that launching a

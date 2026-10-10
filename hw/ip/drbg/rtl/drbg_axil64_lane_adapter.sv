@@ -12,6 +12,8 @@
 // lane, selected by address bit 2. Unsupported accesses return AXI SLVERR and emit no
 // downstream request.
 
+`include "ocah_registers.svh"
+
 module drbg_axil64_lane_adapter
   import drbg_pkg::drbg_axil64_req_t;
   import drbg_pkg::drbg_axil64_resp_t;
@@ -97,39 +99,20 @@ module drbg_axil64_lane_adapter
     return lane_sel ? data[63:32] : data[31:0];
   endfunction
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      state_q      <= ST_IDLE;
-      aw_pending_q <= 1'b0;
-      w_pending_q  <= 1'b0;
-      aw_addr_q    <= '0;
-      aw_prot_q    <= '0;
-      w_data_q     <= '0;
-      w_strb_q     <= '0;
-      req_addr_q   <= '0;
-      req_prot_q   <= '0;
-      req_wdata_q  <= '0;
-      req_wstrb_q  <= '0;
-      req_lane_q   <= 1'b0;
-      resp_rdata_q <= '0;
-      resp_code_q  <= AxiRespOkay;
-    end else begin
-      state_q      <= state_d;
-      aw_pending_q <= aw_pending_d;
-      w_pending_q  <= w_pending_d;
-      aw_addr_q    <= aw_addr_d;
-      aw_prot_q    <= aw_prot_d;
-      w_data_q     <= w_data_d;
-      w_strb_q     <= w_strb_d;
-      req_addr_q   <= req_addr_d;
-      req_prot_q   <= req_prot_d;
-      req_wdata_q  <= req_wdata_d;
-      req_wstrb_q  <= req_wstrb_d;
-      req_lane_q   <= req_lane_d;
-      resp_rdata_q <= resp_rdata_d;
-      resp_code_q  <= resp_code_d;
-    end
-  end
+  `OCAH_FF(state_q, state_d, ST_IDLE, clk_i, rst_ni)
+  `OCAH_FF(aw_pending_q, aw_pending_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(w_pending_q, w_pending_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(aw_addr_q, aw_addr_d, '0, clk_i, rst_ni)
+  `OCAH_FF(aw_prot_q, aw_prot_d, '0, clk_i, rst_ni)
+  `OCAH_FF(w_data_q, w_data_d, '0, clk_i, rst_ni)
+  `OCAH_FF(w_strb_q, w_strb_d, '0, clk_i, rst_ni)
+  `OCAH_FF(req_addr_q, req_addr_d, '0, clk_i, rst_ni)
+  `OCAH_FF(req_prot_q, req_prot_d, '0, clk_i, rst_ni)
+  `OCAH_FF(req_wdata_q, req_wdata_d, '0, clk_i, rst_ni)
+  `OCAH_FF(req_wstrb_q, req_wstrb_d, '0, clk_i, rst_ni)
+  `OCAH_FF(req_lane_q, req_lane_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(resp_rdata_q, resp_rdata_d, '0, clk_i, rst_ni)
+  `OCAH_FF(resp_code_q, resp_code_d, AxiRespOkay, clk_i, rst_ni)
 
   always_comb begin
     logic aw_handshake;

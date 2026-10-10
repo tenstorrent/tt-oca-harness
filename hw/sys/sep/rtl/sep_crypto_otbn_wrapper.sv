@@ -17,6 +17,7 @@
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
+`include "ocah_registers.svh"
 
 module sep_crypto_otbn_wrapper (
   input  logic clk_i,                         // System clock.
@@ -149,13 +150,7 @@ module sep_crypto_otbn_wrapper (
 
   logic otbn_otp_key_req_delay;
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (~rst_ni) begin
-      otbn_otp_key_req_delay <= 1'b0;
-    end else begin
-      otbn_otp_key_req_delay <= otbn_otp_key_req.req;
-    end
-  end
+  `OCAH_FF(otbn_otp_key_req_delay, otbn_otp_key_req.req, 1'b0, clk_i, rst_ni)
 
   assign otbn_otp_key_rsp.ack        = otbn_otp_key_req_delay;
   assign otbn_otp_key_rsp.key        = 128'h48ecf6c738f0f108a5b08620695ffd4d;

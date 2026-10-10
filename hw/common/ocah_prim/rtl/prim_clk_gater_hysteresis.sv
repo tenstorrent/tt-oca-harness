@@ -10,6 +10,8 @@
 // is sticky: the countdown waits until busy_i has been seen after the kick.
 // test_clk_en_i forces the clock on for scan.
 
+`include "ocah_registers.svh"
+
 module prim_clk_gater_hysteresis #(
   parameter int unsigned HYST_WIDTH = 6  // Width of hysteresis_i.
 ) (
@@ -56,15 +58,8 @@ module prim_clk_gater_hysteresis #(
     clk_active_o = run;
   end
 
-  always_ff @(posedge clk_i) begin
-    if (~rst_ni) begin
-      busy_seen_q <= '0;
-      hyst_cnt_q  <= '1;
-    end else begin
-      busy_seen_q <= busy_seen_d;
-      hyst_cnt_q  <= hyst_cnt_d;
-    end
-  end
+  `OCAH_FFSRN(busy_seen_q, busy_seen_d, '0, clk_i, rst_ni)
+  `OCAH_FFSRN(hyst_cnt_q, hyst_cnt_d, '1, clk_i, rst_ni)
 
   prim_clock_gating u_clkgater (
     .clk_i(clk_i),

@@ -10,6 +10,8 @@
 // register stage. Mask the master just served for one cycle after its response so its
 // still-asserted PSEL and PENABLE do not start a second transfer.
 
+`include "ocah_registers.svh"
+
 module prim_apb_arb #(
   parameter int unsigned ADDR_WIDTH = 32,  // APB address width.
   parameter int unsigned DATA_WIDTH = 32,  // APB data width.
@@ -188,13 +190,7 @@ module prim_apb_arb #(
   end
 
   // APB state machine for slave interface
-  always_ff @(posedge clk_i) begin : apb_fsm_ff
-    if (~rst_ni) begin
-      apb_state_r <= IDLE;
-    end else begin
-      apb_state_r <= apb_state_nxt;
-    end
-  end
+  `OCAH_FFSRN(apb_state_r, apb_state_nxt, IDLE, clk_i, rst_ni)
 
   always_comb begin : apb_fsm_comb
     apb_state_nxt   = apb_state_r;
