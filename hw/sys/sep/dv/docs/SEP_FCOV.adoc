@@ -3689,7 +3689,7 @@ they add or reuse.
 [cols="2,4,4,3,1,2",options="header"]
 |===
 |Coverpoint |Bins |Sampled DUT signal and gate |Owning tests |Status |Specification
-|`cp_pad_timing_ok` |`period_ok`, `lead_ok`, `trail_ok`, `idle_gap_ok` |`spi_cs_n_i`, `spi_sck_i`, latched `CONFIGOPTS.{clkdiv,csnlead,csntrail,csnidle}`. Core-clock counters between pad edges. period = 2 x (`CLKDIV` + 1). lead = (`CSNLEAD` + 1) x (`CLKDIV` + 1). trail = (`CSNTRAIL` + 1) x (`CLKDIV` + 1). gap >= (`CSNIDLE` + 1) x (`CLKDIV` + 1). A bin scores only on a match |`sep_spi_pad_timing_cfg_rand_test` |executable |`spi_controller.adoc`, `CONFIGOPTS`
+|`cp_pad_timing_ok` |`period_ok`, `lead_ok`, `trail_ok`, `idle_gap_ok` |`spi_cs_n_i`, `spi_sck_i`, latched `CONFIGOPTS.{clkdiv,csnlead,csntrail,csnidle}`. Core-clock counters between pad edges. period = 2 x (`CLKDIV` + 1). lead >= (`CSNLEAD` + 1) x (`CLKDIV` + 1). trail >= (`CSNTRAIL` + 1) x (`CLKDIV` + 1). gap >= (`CSNIDLE` + 1) x (`CLKDIV` + 1) (minimum bounds). A bin scores only on a match |`sep_spi_pad_timing_cfg_rand_test` |executable |`spi_controller.adoc`, `CONFIGOPTS`
 |`cp_spien_hold_run` |`hold` (`SPIEN` = 0 at a `COMMAND` write, pad quiet until the write of `SPIEN` = 1), `run` (`cs_n` falls after the write of `SPIEN` = 1 with the command accepted before) |`wr_ev`, `wr_data` (`CONTROL.SPIEN`, `COMMAND`), `spi_cs_n_i`, `spi_sck_i`. Sample at the `SPIEN` write and at the next `cs_n` fall |`sep_spi_ot_host_csr_irq_rand_test` |executable |`spi_controller.adoc`, `CONTROL.SPIEN`
 |===
 
