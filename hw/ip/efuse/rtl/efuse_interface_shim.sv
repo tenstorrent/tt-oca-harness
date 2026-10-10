@@ -10,8 +10,7 @@
 
 `include "ocah_registers.svh"
 
-module efuse_interface_shim
-#(
+module efuse_interface_shim #(
   parameter int unsigned SHADOW_REG_BITS = 24576,  // Fuse array size in bits; declared but not used
                                                    // in this module.
   parameter type addr_t = logic,        // Type of the byte address register for read commands.
