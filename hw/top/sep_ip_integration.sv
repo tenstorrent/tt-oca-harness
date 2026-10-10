@@ -18,6 +18,7 @@
 //-----------------------------------------------------------------------------
 
 `include "ocah_assert.svh"
+`include "ocah_registers.svh"
 
 module sep_ip_integration
   import sep_pkg::*;
@@ -262,10 +263,7 @@ module sep_ip_integration
   assign km_rom_mem_rsp_o.rdata  = km_rom_rdata[31:0];
   assign km_rom_mem_rsp_o.parity = km_rom_rdata[35:32];
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) km_rom_rvalid <= 1'b0;
-    else km_rom_rvalid <= km_rom_mem_req_i.req;
-  end
+  `OCAH_FF(km_rom_rvalid, km_rom_mem_req_i.req, 1'b0, clk_i, rst_ni)
 
   prim_rom #(
     .Width       (KmRomWidth),

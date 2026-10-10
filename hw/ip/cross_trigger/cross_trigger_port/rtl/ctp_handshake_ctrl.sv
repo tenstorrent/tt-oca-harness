@@ -10,6 +10,8 @@
 // either side's handshake is in progress.
 // Pad outputs are registered.
 
+`include "ocah_registers.svh"
+
 module ctp_handshake_ctrl (
   input  logic clk_i,                   // System clock.
   input  logic rst_ni,                  // Active-low asynchronous reset; returns both state
@@ -147,23 +149,12 @@ module ctp_handshake_ctrl (
   end
 
   // Registered outputs
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      sender_state_q   <= SENDER_IDLE;
-      receiver_state_q <= RECEIVER_IDLE;
-      ct_req_out_q     <= 1'b0;
-      ct_ack_out_q     <= 1'b0;
-      ct_dst_q         <= 1'b0;
-      busy_q           <= 1'b0;
-    end else begin
-      sender_state_q   <= sender_state_d;
-      receiver_state_q <= receiver_state_d;
-      ct_req_out_q     <= ct_req_out_d;
-      ct_ack_out_q     <= ct_ack_out_d;
-      ct_dst_q         <= ct_dst_d;
-      busy_q           <= busy_d;
-    end
-  end
+  `OCAH_FF(sender_state_q, sender_state_d, SENDER_IDLE, clk_i, rst_ni)
+  `OCAH_FF(receiver_state_q, receiver_state_d, RECEIVER_IDLE, clk_i, rst_ni)
+  `OCAH_FF(ct_req_out_q, ct_req_out_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(ct_ack_out_q, ct_ack_out_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(ct_dst_q, ct_dst_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(busy_q, busy_d, 1'b0, clk_i, rst_ni)
 
   assign ct_req_out_o = ct_req_out_q;
   assign ct_ack_out_o = ct_ack_out_q;

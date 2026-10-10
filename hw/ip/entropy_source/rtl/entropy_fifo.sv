@@ -19,6 +19,8 @@
 // - parity_error_o
 // - pointer_error_o
 
+`include "ocah_registers.svh"
+
 module entropy_fifo #(
   parameter int unsigned DEPTH = 64,    // FIFO depth in words.
   localparam type ptr_t   = logic [$clog2(DEPTH)-1:0],  // FIFO pointer type.
@@ -124,11 +126,7 @@ module entropy_fifo #(
   // Memory write (no reset — memory is don't-care on reset). On a push_valid
   // cycle wptr_prim still holds the pre-increment address (prim_count commits
   // on the following edge), so the write address matches the old wptr_q.
-  always_ff @(posedge clk_i) begin
-    if (push_valid) begin
-      mem[wptr_prim] <= {calc_word_parity(final_wdata), final_wdata};
-    end
-  end
+  `OCAH_FFLNR(mem[wptr_prim], {calc_word_parity(final_wdata), final_wdata}, push_valid, clk_i)
 
   /////////////////
   // Combinational

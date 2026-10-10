@@ -25,6 +25,8 @@
 //
 // DFT: scan_rst_ni / scanmode_i bypass both output paths consistently.
 
+`include "ocah_registers.svh"
+
 module km_reset_conditioner
   import prim_mubi_pkg::*;
 #(
@@ -114,13 +116,7 @@ module km_reset_conditioner
   // immediately when cold reset fires (satisfies WarmAssertedWhenCold_A).
   // DFT: when scan mode is active, bypass with scan_rst_ni.
   logic warm_hold_active_q;
-  always_ff @(posedge clk_i or negedge rst_cold_aasd_no) begin
-    if (!rst_cold_aasd_no) begin
-      warm_hold_active_q <= 1'b1;
-    end else begin
-      warm_hold_active_q <= warm_hold_active | warm_trigger;
-    end
-  end
+  `OCAH_FF(warm_hold_active_q, warm_hold_active | warm_trigger, 1'b1, clk_i, rst_cold_aasd_no)
 
   logic warm_rst_n;
   assign warm_rst_n = ~warm_hold_active_q;

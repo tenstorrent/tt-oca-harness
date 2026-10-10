@@ -11,6 +11,8 @@
 // With cg_enable_i high, the clear FSM clock runs only while busy and the register clock is
 // gated after ctrl-bus inactivity; zeroer_intp_o signals completion.
 
+`include "ocah_registers.svh"
+
 module zeroer #(
   parameter type zeroer_ctrl_req_t  = logic,                // Ctrl AXI request type.
   parameter type zeroer_ctrl_resp_t = logic,                // Ctrl AXI response type.
@@ -385,34 +387,18 @@ module zeroer #(
     endcase
   end
 
-  always_ff @(posedge axi_clk or negedge rst_ni) begin
-    if (~rst_ni) begin
-      cur_state <= ST_IDLE;
-      cur_dest_addr <= axi_addr_t'(0);
-      cur_size <= '0;
-      cur_strb <= axi_strb_t'(0);
-      cur_last_transfer_strb <= '0;
-      cur_beats_to_transfer <= axi_pkg::len_t'(0);
-    end else begin
-      cur_state <= nxt_state;
-      cur_dest_addr <= nxt_dest_addr;
-      cur_size <= nxt_size;
-      cur_strb <= nxt_strb;
-      cur_last_transfer_strb <= nxt_last_transfer_strb;
-      cur_beats_to_transfer <= nxt_beats_to_transfer;
-    end
-  end
+  `OCAH_FF(cur_state, nxt_state, ST_IDLE, axi_clk, rst_ni)
+  `OCAH_FF(cur_dest_addr, nxt_dest_addr, axi_addr_t'(0), axi_clk, rst_ni)
+  `OCAH_FF(cur_size, nxt_size, '0, axi_clk, rst_ni)
+  `OCAH_FF(cur_strb, nxt_strb, axi_strb_t'(0), axi_clk, rst_ni)
+  `OCAH_FF(cur_last_transfer_strb, nxt_last_transfer_strb, '0, axi_clk, rst_ni)
+  `OCAH_FF(cur_beats_to_transfer, nxt_beats_to_transfer, axi_pkg::len_t'(0), axi_clk, rst_ni)
 
   // every time a transaction is sent out, count to know when it has completed
-  always_ff @(posedge axi_clk or negedge rst_ni) begin
-    if (~rst_ni) begin
-      outstanding_reqs <= 32'd0;
-    end else begin
-      outstanding_reqs <= outstanding_reqs
-                           + 32'(mst_axi_resp_i.aw_ready & mst_axi_req_o.aw_valid)
-                           - 32'(mst_axi_req_o.b_ready & mst_axi_resp_i.b_valid);
-    end
-  end
+  `OCAH_FF(
+      outstanding_reqs,
+      outstanding_reqs + 32'(mst_axi_resp_i.aw_ready & mst_axi_req_o.aw_valid) - 32'(mst_axi_req_o.b_ready & mst_axi_resp_i.b_valid),
+      32'd0, axi_clk, rst_ni)
 
   // Ungated clock: axi_clk stops the cycle busy falls, so it would never sample that edge.
   logic prev_busy;

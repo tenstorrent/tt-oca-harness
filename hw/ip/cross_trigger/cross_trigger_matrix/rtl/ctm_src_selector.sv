@@ -6,6 +6,8 @@
 // select_i enables which destinations contribute; registration prevents glitches on
 // ct_src_o.
 
+`include "ocah_registers.svh"
+
 module ctm_src_selector #(
   parameter int unsigned NUM_CT_DST = 4  // CT_Dst input count.
 ) (
@@ -36,13 +38,7 @@ module ctm_src_selector #(
   assign ct_src_comb = |selected_pulses;
 
   // Register the output to prevent glitches
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      ct_src_o <= 1'b0;
-    end else begin
-      ct_src_o <= ct_src_comb;
-    end
-  end
+  `OCAH_FF(ct_src_o, ct_src_comb, 1'b0, clk_i, rst_ni)
 
 endmodule : ctm_src_selector
 

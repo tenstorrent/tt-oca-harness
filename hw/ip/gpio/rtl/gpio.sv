@@ -16,6 +16,8 @@
 // own interface registers only.
 // core2pad_* and pad2core_* are the pad-facing request wires.
 
+`include "ocah_registers.svh"
+
 module gpio
   import gpio_pkg::*;
 #(
@@ -274,15 +276,8 @@ module gpio
     .q_o(pad2core_synced)
   );
 
-  always_ff @(posedge clk_i or negedge rst_primary_ni) begin
-    if (!rst_primary_ni) begin
-      prev_pad2core <= 1'b0;
-      interrupt <= 1'b0;
-    end else begin
-      prev_pad2core <= pad2core_synced;
-      interrupt <= nxt_interrupt;
-    end
-  end
+  `OCAH_FF(prev_pad2core, pad2core_synced, 1'b0, clk_i, rst_primary_ni)
+  `OCAH_FF(interrupt, nxt_interrupt, 1'b0, clk_i, rst_primary_ni)
 
   typedef enum logic [1:0] {
     ACTIVE_HIGH  = 2'b00,

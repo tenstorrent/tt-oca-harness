@@ -8,6 +8,8 @@
 // While the error stays asserted the state does not re-toggle; when the error clears the
 // current detune setting is preserved.
 
+`include "ocah_registers.svh"
+
 module entropy_rosc_tune_fsm (
   input       logic clk_i,              // System clock.
   input       logic rst_ni,             // Active-low reset.
@@ -39,21 +41,9 @@ module entropy_rosc_tune_fsm (
   // Sequential
   ///////////////
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      health_error_d <= 1'b0;
-    end else begin
-      health_error_d <= health_error_i;
-    end
-  end
+  `OCAH_FF(health_error_d, health_error_i, 1'b0, clk_i, rst_ni)
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      state_q <= STATE_0;
-    end else begin
-      state_q <= state_d;
-    end
-  end
+  `OCAH_FF(state_q, state_d, STATE_0, clk_i, rst_ni)
 
   /////////////////
   // Combinational

@@ -1,9 +1,11 @@
 +incdir+hw/common/defs
 +incdir+hw/sys/smu/dv/tb
 +incdir+hw/common/assert
++incdir+hw/common/registers
 +incdir+hw/common/dv/vip/ocah_lib/uvm
 hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv
 +incdir+hw/common/assert
++incdir+hw/common/registers
 +incdir+hw/common/defs
 +incdir+hw/ip/efuse/rtl/svh
 +incdir+hw/ip/i3ccore_wrap/rtl

@@ -39,6 +39,7 @@
 // AxPROT[1] (non-secure) is not carried.
 
 `include "ocah_assert.svh"
+`include "ocah_registers.svh"
 
 module axi_lite_to_ahb #(
   parameter int unsigned AXI_ADDR_WIDTH        = 32,
@@ -139,27 +140,14 @@ module axi_lite_to_ahb #(
   // --------------------------------------------------
   // FSM Sequential Logic
   // --------------------------------------------------
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      state_q     <= IDLE;
-      req_addr_q  <= '0;
-      req_prot_q  <= '0;
-      req_size_q  <= HsizeWord;
-      req_data_q  <= '0;
-      resp_data_q <= '0;
-      req_error_q <= 1'b0;
-      wr_first_q  <= 1'b0;
-    end else begin
-      state_q     <= state_d;
-      req_addr_q  <= req_addr_d;
-      req_prot_q  <= req_prot_d;
-      req_size_q  <= req_size_d;
-      req_data_q  <= req_data_d;
-      resp_data_q <= resp_data_d;
-      req_error_q <= req_error_d;
-      wr_first_q  <= wr_first_d;
-    end
-  end
+  `OCAH_FF(state_q, state_d, IDLE, clk_i, rst_ni)
+  `OCAH_FF(req_addr_q, req_addr_d, '0, clk_i, rst_ni)
+  `OCAH_FF(req_prot_q, req_prot_d, '0, clk_i, rst_ni)
+  `OCAH_FF(req_size_q, req_size_d, HsizeWord, clk_i, rst_ni)
+  `OCAH_FF(req_data_q, req_data_d, '0, clk_i, rst_ni)
+  `OCAH_FF(resp_data_q, resp_data_d, '0, clk_i, rst_ni)
+  `OCAH_FF(req_error_q, req_error_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(wr_first_q, wr_first_d, 1'b0, clk_i, rst_ni)
 
   // --------------------------------------------------
   // Write Strobe Decode

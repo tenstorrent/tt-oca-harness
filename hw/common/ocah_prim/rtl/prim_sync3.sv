@@ -7,6 +7,8 @@
 // randomizes when a change on d_i reaches the first stage to model CDC uncertainty;
 // synthesis connects d_i to the cells directly.
 
+`include "ocah_registers.svh"
+
 module prim_sync3 #(
   parameter int unsigned WIDTH = 1  // Number of independent bits synchronized.
 ) (
@@ -24,9 +26,7 @@ module prim_sync3 #(
   // cell does not expose.
   logic [WIDTH-1:0] first_stage_q;
 
-  always_ff @(posedge clk_i) begin
-    first_stage_q <= d_del;
-  end
+  `OCAH_FFNR(first_stage_q, d_del, clk_i)
 
   prim_cdc_rand_delay #(
     .DataWidth(WIDTH)
