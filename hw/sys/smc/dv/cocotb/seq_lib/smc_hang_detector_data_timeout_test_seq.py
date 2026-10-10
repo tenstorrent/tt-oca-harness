@@ -154,11 +154,19 @@ class smc_hang_detector_data_timeout_test_seq(SmcCsrSeq):
 
     async def _hold_dma_until(self, dut, name: str, after_accept) -> None:
         dut.tb_output_axi_resp_hold.value = 1
+        accept = None
         try:
+            # The watch must be sampling before the NEXT_ID read starts the
+            # DMA; the AR/AW handshake can last one cycle.
+            accept = cocotb.start_soon(
+                self._await_output_accept(dut, _ACCEPT_BOUND, f"{name}_ACCEPT")
+            )
             await self._program_dma()
-            await self._await_output_accept(dut, _ACCEPT_BOUND, f"{name}_ACCEPT")
+            await accept
             await after_accept()
         finally:
+            if accept is not None and not accept.done():
+                accept.kill()
             dut.tb_output_axi_resp_hold.value = 0
 
     async def body(self) -> None:
