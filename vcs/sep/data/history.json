@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-08T02:02:43+00:00",
+  "generated_at": "2026-10-10T16:42:57+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -2199,6 +2199,133 @@
             "functional": 100.0,
             "line": 94.65,
             "toggle": 81.31
+          },
+          "status": "PASS",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-10-10T16:42:57+00:00",
+      "id": "2c43d534dfdbb009",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-3194bbe054fa2876",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 91.69,
+            "condition": 79.92,
+            "fsm_state": 88.36,
+            "functional": 100.0,
+            "line": 95.55,
+            "toggle": 85.76
+          },
+          "flow": "sep",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "branch": 87.77,
+            "condition": 77.16,
+            "fsm_state": 85.87,
+            "functional": 100.0,
+            "line": 94.8,
+            "toggle": 81.74
+          },
+          "status": "PASS",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": "COVCMP-d7b16b29eec5411c",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 54.49,
+            "condition": 25.15,
+            "fsm_state": 37.09,
+            "functional": 10.27,
+            "line": 67.9,
+            "toggle": 15.73
+          },
+          "flow": "sep",
+          "framework": "uvm",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "branch": 52.16,
+            "condition": 24.28,
+            "fsm_state": 36.04,
+            "functional": 10.27,
+            "line": 67.36,
+            "toggle": 15.01
+          },
+          "status": "PASS",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": "COVCMP-1a81538398697c77",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 91.74,
+            "condition": 79.94,
+            "fsm_state": 88.73,
+            "functional": 100.0,
+            "line": 95.57,
+            "toggle": 85.82
+          },
+          "flow": "sep",
+          "framework": "",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "branch": 87.82,
+            "condition": 77.18,
+            "fsm_state": 86.22,
+            "functional": 100.0,
+            "line": 94.82,
+            "toggle": 81.8
           },
           "status": "PASS",
           "target": "default",
