@@ -1335,10 +1335,11 @@ module sep_fcov (
                                       SPI_CONTROLLER_CONFIGOPTS_CSNTRAIL_SHIFT)) + 32'd1) * fr_d1;
   wire fr_cpha = (fr_cfg_q & SPI_CONTROLLER_CONFIGOPTS_CPHA_MASK) != 32'h0;
   wire fr_fullcyc = (fr_cfg_q & SPI_CONTROLLER_CONFIGOPTS_FULLCYC_MASK) != 32'h0;
-  // Pad timing bins at the chip-select rise (cp_pad_timing_ok).
+  // Pad timing bins at the chip-select rise (cp_pad_timing_ok). CSNLEAD and
+  // CSNTRAIL are minimum bounds, so lead and trail score at or above them.
   wire pt_period = fr_end && fr_per_v_q && (fr_minper_q == (fr_d1 << 1));
-  wire pt_lead = fr_end && fr_lead_v_q && (fr_lead_q == fr_lead_exp);
-  wire pt_trail = fr_end && fr_lead_v_q && ((fr_clk_q - fr_last_q) == fr_trail_exp);
+  wire pt_lead = fr_end && fr_lead_v_q && (fr_lead_q >= fr_lead_exp);
+  wire pt_trail = fr_end && fr_lead_v_q && ((fr_clk_q - fr_last_q) >= fr_trail_exp);
   wire pt_gap = fr_start && gap_v_q &&
       (gap_q >= ((32'(cfg_idle) + 32'd1) * (32'(cfg_clkdiv) + 32'd1)));
   // CPHA edge bins at the chip-select rise (cp_cpha_edge).

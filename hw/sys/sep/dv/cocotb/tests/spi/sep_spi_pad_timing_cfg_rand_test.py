@@ -29,9 +29,10 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   toggles in the chip-select-low windows of the same pair.
 * CHK-SPI-PERIOD: every sck period of the graded pair is 2*(CLKDIV+1) clocks.
 * CHK-SPI-RATIO: period_a*(b+1) equals period_b*(a+1).
-* CHK-SPI-CSN: lead and trail of each graded transaction are exact, and the
-  chip-select-high gap is at least (CSNIDLE+1)*(CLKDIV+1). Control: the minimum
-  is above g0 of the control pair.
+* CHK-SPI-CSN: lead, trail and chip-select-high gap of each graded transaction
+  are at least (CSNLEAD+1), (CSNTRAIL+1) and (CSNIDLE+1) times (CLKDIV+1)
+  clocks; the spec states all three as minimum bounds. Control: the idle
+  minimum is above g0 of the control pair.
 * CHK-SPI-CPHA: at CLKDIV 1 or more every Tx data change after the first bit
   lies in the half sck period that starts at the stated edge. Control: at least
   two such changes. The cell CPHA=1 with FULLCYC=1 logs ``OBS-SPI-CPHA`` and is
@@ -332,6 +333,8 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             c.mode,
         )
 
+        # CSNLEAD, CSNTRAIL and CSNIDLE are minimum bounds; FSM delays may add
+        # margin (spi_host theory of operation, chip-select timing).
         exp_lead = (c.lead + 1) * half
         exp_trail = (c.trail + 1) * half
         gap = w2.start - w1.end
@@ -341,10 +344,8 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             f"control_gap={g0} csnlead={c.lead} csntrail={c.trail} csnidle={idle} mode={c.mode}"
         )
         ok = (
-            w1.lead == exp_lead
-            and w2.lead == exp_lead
-            and w1.trail == exp_trail
-            and w2.trail == exp_trail
+            min(w1.lead, w2.lead) >= exp_lead
+            and min(w1.trail, w2.trail) >= exp_trail
             and gap >= idle_min
             and idle_min > g0
         )

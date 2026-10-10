@@ -30,7 +30,9 @@ handshake run keeps GO set:
 Checkers:
   CHK-HS-MASKED   mask bit 0 clear: the destination keeps its sentinel while the
                   trigger probe is high.
-  CHK-HS-GO       GO reads 1 after n chunks and again after a wait of t_fill.
+  CHK-HS-GO       GO stays 1 between chunks below TOTAL_DATA_SIZE (stop run,
+                  before the firmware clear) and reads 0 with STATUS.DONE=1 once
+                  the transfer reaches TOTAL_DATA_SIZE (handshake run).
   CHK-HS-STOP     after the GO clear the words after the moved chunks keep their
                   sentinel while the trigger probe is high.
   CHK-HS-NOCHUNK  STATUS.CHUNK_DONE reads 0 at every poll of the handshake run.
@@ -480,6 +482,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             "T-FILL LOG seed=%d t_fill_clks=%d polls=%d", cfg.seed, t_fill, len(hs_polls)
         )
         go1 = self._go_cmp(await self.dma.rd(DMA_CONTROL))
+        st_total = await self.dma.read_status()
         t1 = self.tw.clk
         while self.tw.clk - t1 < t_fill:
             hs_polls.append(await self.dma.read_status())
@@ -646,15 +649,20 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             self._fail("CHK-HS-NOCHUNK", line)
         self._pass("CHK-HS-NOCHUNK", line)
 
-        # CHK-HS-GO.
+        # CHK-HS-GO. Handshake mode skips the per-chunk GO clear only; the
+        # transfer ends, and GO clears, at TOTAL_DATA_SIZE (dma.hjson
+        # TOTAL_DATA_SIZE and CONTROL.GO).
         control_normal_go = int(bool(go_nm.got & GO_MASK))
+        go_at_total = int(go1.ok)
+        go_after_wait = int(go2.ok)
         line = (
-            f"go_after_n={int(go1.ok)} go_after_wait={int(go2.ok)} "
+            f"go_held_between_chunks={go_before} go_at_total={go_at_total} "
+            f"done_at_total={st_total.done} go_after_wait={go_after_wait} "
             f"control_normal_go={control_normal_go} "
-            f"after_n:[{go1.fields()}] after_wait:[{go2.fields()}] t_fill={t_fill}"
+            f"at_total:[{go1.fields()}] after_wait:[{go2.fields()}] t_fill={t_fill}"
         )
         if control_normal_go != 0:
             self._ctrl_missing("CHK-HS-GO", line)
-        if not (go1.ok and go2.ok):
+        if not (go_before == 1 and go_at_total == 0 and go_after_wait == 0 and st_total.done):
             self._fail("CHK-HS-GO", line)
         self._pass("CHK-HS-GO", line)
