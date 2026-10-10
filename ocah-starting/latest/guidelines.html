@@ -478,6 +478,13 @@ UpperCamelCase, and UpperCamelCase to name constants (localparam).</p>
 before the direction suffix so resets are rst_ni.</p>
 </li>
 <li>
+<p>Write registers with the <code>OCAH_FF*</code> macros of
+<code>hw/common/registers/ocah_registers.svh</code>, one register per macro, passing the
+clock and reset explicitly. Write an <code>always_ff</code> block by hand only for logic
+the macros cannot express. Do not use the common_cells <code>registers.svh</code>
+macros; vendored sources are patched to the <code>OCAH_FF*</code> ones.</p>
+</li>
+<li>
 <p>As stated in the lowRISC guidelines, SystemVerilog Interfaces can be
 limited in terms of tool support, so we <em>highly discourage</em> their use as
 they are not uniformly supported by open source tools. As an
