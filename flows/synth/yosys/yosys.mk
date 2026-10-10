@@ -42,6 +42,9 @@ OCAH_SYNTH_FLIST := $(OCAH_SYNTH_DIR)/$(FLOW_DESIGN).f
 FLOW_SYNTH_SLANG_EXPECTED_ERRORS ?=
 FLOW_SYNTH_SLANG_COMPAT_FLAGS ?=
 OCAH_SYNTH_SLANG_EXPECTED_ERRORS := $(addprefix $(OCAH_ROOT)/,$(FLOW_SYNTH_SLANG_EXPECTED_ERRORS))
+# synth drops the behavioral prim cells; tech_<TECH> selects their cell-level
+# replacements for that PDK.
+OCAH_SYNTH_BENDER_TARGETS := $(FLOW_BENDER_TARGETS) -t synth -t tech_$(subst -,_,$(TECH))
 
 # The prim_assert.sv shim is yosys-only and must win the +incdir search against
 # the vendored OpenTitan copy it delegates to, so it has to come first. It also
@@ -55,7 +58,7 @@ OCAH_YOSYS_ASSERT_INCDIR := $(OCAH_ROOT)/hw/common/assert/yosys
 .PHONY: ocah-synth-yosys
 ocah-synth-yosys: ${PDK_SENTINEL}
 	@mkdir -p $(OCAH_SYNTH_DIR)
-	$(call ocah_eda_flist,$(FLOW_BENDER_TARGETS),$(OCAH_SYNTH_FLIST))
+	$(call ocah_eda_flist,$(OCAH_SYNTH_BENDER_TARGETS),$(OCAH_SYNTH_FLIST))
 	@sed -i '1i +incdir+$(OCAH_YOSYS_ASSERT_INCDIR)' $(OCAH_SYNTH_FLIST)
 	$(call ocah_require_host_tool,yosys,./scripts/docker-run.sh run-here make ocah-synth-yosys)
 	$(call ocah_require_host_tool,slang,./scripts/docker-run.sh run-here make ocah-synth-yosys)

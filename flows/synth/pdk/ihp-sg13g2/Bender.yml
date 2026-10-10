@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# IHP SG13G2 cell implementations of the prim cells that the synth target drops.
+
+package:
+  name: pdk_ihp_sg13g2
+  authors:
+    - "Tenstorrent USA, Inc."
+
+sources:
+  - target: all(synth, tech_ihp_sg13g2, not(emulation))
+    files:
+      - prim/prim_and2.sv
+      - prim/prim_and3.sv
+      - prim/prim_ao222.sv
+      - prim/prim_buf.sv
+      - prim/prim_clock_buf.sv
+      - prim/prim_clock_gating.sv
+      - prim/prim_clock_inv.sv
+      - prim/prim_clock_mux2.sv
+      - prim/prim_clock_nand2.sv
+      - prim/prim_flop.sv
+      - prim/prim_flop_2sync.sv
+      - prim/prim_flop_3sync.sv
+      - prim/prim_flop_3sync_r.sv
+      - prim/prim_flop_3sync_s.sv
+      - prim/prim_flop_4sync.sv
+      - prim/prim_flop_4sync_r.sv
+      - prim/prim_flop_4sync_s.sv
+      - prim/prim_flop_en.sv
+      - prim/prim_flop_no_rst.sv
+      - prim/prim_inv.sv
+      - prim/prim_latch_n.sv
+      - prim/prim_metastab_hardened_dffr.sv
+      - prim/prim_nand4.sv
+      - prim/prim_nor4.sv
+      - prim/prim_or2.sv
+      - prim/prim_or4.sv
+      - prim/prim_stdmux2.sv
+      - prim/prim_xnor2.sv
+      - prim/prim_xor2.sv
