@@ -9,7 +9,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 97.85,
+      "coverage_total_percent": 97.89,
       "flow": "dtp",
       "framework": "cocotb",
       "pass_rate": 100.0,
@@ -17,7 +17,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 98.13,
+      "coverage_total_percent": 98.14,
       "flow": "dtp",
       "framework": "uvm",
       "pass_rate": 100.0,
@@ -25,7 +25,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 98.22,
+      "coverage_total_percent": 98.24,
       "flow": "dtp",
       "framework": "",
       "pass_rate": 100.0,
@@ -105,7 +105,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-08T08:41:58+00:00",
+  "generated_at": "2026-10-10T12:26:49+00:00",
   "results": [
     {
       "coverage": {
@@ -126,12 +126,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 100.0,
-          "branch": 97.46,
-          "condition": 96.57,
+          "branch": 97.82,
+          "condition": 96.47,
           "fsm_state": 93.56,
           "functional": 100.0,
-          "line": 98.49,
-          "toggle": 98.86,
+          "line": 98.53,
+          "toggle": 98.84,
           "user": 100.0
         }
       },
@@ -143,12 +143,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 100.0,
-          "branch": 98.38,
-          "condition": 96.82,
+          "branch": 98.61,
+          "condition": 96.69,
           "fsm_state": 93.56,
           "functional": 100.0,
-          "line": 99.33,
-          "toggle": 98.82,
+          "line": 99.35,
+          "toggle": 98.8,
           "user": 100.0
         }
       },
@@ -160,11 +160,11 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 100.0,
-          "branch": 98.47,
-          "condition": 97.27,
+          "branch": 98.69,
+          "condition": 97.21,
           "fsm_state": 93.56,
           "functional": 100.0,
-          "line": 99.36,
+          "line": 99.38,
           "toggle": 98.87,
           "user": 100.0
         }
