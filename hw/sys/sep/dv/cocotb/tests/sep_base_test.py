@@ -576,6 +576,57 @@ class sep_base_test(uvm_test):
         await self._wait_fuse_sense(max_cycles)
         self.cfg.reset_done.set()
 
+    async def pulse_rst_ni(
+        self,
+        *,
+        hold_cycles: int = 20,
+        release_bound: int = 20_000,
+        max_sense_cycles: int = 20_000,
+    ) -> dict[str, int]:
+        """Cold reset with clocks running: pulse ``rst_ni``, then wait for the SEP reset release.
+
+        Drives ``rst_ni`` low at the next ``clk_i`` rising edge (so a caller in
+        the read-only phase may call it), holds it low for ``hold_cycles``
+        clocks and releases it. Then
+        waits at most ``release_bound`` clocks for ``dbg_sep_reset_n_o`` to read
+        1 (the SEP Reset Controller release of ``sep_reset_n``), and then for
+        fuse-sense-done with the post-sense shadow compare (the ``resense``
+        rules apply: the OTP bank keeps its content across the reset). An
+        expired bound raises. Returns ``sep_reset_n_at_hold_end`` (the probe
+        level on the last clock of the hold) and ``release_clks`` (clocks from
+        the ``rst_ni`` release to the first ``dbg_sep_reset_n_o`` = 1 sample),
+        for the leaf to log or grade.
+        """
+        dut = cocotb.top
+        await RisingEdge(dut.clk_i)
+        dut.rst_ni.value = 0
+        await ClockCycles(dut.clk_i, hold_cycles)
+        await ReadOnly()
+        held = self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True)
+        await RisingEdge(dut.clk_i)
+        dut.rst_ni.value = 1
+        release = None
+        for cycle in range(1, release_bound + 1):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True):
+                release = cycle
+                break
+        if release is None:
+            raise AssertionError(
+                f"dbg_sep_reset_n_o did not read 1 within {release_bound} clocks after the "
+                "rst_ni release"
+            )
+        await self._wait_fuse_sense(max_sense_cycles)
+        self.cfg.reset_done.set()
+        self.logger.info(
+            "rst_ni pulse: hold=%d sep_reset_n_at_hold_end=%d release_clks=%d",
+            hold_cycles,
+            held,
+            release,
+        )
+        return {"sep_reset_n_at_hold_end": held, "release_clks": release}
+
     async def bring_up_cpu_boot(
         self,
         rst_vec: int,
