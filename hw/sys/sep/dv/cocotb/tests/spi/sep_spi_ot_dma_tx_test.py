@@ -71,6 +71,7 @@ import pyuvm
 from cocotb.triggers import FallingEdge, RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_log_error_counter import attach_error_counter
 from env.sep_seeded_rng import SepSeededRng
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
@@ -223,6 +224,9 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             name="sep_spi3_flash",
             verbose=True,
         )
+        # The BFM logs and drops a frame whose handler raised; such an error
+        # fails the leaf.
+        bfm_errors = attach_error_counter(flash.log)
         await flash.start()
         windows: list[_DmaTxWindow] = []
         cocotb.start_soon(self._watch_dma_pacing(dut, windows))
@@ -240,6 +244,10 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             )
             self._golden_check(flash, cfg, cases)
             self._pacing_check(windows, cases)
+            assert not bfm_errors.records, (
+                f"SPI-BFM FAIL: the flash model logged {len(bfm_errors.records)} error(s): "
+                f"{bfm_errors.records[:3]}"
+            )
         finally:
             await flash.stop()
 

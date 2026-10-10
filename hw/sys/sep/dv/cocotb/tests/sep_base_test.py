@@ -11,6 +11,7 @@ shadow array against that image after sense-done.
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import re
@@ -1581,14 +1582,29 @@ class sep_base_test(uvm_test):
                         pass
                 else:
                     exe_digest = f"not-hashed(>{_SIM_BINARY_HASH_MAX_BYTES}B)"
+            # The build directory's own record (tools/dv/runlib/stages.py,
+            # build_record.json): the fingerprint of the inputs that built this
+            # binary and when it was written. git-head is the run's commit, not
+            # the commit that compiled the binary; a written-at time before the
+            # run started means the binary was reused.
+            build_fp, build_at = "none", "none"
+            try:
+                rec = json.loads((Path(exe).parent / "build_record.json").read_text())
+                build_fp = str(rec.get("fingerprint", "none"))
+                build_at = str(rec.get("written_at", "none"))
+            except (OSError, ValueError):
+                pass
             self.logger.info(
-                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d git-head=%s",
+                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d git-head=%s "
+                "build-fingerprint=%s build-written-at=%s",
                 exe,
                 exe_digest,
                 digest_src,
                 st.st_size,
                 int(st.st_mtime),
                 rev or "unknown",
+                build_fp,
+                build_at,
             )
         except (OSError, ValueError) as exc:
             # Say so rather than omit the line: a missing build identity is a

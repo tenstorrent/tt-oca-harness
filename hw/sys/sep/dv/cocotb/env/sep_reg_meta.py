@@ -385,7 +385,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[6]
 _IPXACT_NS = "{*}"
 
 
-def _ipxact_num(text: str | None) -> int | None:
+def ipxact_num(text: str | None) -> int | None:
     """One IP-XACT numeric literal: ``'h1094_0000``, ``0x…``, or decimal."""
     if text is None:
         return None
@@ -419,7 +419,7 @@ class RegAccess:
         return self.access == frozenset({"read-only"}) and not self.declared_reset
 
 
-def _iter_ipxact_registers():
+def iter_ipxact_registers():
     """Yield ``(address, width_bits, field_nodes)`` for every register element.
 
     An array (``dim``) yields one tuple per element, at its absolute address.
@@ -433,18 +433,18 @@ def _iter_ipxact_registers():
         for child in node:
             kind = child.tag.split("}")[-1]
             if kind == "registerFile":
-                offset = _ipxact_num(text(child, "addressOffset")) or 0
-                stride = _ipxact_num(text(child, "range")) or 0
-                for index in range(_ipxact_num(text(child, "dim")) or 1):
+                offset = ipxact_num(text(child, "addressOffset")) or 0
+                stride = ipxact_num(text(child, "range")) or 0
+                for index in range(ipxact_num(text(child, "dim")) or 1):
                     yield from walk(child, base + offset + index * stride)
             elif kind == "register":
-                offset = _ipxact_num(text(child, "addressOffset")) or 0
-                width = _ipxact_num(text(child, "size")) or 32
+                offset = ipxact_num(text(child, "addressOffset")) or 0
+                width = ipxact_num(text(child, "size")) or 32
                 fields = child.findall(_IPXACT_NS + "field")
-                for index in range(_ipxact_num(text(child, "dim")) or 1):
+                for index in range(ipxact_num(text(child, "dim")) or 1):
                     yield base + offset + index * (width // 8), width, fields
             elif kind == "addressBlock":
-                yield from walk(child, base + (_ipxact_num(text(child, "baseAddress")) or 0))
+                yield from walk(child, base + (ipxact_num(text(child, "baseAddress")) or 0))
             else:
                 yield from walk(child, base)
 
@@ -460,7 +460,7 @@ def _ipxact_access() -> dict[int, RegAccess]:
     on, so the join cannot be broken by a naming convention change.
     """
     out: dict[int, RegAccess] = {}
-    for addr, _width, fields in _iter_ipxact_registers():
+    for addr, _width, fields in iter_ipxact_registers():
         out[addr] = RegAccess(
             frozenset((one.findtext(_IPXACT_NS + "access") or "read-write") for one in fields),
             any(one.find(_IPXACT_NS + "resets") is not None for one in fields),
@@ -482,13 +482,13 @@ def _ipxact_unreset_words() -> dict[int, int]:
     none (``tools/regs/common/regcollect.py``), so it cannot answer this.
     """
     out: dict[int, int] = {}
-    for addr, width, fields in _iter_ipxact_registers():
+    for addr, width, fields in iter_ipxact_registers():
         bits = 0
         for one in fields:
             if one.find(_IPXACT_NS + "resets") is not None:
                 continue
-            lsb = _ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
-            width_f = _ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
+            lsb = ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
+            width_f = ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
             bits |= ((1 << width_f) - 1) << lsb
         for word in range(max(width // 32, 1)):
             out[addr + 4 * word] = (bits >> (32 * word)) & 0xFFFF_FFFF
@@ -543,17 +543,17 @@ class FieldMeta:
 @lru_cache(maxsize=1)
 def _ipxact_fields() -> dict[int, tuple[int, tuple[FieldMeta, ...]]]:
     out: dict[int, tuple[int, tuple[FieldMeta, ...]]] = {}
-    for addr, width, fields in _iter_ipxact_registers():
+    for addr, width, fields in iter_ipxact_registers():
         metas = []
         for one in fields:
             reset = one.find(f"{_IPXACT_NS}resets/{_IPXACT_NS}reset/{_IPXACT_NS}value")
             metas.append(
                 FieldMeta(
                     name=one.findtext(_IPXACT_NS + "name") or "",
-                    lsb=_ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0,
-                    width=_ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1,
+                    lsb=ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0,
+                    width=ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1,
                     access=one.findtext(_IPXACT_NS + "access") or "read-write",
-                    reset=None if reset is None else _ipxact_num(reset.text),
+                    reset=None if reset is None else ipxact_num(reset.text),
                     one_to_set=(one.findtext(_IPXACT_NS + "modifiedWriteValue") == "oneToSet"),
                 )
             )
@@ -572,14 +572,14 @@ def _ipxact_reset_words() -> dict[int, int]:
     ``resets`` element contributes 0; ``word_reset`` refuses such a word.
     """
     out: dict[int, int] = {}
-    for addr, width, fields in _iter_ipxact_registers():
+    for addr, width, fields in iter_ipxact_registers():
         value = 0
         for one in fields:
-            lsb = _ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
-            width_f = _ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
+            lsb = ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
+            width_f = ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
             node = one.find(f"{_IPXACT_NS}resets/{_IPXACT_NS}reset/{_IPXACT_NS}value")
             if node is not None:
-                value |= (_ipxact_num(node.text) & ((1 << width_f) - 1)) << lsb
+                value |= (ipxact_num(node.text) & ((1 << width_f) - 1)) << lsb
         for word in range(max(width // 32, 1)):
             out[addr + 4 * word] = (value >> (32 * word)) & 0xFFFF_FFFF
     if not out:

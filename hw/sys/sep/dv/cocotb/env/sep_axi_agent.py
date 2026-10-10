@@ -114,9 +114,10 @@ class SepAxiItem(uvm_sequence_item):
         self.rdata: int = 0
         self.resp_ok: bool = False
         self.resp_code: int = -1
-        # Per-beat responses. resp_code is the worst of these, which cannot say
-        # HOW MANY beats carried an error -- a caller crediting a monitor per
-        # beat needs the list.
+        # Responses of the transaction: one code per transaction, the B
+        # response of a write or the collapsed response of a read, not one per
+        # beat. A per-beat RRESP sequence comes from the bus monitor
+        # (start_beat_capture).
         self.resp_list: tuple[int, ...] = ()
         # BID / RID (the last read beat's) as sampled on the bus, or None when
         # the bus carries no ID.

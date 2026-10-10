@@ -59,11 +59,12 @@ evidence from `results.xml`. A clean simulator exit is not evidence.
 
 | Document | What it covers |
 | --- | --- |
-| [`docs/index.adoc`](docs/index.adoc) | The SEP DV book: the three top-level documents below |
+| [`docs/index.adoc`](docs/index.adoc) | The SEP DV book: the top-level documents below |
 | [`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc) | VIP selection, testbench hierarchy, HDL top and its probe exceptions, run modes and RTL targets, eFuse content selection, memory, eFuse and SPI models, CPU-trace reconstruction, Boot ROM and Key Manager `rom_main` builds, the SV-UVM realization and adding a scenario |
 | [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc) | Verification strategy, scope, traceability, testcase summaries, shared Phase 3 rules, regression groups, SV-UVM smoke set and known limitations; includes the testcase contracts below |
 | [`docs/test_contracts/`](docs/test_contracts/) | Detailed testcase procedures, checkers, controls, logged proof and pass criteria, split by verification area and included by `SEP_VPLAN.adoc` |
 | [`docs/SEP_FCOV.adoc`](docs/SEP_FCOV.adoc) | Functional coverage plan, code-coverage collection, the compile-time scope and the exclusion lists, closure policy |
+| [`docs/SEP_DEFERRED_DISPOSITION.adoc`](docs/SEP_DEFERRED_DISPOSITION.adoc) | Bench stand-ins and exceptions: the claim each one leaves unproven, its scope and the command that rechecks it |
 | [`doc/integrator/src/defines.adoc`](../../../../doc/integrator/src/defines.adoc) | Project defines chapter of the Integrator Guide |
 | [`../doc/index.adoc`](../doc/index.adoc) | Design specification |
 | [`hw/common/dv/README.md`](../../../common/dv/README.md) | Shared VIPs, BFM ownership, and the promotion checklist |

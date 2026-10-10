@@ -136,3 +136,29 @@ seed = 1
 timeout_sec = 1800
 tags = ["boot", "cpu", "interrupt", "pic", "efuse", "subsystem"]
 run_modes = ["cpu"]
+
+# Fabric and remap, Phase 3 (docs/SEP_VPLAN.adoc, test_contracts/fabric_remap.adoc).
+
+[[tests]]
+# CPU LSU local alias window at SEP_LOCAL_BASE_ADDR: the alias read of one static word per unit class equals the direct read. The host patches the seeded values into the firmware parameter block.
+name = "sep_cpu_lsu_alias_window_twin_test"
+module = "cpu.sep_cpu_lsu_alias_window_twin_test"
+firmware = "alias_twin_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "alias", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# DMA endpoint reach, the alias forms, the DMA AxUSER, the SMC-port beats through BH-SMC and the not-connected targets. The host patches the seeded values into the firmware parameter block.
+name = "sep_fabric_dma_endpoint_matrix_test"
+module = "cpu.sep_fabric_dma_endpoint_matrix_test"
+firmware = "dma_endpoint_matrix_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["fabric", "dma", "smc", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense", "+sep_smc_aperture_base=40000000", "+sep_smc_aperture_size=1000000"]
