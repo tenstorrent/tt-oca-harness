@@ -215,8 +215,9 @@ At aggregate level:
 ----
 flows.passing  = count(result.status == "PASS")
 flows.failing  = count(result.status == "FAIL")
-flows.unknown  = flows.total - flows.passing - flows.failing
-flows.pass_rate = 100 * flows.passing / flows.total
+flows.skipped  = count(result.status == "SKIP")
+flows.unknown  = flows.total - flows.passing - flows.failing - flows.skipped
+flows.pass_rate = 100 * flows.passing / (flows.total - flows.skipped)
 
 tests.total     = sum(result.tests.total)      over records with tests.completed != false
 tests.passing   = sum(result.tests.passing)    over the same records
@@ -231,6 +232,12 @@ and of the per-category rollups; a rate over the leaves that happened to run
 would read as a grade the run never earned. Such a record carries
 `tests.pass_rate = null`, and the HTML shows `incomplete run` in its pass-rate
 cell.
+
+`collect` never writes `SKIP`. A caller that runs several flows may write a
+`SKIP` record for a flow it chose not to run, such as one its test selection
+left empty. That record counts as skipped, not as failing or unknown, and
+stays out of `flows.pass_rate`, so a night whose every graded flow passed
+reads 100. With every flow skipped, `flows.pass_rate` is `null`.
 
 The overall flow status and test pass rate answer different questions. A DUT
 can have many passing tests but remain a failing flow because one test,
@@ -384,6 +391,7 @@ Aggregating `dtp` and `sep` yields this summary shape:
     "total": 2,
     "passing": 1,
     "failing": 1,
+    "skipped": 0,
     "unknown": 0,
     "pass_rate": 50.0
   },
@@ -1040,8 +1048,8 @@ combination.
 
 |`generated_at` |string |Aggregation time, UTC ISO-8601.
 
-|`flows` |object |`total`, `passing`, `failing`, `unknown`, `pass_rate` over
-collected records.
+|`flows` |object |`total`, `passing`, `failing`, `skipped`, `unknown`,
+`pass_rate` over collected records. `pass_rate` leaves out the skipped ones.
 
 |`tests` |object |`total`, `passing`, `failing`, `skipped`, `unknown`,
 `pass_rate` summed across the records whose run finished (see the
