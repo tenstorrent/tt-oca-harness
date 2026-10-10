@@ -41,6 +41,7 @@ package smc_seq_lib_pkg;
   `include "smc_base_test_seq.svh"
   `include "smc_wdt_base_test_seq.svh"
   `include "smc_wdt_feed_zerocmp_test_seq.svh"
+  `include "smc_wdt_core_awake_gate_test_seq.svh"
   `include "smc_register_sanity_test_seq.svh"
   `include "smc_default_reg_rd_test_seq.svh"
   `include "smc_reset_unit_lock_test_seq.svh"

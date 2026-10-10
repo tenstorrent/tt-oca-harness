@@ -3153,6 +3153,7 @@ module smc_uvm_top
     assign u_tb_if.rst_primary_ref_clk_n     = rst_primary_ref_clk_no;
     assign u_tb_if.rst_primary_smc_clk_n     = rst_primary_smc_clk_no;
     assign u_tb_if.rst_wdt_smc_clk_n         = rst_wdt_smc_clk_no;
+    assign u_tb_if.cpu_cluster_isolate       = tb_cpu_cluster_isolate;
     assign u_tb_if.fuse_sense_done           = tb_fuse_sense_done;
     assign u_tb_if.fuse_reset_n              = tb_fuse_reset_n;
     assign u_tb_if.rst_warm_smc_clk_n        = tb_rst_warm_smc_clk_n;
