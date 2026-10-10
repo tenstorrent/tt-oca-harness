@@ -93,12 +93,13 @@ module efuse_shadow_reg_access_control #(
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   ////////////////////////////////////////////////////////////////////////////
   // Parameter Validation
   ////////////////////////////////////////////////////////////////////////////
-  `OCAH_OT_ASSERT_INIT(EfuseAddrWidthCheck_A, EFUSE_ADDR_WIDTH >= 4)
-  `OCAH_OT_ASSERT_INIT(EfuseFieldsCheck_A, EFUSE_FIELDS >= 1)
+  `OCAH_ASSERT_STATIC(EfuseAddrWidthCheck_A, EFUSE_ADDR_WIDTH >= 4)
+  `OCAH_ASSERT_STATIC(EfuseFieldsCheck_A, EFUSE_FIELDS >= 1)
 
   // Bounds every mapped field idx for the locks_i[index*2] / [index*2+1] lookups.
   // The code this guards also skips idx '1, so this does too.

@@ -12,7 +12,7 @@
 module jtag_caps_reg
     import prim_jtag_pkg::*;
 
-    `include "prim_assert.sv"
+    `include "ocah_assert.svh"
 #(
     parameter bit  BSR_ENABLE          = 1,  // Mandatory boundary-scan instructions present; bit 8.
     parameter bit  EXTEST_TRAIN_ENABLE = 1,  // Optional EXTEST_TRAIN present; bit 9.
@@ -66,12 +66,12 @@ module jtag_caps_reg
     // Parameter Validation
     //--------------------------------------------------------------------------
     // Compile-time assertions to verify parameters fit in their allocated bit fields
-    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumXtrigCtpFits_A,   NUM_XTRIG_CTP    <= 63)
-    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumXtrigIntCtFits_A, NUM_XTRIG_INT_CT <= 63)
-    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumSmcIcResetFits_A, NUM_SMC_IC_RESET <= 255)
-    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumSepIcResetFits_A, NUM_SEP_IC_RESET <= 255)
-    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumExtIcResetFits_A, NUM_EXT_IC_RESET <= 255)
-    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumExtraStapsFits_A, NUM_EXTRA_STAPS  <= 15)
+    `OCAH_ASSERT_STATIC(NumXtrigCtpFits_A,   NUM_XTRIG_CTP    <= 63)
+    `OCAH_ASSERT_STATIC(NumXtrigIntCtFits_A, NUM_XTRIG_INT_CT <= 63)
+    `OCAH_ASSERT_STATIC(NumSmcIcResetFits_A, NUM_SMC_IC_RESET <= 255)
+    `OCAH_ASSERT_STATIC(NumSepIcResetFits_A, NUM_SEP_IC_RESET <= 255)
+    `OCAH_ASSERT_STATIC(NumExtIcResetFits_A, NUM_EXT_IC_RESET <= 255)
+    `OCAH_ASSERT_STATIC(NumExtraStapsFits_A, NUM_EXTRA_STAPS  <= 15)
 
     //--------------------------------------------------------------------------
     // JTAG Capabilities Value Construction

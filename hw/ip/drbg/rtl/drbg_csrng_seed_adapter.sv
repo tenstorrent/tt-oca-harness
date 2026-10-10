@@ -39,6 +39,7 @@ module drbg_csrng_seed_adapter
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   localparam int unsigned WordWidth = 32;
   localparam int unsigned SeedWidth = entropy_src_pkg::CSRNG_BUS_WIDTH;
@@ -103,7 +104,7 @@ module drbg_csrng_seed_adapter
   // Assertions
   // =========================================================================
 
-  `OCAH_OT_ASSERT_INIT(SeedFifoDepthValid_A, SEED_FIFO_DEPTH > 0)
+  `OCAH_ASSERT_STATIC(SeedFifoDepthValid_A, SEED_FIFO_DEPTH > 0)
   `OCAH_OT_ASSERT(EsAckRequiresSeed_A, entropy_src_hw_if_rsp_o.es_ack |-> seed_queue_valid_o)
   `OCAH_OT_ASSERT(
       SeedFipsPolicy_A,

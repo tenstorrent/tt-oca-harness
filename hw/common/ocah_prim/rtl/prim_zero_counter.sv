@@ -82,6 +82,6 @@ module prim_zero_counter #(
 
   end : gen_lzc
 
-  `OCAH_ASSERT_INIT(WidthConstraintA, WIDTH >= 1)
+  `OCAH_ASSERT_STATIC(WidthConstraintA, WIDTH >= 1, "WIDTH must be at least 1")
 
 endmodule : prim_zero_counter

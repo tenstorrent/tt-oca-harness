@@ -137,7 +137,7 @@ module key_manager
                               // conditioned resets while test_en_i is high.
 );
 
-  `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   //=========================================================================
   // Parameter Validation
@@ -147,18 +147,18 @@ module key_manager
   // Pinned against the address map rather than a literal: the memory sizes and
   // the decode ranges have to agree, and the map is the one that also feeds the
   // write-lock and exec region indices.
-  `OCAH_OT_ASSERT_INIT(RomSizeValid_A, ROM_SIZE_BYTES == km_intf_pkg::RomSizeBytes)
-  `OCAH_OT_ASSERT_INIT(SramSizeValid_A, SRAM_SIZE_BYTES == km_intf_pkg::SramSizeBytes)
-  `OCAH_OT_ASSERT_INIT(MailboxDepthMin_A, MAILBOX_DEPTH >= 16)
-  `OCAH_OT_ASSERT_INIT(MailboxDepthPow2_A, (MAILBOX_DEPTH & (MAILBOX_DEPTH - 1)) == 0)
+  `OCAH_ASSERT_STATIC(RomSizeValid_A, ROM_SIZE_BYTES == km_intf_pkg::RomSizeBytes)
+  `OCAH_ASSERT_STATIC(SramSizeValid_A, SRAM_SIZE_BYTES == km_intf_pkg::SramSizeBytes)
+  `OCAH_ASSERT_STATIC(MailboxDepthMin_A, MAILBOX_DEPTH >= 16)
+  `OCAH_ASSERT_STATIC(MailboxDepthPow2_A, (MAILBOX_DEPTH & (MAILBOX_DEPTH - 1)) == 0)
 
   // The remap keeps only the page offset, so every OTP register map has to sit inside the
   // page the crossbar routes to the OTP port.
-  `OCAH_OT_ASSERT_INIT(OtpRemapBaseAligned_A, (OTP_EFUSE_REMAP_BASE & OtpPageMask) == '0)
-  `OCAH_OT_ASSERT_INIT(OtpMapInPage_A, OtpMapBaseAddr >= OtpBaseAddr && OtpMapEndAddr <= OtpEndAddr)
-  `OCAH_OT_ASSERT_INIT(OtpCtrlInPage_A,
-                       OtpCtrlBaseAddr >= OtpBaseAddr && OtpCtrlEndAddr <= OtpEndAddr)
-  `OCAH_OT_ASSERT_INIT(OtpMmrInPage_A, OtpMmrBaseAddr >= OtpBaseAddr && OtpMmrEndAddr <= OtpEndAddr)
+  `OCAH_ASSERT_STATIC(OtpRemapBaseAligned_A, (OTP_EFUSE_REMAP_BASE & OtpPageMask) == '0)
+  `OCAH_ASSERT_STATIC(OtpMapInPage_A, OtpMapBaseAddr >= OtpBaseAddr && OtpMapEndAddr <= OtpEndAddr)
+  `OCAH_ASSERT_STATIC(OtpCtrlInPage_A,
+                      OtpCtrlBaseAddr >= OtpBaseAddr && OtpCtrlEndAddr <= OtpEndAddr)
+  `OCAH_ASSERT_STATIC(OtpMmrInPage_A, OtpMmrBaseAddr >= OtpBaseAddr && OtpMmrEndAddr <= OtpEndAddr)
 
   //=========================================================================
   // Internal Signals

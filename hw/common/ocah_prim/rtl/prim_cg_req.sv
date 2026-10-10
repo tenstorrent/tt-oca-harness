@@ -25,6 +25,7 @@ module prim_cg_req #(
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   ////////////////////////////////////////////////////////////////////////////////
   // Local Parameters and Types
@@ -82,7 +83,7 @@ module prim_cg_req #(
   ////////////////////////////////////////////////////////////////////////////////
 
   // Validate parameters
-  `OCAH_OT_ASSERT_INIT(ValidDenyDelay_A, DENY_DELAY >= 1)
+  `OCAH_ASSERT_STATIC(ValidDenyDelay_A, DENY_DELAY >= 1)
 
   // Validate input signals
   `OCAH_OT_ASSERT_KNOWN(QActiveKnown_A, qactive_i, clk_i, !rst_ni)

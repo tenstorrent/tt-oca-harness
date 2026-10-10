@@ -15,7 +15,7 @@
 module axi_lite_to_tlul
 	import tlul_pkg::*;
 
-	`include "prim_assert.sv"
+	`include "ocah_assert.svh"
 	import axi_pkg::*;
 	import prim_mubi_pkg::mubi4_t;
 	#(
@@ -277,6 +277,6 @@ module axi_lite_to_tlul
 	// --------------------------------------------------
 	// Assertions
 	// --------------------------------------------------
-	`OCAH_OT_ASSERT_INIT(AxiDataWidthMatches, AXI_DATA_WIDTH == 32)
+	`OCAH_ASSERT_STATIC(AxiDataWidthMatches, AXI_DATA_WIDTH == 32)
 
 endmodule : axi_lite_to_tlul

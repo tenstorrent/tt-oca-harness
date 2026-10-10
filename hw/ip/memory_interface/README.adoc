@@ -188,10 +188,9 @@ Three constraints the shim has to respect:
 
 == Parameter validation
 
-Parameter ranges and base address alignment are checked with `OCAH_ASSERT_INIT`. The
-struct field widths are checked separately, by `$bits()` comparisons in `initial` blocks —
-so a mismatch between a parameter and the struct it describes is caught at time zero in
-simulation, but not by lint or synthesis.
+Parameter ranges, base address alignment and the struct field widths are checked with
+`OCAH_ASSERT_STATIC`, so a bad parameter, or a mismatch between a parameter and the struct
+it describes, fails elaboration in simulation, lint and synthesis alike.
 
 == Register examples
 

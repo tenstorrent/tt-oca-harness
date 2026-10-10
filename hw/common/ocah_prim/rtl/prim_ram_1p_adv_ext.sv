@@ -21,6 +21,7 @@ module prim_ram_1p_adv_ext
   import prim_ram_1p_pkg::*;
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
   import prim_ram_1p_adv_ext_pkg::*;
 #(
   parameter  int DEPTH                  = 512,  // Logical memory depth.
@@ -79,7 +80,7 @@ module prim_ram_1p_adv_ext
   import prim_mubi_pkg::MuBi4False;
   import prim_mubi_pkg::MuBi4Width;
 
-  `OCAH_OT_ASSERT_INIT(CannotHaveEccAndParity_A, !(ENABLE_PARITY && ENABLE_ECC))
+  `OCAH_ASSERT_STATIC(CannotHaveEccAndParity_A, !(ENABLE_PARITY && ENABLE_ECC))
 
   // Calculate ECC width
   localparam int ParWidth  = (ENABLE_PARITY) ? WIDTH/8 :
@@ -237,7 +238,7 @@ module prim_ram_1p_adv_ext
     assign unused_wmask = ^wmask_i;
 
     // check supported widths
-    `OCAH_OT_ASSERT_INIT(SecDecWidth_A, WIDTH inside {16, 32})
+    `OCAH_ASSERT_STATIC(SecDecWidth_A, WIDTH inside {16, 32})
 
     // the wmask is constantly set to 1 in this case
     `OCAH_OT_ASSERT(OnlyWordWritePossibleWithEccPortA_A, req_i |->
@@ -297,8 +298,8 @@ module prim_ram_1p_adv_ext
 
   end else if (ENABLE_PARITY) begin : gen_byte_parity
 
-    `OCAH_OT_ASSERT_INIT(WidthNeedsToBeByteAligned_A, WIDTH % 8 == 0)
-    `OCAH_OT_ASSERT_INIT(ParityNeedsByteWriteMask_A, DATA_BITS_PER_MASK == 8)
+    `OCAH_ASSERT_STATIC(WidthNeedsToBeByteAligned_A, WIDTH % 8 == 0)
+    `OCAH_ASSERT_STATIC(ParityNeedsByteWriteMask_A, DATA_BITS_PER_MASK == 8)
 
     always_comb begin : p_parity
       rerror_d = '0;

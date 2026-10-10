@@ -40,6 +40,7 @@ module drbg_axil64_lane_adapter
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   localparam logic [1:0] AxiRespOkay = 2'b00;
   localparam logic [1:0] AxiRespSlverr = 2'b10;
@@ -294,10 +295,10 @@ module drbg_axil64_lane_adapter
     endcase
   end
 
-  `OCAH_OT_ASSERT_INIT(Axil64ReqWidthValid_A, Axil64ReqWidth == $bits(drbg_axil64_req_t))
-  `OCAH_OT_ASSERT_INIT(Axil64RspWidthValid_A, Axil64RspWidth == $bits(drbg_axil64_resp_t))
-  `OCAH_OT_ASSERT_INIT(Axil32ReqWidthValid_A, Axil32ReqWidth == $bits(drbg_axil32_req_t))
-  `OCAH_OT_ASSERT_INIT(Axil32RspWidthValid_A, Axil32RspWidth == $bits(drbg_axil32_resp_t))
+  `OCAH_ASSERT_STATIC(Axil64ReqWidthValid_A, Axil64ReqWidth == $bits(drbg_axil64_req_t))
+  `OCAH_ASSERT_STATIC(Axil64RspWidthValid_A, Axil64RspWidth == $bits(drbg_axil64_resp_t))
+  `OCAH_ASSERT_STATIC(Axil32ReqWidthValid_A, Axil32ReqWidth == $bits(drbg_axil32_req_t))
+  `OCAH_ASSERT_STATIC(Axil32RspWidthValid_A, Axil32RspWidth == $bits(drbg_axil32_resp_t))
   `OCAH_OT_ASSERT(
       UnsupportedBlocksForwarding_A,
       unsupported_access_pulse_o |-> !(forwarded_read_pulse_o || forwarded_write_pulse_o))

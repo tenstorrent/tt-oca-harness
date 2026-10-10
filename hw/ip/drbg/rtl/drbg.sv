@@ -99,6 +99,7 @@ module drbg
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   localparam int unsigned CsrngNumHwApps = csrng_reg_pkg::NumApps - 1;
   localparam int unsigned EdnTotalEndpoints = EDN_ENDPOINT_COUNT + EDN_NATIVE_ENDPOINT_COUNT;
@@ -334,10 +335,10 @@ module drbg
   // Assertions
   // =========================================================================
 
-  `OCAH_OT_ASSERT_INIT(SeedDepthValid_A, SEED_FIFO_DEPTH > 0)
-  `OCAH_OT_ASSERT_INIT(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
-  `OCAH_OT_ASSERT_INIT(TotalEndpointCountValid_A, EdnTotalEndpoints > 0)
-  `OCAH_OT_ASSERT_INIT(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
+  `OCAH_ASSERT_STATIC(SeedDepthValid_A, SEED_FIFO_DEPTH > 0)
+  `OCAH_ASSERT_STATIC(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
+  `OCAH_ASSERT_STATIC(TotalEndpointCountValid_A, EdnTotalEndpoints > 0)
+  `OCAH_ASSERT_STATIC(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
 
   `OCAH_OT_ASSERT(CsrngNoTlOnUnsupported_A,
                   csrng_bridge_unsupported_pulse |-> !csrng_tl_h2d.a_valid)

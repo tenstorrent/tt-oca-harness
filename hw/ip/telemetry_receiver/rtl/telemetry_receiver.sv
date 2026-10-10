@@ -88,6 +88,7 @@ module telemetry_receiver
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   /////////////////
   // Definitions //
@@ -419,8 +420,8 @@ module telemetry_receiver
   // Assertions //
   ////////////////
 
-  `OCAH_OT_ASSERT_INIT(paramCheckBufferDepth,
-                       BUFFER_DEPTH >= 2 && (BUFFER_DEPTH & (BUFFER_DEPTH - 1)) == 0)
+  `OCAH_ASSERT_STATIC(paramCheckBufferDepth,
+                      BUFFER_DEPTH >= 2 && (BUFFER_DEPTH & (BUFFER_DEPTH - 1)) == 0)
 
   `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
   `OCAH_OT_ASSERT_KNOWN(AtreadyKnownO_A, atready_o)

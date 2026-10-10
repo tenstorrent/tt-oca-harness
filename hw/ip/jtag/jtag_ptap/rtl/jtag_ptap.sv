@@ -29,7 +29,7 @@
 module jtag_ptap
     import prim_jtag_pkg::*;
 
-    `include "prim_assert.sv"
+    `include "ocah_assert.svh"
     import jtag_tap_pkg::*;
     import jtag_inst_reg_pkg::*;
 #(
@@ -721,7 +721,7 @@ module jtag_ptap
     //--------------------------------------------------------------------------
     if (IC_RESET_SMC_ENABLE) begin : gen_ic_reset_smc_pack
         ic_reset_smc_t smc_width_probe;
-        `OCAH_OT_ASSERT_STATIC_LINT_ERROR(IcResetSmcOvrdValWidthMatch_A,
+        `OCAH_ASSERT_STATIC(IcResetSmcOvrdValWidthMatch_A,
                                   $bits(smc_width_probe.ovrd) == $bits(smc_width_probe.val))
 
         ic_reset_smc_t smc_w;
@@ -734,7 +734,7 @@ module jtag_ptap
 
     if (IC_RESET_SEP_ENABLE) begin : gen_ic_reset_sep_pack
         ic_reset_sep_t sep_width_probe;
-        `OCAH_OT_ASSERT_STATIC_LINT_ERROR(IcResetSepOvrdValWidthMatch_A,
+        `OCAH_ASSERT_STATIC(IcResetSepOvrdValWidthMatch_A,
                                   $bits(sep_width_probe.ovrd) == $bits(sep_width_probe.val))
 
         ic_reset_sep_t sep_w;
@@ -747,7 +747,7 @@ module jtag_ptap
 
     if (IC_RESET_EXT_ENABLE) begin : gen_ic_reset_ext_pack
         ic_reset_ext_t ext_width_probe;
-        `OCAH_OT_ASSERT_STATIC_LINT_ERROR(IcResetExtOvrdValWidthMatch_A,
+        `OCAH_ASSERT_STATIC(IcResetExtOvrdValWidthMatch_A,
                                   $bits(ext_width_probe.ovrd) == $bits(ext_width_probe.val))
 
         ic_reset_ext_t ext_w;

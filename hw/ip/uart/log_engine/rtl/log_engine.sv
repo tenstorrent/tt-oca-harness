@@ -42,6 +42,7 @@ module log_engine
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   /////////////////////////
   // Signal Declarations //
@@ -524,12 +525,12 @@ module log_engine
   // Assertions //
   ////////////////
 
-  `OCAH_OT_ASSERT_INIT(paramCheckNumLogEntries, NumLogEntries > 0)
-  `OCAH_OT_ASSERT_INIT(LogLenMaximumRepresentable_A, $bits(log_len_t)
-                       == 16 && log_len_t'(MaxLogLen) == 16'h8000)
-  `OCAH_OT_ASSERT_INIT(NonAlignedSlotRoundsDown_A, log_word_floor(log_len_t'(LogWordSize + 7)
-                       ) == log_len_t'(LogWordSize))
-  `OCAH_OT_ASSERT_INIT(LogRegionAlignmentValid_A, LogRegionAlignment == 128)
+  `OCAH_ASSERT_STATIC(paramCheckNumLogEntries, NumLogEntries > 0)
+  `OCAH_ASSERT_STATIC(LogLenMaximumRepresentable_A, $bits(log_len_t)
+                      == 16 && log_len_t'(MaxLogLen) == 16'h8000)
+  `OCAH_ASSERT_STATIC(NonAlignedSlotRoundsDown_A, log_word_floor(log_len_t'(LogWordSize + 7)
+                      ) == log_len_t'(LogWordSize))
+  `OCAH_ASSERT_STATIC(LogRegionAlignmentValid_A, LogRegionAlignment == 128)
 
   `OCAH_OT_ASSERT(SupportedLogRegionWithinMaximum_A,
                   supported_log_region_size <= log_region_size_t'(MaxLogRegionSize))
@@ -557,9 +558,8 @@ module log_engine
                   log_fetch_mem_resp_valid |-> next_log_bytes_fetched <= max_transfer_len)
   `OCAH_OT_ASSERT(FetchWordCounterWithinMaximum_A,
                   log_words_fetched_cnt < log_words_fetched_cnt_t'(MaxLogLen / LogWordSize))
-  `OCAH_OT_ASSERT_INIT(LogRegionAddrWidth_A, 32 + $bits
-                       (reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value) == $bits(log_fetch_addr_t
-                                                                                      ))
+  `OCAH_ASSERT_STATIC(LogRegionAddrWidth_A, 32 + $bits
+                      (reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value) == $bits(log_fetch_addr_t))
 
   `OCAH_OT_ASSERT_KNOWN(CsrAxilRespKnownO_A, csr_axil_resp_o)
   `OCAH_OT_ASSERT_KNOWN(LogFetchAxilReqKnownO_A, log_fetch_axil_req_o)

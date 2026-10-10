@@ -9,6 +9,8 @@
 // enables from the SMC clock into the ungated peripheral, reference and telemetry clocks.
 // The level synchronizers have no reset.
 
+`include "ocah_assert.svh"
+
 module smc_peripherals_cdc #(
   parameter int unsigned SYNC_STAGES = 3  // Synchronizer depth of the AXI-Lite CDCs and the
                                           // level synchronizers, 2 or 3; any other value is
@@ -204,9 +206,7 @@ module smc_peripherals_cdc #(
   // Parameter Check   //
   ///////////////////////
 
-  if (SYNC_STAGES != 2 && SYNC_STAGES != 3) begin : gen_invalid_sync_stages
-    $fatal(1, "SYNC_STAGES must be 2 or 3, got %0d", SYNC_STAGES);
-  end
+  `OCAH_ASSERT_STATIC(SyncStages_A, SYNC_STAGES inside {2, 3}, "SYNC_STAGES must be 2 or 3")
 
   //////////////////////////
   // AVSBus AXI-Lite CDC   //

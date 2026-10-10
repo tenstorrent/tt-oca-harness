@@ -354,6 +354,10 @@ vendor_package:
       - "src"
     patch_dir: "vendor/chipsalliance/i3c-core/patches/cocotbext-i3c"
 
+# The assertion macros are included by first-party RTL under every target.
+export_include_dirs:
+  - hw/common/assert
+
 # RTL sources are partitioned by composable subsystem targets.
 sources:
   # Shared files are selected when any owning subsystem is requested.
@@ -363,7 +367,6 @@ sources:
       - hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
   - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs)
     include_dirs:
-      - hw/common/assert
       - hw/common/defs
       - hw/ip/efuse/rtl/svh
     files:

@@ -80,6 +80,7 @@ module prim_axi_id_prepend_wrap #(
   assign axi_in_resp_o.r.user    = axi_out_resp_i.r.user;
   assign axi_in_resp_o.r.last    = axi_out_resp_i.r.last;
 
-  `OCAH_ASSERT_INIT(OutputIDWidthLessThanInputIDWidth, (AXI_OUT_ID_WIDTH >= AXI_IN_ID_WIDTH))
+  `OCAH_ASSERT_STATIC(OutputIDWidthLessThanInputIDWidth, AXI_OUT_ID_WIDTH >= AXI_IN_ID_WIDTH,
+                      "AXI_OUT_ID_WIDTH must be at least AXI_IN_ID_WIDTH")
 
 endmodule

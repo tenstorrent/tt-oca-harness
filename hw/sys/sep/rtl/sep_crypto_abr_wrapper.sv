@@ -24,6 +24,8 @@
 // to sep_ip_integration. Word-write channels are we/re/addr/data; sig_z and pk also carry
 // one-bit-per-byte wstrobe.
 
+`include "ocah_assert.svh"
+
 module sep_crypto_abr_wrapper
   import sep_pkg::*;
   import sep_crypto_pkg::*;
@@ -480,65 +482,51 @@ module sep_crypto_abr_wrapper
   // --- Data widths: every wdata/rdata field must match its channel EXACTLY. The masked
   // coefficient twins are declared from the same parameters as the unmasked ones, so the
   // INST0/INST1/INST2 rows cover them too. ---
-  if (abr_params_pkg::ABR_MEM_W1_DATA_W    != SEP_CRYPTO_ABR_W1_DATA_W   ||
-        abr_params_pkg::ABR_MEM_INST0_DATA_W != SEP_CRYPTO_ABR_MEM_DATA_W  ||
-        abr_params_pkg::ABR_MEM_INST1_DATA_W != SEP_CRYPTO_ABR_MEM_DATA_W  ||
-        abr_params_pkg::ABR_MEM_INST2_DATA_W != SEP_CRYPTO_ABR_MEM_DATA_W  ||
-        abr_ctrl_pkg::SK_MEM_BANK_DATA_W     != SEP_CRYPTO_ABR_SK_DATA_W   ||
-        abr_ctrl_pkg::SIG_Z_MEM_DATA_W       != SEP_CRYPTO_ABR_SIGZ_DATA_W ||
-        abr_ctrl_pkg::PK_MEM_DATA_W          != SEP_CRYPTO_ABR_PK_DATA_W)
-    begin : gen_abr_mem_data_width_check
-    $error(
-        {
-          "abr_mem_req_t / abr_mem_rsp_t data widths no longer match the vendor ",
-          "memory geometry; writes and read data would be truncated or ",
-          "zero-extended. Re-derive the SEP_CRYPTO_ABR_*_DATA_W mirrors in ",
-          "sep_crypto_pkg from abr_params_pkg / abr_ctrl_pkg."
-        }
-    );
-  end
+  // verilog_format: off
+  `OCAH_ASSERT_STATIC(
+      AbrMemDataWidth_A,
+      abr_params_pkg::ABR_MEM_W1_DATA_W    == SEP_CRYPTO_ABR_W1_DATA_W &&
+      abr_params_pkg::ABR_MEM_INST0_DATA_W == SEP_CRYPTO_ABR_MEM_DATA_W &&
+      abr_params_pkg::ABR_MEM_INST1_DATA_W == SEP_CRYPTO_ABR_MEM_DATA_W &&
+      abr_params_pkg::ABR_MEM_INST2_DATA_W == SEP_CRYPTO_ABR_MEM_DATA_W &&
+      abr_ctrl_pkg::SK_MEM_BANK_DATA_W     == SEP_CRYPTO_ABR_SK_DATA_W &&
+      abr_ctrl_pkg::SIG_Z_MEM_DATA_W       == SEP_CRYPTO_ABR_SIGZ_DATA_W &&
+      abr_ctrl_pkg::PK_MEM_DATA_W          == SEP_CRYPTO_ABR_PK_DATA_W,
+      {"abr_mem_req_t / abr_mem_rsp_t data widths no longer match the vendor ",
+       "memory geometry; writes and read data would be truncated or ",
+       "zero-extended. Re-derive the SEP_CRYPTO_ABR_*_DATA_W mirrors in ",
+       "sep_crypto_pkg from abr_params_pkg / abr_ctrl_pkg."})
 
   // --- Byte strobes: exact, or a masked write lands on the wrong bytes. ---
-  if (abr_ctrl_pkg::SIG_Z_MEM_WSTROBE_W != SEP_CRYPTO_ABR_SIGZ_WSTRB_W ||
-        abr_ctrl_pkg::PK_MEM_WSTROBE_W    != SEP_CRYPTO_ABR_PK_WSTRB_W)
-    begin : gen_abr_mem_wstrobe_width_check
-    $error(
-        {
-          "abr_mem_req_t wstrobe widths no longer match the vendor memory geometry; ",
-          "byte-enabled writes to sig_z_mem / pk_mem would corrupt neighbouring bytes"
-        }
-    );
-  end
+  `OCAH_ASSERT_STATIC(
+      AbrMemWstrobeWidth_A,
+      abr_ctrl_pkg::SIG_Z_MEM_WSTROBE_W == SEP_CRYPTO_ABR_SIGZ_WSTRB_W &&
+      abr_ctrl_pkg::PK_MEM_WSTROBE_W    == SEP_CRYPTO_ABR_PK_WSTRB_W,
+      {"abr_mem_req_t wstrobe widths no longer match the vendor memory geometry; ",
+       "byte-enabled writes to sig_z_mem / pk_mem would corrupt neighbouring bytes"})
 
   // --- Dedicated (non-shared) address fields: exact. ---
-  if (abr_params_pkg::ABR_MEM_W1_ADDR_W != SEP_CRYPTO_ABR_W1_ADDR_W   ||
-        abr_ctrl_pkg::SK_MEM_BANK_ADDR_W  != SEP_CRYPTO_ABR_SK_ADDR_W   ||
-        abr_ctrl_pkg::SIG_Z_MEM_ADDR_W    != SEP_CRYPTO_ABR_SIGZ_ADDR_W ||
-        abr_ctrl_pkg::PK_MEM_ADDR_W       != SEP_CRYPTO_ABR_PK_ADDR_W)
-    begin : gen_abr_mem_addr_width_check
-    $error(
-        {
-          "abr_mem_req_t address widths no longer match the vendor memory geometry; ",
-          "an address bit would alias. Re-derive the SEP_CRYPTO_ABR_*_ADDR_W ",
-          "mirrors in sep_crypto_pkg from abr_params_pkg / abr_ctrl_pkg."
-        }
-    );
-  end
+  `OCAH_ASSERT_STATIC(
+      AbrMemAddrWidth_A,
+      abr_params_pkg::ABR_MEM_W1_ADDR_W == SEP_CRYPTO_ABR_W1_ADDR_W &&
+      abr_ctrl_pkg::SK_MEM_BANK_ADDR_W  == SEP_CRYPTO_ABR_SK_ADDR_W &&
+      abr_ctrl_pkg::SIG_Z_MEM_ADDR_W    == SEP_CRYPTO_ABR_SIGZ_ADDR_W &&
+      abr_ctrl_pkg::PK_MEM_ADDR_W       == SEP_CRYPTO_ABR_PK_ADDR_W,
+      {"abr_mem_req_t address widths no longer match the vendor memory geometry; ",
+       "an address bit would alias. Re-derive the SEP_CRYPTO_ABR_*_ADDR_W ",
+       "mirrors in sep_crypto_pkg from abr_params_pkg / abr_ctrl_pkg."})
 
   // --- Shared coefficient address field: must be >= every channel abr_mem_ch_req_t
   // carries, and exactly equal to the widest one. ---
-  if (SEP_CRYPTO_ABR_INST2_ADDR_W <  abr_params_pkg::ABR_MEM_INST0_ADDR_W ||
-        SEP_CRYPTO_ABR_INST2_ADDR_W <  abr_params_pkg::ABR_MEM_INST1_ADDR_W ||
-        SEP_CRYPTO_ABR_INST2_ADDR_W != abr_params_pkg::ABR_MEM_INST2_ADDR_W)
-    begin : gen_abr_mem_coeff_addr_check
-    $error(
-        {
-          "abr_mem_ch_req_t addr field (SEP_CRYPTO_ABR_INST2_ADDR_W) must equal the ",
-          "widest coefficient-memory address and be >= all of them; a coefficient ",
-          "address bit would be dropped where sep_ip_integration slices the field"
-        }
-    );
-  end
+  `OCAH_ASSERT_STATIC(
+      AbrMemCoeffAddrWidth_A,
+      SEP_CRYPTO_ABR_INST2_ADDR_W >= abr_params_pkg::ABR_MEM_INST0_ADDR_W &&
+      SEP_CRYPTO_ABR_INST2_ADDR_W >= abr_params_pkg::ABR_MEM_INST1_ADDR_W &&
+      SEP_CRYPTO_ABR_INST2_ADDR_W == abr_params_pkg::ABR_MEM_INST2_ADDR_W,
+      {"abr_mem_ch_req_t addr field (SEP_CRYPTO_ABR_INST2_ADDR_W) must equal the ",
+       "widest coefficient-memory address and be >= all of them; a coefficient ",
+       "address bit would be dropped where sep_ip_integration slices the field"})
+  // verilog_format: on
 
   // =========================================================================
   // Adams Bridge engine
@@ -609,7 +597,7 @@ module sep_crypto_abr_wrapper
   // =========================================================================
 
   // Assertion to protect against truncation on casts
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(
       AbrChanAddrFits_A,
       (SEP_CRYPTO_ABR_INST0_ADDR_W <= SEP_CRYPTO_ABR_INST2_ADDR_W) && (SEP_CRYPTO_ABR_INST1_ADDR_W <= SEP_CRYPTO_ABR_INST2_ADDR_W))
 

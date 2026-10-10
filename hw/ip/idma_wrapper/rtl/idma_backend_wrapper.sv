@@ -74,8 +74,10 @@ module idma_backend_wrapper #(
   `include "ocah_assert.svh"
   `include "axi/typedef.svh"
 
-  `OCAH_ASSERT_INIT(MstIdWidth_A, MST_ID_WIDTH == BACKEND_INT_ID_WIDTH + 1)
-  `OCAH_ASSERT_INIT(ReqIdWidth_A, $bits(req_i[0].opt.axi_id) == BACKEND_INT_ID_WIDTH)
+  `OCAH_ASSERT_STATIC(MstIdWidth_A, MST_ID_WIDTH == BACKEND_INT_ID_WIDTH + 1,
+                      "MST_ID_WIDTH must be one more than the backend's internal ID width")
+  `OCAH_ASSERT_STATIC(ReqIdWidth_A, $bits(req_i[0].opt.axi_id) == BACKEND_INT_ID_WIDTH,
+                      "req_i opt.axi_id must be the backend's internal ID width")
 
   /////////////////////////////////////////
   // Setup iDMA Control Typedefs/Structs //
