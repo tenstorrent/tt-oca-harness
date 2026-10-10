@@ -25,8 +25,10 @@
 // descrambled and parity-checked with the address and strobes captured at the accept.
 
 module km_sram_interface
-  import km_intf_pkg::*;
-  import scrambler_pkg::*;
+  import km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH;
+  import km_intf_pkg::km_sram_mem_req_t;
+  import km_intf_pkg::km_sram_mem_rsp_t;
+  import km_intf_pkg::KM_MEM_DATA_WIDTH;
 #(
   parameter int unsigned SRAM_ADDR_WIDTH = KM_SRAM_MEM_ADDR_WIDTH,                   // SRAM word-address width;
                                                                                      // must be 13 to match

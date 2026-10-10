@@ -8,9 +8,7 @@
 // time before each command; debug_bus_o exposes shim state.
 // The APB macro interface is foundry-specific in real integrations.
 
-module efuse_interface_shim
-  import efuse_pkg::*;
-#(
+module efuse_interface_shim #(
   parameter int unsigned SHADOW_REG_BITS = 24576,  // Fuse array size in bits; declared but not used
                                                    // in this module.
   parameter type addr_t = logic,        // Type of the byte address register for read commands.

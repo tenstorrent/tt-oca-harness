@@ -13,10 +13,15 @@
 // transaction. Default off so existing consumers keep their strict behaviour.
 
 module axi_lite_to_tlul
-	import tlul_pkg::*;
+	import tlul_pkg::tl_h2d_t;
+	import tlul_pkg::tl_d2h_t;
+	import tlul_pkg::H2D_CMD_INTG_WIDTH;
+	import tlul_pkg::DATA_INTG_WIDTH;
+	import tlul_pkg::tl_h2d_cmd_intg_t;
+	import tlul_pkg::H2D_CMD_MAX_WIDTH;
+	import tlul_pkg::DATA_MAX_WIDTH;
 
 	`include "ocah_assert.svh"
-	import axi_pkg::*;
 	import prim_mubi_pkg::mubi4_t;
 	#(
 		parameter int unsigned AXI_ADDR_WIDTH    = 32,

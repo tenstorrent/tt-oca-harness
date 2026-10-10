@@ -15,8 +15,15 @@
 // rst_cold_ni rises.
 
 module gpio_shim
-  import gpio_pkg::*;
-  import gpio_shim_pkg::*;
+  import gpio_pkg::gpio_axil_req_t;
+  import gpio_pkg::gpio_axil_resp_t;
+  import gpio_pkg::gpio_axil_aw_chan_t;
+  import gpio_pkg::gpio_axil_w_chan_t;
+  import gpio_pkg::gpio_axil_b_chan_t;
+  import gpio_pkg::gpio_axil_ar_chan_t;
+  import gpio_pkg::gpio_axil_r_chan_t;
+  import gpio_shim_pkg::gpio_model_ctrl_t;
+  import gpio_shim_pkg::gpio_model_status_t;
 #(
   parameter bit INPUT_BY_DEFAULT = 1'b1,                    // Enables strap capture and drives
                                                             // CONTROL.strap_valid; when clear,

@@ -8,7 +8,13 @@
 // that answers DECERR with read data 0xBADCAB1E.
 
 module gpio_filter
-  import gpio_pkg::*;
+  import gpio_pkg::gpio_axil_req_t;
+  import gpio_pkg::gpio_axil_resp_t;
+  import gpio_pkg::gpio_axil_aw_chan_t;
+  import gpio_pkg::gpio_axil_w_chan_t;
+  import gpio_pkg::gpio_axil_b_chan_t;
+  import gpio_pkg::gpio_axil_ar_chan_t;
+  import gpio_pkg::gpio_axil_r_chan_t;
 #(
   parameter int unsigned MAX_TRANS = 32                     // Maximum open transactions per channel
                                                             // in the demux.

@@ -13,7 +13,9 @@
 `include "prim_assert.sv"
 
 module efuse_token_digest_sha256
-  import prim_sha2_pkg::*;
+  import prim_sha2_pkg::sha_fifo32_t;
+  import prim_sha2_pkg::sha_word64_t;
+  import prim_sha2_pkg::SHA2_None;
 (
   input logic clk_i,                    // System clock.
   input logic rst_ni,                   // Active-low asynchronous reset of the feeder and the SHA

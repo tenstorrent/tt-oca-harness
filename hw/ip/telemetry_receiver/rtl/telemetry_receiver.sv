@@ -18,7 +18,21 @@
 // - debug_o[3] assembly_buffer_full: the beat being accepted fills the assembly buffer.
 
 module telemetry_receiver
-  import telemetry_receiver_pkg::*;
+  import telemetry_receiver_pkg::TelemetryCounterWidth;
+  import telemetry_receiver_pkg::TelemetryDataWidth;
+  import telemetry_receiver_pkg::NumBlocksPerPacket;
+  import telemetry_receiver_pkg::TelemetryPacketWidth;
+  import telemetry_receiver_pkg::axil_req_t;
+  import telemetry_receiver_pkg::axil_resp_t;
+  import telemetry_receiver_pkg::telemetry_data_t;
+  import telemetry_receiver_pkg::atb_id_t;
+  import telemetry_receiver_pkg::telemetry_probe_id_t;
+  import telemetry_receiver_pkg::telemetry_counter_t;
+  import telemetry_receiver_pkg::telemetry_packet_t;
+  import telemetry_receiver_pkg::NumBeatsPerPacket;
+  import telemetry_receiver_pkg::telemetry_counter_val_t;
+  import telemetry_receiver_pkg::NumCounterRegs;
+  import telemetry_receiver_pkg::reg_data_t;
 #(
   parameter int unsigned BUFFER_DEPTH                 = 8,  // Completed-message FIFO depth; must be
                                                             // a power of two and >= 2.

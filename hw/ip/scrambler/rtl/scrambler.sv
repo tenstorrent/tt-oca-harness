@@ -14,7 +14,20 @@
 // - BYTE_WISE=1 (per-byte): scramble ends in perm8 x4; descramble starts with iperm8 x4.
 
 module scrambler
-  import scrambler_pkg::*;
+  import scrambler_pkg::addr_scramble6;
+  import scrambler_pkg::addr_scramble7;
+  import scrambler_pkg::addr_scramble8;
+  import scrambler_pkg::addr_scramble9;
+  import scrambler_pkg::addr_scramble10;
+  import scrambler_pkg::addr_scramble11;
+  import scrambler_pkg::addr_scramble12;
+  import scrambler_pkg::addr_scramble13;
+  import scrambler_pkg::sbox4;
+  import scrambler_pkg::perm32;
+  import scrambler_pkg::perm8;
+  import scrambler_pkg::iperm32;
+  import scrambler_pkg::iperm8;
+  import scrambler_pkg::ibox4;
 #(
   parameter int unsigned ADDR_WIDTH = 10,                   // SRAM address width.
                                                             // Selects the address scramble function

@@ -10,7 +10,7 @@
 // ports that carry the shadow registers and fuse commands.
 
 package smc_efuse_pkg;
-  import smc_top_addrmap_pkg::*;
+  import smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR;
 
   function automatic int unsigned efuse_offset(input longint unsigned addr);
     return int'(addr - smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR);

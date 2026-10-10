@@ -33,11 +33,12 @@
 // register.
 
 module km_kpv
-  import km_intf_pkg::*;
-  import axi_pkg::*;
-  import scrambler_pkg::*;
-  import km_kpv_reg_pkg::*;
-  import km_kpv_addrmap_pkg::*;
+  import km_intf_pkg::km_axil_req_t;
+  import km_intf_pkg::km_axil_resp_t;
+  import km_kpv_reg_pkg::KM_KPV_REG_MIN_ADDR_WIDTH;
+  import km_kpv_reg_pkg::km_kpv__in_t;
+  import km_kpv_reg_pkg::km_kpv__out_t;
+  import km_kpv_addrmap_pkg::KM_KPV_CTRL_BASE_ADDR;
 #(
   parameter type axil_req_t  = km_axil_req_t,  // KM-side AXI-Lite request type.
   parameter type axil_resp_t = km_axil_resp_t  // KM-side AXI-Lite response type.

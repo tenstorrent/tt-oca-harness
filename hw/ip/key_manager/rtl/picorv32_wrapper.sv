@@ -48,8 +48,12 @@
 // it makes the core use mem_rdata directly instead of its own capture register.
 
 module picorv32_wrapper
-  import km_intf_pkg::*;
-  import axi_pkg::*;
+  import km_intf_pkg::km_axil_req_t;
+  import km_intf_pkg::km_axil_resp_t;
+  import km_intf_pkg::km_rom_mem_req_t;
+  import km_intf_pkg::km_rom_mem_rsp_t;
+  import km_intf_pkg::km_sram_mem_req_t;
+  import km_intf_pkg::km_sram_mem_rsp_t;
 #(
   parameter type axil_req_t  = km_axil_req_t,                                    // Peripheral-port AXI-Lite
                                                                                  // request type.

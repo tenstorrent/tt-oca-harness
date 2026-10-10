@@ -15,8 +15,66 @@
 `include "axi/assign.svh"
 
 module smc_local_xbar
-  import axi_pkg::*;
-  import smc_local_xbar_pkg::*;
+  import smc_local_xbar_pkg::axi64_req_t;
+  import smc_local_xbar_pkg::axi64_resp_t;
+  import smc_local_xbar_pkg::axi_out_req_t;
+  import smc_local_xbar_pkg::axi_out_resp_t;
+  import smc_local_xbar_pkg::axi_lite64_req_t;
+  import smc_local_xbar_pkg::axi_lite64_resp_t;
+  import smc_local_xbar_pkg::axi_lite32_req_t;
+  import smc_local_xbar_pkg::axi_lite32_resp_t;
+  import smc_local_xbar_pkg::apb32_req_t;
+  import smc_local_xbar_pkg::apb32_resp_t;
+  import smc_local_xbar_pkg::addr_rule_t;
+  import smc_local_xbar_pkg::NumAddrRules;
+  import smc_local_xbar_pkg::xbar_slv_req_t;
+  import smc_local_xbar_pkg::xbar_slv_resp_t;
+  import smc_local_xbar_pkg::xbar_mst_req_t;
+  import smc_local_xbar_pkg::xbar_mst_resp_t;
+  import smc_local_xbar_pkg::XbarCfg;
+  import smc_local_xbar_pkg::Connectivity;
+  import smc_local_xbar_pkg::xbar_slv_aw_chan_t;
+  import smc_local_xbar_pkg::xbar_mst_aw_chan_t;
+  import smc_local_xbar_pkg::xbar_slv_w_chan_t;
+  import smc_local_xbar_pkg::xbar_slv_b_chan_t;
+  import smc_local_xbar_pkg::xbar_mst_b_chan_t;
+  import smc_local_xbar_pkg::xbar_slv_ar_chan_t;
+  import smc_local_xbar_pkg::xbar_mst_ar_chan_t;
+  import smc_local_xbar_pkg::xbar_slv_r_chan_t;
+  import smc_local_xbar_pkg::xbar_mst_r_chan_t;
+  import smc_local_xbar_pkg::xbar_out_local_reg_req_t;
+  import smc_local_xbar_pkg::local_reg_req_t;
+  import smc_local_xbar_pkg::xbar_out_local_reg_resp_t;
+  import smc_local_xbar_pkg::local_reg_resp_t;
+  import smc_local_xbar_pkg::xbar_out_periph_reg_req_t;
+  import smc_local_xbar_pkg::periph_reg_req_t;
+  import smc_local_xbar_pkg::xbar_out_periph_reg_resp_t;
+  import smc_local_xbar_pkg::periph_reg_resp_t;
+  import smc_local_xbar_pkg::periph_reg_stage1_req_t;
+  import smc_local_xbar_pkg::periph_reg_stage1_resp_t;
+  import smc_local_xbar_pkg::periph_reg_stage1_aw_chan_t;
+  import smc_local_xbar_pkg::periph_reg_stage1_w_chan_t;
+  import smc_local_xbar_pkg::xbar_out_periph_reg_w_chan_t;
+  import smc_local_xbar_pkg::periph_reg_stage1_b_chan_t;
+  import smc_local_xbar_pkg::periph_reg_stage1_ar_chan_t;
+  import smc_local_xbar_pkg::periph_reg_stage1_r_chan_t;
+  import smc_local_xbar_pkg::xbar_out_periph_reg_r_chan_t;
+  import smc_local_xbar_pkg::xbar_out_smc_dfd_reg_req_t;
+  import smc_local_xbar_pkg::smc_dfd_reg_req_t;
+  import smc_local_xbar_pkg::xbar_out_smc_dfd_reg_resp_t;
+  import smc_local_xbar_pkg::smc_dfd_reg_resp_t;
+  import smc_local_xbar_pkg::smc_dfd_reg_stage1_req_t;
+  import smc_local_xbar_pkg::smc_dfd_reg_stage1_resp_t;
+  import smc_local_xbar_pkg::smc_dfd_reg_stage2_req_t;
+  import smc_local_xbar_pkg::smc_dfd_reg_stage2_resp_t;
+  import smc_local_xbar_pkg::smc_dfd_reg_stage1_aw_chan_t;
+  import smc_local_xbar_pkg::smc_dfd_reg_stage1_w_chan_t;
+  import smc_local_xbar_pkg::xbar_out_smc_dfd_reg_w_chan_t;
+  import smc_local_xbar_pkg::smc_dfd_reg_stage1_b_chan_t;
+  import smc_local_xbar_pkg::smc_dfd_reg_stage1_ar_chan_t;
+  import smc_local_xbar_pkg::smc_dfd_reg_stage1_r_chan_t;
+  import smc_local_xbar_pkg::xbar_out_smc_dfd_reg_r_chan_t;
+  import smc_local_xbar_pkg::apb_addr_rule_t;
 (
   input  logic clk_i,                   // SMC core clock.
   input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core

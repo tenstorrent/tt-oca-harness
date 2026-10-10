@@ -12,8 +12,20 @@
 `include "axi/assign.svh"
 
 module smc_internal_axi_lite_xbar
-  import axi_pkg::*;
-  import smc_internal_axi_lite_xbar_pkg::*;
+  import smc_internal_axi_lite_xbar_pkg::axi_lite64_req_t;
+  import smc_internal_axi_lite_xbar_pkg::axi_lite64_resp_t;
+  import smc_internal_axi_lite_xbar_pkg::addr_rule_t;
+  import smc_internal_axi_lite_xbar_pkg::NumAddrRules;
+  import smc_internal_axi_lite_xbar_pkg::xbar_slv_req_t;
+  import smc_internal_axi_lite_xbar_pkg::xbar_slv_resp_t;
+  import smc_internal_axi_lite_xbar_pkg::xbar_mst_req_t;
+  import smc_internal_axi_lite_xbar_pkg::xbar_mst_resp_t;
+  import smc_internal_axi_lite_xbar_pkg::XbarCfg;
+  import smc_internal_axi_lite_xbar_pkg::xbar_slv_aw_chan_t;
+  import smc_internal_axi_lite_xbar_pkg::xbar_slv_w_chan_t;
+  import smc_internal_axi_lite_xbar_pkg::xbar_slv_b_chan_t;
+  import smc_internal_axi_lite_xbar_pkg::xbar_slv_ar_chan_t;
+  import smc_internal_axi_lite_xbar_pkg::xbar_slv_r_chan_t;
 (
   input  logic clk_i,                   // SMC core clock.
   input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core

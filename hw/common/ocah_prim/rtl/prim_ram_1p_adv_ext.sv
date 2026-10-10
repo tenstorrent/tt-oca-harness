@@ -18,11 +18,10 @@
 // set bit1.
 
 module prim_ram_1p_adv_ext
-  import prim_ram_1p_pkg::*;
-
   `include "prim_assert.sv"
   `include "ocah_assert.svh"
-  import prim_ram_1p_adv_ext_pkg::*;
+  import prim_ram_1p_adv_ext_pkg::prim_ram_1p_adv_ext_req_t;
+  import prim_ram_1p_adv_ext_pkg::prim_ram_1p_adv_ext_rsp_t;
 #(
   parameter  int DEPTH                  = 512,  // Logical memory depth.
   parameter  int INST_DEPTH             = DEPTH,  // Per-tile depth; smaller than DEPTH tiles into

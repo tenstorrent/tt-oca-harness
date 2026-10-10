@@ -12,7 +12,44 @@
 // sizes the read-data FIFO.
 
 module log_engine
-  import log_engine_pkg::*;
+  import log_engine_pkg::csr_axil_req_t;
+  import log_engine_pkg::csr_axil_resp_t;
+  import log_engine_pkg::log_fetch_axil_req_t;
+  import log_engine_pkg::log_fetch_axil_resp_t;
+  import log_engine_pkg::log_write_axil_req_t;
+  import log_engine_pkg::log_write_axil_resp_t;
+  import log_engine_pkg::log_region_size_t;
+  import log_engine_pkg::log_fetch_addr_t;
+  import log_engine_pkg::log_write_addr_t;
+  import log_engine_pkg::log_len_t;
+  import log_engine_pkg::NumLogEntries;
+  import log_engine_pkg::log_index_t;
+  import log_engine_pkg::log_word_t;
+  import log_engine_pkg::LogLenWidth;
+  import log_engine_pkg::log_fetch_data_t;
+  import log_engine_pkg::log_fetch_strb_t;
+  import log_engine_pkg::LogFetchAddrWidth;
+  import log_engine_pkg::LogFetchDataWidth;
+  import log_engine_pkg::log_words_fetched_cnt_t;
+  import log_engine_pkg::log_fetch_fsm_state_e;
+  import log_engine_pkg::LogWordSize;
+  import log_engine_pkg::ST_LOG_FETCH_IDLE;
+  import log_engine_pkg::ST_LOG_FETCH_REQ;
+  import log_engine_pkg::ST_LOG_FETCH_WAIT;
+  import log_engine_pkg::MaxLogRegionSize;
+  import log_engine_pkg::log_word_floor;
+  import log_engine_pkg::log_write_data_t;
+  import log_engine_pkg::log_write_strb_t;
+  import log_engine_pkg::LogWriteAddrWidth;
+  import log_engine_pkg::LogWriteDataWidth;
+  import log_engine_pkg::log_word_byte_ptr_t;
+  import log_engine_pkg::log_bytes_written_cnt_t;
+  import log_engine_pkg::log_write_fsm_state_e;
+  import log_engine_pkg::ST_LOG_WRITE_IDLE;
+  import log_engine_pkg::ST_LOG_WRITE_REQ;
+  import log_engine_pkg::ST_LOG_WRITE_WAIT;
+  import log_engine_pkg::MaxLogLen;
+  import log_engine_pkg::LogRegionAlignment;
 #(
   parameter int unsigned FIFO_DEPTH = 4  // Entries in the read-data FIFO between log fetch and UART
                                          // write.

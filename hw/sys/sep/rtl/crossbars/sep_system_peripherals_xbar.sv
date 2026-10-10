@@ -18,8 +18,37 @@
 `include "axi/assign.svh"
 
 module sep_system_peripherals_xbar
-  import axi_pkg::*;
-  import sep_system_peripherals_xbar_pkg::*;
+  import sep_system_peripherals_xbar_pkg::axi64_req_t;
+  import sep_system_peripherals_xbar_pkg::axi64_resp_t;
+  import sep_system_peripherals_xbar_pkg::axi_out_req_t;
+  import sep_system_peripherals_xbar_pkg::axi_out_resp_t;
+  import sep_system_peripherals_xbar_pkg::axi_lite64_req_t;
+  import sep_system_peripherals_xbar_pkg::axi_lite64_resp_t;
+  import sep_system_peripherals_xbar_pkg::addr_rule_t;
+  import sep_system_peripherals_xbar_pkg::NumAddrRules;
+  import sep_system_peripherals_xbar_pkg::xbar_slv_req_t;
+  import sep_system_peripherals_xbar_pkg::xbar_slv_resp_t;
+  import sep_system_peripherals_xbar_pkg::xbar_mst_req_t;
+  import sep_system_peripherals_xbar_pkg::xbar_mst_resp_t;
+  import sep_system_peripherals_xbar_pkg::XbarCfg;
+  import sep_system_peripherals_xbar_pkg::Connectivity;
+  import sep_system_peripherals_xbar_pkg::xbar_slv_aw_chan_t;
+  import sep_system_peripherals_xbar_pkg::xbar_mst_aw_chan_t;
+  import sep_system_peripherals_xbar_pkg::xbar_slv_w_chan_t;
+  import sep_system_peripherals_xbar_pkg::xbar_slv_b_chan_t;
+  import sep_system_peripherals_xbar_pkg::xbar_mst_b_chan_t;
+  import sep_system_peripherals_xbar_pkg::xbar_slv_ar_chan_t;
+  import sep_system_peripherals_xbar_pkg::xbar_mst_ar_chan_t;
+  import sep_system_peripherals_xbar_pkg::xbar_slv_r_chan_t;
+  import sep_system_peripherals_xbar_pkg::xbar_mst_r_chan_t;
+  import sep_system_peripherals_xbar_pkg::xbar_out_mailbox_req_t;
+  import sep_system_peripherals_xbar_pkg::mailbox_req_t;
+  import sep_system_peripherals_xbar_pkg::xbar_out_mailbox_resp_t;
+  import sep_system_peripherals_xbar_pkg::mailbox_resp_t;
+  import sep_system_peripherals_xbar_pkg::xbar_out_system_csr_req_t;
+  import sep_system_peripherals_xbar_pkg::system_csr_req_t;
+  import sep_system_peripherals_xbar_pkg::xbar_out_system_csr_resp_t;
+  import sep_system_peripherals_xbar_pkg::system_csr_resp_t;
 (
   input  logic clk_i,                         // System clock.
   input  logic rst_ni,                        // Active-low reset.

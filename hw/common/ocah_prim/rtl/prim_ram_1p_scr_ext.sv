@@ -20,10 +20,9 @@
 // for example with byte parity.
 
 module prim_ram_1p_scr_ext
-  import prim_ram_1p_pkg::*;
-
   `include "ocah_assert.svh"
-  import prim_ram_1p_adv_ext_pkg::*;
+  import prim_ram_1p_adv_ext_pkg::prim_ram_1p_adv_ext_req_t;
+  import prim_ram_1p_adv_ext_pkg::prim_ram_1p_adv_ext_rsp_t;
 #(
   parameter  int DEPTH                  = 16*1024,  // Logical depth; must be a power of 2 if
                                                     // NUM_ADDR_SCR_ROUNDS > 0.

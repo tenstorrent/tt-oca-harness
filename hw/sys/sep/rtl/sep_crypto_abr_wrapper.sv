@@ -27,11 +27,28 @@
 `include "ocah_assert.svh"
 
 module sep_crypto_abr_wrapper
-  import sep_pkg::*;
-  import sep_crypto_pkg::*;
-  import kv_defines_pkg::*;
-  import abr_params_pkg::*;
-  import abr_wrapper_key_reg_pkg::*;
+  import sep_crypto_pkg::abr_mem_req_t;
+  import sep_crypto_pkg::abr_mem_rsp_t;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_INST2_ADDR_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_W1_DATA_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_W1_ADDR_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_SK_ADDR_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_ADDR_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_PK_ADDR_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_INST0_ADDR_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_INST1_ADDR_W;
+  import kv_defines_pkg::kv_read_t;
+  import kv_defines_pkg::kv_rd_resp_t;
+  import kv_defines_pkg::kv_write_t;
+  import kv_defines_pkg::kv_wr_resp_t;
+  import abr_wrapper_key_reg_pkg::abr_wrapper_key__in_t;
+  import abr_wrapper_key_reg_pkg::abr_wrapper_key__out_t;
 #(
   parameter bit          MASKING_EN   = 1,    // Enables 2-share DOM masking in abr_top.
   parameter int unsigned SRAM_LATENCY = 1     // Read latency of the external Adams Bridge SRAMs in

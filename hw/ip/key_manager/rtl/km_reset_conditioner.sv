@@ -26,7 +26,8 @@
 // DFT: scan_rst_ni / scanmode_i bypass both output paths consistently.
 
 module km_reset_conditioner
-  import prim_mubi_pkg::*;
+  import prim_mubi_pkg::mubi4_t;
+  import prim_mubi_pkg::mubi4_test_true_strict;
 #(
   parameter int unsigned MIN_RESET_CYCLES = 10  // Minimum warm reset hold in clk_i cycles after the
                                                 // trigger releases; must be at least 2.

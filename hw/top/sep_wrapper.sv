@@ -11,12 +11,23 @@
 //-----------------------------------------------------------------------------
 
 module sep_wrapper
-  import sep_pkg::*;
-  import secure_dma_reg_pkg::*;
-  import sep_crypto_pkg::*;
-  import sep_io_pkg::*;
-  import sep_efuse_pkg::*;
-  import km_intf_pkg::*;
+  import sep_pkg::sep_cpu_trace_t;
+  import sep_pkg::sep_lockstep_ctrl_t;
+  import sep_pkg::sep_lockstep_status_t;
+  import sep_pkg::sep_sram_req_t;
+  import sep_pkg::sep_sram_rsp_t;
+  import sep_pkg::sep_cpu_tcm_req_t;
+  import sep_pkg::sep_cpu_tcm_rsp_t;
+  import sep_pkg::sep_32_64_6_12_axi_req_t;
+  import sep_pkg::sep_32_64_6_12_axi_resp_t;
+  import sep_crypto_pkg::ext_trng_axis_req_t;
+  import sep_crypto_pkg::ext_trng_axis_rsp_t;
+  import sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t;
+  import sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t;
+  import sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t;
+  import sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t;
+  import sep_io_pkg::sep_io_spi_req_t;
+  import sep_io_pkg::sep_io_spi_rsp_t;
 #(
   parameter bit KM_LATCHED_MEM_RDATA = 1'b1,
   parameter bit ABR_MASKING_EN = 1'b1,

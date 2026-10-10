@@ -40,9 +40,33 @@
 // the exposed memory ports.
 
 module key_manager
-  import km_intf_pkg::*;
-  import axi_pkg::*;
-  import prim_mubi_pkg::*;
+  import km_intf_pkg::km_addr_t;
+  import km_intf_pkg::km_axil_req_t;
+  import km_intf_pkg::km_axil_resp_t;
+  import km_intf_pkg::km_rom_mem_req_t;
+  import km_intf_pkg::km_rom_mem_rsp_t;
+  import km_intf_pkg::km_sram_mem_req_t;
+  import km_intf_pkg::km_sram_mem_rsp_t;
+  import km_intf_pkg::km_drbg_axis_req_t;
+  import km_intf_pkg::km_drbg_axis_resp_t;
+  import km_intf_pkg::km_otp_data_t;
+  import km_intf_pkg::OtpPageMask;
+  import km_intf_pkg::OtpMapBaseAddr;
+  import km_intf_pkg::OtpBaseAddr;
+  import km_intf_pkg::OtpMapEndAddr;
+  import km_intf_pkg::OtpEndAddr;
+  import km_intf_pkg::OtpCtrlBaseAddr;
+  import km_intf_pkg::OtpCtrlEndAddr;
+  import km_intf_pkg::OtpMmrBaseAddr;
+  import km_intf_pkg::OtpMmrEndAddr;
+  import km_intf_pkg::otp_addr_decoded;
+  import km_intf_pkg::km_axil_aw_chan_t;
+  import km_intf_pkg::km_axil_w_chan_t;
+  import km_intf_pkg::km_axil_b_chan_t;
+  import km_intf_pkg::km_axil_ar_chan_t;
+  import km_intf_pkg::km_axil_r_chan_t;
+  import km_intf_pkg::KmAxiAddrWidth;
+  import km_intf_pkg::KmAxiDataWidth;
 #(
   parameter int unsigned ROM_SIZE_BYTES   = 16384,          // Size of the KM boot ROM in bytes.
                                                             // Must equal the ROM window of the

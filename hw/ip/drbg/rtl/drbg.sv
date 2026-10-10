@@ -20,7 +20,19 @@
 // reset-domain crossings or autonomous CSR control sequencing.
 
 module drbg
-  import drbg_pkg::*;
+  import drbg_pkg::DrbgDefaultSeedFifoDepth;
+  import drbg_pkg::DrbgDefaultEdnEndpointCount;
+  import drbg_pkg::DrbgDefaultEdnNativeEndpointCount;
+  import drbg_pkg::DrbgDefaultEndpointFifoDepth;
+  import drbg_pkg::drbg_axil64_req_t;
+  import drbg_pkg::drbg_axil64_resp_t;
+  import drbg_pkg::drbg_axis_req_t;
+  import drbg_pkg::drbg_axis_rsp_t;
+  import drbg_pkg::drbg_axil32_req_t;
+  import drbg_pkg::drbg_axil32_resp_t;
+  import drbg_pkg::DrbgAxil32AddrWidth;
+  import drbg_pkg::DrbgAxil32DataWidth;
+  import drbg_pkg::DrbgCsrngSeedFipsProvisional;
 #(
   parameter int unsigned SEED_FIFO_DEPTH = DrbgDefaultSeedFifoDepth,     // Number of complete packed seeds queued for CSRNG.
                                                                          // Must be at least 1.

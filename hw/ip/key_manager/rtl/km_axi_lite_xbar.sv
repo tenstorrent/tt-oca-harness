@@ -11,8 +11,37 @@
 // with DECERR by the xbar. The channel type parameters must match the req/resp types.
 
 module km_axi_lite_xbar
-  import km_intf_pkg::*;
-  import axi_pkg::*;
+  import km_intf_pkg::km_axil_req_t;
+  import km_intf_pkg::km_axil_resp_t;
+  import km_intf_pkg::km_axil_aw_chan_t;
+  import km_intf_pkg::km_axil_w_chan_t;
+  import km_intf_pkg::km_axil_b_chan_t;
+  import km_intf_pkg::km_axil_ar_chan_t;
+  import km_intf_pkg::km_axil_r_chan_t;
+  import km_intf_pkg::KmAxiAddrWidth;
+  import km_intf_pkg::KmAxiDataWidth;
+  import km_intf_pkg::KpvBaseAddr;
+  import km_intf_pkg::KpvEndAddr;
+  import km_intf_pkg::KmcsrBaseAddr;
+  import km_intf_pkg::KmcsrEndAddr;
+  import km_intf_pkg::DrbgSamplerBaseAddr;
+  import km_intf_pkg::DrbgSamplerEndAddr;
+  import km_intf_pkg::MboxBaseAddr;
+  import km_intf_pkg::MboxEndAddr;
+  import km_intf_pkg::OtbnBaseAddr;
+  import km_intf_pkg::OtbnEndAddr;
+  import km_intf_pkg::AesBaseAddr;
+  import km_intf_pkg::AesEndAddr;
+  import km_intf_pkg::KmacBaseAddr;
+  import km_intf_pkg::KmacEndAddr;
+  import km_intf_pkg::HmacBaseAddr;
+  import km_intf_pkg::HmacEndAddr;
+  import km_intf_pkg::OtpBaseAddr;
+  import km_intf_pkg::OtpEndAddr;
+  import km_intf_pkg::AbrBaseAddr;
+  import km_intf_pkg::AbrEndAddr;
+  import axi_pkg::xbar_cfg_t;
+  import axi_pkg::NO_LATENCY;
 #(
   parameter type axil_req_t  = km_axil_req_t,         // AXI-Lite request struct type.
   parameter type axil_resp_t = km_axil_resp_t,        // AXI-Lite response struct type.

@@ -23,12 +23,14 @@
 // each masked by that side's IRQ_ENABLE.
 
 module km_mailbox
-  import km_intf_pkg::*;
-  import axi_pkg::*;
-  import km_mailbox_sep_reg_pkg::*;
-  import km_mailbox_km_reg_pkg::*;
-  import km_mailbox_sep_addrmap_pkg::*;
-  import km_mailbox_km_addrmap_pkg::*;
+  import km_mailbox_sep_reg_pkg::km_mailbox_sep__in_t;
+  import km_mailbox_sep_reg_pkg::km_mailbox_sep__out_t;
+  import km_mailbox_km_reg_pkg::km_mailbox_km__in_t;
+  import km_mailbox_km_reg_pkg::km_mailbox_km__out_t;
+  import km_mailbox_sep_addrmap_pkg::KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR;
+  import km_mailbox_sep_addrmap_pkg::KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR;
+  import km_mailbox_km_addrmap_pkg::KM_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR;
+  import km_mailbox_km_addrmap_pkg::KM_MAILBOX_KM_KM_READ_DATA_BASE_ADDR;
 #(
   parameter int unsigned MAILBOX_DEPTH = 16,  // Words per FIFO direction.
 

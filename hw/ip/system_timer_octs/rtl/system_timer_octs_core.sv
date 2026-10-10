@@ -18,7 +18,7 @@
 // timer_cnt_step_i and credit_expired_* apply in secondary mode only.
 
 module system_timer_octs_core
-    import system_timer_octs_pkg::*;
+    import system_timer_octs_pkg::DataWidth;
 
     `include "prim_assert.sv"
 (

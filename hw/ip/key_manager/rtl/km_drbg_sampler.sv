@@ -21,10 +21,14 @@
 // - PREFETCH_DATA (read-only)
 
 module km_drbg_sampler
-  import km_intf_pkg::*;
-  import axi_pkg::*;
-  import km_drbg_sampler_reg_pkg::*;
-  import km_drbg_sampler_addrmap_pkg::*;
+  import km_intf_pkg::km_axil_req_t;
+  import km_intf_pkg::km_axil_resp_t;
+  import km_intf_pkg::km_drbg_axis_req_t;
+  import km_intf_pkg::km_drbg_axis_resp_t;
+  import km_drbg_sampler_reg_pkg::KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH;
+  import km_drbg_sampler_reg_pkg::km_drbg_sampler__in_t;
+  import km_drbg_sampler_reg_pkg::km_drbg_sampler__out_t;
+  import km_drbg_sampler_addrmap_pkg::KM_DRBG_SAMPLER_DATA_BASE_ADDR;
 #(
   parameter type axil_req_t  = km_axil_req_t,  // AXI-Lite request struct type.
   parameter type axil_resp_t = km_axil_resp_t  // AXI-Lite response struct type.

@@ -20,10 +20,20 @@
 `include "ocah_assert.svh"
 
 module sep_ip_integration
-  import sep_pkg::*;
-  import sep_crypto_pkg::*;
-  import sep_efuse_pkg::*;
-  import km_intf_pkg::*;
+  import sep_pkg::sep_sram_req_t;
+  import sep_pkg::sep_sram_rsp_t;
+  import sep_pkg::sep_cpu_tcm_req_t;
+  import sep_pkg::sep_cpu_tcm_rsp_t;
+  import sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t;
+  import sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t;
+  import sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t;
+  import sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t;
+  import sep_crypto_pkg::ext_trng_axis_req_t;
+  import sep_crypto_pkg::ext_trng_axis_rsp_t;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W;
+  import sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W;
 #(
   parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SepCryptoEdnEndpointCount,
   parameter bit          ABR_MASKING_EN    = 1'b1

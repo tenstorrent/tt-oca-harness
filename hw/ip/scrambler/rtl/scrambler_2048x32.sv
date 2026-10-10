@@ -14,7 +14,13 @@
 // - BYTE_WISE=1 (per-byte): scramble ends in perm8 x4; descramble starts with iperm8 x4.
 
 module scrambler_2048x32
-  import scrambler_pkg::*;
+  import scrambler_pkg::addr_scramble11;
+  import scrambler_pkg::sbox4;
+  import scrambler_pkg::perm32;
+  import scrambler_pkg::perm8;
+  import scrambler_pkg::iperm32;
+  import scrambler_pkg::iperm8;
+  import scrambler_pkg::ibox4;
 #(
   parameter int unsigned ADDR_WIDTH = 11,                   // SRAM address width.
                                                             // Must be 11: the address scramble is

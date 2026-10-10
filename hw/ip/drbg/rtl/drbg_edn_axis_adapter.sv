@@ -11,7 +11,10 @@
 // the genbits.
 
 module drbg_edn_axis_adapter
-  import drbg_pkg::*;
+  import drbg_pkg::DrbgDefaultEdnEndpointCount;
+  import drbg_pkg::DrbgDefaultEndpointFifoDepth;
+  import drbg_pkg::drbg_axis_req_t;
+  import drbg_pkg::drbg_axis_rsp_t;
 #(
   parameter int unsigned EDN_ENDPOINT_COUNT = DrbgDefaultEdnEndpointCount, // Number of exposed EDN endpoints.
   parameter int unsigned ENDPOINT_FIFO_DEPTH = DrbgDefaultEndpointFifoDepth // FIFO depth for each endpoint AXI-Stream output.

@@ -62,8 +62,7 @@ module cross_trigger_port #(
                                          // held low in wire-OR mode.
 );
 
-  import cross_trigger_port_reg_pkg::*;
-  import cross_trigger_port_pkg::*;
+  import cross_trigger_port_pkg::MODE_WIRE_OR;
 
   // Register interface
   cross_trigger_port_reg_pkg::cross_trigger_port__in_t  reg_in;

@@ -32,10 +32,8 @@
 //-----------------------------------------------------------------------------
 
 module smu_wrapper
-  import sep_pkg::*;
-  import sep_crypto_pkg::*;
-  import sep_io_pkg::*;
-  import km_intf_pkg::*;
+  import sep_crypto_pkg::ext_trng_axis_req_t;
+  import sep_crypto_pkg::ext_trng_axis_rsp_t;
 #(
   parameter int unsigned CFG_IDX = 0,
   parameter smu_pkg::smu_cfg_t CFG = smu_pkg::SmuConfigs[CFG_IDX],

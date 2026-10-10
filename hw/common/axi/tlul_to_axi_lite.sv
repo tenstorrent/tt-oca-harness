@@ -4,10 +4,16 @@
 // TL-UL device to AXI4-Lite master protocol converter.
 
 module tlul_to_axi_lite
-	import tlul_pkg::*;
+	import tlul_pkg::tl_h2d_t;
+	import tlul_pkg::tl_d2h_t;
+	import tlul_pkg::tl_a_op_e;
+	import tlul_pkg::D2H_RSP_INTG_WIDTH;
+	import tlul_pkg::DATA_INTG_WIDTH;
+	import tlul_pkg::tl_d2h_rsp_intg_t;
+	import tlul_pkg::D2H_RSP_MAX_WIDTH;
+	import tlul_pkg::DATA_MAX_WIDTH;
 
 	`include "ocah_assert.svh"
-	import axi_pkg::*;
 	import prim_mubi_pkg::mubi4_t;
 	#(
 		parameter int unsigned AXI_ADDR_WIDTH    = 32,

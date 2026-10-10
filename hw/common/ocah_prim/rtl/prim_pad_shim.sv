@@ -25,7 +25,9 @@ module prim_pad_shim #(
   output logic                            gpio_nandtree_out_o, // NAND-tree output (pass-through).
   inout  wire                             pad_io               // Bidirectional pad pin.
 );
-  import prim_pad_wrapper_pkg::*;
+  import prim_pad_wrapper_pkg::pad_attr_t;
+  import prim_pad_wrapper_pkg::InputStd;
+  import prim_pad_wrapper_pkg::BidirStd;
 
   pad_attr_t pad_attr;
   logic      pad_in;

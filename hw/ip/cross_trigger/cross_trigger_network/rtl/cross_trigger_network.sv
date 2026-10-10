@@ -15,7 +15,19 @@
 // the JTAG DEBUG_CONTROL clock stop, into stop_clks_o, synchronized and registered in clk_i.
 
 module cross_trigger_network
-    import cross_trigger_network_pkg::*;
+    import cross_trigger_network_pkg::DefaultNumCtp;
+    import cross_trigger_network_pkg::DefaultNumIntCt;
+    import cross_trigger_network_pkg::DefaultNumClkStopReq;
+    import cross_trigger_network_pkg::ctn_axil_req_t;
+    import cross_trigger_network_pkg::ctn_axil_resp_t;
+    import cross_trigger_network_pkg::CsrAddrCtmSize;
+    import cross_trigger_network_pkg::CsrAddrCtmRegSize;
+    import cross_trigger_network_pkg::CsrAddrCtpSize;
+    import cross_trigger_network_pkg::ctn_axil_addr_t;
+    import cross_trigger_network_pkg::ctn_axil_data_t;
+    import cross_trigger_network_pkg::ctn_axil_strb_t;
+    import cross_trigger_network_pkg::AxiLiteAddrWidth;
+    import cross_trigger_network_pkg::AxiLiteDataWidth;
 
     `include "axi/typedef.svh"
     `include "prim_assert.sv"

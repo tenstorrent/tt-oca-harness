@@ -9,7 +9,9 @@
 // acknowledged with rvalid one cycle after the request.
 
 module sep_sram_interface_shim
-  import sep_pkg::*;
+  import sep_pkg::sep_sram_req_t;
+  import sep_pkg::sep_sram_rsp_t;
+  import sep_pkg::SEP_MEM_DATA_WIDTH;
 #(
   parameter int unsigned SRAM_ADDR_WIDTH = 10  // SRAM address width; default 10 for 1K entries.
 ) (

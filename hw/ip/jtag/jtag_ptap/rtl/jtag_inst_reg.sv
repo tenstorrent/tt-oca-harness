@@ -9,8 +9,12 @@
 // DefaultInstruction (IDCODE).
 
 module jtag_inst_reg
-  import prim_jtag_pkg::*;
-  import jtag_inst_reg_pkg::*;
+  import prim_jtag_pkg::jtag_scan_ctrl_t;
+  import jtag_inst_reg_pkg::jtag_instruction_decoded_e;
+  import jtag_inst_reg_pkg::jtag_instruction_e;
+  import jtag_inst_reg_pkg::DefaultInstruction;
+  import jtag_inst_reg_pkg::IrWidth;
+  import jtag_inst_reg_pkg::BYPASS_ALT_INSTR;
 (
   /* verilator lint_off UNUSEDSIGNAL */
   input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.

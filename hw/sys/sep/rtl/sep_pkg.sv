@@ -355,7 +355,8 @@ SystemCsrDemuxPorts
   // EL2 specific values (computed based on "pt" struct)
   // To use another core, modify the internals of these typedefs but keep the type names
 
-  import el2_pkg::*;
+  import el2_pkg::el2_trace_pkt_t;
+  import el2_pkg::el2_param_t;
   `include "el2_param.vh"
   ;
 

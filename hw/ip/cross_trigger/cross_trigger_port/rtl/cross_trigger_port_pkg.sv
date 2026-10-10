@@ -8,7 +8,8 @@
 
 `ifndef CROSS_TRIGGER_PORT_PKG_SV
 `define CROSS_TRIGGER_PORT_PKG_SV
-import axi_pkg::*;
+import axi_pkg::data_t;
+import axi_pkg::strb_t;
 package cross_trigger_port_pkg;
 
   `include "axi/typedef.svh"

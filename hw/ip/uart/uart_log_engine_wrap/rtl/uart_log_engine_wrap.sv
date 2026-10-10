@@ -11,7 +11,21 @@
 // UART serial, modem, DMA and interrupt pins pass to the top unchanged.
 
 module uart_log_engine_wrap
-  import uart_log_engine_wrap_pkg::*;
+  import uart_log_engine_wrap_pkg::RegAddrWidth;
+  import uart_log_engine_wrap_pkg::UART_REG_MAP;
+  import uart_log_engine_wrap_pkg::LOG_ENGINE_REG_MAP;
+  import uart_log_engine_wrap_pkg::CTRL_REG_MAP;
+  import uart_log_engine_wrap_pkg::csr_axil_req_t;
+  import uart_log_engine_wrap_pkg::csr_axil_resp_t;
+  import uart_log_engine_wrap_pkg::NumRegMaps;
+  import uart_log_engine_wrap_pkg::uart_log_engine_wrap_reg_map_e;
+  import uart_log_engine_wrap_pkg::UNDEFINED_REG_MAP;
+  import uart_log_engine_wrap_pkg::csr_axil_aw_chan_t;
+  import uart_log_engine_wrap_pkg::csr_axil_w_chan_t;
+  import uart_log_engine_wrap_pkg::csr_axil_b_chan_t;
+  import uart_log_engine_wrap_pkg::csr_axil_ar_chan_t;
+  import uart_log_engine_wrap_pkg::csr_axil_r_chan_t;
+  import uart_log_engine_wrap_pkg::RegDataWidth;
 #(
   parameter int unsigned UART_TX_FIFO_DEPTH    = 32,  // Per-UART TX FIFO depth. Must be a power of
                                                       // 2 from 4 to 4096 inclusive.

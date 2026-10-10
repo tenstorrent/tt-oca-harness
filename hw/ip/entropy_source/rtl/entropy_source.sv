@@ -20,9 +20,9 @@
 // the alert threshold trips.
 
 module entropy_source
-    import entropy_source_reg_pkg::*,
-           entropy_source_pkg::*,
-           entropy_src_main_sm_pkg::*;
+    import entropy_source_pkg::NRings;
+    import entropy_source_pkg::entropy_source_err_bus_t;
+    import entropy_src_main_sm_pkg::StateWidth;
 
     `include "prim_assert.sv"
 (

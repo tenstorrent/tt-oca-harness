@@ -8,7 +8,16 @@
 // register map. Used by sep_efuse_wrapper, sep_lifecycle_ctrl, sep_crypto and sep.
 
 package sep_efuse_pkg;
-  import sep_top_addrmap_pkg::*;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_BASE_ADDR;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIP_UID_BASE_ADDR;
+  import sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SYS_UID_BASE_ADDR;
 
   function automatic int unsigned efuse_offset(input longint unsigned addr);
     return int'(addr - sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR);

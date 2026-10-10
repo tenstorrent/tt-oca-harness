@@ -16,8 +16,20 @@
 `include "axi/assign.svh"
 
 module smc_periph_axi_lite_xbar
-  import axi_pkg::*;
-  import smc_periph_axi_lite_xbar_pkg::*;
+  import smc_periph_axi_lite_xbar_pkg::axi_lite32_req_t;
+  import smc_periph_axi_lite_xbar_pkg::axi_lite32_resp_t;
+  import smc_periph_axi_lite_xbar_pkg::addr_rule_t;
+  import smc_periph_axi_lite_xbar_pkg::NumAddrRules;
+  import smc_periph_axi_lite_xbar_pkg::xbar_slv_req_t;
+  import smc_periph_axi_lite_xbar_pkg::xbar_slv_resp_t;
+  import smc_periph_axi_lite_xbar_pkg::xbar_mst_req_t;
+  import smc_periph_axi_lite_xbar_pkg::xbar_mst_resp_t;
+  import smc_periph_axi_lite_xbar_pkg::XbarCfg;
+  import smc_periph_axi_lite_xbar_pkg::xbar_slv_aw_chan_t;
+  import smc_periph_axi_lite_xbar_pkg::xbar_slv_w_chan_t;
+  import smc_periph_axi_lite_xbar_pkg::xbar_slv_b_chan_t;
+  import smc_periph_axi_lite_xbar_pkg::xbar_slv_ar_chan_t;
+  import smc_periph_axi_lite_xbar_pkg::xbar_slv_r_chan_t;
 #(
   parameter int unsigned EFUSE_SHIM_SIZE = 'h44  // Vendor eFuse shim CSR block carved off
                                                  // the base of the smc_external window, in

@@ -14,8 +14,27 @@
 `include "ocah_assert.svh"
 
 module smu_axi_xbar
-  import axi_pkg::*;
-  import smu_axi_xbar_pkg::*;
+  import smu_axi_xbar_pkg::axi_56_64_req_t;
+  import smu_axi_xbar_pkg::axi_56_64_resp_t;
+  import smu_axi_xbar_pkg::axi_out_req_t;
+  import smu_axi_xbar_pkg::axi_out_resp_t;
+  import smu_axi_xbar_pkg::addr_rule_t;
+  import smu_axi_xbar_pkg::NumAddrRules;
+  import smu_axi_xbar_pkg::xbar_slv_req_t;
+  import smu_axi_xbar_pkg::xbar_slv_resp_t;
+  import smu_axi_xbar_pkg::xbar_mst_req_t;
+  import smu_axi_xbar_pkg::xbar_mst_resp_t;
+  import smu_axi_xbar_pkg::XbarCfg;
+  import smu_axi_xbar_pkg::Connectivity;
+  import smu_axi_xbar_pkg::xbar_slv_aw_chan_t;
+  import smu_axi_xbar_pkg::xbar_mst_aw_chan_t;
+  import smu_axi_xbar_pkg::xbar_slv_w_chan_t;
+  import smu_axi_xbar_pkg::xbar_slv_b_chan_t;
+  import smu_axi_xbar_pkg::xbar_mst_b_chan_t;
+  import smu_axi_xbar_pkg::xbar_slv_ar_chan_t;
+  import smu_axi_xbar_pkg::xbar_mst_ar_chan_t;
+  import smu_axi_xbar_pkg::xbar_slv_r_chan_t;
+  import smu_axi_xbar_pkg::xbar_mst_r_chan_t;
 (
   input  wire logic clk_i,                      // SMU fabric clock.
   input  wire logic rst_ni,                     // Active-low reset.
