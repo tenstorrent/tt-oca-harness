@@ -9,6 +9,8 @@
 // mutexes, semaphores, scratch registers and SMC_ATTRIBUTES.
 // In smc_cpu_wrapper it sits behind the front-port demux beside the L2 frontend.
 
+`include "ocah_registers.svh"
+
 module smc_cpu_ctrl_wrap #(
   parameter bit NO_ADDR_REMAP = 1'b1,   // Reported in SMC_ATTRIBUTES.no_output_remap; no other
                                         // effect in this module.
@@ -132,13 +134,7 @@ module smc_cpu_ctrl_wrap #(
 
   // Delay wr_swacc one cycle so the update value is sampled after the CSR field
   // has captured the SW write data
-  always_ff @(posedge clk_smc_i or negedge rst_primary_ni) begin
-    if (!rst_primary_ni) begin
-      ref_count_wr_swacc_q <= 1'b0;
-    end else begin
-      ref_count_wr_swacc_q <= ref_count_wr_swacc;
-    end
-  end
+  `OCAH_FF(ref_count_wr_swacc_q, ref_count_wr_swacc, 1'b0, clk_smc_i, rst_primary_ni)
 
   prim_refclk_count_w_cdc #(
     .REF_COUNT_WIDTH(RefCountWidth)
@@ -249,13 +245,7 @@ module smc_cpu_ctrl_wrap #(
     end
   end
 
-  always_ff @(posedge clk_smc_i) begin
-    if (~rst_primary_ni) begin
-      wdt_second_timeout_o <= 1'b0;
-    end else begin
-      wdt_second_timeout_o <= |smc_wdt_timeout;
-    end
-  end
+  `OCAH_FFSRN(wdt_second_timeout_o, |smc_wdt_timeout, 1'b0, clk_smc_i, rst_primary_ni)
 
   // Register interface
   cpu_ctrl_reg_pkg::cpu_ctrl__in_t hwif_in;
@@ -575,15 +565,8 @@ module smc_cpu_ctrl_wrap #(
                     external_wr_bit_mask[MaxCPUCores-1:0]))
         };
 
-  always_ff @(posedge clk_smc_i or negedge rst_primary_ni) begin
-    if (~rst_primary_ni) begin
-      reset_ctrl_reg_value_n0_scan <= reset_ctrl_reset_value;
-    end else begin
-      if (reset_ctrl_wr_en) begin
-        reset_ctrl_reg_value_n0_scan <= reset_ctrl_wr_data;
-      end
-    end
-  end
+  `OCAH_FFL(reset_ctrl_reg_value_n0_scan, reset_ctrl_wr_data, reset_ctrl_wr_en,
+            reset_ctrl_reset_value, clk_smc_i, rst_primary_ni)
 
   assign reset_ctrl_rd_data = {
     {(64 - $bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)) {1'b0}},

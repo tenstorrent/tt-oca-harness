@@ -14,7 +14,7 @@
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 // - Andreas Kurth <akurth@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 module axi_demux_id_counters #(
   // the lower bits of the AXI ID that should be considered, results in 2**AXI_ID_BITS counters
@@ -128,7 +128,7 @@ module axi_demux_id_counters #(
     assign cnt_full[i] = overflow | (&in_flight);
 
     // holds the selection signal for this id
-    `FFLARN(mst_select_q[i], push_mst_select_i, push_en[i], '0, clk_i, rst_ni)
+    `OCAH_FFL(mst_select_q[i], push_mst_select_i, push_en[i], '0, clk_i, rst_ni)
 
 // pragma translate_off
 `ifndef VERILATOR

@@ -10,6 +10,7 @@
 // The level synchronizers have no reset.
 
 `include "ocah_assert.svh"
+`include "ocah_registers.svh"
 
 module smc_peripherals_cdc #(
   parameter int unsigned SYNC_STAGES = 3  // Synchronizer depth of the AXI-Lite CDCs and the
@@ -389,16 +390,15 @@ module smc_peripherals_cdc #(
   logic                                avsbus_irq_periph_clk_flopped;
   logic [smc_config_pkg::NumI2c-1:0][3:0]                          i2c_debug_periph_clk_flopped;
 
-  always_ff @(posedge clk_periph_i) begin
-    i2c_enable_periph_clk_flopped <= i2c_enable_periph_clk_i;
-    i2c_irqs_periph_clk_flopped <= i2c_irqs_periph_clk_i;
-    i3c_irqs_periph_clk_flopped <= i3c_irqs_periph_clk_i;
-    uart_enable_periph_clk_flopped <= uart_enable_periph_clk_i;
-
-    uart_irq_combined_periph_clk_flopped <= uart_irq_periph_clk_i | uart_err_periph_clk_i | log_engine_irq_periph_clk_i;
-    avsbus_irq_periph_clk_flopped <= avsbus_irq_periph_clk_i;
-    i2c_debug_periph_clk_flopped <= i2c_debug_periph_clk_i;
-  end
+  `OCAH_FFNR(i2c_enable_periph_clk_flopped, i2c_enable_periph_clk_i, clk_periph_i)
+  `OCAH_FFNR(i2c_irqs_periph_clk_flopped, i2c_irqs_periph_clk_i, clk_periph_i)
+  `OCAH_FFNR(i3c_irqs_periph_clk_flopped, i3c_irqs_periph_clk_i, clk_periph_i)
+  `OCAH_FFNR(uart_enable_periph_clk_flopped, uart_enable_periph_clk_i, clk_periph_i)
+  `OCAH_FFNR(uart_irq_combined_periph_clk_flopped,
+             uart_irq_periph_clk_i | uart_err_periph_clk_i | log_engine_irq_periph_clk_i,
+             clk_periph_i)
+  `OCAH_FFNR(avsbus_irq_periph_clk_flopped, avsbus_irq_periph_clk_i, clk_periph_i)
+  `OCAH_FFNR(i2c_debug_periph_clk_flopped, i2c_debug_periph_clk_i, clk_periph_i)
 
   ///////////////////////////////////////////
   // Clock Gate Enable Synchronizers       //
@@ -411,13 +411,11 @@ module smc_peripherals_cdc #(
   logic i3c_cg_en_smc_clk_flopped;
   logic tel_cg_en_smc_clk_flopped;
 
-  always_ff @(posedge clk_smc_i) begin
-    i2c_cg_en_smc_clk_flopped  <= i2c_cg_en_smc_clk_i;
-    uart_cg_en_smc_clk_flopped <= uart_cg_en_smc_clk_i;
-    avs_cg_en_smc_clk_flopped  <= avs_cg_en_smc_clk_i;
-    i3c_cg_en_smc_clk_flopped  <= i3c_cg_en_smc_clk_i;
-    tel_cg_en_smc_clk_flopped  <= tel_cg_en_smc_clk_i;
-  end
+  `OCAH_FFNR(i2c_cg_en_smc_clk_flopped, i2c_cg_en_smc_clk_i, clk_smc_i)
+  `OCAH_FFNR(uart_cg_en_smc_clk_flopped, uart_cg_en_smc_clk_i, clk_smc_i)
+  `OCAH_FFNR(avs_cg_en_smc_clk_flopped, avs_cg_en_smc_clk_i, clk_smc_i)
+  `OCAH_FFNR(i3c_cg_en_smc_clk_flopped, i3c_cg_en_smc_clk_i, clk_smc_i)
+  `OCAH_FFNR(tel_cg_en_smc_clk_flopped, tel_cg_en_smc_clk_i, clk_smc_i)
 
   if (SYNC_STAGES == 2) begin : gen_sync2
 

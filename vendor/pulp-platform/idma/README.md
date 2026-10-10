@@ -22,9 +22,10 @@ source and keep TT's generated RTL as overlay collateral (see below).
 ## Patches
 
 The TT delta — all in-place edits to upstream files (no new modules) — is applied
-as five numbered patches in sorted filename order. Patches 0001 through 0004
+as six numbered patches in sorted filename order. Patches 0001 through 0004
 establish the backend, frontend, typedef, and midend customizations. Patch 0005
-updates templates modified by 0001 and 0002, so it must follow both.
+updates templates modified by 0001 and 0002, so it must follow both. Patch 0006
+touches files across all of them, so it comes last.
 
 ### `patches/0001-tt-idma-backend.patch` — protocol backends + their templates
 
@@ -51,6 +52,11 @@ Edits to the `midend/idma_{nd,mp_dist,mp_split}_midend` modules.
 Explicitly sizes backend arithmetic, AXI metadata, register-frontend request
 fields, and neutral payload values at their destination widths.
 
-After all five patches are applied, regenerating from the patched templates
+### `patches/0006-tt-idma-ocah-registers.patch` — register macros
+
+Replaces the common_cells `registers.svh` macros with the `OCAH_FF*` ones from
+`ocah_registers.svh`, spelling out the clock and reset the v1 defaults supplied.
+
+After all six patches are applied, regenerating from the patched templates
 reproduces the generated bundle in `overlay/target/rtl/`. Regenerate from those
 templates rather than hand-editing the generated `idma_*` files.

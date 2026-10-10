@@ -9,6 +9,8 @@
 // cnt_en_i must be high for the counter to run; it crosses from refclk_i to clk_i through a
 // 4-phase handshake, and refclk_cnt_done_i through a toggle pulse synchronizer.
 
+`include "ocah_registers.svh"
+
 module prim_clk_counter #(
   parameter int unsigned WIDTH = 24  // Counter width.
 ) (
@@ -80,13 +82,8 @@ module prim_clk_counter #(
     .dst_ready_i (1'b1)
   );
 
-  always_ff @(posedge clk_i) begin
-    if (!reset_n_synced) begin
-      cnt_en_synced_d <= 1'b0;
-    end else begin
-      cnt_en_synced_d <= cnt_en_sync_valid ? cnt_en_synced : cnt_en_synced_d;
-    end
-  end
+  `OCAH_FFSRN(cnt_en_synced_d, cnt_en_sync_valid ? cnt_en_synced : cnt_en_synced_d, 1'b0, clk_i,
+              reset_n_synced)
   assign cnt_start_synced = ~cnt_en_synced_d & cnt_en_synced;
 
   prim_sync3_pulse u_sync_refclk_cnt_done (
@@ -107,14 +104,10 @@ module prim_clk_counter #(
     end
   end
 
-  always_ff @(posedge clk_i) begin
-    if (~reset_n_synced) begin
-      clk_cnt_o <= WIDTH'(0);
-      clk_cnt_valid_o <= 1'b0;
-    end else begin
-      clk_cnt_o <= cnt_done_synced ? clk_cnt : clk_cnt_o;
-      clk_cnt_valid_o <= cnt_en_synced ? (cnt_done_synced ? 1'b1 : (cnt_start_synced ? 1'b0 : clk_cnt_valid_o)) : 1'b0;
-    end
-  end
+  `OCAH_FFSRN(clk_cnt_o, cnt_done_synced ? clk_cnt : clk_cnt_o, WIDTH'(0), clk_i, reset_n_synced)
+  `OCAH_FFSRN(
+      clk_cnt_valid_o,
+      cnt_en_synced ? (cnt_done_synced ? 1'b1 : (cnt_start_synced ? 1'b0 : clk_cnt_valid_o)) : 1'b0,
+      1'b0, clk_i, reset_n_synced)
 
 endmodule

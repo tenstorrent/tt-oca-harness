@@ -7,6 +7,8 @@
 // during and after async set and follows d_i three clk_i cycles later. Use this when the idle or
 // reset value of the destination signal must be high.
 
+`include "ocah_registers.svh"
+
 module prim_flop_3sync_s (
   input clk_i,       // Destination-domain clock.
   d_i,               // Async data to synchronize.
@@ -16,17 +18,9 @@ module prim_flop_3sync_s (
   logic q_d_inv, q_dd_inv, q_ddd_inv;
   logic D_inv;
   assign D_inv = ~d_i;
-  always_ff @(posedge clk_i or negedge set_ni) begin
-    if (set_ni == 1'b0) begin
-      q_d_inv <= 1'b0;
-      q_dd_inv <= 1'b0;
-      q_ddd_inv <= 1'b0;
-    end else begin
-      q_d_inv <= D_inv;
-      q_dd_inv <= q_d_inv;
-      q_ddd_inv <= q_dd_inv;
-    end
-  end
+  `OCAH_FF(q_d_inv, D_inv, 1'b0, clk_i, set_ni)
+  `OCAH_FF(q_dd_inv, q_d_inv, 1'b0, clk_i, set_ni)
+  `OCAH_FF(q_ddd_inv, q_dd_inv, 1'b0, clk_i, set_ni)
   assign q_o = ~q_ddd_inv;
 
 endmodule

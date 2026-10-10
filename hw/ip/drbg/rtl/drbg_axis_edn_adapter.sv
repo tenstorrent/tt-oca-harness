@@ -23,6 +23,8 @@
 // synchronously cancels only the corresponding endpoint and does not disturb another client's
 // in-flight response. It must assert before the client's reset asserts and hold until that
 // reset deasserts.
+`include "ocah_registers.svh"
+
 module drbg_axis_edn_adapter
   import drbg_pkg::*;
 #(
@@ -169,13 +171,7 @@ module drbg_axis_edn_adapter
     // edn_ack_sm clears the holding FIFO on the first cycle after a flush ends,
     // so the endpoint rejoins arbitration a cycle later to keep a granted word
     // from being cleared.
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
-        ep_flush_q[i] <= 1'b1;
-      end else begin
-        ep_flush_q[i] <= ep_flush[i];
-      end
-    end
+    `OCAH_FF(ep_flush_q[i], ep_flush[i], 1'b1, clk_i, rst_ni)
 
     // Every use of edn_req_i is gated by ep_live, so a client reset that
     // follows its cancel cannot reach a flop in this rst_ni domain.

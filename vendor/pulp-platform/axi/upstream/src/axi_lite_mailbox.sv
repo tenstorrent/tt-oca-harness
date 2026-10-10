@@ -16,7 +16,7 @@
 //              See `doc/axi_lite_mailbox.md` for the documentation, including the definition
 //              of parameters and ports.
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 module axi_lite_mailbox #(
   parameter int unsigned MailboxDepth = 32'd0,
@@ -181,7 +181,7 @@ module axi_lite_mailbox #(
         end
       end
 
-      `FFLARN(irq_q, irq_d, update_irq, '0, clk_i, rst_ni)
+      `OCAH_FFL(irq_q, irq_d, update_irq, '0, clk_i, rst_ni)
     end else begin : gen_irq_level
       assign irq_o[i] = (IrqActHigh) ? slv_irq[i] : ~slv_irq[i];
     end
@@ -292,11 +292,11 @@ module axi_lite_mailbox_slave #(
   logic       update_regs;        // register enable signal
 
   // register instantiation
-  `FFLARN(error_q, error_d, update_regs, '0, clk_i, rst_ni)
-  `FFLARN(wirqt_q, wirqt_d, update_regs, '0, clk_i, rst_ni)
-  `FFLARN(rirqt_q, rirqt_d, update_regs, '0, clk_i, rst_ni)
-  `FFLARN(irqs_q, irqs_d, update_regs, '0, clk_i, rst_ni)
-  `FFLARN(irqen_q, irqen_d, update_regs, '0, clk_i, rst_ni)
+  `OCAH_FFL(error_q, error_d, update_regs, '0, clk_i, rst_ni)
+  `OCAH_FFL(wirqt_q, wirqt_d, update_regs, '0, clk_i, rst_ni)
+  `OCAH_FFL(rirqt_q, rirqt_d, update_regs, '0, clk_i, rst_ni)
+  `OCAH_FFL(irqs_q, irqs_d, update_regs, '0, clk_i, rst_ni)
+  `OCAH_FFL(irqen_q, irqen_d, update_regs, '0, clk_i, rst_ni)
 
   // Mailbox FIFO data assignments
   for (genvar i = 0; i < (AxiDataWidth/8); i++) begin : gen_w_mbox_data

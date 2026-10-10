@@ -36,6 +36,8 @@
 // - ATOP_WIDTH must be 6 to match the PULP AXI channel typedef layout.
 // - ADDR_WIDTH must cover the byte offset within one data beat.
 
+`include "ocah_registers.svh"
+
 module jtag2axi #(
   parameter int ADDR_WIDTH   = 52,      // Address width.
   parameter int DATA_WIDTH   = 64,      // Width of AXI read and write data and of the scan-chain
@@ -364,13 +366,7 @@ module jtag2axi #(
     end
   end
 
-  always_ff @(posedge tck_i or negedge trst_ni) begin
-    if (!trst_ni) begin
-      shift_register_q_tclk <= '0;
-    end else begin
-      shift_register_q_tclk <= shift_register_d_tclk;
-    end
-  end
+  `OCAH_FF(shift_register_q_tclk, shift_register_d_tclk, '0, tck_i, trst_ni)
 
   always_ff @(negedge tck_i or negedge trst_ni) begin
     if (!trst_ni) begin
@@ -654,13 +650,7 @@ module jtag2axi #(
   // The CDC isolates the TCK side before clearing it, so no B or R beat
   // reaches the FSM while src_clear_pending_tclk is high. A request that was
   // already pushed into the CDC is dropped by the clear and never completes.
-  always_ff @(posedge tck_i or negedge trst_ni) begin
-    if (!trst_ni) begin
-      src_clear_pending_q_tclk <= 1'b0;
-    end else begin
-      src_clear_pending_q_tclk <= src_clear_pending_tclk;
-    end
-  end
+  `OCAH_FF(src_clear_pending_q_tclk, src_clear_pending_tclk, 1'b0, tck_i, trst_ni)
 
   assign cdc_clear_abort_tclk = src_clear_pending_tclk && !src_clear_pending_q_tclk;
 
@@ -1636,65 +1626,32 @@ module jtag2axi #(
     end
   end
 
-  always_ff @(posedge tck_i or negedge trst_ni) begin
-    if (!trst_ni) begin
-      single_tx_req_valid_tclk          <= 1'b0;
-      single_tx_op_tclk                 <= JtagOpNop;
-      single_tx_addr_tclk               <= '0;
-      single_tx_data_tclk               <= '0;
-      single_tx_axi_size_tclk           <= '0;
-      single_tx_wstrb_tclk              <= '0;
-
-      series_ctrl_size_tclk_r           <= '0;
-      series_ctrl_pipeline_depth_tclk_r <= '0;
-      series_ctrl_address_tclk_r        <= '0;
-      series_ctrl_op_mode_tclk_r        <= JtagOpNop;
-
-      single_op_pending_tclk            <= 1'b0;
-      series_errstat_pending_tclk       <= 1'b0;
-      last_single_op_status_tclk        <= CaptureStatusSuccess;
-      last_read_data_tclk               <= '0;
-      last_single_op_was_read_tclk      <= 1'b0;
-      sticky_axi_status_tclk            <= CaptureStatusSuccess;
-      sticky_axi_status_full_tclk       <= 1'b0;
-
-      series_read_preload_count_tclk    <= '0;
-      plain_reads_pending_tclk          <= '0;
-      series_reads_in_flight_tclk       <= '0;
-      series_reads_pushed_tclk          <= '0;
-
-      series_request_fifo_push_tclk     <= 1'b0;
-      series_request_fifo_din_tclk      <= '{default:'0};
-    end else begin
-      single_tx_req_valid_tclk          <= single_tx_req_valid_tclk_d;
-      single_tx_op_tclk                 <= single_tx_op_tclk_d;
-      single_tx_addr_tclk               <= single_tx_addr_tclk_d;
-      single_tx_data_tclk               <= single_tx_data_tclk_d;
-      single_tx_axi_size_tclk           <= single_tx_axi_size_tclk_d;
-      single_tx_wstrb_tclk              <= single_tx_wstrb_tclk_d;
-
-      series_ctrl_size_tclk_r           <= series_ctrl_size_tclk_r_d;
-      series_ctrl_pipeline_depth_tclk_r <= series_ctrl_pipeline_depth_tclk_r_d;
-      series_ctrl_address_tclk_r        <= series_ctrl_address_tclk_r_d;
-      series_ctrl_op_mode_tclk_r        <= series_ctrl_op_mode_tclk_r_d;
-
-      single_op_pending_tclk            <= single_op_pending_tclk_d;
-      series_errstat_pending_tclk       <= series_errstat_pending_tclk_d;
-      last_single_op_status_tclk        <= last_single_op_status_tclk_d;
-      last_read_data_tclk               <= last_read_data_tclk_d;
-      last_single_op_was_read_tclk      <= last_single_op_was_read_tclk_d;
-      sticky_axi_status_tclk            <= sticky_axi_status_tclk_d;
-      sticky_axi_status_full_tclk       <= sticky_axi_status_full_tclk_d;
-
-      series_read_preload_count_tclk    <= series_read_preload_count_tclk_d;
-      plain_reads_pending_tclk          <= plain_reads_pending_tclk_d;
-      series_reads_in_flight_tclk       <= series_reads_in_flight_tclk_d;
-      series_reads_pushed_tclk          <= series_reads_pushed_tclk_d;
-
-      series_request_fifo_push_tclk     <= series_request_fifo_push_tclk_d;
-      series_request_fifo_din_tclk      <= series_request_fifo_din_tclk_d;
-    end
-  end
+  `OCAH_FF(single_tx_req_valid_tclk, single_tx_req_valid_tclk_d, 1'b0, tck_i, trst_ni)
+  `OCAH_FF(single_tx_op_tclk, single_tx_op_tclk_d, JtagOpNop, tck_i, trst_ni)
+  `OCAH_FF(single_tx_addr_tclk, single_tx_addr_tclk_d, '0, tck_i, trst_ni)
+  `OCAH_FF(single_tx_data_tclk, single_tx_data_tclk_d, '0, tck_i, trst_ni)
+  `OCAH_FF(single_tx_axi_size_tclk, single_tx_axi_size_tclk_d, '0, tck_i, trst_ni)
+  `OCAH_FF(single_tx_wstrb_tclk, single_tx_wstrb_tclk_d, '0, tck_i, trst_ni)
+  `OCAH_FF(series_ctrl_size_tclk_r, series_ctrl_size_tclk_r_d, '0, tck_i, trst_ni)
+  `OCAH_FF(series_ctrl_pipeline_depth_tclk_r, series_ctrl_pipeline_depth_tclk_r_d, '0, tck_i,
+           trst_ni)
+  `OCAH_FF(series_ctrl_address_tclk_r, series_ctrl_address_tclk_r_d, '0, tck_i, trst_ni)
+  `OCAH_FF(series_ctrl_op_mode_tclk_r, series_ctrl_op_mode_tclk_r_d, JtagOpNop, tck_i, trst_ni)
+  `OCAH_FF(single_op_pending_tclk, single_op_pending_tclk_d, 1'b0, tck_i, trst_ni)
+  `OCAH_FF(series_errstat_pending_tclk, series_errstat_pending_tclk_d, 1'b0, tck_i, trst_ni)
+  `OCAH_FF(last_single_op_status_tclk, last_single_op_status_tclk_d, CaptureStatusSuccess, tck_i,
+           trst_ni)
+  `OCAH_FF(last_read_data_tclk, last_read_data_tclk_d, '0, tck_i, trst_ni)
+  `OCAH_FF(last_single_op_was_read_tclk, last_single_op_was_read_tclk_d, 1'b0, tck_i, trst_ni)
+  `OCAH_FF(sticky_axi_status_tclk, sticky_axi_status_tclk_d, CaptureStatusSuccess, tck_i, trst_ni)
+  `OCAH_FF(sticky_axi_status_full_tclk, sticky_axi_status_full_tclk_d, 1'b0, tck_i, trst_ni)
+  `OCAH_FF(series_read_preload_count_tclk, series_read_preload_count_tclk_d, '0, tck_i, trst_ni)
+  `OCAH_FF(plain_reads_pending_tclk, plain_reads_pending_tclk_d, '0, tck_i, trst_ni)
+  `OCAH_FF(series_reads_in_flight_tclk, series_reads_in_flight_tclk_d, '0, tck_i, trst_ni)
+  `OCAH_FF(series_reads_pushed_tclk, series_reads_pushed_tclk_d, '0, tck_i, trst_ni)
+  `OCAH_FF(series_request_fifo_push_tclk, series_request_fifo_push_tclk_d, 1'b0, tck_i, trst_ni)
+  `OCAH_FF(series_request_fifo_din_tclk, series_request_fifo_din_tclk_d, '{default: '0}, tck_i,
+           trst_ni)
 
   //--------------------------------------------------------------------------
   // JTAG Capture Data Preparation (TCK Domain)

@@ -13,7 +13,7 @@
 // - Gianna Paulin <pauling@iis.ee.ethz.ch>
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 /// AXI4+ATOP slave module which translates AXI bursts into a memory stream
 /// which behaves as a memory containing only `0` data which cannot be
 /// overwritten by `write` operations.
@@ -99,6 +99,6 @@ module axi_zero_mem #(
   assign zero_mem_gnt = zero_mem_req;
   assign zero_mem_valid_req_d = zero_mem_gnt & zero_mem_req;
 
-  `FF(zero_mem_valid_req_q, zero_mem_valid_req_d, '0, clk_i, rst_ni)
+  `OCAH_FF(zero_mem_valid_req_q, zero_mem_valid_req_d, '0, clk_i, rst_ni)
 
 endmodule

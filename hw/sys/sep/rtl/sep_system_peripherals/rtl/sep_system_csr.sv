@@ -13,6 +13,8 @@
 // rst_warm_ni; everything else resets on rst_ni. REFERENCE_COUNTER counts clk_ref_i and is
 // read through a CDC into clk_i; a software write loads it.
 
+`include "ocah_registers.svh"
+
 module sep_system_csr (
   input  logic clk_i,                         // System clock.
   input  logic clk_ref_i,                     // Free-running reference clock for REFERENCE_COUNTER.
@@ -786,13 +788,7 @@ module sep_system_csr (
   // REFERENCE_COUNTER
   // Delay wr_swacc one cycle so the update value is sampled after the CSR field
   // has captured the SW write data
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      ref_count_wr_swacc_q <= 1'b0;
-    end else begin
-      ref_count_wr_swacc_q <= ref_count_wr_swacc;
-    end
-  end
+  `OCAH_FF(ref_count_wr_swacc_q, ref_count_wr_swacc, 1'b0, clk_i, rst_ni)
 
   prim_refclk_count_w_cdc #(
     .REF_COUNT_WIDTH(64)

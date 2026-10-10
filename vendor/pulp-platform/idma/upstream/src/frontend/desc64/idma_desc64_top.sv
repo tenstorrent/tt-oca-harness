@@ -5,7 +5,7 @@
 // Authors:
 // - Axel Vanoni <axvanoni@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 
 /// This module serves as a descriptor-based frontend for the iDMA in the CVA6-core
@@ -222,7 +222,7 @@ if (DataWidth == 32) begin : gen_aw_w_chan_32
         master_req_o.w.strb  = 4'hf;
         master_req_o.w.last  = w_is_last_q;
     end
-    `FF(w_is_last_q, w_is_last_d, 1'b0)
+    `OCAH_FF(w_is_last_q, w_is_last_d, 1'b0, clk_i, rst_ni)
 end else begin : gen_aw_w_chan
     assign ws_per_writeback = 2'd1;
     always_comb begin : proc_w
@@ -458,7 +458,7 @@ stream_fifo #(
     .ready_i   (master_rsp_i.aw_ready)
 );
 
-`FF(w_counter_q, w_counter_d, '0)
+`OCAH_FF(w_counter_q, w_counter_d, '0, clk_i, rst_ni)
 
 
 assign idma_rsp_ready_o = next_wb_addr_ready && next_wb_addr_valid;

@@ -9,6 +9,8 @@
 // Pulse complete_aw_o on each B handshake and complete_ar_o on each last-beat R handshake.
 // Export req_count_q_o for downstream hang detectors such as axi_hang_detector.
 
+`include "ocah_registers.svh"
+
 module prim_axi_snoop #(
   parameter int unsigned OUTSTANDING_TX = 1,  // Max outstanding transactions tracked; sizes the
                                               // counter.
@@ -100,25 +102,11 @@ module prim_axi_snoop #(
   // Sequential Logic - Request Counter
   ////////////////////////////////////////////////////////////////////////////////
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      req_count_q <= count_t'(0);
-
-      aw_valid_q     <= 1'b0;
-      aw_handshake_q <= 1'b0;
-      ar_valid_q     <= 1'b0;
-      ar_handshake_q <= 1'b0;
-
-    end else begin
-      req_count_q <= req_count_d;
-
-      aw_valid_q     <= snoop_aw_valid_i;
-      aw_handshake_q <= snoop_aw_valid_i && snoop_aw_ready_i;
-      ar_valid_q     <= snoop_ar_valid_i;
-      ar_handshake_q <= snoop_ar_valid_i && snoop_ar_ready_i;
-
-    end
-  end
+  `OCAH_FF(req_count_q, req_count_d, count_t'(0), clk_i, rst_ni)
+  `OCAH_FF(aw_valid_q, snoop_aw_valid_i, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(aw_handshake_q, snoop_aw_valid_i && snoop_aw_ready_i, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(ar_valid_q, snoop_ar_valid_i, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(ar_handshake_q, snoop_ar_valid_i && snoop_ar_ready_i, 1'b0, clk_i, rst_ni)
 
   ////////////////////////////////////////////////////////////////////////////////
   // Assertions

@@ -5,7 +5,7 @@
 // Authors:
 // - Axel Vanoni <axvanoni@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// This module implements backpressure via ready/valid handshakes
 /// for the regbus registers and exposes it to the descriptor fifo
@@ -79,6 +79,6 @@ import idma_desc64_reg_pkg::idma_desc64_hw2reg_t; #(
             input_addr_valid_d = '0;
         end
     end
-    `FF(input_addr_valid_q, input_addr_valid_d, '0)
+    `OCAH_FF(input_addr_valid_q, input_addr_valid_d, '0, clk_i, rst_ni)
 
 endmodule

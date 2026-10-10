@@ -12,6 +12,8 @@
 // set, the converter completes the write with OKAY locally and issues no TL-UL
 // transaction. Default off so existing consumers keep their strict behaviour.
 
+`include "ocah_registers.svh"
+
 module axi_lite_to_tlul
 	import tlul_pkg::*;
 
@@ -86,25 +88,13 @@ module axi_lite_to_tlul
 	// --------------------------------------------------
 	// FSM Sequential Logic
 	// --------------------------------------------------
-	always_ff @(posedge clk_i or negedge rst_ni) begin
-		if (!rst_ni) begin
-			state_q      <= IDLE;
-			req_addr_q   <= '0;
-			req_data_q   <= '0;
-			req_strb_q   <= '0;
-			resp_data_q  <= '0;
-			req_error_q  <= 1'b0;
-			sticky_err_q <= 1'b0;
-		end else begin
-			state_q      <= state_d;
-			req_addr_q   <= req_addr_d;
-			req_data_q   <= req_data_d;
-			req_strb_q   <= req_strb_d;
-			resp_data_q  <= resp_data_d;
-			req_error_q  <= req_error_d;
-			sticky_err_q <= sticky_err_d;
-		end
-	end
+	`OCAH_FF(state_q, state_d, IDLE, clk_i, rst_ni)
+	`OCAH_FF(req_addr_q, req_addr_d, '0, clk_i, rst_ni)
+	`OCAH_FF(req_data_q, req_data_d, '0, clk_i, rst_ni)
+	`OCAH_FF(req_strb_q, req_strb_d, '0, clk_i, rst_ni)
+	`OCAH_FF(resp_data_q, resp_data_d, '0, clk_i, rst_ni)
+	`OCAH_FF(req_error_q, req_error_d, 1'b0, clk_i, rst_ni)
+	`OCAH_FF(sticky_err_q, sticky_err_d, 1'b0, clk_i, rst_ni)
 
 	// Assign sticky error output
 	assign err_o = sticky_err_q;

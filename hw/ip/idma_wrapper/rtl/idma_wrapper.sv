@@ -23,6 +23,8 @@
 // - AXI_DATA_WIDTH must be >= 32, the width of the DMA register interface.
 // - EN_R_AW_COUPLING is recommended.
 
+`include "ocah_registers.svh"
+
 module idma_wrapper #(
   parameter  int unsigned NUM_CTRL_INTERFACES = 1,          // Number of AXI4 control ports, each
                                                             // with its own register frontend and 2D
@@ -243,15 +245,8 @@ module idma_wrapper #(
 
   // Falling-edge pulse of dma_busy_o (transfer-complete interrupt)
   logic dma_prev_busy;
-  always_ff @(posedge clk_i) begin
-    if (~rst_ni) begin
-      dma_prev_busy <= 1'b0;
-      dma_intp_o    <= 1'b0;
-    end else begin
-      dma_prev_busy <= dma_busy_o;
-      dma_intp_o    <= dma_prev_busy & ~dma_busy_o;
-    end
-  end
+  `OCAH_FFSRN(dma_prev_busy, dma_busy_o, 1'b0, clk_i, rst_ni)
+  `OCAH_FFSRN(dma_intp_o, dma_prev_busy & ~dma_busy_o, 1'b0, clk_i, rst_ni)
 
   //////////////
   // Frontend //

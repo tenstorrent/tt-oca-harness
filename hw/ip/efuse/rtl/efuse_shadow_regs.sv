@@ -13,6 +13,7 @@
 
 `include "prim_assert.sv"
 `include "ocah_assert.svh"
+`include "ocah_registers.svh"
 
 module efuse_shadow_regs
 #(
@@ -471,20 +472,10 @@ module efuse_shadow_regs
     end
 
     // Register the state
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-            efuse_sense_state_q <= ST_IDLE;
-            current_word_num_q <= '0;
-            words_received_q <= efuse_word_counter_t'(0);
-            fuse_command_req_o <= FuseCommandReqDefault;
-
-        end else begin
-            efuse_sense_state_q <= efuse_sense_state_d;
-            current_word_num_q <= current_word_num_d;
-            words_received_q <= words_received_d;
-            fuse_command_req_o <= fuse_command_req_d;
-        end
-    end
+    `OCAH_FF(efuse_sense_state_q, efuse_sense_state_d, ST_IDLE, clk_i, rst_ni)
+    `OCAH_FF(current_word_num_q, current_word_num_d, '0, clk_i, rst_ni)
+    `OCAH_FF(words_received_q, words_received_d, efuse_word_counter_t'(0), clk_i, rst_ni)
+    `OCAH_FF(fuse_command_req_o, fuse_command_req_d, FuseCommandReqDefault, clk_i, rst_ni)
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin

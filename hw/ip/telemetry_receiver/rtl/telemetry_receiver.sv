@@ -17,6 +17,8 @@
 // - debug_o[2] message_buffer_empty.
 // - debug_o[3] assembly_buffer_full: the beat being accepted fills the assembly buffer.
 
+`include "ocah_registers.svh"
+
 module telemetry_receiver
   import telemetry_receiver_pkg::*;
 #(
@@ -184,21 +186,13 @@ module telemetry_receiver
     end
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (~rst_ni) begin
-      assembly_buffer <= '0;
-      assembly_buffer_wr_ptr <= assembly_buffer_ptr_t'(0);
-      assembly_buffer_wr_ptr_q <= assembly_buffer_ptr_t'(0);
-      end_of_packet_q <= 1'b0;
-      assembly_buffer_full_q <= 1'b0;
-    end else begin
-      assembly_buffer <= assembly_buffer_next;
-      assembly_buffer_wr_ptr <= assembly_buffer_wr_ptr_next;
-      assembly_buffer_wr_ptr_q <= assembly_buffer_wr_ptr;
-      end_of_packet_q <= end_of_packet;
-      assembly_buffer_full_q <= assembly_buffer_full;
-    end
-  end
+  `OCAH_FF(assembly_buffer, assembly_buffer_next, '0, clk_i, rst_ni)
+  `OCAH_FF(assembly_buffer_wr_ptr, assembly_buffer_wr_ptr_next, assembly_buffer_ptr_t'(0), clk_i,
+           rst_ni)
+  `OCAH_FF(assembly_buffer_wr_ptr_q, assembly_buffer_wr_ptr, assembly_buffer_ptr_t'(0), clk_i,
+           rst_ni)
+  `OCAH_FF(end_of_packet_q, end_of_packet, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(assembly_buffer_full_q, assembly_buffer_full, 1'b0, clk_i, rst_ni)
 
 
   ////////////////////////////////////

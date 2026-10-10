@@ -7,6 +7,8 @@
 // build replaces this behavioural model with a metastability-hardened technology cell
 // of the same name and ports.
 
+`include "ocah_registers.svh"
+
 module prim_metastab_hardened_dffr (
   input clk_i,       // Sampling clock.
   input d_i,         // Data input.
@@ -14,12 +16,6 @@ module prim_metastab_hardened_dffr (
   output wire q_o    // Registered data.
 );
   logic q_d;
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (rst_ni == 1'b0) begin
-      q_d <= 1'b0;
-    end else begin
-      q_d <= d_i;
-    end
-  end
+  `OCAH_FF(q_d, d_i, 1'b0, clk_i, rst_ni)
   assign q_o = q_d;
 endmodule

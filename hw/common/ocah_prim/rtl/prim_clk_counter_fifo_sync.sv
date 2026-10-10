@@ -10,6 +10,8 @@
 // tile_rst_ni resets the clk_i-side counter, either reset clears the FIFO, and ss_rst_ni
 // clears the ss_clk_i output registers.
 
+`include "ocah_registers.svh"
+
 module prim_clk_counter_fifo_sync #(
   parameter int unsigned CLOCK_COUNTER_WIDTH = 64  // Returned count width.
 ) (
@@ -90,13 +92,7 @@ module prim_clk_counter_fifo_sync #(
     .sync_rst_no(combined_ss_reset_n_sync)
   );
 
-  always_ff @(posedge clk_i) begin
-    if (!tile_reset_n_sync) begin
-      clock_count_valid_q <= 1'b0;
-    end else begin
-      clock_count_valid_q <= clock_count_valid;
-    end
-  end
+  `OCAH_FFSRN(clock_count_valid_q, clock_count_valid, 1'b0, clk_i, tile_reset_n_sync)
   assign valid_update = clock_count_valid_q ^ clock_count_valid;
 
   prim_fifo_async #(
@@ -118,14 +114,9 @@ module prim_clk_counter_fifo_sync #(
     .rdepth_o()     // unused
   );
 
-  always_ff @(posedge ss_clk_i) begin
-    if (!ss_rst_ni) begin
-      clk_count_valid_o <= '0;
-      clk_counts_o      <= '0;
-    end else begin
-      clk_count_valid_o <= clock_count_valid_we ? clk_count_valid_sync : clk_count_valid_o;
-      clk_counts_o      <= clock_count_valid_we ? clk_counts_sync      : clk_counts_o;
-    end
-  end
+  `OCAH_FFSRN(clk_count_valid_o, clock_count_valid_we ? clk_count_valid_sync : clk_count_valid_o,
+              '0, ss_clk_i, ss_rst_ni)
+  `OCAH_FFSRN(clk_counts_o, clock_count_valid_we ? clk_counts_sync : clk_counts_o, '0, ss_clk_i,
+              ss_rst_ni)
 
 endmodule

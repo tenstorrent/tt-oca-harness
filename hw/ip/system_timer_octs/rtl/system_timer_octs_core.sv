@@ -17,6 +17,8 @@
 // credit or sync pulse or on credit_expired_clr_i.
 // timer_cnt_step_i and credit_expired_* apply in secondary mode only.
 
+`include "ocah_registers.svh"
+
 module system_timer_octs_core
     import system_timer_octs_pkg::*;
 
@@ -123,27 +125,14 @@ module system_timer_octs_core
     // First flop the inputs to the edge detectors to ensure they are stable when sampled.
     logic timer_sync_load_flopped;
     logic timer_cnt_credit_flopped;
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (~rst_ni) begin
-            timer_sync_load_flopped <= 1'b0;
-            timer_cnt_credit_flopped <= 1'b0;
-        end else begin
-            timer_sync_load_flopped <= timer_sync_load_i;
-            timer_cnt_credit_flopped <= timer_cnt_credit_i;
-        end
-    end
+    `OCAH_FF(timer_sync_load_flopped, timer_sync_load_i, 1'b0, clk_i, rst_ni)
+    `OCAH_FF(timer_cnt_credit_flopped, timer_cnt_credit_i, 1'b0, clk_i, rst_ni)
 
     // A secondary has no path to the preset other than a sync-load pulse, so enabling it any
     // other way leaves it counting from zero.
     assign primary_start = is_primary_i & reg_start_i;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (~rst_ni) begin
-            enable <= 1'b0;
-        end else begin
-            enable <= enable | primary_start | timer_sync_load_sync_posedge;
-        end
-    end
+    `OCAH_FF(enable, enable | primary_start | timer_sync_load_sync_posedge, 1'b0, clk_i, rst_ni)
 
     // Always instantiate edge detectors (can't conditionally instantiate at runtime)
     prim_edge_detector u_sync_load_detector (
@@ -233,13 +222,7 @@ module system_timer_octs_core
         end
     end
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (~rst_ni) begin
-            timer_count_q <= 64'h0;
-        end else begin
-            timer_count_q <= timer_count_d;
-        end
-    end
+    `OCAH_FF(timer_count_q, timer_count_d, 64'h0, clk_i, rst_ni)
 
     ////////////////////////
     // PRIMARY Mode Logic //
@@ -265,13 +248,7 @@ module system_timer_octs_core
         end
     end
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (~rst_ni) begin
-            credit_counter_q <= 8'h0;
-        end else begin
-            credit_counter_q <= credit_counter_d;
-        end
-    end
+    `OCAH_FF(credit_counter_q, credit_counter_d, 8'h0, clk_i, rst_ni)
 
     assign credit_gen_pulse = is_primary_i && enable && (credit_counter_q == (reg_credit_val_i - 1));
 

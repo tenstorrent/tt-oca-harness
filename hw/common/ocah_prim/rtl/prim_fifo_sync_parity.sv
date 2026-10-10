@@ -15,6 +15,8 @@
 // Evaluate prim_fifo_assert.svh whenever this file is included, even when the FIFO
 // assertions are otherwise unused, so including the FIFO still pulls in that assert header.
 
+`include "ocah_registers.svh"
+
 module prim_fifo_sync_parity #(
   parameter int unsigned WIDTH       = 16,  // Datapath width.
   parameter bit PASS                 = 1'b1,  // 1 allows a write to pass through an empty FIFO in
@@ -91,18 +93,10 @@ module prim_fifo_sync_parity #(
     // In either case, any stored data will be forgotten if clr_i is true.
     assign full_d = (rvalid_o ? !rready_i : wvalid_i) && !clr_i;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
-        full_q <= 1'b0;
-      end else begin
-        full_q <= full_d;
-      end
-    end
+    `OCAH_FF(full_q, full_d, 1'b0, clk_i, rst_ni)
 
     logic [ParityWidth-1:0] storage;
-    always_ff @(posedge clk_i) begin
-      if (wvalid_i && wready_o) storage <= {~^wdata_i, wdata_i};
-    end
+    `OCAH_FFLNR(storage, {~^wdata_i, wdata_i}, wvalid_i && wready_o, clk_i)
 
     logic [WIDTH-1:0] rdata_int;
     logic             parity_err;
@@ -137,13 +131,7 @@ module prim_fifo_sync_parity #(
       logic err_d, err_q;
       assign err_d = ~(full_q ^ inv_full) || parity_err;
 
-      always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-          err_q <= 1'b0;
-        end else begin
-          err_q <= err_d;
-        end
-      end
+      `OCAH_FF(err_q, err_d, 1'b0, clk_i, rst_ni)
 
       assign err_o = err_q;
     end
