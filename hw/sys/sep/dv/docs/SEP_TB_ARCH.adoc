@@ -128,7 +128,8 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |DUT Interface |`tb_top` Handling
 |CPU-LSU AXI |Flattens to `s_axi_*`. On the `lsu_stub_*` targets the no_cpu `sep_cpu` stub drives `lsu_axi_req` from these ports (`assign`, single driver). On the full-CPU VCS `--target default` build, which produces the graded cocotb coverage logs, a no_cpu leaf holds the core off and `tb_top` forces `u_sep_cpu.lsu_axi_req` from the same ports and holds `u_sep_cpu.lsu_axi_resp_raw` at zero; VIP addresses bypass `u_lsu_local_alias_remap`. Response XMR-read back into the flat bus on both builds.
 |SMN-inbound AXI |Flattens the real inbound port to `m_axi_*` for a second master agent. Traverses `u_inbound_filter`.
-|SEP->SMC AXI |`rom_boot` target only: `ocah_axi_struct_bridge` places the wrapper's `sep_ext_to_smc_axi` struct port on `u_smc_axi_if` and the shared `OcahAxiSlaveAgent` answers it. `env/sep_smc_mem.py` holds the geometry and preloads the scratch, status, strap, and manifest+BL1 image words from the testlist plusargs; the SMC address-decode check counts accesses outside the generated map. Other targets tie the port idle.
+|SEP->SMC AXI |`rom_boot` target: `ocah_axi_struct_bridge` places the wrapper's `sep_ext_to_smc_axi` struct port on `u_smc_axi_if` and the shared `OcahAxiSlaveAgent` answers it. `env/sep_smc_mem.py` holds the geometry and preloads the scratch, status, strap, and manifest+BL1 image words from the testlist plusargs; the SMC address-decode check counts accesses outside the generated map. Every other target answers the port through the BH-SMC responder `u_smc_route_mem` (`tb/sep_smc_route_mem.sv`), which is idle unless BH-SMC is enabled; the decode check is not compiled there.
+|BH-SMC: SMC aperture inputs and SMC responder |Added hook (top-port drive) on every target without `SEP_SMC_MEM_MODEL`. `tb_top` drives `smc_global_base_addr_i` and `smc_region_size_i` from `bh_smc_base_i` and `bh_smc_size_i` when the leaf sets `bh_smc_en_i` to 1 before it releases reset (`env/sep_bh_smc.py`), or else from `+sep_smc_aperture_base=<hex>` and `+sep_smc_aperture_size=<hex>`; with neither, both inputs are 0 as before. While the hook is on, `u_smc_route_mem` answers `sep_ext_to_smc_axi_resp_i`: OKAY with the request ID, one burst per channel in flight, written bytes stored and returned, and `{~a, a}` (`a` the low 32 bits of the 8-byte-aligned address) for a word no write touched. Owners: `sep_fabric_smc_route_test` (leaf drive), `sep_fabric_dma_endpoint_matrix_test` (plusargs).
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
 |SPI host pads |Scalar MISO/MOSI/SCK/CS ports for `OcahSpiFlash`
@@ -170,6 +171,65 @@ Observation probe groups:
   `sep_spi_ot_dma_tx_test`.
 * Adams Bridge ML-KEM seed Z words (`abr_mlkem_seed_z_probe_o`).
 * Fabric-slot register-block W-channel counters (`fabric_slot_w_*`).
+* Fabric port taps, each a read-only copy of a DUT net with the AW and AR
+  VALID, READY and request fields and, where named, the W beat
+  (`env/sep_fabric_tap.py` records the handshakes):
+** PR-OUT (`pr_out_*`): `smn_outbound_axi_req_o` (the net `smn_outbound_req_w`):
+   address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxSIZE, AxBURST and W beats.
+   Owners: `sep_fabric_outbound_route_attr_test`,
+   `sep_fabric_filter_match_priority_rand_test`,
+   `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`.
+** PR-SMC (`pr_smc_*`): `sep_ext_to_smc_axi_req_o`, same fields. Owners:
+   `sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test`.
+** PR-EXT (`pr_ext_*`): the AXI Extension port, wrapper net
+   `u_dut.axi_extension_axi_req`, same fields; and its replies (monitor
+   PR-EXT-RSP): B (`resp`, `id`) and R (`resp`, `id`, `last`) from
+   `u_dut.axi_extension_axi_resp`, with READY from the request net. Owners:
+   `sep_fabric_extension_port_window_test`,
+   `sep_fabric_filter_match_priority_rand_test`,
+   `sep_fabric_dma_endpoint_matrix_test`.
+** PR-SRAM (`pr_sram_*`) and PR-ROM (`pr_rom_*`): the SRAM and boot ROM macro
+   requests (wrapper nets `u_dut.sep_sram_req`, `u_dut.sep_boot_rom_req`):
+   request, grant, address, write enable, write data, strobe, read valid and
+   read data. Owners: `sep_cpu_lsu_alias_window_twin_test`,
+   `sep_fabric_inbound_rebase_test` and
+   `sep_fabric_filter_match_priority_rand_test` (PR-SRAM);
+   `sep_fabric_dma_endpoint_matrix_test` (PR-ROM).
+** PR-DMACSR (`pr_dmacsr_*`): the request at the DMA CSR target port
+   (`dma_csr_req`), AW and AR address. Owner:
+   `sep_fabric_dma_endpoint_matrix_test`.
+** PR-INFLT (`pr_inflt_*`): the request out of the inbound filter
+   (`u_inbound_filter`, net `smn_inbound_filtered_axi_req`), before the
+   global-to-local remap: AW and AR address, global. Owner:
+   `sep_fabric_inbound_rebase_test`.
+** PR-CPU (`pr_cpu_lsu_*`, `pr_cpu_ifu_*`): AxPROT of the raw CPU LSU (AR, AW)
+   and IFU (AR) requests in `u_sep_cpu` (`lsu_axi_req_raw`, `ifu_axi_req_raw`),
+   before any remap; tied to 0 on the CPU stub build. Log-only (`OBS-AXPROT`).
+   Owner: `sep_cpu_lsu_alias_window_twin_test`.
+** PR-DMA-RAW (`pr_dma_raw_*`): AxPROT of the raw secure DMA master request
+   (`u_sep_dma_wrap.dma_axi_req_raw`), AR and AW. Log-only (`OBS-AXPROT`).
+   Owner: `sep_fabric_dma_endpoint_matrix_test`.
+** PR-ALIAS (`pr_alias_in_*`, `pr_alias_out_*`): the request at the input and
+   at the output of the local-master alias remap
+   (`u_local_master_remap_wrap`): address, AxCACHE and AxPROT. Owner:
+   `sep_fabric_alias_remap_attr_rand_test`.
+* Fabric FCOV sampler taps (`cov/sv/sep_fcov.sv`, Phase 2 fabric and remap
+  groups): the full request and response structs of the SMN-inbound port, the
+  local crossbar `ext` initiator, the CPU LSU before and after its alias remap
+  (before it on the full-CPU build only), the alias remap input and output, the
+  route demux input and its two selects, the outbound filter input, the
+  outbound, SMC and Extension ports, the DMA master before and after its window
+  remap, the DMA CSR port and the boot ROM port; the TCM macro enables; the
+  FILTER_CONFIG, START_ADDR and END_ADDR fields of the 16 inbound and 32
+  outbound filter entries and the alias and output remap region fields (one
+  explicit assign per index); `SEP_GLOBAL_BASE_ADDR`, `SEP_REGION_SIZE`, the SMU
+  aperture, `SEP_LOCAL_BASE_ADDR`, the SMC aperture inputs,
+  `smc_fuse_sense_done_i` and `feat_ctrl.sep_debug`. Owners: the owning tests
+  of the fabric and remap groups.
+* The Phase 2 graded-window gate `u_sep_fcov.graded_owner`: a sampler variable
+  that a leaf writes through the `u_sep_fcov` handle (`env/sep_fcov_gate.py`;
+  codes in `tb/sep_fcov_owner_codes.svh`). It drives nothing and touches no
+  DUT net.
 * The covergroup sampler's direct reads of the WDT bark interrupt
   (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read
   `ARSIZE` (owner `sep_axi_partial_lane_read_test`).
