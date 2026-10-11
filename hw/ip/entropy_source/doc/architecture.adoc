@@ -32,7 +32,8 @@ and status registers (CSRs) described later in this document. The noise
 generators feed the decorrelation, mixing, health-test, and optional whitening
 stages. Each word written into the main FIFO also leaves the block as
 `entropy_stream_data_o`, qualified by `entropy_stream_vld_o`, towards the DRBG;
-the FIFO itself is drained through the `FIFO_RDATA` register.
+the FIFO itself is drained through the `FIFO_RDATA` register, behind the access
+gate in <<entropy-source-fifo-access>>.
 
 The main datapath in the figure runs left to right along the top row. The
 generator lane stands for all twelve lanes, and <<entropy-rosc-diagram>> shows its
