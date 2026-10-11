@@ -8,7 +8,7 @@
     "run_dir": "vcs/smc/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-40d4c4166664084c",
+    "comparison_key": "COVCMP-e86e523cc5dc6b28",
     "details_available": true,
     "effective_metrics": {
       "assertion": 92.91,
@@ -69,11 +69,11 @@
   "failure_buckets": [],
   "flow": "smc",
   "framework": "",
-  "generated_at": "2026-10-10T20:33:44+00:00",
+  "generated_at": "2026-10-11T11:09:57+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "21a6cffcdb924a5eb02d5fa8508917e5f8b5d30d",
-    "short_sha": "21a6cff"
+    "sha": "4ab69af69df79db7bc3a22949aa4daa5beeb4c0f",
+    "short_sha": "4ab69af"
   },
   "junit_xml": {
     "missing": 0,
@@ -82,10 +82,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-10T20:33:39.832343+00:00",
+    "generated_at": "2026-10-11T11:09:54.496798+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "21a6cffcdb924a5eb02d5fa8508917e5f8b5d30d",
+      "commit": "4ab69af69df79db7bc3a22949aa4daa5beeb4c0f",
       "dirty": "false"
     },
     "label": "combine",
@@ -103,16 +103,16 @@
   "status": "FAIL",
   "tests": {
     "completed": true,
-    "failing": 3,
+    "failing": 1,
     "pass_rate": 99.69,
-    "passing": 966,
-    "total": 969
+    "passing": 322,
+    "total": 323
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 47.941,
-    "end_time": "2026-10-10T20:33:39.482563+00:00",
-    "start_time": "2026-10-10T20:32:51.508767+00:00"
+    "duration_sec": 45.231,
+    "end_time": "2026-10-11T11:09:54.058052+00:00",
+    "start_time": "2026-10-11T11:09:08.806060+00:00"
   },
   "tool": "vcs"
 }
