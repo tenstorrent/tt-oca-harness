@@ -1251,6 +1251,8 @@ module sep_fcov (
   // Snapshots on the issue clock of a write and on the AR clock of a read.
   logic si_cb_q, si_act_q, si_cslow_q, si_txe_q, si_txf_q, si_ovf_en_q, si_ovf_q;
   logic [5:0] si_es_q;
+  // CMDBUSY rose between the issue and B of a COMMAND written while READY = 0.
+  wire cbz_early = sw_cmd && si_cb_q && s_es[4] && !si_es_q[4];
   logic ra_rxe_q, ra_rxf_q, ra_act_q, ra_unf_q, ra_unf_en_q, ra_prev_status_q;
   logic [7:0] ra_rxqd_q;
   logic       spi_last_status_q;  // the last SPI-window access was a STATUS read
@@ -1607,8 +1609,9 @@ module sep_fcov (
       end
 
       // A COMMAND written while READY = 0 waits up to 64 clocks for the
-      // rise of ERROR_STATUS.CMDBUSY.
-      if (sw_cmd && si_cb_q) begin
+      // rise of ERROR_STATUS.CMDBUSY. A rise between the issue and B is
+      // sampled at B (cbz_early) and opens no window.
+      if (sw_cmd && si_cb_q && !cbz_early) begin
         cbz_v_q   <= 1'b1;
         cbz_act_q <= si_act_q;
         cbz_cnt_q <= 7'd64;
@@ -1806,19 +1809,22 @@ module sep_fcov (
     return 2'd3;
   endfunction
 
-  // Abort phase class from the read handshakes since the initial GO:
-  // 0 first transaction, 1 mid chunk, 2 chunk boundary, 3 final transaction.
+  // Abort phase class from the read handshakes since the initial GO, with the
+  // windows of the owning test: k beats per chunk, n in total, w = max(4, k/20).
+  // 0 first transaction (b <= w), 3 final transaction (b >= n - n/10),
+  // 2 chunk boundary (|b - j*k| <= w for a chunk end j*k below n), 1 mid chunk.
   function automatic logic [1:0] abort_cls(input logic [31:0] b, input logic [31:0] total,
                                            input logic [31:0] chunk, input logic [1:0] width);
-    logic [31:0] k, n_all, r;
+    logic [31:0] k, n_all, w, j, d;
     k = chunk >> width;
     n_all = total >> width;
-    if (b <= 32'd1) return 2'd0;
-    if ((n_all != 32'd0) && (b + 32'd1 >= n_all)) return 2'd3;
+    w = ((k / 32'd20) > 32'd4) ? (k / 32'd20) : 32'd4;
+    if (b <= w) return 2'd0;
+    if ((n_all != 32'd0) && (b >= n_all - n_all / 32'd10)) return 2'd3;
     if (k != 32'd0) begin
-      r = b % k;
-      if ((b + 32'd1 >= k) && (b <= n_all - k + 32'd1) && ((r <= 32'd1) || (r + 32'd1 >= k)))
-        return 2'd2;
+      j = (b + k / 32'd2) / k;
+      d = (b >= j * k) ? (b - j * k) : (j * k - b);
+      if ((j != 32'd0) && (j * k < n_all) && (d <= w)) return 2'd2;
     end
     return 2'd1;
   endfunction
@@ -6531,6 +6537,8 @@ module sep_fcov (
     if (a == SpiBase + 32'h30) return 3'd3;
     return 3'd4;
   endfunction
+  // A `high` beat carries AWADDR = pair + 4, so the pair is AWADDR aligned down to 8 bytes.
+  wire [2:0] zs_p = zs_pair({aw_addr_q[31:3], 3'b000});
 
   always @(posedge clk_i) begin
     // ---- SPI command segments, frames and pads ----
@@ -6566,7 +6574,8 @@ module sep_fcov (
           fe_own_q && own_spi_matrix);
     if (sr_errst && il_v_q && ((sr_errst_d & SPI_CONTROLLER_ERROR_STATUS_CMDINVAL_MASK) != 32'h0))
       u_sep_spi_illegal_access_cg.sample(il_cell_q, il_own_q && own_spi_matrix, 1'b0, 1'b0, 1'b0);
-    if (cbz_v_q && s_es[4] && !es_q[4])
+    if (cbz_early) u_sep_spi_illegal_access_cg.sample(4'd0, 1'b0, si_act_q, own_spi_csr, 1'b0);
+    else if (cbz_v_q && s_es[4] && !es_q[4])
       u_sep_spi_illegal_access_cg.sample(4'd0, 1'b0, cbz_act_q, own_spi_csr, 1'b0);
     if (sz_v_q && sw_ctrl && new_spien && !sz_spoil_q && cs_high && (sck_v == sck_q)) begin
       u_sep_spi_illegal_access_cg.sample(4'd0, 1'b0, 1'b0, 1'b0, own_spi_csr);
@@ -6720,9 +6729,9 @@ module sep_fcov (
     if (sw_txdata && si_txf_q && si_ovf_en_q && !si_ovf_q && s_es[3])
       u_sep_spi_error_status_cg.sample(4'd0, 1'b0, 1'b0, 1'b0, 1'b0, own_spi_csr, 4'd0, 1'b0, 32'd0,
                                        1'b0);
-    if (wr_ev && (zs_pair(aw_addr_q) != 3'd4) && (w_strb_q inside {8'h0F, 8'hF0, 8'hFF})) begin
+    if (wr_ev && (zs_p != 3'd4) && (w_strb_q inside {8'h0F, 8'hF0, 8'hFF})) begin
       logic [2:0] zp;
-      zp = zs_pair(aw_addr_q);
+      zp = zs_p;
       u_sep_spi_error_status_cg.sample(
           4'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, {
           zp[1:0], (w_strb_q == 8'h0F) ? 2'd0 : ((w_strb_q == 8'hF0) ? 2'd1 : 2'd2)}, own_spi_csr,
@@ -6826,9 +6835,15 @@ module sep_fcov (
       if (chunk_q && !d_chunk && !d_done)
         u_sep_dma_completion_cg.sample(3'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd0, 1'b0,
                                        own_dma_matrix && !cdc_wr_q, 2'd0, 1'b0);
-      if (dr_ctrl && d_hs_q && d_go_q && (d_total_q != 32'h0) &&
-          (hs_aw_q >= (d_total_q >> d_width_q)))
-        u_sep_dma_completion_cg.sample(3'd3, own_spi_dma_hs, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd2,
+      // Handshake mode skips the per-chunk GO clear: GO reads 1 after at least one
+      // chunk of write beats and below the total.
+      if (dr_ctrl && d_hs_q && d_go_q && (d_chunk_q != 32'h0) &&
+          (hs_aw_q >= (d_chunk_q >> d_width_q)) && (hs_aw_q < (d_total_q >> d_width_q)))
+        u_sep_dma_completion_cg.sample(3'd3, own_spi_dma_hs, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd0,
+                                       1'b0, 1'b0, 2'd0, 1'b0);
+      // A handshake run ends in DONE at the total; CHUNK_DONE has not risen since GO.
+      if (d_done && !done_q && d_hs_q)
+        u_sep_dma_completion_cg.sample(3'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd2,
                                        own_spi_dma_hs && !hs_chunk_rose_q, 1'b0, 2'd0, 1'b0);
 
       // ---- DMA range ----

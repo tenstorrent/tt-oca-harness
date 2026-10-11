@@ -610,11 +610,13 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         self.ops = _LoggedDmaOps(self, self.tap)
         self.mem = SepMemWords(self)
         try:
+            # The window opens before the setup so that its RANGE_VALID 0 -> 1
+            # write is an owned unlocked write.
+            self._open()
             await self._setup()
             self.irq = SepBitWatch(
                 dut.sep_internal_interrupts_probe_o, {"chunk": 9}, name="pic_src10"
             ).start()
-            self._open()
             await self._leg_a(plan)
             await self._leg_b(plan)
             await self._leg_c(plan)
