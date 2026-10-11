@@ -4,13 +4,13 @@
     "coverage_policy_application": "artifacts/smc/coverage/report/policy-application.json",
     "coverage_report": "artifacts/smc/coverage/report",
     "coverage_summary": "artifacts/smc/coverage/report/summary.json",
-    "log": "vcs/smc/runs/uvm/smc_default_reg_rd_test/seed_121001543/attempt_0/logs/smc_default_reg_rd_test.log",
+    "log": "vcs/smc/runs/uvm/smc_default_reg_rd_test/seed_1871257486/attempt_0/logs/smc_default_reg_rd_test.log",
     "regression_json": "vcs/smc/runs/uvm/stages/regress/regression.json",
     "result_json": "vcs/smc/runs/uvm/result.json",
     "run_dir": "vcs/smc/runs/uvm"
   },
   "coverage": {
-    "comparison_key": "COVCMP-1c0d75b9993b6976",
+    "comparison_key": "COVCMP-1fe778d0dce56623",
     "details_available": true,
     "effective_metrics": {
       "assertion": 52.92,
@@ -19,7 +19,7 @@
       "fsm_state": 4.26,
       "functional": 36.12,
       "line": 70.21,
-      "toggle": 3.3,
+      "toggle": 3.31,
       "user": 23.4252
     },
     "holes_summary": {
@@ -71,11 +71,11 @@
   "failure_buckets": [],
   "flow": "smc",
   "framework": "uvm",
-  "generated_at": "2026-10-11T11:09:57+00:00",
+  "generated_at": "2026-10-11T13:35:32+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "4ab69af69df79db7bc3a22949aa4daa5beeb4c0f",
-    "short_sha": "4ab69af"
+    "sha": "b7bdfc400a0d044b1025f69621cff6804b1dae43",
+    "short_sha": "b7bdfc4"
   },
   "junit_xml": {
     "missing": 0,
@@ -88,10 +88,10 @@
   },
   "run_metadata": {
     "executor": "lsf",
-    "generated_at": "2026-10-11T06:25:21.028346+00:00",
+    "generated_at": "2026-10-11T11:17:38.700358+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "4ab69af69df79db7bc3a22949aa4daa5beeb4c0f",
+      "commit": "b7bdfc400a0d044b1025f69621cff6804b1dae43",
       "dirty": "false"
     },
     "label": "all",
@@ -118,68 +118,68 @@
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 7.055,
+      "duration_sec": 6.918,
       "name": "smc_default_reg_rd_test",
       "reason": "positive pass evidence matched",
-      "seed": 121001543,
+      "seed": 1871257486,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 13.108,
+      "duration_sec": 11.881,
       "name": "smc_multi_reset_csr_persistence_test",
       "reason": "positive pass evidence matched",
-      "seed": 521761562,
+      "seed": 1563771298,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 7.461,
+      "duration_sec": 6.168,
       "name": "smc_mutex_semaphore_test",
       "reason": "positive pass evidence matched",
-      "seed": 1132725374,
+      "seed": 1953296885,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 11.509,
+      "duration_sec": 11.058,
       "name": "smc_register_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 1705069529,
+      "seed": 1071059526,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 7.816,
+      "duration_sec": 8.005,
       "name": "smc_reset_unit_lock_test",
       "reason": "positive pass evidence matched",
-      "seed": 466241581,
+      "seed": 558395678,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 7.602,
+      "duration_sec": 6.683,
       "name": "smc_spm_mem_boundary_test",
       "reason": "positive pass evidence matched",
-      "seed": 672249814,
+      "seed": 1713585702,
       "stage": "sim",
       "status": "PASS"
     }
   ],
   "timing": {
-    "duration_sec": 2476.141,
-    "end_time": "2026-10-11T06:25:20.882245+00:00",
-    "start_time": "2026-10-11T02:15:42.110503+00:00"
+    "duration_sec": 175.323,
+    "end_time": "2026-10-11T11:17:38.600002+00:00",
+    "start_time": "2026-10-11T11:14:51.463807+00:00"
   },
   "tool": "vcs"
 }
