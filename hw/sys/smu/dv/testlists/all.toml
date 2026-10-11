@@ -2320,6 +2320,10 @@ args = [
   "+sep_edn_jtag_reset_waive",
   # Releasing km_jtag_rst_n takes the Key Manager out of its software reset.
   # An empty ROM returns X and the look-ahead read takes u_km_rom.req_i to X.
+  # The image is the SEP Key Manager smoke ROM, which no stage of this leaf
+  # rebuilds; `make -C hw/sys/sep/dv/cocotb/tests/km_fw verify ROMS=km_rom`
+  # compares it with km_rom.S, and the SEP leaves that boot it run that check
+  # in c_compile (firmware mode km_rom_blob, hw/sys/sep/dv/testlists/km.toml).
   "+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom.parhex",
 ]
 
