@@ -211,7 +211,7 @@ reseed = 4
 timeout_sec = 7200
 tags = ["pic", "interrupt", "alert", "gateway", "cpu", "subsystem"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
 # WDT bark NMI at the reset vector, through a locked trampoline copy with the PIC in four gate states, and at a free handler address after a cold reset. The host patches the seeded copy, address and cases into the firmware parameter block.
