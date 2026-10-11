@@ -3632,6 +3632,135 @@ module sep_uvm_top
     assign fcov_lsu_raw_req = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw;
 `endif
 
+    // Mailbox, IRQ and PIC sampler taps (docs/SEP_FCOV.adoc, mailbox, IRQ and
+    // PIC groups, Signal aliases): read-only hierarchical references into the
+    // CPU (PIC, CLAIM, TLU), the mailbox unit (MB[m]) and the inbound filter
+    // (FILT). No force. The PIC, CLAIM and TLU exist only with the full core;
+    // the stub build ties them to 0.
+`ifndef SEP_CPU_STUB
+`define SEP_FCOV_PIC `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst
+`define SEP_FCOV_TLU `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.dec.tlu
+    wire [255:0][3:0] fcov_pic_prio     = `SEP_FCOV_PIC.intpriority_reg;
+    wire [255:0]      fcov_pic_en       = `SEP_FCOV_PIC.intenable_reg;
+    wire [255:0][1:0] fcov_pic_gw_cfg   = `SEP_FCOV_PIC.gw_config_reg;
+    wire              fcov_pic_cfg      = `SEP_FCOV_PIC.config_reg;
+    wire [255:0]      fcov_pic_gw_clr   = `SEP_FCOV_PIC.gw_clear_reg_we;
+    wire [255:0]      fcov_pic_req      = `SEP_FCOV_PIC.extintsrc_req;
+    wire [255:0]      fcov_pic_req_gw   = `SEP_FCOV_PIC.extintsrc_req_gw;
+    wire              fcov_pic_wren     = `SEP_FCOV_PIC.picm_wren_ff;
+    wire [14:0]       fcov_pic_waddr    = `SEP_FCOV_PIC.picm_waddr_ff[14:0];
+    wire [31:0]       fcov_pic_wdata    = `SEP_FCOV_PIC.picm_wr_data_ff;
+    wire [7:0]        fcov_pic_claim    = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.pic_claimid;
+    wire              fcov_tlu_mstatus  = `SEP_FCOV_TLU.mstatus[0];
+    wire [5:0]        fcov_tlu_mie      = `SEP_FCOV_TLU.mie;
+    wire [5:0]        fcov_tlu_mip      = `SEP_FCOV_TLU.mip;
+    wire              fcov_tlu_take_ext = `SEP_FCOV_TLU.take_ext_int;
+    wire              fcov_tlu_take_nmi = `SEP_FCOV_TLU.take_nmi;
+    wire              fcov_tlu_take_tmr = `SEP_FCOV_TLU.take_timer_int;
+    wire              fcov_tlu_take_sw  = `SEP_FCOV_TLU.take_soft_int;
+`undef SEP_FCOV_PIC
+`undef SEP_FCOV_TLU
+`else
+    wire [255:0][3:0] fcov_pic_prio     = '0;
+    wire [255:0]      fcov_pic_en       = '0;
+    wire [255:0][1:0] fcov_pic_gw_cfg   = '0;
+    wire              fcov_pic_cfg      = 1'b0;
+    wire [255:0]      fcov_pic_gw_clr   = '0;
+    wire [255:0]      fcov_pic_req      = '0;
+    wire [255:0]      fcov_pic_req_gw   = '0;
+    wire              fcov_pic_wren     = 1'b0;
+    wire [14:0]       fcov_pic_waddr    = '0;
+    wire [31:0]       fcov_pic_wdata    = '0;
+    wire [7:0]        fcov_pic_claim    = '0;
+    wire              fcov_tlu_mstatus  = 1'b0;
+    wire [5:0]        fcov_tlu_mie      = '0;
+    wire [5:0]        fcov_tlu_mip      = '0;
+    wire              fcov_tlu_take_ext = 1'b0;
+    wire              fcov_tlu_take_nmi = 1'b0;
+    wire              fcov_tlu_take_tmr = 1'b0;
+    wire              fcov_tlu_take_sw  = 1'b0;
+`endif
+    // One explicit set of assigns per mailbox index.
+    logic [7:0][1:0][3:0] fcov_mb_status;
+    logic [7:0][1:0][2:0] fcov_mb_irqs;
+    logic [7:0][1:0][2:0] fcov_mb_irqen;
+    logic [7:0][1:0][1:0] fcov_mb_error;
+    logic [7:0][1:0][7:0] fcov_mb_wirqt;
+    logic [7:0][1:0][7:0] fcov_mb_rirqt;
+    logic [7:0][1:0]      fcov_mb_irq;
+    logic [7:0][1:0][2:0] fcov_mf_usage;
+    logic [7:0][1:0]      fcov_mf_full;
+    logic [7:0][1:0]      fcov_mf_push;
+    logic [7:0][1:0]      fcov_mf_pop;
+    logic [7:0][1:0]      fcov_mf_flush;
+`define SEP_FCOV_MB(m) `SEP_CORE.u_sep_system_peripherals.u_sep_axil_mailbox.gen_mailbox[m].u_axi_lite_mailbox
+`define SEP_FCOV_MB_PORT(m, p) \
+    assign fcov_mb_status[m][p] = `SEP_FCOV_MB(m).i_slv_port_``p.status_q; \
+    assign fcov_mb_irqs[m][p]   = `SEP_FCOV_MB(m).i_slv_port_``p.irqs_q; \
+    assign fcov_mb_irqen[m][p]  = `SEP_FCOV_MB(m).i_slv_port_``p.irqen_q; \
+    assign fcov_mb_error[m][p]  = `SEP_FCOV_MB(m).i_slv_port_``p.error_q; \
+    assign fcov_mb_wirqt[m][p]  = `SEP_FCOV_MB(m).i_slv_port_``p.wirqt_q[7:0]; \
+    assign fcov_mb_rirqt[m][p]  = `SEP_FCOV_MB(m).i_slv_port_``p.rirqt_q[7:0]; \
+    assign fcov_mb_irq[m][p]    = `SEP_FCOV_MB(m).i_slv_port_``p.irq_o;
+`define SEP_FCOV_MB_FIFO(m, f, inst) \
+    assign fcov_mf_usage[m][f] = `SEP_FCOV_MB(m).inst.usage_o; \
+    assign fcov_mf_full[m][f]  = `SEP_FCOV_MB(m).inst.full_o; \
+    assign fcov_mf_push[m][f]  = `SEP_FCOV_MB(m).inst.push_i; \
+    assign fcov_mf_pop[m][f]   = `SEP_FCOV_MB(m).inst.pop_i; \
+    assign fcov_mf_flush[m][f] = `SEP_FCOV_MB(m).inst.flush_i;
+    `SEP_FCOV_MB_PORT(0, 0)
+    `SEP_FCOV_MB_PORT(0, 1)
+    `SEP_FCOV_MB_FIFO(0, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(0, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(1, 0)
+    `SEP_FCOV_MB_PORT(1, 1)
+    `SEP_FCOV_MB_FIFO(1, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(1, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(2, 0)
+    `SEP_FCOV_MB_PORT(2, 1)
+    `SEP_FCOV_MB_FIFO(2, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(2, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(3, 0)
+    `SEP_FCOV_MB_PORT(3, 1)
+    `SEP_FCOV_MB_FIFO(3, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(3, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(4, 0)
+    `SEP_FCOV_MB_PORT(4, 1)
+    `SEP_FCOV_MB_FIFO(4, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(4, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(5, 0)
+    `SEP_FCOV_MB_PORT(5, 1)
+    `SEP_FCOV_MB_FIFO(5, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(5, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(6, 0)
+    `SEP_FCOV_MB_PORT(6, 1)
+    `SEP_FCOV_MB_FIFO(6, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(6, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(7, 0)
+    `SEP_FCOV_MB_PORT(7, 1)
+    `SEP_FCOV_MB_FIFO(7, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(7, 1, i_mbox_1_to_0)
+`undef SEP_FCOV_MB_FIFO
+`undef SEP_FCOV_MB_PORT
+`undef SEP_FCOV_MB
+    logic [15:0] fcov_filt_locked;
+    assign fcov_filt_locked[0] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[0].locked;
+    assign fcov_filt_locked[1] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[1].locked;
+    assign fcov_filt_locked[2] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[2].locked;
+    assign fcov_filt_locked[3] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[3].locked;
+    assign fcov_filt_locked[4] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[4].locked;
+    assign fcov_filt_locked[5] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[5].locked;
+    assign fcov_filt_locked[6] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[6].locked;
+    assign fcov_filt_locked[7] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[7].locked;
+    assign fcov_filt_locked[8] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[8].locked;
+    assign fcov_filt_locked[9] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[9].locked;
+    assign fcov_filt_locked[10] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[10].locked;
+    assign fcov_filt_locked[11] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[11].locked;
+    assign fcov_filt_locked[12] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[12].locked;
+    assign fcov_filt_locked[13] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[13].locked;
+    assign fcov_filt_locked[14] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[14].locked;
+    assign fcov_filt_locked[15] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[15].locked;
+
     sep_fcov u_sep_fcov (
         .clk_i                 (clk_i),
         .rst_ni                (rst_n_int),
@@ -3828,7 +3957,59 @@ module sep_uvm_top
             `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_src_addr_error_qs}),
         .dma_busy_i        (dma_busy_probe_o),
         .irq_dma_chunk_i   (sep_internal_interrupts_probe_o[9]),
-        .irq_spi_i         (sep_internal_interrupts_probe_o[13])
+        .irq_spi_i         (sep_internal_interrupts_probe_o[13]),
+
+        // Phase 2 mailbox, IRQ and PIC taps (docs/SEP_FCOV.adoc, mailbox, IRQ
+        // and PIC groups, Signal aliases): read-only, no force.
+        .vec_i             (sep_internal_interrupts_probe_o),
+        .smc_irq_i         (smc_mailbox_interrupt_o),
+        .pic_prio_i        (fcov_pic_prio),
+        .pic_en_i          (fcov_pic_en),
+        .pic_gw_cfg_i      (fcov_pic_gw_cfg),
+        .pic_cfg_i         (fcov_pic_cfg),
+        .pic_gw_clr_i      (fcov_pic_gw_clr),
+        .pic_req_i         (fcov_pic_req),
+        .pic_req_gw_i      (fcov_pic_req_gw),
+        .pic_wren_i        (fcov_pic_wren),
+        .pic_waddr_i       (fcov_pic_waddr),
+        .pic_wdata_i       (fcov_pic_wdata),
+        .pic_rd_i          (pic_rd_data_probe_o),
+        .pic_claim_i       (fcov_pic_claim),
+        .tlu_mstatus_mie_i (fcov_tlu_mstatus),
+        .tlu_mie_i         (fcov_tlu_mie),
+        .tlu_mip_i         (fcov_tlu_mip),
+        .tlu_take_ext_i    (fcov_tlu_take_ext),
+        .tlu_take_nmi_i    (fcov_tlu_take_nmi),
+        .tlu_take_timer_i  (fcov_tlu_take_tmr),
+        .tlu_take_soft_i   (fcov_tlu_take_sw),
+        .mb_status_i       (fcov_mb_status),
+        .mb_irqs_i         (fcov_mb_irqs),
+        .mb_irqen_i        (fcov_mb_irqen),
+        .mb_error_i        (fcov_mb_error),
+        .mb_wirqt_i        (fcov_mb_wirqt),
+        .mb_rirqt_i        (fcov_mb_rirqt),
+        .mb_irq_i          (fcov_mb_irq),
+        .mf_usage_i        (fcov_mf_usage),
+        .mf_full_i         (fcov_mf_full),
+        .mf_push_i         (fcov_mf_push),
+        .mf_pop_i          (fcov_mf_pop),
+        .mf_flush_i        (fcov_mf_flush),
+        .mbx_req_i         (`SEP_CORE.u_sep_system_peripherals.mailbox_axil_req),
+        .mbx_resp_i        (`SEP_CORE.u_sep_system_peripherals.mailbox_axil_resp),
+        .filt_iso_w_i      (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.isolate_write),
+        .filt_iso_r_i      (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.isolate_read),
+        .filt_nwm_i        (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.no_write_filter_matches),
+        .filt_nrm_i        (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.no_read_filter_matches),
+        .filt_hit_i        (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.write_filter_hit_idx),
+        .filt_awvalid_i    (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.axi_in_req_i.aw_valid),
+        .filt_arvalid_i    (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.axi_in_req_i.ar_valid),
+        .filt_locked_i     (fcov_filt_locked),
+        .alert_pulse_i     (crypto_alert_pulse_probe_o),
+        .err_pulse_i       (sep_cpu_ctrl_err_pulse_probe_o),
+        .ext_irq_i         (sep_ext_interrupts_i),
+        .out_resp_hold_i   (smn_outbound_resp_hold_i),
+        .out_rd_slverr_i   (smn_outbound_rd_slverr_i),
+        .spi_irq_field_i   (sep_io_spi_req_w.irq)
     );
 `endif
 
