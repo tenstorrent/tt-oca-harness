@@ -64,14 +64,9 @@ EXPECTED_ORDER = [
 ]
 
 
-def _unprotected_program(flash):
-    """A device handler that programs on PAGE PROGRAM whatever the latch says."""
-
-    async def handler(opcode: int, addr: int, payload: bytes) -> None:
-        current = bytearray(flash.read_memory(addr, len(payload)))
-        flash.write_memory(addr, bytes(a & b for a, b in zip(current, payload)))
-
-    return handler
+def _accepted_program(record, payload: bytes):
+    """Return a faulty record that accepts PAGE PROGRAM with the latch clear."""
+    return {**record, "ok": True, "reason": "", "data_in": payload}
 
 
 @cocotb.test()
@@ -87,10 +82,9 @@ async def ocah_spi_ordering_test(dut) -> None:
 
     if negative:
         log.warning(
-            "NEGATIVE VALIDATION: the device programs without WRITE ENABLE; "
+            "NEGATIVE VALIDATION: the record accepts PAGE PROGRAM without WRITE ENABLE; "
             "CHK-SPI-WREN-ORDER must fail"
         )
-        flash.register_command_callback(OcahSpiOpcode.PAGE_PROGRAM, _unprotected_program(flash))
 
     await host.page_program(addr, data)
     blank = await host.read(addr, length)
@@ -106,7 +100,13 @@ async def ocah_spi_ordering_test(dut) -> None:
     kept = await host.read(addr, length)
     await host.read_status1()
 
-    checker.replay()
+    records = flash.get_transactions()
+    if negative:
+        first_program = next(
+            i for i, record in enumerate(records) if record["opcode"] == OcahSpiOpcode.PAGE_PROGRAM
+        )
+        records[first_program] = _accepted_program(records[first_program], data)
+    checker.replay(records)
     host.check_host_responses()
     checker.check_command_order(EXPECTED_ORDER)
     checker.expect_equal(
@@ -124,7 +124,6 @@ async def ocah_spi_ordering_test(dut) -> None:
     checker.check_memory(source=data, addr=addr, context="one accepted program")
     checker.check_nonvacuous()
 
-    records = flash.get_transactions()
     rejected_order = rejects(
         "order",
         flash,
@@ -137,12 +136,12 @@ async def ocah_spi_ordering_test(dut) -> None:
         "CHK-SPI-NEG-ORDER", rejected_order, context="a wrong expected sequence must be rejected"
     )
 
-    flash.register_command_callback(OcahSpiOpcode.PAGE_PROGRAM, _unprotected_program(flash))
     faulty_addr = addr ^ 0x100
     await host.page_program(faulty_addr, other)
-    flash.unregister_command_callback(OcahSpiOpcode.PAGE_PROGRAM)
     await harness.stop()
-    rejected_latch = rejects("latch", flash, lambda probe: probe.replay(flash.get_transactions()))
+    faulty_records = flash.get_transactions()
+    faulty_records[-1] = _accepted_program(faulty_records[-1], other)
+    rejected_latch = rejects("latch", flash, lambda probe: probe.replay(faulty_records))
     checker.expect_true(
         "CHK-SPI-NEG-WEL",
         rejected_latch,

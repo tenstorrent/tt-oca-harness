@@ -491,15 +491,16 @@ class OcahSpiFlashChecker:
         )
 
     def _check_program(self, rec: OcahSpiFlashRecord) -> None:
-        if not self.expect_true(
-            "CHK-SPI-FRAME-BYTES",
-            rec.reason != "partial_byte",
-            context=(
-                f"PAGE PROGRAM addr=0x{rec.addr:06x} complete_bytes={len(rec.data_in)} "
-                f"reason={rec.reason}"
-            ),
-        ):
-            return
+        if self.ref_model.write_enabled:
+            if not self.expect_true(
+                "CHK-SPI-FRAME-BYTES",
+                rec.reason != "partial_byte",
+                context=(
+                    f"PAGE PROGRAM addr=0x{rec.addr:06x} complete_bytes={len(rec.data_in)} "
+                    f"reason={rec.reason}"
+                ),
+            ):
+                return
         self._check_write_gate(rec, "PAGE PROGRAM")
         if not rec.ok:
             self.ref_model.write_disable()

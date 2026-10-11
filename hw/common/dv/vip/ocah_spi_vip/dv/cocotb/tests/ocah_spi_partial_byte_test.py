@@ -35,7 +35,10 @@ log = logging.getLogger("cocotb.tb.ocah_spi_partial_byte_test")
 REQUIRED_IDS = (
     "CHK-SPI-PARTIAL-REFUSED",
     "CHK-SPI-PARTIAL-ERASED",
+    "CHK-SPI-CALLBACK-WEL-GATE",
     "CHK-SPI-PARTIAL-CALLBACK",
+    "CHK-SPI-CALLBACK-ACCEPT",
+    "CHK-SPI-FRAME-SCOPE",
     "CHK-SPI-FRAME-BYTES",
     "CHK-SPI-WREN-ORDER",
     "CHK-SPI-STATUS-WEL",
@@ -50,7 +53,9 @@ REQUIRED_IDS = (
 )
 _ERASED = 0xFF
 _PARTIAL_FRAME = 1
-_CALLBACK_FRAME = 7
+_WEL_CLEAR_CALLBACK_FRAME = 6
+_CALLBACK_FRAME = 8
+_ACCEPTED_CALLBACK_FRAME = 9
 
 
 @cocotb.test()
@@ -62,10 +67,13 @@ async def ocah_spi_partial_byte_test(dut) -> None:
     data = random_payload(rng, length)
     tail_bits = rng.randint(1, 7)
     other = random_payload(rng, length)
+    callback_data = bytes(a & b for a, b in zip(data, other))
     callback_calls: list[int] = []
 
     async def program_callback(opcode: int, addr: int, payload: bytes) -> None:
         callback_calls.append(addr)
+        current = flash.read_memory(addr, len(payload))
+        flash.write_memory(addr, bytes(a & b for a, b in zip(current, payload)))
 
     log.info("start: page addr=0x%06x len=%d tail_bits=%d", addr, length, tail_bits)
 
@@ -76,8 +84,16 @@ async def ocah_spi_partial_byte_test(dut) -> None:
     await host.page_program(addr, data)
     await host.read(addr, length)
     flash.register_command_callback(OcahSpiOpcode.PAGE_PROGRAM, program_callback)
+    await host.raw_command(OcahSpiOpcode.PAGE_PROGRAM, addr=addr, tx=other)
+    calls_after_wel_clear = len(callback_calls)
+    memory_after_wel_clear = flash.read_memory(addr, length)
     await host.write_enable()
     await host.raw_command(OcahSpiOpcode.PAGE_PROGRAM, addr=addr, tx=other, tail_bits=tail_bits)
+    calls_after_partial = len(callback_calls)
+    wel_after_partial = flash.write_enabled
+    memory_after_partial = flash.read_memory(addr, length)
+    await host.raw_command(OcahSpiOpcode.PAGE_PROGRAM, addr=addr, tx=other)
+    status_after_callback = await host.read_status1()
     flash.unregister_command_callback(OcahSpiOpcode.PAGE_PROGRAM)
     await harness.stop()
 
@@ -95,6 +111,19 @@ async def ocah_spi_partial_byte_test(dut) -> None:
         bytes([_ERASED]) * length,
         context="controller READ after the refused PAGE PROGRAM",
     )
+    wel_clear_callback = records[_WEL_CLEAR_CALLBACK_FRAME]
+    checker.expect_equal(
+        "CHK-SPI-CALLBACK-WEL-GATE",
+        (
+            wel_clear_callback["ok"],
+            wel_clear_callback["reason"],
+            wel_clear_callback["data_in"],
+            calls_after_wel_clear,
+            memory_after_wel_clear,
+        ),
+        (False, "wel_clear", b"", 0, data),
+        context="PAGE PROGRAM callback remains behind the write-enable gate",
+    )
     via_callback = records[_CALLBACK_FRAME]
     checker.expect_equal(
         "CHK-SPI-PARTIAL-CALLBACK",
@@ -103,14 +132,42 @@ async def ocah_spi_partial_byte_test(dut) -> None:
             via_callback["ok"],
             via_callback["reason"],
             via_callback["data_in"],
-            len(callback_calls),
-            flash.read_memory(addr, length),
+            calls_after_partial,
+            memory_after_partial,
+            wel_after_partial,
         ),
-        (OcahSpiOpcode.PAGE_PROGRAM, False, "partial_byte", other, 0, data),
+        (OcahSpiOpcode.PAGE_PROGRAM, False, "partial_byte", other, 0, data, True),
         context=f"PAGE PROGRAM with a registered callback ended {tail_bits} bit(s) into a byte",
     )
+    accepted_callback = records[_ACCEPTED_CALLBACK_FRAME]
+    checker.expect_equal(
+        "CHK-SPI-CALLBACK-ACCEPT",
+        (
+            accepted_callback["ok"],
+            accepted_callback["reason"],
+            accepted_callback["data_in"],
+            callback_calls,
+            status_after_callback,
+            flash.write_enabled,
+            flash.read_memory(addr, length),
+        ),
+        (True, "", other, [addr], 0, False, callback_data),
+        context="a byte-complete callback PAGE PROGRAM consumes the write-enable latch",
+    )
 
-    checker.replay(records[:_PARTIAL_FRAME] + records[_PARTIAL_FRAME + 1 : _CALLBACK_FRAME])
+    checker.replay(
+        [
+            record
+            for index, record in enumerate(records)
+            if index not in (_PARTIAL_FRAME, _CALLBACK_FRAME)
+        ]
+    )
+    checker.expect_equal(
+        "CHK-SPI-FRAME-SCOPE",
+        sum(finding.check_id == "CHK-SPI-FRAME-BYTES" for finding in checker.evidence.findings),
+        2,
+        context="only latch-set PAGE PROGRAM frames earn byte-boundary evidence",
+    )
     checker.check_host_responses(OcahSpiOpcode.READ, host.responses(OcahSpiOpcode.READ))
     checker.check_command_order(
         [
@@ -119,14 +176,25 @@ async def ocah_spi_partial_byte_test(dut) -> None:
             OcahSpiOpcode.READ,
             OcahSpiOpcode.PAGE_PROGRAM,
             OcahSpiOpcode.READ,
+            OcahSpiOpcode.PAGE_PROGRAM,
             OcahSpiOpcode.WRITE_ENABLE,
+            OcahSpiOpcode.PAGE_PROGRAM,
+            OcahSpiOpcode.READ_SR1,
         ]
     )
-    checker.check_memory(source=data, addr=addr, context="live control on a byte boundary")
+    checker.check_memory(
+        source=callback_data,
+        addr=addr,
+        context="byte-complete built-in and callback PAGE PROGRAM operations",
+    )
     checker.check_nonvacuous()
     checker.expect_true(
         "CHK-SPI-NEG-FRAME",
-        rejects("frame", flash, lambda probe: probe.replay([partial])),
+        rejects(
+            "frame",
+            flash,
+            lambda probe: probe.replay(records[: _PARTIAL_FRAME + 1]),
+        ),
         context="a probe checker handed the refused record must fail CHK-SPI-FRAME-BYTES",
     )
     checker.finalize()

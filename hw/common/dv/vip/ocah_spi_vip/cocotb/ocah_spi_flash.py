@@ -328,8 +328,9 @@ class OcahSpiFlash:
             8-bit command opcode.
         fn : callable
             Async coroutine: ``async def handler(opcode, addr, data_in)``
-            that returns ``bytes`` to transmit back, or ``None``. A PAGE
-            PROGRAM that ends mid-byte is refused before the handler runs.
+            that returns ``bytes`` to transmit back, or ``None``. PAGE PROGRAM
+            requires the write-enable latch and a byte-complete frame before
+            the handler runs.
         """
         self._cmd_callbacks[opcode & 0xFF] = fn
 
@@ -448,7 +449,15 @@ class OcahSpiFlash:
         if self._verbose:
             self.log.debug("%s: opcode=0x%02X", self.name, opcode)
 
-        # Check for registered callback override first.
+        # PAGE PROGRAM always observes the write-enable gate, including callback overrides.
+        if opcode == OcahSpiOpcode.PAGE_PROGRAM and not self._wel:
+            self.log.warning("%s: PAGE PROGRAM while WEL=0 — ignored", self.name)
+            addr = await self._recv_addr_lenient()
+            await self._drain_to_cs_high()
+            self._log_transaction(opcode, addr, b"", b"", ok=False, reason="wel_clear")
+            return
+
+        # Check for registered callback override.
         if opcode in self._cmd_callbacks:
             addr = await self._recv_addr() if self._addr_bytes > 0 else 0
             payload, tail_bits = await self._recv_remaining()
@@ -461,6 +470,8 @@ class OcahSpiFlash:
                 self._log_transaction(opcode, addr, b"", payload, ok=False, reason="partial_byte")
                 return
             result = await self._cmd_callbacks[opcode](opcode, addr, payload)
+            if opcode == OcahSpiOpcode.PAGE_PROGRAM:
+                self._wel = False
             if result:
                 await self._send_bytes(result)
             self._log_transaction(opcode, addr, result or b"", payload)
@@ -512,24 +523,18 @@ class OcahSpiFlash:
 
         # --- PAGE PROGRAM ---
         elif opcode == OcahSpiOpcode.PAGE_PROGRAM:
-            if not self._wel:
-                self.log.warning("%s: PAGE PROGRAM while WEL=0 — ignored", self.name)
-                addr = await self._recv_addr_lenient()
-                await self._drain_to_cs_high()
-                ok, reason = False, "wel_clear"
+            addr = await self._recv_addr()
+            rx_data, tail_bits = await self._recv_remaining()
+            if tail_bits:
+                self.log.warning(
+                    "%s: PAGE PROGRAM ended %d bit(s) into a payload byte — ignored",
+                    self.name,
+                    tail_bits,
+                )
+                ok, reason = False, "partial_byte"
             else:
-                addr = await self._recv_addr()
-                rx_data, tail_bits = await self._recv_remaining()
-                if tail_bits:
-                    self.log.warning(
-                        "%s: PAGE PROGRAM ended %d bit(s) into a payload byte — ignored",
-                        self.name,
-                        tail_bits,
-                    )
-                    ok, reason = False, "partial_byte"
-                else:
-                    self._do_page_program(addr, rx_data)
-                    self._wel = False
+                self._do_page_program(addr, rx_data)
+                self._wel = False
 
         # --- SECTOR ERASE (4 KB) ---
         elif opcode == OcahSpiOpcode.SECTOR_ERASE:
