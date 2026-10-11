@@ -192,7 +192,7 @@
 |CHK-TRIGGER
 |The transmit watermark tracks FIFO occupancy across the threshold, with the exact polarity asserted and the observed values logged. `EVENT_ENABLE.TXWM` is programmed.
 |CHK-DMA-TX
-|The flash content equals the SRAM source, compared against cocotb-seeded random data.
+|The flash content equals the SRAM source, compared against cocotb-seeded random data. The flash model accepted each PAGE PROGRAM, so each frame ended on a byte boundary.
 |CHK-DMA-DONE
 |The DMA done bit still reads set on a second read after the poll, so a read does not clear it and it does not drop by itself; it then clears on write-one-to-clear and reads back clear. Both status values are logged. Handshake mode does not raise `STATUS.chunk_done` (RTL: chunk_done is the inverse of cfg_handshake_en); that status is `sep_dma_basic_test`.
 |CHK-SPI-IDLE
