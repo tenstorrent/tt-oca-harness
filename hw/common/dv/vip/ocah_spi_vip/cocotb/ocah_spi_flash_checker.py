@@ -18,7 +18,8 @@ emits one ``CHK-SPI-*`` record per rule through ``ocah_checker.OcahChecker``:
 ``CHK-SPI-STATUS-SR2``       READ STATUS REGISTER 2 reported the configured register
 ``CHK-SPI-WREN-ORDER``       a program or erase was accepted only with the latch set and
                              refused, taking no payload, only with it clear
-``CHK-SPI-FRAME-BYTES``      a PAGE PROGRAM frame ended on a payload byte boundary
+``CHK-SPI-FRAME-BYTES``      a PAGE PROGRAM sent with the latch set ended on a payload
+                             byte boundary
 ``CHK-SPI-READ-DATA``        READ and FAST READ streamed the model's bytes at that address
 ``CHK-SPI-HOST-*``           what the controller received equals what the device sent
 ``CHK-SPI-CMD-ORDER``        the in-scope opcode sequence equals the expected one

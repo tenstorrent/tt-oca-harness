@@ -42,7 +42,7 @@ Transaction records
         "opcode":   int,    # command byte
         "addr":     int,    # decoded address (0 when the command has none)
         "data_out": bytes,  # bytes the device sent, complete bytes only
-        "data_in":  bytes,  # payload bytes the device accepted
+        "data_in":  bytes,  # complete payload bytes the device received
         "ok":       bool,   # True when the command was in scope and accepted
         "reason":   str,    # "" | "wel_clear" | "partial_byte" | "unknown_opcode"
     }
@@ -51,10 +51,16 @@ A PAGE PROGRAM or SECTOR ERASE issued with the write-enable latch clear is
 refused: the address is decoded and recorded, no payload is taken, memory is
 unchanged, and the record carries ``ok=False, reason="wel_clear"``.
 
-Chip-select must rise on a byte boundary of the PAGE PROGRAM payload. A frame
-that ends 1 to 7 bits into a payload byte is refused: memory and the
-write-enable latch are unchanged, ``data_in`` holds the complete payload
-bytes, and the record carries ``ok=False, reason="partial_byte"``.
+Chip-select must rise on a byte boundary of a PAGE PROGRAM payload sent with
+the latch set. A frame that ends 1 to 7 bits into a payload byte is refused,
+also when a registered callback handles PAGE PROGRAM: the callback is not
+called, memory and the write-enable latch are unchanged, ``data_in`` holds the
+complete payload bytes, and the record carries
+``ok=False, reason="partial_byte"``. A frame refused for a clear latch is not
+graded for its byte boundary.
+
+``ok`` alone tells whether the device accepted a frame. ``data_in`` is what it
+received, also on a refused frame.
 """
 
 import logging
@@ -322,7 +328,8 @@ class OcahSpiFlash:
             8-bit command opcode.
         fn : callable
             Async coroutine: ``async def handler(opcode, addr, data_in)``
-            that returns ``bytes`` to transmit back, or ``None``.
+            that returns ``bytes`` to transmit back, or ``None``. A PAGE
+            PROGRAM that ends mid-byte is refused before the handler runs.
         """
         self._cmd_callbacks[opcode & 0xFF] = fn
 
@@ -444,7 +451,15 @@ class OcahSpiFlash:
         # Check for registered callback override first.
         if opcode in self._cmd_callbacks:
             addr = await self._recv_addr() if self._addr_bytes > 0 else 0
-            payload, _ = await self._recv_remaining()
+            payload, tail_bits = await self._recv_remaining()
+            if opcode == OcahSpiOpcode.PAGE_PROGRAM and tail_bits:
+                self.log.warning(
+                    "%s: PAGE PROGRAM ended %d bit(s) into a payload byte — ignored",
+                    self.name,
+                    tail_bits,
+                )
+                self._log_transaction(opcode, addr, b"", payload, ok=False, reason="partial_byte")
+                return
             result = await self._cmd_callbacks[opcode](opcode, addr, payload)
             if result:
                 await self._send_bytes(result)
@@ -693,7 +708,7 @@ class OcahSpiFlash:
             "opcode": opcode,
             "addr": addr,
             "data_out": bytes(data_out),  # bytes sent from flash to controller
-            "data_in": bytes(data_in),  # payload bytes accepted from the controller
+            "data_in": bytes(data_in),  # complete payload bytes received from the controller
             "ok": ok,
             "reason": reason,
         }

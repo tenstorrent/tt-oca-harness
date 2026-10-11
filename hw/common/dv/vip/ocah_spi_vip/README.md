@@ -135,13 +135,17 @@ flash = OcahSpiFlash(
 | `flash.jedec_id`, `.flash_size`, `.addr_bytes`, `.status_reg1`, `.status_reg2`, `.write_enabled` | read-only | The configuration and state a checker predicts against |
 
 Frame record keys: `opcode`, `addr`, `data_out` (complete bytes the device
-sent), `data_in` (payload bytes the device accepted), `ok`, `reason`
+sent), `data_in` (complete payload bytes the device received), `ok` (the
+device accepted the frame), `reason`
 (`""`, `"wel_clear"`, `"partial_byte"`, or `"unknown_opcode"`).  A PAGE
 PROGRAM or SECTOR ERASE issued with the write-enable latch clear is refused:
 the address is decoded, no payload is taken, memory is unchanged, and the
 record carries `ok=False`.  A PAGE PROGRAM whose chip-select rises 1 to 7 bits
-into a payload byte is refused with `reason="partial_byte"`: memory and the
-latch are unchanged, and `data_in` holds the complete payload bytes.
+into a payload byte, sent with the latch set, is refused with
+`reason="partial_byte"`, also when a registered callback handles PAGE
+PROGRAM: the callback is not called, memory and the latch are unchanged, and
+`data_in` holds the complete payload bytes.  A frame refused for a clear latch
+is not graded for its byte boundary.
 The device is instant-ready: the BUSY bit never sets and a program or erase
 completes when chip-select rises.
 
@@ -284,7 +288,7 @@ rules and their identifiers:
 | `CHK-SPI-STATUS-WEL` | READ STATUS REGISTER 1 reported the latch the model predicts (set after WRITE ENABLE, clear after WRITE DISABLE, consumed by a program or erase) |
 | `CHK-SPI-STATUS-SR2` | READ STATUS REGISTER 2 reported the configured register |
 | `CHK-SPI-WREN-ORDER` | A program or erase was accepted only with the latch set, and refused (no payload taken) only with it clear |
-| `CHK-SPI-FRAME-BYTES` | A PAGE PROGRAM frame ended on a payload byte boundary |
+| `CHK-SPI-FRAME-BYTES` | A PAGE PROGRAM sent with the latch set ended on a payload byte boundary |
 | `CHK-SPI-READ-DATA` | READ and FAST READ streamed the model's bytes at that address |
 | `CHK-SPI-HOST-JEDEC`, `-STATUS`, `-READBACK` | The controller received, frame by frame, what the device sent |
 | `CHK-SPI-CMD-ORDER` | The in-scope opcode sequence equals the expected one |
