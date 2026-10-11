@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-08T05:57:53+00:00",
+  "generated_at": "2026-10-11T01:41:31+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -2020,6 +2020,85 @@
         }
       ],
       "test_pass_rate": 98.43
+    },
+    {
+      "failed_tests": 16,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-10-11T01:41:31+00:00",
+      "id": "5a3040e598b59139",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-e8cf67ba73b37ddc",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "assertion": 100.0,
+            "branch": 100.0,
+            "condition": 100.0,
+            "functional": 100.0,
+            "line": 100.0,
+            "toggle": 99.22,
+            "user": 100.0
+          },
+          "flow": "smu",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "assertion": 100.0,
+            "branch": 50.0,
+            "condition": 60.0,
+            "functional": 70.0,
+            "line": 75.0,
+            "toggle": 66.91,
+            "user": 100.0
+          },
+          "status": "FAIL",
+          "target": "compile_smu_chiplet",
+          "threshold_met": true,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "ERROR",
+          "effective_metrics": {},
+          "flow": "smu",
+          "framework": "uvm",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "FAIL",
+          "target": null,
+          "threshold_met": null,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "ERROR",
+          "effective_metrics": {},
+          "flow": "smu",
+          "framework": "",
+          "holes_summary": {},
+          "raw_metrics": {},
+          "status": "FAIL",
+          "target": null,
+          "threshold_met": null,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 95.8
     }
   ],
   "schema_version": "0.2"
