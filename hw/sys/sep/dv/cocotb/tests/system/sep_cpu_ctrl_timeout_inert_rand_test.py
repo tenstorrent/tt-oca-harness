@@ -135,7 +135,6 @@ BLOCKS = (
 HOLD = 400  # clocks a response is held
 VALID_BOUND = 2_000  # clocks to wait for the held response VALID
 REQ_BOUND = 2_000  # clocks to wait for the request at the outbound port
-DURING_BOUND = 300  # clocks the during-hold read may take
 RELEASE_BOUND = 2_000  # clocks to wait for the response after release
 QUIET = 64
 DONE_POLL = 400

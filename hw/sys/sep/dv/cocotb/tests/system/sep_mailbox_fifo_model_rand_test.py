@@ -851,28 +851,16 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
             self._fail("CHK-LINE-OUT", f"end state probe=0x{cc.probe:02x} smc=0x{cc.smc:02x}")
 
     def _width_check(self) -> None:
-        """CHK-WIDTH on the DUT instance port, where the build exposes it.
+        """CHK-WIDTH on the DUT instance port.
 
-        Verilator builds keep ``sep_wrapper`` internals private
-        (``hw/sys/sep/dv/sep_public_scope.vlt``), so there the leaf logs ``OBS-WIDTH`` and the
-        check runs on VCS only.
+        Verilator builds expose the port read-only through
+        ``hw/sys/sep/dv/sep_public_scope.vlt``; an unreachable handle fails the check.
         """
         dut: Any = cocotb.top
         try:
             width = len(dut.u_dut.smc_mailbox_interrupt_o)
         except (AttributeError, TypeError) as exc:
-            sim = str(getattr(cocotb, "SIM_NAME", "") or "").lower()
-            if "verilator" not in sim:
-                self._fail(
-                    "CHK-WIDTH",
-                    f"u_dut.smc_mailbox_interrupt_o not reachable on {sim}: {exc}",
-                )
-            self.required_evidence = tuple(c for c in self.required_evidence if c != "CHK-WIDTH")  # type: ignore[assignment]
-            self.logger.info(
-                "OBS-WIDTH LOG seed=%d reachable=0 sim=%s handle=u_dut.smc_mailbox_interrupt_o",
-                self.seed,
-                sim,
-            )
+            self._fail("CHK-WIDTH", f"u_dut.smc_mailbox_interrupt_o not reachable: {exc}")
             return
         self._grade(
             "CHK-WIDTH",
