@@ -68,6 +68,24 @@ AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 STEE_BASE = sym("STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 REMAP_STRIDE = sym("AP_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - AP_BASE
 REMAP_ATTRS = sym("AP_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET")
+# REMAP_STRIDE, REMAP_ATTRS and REMAP_REGIONS serve the AP and the STEE bank, so
+# the STEE values are read from the STEE RDL symbols and must equal the AP ones;
+# a layout that differs stops the import.
+_ap_layout = (
+    REMAP_STRIDE,
+    REMAP_ATTRS,
+    indexed_block_count("AP_OUTPUT_REMAP_CTRL"),
+)
+_stee_layout = (
+    sym("STEE_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - STEE_BASE,
+    sym("STEE_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET"),
+    indexed_block_count("STEE_OUTPUT_REMAP_CTRL"),
+)
+if _stee_layout != _ap_layout:
+    raise ImportError(
+        f"STEE output-remap layout {_stee_layout} (stride, ATTRS, regions) differs from "
+        f"AP {_ap_layout}; the shared REMAP_* constants cannot address both banks"
+    )
 # REGION_ATTRS.offset and .valid are sw=rw over their whole RDL width
 # (output_remap.rdl), so the CSR R/W stimulus drives every bit of them, the SEP
 # 512 KB granule (bit 19 and up) included. AP and STEE are both instances of the
@@ -84,15 +102,40 @@ INFILT_BASE = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 OUTFILT_BASE = sym("OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 FILTER_STRIDE = sym("INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR") - INFILT_BASE
 # Per-entry FILTER_* offsets (64-bit START/END as lo/hi 32-bit words). Both SEP
-# filters are instances of the same axi_filter_wrap block (hw/sys/sep/doc/fabric.adoc), so
-# one per-entry layout describes the inbound and the outbound bank; only the
-# inbound block is exported as a register block, and it is the source here.
+# filters are instances of the same axi_filter_wrap block (hw/sys/sep/doc/fabric.adoc).
+# The constants below serve the inbound and the outbound bank, so the outbound
+# stride and offsets are read from the outbound RDL symbols and must equal the
+# inbound ones; a layout that differs stops the import.
 FILTER_START_ADDR = INBOUND_FILTER_CTRL_0.offset("START_ADDR")
 FILTER_END_ADDR = INBOUND_FILTER_CTRL_0.offset("END_ADDR")
 FILTER_CONFIG = INBOUND_FILTER_CTRL_0.offset("FILTER_CONFIG")
+_OUTBOUND_FILTER_CTRL_0 = RegBlock("OUTBOUND_FILTER_CTRL_0_")
+OUTFILT_STRIDE = sym("OUTBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR") - OUTFILT_BASE
+_out_layout = (
+    OUTFILT_STRIDE,
+    _OUTBOUND_FILTER_CTRL_0.offset("START_ADDR"),
+    _OUTBOUND_FILTER_CTRL_0.offset("END_ADDR"),
+    _OUTBOUND_FILTER_CTRL_0.offset("FILTER_CONFIG"),
+)
+_in_layout = (FILTER_STRIDE, FILTER_START_ADDR, FILTER_END_ADDR, FILTER_CONFIG)
+if _out_layout != _in_layout:
+    raise ImportError(
+        f"outbound filter layout {_out_layout} (stride, START, END, CONFIG) differs from "
+        f"inbound {_in_layout}; the shared FILTER_* constants cannot address both banks"
+    )
 
 # remap valid[63] (R/W) and filter locked[63] (woset) both sit in the hi word.
+# One hi-word bit index serves both, so each field's own RDL symbol must give it;
+# a position that differs stops the import.
 WOSET_HI_BIT = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_lsb("REGION_REGION_ATTRS", "valid") - 32
+_hi_bits = {
+    "alias REGION_ATTRS.valid": WOSET_HI_BIT,
+    "inbound FILTER_CONFIG.locked": INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "locked") - 32,
+    "outbound FILTER_CONFIG.locked": _OUTBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "locked")
+    - 32,
+}
+if len(set(_hi_bits.values())) != 1:
+    raise ImportError(f"hi-word bit positions differ: {_hi_bits}; WOSET_HI_BIT cannot serve all")
 
 # AMBA AXI4 (IHI 0022): OKAY=0, DECERR=3. While FILTER_CONFIG.locked is set,
 # every write to that entry's FILTER_CONFIG, START_ADDR and END_ADDR goes to

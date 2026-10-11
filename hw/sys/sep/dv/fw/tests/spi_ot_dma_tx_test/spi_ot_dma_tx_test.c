@@ -26,6 +26,11 @@
 #include "sep_dma.h"
 #include "sep_spi.h"
 
+// Bit 0 of HANDSHAKE_INTR_ENABLE.MASK, from the generated register map.
+#define DMA_HS_INTR_EN0 \
+    ((1u << SECURE_DMA__HANDSHAKE_INTR_ENABLE__MASK_bp) & \
+     SECURE_DMA__HANDSHAKE_INTR_ENABLE__MASK_bm)
+
 #define TIMEOUT 200000
 #define DMA_POLL_LIM 200000
 #define MAX_WORDS 16
@@ -186,9 +191,9 @@ static int chk_trigger(void) {
     }
     // The DMA handshake-interrupt enable clears interrupts and does not gate the
     // handshake; a stored 1 proves it is not stuck at zero.
-    sep_dma_wr(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
-    if (sep_dma_rd(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR) != 0x1) {
-        sep_mbx_puts("FAIL: CHK-TRIGGER HANDSHAKE_INTR_ENABLE did not retain 0x1\n");
+    sep_dma_wr(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, DMA_HS_INTR_EN0);
+    if (sep_dma_rd(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR) != DMA_HS_INTR_EN0) {
+        sep_mbx_puts("FAIL: CHK-TRIGGER HANDSHAKE_INTR_ENABLE did not retain bit 0 of MASK\n");
         err++;
     }
 
@@ -275,7 +280,7 @@ static void dma_arm_tx(uint32_t src, uint32_t total_bytes) {
                SECURE_DMA__DST_CONFIG__WRAP_bm); // fixed TXDATA register
     sep_dma_wr(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, total_bytes);
     sep_dma_wr(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, DMA_CHUNK);
-    sep_dma_wr(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, DMA_HS_INTR_EN0);
     sep_dma_wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
                SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
                    SECURE_DMA__CONTROL__HARDWARE_HANDSHAKE_ENABLE_bm | SEP_DMA_OPCODE_COPY);

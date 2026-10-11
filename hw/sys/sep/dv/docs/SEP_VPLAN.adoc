@@ -87,8 +87,10 @@ are in <<sep-vplan-phase3-proposed>>. The parked-test rule of Phase 3 is in
   needed (AES/HMAC/KMAC/OTBN/entropy/LCC), and named checkers that can
   fail on a broken DUT. Prefer source-derived expected values from the
   register export and architecture docs.
-. *Bring-up*: drive `ext_boot_seq_done_i`; use `+skip_fuse_sense` only
-  when the test does not need real OTP sense; hold the CPU off for
+. *Bring-up*: drive `ext_boot_seq_done_i`. A test that does not need
+  fuse content may use `+skip_fuse_sense`; it must then grade no fuse- or
+  LC-derived value. <<sep-standin-skip-fuse-sense>> records the claim and
+  scope of this bypass for the leaves it lists. Hold the CPU off for
   `no_cpu` runs. With `+skip_fuse_sense` and no
   `+sep_shadow_reg_preload`, the eFuse shadow is all zero except
   `LC_STATE` raw `4'hF`, which is INVALID. `FEAT_CTRL` is then zero, so
@@ -217,7 +219,7 @@ means that the record is stale, and the record is what needs the edit.
 |Open-source files |PyUVM test under `cocotb/tests/`, stimulus in `cocotb/seq_lib/`, shared helpers on `sep_base_test` / `cocotb/env/`
 |Testlist enrollment |Leaf entry in the owning `testlists/*.toml` and in `testlists/all.toml`
 |Evidence |Every checker needs a positive log line naming the contract, as `CHK-<ID> PASS`
-|Evidence gate |A clean exit is not a pass: every graded contract logs `CHK-<ID> PASS`, and `sep_base_test` fails a leaf that graded nothing of its own. <<sep-vplan-evidence-gate>> describes the mechanism, its `EVIDENCE_SUMMARY` line, the `min_evidence` / `required_evidence` knobs and the exemption list
+|Evidence gate |A clean exit is not a pass: every graded contract logs `CHK-<ID> PASS`, and `sep_base_test` fails a leaf that emits no `CHK-<ID> PASS` record. The shared base-class records count toward that floor, so a leaf whose own checks sit beside them names them in `required_evidence`. <<sep-vplan-evidence-gate>> describes the mechanism, its `EVIDENCE_SUMMARY` line, the `min_evidence` / `required_evidence` knobs and the exemption list
 |===
 
 === BFM Policy
@@ -865,7 +867,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
-|Proves the CPU-side address alias window remaps both data and instruction accesses to physical SRAM.
+|Proves the CPU-side address alias window remaps both data and instruction accesses to physical SRAM, and that every IFU read carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`).
 |<<sep_fabric_inbound_filter_rule_matrix_test,`sep_fabric_inbound_filter_rule_matrix_test`>>
 |2
 |no_cpu, real PROD fuse sense
@@ -1004,7 +1006,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, SMC aperture drawn per seed
 |LSU master, SMC aperture drive and SMC responder (BH-SMC, added hook), SMC request probe (observation tap)
-|Proves that the first and last word of the SMC aperture, as the SMC supplies it, match first in the route order and go to the SMC port, and that the word above the aperture top does not reach the SMC port. The `rom_fw` boot tests grade the basic route and the unfiltered path.
+|Proves that the first and last word of the SMC aperture, as the SMC supplies it, match first in the route order and go to the SMC port, and that the word above the aperture top does not reach the SMC port and answers DECERR from the peripheral crossbar with PR-OUT silent. The `rom_fw` boot tests grade the basic route and the unfiltered path.
 
 |<<sep_fabric_extension_port_window_test,`sep_fabric_extension_port_window_test`>>
 |3
@@ -1022,13 +1024,13 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, `+skip_fuse_sense`
 |CPU LSU firmware master, direct-address twin model
-|Proves that an address in the 768 MiB local alias window answers as its direct twin on the scratch, AES, system CSR, SPI host, entropy source and SRAM targets. Extends the open alias matrix test with the unit classes and the window edges only.
+|Proves that an address in the 768 MiB local alias window answers as its direct twin on the scratch, AES, system CSR, SPI host, entropy source and SRAM targets, and that every LSU read and write carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`). Extends the open alias matrix test with the unit classes and the window edges only.
 
 |<<sep_fabric_dma_endpoint_matrix_test,`sep_fabric_dma_endpoint_matrix_test`>>
 |3
 |cpu, `+skip_fuse_sense`, SMC aperture plusargs
 |DMA firmware master, outbound filter source-ID model, request probes (observation taps), SMC aperture plusargs and SMC memory model (BH-SMC, added hook)
-|Proves that the DMA reaches the scratch, WDT, AES register, register and outbound targets, does not reach its own CSR or the boot ROM, and leaves AxUSER at zero in the outbound source-ID stack. The SMC leg runs on every seed through BH-SMC, a top-port drive. Extends the open DMA tests and the Phase 3 DMA transfer and TCM tests with the remaining endpoint pairs only.
+|Proves that the DMA reaches the scratch, WDT, AES register, register and outbound targets, does not reach its own CSR or the boot ROM (each such run ends in a DMA bus error), gets a DMA bus error from the DECERR extension port, leaves AxUSER at zero in the outbound source-ID stack, drives the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`) on every read and write, and that CPU beats carry a non-zero source ID. The SMC leg runs on every seed through BH-SMC, a top-port drive. Extends the open DMA tests and the Phase 3 DMA transfer and TCM tests with the remaining endpoint pairs only.
 |===
 
 [[phase2-mailbox-irq-pic]]
@@ -1076,7 +1078,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
-|Prove the PIC delivers every source in the firmware catalog (eleven) to the CPU with one-hot claim and RW1C clear; the seed sets only the order of the extras.
+|Prove the PIC delivers every source in the firmware catalog (eleven) to the CPU with one-hot claim and its clear: write-one-to-clear of `INTR_STATE` or IRQS for the event-type sources and the mailbox, and `INTR_TEST` back to 0 with a write-one clear of `STATUS` for the three DMA sources, whose `INTR_STATE` is read-only; the seed sets only the order of the extras.
 |<<sep_spi_ot_host_csr_irq_rand_test,`sep_spi_ot_host_csr_irq_rand_test`>>
 |2
 |no_cpu, +skip_fuse_sense
@@ -2625,8 +2627,8 @@ the test does.
 |No entry grades these bits. The open KMAC tests grade the keyed digest.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |DMA and CPU debug not-connected response
-|What response does the DMA receive on its not-connected cells (DMA CSR, entropy pool, boot ROM), and what does the CPU debug master receive on its not-connected cells (boot ROM, CPU TCM)?
-|`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-NOTCONN) grades that the request does not reach the target, only the rom_src and dma_csr_src legs, and only for runs that end in done or error. The rom_dst leg grades the PR-ROM silence and the dma_csr_src leg grades the PR-DMACSR silence, and PR-ROM and PR-DMACSR are observation taps the test adds to the SEP_TB_ARCH observation-probe list
+|What bus response code does the DMA receive on its not-connected cells (DMA CSR, entropy pool, boot ROM), and what does the CPU debug master receive on its not-connected cells (boot ROM, CPU TCM)? The DMA outcome is stated: no DMA path reaches these targets (`hw/sys/sep/doc/assets/sep_axi_connectivity.svg`), so the transfer ends in a bus error (`secure_dma.adoc`, `STATUS.ERROR`, `ERROR_CODE.BUS_ERROR`).
+|`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-NOTCONN) grades that the request does not reach the target and that each run ends with `STATUS.ERROR` and `ERROR_CODE.BUS_ERROR` and no other defined `ERROR_CODE` bit; the bus response code is logged. The rom_dst leg grades the PR-ROM silence and the dma_csr_src leg grades the PR-DMACSR silence, and PR-ROM and PR-DMACSR are observation taps the test adds to the SEP_TB_ARCH observation-probe list
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Initiator arbitration and outstanding limits
 |What is the arbitration policy between the five initiators, the outstanding limit per initiator and per target, and the starvation rule?
@@ -2642,7 +2644,7 @@ the test does.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Source ID value of the CPU masters
 |What is the numeric value of `SepSourceId`? The OTHERS value of zero is used only for remapped and DMA traffic.
-|-
+|`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER, CHK-DMA-SMC) grades that the CPU beats on PR-OUT and PR-SMC carry a source ID AxUSER[3:0] other than 0 (`fabric.adoc`, "Transaction Routing": the CPU masters drive SEP's ID) and logs the value.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Overlapping alias remap entries
 |Which entry applies when two or more valid alias remap entries cover one address? No draw overlaps valid entries.
@@ -2674,7 +2676,7 @@ the test does.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Local address below `0x1_0000_0000` outside the SMC, SMU, AP and STEE windows
 |Where does an address such as `0x0000_0000` to `0x0FFF_FFFF` go? Local requests in that class are logged and not graded. No address separates a moved SMU aperture from a fixed one, so no leaf writes `SMU_GLOBAL_BASE_ADDR` or `SMU_REGION_SIZE`.
-|-
+|`sep_fabric_smc_route_test` (CHK-SMC-STATIC-ROW) grades the word above the SMC aperture top in configuration A (`0x4100_0000`): the output fabric returns an address outside every outbound window to the peripheral crossbar (`fabric.adoc`, output fabric), which answers DECERR at or above `0x4000_0000`, so the request answers DECERR with PR-OUT and PR-SMC silent.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Burst to a register region outside the crypto region
 |What does a burst to a register region outside the crypto region return? Bursts to register regions are not driven, so the burst-to-single conversion beyond two beats stays ungraded.

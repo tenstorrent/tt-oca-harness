@@ -17,6 +17,9 @@
 // u_mbx: sep_outbound_mbx (hw/sys/sep/dv/tb/sep_outbound_mbx.sv), the TB
 // outbound-mailbox responder and firmware-console monitor.
 -tree sep_uvm_top.u_mbx
+// u_smc_route_mem: sep_smc_route_mem (hw/sys/sep/dv/tb/sep_smc_route_mem.sv),
+// the TB SMC responder of the BH-SMC hook.
+-tree sep_uvm_top.u_smc_route_mem
 // u_sep_fcov: sep_fcov (hw/sys/sep/dv/cov/sv/sep_fcov.sv), the passive
 // covergroup collector. Its covergroups are the separate functional number;
 // its procedural code is TB code and is not part of the code-coverage score.
