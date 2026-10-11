@@ -80,6 +80,7 @@ from seq_lib.sep_dma_ops import (
     RANGE_REGWEN,
     RANGE_VALID,
     ST_ERROR,
+    STATUS,
     TOTAL_DATA_SIZE,
     TRANSFER_WIDTH,
     DmaTimeout,
@@ -104,10 +105,7 @@ EVENT_BIT = {
 }
 INTR_EN_ALL = _D.mask32("INTR_ENABLE")
 L2_KINDS = ("total", "chunk", "both", "hash_w0", "hash_w1")
-UNLOCK_VALUES = (0x6, 0xF, 0x9, 0x0)
 OUTSIDE_CASES = (("src", "below"), ("src", "above"), ("dst", "below"), ("dst", "above"))
-REGWEN_TRUE = 0x6
-REGWEN_FALSE = 0x9
 
 MAX_BYTES = 1024  # largest L1/L2 transfer
 POST_WAIT = 200  # clocks of line sampling after DONE or ERROR
@@ -119,6 +117,12 @@ SIZE_ERR_MASK = _D.field_mask("ERROR_CODE", "size_error")
 SRC_ERR_MASK = _D.field_mask("ERROR_CODE", "src_addr_error")
 DST_ERR_MASK = _D.field_mask("ERROR_CODE", "dst_addr_error")
 REGWEN_MASK = _D.field_mask("RANGE_REGWEN", "regwen")
+_REGWEN_LSB = _D.field_lsb("RANGE_REGWEN", "regwen")
+_REGWEN_ALL = REGWEN_MASK >> _REGWEN_LSB
+# RANGE_REGWEN is MuBi4 with reset True; False is its bitwise complement.
+REGWEN_TRUE = (_D.reset32("RANGE_REGWEN") & REGWEN_MASK) >> _REGWEN_LSB
+REGWEN_FALSE = ~REGWEN_TRUE & _REGWEN_ALL
+UNLOCK_VALUES = (REGWEN_TRUE, _REGWEN_ALL, REGWEN_FALSE, 0)
 VALID_MASK = _D.field_mask("RANGE_VALID", "range_valid")
 
 
@@ -368,10 +372,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         istate = await ops.rd(INTR_STATE)
         await ClockCycles(cocotb.top.clk_i, 8)
         src11 = int(self.irq.any_high_since(m, "src11"))
-        # Recovery with no reset.
-        await ops.clean_state()
+        # Recovery with no reset: write 1 to STATUS.ERROR alone.
+        await ops.wr(STATUS, ST_ERROR)
         st_c = await ops.read_status()
         ecode_c = await ops.rd(ERROR_CODE)
+        await ops.clean_state()
         await ops.wr(CONTROL, control_word())
         await self._sentinel_dst()
         await ops.program_transfer(src=c.src, dst=c.dst, total=rsize, chunk=rsize)
