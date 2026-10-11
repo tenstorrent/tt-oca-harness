@@ -13,13 +13,6 @@
 # entropy clock tree is shared with the closed block flow, which sources the
 # same files rather than keeping a second copy.
 #
-# This is reference/documentation-level SDC: the current Yosys-based synth
-# flow (flows/synth/yosys) drives ABC with a minimal driving-cell/load model
-# (flows/synth/pdk/ihp-sg13g2/yosys/abc.constr) rather than a full SDC. A full
-# SDC like this one only becomes a real input once a place-and-route or standalone STA stage
-# (e.g. OpenROAD/OpenSTA) is added to the flow. See
-# flows/synth/yosys/README.md for the rationale.
-#
 # Known limitations, called out explicitly:
 #   - The entropy ripple-divider clocks below are created from the RTL
 #     hierarchy when `entropy_source` is elaborated. The section is skipped

@@ -18,13 +18,6 @@
 # keeping a second copy. The GPIO padring is SMC's, passed through unchanged,
 # so smu_io_delays.sdc sources SMC's own file for it.
 #
-# This is reference/documentation-level SDC: the current Yosys-based synth
-# flow (flows/synth/yosys) drives ABC with a minimal driving-cell/load model
-# (flows/synth/pdk/ihp-sg13g2/yosys/abc.constr) rather than a full SDC. A full
-# SDC like this one only becomes a real input once a place-and-route or standalone STA stage
-# (e.g. OpenROAD/OpenSTA) is added to the flow. See
-# flows/synth/yosys/README.md for the rationale.
-#
 # Subcomponent hierarchy mode: this file supports a `smu_sam_flow` switch,
 # shared by synth / CDC / RDC signoff.
 #   smu_sam_flow == 0 (default, synth): SMC/DTP/SEP RTL is fully present, so

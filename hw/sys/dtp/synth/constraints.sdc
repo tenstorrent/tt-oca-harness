@@ -7,13 +7,6 @@
 # Clock periods, generated clocks, and I/O delays for the `dtp` top-level
 # port list (hw/sys/dtp/rtl/dtp.sv).
 #
-# This is reference/documentation-level SDC: the current Yosys-based synth
-# flow (flows/synth/yosys) drives ABC with a minimal driving-cell/load model
-# (flows/synth/pdk/ihp-sg13g2/yosys/abc.constr) rather than a full SDC. A full
-# SDC like this one only becomes a real input once a place-and-route or standalone STA stage
-# (e.g. OpenROAD/OpenSTA) is added to the flow. See
-# flows/synth/yosys/README.md for the rationale.
-#
 # Caveats, called out explicitly:
 #   - `dtp` exposes three typed per-slice IC-reset ports,
 #     `jtag_ic_reset_smc_o`, `jtag_ic_reset_sep_o`, and `jtag_ic_reset_ext_o`
