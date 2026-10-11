@@ -28,9 +28,10 @@ Real checkers:
     the Key Manager smoke ROM first; an empty ROM returns X and the look-ahead
     read takes the ROM request to X once km_jtag_rst_n is released. After each
     update the SMC and SEP slices are read whole: each is a packed struct whose
-    .ovrd half sits above its .val half, the first field of each half nearest TDI, and the
-    halves carry the inverse of reset_enable and reset_control
-    (doc/integrator/src/smu.adoc, "IC_RESET TDR Structure"), so every
+    .ovrd half sits above its .val half, the first field of each half nearest
+    TDI. .ovrd carries the inverse of reset_enable (1 while the override
+    applies) and .val carries reset_control as written, the active-low reset
+    value (doc/integrator/src/smu.adoc, "IC_RESET TDR Structure"), so every
     port's override and value are compared bit by bit.
 """
 
