@@ -697,7 +697,9 @@ on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
 . `tb/smc_tb_if.sv` — the SMC-local TB interface: the wait-math clock periods,
   power-good and the cold/cool reset pins, the reset-unit outputs, the
   fuse-sense / warm-domain release observables, the cold-reset assertion
-  counter, the SVA enable.
+  counter, the SVA enable, and CPU-cluster isolation. The watchdog core-awake
+  scenario reads the live cluster-boundary isolation tap through this interface
+  and waits with a bound for release before accessing the cluster again.
 . `uvm/env/smc_env_pkg.sv` — `smc_types` (SEP_IN geometry, the scratch CSR
   windows from the generated `smc_top_addrmap_pkg`, 32-bit-CSR lane helpers
   for the 64-bit bus), `smc_test_cfg`, `smc_env_cfg`,
