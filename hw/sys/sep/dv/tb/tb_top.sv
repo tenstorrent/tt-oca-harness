@@ -658,10 +658,12 @@ module sep_uvm_top
         .rst_vec                      (rst_vec_i),
         .jtag_id                      ('0),
 
-        // Interrupts (idle)
+        // Interrupts. timer_int and soft_int are tied to 0. The boundary PIC
+        // input is the top-port drive sep_ext_interrupts_i (0 unless a leaf
+        // drives it).
         .timer_int                    (1'b0),
         .soft_int                     (1'b0),
-        .sep_ext_interrupts_i         ('0),
+        .sep_ext_interrupts_i         (sep_ext_interrupts_i),
 
         // SMN external AXI (outbound captured by the mailbox responder; inbound
         // driven by the flat m_axi_* master when live).
@@ -1341,6 +1343,52 @@ module sep_uvm_top
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_busy_qs
     };
 
+    // Mailbox, IRQ and PIC observation taps (docs/SEP_TB_ARCH.adoc). Read-only
+    // copies of DUT nets; no force.
+    assign crypto_alert_pulse_probe_o = `SEP_CORE.u_sep_crypto.crypto_alert_pulse;
+`ifndef SEP_CPU_STUB
+`define SEP_PIC_CTRL `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst
+    assign pic_rd_data_probe_o = {
+        `SEP_PIC_CTRL.picm_rden_ff,
+        `SEP_PIC_CTRL.picm_raddr_ff[14:0],
+        `SEP_PIC_CTRL.picm_rd_data
+    };
+`undef SEP_PIC_CTRL
+`else
+    assign pic_rd_data_probe_o = '0;
+`endif
+    // Set term and clear pulse of each bridge-fault latch. The register bridges
+    // (axi_lite_to_tlul) set on a TL-UL error response; the DMA master bridge
+    // (tlul_to_axi_lite) sets on a non-OKAY AXI response or an integrity error.
+`define SEP_BRIDGE_ERR_SET(b) (b.tl_i.d_valid & b.tl_i.d_error)
+`define SEP_CRYPTO `SEP_CORE.u_sep_crypto
+    assign sep_cpu_ctrl_err_pulse_probe_o = {
+        `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.err_clr_i,
+        `SEP_CORE.u_sep_dma_wrap.u_axi_lite_to_tlul_reg.err_clr_i,
+        `SEP_CORE.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul.err_clr_i,
+        `SEP_DRBG.u_edn_axi_lite_to_tlul.err_clr_i,
+        `SEP_DRBG.u_csrng_axi_lite_to_tlul.err_clr_i,
+        `SEP_CRYPTO.u_sep_crypto_otbn_wrapper_s3c_scan.u_axi_lite_to_tlul.err_clr_i,
+        `SEP_CRYPTO.u_kmac_wrapper_s3c_scan.u_kmac_axi_lite_to_tlul.err_clr_i,
+        `SEP_CRYPTO.u_hmac_wrapper_s3c_scan.u_hmac_axi_lite_to_tlul.err_clr_i,
+        `SEP_CRYPTO.u_aes_wrapper_s3c_scan.u_aes_axi_lite_to_tlul.err_clr_i,
+        (`SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.axi_lite_rsp_i.b_valid &
+         (`SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.axi_lite_rsp_i.b.resp != 2'b00)) |
+        (`SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.axi_lite_rsp_i.r_valid &
+         (`SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.axi_lite_rsp_i.r.resp != 2'b00)) |
+        `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.intg_err,
+        `SEP_BRIDGE_ERR_SET(`SEP_CORE.u_sep_dma_wrap.u_axi_lite_to_tlul_reg),
+        `SEP_BRIDGE_ERR_SET(`SEP_CORE.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_DRBG.u_edn_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_DRBG.u_csrng_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_CRYPTO.u_sep_crypto_otbn_wrapper_s3c_scan.u_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_CRYPTO.u_kmac_wrapper_s3c_scan.u_kmac_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_CRYPTO.u_hmac_wrapper_s3c_scan.u_hmac_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_CRYPTO.u_aes_wrapper_s3c_scan.u_aes_axi_lite_to_tlul)
+    };
+`undef SEP_CRYPTO
+`undef SEP_BRIDGE_ERR_SET
+
     // Fabric-slot W channel, sampled at the AXI-Lite port of each of the 96
     // remap/filter slot register blocks in sep_system_csr (the block that
     // applies WSTRB). A beat counts as fill when a byte lane whose WSTRB bit is
@@ -1625,6 +1673,16 @@ module sep_uvm_top
     assign pr_out_wdata_o  = smn_outbound_req_w.w.data;
     assign pr_out_wstrb_o  = smn_outbound_req_w.w.strb;
     assign pr_out_wlast_o  = smn_outbound_req_w.w.last;
+    // PR-OUT-RSP: the responses on smn_outbound_axi_resp_i.
+    assign pr_out_bvalid_o = smn_outbound_resp_w.b_valid;
+    assign pr_out_bready_o = smn_outbound_req_w.b_ready;
+    assign pr_out_bresp_o  = smn_outbound_resp_w.b.resp;
+    assign pr_out_bid_o    = smn_outbound_resp_w.b.id;
+    assign pr_out_rvalid_o = smn_outbound_resp_w.r_valid;
+    assign pr_out_rready_o = smn_outbound_req_w.r_ready;
+    assign pr_out_rresp_o  = smn_outbound_resp_w.r.resp;
+    assign pr_out_rid_o    = smn_outbound_resp_w.r.id;
+    assign pr_out_rlast_o  = smn_outbound_resp_w.r.last;
     // PR-SMC: sep_ext_to_smc_axi_req_o (the net ext_to_smc_req_w).
     assign pr_smc_awvalid_o = ext_to_smc_req_w.aw_valid;
     assign pr_smc_awready_o = ext_to_smc_resp_w.aw_ready;
@@ -2539,12 +2597,16 @@ module sep_uvm_top
     assign km_mbox_sep_wr_err_count_o = km_mbox_sep_wr_err_cnt_q;
     assign km_mbox_sep_wr_err_addr_o  = km_mbox_sep_wr_err_addr_q;
 
-    // Outbound mailbox responder + firmware-console/PASS-magic monitor.
+    // Outbound mailbox responder + firmware-console/PASS-magic monitor. The
+    // response control (hold, read SLVERR) is an error inject on
+    // smn_outbound_axi_resp_i; both inputs are 0 unless a leaf drives them.
     sep_outbound_mbx u_mbx (
         .clk_i           (clk_i),
         .rst_ni          (rst_n_int),
         .req_i           (smn_outbound_req_w),
         .resp_o          (smn_outbound_resp_w),
+        .resp_hold_i     (smn_outbound_resp_hold_i),
+        .rd_slverr_i     (smn_outbound_rd_slverr_i),
         .fw_done_o       (fw_done_o),
         .fw_pass_o       (fw_pass_o),
         .fw_char_o       (fw_char_o),
@@ -3013,6 +3075,9 @@ module sep_uvm_top
     assign token_digest_test_en_inject_i = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
+    assign sep_ext_interrupts_i     = '0;
+    assign smn_outbound_resp_hold_i = 1'b0;
+    assign smn_outbound_rd_slverr_i = 1'b0;
     assign rst_vec_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
     assign tcm_load_i               = 1'b0;

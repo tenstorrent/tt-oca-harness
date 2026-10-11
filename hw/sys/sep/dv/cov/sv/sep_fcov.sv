@@ -273,6 +273,13 @@ module sep_fcov (
   // is. A leaf writes it through the u_sep_fcov handle. It drives nothing.
   int unsigned graded_owner = FcovOwnNone;
 
+  // Quiet-window gate of the mailbox groups (docs/SEP_FCOV.adoc, mailbox, IRQ
+  // and PIC sampling rules): 1 while the owning leaf holds a quiet window
+  // after the settle wait of a check cycle. A leaf writes it through the
+  // u_sep_fcov handle under the rules of graded_owner. It gates a sample, it
+  // is never a bin value, and it drives nothing.
+  bit quiet_win = 1'b0;
+
   // ------------------------------------------------------------------
   // Apertures. Memory windows come from sep_top_addrmap_pkg; every CSR address
   // and field mask below is a sep_reg.svh symbol.

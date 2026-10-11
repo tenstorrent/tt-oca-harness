@@ -76,6 +76,26 @@ def open_graded_window(test_name: str, log=None) -> bool:
     return True
 
 
+def set_quiet_window(on: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.quiet_win`` (1 inside a quiet window, else 0).
+
+    The mailbox leaf sets it at the end of the settle wait of a check cycle and
+    clears it before the next access to the mailbox unit (docs/SEP_FCOV.adoc,
+    mailbox, IRQ and PIC sampling rules). Same rules as ``graded_owner``: a
+    no-op that returns False on Verilator. On VCS a sampler without the
+    variable is a testbench error.
+    """
+    if _gate_handle() is None:
+        return False
+    fcov = cocotb.top.u_sep_fcov
+    if not hasattr(fcov, "quiet_win"):
+        raise AttributeError("u_sep_fcov has no quiet_win variable (cov/sv/sep_fcov.sv)")
+    fcov.quiet_win.value = 1 if on else 0
+    if log is not None:
+        log.info("FCOV-QUIET %s", "open" if on else "closed")
+    return True
+
+
 def close_graded_window(log=None) -> bool:
     """Write 0 (no window open). Returns True when written."""
     gate = _gate_handle()
