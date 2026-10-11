@@ -97,6 +97,16 @@ tools = ["vcs"]
 tags = ["uvm", "wdt"]
 run_modes = ["smoke"]
 
+[[tests]]
+# Checks watchdog count gating across software core reset and always-count priority.
+name = "smc_wdt_core_awake_gate_test"
+module = { uvm = "smc_wdt_core_awake_gate_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "wdt"]
+run_modes = ["smoke"]
+
 [[groups]]
 # Wide register-block CSR scenarios.
 name = "csr_uvm_extended"
@@ -108,9 +118,10 @@ tests = [
 [[groups]]
 # Watchdog UVM-only scenarios.
 name = "wdt_uvm_extended"
-expected_count = 1
+expected_count = 2
 tests = [
     "smc_wdt_feed_zerocmp_test",
+    "smc_wdt_core_awake_gate_test",
 ]
 
 [[groups]]
