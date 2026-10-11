@@ -44,12 +44,17 @@ Transaction records
         "data_out": bytes,  # bytes the device sent, complete bytes only
         "data_in":  bytes,  # payload bytes the device accepted
         "ok":       bool,   # True when the command was in scope and accepted
-        "reason":   str,    # "" | "wel_clear" | "unknown_opcode"
+        "reason":   str,    # "" | "wel_clear" | "partial_byte" | "unknown_opcode"
     }
 
 A PAGE PROGRAM or SECTOR ERASE issued with the write-enable latch clear is
 refused: the address is decoded and recorded, no payload is taken, memory is
 unchanged, and the record carries ``ok=False, reason="wel_clear"``.
+
+Chip-select must rise on a byte boundary of the PAGE PROGRAM payload. A frame
+that ends 1 to 7 bits into a payload byte is refused: memory and the
+write-enable latch are unchanged, ``data_in`` holds the complete payload
+bytes, and the record carries ``ok=False, reason="partial_byte"``.
 """
 
 import logging
@@ -82,6 +87,14 @@ def _cancel_task(task: Any) -> None:
 
 class OcahSpiFlashError(RuntimeError):
     """Raised when the flash BFM encounters an unrecoverable protocol error."""
+
+
+class _CsDeasserted(OcahSpiFlashError):
+    """Chip-select rose during a byte receive; ``bits`` of that byte were sampled."""
+
+    def __init__(self, message: str, bits: int) -> None:
+        super().__init__(message)
+        self.bits = bits
 
 
 # ---------------------------------------------------------------------------
@@ -431,7 +444,7 @@ class OcahSpiFlash:
         # Check for registered callback override first.
         if opcode in self._cmd_callbacks:
             addr = await self._recv_addr() if self._addr_bytes > 0 else 0
-            payload = await self._recv_remaining()
+            payload, _ = await self._recv_remaining()
             result = await self._cmd_callbacks[opcode](opcode, addr, payload)
             if result:
                 await self._send_bytes(result)
@@ -491,9 +504,17 @@ class OcahSpiFlash:
                 ok, reason = False, "wel_clear"
             else:
                 addr = await self._recv_addr()
-                rx_data = await self._recv_remaining()
-                self._do_page_program(addr, rx_data)
-                self._wel = False
+                rx_data, tail_bits = await self._recv_remaining()
+                if tail_bits:
+                    self.log.warning(
+                        "%s: PAGE PROGRAM ended %d bit(s) into a payload byte — ignored",
+                        self.name,
+                        tail_bits,
+                    )
+                    ok, reason = False, "partial_byte"
+                else:
+                    self._do_page_program(addr, rx_data)
+                    self._wel = False
 
         # --- SECTOR ERASE (4 KB) ---
         elif opcode == OcahSpiOpcode.SECTOR_ERASE:
@@ -572,10 +593,10 @@ class OcahSpiFlash:
         transfer cleanly.
         """
         byte_val = 0
-        for _ in range(8):
+        for bits in range(8):
             await First(RisingEdge(self._sclk), RisingEdge(self._cs_n))
             if int(self._cs_n.value) != 0:
-                raise OcahSpiFlashError(f"{self.name}: CS deasserted during byte receive")
+                raise _CsDeasserted(f"{self.name}: CS deasserted during byte receive", bits)
             mosi_sig = self._mosi if self._mode == SpiMode.SINGLE else self._dq_out
             bit = int(mosi_sig.value) & 0x1
             byte_val = (byte_val << 1) | bit
@@ -625,16 +646,20 @@ class OcahSpiFlash:
         except OcahSpiFlashError:
             return 0
 
-    async def _recv_remaining(self) -> bytearray:
-        """Receive all remaining bytes until CS deasserts."""
+    async def _recv_remaining(self) -> tuple[bytearray, int]:
+        """Receive bytes until CS deasserts.
+
+        Returns the complete bytes and the count of bits (0 to 7) sampled in
+        the byte that chip-select ended.
+        """
         buf: bytearray = bytearray()
         while int(self._cs_n.value) == 0:
             try:
                 byte_val = await self._recv_byte_single()
                 buf.append(byte_val)
-            except OcahSpiFlashError:
-                break
-        return buf
+            except _CsDeasserted as exc:
+                return buf, exc.bits
+        return buf, 0
 
     async def _drain_to_cs_high(self) -> None:
         """Consume clock edges until CS_N returns high."""
