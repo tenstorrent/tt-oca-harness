@@ -14,8 +14,10 @@
 // loads do not stall) plus a write-channel monitor. AW requests wait in a
 // FIFO in order, and each W beat takes the address of its own burst (INCR
 // beats advance by AxSIZE), so the monitor decodes every beat at its own
-// address. The monitor assembles console characters (byte-strobe stores at
-// STDOUT) and latches fw_done/fw_pass on the magic sequence at STDOUT:
+// address. W beats stall while the B queue is full, so every accepted burst
+// gets exactly one B response, in order. The monitor assembles console
+// characters (byte-strobe stores at STDOUT) and latches fw_done/fw_pass on the
+// magic sequence at STDOUT:
 //   * the first completed magic pair sets fw_done; a later pair can only
 //     clear fw_pass, never set it;
 //   * a magic pair at any other outbound address sets fw_done with fw_pass
@@ -112,7 +114,7 @@ module sep_outbound_mbx
   always_comb begin
     resp_o          = '0;
     resp_o.aw_ready = (aw_cnt_q < (Pw + 1)'(Depth));
-    resp_o.w_ready  = w_known;
+    resp_o.w_ready  = w_known && (b_cnt_q < (Pw + 1)'(Depth));
     resp_o.b_valid  = (b_cnt_q != '0);
     resp_o.b.id     = b_fifo[b_rd_q];
     resp_o.b.resp   = 2'b00;  // OKAY
