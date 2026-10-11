@@ -15,12 +15,14 @@ make synth-pdks-clean [PDK_ROOT=<path>]
 ```
 
 The installer has pinned entries for `ihp-sg13g2`, `sky130`, and
-`gf180mcuD`. Only `ihp-sg13g2` has a matching `tech/<pdk>/tech.tcl`
+`gf180mcuD`. Only `ihp-sg13g2` has a matching `flows/synth/pdk/<pdk>/`
 configuration and can currently be used for synthesis.
 
 To add another synthesis PDK:
 
 1. Add its name, `ciel` version hash, and aggregate-install prerequisite to
    `pdks.mk`.
-2. Add `tech/<pdk>/tech.tcl` with its liberty files, tie cells, ABC constraint,
-   and any cells excluded from mapping.
+2. Add `flows/synth/pdk/<pdk>/` as described in
+   [`../pdk/README.md`](../pdk/README.md): the cell implementations of the prim
+   cells and `yosys/tech.tcl` with its liberty files, tie cells, ABC
+   constraint, and any cells excluded from mapping.

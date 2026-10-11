@@ -41,6 +41,7 @@ class smc_test_cfg extends ocah_test_cfg;
   bit regblock_wide_sequence_negative;  // +SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE
   bit wdt_csr_scoreboard_negative;  // +SMC_WDT_CSR_SCOREBOARD_NEGATIVE
   bit wdt_feed_sequence_negative;  // +SMC_WDT_FEED_SEQUENCE_NEGATIVE
+  bit wdt_coreawake_sequence_negative;  // +SMC_WDT_COREAWAKE_SEQUENCE_NEGATIVE
 
   function new(string name = "smc_test_cfg");
     super.new(name);
@@ -65,6 +66,7 @@ class smc_test_cfg extends ocah_test_cfg;
             ocah_knobs::is_set("SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE");
     wdt_csr_scoreboard_negative = ocah_knobs::is_set("SMC_WDT_CSR_SCOREBOARD_NEGATIVE");
     wdt_feed_sequence_negative = ocah_knobs::is_set("SMC_WDT_FEED_SEQUENCE_NEGATIVE");
+    wdt_coreawake_sequence_negative = ocah_knobs::is_set("SMC_WDT_COREAWAKE_SEQUENCE_NEGATIVE");
   endfunction
 
   // Replace the required scoreboard features.

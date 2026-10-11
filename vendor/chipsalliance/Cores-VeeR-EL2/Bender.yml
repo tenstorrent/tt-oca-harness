@@ -70,8 +70,9 @@ sources:
     - upstream/design/lib/el2_lib.sv
     - upstream/design/lib/el2_mem_if.sv
 
-    # Behavioural models of the ram_<depth>x<width> TCM macros
-    - target: any(not(synth), emulation)
+    # Behavioural models of the ram_<depth>x<width> TCM macros. The IHP SG13G2 yosys flow
+    # has no TCM macro wrappers yet and synthesizes these models.
+    - target: any(not(synth), emulation, tech_ihp_sg13g2)
       files:
         - upstream/design/lib/mem_lib.sv
 

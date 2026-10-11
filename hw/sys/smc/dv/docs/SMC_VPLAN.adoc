@@ -13132,6 +13132,90 @@ The leaf runs on demand in `wdt_uvm_extended`, outside `all`, `hosted` and `ci`.
 
 '''''
 
+[[sec-smc_wdt_core_awake_gate_test]]
+====== `smc_wdt_core_awake_gate_test`
+
+*Source Module*: `smc_wdt_core_awake_gate_test` (SV-UVM)
+
+*BFM / Model*: SEP_IN AXI VIP and the passive `wdt_csr` feature.
+The model grades in-scope responses and configuration readbacks; bounded
+sequence checks grade count changes across software core reset.
+
+*Objective*: Check count suppression with wdogcoreawake and the priority
+of wdogenalways across software core reset, with configuration readbacks.
+
+*Test Coverage*: All four cores rotate, one per pass. Measure the released
+count rate, hold the selected core in reset with coreawake alone, and repeat
+with always-count enabled. Scale and CMP keep the compare interrupt inactive.
+
+*Expectation Sources*: `hw/sys/smc/regs/blocks/wdt/wdt.rdl` defines coreawake
+as counting only outside core reset and always-count as having priority.
+`hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl` defines software reset control
+and reset-applied status. Register masks come from generated collateral.
+`hw/sys/smc/doc/cpu.adoc`, Cluster Boundary Isolation, states that the
+boundary isolates while any core or the uncore is in reset and stalls
+L2 frontend traffic. The live isolation tap controls safe CSR access.
+
+*Test Procedure*: Require the selected watchdog's disabled reset configuration
+and save COUNT, CMP and reset control. Program CMP, coreawake and COUNT,
+then calibrate a positive count rate. Apply reset and require reset-applied
+and cluster isolation before the measurement interval. Release reset and wait
+with a bound for isolation to clear before reading COUNT. Repeat with
+always-count enabled. Require the two count bounds to differ by at least two
+integer count units. Log COUNT before and after reset, restore the disabled
+configuration and COUNT with readback, restore CMP and reset control,
+then wait with a bound for passive comparisons.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Claim
+|`CHK-WDT-AWAKE-CONFIG` |CTRL readbacks equal the programmed configuration
+|`CHK-WDT-AWAKE-CORE-RESET` |Reset status and cluster isolation reach their requested levels
+|`CHK-WDT-AWAKE-RATE` |Released-core count and timestamps produce a positive rate
+|`CHK-WDT-AWAKE-HELD` |Count growth excludes the held interval within the stated margin
+|`CHK-WDT-AWAKE-ALWAYS` |Always-count includes the held interval within the stated margin
+|`CHK-WDT-AWAKE-WINDOW` |HELD and ALWAYS bounds separate by at least two integer count units
+|`CHK-WDT-AWAKE-SCOREBOARD` |No new passive watchdog mismatch occurs
+|`CHK-SB-WDT-CSR` |In-scope responses and modeled readbacks match predictions
+|`CHK-NONVAC` |33 CSR accesses and 33 passive watchdog comparisons complete per pass
+|`CHK-SB-MIN-ACTIVITY` |Completed passes reach the passive comparison floor
+|`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP`, `CHK-MEM-RESP` |Bring-up and accesses complete
+|===
+
+*Known Limitations*: COUNT is sampled before and after reset, not during it.
+The margin is one quarter of the held interval; exact stop/resume cycles and
+absolute clock frequency are not graded. Four passes are required for all cores.
+CPU execution, watchdog reset outputs and interrupt delivery are outside scope.
+The scenario changes CPU_CTRL reset state and requires exclusive control.
+The count measurement interval is stimulus, not a settling delay.
+The shared wdt_csr assumptions and exclusions apply.
+The sources do not explicitly define COUNT retention across software core reset.
+Before/after COUNT is logged, not separately graded as a retention contract.
+The retention subclaim in both the coreawake-only and always-count legs is
+blocked: does software core reset preserve the watchdog COUNT value?
+`OBS-BLOCKED CHK-WDT-AWAKE-RETAINED` identifies this contract gap and
+`OBS-WDT-AWAKE-COUNT` records the per-pass scenario seed and samples.
+Neither observation counts as a retention checker PASS or coverage closure.
+A count decrease requires contract clarification before attributing a timing
+failure to count-enable priority. The measured bounds grade relative counting,
+not an independently specified absolute clock rate.
+
+*Pass Criteria*: All checks pass. Used alone,
+`+SMC_WDT_COREAWAKE_SEQUENCE_NEGATIVE` reverses one expectation each for
+CONFIG, CORE-RESET, HELD and ALWAYS, producing four failures per pass.
+RATE remains a measurement prerequisite and terminates on invalid calibration.
+WINDOW is also a measurement prerequisite and is not reversed by the negative.
+`+SMC_WDT_CSR_SCOREBOARD_NEGATIVE` corrupts production model predictions;
+the expected signature is 25 feature mismatches per pass: seven CTRL/CMP
+read mismatches and 18 write-response mismatches. Eight COUNT read comparisons
+still pass. CHK-WDT-AWAKE-SCOREBOARD fails once per pass; comparison-count
+NONVAC records still pass.
+The leaf runs on demand in `wdt_uvm_extended`, not in `all`, `hosted` or `ci`.
+
+'''''
+
 [[smc-deferred-disposition]]
 ==== SMC deferred and OUT disposition
 

@@ -24,6 +24,7 @@ import smc_seq_lib_pkg::*;
 `include "smc_default_reg_rd_test.svh"
 `include "smc_regblock_sparse_strobe_test.svh"
 `include "smc_wdt_feed_zerocmp_test.svh"
+`include "smc_wdt_core_awake_gate_test.svh"
 
 // Reset-unit write-once lock scenarios.
 `include "smc_reset_unit_lock_test.svh"
