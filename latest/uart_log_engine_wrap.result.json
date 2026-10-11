@@ -1,9 +1,9 @@
 {
   "artifacts": {
-    "log": "weekly-runs/dv-run-uart_log_engine_wrap-verilator-weekly/uart_log_engine_wrap_sanity_test/seed_107582624/attempt_0/logs/uart_log_engine_wrap_sanity_test.log",
+    "log": "weekly-runs/dv-run-uart_log_engine_wrap-verilator-weekly/uart_log_engine_wrap_sanity_test/seed_2102638562/attempt_0/logs/uart_log_engine_wrap_sanity_test.log",
     "regression_json": "weekly-runs/dv-run-uart_log_engine_wrap-verilator-weekly/stages/regress/regression.json",
     "result_json": "weekly-runs/dv-run-uart_log_engine_wrap-verilator-weekly/result.json",
-    "run_dir": "build/ci/runs/uart_log_engine_wrap/verilator/weekly/37144845475"
+    "run_dir": "build/ci/runs/uart_log_engine_wrap/verilator/weekly/38074475079"
   },
   "coverage": {
     "comparison_key": null,
@@ -27,11 +27,11 @@
   "failure_buckets": [],
   "flow": "uart_log_engine_wrap",
   "framework": "cocotb",
-  "generated_at": "2026-10-04T00:38:04+00:00",
+  "generated_at": "2026-10-11T00:07:58+00:00",
   "git": {
     "branch": "main",
-    "sha": "14a8f1268513558c7fee43a60764df629c2f2b72",
-    "short_sha": "14a8f12"
+    "sha": "060ad48f50c5e8f2099bd5523eb9a9d022d9b4e4",
+    "short_sha": "060ad48"
   },
   "junit_xml": {
     "missing": 0,
@@ -44,15 +44,15 @@
   },
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-03T18:38:25.639384+00:00",
+    "generated_at": "2026-10-10T18:08:28.616357+00:00",
     "git": {
       "branch": "main",
-      "commit": "14a8f1268513558c7fee43a60764df629c2f2b72",
+      "commit": "060ad48f50c5e8f2099bd5523eb9a9d022d9b4e4",
       "dirty": "false"
     },
     "label": "all",
     "result_json": "weekly-runs/dv-run-uart_log_engine_wrap-verilator-weekly/result.json",
-    "run_dir": "build/ci/runs/uart_log_engine_wrap/verilator/weekly/37144845475",
+    "run_dir": "build/ci/runs/uart_log_engine_wrap/verilator/weekly/38074475079",
     "tool": "verilator",
     "tool_version": "Verilator 5.052 2026-09-05 rev v5.052"
   },
@@ -74,28 +74,28 @@
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 0.801,
+      "duration_sec": 0.43,
       "name": "uart_log_engine_wrap_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 107582624,
+      "seed": 2102638562,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "all",
-      "duration_sec": 41.886,
+      "duration_sec": 42.112,
       "name": "uart_log_engine_wrap_log_path_test",
       "reason": "positive pass evidence matched",
-      "seed": 1477789340,
+      "seed": 19197379,
       "stage": "sim",
       "status": "PASS"
     }
   ],
   "timing": {
-    "duration_sec": 69.775,
-    "end_time": "2026-10-03T18:38:25.635608+00:00",
-    "start_time": "2026-10-03T18:37:16.658397+00:00"
+    "duration_sec": 55.404,
+    "end_time": "2026-10-10T18:08:28.611319+00:00",
+    "start_time": "2026-10-10T18:07:33.634503+00:00"
   },
   "tool": "verilator"
 }

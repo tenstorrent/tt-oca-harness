@@ -1,9 +1,9 @@
 {
   "artifacts": {
-    "log": "weekly-runs/dv-run-uart_16550-verilator-weekly/uart_16550_sanity_test/seed_1220353546/attempt_0/logs/uart_16550_sanity_test.log",
+    "log": "weekly-runs/dv-run-uart_16550-verilator-weekly/uart_16550_modem_test/seed_632782074/attempt_0/logs/uart_16550_modem_test.log",
     "regression_json": "weekly-runs/dv-run-uart_16550-verilator-weekly/stages/regress/regression.json",
     "result_json": "weekly-runs/dv-run-uart_16550-verilator-weekly/result.json",
-    "run_dir": "build/ci/runs/uart_16550/verilator/weekly/37144845475"
+    "run_dir": "build/ci/runs/uart_16550/verilator/weekly/38074475079"
   },
   "coverage": {
     "comparison_key": null,
@@ -27,11 +27,11 @@
   "failure_buckets": [],
   "flow": "uart_16550",
   "framework": "cocotb",
-  "generated_at": "2026-10-04T00:38:04+00:00",
+  "generated_at": "2026-10-11T00:07:58+00:00",
   "git": {
     "branch": "main",
-    "sha": "14a8f1268513558c7fee43a60764df629c2f2b72",
-    "short_sha": "14a8f12"
+    "sha": "060ad48f50c5e8f2099bd5523eb9a9d022d9b4e4",
+    "short_sha": "060ad48"
   },
   "junit_xml": {
     "missing": 0,
@@ -44,15 +44,15 @@
   },
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-03T18:38:15.465251+00:00",
+    "generated_at": "2026-10-10T18:07:51.386045+00:00",
     "git": {
       "branch": "main",
-      "commit": "14a8f1268513558c7fee43a60764df629c2f2b72",
+      "commit": "060ad48f50c5e8f2099bd5523eb9a9d022d9b4e4",
       "dirty": "false"
     },
     "label": "all",
     "result_json": "weekly-runs/dv-run-uart_16550-verilator-weekly/result.json",
-    "run_dir": "build/ci/runs/uart_16550/verilator/weekly/37144845475",
+    "run_dir": "build/ci/runs/uart_16550/verilator/weekly/38074475079",
     "tool": "verilator",
     "tool_version": "Verilator 5.052 2026-09-05 rev v5.052"
   },
@@ -73,49 +73,49 @@
   "tests_detail": [
     {
       "attempt": 0,
-      "category": "smoke",
-      "duration_sec": 2.565,
-      "name": "uart_16550_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1220353546,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
       "category": "all",
-      "duration_sec": 2.007,
+      "duration_sec": 1.161,
       "name": "uart_16550_modem_test",
       "reason": "positive pass evidence matched",
-      "seed": 1400659186,
+      "seed": 632782074,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 1.352,
+      "name": "uart_16550_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2138325540,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "all",
-      "duration_sec": 12.258,
+      "duration_sec": 2.262,
       "name": "uart_16550_interrupt_test",
       "reason": "positive pass evidence matched",
-      "seed": 1116320244,
+      "seed": 1179113524,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "all",
-      "duration_sec": 18.932,
+      "duration_sec": 6.715,
       "name": "uart_16550_fifo_test",
       "reason": "positive pass evidence matched",
-      "seed": 1444869737,
+      "seed": 908686875,
       "stage": "sim",
       "status": "PASS"
     }
   ],
   "timing": {
-    "duration_sec": 63.343,
-    "end_time": "2026-10-03T18:38:15.460130+00:00",
-    "start_time": "2026-10-03T18:37:28.943052+00:00"
+    "duration_sec": 24.98,
+    "end_time": "2026-10-10T18:07:51.382635+00:00",
+    "start_time": "2026-10-10T18:07:31.176344+00:00"
   },
   "tool": "verilator"
 }

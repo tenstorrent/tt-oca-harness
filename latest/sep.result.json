@@ -2,7 +2,7 @@
   "artifacts": {
     "regression_json": "weekly-runs/dv-run-sep-verilator-weekly/stages/regress/regression.json",
     "result_json": "weekly-runs/dv-run-sep-verilator-weekly/result.json",
-    "run_dir": "build/ci/runs/sep/verilator/weekly/37144845475"
+    "run_dir": "build/ci/runs/sep/verilator/weekly/38074475079"
   },
   "coverage": {
     "comparison_key": null,
@@ -25,7 +25,7 @@
   },
   "failure_buckets": [
     {
-      "count": 8,
+      "count": 2,
       "examples": [
         "weekly-runs/dv-run-sep-verilator-weekly/stages/c_compile/logs/sep_km_mem_smoke_test.log"
       ],
@@ -42,11 +42,11 @@
   ],
   "flow": "sep",
   "framework": "cocotb",
-  "generated_at": "2026-10-04T00:38:04+00:00",
+  "generated_at": "2026-10-11T00:07:57+00:00",
   "git": {
     "branch": "main",
-    "sha": "14a8f1268513558c7fee43a60764df629c2f2b72",
-    "short_sha": "14a8f12"
+    "sha": "060ad48f50c5e8f2099bd5523eb9a9d022d9b4e4",
+    "short_sha": "060ad48"
   },
   "junit_xml": {
     "missing": 0,
@@ -59,15 +59,15 @@
   },
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-04T00:37:03.141158+00:00",
+    "generated_at": "2026-10-11T00:07:07.234980+00:00",
     "git": {
       "branch": "main",
-      "commit": "14a8f1268513558c7fee43a60764df629c2f2b72",
+      "commit": "060ad48f50c5e8f2099bd5523eb9a9d022d9b4e4",
       "dirty": "false"
     },
     "label": "cpu_stub",
     "result_json": "weekly-runs/dv-run-sep-verilator-weekly/result.json",
-    "run_dir": "build/ci/runs/sep/verilator/weekly/37144845475",
+    "run_dir": "build/ci/runs/sep/verilator/weekly/38074475079",
     "tool": "verilator",
     "tool_version": "Verilator 5.052 2026-09-05 rev v5.052"
   },
@@ -87,9 +87,9 @@
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 19414.094,
-    "end_time": "2026-10-04T00:01:03.530000+00:00",
-    "start_time": "2026-10-03T18:37:29.393766+00:00"
+    "duration_sec": 20742.144,
+    "end_time": "2026-10-10T23:53:27.719362+00:00",
+    "start_time": "2026-10-10T18:07:45.465618+00:00"
   },
   "tool": "verilator"
 }
