@@ -11,7 +11,7 @@ object after ``start_seq``.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
@@ -40,8 +40,12 @@ async def capture_resp_handshake(channel: str, prefix: str = "s_axi") -> int:
     """Simulation time (ps) of the next B handshake, or of the R handshake with RLAST.
 
     ``channel`` is ``"b"`` or ``"r"``. Start it with ``cocotb.start_soon`` before
-    the access and read it with :func:`take_handshake` after it. The time is the
-    clock edge at which the initiator port accepted its response.
+    the access and read it with :func:`take_handshake` after it. The signals are
+    sampled in ReadOnly after each clock edge, the same phase as the fabric taps,
+    so the time compares directly with a tap beat time: it is the edge after
+    which VALID and READY are both high. The handshake completes on the next
+    edge, where the initiator sees it, so the task is done before the access
+    returns.
     """
     dut = cocotb.top
     valid = getattr(dut, f"{prefix}_{channel}valid")
@@ -49,6 +53,7 @@ async def capture_resp_handshake(channel: str, prefix: str = "s_axi") -> int:
     last = getattr(dut, f"{prefix}_rlast") if channel == "r" else None
     while True:
         await RisingEdge(dut.clk_i)
+        await ReadOnly()
         if valid.value == 1 and ready.value == 1 and (last is None or last.value == 1):
             return int(get_sim_time("ps"))
 
