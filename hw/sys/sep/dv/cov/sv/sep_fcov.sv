@@ -51,6 +51,7 @@ module sep_fcov (
   input wire [1:0]  lsu_b_resp_i,
   input wire        lsu_b_valid_i,
   input wire        lsu_b_ready_i,
+  input wire [2:0]  lsu_aw_size_i,
   input wire [31:0] lsu_ar_addr_i,
   input wire        lsu_ar_valid_i,
   input wire        lsu_ar_ready_i,
@@ -440,7 +441,7 @@ module sep_fcov (
 
   logic [3:0] aw_out_q, ar_out_q;
   logic [31:0] aw_addr_q, ar_addr_q;
-  logic [2:0]  ar_size_q;
+  logic [2:0] ar_size_q, aw_size_q;
   logic [63:0] w_data_q;
   logic [7:0]  w_strb_q;
   // W beats since the last B, and whether the read in flight has returned a
@@ -474,7 +475,10 @@ module sep_fcov (
           ((b_hs && ((aw_out_q != 4'd0) || aw_hs)) ? 4'd1 : 4'd0);
       ar_out_q <= ar_out_q + (ar_hs ? 4'd1 : 4'd0) -
           ((r_hs && ((ar_out_q != 4'd0) || ar_hs)) ? 4'd1 : 4'd0);
-      if (aw_hs) aw_addr_q <= lsu_aw_addr_i;
+      if (aw_hs) begin
+        aw_addr_q <= lsu_aw_addr_i;
+        aw_size_q <= lsu_aw_size_i;
+      end
       if (ar_hs) begin
         ar_addr_q <= lsu_ar_addr_i;
         ar_size_q <= lsu_ar_size_i;
@@ -6729,7 +6733,9 @@ module sep_fcov (
     if (sw_txdata && si_txf_q && si_ovf_en_q && !si_ovf_q && s_es[3])
       u_sep_spi_error_status_cg.sample(4'd0, 1'b0, 1'b0, 1'b0, 1'b0, own_spi_csr, 4'd0, 1'b0, 32'd0,
                                        1'b0);
-    if (wr_ev && (zs_p != 3'd4) && (w_strb_q inside {8'h0F, 8'hF0, 8'hFF})) begin
+    // Only an 8-byte beat (AWSIZE = 3) has a zero-strobe half; a 4-byte write is not a cell.
+    if (wr_ev && (aw_size_q == 3'd3) && (zs_p != 3'd4) &&
+        (w_strb_q inside {8'h0F, 8'hF0, 8'hFF})) begin
       logic [2:0] zp;
       zp = zs_p;
       u_sep_spi_error_status_cg.sample(
@@ -6844,7 +6850,8 @@ module sep_fcov (
       // A handshake run ends in DONE at the total; CHUNK_DONE has not risen since GO.
       if (d_done && !done_q && d_hs_q)
         u_sep_dma_completion_cg.sample(3'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd2,
-                                       own_spi_dma_hs && !hs_chunk_rose_q, 1'b0, 2'd0, 1'b0);
+                                       own_spi_dma_hs && !hs_chunk_rose_q && !(d_chunk && !chunk_q),
+                                       1'b0, 2'd0, 1'b0);
 
       // ---- DMA range ----
       if (d_done && !done_q && ir_v_q && d_no_err && !d_err) begin
@@ -6884,7 +6891,8 @@ module sep_fcov (
       if (d_aborted && !aborted_q) u_sep_dma_error_terminal_cg.sample(1'b0, own_dma_abort, 1'b0);
       if (ab_on_q && aborted_q && !d_aborted && !ab_after_q && !dm_ar && !dm_aw)
         u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, own_dma_abort);
-      if (d_abort && !abort_q)
+      // An ABORT while the DMA is busy; one before the start or after the end is not a phase.
+      if (d_abort && !abort_q && d_busy)
         u_sep_dma_xfer_rand_cg.sample(6'd0, 1'b0, 5'd0, 1'b0, 2'd0, 1'b0, abort_cls(
                                       x_ar_q, x_total_q, x_chunk_q, x_width_q),
                                       own_dma_abort && x_on_q && in_win(x_src_q, SramBase, SramEnd

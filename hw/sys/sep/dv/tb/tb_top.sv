@@ -3581,6 +3581,7 @@ module sep_uvm_top
         .lsu_b_resp_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.b.resp),
         .lsu_b_valid_i         (`SEP_CORE.u_sep_cpu.lsu_axi_resp.b_valid),
         .lsu_b_ready_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.b_ready),
+        .lsu_aw_size_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.aw.size),
         .lsu_ar_addr_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar.addr),
         .lsu_ar_valid_i        (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar_valid),
         .lsu_ar_ready_i        (`SEP_CORE.u_sep_cpu.lsu_axi_resp.ar_ready),
