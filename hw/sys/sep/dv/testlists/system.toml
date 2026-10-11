@@ -605,3 +605,87 @@ timeout_sec = 7200
 tags = ["dma", "abort", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+
+# Mailbox, IRQ and PIC (docs/SEP_VPLAN.adoc, docs/test_contracts/mailbox_irq_pic.adoc).
+
+[[tests]]
+# Paired mailbox FIFOs on all eight mailboxes against a golden queue model: thresholds and their clamp, flush kinds, the threshold alias, the IRQEN gate, the acknowledge and the 16 lines. The seed draws the mailbox order, thresholds, widths and flush kinds.
+name = "sep_mailbox_fifo_model_rand_test"
+module = "system.sep_mailbox_fifo_model_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 7200
+tags = ["mailbox", "fifo", "irq", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Mailbox access errors on both ports of the eight mailboxes: empty read, full write, read-only write, aperture hole and wrapper tail, the error flags, the WRITE_DATA read and the error cause on the line. The seed draws the extra injections, offsets and live values.
+name = "sep_mailbox_access_error_inject_test"
+module = "system.sep_mailbox_access_error_inject_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["mailbox", "error", "irq", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Mailbox consequence of the inbound filter verdict: ISS, STEE and Regular entries, the mailbox with no entry, isolation between mailboxes and the entry lock at the aperture. The seed draws the type map, source IDs and NS values.
+name = "sep_mailbox_filter_type_matrix_test"
+module = "system.sep_mailbox_filter_type_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["mailbox", "filter", "irq", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Every mailbox accepts an inbound write after DEMOTE_1 sets SEP_DBG in PROD, with the entry, the line and the data at the mailbox endpoint. Real PROD fuse sense, one seed: the life-cycle path has one legal sequence.
+name = "sep_mailbox_debug_bypass_test"
+module = "system.sep_mailbox_debug_bypass_test"
+seed = 1
+timeout_sec = 3600
+tags = ["mailbox", "filter", "lifecycle", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# SEP reset in the middle of a mailbox push, pop or IRQS write: all 16 apertures, the 16 lines and the ISS source ID after the reset, and the mailbox after it. The seed draws the reset cell and the pre-reset state.
+name = "sep_mailbox_reset_clear_test"
+module = "system.sep_mailbox_reset_clear_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["mailbox", "reset", "irq", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Peripheral bridge and DMA fault latches: multi-block set, the clear matrix and mask clears, re-trigger, the clear register reads, the DMA host-path fault on a source read and the same-cycle fault and clear. The seed draws the block orders, holes and clear masks.
+name = "sep_cpu_bridge_fault_matrix_rand_test"
+module = "system.sep_cpu_bridge_fault_matrix_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fault", "irq", "dma", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# The SEP_CPU_CTRL timeout registers hold a written 1, and a real stall of each block path sets no TIMEOUT_INTERRUPT bit, raises no PIC source and aborts no access. The seed draws the arming order and the block order.
+name = "sep_cpu_ctrl_timeout_inert_rand_test"
+module = "system.sep_cpu_ctrl_timeout_inert_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["timeout", "irq", "fabric", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
