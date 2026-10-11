@@ -441,6 +441,17 @@ register literals. Several control fields use MuBi4 encodings, for which true is
   `FIFO_CTRL.ENABLE`, read `FIFO_RDATA` until `FIFO_STATUS.LEVEL` is zero, and
   only then set `FIPS_LOCK.LOCK`. `FIFO_CTRL.ENABLE` gates only the FIFO write,
   so the DRBG seed stream continues either way.
+  `FIFO_RDATA`, `BIW_OBS_RDATA` and `NOISE_OBS_RDATA` are debug interfaces
+  behind the `ENTROPY_DBG` feature-control bit of the
+ifdef::backend-html5[]
+  xref:ocah-docs:sep:lifecycle_controller.adoc#feature-control-vector-definition[Lifecycle Controller chapter]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/sep/lifecycle_controller.html#feature-control-vector-definition[Lifecycle Controller chapter]
+endif::backend-pdf[]
+  and read as zero without popping while that bit is disabled, as it is in
+  PROD. Take random data from the <<sep-entropy-pool-access,entropy pool>>
+  instead.
 . Enable EDN with `EDN_ENABLE=true`, `AUTO_REQ_MODE=true`,
   `BOOT_REQ_MODE=false`, and `CMD_FIFO_RST=false`.
 . Wait for both `EDN.SW_CMD_STS.CMD_RDY` and `CMD_REG_RDY`, then write an
