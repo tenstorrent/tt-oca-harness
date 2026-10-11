@@ -1,283 +1,116 @@
 {
   "artifacts": {
-    "coverage_report": "vcs/smu/runs/uvm/cov/report",
+    "coverage_manifest": "artifacts/smu/coverage/coverage.json",
+    "coverage_policy_application": "artifacts/smu/coverage/report/policy-application.json",
+    "coverage_report": "artifacts/smu/coverage/report",
+    "coverage_summary": "artifacts/smu/coverage/report/summary.json",
+    "log": "vcs/smu/runs/uvm/smu_boot_stall_jtag_cold_reset_matrix_test/seed_771040866/attempt_0/logs/smu_boot_stall_jtag_cold_reset_matrix_test.log",
     "regression_json": "vcs/smu/runs/uvm/stages/regress/regression.json",
     "result_json": "vcs/smu/runs/uvm/result.json",
     "run_dir": "vcs/smu/runs/uvm"
   },
   "coverage": {
-    "comparison_key": null,
-    "details_available": null,
-    "effective_metrics": {},
-    "holes_summary": {
-      "details_available": false
+    "comparison_key": "COVCMP-79938c26f8f2a3e2",
+    "details_available": true,
+    "effective_metrics": {
+      "assertion": 59.02,
+      "branch": 77.27,
+      "condition": 100.0,
+      "functional": 60.08,
+      "line": 87.8,
+      "toggle": 6.35,
+      "user": 56.4815
     },
-    "manifest": null,
-    "policy_application": null,
-    "policy_thresholds": [],
-    "raw_metrics": {},
-    "report": "vcs/smu/runs/uvm/cov/report",
-    "status": "ERROR",
-    "summary": null,
-    "target": null,
-    "threshold": null,
-    "threshold_met": null,
-    "total_percent": null
+    "holes_summary": {
+      "accepted": 0,
+      "by_category": {
+        "user": 47
+      },
+      "by_disposition": {
+        "cover": 47
+      },
+      "by_metric": {
+        "user": 47
+      },
+      "by_status": {
+        "open": 47
+      },
+      "details_available": true,
+      "hole_group_count": 0,
+      "native_point_count": 47,
+      "observations_complete": false,
+      "open": 47,
+      "unclassified": 47
+    },
+    "manifest": "artifacts/smu/coverage/coverage.json",
+    "policy_application": "artifacts/smu/coverage/report/policy-application.json",
+    "policy_thresholds": [
+      {
+        "actual_percent": 56.4815,
+        "id": "user",
+        "max_unclassified_points": null,
+        "met": false,
+        "metric_family": "user",
+        "minimum_percent": 100.0,
+        "population": "effective",
+        "scope": "*",
+        "unclassified_points": 47
+      }
+    ],
+    "raw_metrics": {
+      "assertion": 59.02,
+      "branch": 73.91,
+      "condition": 40.0,
+      "functional": 42.05,
+      "line": 83.72,
+      "toggle": 3.43,
+      "user": 56.4815
+    },
+    "report": "artifacts/smu/coverage/report",
+    "source_manifest": "vcs/smu/runs/uvm/cov/coverage.json",
+    "source_policy_application": "vcs/smu/runs/uvm/cov/report/policy-application.json",
+    "source_report": "vcs/smu/runs/uvm/cov/report",
+    "source_summary": "vcs/smu/runs/uvm/cov/report/summary.json",
+    "status": "FAIL",
+    "summary": "artifacts/smu/coverage/report/summary.json",
+    "target": "compile_smu_chiplet",
+    "threshold": 0.0,
+    "threshold_met": false,
+    "total_percent": 65.09
   },
   "failure_buckets": [
     {
       "count": 1,
       "examples": [
-        "vcs/smu/runs/uvm/stages/hdl_compile/logs/hdl_compile.log"
-      ],
-      "kind": "compile_error",
-      "signature": "VCS build completed without the expected design coverage database: EXTERNAL_PATH"
-    },
-    {
-      "count": 1,
-      "examples": [
-        "vcs/smu/runs/uvm/stages/cov_merge/logs/cov_merge.log"
-      ],
-      "kind": "tool_error",
-      "signature": "coverage was requested but no usable inputs were found under vcs/smu/runs/uvm"
-    },
-    {
-      "count": 1,
-      "examples": [
         "vcs/smu/runs/uvm/stages/cov_report/logs/cov_report.log"
       ],
-      "kind": "tool_error",
-      "signature": "coverage manifest is missing or malformed: vcs/smu/runs/uvm/c"
-    },
-    {
-      "affected": [
-        {
-          "item": "smu_boot_stall_jtag_cold_reset_matrix_test",
-          "seed": 474291134,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_boot_stall_jtag_cold_reset_matrix_test",
-          "seed": 1505666691,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_boot_stall_jtag_cold_reset_matrix_test",
-          "seed": 452929710,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_dtp_jtag_smoke_test",
-          "seed": 1367557499,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_dtp_jtag_smoke_test",
-          "seed": 644043864,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_dtp_jtag_smoke_test",
-          "seed": 1882001293,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_ext_boot_seq_gate_test",
-          "seed": 730160391,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_ext_boot_seq_gate_test",
-          "seed": 1445320501,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_ext_boot_seq_gate_test",
-          "seed": 286233074,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_jtag_reset_override_test",
-          "seed": 106321465,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_jtag_reset_override_test",
-          "seed": 1066654306,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_jtag_reset_override_test",
-          "seed": 1455203422,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_smc_dtp_jtag2axi_smoke_test",
-          "seed": 1588590749,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_smc_dtp_jtag2axi_smoke_test",
-          "seed": 394198123,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        },
-        {
-          "item": "smu_smc_dtp_jtag2axi_smoke_test",
-          "seed": 1008193353,
-          "status": "ERROR",
-          "target": "compile_smu_chiplet"
-        }
-      ],
-      "count": 15,
-      "examples": [],
-      "kind": "dependency_blocked",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "signature": "hdl_compile compile_smu_chiplet"
+      "kind": "coverage_threshold",
+      "signature": "coverage threshold not met"
     }
   ],
   "flow": "smu",
   "framework": "uvm",
-  "generated_at": "2026-10-11T01:41:25+00:00",
+  "generated_at": "2026-10-11T12:12:50+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "21a6cffcdb924a5eb02d5fa8508917e5f8b5d30d",
-    "short_sha": "21a6cff"
+    "sha": "4ab69af69df79db7bc3a22949aa4daa5beeb4c0f",
+    "short_sha": "4ab69af"
   },
   "junit_xml": {
     "missing": 0,
-    "total": 15
+    "total": 5
   },
   "kind": "dv",
   "regression": {
-    "failed_tests": [
-      {
-        "item": "smu_boot_stall_jtag_cold_reset_matrix_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_boot_stall_jtag_cold_reset_matrix_test --stage sim --tool vcs --seed 474291134 --target compile_smu_chiplet --cov",
-        "seed": 474291134,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_boot_stall_jtag_cold_reset_matrix_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_boot_stall_jtag_cold_reset_matrix_test --stage sim --tool vcs --seed 1505666691 --target compile_smu_chiplet --cov",
-        "seed": 1505666691,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_boot_stall_jtag_cold_reset_matrix_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_boot_stall_jtag_cold_reset_matrix_test --stage sim --tool vcs --seed 452929710 --target compile_smu_chiplet --cov",
-        "seed": 452929710,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_dtp_jtag_smoke_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test --stage sim --tool vcs --seed 1367557499 --target compile_smu_chiplet --cov",
-        "seed": 1367557499,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_dtp_jtag_smoke_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test --stage sim --tool vcs --seed 644043864 --target compile_smu_chiplet --cov",
-        "seed": 644043864,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_dtp_jtag_smoke_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test --stage sim --tool vcs --seed 1882001293 --target compile_smu_chiplet --cov",
-        "seed": 1882001293,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_ext_boot_seq_gate_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_ext_boot_seq_gate_test --stage sim --tool vcs --seed 730160391 --target compile_smu_chiplet --cov",
-        "seed": 730160391,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_ext_boot_seq_gate_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_ext_boot_seq_gate_test --stage sim --tool vcs --seed 1445320501 --target compile_smu_chiplet --cov",
-        "seed": 1445320501,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_ext_boot_seq_gate_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_ext_boot_seq_gate_test --stage sim --tool vcs --seed 286233074 --target compile_smu_chiplet --cov",
-        "seed": 286233074,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_jtag_reset_override_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_jtag_reset_override_test --stage sim --tool vcs --seed 106321465 --target compile_smu_chiplet --cov",
-        "seed": 106321465,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_jtag_reset_override_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_jtag_reset_override_test --stage sim --tool vcs --seed 1066654306 --target compile_smu_chiplet --cov",
-        "seed": 1066654306,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_jtag_reset_override_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_jtag_reset_override_test --stage sim --tool vcs --seed 1455203422 --target compile_smu_chiplet --cov",
-        "seed": 1455203422,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_smc_dtp_jtag2axi_smoke_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_smc_dtp_jtag2axi_smoke_test --stage sim --tool vcs --seed 1588590749 --target compile_smu_chiplet --cov",
-        "seed": 1588590749,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_smc_dtp_jtag2axi_smoke_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_smc_dtp_jtag2axi_smoke_test --stage sim --tool vcs --seed 394198123 --target compile_smu_chiplet --cov",
-        "seed": 394198123,
-        "status": "ERROR"
-      },
-      {
-        "item": "smu_smc_dtp_jtag2axi_smoke_test",
-        "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_smc_dtp_jtag2axi_smoke_test --stage sim --tool vcs --seed 1008193353 --target compile_smu_chiplet --cov",
-        "seed": 1008193353,
-        "status": "ERROR"
-      }
-    ],
+    "failed_tests": [],
     "flaky_tests": []
   },
   "run_metadata": {
     "executor": "lsf",
-    "generated_at": "2026-10-10T14:28:36.802206+00:00",
+    "generated_at": "2026-10-11T06:32:57.885709+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "21a6cffcdb924a5eb02d5fa8508917e5f8b5d30d",
+      "commit": "4ab69af69df79db7bc3a22949aa4daa5beeb4c0f",
       "dirty": "false"
     },
     "label": "all",
@@ -290,172 +123,72 @@
   "source": {
     "collector": "run_dv-result",
     "label": "all",
-    "native_status": "ERROR"
+    "native_status": "FAIL"
   },
   "status": "FAIL",
   "tests": {
     "completed": true,
-    "failing": 15,
-    "pass_rate": 0.0,
-    "passing": 0,
-    "total": 15
+    "failing": 0,
+    "pass_rate": 100.0,
+    "passing": 5,
+    "total": 5
   },
   "tests_detail": [
     {
       "attempt": 0,
       "category": "dtp_under_smu",
-      "duration_sec": 0.0,
+      "duration_sec": 29.007,
       "name": "smu_boot_stall_jtag_cold_reset_matrix_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 474291134,
+      "reason": "positive pass evidence matched",
+      "seed": 771040866,
       "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "dtp_under_smu",
-      "duration_sec": 0.0,
-      "name": "smu_boot_stall_jtag_cold_reset_matrix_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 1505666691,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "dtp_under_smu",
-      "duration_sec": 0.0,
-      "name": "smu_boot_stall_jtag_cold_reset_matrix_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 452929710,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "smoke",
-      "duration_sec": 0.0,
-      "name": "smu_dtp_jtag_smoke_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 1367557499,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "smoke",
-      "duration_sec": 0.0,
-      "name": "smu_dtp_jtag_smoke_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 644043864,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "smoke",
-      "duration_sec": 0.0,
-      "name": "smu_dtp_jtag_smoke_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 1882001293,
-      "stage": "sim",
-      "status": "ERROR"
+      "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smc_under_smu",
-      "duration_sec": 0.0,
+      "duration_sec": 9.308,
       "name": "smu_ext_boot_seq_gate_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 730160391,
+      "reason": "positive pass evidence matched",
+      "seed": 1609810468,
       "stage": "sim",
-      "status": "ERROR"
+      "status": "PASS"
     },
     {
       "attempt": 0,
-      "category": "smc_under_smu",
-      "duration_sec": 0.0,
-      "name": "smu_ext_boot_seq_gate_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 1445320501,
+      "category": "smoke",
+      "duration_sec": 23.751,
+      "name": "smu_dtp_jtag_smoke_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1003389364,
       "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "smc_under_smu",
-      "duration_sec": 0.0,
-      "name": "smu_ext_boot_seq_gate_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 286233074,
-      "stage": "sim",
-      "status": "ERROR"
+      "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "dtp_under_smu",
-      "duration_sec": 0.0,
+      "duration_sec": 25.469,
       "name": "smu_jtag_reset_override_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 106321465,
+      "reason": "positive pass evidence matched",
+      "seed": 2134193115,
       "stage": "sim",
-      "status": "ERROR"
+      "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "dtp_under_smu",
-      "duration_sec": 0.0,
-      "name": "smu_jtag_reset_override_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 1066654306,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "dtp_under_smu",
-      "duration_sec": 0.0,
-      "name": "smu_jtag_reset_override_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 1455203422,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "dtp_under_smu",
-      "duration_sec": 0.0,
+      "duration_sec": 93.329,
       "name": "smu_smc_dtp_jtag2axi_smoke_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 1588590749,
+      "reason": "positive pass evidence matched",
+      "seed": 386473555,
       "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "dtp_under_smu",
-      "duration_sec": 0.0,
-      "name": "smu_smc_dtp_jtag2axi_smoke_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 394198123,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "dtp_under_smu",
-      "duration_sec": 0.0,
-      "name": "smu_smc_dtp_jtag2axi_smoke_test",
-      "reason": "dependency_blocked: hdl_compile of target compile_smu_chiplet ERROR (job 12259716): VCS build completed without the expected design coverage database: hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
-      "seed": 1008193353,
-      "stage": "sim",
-      "status": "ERROR"
+      "status": "PASS"
     }
   ],
   "timing": {
-    "duration_sec": 142.17,
-    "end_time": "2026-10-10T14:28:36.593774+00:00",
-    "start_time": "2026-10-10T14:25:56.962487+00:00"
+    "duration_sec": 519.041,
+    "end_time": "2026-10-11T06:32:57.552324+00:00",
+    "start_time": "2026-10-11T02:28:17.704766+00:00"
   },
   "tool": "vcs"
 }
