@@ -13,7 +13,6 @@
 
 package sep_system_peripherals_xbar_pkg;
 
-  import axi_pkg::*;
 
   // ===========================================================================
   // Fabric Parameters

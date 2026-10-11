@@ -10,7 +10,8 @@
 // tap_ctrl_i.trst_n does. The other tap_ctrl_i members are unused.
 
 module jtag_3dcr_reg
-  import prim_jtag_pkg::*;
+  import prim_jtag_pkg::jtag_scan_ctrl_t;
+  import prim_jtag_pkg::jtag_tap_ctrl_t;
 (
   /* verilator lint_off UNUSEDSIGNAL */
   input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.

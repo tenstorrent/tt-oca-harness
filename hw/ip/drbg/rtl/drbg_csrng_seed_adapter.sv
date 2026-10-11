@@ -11,7 +11,8 @@
 // entropy_src_hw_if_rsp_t interface.
 
 module drbg_csrng_seed_adapter
-  import drbg_pkg::*;
+  import drbg_pkg::DrbgDefaultSeedFifoDepth;
+  import drbg_pkg::DrbgCsrngSeedFipsProvisional;
 #(
   parameter int unsigned SEED_FIFO_DEPTH = DrbgDefaultSeedFifoDepth // Number of complete seeds that can be queued.
 ) (

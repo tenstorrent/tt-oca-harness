@@ -23,10 +23,10 @@
 `include "ocah_registers.svh"
 
 module km_drbg_sampler
-  import km_intf_pkg::*;
-  import axi_pkg::*;
-  import km_drbg_sampler_reg_pkg::*;
-  import km_drbg_sampler_addrmap_pkg::*;
+  import km_intf_pkg::km_axil_req_t;
+  import km_intf_pkg::km_axil_resp_t;
+  import km_intf_pkg::km_drbg_axis_req_t;
+  import km_intf_pkg::km_drbg_axis_resp_t;
 #(
   parameter type axil_req_t  = km_axil_req_t,  // AXI-Lite request struct type.
   parameter type axil_resp_t = km_axil_resp_t  // AXI-Lite response struct type.
@@ -52,7 +52,7 @@ module km_drbg_sampler
   `include "prim_assert.sv"
 
   // Register block address width, from the generated register map.
-  localparam int unsigned AddrW = KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH;
+  localparam int unsigned AddrW = km_drbg_sampler_reg_pkg::KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH;
 
   //--------------------------------------------------------------------------
   // Register block AXI (flat) and hwif
@@ -72,8 +72,8 @@ module km_drbg_sampler
   logic [31:0] reg_rdata;
   logic [1:0] reg_rresp;
 
-  km_drbg_sampler__in_t  hwif_in;
-  km_drbg_sampler__out_t hwif_out;
+  km_drbg_sampler_reg_pkg::km_drbg_sampler__in_t  hwif_in;
+  km_drbg_sampler_reg_pkg::km_drbg_sampler__out_t hwif_out;
 
   //--------------------------------------------------------------------------
   // Single in-flight read: slot for one response (DATA or reg block)
@@ -87,7 +87,7 @@ module km_drbg_sampler
   // Only accept AR when no outstanding read
   logic ar_accept;
   logic is_data_read;
-  assign is_data_read = (axil_req_i.ar.addr[AddrW-1:0] == KM_DRBG_SAMPLER_DATA_BASE_ADDR[AddrW-1:0]);
+  assign is_data_read = (axil_req_i.ar.addr[AddrW-1:0] == km_drbg_sampler_addrmap_pkg::KM_DRBG_SAMPLER_DATA_BASE_ADDR[AddrW-1:0]);
   assign ar_accept = axil_req_i.ar_valid && !slot_valid;
 
   // Forward to reg block: writes always; reads only when not DATA (we handle DATA ourselves)

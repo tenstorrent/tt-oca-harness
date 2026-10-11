@@ -8,7 +8,7 @@
 // scan_ctrl_i selects capture and shift on the DR path between scan_in_i and scan_out_o.
 
 module jtag_idcode_reg
-  import prim_jtag_pkg::*;
+  import prim_jtag_pkg::jtag_scan_ctrl_t;
 #(
   parameter logic [10:0]  IDCODE_MFR_ID   = 11'h000,  // JTAG IDCODE manufacturer ID, bits [11:1].
   parameter logic [15:0]  IDCODE_PART_NUM = 16'h0000,  // JTAG IDCODE part number, bits [27:12].

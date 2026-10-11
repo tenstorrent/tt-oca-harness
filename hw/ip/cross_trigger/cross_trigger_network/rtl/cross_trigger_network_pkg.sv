@@ -11,7 +11,8 @@
 
 package cross_trigger_network_pkg;
 
-  import axi_pkg::*;
+  import axi_pkg::data_t;
+  import axi_pkg::strb_t;
 
   `include "axi/typedef.svh"
 

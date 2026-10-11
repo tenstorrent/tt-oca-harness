@@ -22,9 +22,7 @@
 `include "ocah_registers.svh"
 
 module entropy_source
-    import entropy_source_reg_pkg::*,
-           entropy_source_pkg::*,
-           entropy_src_main_sm_pkg::*;
+    import entropy_source_pkg::NRings;
 
     `include "prim_assert.sv"
 (
@@ -123,7 +121,7 @@ module entropy_source
     logic        boot_phase_done;
     logic        alert_cntr_clr_ok_main_sm;
     logic        main_sm_alert, main_sm_idle, main_sm_err;
-    logic [StateWidth-1:0] main_sm_state;
+    logic [entropy_src_main_sm_pkg::StateWidth-1:0] main_sm_state;
 
     logic [9:0]  downsample_count;
     logic        fifo_stream_push;
@@ -196,7 +194,7 @@ module entropy_source
     logic        alert_thresh_fail;
     logic        persistent_failure;
     logic        autotune_fail;
-    entropy_source_err_bus_t err_bus;
+    entropy_source_pkg::entropy_source_err_bus_t err_bus;
 
     // SP 800-90B recommended-threshold LUT outputs (combinational).
     logic [7:0]  min_entropy_h;

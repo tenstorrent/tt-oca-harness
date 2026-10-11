@@ -9,7 +9,7 @@
 // which reset low on the scan-control reset.
 
 module jtag_debug_ctrl_reg
-  import prim_jtag_pkg::*;
+  import prim_jtag_pkg::jtag_scan_ctrl_t;
 (
   input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.
   input  logic             scan_in_i,   // Scan data in (TDI).

@@ -10,7 +10,7 @@
 // scan path.
 
 module jtag_caps_reg
-    import prim_jtag_pkg::*;
+    import prim_jtag_pkg::jtag_scan_ctrl_t;
 
     `include "ocah_assert.svh"
 #(

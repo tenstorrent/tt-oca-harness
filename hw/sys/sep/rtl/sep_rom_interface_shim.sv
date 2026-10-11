@@ -9,7 +9,9 @@
 // reach the macro; they are acknowledged and otherwise ignored.
 
 module sep_rom_interface_shim
-  import sep_pkg::*;
+  import sep_pkg::sep_sram_req_t;
+  import sep_pkg::sep_sram_rsp_t;
+  import sep_pkg::SEP_MEM_DATA_WIDTH;
 #(
   parameter int unsigned ROM_ADDR_WIDTH = 10  // ROM address width; default 10 for 1K entries.
 ) (

@@ -27,11 +27,51 @@
 // and for the TRST forwarded on host_tap_ctrl_o.
 
 module jtag_ptap
-    import prim_jtag_pkg::*;
+    import prim_jtag_pkg::jtag_tap_ctrl_t;
+    import prim_jtag_pkg::jtag_scan_ctrl_t;
 
     `include "ocah_assert.svh"
-    import jtag_tap_pkg::*;
-    import jtag_inst_reg_pkg::*;
+    import jtag_tap_pkg::tap_state_e;
+    import jtag_inst_reg_pkg::jtag_instruction_decoded_e;
+    import jtag_inst_reg_pkg::RUNBIST_INSTR;
+    import jtag_inst_reg_pkg::BYPASS_INSTR;
+    import jtag_inst_reg_pkg::BYPASS_ALT_INSTR;
+    import jtag_inst_reg_pkg::CLAMP_INSTR;
+    import jtag_inst_reg_pkg::HIGHZ_INSTR;
+    import jtag_inst_reg_pkg::IC_RESET_INSTR;
+    import jtag_inst_reg_pkg::EXTEST_TRAIN_INSTR;
+    import jtag_inst_reg_pkg::EXTEST_PULSE_INSTR;
+    import jtag_inst_reg_pkg::INTEST_INSTR;
+    import jtag_inst_reg_pkg::EXTEST_INSTR;
+    import jtag_inst_reg_pkg::SAMPLE_PRELOAD_INSTR;
+    import jtag_inst_reg_pkg::TMP_STATUS_INSTR;
+    import jtag_inst_reg_pkg::TAP_3DCR_INSTR;
+    import jtag_inst_reg_pkg::DEBUG_CONTROL_INSTR;
+    import jtag_inst_reg_pkg::ZERO_LENGTH_BYPASS_INSTR;
+    import jtag_inst_reg_pkg::JTAG_CAPS_INSTR;
+    import jtag_inst_reg_pkg::SMC_OTP_JTAG2AXI_CAPS_INSTR;
+    import jtag_inst_reg_pkg::SEP_OTP_JTAG2AXI_CAPS_INSTR;
+    import jtag_inst_reg_pkg::SMC_JTAG2AXI_CAPS_INSTR;
+    import jtag_inst_reg_pkg::SMC_OTP_AXI_SINGLE_OP_INSTR;
+    import jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_CTRL_INSTR;
+    import jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_INCR_INSTR;
+    import jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
+    import jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
+    import jtag_inst_reg_pkg::SEP_OTP_AXI_SINGLE_OP_INSTR;
+    import jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_CTRL_INSTR;
+    import jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_INCR_INSTR;
+    import jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
+    import jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
+    import jtag_inst_reg_pkg::SMC_AXI_SINGLE_OP_INSTR;
+    import jtag_inst_reg_pkg::SMC_AXI_SERIES_CTRL_INSTR;
+    import jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_INCR_INSTR;
+    import jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_NO_INCR_INSTR;
+    import jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
+    import jtag_inst_reg_pkg::INV_BYPASS_INSTR;
+    import jtag_inst_reg_pkg::IDCODE_INSTR;
+    import jtag_inst_reg_pkg::SELECT_IJTAG_INSTR;
+    import jtag_inst_reg_pkg::CLAMP_HOLD_INSTR;
+    import jtag_inst_reg_pkg::CLAMP_RELEASE_INSTR;
 #(
     /* verilator lint_off UNUSEDPARAM */
     parameter bit  BSR_ENABLE          = 1,  // Enables all mandatory IEEE 1149.1 boundary-scan

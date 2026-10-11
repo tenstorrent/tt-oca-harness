@@ -19,7 +19,9 @@
 `include "ocah_registers.svh"
 
 module gpio
-  import gpio_pkg::*;
+  import gpio_pkg::AddrWidth;
+  import gpio_pkg::gpio_axil_req_t;
+  import gpio_pkg::gpio_axil_resp_t;
 #(
   parameter int unsigned MAX_TRANS = 32,                    // Maximum open transactions per channel
                                                             // in the filter demux.

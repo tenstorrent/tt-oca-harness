@@ -20,7 +20,16 @@
 // reset-domain crossings or autonomous CSR control sequencing.
 
 module drbg
-  import drbg_pkg::*;
+  import drbg_pkg::DrbgDefaultSeedFifoDepth;
+  import drbg_pkg::DrbgDefaultEdnEndpointCount;
+  import drbg_pkg::DrbgDefaultEdnNativeEndpointCount;
+  import drbg_pkg::DrbgDefaultEndpointFifoDepth;
+  import drbg_pkg::drbg_axil64_req_t;
+  import drbg_pkg::drbg_axil64_resp_t;
+  import drbg_pkg::drbg_axis_req_t;
+  import drbg_pkg::drbg_axis_rsp_t;
+  import drbg_pkg::drbg_axil32_req_t;
+  import drbg_pkg::drbg_axil32_resp_t;
 #(
   parameter int unsigned SEED_FIFO_DEPTH = DrbgDefaultSeedFifoDepth,     // Number of complete packed seeds queued for CSRNG.
                                                                          // Must be at least 1.
@@ -235,8 +244,8 @@ module drbg
   );
 
   axi_lite_to_tlul #(
-    .AXI_ADDR_WIDTH (DrbgAxil32AddrWidth),
-    .AXI_DATA_WIDTH (DrbgAxil32DataWidth),
+    .AXI_ADDR_WIDTH (drbg_pkg::DrbgAxil32AddrWidth),
+    .AXI_DATA_WIDTH (drbg_pkg::DrbgAxil32DataWidth),
     .axi_lite_req_t (drbg_axil32_req_t),
     .axi_lite_rsp_t (drbg_axil32_resp_t)
   ) u_csrng_axi_lite_to_tlul (
@@ -268,8 +277,8 @@ module drbg
   );
 
   axi_lite_to_tlul #(
-    .AXI_ADDR_WIDTH (DrbgAxil32AddrWidth),
-    .AXI_DATA_WIDTH (DrbgAxil32DataWidth),
+    .AXI_ADDR_WIDTH (drbg_pkg::DrbgAxil32AddrWidth),
+    .AXI_DATA_WIDTH (drbg_pkg::DrbgAxil32DataWidth),
     .axi_lite_req_t (drbg_axil32_req_t),
     .axi_lite_rsp_t (drbg_axil32_resp_t)
   ) u_edn_axi_lite_to_tlul (
@@ -344,7 +353,7 @@ module drbg
                   csrng_bridge_unsupported_pulse |-> !csrng_tl_h2d.a_valid)
   `OCAH_OT_ASSERT(EdnNoTlOnUnsupported_A, edn_bridge_unsupported_pulse |-> !edn_tl_h2d.a_valid)
   `OCAH_OT_ASSERT(SeedFipsTopLevel_A,
-                  seed_queue_valid |-> seed_queue_fips == DrbgCsrngSeedFipsProvisional)
+                  seed_queue_valid |-> seed_queue_fips == drbg_pkg::DrbgCsrngSeedFipsProvisional)
 
   `OCAH_OT_ASSERT_KNOWN(CsrngAlertTxKnown_A, csrng_alert_tx_o)
   `OCAH_OT_ASSERT_KNOWN(EdnAlertTxKnown_A, edn_alert_tx_o)
