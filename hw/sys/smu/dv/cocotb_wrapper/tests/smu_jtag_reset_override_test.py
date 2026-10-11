@@ -39,6 +39,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
+from ocah_jtag_vip import OcahJtagState
 from seq_lib.smu_compose_helpers import hier
 from seq_lib.smu_jtag_helpers import (
     SMU_IC_RESET_DEFAULT,
@@ -86,10 +87,12 @@ async def _read_ic_reset(jtag, dut, shift_value: int, where: str, log) -> int:
 
     The JTAG VIP reads an X/Z TDO bit as 0, so the bench's `jtag_tdo` and
     `jtag_tdo_oen` (high during Shift-IR and Shift-DR) are sampled on every TCK
-    rising edge of the scan, and at least one DR length of driven bits must be
-    seen.
+    rising edge of the scan. A bit counts toward the DR length only when the
+    driver's tracked state at that edge is Shift-DR, so the IR bits of the same
+    read do not make up for undriven DR bits.
     """
     driven = [0]
+    dr_driven = [0]
     bad: list[str] = []
 
     async def watch() -> None:
@@ -101,6 +104,8 @@ async def _read_ic_reset(jtag, dut, shift_value: int, where: str, log) -> int:
                 bad.append(f"jtag_tdo_oen={oen}")
             elif int(oen):
                 driven[0] += 1
+                if jtag.get_current_state() is OcahJtagState.SHIFT_DR:
+                    dr_driven[0] += 1
                 if not tdo.is_resolvable:
                     bad.append(f"jtag_tdo={tdo} at driven bit {driven[0] - 1}")
 
@@ -110,12 +115,18 @@ async def _read_ic_reset(jtag, dut, shift_value: int, where: str, log) -> int:
     finally:
         watcher.cancel()
     require_jtag_tdo_resolved(where)
-    log.info("%s: %d driven TDO bits sampled, %d X/Z", where, driven[0], len(bad))
+    log.info(
+        "%s: %d driven TDO bits sampled, %d in Shift-DR, %d X/Z",
+        where,
+        driven[0],
+        dr_driven[0],
+        len(bad),
+    )
     if bad:
         raise AssertionError(f"X/Z on TDO during {where}: {bad[:8]}")
-    if driven[0] < SMU_IC_RESET_LEN:
+    if dr_driven[0] < SMU_IC_RESET_LEN:
         raise AssertionError(
-            f"{where}: {driven[0]} driven TDO bits sampled, fewer than the "
+            f"{where}: {dr_driven[0]} driven TDO bits sampled in Shift-DR, fewer than the "
             f"{SMU_IC_RESET_LEN}-bit IC_RESET DR"
         )
     return int(readback)
