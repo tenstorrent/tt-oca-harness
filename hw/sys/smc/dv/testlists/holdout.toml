@@ -107,12 +107,23 @@ tools = ["vcs"]
 tags = ["uvm", "wdt"]
 run_modes = ["smoke"]
 
+[[tests]]
+# Checks keyed and bitwise lock ordering with overlapping SEP_IN writes.
+name = "smc_lock_pipelined_write_test"
+module = { uvm = "smc_lock_pipelined_write_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "csr", "wdt"]
+run_modes = ["smoke"]
+
 [[groups]]
-# Wide register-block CSR scenarios.
+# Register-block CSR and pipelined lock scenarios.
 name = "csr_uvm_extended"
-expected_count = 1
+expected_count = 2
 tests = [
     "smc_regblock_sparse_strobe_test",
+    "smc_lock_pipelined_write_test",
 ]
 
 [[groups]]

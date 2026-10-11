@@ -28,6 +28,7 @@ import smc_seq_lib_pkg::*;
 
 // Reset-unit write-once lock scenarios.
 `include "smc_reset_unit_lock_test.svh"
+`include "smc_lock_pipelined_write_test.svh"
 
 // CPU_CTRL side-effect register scenarios.
 `include "smc_mutex_semaphore_test.svh"

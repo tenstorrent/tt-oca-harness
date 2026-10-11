@@ -13132,6 +13132,98 @@ The leaf runs on demand in `wdt_uvm_extended`, outside `all`, `hosted` and `ci`.
 
 '''''
 
+[[sec-smc_lock_pipelined_write_test]]
+====== `smc_lock_pipelined_write_test`
+
+*Source Module*: `smc_lock_pipelined_write_test` (SV-UVM-only scenario)
+
+*Objective*: Grade keyed and bitwise lock semantics while successive writes
+are outstanding on SEP_IN, with observed channel overlap as a prerequisite.
+
+*Test Coverage*: Six WDT pipeline shapes on every core check one-write
+unlock consumption, ineffective partial writes, writes before KEY, combined
+FEED/KEY locking and backpressured responses. The final pass checks an
+SS_CONFIG write queued after its bitwise lock. Each single-beat write uses
+ID 0. The decisive pair must have both AW and W accepted before the prior
+write's B handshake. Acceptance cycles, addresses, sizes, payloads, strobes
+and IDs are observed on SEP_IN rather than inferred from sequence timing.
+
+*Expectation Sources*: `wdt.rdl` byte-enable rules, KEY state, effective-write
+relocking and simultaneous FEED/KEY semantics; generated register geometry
+and reset values; `reset_unit.rdl` woset locks and the per-bit SS_CONFIG
+write restriction. Sequence expectations are write-derived.
+The passive lock-CSR model independently grades L1 readbacks.
+
+*BFM / Model*: Existing SEP_IN master pipeline API and an AW/W/B watcher.
+The required `lock_csr` feature independently grades six L1 readbacks.
+The `wdt_csr` feature is not enabled: its documented scope is sequential
+accesses, while WDT COUNT/KEY pipeline claims are sequence checks.
+
+*Test Procedure*: Require WDT CTRL/CMP at reset, seed distinct COUNT values
+whose low sixteen bits are below CMP, and observe the disabled counter.
+Launch P1, P2A, P2B, P3, P4 and P5, retaining AW/W/B cycles for each operation
+and checking final COUNT/KEY. P1/P5 require only the first effective COUNT
+write to land. P2A ends after the partial write and checks COUNT unchanged
+and KEY unlocked before a full write uses that unlock. P2B checks the full
+write queued after the partial write. P3 checks a write preceding KEY is
+refused. P4 requires FEED to clear COUNT to zero, the queued COUNT write to
+be rejected and KEY to remain locked. P5 holds BREADY for sixteen cycles
+after BVALID.
+Restore each WDT. Require SS_CONFIG_LOCK clear before the final L1 pipeline.
+L1 uses AxSIZE=2 at the LOCK and CONFIG CSR addresses, with WSTRB on their
+respective byte lanes; WDT pipelines retain AxSIZE=3. Check the final
+partially restored configuration and retained lock. Require six passive
+lock-CSR comparisons with no new mismatch within a bounded wait.
+
+*Known Limitations*: SEP_IN overlap does not prove concurrency inside WDT.
+Only ID 0 and the declared byte-enable shapes are covered. In P4 the combined
+FEED/KEY write follows a KEY unlock and is checked while counting is disabled;
+the same write issued while locked is not exercised. WDT counting,
+interrupts and CPU execution/reset are not exercised. L1 uses narrow CSR
+writes, not a wide write spanning two CSRs. Locks persist after the last
+pass. Background CPU SYS_OUT traffic is outside the claim. No strobe/ID
+cross-coverage closure is claimed.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PLOCK-SEED` |Control prerequisites and seeded baselines hold
+|`CHK-PLOCK-WDT-ONE` |One unlock admits only the first effective write in P1/P5
+|`CHK-PLOCK-WDT-INEFFECTIVE` |P2A preserves COUNT/unlock; P2A/P2B admit the subsequent full write
+|`CHK-PLOCK-WDT-PREKEY` |P3 rejects COUNT written before KEY
+|`CHK-PLOCK-WDT-FEEDKEY` |FEED clears COUNT and the queued COUNT write is rejected
+|`CHK-PLOCK-WDT-STATE` |KEY reflects the expected lock state after each leg and cleanup
+|`CHK-PLOCK-SSCFG` |L1 lock filters the queued write and reads back its mask
+|`CHK-PLOCK-SSCFG-FINAL` |Partially restored SS_CONFIG and retained woset lock are correct
+|`CHK-PLOCK-WDT-RESTORE` |COUNT, KEY and CTRL return to the prerequisite state
+|`CHK-PLOCK-RESP` |Observed AW/W match issued ops and known OKAY responses echo ID 0
+|`CHK-PLOCK-SCOREBOARD` |Six L1 reads are compared by the passive lock model without new mismatch
+|`CHK-SB-LOCK-CSR` |The required lock feature has comparisons, no mismatch and no unpaired item
+|`CHK-NONVAC` |All 24 WDT legs per pass and final L1 complete and overlap at their decisive pairs
+|`CHK-CSR-RESP`, `CHK-FUSE-SENSE-DONE` |Mapped accesses and fuse bring-up complete
+|===
+
+*Pass Criteria*: All functional, completion, overlap and restoration checks
+pass without timeout or protocol assertion. `+SMC_LOCK_PIPELINED_SEQUENCE_NEGATIVE`
+changes only the P1, P2A, P3 and P4 COUNT expectations on core 0, plus L1's config
+expectation in the final pass. Exactly four checks fail per pass plus one
+in the final pass: 65 failures for sixteen passes, with no fatal or unrelated
+error and no lock-scoreboard mismatch. Used alone,
+`+SMC_LOCK_SCOREBOARD_NEGATIVE` must produce six L1 mismatches,
+one `CHK-PLOCK-SCOREBOARD` failure and one `CHK-SB-LOCK-CSR` failure:
+eight failures in total. These are expected signatures, not run results.
+The CTRL/CMP reset-state and SS_CONFIG_LOCK-clear prerequisites under
+`CHK-PLOCK-SEED` stop the run on failure and are outside both negative
+controls. The sequence negative does not alter `CHK-PLOCK-WDT-STATE`,
+`CHK-PLOCK-WDT-RESTORE`, `CHK-PLOCK-SSCFG-FINAL`, `CHK-PLOCK-RESP` or
+`CHK-NONVAC` expectations.
+Enrolled only in
+`csr_uvm_extended`, outside `all`, `hosted` and `ci`.
+
+'''''
+
 [[sec-smc_wdt_core_awake_gate_test]]
 ====== `smc_wdt_core_awake_gate_test`
 
