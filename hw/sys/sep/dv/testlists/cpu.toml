@@ -137,7 +137,7 @@ timeout_sec = 1800
 tags = ["boot", "cpu", "interrupt", "pic", "efuse", "subsystem"]
 run_modes = ["cpu"]
 
-# Fabric and remap, Phase 3 (docs/SEP_VPLAN.adoc, test_contracts/fabric_remap.adoc).
+# Fabric and remap tests.
 
 [[tests]]
 # CPU LSU local alias window at SEP_LOCAL_BASE_ADDR: the alias read of one static word per unit class equals the direct read. The host patches the seeded values into the firmware parameter block.

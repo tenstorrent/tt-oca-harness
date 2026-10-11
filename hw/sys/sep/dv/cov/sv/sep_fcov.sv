@@ -136,8 +136,8 @@ module sep_fcov (
   input wire        wdt_bark_irq_i,
 
   // ---------------------------------------------------------------------
-  // Phase 2 fabric and remap taps (docs/SEP_FCOV.adoc, fabric and remap
-  // groups, Sampler taps). Read-only copies of DUT nets.
+  // Fabric and remap taps (docs/SEP_FCOV.adoc, fabric and remap groups,
+  // Sampler taps). Read-only copies of DUT nets.
   // ---------------------------------------------------------------------
   // in_req / in_resp: the SMN-inbound port (System Interface).
   input sep_pkg::sep_system_peripherals_internal_axi_req_t  in_req_i,
@@ -2613,8 +2613,8 @@ module sep_fcov (
   end
 
   // =====================================================================
-  // Phase 2: fabric and remap groups (docs/SEP_FCOV.adoc, fabric and remap
-  // groups). VCS only, like the rest of this module.
+  // Fabric and remap groups (docs/SEP_FCOV.adoc, fabric and remap groups).
+  // VCS only, like the rest of this module.
   //
   // GATE. Every bin of this section samples only inside the graded window
   // of an owning test: `graded_owner` holds that test's code from

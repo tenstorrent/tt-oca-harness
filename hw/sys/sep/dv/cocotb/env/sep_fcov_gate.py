@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Graded-window gate of the Phase 2 FCOV sampler (docs/SEP_FCOV.adoc).
+"""Graded-window gate of the FCOV sampler (docs/SEP_FCOV.adoc).
 
-The sampler ``u_sep_fcov`` (cov/sv/sep_fcov.sv) samples a Phase 2 bin only
+The sampler ``u_sep_fcov`` (cov/sv/sep_fcov.sv) samples a graded bin only
 while its variable ``graded_owner`` holds the code of an owning test. A leaf
 writes its own code at the first step of its graded stimulus and 0 before a
 control leg, a bring-up or clean-up step, a reset that is not graded, and at

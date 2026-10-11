@@ -3019,9 +3019,9 @@ module sep_uvm_top
     // and no new hierarchy depth.
     // ------------------------------------------------------------------
 `ifndef VERILATOR
-    // Phase 2 fabric sampler taps (docs/SEP_FCOV.adoc, fabric and remap groups,
-    // Sampler taps): read-only copies of the filter, alias and output remap
-    // register fields, one explicit assign per index.
+    // Fabric sampler taps (docs/SEP_FCOV.adoc, fabric and remap groups, Sampler
+    // taps): read-only copies of the filter, alias and output remap register
+    // fields, one explicit assign per index.
     logic [15:0]       fcov_in_f_en, fcov_in_f_rd, fcov_in_f_wr, fcov_in_f_ns, fcov_in_f_burst;
     logic [15:0][3:0]  fcov_in_f_src;
     logic [15:0][55:0] fcov_in_f_start, fcov_in_f_end;

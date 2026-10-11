@@ -491,7 +491,7 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
-# Fabric and remap, Phase 3 (docs/SEP_VPLAN.adoc, test_contracts/fabric_remap.adoc).
+# Fabric and remap tests.
 
 [[tests]]
 # Inbound global-to-local rebase, the filter-first order, the window edges and the crossbar limit. Real PROD fuse sense: the inbound filter is active.

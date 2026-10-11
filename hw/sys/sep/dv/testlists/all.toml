@@ -566,9 +566,9 @@ tests = [
 ]
 
 [[groups]]
-# Convenience group of the fabric and remap Phase 3 tests.
-# It is not a VPLAN group: `all`, `cpu_stub` and `cpu` hold the same tests.
-name = "phase3_fabric_remap"
+# Convenience group of the fabric and remap tests.
+# The `all`, `cpu_stub` and `cpu` groups hold the same tests.
+name = "fabric_remap"
 expected_count = 9
 tests = [
     "sep_fabric_inbound_rebase_test",

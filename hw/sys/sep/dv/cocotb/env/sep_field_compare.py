@@ -2,11 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Register compare on the RDL field bits only.
 
-The shared reserved-bit rule of the Phase 3 VPLAN (``[[sep-vplan-reserved-bits]]``):
-a graded register compare uses the RDL field bits of the register, and the bits
-that the RDL marks Reserved with no reset value are masked out of the compare
-and logged in the same line. Bits [63:32] of an AxSIZE 3 read of a 32-bit
-register are Reserved in this sense and are logged, never graded.
+The shared reserved-bit rule in ``docs/SEP_VPLAN.adoc`` requires a graded
+register compare to use the RDL field bits of the register. Bits that the RDL
+marks Reserved with no reset value are masked out of the compare and logged in
+the same line. Bits [63:32] of an AxSIZE 3 read of a 32-bit register are
+Reserved in this sense and are logged, never graded.
 
 The field mask comes from the generated register metadata
 (``env.sep_reg_meta.RegBlock.mask32``) or is passed by the caller when the
