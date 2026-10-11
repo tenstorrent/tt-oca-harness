@@ -707,6 +707,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         aw, b = len(ev.aw), len(ev.b)
         done_rises = ev.rises("done")
         last_b = max((x.clk for x in ev.b), default=None)
+        # STATUS is the register output, sampled in the cycle of the handshake: DONE=1 in
+        # the last B cycle was set before that B completed.
         early = [d for d in done_rises if last_b is None or d <= last_b]
         bad_resp = sum(1 for x in ev.b if x.resp != 0)
         ok = b > 0 and b == aw and bool(done_rises) and not early

@@ -36,7 +36,8 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
 * CHK-SPI-CPHA: at CLKDIV 1 or more every Tx data change after the first bit
   lies in the half sck period that starts at the stated edge. Control: at least
   two such changes. The cell CPHA=1 with FULLCYC=1 logs ``OBS-SPI-CPHA`` and is
-  not graded.
+  not graded. The second cell inverts the CPHA of the first, so each seed has
+  one CPHA=0 cell that is graded.
 
 Graded window: owner code of this test for the graded pair, the ratio leg and
 the data-edge grade; closed for bring-up and every control pair.
