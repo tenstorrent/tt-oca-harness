@@ -109,6 +109,9 @@ ST_RXSTALL = _R.field_mask("STATUS", "rxstall")
 ST_RXFULL = _R.field_mask("STATUS", "rxfull")
 # The CLKDIV of the TX-full-while-active leg.
 TXFULL_CLKDIV = 3
+# STATUS reads with TXFULL=1 and ACTIVE=0 before the TX-full leg stops waiting
+# for the host to start the segment.
+TXFULL_IDLE_READS = 64
 PAYLOAD_POOL = 512
 
 
@@ -824,17 +827,23 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         await self.ops.issue_command(command_word(4 * n - 1, speed=0, direction=DIR_TX))
         written = 0
         full = None
-        while written < n:
+        idle_full = 0
+        while written < n and idle_full < TXFULL_IDLE_READS:
             st = await self.ops.read_status()
             if st.txfull and st.active:
                 full = st
                 break
             if st.txfull:
+                idle_full += 1
                 continue
             await self.ops.wr(TXDATA, self._word())
             written += 1
         if full is None:
-            self._ctrl_missing(chk, f"no TXFULL=1 with ACTIVE=1 after {written} of {n} words")
+            self._ctrl_missing(
+                chk,
+                f"no TXFULL=1 with ACTIVE=1 after {written} of {n} words "
+                f"(TXFULL=1 with ACTIVE=0 in {idle_full} STATUS reads)",
+            )
         self.logger.info(
             "TX full while active seed=%d written=%d txqd=%d %s",
             self.seed,

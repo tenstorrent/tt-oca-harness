@@ -34,7 +34,8 @@ Checkers:
                   before the firmware clear) and reads 0 with STATUS.DONE=1 once
                   the transfer reaches TOTAL_DATA_SIZE (handshake run).
   CHK-HS-STOP     after the GO clear the words after the moved chunks keep their
-                  sentinel while the trigger probe is high.
+                  sentinel while the trigger probe is high, and the moved chunks
+                  keep the words read before the clear.
   CHK-HS-NOCHUNK  STATUS.CHUNK_DONE reads 0 at every poll of the handshake run.
   CHK-HS-DATA     blocked: the specification does not name the pad line that
                   carries the Rx bit in standard mode. The leaf logs
@@ -584,6 +585,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         img3 = await self.mem.read(HS_DST, tot_words)
         after = img3[n_moved * cfg.cw :]
         after_kept = int(all(w == self.sentinel for w in after))
+        moved_kept = int(img3[: n_moved * cfg.cw] == img1[: n_moved * cfg.cw])
         self._probe_log("stop")
         close_graded_window(self.logger)
         line = (
@@ -591,11 +593,11 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             f"dest_after_clear_sentinel={after_kept} trigger_high_clk={trig_high} "
             f"window_clks={t_fill} go_before_clear={go_before} "
             f"control_after_clear=0x{stop_ctrl:08x} "
-            f"moved_unchanged={int(img3[: n_moved * cfg.cw] == img1[: n_moved * cfg.cw])}"
+            f"moved_unchanged={moved_kept}"
         )
         if n_moved < 1 or n_moved >= n_tot or trig_high < 1 or not go_before:
             self._ctrl_missing("CHK-HS-STOP", line)
-        if not after_kept:
+        if not (after_kept and moved_kept):
             self._fail("CHK-HS-STOP", line)
         self._pass("CHK-HS-STOP", line)
 
