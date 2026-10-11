@@ -637,7 +637,7 @@ endif::backend-html5[]
 Reserved-bit ranges available for adopter-defined scan chains (see
 <<adopter-extension>>):
 
-* Debug group: bits 4-23 (DBG_1, 20 reserved bits) and bits 25-47 (DBG_2, 23 reserved bits)
+* Debug group: bits 5-23 (DBG_1, 19 reserved bits) and bits 25-47 (DBG_2, 23 reserved bits)
 * Function group: bits 48-63 (16 reserved bits)
 
 [[dtp-path-gating]]
@@ -772,7 +772,7 @@ chiplet-scope SEP scan chain or the general-logic scan chain in
 accommodates this via the *reserved bits* in `feat_ctrl_o` (and the
 matching positions in SIP_DIS / SYS_DIS):
 
-* Debug group: bits 4-23 (DBG_1, 20 reserved bits) and bits 25-47 (DBG_2, 23 reserved bits)
+* Debug group: bits 5-23 (DBG_1, 19 reserved bits) and bits 25-47 (DBG_2, 23 reserved bits)
 * Function group: bits 48-63 (16 reserved bits)
 
 OCAH assigns no standard function to these reserved bits. An adopter may
