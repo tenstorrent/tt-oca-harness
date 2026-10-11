@@ -282,9 +282,11 @@ Both fields are covered by `FIPS_LOCK`: once `FIPS_LOCK.LOCK` is set, software c
 no longer retarget the pin or change its divider, so a locked, certified part
 cannot route pre-conditioning entropy to the observation pin. The raw and BIW
 observe-FIFO capture enables (`NOISE_OBS_CTRL.RAW_ENABLE`,
-`BIW_OBS_CTRL.RAW_ENABLE`) are held under the lock the same way. SP 800-90B treats
-this pre-conditioning observation as a validation-time interface that may be
-disabled in the field, which the lock enforces. As defense in depth, SEP also
+`BIW_OBS_CTRL.RAW_ENABLE`) are held under the lock the same way, and the FIFOs
+themselves sit behind the lifecycle gate in <<entropy-source-fifo-access>>. SP
+800-90B treats this pre-conditioning observation as a validation-time interface
+that may be disabled in the field, which the lock and the gate enforce. As
+defense in depth, SEP also
 leaves `signal_monitor_o` unconnected and false-paths the port in synthesis; an
 integration that routes the pin off-chip still owns restricting access to the
 lifecycle or debug states in which observing pre-conditioning entropy is
