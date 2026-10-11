@@ -739,8 +739,8 @@ Some domains have more specific rules:
   replaces an earlier one with the same key, so a test entry overrides its
   run mode, and each dropped argument is printed as `PLUSARG: dropping ...`.
   Bare flags and `+uvm_set_*` arguments are never collapsed.
-* Regression multiplicity: a test's `reseed` value overrides `--reseed` for
-  that test.
+* Regression seed count, per test: `--reseed` > test `reseed` > `1`
+  (<<runner-seed-count>>).
 * A positive `[build.options].build_jobs` value overrides CLI-derived
   build concurrency; otherwise `--build-jobs`, then `--sim-jobs`, supplies it.
 
@@ -2430,6 +2430,76 @@ python3 tools/dv/run_dv.py \
 `--retry N` retries a non-passing leaf up to `N` times. Earlier failures remain
 in `regression.json`; the final effective attempt determines the leaf result.
 A leaf that passes after a failed attempt is recorded as flaky.
+
+[[runner-seed-count]]
+=== Seeds per test
+
+In scheduler mode each selected test becomes one leaf per seed. The number of
+seeds a test gets is `--reseed N` when the command line gives one, otherwise
+its testlist entry's `reseed`, otherwise `1`. An entry sets its own count
+like this:
+
+[source,toml]
+----
+[[tests]]
+name = "sep_dma_basic_test"
+module = "cpu.sep_dma_basic_test"
+firmware = "dma_basic_test"
+seed = 1
+reseed = 3
+----
+
+The entry's count is the test's default. A run without `--reseed` gives the
+entry above three seeds and every test without a `reseed` one, so a full
+regression spends its extra seeds on the tests whose entries ask for them.
+`--reseed` replaces every selected test's count for that run, in both
+directions: `--reseed 1` runs the entry above once, and `--reseed 10` runs
+every selected test ten times, an entry with `reseed = 1` included.
+
+[source,bash]
+----
+# One leaf with a fresh random seed, whatever the entry's reseed says.
+python3 tools/dv/run_dv.py --dut sep --items sep_dma_basic_test --reseed 1
+----
+
+A job that should run the testlist's counts passes no `--reseed`, and a job
+with a fixed budget, such as a quick pass over every test, passes
+`--reseed 1`. Give an entry a `reseed` when its stimulus is random enough
+that more seeds find more, and leave it out of a directed test, which drives
+the same stimulus on every seed.
+
+`reseed` belongs to the test entry alone. A group carries no seed count, and
+a test's `[tests.overrides.<framework>]` table cannot set one, so a test runs
+the same number of seeds in every framework view it is bound to. The value
+is an integer of at least 1; a lower count stops a regression with a
+configuration error.
+
+The count applies where seeds are drawn: the `sim` and `regress` stages of a
+scheduler-mode run, which a group, `--regress`, `--stage regress`,
+`--reseed`, `--retry`, `--max-failures`, or more than one selected test
+starts. A flat run of a single test ignores `reseed` and simulates once with
+the single-test seed (`--seed`, then the test's `seed`, then
+`[defaults].seed`, then `1`), and a `formal` item runs once.
+
+Each scheduler leaf draws its seed at random from 1 to 2147483647, and no two
+leaves of one run share a seed. A test's `seed` and `[defaults].seed` do not
+apply there. Seeds differ from run to run, so a seed to replay comes from the
+run's own record: the console's `regression done` line, the leaf directory
+name, or `regression.json`.
+
+Seeds and retries are separate knobs. `reseed` and `--reseed` add leaves,
+each with new stimulus. `--retry` adds attempts to a failing leaf
+and reruns it with the same seed, which separates a deterministic failure
+from an intermittent one but explores nothing new. A test with three seeds
+under `--retry 1` is three leaves, each retried at most once.
+
+Each leaf runs in `<test>/seed_<seed>/attempt_<n>/`. The `regression start`
+console line reports `seeds=<N>` when every selected test has the same count
+and `seeds=mixed` otherwise. The `summary` line counts leaves, while the
+`result` line's `tests=` counts tests. A nested run also writes a
+`<test>/result.json` rollup that lists the final attempt of each of the
+test's seeds and takes the worst of their statuses (`ERROR`, then `TIMEOUT`,
+`FAIL`, `UNKNOWN`, `PASS`), so one failing seed fails the test.
 
 [[runner-regression-record]]
 === The regression record
