@@ -3187,6 +3187,10 @@ module smc_uvm_top
     assign u_tb_if.rst_wdt_smc_clk_n         = rst_wdt_smc_clk_no;
     assign u_tb_if.cpu_cluster_isolate       = tb_cpu_cluster_isolate;
     assign u_tb_if.zeroer_busy               = tb_zeroer_busy;
+    assign u_tb_if.clk_smc                   = clk_smc;
+    assign u_tb_if.wdt_first_timeout         = tb_wdt_first_timeout;
+    assign u_tb_if.wdt_second_timeout        = tb_wdt_second_timeout;
+    assign u_tb_if.wdt_timeout_core          = u_dut.u_smc.cpu_wdt_timeout_cluster;
     assign u_tb_if.fuse_sense_done           = tb_fuse_sense_done;
     assign u_tb_if.fuse_reset_n              = tb_fuse_reset_n;
     assign u_tb_if.rst_warm_smc_clk_n        = tb_rst_warm_smc_clk_n;

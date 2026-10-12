@@ -117,6 +117,16 @@ tools = ["vcs"]
 tags = ["uvm", "csr", "wdt"]
 run_modes = ["smoke"]
 
+[[tests]]
+# Checks correct-core second-stage service, wrong-core service and warm-reset recovery.
+name = "smc_wdt_second_stage_reset_test"
+module = { uvm = "smc_wdt_second_stage_reset_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "wdt", "reset"]
+run_modes = ["smoke"]
+
 [[groups]]
 # Register-block CSR and pipelined lock scenarios.
 name = "csr_uvm_extended"
@@ -129,10 +139,11 @@ tests = [
 [[groups]]
 # Watchdog UVM-only scenarios.
 name = "wdt_uvm_extended"
-expected_count = 2
+expected_count = 3
 tests = [
     "smc_wdt_feed_zerocmp_test",
     "smc_wdt_core_awake_gate_test",
+    "smc_wdt_second_stage_reset_test",
 ]
 
 [[groups]]

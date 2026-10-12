@@ -17,6 +17,7 @@ interface smc_tb_if;
   realtime ref_clk_period_ns    = 10.0;
   realtime smc_clk_period_ns    = 1.25;
   realtime periph_clk_period_ns = 5.0;
+  logic clk_smc;
 
   // Driven by the TB (bring-up and reset scenarios owned by the test).
   // Initial values match the cocotb bring-up at time zero: power-good and
@@ -34,6 +35,9 @@ interface smc_tb_if;
 
   // CPU-cluster boundary state; cluster accesses wait for isolation to clear.
   logic cpu_cluster_isolate;
+  logic wdt_first_timeout;
+  logic wdt_second_timeout;
+  logic [smc_4core_cpu_pkg::NumCpuCores-1:0] wdt_timeout_core;
 
   // Count clock samples whose busy value is not known zero.
   logic zeroer_busy;
