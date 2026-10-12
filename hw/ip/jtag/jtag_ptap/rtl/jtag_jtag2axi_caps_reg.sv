@@ -9,7 +9,7 @@
 // w.data fields of axi_req_t.
 
 module jtag_jtag2axi_caps_reg
-  import prim_jtag_pkg::*;
+  import prim_jtag_pkg::jtag_scan_ctrl_t;
 #(
   parameter type axi_req_t = logic,     // AXI request struct type; its aw.addr and w.data widths
                                         // set the addr_size and data_size fields.

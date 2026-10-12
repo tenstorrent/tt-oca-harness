@@ -280,6 +280,8 @@ def make_trend_point(summary: dict[str, Any]) -> dict[str, Any]:
                 "comparison_key": (result.get("coverage") or {}).get("comparison_key"),
                 "git": (result.get("git") or {}).get("sha")
                 or (result.get("git") or {}).get("commit"),
+                "start_time": (result.get("timing") or {}).get("start_time")
+                or (result.get("run_metadata") or {}).get("generated_at"),
             }
             for result in summary.get("results") or []
         ],
@@ -426,7 +428,8 @@ def make_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     total = len(results)
     passing = sum(1 for result in results if result.get("status") == STATUS_PASS)
     failing = sum(1 for result in results if result.get("status") == STATUS_FAIL)
-    unknown = total - passing - failing
+    skipped = sum(1 for result in results if result.get("status") == STATUS_SKIP)
+    unknown = total - passing - failing - skipped
 
     test_total = 0
     test_passing = 0
@@ -483,8 +486,9 @@ def make_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
             "total": total,
             "passing": passing,
             "failing": failing,
+            "skipped": skipped,
             "unknown": unknown,
-            "pass_rate": pct(passing, total),
+            "pass_rate": pct(passing, total - skipped),
         },
         "tests": {
             "total": test_total,

@@ -12957,7 +12957,8 @@ realization.
 *Source Module*: `smc_regblock_sparse_strobe_test` (UVM-only independent scenario)
 
 *BFM / Model*: ocah_axi_vip (AXI, SEP_IN); `smc_regblock_wide_ref_model`
-predicts each read from accepted writes and generated RW masks.
+predicts each read from accepted writes and generated RW masks, and predicts
+an OKAY response for every catalogued read and write.
 
 *Objective*: Single-byte, non-contiguous and null write strobes update exactly
 the strobed RW bytes of selected 64-bit register-block words.
@@ -12974,6 +12975,12 @@ the strobed RW bytes of selected 64-bit register-block words.
   a predicted read. Passes 0 to 3 use all-ones, all-zeros, `0x55` and `0xAA`
   data; later passes use seeded data.
 * Every SEP_IN byte lane is strobed at least once across the selected words.
+
+*Expectation Sources*: The catalogued words use the generated field masks and
+defaults. The generated implementations of Zeroer, SMC base-config and
+alias-remap drive `cpuif_wr_err = '0`, so writes reaching these register blocks
+do not produce a register-block write error. This does not define the response
+of an access rejected earlier in the fabric.
 
 *Test Procedure*:
 
@@ -12997,8 +13004,8 @@ scoreboard results and access counts.
 |`CHK-REGBLOCK-WIDE-RESTORE-NONVAC` |At least one restore per pass changes an RW value
 |`CHK-REGBLOCK-WIDE-NO-ZEROER-START` |The Zeroer reads idle (`CTRL_STATUS.STATUS = 0`) after the last catalogued write
 |`CHK-REGBLOCK-WIDE-LANE-COVERAGE` |All eight SEP_IN byte lanes were strobed
-|`CHK-SB-REGBLOCK-WIDE` |Each catalogued read matches the passive model's predicted 64-bit value
-|`CHK-REGBLOCK-WIDE-SCOREBOARD` |Every predicted read was compared with no new mismatch
+|`CHK-SB-REGBLOCK-WIDE` |Each catalogued read and write returns OKAY; each read also matches the passive model's predicted 64-bit value
+|`CHK-REGBLOCK-WIDE-SCOREBOARD` |Every predicted read and write was compared with no new mismatch
 |`CHK-NONVAC` |The number of SEP_IN accesses equals the declared scenario
 |`CHK-SB-MIN-ACTIVITY`, `CHK-MEM-RESP`, `CHK-FUSE-SENSE-DONE` |Scenario volume, frontdoor responses and bring-up completed as declared
 |===
@@ -13011,14 +13018,293 @@ operational state. `RESET_VECTOR_0` through `RESET_VECTOR_3` are excluded
 because a later core reset that does not also assert warm reset can consume a
 test pattern as a boot address. `DFX_CTRL.DEBUG_CTRL` is excluded because its
 field behavior is outside this CSR byte-enable claim.
+The scenario does not induce a non-OKAY response from the catalogued blocks.
+The response negative proves the response comparison can fail, not how the model
+handles a real error response; the error-read path has no directed run here.
 
 *Pass Criteria*: all checks hold on every pass;
 `+SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE` must fail `regblock_wide`
 comparisons. `+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
 full-write expectation and must fail `CHK-REGBLOCK-WIDE-FULL-RW` while the
-scoreboard records no mismatch. Enrolled only in `csr_uvm_extended`, outside
-`all`, `hosted` and `ci`; run on demand. This card records what a run must
-show, not a pass.
+scoreboard records no mismatch.
+`+SMC_REGBLOCK_WIDE_RESPONSE_NEGATIVE`, used alone, changes only predicted
+write responses to SLVERR and must fail every catalogued write comparison and
+no read comparison: 50 write mismatches per pass (35 base writes and 15 fixed
+sparse writes).
+The sequence and end-of-run scoreboard summary also report those mismatches.
+Enrolled only in `csr_uvm_extended`, outside `all`, `hosted` and `ci`;
+run on demand. This card records what a run must show, not a pass.
+
+'''''
+
+[[sec-smc_wdt_feed_zerocmp_test]]
+====== `smc_wdt_feed_zerocmp_test`
+
+*Source Module*: `smc_wdt_feed_zerocmp_test` (UVM-only independent scenario)
+
+*BFM / Model*: `ocah_axi_vip` on SEP_IN. The passive
+`smc_wdt_csr_ref_model` predicts CTRL (IP masked), KEY and CMP from observed
+writes and predicts OKAY responses for in-scope reads and writes.
+The sequence checks running-count behavior; timing bounds use the count rate
+measured in the same pass.
+
+*Objective*: Check keyed FEED clearing, rejection of the selected one-bit-invalid
+FEED value, unlock consumption, scaled count, sampled compare rollover and software
+clearing of the pending interrupt.
+
+*Test Coverage*:
+
+* Cores 0 through 3 rotate by pass; exercising all four requires four passes.
+* Correct and one-bit-invalid FEED writes from a known COUNT, with KEY readbacks.
+* SCALED_COUNT bracketed by COUNT readings with scale four and no 16-bit wrap.
+* Eight COUNT samples spanning at least two compare periods with zerocmp enabled.
+* Pending interrupt below CMP, above CMP, after clearing while elapsed remains
+  asserted, and after feeding then clearing while elapsed is low.
+
+*Expectation Sources*: `wdt.rdl` defines effective byte enables and unlock
+consumption in its addrmap description. KEY defines the unlock magic and readback;
+FEED defines the clearing magic, unlock requirement and preservation of pending IP.
+CTRL.wdogscale and SCALED_COUNT define the count shift; CTRL.wdogzerocmp defines
+COUNT reset when compare is reached. CTRL.wdogip0 defines hardware setting while
+the compare condition holds and software clearing below compare. CMP defines the
+comparison value. The passive model predicts CTRL, KEY and CMP under these rules;
+register offsets, field masks and reset values come from generated collateral.
+`hw/sys/smc/doc/watchdog.adoc` describes the KEY/relock and byte-enable rules,
+interrupt setting at or above CMP, and preservation of pending IP across FEED.
+
+*Test Procedure*: Measure a positive running count rate. Exercise valid and invalid
+FEED writes and their unlock consumption, bracket SCALED_COUNT, then sample COUNT
+with zerocmp enabled. Disable zerocmp and bracket every interrupt observation with
+COUNT readings on the intended side of CMP and below the 16-bit wrap limit.
+Read CMP after each CMP write. Finally feed the watchdog, disable counting and
+restore CMP. Wait with a bound for all predicted comparisons, then check exact
+access and comparison counts with no new mismatch.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-WDT-FEED-RATE` |Calibration has increasing count and timestamps
+|`CHK-WDT-FEED-CLEAR` |The FEED magic clears the known count within the measured time bound
+|`CHK-WDT-FEED-REJECT` |The selected one-bit-invalid FEED does not decrease COUNT
+|`CHK-WDT-FEED-SCALED` |Scaled count lies between shifted surrounding COUNT readings
+|`CHK-WDT-FEED-ZEROCMP` |All samples are at or below CMP and an observed sample decreases
+|`CHK-WDT-FEED-IP` |Interrupt observations match the compare condition and software-clear phases
+|`CHK-WDT-FEED-WINDOW` |Scaling, sample span, deadline and eight COUNT brackets are valid
+|`CHK-SB-WDT-CSR` |In-scope watchdog accesses return OKAY; CTRL (IP masked), KEY and CMP reads match the passive model
+|`CHK-WDT-CSR-SCOREBOARD` |Each pass completes exactly the predicted comparisons with no new mismatch
+|`CHK-SB-MIN-ACTIVITY` |Completed passes reach the minimum feature comparison count
+|`CHK-NONVAC` |The sequence completes 83 fixed SEP_IN CSR accesses plus every compare-poll read; this checks stimulus accounting, not passive bus activity
+|`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP` |Bring-up and frontdoor responses complete
+|===
+
+*Known Limitations*: Only one invalid FEED and one non-zero scale are checked.
+Zerocmp is sampled, not checked on every clock; sampling phase can hide a rollover,
+which is reported as a failure with timestamps rather than silently adjusting delay.
+Locked FEED, watchdog reset outputs and CPU interrupt
+delivery are outside this scenario.
+Count-rate calibration does not independently grade clock frequency.
+The feature assumes sequential WDT accesses and no writer other than SEP_IN.
+Narrow or 64-bit reads are excluded. COUNT, COUNT_HI, SCALED_COUNT and FEED
+read data are not graded; CTRL IP remains a sequence check. Locked writes,
+incomplete strobes and mid-run warm reset are not exercised. Software uncore
+reset and reset with outstanding WDT traffic are unsupported. Idle warm-reset
+re-baselining is not validated.
+
+*Pass Criteria*: Every checker passes on each pass.
+`+SMC_WDT_FEED_SEQUENCE_NEGATIVE` changes expectations only and fails exactly one
+record each of `CHK-WDT-FEED-CLEAR`,
+`CHK-WDT-FEED-REJECT`, `CHK-WDT-FEED-SCALED`,
+`CHK-WDT-FEED-ZEROCMP` and `CHK-WDT-FEED-IP` per pass.
+The scoreboard records no mismatch in the sequence negative.
+Used alone, `+SMC_WDT_CSR_SCOREBOARD_NEGATIVE` corrupts predicted CTRL/KEY/CMP
+read bit 0 and predicts SLVERR for writes: 59 feature mismatches per pass
+(17 reads and 42 writes), plus one CHK-WDT-CSR-SCOREBOARD failure per pass.
+The 24 fixed response-only reads and compare-poll reads still pass.
+Positive runs complete 83 fixed comparisons plus poll reads per pass.
+No directed run produces a real WDT error response; the negative validates
+comparison sensitivity, not real error-response handling.
+RATE and WINDOW remain unmodified in the negative run: they establish valid
+measurement conditions, and a failed condition records FAIL then terminates
+the pass with a fatal error.
+The leaf runs on demand in `wdt_uvm_extended`, outside `all`, `hosted` and `ci`.
+
+'''''
+
+[[sec-smc_lock_pipelined_write_test]]
+====== `smc_lock_pipelined_write_test`
+
+*Source Module*: `smc_lock_pipelined_write_test` (SV-UVM-only scenario)
+
+*Objective*: Grade keyed and bitwise lock semantics while successive writes
+are outstanding on SEP_IN, with observed channel overlap as a prerequisite.
+
+*Test Coverage*: Six WDT pipeline shapes on every core check one-write
+unlock consumption, ineffective partial writes, writes before KEY, combined
+FEED/KEY locking and backpressured responses. The final pass checks an
+SS_CONFIG write queued after its bitwise lock. Each single-beat write uses
+ID 0. The decisive pair must have both AW and W accepted before the prior
+write's B handshake. Acceptance cycles, addresses, sizes, payloads, strobes
+and IDs are observed on SEP_IN rather than inferred from sequence timing.
+
+*Expectation Sources*: `wdt.rdl` byte-enable rules, KEY state, effective-write
+relocking and simultaneous FEED/KEY semantics; generated register geometry
+and reset values; `reset_unit.rdl` woset locks and the per-bit SS_CONFIG
+write restriction. Sequence expectations are write-derived.
+The passive lock-CSR model independently grades L1 readbacks.
+
+*BFM / Model*: Existing SEP_IN master pipeline API and an AW/W/B watcher.
+The required `lock_csr` feature independently grades six L1 readbacks.
+The `wdt_csr` feature is not enabled: its documented scope is sequential
+accesses, while WDT COUNT/KEY pipeline claims are sequence checks.
+
+*Test Procedure*: Require WDT CTRL/CMP at reset, seed distinct COUNT values
+whose low sixteen bits are below CMP, and observe the disabled counter.
+Launch P1, P2A, P2B, P3, P4 and P5, retaining AW/W/B cycles for each operation
+and checking final COUNT/KEY. P1/P5 require only the first effective COUNT
+write to land. P2A ends after the partial write and checks COUNT unchanged
+and KEY unlocked before a full write uses that unlock. P2B checks the full
+write queued after the partial write. P3 checks a write preceding KEY is
+refused. P4 requires FEED to clear COUNT to zero, the queued COUNT write to
+be rejected and KEY to remain locked. P5 holds BREADY for sixteen cycles
+after BVALID.
+Restore each WDT. Require SS_CONFIG_LOCK clear before the final L1 pipeline.
+L1 uses AxSIZE=2 at the LOCK and CONFIG CSR addresses, with WSTRB on their
+respective byte lanes; WDT pipelines retain AxSIZE=3. Check the final
+partially restored configuration and retained lock. Require six passive
+lock-CSR comparisons with no new mismatch within a bounded wait.
+
+*Known Limitations*: SEP_IN overlap does not prove concurrency inside WDT.
+Only ID 0 and the declared byte-enable shapes are covered. In P4 the combined
+FEED/KEY write follows a KEY unlock and is checked while counting is disabled;
+the same write issued while locked is not exercised. WDT counting,
+interrupts and CPU execution/reset are not exercised. L1 uses narrow CSR
+writes, not a wide write spanning two CSRs. Locks persist after the last
+pass. Background CPU SYS_OUT traffic is outside the claim. No strobe/ID
+cross-coverage closure is claimed.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PLOCK-SEED` |Control prerequisites and seeded baselines hold
+|`CHK-PLOCK-WDT-ONE` |One unlock admits only the first effective write in P1/P5
+|`CHK-PLOCK-WDT-INEFFECTIVE` |P2A preserves COUNT/unlock; P2A/P2B admit the subsequent full write
+|`CHK-PLOCK-WDT-PREKEY` |P3 rejects COUNT written before KEY
+|`CHK-PLOCK-WDT-FEEDKEY` |FEED clears COUNT and the queued COUNT write is rejected
+|`CHK-PLOCK-WDT-STATE` |KEY reflects the expected lock state after each leg and cleanup
+|`CHK-PLOCK-SSCFG` |L1 lock filters the queued write and reads back its mask
+|`CHK-PLOCK-SSCFG-FINAL` |Partially restored SS_CONFIG and retained woset lock are correct
+|`CHK-PLOCK-WDT-RESTORE` |COUNT, KEY and CTRL return to the prerequisite state
+|`CHK-PLOCK-RESP` |Observed AW/W match issued ops and known OKAY responses echo ID 0
+|`CHK-PLOCK-SCOREBOARD` |Six L1 reads are compared by the passive lock model without new mismatch
+|`CHK-SB-LOCK-CSR` |The required lock feature has comparisons, no mismatch and no unpaired item
+|`CHK-NONVAC` |All 24 WDT legs per pass and final L1 complete and overlap at their decisive pairs
+|`CHK-CSR-RESP`, `CHK-FUSE-SENSE-DONE` |Mapped accesses and fuse bring-up complete
+|===
+
+*Pass Criteria*: All functional, completion, overlap and restoration checks
+pass without timeout or protocol assertion. `+SMC_LOCK_PIPELINED_SEQUENCE_NEGATIVE`
+changes only the P1, P2A, P3 and P4 COUNT expectations on core 0, plus L1's config
+expectation in the final pass. Exactly four checks fail per pass plus one
+in the final pass: 65 failures for sixteen passes, with no fatal or unrelated
+error and no lock-scoreboard mismatch. Used alone,
+`+SMC_LOCK_SCOREBOARD_NEGATIVE` must produce six L1 mismatches,
+one `CHK-PLOCK-SCOREBOARD` failure and one `CHK-SB-LOCK-CSR` failure:
+eight failures in total. These are expected signatures, not run results.
+The CTRL/CMP reset-state and SS_CONFIG_LOCK-clear prerequisites under
+`CHK-PLOCK-SEED` stop the run on failure and are outside both negative
+controls. The sequence negative does not alter `CHK-PLOCK-WDT-STATE`,
+`CHK-PLOCK-WDT-RESTORE`, `CHK-PLOCK-SSCFG-FINAL`, `CHK-PLOCK-RESP` or
+`CHK-NONVAC` expectations.
+Enrolled only in
+`csr_uvm_extended`, outside `all`, `hosted` and `ci`.
+
+'''''
+
+[[sec-smc_wdt_core_awake_gate_test]]
+====== `smc_wdt_core_awake_gate_test`
+
+*Source Module*: `smc_wdt_core_awake_gate_test` (SV-UVM)
+
+*BFM / Model*: SEP_IN AXI VIP and the passive `wdt_csr` feature.
+The model grades in-scope responses and configuration readbacks; bounded
+sequence checks grade count changes across software core reset.
+
+*Objective*: Check count suppression with wdogcoreawake and the priority
+of wdogenalways across software core reset, with configuration readbacks.
+
+*Test Coverage*: All four cores rotate, one per pass. Measure the released
+count rate, hold the selected core in reset with coreawake alone, and repeat
+with always-count enabled. Scale and CMP keep the compare interrupt inactive.
+
+*Expectation Sources*: `hw/sys/smc/regs/blocks/wdt/wdt.rdl` defines coreawake
+as counting only outside core reset and always-count as having priority.
+`hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl` defines software reset control
+and reset-applied status. Register masks come from generated collateral.
+`hw/sys/smc/doc/cpu.adoc`, Cluster Boundary Isolation, states that the
+boundary isolates while any core or the uncore is in reset and stalls
+L2 frontend traffic. The live isolation tap controls safe CSR access.
+
+*Test Procedure*: Require the selected watchdog's disabled reset configuration
+and save COUNT, CMP and reset control. Program CMP, coreawake and COUNT,
+then calibrate a positive count rate. Apply reset and require reset-applied
+and cluster isolation before the measurement interval. Release reset and wait
+with a bound for isolation to clear before reading COUNT. Repeat with
+always-count enabled. Require the two count bounds to differ by at least two
+integer count units. Log COUNT before and after reset, restore the disabled
+configuration and COUNT with readback, restore CMP and reset control,
+then wait with a bound for passive comparisons.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Claim
+|`CHK-WDT-AWAKE-CONFIG` |CTRL readbacks equal the programmed configuration
+|`CHK-WDT-AWAKE-CORE-RESET` |Reset status and cluster isolation reach their requested levels
+|`CHK-WDT-AWAKE-RATE` |Released-core count and timestamps produce a positive rate
+|`CHK-WDT-AWAKE-HELD` |Count growth excludes the held interval within the stated margin
+|`CHK-WDT-AWAKE-ALWAYS` |Always-count includes the held interval within the stated margin
+|`CHK-WDT-AWAKE-WINDOW` |HELD and ALWAYS bounds separate by at least two integer count units
+|`CHK-WDT-AWAKE-SCOREBOARD` |No new passive watchdog mismatch occurs
+|`CHK-SB-WDT-CSR` |In-scope responses and modeled readbacks match predictions
+|`CHK-NONVAC` |33 CSR accesses and 33 passive watchdog comparisons complete per pass
+|`CHK-SB-MIN-ACTIVITY` |Completed passes reach the passive comparison floor
+|`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP`, `CHK-MEM-RESP` |Bring-up and accesses complete
+|===
+
+*Known Limitations*: COUNT is sampled before and after reset, not during it.
+The margin is one quarter of the held interval; exact stop/resume cycles and
+absolute clock frequency are not graded. Four passes are required for all cores.
+CPU execution, watchdog reset outputs and interrupt delivery are outside scope.
+The scenario changes CPU_CTRL reset state and requires exclusive control.
+The count measurement interval is stimulus, not a settling delay.
+The shared wdt_csr assumptions and exclusions apply.
+The sources do not explicitly define COUNT retention across software core reset.
+Before/after COUNT is logged, not separately graded as a retention contract.
+The retention subclaim in both the coreawake-only and always-count legs is
+blocked: does software core reset preserve the watchdog COUNT value?
+`OBS-BLOCKED CHK-WDT-AWAKE-RETAINED` identifies this contract gap and
+`OBS-WDT-AWAKE-COUNT` records the per-pass scenario seed and samples.
+Neither observation counts as a retention checker PASS or coverage closure.
+A count decrease requires contract clarification before attributing a timing
+failure to count-enable priority. The measured bounds grade relative counting,
+not an independently specified absolute clock rate.
+
+*Pass Criteria*: All checks pass. Used alone,
+`+SMC_WDT_COREAWAKE_SEQUENCE_NEGATIVE` reverses one expectation each for
+CONFIG, CORE-RESET, HELD and ALWAYS, producing four failures per pass.
+RATE remains a measurement prerequisite and terminates on invalid calibration.
+WINDOW is also a measurement prerequisite and is not reversed by the negative.
+`+SMC_WDT_CSR_SCOREBOARD_NEGATIVE` corrupts production model predictions;
+the expected signature is 25 feature mismatches per pass: seven CTRL/CMP
+read mismatches and 18 write-response mismatches. Eight COUNT read comparisons
+still pass. CHK-WDT-AWAKE-SCOREBOARD fails once per pass; comparison-count
+NONVAC records still pass.
+The leaf runs on demand in `wdt_uvm_extended`, not in `all`, `hosted` or `ci`.
 
 '''''
 

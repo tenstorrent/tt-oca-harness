@@ -21,7 +21,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-dma[programming guidance]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-dma[programming guidance]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-dma[programming guidance]
 endif::backend-pdf[]
 for this block.
 
@@ -61,7 +61,9 @@ Address-space ID `0x7` selects the core's internal host port, the only route
 in this wrapper. The upstream SoC control and system ports are tied off; their ASIDs do not provide
 additional SEP routes. Reachability is governed by the SEP fabric and filters.
 
-The master path leaves AxUSER at zero. The register and host bridges latch
+The master path leaves AxUSER at zero and drives AxPROT `0b001` (privileged,
+secure, data), the value the SEP CPU's LSU drives; TL-UL carries no protection
+attributes, so the wrapper sets it. The register and host bridges latch
 faults on `dma_reg_bus_err_o` and `dma_host_intg_err_o`, cleared through
 `DMA_BUS_ERR_CLEAR`; local alert receivers aggregate the core alerts into
 `dma_alert_o`. Selecting the tied-off CTN or SYS address space does not complete.
@@ -83,7 +85,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-dma[SEP DMA section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-dma[SEP DMA section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-dma[SEP DMA section]
 endif::backend-pdf[]
 of the Programmer's Guide gives the copy, hashing, handshake and abort
 sequences.

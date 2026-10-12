@@ -98,7 +98,8 @@ and are re-verified against them at each revision:
   source: the ROM compiles against it, the SEP virtual platform's status decoder is
   configured to read the same header (`STATUS_VALUES_PATH`), and <<sec:status_registry>> is
   generated from it by `hw/sys/sep/doc/gen_status_table.py`.
-* SEP↔SMC interface contract: `hw/sys/sep/bootrom/prod/include/sep_smc_interface.h` and the
+* SEP↔SMC interface contract: `hw/sys/sep/bootrom/prod/include/sep_smc_map.h`,
+  `hw/sys/sep/bootrom/prod/include/sep_smc_interface.h` and the
   SMC Boot ROM chapter (`hw/sys/smc/doc/rom.adoc`).
 
 [[sec:terminology]]
@@ -308,8 +309,8 @@ base (`0x40000000 + 0x60000` on the SEP side).
 
 === SMC Window Layout
 
-Offsets below are relative to `SEP_SMC_GLOBAL_BASE` (`0x40000000`) and form part of the
-SEP↔SMC interface contract (`sep_smc_interface.h`).
+Offsets below are relative to `SEP_SMC_GLOBAL_BASE` (`0x40000000`). `sep_smc_map.h` computes
+them from the generated SMC map; the values shown are those of the open map.
 
 [[tbl:smc_window]]
 .SMC resources accessed by the SEP ROM
@@ -738,9 +739,12 @@ outbound path to the SMC responds before the boot flow depends on it. Mismatch i
 and ahead of every fuse consumer in the flow.
 |[S09] clocks |`pll_init()`: if the `bl0_pll_clk` strap is clear, stay on the 100 MHz
 reference clock. If set: read the target sysclk frequency from the `SYSCLK_FREQ_MHZ` fuse
-field (blank fuses fall back to refclk with a warning), poll PLL lock detect, then switch the
-clock mux to the PLL. The resulting sysclk frequency parameterizes the SPI clock divider
-(<<sec:spi>>). The PLL and the mux are SMC-owned; SEP has none of its own.
+field (blank fuses fall back to refclk with a warning), then call
+`sep_pll_lock_and_select()` to wait for lock, switch the clock mux to the PLL and return the
+resulting sysclk frequency, which parameterizes the SPI clock divider (<<sec:spi>>). The PLL and
+the mux are SMC-owned adopter IP, so the open ROM links a weak `sep_pll_lock_and_select()` that
+touches no hardware, reports `REF_CLK_SELECTED` and returns the 100 MHz reference clock; a build
+with a PLL driver overrides it through `OCAH_FW_OVERLAY_SOURCES_sep`.
 |[S10] `bl0_state` |Hand-off block initialized at the top of DCCM (<<sec:handoff>>).
 |[S11] lifecycle |LC_STATE read + policy (<<sec:fuses>>).
 |[S12] chip ID |`CHIP_CONFIG_CHIP_ID` read and reported.
@@ -3139,8 +3143,9 @@ denotes a following 16-bit payload word.
 |[S07] status init |`STATUS_REPORTING_ENABLED` / `_DISABLED` (DEBUG), `STATUS_REPORTING_READY`
 (DEBUG) |`STATUS_REPORTING_INVALID`
 |[S08] fuse sense |`FUSE_SENSE_WAIT` (DEBUG) |— (unbounded poll; hang is the failure mode)
-|[S09] clocks |`PLL_CLK_INIT`; then `WAIT_FOR_PLL_LOCK` before the lock poll, or
-`PLL_FUSES_BLANK` and `REF_CLK_SELECTED`; then `INFO_EXT` (MHz) |`PLL_FUSES_BLANK` (WARN); — for
+|[S09] clocks |`PLL_CLK_INIT`; then `WAIT_FOR_PLL_LOCK` before the lock poll (followed by
+`REF_CLK_SELECTED` when no PLL driver is linked), or `PLL_FUSES_BLANK` and `REF_CLK_SELECTED`;
+then `INFO_EXT` (MHz) |`PLL_FUSES_BLANK` (WARN); — for
 the lock poll (unbounded; hang is the failure mode)
 |[S11] lifecycle |`FUSE_LC_STATE` → `INFO_EXT` (state); `LIFECYCLE_VALID`
 |`LIFECYCLE_INVALID` (ERROR) + `ROM_ERR_LIFECYCLE_INVALID`

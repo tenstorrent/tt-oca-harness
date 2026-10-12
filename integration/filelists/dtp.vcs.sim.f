@@ -1,6 +1,8 @@
 +incdir+hw/common/defs
 +incdir+hw/common/assert
++incdir+hw/common/registers
 +incdir+hw/common/assert
++incdir+hw/common/registers
 +incdir+hw/common/defs
 +incdir+hw/ip/efuse/rtl/svh
 +incdir+vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep

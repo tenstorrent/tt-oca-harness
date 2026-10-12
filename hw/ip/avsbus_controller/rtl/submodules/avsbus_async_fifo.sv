@@ -7,6 +7,8 @@
 // power of two. Each side takes its own synchronized reset.
 // vacant_slots_o and full_slots_o report occupancy in the write domain for flow control.
 
+`include "ocah_registers.svh"
+
 module avsbus_async_fifo #(
   parameter int unsigned DEPTH = 8,                         // FIFO depth in entries; must be a
                                                             // power of two.
@@ -57,21 +59,11 @@ module avsbus_async_fifo #(
   assign rd_ptr_bin_wr_clk = gray_to_bin(rd_ptr_gray_wr_clk);
 
 
-  always_ff @(posedge wr_clk_i) begin
-    if (~rst_wr_clk_syncd_ni) begin
-      wr_ptr_gray <= '0;
-    end else begin
-      wr_ptr_gray <= wr_en_i & ~wr_full_o ? bin_to_gray(wr_ptr_bin + 1) : wr_ptr_gray;
-    end
-  end
+  `OCAH_FFSRN(wr_ptr_gray, wr_en_i & ~wr_full_o ? bin_to_gray(wr_ptr_bin + 1) : wr_ptr_gray, '0,
+              wr_clk_i, rst_wr_clk_syncd_ni)
 
-  always_ff @(posedge rd_clk_i) begin
-    if (~rst_rd_clk_syncd_ni) begin
-      rd_ptr_gray <= '0;
-    end else begin
-      rd_ptr_gray <= rd_en_i & ~rd_empty_o ? bin_to_gray(rd_ptr_bin + 1) : rd_ptr_gray;
-    end
-  end
+  `OCAH_FFSRN(rd_ptr_gray, rd_en_i & ~rd_empty_o ? bin_to_gray(rd_ptr_bin + 1) : rd_ptr_gray, '0,
+              rd_clk_i, rst_rd_clk_syncd_ni)
 
   prim_sync3 u_wr_ptr_gray_sync_to_rd_clk[PointerWidth-1:0] (
     .clk_i(rd_clk_i),

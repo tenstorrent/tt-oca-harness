@@ -11,7 +11,7 @@
 // Authors:
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// AXI4 Lite LFSR Subordinate device. Responds with a pseudo random answer. Serial interface to
 /// set the internal state.
@@ -220,6 +220,6 @@ module axi_opt_lfsr #(
     assign data_o     = reg_q;
 
     // state
-    `FFL(reg_q, reg_d, en_i | ser_en_i, '1, clk_i, rst_ni)
+    `OCAH_FFL(reg_q, reg_d, en_i | ser_en_i, '1, clk_i, rst_ni)
 
 endmodule : axi_opt_lfsr

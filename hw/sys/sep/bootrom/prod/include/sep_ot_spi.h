@@ -93,13 +93,8 @@ void ot_spi_set_sysclk(uint16_t freq_mhz);
 
 /* Select the active parameter set and bring the OpenTitan controller up:
  * CTRL(SPIEN, OUTPUT_EN, watermark), CFG(CLKDIV, mode, CSN timing), CSID=0,
- * clear ERROR_STATUS. Calls ot_spi_select_pad_mux() first. Returns OT_SPI_OK
- * or an error. */
+ * clear ERROR_STATUS. Returns OT_SPI_OK or an error. */
 uint32_t ot_spi_init(void);
-
-/* Weak empty stub: the open DUT has no pad mux. A wrapper build whose pads are
- * shared overrides it to select the OCAH SPI host. */
-void ot_spi_select_pad_mux(void);
 
 /* Re-run bring-up (between transport-fault retries / slot rotation). */
 uint32_t ot_spi_reinit(void);

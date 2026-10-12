@@ -35,9 +35,8 @@
 // - PTAP state/instruction
 
 module jtag_intf_unit
-  import prim_jtag_pkg::*;
-  import jtag_tap_pkg::*;
-  import jtag_inst_reg_pkg::*;
+  import jtag_tap_pkg::tap_state_e;
+  import jtag_inst_reg_pkg::jtag_instruction_decoded_e;
 #(
   /* verilator lint_off UNUSEDPARAM */
   parameter bit  BSR_ENABLE          = 1,  // Enables all mandatory IEEE 1149.1 boundary-scan

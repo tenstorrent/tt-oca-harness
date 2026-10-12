@@ -26,7 +26,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-telemetry-receiver[Telemetry Receiver section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-telemetry-receiver[Telemetry Receiver section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-telemetry-receiver[Telemetry Receiver section]
 endif::backend-pdf[]
 of the Programmer's Guide gives the buffer, flush and interrupt procedures. The receiver does not use `atid_i` to maintain separate
 source contexts; producers sharing a receiver must serialize complete messages.

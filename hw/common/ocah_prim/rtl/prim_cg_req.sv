@@ -9,6 +9,8 @@
 // follows qactive_i again; an accept clears the hold.
 // HysteresisW sizes the deny-hold counter.
 
+`include "ocah_registers.svh"
+
 module prim_cg_req #(
   parameter int unsigned DENY_DELAY = 1,  // Cycles to hold after a deny before reasserting.
 
@@ -25,6 +27,7 @@ module prim_cg_req #(
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   ////////////////////////////////////////////////////////////////////////////////
   // Local Parameters and Types
@@ -43,13 +46,7 @@ module prim_cg_req #(
   // Sequential Logic
   ////////////////////////////////////////////////////////////////////////////////
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      count_q <= count_t'(0);
-    end else begin
-      count_q <= count_d;
-    end
-  end
+  `OCAH_FF(count_q, count_d, count_t'(0), clk_i, rst_ni)
 
   ////////////////////////////////////////////////////////////////////////////////
   // Combinational Logic
@@ -82,7 +79,7 @@ module prim_cg_req #(
   ////////////////////////////////////////////////////////////////////////////////
 
   // Validate parameters
-  `OCAH_OT_ASSERT_INIT(ValidDenyDelay_A, DENY_DELAY >= 1)
+  `OCAH_ASSERT_STATIC(ValidDenyDelay_A, DENY_DELAY >= 1)
 
   // Validate input signals
   `OCAH_OT_ASSERT_KNOWN(QActiveKnown_A, qactive_i, clk_i, !rst_ni)

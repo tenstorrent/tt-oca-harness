@@ -439,7 +439,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-lifecycle-demotion[demotion sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-lifecycle-demotion[demotion sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-lifecycle-demotion[demotion sequence]
 endif::backend-pdf[]
 is in the Programmer's Guide.
 
@@ -825,7 +825,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sec:secure_boot[Secure Boot Decision]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sec:secure_boot[Secure Boot Decision]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sec:secure_boot[Secure Boot Decision]
 endif::backend-pdf[]
 section of the SEP Boot ROM appendix in the Programmer's Guide specifies when
 the ROM requires a verified manifest, including the rule that a debug-locked
@@ -834,7 +834,7 @@ ifdef::backend-html5[]
 xref:ocah-appnotes::sip-secure-boot.adoc#sip-secure-boot-decision[SiP Secure Boot application note]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-appnotes/latest/sip-secure-boot.html#sip-secure-boot-decision[SiP Secure Boot application note]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-appnotes/latest/sip-secure-boot.html#sip-secure-boot-decision[SiP Secure Boot application note]
 endif::backend-pdf[]
 summarizes that decision and describes the multi-owner model, which the
 current ROM does not implement, under
@@ -842,7 +842,7 @@ ifdef::backend-html5[]
 xref:ocah-appnotes::sip-secure-boot.adoc#sip-secure-boot-multi-owner-model[deferred multi-owner signing model]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-appnotes/latest/sip-secure-boot.html#sip-secure-boot-multi-owner-model[deferred multi-owner signing model]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-appnotes/latest/sip-secure-boot.html#sip-secure-boot-multi-owner-model[deferred multi-owner signing model]
 endif::backend-pdf[]
 there.
 

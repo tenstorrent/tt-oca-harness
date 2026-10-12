@@ -11,6 +11,7 @@ shadow array against that image after sense-done.
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import re
@@ -544,6 +545,14 @@ class sep_base_test(uvm_test):
             await ClockCycles(cocotb.top.clk_i, 2)
             self._jtag_sw_rst_hold(park, False)
 
+    def suppress_host_axi_transaction_info(self) -> None:
+        """Suppress per-access host AXI INFO while retaining errors and summaries."""
+        axi_driver = self.env.axi_agent.driver
+        axi_driver.logger.setLevel(logging.WARNING)
+        axi_backend = axi_driver.axi.driver.backend
+        axi_backend.read_if.log.setLevel(logging.WARNING)
+        axi_backend.write_if.log.setLevel(logging.WARNING)
+
     async def bring_up_and_wait_fuse_sense(self, *, max_cycles: int = 20_000) -> None:
         """Alias for ``bring_up_no_cpu``; both gate on real fuse-sense-done."""
         await self.bring_up_no_cpu(max_cycles=max_cycles)
@@ -567,6 +576,57 @@ class sep_base_test(uvm_test):
         dut.rst_ni.value = 1
         await self._wait_fuse_sense(max_cycles)
         self.cfg.reset_done.set()
+
+    async def pulse_rst_ni(
+        self,
+        *,
+        hold_cycles: int = 20,
+        release_bound: int = 20_000,
+        max_sense_cycles: int = 20_000,
+    ) -> dict[str, int]:
+        """Cold reset with clocks running: pulse ``rst_ni``, then wait for the SEP reset release.
+
+        Drives ``rst_ni`` low at the next ``clk_i`` rising edge (so a caller in
+        the read-only phase may call it), holds it low for ``hold_cycles``
+        clocks and releases it. Then
+        waits at most ``release_bound`` clocks for ``dbg_sep_reset_n_o`` to read
+        1 (the SEP Reset Controller release of ``sep_reset_n``), and then for
+        fuse-sense-done with the post-sense shadow compare (the ``resense``
+        rules apply: the OTP bank keeps its content across the reset). An
+        expired bound raises. Returns ``sep_reset_n_at_hold_end`` (the probe
+        level on the last clock of the hold) and ``release_clks`` (clocks from
+        the ``rst_ni`` release to the first ``dbg_sep_reset_n_o`` = 1 sample),
+        for the leaf to log or grade.
+        """
+        dut = cocotb.top
+        await RisingEdge(dut.clk_i)
+        dut.rst_ni.value = 0
+        await ClockCycles(dut.clk_i, hold_cycles)
+        await ReadOnly()
+        held = self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True)
+        await RisingEdge(dut.clk_i)
+        dut.rst_ni.value = 1
+        release = None
+        for cycle in range(1, release_bound + 1):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True):
+                release = cycle
+                break
+        if release is None:
+            raise AssertionError(
+                f"dbg_sep_reset_n_o did not read 1 within {release_bound} clocks after the "
+                "rst_ni release"
+            )
+        await self._wait_fuse_sense(max_sense_cycles)
+        self.cfg.reset_done.set()
+        self.logger.info(
+            "rst_ni pulse: hold=%d sep_reset_n_at_hold_end=%d release_clks=%d",
+            hold_cycles,
+            held,
+            release,
+        )
+        return {"sep_reset_n_at_hold_end": held, "release_clks": release}
 
     async def bring_up_cpu_boot(
         self,
@@ -1573,14 +1633,29 @@ class sep_base_test(uvm_test):
                         pass
                 else:
                     exe_digest = f"not-hashed(>{_SIM_BINARY_HASH_MAX_BYTES}B)"
+            # The build directory's own record (tools/dv/runlib/stages.py,
+            # build_record.json): the fingerprint of the inputs that built this
+            # binary and when it was written. git-head is the run's commit, not
+            # the commit that compiled the binary; a written-at time before the
+            # run started means the binary was reused.
+            build_fp, build_at = "none", "none"
+            try:
+                rec = json.loads((Path(exe).parent / "build_record.json").read_text())
+                build_fp = str(rec.get("fingerprint", "none"))
+                build_at = str(rec.get("written_at", "none"))
+            except (OSError, ValueError):
+                pass
             self.logger.info(
-                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d git-head=%s",
+                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d git-head=%s "
+                "build-fingerprint=%s build-written-at=%s",
                 exe,
                 exe_digest,
                 digest_src,
                 st.st_size,
                 int(st.st_mtime),
                 rev or "unknown",
+                build_fp,
+                build_at,
             )
         except (OSError, ValueError) as exc:
             # Say so rather than omit the line: a missing build identity is a

@@ -11,7 +11,8 @@
 // write to it clears the record.
 
 module system_timer_octs
-  import system_timer_octs_pkg::*;
+  import system_timer_octs_pkg::system_timer_octs_axil_req_t;
+  import system_timer_octs_pkg::system_timer_octs_axil_resp_t;
 (
   input  logic                         clk_i,               // System clock.
                                                             // Rising edge; all logic is synchronous

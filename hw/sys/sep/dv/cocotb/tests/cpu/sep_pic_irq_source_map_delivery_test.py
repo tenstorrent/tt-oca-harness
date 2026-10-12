@@ -106,6 +106,8 @@ class sep_pic_irq_source_map_delivery_test(sep_base_test):
     """Every armed source is delivered on its mapped PIC id and its IP status clears by RW1C."""
 
     build_env = False
+    # The leaf's own graded records; the base-class records do not count.
+    required_evidence = ("CHK-RANDCFG", "CHK-FW-REPORTED")
 
     def build_phase(self) -> None:
         super().build_phase()

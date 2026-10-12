@@ -17,11 +17,20 @@
 // substitute with their own vendor IP/macros.
 //-----------------------------------------------------------------------------
 
+`include "ocah_assert.svh"
+`include "ocah_registers.svh"
+
 module sep_ip_integration
-  import sep_pkg::*;
-  import sep_crypto_pkg::*;
-  import sep_efuse_pkg::*;
-  import km_intf_pkg::*;
+  import sep_pkg::sep_sram_req_t;
+  import sep_pkg::sep_sram_rsp_t;
+  import sep_pkg::sep_cpu_tcm_req_t;
+  import sep_pkg::sep_cpu_tcm_rsp_t;
+  import sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t;
+  import sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t;
+  import sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t;
+  import sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t;
+  import sep_crypto_pkg::ext_trng_axis_req_t;
+  import sep_crypto_pkg::ext_trng_axis_rsp_t;
 #(
   parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SepCryptoEdnEndpointCount,
   parameter bit          ABR_MASKING_EN    = 1'b1
@@ -260,10 +269,7 @@ module sep_ip_integration
   assign km_rom_mem_rsp_o.rdata  = km_rom_rdata[31:0];
   assign km_rom_mem_rsp_o.parity = km_rom_rdata[35:32];
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) km_rom_rvalid <= 1'b0;
-    else km_rom_rvalid <= km_rom_mem_req_i.req;
-  end
+  `OCAH_FF(km_rom_rvalid, km_rom_mem_req_i.req, 1'b0, clk_i, rst_ni)
 
   prim_rom #(
     .Width       (KmRomWidth),
@@ -421,27 +427,25 @@ module sep_ip_integration
   localparam int unsigned AbrSigzAddrW = $clog2(AbrSigzDepth);
   localparam int unsigned AbrPkAddrW = $clog2(AbrPkDepth);
 
-  // Memory-side counterpart of the gen_abr_mem_* checks in sep_crypto_abr_wrapper:
+  // Memory-side counterpart of the AbrMem*_A checks in sep_crypto_abr_wrapper:
   // those pin the struct against the vendor parameters, this one pins it against the
   // depths the SRAMs are actually built with. Every channel must match exactly --
   // including INST2, which additionally sets the shared coefficient field width,
   // so a mismatch there means the struct can no longer carry the address at all.
-  if (AbrW1AddrW    != sep_crypto_pkg::SEP_CRYPTO_ABR_W1_ADDR_W    ||
-        AbrInst0AddrW != sep_crypto_pkg::SEP_CRYPTO_ABR_INST0_ADDR_W ||
-        AbrInst1AddrW != sep_crypto_pkg::SEP_CRYPTO_ABR_INST1_ADDR_W ||
-        AbrInst2AddrW != sep_crypto_pkg::SEP_CRYPTO_ABR_INST2_ADDR_W ||
-        AbrSkAddrW    != sep_crypto_pkg::SEP_CRYPTO_ABR_SK_ADDR_W    ||
-        AbrSigzAddrW  != sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_ADDR_W  ||
-        AbrPkAddrW    != sep_crypto_pkg::SEP_CRYPTO_ABR_PK_ADDR_W)
-    begin : gen_abr_mem_depth_check
-    $error(
-        {
-          "ABR SRAM depths no longer match the SEP_CRYPTO_ABR_*_ADDR_W mirrors; an ",
-          "address bit would be dropped. Re-derive the mirrors in sep_crypto_pkg ",
-          "from abr_params_pkg / abr_ctrl_pkg."
-        }
-    );
-  end
+  // verilog_format: off
+  `OCAH_ASSERT_STATIC(
+      AbrMemDepth_A,
+      AbrW1AddrW    == sep_crypto_pkg::SEP_CRYPTO_ABR_W1_ADDR_W    &&
+      AbrInst0AddrW == sep_crypto_pkg::SEP_CRYPTO_ABR_INST0_ADDR_W &&
+      AbrInst1AddrW == sep_crypto_pkg::SEP_CRYPTO_ABR_INST1_ADDR_W &&
+      AbrInst2AddrW == sep_crypto_pkg::SEP_CRYPTO_ABR_INST2_ADDR_W &&
+      AbrSkAddrW    == sep_crypto_pkg::SEP_CRYPTO_ABR_SK_ADDR_W    &&
+      AbrSigzAddrW  == sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_ADDR_W  &&
+      AbrPkAddrW    == sep_crypto_pkg::SEP_CRYPTO_ABR_PK_ADDR_W,
+      {"ABR SRAM depths no longer match the SEP_CRYPTO_ABR_*_ADDR_W mirrors; an ",
+       "address bit would be dropped. Re-derive the mirrors in sep_crypto_pkg ",
+       "from abr_params_pkg / abr_ctrl_pkg."})
+  // verilog_format: on
 
   // w1_mem: 4-bit decomposed-w1 bits, own narrow addr/data fields.
   prim_ram_1r1w #(
@@ -683,12 +687,13 @@ module sep_ip_integration
   // wstrobe is ABR's one-bit-per-byte enable; prim_ram_1r1w has no byte-write
   // port, so each strobe is expanded across its byte. Adopters with byte-write
   // macros connect wstrobe directly.
-  if (sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W !=
-            8 * sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W ||
-        sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W !=
-            8 * sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W) begin : gen_abr_wstrobe_width_check
-    $error("ABR sig_z / pk data widths must be 8 bits per wstrobe bit");
-  end
+  // verilog_format: off
+  `OCAH_ASSERT_STATIC(
+      AbrWstrobeWidth_A,
+      sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W == 8 * sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W &&
+      sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W   == 8 * sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W,
+      "ABR sig_z / pk data widths must be 8 bits per wstrobe bit")
+  // verilog_format: on
 
   logic [sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W-1:0] abr_sig_z_wmask;
   for (

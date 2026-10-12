@@ -184,11 +184,7 @@ static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
     return OT_SPI_OK;
 }
 
-__attribute__((weak)) void ot_spi_select_pad_mux(void) {
-}
-
 uint32_t ot_spi_init(void) {
-    ot_spi_select_pad_mux();
     /* Select the boot profile: build-time default BOOT_OT_SPI_PROFILE (0 = safe
      * default). There is no runtime device probe or OTP-driven selection. */
     ot_spi_select_profile(BOOT_OT_SPI_PROFILE);

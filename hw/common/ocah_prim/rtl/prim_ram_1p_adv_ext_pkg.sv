@@ -9,7 +9,6 @@
 
 package prim_ram_1p_adv_ext_pkg;
 
-  import prim_ram_1p_pkg::*;
 
   // Default external RAM request; an instantiation can override it with its own type.
   typedef struct packed {

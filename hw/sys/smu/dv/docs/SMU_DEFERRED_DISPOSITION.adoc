@@ -461,7 +461,7 @@ A stand-in is anything that answers in place of the mechanism a claim is
 about: a testbench force, a simulation-only path selected by a plusarg, a
 configuration waiver, a loopback where a chain would be, a compiled-in
 substitute for a product cell, or a model inside the product composition.
-Ten sit on proof paths of enrolled SMU tests. Each has one entry of three
+Eleven sit on proof paths of enrolled SMU tests. Each has one entry of three
 fields, filled from the tree: the claim that is accepted with the stand-in in
 place, why the real path cannot be used, and the exact scope. Who approved an
 entry, against which revision, and when it is next reviewed are recorded in
@@ -487,6 +487,7 @@ run.
 |`+define+ASSERTS_OFF` / `COMMON_CELLS_ASSERTS_OFF` |every Verilator target of `smu_sim_cfg.toml` and `hw/common/dv/configs/profiles/native.toml` |every leaf on Verilator
 |Scan-chain loopbacks |`tb/tb_wrapper_top.sv` (five host scan chains and the I/O and extra STAP TDO-to-TDI returns) |`smu_dtp_bsr_extest_loopback_test`, `smu_dtp_scan_chain_boundary_test`
 |CTP data-input tie-offs |`tb/tb_wrapper_top.sv` (the `xtrig_ctp_*_din_i` bindings of `u_dut`), `cocotb_wrapper/tests/smu_base_test.py` (`IDLE_INPUTS`) |`smu_boundary_port_composition_test`
+|`noXOnCsI` hold-off window |`tb/tb_wrapper_top.sv` (the `$assertoff` / `$asserton` block on the three `prim_rom` instances), four-state simulators only |every `--dut smu` leaf on a four-state simulator; load-bearing for `smu_jtag_reset_override_test`, whose Key Manager ROM part only `noXOnCsI` grades
 |`prim_sync2` / `prim_sync3` stand-ins |`[build].stubs` of `smu_sim_cfg.toml`, from `hw/sys/smc/dv/tb/verilator_stubs/` |every leaf on Verilator; reset and boot-gate observes downstream
 |eFuse models in the product composition |`hw/top/smc_ip_integration.sv`, `hw/top/sep_ip_integration.sv` |the OTP JTAG2AXI leaves, `smu_sep_efuse_test`, the lifecycle and chain leaves, and the nine leaves whose real sense they answer: the five boot-stall leaves, `smu_sep_lcc_flow_test`, `smu_sep_fuse_sense_done_test`, `smu_smc_fuse_sense_sequence_test`, `smu_smc_efuse_shadow_sense_reset_test`
 |===
@@ -496,7 +497,7 @@ run.
 
 Each row names one command and the string it prints when the entry above is
 still true of the tree in front of you. None of them needs a stored run: the
-first eight are static reads of the tree, and the last two pair a static read
+first nine are static reads of the tree, and the last two pair a static read
 with a line any run of the named group prints. A row that prints nothing is an entry that has gone
 stale, and the entry -- not the run -- is what needs the edit.
 
@@ -535,6 +536,10 @@ stale, and the entry -- not the run -- is what needs the edit.
 |CTP data-input tie-offs
 |`grep -n 'xtrig_ctp_\(req_in\|ack_in\|ack_out\)_din_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv` and `grep -n 'tb_xtrig_ctp_\(req\|ack\)_in_din' hw/sys/smu/dv/cocotb_wrapper/tests/smu_base_test.py`
 |Three bindings: `req_in` on `tb_xtrig_ctp_req_in_din`, `ack_in` on `tb_xtrig_ctp_ack_in_din` and `ack_out` on `'0`; both bench nets listed in `IDLE_INPUTS`, which `drive_idle_inputs` sets to 0.
+
+|`noXOnCsI` hold-off window
+|`grep -n 'noXOnCsI\|rst_primary_smc_clk_n === ' hw/sys/smu/dv/tb/tb_wrapper_top.sv`
+|The comment line above the block and seven lines inside one `ifndef VERILATOR` block: three `$assertoff` and three `$asserton` naming `u_rom_mem.u_mem`, `u_sep_boot_rom` and `u_km_rom`, and the `wait (rst_primary_smc_clk_n === 1'b1)` between them. No other line turns a `noXOnCsI` off.
 
 |`prim_sync2` / `prim_sync3` stand-ins
 |`grep -n 'verilator_stubs' hw/sys/smu/dv/smu_sim_cfg.toml`, then any run's `hdl_compile.log`
@@ -639,6 +644,18 @@ stale, and the entry -- not the run -- is what needs the edit.
 |The tie belongs to the integrator's pad ring, which the open-source tree does not model; the bench stands where the integrator would.
 |Scope
 |`tb/tb_wrapper_top.sv` binds `xtrig_ctp_ack_out_din_i` to `'0` and `xtrig_ctp_req_in_din_i` / `xtrig_ctp_ack_in_din_i` to `tb_xtrig_ctp_req_in_din` / `tb_xtrig_ctp_ack_in_din`, which `smu_base_test.drive_idle_inputs` sets to 0 (`IDLE_INPUTS`). Load-bearing for `smu_boundary_port_composition_test` only; `smu_xtrig_ctp_pad_test` drives the two bench nets itself and does not rest on the tie.
+|===
+
+=== `noXOnCsI` hold-off window
+
+[cols="1,4"]
+|===
+|Claim accepted
+|An X on the request of the SMC ROM, the SEP boot ROM or the Key Manager ROM before the SMC primary reset has released is not a verdict on any enrolled SMU claim. After the first SMC clock edge that follows that release, `noXOnCsI` on all three ROMs fails the run on any X, and every claim that rests on it, the Key Manager ROM part of `smu_jtag_reset_override_test` included, is graded in that armed window. What is not proven is an X on a ROM request during power-up and the cold reset.
+|Why the real path cannot be used
+|`prim_rom`'s `noXOnCsI` has no reset term (its disable argument is `'0`), so on a four-state simulator it fires on the X every ROM request carries before reset reaches the requesting logic. The wrapper elaborates `sep_ip_integration` on both profiles, so the two SEP ROMs carry that X even with SEP disabled. Giving the assertion a reset term is a change to vendored code.
+|Scope
+|`tb/tb_wrapper_top.sv`, inside `ifndef VERILATOR`: `$assertoff` on the three `noXOnCsI` at time 0, `wait (rst_primary_smc_clk_n === 1'b1)`, one `clk_smu` edge, then `$asserton` on the same three. On the default reset sequence the re-arm lands at about 3 us (3086.25 ns on `smu_jtag_reset_override_test`), and every leaf on a four-state simulator compiles it in. The window ends long before `smu_jtag_reset_override_test` releases the Key Manager, at about 71 us, so it does not cover that release. On Verilator `+define+ASSERTS_OFF` (its own entry) compiles the assertion out, so the window has no effect there.
 |===
 
 === `prim_sync2` / `prim_sync3` stand-ins

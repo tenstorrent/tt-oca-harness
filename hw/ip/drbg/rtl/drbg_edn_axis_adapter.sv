@@ -11,7 +11,10 @@
 // the genbits.
 
 module drbg_edn_axis_adapter
-  import drbg_pkg::*;
+  import drbg_pkg::DrbgDefaultEdnEndpointCount;
+  import drbg_pkg::DrbgDefaultEndpointFifoDepth;
+  import drbg_pkg::drbg_axis_req_t;
+  import drbg_pkg::drbg_axis_rsp_t;
 #(
   parameter int unsigned EDN_ENDPOINT_COUNT = DrbgDefaultEdnEndpointCount, // Number of exposed EDN endpoints.
   parameter int unsigned ENDPOINT_FIFO_DEPTH = DrbgDefaultEndpointFifoDepth // FIFO depth for each endpoint AXI-Stream output.
@@ -34,6 +37,7 @@ module drbg_edn_axis_adapter
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   // Each endpoint FIFO carries {edn_fips, edn_bus} so the per-beat FIPS
   // provenance is preserved on the AXI-Stream tuser sideband.
@@ -84,7 +88,7 @@ module drbg_edn_axis_adapter
     `OCAH_OT_ASSERT(EndpointFifoHealthy_A, !endpoint_fifo_err[i])
   end : gen_endpoints
 
-  `OCAH_OT_ASSERT_INIT(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
-  `OCAH_OT_ASSERT_INIT(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
+  `OCAH_ASSERT_STATIC(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
+  `OCAH_ASSERT_STATIC(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
 
 endmodule : drbg_edn_axis_adapter

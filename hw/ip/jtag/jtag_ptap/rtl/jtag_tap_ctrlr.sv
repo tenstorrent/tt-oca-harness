@@ -12,8 +12,25 @@
 // tdo_oen_o enables TDO in Shift-IR and Shift-DR.
 
 module jtag_tap_ctrlr
-  import prim_jtag_pkg::*;
-  import jtag_tap_pkg::*;
+  import prim_jtag_pkg::jtag_tap_ctrl_t;
+  import prim_jtag_pkg::jtag_scan_ctrl_t;
+  import jtag_tap_pkg::tap_state_e;
+  import jtag_tap_pkg::TEST_LOGIC_RESET;
+  import jtag_tap_pkg::RUN_TEST_IDLE;
+  import jtag_tap_pkg::SELECT_DR_SCAN;
+  import jtag_tap_pkg::CAPTURE_DR;
+  import jtag_tap_pkg::SELECT_IR_SCAN;
+  import jtag_tap_pkg::SHIFT_DR;
+  import jtag_tap_pkg::EXIT1_DR;
+  import jtag_tap_pkg::PAUSE_DR;
+  import jtag_tap_pkg::UPDATE_DR;
+  import jtag_tap_pkg::EXIT2_DR;
+  import jtag_tap_pkg::CAPTURE_IR;
+  import jtag_tap_pkg::SHIFT_IR;
+  import jtag_tap_pkg::EXIT1_IR;
+  import jtag_tap_pkg::PAUSE_IR;
+  import jtag_tap_pkg::UPDATE_IR;
+  import jtag_tap_pkg::EXIT2_IR;
 #(
   parameter bit TMP_ENABLE = 1          // Lets persistence_mode_i hold chrst_n released through
                                         // Test-Logic-Reset.

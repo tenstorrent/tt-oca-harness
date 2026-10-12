@@ -434,7 +434,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--reseed",
         type=int,
         metavar="N",
-        help="Run each selected regression test with N random seeds",
+        help=(
+            "Run each selected regression test with N random seeds, overriding each "
+            "test's testlist `reseed`"
+        ),
     )
     regression.add_argument(
         "--retry",
@@ -2972,14 +2975,13 @@ def sim_seed_plan(
 
 
 def regression_reseed_count(catalog: TestCatalog, args: argparse.Namespace, item: str) -> int:
+    """Seeds for one test: `--reseed`, then the test's testlist `reseed`, then 1."""
+    if args.reseed is not None:
+        return args.reseed
     test = catalog.tests.get(item)
-    count = (
-        test.reseed
-        if test and test.reseed is not None
-        else (args.reseed if args.reseed is not None else 1)
-    )
+    count = test.reseed if test and test.reseed is not None else 1
     if count < 1:
-        raise ConfigError("--reseed must be >= 1")
+        raise ConfigError(f"{item}: testlist reseed must be >= 1")
     return count
 
 

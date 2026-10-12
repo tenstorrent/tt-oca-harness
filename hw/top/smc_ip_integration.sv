@@ -33,6 +33,8 @@
 // substitute with their own vendor IP/macros.
 //-----------------------------------------------------------------------------
 
+`include "ocah_registers.svh"
+
 module smc_ip_integration (
     output logic clk_ref_o,
     output logic clk_sys_o,
@@ -542,13 +544,7 @@ module smc_ip_integration (
             .cfg_rsp_o ()
         );
 
-        always_ff @(posedge gated_clk_periph_i3c_i or negedge rst_primary_periph_clk_ni) begin
-            if (!rst_primary_periph_clk_ni) begin
-                dat_rvalid_q <= 1'b0;
-            end else begin
-                dat_rvalid_q <= i3c_dat_mem_sink_i[i].req & ~i3c_dat_mem_sink_i[i].write;
-            end
-        end
+        `OCAH_FF(dat_rvalid_q, i3c_dat_mem_sink_i[i].req & ~i3c_dat_mem_sink_i[i].write, 1'b0, gated_clk_periph_i3c_i, rst_primary_periph_clk_ni)
 
         assign i3c_dat_mem_src_o[i].rvalid = dat_rvalid_q;
         assign i3c_dat_mem_src_o[i].rerror = '0;
@@ -576,13 +572,7 @@ module smc_ip_integration (
             .cfg_rsp_o ()
         );
 
-        always_ff @(posedge gated_clk_periph_i3c_i or negedge rst_primary_periph_clk_ni) begin
-            if (!rst_primary_periph_clk_ni) begin
-                dct_rvalid_q <= 1'b0;
-            end else begin
-                dct_rvalid_q <= i3c_dct_mem_sink_i[i].req & ~i3c_dct_mem_sink_i[i].write;
-            end
-        end
+        `OCAH_FF(dct_rvalid_q, i3c_dct_mem_sink_i[i].req & ~i3c_dct_mem_sink_i[i].write, 1'b0, gated_clk_periph_i3c_i, rst_primary_periph_clk_ni)
 
         assign i3c_dct_mem_src_o[i].rvalid = dct_rvalid_q;
         assign i3c_dct_mem_src_o[i].rerror = '0;

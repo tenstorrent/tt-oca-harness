@@ -12,6 +12,7 @@
     .type  _start, @function
 
 #include "sep_addr.h"
+#include "sep_smc_map.h"
 
 /* No mailbox stores: a bus error on a reset or halt path raises NMI and loops. */
 .equ SEP_COLD_SCRATCH_1, SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)
@@ -51,16 +52,11 @@
 .equ WARM_HANDLER_SRAM_BASE,   SEP_TOP_SEP_SRAM_BASE_ADDR
 .equ WARM_HANDLER_SRAM_END,    SEP_TOP_SEP_SRAM_BASE_ADDR + SEP_TOP_SEP_SRAM_SIZE
 
-/* MEM_REPAIR boot gate. Mirrors include/sep_smc_interface.h -- the C side owns
- * these numbers, so they must be changed in both places together. Kept as .equ
- * rather than pulled from a header because that header is C, not assembly. */
-.equ SEP_SMC_GLOBAL_BASE,      0x40000000
-/* Offsets must match sep_smc_interface.h, which takes them from this design's
- * generated SMC map. */
-.equ SMC_DFX_CTRL_STATUS_SMU,  SEP_SMC_GLOBAL_BASE + 0xB800
-/* SMC scratch registers are 64-bit; index 10 is the agreed MBIST/MEM_REPAIR
- * failure slot, read back by the debugger and by DV. */
-.equ SMC_SCRATCH_MBIST_FAIL,   SEP_SMC_GLOBAL_BASE + 0x39080 + (10 * 8)
+/* MEM_REPAIR boot gate. */
+.equ SMC_DFX_CTRL_STATUS_SMU,  SEP_SMC_GLOBAL_BASE + SMC_DFX_CTRL_STATUS_SMU_OFFSET
+/* Index 10 is the agreed MBIST/MEM_REPAIR failure slot, read back by the
+ * debugger and by DV. */
+.equ SMC_SCRATCH_MBIST_FAIL,   SEP_SMC_GLOBAL_BASE + SMC_SCRATCH_OFFSET(10)
 
 /* DFX_CTRL_STATUS_SMU fields (dfx_ctrl_status.rdl). All six are sticky-1,
  * software-read-only, and written by the external DFT controller. */
@@ -69,10 +65,8 @@
 .equ DFT_MBIST_PASS,           (1 << 8)
 .equ DFT_MBIST_ABORT,          (1 << 12)
 
-/* Straps live in the SMC external mandatory window. These offsets match
- * sep_smc_interface.h and the captured-GPIO straps map. */
-.equ SMC_STRAPS_LO,            SEP_SMC_GLOBAL_BASE + 0x403000
-.equ SMC_STRAPS_HI,            SEP_SMC_GLOBAL_BASE + 0x403004
+.equ SMC_STRAPS_LO,            SEP_SMC_GLOBAL_BASE + SMC_STRAPS_LO_OFFSET
+.equ SMC_STRAPS_HI,            SEP_SMC_GLOBAL_BASE + SMC_STRAPS_HI_OFFSET
 /* BYPASS_SRAM_REPAIR, GPIO pin 13 -> STRAPS_LO[13]. It drives
  * skip_mem_repair_o, so repair NEVER RAN.
  *

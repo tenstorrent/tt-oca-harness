@@ -24,6 +24,7 @@ from pathlib import Path
 
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_fabric_tap import AXPROT_IFU_AR, SepFabricTap, check_axprot, log_axprot
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
@@ -44,6 +45,8 @@ class sep_cpu_ifu_lsu_alias_remap_matrix_test(sep_base_test):
     """Alias-window LSU and IFU accesses reach SEP SRAM; other accesses pass through unchanged."""
 
     build_env = False
+    # The leaf's own graded record; the base-class records do not count.
+    required_evidence = ("CHK-IFU-AXPROT",)
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -51,12 +54,19 @@ class sep_cpu_ifu_lsu_alias_remap_matrix_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         self.sb.expected_line = _BANNER
-        await self.boot_firmware(
-            self.sb,
-            _ITCM_HEX,
-            _DTCM_HEX,
-            rst_vec=_ICCM_BASE >> 1,
-            max_run_cycles=_MAX_RUN_CYCLES,
-            no_boot_cycles=_NO_BOOT_CYCLES,
-            progress_every=_PROGRESS_EVERY,
-        )
+        # CHK-IFU-AXPROT: the AxPROT the core drives on IFU fetches.
+        cpu_ifu = SepFabricTap("PR-CPU-IFU").start()
+        try:
+            await self.boot_firmware(
+                self.sb,
+                _ITCM_HEX,
+                _DTCM_HEX,
+                rst_vec=_ICCM_BASE >> 1,
+                max_run_cycles=_MAX_RUN_CYCLES,
+                no_boot_cycles=_NO_BOOT_CYCLES,
+                progress_every=_PROGRESS_EVERY,
+            )
+        finally:
+            await cpu_ifu.stop()
+            log_axprot(self.logger, cpu_ifu, "ifu", "ar", "M")
+        check_axprot(self.logger, "CHK-IFU-AXPROT", cpu_ifu, "ifu", "ar", AXPROT_IFU_AR)

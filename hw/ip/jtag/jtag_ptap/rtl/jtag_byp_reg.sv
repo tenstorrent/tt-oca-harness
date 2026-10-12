@@ -6,7 +6,7 @@
 // Captures 0 and shifts a single bit between scan_in_i and scan_out_o under scan_ctrl_i.
 
 module jtag_byp_reg
-  import prim_jtag_pkg::*;
+  import prim_jtag_pkg::jtag_scan_ctrl_t;
 (
   /* verilator lint_off UNUSEDSIGNAL */
   input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.

@@ -10,6 +10,8 @@
 // Two source pulses closer together than the destination can resolve cancel each other and
 // produce no dst_pulse_o.
 
+`include "ocah_registers.svh"
+
 module prim_sync3_pulse (
   input  logic src_clk_i,  // Source clock.
   input  logic src_pulse_i,  // Source-domain pulse to forward; high for one src_clk_i cycle.
@@ -44,13 +46,7 @@ module prim_sync3_pulse_src (
   output logic toggle_o  // Registered level on src_clk_i that changes once per pulse cycle.
 );
 
-  always_ff @(posedge src_clk_i) begin
-    if (~src_rst_ni) begin
-      toggle_o <= 1'b0;
-    end else begin
-      toggle_o <= src_pulse_i ? ~toggle_o : toggle_o;
-    end
-  end
+  `OCAH_FFSRN(toggle_o, src_pulse_i ? ~toggle_o : toggle_o, 1'b0, src_clk_i, src_rst_ni)
 
 endmodule
 

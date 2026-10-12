@@ -105,6 +105,8 @@ class sep_dma_basic_test(sep_base_test):
     """DMA CSR, copy-mode, width and error-leg checks pass; a host-path error reaches sep_internal_interrupts[41] (PIC source 42)."""
 
     build_env = False
+    # The leaf's own graded records; the base-class records do not count.
+    required_evidence = ("CHK-HOSTINTG-PIC", "CHK-HOSTINTG-CLR", "CHK-RAND-REP")
 
     def build_phase(self) -> None:
         super().build_phase()

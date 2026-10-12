@@ -14,7 +14,12 @@
 // - BYTE_WISE=1 (per-byte): scramble ends in perm8 x4; descramble starts with iperm8 x4.
 
 module scrambler_8192x32
-  import scrambler_pkg::*;
+  import scrambler_pkg::addr_scramble13;
+  import scrambler_pkg::sbox4;
+  import scrambler_pkg::perm32;
+  import scrambler_pkg::perm8;
+  import scrambler_pkg::iperm8;
+  import scrambler_pkg::ibox4;
 #(
   parameter int unsigned ADDR_WIDTH = 13,                   // SRAM address width.
                                                             // Must be 13: the address scramble is
@@ -95,7 +100,7 @@ module scrambler_8192x32
 
   // Descramble
   if (BYTE_WISE == 0) begin : gen_descramble_word
-    assign after_iplayer = iperm32(scrambled_read_data_i);
+    assign after_iplayer = scrambler_pkg::iperm32(scrambled_read_data_i);
   end else begin : gen_descramble_bytewise
     assign after_iplayer = {
       iperm8(scrambled_read_data_i[31:24]),

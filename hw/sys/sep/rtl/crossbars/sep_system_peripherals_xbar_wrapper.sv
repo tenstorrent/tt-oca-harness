@@ -108,66 +108,145 @@ module sep_system_peripherals_xbar_wrapper
     // Verify sep_pkg types match sep_system_peripherals_xbar_pkg types
     // =========================================================================
 
-`ifdef OCAH_DEBUG_LIVE  // elaboration-time width checks; excluded from synthesis
     // Input ports
-    initial begin : gen_input_type_assertions
-        // sep_local_from_remap (3-bit ID input, xbar uses 5-bit - zero-extension is OK)
-        assert ($bits(sep_local_from_remap_req_i.aw.addr) == $bits(sep_local_from_remap_req.aw.addr)) else $fatal(1, "SEP_LOCAL_FROM_REMAP AW ADDR width mismatch");
-        assert ($bits(sep_local_from_remap_req_i.w.data)  == $bits(sep_local_from_remap_req.w.data))  else $fatal(1, "SEP_LOCAL_FROM_REMAP W DATA width mismatch");
+    // sep_local_from_remap (3-bit ID input, xbar uses 5-bit - zero-extension is OK)
+    `OCAH_ASSERT_STATIC(SepLocalFromRemapAwAddrWidth_A,
+                        $bits(sep_local_from_remap_req_i.aw.addr) ==
+                            $bits(sep_local_from_remap_req.aw.addr),
+                        "SEP_LOCAL_FROM_REMAP AW ADDR width mismatch")
+    `OCAH_ASSERT_STATIC(SepLocalFromRemapWDataWidth_A,
+                        $bits(sep_local_from_remap_req_i.w.data) ==
+                            $bits(sep_local_from_remap_req.w.data),
+                        "SEP_LOCAL_FROM_REMAP W DATA width mismatch")
 
-        // smn_inbound (5-bit ID input, matches xbar's axi64_req_t)
-        assert ($bits(smn_inbound_req_i.aw.id)   == $bits(smn_inbound_req.aw.id))   else $fatal(1, "SMN_INBOUND AW ID width mismatch");
-        assert ($bits(smn_inbound_req_i.aw.addr) == $bits(smn_inbound_req.aw.addr)) else $fatal(1, "SMN_INBOUND AW ADDR width mismatch");
-        assert ($bits(smn_inbound_req_i.w.data)  == $bits(smn_inbound_req.w.data))  else $fatal(1, "SMN_INBOUND W DATA width mismatch");
-        assert ($bits(smn_inbound_req_i.ar.id)   == $bits(smn_inbound_req.ar.id))   else $fatal(1, "SMN_INBOUND AR ID width mismatch");
-        assert ($bits(smn_inbound_resp_o.r.id)   == $bits(smn_inbound_resp.r.id))   else $fatal(1, "SMN_INBOUND R ID width mismatch");
-        assert ($bits(smn_inbound_resp_o.b.id)   == $bits(smn_inbound_resp.b.id))   else $fatal(1, "SMN_INBOUND B ID width mismatch");
-    end
+    // smn_inbound (5-bit ID input, matches xbar's axi64_req_t)
+    `OCAH_ASSERT_STATIC(SmnInboundAwIdWidth_A,
+                        $bits(smn_inbound_req_i.aw.id) == $bits(smn_inbound_req.aw.id),
+                        "SMN_INBOUND AW ID width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundAwAddrWidth_A,
+                        $bits(smn_inbound_req_i.aw.addr) == $bits(smn_inbound_req.aw.addr),
+                        "SMN_INBOUND AW ADDR width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundWDataWidth_A,
+                        $bits(smn_inbound_req_i.w.data) == $bits(smn_inbound_req.w.data),
+                        "SMN_INBOUND W DATA width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundArIdWidth_A,
+                        $bits(smn_inbound_req_i.ar.id) == $bits(smn_inbound_req.ar.id),
+                        "SMN_INBOUND AR ID width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundRIdWidth_A,
+                        $bits(smn_inbound_resp_o.r.id) == $bits(smn_inbound_resp.r.id),
+                        "SMN_INBOUND R ID width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundBIdWidth_A,
+                        $bits(smn_inbound_resp_o.b.id) == $bits(smn_inbound_resp.b.id),
+                        "SMN_INBOUND B ID width mismatch")
 
     // Output ports (6-bit ID, 56-bit addr, 64-bit data, 12-bit user)
-    initial begin : gen_output_type_assertions
-        // smn_inbound_from_xbar_axi_req
-        assert ($bits(smn_inbound_from_xbar_axi_req_o.aw.id)   == $bits(smn_inbound_from_xbar_axi_req.aw.id))   else $fatal(1, "SMN_INBOUND_FROM_XBAR_AXI_REQ AW ID width mismatch");
-        assert ($bits(smn_inbound_from_xbar_axi_req_o.aw.addr) == $bits(smn_inbound_from_xbar_axi_req.aw.addr)) else $fatal(1, "SMN_INBOUND_FROM_XBAR_AXI_REQ AW ADDR width mismatch");
-        assert ($bits(smn_inbound_from_xbar_axi_req_o.w.data)  == $bits(smn_inbound_from_xbar_axi_req.w.data))  else $fatal(1, "SMN_INBOUND_FROM_XBAR_AXI_REQ W DATA width mismatch");
-        assert ($bits(smn_inbound_from_xbar_axi_req_o.ar.id)   == $bits(smn_inbound_from_xbar_axi_req.ar.id))   else $fatal(1, "SMN_INBOUND_FROM_XBAR_AXI_REQ AR ID width mismatch");
-        assert ($bits(smn_inbound_from_xbar_axi_resp_i.r.id)   == $bits(smn_inbound_from_xbar_axi_resp.r.id))   else $fatal(1, "SMN_INBOUND_FROM_XBAR_AXI_RESP R ID width mismatch");
-        assert ($bits(smn_inbound_from_xbar_axi_resp_i.b.id)   == $bits(smn_inbound_from_xbar_axi_resp.b.id))   else $fatal(1, "SMN_INBOUND_FROM_XBAR_AXI_RESP B ID width mismatch");
+    // smn_inbound_from_xbar_axi_req
+    `OCAH_ASSERT_STATIC(SmnInboundFromXbarAxiReqAwIdWidth_A,
+                        $bits(smn_inbound_from_xbar_axi_req_o.aw.id) ==
+                            $bits(smn_inbound_from_xbar_axi_req.aw.id),
+                        "SMN_INBOUND_FROM_XBAR_AXI_REQ AW ID width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundFromXbarAxiReqAwAddrWidth_A,
+                        $bits(smn_inbound_from_xbar_axi_req_o.aw.addr) ==
+                            $bits(smn_inbound_from_xbar_axi_req.aw.addr),
+                        "SMN_INBOUND_FROM_XBAR_AXI_REQ AW ADDR width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundFromXbarAxiReqWDataWidth_A,
+                        $bits(smn_inbound_from_xbar_axi_req_o.w.data) ==
+                            $bits(smn_inbound_from_xbar_axi_req.w.data),
+                        "SMN_INBOUND_FROM_XBAR_AXI_REQ W DATA width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundFromXbarAxiReqArIdWidth_A,
+                        $bits(smn_inbound_from_xbar_axi_req_o.ar.id) ==
+                            $bits(smn_inbound_from_xbar_axi_req.ar.id),
+                        "SMN_INBOUND_FROM_XBAR_AXI_REQ AR ID width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundFromXbarAxiRespRIdWidth_A,
+                        $bits(smn_inbound_from_xbar_axi_resp_i.r.id) ==
+                            $bits(smn_inbound_from_xbar_axi_resp.r.id),
+                        "SMN_INBOUND_FROM_XBAR_AXI_RESP R ID width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundFromXbarAxiRespBIdWidth_A,
+                        $bits(smn_inbound_from_xbar_axi_resp_i.b.id) ==
+                            $bits(smn_inbound_from_xbar_axi_resp.b.id),
+                        "SMN_INBOUND_FROM_XBAR_AXI_RESP B ID width mismatch")
 
-        // mailbox
-        assert ($bits(mailbox_req_o.aw.addr) == $bits(mailbox_req.aw.addr)) else $fatal(1, "MAILBOX AW ADDR width mismatch");
-        assert ($bits(mailbox_req_o.w.data)  == $bits(mailbox_req.w.data))  else $fatal(1, "MAILBOX W DATA width mismatch");
-        assert ($bits(mailbox_resp_i.r.data)   == $bits(mailbox_resp.r.data))   else $fatal(1, "MAILBOX R DATA width mismatch");
+    // mailbox
+    `OCAH_ASSERT_STATIC(MailboxAwAddrWidth_A,
+                        $bits(mailbox_req_o.aw.addr) == $bits(mailbox_req.aw.addr),
+                        "MAILBOX AW ADDR width mismatch")
+    `OCAH_ASSERT_STATIC(MailboxWDataWidth_A,
+                        $bits(mailbox_req_o.w.data) == $bits(mailbox_req.w.data),
+                        "MAILBOX W DATA width mismatch")
+    `OCAH_ASSERT_STATIC(MailboxRDataWidth_A,
+                        $bits(mailbox_resp_i.r.data) == $bits(mailbox_resp.r.data),
+                        "MAILBOX R DATA width mismatch")
 
-        // system_csr
-        assert ($bits(system_csr_req_o.aw.addr) == $bits(system_csr_req.aw.addr)) else $fatal(1, "SYSTEM_CSR AW ADDR width mismatch");
-        assert ($bits(system_csr_req_o.w.data)  == $bits(system_csr_req.w.data))  else $fatal(1, "SYSTEM_CSR W DATA width mismatch");
-        assert ($bits(system_csr_resp_i.r.data)   == $bits(system_csr_resp.r.data))   else $fatal(1, "SYSTEM_CSR R DATA width mismatch");
-
-    end
+    // system_csr
+    `OCAH_ASSERT_STATIC(SystemCsrAwAddrWidth_A,
+                        $bits(system_csr_req_o.aw.addr) == $bits(system_csr_req.aw.addr),
+                        "SYSTEM_CSR AW ADDR width mismatch")
+    `OCAH_ASSERT_STATIC(SystemCsrWDataWidth_A,
+                        $bits(system_csr_req_o.w.data) == $bits(system_csr_req.w.data),
+                        "SYSTEM_CSR W DATA width mismatch")
+    `OCAH_ASSERT_STATIC(SystemCsrRDataWidth_A,
+                        $bits(system_csr_resp_i.r.data) == $bits(system_csr_resp.r.data),
+                        "SYSTEM_CSR R DATA width mismatch")
 
     // User-field width assertions (AXI4 ports only; mailbox/system_csr are AXI-Lite)
-    initial begin : gen_user_width_assertions
-        // Input ports
-        assert ($bits(sep_local_from_remap_req_i.aw.user)  == $bits(sep_local_from_remap_req.aw.user))  else $fatal(1, "SEP_LOCAL_FROM_REMAP AW USER width mismatch");
-        assert ($bits(sep_local_from_remap_req_i.w.user)   == $bits(sep_local_from_remap_req.w.user))   else $fatal(1, "SEP_LOCAL_FROM_REMAP W USER width mismatch");
-        assert ($bits(sep_local_from_remap_req_i.ar.user)  == $bits(sep_local_from_remap_req.ar.user))  else $fatal(1, "SEP_LOCAL_FROM_REMAP AR USER width mismatch");
-        assert ($bits(sep_local_from_remap_resp_o.r.user)  == $bits(sep_local_from_remap_resp.r.user))  else $fatal(1, "SEP_LOCAL_FROM_REMAP R USER width mismatch");
-        assert ($bits(sep_local_from_remap_resp_o.b.user)  == $bits(sep_local_from_remap_resp.b.user))  else $fatal(1, "SEP_LOCAL_FROM_REMAP B USER width mismatch");
+    // Input ports
+    `OCAH_ASSERT_STATIC(SepLocalFromRemapAwUserWidth_A,
+                        $bits(sep_local_from_remap_req_i.aw.user) ==
+                            $bits(sep_local_from_remap_req.aw.user),
+                        "SEP_LOCAL_FROM_REMAP AW USER width mismatch")
+    `OCAH_ASSERT_STATIC(SepLocalFromRemapWUserWidth_A,
+                        $bits(sep_local_from_remap_req_i.w.user) ==
+                            $bits(sep_local_from_remap_req.w.user),
+                        "SEP_LOCAL_FROM_REMAP W USER width mismatch")
+    `OCAH_ASSERT_STATIC(SepLocalFromRemapArUserWidth_A,
+                        $bits(sep_local_from_remap_req_i.ar.user) ==
+                            $bits(sep_local_from_remap_req.ar.user),
+                        "SEP_LOCAL_FROM_REMAP AR USER width mismatch")
+    `OCAH_ASSERT_STATIC(SepLocalFromRemapRUserWidth_A,
+                        $bits(sep_local_from_remap_resp_o.r.user) ==
+                            $bits(sep_local_from_remap_resp.r.user),
+                        "SEP_LOCAL_FROM_REMAP R USER width mismatch")
+    `OCAH_ASSERT_STATIC(SepLocalFromRemapBUserWidth_A,
+                        $bits(sep_local_from_remap_resp_o.b.user) ==
+                            $bits(sep_local_from_remap_resp.b.user),
+                        "SEP_LOCAL_FROM_REMAP B USER width mismatch")
 
-        assert ($bits(smn_inbound_req_i.aw.user)  == $bits(smn_inbound_req.aw.user))  else $fatal(1, "SMN_INBOUND AW USER width mismatch");
-        assert ($bits(smn_inbound_req_i.w.user)   == $bits(smn_inbound_req.w.user))   else $fatal(1, "SMN_INBOUND W USER width mismatch");
-        assert ($bits(smn_inbound_req_i.ar.user)  == $bits(smn_inbound_req.ar.user))  else $fatal(1, "SMN_INBOUND AR USER width mismatch");
-        assert ($bits(smn_inbound_resp_o.r.user)  == $bits(smn_inbound_resp.r.user))  else $fatal(1, "SMN_INBOUND R USER width mismatch");
-        assert ($bits(smn_inbound_resp_o.b.user)  == $bits(smn_inbound_resp.b.user))  else $fatal(1, "SMN_INBOUND B USER width mismatch");
+    `OCAH_ASSERT_STATIC(SmnInboundAwUserWidth_A,
+                        $bits(smn_inbound_req_i.aw.user) == $bits(smn_inbound_req.aw.user),
+                        "SMN_INBOUND AW USER width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundWUserWidth_A,
+                        $bits(smn_inbound_req_i.w.user) == $bits(smn_inbound_req.w.user),
+                        "SMN_INBOUND W USER width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundArUserWidth_A,
+                        $bits(smn_inbound_req_i.ar.user) == $bits(smn_inbound_req.ar.user),
+                        "SMN_INBOUND AR USER width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundRUserWidth_A,
+                        $bits(smn_inbound_resp_o.r.user) == $bits(smn_inbound_resp.r.user),
+                        "SMN_INBOUND R USER width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundBUserWidth_A,
+                        $bits(smn_inbound_resp_o.b.user) == $bits(smn_inbound_resp.b.user),
+                        "SMN_INBOUND B USER width mismatch")
 
-        // Output ports (AXI4)
-        assert ($bits(smn_inbound_from_xbar_axi_req_o.aw.user)  == $bits(smn_inbound_from_xbar_axi_req.aw.user))  else $fatal(1, "SMN_INBOUND_FROM_XBAR AW USER width mismatch");
-        assert ($bits(smn_inbound_from_xbar_axi_req_o.w.user)   == $bits(smn_inbound_from_xbar_axi_req.w.user))   else $fatal(1, "SMN_INBOUND_FROM_XBAR W USER width mismatch");
-        assert ($bits(smn_inbound_from_xbar_axi_req_o.ar.user)  == $bits(smn_inbound_from_xbar_axi_req.ar.user))  else $fatal(1, "SMN_INBOUND_FROM_XBAR AR USER width mismatch");
-        assert ($bits(smn_inbound_from_xbar_axi_resp_i.r.user)  == $bits(smn_inbound_from_xbar_axi_resp.r.user))  else $fatal(1, "SMN_INBOUND_FROM_XBAR R USER width mismatch");
-        assert ($bits(smn_inbound_from_xbar_axi_resp_i.b.user)  == $bits(smn_inbound_from_xbar_axi_resp.b.user))  else $fatal(1, "SMN_INBOUND_FROM_XBAR B USER width mismatch");
-    end
-`endif  // OCAH_DEBUG_LIVE
+    // Output ports (AXI4)
+    `OCAH_ASSERT_STATIC(SmnInboundFromXbarAwUserWidth_A,
+                        $bits(smn_inbound_from_xbar_axi_req_o.aw.user) ==
+                            $bits(smn_inbound_from_xbar_axi_req.aw.user),
+                        "SMN_INBOUND_FROM_XBAR AW USER width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundFromXbarWUserWidth_A,
+                        $bits(smn_inbound_from_xbar_axi_req_o.w.user) ==
+                            $bits(smn_inbound_from_xbar_axi_req.w.user),
+                        "SMN_INBOUND_FROM_XBAR W USER width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundFromXbarArUserWidth_A,
+                        $bits(smn_inbound_from_xbar_axi_req_o.ar.user) ==
+                            $bits(smn_inbound_from_xbar_axi_req.ar.user),
+                        "SMN_INBOUND_FROM_XBAR AR USER width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundFromXbarRUserWidth_A,
+                        $bits(smn_inbound_from_xbar_axi_resp_i.r.user) ==
+                            $bits(smn_inbound_from_xbar_axi_resp.r.user),
+                        "SMN_INBOUND_FROM_XBAR R USER width mismatch")
+    `OCAH_ASSERT_STATIC(SmnInboundFromXbarBUserWidth_A,
+                        $bits(smn_inbound_from_xbar_axi_resp_i.b.user) ==
+                            $bits(smn_inbound_from_xbar_axi_resp.b.user),
+                        "SMN_INBOUND_FROM_XBAR B USER width mismatch")
 
 endmodule : sep_system_peripherals_xbar_wrapper

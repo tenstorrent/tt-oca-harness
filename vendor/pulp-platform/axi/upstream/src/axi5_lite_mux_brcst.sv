@@ -18,7 +18,7 @@
 //                        sent back in order.
 
 // register macros
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 module axi5_lite_mux_brcst #(
   // AXI4-Lite parameter and channel types
@@ -60,7 +60,7 @@ module axi5_lite_mux_brcst #(
 
   logic brcst_wr_rsp_disable_dly;// delay brcst_wr_rsp_disable to match timing
   if (SpillB)    
-  `FFLARN(brcst_wr_rsp_disable_dly, brcst_wr_rsp_disable, 1'b1, '0, clk_i, rst_ni)
+  `OCAH_FFL(brcst_wr_rsp_disable_dly, brcst_wr_rsp_disable, 1'b1, '0, clk_i, rst_ni)
   else 
   assign brcst_wr_rsp_disable_dly = brcst_wr_rsp_disable;
 
@@ -285,7 +285,7 @@ module axi5_lite_mux_brcst #(
       end
     end
 
-    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
+    `OCAH_FFL(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
 
     fifo_v3 #(
       .FALL_THROUGH ( FallThrough ),

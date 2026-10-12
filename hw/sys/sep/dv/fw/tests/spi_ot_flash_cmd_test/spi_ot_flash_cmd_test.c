@@ -192,10 +192,11 @@ static int flash_fast_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
 // Recovers from a latched host error, which blocks further commands until
 // cleared. Software reset flushes the command queue and both FIFOs, so the
 // segment that caused the error never runs; the host must not leave reset until
-// both FIFOs report empty. Then the error latch is cleared. Returns 1 if the
-// FIFOs never report empty, else 0. *residual is the error status left
-// afterwards; 0 means the host is released.
-static int spi_err_recover(uint32_t *residual) {
+// both FIFOs report empty. Software reset clears internal state, not registers,
+// so ERROR_STATUS still holds expect_bm after it; then write-one-to-clear
+// releases the latch. Returns the number of failures. *residual is the error
+// status left afterwards; 0 means the host is released.
+static int spi_err_recover(uint32_t expect_bm, uint32_t *residual) {
     int err = 0;
     const uint32_t empty = SPI_CONTROLLER__STATUS__TXEMPTY_bm | SPI_CONTROLLER__STATUS__RXEMPTY_bm;
     uint32_t ctrl = spi_rd(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
@@ -213,6 +214,16 @@ static int spi_err_recover(uint32_t *residual) {
         err++;
     }
     spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
+    // The write-one-to-clear below is then the only thing that can release it.
+    uint32_t held = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    if (held != expect_bm) {
+        sep_mbx_puts("FAIL: ERROR_STATUS after SW_RST=");
+        sep_mbx_puthex(held);
+        sep_mbx_puts(" exp ");
+        sep_mbx_puthex(expect_bm);
+        sep_mbx_puts(" (SW_RST clears internal state, not registers)\n");
+        err++;
+    }
     spi_wr(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
     *residual = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     return err;
@@ -232,7 +243,7 @@ static int spi_err_expect(uint32_t expect_bm) {
         err++;
     }
     uint32_t residual = 0;
-    err += spi_err_recover(&residual);
+    err += spi_err_recover(expect_bm, &residual);
     if (residual != 0) {
         sep_mbx_puts("FAIL: ERROR_STATUS did not W1C-clear, residual=");
         sep_mbx_puthex(residual);
@@ -582,7 +593,7 @@ int main(void) {
         cs_err++;
     }
     uint32_t csid_residual = 0;
-    cs_err += spi_err_recover(&csid_residual);
+    cs_err += spi_err_recover(SPI_CONTROLLER__ERROR_STATUS__CSIDINVAL_bm, &csid_residual);
     if (csid_residual != 0) {
         sep_mbx_puts("FAIL: CHK-ERR-CSIDINVAL ERROR_STATUS did not W1C-clear, residual=");
         sep_mbx_puthex(csid_residual);

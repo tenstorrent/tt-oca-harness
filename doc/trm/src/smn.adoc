@@ -36,7 +36,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence].
 endif::backend-pdf[]
 
 This chapter describes the SMU boundary. Network topology, routing beyond that

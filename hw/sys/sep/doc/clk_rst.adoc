@@ -68,7 +68,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-software-reset[software reset section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-software-reset[software reset section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-software-reset[software reset section]
 endif::backend-pdf[]
 of the Programmer's Guide.
 The watchdog itself uses cold reset; its timer-domain reset release is

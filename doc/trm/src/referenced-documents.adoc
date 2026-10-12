@@ -9,7 +9,7 @@ ifdef::backend-html5[]
 :ocah-integrator-guide-ref: xref:ocah-integrator-guide:ROOT:index.adoc[Open Chiplet Atlas Harness (OCAH) Integrator Guide]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-:ocah-integrator-guide-ref: https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/index.html[Open Chiplet Atlas Harness (OCAH) Integrator Guide]
+:ocah-integrator-guide-ref: https://docs.tenstorrent.com/tt-oca-harness/ocah-integrator-guide/latest/index.html[Open Chiplet Atlas Harness (OCAH) Integrator Guide]
 endif::backend-pdf[]
 
 This appendix collects the companion guides, specifications and external

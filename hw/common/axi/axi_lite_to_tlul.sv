@@ -12,12 +12,13 @@
 // set, the converter completes the write with OKAY locally and issues no TL-UL
 // transaction. Default off so existing consumers keep their strict behaviour.
 
-module axi_lite_to_tlul
-	import tlul_pkg::*;
+`include "ocah_registers.svh"
 
-	`include "prim_assert.sv"
-	import axi_pkg::*;
-	import prim_mubi_pkg::mubi4_t;
+module axi_lite_to_tlul
+	import tlul_pkg::tl_h2d_t;
+	import tlul_pkg::tl_d2h_t;
+
+	`include "ocah_assert.svh"
 	#(
 		parameter int unsigned AXI_ADDR_WIDTH    = 32,
 		parameter int unsigned AXI_DATA_WIDTH    = 32,  // Must be 32 to match TL-UL
@@ -80,31 +81,19 @@ module axi_lite_to_tlul
 	logic                          sticky_err_q, sticky_err_d;
 
 	// Integrity signals
-	logic [H2D_CMD_INTG_WIDTH-1:0] cmd_intg;
-	logic [DATA_INTG_WIDTH-1:0]    data_intg;
+	logic [tlul_pkg::H2D_CMD_INTG_WIDTH-1:0] cmd_intg;
+	logic [tlul_pkg::DATA_INTG_WIDTH-1:0]    data_intg;
 
 	// --------------------------------------------------
 	// FSM Sequential Logic
 	// --------------------------------------------------
-	always_ff @(posedge clk_i or negedge rst_ni) begin
-		if (!rst_ni) begin
-			state_q      <= IDLE;
-			req_addr_q   <= '0;
-			req_data_q   <= '0;
-			req_strb_q   <= '0;
-			resp_data_q  <= '0;
-			req_error_q  <= 1'b0;
-			sticky_err_q <= 1'b0;
-		end else begin
-			state_q      <= state_d;
-			req_addr_q   <= req_addr_d;
-			req_data_q   <= req_data_d;
-			req_strb_q   <= req_strb_d;
-			resp_data_q  <= resp_data_d;
-			req_error_q  <= req_error_d;
-			sticky_err_q <= sticky_err_d;
-		end
-	end
+	`OCAH_FF(state_q, state_d, IDLE, clk_i, rst_ni)
+	`OCAH_FF(req_addr_q, req_addr_d, '0, clk_i, rst_ni)
+	`OCAH_FF(req_data_q, req_data_d, '0, clk_i, rst_ni)
+	`OCAH_FF(req_strb_q, req_strb_d, '0, clk_i, rst_ni)
+	`OCAH_FF(resp_data_q, resp_data_d, '0, clk_i, rst_ni)
+	`OCAH_FF(req_error_q, req_error_d, 1'b0, clk_i, rst_ni)
+	`OCAH_FF(sticky_err_q, sticky_err_d, 1'b0, clk_i, rst_ni)
 
 	// Assign sticky error output
 	assign err_o = sticky_err_q;
@@ -249,8 +238,8 @@ module axi_lite_to_tlul
 	always_comb begin
 		// Generate command integrity (SECDED ECC for address, opcode, mask, instr_type)
 		if (ENABLE_CMD_INTG_GEN) begin
-			automatic tl_h2d_cmd_intg_t cmd;
-			automatic logic [H2D_CMD_MAX_WIDTH-1:0] unused_cmd_payload;
+			automatic tlul_pkg::tl_h2d_cmd_intg_t cmd;
+			automatic logic [tlul_pkg::H2D_CMD_MAX_WIDTH-1:0] unused_cmd_payload;
 
 			cmd.addr = tl_o.a_address;
 			cmd.opcode = tl_o.a_opcode;
@@ -258,25 +247,25 @@ module axi_lite_to_tlul
 			cmd.instr_type = tl_o.a_user.instr_type;
 
 			{cmd_intg, unused_cmd_payload} =
-				prim_secded_pkg::prim_secded_inv_64_57_enc(H2D_CMD_MAX_WIDTH'(cmd));
+				prim_secded_pkg::prim_secded_inv_64_57_enc(tlul_pkg::H2D_CMD_MAX_WIDTH'(cmd));
 		end else begin
-			cmd_intg = {H2D_CMD_INTG_WIDTH{1'b1}};
+			cmd_intg = {tlul_pkg::H2D_CMD_INTG_WIDTH{1'b1}};
 		end
 
 		// Generate data integrity (SECDED ECC for data)
 		if (ENABLE_DATA_INTG_GEN) begin
-			automatic logic [DATA_MAX_WIDTH-1:0] unused_data;
+			automatic logic [tlul_pkg::DATA_MAX_WIDTH-1:0] unused_data;
 
 			{data_intg, unused_data} =
-				prim_secded_pkg::prim_secded_inv_39_32_enc(DATA_MAX_WIDTH'(tl_o.a_data));
+				prim_secded_pkg::prim_secded_inv_39_32_enc(tlul_pkg::DATA_MAX_WIDTH'(tl_o.a_data));
 		end else begin
-			data_intg = {DATA_INTG_WIDTH{1'b1}};
+			data_intg = {tlul_pkg::DATA_INTG_WIDTH{1'b1}};
 		end
 	end
 
 	// --------------------------------------------------
 	// Assertions
 	// --------------------------------------------------
-	`OCAH_OT_ASSERT_INIT(AxiDataWidthMatches, AXI_DATA_WIDTH == 32)
+	`OCAH_ASSERT_STATIC(AxiDataWidthMatches, AXI_DATA_WIDTH == 32)
 
 endmodule : axi_lite_to_tlul

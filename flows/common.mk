@@ -117,6 +117,8 @@ ocah_flow_run = @$(foreach b,$(if $(strip $(BLOCK)),$(strip $(BLOCK)),$(OCAH_FLO
 ocah-integration-filelists-all:
 	$(call ocah_flow_run,ocah-integration-filelists)
 
+OCAH_PHONY += ocah-integration-filelists-all
+
 OCAH_UV_RUN := $(UV) --directory "$(OCAH_ROOT)" run --locked
 
 endif

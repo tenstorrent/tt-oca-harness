@@ -230,10 +230,11 @@ The same entry fields express other policies. A secure-only inbound entry
 traffic to the inbound default, which blocks it; make sure no other entry
 permits it. On the SMC outbound filter the same entry does not block non-secure
 traffic, because unmatched traffic passes; add matching deny entries for it,
-accounting for entry priority. AXI-Lite filters check AxPROT instead: with
-`awprot_requirement` and `arprot_requirement` at `0x1` (data, secure,
-privileged) and both `write_filter_enable` and `read_filter_enable` set, only
-transactions whose three PROT bits equal `0x1` are allowed.
+accounting for entry priority. The SMC GPIO's AXI-Lite access filter checks
+AxPROT instead: with `awprot_requirement` and `arprot_requirement` at `0x1`
+(data, secure, privileged) and both `write_filter_enable` and
+`read_filter_enable` set, only transactions whose three PROT bits equal `0x1`
+are allowed. The SEP load/store, debug and DMA masters all drive `0x1`.
 
 [NOTE]
 ====

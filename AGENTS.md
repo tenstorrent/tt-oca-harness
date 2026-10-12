@@ -252,8 +252,10 @@ Nix content tag on the next `verify`/`run`/`shell`:
 
 With `OCAH_CONTAINER_REGISTRY_IMAGE` set, `docker-run.sh` first tries that registry tag. With the
 companion's `OCAH_DOCKER_CACHE_DIR` set, it next checks the shared tarball cache; otherwise it
-builds locally from the flake. `scripts/docker.md` is authoritative for the source selection
-controls.
+builds locally from the flake. `OCAH_IMAGE_FALLBACK=main` runs the registry's `:main` instead
+of building a tag CI has not published yet. `scripts/docker.md` is authoritative for the source
+selection controls and documents the `images`, `refresh`, `prune` and `rmi` maintenance
+commands.
 
 > **Any container command can start a full image build.** `run`, `run-here`, `shell`, `verify`
 > and the doc subcommands all go through that same selection, so a routine `make regen-regs`,
@@ -435,7 +437,7 @@ Whatever the testbench, these hold:
 | `hw/top/` | Top-level integration and wrapper sources |
 | `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `starting` |
 | `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
-| `flows/` | Lint, format, synthesis and emulation flow makefiles; `synth/constraints/` shared SDC code and `cdc/` shared CDC/RDC sign-off collateral |
+| `flows/` | Lint, format, synthesis and emulation flow makefiles; `synth/constraints/` shared SDC code, `synth/pdk/<tech>/` each technology's prim cell implementations and synthesis settings, and `cdc/` shared CDC/RDC sign-off collateral |
 | `virtual_platform/` | SystemC virtual platform: the `tt-oca-harness-model` submodule that provides `sep-vp`, `smc-vp` and `smu-vp`, the `sepvp` Python runner and its pytest suite, and the Makefile that builds them and their dependencies |
 | `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches |
 | `tools/` | Register, doc, DV and container tooling |
@@ -734,7 +736,8 @@ review path. That parent executes the `main` revision of `scripts/ci/diff_class.
 the revision under test, when deciding whether a documentation-only change can skip the nonfree
 child.
 
-Verible lint and format cover hand-maintained `hw/**` sources and OCAH-owned vendor overlays.
+Verible lint and format cover hand-maintained `hw/**` sources, the technology cells under
+`flows/synth/pdk/`, and OCAH-owned vendor overlays.
 They share the same base inventory but use separate exclusions, so a formatter limitation does
 not hide findings from lint. Generated output and `vendor/<org>/<repo>/upstream/**` stay out;
 never patch upstream code for a style-only finding. Fix formatter-safe whitespace and wrapping

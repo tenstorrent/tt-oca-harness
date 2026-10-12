@@ -16,7 +16,7 @@
 <p align="center">
   <a href="https://github.com/tenstorrent/tt-oca-harness/actions/workflows/lint.yml"><img alt="Sanity CI" src="https://img.shields.io/github/actions/workflow/status/tenstorrent/tt-oca-harness/lint.yml?branch=main&label=sanity%20ci"></a>
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
-  <a href="https://tenstorrent.github.io/tt-oca-harness/"><img alt="Documentation" src="https://img.shields.io/badge/docs-online-brightgreen.svg"></a>
+  <a href="https://docs.tenstorrent.com/tt-oca-harness/"><img alt="Documentation" src="https://img.shields.io/badge/docs-online-brightgreen.svg"></a>
   <a href="https://github.com/tenstorrent/tt-oca-harness/releases"><img alt="Release" src="https://img.shields.io/github/v/release/tenstorrent/tt-oca-harness?display_name=tag"></a>
 </p>
 <!-- markdownlint-enable MD033 -->
@@ -37,16 +37,16 @@ using the OCA Harness:
 ## Documentation
 
 Full documentation is published at
-**[tenstorrent.github.io/tt-oca-harness](https://tenstorrent.github.io/tt-oca-harness/)**,
+**[docs.tenstorrent.com/tt-oca-harness](https://docs.tenstorrent.com/tt-oca-harness/)**,
 which comprises:
 
-- **[Getting Started Guide](https://tenstorrent.github.io/tt-oca-harness/ocah-starting/latest/index.html)** — setup, workflows, and contribution.
-- **[Technical Reference Manual](https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/index.html)** — architecture and register reference.
-- **[Integrator Guide](https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/index.html)** — integrating the OCA Harness into a chiplet design.
-- **[Programmer's Guide](https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html)** — register programming model and firmware interfaces.
-- **[Application Notes](https://tenstorrent.github.io/tt-oca-harness/ocah-appnotes/latest/index.html)** — task-focused how-to notes.
-- **[Verification Dashboard](https://tenstorrent.github.io/tt-oca-harness/ocah-home/latest/dashboard.html)** — single entry point for the DV status of every OCA Harness IP and subsystem.
-- Per-subsystem datasheets (PDF): [SMC](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-smc-datasheet.pdf), [SEP](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-sep-datasheet.pdf), [SMU](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-smu-datasheet.pdf), [DTP](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-dtp-datasheet.pdf), and [AoU](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-aou-datasheet.pdf).
+- **[Getting Started Guide](https://docs.tenstorrent.com/tt-oca-harness/ocah-starting/latest/index.html)** — setup, workflows, and contribution.
+- **[Technical Reference Manual](https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/index.html)** — architecture and register reference.
+- **[Integrator Guide](https://docs.tenstorrent.com/tt-oca-harness/ocah-integrator-guide/latest/index.html)** — integrating the OCA Harness into a chiplet design.
+- **[Programmer's Guide](https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html)** — register programming model and firmware interfaces.
+- **[Application Notes](https://docs.tenstorrent.com/tt-oca-harness/ocah-appnotes/latest/index.html)** — task-focused how-to notes.
+- **[Verification Dashboard](https://docs.tenstorrent.com/tt-oca-harness/ocah-home/latest/dashboard.html)** — single entry point for the DV status of every OCA Harness IP and subsystem.
+- Per-subsystem datasheets (PDF): [SMC](https://docs.tenstorrent.com/tt-oca-harness/downloads/ocah-smc-datasheet.pdf), [SEP](https://docs.tenstorrent.com/tt-oca-harness/downloads/ocah-sep-datasheet.pdf), [SMU](https://docs.tenstorrent.com/tt-oca-harness/downloads/ocah-smu-datasheet.pdf), [DTP](https://docs.tenstorrent.com/tt-oca-harness/downloads/ocah-dtp-datasheet.pdf), and [AoU](https://docs.tenstorrent.com/tt-oca-harness/downloads/ocah-aou-datasheet.pdf).
 
 The site tracks `main`. The newest release of each of the two newest minor
 series stays published as it stood at its tag under `/vX.Y/` (for example

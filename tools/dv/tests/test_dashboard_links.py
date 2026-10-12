@@ -3,8 +3,9 @@
 """Unit tests for the paths a normalized dashboard record publishes.
 
 A run tree downloaded from CI sits somewhere other than the run directory the runner
-recorded. Every path the collector publishes must resolve against the downloaded tree,
-and the coverage files it stages beside the record must be the small ones.
+recorded. Every path the collector publishes from a tree downloaded into the checkout
+must resolve against that tree, and the coverage files it stages beside the record must
+be the small ones.
 
 Run from the repository root:
 

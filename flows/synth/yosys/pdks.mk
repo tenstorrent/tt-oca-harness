@@ -7,7 +7,7 @@ ocah_synth_pdk_mk := 1
 PDKS = sky130 ihp-sg13g2 gf180mcuD
 
 # Default PDK, forwarded into yosys as PDK=$(TECH) (see
-# flows/synth/yosys/tech/ and scripts/init_tech.tcl).
+# flows/synth/pdk/ and scripts/init_tech.tcl).
 TECH ?= ihp-sg13g2
 
 # Warn if unsupported PDK
@@ -55,6 +55,6 @@ ${PDK_SENTINEL}: ocah-synth-pdk
 ocah-synth-pdks-clean:
 	rm -rf $(PDK_ROOT)
 
-OCAH_PHONY += ocah-synth-pdks-all ocah-synth-pdk ocah-synth-pdks-clean
+OCAH_PHONY += ocah-synth-pdks ocah-synth-pdk ocah-synth-pdks-clean
 
 endif

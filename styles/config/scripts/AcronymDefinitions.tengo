@@ -187,20 +187,27 @@ word := "(?:[A-Z][A-Za-z']*|[0-9]+|" + linking_word + ")"
 // "Reliability, Availability, and Serviceability" is one phrase.
 phrase_pattern := "[A-Z][A-Za-z']*(?:[-,\\s]" + word + "){1,6}"
 
+// One alternation, so each form is a single pass over the scope.
+acronyms := ""
 for acr, accepted_phrases in canonical {
-  // "<Phrase> (ACRONYM)"
-  forward := text.re_find("(" + phrase_pattern + ")\\s*\\(" + acr + "\\)", scope, -1)
-  if !is_undefined(forward) {
-    for m in forward {
-      flag(m[0].begin, m[0].end, acr, m[1].text)
-    }
+  if acronyms != "" {
+    acronyms += "|"
   }
+  acronyms += acr
+}
 
-  // "ACRONYM (<Phrase>)"
-  reverse := text.re_find("\\b" + acr + "\\s*\\((" + phrase_pattern + ")\\)", scope, -1)
-  if !is_undefined(reverse) {
-    for m in reverse {
-      flag(m[0].begin, m[0].end, acr, m[1].text)
-    }
+// "<Phrase> (ACRONYM)"
+forward := text.re_find("(" + phrase_pattern + ")\\s*\\((" + acronyms + ")\\)", scope, -1)
+if !is_undefined(forward) {
+  for m in forward {
+    flag(m[0].begin, m[0].end, m[2].text, m[1].text)
+  }
+}
+
+// "ACRONYM (<Phrase>)"
+reverse := text.re_find("\\b(" + acronyms + ")\\s*\\((" + phrase_pattern + ")\\)", scope, -1)
+if !is_undefined(reverse) {
+  for m in reverse {
+    flag(m[0].begin, m[0].end, m[1].text, m[2].text)
   }
 }

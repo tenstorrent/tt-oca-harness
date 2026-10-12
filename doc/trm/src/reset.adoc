@@ -63,7 +63,7 @@ ifdef::backend-html5[]
   xref:ocah-programmer-guide::index.adoc#dtp-ic-reset-overrides[programming order these overrides require].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-  https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ic-reset-overrides[programming order these overrides require].
+  https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ic-reset-overrides[programming order these overrides require].
 endif::backend-pdf[]
 
 [[ocah-ic-reset]]
@@ -106,6 +106,6 @@ xref:ocah-programmer-guide::index.adoc#smc-reset-overview[SMC] and
 xref:ocah-programmer-guide::index.adoc#sep-reset-overview[SEP] reset overviews.
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-reset-overview[SMC] and
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-reset-overview[SEP] reset overviews.
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-reset-overview[SMC] and
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-reset-overview[SEP] reset overviews.
 endif::backend-pdf[]

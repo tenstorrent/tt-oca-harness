@@ -7,6 +7,8 @@
 // every chiplet still sees the event.
 // stretched_pulse_o is the registered stretched pulse.
 
+`include "ocah_registers.svh"
+
 module ctp_pulse_stretcher (
   input  logic        clk_i,            // System clock.
   input  logic        rst_ni,           // Active-low asynchronous reset; clears the counter and the
@@ -47,15 +49,8 @@ module ctp_pulse_stretcher (
   end
 
   // Registered outputs
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      counter_q <= 16'd0;
-      active_q  <= 1'b0;
-    end else begin
-      counter_q <= counter_d;
-      active_q  <= active_d;
-    end
-  end
+  `OCAH_FF(counter_q, counter_d, 16'd0, clk_i, rst_ni)
+  `OCAH_FF(active_q, active_d, 1'b0, clk_i, rst_ni)
 
   // Output is active when counter is non-zero or just started
   assign stretched_pulse_o = active_q;

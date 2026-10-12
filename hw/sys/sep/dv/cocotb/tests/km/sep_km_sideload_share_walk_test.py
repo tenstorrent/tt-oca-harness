@@ -826,6 +826,10 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         self.write_efuse_image(image)
         await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac"))
 
+        # Checker and monitor summaries carry the retained evidence. Per-access
+        # INFO records do not and dominate the log during the long mailbox waits.
+        self.suppress_host_axi_transaction_info()
+
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
         self.hmac = SepHmac(self)

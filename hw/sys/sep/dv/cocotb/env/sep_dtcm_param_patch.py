@@ -34,11 +34,24 @@ def parse_hex_cells(path: str) -> dict:
 
 
 def find_magic(cells: dict, magic_le: bytes) -> int:
-    """Return the byte address where the little-endian magic bytes start."""
-    for base in sorted(cells):
-        if all(cells.get(base + i) == magic_le[i] for i in range(len(magic_le))):
-            return base
-    raise RuntimeError("param-block magic not found in DTCM image")
+    """Return the byte address where the little-endian magic bytes start.
+
+    The magic must occur exactly once: a second match would leave the patch
+    target ambiguous.
+    """
+    hits = [
+        base
+        for base in sorted(cells)
+        if all(cells.get(base + i) == magic_le[i] for i in range(len(magic_le)))
+    ]
+    if not hits:
+        raise RuntimeError("param-block magic not found in DTCM image")
+    if len(hits) > 1:
+        raise RuntimeError(
+            f"param-block magic found {len(hits)} times in DTCM image at "
+            + ", ".join(f"0x{h:x}" for h in hits)
+        )
+    return hits[0]
 
 
 def _rewrite(src: str, dst: str, patches: dict) -> None:
@@ -75,5 +88,11 @@ def patch_param_block(src_hex: str, dst_hex: str, magic: int, words: list) -> No
     for k, word in enumerate(words):
         for b in range(4):
             patches[base + 4 * k + b] = (word >> (8 * b)) & 0xFF
+    missing = sorted(a for a in patches if a not in cells)
+    if missing:
+        raise RuntimeError(
+            f"param block of {len(words)} words at 0x{base:x} runs past the DTCM image: "
+            f"first unbacked byte 0x{missing[0]:x}"
+        )
     os.makedirs(os.path.dirname(dst_hex) or ".", exist_ok=True)
     _rewrite(src_hex, dst_hex, patches)

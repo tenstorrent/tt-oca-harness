@@ -63,7 +63,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-sec-dis-recovery[SEC_DIS recovery sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-sec-dis-recovery[SEC_DIS recovery sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-sec-dis-recovery[SEC_DIS recovery sequence]
 endif::backend-pdf[]
 is in the Programmer's Guide. SEC_DIS follows the feature-control rules in the
 Lifecycle Controller chapter, with the metal-programmable enable also required.
@@ -100,7 +100,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-token-matching[token submission sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-token-matching[token submission sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-token-matching[token submission sequence]
 endif::backend-pdf[]
 is in the Programmer's Guide.
 

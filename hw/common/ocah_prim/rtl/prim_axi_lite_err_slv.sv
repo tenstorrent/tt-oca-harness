@@ -33,13 +33,15 @@ module prim_axi_lite_err_slv #(
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
   `include "axi/typedef.svh"
 
   ////////////////
   // Assertions //
   ////////////////
 
-  `OCAH_OT_ASSERT_INIT(DataWidthValid_A, AXI_DATA_WIDTH >= 8 && $countones(AXI_DATA_WIDTH) == 1)
+  `OCAH_ASSERT_STATIC(DataWidthValid_A,
+                      AXI_DATA_WIDTH >= 8 && (AXI_DATA_WIDTH & (AXI_DATA_WIDTH - 1)) == 0)
 
   `OCAH_OT_ASSERT(AwValidStable_A,
                   axil_req_i.aw_valid && !axil_resp_o.aw_ready |=> axil_req_i.aw_valid, clk_i,

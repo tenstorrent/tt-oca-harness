@@ -1093,13 +1093,11 @@ module sep_crypto #(
   // all live inside these structs, any width change shows up in the total
   // $bits of the req/resp.
   // =========================================================================
-`ifdef OCAH_DEBUG_LIVE  // elaboration-time width checks; excluded from synthesis
-  initial begin : gen_km_efuse_axil_type_assertions
-    assert ($bits(km_intf_pkg::km_axil_req_t) == $bits(sep_efuse_pkg::efuse_axil_req_t))
-    else $fatal(1, "KM_EFUSE_AXIL req width mismatch: km_axil_req_t != efuse_axil_req_t");
-    assert ($bits(km_intf_pkg::km_axil_resp_t) == $bits(sep_efuse_pkg::efuse_axil_resp_t))
-    else $fatal(1, "KM_EFUSE_AXIL resp width mismatch: km_axil_resp_t != efuse_axil_resp_t");
-  end
-`endif  // OCAH_DEBUG_LIVE
+  `OCAH_ASSERT_STATIC(KmEfuseAxilReqWidth_A, $bits(km_intf_pkg::km_axil_req_t) == $bits
+                      (sep_efuse_pkg::efuse_axil_req_t),
+                      "KM_EFUSE_AXIL req width mismatch: km_axil_req_t != efuse_axil_req_t")
+  `OCAH_ASSERT_STATIC(KmEfuseAxilRespWidth_A, $bits(km_intf_pkg::km_axil_resp_t) == $bits
+                      (sep_efuse_pkg::efuse_axil_resp_t),
+                      "KM_EFUSE_AXIL resp width mismatch: km_axil_resp_t != efuse_axil_resp_t")
 
 endmodule

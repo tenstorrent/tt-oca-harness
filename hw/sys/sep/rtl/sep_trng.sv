@@ -20,6 +20,8 @@
 // trng_reset_active_o is rst_ni's assertion synchronized to clk_i under por_rst_ni; it is
 // meant as a synchronous clear downstream, not as a reset.
 
+`include "ocah_assert.svh"
+
 module sep_trng #(
   parameter int unsigned NUM_AXIS = sep_crypto_pkg::SepCryptoEdnEndpointCount      // Number of DRBG AXI-Stream endpoints; elaboration fails
                                                                                    // unless it equals SepCryptoEdnEndpointCount.
@@ -157,8 +159,7 @@ module sep_trng #(
     .edn_bus_err_clr_i         (edn_bus_err_clr_i)
   );
 
-  if (NUM_AXIS != sep_crypto_pkg::SepCryptoEdnEndpointCount) begin : gen_endpoint_width_check
-    $error("sep_trng: NUM_AXIS must equal SepCryptoEdnEndpointCount");
-  end
+  `OCAH_ASSERT_STATIC(NumAxis_A, NUM_AXIS == sep_crypto_pkg::SepCryptoEdnEndpointCount,
+                      "NUM_AXIS must equal SepCryptoEdnEndpointCount")
 
 endmodule

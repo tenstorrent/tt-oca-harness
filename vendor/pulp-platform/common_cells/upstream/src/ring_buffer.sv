@@ -16,7 +16,7 @@
 // The read pointer is advanced independently using a dedicated `advance_i` and `step_i`
 // interface. This decouples read consumption from read address requests.
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 
 module ring_buffer #(
@@ -65,9 +65,9 @@ module ring_buffer #(
     logic [AddrWidth:0] rptr_d, rptr_q;
     logic [AddrWidth:0] wptr_d, wptr_q;
 
-    `FF(mem_q, mem_d, '0, clk_i, rst_ni)
-    `FF(rptr_q, rptr_d, '0, clk_i, rst_ni)
-    `FF(wptr_q, wptr_d, '0, clk_i, rst_ni)
+    `OCAH_FF(mem_q, mem_d, '0, clk_i, rst_ni)
+    `OCAH_FF(rptr_q, rptr_d, '0, clk_i, rst_ni)
+    `OCAH_FF(wptr_q, wptr_d, '0, clk_i, rst_ni)
 
     ////////////////////////////
     // State transition logic //

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 VNCHIP LABS
 //
 // Predicts selected side-effect-free register-block words from accepted
-// SEP_IN writes and publishes an expected item for each subsequent read.
+// SEP_IN writes and predicts OKAY responses for catalogued reads and writes.
 
 class smc_regblock_wide_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi_item);
   `uvm_component_utils(smc_regblock_wide_ref_model)
@@ -38,6 +38,10 @@ class smc_regblock_wide_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_a
     if (!enabled() || !smc_is_regblock_wide_access(t, entry, index)) return;
     if (t.direction == OCAH_AXI_DIR_WRITE) begin
       bit [7:0] strobes = (t.strobes.size() != 0) ? t.strobes[0] : 8'hFF;
+      ocah_axi_resp_e response =
+          cfg.regblock_wide_response_negative ? OCAH_AXI_RESP_SLVERR : OCAH_AXI_RESP_OKAY;
+      expected_ap.write(expected_access(t, t.data_words[0], response));
+      if (!t.is_ok()) return;
       m_shadow[index] =
           smc_regblock_merge_write(m_shadow[index], t.data_words[0], strobes, entry.rw_mask);
       return;
@@ -45,20 +49,21 @@ class smc_regblock_wide_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_a
     if (t.direction == OCAH_AXI_DIR_READ) begin
       bit [63:0] expected_value = m_shadow[index];
       if (cfg.regblock_wide_scoreboard_negative) expected_value[0] = ~expected_value[0];
-      expected_ap.write(expected_read(t, expected_value));
+      expected_ap.write(expected_access(t, expected_value, OCAH_AXI_RESP_OKAY));
     end
   endfunction
 
-  protected function ocah_axi_item expected_read(ocah_axi_item observed, bit [63:0] value);
-    ocah_axi_item expected = ocah_axi_item::type_id::create("expected_regblock_wide_read");
+  protected function ocah_axi_item expected_access(ocah_axi_item observed, bit [63:0] value,
+                                                   ocah_axi_resp_e response);
+    ocah_axi_item expected = ocah_axi_item::type_id::create("expected");
     expected.protocol = observed.protocol;
-    expected.direction = OCAH_AXI_DIR_READ;
+    expected.direction = observed.direction;
     expected.address = observed.address;
     expected.size = SmcMemSize;
     expected.expected_beats = 1;
     expected.source = get_full_name();
     expected.data_words.push_back(value);
-    expected.resp_list.push_back(OCAH_AXI_RESP_OKAY);
+    expected.resp_list.push_back(response);
     return expected;
   endfunction
 

@@ -18,7 +18,7 @@ dependencies = [
   "peakrdl-html>=2.12.2",
   "peakrdl-ipxact>=3.4.0",
   "peakrdl-markdown>=1.0.3",
-  "peakrdl-rawheader==0.2.8",  # bumped manually: releases change generated macro names
+  "peakrdl-rawheader>=0.2.9",
   "peakrdl-regblock>=1.2.0",
   "peakrdl-systemrdl>=1.0.1",
   "pre-commit==4.5.1",  # 4.6+ requires Git 2.31; supported environments include Git 2.26

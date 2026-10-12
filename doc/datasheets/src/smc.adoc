@@ -158,7 +158,7 @@ peripheral configuration, and technology-specific cell implementations
 [.datasheet-section]
 RESOURCES
 
-Documentation: https://tenstorrent.github.io/tt-oca-harness/[tenstorrent.github.io/tt-oca-harness] +
+Documentation: https://docs.tenstorrent.com/tt-oca-harness/[docs.tenstorrent.com/tt-oca-harness] +
 SMC source documentation: `hw/sys/smc/doc/` +
 RTL: `hw/sys/smc/rtl/` +
 Verification: `hw/sys/smc/dv/` +
@@ -194,7 +194,7 @@ VERIFICATION AND MATURITY
 
 [.beta-note]
 --
-The OCAH https://tenstorrent.github.io/tt-oca-harness/ocah-home/latest/dashboard.html[verification dashboard]
+The OCAH https://docs.tenstorrent.com/tt-oca-harness/ocah-home/latest/dashboard.html[verification dashboard]
 publishes the current verification and maturity status.
 The checked-in open-source cocotb/PyUVM environment runs against the SMC
 integration wrapper, which combines SMC RTL, adopter-facing IP shims, and CPU

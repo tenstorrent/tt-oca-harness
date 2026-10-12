@@ -64,7 +64,7 @@ OCAH_PHONY += ocah-submodules-init
 ## @param CHECK=1 Report stale filelists and fail instead of rewriting.
 .PHONY: ocah-update-integration-filelists
 ocah-update-integration-filelists:
-	@cd "$(OCAH_ROOT)" && python3 scripts/update_integration_filelists.py $(if $(CHECK),--check)
+	@cd "$(OCAH_ROOT)" && python3 scripts/update_integration_filelists.py $(if $(filter 1,$(CHECK)),--check)
 
 OCAH_PHONY += ocah-update-integration-filelists
 

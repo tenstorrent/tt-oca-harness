@@ -9,8 +9,9 @@
 // DefaultInstruction (IDCODE).
 
 module jtag_inst_reg
-  import prim_jtag_pkg::*;
-  import jtag_inst_reg_pkg::*;
+  import prim_jtag_pkg::jtag_scan_ctrl_t;
+  import jtag_inst_reg_pkg::jtag_instruction_decoded_e;
+  import jtag_inst_reg_pkg::jtag_instruction_e;
 (
   /* verilator lint_off UNUSEDSIGNAL */
   input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.
@@ -51,7 +52,7 @@ module jtag_inst_reg
   // Instruction register - updated on update_ir (negative edge for parallel output)
   prim_flop #(
     .Width($bits(jtag_instruction_decoded_e)),
-    .ResetValue(DefaultInstruction),
+    .ResetValue(jtag_inst_reg_pkg::DefaultInstruction),
     .Negedge(1'b1)
   ) u_instruction_reg_flop (
     .clk_i  (scan_ctrl_i.tck),
@@ -71,7 +72,7 @@ module jtag_inst_reg
       // Shift: Shift in new instruction bit from scan input
       // Per IEEE 1149.1, LSB is shifted in first
       instruction_shift_reg_d = jtag_instruction_e'({
-        scan_in_i, instruction_shift_reg_q[IrWidth-1:1]
+        scan_in_i, instruction_shift_reg_q[jtag_inst_reg_pkg::IrWidth-1:1]
       });
     end else begin
       instruction_shift_reg_d = instruction_shift_reg_q;
@@ -79,8 +80,8 @@ module jtag_inst_reg
   end
 
   prim_flop #(
-    .Width(IrWidth),
-    .ResetValue(BYPASS_ALT_INSTR)
+    .Width(jtag_inst_reg_pkg::IrWidth),
+    .ResetValue(jtag_inst_reg_pkg::BYPASS_ALT_INSTR)
   ) u_instruction_shift_reg_flop (
     .clk_i  (scan_ctrl_i.tck),
     .rst_ni (scan_ctrl_i.rst_n),

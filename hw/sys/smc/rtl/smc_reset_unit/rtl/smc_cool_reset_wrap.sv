@@ -9,6 +9,8 @@
 // zero. Implements the ISOLATE_REQ_* registers on the SMC clock, reset only by the cold
 // reset so they survive the cool reset.
 
+`include "ocah_registers.svh"
+
 module smc_cool_reset_wrap (
   input  logic                                   clk_ref_i,  // Reference clock for the FLR counters
                                                              // and rst_cool_no.
@@ -258,24 +260,14 @@ module smc_cool_reset_wrap (
   ///////////////////////
 
   // Detect rising edge of cfg_flr_pf_active_sync_ref
-  always_ff @(posedge clk_ref_i or negedge rst_cold_ref_ni) begin
-    if (!rst_cold_ref_ni) begin
-      cfg_flr_pf_active_sync_ref_q <= 1'b0;
-    end else begin
-      cfg_flr_pf_active_sync_ref_q <= cfg_flr_pf_active_sync_ref;
-    end
-  end
+  `OCAH_FF(cfg_flr_pf_active_sync_ref_q, cfg_flr_pf_active_sync_ref, 1'b0, clk_ref_i,
+           rst_cold_ref_ni)
 
   assign cfg_flr_pf_active_sync_ref_posedge = cfg_flr_pf_active_sync_ref && !cfg_flr_pf_active_sync_ref_q;
 
   // Detect rising edge of cfg_flr_pf_active_sync_smc
-  always_ff @(posedge clk_smc_i or negedge rst_cold_smc_ni) begin
-    if (!rst_cold_smc_ni) begin
-      cfg_flr_pf_active_sync_smc_q <= 1'b0;
-    end else begin
-      cfg_flr_pf_active_sync_smc_q <= cfg_flr_pf_active_sync_smc;
-    end
-  end
+  `OCAH_FF(cfg_flr_pf_active_sync_smc_q, cfg_flr_pf_active_sync_smc, 1'b0, clk_smc_i,
+           rst_cold_smc_ni)
 
   assign cfg_flr_pf_active_sync_smc_posedge = cfg_flr_pf_active_sync_smc && !cfg_flr_pf_active_sync_smc_q;
 
@@ -284,15 +276,10 @@ module smc_cool_reset_wrap (
   /////////////////////////////////
 
   // SMC implements isolate_req_reg[] for SMC SW to assert isolation request to subsystems like PCIe and/or ETH.
-  always_ff @(posedge clk_smc_i or negedge rst_cold_smc_ni) begin
-    if (~rst_cold_smc_ni) begin
-      isolate_req_reg <= '0;
-    end else begin
-      if (isolate_req_reg_wr_en) begin
-        isolate_req_reg <= (isolate_req_reg & ~isolate_req_reg_wr_mask) | (isolate_req_reg_wr_data & isolate_req_reg_wr_mask);
-      end
-    end
-  end
+  `OCAH_FFL(
+      isolate_req_reg,
+      (isolate_req_reg & ~isolate_req_reg_wr_mask) | (isolate_req_reg_wr_data & isolate_req_reg_wr_mask),
+      isolate_req_reg_wr_en, '0, clk_smc_i, rst_cold_smc_ni)
 
   // Section 4.9 - Implements isolate_req_pinen_reg[] to enable isolate_req_o[] to be impacted by isolate_req_pin.
   // Reset to 0 by PRESETn_extended when isolate_req_pin = 0; No reset when isolate_req_pin = 1.
@@ -320,15 +307,10 @@ module smc_cool_reset_wrap (
   end
 
   // SMC implements isolate_req_reg[] for SMC SW to assert isolation request to subsystems like PCIe and/or ETH.
-  always_ff @(posedge clk_smc_i or negedge rst_cold_smc_ni) begin
-    if (~rst_cold_smc_ni) begin
-      isolate_req_smcen_reg <= '0;
-    end else begin
-      if (isolate_req_smcen_wr_en) begin
-        isolate_req_smcen_reg <= (isolate_req_smcen_reg & ~isolate_req_smcen_reg_wr_mask) | (isolate_req_smcen_reg_wr_data & isolate_req_smcen_reg_wr_mask);
-      end
-    end
-  end
+  `OCAH_FFL(
+      isolate_req_smcen_reg,
+      (isolate_req_smcen_reg & ~isolate_req_smcen_reg_wr_mask) | (isolate_req_smcen_reg_wr_data & isolate_req_smcen_reg_wr_mask),
+      isolate_req_smcen_wr_en, '0, clk_smc_i, rst_cold_smc_ni)
 
   // Isolate request control logic (OR of SW request, pin request, and FLR request)
   always_comb begin

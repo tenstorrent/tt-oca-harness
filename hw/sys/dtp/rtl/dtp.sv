@@ -10,11 +10,12 @@
 // Unused STAP or scan ports must be tied off or looped back as noted on each port.
 
 module dtp
-  import prim_jtag_pkg::*;
-  import jtag_tap_pkg::*;
-  import jtag_inst_reg_pkg::*;
-  import cross_trigger_network_pkg::*;
-  import dtp_pkg::*;
+  import jtag_tap_pkg::tap_state_e;
+  import jtag_inst_reg_pkg::jtag_instruction_decoded_e;
+  import dtp_pkg::jtag_dbg_56_64_2_12_axi_req_t;
+  import dtp_pkg::jtag_dbg_56_64_2_12_axi_resp_t;
+  import dtp_pkg::dtp_axil_32_32_req_t;
+  import dtp_pkg::dtp_axil_32_32_resp_t;
 #(
   parameter bit  JTAG_BSR_ENABLE          = 1,  // Enable all mandatory JTAG boundary-scan
                                                 // instructions.

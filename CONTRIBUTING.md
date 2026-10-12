@@ -14,9 +14,9 @@ This project and everyone participating in it is governed by our [Code of Conduc
 ## Getting Started
 
 For detailed documentation, please refer to the GitHub pages site generated as a
-deployment of this repository: [tenstorrent.github.io/tt-oca-harness/](https://tenstorrent.github.io/tt-oca-harness/)
+deployment of this repository: [docs.tenstorrent.com/tt-oca-harness/](https://docs.tenstorrent.com/tt-oca-harness/)
 
-The Getting Started and Contributing Guide, in particular, can be found [here](https://tenstorrent.github.io/tt-oca-harness/ocah-starting/latest/index.html).
+The Getting Started and Contributing Guide, in particular, can be found [here](https://docs.tenstorrent.com/tt-oca-harness/ocah-starting/latest/index.html).
 
 ## Development Workflow
 

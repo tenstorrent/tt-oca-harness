@@ -12,7 +12,7 @@
 // - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
 // - Andreas Kurth <akurth@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 `ifdef QUESTA
 // Derive `TARGET_VSIM`, which is used for tool-specific workarounds in this file, from `QUESTA`,
@@ -210,13 +210,13 @@ module axi5_lite_demux_brcst #(
 
     typedef enum logic [2:0] {IDLE, REQ, LOCK, BREQ, BLOCK2, BLOCK1} state_e;
     state_e state, n_state;
-    `FFLARN(state, n_state, 1'b1, IDLE, clk_i, rst_ni)
+    `OCAH_FFL(state, n_state, 1'b1, IDLE, clk_i, rst_ni)
 
     logic locked_idx;
 
     logic [NoMstPorts-1:0] A_d, A_q, A_en;
     for (genvar i = 0; i < NoMstPorts; i++) begin : gen_A_mask
-      `FFLARN(A_q[i], A_d[i], A_en[i], 1'b1, clk_i, rst_ni)
+      `OCAH_FFL(A_q[i], A_d[i], A_en[i], 1'b1, clk_i, rst_ni)
     end
 
     `ifdef TARGET_VSIM
@@ -414,13 +414,13 @@ module axi5_lite_demux_brcst #(
     //--------------------------------------
 
     state_e wstate, n_wstate;
-    `FFLARN(wstate, n_wstate, 1'b1, IDLE, clk_i, rst_ni)
+    `OCAH_FFL(wstate, n_wstate, 1'b1, IDLE, clk_i, rst_ni)
 
     logic locked_widx;
 
     logic [NoMstPorts-1:0] B_d, B_q, B_en;
     for (genvar i = 0; i < NoMstPorts; i++) begin : gen_B_mask
-      `FFLARN(B_q[i], B_d[i], B_en[i], 1'b1, clk_i, rst_ni)
+      `OCAH_FFL(B_q[i], B_d[i], B_en[i], 1'b1, clk_i, rst_ni)
     end
 
     spill_register #(

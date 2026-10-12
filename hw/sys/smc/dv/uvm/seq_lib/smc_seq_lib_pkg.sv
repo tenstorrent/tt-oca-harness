@@ -36,12 +36,17 @@ package smc_seq_lib_pkg;
   `include "smc_axi_csr_read_seq.svh"
   `include "smc_axi_mem_write_seq.svh"
   `include "smc_axi_mem_read_seq.svh"
+  `include "smc_lock_pipeline_write_seq.svh"
 
   // Scenario layer: the base virtual sequence, then the scenarios.
   `include "smc_base_test_seq.svh"
+  `include "smc_wdt_base_test_seq.svh"
+  `include "smc_wdt_feed_zerocmp_test_seq.svh"
+  `include "smc_wdt_core_awake_gate_test_seq.svh"
   `include "smc_register_sanity_test_seq.svh"
   `include "smc_default_reg_rd_test_seq.svh"
   `include "smc_reset_unit_lock_test_seq.svh"
+  `include "smc_lock_pipelined_write_test_seq.svh"
   `include "smc_mutex_semaphore_test_seq.svh"
   `include "smc_spm_mem_boundary_test_seq.svh"
   `include "smc_multi_reset_csr_persistence_test_seq.svh"

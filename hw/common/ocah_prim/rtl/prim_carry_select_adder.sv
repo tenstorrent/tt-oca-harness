@@ -7,6 +7,8 @@
 // Drive c_o with the final carry out of the MSB chunk.
 // DATA_WIDTH must divide evenly across NUM_CHUNKS.
 
+`include "ocah_assert.svh"
+
 module prim_carry_select_adder #(
   parameter int unsigned DATA_WIDTH = 64,  // Operand width.
   parameter int unsigned NUM_CHUNKS = 2  // Number of carry-select chunks.
@@ -43,9 +45,7 @@ module prim_carry_select_adder #(
   assign sum_o  = sum_chunk;
   assign c_o = carry[NUM_CHUNKS-1];
 
-  // Assertion to make sure NUM_CHUNKS divides DATA_WIDTH without remainder
-  if (DATA_WIDTH % NUM_CHUNKS != 0) begin : gen_error
-    $error("DATA_WIDTH must be a multiple of NUM_CHUNKS");
-  end
+  `OCAH_ASSERT_STATIC(DataWidthChunks_A, DATA_WIDTH % NUM_CHUNKS == 0,
+                      "DATA_WIDTH must be a multiple of NUM_CHUNKS")
 
 endmodule

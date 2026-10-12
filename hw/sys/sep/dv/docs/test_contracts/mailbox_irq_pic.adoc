@@ -413,9 +413,9 @@ and all eight extras (DMA done/chunk/error, HMAC-err, KMAC, CSRNG, EDN, KMAC-err
 walk on every seed, so every run grades every catalog source. The seed sets only
 the order in which the extras are raised, so the test runs one seed per regression.
 
-*Objective*: Prove the PIC delivers every source in the firmware catalog to the CPU with one-hot claim and RW1C clear: the three required sources and all eight extras on every seed.
+*Objective*: Prove the PIC delivers every source in the firmware catalog to the CPU with one-hot claim and its clear: write-one-to-clear of `INTR_STATE` or IRQS for the event-type sources and the mailbox, and `INTR_TEST` back to 0 with a write-one clear of `STATUS` for the three DMA sources, whose `INTR_STATE` is read-only: the three required sources and all eight extras on every seed.
 
-*Test Coverage*: PIC delivers all eleven catalog sources with one-hot claim and RW1C.
+*Test Coverage*: PIC delivers all eleven catalog sources with one-hot claim and the clear of each source (write-one-to-clear, or `INTR_TEST` back to 0 for the DMA sources).
 
 *Test Procedure*:
 

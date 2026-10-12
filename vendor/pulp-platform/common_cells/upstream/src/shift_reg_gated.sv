@@ -10,7 +10,7 @@
 //
 // Description: A Simple shift register with ICG for arbitrary depth and types.
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 module shift_reg_gated #(
   parameter int unsigned Depth = 32'd8,
@@ -49,11 +49,11 @@ module shift_reg_gated #(
       end
 
       // shift valid flag without clock gate
-      `FF(valid_q[i], valid_d[i], '0, clk_i, rst_ni)
+      `OCAH_FF(valid_q[i], valid_d[i], '0, clk_i, rst_ni)
 
       // Gate each shift register with a valid flag to enable the synthsis tools to insert ICG for
       // better power comsumption.
-      `FFL(data_q[i], data_d[i], valid_d[i], dtype'('0), clk_i, rst_ni)
+      `OCAH_FFL(data_q[i], data_d[i], valid_d[i], dtype'('0), clk_i, rst_ni)
     end
 
     // Output the shifted result.

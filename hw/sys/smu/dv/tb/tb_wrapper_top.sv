@@ -593,6 +593,29 @@ module smu_wrapper_uvm_top
     $asserton(0, u_dut.u_sep_ip_integration.u_sep_boot_rom.noXOnCsI);
     $asserton(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
   end
+
+  // A JTAG sep_reset_n override resets the crypto engines without isolation,
+  // so an engine can drop an ungranted EDN request with no endpoint cancel.
+  // JTAG resets are out of scope for the cancel, so the request-hold checks
+  // report a debug-only event rather than a design gap. Scoped to the crypto
+  // EDN instance: the pool instance keeps its checks.
+  initial begin
+    if ($test$plusargs("sep_edn_jtag_reset_waive")) begin
+      $display("[tb] crypto EDN request-hold checks off (+sep_edn_jtag_reset_waive)");
+      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
+          .u_axis_edn_crypto_s3c_scan.u_arbiter.ReqStaysHighUntilGranted0_M);
+      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
+          .u_axis_edn_crypto_s3c_scan.u_arbiter.LockArbDecision_A);
+      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
+          .u_axis_edn_crypto_s3c_scan.gen_ep[0].AxisEdnReqStableUnlessEndpointCancelled_A);
+      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
+          .u_axis_edn_crypto_s3c_scan.gen_ep[1].AxisEdnReqStableUnlessEndpointCancelled_A);
+      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
+          .u_axis_edn_crypto_s3c_scan.gen_ep[2].AxisEdnReqStableUnlessEndpointCancelled_A);
+      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
+          .u_axis_edn_crypto_s3c_scan.gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
+    end
+  end
 `endif
 
   // powergood_stable is the SMC reset controller's stretched and synchronized
@@ -1011,6 +1034,23 @@ module smu_wrapper_uvm_top
     $fclose(boot_rom_fd);
     $readmemh(boot_rom_path, u_dut.u_sep_ip_integration.u_sep_boot_rom.mem);
     $display("[smu_wrapper_uvm_top] loaded SEP boot ROM from %s", boot_rom_path);
+  end
+
+  // The Key Manager ROM macro has no init-file hook. A leaf that releases
+  // km_jtag_rst_n names an image: an empty ROM returns X, and the CPU's
+  // look-ahead read takes u_km_rom.req_i to X once that reset is high.
+  string km_rom_path;
+  int    km_rom_fd;
+  initial begin
+    if ($value$plusargs("km_rom_hex=%s", km_rom_path)) begin
+      km_rom_fd = $fopen(km_rom_path, "r");
+      if (km_rom_fd == 0) begin
+        $fatal(1, "[smu_wrapper_uvm_top] +km_rom_hex=%s is not readable", km_rom_path);
+      end
+      $fclose(km_rom_fd);
+      $readmemh(km_rom_path, u_dut.u_sep_ip_integration.u_km_rom.mem);
+      $display("[smu_wrapper_uvm_top] loaded Key Manager ROM from %s", km_rom_path);
+    end
   end
 
   // ------------------------------------------------------------------

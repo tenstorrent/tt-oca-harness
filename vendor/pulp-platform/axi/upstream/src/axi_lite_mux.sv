@@ -18,7 +18,7 @@
 //                        sent back in order.
 
 // register macros
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 module axi_lite_mux #(
   // AXI4-Lite parameter and channel types
@@ -247,7 +247,7 @@ module axi_lite_mux #(
       end
     end
 
-    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
+    `OCAH_FFL(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
 
     fifo_v3 #(
       .FALL_THROUGH ( FallThrough ),

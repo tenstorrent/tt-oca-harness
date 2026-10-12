@@ -170,11 +170,19 @@ UpperCamelCase, and UpperCamelCase to name constants (localparam).
 * Name enum types in lower_snake_case with an `_e` suffix.
 * TT-owned RTL uses postfix *_i / *_o / *_io; active-low _n sits immediately
 before the direction suffix so resets are rst_ni.
+* Write registers with the `OCAH_FF*` macros of
+`hw/common/registers/ocah_registers.svh`, one register per macro, passing the
+clock and reset explicitly. Write an `always_ff` block by hand only for logic
+the macros cannot express. Do not use the common_cells `registers.svh`
+macros; vendored sources are patched to the `OCAH_FF*` ones.
 * As stated in the lowRISC guidelines, SystemVerilog Interfaces can be
 limited in terms of tool support, so we _highly discourage_ their use as
 they are not uniformly supported by open source tools. As an
 alternative, struct types can be used instead to bundle groups of input
 or output signals to make ports more abstract.
+* Refer to a package member as `pkg::name`. Import a member by name only
+where a module uses it often, such as the states of an FSM, and then import
+every literal of that enum. Do not use wildcard `import pkg::*;`.
 * Finite State Machines (FSMs) are powerful sequence control constructs
 but can spiral out of control quickly. Consequences are difficult to
 understand "next state" logic and long timing paths. Separate the

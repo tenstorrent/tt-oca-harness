@@ -16,8 +16,8 @@
 `include "axi/assign.svh"
 
 module smc_periph_axi_lite_xbar
-  import axi_pkg::*;
-  import smc_periph_axi_lite_xbar_pkg::*;
+  import smc_periph_axi_lite_xbar_pkg::axi_lite32_req_t;
+  import smc_periph_axi_lite_xbar_pkg::axi_lite32_resp_t;
 #(
   parameter int unsigned EFUSE_SHIM_SIZE = 'h44  // Vendor eFuse shim CSR block carved off
                                                  // the base of the smc_external window, in
@@ -81,7 +81,7 @@ module smc_periph_axi_lite_xbar
   // ===========================================================================
   // Every address boundary comes from the generated RDL map. EFUSE_SHIM_SIZE
   // partitions the generated external window without duplicating its bounds.
-  localparam addr_rule_t [NumAddrRules-1:0] AddrMap = '{
+  localparam smc_periph_axi_lite_xbar_pkg::addr_rule_t [smc_periph_axi_lite_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
     // reset_unit: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_{BASE_ADDR,SIZE}
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR),
@@ -152,8 +152,8 @@ module smc_periph_axi_lite_xbar
   // ===========================================================================
   // Input Protocol/Width Conversion (to match crossbar)
   // ===========================================================================
-  xbar_slv_req_t  [0:0] xbar_slv_req;
-  xbar_slv_resp_t [0:0] xbar_slv_resp;
+  smc_periph_axi_lite_xbar_pkg::xbar_slv_req_t  [0:0] xbar_slv_req;
+  smc_periph_axi_lite_xbar_pkg::xbar_slv_resp_t [0:0] xbar_slv_resp;
 
   // Input periph_in: Direct connection (AXI4_LITE, 32-bit)
   assign xbar_slv_req[0] = periph_in_req_i;
@@ -162,19 +162,19 @@ module smc_periph_axi_lite_xbar
   // ===========================================================================
   // Crossbar
   // ===========================================================================
-  xbar_mst_req_t  [11:0] xbar_mst_req;
-  xbar_mst_resp_t [11:0] xbar_mst_resp;
+  smc_periph_axi_lite_xbar_pkg::xbar_mst_req_t  [11:0] xbar_mst_req;
+  smc_periph_axi_lite_xbar_pkg::xbar_mst_resp_t [11:0] xbar_mst_resp;
 
   axi_lite_xbar #(
-    .Cfg          (XbarCfg),
-    .aw_chan_t    (xbar_slv_aw_chan_t),
-    .w_chan_t     (xbar_slv_w_chan_t),
-    .b_chan_t     (xbar_slv_b_chan_t),
-    .ar_chan_t    (xbar_slv_ar_chan_t),
-    .r_chan_t     (xbar_slv_r_chan_t),
-    .axi_req_t    (xbar_slv_req_t),
-    .axi_resp_t   (xbar_slv_resp_t),
-    .rule_t       (addr_rule_t)
+    .Cfg          (smc_periph_axi_lite_xbar_pkg::XbarCfg),
+    .aw_chan_t    (smc_periph_axi_lite_xbar_pkg::xbar_slv_aw_chan_t),
+    .w_chan_t     (smc_periph_axi_lite_xbar_pkg::xbar_slv_w_chan_t),
+    .b_chan_t     (smc_periph_axi_lite_xbar_pkg::xbar_slv_b_chan_t),
+    .ar_chan_t    (smc_periph_axi_lite_xbar_pkg::xbar_slv_ar_chan_t),
+    .r_chan_t     (smc_periph_axi_lite_xbar_pkg::xbar_slv_r_chan_t),
+    .axi_req_t    (smc_periph_axi_lite_xbar_pkg::xbar_slv_req_t),
+    .axi_resp_t   (smc_periph_axi_lite_xbar_pkg::xbar_slv_resp_t),
+    .rule_t       (smc_periph_axi_lite_xbar_pkg::addr_rule_t)
   ) u_axi_lite_xbar (
     .clk_i                 (clk_i),
     .rst_ni                (rst_ni),

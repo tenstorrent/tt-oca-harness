@@ -11,8 +11,9 @@
 // Bus, recovery, IRQ, and DAT/DCT/RLT memory export ports are per-instance vectors.
 
 module i3ccore_wrapper
-  import i3ccore_wrap_pkg::*;
-  import i3c_pkg::*;
+  import i3ccore_wrap_pkg::reg_addr_t;
+  import i3ccore_wrap_pkg::reg_data_t;
+  import i3ccore_wrap_pkg::reg_strb_t;
 #(
   parameter int unsigned NUM_I3C = 2,                       // Number of I3C instances.
   parameter int unsigned I3C_REG_ADDR_WIDTH = i3ccore_wrap_pkg::I3cRegAddrWidth, // Width of the instance-relative address given to each i3c_wrapper.

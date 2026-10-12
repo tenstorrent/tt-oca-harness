@@ -13,6 +13,7 @@ dependencies:
   idma: { path: "vendor/pulp-platform/idma" }
   opentitan: { path: "vendor/lowRISC/opentitan" }
   picorv32: { path: "vendor/tenstorrent/tt-picorv32" }
+  pdk_ihp_sg13g2: { path: "flows/synth/pdk/ihp-sg13g2" }
 
 # Third-party IP vendored under vendor/<org>/<pkg>/upstream via `bender vendor init`.
 vendor_package:
@@ -354,6 +355,11 @@ vendor_package:
       - "src"
     patch_dir: "vendor/chipsalliance/i3c-core/patches/cocotbext-i3c"
 
+# The assertion macros are included by first-party RTL under every target.
+export_include_dirs:
+  - hw/common/assert
+  - hw/common/registers
+
 # RTL sources are partitioned by composable subsystem targets.
 sources:
   # Shared files are selected when any owning subsystem is requested.
@@ -363,7 +369,6 @@ sources:
       - hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
   - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs)
     include_dirs:
-      - hw/common/assert
       - hw/common/defs
       - hw/ip/efuse/rtl/svh
     files:

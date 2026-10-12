@@ -13,6 +13,8 @@
 // Split the counter into parallel chunks for timing.
 // count_o crosses into out_clk_i in Gray code through a three-flop synchronizer.
 
+`include "ocah_registers.svh"
+
 module prim_refclk_count_w_cdc #(
   parameter int unsigned REF_COUNT_WIDTH = 54,  // Reference counter width; ~5 years at 100 MHz when
                                                 // 54.
@@ -206,13 +208,7 @@ module prim_refclk_count_w_cdc #(
     .z_o(gray_count)
   );
 
-  always_ff @(posedge refclk_i or negedge prstb_synced_rd) begin
-    if (!prstb_synced_rd) begin
-      gray_count_sync <= ref_count_t'(0);
-    end else begin
-      gray_count_sync <= gray_count;
-    end
-  end
+  `OCAH_FF(gray_count_sync, gray_count, ref_count_t'(0), refclk_i, prstb_synced_rd)
 
   prim_sync3 #(
     .WIDTH(REF_COUNT_WIDTH)

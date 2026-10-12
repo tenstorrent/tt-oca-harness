@@ -35,7 +35,7 @@ The stall count restarts whenever a transaction completes, the bus goes idle, or
 restart.
 
 The SMC arming, disable and interrupt-service sequence is in the
-[AXI Hang Detectors section of the Programmer's Guide](https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-axi-hang-detectors).
+[AXI Hang Detectors section of the Programmer's Guide](https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-axi-hang-detectors).
 
 ## Verification
 

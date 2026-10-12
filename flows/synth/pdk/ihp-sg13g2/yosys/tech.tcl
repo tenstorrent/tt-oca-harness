@@ -23,7 +23,7 @@ set tech_cell_tielo {sg13g2_tielo L_LO}
 set dont_use_list [list]
 
 # ABC timing constraint: driving cell + external load seen by top-level ports
-# (see tech/ihp-sg13g2/abc.constr) and target clock period for delay
+# (see abc.constr beside this file) and target clock period for delay
 # optimization.
 set abc_constr [file join [file dirname [info script]] "abc.constr"]
 set abc_period_ps 10000
