@@ -520,6 +520,19 @@
 `SEP_TB_OUT(logic [7:0], spi_tx_qd_probe_o)
 `SEP_TB_OUT(logic, spi_lsio_trigger_probe_o)
 `SEP_TB_OUT(logic, dma_busy_probe_o)
+// Secure DMA master request after the DMA local-alias remap (net
+// u_sep.dma_axi_req, response u_sep.dma_axi_resp), observation-only. Bit
+// layout, LSB first: [0] ar_valid, [1] ar_ready, [33:2] ar.addr, [41:34]
+// ar.len, [44:42] ar.size, [45] aw_valid, [46] aw_ready, [78:47] aw.addr,
+// [86:79] aw.len, [89:87] aw.size, [90] w_valid, [91] w_ready, [99:92] w.strb,
+// [100] w.last, [101] b_valid, [102] b_ready, [104:103] b.resp.
+// cocotb/env/sep_dma_tap.py decodes it. A handshake is VALID and READY high on
+// one clk_i edge. Outside every tb ready/valid cone.
+`SEP_TB_OUT(logic [104:0], dma_axi_req_probe_o)
+// Secure DMA STATUS levels, observation-only: bit i is the stored value of
+// STATUS bit i (0 BUSY, 1 DONE, 2 ABORTED, 3 ERROR, 4 SHA2_DIGEST_VALID,
+// 5 CHUNK_DONE), read from the register flops on each clock.
+`SEP_TB_OUT(logic [5:0], dma_status_probe_o)
 // W handshakes at the AXI-Lite port of each fabric remap/filter slot register
 // block in sep_system_csr: saturating count of all beats, saturating count of
 // beats with non-zero data on a byte lane whose WSTRB bit is 0, and one sticky
