@@ -8304,7 +8304,7 @@ module sep_fcov (
   // WDOG_CTRL.enable is bit 0 (OpenTitan aon_timer WDOG_CTRL; the vendored
   // block exports no field symbol).
   localparam logic [31:0] WdogEnMask = 32'h1;
-  logic nv_wr_q, nv_lock_q, nv_en_q, nv_bark_q, nv_entry_q;
+  logic nv_wr_q, nv_lock_q, nv_en_q, nv_bark_q, nv_nmi_q, nv_entry_q;
   logic [31:0] nv_val_q;
   logic [2:0]  nv_cls_q;
   nvc_t nvc_q;
@@ -8315,6 +8315,7 @@ module sep_fcov (
       nv_lock_q  <= 1'b0;
       nv_en_q    <= 1'b0;
       nv_bark_q  <= 1'b0;
+      nv_nmi_q   <= 1'b0;
       nv_entry_q <= 1'b0;
     end else begin
       if (wr_ev && (aw_addr_q == SEP_CPU_CTRL_SEP_NMI_VEC_REG_ADDR)) begin
@@ -8338,12 +8339,16 @@ module sep_fcov (
           end
         end
       end
-      // Bark, then NMI entry, then the first retired PC. The trace packet of
-      // the interrupt itself (exception flag set) carries the interrupted PC
-      // and is skipped.
+      // Bark, then the NMI is taken, then its trap packet (exception and
+      // interrupt flags set), then the first retired PC. Instructions that
+      // retire between the NMI decision and the trap packet belong to the
+      // interrupted code and are skipped.
       if (bark_r) nv_bark_q <= 1'b1;
-      if (nv_bark_q && nmi_r) begin
+      if (nv_bark_q && nmi_r) nv_nmi_q <= 1'b1;
+      if (nv_bark_q && (nv_nmi_q || nmi_r) && (cpu_trace_valid_i === 1'b1) &&
+          (cpu_trace_exc_i === 1'b1) && (cpu_trace_interrupt_i === 1'b1)) begin
         nv_bark_q  <= 1'b0;
+        nv_nmi_q   <= 1'b0;
         nv_entry_q <= 1'b1;
       end else if (nv_entry_q && (cpu_trace_valid_i === 1'b1) && (cpu_trace_exc_i !== 1'b1)) begin
         nv_entry_q <= 1'b0;
@@ -9138,7 +9143,7 @@ module sep_fcov (
   endfunction
   logic [4:0]      qs_cnt_q;
   logic [2:0]      qs_m_q;
-  logic qs_push_q, qs_blk_q, qs_nwm_q, qs_dbg_q, qs_admit_q, qs_okay_q;
+  logic qs_push_q, qs_blk_q, qs_dbg_q, qs_admit_q, qs_okay_q;
   logic [1:0] qs_ty_q;
   logic [3:0] qs_f_q, qs_user_q;
   logic [7:0][3:0] qs_st_q;
@@ -9146,7 +9151,25 @@ module sep_fcov (
   logic [15:0]     lock_try_q;
   logic [7:0]      pre_none_q;
   logic [3:0]      qs_occ_q;
+  logic [7:0][3:0] qs_occ_aw_q;
+  logic            qs_wv_q;
   mbq_t mbq_q;
+  // Entry of the window of an inbound write: the hit entry, or for a write
+  // that matches no entry (a foreign source ID or NS value fails the match
+  // and the default policy blocks it) the lowest enabled entry whose range
+  // covers the address.
+  logic [3:0] xm_wf;
+  logic       xm_wf_v;
+  always_comb begin
+    xm_wf   = '0;
+    xm_wf_v = 1'b0;
+    for (int i = 15; i >= 0; i--) begin
+      if (in_f[i].en && f_cov(in_f[i], si_c.addr)) begin
+        xm_wf   = 4'(i);
+        xm_wf_v = 1'b1;
+      end
+    end
+  end
   // An inbound write to the WRITE_DATA word of an inbound aperture.
   wire [31:0] xm_moff = xm_loc - MbxBase;
   wire        xm_mbw = si_done && si_dir_w && (xm_loc >= MbxBase) &&
@@ -9163,6 +9186,7 @@ module sep_fcov (
       if (si_aw_hs) begin
         qs_push_q <= 1'b0;
         for (int m = 0; m < 8; m++) qs_st_q[m] <= mb_status_i[m][0];
+        for (int m = 0; m < 8; m++) qs_occ_aw_q[m] <= occ[m][1];
         qs_vec_q <= vec_i[7:0];
       end else if (|mf_push_i[7:0]) begin
         for (int m = 0; m < 8; m++) if (mf_push_i[m][1]) qs_push_q <= 1'b1;
@@ -9176,14 +9200,14 @@ module sep_fcov (
         qs_cnt_q   <= 5'(SettleClk);
         qs_m_q     <= xm_moff[14:12];
         qs_blk_q   <= fw_iso_q;
-        qs_nwm_q   <= fw_nwm_q;
-        qs_f_q     <= fw_hit_q;
+        qs_f_q     <= fw_nwm_q ? xm_wf : fw_hit_q;
+        qs_wv_q    <= !fw_nwm_q || xm_wf_v;
         qs_ty_q    <= ent_type(in_f_en_i, in_f_ns_i, in_f_src_i, in_f_start_i, in_f_end_i,
-                               int'(fw_hit_q));
+                               int'(fw_nwm_q ? xm_wf : fw_hit_q));
         qs_dbg_q   <= (sep_debug_i === 1'b1);
         qs_user_q  <= si_c.user;
         qs_okay_q  <= (si_resp == AxiOkay);
-        qs_occ_q   <= occ[xm_moff[14:12]][1];
+        qs_occ_q   <= qs_occ_aw_q[xm_moff[14:12]];
       end else if (qs_cnt_q != 5'd0) begin
         qs_cnt_q <= qs_cnt_q - 5'd1;
       end
@@ -9193,7 +9217,7 @@ module sep_fcov (
         landed = qs_push_q && vec_i[qs_m_q];
         none   = !qs_push_q && !vec_i[qs_m_q];
         line   = vec_i[qs_m_q];
-        if (!qs_nwm_q) begin
+        if (qs_wv_q) begin
           mbq_q.ty   <= qs_ty_q;
           mbq_q.ty_v <= own_mfilt;
           if (landed || none) begin
@@ -9203,7 +9227,7 @@ module sep_fcov (
         end
         mbq_q.ac   <= {(qs_blk_q == line), qs_blk_q, qs_m_q};
         mbq_q.ac_v <= own_mfilt;
-        if (!qs_nwm_q && filt_locked_i[qs_f_q] && lock_try_q[qs_f_q]) begin
+        if (qs_wv_q && filt_locked_i[qs_f_q] && lock_try_q[qs_f_q]) begin
           if ((qs_user_q == in_f_src_i[qs_f_q]) && qs_okay_q && qs_push_q) begin
             mbq_q.lk   <= 1'b0;
             mbq_q.lk_v <= own_mfilt;
