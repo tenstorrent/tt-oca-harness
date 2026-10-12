@@ -14,7 +14,9 @@ Written from the specification text, never from the RTL or a DUT read:
   occupancy of its read FIFO is strictly above ``RIRQT``, ``IRQS.eirq`` on a
   full-FIFO write or an empty-FIFO read. A cause bit latches until the
   write-one-to-clear and sets again after it while its condition holds. A
-  threshold of ``MAILBOX_DEPTH`` or more acts as ``MAILBOX_DEPTH - 1``. Reset
+  ``WIRQT`` or ``RIRQT`` write of ``MAILBOX_DEPTH`` or more is clamped to
+  ``MAILBOX_DEPTH - 1``: the register holds and reads back the clamped value
+  (``axil_mailbox.adoc`` WIRQT/RIRQT: "it gets reduced to MailboxDepth - 1"). Reset
   empties both FIFOs and clears thresholds, error flags, ``IRQS`` and ``IRQEN``.
 * ``hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`` ("Access Results"): an
   empty read answers SLVERR with 0xFEEDDEAD on the low 32 bits and sets
@@ -23,19 +25,21 @@ Written from the specification text, never from the RTL or a DUT read:
   clears the flags; a write to a read-only register answers SLVERR and changes
   nothing; a ``WRITE_DATA`` read answers OKAY with 0xFEEDC0DE on the low 32
   bits; ``CTRL`` reads 0.
-* ``hw/ip/axi_lite_mailbox_unit/regs/gen/adoc/axil_mailbox.adoc``: ``STATUS``
-  bit 0 ``empty`` (read FIFO), bit 1 ``full`` (write FIFO), bit 2
-  ``write_level_above_thresh``, bit 3 ``read_level_above_thresh``; ``CTRL``
-  bit 0 ``wflush`` (the port's write FIFO), bit 1 ``rflush`` (its read FIFO).
-  Register offsets and field masks come from ``env/sep_mbox_golden.py``,
-  which reads the generated register export.
+* ``hw/sys/sep/doc/mailbox.adoc``: a 32-bit ``WRITE_DATA`` store pushes one
+  entry whose bytes outside the strobe are zero.
+* ``hw/ip/axi_lite_mailbox_unit/regs/gen/adoc/axil_mailbox.adoc``: the
+  ``STATUS`` fields ``empty`` (read FIFO), ``full`` (write FIFO),
+  ``write_level_above_thresh`` and ``read_level_above_thresh``; the ``CTRL``
+  fields ``wflush`` (the port's write FIFO) and ``rflush`` (its read FIFO).
+  Register offsets, field masks, the threshold field width and the read-only
+  registers come from the generated register export (``env/sep_mbox_golden.py``,
+  ``sep_reg_meta``).
 
 The model holds stimulus only. A caller updates it with every access it
 issues, and compares DUT reads against :meth:`MboxPair.status`,
 :meth:`MboxPair.reg` and the line methods. The high 32 bits of an empty read
 or of a ``WRITE_DATA`` read are not stated, so the model returns None for them.
-A 32-bit push at one half makes one entry whose other half is not stated
-(None); :meth:`MboxPair.pop` then returns None for that half.
+A 32-bit push at one half makes one entry whose other half is 0.
 
 Usage::
 
@@ -65,19 +69,37 @@ from sep_mbox_golden import (
     ST_WLVL_ABOVE,
     WRITE_DATA_RD_SENTINEL,
 )
+from sep_reg_meta import AXIL_MAILBOX_OUTBOUND_0 as _MBX
+from sep_reg_meta import register_fields
 
 NUM_MAILBOXES = 8
 PORTS = ("out", "in")
 WRITE_FIFO = {"out": "A", "in": "B"}
 READ_FIFO = {"out": "B", "in": "A"}
 IRQ_ALL = IRQ_WTIRQ | IRQ_RTIRQ | IRQ_EIRQ
-CTRL_RFLUSH = CTRL_WFLUSH << 1
-THRESH_MASK = 0xFF
+CTRL_RFLUSH = _MBX.field_mask("CTRL", "rflush")
+THRESH_MASK = _MBX.field_mask("WIRQT", "wirqt")
+assert THRESH_MASK == _MBX.field_mask("RIRQT", "rirqt")
 MASK32 = 0xFFFF_FFFF
 MASK64 = (1 << 64) - 1
 OKAY = "OKAY"
 SLVERR = "SLVERR"
-RO_REGS = ("READ_DATA", "STATUS", "ERROR_FLAGS", "IRQP")
+MBX_REGS = (
+    "WRITE_DATA",
+    "READ_DATA",
+    "STATUS",
+    "ERROR_FLAGS",
+    "WIRQT",
+    "RIRQT",
+    "IRQS",
+    "IRQEN",
+    "IRQP",
+    "CTRL",
+)
+# Registers whose every RDL field is read-only.
+RO_REGS = tuple(
+    r for r in MBX_REGS if all(f.access == "read-only" for f in register_fields(_MBX.addr(r))[1])
+)
 
 
 def clamp(thresh: int) -> int:
@@ -87,7 +109,7 @@ def clamp(thresh: int) -> int:
 
 @dataclass
 class Entry:
-    """One FIFO entry: the low and high 32-bit halves (None when not stated)."""
+    """One FIFO entry: the low and high 32-bit halves."""
 
     lo: int | None
     hi: int | None
@@ -162,9 +184,9 @@ class MboxPair:
         if half is None:
             q.append(Entry(data & MASK32, (data >> 32) & MASK32))
         elif half == 0:
-            q.append(Entry(data & MASK32, None))
+            q.append(Entry(data & MASK32, 0))
         else:
-            q.append(Entry(None, data & MASK32))
+            q.append(Entry(0, data & MASK32))
         self._settle()
         return OKAY
 
@@ -199,9 +221,9 @@ class MboxPair:
         """Register write other than ``WRITE_DATA``. Returns the response."""
         r = self.regs[port]
         if name == "WIRQT":
-            r.wirqt = value & THRESH_MASK
+            r.wirqt = clamp(value)
         elif name == "RIRQT":
-            r.rirqt = value & THRESH_MASK
+            r.rirqt = clamp(value)
         elif name == "IRQEN":
             r.irqen = value & IRQ_ALL
         elif name == "IRQS":
@@ -320,6 +342,7 @@ def _selftest() -> None:
     # Clamp: 255 acts as 7; fires at 8 and not at 7.
     q = s[5]
     q.write_reg("in", "WIRQT", 255)
+    assert q.reg("in", "WIRQT") == MAILBOX_DEPTH - 1
     for i in range(7):
         q.push("in", i + 1)
     assert not q.status("in") & ST_WLVL_ABOVE
@@ -338,11 +361,12 @@ def _selftest() -> None:
     q.push("out", 0xAB)
     q.write_reg("in", "CTRL", CTRL_WFLUSH)  # inbound wflush discards FIFO B
     assert q.occ("B") == 0 and q.occ("A") == 1
-    # A 32-bit push leaves the other half unstated.
+    # A 32-bit push zeroes the other half.
     r = s[7]
     r.push("out", 0xCAFE, half=1)
     resp, data, e = r.pop("in")
-    assert resp == OKAY and data is None and e is not None and e.hi == 0xCAFE
+    assert resp == OKAY and data == 0xCAFE << 32 and e is not None and e.lo == 0
+    assert RO_REGS == ("READ_DATA", "STATUS", "ERROR_FLAGS", "IRQP")
     # Reset.
     s.reset()
     assert all(x.status(pt) == ST_EMPTY for x in s.pairs for pt in PORTS)

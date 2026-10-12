@@ -12,7 +12,11 @@ master; ``m_axi_*``, the SMN-inbound external master):
   channel, the clocks on which VALID is high and READY is low, so a leaf can
   show that a held response was presented and not taken. A VALID or READY
   that resolves to X or Z fails the leaf with ``CHAN-XZ FAIL`` while
-  ``xz_fail`` is set. Verilator is 2-state.
+  ``xz_fail`` is set. An ID, response code or RLAST that resolves to X or Z
+  on a handshake is recorded as :data:`XZ` (never as None), which compares
+  unequal to every code, and fails the leaf with ``CHAN-XZ FAIL`` while
+  ``xz_fail`` is set; :meth:`SepAxiChanMon.xz_beats` lists such beats for a
+  caller that grades them. Verilator is 2-state.
 * :class:`SepAxiReadyHold` holds BREADY or RREADY of one master low through
   the backend channel ``pause`` that ``ocah_axi_vip`` exposes
   (``OcahAxiMasterDriver.channels``), and releases it. The VIP keeps the
@@ -50,23 +54,47 @@ _CHAN_KEY = {"b": "b_ready_delay", "r": "r_ready_delay"}
 
 
 class ChanXZError(AssertionError):
-    """A VALID or READY of the watched master resolved to X or Z."""
+    """A handshake signal of the watched master resolved to X or Z."""
+
+
+class _Xz:
+    """The value of a beat field that resolved to X or Z."""
+
+    def __repr__(self) -> str:
+        return "X"
+
+
+XZ = _Xz()
 
 
 @dataclass(frozen=True)
 class ChanBeat:
-    """One handshake: clock index, channel, ID, response code and RLAST."""
+    """One handshake: clock index, channel, ID, response code and RLAST.
+
+    A field is None where the channel has no such signal (no ID port, ``last``
+    on B, ``resp`` on a request channel), and :data:`XZ` where it resolved to X
+    or Z.
+    """
 
     clk: int
     ch: str
-    axi_id: int | None
-    resp: int | None = None
-    last: int | None = None
+    axi_id: int | _Xz | None
+    resp: int | _Xz | None = None
+    last: int | _Xz | None = None
+
+    @property
+    def has_xz(self) -> bool:
+        return XZ in (self.axi_id, self.resp, self.last)
 
 
 def _val(sig) -> int | None:
     v = sig.value
     return int(v) if v.is_resolvable else None
+
+
+def _field(sig) -> int | _Xz:
+    v = sig.value
+    return int(v) if v.is_resolvable else XZ
 
 
 class SepAxiChanMon:
@@ -113,6 +141,10 @@ class SepAxiChanMon:
 
     def count(self, mark: int, ch: str) -> int:
         return len(self.since(mark, ch))
+
+    def xz_beats(self, mark: int, ch: str | None = None) -> list[ChanBeat]:
+        """Handshakes after ``mark`` with an ID, response code or RLAST at X or Z."""
+        return [b for b in self.since(mark, ch) if b.has_xz]
 
     def waiting_clocks(self, ch: str) -> int:
         """Total clocks so far with VALID high and READY low on ``ch`` (b or r)."""
@@ -169,14 +201,18 @@ class SepAxiChanMon:
                     if w:
                         self.waiting[ch] += 1
                 if v and r:
-                    axi_id = _val(ids) if ids is not None else None
+                    axi_id = _field(ids) if ids is not None else None
                     if ch in _RESP_CH:
-                        last = _val(self._rlast) if ch == "r" else None
-                        self.beats.append(
-                            ChanBeat(self.clk, ch, axi_id, _val(self._resp[ch]), last)
-                        )
+                        last = _field(self._rlast) if ch == "r" else None
+                        beat = ChanBeat(self.clk, ch, axi_id, _field(self._resp[ch]), last)
                     else:
-                        self.beats.append(ChanBeat(self.clk, ch, axi_id))
+                        beat = ChanBeat(self.clk, ch, axi_id)
+                    self.beats.append(beat)
+                    if beat.has_xz and self.xz_fail:
+                        raise ChanXZError(
+                            f"CHAN-XZ FAIL: {self.prefix} {ch} handshake id={beat.axi_id!r} "
+                            f"resp={beat.resp!r} last={beat.last!r} at clock {self.clk}"
+                        )
 
 
 class SepAxiReadyHold:
@@ -218,4 +254,4 @@ class SepAxiReadyHold:
             self.release(ch)
 
 
-__all__ = ["CHANNELS", "ChanBeat", "ChanXZError", "SepAxiChanMon", "SepAxiReadyHold"]
+__all__ = ["CHANNELS", "XZ", "ChanBeat", "ChanXZError", "SepAxiChanMon", "SepAxiReadyHold"]

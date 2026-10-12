@@ -18,7 +18,10 @@ acts on four line shapes, printed by ``fw/tests/common/sep_console_rec.h``:
     bit watcher marks before the leg starts.
 ``CHK-<NAME> PASS|FAIL k=v ...`` / ``CTL-<NAME> ...`` / ``OBS-<NAME> LOG ...``
     A check, control or observation record of the firmware. The key=value
-    tokens are parsed; a ``0x`` value becomes an int.
+    tokens are parsed; a ``0x`` value becomes an int. A line that starts with
+    ``CHK-`` but does not have the record shape (name of ``[A-Z0-9_-]``, then
+    ``PASS``, ``FAIL`` or ``LOG``) fails the leaf: the follower raises, and
+    :meth:`relay_chk` raises again, so such a line is never dropped.
 ``REQ <what> k=v ...``
     A request to the host. A handler registered with :meth:`on_request` runs
     as a new coroutine, so it can drive inputs and wait.
@@ -99,6 +102,7 @@ class SepFwConsole:
         self._req: dict[str, Callable[[dict], Coroutine[Any, Any, None]]] = {}
         self._task: Any = None
         self._buf: list[str] = []
+        self.bad_chk: list[tuple[int, str]] = []  # CHK- lines without the record shape
 
     # ---- set-up ----
     def on_mark(self, hook: Callable[[str, str], object]) -> None:
@@ -147,6 +151,11 @@ class SepFwConsole:
 
         Returns the number of CHK lines relayed.
         """
+        if self.bad_chk:
+            raise AssertionError(
+                "FW-CONSOLE FAIL: CHK line without the record shape: "
+                + "; ".join(repr(t) for _, t in self.bad_chk)
+            )
         n = 0
         for r in self.recs:
             if not r.name.startswith("CHK-"):
@@ -213,6 +222,11 @@ class SepFwConsole:
                     ConsoleRec(self.clk, m.group(1), m.group(2), parse_kv(m.group(3)), text)
                 )
                 continue
+            if text.startswith("CHK-"):
+                self.bad_chk.append((self.clk, text))
+                raise AssertionError(
+                    f"FW-CONSOLE FAIL: CHK line without the record shape: {text!r}"
+                )
             if text.startswith("REQ "):
                 parts = text.split(None, 2)
                 what = parts[1] if len(parts) > 1 else ""
