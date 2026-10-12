@@ -643,8 +643,8 @@ tests = [
 
 [[groups]]
 # Convenience group of the mailbox, IRQ and PIC tests.
-# It is not a VPLAN group: `all`, `cpu_stub` and `cpu` hold the same tests.
-name = "phase3_mailbox_irq_pic"
+# The `all`, `cpu_stub` and `cpu` groups hold the same tests.
+name = "mailbox_irq_pic"
 expected_count = 12
 tests = [
     "sep_mailbox_fifo_model_rand_test",

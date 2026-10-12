@@ -3959,8 +3959,8 @@ module sep_uvm_top
         .irq_dma_chunk_i   (sep_internal_interrupts_probe_o[9]),
         .irq_spi_i         (sep_internal_interrupts_probe_o[13]),
 
-        // Phase 2 mailbox, IRQ and PIC taps (docs/SEP_FCOV.adoc, mailbox, IRQ
-        // and PIC groups, Signal aliases): read-only, no force.
+        // Mailbox, IRQ and PIC taps (docs/SEP_FCOV.adoc, mailbox, IRQ and
+        // PIC groups, Signal aliases): read-only, no force.
         .vec_i             (sep_internal_interrupts_probe_o),
         .smc_irq_i         (smc_mailbox_interrupt_o),
         .pic_prio_i        (fcov_pic_prio),

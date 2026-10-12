@@ -269,8 +269,8 @@ Observation probe groups:
   sampler variable that the mailbox leaf writes under the rules of
   `graded_owner` (`env/sep_fcov_gate.py`, `set_quiet_window`). It drives
   nothing and touches no DUT net. Owner: `sep_mailbox_fifo_model_rand_test`.
-* Mailbox, IRQ and PIC FCOV sampler taps (`cov/sv/sep_fcov.sv`, Phase 2
-  mailbox, IRQ and PIC groups): read-only references from the `u_sep_fcov`
+* Mailbox, IRQ and PIC FCOV sampler taps (`cov/sv/sep_fcov.sv`, mailbox,
+  IRQ and PIC groups): read-only references from the `u_sep_fcov`
   connection block to the PIC (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`),
   the claim ID (`veer.pic_claimid`), the trap unit (`veer.dec.tlu`), the
   mailbox ports and FIFOs (`u_sep_system_peripherals.u_sep_axil_mailbox.gen_mailbox[m]`,

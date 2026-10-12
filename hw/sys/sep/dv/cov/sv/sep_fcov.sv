@@ -264,8 +264,8 @@ module sep_fcov (
   input wire        irq_spi_i,
 
   // ---------------------------------------------------------------------
-  // Phase 2 mailbox, IRQ and PIC taps (docs/SEP_FCOV.adoc, mailbox, IRQ and
-  // PIC groups, Signal aliases). Read-only copies of DUT nets and probe
+  // Mailbox, IRQ and PIC taps (docs/SEP_FCOV.adoc, mailbox, IRQ and PIC
+  // groups, Signal aliases). Read-only copies of DUT nets and probe
   // ports. The PIC, CLAIM and TLU taps are 0 on the CPU stub build.
   // ---------------------------------------------------------------------
   // VEC: sep_internal_interrupts_probe_o. SMC: smc_mailbox_interrupt_o.
@@ -6986,8 +6986,8 @@ module sep_fcov (
   end
 
   // =====================================================================
-  // Phase 2: mailbox, IRQ and PIC groups (docs/SEP_FCOV.adoc, mailbox, IRQ
-  // and PIC groups). VCS only.
+  // Mailbox, IRQ and PIC groups (docs/SEP_FCOV.adoc, mailbox, IRQ and PIC
+  // groups). VCS only.
   //
   // GATE. Every bin samples only while `graded_owner` holds the code of an
   // owning test of its coverpoint (own_* below, codes 313 to 324). The quiet
