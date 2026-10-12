@@ -461,6 +461,7 @@ firmware = { name = "occp_ring_buffer_stress_test", mode = "occp_rom_only" }
 # buffer that smc_sep_ring_buffer_test covers.
 args = [
     "+BOOT_I3C",
+    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_ring_buffer_stress_test.rom.hex",
     "+occp_case=smc_occp_ring_buffer_stress_test",

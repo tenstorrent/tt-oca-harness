@@ -249,7 +249,7 @@ says nothing about them.
 [cols="1,2",options="header"]
 |===
 |Behaviour |Why it is out of scope here
-|Boot ROM firmware contracts: the `rom_fw` and `rom_fw_smoke` groups, `testlists/rom_fw.toml` |They have their own owner, the `rom_boot` RTL target and the `boot_rom*` firmware profiles, and they are firmware contracts rather than hardware contracts. They are not members of `all`, so this plan grades none of them
+|Boot ROM firmware contracts: the `rom_fw` and `rom_fw_smoke` groups, `testlists/rom_fw.toml` |They have their own owner, the `rom_boot` RTL target and the `boot_rom*` firmware profiles, and they are firmware contracts rather than hardware contracts. They are not members of `all`, so this plan grades none of them. <<sep-rom-dv-verification-plan,SEP_ROM_VPLAN>> grades them
 |Proprietary IP |Excluded for OSS hygiene: proprietary IPs outside the public tree. The build uses the Bender targets `sep`, `sep_el2` and `sep_wrapper` only
 |Inbound global-to-local remap |`u_inbound_global_to_local_addr_remap` (`hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv`) rewrites inbound addresses in [`SEP_GLOBAL_BASE_ADDR`, +`SEP_REGION_SIZE`) to local addresses after `u_inbound_filter`. No test in `all` grades the translation. `sep_fabric_remap_filter_csr_bank_test` grades the CSR read/write path. The sixteen programmable `axi_alias_remap` regions are a different mechanism, which `sep_fabric_local_alias_datapath_test` grades
 |Reset generation and return after a watchdog bite |The integrating reset controller outside this DUT owns them. `sep_reset_wdt_sanity_test` grades the bite request at the SEP output pin
@@ -305,7 +305,7 @@ Executable membership comes from the testlists. The `expected_count` guard of
 |`cpu_stub` |Runtime class: the `no_cpu` members of `all`. A partition of `all`, not a credit set of its own
 |`cpu` |Runtime class: the firmware-boot members of `all`. A partition of `all`, not a credit set of its own
 |`all` |The credit denominator: every test that this plan grades, the union of `cpu_stub` and `cpu`
-|`rom_fw`, `rom_fw_smoke` |Outside this plan. No credit
+|`rom_fw`, `rom_fw_smoke` |Outside this plan. No credit. <<sep-rom-dv-verification-plan,SEP_ROM_VPLAN>> is their plan
 |===
 
 [[sep-vplan-credit-rules]]
@@ -5130,7 +5130,7 @@ from `nproc`.
 |`all` |Every registered test of the Test Procedures (a Phase 3 entry joins when its test is registered), the union of `cpu_stub` and `cpu`; `testlists/all.toml` carries `expected_count` |Full SEP regression and the coverage set. Two members are pinned to one simulator: `sep_km_ic_reset_release_test` runs on VCS only, and `sep_abr_absent_decerr_test` on Verilator only. A single-simulator run logs the other member as skipped
 |`cpu_stub` |The `no_cpu` members of `all`, on the CPU-stub target `lsu_stub_all_live` (`sep_abr_absent_decerr_test`: `lsu_stub_abr_absent`) |CPU-stub class with a high simulation fan-out. The scheduled CI tiers run it. Add `--stage c_compile` when the KM `rom_main` images are stale
 |`cpu` |The firmware-boot members of `all`, on the full-CPU `default` target |Full-CPU class with a bounded fan-out, because the threaded VeeR EL2 model can stall near reset. Its `c_compile` stage needs a picolibc-enabled RISC-V GCC or `scripts/docker-run.sh`
-|`rom_fw` |Boot ROM firmware tests (`testlists/rom_fw.toml`), on the `rom_boot` target |Boot ROM firmware owner. Not a member of `all`, and outside this plan (<<sep-vplan-scope>>)
+|`rom_fw` |Boot ROM firmware tests (`testlists/rom_fw.toml`), on the `rom_boot` target |Boot ROM firmware owner. Not a member of `all`, and outside this plan (<<sep-vplan-scope>>). <<sep-rom-dv-verification-plan,SEP_ROM_VPLAN>> is its plan
 |`rom_fw_smoke` |`sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` |Boot ROM firmware smoke subset (`expected_count = 5`). Not a member of `all`
 |===
 
