@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMU wrapper (`--dut smu`) VCS coverage policy of the SV-UVM view
+# (`--framework uvm`), which `[frameworks.uvm.coverage.vcs]` in
+# ../../../smu_sim_cfg.toml names as that view's `policy_file`.
+#
+# It carries the same `scope_epoch` and the same three native exclusion files,
+# with the same checksums, as smu_wrapper_coverage_policy.toml, so a UVM report
+# applies the exclusions the cocotb view applies. It carries no
+# `[[thresholds]]` row: a threshold rule scopes to a tool and a target, not to
+# a framework, and the five SV-UVM leaves are not the coverage set that the
+# cocotb policy's `user` floor is written for. The runner reports every
+# family's raw and effective figure for this view and gates none of them; the
+# `user` floor stays on smu_wrapper_coverage_policy.toml, which the cocotb
+# view of `all` grades against.
+#
+# `toggle` is collected and reported: every bit of every net of the units
+# smu_wrapper_cov_scope.hier keeps -- smu_wrapper, smu, smu_axi_xbar and the
+# other SMU-owned units under u_smu -- both directions, after the exclusions
+# named below have left the population.
+#
+# Two DUTs share this DV root, so the policy is named per DUT rather than
+# discovered at cov/config/vcs/coverage_policy.toml.
+
+schema_version = 1
+dut = "smu"
+scope_epoch = "smu-vcs-cov-v3"
+
+# Fields urg leaves out of the wrapper's port toggle, each class with its
+# reason in the file's ANNOTATION lines. Generated from urg's exclusion
+# template; README.md lists the classes.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smu_wrapper_toggle_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# Toggle points of smu, smu_wrapper and smu_axi_xbar, and the condition rows
+# and branch arms two classes name, each class with its fact in the file's
+# ANNOTATION lines. Generated from urg's exclusion templates and the raw
+# report of an `all` run; README.md lists the classes.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smu_toggle_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# Covergroups declared inside the RTL the wrapper instantiates. `-cm_hier` does
+# not reach covergroups, so the vendored I3C controllers' groups would otherwise
+# sit in urg's GROUP score beside the wrapper's own cov/sv covergroups.
+# Generated from urg's group exclusion template; README.md lists the classes.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smu_wrapper_group_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]

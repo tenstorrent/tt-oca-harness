@@ -772,3 +772,11 @@ build_dir = "hw/sys/smu/dv/build/uvm"
 [frameworks.uvm.targets.compile_smu_chiplet]
 description = "SMU SV-UVM view of the OSS smu_wrapper (DefaultCfg (SEP=1), real EL2 CPU)"
 build_dir = "hw/sys/smu/dv/build/uvm"
+
+[frameworks.uvm.coverage.vcs]
+# The SV-UVM view reports its coverage figures against a policy with the same
+# scope and exclusion files as the cocotb view's and no `[[thresholds]]` row:
+# a threshold rule scopes to a tool and a target, both views compile
+# compile_smu_chiplet, and the five SV-UVM leaves are not the set the cocotb
+# policy's `user` floor is written for.
+policy_file = "hw/sys/smu/dv/cov/config/vcs/smu_wrapper_uvm_coverage_policy.toml"
