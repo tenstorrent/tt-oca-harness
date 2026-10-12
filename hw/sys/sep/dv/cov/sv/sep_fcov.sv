@@ -7022,6 +7022,7 @@ module sep_fcov (
   localparam int unsigned StallClk = 16;
   localparam int unsigned SettleClk = 16;
   localparam int unsigned AlertWin = 64;
+  localparam int unsigned PairWin = 256;
   localparam int unsigned NativeWin = 256;
   localparam int unsigned NmiWin = 4096;
   // Sources 1 to 43 are the individually assigned PIC slots.
@@ -10039,7 +10040,8 @@ module sep_fcov (
   logic ka_on_q, pr_on_q, na_on_q;
   logic [3:0] ka_k_q;
   logic [2:0] pr_b_q, na_k_q;
-  logic [6:0] ka_cnt_q, pr_cnt_q;
+  logic [6:0] ka_cnt_q;
+  logic [8:0] pr_cnt_q;
   logic [8:0] na_cnt_q;
   logic ai_h_q, ai_k_q, ai_o_q;
   pal_t pal_q;
@@ -10080,7 +10082,8 @@ module sep_fcov (
           ka_cnt_q <= ka_cnt_q + 7'd1;
         end
       end
-      // Pair: pulses of two blocks within AlertWin clocks.
+      // Pair: pulses of two blocks within PairWin clocks. PairWin covers the
+      // drawn alert gap (0 to 64 clocks) plus the firmware store path.
       if (alert_pulse_i != '0) begin
         for (int k = 0; k < 11; k++) begin
           if (alert_pulse_i[k]) begin
@@ -10093,8 +10096,8 @@ module sep_fcov (
           end
         end
       end else if (pr_on_q) begin
-        if (pr_cnt_q == 7'(AlertWin)) pr_on_q <= 1'b0;
-        else pr_cnt_q <= pr_cnt_q + 7'd1;
+        if (pr_cnt_q == 9'(PairWin)) pr_on_q <= 1'b0;
+        else pr_cnt_q <= pr_cnt_q + 9'd1;
       end
       // Native negative: source 33 stays low for NativeWin clocks.
       for (int n = 4; n >= 0; n--) begin

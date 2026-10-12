@@ -3390,7 +3390,7 @@ The width of `smc_mailbox_interrupt_o` (8) is stated by `hw/sys/sep/doc/mailbox.
 |===
 |Coverpoint |Bins |Sampled signal |Owning tests |Class and reachability
 |`x_alert_kind_agg` |The 11 alert kinds (HMAC fatal; OTBN fatal and recoverable; AES `recov_ctrl_update_err` and fatal; KMAC fatal and recoverable; CSRNG fatal and recoverable; EDN fatal and recoverable) crossed with "source 33 high for at least one cycle and exactly one receiver index high in the block range". 11 cells. |`VEC[32]`, `ALERTP` |`sep_pic_pending_map_walk_rand_test` |executable. Stimulus: reachable
-|`cp_alert_pair` |Two alert kinds of two blocks close together: both receiver indices pulse. 1 bin. |`ALERTP` |`sep_pic_pending_map_walk_rand_test` |executable. Stimulus: reachable
+|`cp_alert_pair` |Two alert kinds of two blocks close together: both receiver indices pulse within 256 clocks of each other (the drawn alert gap is 0 to 64 clocks, plus the firmware store path). 1 bin. |`ALERTP` |`sep_pic_pending_map_walk_rand_test` |executable. Stimulus: reachable
 |`cp_alert_native` |Native error of HMAC (source 20), KMAC (23), CSRNG fatal (27), EDN fatal (29) and OTBN done (30) leaves `VEC[32]` low over the observation window, with an `ALERT_TEST` control in the same test. 5 bins. |`VEC` |`sep_pic_pending_map_walk_rand_test` |executable
 |`cp_alert_idle` |An idle window with an HMAC, KMAC and OTBN run (an AES stream runs as load): `VEC[32]` has no high cycle. 1 bin. `cp_aes_quiet` of `sep_crypto_intr_cg` in the crypto section owns the AES no-interrupt contract. |`VEC[32]` |`sep_pic_pending_map_walk_rand_test` |executable
 |===
