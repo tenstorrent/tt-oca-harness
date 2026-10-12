@@ -5,8 +5,8 @@
 // PIC, holds one edge bit pending, opens the mailbox windows of the inbound
 // filter and asks the host to send external reads and writes to the PIC
 // aperture through the inbound port, first with no PIC window (regime A, the
-// default block) and then with an allow window over 0xC008_0000 to
-// 0xC008_7FFF (regime B). After each regime the host writes one completion
+// default block) and then with an allow window over the EL2_PIC aperture
+// (regime B). After each regime the host writes one completion
 // word to the inbound port of mailbox 7, and the CPU pops it from the outbound
 // READ_DATA of mailbox 7 in a bounded wait. The cocotb test
 // sep_pic_external_access_refuse_test patches the seeded values into g_p and
@@ -52,13 +52,14 @@ enum {
     P_IDLE0,   // meip[0] bits of the excluded idle sources
     P_CW_A,    // completion word of regime A (low 32 bits)
     P_CW_B,    // completion word of regime B (low 32 bits)
+    P_PIC_END, // last byte of the EL2_PIC aperture (generated memory map)
     P_COUNT
 };
 
 // Committed defaults: a directed image that runs stand-alone.
 volatile uint32_t g_p[P_COUNT] = {
     P_MAGIC_WORD, 0x1u, 77u,  3u,          0xC0080800u, 0xC0086000u, 0x0u,
-    0x0u,         0x0u, 0x0u, 0x0001A000u, 0x0C0DE0A0u, 0x0C0DE0B0u,
+    0x0u,         0x0u, 0x0u, 0x0001A000u, 0x0C0DE0A0u, 0x0C0DE0B0u, 0xC0087FFFu,
 };
 
 // Armed values (the contract of the entry, step 2).
@@ -76,11 +77,16 @@ volatile uint32_t g_p[P_COUNT] = {
 #define E_MBX7 1u
 #define E_PIC0 2u
 #define E_PIC1 3u
-// The window covers the 32 KiB EL2_PIC aperture from the PIC base
-// (hw/sys/sep/regs/gen/adoc/memory_map.adoc, EL2_PIC row).
-#define PIC_APERTURE_BYTES 0x8000u
+// The window covers the EL2_PIC aperture from the PIC base to the last byte the
+// host takes from the generated memory map (P_PIC_END).
 #define PIC_WIN_START SEP_TOP_PIC_BASE_ADDR
-#define PIC_WIN_END (SEP_TOP_PIC_BASE_ADDR + PIC_APERTURE_BYTES - 1u)
+#define PIC_WIN_END (g_p[P_PIC_END])
+// Byte offset of the upper 32-bit word of a 64-bit filter_ctrl register
+// (filter_ctrl.h register types; the CPU bus is little-endian).
+#define FILT_HI_OFF ((uint32_t)(sizeof(filter_ctrl__FILTER_CONFIG_t) / 2u))
+_Static_assert(sizeof(filter_ctrl__FILTER_CONFIG_t) == 8u, "FILTER_CONFIG is 64-bit");
+_Static_assert(sizeof(filter_ctrl__START_ADDR_t) == 8u, "START_ADDR is 64-bit");
+_Static_assert(sizeof(filter_ctrl__END_ADDR_t) == 8u, "END_ADDR is 64-bit");
 #define MBX_IN_SPAN 0x800u
 #define CFG_RW_EN \
     (FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm | \
@@ -114,11 +120,11 @@ static uint32_t meip0_masked(void) {
 // ---- Inbound filter entry ----
 static void filt_program(uint32_t idx, uint32_t start, uint32_t end, uint32_t cfg) {
     wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx), 0u);
-    wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx) + 4u, 0u);
+    wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
     wr(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx), start);
-    wr(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx) + 4u, 0u);
+    wr(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
     wr(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx), end);
-    wr(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx) + 4u, 0u);
+    wr(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
     wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx), cfg);
 }
 
@@ -217,9 +223,9 @@ static void print_window(uint32_t idx, uint32_t ns) {
     rec_hex("FILTER_CONFIG", rd(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx)));
     rec_hex("START_ADDR", rd(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx)));
     rec_hex("END_ADDR", rd(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx)));
-    rec_hex("cfg_hi", rd(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx) + 4u));
-    rec_hex("start_hi", rd(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx) + 4u));
-    rec_hex("end_hi", rd(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx) + 4u));
+    rec_hex("cfg_hi", rd(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx) + FILT_HI_OFF));
+    rec_hex("start_hi", rd(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx) + FILT_HI_OFF));
+    rec_hex("end_hi", rd(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx) + FILT_HI_OFF));
     rec_end();
 }
 
@@ -241,6 +247,7 @@ int main(void) {
     rec_hex("o2", g_p[P_ORDER2]);
     rec_hex("rw", g_p[P_RWFIRST]);
     rec_hex("idle0", g_p[P_IDLE0]);
+    rec_hex("pic_end", g_p[P_PIC_END]);
     rec_end();
 
     // Set-up: arm, open the mailbox 0 window, hold the edge bit of source 1.

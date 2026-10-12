@@ -27,6 +27,7 @@
 //   GWCLR v=.. held=.. after=..   one value of the clear-value corner
 //   HOLD src=.. ...           the level hold
 //   CLRIDLE src=.. ...        the idle clear
+//   CTL-AES-STATUS status=.. cfg_ok=..  the AES STATUS after the slotless encryption
 // A REQ is followed by a spin, so the host acts before the next bus access.
 
 #include <stdint.h>
@@ -624,9 +625,12 @@ static const uint32_t k_aes_key[4] = {0x03020100u, 0x07060504u, 0x0B0A0908u, 0x0
 static const uint32_t k_aes_iv[4] = {0u, 0u, 0u, 0u};
 static const uint32_t k_aes_pt[4] = {0x33221100u, 0x77665544u, 0xBBAA9988u, 0xFFEEDDCCu};
 
-static uint32_t aes_encrypt_one(void) {
+// One encryption block. *cfg_ok is 1 when configure_aes() succeeds; returns the
+// STATUS read after the output is read and the unit is idle.
+static uint32_t aes_encrypt_one(uint32_t *cfg_ok) {
     uint32_t out[4];
-    if (configure_aes(0x1u, 0x1u, k_aes_key, k_aes_iv) != 0) {
+    *cfg_ok = configure_aes(0x1u, 0x1u, k_aes_key, k_aes_iv) == 0 ? 1u : 0u;
+    if (*cfg_ok == 0u) {
         return 0u;
     }
     write_data_in(k_aes_pt);
@@ -1059,10 +1063,12 @@ int main(void) {
     // Slotless blocks, with control source 24 asserted.
     rec_mark(1, "slotless");
     req_kv("win", "aes", 1u);
-    uint32_t aes_st = aes_encrypt_one();
+    uint32_t aes_cfg_ok;
+    uint32_t aes_st = aes_encrypt_one(&aes_cfg_ok);
     req_kv("win", "aes", 0u);
     rec_ctl("AES-STATUS");
     rec_hex("status", aes_st);
+    rec_num("cfg_ok", aes_cfg_ok);
     rec_end();
     req_kv("win", "otp", 1u);
     uint32_t otp = rd(SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);

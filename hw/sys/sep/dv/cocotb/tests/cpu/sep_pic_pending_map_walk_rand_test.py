@@ -37,7 +37,8 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
 * CHK-SRC17, CHK-IDLE-BAND  source 17 and the band above 43 stay 0 with
                    ``meie`` and ``meipl`` armed; live source 24 reads 1.
 * CHK-SLOTLESS     an OTP read and a life-cycle controller read move no vector
-                   bit (AES is the control).
+                   bit; the AES status reads done after the encryption (the
+                   AES vector bits are the control).
 * CHK-GW-CELL, CHK-EDGE-HOLD, CHK-HOLD, CHK-CLR-IDLE, CHK-GWCLR-VALUE,
   CHK-GW-NONVAC    the gateway cells LH, LL and EH, the edge hold with its level
                    twin, the level hold, the idle clear and the clear values.
@@ -167,6 +168,19 @@ P_MAGIC_WORD = 0x3A1C9E21
 HMAC_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
 KMAC_IDLE = KMAC.field_mask("STATUS", "sha3_idle")
 AES_IDLE = AES.field_mask("STATUS", "idle")
+# AES STATUS after one automatic-mode block whose output is read and whose unit
+# is idle (AES register description, STATUS): idle 1, input_ready 1, stall 0,
+# output_valid 0, both alert bits 0. output_lost has no meaning in automatic
+# mode and stays outside the mask.
+AES_DONE_MASK = (
+    AES_IDLE
+    | AES.field_mask("STATUS", "input_ready")
+    | AES.field_mask("STATUS", "stall")
+    | AES.field_mask("STATUS", "output_valid")
+    | AES.field_mask("STATUS", "alert_recov_ctrl_update_err")
+    | AES.field_mask("STATUS", "alert_fatal_fault")
+)
+AES_DONE_WANT = AES_IDLE | AES.field_mask("STATUS", "input_ready")
 KMAC_FE_STATE = KMAC.field_mask("INTR_STATE", "fifo_empty")
 # meip word 0 offset in the PIC and the meip word stride (register export).
 MEIP0_OFF = sym("PIC_MEIP_0__REG_OFFSET")
@@ -751,8 +765,14 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             )
             if op == "aes":
                 st = [kv for _, kv in self._lines("CTL-AES-STATUS")]
-                self.logger.info(
-                    "CTL-SLOTLESS LOG %s aes_status=0x%08x", text, st[0]["status"] if st else 0
+                assert len(st) == 1, f"expected one CTL-AES-STATUS record, got {len(st)}"
+                status, cfg_ok = st[0]["status"], int(st[0]["cfg_ok"])
+                self.logger.info("CTL-SLOTLESS LOG %s aes_status=0x%08x", text, status)
+                self._check(
+                    cfg_ok == 1 and status & AES_DONE_MASK == AES_DONE_WANT,
+                    "CHK-SLOTLESS",
+                    f"op=aes aes_status=0x{status:08x} field_mask=0x{AES_DONE_MASK:02x} "
+                    f"want=0x{AES_DONE_WANT:02x} cfg_ok={cfg_ok}",
                 )
                 continue
             self._check(
@@ -1003,7 +1023,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             "CHK-ALERT-NATIVE": len(NATIVE),
             "CHK-SRC17": 1,
             "CHK-IDLE-BAND": 1,
-            "CHK-SLOTLESS": 2,
+            "CHK-SLOTLESS": 3,
             "CHK-GW-CELL": len(GW_SRCS) - n_el,
             "CHK-EDGE-HOLD": n_eh,
             "CHK-HOLD": 1,

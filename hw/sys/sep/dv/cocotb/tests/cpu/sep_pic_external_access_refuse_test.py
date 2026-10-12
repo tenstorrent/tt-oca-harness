@@ -48,6 +48,7 @@ import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_axi_agent import SepAxiAgent, SepAxiOp
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_decode_resp import sep_map_row
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_fw_console import SepFwConsole, parse_kv
 from env.sep_pic_map import EXCLUDED_IDLE_SOURCES, meip_idle_mask_words, meip_words
@@ -90,10 +91,12 @@ for _arr in ("MEIE", "MEIGWCTRL", "MEIGWCLR"):
     assert sep_addr_define(f"SEP_TOP_PIC_{_arr}_NUM") == N_ENTRY, _arr
 for _arr in ("MEIP", "MEIE", "MEIGWCTRL", "MEIGWCLR"):
     assert sym(f"PIC_{_arr}_1__REG_ADDR") - sym(f"PIC_{_arr}_0__REG_ADDR") == WORD, _arr
-# The EL2_PIC aperture (hw/sys/sep/regs/gen/adoc/memory_map.adoc, EL2_PIC row):
-# 32 KiB from the PIC base; the registers fill the first PIC_REG_MAP_SIZE bytes.
+# The EL2_PIC aperture (generated memory map, EL2_PIC row) starts at the PIC
+# base; the registers fill the first PIC_REG_MAP_SIZE bytes.
 PIC_BASE = sym("PIC_REG_MAP_BASE_ADDR")
-PIC_END = PIC_BASE + 0x8000 - 1
+_PIC_ROW = sep_map_row(PIC_BASE)
+assert _PIC_ROW.unit == "EL2_PIC" and _PIC_ROW.base == PIC_BASE, _PIC_ROW.unit
+PIC_END = _PIC_ROW.end
 PIC_OCCUPIED_END = PIC_BASE + sym("PIC_REG_MAP_SIZE")
 # Offsets inside the aperture that hold no register (the hole ranges).
 HOLE_RANGES = (
@@ -222,6 +225,7 @@ class RefuseCfg:
             meip_idle_mask_words()[0],
             CW["A"],
             CW["B"],
+            PIC_END,
         ]
 
 
@@ -367,6 +371,7 @@ class sep_pic_external_access_refuse_test(sep_base_test):
             prm["rw"],
         ]
         assert got == want[2:10], f"firmware ran params {got}, patched {want[2:10]}"
+        assert prm["pic_end"] == PIC_END, f"firmware ran pic_end 0x{prm['pic_end']:08x}"
 
         win_ok = self._windows_match()
         n_acc = len(self.rc.accesses())
