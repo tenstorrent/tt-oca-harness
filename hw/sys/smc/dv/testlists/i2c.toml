@@ -473,3 +473,11 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_fmtrst_repro_test"
+module = "smc_i2c_fmtrst_repro_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "i2c", "repro"]
+run_modes = ["smoke"]
