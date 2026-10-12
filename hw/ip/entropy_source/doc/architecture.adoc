@@ -152,12 +152,12 @@ while it is closed, the FIFO neither captures nor reads out, whatever
 == FIFO Software Access
 
 Three FIFOs are readable through the register block, and each exposes entropy
-that production software must not see. The output FIFO holds the words that
-seed the DRBG. The two observe FIFOs hold entropy ahead of conditioning, which
-SP 800-90B treats as a validation-time interface that may be disabled in the
-field. `FIPS_LOCK` freezes their capture enables for one boot, but it is a lock
-that software applies. A single access enable from the integration is the
-hardware policy, and it holds whatever software does.
+that must not leave the block in the field. The output FIFO holds the words
+that seed the DRBG. The two observe FIFOs hold entropy ahead of conditioning,
+which SP 800-90B treats as a validation-time interface that may be disabled in
+the field. `FIPS_LOCK` freezes their capture enables until reset, but only once
+it is set. A single access enable from the integration gates all three in
+hardware, whatever the register configuration holds.
 
 <<entropy-source-fifo-table>> lists the three FIFOs and the condition under
 which each captures while access is enabled.
@@ -193,67 +193,19 @@ capture conditions above apply unchanged. While access is disabled:
   the DRBG is not.
 * The gate does not flush. Words already held are retained and become readable
   again once access is enabled.
-* The capture-enable and `FIPS_LOCK` fields keep their normal write behaviour,
-  so software can program the certified configuration without knowing the
-  gate's value.
+* The capture-enable and `FIPS_LOCK` fields keep their normal write behaviour.
 
 The gate is independent of `FIPS_LOCK`: the lock freezes the capture enables,
 the gate decides whether the FIFOs capture and read out at all, and both apply.
+The integration decides when the access enable is asserted; SEP derives it from
+the lifecycle controller, as the
+ifdef::backend-html5[xref:sep:trng.adoc#sep-entropy-fifo-access[SEP TRNG chapter]]
+ifdef::backend-pdf[<<sep-entropy-fifo-access,SEP TRNG chapter>>]
+describes.
 
-=== SEP Integration
-
-SEP drives the access enable from `ENTROPY_DBG`, bit 4 of the DBG_1 debug
-group of the lifecycle controller's feature-control vector; see the
-ifdef::backend-html5[xref:sep:lifecycle_controller.adoc#feature-control-vector-definition[disable vector format].]
-ifdef::backend-pdf[<<feature-control-vector-definition,disable vector format>>.]
-The bit follows the DBG_1 per-state profile, so the FIFOs are readable in the
-states <<entropy-source-fifo-access-states>> lists and in no other. Where the
-two differ, the profile table in the Lifecycle Controller chapter is
-authoritative
-ifdef::backend-html5[(xref:sep:lifecycle_controller.adoc#feature-control-table[Per-LC-state feature control profile]).]
-ifdef::backend-pdf[(<<feature-control-table,Per-LC-state feature control profile>>).]
-
-[[entropy-source-fifo-access-states]]
-.FIFO read access by lifecycle state
-[cols="<24%,<76%",options="header"]
-|===
-|LC state |`FIFO_RDATA`, `BIW_OBS_RDATA` and `NOISE_OBS_RDATA` readable
-
-|TEST_DEV
-|Yes, unless `SIP_DIS` or `SYS_DIS` sets `ENTROPY_DBG`. Demotion 1 forces
-access open, whatever the vectors hold.
-
-|PROD
-|No. Demotion 1 opens access only when neither `SIP_DIS` nor `SYS_DIS` sets
-`ENTROPY_DBG`.
-
-|PROD_END
-|No.
-
-|RMA_SIP
-|Yes, unless `SIP_DIS` sets `ENTROPY_DBG`. `SYS_DIS` does not apply.
-
-|RMA_CHIPLET
-|Yes.
-
-|INVALID, or an `LC_STATE` integrity error
-|No.
-
-|Any state with `SEC_DIS` set
-|Yes.
-|===
-
-The default provisioning policy sets `ENTROPY_DBG` in `SIP_DIS` before SiP
-handoff. That closes the three FIFOs in every state except RMA_CHIPLET and
-`SEC_DIS`, and in PROD keeps them closed through a demotion. Production
-software takes random data from the
-ifdef::backend-html5[xref:sep:entropy_pool.adoc#sep-entropy-pool[entropy pool],]
-ifdef::backend-pdf[<<sep-entropy-pool,entropy pool>>,]
-which this bit does not gate.
-
-NOTE: The access enable and its SEP wiring are specified ahead of the
-hardware. Until the RTL implements them, the three FIFOs are readable in every
-lifecycle state, subject only to `FIPS_LOCK`.
+NOTE: The access enable is specified ahead of the hardware. Until the RTL
+implements it, the three FIFOs are always accessible, subject only to
+`FIPS_LOCK`.
 
 == Reset
 
@@ -283,7 +235,7 @@ no longer retarget the pin or change its divider, so a locked, certified part
 cannot route pre-conditioning entropy to the observation pin. The raw and BIW
 observe-FIFO capture enables (`NOISE_OBS_CTRL.RAW_ENABLE`,
 `BIW_OBS_CTRL.RAW_ENABLE`) are held under the lock the same way, and the FIFOs
-themselves sit behind the lifecycle gate in <<entropy-source-fifo-access>>. SP
+themselves sit behind the access gate in <<entropy-source-fifo-access>>. SP
 800-90B treats this pre-conditioning observation as a validation-time interface
 that may be disabled in the field, which the lock and the gate enforce. As
 defense in depth, SEP also
