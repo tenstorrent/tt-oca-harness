@@ -23,8 +23,21 @@ class smc_axi_csr_read_seq extends ocah_axi_master_sequence;
   endfunction
 
   task body();
+    bit [31:0] data_xz_mask;
     read_result(smc_csr_word_addr(addr), result, .size(SmcCsrSize), .prot(prot),
                 .check_response(check_response), .allow_timeout(allow_timeout));
+    // Inactive bus lanes do not contribute to the narrow CSR value.
+    data_xz_mask = smc_csr_from_bus(addr, result.first_xz_mask());
+    if (!result.timed_out &&
+        (result.data_words.size() != 1 || result.data_xz_masks.size() != 1 ||
+         data_xz_mask != 0))
+      `uvm_error("SMC-CSR-READ-XZ", $sformatf(
+                 "read addr=0x%0h data_beats=%0d mask_beats=%0d csr_xz_mask=0x%08h",
+                 addr,
+                 result.data_words.size(),
+                 result.data_xz_masks.size(),
+                 data_xz_mask
+                 ))
     data = smc_csr_from_bus(addr, result.first_data());
   endtask
 
