@@ -42,7 +42,8 @@ the whitener input, the uncompressed-byte path and the BIW observe FIFO, while
 the 32-bit health test and the noise observe FIFO see the stream ungated. The
 output select takes the whitener output, or, when
 `CTRL.BYPASS_ENTROPY_COMPRESSOR` is set, the twelve uncompressed decorrelator
-bytes as three 32-bit words, downsampled by `CTRL.DOWNSAMPLE_RATE`. The 32-bit
+bytes as three 32-bit words (<<entropy-source-bypass-packing,packing order>>), downsampled by
+`CTRL.DOWNSAMPLE_RATE`. The 32-bit
 health test is clock-gated off in that mode. The register block configures every
 stage; its connections to individual stages are not drawn. The debug monitor
 routes one of 256 internal signals to `signal_monitor_o`.
@@ -111,6 +112,9 @@ image::entropy-source-decorrelator.svg[alt="Entropy source decorrelator: noise_i
 <<entropy-decorrelator-diagram>> shows one lane's decorrelator. The chain shifts on every `clk_i` cycle while `enable_i` is high, and the eight taps from `ff_stage[21]` to `ff_stage[28]` join into one byte-wide bundle. The output register loads when the counter reaches zero. While `enable_i` is low, the chain holds its contents and the counter reloads from `sample_clk_div_i`.
 
 The 12 decorrelated byte streams are combined by the Barak-Impagliazzo-Wigderson (BIW) stage, which uses four `gf_muladd` instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). The 12 input bytes are grouped into three sets of four and reduced to a single 32-bit word. This mixing step improves the statistical independence of the output without introducing significant latency.
+
+[[entropy-source-bypass-packing]]
+With `CTRL.BYPASS_ENTROPY_COMPRESSOR` set, the BIW stage is skipped and each selected decorrelator output reaches the output select as three 32-bit words, written to the FIFO in the order word 0, word 1, word 2. Word _n_ carries the bytes of generators 4__n__ to 4__n__+3, with generator 4__n__+__k__ in bits [8__k__+7:8__k__]: word 0 is {generator 3, generator 2, generator 1, generator 0}, with generator 0 in bits [7:0], word 1 carries generators 7 to 4 and word 2 generators 11 to 8. All three words come from the same decorrelator output.
 
 == Health Testing
 
