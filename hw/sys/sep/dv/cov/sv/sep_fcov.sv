@@ -374,6 +374,7 @@ module sep_fcov (
   localparam logic [3:0] DmaOpSha256 = 4'h1;
   localparam logic [3:0] DmaOpSha384 = 4'h2;
   localparam logic [3:0] DmaOpSha512 = 4'h3;  // dma.hjson CONTROL.OPCODE
+  localparam logic [3:0] DmaOpZero = 4'h4;
 
   // aon_timer INTR_STATE: wkup_timer_expired[0], wdog_timer_bark[1]. The
   // vendored block exports no field symbol into sep_reg.svh; the position is
@@ -968,7 +969,7 @@ module sep_fcov (
   // coverpoint can say WHICH hash the suite walked. dma_hash_go above
   // stays SHA-256-only because the completion pairing below is written
   // against that leaf.
-  wire dma_hash_any_go = dma_go && (dma_opcode_w != DmaOpCopy);
+  wire dma_hash_any_go = dma_go && (dma_opcode_w inside {DmaOpSha256, DmaOpSha384, DmaOpSha512});
   wire dma_hs_go   = dma_go &&
       ((wr_data & SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK) != 32'h0);
   logic dma_copy_q, dma_hash_q, dma_hs_q;
@@ -1063,6 +1064,7 @@ module sep_fcov (
   wire own_dma_matrix = (graded_owner == FcovOwnSepDmaTransferMatrixRandTest);
   wire own_dma_irq = (graded_owner == FcovOwnSepDmaIrqErrorLockRandTest);
   wire own_dma_abort = (graded_owner == FcovOwnSepDmaAbortRecoveryRandTest);
+  wire own_dma_zero = (graded_owner == FcovOwnSepDmaZeroFillRandTest);
   wire own_spi_dma_hs = (graded_owner == FcovOwnSepSpiDmaHandshakeRandTest);
 
   // --- Register access helpers ------------------------------------------
@@ -6482,6 +6484,41 @@ module sep_fcov (
     cp_abort_quiet: coverpoint aq_v {bins no_beat_after_aborted = {1'b1};}
   endgroup
 
+  // --- Secure DMA: zero fill ---------------------------------------------
+  // A STATUS change belongs to a zero fill when the last initial GO carried
+  // OPCODE ZERO. Its outcome is the first rise of DONE, ERROR or ABORTED after
+  // that GO; ERROR is split by ERROR_CODE.
+  logic dz_on_q, dz_err_q;
+  always_ff @(posedge clk_i) begin
+    dz_err_q <= d_err;
+    if (in_reset) dz_on_q <= 1'b0;
+    else if (d_go && dg_init) dz_on_q <= (dg_op == DmaOpZero);
+  end
+  wire dz_done = dz_on_q && d_done && !done_q;
+  wire dz_err = dz_on_q && d_err && !dz_err_q;
+  wire dz_aborted = dz_on_q && d_aborted && !aborted_q;
+  wire dz_dst_err = (dma_err_code_i[SECURE_DMA_ERROR_CODE_DST_ADDR_ERROR_SHIFT] === 1'b1);
+  wire dz_opc_err = (dma_err_code_i[SECURE_DMA_ERROR_CODE_OPCODE_ERROR_SHIFT] === 1'b1);
+
+  covergroup sep_dma_zero_cg with function sample (
+      logic [1:0] dst_mode, logic [1:0] width, logic go_v, logic [1:0] outcome, logic out_v
+  );
+    option.per_instance = 1;
+    option.name = "sep_dma_zero_cg";
+    // {DST_CONFIG.INCREMENT, DST_CONFIG.WRAP} and TRANSFER_WIDTH at a zero-fill GO.
+    cp_dst_mode: coverpoint dst_mode iff (go_v) {
+      bins increment = {2'b10}; bins wrap = {2'b11}; bins fixed = {2'b00};
+    }
+    cp_width: coverpoint width iff (go_v) {bins w1 = {2'd0}; bins w2 = {2'd1}; bins w4 = {2'd2};}
+    x_mode_width: cross cp_dst_mode, cp_width;
+    cp_outcome: coverpoint outcome iff (out_v) {
+      bins done = {2'd0};
+      bins window_error = {2'd1};
+      bins opcode_error = {2'd2};
+      bins aborted = {2'd3};
+    }
+  endgroup
+
   // sep_dma_containment_cg is not defined here. Its four range-lock
   // coverpoints (cp_locked_write_refused, cp_regwen_invalid_value,
   // cp_lock_recovery, cp_lock_ctx) are parked: each needs the write that
@@ -6508,6 +6545,7 @@ module sep_fcov (
   sep_dma_hash_cg            u_sep_dma_hash_cg            = new();
   sep_dma_config_fault_cg    u_sep_dma_config_fault_cg    = new();
   sep_dma_error_terminal_cg  u_sep_dma_error_terminal_cg  = new();
+  sep_dma_zero_cg            u_sep_dma_zero_cg            = new();
 
   // --- SPI and DMA sampling ----------------------------------------------
   // LEN class of a segment: 0 len0, 1 sub_word, 2 max, 3 word_multiple,
@@ -6891,6 +6929,12 @@ module sep_fcov (
       if (d_aborted && !aborted_q) u_sep_dma_error_terminal_cg.sample(1'b0, own_dma_abort, 1'b0);
       if (ab_on_q && aborted_q && !d_aborted && !ab_after_q && !dm_ar && !dm_aw)
         u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, own_dma_abort);
+      if (d_go && dg_init && (dg_op == DmaOpZero))
+        u_sep_dma_zero_cg.sample({d_dinc_q, d_dwrap_q}, d_width_q, own_dma_zero, 2'd0, 1'b0);
+      if (dz_done || dz_aborted || (dz_err && (dz_dst_err || dz_opc_err)))
+        u_sep_dma_zero_cg.sample(2'd0, 2'd0, 1'b0,
+                                 dz_aborted ? 2'd3 : (dz_done ? 2'd0 : (dz_opc_err ? 2'd2 : 2'd1)),
+                                 own_dma_zero);
       // An ABORT while the DMA is busy; one before the start or after the end is not a phase.
       if (d_abort && !abort_q && d_busy)
         u_sep_dma_xfer_rand_cg.sample(6'd0, 1'b0, 5'd0, 1'b0, 2'd0, 1'b0, abort_cls(

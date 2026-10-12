@@ -605,3 +605,15 @@ timeout_sec = 7200
 tags = ["dma", "abort", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+
+[[tests]]
+# Secure DMA zero fill (OPCODE 4): the image and beats per destination mode and width, the erase window on every beat, the opcode and handshake errors, and abort. The seed draws the transfers.
+name = "sep_dma_zero_fill_rand_test"
+module = "system.sep_dma_zero_fill_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["dma", "zero", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]

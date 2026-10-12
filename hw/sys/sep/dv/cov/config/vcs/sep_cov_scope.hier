@@ -499,6 +499,10 @@
 -module prim_sha2_pad
 -module prim_subst_perm
 -module prim_trivium
+// secure_dma is the exception: SEP adds the zero fill (opcode 4, vendor patch 0047).
+// sep_dma_zero_cg and the checkers of sep_dma_zero_fill_rand_test and sep_dma_zero_test
+// grade that path, and its ZeroFill* assertions hold that it never reads and writes
+// only zeros; the rest of the core is unmodified.
 -module secure_dma
 -module secure_dma_reg_top
 -module sha3

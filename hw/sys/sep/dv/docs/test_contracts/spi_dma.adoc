@@ -1095,3 +1095,114 @@ The offsets come from `spi_controller.adoc`, and TXDATA at 0x28 and RXDATA at 0x
 *Scope limit*: The open tests `sep_spi_ot_dma_rx_test` and `sep_spi_ot_dma_tx_test` keep the single handshake configuration with mask bit 0 set and the TX-direction wait. Not claimed: the interrupt clear write (the leaf does not drive it), handshake inputs 1 to 10 (tied low), BUSY before the GO clear, the count of beats per chunk, the words beyond n*C/4 in the handshake run, the number of chunks that the DMA moves before the stop (the leaf requires at least one unmoved chunk), and the RX watermark equality (C/4 stays at or below W, so both readings of the watermark leave at least C/4 words when the trigger fires).
 
 '''''
+
+[[sep_dma_zero_fill_rand_test]]
+===== 4.16 `sep_dma_zero_fill_rand_test`
+
+*Phase*: 3
+
+*Area*: SPI and DMA
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`. 4 seeds. Verilator and VCS; testlist groups `cpu_stub` and `all`, file `system.toml`, one testlist entry.
+
+*Source Module*: `sep_dma_zero_fill_rand_test`
+
+*BFM / Model*: ocah_axi_vip register frontdoor over `s_axi` (also for every SRAM image). Approved probes: `dma_busy_probe_o`, `sep_internal_interrupts_probe_o` (bits 8 and 10, PIC sources 9 and 11) and `spi_lsio_trigger_probe_o`. Observation taps: `dma_axi_req_probe_o` and `dma_status_probe_o`. Model: `env/sep_dma_model.DmaZeroFill`. No inject.
+
+*Randomization*: `SepSeededRng` from the run seed. Leg Z: the order of the nine {destination mode} x {TRANSFER_WIDTH encoding} cells, per cell the chunk size (a multiple of the width), the chunk count (one for the fixed destination, two or more for WRAP), the size of the last chunk (so the last write can be narrower than the width), the start offset inside the 64-bit beat, the placement and the sentinel words. Leg W: the range size (64 to 256 bytes), the guards, the distances below BASE and past LIMIT, the crossing chunk size and the trim of an unaligned LIMIT. Leg A: the fill size (4 KB to 8 KB) and the abort point as a fraction (20 to 80 percent) of the clean time of the same fill. Leg L: the range and the overrun. Every value is drawn before the first stimulus.
+
+*Objective*: The zero fill holds its contract (`dma.hjson`, CONTROL.OPCODE; `hw/sys/sep/doc/dma.adoc`, Zero Fill): it writes zeros to the destination and never reads the source, in every destination mode and width; it writes only inside the enabled memory range, checked before every write; it is rejected with OPCODE_ERROR in hardware handshake mode; and it aborts and recovers like a copy.
+
+*Test Coverage*: zero fills in INCREMENT, INCREMENT and WRAP, and fixed destination modes at widths 1, 2 and 4, single and multi-chunk, with narrow last writes and unaligned starts; a fill straight after a copy; fills that start below BASE, end past LIMIT in one chunk, cross LIMIT in a later chunk and end on an unaligned LIMIT; a copy outside the range; OPCODE 5; a zero fill with hardware handshake; ABORT during a fill; a locked range. Functional coverage: `sep_dma_zero_cg`.
+
+*Test Procedure*:
+
+[arabic]
+. Draw every value from the seed and log it in `DRAW` lines. Bring up with the CPU held off. Write BASE and LIMIT around the SEP SRAM, RANGE_VALID = 1, ADDR_SPACE_ID = 0x77 and both ADDR_HI registers = 0.
+. Leg Z, per cell: fill the destination span and its guards with drawn words that have no zero byte. Copy eight non-zero words between two other SRAM blocks. Program the fill (SRC_ADDR_LO = 0, the destination, the sizes, the width and DST_CONFIG) and write CONTROL with OPCODE 4, INITIAL_TRANSFER=1 and GO=1. Wait for DONE with the re-GO rule of `sep_dma_abort_recovery_rand_test`, step 3. Read the destination span, STATUS and ERROR_CODE (CHK-DMA-ZERO-IMAGE, CHK-DMA-ZERO-BEAT, CHK-DMA-ZERO-RESIDUE).
+. Leg W, with INTR_ENABLE = DMA_DONE | DMA_ERROR: fill the whole range (CHK-DMA-ZERO-WIN-OK, CHK-DMA-ZERO-IRQ); fill from below BASE at width 4 and, with BASE one byte above the start, at width 1; fill past LIMIT in one chunk (CHK-DMA-ZERO-IRQ) and across LIMIT in a later chunk (CHK-DMA-ZERO-WIN-ERR each); fill to an unaligned LIMIT (CHK-DMA-ZERO-WIN-EXACT); copy to a destination outside the range (CHK-DMA-ZERO-COPY-CTRL). Write 1 to STATUS.ERROR after each error and wait for BUSY=0.
+. Leg E: write OPCODE 5 with GO, then after the clear a zero fill (CHK-DMA-ZERO-OPC). Write SPI CONTROL.TX_WATERMARK = 1 with the TX FIFO empty and HANDSHAKE_INTR_ENABLE = 1, wait for the trigger probe, and write a zero fill with HARDWARE_HANDSHAKE_ENABLE=1 (CHK-DMA-ZERO-HS). Restore both registers.
+. Leg A: measure the clean time of a fill of the drawn size, refill the sentinel, start the fill again and write CONTROL with ABORT=1 after the drawn fraction of that time. A write that finds BUSY=0 or that ends with DONE is repeated with the next drawn fraction, at most three times, then CTRL-MISSING. Read the destination, wait a quarter of the clean time and read it again, write 1 to STATUS.ABORTED, then run a recovery fill (CHK-DMA-ZERO-ABORT).
+. Leg L: write the range, write MuBi4 False to RANGE_REGWEN, write a wider LIMIT, read LIMIT back and run a fill past the locked LIMIT (CHK-DMA-ZERO-WIN-LOCK).
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-DMA-ZERO-IMAGE
+|Every word of the destination span equals the model: the bytes of the model writes are 0 and every other byte keeps its drawn value; DONE=1, ERROR=0 and ERROR_CODE=0. A DUT that writes the wrong bytes, too few or too many fails the compare. Evidence: `CHK-DMA-ZERO-IMAGE PASS seed=<n> mode=<m> enc=<e> ... mismatches=0`.
+|CHK-DMA-ZERO-BEAT
+|No AR handshake in the window of the fill; one AW per model write with AxLEN 0, AxADDR[31:2] and WSTRB equal to the model; one OKAY B per AW. A DUT that reads the source shows AR beats. Evidence: `CHK-DMA-ZERO-BEAT PASS seed=<n> ... ar=0 aw=<k> beats=<k> shape=model`.
+|CHK-DMA-ZERO-RESIDUE
+|The bytes the fill writes read 0 although the last word of the copy before it is non-zero. A DUT that writes its data register unchanged writes that word. Evidence: `CHK-DMA-ZERO-RESIDUE PASS seed=<n> ... copy_last=<w> cleared_bytes=<b>`.
+|CHK-DMA-ZERO-WIN-OK
+|A fill of the whole range completes and clears it; the guards outside the range keep their words.
+|CHK-DMA-ZERO-WIN-ERR
+|Per out-of-range fill: ERROR=1 and ERROR_CODE equals DST_ADDR_ERROR alone; the AW count equals the model writes inside the range (none when the first write is outside); those bytes read 0 and every other byte keeps its word. A DUT that checks only the first chunk writes past LIMIT in the crossing case.
+|CHK-DMA-ZERO-WIN-EXACT
+|A fill whose narrow last write ends on an unaligned LIMIT completes with ERROR=0, and the bytes after LIMIT keep their words. A DUT that checks whole words rejects this fill.
+|CHK-DMA-ZERO-COPY-CTRL
+|Control: a copy whose destination is outside the range completes with the data copied, so the range bounds a fill and not a copy.
+|CHK-DMA-ZERO-IRQ
+|PIC source 9 rises and PIC source 11 does not for the fill of the whole range; PIC source 11 rises and PIC source 9 does not for the fill past LIMIT.
+|CHK-DMA-ZERO-OPC
+|OPCODE 5 sets ERROR with ERROR_CODE equal to OPCODE_ERROR alone, moves no beat and leaves the destination; after the write of 1 to STATUS.ERROR a zero fill completes.
+|CHK-DMA-ZERO-HS
+|A zero fill with HARDWARE_HANDSHAKE_ENABLE=1 sets ERROR with ERROR_CODE equal to OPCODE_ERROR alone, moves no beat and leaves the destination. Control: the trigger probe reads 1 before the GO write (CTRL-MISSING otherwise).
+|CHK-DMA-ZERO-ABORT
+|ABORTED reads 1; the destination is whole zero words followed by sentinel words, at least one of each, and reads the same a quarter of the clean time later; ABORTED reads 0 after its write of 1; the recovery fill completes and clears the whole destination.
+|CHK-DMA-ZERO-WIN-LOCK
+|After MuBi4 False is written to RANGE_REGWEN, RANGE_REGWEN reads other than True and a later write to LIMIT leaves it unchanged; a fill past LIMIT then stops at the first write beyond it with DST_ADDR_ERROR.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope limit*: Not claimed: the AR and AW handshakes after the ABORTED rise (logged as `OBS-DMA-ZERO-ABORT`; `sep_dma_abort_recovery_rand_test` owns that contract), ICCM and DCCM destinations (`sep_dma_zero_test`, because the CPU stub of this target answers no request on the core's DMA port), and the SoC address spaces, which SEP ties off.
+
+'''''
+
+[[sep_dma_zero_test]]
+===== 4.17 `sep_dma_zero_test`
+
+*Phase*: 3
+
+*Area*: SPI and DMA
+
+*Run mode*: `cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_dma_zero_test`
+
+*BFM / Model*: ocah_axi_vip, CPU FW (`fw/tests/dma_zero_test`), `tb/sep_outbound_mbx.sv` (console and verdict mailbox)
+
+*Objective*: The zero fill clears ICCM and DCCM through the core's DMA slave port, which the no_cpu target does not model, and the core's refusal of a write narrower than a word reaches software as BUS_ERROR.
+
+*Test Coverage*: zero fills into SEP SRAM at widths 4 and 1, into a DCCM buffer and into ICCM; a 2-byte-wide fill into ICCM.
+
+*Test Procedure*:
+
+[arabic]
+. Write BASE = 0, LIMIT = 0xFFFFFFFF and RANGE_VALID = 1.
+. SRAM: fill 18 words with a pattern, zero the inner 16 at width 4, and check them with the CPU; fill four words, zero bytes 1 to 7 at width 1 and check every byte.
+. DCCM: fill an 18-word buffer of the firmware with the pattern, zero its inner 16 words at width 4, and check them with the CPU.
+. ICCM: copy the pattern to 18 ICCM words, zero the inner 16 at width 4, copy the 18 words back to a sentinel-filled SRAM block and check them with the CPU.
+. Narrow: check DMA_BUS_ERR_STATUS reads 0, zero 8 ICCM bytes at width 2, read STATUS, ERROR_CODE and DMA_BUS_ERR_STATUS, clear both, and zero the same bytes at width 4.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-ZERO-SRAM
+|Each fill ends with DONE and ERROR_CODE 0; the words and bytes it covers read 0 and their neighbours keep the pattern.
+|CHK-ZERO-DCCM
+|The fill ends with DONE and ERROR_CODE 0; the inner 16 words of the DCCM buffer read 0 and the first and last keep the pattern.
+|CHK-ZERO-ICCM
+|The three transfers end with DONE and ERROR_CODE 0; the copy back shows the inner 16 words 0 and the first and last with the pattern.
+|CHK-ZERO-TCM-NARROW
+|The 2-byte-wide fill ends with ERROR, ERROR_CODE equal to BUS_ERROR alone and DMA_BUS_ERR_STATUS equal to the host-path bit alone; both clear; the 4-byte-wide fill then completes.
+|===
+
+*Pass Criteria*: Every named checker PASSes, and the firmware returns 0. UVM_ERROR == 0.
+
+'''''

@@ -90,6 +90,17 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Secure-DMA zero fill into SEP SRAM, DCCM and ICCM through the core's DMA port, and the sub-word ICCM fill the core rejects.
+name = "sep_dma_zero_test"
+module = "cpu.sep_dma_zero_test"
+firmware = "dma_zero_test"
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "cpu", "dma", "zero", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # Reset observables at rest and CPU-observable liveness under a real warm reset.
 # dbg_rstb_i isolation is NOT proven: in this build the pin has no netlist path to
 # either observable.

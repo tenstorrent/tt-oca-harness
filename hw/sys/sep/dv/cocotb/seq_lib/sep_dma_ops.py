@@ -85,7 +85,7 @@ CFG_WRAP = _D.field_mask("SRC_CONFIG", "wrap")
 ERROR_CODE_MASK = _D.mask32("ERROR_CODE")
 
 # OPCODE encodings (sep-programming.adoc, DMA; dma.hjson, OPCODE).
-OP_COPY, OP_SHA256, OP_SHA384, OP_SHA512 = 0, 1, 2, 3
+OP_COPY, OP_SHA256, OP_SHA384, OP_SHA512, OP_ZERO = 0, 1, 2, 3, 4
 
 # Transfer-register names in the default write order.
 XFER_REGS = (
