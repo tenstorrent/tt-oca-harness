@@ -57,7 +57,8 @@ with an `unsupported SVA feature` or `unsupported system task` diagnostic.
 
 | declaration initializer `logic q = 1'b0;`
 | accepted as initial state
-| --
+| the flop written by `always @(posedge clk)`; licensed backends reject a
+  declaration-initialized variable that an `always_ff` writes
 
 | `default clocking`, `default disable iff`
 | rejected

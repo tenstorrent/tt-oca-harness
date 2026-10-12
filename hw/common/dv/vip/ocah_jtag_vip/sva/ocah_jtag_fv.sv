@@ -94,7 +94,7 @@ module ocah_jtag_fv #(
   // first high phase has no rising edge before it.
   logic posedge_seen_q = 1'b0;
   logic tms_at_posedge_q, tdi_at_posedge_q, tdo_at_posedge_q, tdo_oen_at_posedge_q;
-  always_ff @(posedge tck) begin
+  always @(posedge tck) begin
     posedge_seen_q       <= 1'b1;
     tms_at_posedge_q     <= tms;
     tdi_at_posedge_q     <= tdi;
