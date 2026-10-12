@@ -24,11 +24,11 @@
 //                            mcause.interrupt set (control)
 //
 // Source drive recipe. A mailbox source k + 1 is driven by one CPU push into
-// the inbound WRITE_DATA of mailbox k with IRQEN.wtirq 1 and WIRQT 0, and
-// released by a pop of the outbound READ_DATA of mailbox k and a write of 1 to
-// inbound IRQS.wtirq. An OpenTitan event source is driven by its INTR_ENABLE
-// bit and its INTR_TEST bit, and released by INTR_TEST 0 and a write of 1 to its
-// INTR_STATE bit.
+// the inbound WRITE_DATA of mailbox k with IRQEN.wtirq 1, WIRQT 0 and an
+// inbound filter allow window open over that port (all eight are opened at
+// set-up and stay open), and released by a pop of the outbound READ_DATA of mailbox k and a write
+// of 1 to inbound IRQS.wtirq. An OpenTitan event source is driven by its INTR_ENABLE bit and its
+// INTR_TEST bit, and released by INTR_TEST 0 and a write of 1 to its INTR_STATE bit.
 //
 // Every external interrupt enters ext_dispatch through the fast-redirect
 // vector table (every entry points to it); timer and software interrupts enter
@@ -38,6 +38,7 @@
 
 #include <stdint.h>
 
+#include "filter_ctrl.h"
 #include "sep.h"
 #include "sep_axil_mailbox.h"
 #include "sep_console_rec.h"
@@ -128,6 +129,39 @@ static volatile uint32_t g_first_meip0;
 static volatile uint32_t g_cls_ext, g_cls_timer, g_cls_sw, g_cls_other;
 static volatile uint32_t g_last_mcause;
 static int g_err;
+
+// ---- Inbound filter allow window over the inbound port of mailbox m ----
+// The source drive recipe opens one read and write window per inbound mailbox
+// port it uses, before the first push, and keeps it open for the leaf.
+#define MBX_IN_SPAN 0x800u
+#define FILT_CFG_RW_EN \
+    (FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm | \
+     FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm)
+
+static void mbx_window(uint32_t idx, uint32_t m) {
+    volatile uint32_t *cfg =
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx);
+    volatile uint32_t *st =
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx);
+    volatile uint32_t *en =
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx);
+    uint32_t s =
+        SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR + m * SEP_AXIL_MBOX_STRIDE;
+    cfg[0] = 0u;
+    cfg[1] = 0u;
+    st[0] = s;
+    st[1] = 0u;
+    en[0] = s + MBX_IN_SPAN - 1u;
+    en[1] = 0u;
+    cfg[0] = FILT_CFG_RW_EN;
+    __asm__ volatile("fence" ::: "memory");
+    rec_ctl("MBX-WINDOW");
+    rec_num("mbox", m);
+    rec_hex("FILTER_CONFIG", cfg[0]);
+    rec_hex("START_ADDR", st[0]);
+    rec_hex("END_ADDR", en[0]);
+    rec_end();
+}
 
 static inline uint32_t rd32(uint32_t a) {
     return *(volatile uint32_t *)a;
@@ -577,6 +611,9 @@ int main(void) {
     __asm__ volatile("csrw mtvec, %0" ::"r"((uint32_t)(uintptr_t)&trap_dispatch));
     for (uint32_t v = 0; v < 256u; v++) {
         pic_register_handler(v, ext_dispatch);
+    }
+    for (uint32_t k = 0; k < SEP_AXIL_MBOX_N; k++) {
+        mbx_window(k, k);
     }
     mbox_setup_all();
     set_order(0u);

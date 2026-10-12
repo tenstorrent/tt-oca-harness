@@ -20,12 +20,13 @@
 // Every compare covers the RDL field bits only; the PASS line logs the other
 // bits as rsvd. The six excluded idle bits of meip come in the parameter block.
 // Source 1 (mailbox 0 inbound line) is the control source: the CPU pushes one
-// word into the inbound WRITE_DATA of mailbox 0 with IRQEN.wtirq 1 and WIRQT 0,
-// and releases it with a pop of the outbound READ_DATA and a write of 1 to
-// inbound IRQS.wtirq.
+// word into the inbound WRITE_DATA of mailbox 0 with IRQEN.wtirq 1, WIRQT 0 and
+// an inbound filter allow window open over that port, and releases it with a pop of the outbound
+// READ_DATA and a write of 1 to inbound IRQS.wtirq.
 
 #include <stdint.h>
 
+#include "filter_ctrl.h"
 #include "sep.h"
 #include "sep_axil_mailbox.h"
 #include "sep_console_rec.h"
@@ -82,6 +83,39 @@ static volatile uint32_t g_ctrl_runs;   // source 1 control handler
 static volatile uint32_t g_ctrl_meip0;  // meip[0] read inside the control handler
 static volatile uint32_t g_ctrl_active; // the control handler releases source 1
 static int g_err;
+
+// ---- Inbound filter allow window over the inbound port of mailbox m ----
+// The source drive recipe opens one read and write window per inbound mailbox
+// port it uses, before the first push, and keeps it open for the leaf.
+#define MBX_IN_SPAN 0x800u
+#define FILT_CFG_RW_EN \
+    (FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm | \
+     FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm)
+
+static void mbx_window(uint32_t idx, uint32_t m) {
+    volatile uint32_t *cfg =
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx);
+    volatile uint32_t *st =
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx);
+    volatile uint32_t *en =
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx);
+    uint32_t s =
+        SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR + m * SEP_AXIL_MBOX_STRIDE;
+    cfg[0] = 0u;
+    cfg[1] = 0u;
+    st[0] = s;
+    st[1] = 0u;
+    en[0] = s + MBX_IN_SPAN - 1u;
+    en[1] = 0u;
+    cfg[0] = FILT_CFG_RW_EN;
+    __asm__ volatile("fence" ::: "memory");
+    rec_ctl("MBX-WINDOW");
+    rec_num("mbox", m);
+    rec_hex("FILTER_CONFIG", cfg[0]);
+    rec_hex("START_ADDR", st[0]);
+    rec_hex("END_ADDR", en[0]);
+    rec_end();
+}
 
 // ---- address helpers (an atomic argument only, see sep_pic.h) ----
 static inline uint32_t a_meipl(uint32_t n) {
@@ -469,6 +503,7 @@ int main(void) {
     for (uint32_t v = 0; v < 256u; v++) {
         pic_register_handler(v, v == SRC_CTRL ? ctrl_isr : count_isr);
     }
+    mbx_window(0u, 0u);
     mbox0_setup();
 
     rec_mark(1, "reset");
