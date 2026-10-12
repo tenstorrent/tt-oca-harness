@@ -11,7 +11,7 @@ endif::[]
 :sectanchors:
 :sectlinks:
 :sectnums:
-:sectnumlevels: 11
+:sectnumlevels: 4
 :xrefstyle: short
 :block-catalog:
 :source-highlighter: highlight.js

@@ -89,6 +89,7 @@ ocah-doc-trm-pdf: ocah-doc-trm-setup
 	@cd "$(OCAH_TRM_DIR)" && env $(OCAH_DOC_PDF_LOCALE) "$(OCAH_ASCIIDOCTOR_PDF)" \
 		-r "$(OCAH_ROOT)/tools/doc/register_map_coverage.rb" \
 		-r "$(OCAH_ROOT)/tools/doc/block_catalog.rb" \
+		-r "$(OCAH_ROOT)/tools/doc/section_xref_numbering.rb" \
 		-a register-map-manifest="$(OCAH_TRM_BUILD)/register-maps.txt" \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=11 -a outlinelevels=11 \
