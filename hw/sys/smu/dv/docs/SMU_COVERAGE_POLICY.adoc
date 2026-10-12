@@ -31,7 +31,11 @@ none on theirs: the runner reports every family's raw and effective figure, a
 run's status comes from its tests, and the figures are read against the
 targets this chapter states.
 `cov/config/verilator/smu_wrapper_coverage_policy.toml` carries no
-`\[[thresholds]]` row at all
+`\[[thresholds]]` row at all, and neither does
+`cov/config/vcs/smu_wrapper_uvm_coverage_policy.toml`, the policy the SV-UVM
+view (`--framework uvm`) reports against: a threshold rule scopes to a tool
+and a target, not to a framework, and the five SV-UVM leaves are not the
+coverage set the `user` floor is written for
 |Measured (Verilator, the `cov/sv` cover properties)
 |`hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc`, the generated owners table, names
 the run's commit, simulator and figures. No `hosted`-only figure is recorded

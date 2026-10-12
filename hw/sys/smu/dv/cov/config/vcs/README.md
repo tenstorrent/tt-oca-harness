@@ -235,7 +235,11 @@ The runner compiles with the scope, runs the group, merges, writes the urg
 report with the exclusion files, and prints one `coverage` line with every
 family as raw/effective; `smu_wrapper_coverage_policy.toml` floors `user` at
 100 percent and sets no code-metric floor, so the `coverage=PASS` or `FAIL`
-the result carries grades the cover-property population alone. Nothing else is run. `toggle` is urg's TOGGLE column
+the result carries grades the cover-property population alone. The SV-UVM
+view (`--framework uvm`) reports the same families against
+`smu_wrapper_uvm_coverage_policy.toml`, the same scope and exclusion files
+with no `[[thresholds]]` row, so its `--cov` run reports the figures and
+gates none of them. Nothing else is run. `toggle` is urg's TOGGLE column
 after the exclusions; `user` is the cov/sv `cover property` points, which the
 runner reads from the cover-property summary of `cov/report/asserts.txt`;
 `assertion` is urg's ASSERT column, those points together with the
