@@ -138,6 +138,8 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
     int unsigned mismatch_before;
     int unsigned accesses_before;
     int unsigned restore_changes;
+    bit [31:0] zeroer_samples_before;
+    bit zeroer_stayed_idle;
 
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkMemResp, ChkBaseline, ChkFullRw, ChkSingleByte, ChkSparse,
@@ -174,6 +176,11 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
               "HANG_DET_DATA_ACCEL_CTRL");
     safe_read(SmcAliasRegionAttrsAddr, REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
               "SMC_ALIAS_REMAP_0.REGION_ATTRS");
+
+    check_evidence(ChkBaseline, "Zeroer busy tap idle", 64'(tb_vif.zeroer_busy === 1'b0), 64'h1);
+    if (tb_vif.zeroer_busy !== 1'b0)
+      `uvm_fatal(get_type_name(), "Zeroer busy tap is not idle before catalogued writes")
+    zeroer_samples_before = tb_vif.zeroer_busy_sample_count;
 
     pattern = pass_pattern();
     foreach (entries[i]) begin
@@ -234,9 +241,18 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
     end
 
     mem_read(SmcZeroerCtrlStatusAddr, status_word, "ZEROER_CTRL.CTRL_STATUS final");
-    check_evidence(ChkNoZeroerStart, "Zeroer busy",
-                   64'(status_word[ZEROER_CTRL_CTRL_STATUS_STATUS_SHIFT]), 64'h0,
-                   "DEST_ADDR and SIZE writes left the Zeroer idle");
+    zeroer_stayed_idle = tb_vif.zeroer_busy_sample_count === zeroer_samples_before &&
+                         tb_vif.zeroer_busy === 1'b0 &&
+                         !status_word[ZEROER_CTRL_CTRL_STATUS_STATUS_SHIFT];
+    check_evidence(ChkNoZeroerStart, "Zeroer idle throughout catalogued writes",
+                   64'(zeroer_stayed_idle), 64'(!env_cfg.regblock_wide_sequence_negative),
+                   $sformatf(
+                   "samples_before=%0d samples_after=%0d busy=%b status=0x%016h",
+                   zeroer_samples_before,
+                   tb_vif.zeroer_busy_sample_count,
+                   tb_vif.zeroer_busy,
+                   status_word
+                   ));
     check_evidence(ChkLaneCoverage, "strobed RW lanes", 64'(lane_coverage), 64'hFF,
                    "all SEP_IN byte lanes");
     check_evidence(ChkRestoreNonvac, "restores that changed an RW value", 64'(restore_changes > 0),
