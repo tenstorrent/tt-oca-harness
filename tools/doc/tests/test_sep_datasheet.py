@@ -23,13 +23,14 @@ class SepDatasheetTests(unittest.TestCase):
         self.assertRegex(sep_package, r"NumMailboxes\s*=\s*8;")
         self.assertRegex(sep_package, r"MailboxDepth\s*=\s*8;")
         self.assertIn("secure_dma #(", sep_dma)
-        for mode in ("OpcSha256", "OpcSha384", "OpcSha512"):
+        for mode in ("OpcSha256", "OpcSha384", "OpcSha512", "OpcZero"):
             self.assertIn(mode, secure_dma)
         self.assertRegex(entropy_config, r"sel\[2:0\]\s*=\s*0x7;")
 
         self.assertRegex(self.source, r"([|!])Mailboxes \1(?:8 mailboxes, depth 8 entries each)")
         self.assertIn("SHA2-256,", self.source)
         self.assertIn("SHA2-384, and SHA2-512", self.source)
+        self.assertIn("zero fill of memory inside a lockable", self.source)
         self.assertRegex(
             self.source,
             r"([|!])External entropy streams \1(?:3 AXI-Stream inputs, selected by default)",

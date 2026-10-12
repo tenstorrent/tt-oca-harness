@@ -12,10 +12,11 @@ ifdef::backend-html5[]
 endif::backend-html5[]
 
 The SEP DMA copies data between addressable memories and peripheral registers,
-with optional inline SHA-256, SHA-384 or SHA-512 hashing. It uses the
+with optional inline SHA-256, SHA-384 or SHA-512 hashing, and fills memory
+with zeros. It uses the
 https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller]
-inside an AXI wrapper. The integration below defines which upstream ports
-and hardware triggers are available in SEP.
+inside an AXI wrapper, with the zero fill added. The integration below defines
+which upstream ports and hardware triggers are available in SEP.
 The Programmer's Guide gives the
 ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-dma[programming guidance]
@@ -71,6 +72,40 @@ faults on `dma_reg_bus_err_o` and `dma_host_intg_err_o`, cleared through
 Only handshake input 0 is connected, to the SPI host's LSIO trigger.
 All other trigger inputs are tied low; SEP does not wire UART or I3C handshake paths.
 This does not prevent software-initiated accesses to reachable peripheral registers.
+
+[[sep-dma-zero-fill]]
+=== Zero Fill
+
+`CONTROL.OPCODE` 4 (`ZERO`) is an operation the upstream DMA does not have. A
+zero fill writes zeros to `TOTAL_DATA_SIZE` bytes from the destination address
+and never reads the source, so erasing memory needs no buffer of zeros that
+software prepares and that another initiator could change during the fill.
+Destination address modes, transfer widths, chunking, completion and error
+reporting, interrupts and `CONTROL.ABORT` behave as they do for a copy.
+
+* The fill writes only inside the enabled memory range, from
+  `ENABLED_MEMORY_RANGE_BASE` to `ENABLED_MEMORY_RANGE_LIMIT` inclusive,
+  whatever the address spaces. The engine checks each write before it issues
+  it, so the bound holds across chunks and in every address mode. The first
+  write that would leave the range is not issued: the fill stops with
+  `STATUS.ERROR` and `ERROR_CODE.DST_ADDR_ERROR`, and the writes before it
+  remain. Locking the range with `RANGE_REGWEN` fixes this erase window until
+  reset. The range does not bound a copy between internal addresses.
+* The source registers are not used, but they are validated as for a copy, so
+  program `SRC_ADDR_LO` and `SRC_ADDR_HI` as 0 with source address-space ID
+  `0x7`.
+* A zero fill cannot run in hardware handshake mode. With
+  `HARDWARE_HANDSHAKE_ENABLE` set it ends in `ERROR_CODE.OPCODE_ERROR` when the
+  first trigger arrives.
+* When the size is not a multiple of the transfer width, the last write covers
+  only the remaining bytes.
+* ICCM and DCCM take only whole 32-bit words from the DMA. A zero fill there
+  needs 4-byte transfers, a 4-byte-aligned destination and a size that is a
+  multiple of 4; any other write ends in `ERROR_CODE.BUS_ERROR` and sets the
+  host-path fault in `DMA_BUS_ERR_STATUS`.
+* The internal register that carries a word from the read to the write of a
+  copy holds zero after a zero fill, so the engine keeps no word of an earlier
+  copy.
 
 [[sep-dma-completion]]
 === Completion Reporting

@@ -13,7 +13,7 @@
 
 #include "sep.h"
 
-// The engine needs a source address even for a fill, so sep_dma_zero() keeps
+// sep_dma_zero() fills through a copy, which needs a source address, so it keeps
 // one word that the CPU zeroes and the engine re-reads for every beat. It sits
 // at the top of SEP SRAM, and the bytes it occupies belong to no one else.
 //
