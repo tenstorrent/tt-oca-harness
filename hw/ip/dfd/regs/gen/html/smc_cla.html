@@ -166,7 +166,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>27:24</td><td>Trdstramvendorframelength</td><td>RW</td><td>0x1</td><td>-</td></tr>
+<tr><td>27:24</td><td>Trdstramvendorframelength</td><td>RW</td><td>0x1</td><td>Frame length in 64-byte units. Only 1, 2, 4 and 8 (64, 128, 256 and 512 bytes) are supported, and the value must match the DST&#x27;s trDstVendorFrameLength.</td></tr>
 <tr><td>23:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>13</td><td>Trdstramhassmem</td><td>R</td><td>0x1</td><td>-</td></tr>
 <tr><td>12</td><td>Trdstramhassram</td><td>R</td><td>0x1</td><td>-</td></tr>
@@ -211,7 +211,7 @@
 <h3 id="Trdstramrplow">Trdstramrplow</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Trdstramrplow</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>31:2</td><td>Trdstramrplow</td><td>RW</td><td>0x0</td><td>Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Each trDstRamData read that returns unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.</td></tr>
 <tr><td>1:0</td><td>Rsvd10</td><td>R</td><td>0x0</td><td>-</td></tr>
 </table>
 <h3 id="Trdstramrphigh">Trdstramrphigh</h3>
@@ -222,7 +222,7 @@
 <h3 id="Trdstramdata">Trdstramdata</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>Trdstramdata</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>31:0</td><td>Trdstramdata</td><td>R</td><td>0x0</td><td>Reading launches a trace-RAM read at trDstRamRPLow. When the RAM holds unread data, the read returns that 32-bit word and advances trDstRamRPLow; otherwise the pointer does not move.</td></tr>
 </table>
 <h3 id="dst_sink.ScratchLo">dst_sink.ScratchLo</h3>
 <table>
@@ -1158,7 +1158,7 @@
 <tr><td>26:24</td><td>Trdstformat</td><td>RW</td><td>0x3</td><td>bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2&#x27;b3 (XOR+VLT Compression), 2&#x27;b1 (XOR Compresion), 2&#x27;b0 (No Compression)</td></tr>
 <tr><td>23:20</td><td>Trdstsyncmax</td><td>RW</td><td>0x0</td><td>When trDstSyncMode is set to 2&#x27;b10, timestamp will be sent for every 2^(trDstSyncMax + 4) Cluster clocks.</td></tr>
 <tr><td>19:18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>17:16</td><td>Trdstsyncmode</td><td>RW</td><td>0x0</td><td>When the field is set tp 2&#x27;b10, sent timestamp. All other vlaues not NA.</td></tr>
+<tr><td>17:16</td><td>Trdstsyncmode</td><td>RW</td><td>0x0</td><td>Periodic sync mode. 2&#x27;b00: off. 2&#x27;b01: stream counting, with trDstVendorStreamLength frames between non-compressed packets. 2&#x27;b10: send a timestamp packet every 2^(trDstSyncMax + 4) Cluster clocks. 2&#x27;b11: no effect, as 2&#x27;b00.</td></tr>
 <tr><td>15</td><td>Trdstinhibitsrc</td><td>R</td><td>0x0</td><td>-</td></tr>
 <tr><td>14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>13</td><td>Trdstinststallena</td><td>R</td><td>0x0</td><td>-</td></tr>
@@ -1177,8 +1177,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>Trdsttimestampconfig</td><td>RW</td><td>0x0</td><td>DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.</td></tr>
-<tr><td>30:28</td><td>Trdstvendorstreamlength</td><td>RW</td><td>0x4</td><td>Specify Stream length. A stream starts with &quot;no compressed packet&quot;. Stream length specifies number of frames before a non-compressed packet is sent.Stream Length = 32* 2^(trDstVendorStreamLength + 1)</td></tr>
-<tr><td>27:24</td><td>Trdstvendorframelength</td><td>RW</td><td>0x1</td><td>Specify frame length. Frame Length = trDstVendorFrameLength* 64 ; Frame Length should be a multiple of Bank Data Width.</td></tr>
+<tr><td>30:28</td><td>Trdstvendorstreamlength</td><td>RW</td><td>0x4</td><td>Specify Stream length. A stream starts with &quot;no compressed packet&quot;. Stream length specifies number of frames before a non-compressed packet is sent, and applies only when trDstSyncMode is 2&#x27;b01. Values 0 to 4 give Stream Length = 32* 2^trDstVendorStreamLength (32 to 512 frames); values 5 to 7 give 32.</td></tr>
+<tr><td>27:24</td><td>Trdstvendorframelength</td><td>RW</td><td>0x1</td><td>Specify frame length. Frame Length = trDstVendorFrameLength* 64 bytes; Frame Length should be a multiple of Bank Data Width. Only 1, 2, 4 and 8 (64, 128, 256 and 512 bytes) are supported, because the DST sink finds frame boundaries at the power of two given by the highest set bit of its frame length. Program the sink&#x27;s trDstRamVendorFrameLength with the same value.</td></tr>
 <tr><td>23:20</td><td>Trdstprotocolminor</td><td>R</td><td>0x0</td><td>-</td></tr>
 <tr><td>19:16</td><td>Trdstprotocolmajor</td><td>R</td><td>0x1</td><td>-</td></tr>
 <tr><td>15:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1190,7 +1190,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:28</td><td>Trdstsrcbits</td><td>RW</td><td>0x4</td><td>-</td></tr>
-<tr><td>27:16</td><td>Trdstsrcid</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>27:16</td><td>Trdstsrcid</td><td>RW</td><td>0x0</td><td>Source ID sent in the trace packet headers. Only bits [3:0] are used.</td></tr>
 <tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>Trdstinstenrepeatedhistory</td><td>R</td><td>0x0</td><td>-</td></tr>
 <tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1206,7 +1206,7 @@
 <tr><td>19:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:12</td><td>FrameLenghtInBytes</td><td>RW</td><td>0x2</td><td>Use trDstImpl[trDstVendorFrameLength] for Frame Length programming. Register field ZBB-ed.</td></tr>
 <tr><td>11:4</td><td>TraceFrameFillByte</td><td>RW</td><td>0x81</td><td>Use &quot;Filler Packet&quot; to align a stream of trace packets within a frame boundary.</td></tr>
-<tr><td>3:0</td><td>TraceSourceId</td><td>RW</td><td>0x0</td><td>Trace Source ID</td></tr>
+<tr><td>3:0</td><td>TraceSourceId</td><td>RW</td><td>0x0</td><td>Stored but not used. The trace packet headers carry trDstInstFeatures[trDstSrcID].</td></tr>
 </table>
 <h3 id="dst.ScratchLo">dst.ScratchLo</h3>
 <table>

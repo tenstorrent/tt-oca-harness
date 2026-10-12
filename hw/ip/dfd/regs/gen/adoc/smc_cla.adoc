@@ -173,7 +173,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 |===
 | Bits | Field | Access | Reset | Description
 | 31:28 | `Reserved` | - | - a| Reserved
-| 27:24 | `Trdstramvendorframelength` | RW | 0x1 a| -
+| 27:24 | `Trdstramvendorframelength` | RW | 0x1 a| Frame length in 64-byte units. Only 1, 2, 4 and 8 (64, 128, 256 and 512 bytes) are supported, and the value must match the DST's trDstVendorFrameLength.
 | 23:14 | `Reserved` | - | - a| Reserved
 | 13 | `Trdstramhassmem` | R | 0x1 a| -
 | 12 | `Trdstramhassram` | R | 0x1 a| -
@@ -246,7 +246,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:2 | `Trdstramrplow` | RW | 0x0 a| -
+| 31:2 | `Trdstramrplow` | RW | 0x0 a| Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Each trDstRamData read that returns unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.
 | 1:0 | `Rsvd10` | R | 0x0 a| -
 |===
 
@@ -265,7 +265,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `Trdstramdata` | R | 0x0 a| -
+| 31:0 | `Trdstramdata` | R | 0x0 a| Reading launches a trace-RAM read at trDstRamRPLow. When the RAM holds unread data, the read returns that 32-bit word and advances trDstRamRPLow; otherwise the pointer does not move.
 |===
 
 [#reg-{regmap-instance}-smc_cla-dst_sink-ScratchLo]
@@ -1685,7 +1685,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 26:24 | `Trdstformat` | RW | 0x3 a| bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compresion), 2'b0 (No Compression)
 | 23:20 | `Trdstsyncmax` | RW | 0x0 a| When trDstSyncMode is set to 2'b10, timestamp will be sent for every 2^(trDstSyncMax + 4) Cluster clocks.
 | 19:18 | `Reserved` | - | - a| Reserved
-| 17:16 | `Trdstsyncmode` | RW | 0x0 a| When the field is set tp 2'b10, sent timestamp. All other vlaues not NA.
+| 17:16 | `Trdstsyncmode` | RW | 0x0 a| Periodic sync mode. 2'b00: off. 2'b01: stream counting, with trDstVendorStreamLength frames between non-compressed packets. 2'b10: send a timestamp packet every 2^(trDstSyncMax + 4) Cluster clocks. 2'b11: no effect, as 2'b00.
 | 15 | `Trdstinhibitsrc` | R | 0x0 a| -
 | 14 | `Reserved` | - | - a| Reserved
 | 13 | `Trdstinststallena` | R | 0x0 a| -
@@ -1708,8 +1708,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `Trdsttimestampconfig` | RW | 0x0 a| DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.
-| 30:28 | `Trdstvendorstreamlength` | RW | 0x4 a| Specify Stream length. A stream starts with "no compressed packet". Stream length specifies number of frames before a non-compressed packet is sent.Stream Length = 32* 2^(trDstVendorStreamLength + 1)
-| 27:24 | `Trdstvendorframelength` | RW | 0x1 a| Specify frame length. Frame Length = trDstVendorFrameLength* 64 ; Frame Length should be a multiple of Bank Data Width.
+| 30:28 | `Trdstvendorstreamlength` | RW | 0x4 a| Specify Stream length. A stream starts with "no compressed packet". Stream length specifies number of frames before a non-compressed packet is sent, and applies only when trDstSyncMode is 2'b01. Values 0 to 4 give Stream Length = 32* 2^trDstVendorStreamLength (32 to 512 frames); values 5 to 7 give 32.
+| 27:24 | `Trdstvendorframelength` | RW | 0x1 a| Specify frame length. Frame Length = trDstVendorFrameLength* 64 bytes; Frame Length should be a multiple of Bank Data Width. Only 1, 2, 4 and 8 (64, 128, 256 and 512 bytes) are supported, because the DST sink finds frame boundaries at the power of two given by the highest set bit of its frame length. Program the sink's trDstRamVendorFrameLength with the same value.
 | 23:20 | `Trdstprotocolminor` | R | 0x0 a| -
 | 19:16 | `Trdstprotocolmajor` | R | 0x1 a| -
 | 15:12 | `Reserved` | - | - a| Reserved
@@ -1725,7 +1725,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 |===
 | Bits | Field | Access | Reset | Description
 | 31:28 | `Trdstsrcbits` | RW | 0x4 a| -
-| 27:16 | `Trdstsrcid` | RW | 0x0 a| -
+| 27:16 | `Trdstsrcid` | RW | 0x0 a| Source ID sent in the trace packet headers. Only bits [3:0] are used.
 | 15:9 | `Reserved` | - | - a| Reserved
 | 8 | `Trdstinstenrepeatedhistory` | R | 0x0 a| -
 | 7:2 | `Reserved` | - | - a| Reserved
@@ -1745,7 +1745,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 19:16 | `Reserved` | - | - a| Reserved
 | 15:12 | `FrameLenghtInBytes` | RW | 0x2 a| Use trDstImpl[trDstVendorFrameLength] for Frame Length programming. Register field ZBB-ed.
 | 11:4 | `TraceFrameFillByte` | RW | 0x81 a| Use "Filler Packet" to align a stream of trace packets within a frame boundary.
-| 3:0 | `TraceSourceId` | RW | 0x0 a| Trace Source ID
+| 3:0 | `TraceSourceId` | RW | 0x0 a| Stored but not used. The trace packet headers carry trDstInstFeatures[trDstSrcID].
 |===
 
 [#reg-{regmap-instance}-smc_cla-dst-ScratchLo]
