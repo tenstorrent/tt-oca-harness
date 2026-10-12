@@ -147,6 +147,12 @@ class SmcSysAxiItem(uvm_sequence_item):
         # never sets this: the point is that the count comes from the driver that
         # completed the access, not from the test that claims to have issued it.
         self.bus_name: str = ""
+        # AXI ARID/AWID of this access. None keeps the VIP's own ID allocation.
+        # `rid` / `bid` hold the response ID when the VIP exposes it; the
+        # response objects of the current VIP carry no ID, so they stay None.
+        self.axi_id: int | None = None
+        self.rid: int | None = None
+        self.bid: int | None = None
 
     @property
     def transfer_bytes(self) -> int:
@@ -247,6 +253,7 @@ class SmcSysAxiDriver(uvm_driver):
             await self._collect_transfer(member, event)
 
     def _start_transfer(self, item: SmcSysAxiItem):
+        id_kw = {} if item.axi_id is None else {"arid": item.axi_id}
         if item.op is SmcSysAxiOp.READ:
             return self.axi.init_read(
                 address=item.addr,
@@ -254,6 +261,7 @@ class SmcSysAxiDriver(uvm_driver):
                 size=self._axi_size(item.length),
                 burst=int(item.burst),
                 prot=int(item.prot),
+                **id_kw,
             )
         if item.op is SmcSysAxiOp.WRITE:
             if item.wstrb is not None:
@@ -264,6 +272,7 @@ class SmcSysAxiDriver(uvm_driver):
                 size=self._axi_size(item.length),
                 burst=int(item.burst),
                 prot=int(item.prot),
+                **({} if item.axi_id is None else {"awid": item.axi_id}),
             )
         raise ValueError(f"unknown SMC SYS AXI op {item.op}")
 
@@ -293,8 +302,11 @@ class SmcSysAxiDriver(uvm_driver):
         data_mask = (1 << (item.length * 8)) - 1
 
         event = Event()
-        awid = wif.cur_id
-        wif.cur_id = (wif.cur_id + 1) % wif.id_count
+        if item.axi_id is None:
+            awid = wif.cur_id
+            wif.cur_id = (wif.cur_id + 1) % wif.id_count
+        else:
+            awid = item.axi_id
         aw = wif.aw_channel._transaction_obj()
         aw.awid = awid
         aw.awaddr = item.addr

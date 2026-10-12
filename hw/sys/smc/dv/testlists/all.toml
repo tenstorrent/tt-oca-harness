@@ -56,7 +56,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 338
+expected_count = 365
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -68,6 +68,26 @@ tests = [
     "smc_cpuif_external_stall_test",
     "smc_cpuif_wrong_direction_test",
     "smc_alias_remap_spare_block_decode_test",
+    "smc_avs_cfg_csr_cdc_test",
+    "smc_cg_ctrl_reg_access_test",
+    "smc_clk_ratio_base_config_test",
+    "smc_clk_ratio_scratch_test",
+    "smc_periph_cg_window_extent_test",
+    "smc_avs_clock_select_test",
+    "smc_clk_ratio_handshake_stall_test",
+    "smc_octs_clk_rate_test",
+    "smc_octs_clk_rate_smc_slower_test",
+    "smc_octs_clk_rate_smc_equal_test",
+    "smc_octs_clk_rate_smc_fast_test",
+    "smc_octs_clk_rate_ref8_test",
+    "smc_octs_clk_rate_periph3_test",
+    "smc_clk_ratio_resp_once_test",
+    "smc_clk_ratio_order_per_id_test",
+    "smc_ref_reset_cycles_test",
+    "smc_ref_reset_cycles_ref4_test",
+    "smc_periph_floor_roundtrip_periph3_test",
+    "smc_periph_floor_roundtrip_periph5_test",
+    "smc_periph_floor_roundtrip_test",
     "smc_avsbus_clock_config_proxy_test",
     "smc_avsbus_clock_divider_test",
     "smc_avsbus_frame_sequencing_test",
@@ -396,6 +416,13 @@ tests = [
     "smc_zeroer_multi_burst_test",
     "smc_zeroer_regclk_cg_test",
     "smc_zeroer_sanity_test",
+    "smc_clk_relation_regxbar_test",
+    "smc_clk_relation_regxbar_smc_slower_test",
+    "smc_clk_relation_regxbar_smc_equal_test",
+    "smc_clk_relation_regxbar_periph_slower_test",
+    "smc_clk_relation_regxbar_periph3_test",
+    "smc_clk_relation_regxbar_ref8_test",
+    "smc_clk_relation_regxbar_slowest_periph_test",
 ]
 
 [[groups]]
