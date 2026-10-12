@@ -9,6 +9,8 @@
 | `prim/` | SG13G2 cell implementations of all 29 modules in the [technology swap inventory](../../../../hw/common/ocah_prim_generic/README.md#technology-swap-inventory) |
 | `yosys/tech.tcl` | Liberty files, tie cells and ABC settings for the Yosys flow |
 | `yosys/abc.constr` | ABC driving cell and output load |
+| `slang/cells.f` | The PDK standard cell Verilog models for the Slang preflight |
+| `slang/sg13g2_stdcell.waiver.toml` | Waives the models' `ifnone` edge-sensitive specify paths, which IEEE 1800 forbids and which carry timing only |
 
 Each `prim/` file keeps the generic module's name, parameters and ports and
 instantiates `sg13g2_*` standard cells marked `dont_touch`, so synthesis keeps

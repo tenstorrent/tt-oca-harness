@@ -17,6 +17,7 @@ Each technology is one directory:
 | `<tech>/Bender.yml` | Bender package listing `prim/` under `all(synth, tech_<tech>, not(emulation))` |
 | `<tech>/prim/` | A cell-level implementation of every module in the swap inventory, with the same name, parameters and ports |
 | `<tech>/yosys/tech.tcl` | Liberty files, tie cells and ABC settings, read by [`../yosys/scripts/init_tech.tcl`](../yosys/scripts/init_tech.tcl) |
+| `<tech>/slang/cells.f` | The PDK's Verilog cell models, plus any Slang waivers they need, for the standalone Slang preflight in [`../yosys/scripts/run.sh`](../yosys/scripts/run.sh); may use `${PDK_ROOT}` and `${OCAH_ROOT}` |
 
 To add a technology, create the directory, add it to the root
 [`Bender.yml`](../../../Bender.yml) `dependencies` as

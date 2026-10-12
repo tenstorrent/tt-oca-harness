@@ -19,11 +19,16 @@ if ((${#expected_error_files[@]})); then
   report_dir="$OUT_DIR/reports"
   preflight_log="$report_dir/${PROJ_NAME:-$TOP_DESIGN}_slang_preflight.log"
   mkdir -p "$report_dir"
+  : "${PDK:?PDK is required}"
+  : "${PDK_ROOT:?PDK_ROOT is required}"
+  OCAH_ROOT=$(cd "$(dirname "$0")/../../../.." && pwd)
+  export OCAH_ROOT PDK_ROOT
 
   set +e
   slang --top "$TOP_DESIGN" --single-unit --allow-use-before-declare \
     --error-limit=0 --timescale="$TIMESCALE" \
-    -f "$SV_FLIST" 2>&1 | tee "$preflight_log"
+    -f "$SV_FLIST" -f "$OCAH_ROOT/flows/synth/pdk/$PDK/slang/cells.f" \
+    2>&1 | tee "$preflight_log"
   preflight_status=${PIPESTATUS[0]}
   set -e
 

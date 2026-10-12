@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# The PDK cell models give flops an ifnone condition on an edge-sensitive
+# specify path, which IEEE 1800 forbids. Specify paths carry timing only.
+[[waivers]]
+file = "**/sg13g2_stdcell.v"
+regex = '^\s*ifnone\s*\(\s*(pos|neg)edge'
