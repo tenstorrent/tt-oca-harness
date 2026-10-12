@@ -50,12 +50,16 @@ Checkers:
   CHK-OR          vector bit 42 equals (status != 0).
   CHK-CLR-MATRIX  a clear bit clears only its own block (seven bits + drain).
   CHK-NONVAC      each matrix and mask step starts with at least two bits.
-  CHK-MASK        a mask clear gives status AND NOT mask.
+  CHK-MASK        a mask clear gives the faulted set AND NOT mask.
   CHK-AGAIN       a cleared block re-latches; a re-fault keeps the other bits.
   CHK-CLR-READ0   both clear registers read 0 with both status registers set.
   CHK-DMA-CLR     write 0 keeps, write 1 clears both, no cross-set.
   CHK-HOST        a SLVERR DMA source read latches host_path_err alone.
   CHK-RACE        a same-cycle fault and clear leaves the latch set.
+
+The expected latch set of CHK-CLR-MATRIX and CHK-MASK, before and after each
+clear, is the set of faults the leaf drove minus the bits it cleared, never a
+status read.
 """
 
 from __future__ import annotations
@@ -223,6 +227,9 @@ class _PulseRec:
 @pyuvm.test()
 class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
     """Bridge-fault latches: multi-block set, clear matrix, masks, re-trigger, DMA host path, races."""
+
+    # Stimulus model of PERIPH_BUS_ERR_STATUS: the faulted blocks not yet cleared.
+    latched: int
 
     required_evidence = (
         "CHK-CTRL",
@@ -471,24 +478,40 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             self._fail("CHK-DMA-CLR", line)
         self._pass("CHK-DMA-CLR", line)
 
-    async def _clear_step(self, chk: str, bits: int, tag: str) -> None:
+    async def _clear_write(self, bits: int) -> tuple[str, bool]:
+        """Write ``bits`` to the clear register and grade against the stimulus model.
+
+        The expected latch set before the write is the model set of the faults
+        this leaf drove (``self.latched``) and after it that set minus ``bits``;
+        neither comes from a status read. Returns (compare text, ok).
+        """
+        exp_before = self.latched & PERIPH_MASK
         before = await self._periph()
-        nb = bin(before & PERIPH_MASK).count("1")
-        nv = f"step={tag} latched_before=0x{before & PERIPH_MASK:02x} bits={nb}"
+        await self._wr_ok(PERIPH_CLEAR_ADDR, bits)
+        self.latched &= ~bits
+        exp_after = self.latched & PERIPH_MASK
+        after = await self._periph()
+        vec = await self._vec()
+        fb = field_compare(before, exp_before, PERIPH_MASK)
+        fc = field_compare(after, exp_after, PERIPH_MASK)
+        text = (
+            f"before=0x{before & PERIPH_MASK:02x} exp_before=0x{exp_before:02x} "
+            f"after=0x{after & PERIPH_MASK:02x} exp_after=0x{exp_after:02x} "
+            f"vec42={self._b(vec, 42)} [{fc.fields()}]"
+        )
+        ok = fb.ok and fc.ok and self._b(vec, 42) == int(bool(exp_after))
+        return text, ok
+
+    async def _clear_step(self, chk: str, bits: int, tag: str) -> None:
+        exp_before = self.latched & PERIPH_MASK
+        nb = bin(exp_before).count("1")
+        nv = f"step={tag} latched_before=0x{exp_before:02x} bits={nb}"
         if nb < 2:
             self._fail("CHK-NONVAC", nv)
         self._pass("CHK-NONVAC", nv)
-        await self._wr_ok(PERIPH_CLEAR_ADDR, bits)
-        self.latched &= ~bits
-        after = await self._periph()
-        vec = await self._vec()
-        exp = before & ~bits & PERIPH_MASK
-        fc = field_compare(after, exp, PERIPH_MASK)
-        line = (
-            f"{tag} before=0x{before & PERIPH_MASK:02x} after=0x{after & PERIPH_MASK:02x} "
-            f"vec42={self._b(vec, 42)} [{fc.fields()}]"
-        )
-        if not fc.ok or self._b(vec, 42) != int(bool(after & PERIPH_MASK)):
+        text, ok = await self._clear_write(bits)
+        line = f"{tag} {text}"
+        if not ok:
             self._fail(chk, line)
         self._pass(chk, line)
 
@@ -501,19 +524,9 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         await self._restore_full()
         order = [i for i in self.c.clear_order if PERIPH_BITS[i] in BLOCKS]
         for k, i in enumerate(order):
-            before = await self._periph()
-            await self._wr_ok(PERIPH_CLEAR_ADDR, 1 << i)
-            self.latched &= ~(1 << i)
-            after = await self._periph()
-            vec = await self._vec()
-            exp = before & ~(1 << i) & PERIPH_MASK
-            fc = field_compare(after, exp, PERIPH_MASK)
-            line = (
-                f"drain={k + 1}/{len(order)} cleared={PERIPH_BITS[i]} "
-                f"before=0x{before & PERIPH_MASK:02x} after=0x{after & PERIPH_MASK:02x} "
-                f"vec42={self._b(vec, 42)} [{fc.fields()}]"
-            )
-            if not fc.ok or self._b(vec, 42) != int(bool(after & PERIPH_MASK)):
+            text, ok = await self._clear_write(1 << i)
+            line = f"drain={k + 1}/{len(order)} cleared={PERIPH_BITS[i]} {text}"
+            if not ok:
                 self._fail("CHK-CLR-MATRIX", line)
             self._pass("CHK-CLR-MATRIX", line)
 

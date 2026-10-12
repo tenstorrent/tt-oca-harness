@@ -48,14 +48,14 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, feat_ctrl_expected
-from env.sep_mbox_golden import ST_EMPTY
+from env.sep_mbox_golden import IRQ_EIRQ, IRQ_RTIRQ, IRQ_WTIRQ, ST_EMPTY
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccDemoteSeq
 from seq_lib.sep_mailbox_iface_seq import SepMbox
-from seq_lib.sep_mailbox_walk_seq import inbound_base
+from seq_lib.sep_mailbox_walk_seq import inbound_base, outbound_base
 from seq_lib.sep_mbox_port_ops import RESP_DECERR, RESP_OKAY, ports, resp_name
 
 TEST = "sep_mailbox_debug_bypass_test"
@@ -73,6 +73,10 @@ WRONG_SRC = 9
 DIRECTED = ((0, 1, 0), (1, 2, 1), (2, 3, 0), (4, 4, 1), (5, 5, 0), (7, 6, 1))
 
 QUIET_CLKS = 32
+# IRQEN fields (eirq, rtirq, wtirq) and the address span of one inbound port
+# (the inbound port base to the next outbound port base), from the RDL.
+IRQEN_FIELDS = IRQ_WTIRQ | IRQ_RTIRQ | IRQ_EIRQ
+IN_PORT_SPAN = inbound_base(0) - outbound_base(0)
 DEMOTE_TRIES = 16
 MASK64 = (1 << 64) - 1
 
@@ -179,7 +183,7 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
             0,
             FilterEntry(
                 start=base3,
-                end=base3 + 0x7FF,
+                end=base3 + IN_PORT_SPAN - 1,
                 enabled=True,
                 read_allowed=True,
                 write_allowed=True,
@@ -189,18 +193,20 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
         )
         for m in range(8):
             o = self.ops[m]
-            for reg, val in (("WIRQT", 0), ("IRQEN", 0x1)):
+            for reg, val in (("WIRQT", 0), ("IRQEN", IRQ_WTIRQ)):
                 resp, _ = await self._lsu(SepAxiOp.WRITE, o.addr("in", reg), val)
                 if resp != RESP_OKAY:
                     self._fail("CTL-PROD-BLOCK", f"set-up mbox={m} in {reg} resp={resp_name(resp)}")
             resp, irqen = await self._lsu(SepAxiOp.READ, o.addr("in", "IRQEN"))
-            if resp != RESP_OKAY or irqen & 0x7 != 0x1:
+            if resp != RESP_OKAY or irqen & IRQEN_FIELDS != IRQ_WTIRQ:
                 self._fail(
                     "CTL-PROD-BLOCK",
-                    f"set-up mbox={m} in IRQEN read resp={resp_name(resp)} irqen=0x{irqen & 0x7:x} exp=0x1",
+                    f"set-up mbox={m} in IRQEN read resp={resp_name(resp)} irqen=0x{irqen & IRQEN_FIELDS:x} exp=0x{IRQ_WTIRQ:x}",
                 )
             self.logger.info(
-                "SETUP LOG mbox=%d in IRQEN=0x%x WIRQT=0 (written by CPU-LSU)", m, irqen & 0x7
+                "SETUP LOG mbox=%d in IRQEN=0x%x WIRQT=0 (written by CPU-LSU)",
+                m,
+                irqen & IRQEN_FIELDS,
             )
 
         # Step 3: PROD block of a wrong source ID and of a mailbox with no entry.

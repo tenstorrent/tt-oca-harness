@@ -22,7 +22,8 @@ follows the console live (``env/sep_fw_console``: graded window on ``M G`` /
 * CHK-RW       (firmware) each implemented field holds the written value.
 * CHK-ENTRY0   (firmware) entry 0 of the four arrays reads 0 after an all-ones
                write, and the write does not land in entry 1.
-* CHK-GWCLR0   (firmware) ``meigwclr`` reads 0 after a non-zero write; control:
+* CHK-GWCLR0   (firmware) ``meigwclr`` reads 0 after a write with the
+               ``clear`` bit 1 (each drawn value has it set); control:
                the same write drops a held edge pending bit of source 1.
 * CHK-SRC0     (firmware) source 0 never sets and never takes a handler, in the
                all-ones and the level active-low legs; control: the source 1
@@ -51,7 +52,7 @@ from env.sep_fw_console import SepFwConsole
 from env.sep_pic_map import meip_idle_mask_words
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import sym
+from sep_reg_meta import RegBlock, sep_addr_define, sym
 
 TEST = "sep_pic_reg_rand_test"
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -73,7 +74,14 @@ WAIT_ITERS = 200_000
 ANCHORS = (1, 43, 44, 128, 255)
 RANGES = ((2, 42), (45, 127), (129, 254))
 GROUPS = ("meipl", "meie", "meigwctrl")
-FIELD_MAX = {"meipl": 0xF, "meie": 0x1, "meigwctrl": 0x3}
+EL2_PIC = RegBlock("EL2_PIC")
+FIELD_MAX = {
+    "meipl": EL2_PIC.mask32("MEIPL"),
+    "meie": EL2_PIC.mask32("MEIE"),
+    "meigwctrl": EL2_PIC.mask32("MEIGWCTRL"),
+}
+# The only RDL field of meigwclr; every drawn meigwclr value has it set.
+GWCLR_CLEAR = EL2_PIC.field_mask("MEIGWCLR", "clear")
 
 # Hole ranges inside the 32 KiB aperture and the past-extent range (offsets).
 # Each address keeps an entry index K (1..254) in bits [9:2]; a range is a set
@@ -87,14 +95,22 @@ HOLE_PAGES = (
     ("past_extent", tuple(range(0x5400, 0x8000, 0x400)), 1),
 )
 
+
+def _array_span(name: str) -> tuple[str, int, int]:
+    """(group, first offset, end offset) of a PIC register array, from the RDL."""
+    lo = sym(f"PIC_{name}_0__REG_OFFSET")
+    stride = sym(f"PIC_{name}_1__REG_OFFSET") - lo
+    return name.lower(), lo, lo + stride * sep_addr_define(f"SEP_TOP_PIC_{name}_NUM")
+
+
 # Register group of a PIC read address (offset bits [14:0]) for the probe count.
 _RD_GROUPS = (
-    ("meipl", 0x0000, 0x0400),
-    ("meip", 0x1000, 0x1020),
-    ("meie", 0x2000, 0x2400),
-    ("mpiccfg", 0x3000, 0x3004),
-    ("meigwctrl", 0x4000, 0x4400),
-    ("meigwclr", 0x5000, 0x5400),
+    _array_span("MEIPL"),
+    _array_span("MEIP"),
+    _array_span("MEIE"),
+    ("mpiccfg", sym("PIC_MPICCFG_REG_OFFSET"), sym("PIC_MPICCFG_REG_OFFSET") + 4),
+    _array_span("MEIGWCTRL"),
+    _array_span("MEIGWCLR"),
 )
 
 
@@ -130,9 +146,9 @@ class PicRegCfg:
                 n_extra -= 1
         rng.shuffle(ents)
         ne = len(ents)
-        meipl = [rng.randrange(0, 16) for _ in range(ne)]
-        meie = [rng.randrange(0, 2) for _ in range(ne)]
-        gw = [rng.randrange(0, 4) for _ in range(ne)]
+        meipl = [rng.randrange(0, FIELD_MAX["meipl"] + 1) for _ in range(ne)]
+        meie = [rng.randrange(0, FIELD_MAX["meie"] + 1) for _ in range(ne)]
+        gw = [rng.randrange(0, FIELD_MAX["meigwctrl"] + 1) for _ in range(ne)]
         # Every meigwctrl value at least once, and the four (meie, meipl)
         # arming cells (0,0) (1,0) (0,nz) (1,nz) at least once, every seed.
         idx = rng.sample(range(ne), 4)
@@ -142,7 +158,7 @@ class PicRegCfg:
         for (ie, nz), i in zip(((0, 0), (1, 0), (0, 1), (1, 1)), idx, strict=True):
             meie[i] = ie
             meipl[i] = rng.randrange(1, 16) if nz else 0
-        gwclr = [rng.randrange(1, 1 << 32) for _ in range(ne)]
+        gwclr = [rng.randrange(0, 1 << 32) | GWCLR_CLEAR for _ in range(ne)]
         holes = []
         for _, pages, kmin in HOLE_PAGES:
             page = rng.choice(pages)

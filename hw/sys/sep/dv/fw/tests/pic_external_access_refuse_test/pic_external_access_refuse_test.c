@@ -76,8 +76,11 @@ volatile uint32_t g_p[P_COUNT] = {
 #define E_MBX7 1u
 #define E_PIC0 2u
 #define E_PIC1 3u
-#define PIC_WIN_START 0xC0080000u
-#define PIC_WIN_END 0xC0087FFFu
+// The window covers the 32 KiB EL2_PIC aperture from the PIC base
+// (hw/sys/sep/regs/gen/adoc/memory_map.adoc, EL2_PIC row).
+#define PIC_APERTURE_BYTES 0x8000u
+#define PIC_WIN_START SEP_TOP_PIC_BASE_ADDR
+#define PIC_WIN_END (SEP_TOP_PIC_BASE_ADDR + PIC_APERTURE_BYTES - 1u)
 #define MBX_IN_SPAN 0x800u
 #define CFG_RW_EN \
     (FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm | \

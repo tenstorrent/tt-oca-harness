@@ -112,6 +112,18 @@ EMPTY_FULL = ST_EMPTY | ST_FULL
 BOUNDARY = (7, 0, 8, 255)
 MB0_CHK_THRESH = (0, 7, 8, 9, 255)
 CAUSE_BIT = {"wtirq": IRQ_WTIRQ, "rtirq": IRQ_RTIRQ}
+
+
+def _wab(st: int) -> int:
+    """STATUS.write_level_above_thresh as 0 or 1."""
+    return int(bool(st & ST_WLVL_ABOVE))
+
+
+def _rab(st: int) -> int:
+    """STATUS.read_level_above_thresh as 0 or 1."""
+    return int(bool(st & ST_RLVL_ABOVE))
+
+
 FLUSH_KINDS = ("wflush_out", "rflush_in", "wflush_in", "rflush_out")
 FLUSH_SPEC = {
     # kind: (port written, CTRL bit, flushed FIFO)
@@ -371,16 +383,17 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                     "CHK-STATUS",
                     (st & ABOVE) == (exp_st & ABOVE),
                     f"mbox={m} port={p} occ={mb.write_occ(p)} rocc={mb.read_occ(p)} wirqt={r.wirqt} "
-                    f"rirqt={r.rirqt} wabove={(st >> 2) & 1} rabove={(st >> 3) & 1} "
-                    f"exp_wabove={(exp_st >> 2) & 1} exp_rabove={(exp_st >> 3) & 1} "
+                    f"rirqt={r.rirqt} wabove={_wab(st)} rabove={_rab(st)} "
+                    f"exp_wabove={_wab(exp_st)} exp_rabove={_rab(exp_st)} "
                     f"rsvd=0x{st & ~FIELD['STATUS'] & M32:x} {self.ctx.tag()}",
                     ctl=ctl_out,
                 )
                 if self.ctx.leg != "flush_post":
                     ok = (st & EMPTY_FULL) == (exp_st & EMPTY_FULL)
                     line = (
-                        f"mbox={m} port={p} occ={mb.write_occ(p)} rocc={mb.read_occ(p)} empty={st & 1} "
-                        f"full={(st >> 1) & 1} exp_empty={exp_st & 1} exp_full={(exp_st >> 1) & 1}"
+                        f"mbox={m} port={p} occ={mb.write_occ(p)} rocc={mb.read_occ(p)} empty={int(bool(st & ST_EMPTY))} "
+                        f"full={int(bool(st & ST_FULL))} exp_empty={int(bool(exp_st & ST_EMPTY))} "
+                        f"exp_full={int(bool(exp_st & ST_FULL))}"
                     )
                     if not ok:
                         self._fail("CTL-STATUS", line)
@@ -568,8 +581,8 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                 cc = await self._check([m], f"push={k + 1}")
                 occ = mb.occ(f)
                 bits = (
-                    (cc.r[(m, wp)]["STATUS"] >> 2) & 1,
-                    (cc.r[(m, rp)]["STATUS"] >> 3) & 1,
+                    _wab(cc.r[(m, wp)]["STATUS"]),
+                    _rab(cc.r[(m, rp)]["STATUS"]),
                 )
                 seen[occ] = bits
             for half in run["pops"]:
@@ -601,10 +614,10 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
         await self._wr(m, "in", "RIRQT", b)
 
         def alias_line(cc: CC, note: str) -> None:
-            wab = (cc.r[(m, "out")]["STATUS"] >> 2) & 1
-            rab = (cc.r[(m, "in")]["STATUS"] >> 3) & 1
-            ew = (mb.status("out") >> 2) & 1
-            er = (mb.status("in") >> 3) & 1
+            wab = _wab(cc.r[(m, "out")]["STATUS"])
+            rab = _rab(cc.r[(m, "in")]["STATUS"])
+            ew = _wab(mb.status("out"))
+            er = _rab(mb.status("in"))
             self._grade(
                 "CHK-ALIAS",
                 wab == ew and rab == er,
@@ -716,14 +729,14 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
             c2 = await self._check([m], f"gate_on cause={cause} port={port}")
             r2 = c2.r[(m, port)]
             l2 = self._line(c2, m, port)
-            irqs1, irqp1 = r1["IRQS"] & 7, r1["IRQP"] & 7
-            irqp2 = r2["IRQP"] & 7
+            irqs1, irqp1 = r1["IRQS"] & IRQ_ALL, r1["IRQP"] & IRQ_ALL
+            irqp2 = r2["IRQP"] & IRQ_ALL
             ok = irqs1 == bit and irqp1 == 0 and l1 == 0 and irqp2 == bit and l2 == 1
             self._grade(
                 "CHK-GATE",
                 ok,
-                f"mbox={m} port={port} cause={cause} irqs=0x{irqs1:x} irqen=0x{r1['IRQEN'] & 7:x} "
-                f"irqp=0x{irqp1:x} line={l1} then irqen=0x{r2['IRQEN'] & 7:x} irqp=0x{irqp2:x} line={l2}",
+                f"mbox={m} port={port} cause={cause} irqs=0x{irqs1:x} irqen=0x{r1['IRQEN'] & IRQ_ALL:x} "
+                f"irqp=0x{irqp1:x} line={l1} then irqen=0x{r2['IRQEN'] & IRQ_ALL:x} irqp=0x{irqp2:x} line={l2}",
                 ctl=ctl,
             )
             await self._pop(m, po)
@@ -798,7 +811,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
     async def _outbound_set_leg(self) -> None:
         self.ctx = Ctx("outset", -1)
         for m in range(8):
-            await self._wr(m, "out", "IRQEN", 0x1)
+            await self._wr(m, "out", "IRQEN", IRQ_WTIRQ)
             await self._wr(m, "out", "WIRQT", 0)
         order, k = self.set_order, self.set_k
         i = 0
@@ -820,17 +833,17 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
         if cc.smc != 0xFF:
             self._fail("CHK-LINE-OUT", f"all eight outbound lines raised smc=0x{cc.smc:02x}")
         for m in order[:k]:
-            await self._wr(m, "in", "IRQEN", 0x1)
+            await self._wr(m, "in", "IRQEN", IRQ_WTIRQ)
             await self._wr(m, "in", "WIRQT", 0)
             await self._push(m, "in", self.set_words_in[m])
             await self._check([m], "inset_raise")
         for p, m in self.set_release:
             if p == "out":
                 await self._pop(m, "in")
-                await self._wr(m, "out", "IRQS", 0x1)
+                await self._wr(m, "out", "IRQS", IRQ_WTIRQ)
             else:
                 await self._pop(m, "out")
-                await self._wr(m, "in", "IRQS", 0x1)
+                await self._wr(m, "in", "IRQS", IRQ_WTIRQ)
             await self._check([m], f"release {p}{m}")
 
     async def _end_state(self) -> None:

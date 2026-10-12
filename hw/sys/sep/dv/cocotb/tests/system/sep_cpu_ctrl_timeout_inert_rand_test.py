@@ -37,7 +37,9 @@ During each hold the master that does not hold reads ``TIMEOUT_INTERRUPT``
 (the SMN master through an inbound filter entry). The spec does not state that
 this read completes while the other response is held, so a read that does not
 complete in its bound prints ``OBS-TO-INERT ... status=not_sampled`` and is
-not a sample. The vector (``sep_internal_interrupts_probe_o``, the six
+not a sample. A read that completes in the hold is a sample: it must answer
+OKAY with ``TIMEOUT_INTERRUPT`` 0, and any other response fails CHK-TO-INERT.
+The vector (``sep_internal_interrupts_probe_o``, the six
 excluded idle sources masked) is compared with the baseline at the end of the
 hold and after release.
 
@@ -359,27 +361,43 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         block: str,
         d: str,
         stalled,
-        during_ok: bool,
-        during_v,
+        during_done: bool,
+        dseq,
         vec_hold: int,
         resp_txt: str,
         resp_ok: bool,
     ) -> None:
+        """Grade CHK-TO-INERT.
+
+        A during-hold read that completed in the hold is a sample: it must answer
+        OKAY with ``TIMEOUT_INTERRUPT`` 0, so an aborted (non-OKAY) read fails. A
+        during-hold read that did not complete in the hold is not a sample.
+        """
         await ClockCycles(cocotb.top.clk_i, QUIET)
         to_after = await self._lsu_rd(TO_INT)
         vec_after = await self._vec_masked()
         fcs = [field_compare(to_after, 0, TO_INT_FIELD)]
-        if during_ok:
+        during_resp_ok = True
+        if during_done:
+            during_v = dseq.rdata & 0xFFFF_FFFF
+            during_resp_ok = dseq.resp_code == RESP_OKAY
             fcs.append(field_compare(during_v, 0, TO_INT_FIELD))
+            during_txt = (
+                f"0x{during_v & TO_INT_FIELD:x} "
+                f"during_resp={RESP_NAME.get(dseq.resp_code, dseq.resp_code)}"
+            )
+        else:
+            during_txt = "not_sampled"
         line = (
             f"block={block} dir={d} timeout_int=0x{to_after & TO_INT_FIELD:x} "
-            f"during_hold={'0x%x' % (during_v & TO_INT_FIELD) if during_ok else 'not_sampled'} "
+            f"during_hold={during_txt} "
             f"vec={'baseline' if vec_hold == self.base and vec_after == self.base else 'changed'} "
             f"vec_hold=0x{vec_hold:011x} vec_after=0x{vec_after:011x} "
             f"vec_base=0x{self.base:011x} resp={resp_txt}"
         )
         if (
             not all(f.ok for f in fcs)
+            or not during_resp_ok
             or vec_hold != self.base
             or vec_after != self.base
             or not resp_ok
@@ -436,12 +454,13 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
                 RESP_NAME.get(dseq.resp_code),
             )
         after = mon.count(mark, ch)
+        xz = len(mon.xz_beats(mark, ch))
         line = (
             f"block={block} dir={d} port={port} valid_during_hold={valid_end} "
             f"responses_during_hold={during_hold} responses_after_release={after} "
-            f"held_clocks={held_clocks} hold={HOLD}"
+            f"held_clocks={held_clocks} hold={HOLD} xz_beats={xz}"
         )
-        if not valid_end or during_hold != 0 or after != 1 or held_clocks < HOLD:
+        if not valid_end or during_hold != 0 or after != 1 or held_clocks < HOLD or xz:
             self._fail("CHK-STALL-REAL", line)
         self._pass("CHK-STALL-REAL", line)
         if block == "entropy_read":
@@ -461,10 +480,7 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         else:
             resp_ok = seq.resp_code == RESP_OKAY and (seq.rdata & 0xFFFF_FFFF) == 0
             resp_txt = f"{RESP_NAME.get(seq.resp_code, seq.resp_code)}/data=0x{seq.rdata:x}"
-        dv = dseq.rdata if during_ok and dseq.resp_code == RESP_OKAY else None
-        await self._after_release(
-            block, d, seq, dv is not None, dv or 0, vec_hold, resp_txt, resp_ok
-        )
+        await self._after_release(block, d, seq, during_ok, dseq, vec_hold, resp_txt, resp_ok)
 
     async def _stall_responder(self, block: str, write: bool) -> None:
         """A stall held by the outbound responder (outbound filter, alias remap)."""
@@ -505,11 +521,12 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         if not await self._wait_task(dtask, RELEASE_BOUND):
             self._fail("CHK-TO-INERT", f"block={block} dir={d} TIMEOUT_INTERRUPT read hung")
         after = self.mon_s.count(mark, ch)
+        xz = len(self.mon_s.xz_beats(mark, ch))
         line = (
             f"block={block} dir={d} port=lsu req_at_port={req} responses_during_hold={during_hold} "
-            f"responses_after_release={after} hold={HOLD}"
+            f"responses_after_release={after} hold={HOLD} xz_beats={xz}"
         )
-        if req != 1 or during_hold != 0 or after != 1:
+        if req != 1 or during_hold != 0 or after != 1 or xz:
             self._fail("CHK-STALL-REAL", line)
         self._pass("CHK-STALL-REAL", line)
         if write:
@@ -518,10 +535,7 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         else:
             resp_ok = seq.resp_code == RESP_OKAY and (seq.rdata & 0xFFFF_FFFF) == 0
             resp_txt = f"{RESP_NAME.get(seq.resp_code, seq.resp_code)}/data=0x{seq.rdata:x}"
-        dv = dseq.rdata if during_ok and dseq.resp_code == RESP_OKAY else None
-        await self._after_release(
-            block, d, seq, dv is not None, dv or 0, vec_hold, resp_txt, resp_ok
-        )
+        await self._after_release(block, d, seq, during_ok, dseq, vec_hold, resp_txt, resp_ok)
 
     async def _stall_dma(self) -> None:
         dut = cocotb.top
@@ -569,13 +583,12 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
             self._fail("CHK-STALL-REAL", line)
         self._pass("CHK-STALL-REAL", line)
         resp_ok = bool(st.done) and not st.error
-        dv = dseq.rdata if during_ok and dseq.resp_code == RESP_OKAY else None
         await self._after_release(
             "dma",
             "read",
             None,
-            dv is not None,
-            dv or 0,
+            during_ok,
+            dseq,
             vec_hold,
             f"done/done={st.done}/error={st.error}",
             resp_ok,

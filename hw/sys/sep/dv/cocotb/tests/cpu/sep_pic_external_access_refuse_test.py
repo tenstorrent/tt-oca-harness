@@ -53,7 +53,7 @@ from env.sep_fw_console import SepFwConsole, parse_kv
 from env.sep_pic_map import EXCLUDED_IDLE_SOURCES, meip_idle_mask_words, meip_words
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import sym
+from sep_reg_meta import sep_addr_define, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_csr_bank_seq import (
     F_ALLOW_NS,
@@ -81,9 +81,15 @@ MEIE0 = sym("PIC_MEIE_0__REG_ADDR")
 MPICCFG = sym("PIC_MPICCFG_REG_ADDR")
 MEIGWCTRL0 = sym("PIC_MEIGWCTRL_0__REG_ADDR")
 MEIGWCLR0 = sym("PIC_MEIGWCLR_0__REG_ADDR")
-N_ENTRY = 256
-N_MEIP = 8
-WORD = 4
+# Array geometry from the RDL: the per-source arrays share one entry count, and
+# every array has a 4-byte stride.
+N_ENTRY = sep_addr_define("SEP_TOP_PIC_MEIPL_NUM")
+N_MEIP = sep_addr_define("SEP_TOP_PIC_MEIP_NUM")
+WORD = sym("PIC_MEIPL_1__REG_ADDR") - MEIPL0
+for _arr in ("MEIE", "MEIGWCTRL", "MEIGWCLR"):
+    assert sep_addr_define(f"SEP_TOP_PIC_{_arr}_NUM") == N_ENTRY, _arr
+for _arr in ("MEIP", "MEIE", "MEIGWCTRL", "MEIGWCLR"):
+    assert sym(f"PIC_{_arr}_1__REG_ADDR") - sym(f"PIC_{_arr}_0__REG_ADDR") == WORD, _arr
 # The EL2_PIC aperture (hw/sys/sep/regs/gen/adoc/memory_map.adoc, EL2_PIC row):
 # 32 KiB from the PIC base; the registers fill the first PIC_REG_MAP_SIZE bytes.
 PIC_BASE = sym("PIC_REG_MAP_BASE_ADDR")
@@ -122,11 +128,16 @@ ORDER_BITS = 5
 
 @dataclass(frozen=True)
 class Target:
-    """One PIC target: name, address, armed value (None when nothing is armed)."""
+    """One PIC target: name, address, armed value (None when nothing is armed).
+
+    ``idle_mask`` holds the excluded idle bits of a ``meip`` word; CHK-NO-LEAK
+    compares only the other bits.
+    """
 
     name: str
     addr: int
     armed: int | None
+    idle_mask: int = 0
 
     @property
     def wdata(self) -> int:
@@ -165,7 +176,7 @@ class RefuseCfg:
             Target("meipl1", MEIPL0 + WORD * SRC_FIRST, ARM_PRI[0]),
             Target(f"meipl{j}", MEIPL0 + WORD * j, ARM_PRI[1]),
             Target("meipl255", MEIPL0 + WORD * SRC_LAST, ARM_PRI[2]),
-            Target("meip0", MEIP0, meip0_armed),
+            Target("meip0", MEIP0, meip0_armed, meip_idle_mask_words()[0]),
             Target(f"meip{w}", MEIP0 + WORD * w, None),
             Target("meip7", MEIP0 + WORD * (N_MEIP - 1), None),
             Target("meie1", MEIE0 + WORD * SRC_FIRST, ARM_MEIE),
@@ -373,11 +384,22 @@ class sep_pic_external_access_refuse_test(sep_base_test):
             for a in acc:
                 if a.op != "rd" or a.target.armed is None:
                     continue
+                keep = ~a.target.idle_mask & 0xFFFF_FFFF
                 line = (
                     f"seed={seed} regime={regime} addr=0x{a.target.addr:08x} target={a.target.name} "
-                    f"armed=0x{a.target.armed:x} ext_read=0x{a.rdata:08x}"
+                    f"armed=0x{a.target.armed & keep:x} ext_read=0x{a.rdata & keep:08x} "
+                    f"idle_mask=0x{a.target.idle_mask:08x} idle_bits=0x{a.rdata & a.target.idle_mask:08x}"
                 )
-                assert a.rdata != a.target.armed, f"CHK-NO-LEAK FAIL {line}"
+                if a.target.idle_mask:
+                    srcs = " ".join(
+                        f"src{src}={(a.rdata >> (src % 32)) & 1}"
+                        for src in EXCLUDED_IDLE_SOURCES
+                        if (a.target.idle_mask >> (src % 32)) & 1 and src < 32
+                    )
+                    self.logger.info(
+                        "OBS-IDLE-UNSTATED LOG regime=%s target=%s %s", regime, a.target.name, srcs
+                    )
+                assert (a.rdata & keep) != (a.target.armed & keep), f"CHK-NO-LEAK FAIL {line}"
                 self.logger.info("CHK-NO-LEAK PASS %s", line)
             resp, clk = self.cw[regime]
             assert resp == RESP_OKAY, (

@@ -99,7 +99,7 @@ from env.sep_pic_map import (
 )
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import sym
+from sep_reg_meta import AES, HMAC, KMAC, sym
 
 _TEST = "sep_pic_pending_map_walk_rand_test"
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -161,11 +161,14 @@ GAP_MAX = 64
 
 P_MAGIC_WORD = 0x3A1C9E21
 
-# Status fields of the idle window (vendor register descriptions).
-HMAC_IDLE = 0x1  # STATUS.hmac_idle
-KMAC_IDLE = 0x1  # STATUS.sha3_idle
-AES_IDLE = 0x1  # STATUS.idle
-KMAC_FE_STATE = 0x2  # INTR_STATE.fifo_empty
+# Status fields of the idle window and the KMAC fifo_empty state (register export).
+HMAC_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
+KMAC_IDLE = KMAC.field_mask("STATUS", "sha3_idle")
+AES_IDLE = AES.field_mask("STATUS", "idle")
+KMAC_FE_STATE = KMAC.field_mask("INTR_STATE", "fifo_empty")
+# meip word 0 offset in the PIC and the meip word stride (register export).
+MEIP0_OFF = sym("PIC_MEIP_0__REG_OFFSET")
+MEIP_STRIDE = sym("PIC_MEIP_1__REG_OFFSET") - MEIP0_OFF
 
 
 def _pack(vals, bits: int, words: int) -> list[int]:
@@ -415,10 +418,9 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
     def _taps(self, line_idx: int) -> dict[int, tuple[int, int]]:
         """The last PIC read-data copy per meip word before console line ``line_idx``."""
         out: dict[int, tuple[int, int]] = {}
-        meip0 = 0x1000
         for li, addr, data, xm in self.rd_caps:
-            if li == line_idx and meip0 <= addr < meip0 + 4 * MEIP_WORDS:
-                out[(addr - meip0) // 4] = (data, xm)
+            if li == line_idx and MEIP0_OFF <= addr < MEIP0_OFF + MEIP_STRIDE * MEIP_WORDS:
+                out[(addr - MEIP0_OFF) // MEIP_STRIDE] = (data, xm)
         return out
 
     def _mark(self, tag: str):
@@ -432,6 +434,22 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
     def _vec(self, tag: str) -> tuple[int, int, int, int]:
         assert tag in self.vecs, f"no vector sample '{tag}' (firmware REQ missing)"
         return self.vecs[tag]
+
+    @staticmethod
+    def _four_state() -> bool:
+        return "vcs" in str(getattr(cocotb, "SIM_NAME", "") or "").lower()
+
+    def _vec_bit_x(self, tag: str, b: int) -> tuple[int, bool, str]:
+        """(bit b of vector sample ``tag``, X-free on that bit, log text).
+
+        On a 4-state simulator an X or Z on the bit is not X-free, so a check that
+        expects 0 cannot pass on an X read as 0. A 2-state simulator logs ``na``.
+        """
+        v, xm, _, _ = self._vec(tag)
+        bit, xb = (v >> b) & 1, (xm >> b) & 1
+        if not self._four_state():
+            return bit, True, "na"
+        return bit, xb == 0, str(xb)
 
     # ---- checks ----
     def _exp_srcs(self, pas: int) -> set[int]:
@@ -503,7 +521,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         return m1.high[bit] - m0.high[bit]
 
     def _chk_base(self) -> None:
-        four_state = "vcs" in str(getattr(cocotb, "SIM_NAME", "") or "").lower()
+        four_state = self._four_state()
         # Control of the meip X part: the tap equals the firmware word at the map-pass reads.
         ctrl_reads = ctrl_match = ctrl_nonzero = 0
         for tag in ("p1", "p2"):
@@ -552,12 +570,13 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         for ip, src in (("hmac", SRC_HMAC_FIFO_EMPTY), ("kmac", SRC_KMAC_FIFO_EMPTY)):
             f, fe = fills[ip], fes[ip]
             b = vec_bit(src)
-            v0 = (self._vec(f"fe{ip[0]}0")[0] >> b) & 1
-            v1 = (self._vec(f"fe{ip[0]}1")[0] >> b) & 1
+            v0, x0_ok, x0_txt = self._vec_bit_x(f"fe{ip[0]}0", b)
+            v1, x1_ok, x1_txt = self._vec_bit_x(f"fe{ip[0]}1", b)
             text = (
                 f"ip={ip} src={src} exp_before=1 meip_before={fe['meip_before']} vec_before={v0} "
                 f"exp_after=0 meip_after={fe['meip_after']} vec_after={v1} fill_writes={f['writes']} "
-                f"fifo_full={f['full']} fifo_empty={f['empty']}"
+                f"fifo_full={f['full']} fifo_empty={f['empty']} "
+                f"vec_before_x={x0_txt} vec_after_x={x1_txt}"
             )
             if ip == "kmac" and not self.kmac_graded:
                 self.logger.info("CTRL-MISSING ip=kmac fifo_full=0 (cell not graded) %s", text)
@@ -569,6 +588,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 and v0 == 1
                 and int(fe["meip_after"]) == 0
                 and v1 == 0
+                and x0_ok
+                and x1_ok
             )
             if ip == "kmac":
                 ok = ok and bool(f["intr_state"] & KMAC_FE_STATE)
@@ -577,13 +598,15 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
 
     def _chk_spi(self) -> None:
         b = vec_bit(SRC_SPI)
-        v1, x1, i1, ix1 = self._vec("spi1")
-        v0, x0, i0, ix0 = self._vec("spi0")
-        b1, b0 = (v1 >> b) & 1, (v0 >> b) & 1
+        _, _, i1, ix1 = self._vec("spi1")
+        _, _, i0, ix0 = self._vec("spi0")
+        b1, x1_ok, x1_txt = self._vec_bit_x("spi1", b)
+        b0, x0_ok, x0_txt = self._vec_bit_x("spi0", b)
         self._check(
-            b1 == 1 and i1 == 1 and b0 == 0 and i0 == 0 and not (ix1 or ix0),
+            b1 == 1 and i1 == 1 and b0 == 0 and i0 == 0 and not (ix1 or ix0) and x1_ok and x0_ok,
             "CHK-SPI",
-            f"cause=error bit13={b1} port_irq={i1} after_w1c_bit13={b0} after_w1c_port_irq={i0}",
+            f"cause=error bit13={b1} port_irq={i1} after_w1c_bit13={b0} after_w1c_port_irq={i0} "
+            f"bit13_x={x1_txt} after_w1c_bit13_x={x0_txt}",
         )
 
     def _alert_idx(self, t0: str, t1: str) -> set[int]:
@@ -693,15 +716,14 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
 
     def _chk_ctrl_window(self) -> None:
         _, words = self._meip("ctrl")
-        vec = self._vec("ctrl")[0]
         live = (words[0] >> SRC_CTRL) & 1
-        b17v = (vec >> vec_bit(SRC_TIED)) & 1
+        b17v, b17x_ok, b17x_txt = self._vec_bit_x("ctrl", vec_bit(SRC_TIED))
         b17m = (words[0] >> SRC_TIED) & 1
         self.logger.info(idle_unstated_line(words=words))
         self._check(
-            live == 1 and b17v == 0 and b17m == 0,
+            live == 1 and b17v == 0 and b17m == 0 and b17x_ok,
             "CHK-SRC17",
-            f"live_src={SRC_CTRL} live_bit={live} bit17={b17m} vec_bit16={b17v}",
+            f"live_src={SRC_CTRL} live_bit={live} bit17={b17m} vec_bit16={b17v} vec_bit16_x={b17x_txt}",
         )
         band = boundary_pending(words)
         hi1 = words[1] >> (FIRST_BAND - 32)

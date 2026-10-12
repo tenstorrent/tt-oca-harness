@@ -14,7 +14,7 @@
 //   CHK-RW      each implemented field holds the written value
 //   CHK-ENTRY0  entry 0 of the four arrays reads 0 after an all-ones write, and
 //               the write does not land in entry 1
-//   CHK-GWCLR0  meigwclr reads 0 after a non-zero write
+//   CHK-GWCLR0  meigwclr reads 0 after a write with the clear bit 1
 //   CHK-SRC0    source 0 never sets and never takes a handler
 //
 // Every compare covers the RDL field bits only; the PASS line logs the other
@@ -66,8 +66,10 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define GW_BM (EL2_PIC__MEIGWCTRL__POLARITY_bm | EL2_PIC__MEIGWCTRL__IRQ_TYPE_bm)
 #define GWCLR_BM EL2_PIC__MEIGWCLR__CLEAR_bm
 #define CFG_BM EL2_PIC__MPICCFG__PRIORD_bm
-#define GW_LEVEL_LOW 1u
-#define GW_EDGE_HIGH 2u
+// meigwctrl cells: level active low (polarity 1, irq_type 0) and edge active
+// high (polarity 0, irq_type 1).
+#define GW_LEVEL_LOW EL2_PIC__MEIGWCTRL__POLARITY_bm
+#define GW_EDGE_HIGH EL2_PIC__MEIGWCTRL__IRQ_TYPE_bm
 
 #define MBOX0_OUT_READ_DATA SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR
 #define MBOX0_OUT_STATUS SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR
@@ -533,7 +535,9 @@ int main(void) {
     rec_num("meip_after", ca);
     rec_end();
     for (uint32_t i = 0; i < ne; i++) {
-        int pass = (gwrd[i] & GWCLR_BM) == 0u && ctl_ok;
+        // The graded bit must be written 1, so a meigwclr that reads back the
+        // written value cannot read 0 there.
+        int pass = (g_prm[P_GWCLR + i] & GWCLR_BM) != 0u && (gwrd[i] & GWCLR_BM) == 0u && ctl_ok;
         rec_chk("GWCLR0", pass);
         rec_num("src", g_prm[P_ENT + i]);
         rec_hex("wr", g_prm[P_GWCLR + i]);

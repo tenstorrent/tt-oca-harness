@@ -64,6 +64,8 @@ from env.sep_mbox_golden import (
     ERR_READ,
     ERR_WRITE,
     IRQ_EIRQ,
+    IRQ_RTIRQ,
+    IRQ_WTIRQ,
     MAILBOX_DEPTH,
     READ_EMPTY_SENTINEL,
     ST_EMPTY,
@@ -73,6 +75,7 @@ from env.sep_mbox_pair_model import IRQ_ALL, MboxSystem, popcount
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import AXIL_MAILBOX_OUTBOUND_0 as MBX_REGS
+from sep_reg_meta import INBOUND_FILTER_CTRL_0
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_mailbox_iface_seq import SepMbox
 from seq_lib.sep_mbox_port_ops import (
@@ -100,6 +103,9 @@ EXTENT_FIRST = 0x10A0_7850
 EXTENT_LAST = 0x10A0_7FF8
 RO_TARGETS = ("READ_DATA", "STATUS", "ERROR_FLAGS", "IRQP")
 QUIET_CLKS = 32
+# IRQS threshold causes (wtirq, rtirq) and FILTER_CONFIG.entry_enabled, from the RDL.
+IRQS_THR = IRQ_WTIRQ | IRQ_RTIRQ
+FILT_ENTRY_ENABLED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "entry_enabled")
 
 
 class Inj:
@@ -511,7 +517,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         await self._setup_push(m, "in", inj.pre_words[1])
         for p in ("out", "in"):
             snap[(p, "STATUS")] = await self._rd(m, p, "STATUS")
-            snap[(p, "IRQS")] = (await self._rd(m, p, "IRQS")) & 0x3
+            snap[(p, "IRQS")] = (await self._rd(m, p, "IRQS")) & IRQS_THR
         return snap
 
     async def _k45(self, inj: Inj) -> None:
@@ -525,7 +531,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
             if reg == "STATUS":
                 exp = mb.status(p)
             elif reg == "IRQS":
-                exp = mb.reg(p, "IRQS") & 0x3
+                exp = mb.reg(p, "IRQS") & IRQS_THR
             if v != exp:
                 self._ctrl_missing(
                     f"{inj.kind} mbox={m} snapshot {p}.{reg}=0x{v:x} model=0x{exp:x}"
@@ -535,7 +541,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         for p in ("out", "in"):
             for reg in ("WIRQT", "RIRQT", "IRQEN", "STATUS"):
                 after[(p, reg)] = await self._rd(m, p, reg)
-            after[(p, "IRQS")] = (await self._rd(m, p, "IRQS")) & 0x3
+            after[(p, "IRQS")] = (await self._rd(m, p, "IRQS")) & IRQS_THR
         live_same = all(after[k] == snap[k] for k in snap if k[1] in ("WIRQT", "RIRQT", "IRQEN"))
         st_same = all(after[k] == snap[k] for k in snap if k[1] in ("STATUS", "IRQS"))
         pops = [await self._pop_cmp(m, "in"), await self._pop_cmp(m, "out")]
@@ -598,7 +604,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         cfgs = []
         for i in idx:
             cfg, _, _ = await self.bank.read_entry(i)
-            cfgs.append(f"entry{i}.entry_enabled={cfg & 1}")
+            cfgs.append(f"entry{i}.entry_enabled={int(bool(cfg & FILT_ENTRY_ENABLED))}")
         resp_closed, _ = await self._ext(inj)
         for i in idx:
             await self.bank.set_enabled(i, True)
