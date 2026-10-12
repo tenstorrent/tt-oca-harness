@@ -13828,6 +13828,10 @@ to make, and waits on a ruling.
 [cols="2,1,3,3",options="header"]
 |===
 |Leaf |Groups |Why CI cannot run it |Closes when
+|`smc_wdt_feed_zerocmp_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
+|`smc_wdt_core_awake_gate_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
+|`smc_regblock_sparse_strobe_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
+|`smc_lock_pipelined_write_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_fw_hello_world_test` |`fw`, `all` |`firmware = "hello_world"`: `[c_build.default]` builds the DV C image with RISC-V GCC and picolibc |A toolchain image CI can pull is published to a registry, or `.github/actions/dv-run` installs `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` on the runner and exports `RISCV_TOOLCHAIN`; the weekly tier then gains a `dut: smc, items: all` row (one seed, ~240 min budget) and this row closes
 |`smc_fw_plic_claim_test` |`fw`, `all` |`firmware = "plic_sanity"`, same build path |As above
 |`smc_fw_hello_world_multicore_test` |`fw`, `all` |`firmware = "hello_world_multicore"`, same build path |As above

@@ -24,6 +24,16 @@ class smc_axi_mem_read_seq extends ocah_axi_master_sequence;
   task body();
     read_result(smc_mem_word_addr(addr), result, .size(SmcMemSize), .prot(prot),
                 .check_response(check_response), .allow_timeout(allow_timeout));
+    if (!result.timed_out &&
+        (result.data_words.size() != 1 || result.data_xz_masks.size() != 1 ||
+         result.first_xz_mask() != 0))
+      `uvm_error("SMC-MEM-READ-XZ", $sformatf(
+                 "read addr=0x%0h data_beats=%0d mask_beats=%0d xz_mask=0x%016h",
+                 addr,
+                 result.data_words.size(),
+                 result.data_xz_masks.size(),
+                 result.first_xz_mask()
+                 ))
     data = result.first_data();
   endtask
 
