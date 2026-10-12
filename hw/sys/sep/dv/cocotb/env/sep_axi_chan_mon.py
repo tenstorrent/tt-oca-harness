@@ -24,7 +24,14 @@ master; ``m_axi_*``, the SMN-inbound external master):
   with its own response after the release.
 
 The ``wait_*`` methods return in the read-only phase of a clock; a caller
-awaits the next edge before it drives a signal.
+awaits the next edge before it drives a signal. They raise at once when the
+monitor is not running.
+
+:meth:`SepAxiChanMon.mark` stores the monitor clock with the beat index.
+:meth:`SepAxiChanMon.since`, :meth:`SepAxiChanMon.count` and
+:meth:`SepAxiChanMon.xz_beats` raise :class:`ChanMonIdleError` when the
+monitor took no sample after the mark (never started, stopped, or no clock
+edge), so a zero count is always a sampled result.
 
 A no_cpu leaf that holds the CPU-LSU master must first stop the background
 entropy-FIFO drain that shares that master (``sep_base_test.stop_fifo_drain``).
@@ -55,6 +62,21 @@ _CHAN_KEY = {"b": "b_ready_delay", "r": "r_ready_delay"}
 
 class ChanXZError(AssertionError):
     """A handshake signal of the watched master resolved to X or Z."""
+
+
+class ChanMonIdleError(AssertionError):
+    """A count or wait was asked of a monitor that sampled nothing after the mark."""
+
+
+class ChanMark(int):
+    """Beat index from :meth:`SepAxiChanMon.mark`, with the monitor clock at the mark."""
+
+    clk: int
+
+    def __new__(cls, index: int, clk: int) -> "ChanMark":
+        obj = super().__new__(cls, index)
+        obj.clk = clk
+        return obj
 
 
 class _Xz:
@@ -132,12 +154,29 @@ class SepAxiChanMon:
             self._task.kill()
             self._task = None
 
-    def mark(self) -> int:
-        """Index of the next recorded handshake."""
-        return len(self.beats)
+    def mark(self) -> ChanMark:
+        """Index of the next recorded handshake, with the current monitor clock."""
+        return ChanMark(len(self.beats), self.clk)
+
+    def _require_sampled(self, mark: int) -> None:
+        mark_clk = getattr(mark, "clk", 0)
+        if self.clk <= mark_clk:
+            raise ChanMonIdleError(
+                f"CHAN-MON FAIL: {self.prefix} monitor took no sample after the mark "
+                f"(running={self._task is not None} clock={self.clk} mark_clock={mark_clk})"
+            )
+
+    def _require_running(self) -> None:
+        if self._task is None:
+            raise ChanMonIdleError(f"CHAN-MON FAIL: {self.prefix} monitor is not running")
+
+    def _since(self, mark: int, ch: str | None) -> list[ChanBeat]:
+        return [b for b in self.beats[mark:] if ch is None or b.ch == ch]
 
     def since(self, mark: int, ch: str | None = None) -> list[ChanBeat]:
-        return [b for b in self.beats[mark:] if ch is None or b.ch == ch]
+        """Handshakes after ``mark``; raises if the monitor sampled nothing since."""
+        self._require_sampled(mark)
+        return self._since(mark, ch)
 
     def count(self, mark: int, ch: str) -> int:
         return len(self.since(mark, ch))
@@ -159,6 +198,7 @@ class SepAxiChanMon:
 
         Returns the clock index. Raises AssertionError on timeout.
         """
+        self._require_running()
         start = self.clk
         while not self._waiting_now[ch]:
             if self.clk - start >= bound:
@@ -171,13 +211,14 @@ class SepAxiChanMon:
 
     async def wait_beat(self, mark: int, ch: str, bound: int) -> ChanBeat:
         """Wait up to ``bound`` clocks for a ``ch`` handshake after ``mark``."""
+        self._require_running()
         start = self.clk
-        while not self.since(mark, ch):
+        while not self._since(mark, ch):
             if self.clk - start >= bound:
                 raise AssertionError(f"{self.prefix} {ch}: no handshake within {bound} clocks")
             await RisingEdge(self.dut.clk_i)
             await ReadOnly()
-        return self.since(mark, ch)[0]
+        return self._since(mark, ch)[0]
 
     async def _run(self) -> None:
         clk = self.dut.clk_i
@@ -254,4 +295,13 @@ class SepAxiReadyHold:
             self.release(ch)
 
 
-__all__ = ["CHANNELS", "XZ", "ChanBeat", "ChanXZError", "SepAxiChanMon", "SepAxiReadyHold"]
+__all__ = [
+    "CHANNELS",
+    "XZ",
+    "ChanBeat",
+    "ChanMark",
+    "ChanMonIdleError",
+    "ChanXZError",
+    "SepAxiChanMon",
+    "SepAxiReadyHold",
+]

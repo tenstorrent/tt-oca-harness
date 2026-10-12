@@ -452,7 +452,7 @@ static void run_round(uint32_t r) {
             pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), rprm(r, R_RAW + i));
             pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 0u);
         } else {
-            pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 1u);
+            pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), EL2_PIC__MEIE__INTEN_bm);
             pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), never_val(p));
         }
     }
@@ -473,7 +473,7 @@ static void run_round(uint32_t r) {
         uint32_t before = g_total;
         uint32_t own0 = g_runs[s];
         if (g == GATE_MEIE0) {
-            pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 1u);
+            pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), EL2_PIC__MEIE__INTEN_bm);
         } else {
             pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), rprm(r, R_RAW + i));
         }
@@ -497,7 +497,7 @@ static void run_round(uint32_t r) {
     mstatus_mie(0);
     for (uint32_t i = 0; i < n; i++) {
         uint32_t s = rprm(r, R_SRC + i);
-        pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 1u);
+        pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), EL2_PIC__MEIE__INTEN_bm);
         pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), rprm(r, R_RAW + i));
     }
     uint32_t meip_before = pic_read_meip(0) & setmask;
@@ -547,7 +547,7 @@ static void run_round(uint32_t r) {
     uint32_t ni = rprm(r, R_NEVER);
     uint32_t sn = rprm(r, R_SRC + ni);
     uint32_t own0 = g_runs[sn];
-    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(sn), 1u);
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(sn), EL2_PIC__MEIE__INTEN_bm);
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sn), never_val(p));
     raised = src_raise(sn);
     (void)hold();
@@ -575,7 +575,7 @@ static void run_round(uint32_t r) {
     for (uint32_t i = 0; i < n; i++) {
         uint32_t s = rprm(r, R_SRC + i);
         pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), 15u - rprm(r, R_RAW + i));
-        pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 1u);
+        pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), EL2_PIC__MEIE__INTEN_bm);
     }
     clear_log();
     t0 = g_total;
@@ -710,7 +710,7 @@ int main(void) {
     g_cls_timer = 0u;
     g_cls_sw = 0u;
     uint32_t c0 = g_runs[SRC_CTRL];
-    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(SRC_CTRL), 1u);
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(SRC_CTRL), EL2_PIC__MEIE__INTEN_bm);
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(SRC_CTRL), 1u);
     (void)src_raise(SRC_CTRL);
     for (uint32_t i = 0; i < g_prm[P_WAIT]; i++) {

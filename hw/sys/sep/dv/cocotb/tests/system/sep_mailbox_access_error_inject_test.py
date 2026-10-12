@@ -75,7 +75,7 @@ from env.sep_mbox_pair_model import IRQ_ALL, MboxSystem, popcount
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import AXIL_MAILBOX_OUTBOUND_0 as MBX_REGS
-from sep_reg_meta import INBOUND_FILTER_CTRL_0
+from sep_reg_meta import INBOUND_FILTER_CTRL_0, sep_addr_define
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_mailbox_iface_seq import SepMbox
 from seq_lib.sep_mbox_port_ops import (
@@ -96,11 +96,17 @@ PEER = {"out": "in", "in": "out"}
 FIELD = {
     r: MBX_REGS.mask32(r) for r in ("STATUS", "IRQS", "IRQEN", "WIRQT", "RIRQT", "ERROR_FLAGS")
 }
-HOLE_FIRST = 0x50
-HOLE_LAST = 0x7F8
-PAIR_BYTES = 0x1000
-EXTENT_FIRST = 0x10A0_7850
-EXTENT_LAST = 0x10A0_7FF8
+# Aperture, pair and wrapper-extent edges from the generated SEP address map.
+# K4/K5 offsets step in 8-byte words, so the last word of a range starts 8 bytes
+# before its end.
+_MBX = "SEP_TOP_AXIL_MAILBOX"
+_OUT0 = sep_addr_define(f"{_MBX}_OUTBOUND_MAILBOX_0_BASE_ADDR")
+APERTURE_BYTES = sep_addr_define(f"{_MBX}_INBOUND_MAILBOX_0_BASE_ADDR") - _OUT0
+HOLE_FIRST = sep_addr_define(f"{_MBX}_OUTBOUND_MAILBOX_0_SIZE")
+HOLE_LAST = APERTURE_BYTES - 8
+PAIR_BYTES = sep_addr_define(f"{_MBX}_OUTBOUND_MAILBOX_1_BASE_ADDR") - _OUT0
+EXTENT_FIRST = sep_addr_define(f"{_MBX}_BASE_ADDR") + sep_addr_define(f"{_MBX}_SIZE")
+EXTENT_LAST = sep_addr_define(f"{_MBX}_INBOUND_MAILBOX_7_BASE_ADDR") + APERTURE_BYTES - 8
 RO_TARGETS = ("READ_DATA", "STATUS", "ERROR_FLAGS", "IRQP")
 QUIET_CLKS = 32
 # IRQS threshold causes (wtirq, rtirq) and FILTER_CONFIG.entry_enabled, from the RDL.

@@ -99,7 +99,7 @@ from env.sep_pic_map import (
 )
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import AES, HMAC, KMAC, sym
+from sep_reg_meta import AES, CSRNG, HMAC, KMAC, sym
 
 _TEST = "sep_pic_pending_map_walk_rand_test"
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -110,6 +110,8 @@ _BANNER = "SEP PIC pending map walk test"
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 12_000_000
 _NO_BOOT_CYCLES = 80_000
+# The one CSRNG INTR_ENABLE bit the quiet window keeps set (generated field mask).
+_CSRNG_EN_CTRL = CSRNG.fields("INTR_ENABLE")["CS_CMD_REQ_DONE"]["bm"]
 
 # ---- Source model (hw/sys/sep/doc/interrupts.adoc via env/sep_pic_map) ----
 SRC_CTRL = 24
@@ -730,7 +732,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         en = q[0]
         cleared = int(
             all(en[f"en_{ip}"] == 0 for ip in ("hmac", "kmac", "edn", "otbn", "spi"))
-            and en["en_csrng"] == 1
+            and en["en_csrng"] == _CSRNG_EN_CTRL
         )
         idle_bits = {vec_bit(s) for s in EXCLUDED_IDLE_SOURCES}
         src34 = vec_bit(34)
