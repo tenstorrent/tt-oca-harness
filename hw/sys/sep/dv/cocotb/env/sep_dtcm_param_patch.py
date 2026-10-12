@@ -81,7 +81,17 @@ def _rewrite(src: str, dst: str, patches: dict) -> None:
 
 def patch_param_block(src_hex: str, dst_hex: str, magic: int, words: list) -> None:
     """Write ``words`` (a list of 32-bit ints, magic first) into ``src_hex`` at the
-    ``magic`` sentinel, emitting the patched image to ``dst_hex``."""
+    ``magic`` sentinel, emitting the patched image to ``dst_hex``.
+
+    Raises when ``words`` does not start with ``magic``, and when a read-back of
+    ``dst_hex`` differs from ``src_hex`` with the patch applied, so the image
+    the firmware boots holds exactly the drawn block.
+    """
+    if not words or (words[0] & 0xFFFF_FFFF) != (magic & 0xFFFF_FFFF):
+        raise ValueError(
+            f"param block must start with the magic 0x{magic & 0xFFFF_FFFF:08x}, "
+            f"got {('0x%08x' % (words[0] & 0xFFFF_FFFF)) if words else 'no words'}"
+        )
     cells = parse_hex_cells(src_hex)
     base = find_magic(cells, magic.to_bytes(4, "little"))
     patches = {}
@@ -96,6 +106,15 @@ def patch_param_block(src_hex: str, dst_hex: str, magic: int, words: list) -> No
         )
     os.makedirs(os.path.dirname(dst_hex) or ".", exist_ok=True)
     _rewrite(src_hex, dst_hex, patches)
+    expected = {**cells, **patches}
+    got = parse_hex_cells(dst_hex)
+    if got != expected:
+        diff = sorted(a for a in expected.keys() | got.keys() if got.get(a) != expected.get(a))
+        a0 = diff[0]
+        raise RuntimeError(
+            f"patched image {dst_hex} read-back mismatch at {len(diff)} bytes: first 0x{a0:x} "
+            f"got {got.get(a0)} expected {expected.get(a0)}"
+        )
 
 
 def place_words(src_hex: str, dst_hex: str, byte_off: int, words: list, *, limit: int) -> None:

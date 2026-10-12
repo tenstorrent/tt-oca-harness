@@ -14,6 +14,7 @@
 //   REQ m t=<tag>             the host takes a mark of its bit watchers
 //   REQ vec t=<tag>           the host samples the vector and the SPI irq field
 //   REQ stall on=<0|1>        the host drives hmac_fifo_drain_stall_i
+//   REQ kstall on=<0|1>       the host drives kmac_fifo_drain_stall_i
 //   REQ ext step=<k> n=<n>    the host drives n bits of sep_ext_interrupts_i
 //   REQ win <op>=<0|1>        the host opens or closes a per-clock vector window
 //   MEIP t=<tag> w0=.. w7=..  the eight meip words of one read
@@ -352,7 +353,6 @@ static void release_src(const struct src *s) {
 }
 
 // ---- FIFO-empty set-up ----
-static int g_kmac_graded;
 
 static void hmac_start(void) {
     wr(SEP_TOP_HMAC_CFG_BASE_ADDR,
@@ -450,16 +450,14 @@ static void fifo_setup(void) {
     rec_hex("status", rd(SEP_TOP_HMAC_STATUS_BASE_ADDR));
     rec_end();
 
-    // KMAC (source 22): no drain stall exists; graded only when fifo_full shows.
+    // KMAC (source 22): the drain stall makes the FIFO reach fifo_full.
+    req_kv("kstall", "on", 1u);
     kmac_start();
     n = fill(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, SEP_TOP_KMAC_STATUS_BASE_ADDR,
              KMAC__STATUS__FIFO_FULL_bm);
+    req_kv("kstall", "on", 0u);
     emp = n ? wait_set(SEP_TOP_KMAC_STATUS_BASE_ADDR, KMAC__STATUS__FIFO_EMPTY_bm) : 0u;
     uint32_t ist = rd(KM(STATE));
-    g_kmac_graded = n != 0u;
-    if (!g_kmac_graded) {
-        sep_mbx_puts("CTRL-MISSING ip=kmac fifo_full=0\n");
-    }
     sep_mbx_puts("FILL");
     rec_str("ip", "kmac");
     rec_num("full", n ? 1u : 0u);
@@ -553,7 +551,7 @@ static void map_release(int pass) {
 }
 
 // The enable-clear cell of one FIFO-empty source, then the message completes.
-static void fe_cell(const char *ip, uint32_t src, uint32_t en, uint32_t bit, int graded) {
+static void fe_cell(const char *ip, uint32_t src, uint32_t en, uint32_t bit) {
     req_tag("vec", ip[0] == 'h' ? "feh0" : "fek0");
     uint32_t before = meip_bit(src);
     ctl_fifo_empty(ip);
@@ -564,7 +562,6 @@ static void fe_cell(const char *ip, uint32_t src, uint32_t en, uint32_t bit, int
     sep_mbx_puts("FE");
     rec_str("ip", ip);
     rec_num("src", src);
-    rec_num("graded", (uint32_t)graded);
     rec_num("meip_before", before);
     rec_num("meip_after", after);
     rec_end();
@@ -914,8 +911,8 @@ int main(void) {
     // Map pass 1, the FIFO-empty cells, the SPI cell and the release.
     map_assert(1);
     rec_mark(1, "fifo_empty");
-    fe_cell("hmac", 19u, HM(ENABLE), HMAC__INTR_ENABLE__FIFO_EMPTY_bm, 1);
-    fe_cell("kmac", 22u, KM(ENABLE), KMAC__INTR_ENABLE__FIFO_EMPTY_bm, g_kmac_graded);
+    fe_cell("hmac", 19u, HM(ENABLE), HMAC__INTR_ENABLE__FIFO_EMPTY_bm);
+    fe_cell("kmac", 22u, KM(ENABLE), KMAC__INTR_ENABLE__FIFO_EMPTY_bm);
     // The drain stall holds only the FIFO read side, so the hash engine reads
     // the FIFO head while the stall is on and the message cannot complete. The
     // completion is logged, not graded.

@@ -63,6 +63,7 @@ from env.sep_mbox_golden import AXIL_MAILBOX_OUTBOUND_0, IRQ_EIRQ, IRQ_WTIRQ, ST
 from env.sep_mbox_pair_model import MAILBOX_DEPTH, MboxSystem
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import INBOUND_FILTER_CTRL_0
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_csr_bank_seq import F_ALLOW_NS, F_ENTRY_ENABLED, F_SRC_ID_LSB
 from seq_lib.sep_fabric_filter_bank_seq import SRC_ID_MASK, SepFilterBank
@@ -93,6 +94,8 @@ REGS_READ = ("STATUS", "IRQS", "IRQEN", "WIRQT", "RIRQT", "IRQP", "ERROR_FLAGS")
 MASK = {r: _M.mask32(r) for r in REGS_READ}
 RESET = {r: _M.reset32(r) for r in REGS_READ}
 SRC_ID_FIELD = SRC_ID_MASK << F_SRC_ID_LSB
+# RDL reset value of FILTER_CONFIG.src_id (the expected value after the reset).
+SRC_ID_RESET = INBOUND_FILTER_CTRL_0.reset32("FILTER_CONFIG") & SRC_ID_FIELD
 FILTER_ENTRY = 0
 
 
@@ -506,7 +509,10 @@ class sep_mailbox_reset_clear_test(sep_base_test):
                     await ClockCycles(dut.clk_i, 1)
                     beat = rbeats[n0] if len(rbeats) > n0 else None
                     lane_ok = True
-                    if beat is not None and four_state:
+                    if four_state and beat is None:
+                        # No R beat captured: the X check inspected nothing.
+                        lane_ok = False
+                    elif beat is not None and four_state:
                         s = beat.binstr
                         lane = s[-64:][:32] if addr & 4 else s[-32:]
                         lane_ok = all(ch in "01" for ch in lane)
@@ -530,11 +536,14 @@ class sep_mailbox_reset_clear_test(sep_base_test):
                 if regs_ok:
                     n_zero += 1
         rtask.kill()
+        n_reads = 2 * MAILBOX_COUNT * len(REGS_READ)
+        if four_state and len(rbeats) != n_reads:
+            xs += 1
         x_free = ("1" if xs == 0 else "0") if four_state else "na"
         line = (
             f"op={c.op} offset={self.cell_offset} offset_class={c.cls_name} apertures=16 "
             f"status_empty={n_status} regs_zero={n_zero} x_free={x_free} "
-            f"expect_status=0x{RESET['STATUS']:x} r_beats={len(rbeats)}"
+            f"expect_status=0x{RESET['STATUS']:x} r_beats={len(rbeats)} exp_r_beats={n_reads}"
             + (f" bad={';'.join(bad[:6])}" if bad else "")
         )
         if bad or n_status != 16 or n_zero != 16 or x_free == "0":
@@ -546,7 +555,7 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         lo = await self.infilt.read_cpu(cfg_addr)
         hi = await self.infilt.read_cpu(cfg_addr + 4)
         src = (lo >> F_SRC_ID_LSB) & SRC_ID_MASK
-        fc = field_compare(lo, 0, SRC_ID_FIELD)
+        fc = field_compare(lo, SRC_ID_RESET, SRC_ID_FIELD)
         ext = SepMboxPortOps(self, c.filt_m, in_prot1=0, in_user=FILTER_SRC)
         ext_resp = await ext.push("in", c.filt_word)
         line = (

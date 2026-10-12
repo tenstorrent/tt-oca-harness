@@ -4513,7 +4513,7 @@ use it" names the entries whose checks need the hook.
 |`sep_esrc_observe_fifo_rand_test` (CHK-OBS-LANE, CHK-OBS-FLUSH, CHK-OBS-LOCK)
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |`hmac_fifo_drain_stall_i`
-|Existing bench hook
+|Existing bench hook, listed (error inject)
 |Holds the read side of the HMAC message FIFO idle while the input is high, so the hash engine stops consuming and the FIFO fills.
 |The read-ready net of the HMAC message FIFO, inside `sep`
 |`sep_hmac_fifo_stream_rand_test` (the stalled legs: CHK-HMAC-BACKPRESSURE, CHK-HMAC-FIFOEMPTY); `sep_pic_pending_map_walk_rand_test` (source 19 set-up of CHK-FIFO-EMPTY)
@@ -4529,6 +4529,12 @@ use it" names the entries whose checks need the hook.
 |One or two bits of the boundary interrupt input, tied to 0 in `tb_top.sv`.
 |`extintsrc_req_i` (the `sep_wrapper` port `sep_ext_interrupts_i`)
 |`sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN)
+|<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
+|`kmac_fifo_drain_stall_i`
+|Error inject
+|Holds the read side of the KMAC message FIFO idle while the input is high (no FIFO read and no word to the KMAC core), so the FIFO fills. After the release the FIFO drains and the message can complete.
+|The read-ready net and the read-valid net of the KMAC message FIFO, inside `sep`
+|`sep_pic_pending_map_walk_rand_test` (source 22 set-up of CHK-FIFO-EMPTY)
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Outbound responder response control
 |Error inject

@@ -213,7 +213,14 @@ class sep_pic_reg_rand_test(sep_base_test):
     """PIC register map, reset state, holes, entry 0 and source 0 meet the EL2_PIC contract."""
 
     build_env = False
-    required_evidence = ("CHK-RESET", "CHK-HOLE", "CHK-RW", "CHK-ENTRY0", "CHK-GWCLR0", "CHK-SRC0")
+    required_evidence: tuple[str, ...] = (
+        "CHK-RESET",
+        "CHK-HOLE",
+        "CHK-RW",
+        "CHK-ENTRY0",
+        "CHK-GWCLR0",
+        "CHK-SRC0",
+    )
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -261,13 +268,13 @@ class sep_pic_reg_rand_test(sep_base_test):
         lo, hi = self._leg_clk("reset")
         rst = [r for r in self.reads if lo <= r[0] < hi]
         # Control: the CHK-RW read-backs of the array corner, in order.
-        alo, ahi = self._leg_clk("array")
-        arr = [r for r in self.reads if alo <= r[0] < ahi]
-        rw = [r for r in self.con.records("CHK-RW") if alo <= r.clk]
+        arr_lo, arr_hi = self._leg_clk("array")
+        arr = [r for r in self.reads if arr_lo <= r[0] < arr_hi]
+        rw = [r for r in self.con.records("CHK-RW") if arr_lo <= r.clk]
         ctrl_reads = len(rw)
         ctrl_match = 0
         ctrl_nonzero = 0
-        mism = []
+        mism: list[tuple] = []
         for i, rec in enumerate(rw):
             raw = rec.kv.get("raw")
             if i < len(arr) and arr[i][3] and arr[i][2] == raw:

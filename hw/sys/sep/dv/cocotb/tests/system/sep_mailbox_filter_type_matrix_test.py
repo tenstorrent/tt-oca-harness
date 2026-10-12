@@ -230,7 +230,7 @@ class sep_mailbox_filter_type_matrix_test(sep_base_test):
 
     async def _drain(self, b: _Mbx) -> list[int]:
         """Pop the outbound READ_DATA until STATUS reads empty; returns the popped words."""
-        words = []
+        words: list[int] = []
         for _ in range(DRAIN_BOUND):
             st = await self._out_status(b.m)
             if st & ST_EMPTY:

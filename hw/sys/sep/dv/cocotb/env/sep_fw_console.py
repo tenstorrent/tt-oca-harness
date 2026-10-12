@@ -28,6 +28,12 @@ acts on four line shapes, printed by ``fw/tests/common/sep_console_rec.h``:
 any other line
     Kept in :attr:`lines` with its clock index.
 
+Once ``fw_char_valid_o`` has read 0 or 1, a later X or Z on it fails the leaf,
+because a character can be lost there. Characters after the last newline are
+handled as one more line when the follower stops, and logged as
+``FW-CONSOLE LOG unterminated``, so a truncated last record is graded and not
+dropped.
+
 The firmware CHK lines are graded evidence. :meth:`relay_chk` logs each one on
 the test logger, so the evidence gate of ``sep_base_test`` counts it, and
 fails the leaf on a ``FAIL`` line. :meth:`require_counts` fails the leaf when
@@ -124,6 +130,11 @@ class SepFwConsole:
             self._task = None
         if self.graded_test is not None:
             close_graded_window(self.log)
+        if self._buf:
+            text = "".join(self._buf).rstrip("\r")
+            self._buf = []
+            self.log.info("FW-CONSOLE LOG unterminated last line clk=%d %r", self.clk, text)
+            self._take_line(text, requests=False)
 
     # ---- queries ----
     def records(self, name: str) -> list[ConsoleRec]:
@@ -189,6 +200,7 @@ class SepFwConsole:
     async def _run(self) -> None:
         dut = self.dut
         gate: bool | None = None
+        valid_known = False
         while True:
             await RisingEdge(dut.clk_i)
             if gate is not None and self.graded_test is not None:
@@ -200,7 +212,15 @@ class SepFwConsole:
             await ReadOnly()
             self.clk += 1
             v = dut.fw_char_valid_o.value
-            if not (v.is_resolvable and int(v)):
+            if not v.is_resolvable:
+                if valid_known:
+                    raise AssertionError(
+                        f"FW-CONSOLE FAIL: fw_char_valid_o is {v} at clk={self.clk}; "
+                        "a console character can be lost"
+                    )
+                continue
+            valid_known = True
+            if not int(v):
                 continue
             ch = chr(int(dut.fw_char_o.value) & 0xFF)
             if ch != "\n":
@@ -208,32 +228,34 @@ class SepFwConsole:
                 continue
             text = "".join(self._buf).rstrip("\r")
             self._buf = []
-            self.lines.append((self.clk, text))
-            if text.startswith("M ") and len(text.split()) >= 3:
-                _, kind, leg = text.split(None, 2)
-                self.legs.append((self.clk, kind, leg))
-                for hook in self._mark_hooks:
-                    hook(leg, kind)
-                gate = kind == "G"
-                continue
-            m = _REC.match(text)
-            if m:
-                self.recs.append(
-                    ConsoleRec(self.clk, m.group(1), m.group(2), parse_kv(m.group(3)), text)
-                )
-                continue
-            if text.startswith("CHK-"):
-                self.bad_chk.append((self.clk, text))
-                raise AssertionError(
-                    f"FW-CONSOLE FAIL: CHK line without the record shape: {text!r}"
-                )
-            if text.startswith("REQ "):
-                parts = text.split(None, 2)
-                what = parts[1] if len(parts) > 1 else ""
-                handler = self._req.get(what)
-                if handler is None:
-                    raise AssertionError(f"FW-CONSOLE FAIL: no handler for '{text}'")
-                cocotb.start_soon(handler(parse_kv(parts[2] if len(parts) > 2 else "")))
+            gate = self._take_line(text)
+
+    def _take_line(self, text: str, *, requests: bool = True) -> bool | None:
+        """Record one complete line; return the graded-window state of a marker line."""
+        self.lines.append((self.clk, text))
+        if text.startswith("M ") and len(text.split()) >= 3:
+            _, kind, leg = text.split(None, 2)
+            self.legs.append((self.clk, kind, leg))
+            for hook in self._mark_hooks:
+                hook(leg, kind)
+            return kind == "G"
+        m = _REC.match(text)
+        if m:
+            self.recs.append(
+                ConsoleRec(self.clk, m.group(1), m.group(2), parse_kv(m.group(3)), text)
+            )
+            return None
+        if text.startswith("CHK-"):
+            self.bad_chk.append((self.clk, text))
+            raise AssertionError(f"FW-CONSOLE FAIL: CHK line without the record shape: {text!r}")
+        if requests and text.startswith("REQ "):
+            parts = text.split(None, 2)
+            what = parts[1] if len(parts) > 1 else ""
+            handler = self._req.get(what)
+            if handler is None:
+                raise AssertionError(f"FW-CONSOLE FAIL: no handler for '{text}'")
+            cocotb.start_soon(handler(parse_kv(parts[2] if len(parts) > 2 else "")))
+        return None
 
 
 __all__ = ["ConsoleRec", "SepFwConsole", "parse_kv"]

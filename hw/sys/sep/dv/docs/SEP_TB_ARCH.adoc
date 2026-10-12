@@ -327,6 +327,17 @@ Exceptions (a closed set):
   asserts on the next DMA command. Software cannot emit a broken command
   user code. The force targets that input only. `DMA_BUS_ERR_STATUS` and
   the interrupt aggregate stay frontdoor. Owner: `sep_dma_basic_test`.
+* *Crypto message-FIFO drain stall* — `hmac_fifo_drain_stall_i` holds the
+  read-ready of the HMAC message FIFO at 0. `kmac_fifo_drain_stall_i` holds
+  the read-ready of the KMAC message FIFO and the FIFO valid toward the KMAC
+  core at 0. While the input is 1 the engine takes no message word, so the
+  FIFO fills and `STATUS.fifo_full` reads 1. The engine absorbs a message as
+  fast as the firmware writes it, so a full FIFO has no frontdoor. Both
+  inputs are 0 by default, and the force is released when the input drops.
+  The force targets those nets only. `STATUS`, `INTR_STATE` and the
+  interrupt lines the checkers read stay frontdoor. Owners:
+  `sep_rom_hmac_fifo_stall_terminal_test` (HMAC),
+  `sep_pic_pending_map_walk_rand_test` (HMAC and KMAC, CHK-FIFO-EMPTY).
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for

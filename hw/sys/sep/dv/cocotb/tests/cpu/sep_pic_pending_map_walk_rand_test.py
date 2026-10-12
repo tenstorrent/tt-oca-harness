@@ -10,10 +10,11 @@ crypto alert kinds, the native errors, the DMA alert, the slotless blocks, the
 gateway cells and the clear values, and prints every ``meip`` read. This test
 draws every value from the run seed and patches it into the parameter block,
 samples the aggregate vector ``sep_internal_interrupts_probe_o``, the ``irq``
-field of ``sep_io_spi_req_o``, ``crypto_alert_pulse_probe_o`` and
+field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
+``crypto_alert_pulse_probe_o`` and
 ``pic_rd_data_probe_o`` at the firmware ``REQ`` lines, drives
-``hmac_fifo_drain_stall_i`` and ``sep_ext_interrupts_i`` on request, and
-grades:
+``hmac_fifo_drain_stall_i``, ``kmac_fifo_drain_stall_i`` and
+``sep_ext_interrupts_i`` on request, and grades:
 
 * CHK-BASE         reset, map-release and final: every graded vector and
                    ``meip`` bit reads 0 (the band above 43 included); on VCS no
@@ -23,8 +24,9 @@ grades:
                    the driven sources with IP enable 1; sources 12 and 33 show
                    a high vector clock; the single-source reads of 24 and 33.
 * CHK-FIFO-EMPTY   sources 19 and 22 pending (``meip`` and vector) after the
-                   fill and drain with the enable at 1, and 0 after the enable
-                   clear.
+                   fill under the drain stall and the drain with the enable at
+                   1, and 0 after the enable clear. A fill that does not read
+                   ``STATUS.fifo_full`` = 1 fails the check.
 * CHK-SPI          vector bit 13 equals the SPI ``irq`` field, raised and after
                    the write-one-to-clear.
 * CHK-ALERT12, CHK-ALERT-AGG, CHK-ALERT-IDX, CHK-ALERT-IDLE, CHK-ALERT-NONE,
@@ -46,9 +48,7 @@ grades:
 Logged, not graded: ``OBS-IDLE-UNSTATED`` (sources 13, 15, 16, 37, 38, 39,
 masked in every compare), ``OBS-GW-EL``, ``OBS-MASKED-VISIBLE``, ``OBS-SRC34``,
 the source 12 latency and shape, the boundary source index, and the controls
-``CTL-VECTOR``, ``CTL-FIFO-EMPTY`` and ``CTL-SLOTLESS``. A seed in which the
-KMAC message FIFO never reads full prints ``CTRL-MISSING ip=kmac fifo_full=0``
-and masks source 22 (vector bit 21) in that seed.
+``CTL-VECTOR``, ``CTL-FIFO-EMPTY`` and ``CTL-SLOTLESS``.
 
 The firmware brings the entropy stack up before the engine runs (AES masking
 and the OTBN URND draw from EDN); this test drives the raw noise of the ring
@@ -344,18 +344,23 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
 
     async def _req_vec(self, kv: dict) -> None:
         vec, xm = _value_bits(self.dut.sep_internal_interrupts_probe_o)
-        spi, sxm = _value_bits(self.dut.sep_io_spi_req_w)
+        spi, sxm = _value_bits(self.dut.sep_io_spi_irq_w)
         tag = kv["t"]
-        self.vecs[tag] = (vec, xm, (spi >> 1) & 1, (sxm >> 1) & 1)
+        self.vecs[tag] = (vec, xm, spi, sxm)
         self.vec_marks[tag] = self.w.mark()
         if tag not in self.marks:
             self._on_mark(kv)
 
-    async def _req_stall(self, kv: dict) -> None:
-        self.logger.info("STALL-DRIVE LOG on=%d", int(kv["on"]))
+    async def _drive_stall(self, ip: str, kv: dict) -> None:
+        self.logger.info("STALL-DRIVE LOG ip=%s on=%d", ip, int(kv["on"]))
         await RisingEdge(self.dut.clk_i)
-        self.dut.hmac_fifo_drain_stall_i.value = 1 if kv["on"] else 0
-        self.stall_log.append((self.w.clk, int(kv["on"] != 0)))
+        getattr(self.dut, f"{ip}_fifo_drain_stall_i").value = 1 if kv["on"] else 0
+
+    async def _req_stall(self, kv: dict) -> None:
+        await self._drive_stall("hmac", kv)
+
+    async def _req_kstall(self, kv: dict) -> None:
+        await self._drive_stall("kmac", kv)
 
     async def _req_ext(self, kv: dict) -> None:
         step = int(kv["step"])
@@ -455,9 +460,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
     def _exp_srcs(self, pas: int) -> set[int]:
         srcs = set(ALWAYS) | {s for s in DRAWN if self.wc.enabled(s, pas)}
         if pas == 1:
-            srcs.add(SRC_HMAC_FIFO_EMPTY)
-            if self.kmac_graded:
-                srcs.add(SRC_KMAC_FIFO_EMPTY)
+            srcs |= {SRC_HMAC_FIFO_EMPTY, SRC_KMAC_FIFO_EMPTY}
         return srcs
 
     def _chk_vector(self) -> None:
@@ -466,13 +469,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             _, got = self._meip(tag)
             srcs = self._exp_srcs(pas)
             exp = meip_words(srcs)
-            mask_extra = []
-            if pas == 1 and not self.kmac_graded:
-                mask_extra = meip_words([SRC_KMAC_FIFO_EMPTY])
             gm, em = meip_masked(got), meip_masked(exp)
-            if mask_extra:
-                gm = [g & ~m for g, m in zip(gm, mask_extra, strict=True)]
-                em = [e & ~m for e, m in zip(em, mask_extra, strict=True)]
             h11 = self._high_between(tag, "b11")
             h32 = self._high_between(tag, "b32")
             self.logger.info(idle_unstated_line(words=got))
@@ -481,14 +478,11 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 "CHK-VECTOR",
                 f"cell=pass{pas} drawn={','.join(str(s) for s in sorted(srcs))} meip0=0x{got[0]:08x} "
                 f"meip1=0x{got[1]:08x} exp0=0x{exp[0]:08x} exp1=0x{exp[1]:08x} "
-                f"meip2_7={_hexw(got[2:])} src12_high_clk={h11} src33_high_clk={h32} "
-                f"masked_extra={_hexw(mask_extra) if mask_extra else 0}",
+                f"meip2_7={_hexw(got[2:])} src12_high_clk={h11} src33_high_clk={h32}",
             )
             # Control: the vector equals the expected vector for the level sources.
             vec, xm, _, _ = self._vec(tag)
             lvl_mask = VEC_GRADED & ~vec_mask(PULSE)
-            if pas == 1 and not self.kmac_graded:
-                lvl_mask &= ~vec_mask([SRC_KMAC_FIFO_EMPTY])
             exp_vec = vec_mask(srcs - set(PULSE)) & lvl_mask
             self.logger.info(
                 "CTL-VECTOR LOG pass=%d probe_equal=%d vec=0x%011x exp=0x%011x mask=0x%011x xz=0x%x",
@@ -578,9 +572,6 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 f"fifo_full={f['full']} fifo_empty={f['empty']} "
                 f"vec_before_x={x0_txt} vec_after_x={x1_txt}"
             )
-            if ip == "kmac" and not self.kmac_graded:
-                self.logger.info("CTRL-MISSING ip=kmac fifo_full=0 (cell not graded) %s", text)
-                continue
             ok = (
                 int(f["full"]) == 1
                 and int(f["empty"]) == 1
@@ -773,7 +764,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         gws = {int(kv["src"]): kv for _, kv in self._lines("GW")}
         assert sorted(gws) == sorted(GW_SRCS), f"gateway cells ran for {sorted(gws)}"
         lh_asserted = []
-        twin = {}
+        twin: dict[str, int] = {}
         for src in GW_SRCS:
             kv = gws[src]
             cell = self.wc.cell(src)
@@ -820,20 +811,20 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         eh = next(s for s in GW_EVENT if self.wc.cell(s) == "EH")
         clr = [kv for _, kv in self._lines("GWCLR")]
         want = [*CLR_DIRECTED, self.wc.clr_x]
-        vals = [kv["v"] for kv in clr]
-        held = [int(kv["held"]) for kv in clr]
-        after = [int(kv["after"]) for kv in clr]
+        clr_vals = [kv["v"] for kv in clr]
+        clr_held = [int(kv["held"]) for kv in clr]
+        clr_after = [int(kv["after"]) for kv in clr]
         self._check(
-            vals == want and all(h == 1 for h in held) and all(a == 0 for a in after)
+            clr_vals == want and all(h == 1 for h in clr_held) and all(a == 0 for a in clr_after)
             and all(int(kv["src"]) == eh for kv in clr),
             "CHK-GWCLR-VALUE",
-            f"src={eh} values={','.join(f'0x{v:X}' for v in vals)} "
-            f"held_before={','.join(map(str, held))} after_clr={','.join(map(str, after))}",
+            f"src={eh} values={','.join(f'0x{v:X}' for v in clr_vals)} "
+            f"held_before={','.join(map(str, clr_held))} after_clr={','.join(map(str, clr_after))}",
         )  # fmt: skip
         ci = [kv for _, kv in self._lines("CLRIDLE")]
         assert len(ci) == 1, "expected one CLRIDLE line"
         c = ci[0]
-        dropped = int(int(gws[eh]["after_clr"]) == 0 and after[-1] == 0)
+        dropped = int(int(gws[eh]["after_clr"]) == 0 and clr_after[-1] == 0)
         self._check(
             int(c["meip_before"]) == 0 and int(c["meip_after"]) == 0 and c["clr_val"] == self.wc.clr_x
             and dropped == 1,
@@ -923,7 +914,6 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.slot_watch: dict = {}
         self.slot_rec: dict = {}
         self.rd_caps: list = []
-        self.stall_log: list = []
         vec = self.dut.sep_internal_interrupts_probe_o
         self.w = SepBitWatch(
             vec, {"b11": vec_bit(SRC_DMA_ALERT), "b32": vec_bit(SRC_CRYPTO_ALERT)}, name="vec"
@@ -949,6 +939,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.con.on_request("m", self._req_mark)
         self.con.on_request("vec", self._req_vec)
         self.con.on_request("stall", self._req_stall)
+        self.con.on_request("kstall", self._req_kstall)
         self.con.on_request("ext", self._req_ext)
         self.con.on_request("win", self._req_win)
         # The firmware brings the entropy stack up for the AES and OTBN runs; the
@@ -973,13 +964,11 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             await self.wa.stop()
             self.dut.sep_ext_interrupts_i.value = 0
             self.dut.hmac_fifo_drain_stall_i.value = 0
+            self.dut.kmac_fifo_drain_stall_i.value = 0
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
         for r in self.con.recs:
             if not r.name.startswith("CHK-"):
                 self.logger.info("%s (firmware)", r.text)
-        self.kmac_graded = not any(
-            t.startswith("CTRL-MISSING ip=kmac fifo_full=0") for _, t in self.con.lines
-        )
         self._check_params()
         self._chk_base()
         self._chk_vector()
@@ -1002,7 +991,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         want = {
             "CHK-BASE": 4,
             "CHK-VECTOR": 4,
-            "CHK-FIFO-EMPTY": 1 + int(self.kmac_graded),
+            "CHK-FIFO-EMPTY": 2,
             "CHK-SPI": 1,
             "CHK-ALERT12": 1,
             "CHK-ALERT-AGG": len(ALERTS),

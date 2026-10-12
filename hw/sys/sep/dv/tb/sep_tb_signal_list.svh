@@ -115,6 +115,10 @@
 // than a plusarg so a test can raise it after the ROM's short self-test hash.
 // See the force block in tb_top.sv.
 `SEP_TB_IN(logic, hmac_fifo_drain_stall_i)
+// KMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
+// side idle (no FIFO read, no word to the KMAC core), so the FIFO fills. See the
+// force block in tb_top.sv.
+`SEP_TB_IN(logic, kmac_fifo_drain_stall_i)
 // Boundary interrupt input of the PIC (sep_wrapper sep_ext_interrupts_i,
 // extintsrc_req_i of sep). Default 0. A leaf drives one or two bits to raise a
 // pending source above PIC source 43 (top-port drive, docs/SEP_TB_ARCH.adoc).

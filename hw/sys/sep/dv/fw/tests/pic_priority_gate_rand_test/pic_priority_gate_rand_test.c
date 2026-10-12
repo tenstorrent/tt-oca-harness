@@ -21,7 +21,9 @@
 //   CHK-MIP-IDLE             mip.MTIP and mip.MSIP read 0
 //   CHK-NO-TIMER-TRAP        no timer or software trap is taken
 //   CHK-CONTROL              one PIC delivery enters the dispatcher with
-//                            mcause.interrupt set (control)
+//                            mcause.interrupt set, and one ecall enters
+//                            trap_dispatch through mtvec and is counted
+//                            (control)
 //
 // Source drive recipe. A mailbox source k + 1 is driven by one CPU push into
 // the inbound WRITE_DATA of mailbox k with IRQEN.wtirq 1, WIRQT 0 and an
@@ -33,6 +35,8 @@
 // Every external interrupt enters ext_dispatch through the fast-redirect
 // vector table (every entry points to it); timer and software interrupts enter
 // trap_dispatch through mtvec. Both count the trap class from mcause. The
+// control leg takes one ecall through mtvec, so a trap on that path is shown to
+// reach the counters that CHK-NO-TIMER-TRAP reads. The
 // priority threshold CSRs (meipt, meicurpl) are set to the pass-all value of
 // the current order, so only meie, meipl and mstatus.MIE gate delivery.
 
@@ -89,6 +93,7 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define MIP_MEIP (1u << 11)
 #define MIE_WRITE (MIE_MEIE | MIE_MTIE | MIE_MSIE)
 #define MCAUSE_IRQ 0x80000000u
+#define MCAUSE_ECALL_M 11u // RISC-V privileged spec: environment call from M-mode
 #define LOG_MAX 64u
 #define SRC_CTRL 1u
 
@@ -726,12 +731,27 @@ int main(void) {
     (void)hold();
     uint32_t cruns = g_runs[SRC_CTRL] - c0;
     uint32_t mc = g_last_mcause;
-    pass = cruns == 1u && (mc & MCAUSE_IRQ) != 0u;
+    // Trap-path control: mtvec holds trap_dispatch, and one ecall enters it
+    // through mtvec, the entry of a timer or software trap, and is counted as
+    // a synchronous trap (mcause 11, environment call from M-mode).
+    uint32_t mtvec_rd;
+    __asm__ volatile("csrr %0, mtvec" : "=r"(mtvec_rd));
+    uint32_t o0 = g_cls_other;
+    __asm__ volatile("ecall" ::: "memory");
+    uint32_t trap_n = g_cls_other - o0;
+    uint32_t trap_mc = g_last_mcause;
+    g_cls_other = o0;
+    uint32_t mtvec_ok = mtvec_rd == (uint32_t)(uintptr_t)&trap_dispatch;
+    pass = cruns == 1u && (mc & MCAUSE_IRQ) != 0u && mtvec_ok && trap_n == 1u &&
+           trap_mc == MCAUSE_ECALL_M;
     rec_chk("CONTROL", pass);
     rec_num("mie_meie", (mie_rd >> 11) & 1u);
     rec_num("mcause_irq_bit", mc >> 31);
     rec_hex("mcause", mc);
     rec_num("runs", cruns);
+    rec_num("mtvec_ok", mtvec_ok);
+    rec_num("mtvec_traps", trap_n);
+    rec_hex("mtvec_mcause", trap_mc);
     chk_end(pass);
     pass = tot_t == 0u && tot_s == 0u && idle_t == 0u && idle_s == 0u && g_cls_ext == 1u &&
            g_cls_timer == 0u && g_cls_sw == 0u && tot_o == 0u && g_cls_other == 0u;

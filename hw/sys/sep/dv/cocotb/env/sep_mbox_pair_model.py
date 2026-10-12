@@ -70,9 +70,10 @@ from sep_mbox_golden import (
     WRITE_DATA_RD_SENTINEL,
 )
 from sep_reg_meta import AXIL_MAILBOX_OUTBOUND_0 as _MBX
-from sep_reg_meta import register_fields
+from sep_reg_meta import indexed_block_count, register_fields
 
-NUM_MAILBOXES = 8
+# Mailbox count from the RDL mailbox array (generated register header).
+NUM_MAILBOXES = indexed_block_count("AXIL_MAILBOX_OUTBOUND_MAILBOX")
 PORTS = ("out", "in")
 WRITE_FIFO = {"out": "A", "in": "B"}
 READ_FIFO = {"out": "B", "in": "A"}

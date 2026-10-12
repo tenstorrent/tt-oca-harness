@@ -343,6 +343,7 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "token_digest_test_en_inject_i", 0)
         self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         self._set_if_exists(dut, "hmac_fifo_drain_stall_i", 0)
+        self._set_if_exists(dut, "kmac_fifo_drain_stall_i", 0)
         # Boundary PIC input and outbound responder control: idle (0) unless a
         # leaf drives them (docs/SEP_TB_ARCH.adoc).
         self._set_if_exists(dut, "sep_ext_interrupts_i", 0)

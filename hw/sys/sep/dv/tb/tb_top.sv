@@ -542,6 +542,10 @@ module sep_uvm_top
     // (the vendored VeeR tap has no reset-vector TDR).
     // ------------------------------------------------------------------
     sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_w;
+    // The irq field of the SPI request, selected by name, so a leaf that
+    // samples it does not depend on the struct layout.
+    logic sep_io_spi_irq_w;
+    assign sep_io_spi_irq_w = sep_io_spi_req_w.irq;
     // EXT_TRNG_NUM_AXIS must equal sep_crypto_pkg::SepCryptoEdnEndpointCount (3):
     // sep_crypto.u_sep_trng binds u_drbg_s3c_scan.edn_axis_o/i to drbg_int_axis_req/rsp as a
     // DIRECT packed-array connection, one mux leg per DRBG EDN endpoint
@@ -2115,6 +2119,28 @@ module sep_uvm_top
 `undef HMAC_FIFO_RREADY
 
     // ------------------------------------------------------------------
+    // KMAC message-FIFO drain stall.
+    // ------------------------------------------------------------------
+    // kmac_fifo_drain_stall_i=1 holds the read side of the message FIFO idle:
+    // the FIFO read-ready and the FIFO valid toward the KMAC core are both 0, so
+    // the engine takes no word and the FIFO fills until STATUS.fifo_full reads 1.
+    // msgfifo_ready and msgfifo_valid are the kmac-local nets between u_msgfifo
+    // and u_kmac_core. After the release the FIFO drains and the message can
+    // complete. Re-issued every clock for Verilator, released when the port
+    // drops.
+`define KMAC_FIFO_RD `SEP_CORE.u_sep_crypto.u_kmac_wrapper_s3c_scan.u_tt_kmac
+    always @(posedge clk_i) begin
+        if (kmac_fifo_drain_stall_i === 1'b1) begin
+            force `KMAC_FIFO_RD.msgfifo_ready = 1'b0;
+            force `KMAC_FIFO_RD.msgfifo_valid = 1'b0;
+        end else begin
+            release `KMAC_FIFO_RD.msgfifo_ready;
+            release `KMAC_FIFO_RD.msgfifo_valid;
+        end
+    end
+`undef KMAC_FIFO_RD
+
+    // ------------------------------------------------------------------
     // DMA host-port stall.
     // ------------------------------------------------------------------
     // +sep_dma_host_stall holds the host TL-UL response idle -- a_ready and
@@ -3075,6 +3101,7 @@ module sep_uvm_top
     assign token_digest_test_en_inject_i = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
+    assign kmac_fifo_drain_stall_i  = 1'b0;
     assign sep_ext_interrupts_i     = '0;
     assign smn_outbound_resp_hold_i = 1'b0;
     assign smn_outbound_rd_slverr_i = 1'b0;
