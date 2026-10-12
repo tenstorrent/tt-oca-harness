@@ -54,7 +54,7 @@ from env.sep_fw_console import SepFwConsole, parse_kv
 from env.sep_pic_map import EXCLUDED_IDLE_SOURCES, meip_idle_mask_words, meip_words
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import sep_addr_define, sym
+from sep_reg_meta import INBOUND_FILTER_CTRL_0, sep_addr_define, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_csr_bank_seq import (
     F_ALLOW_NS,
@@ -120,6 +120,9 @@ INTERIOR_EXCLUDED = set(EXCLUDED_IDLE_SOURCES)
 MBX_COMPLETE = 7
 WIN_CFG = F_READ_ALLOWED | F_WRITE_ALLOWED | F_ENTRY_ENABLED
 WIN_CFG_NS = (WIN_CFG, WIN_CFG | F_ALLOW_NS)
+# Implemented fields of the FILTER_CONFIG upper word (RDL); the firmware writes 0.
+FILTER_CFG_HI_FIELDS = INBOUND_FILTER_CTRL_0.mask("FILTER_CONFIG") >> 32
+assert FILTER_CFG_HI_FIELDS != 0, "FILTER_CONFIG upper word has no field"
 CW_HI = 0x5EC0_C0DE
 CW = {"A": 0x0C0D_E0A0, "B": 0x0C0D_E0B0}
 
@@ -336,17 +339,21 @@ class sep_pic_external_access_refuse_test(sep_base_test):
                 (cfg & FILTER_CFG_LO_FIELDS) == (want & FILTER_CFG_LO_FIELDS)
                 and kv["START_ADDR"] == PIC_BASE
                 and kv["END_ADDR"] == PIC_END
+                and (kv["cfg_hi"] & FILTER_CFG_HI_FIELDS) == 0
                 and kv["start_hi"] == 0
                 and kv["end_hi"] == 0
             )
             self.logger.info(
                 "PIC-WINDOW LOG ns=%d FILTER_CONFIG=0x%08x want=0x%08x field_mask=0x%08x rsvd=0x%08x "
-                "START_ADDR=0x%08x END_ADDR=0x%08x start_hi=0x%x end_hi=0x%x match=%d",
+                "cfg_hi=0x%08x cfg_hi_mask=0x%08x START_ADDR=0x%08x END_ADDR=0x%08x start_hi=0x%x "
+                "end_hi=0x%x match=%d",
                 ns,
                 cfg,
                 want,
                 FILTER_CFG_LO_FIELDS,
                 cfg & ~FILTER_CFG_LO_FIELDS & 0xFFFF_FFFF,
+                kv["cfg_hi"],
+                FILTER_CFG_HI_FIELDS,
                 kv["START_ADDR"],
                 kv["END_ADDR"],
                 kv["start_hi"],
