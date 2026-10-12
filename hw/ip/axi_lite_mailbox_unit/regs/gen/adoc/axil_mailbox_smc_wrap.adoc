@@ -705,8 +705,7 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-RIRQT]
@@ -715,8 +714,7 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_0-IRQS]
@@ -835,8 +833,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-RIRQT]
@@ -845,8 +842,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_0-IRQS]
@@ -965,8 +961,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-RIRQT]
@@ -975,8 +970,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_1-IRQS]
@@ -1095,8 +1089,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-RIRQT]
@@ -1105,8 +1098,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_1-IRQS]
@@ -1225,8 +1217,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-RIRQT]
@@ -1235,8 +1226,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_2-IRQS]
@@ -1355,8 +1345,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-RIRQT]
@@ -1365,8 +1354,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_2-IRQS]
@@ -1485,8 +1473,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-RIRQT]
@@ -1495,8 +1482,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_3-IRQS]
@@ -1615,8 +1601,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-RIRQT]
@@ -1625,8 +1610,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_3-IRQS]
@@ -1745,8 +1729,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-RIRQT]
@@ -1755,8 +1738,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_4-IRQS]
@@ -1875,8 +1857,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-RIRQT]
@@ -1885,8 +1866,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_4-IRQS]
@@ -2005,8 +1985,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-RIRQT]
@@ -2015,8 +1994,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_5-IRQS]
@@ -2135,8 +2113,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-RIRQT]
@@ -2145,8 +2122,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_5-IRQS]
@@ -2265,8 +2241,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-RIRQT]
@@ -2275,8 +2250,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_6-IRQS]
@@ -2395,8 +2369,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-RIRQT]
@@ -2405,8 +2378,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_6-IRQS]
@@ -2525,8 +2497,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-RIRQT]
@@ -2535,8 +2506,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_7-IRQS]
@@ -2655,8 +2625,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-RIRQT]
@@ -2665,8 +2634,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_7-IRQS]
@@ -2785,8 +2753,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-RIRQT]
@@ -2795,8 +2762,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_8-IRQS]
@@ -2915,8 +2881,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-RIRQT]
@@ -2925,8 +2890,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_8-IRQS]
@@ -3045,8 +3009,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-RIRQT]
@@ -3055,8 +3018,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_9-IRQS]
@@ -3175,8 +3137,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-RIRQT]
@@ -3185,8 +3146,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_9-IRQS]
@@ -3305,8 +3265,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-RIRQT]
@@ -3315,8 +3274,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_10-IRQS]
@@ -3435,8 +3393,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-RIRQT]
@@ -3445,8 +3402,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_10-IRQS]
@@ -3565,8 +3521,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-RIRQT]
@@ -3575,8 +3530,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_11-IRQS]
@@ -3695,8 +3649,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-RIRQT]
@@ -3705,8 +3658,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_11-IRQS]
@@ -3825,8 +3777,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-RIRQT]
@@ -3835,8 +3786,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_12-IRQS]
@@ -3955,8 +3905,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-RIRQT]
@@ -3965,8 +3914,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_12-IRQS]
@@ -4085,8 +4033,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-RIRQT]
@@ -4095,8 +4042,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_13-IRQS]
@@ -4215,8 +4161,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-RIRQT]
@@ -4225,8 +4170,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_13-IRQS]
@@ -4345,8 +4289,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-RIRQT]
@@ -4355,8 +4298,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_14-IRQS]
@@ -4475,8 +4417,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-RIRQT]
@@ -4485,8 +4426,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_14-IRQS]
@@ -4605,8 +4545,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-RIRQT]
@@ -4615,8 +4554,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_15-IRQS]
@@ -4735,8 +4673,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-RIRQT]
@@ -4745,8 +4682,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_15-IRQS]
@@ -4865,8 +4801,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-RIRQT]
@@ -4875,8 +4810,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_16-IRQS]
@@ -4995,8 +4929,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-RIRQT]
@@ -5005,8 +4938,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_16-IRQS]
@@ -5125,8 +5057,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-RIRQT]
@@ -5135,8 +5066,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_17-IRQS]
@@ -5255,8 +5185,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-RIRQT]
@@ -5265,8 +5194,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_17-IRQS]
@@ -5385,8 +5313,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-RIRQT]
@@ -5395,8 +5322,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_18-IRQS]
@@ -5515,8 +5441,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-RIRQT]
@@ -5525,8 +5450,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_18-IRQS]
@@ -5645,8 +5569,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-RIRQT]
@@ -5655,8 +5578,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_19-IRQS]
@@ -5775,8 +5697,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-RIRQT]
@@ -5785,8 +5706,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_19-IRQS]
@@ -5905,8 +5825,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-RIRQT]
@@ -5915,8 +5834,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_20-IRQS]
@@ -6035,8 +5953,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-RIRQT]
@@ -6045,8 +5962,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_20-IRQS]
@@ -6165,8 +6081,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-RIRQT]
@@ -6175,8 +6090,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_21-IRQS]
@@ -6295,8 +6209,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-RIRQT]
@@ -6305,8 +6218,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_21-IRQS]
@@ -6425,8 +6337,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-RIRQT]
@@ -6435,8 +6346,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_22-IRQS]
@@ -6555,8 +6465,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-RIRQT]
@@ -6565,8 +6474,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_22-IRQS]
@@ -6685,8 +6593,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-RIRQT]
@@ -6695,8 +6602,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_23-IRQS]
@@ -6815,8 +6721,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-RIRQT]
@@ -6825,8 +6730,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_23-IRQS]
@@ -6945,8 +6849,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-RIRQT]
@@ -6955,8 +6858,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_24-IRQS]
@@ -7075,8 +6977,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-RIRQT]
@@ -7085,8 +6986,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_24-IRQS]
@@ -7205,8 +7105,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-RIRQT]
@@ -7215,8 +7114,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_25-IRQS]
@@ -7335,8 +7233,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-RIRQT]
@@ -7345,8 +7242,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_25-IRQS]
@@ -7465,8 +7361,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-RIRQT]
@@ -7475,8 +7370,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_26-IRQS]
@@ -7595,8 +7489,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-RIRQT]
@@ -7605,8 +7498,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_26-IRQS]
@@ -7725,8 +7617,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-RIRQT]
@@ -7735,8 +7626,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_27-IRQS]
@@ -7855,8 +7745,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-RIRQT]
@@ -7865,8 +7754,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_27-IRQS]
@@ -7985,8 +7873,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-RIRQT]
@@ -7995,8 +7882,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_28-IRQS]
@@ -8115,8 +8001,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-RIRQT]
@@ -8125,8 +8010,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_28-IRQS]
@@ -8245,8 +8129,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-RIRQT]
@@ -8255,8 +8138,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_29-IRQS]
@@ -8375,8 +8257,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-RIRQT]
@@ -8385,8 +8266,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_29-IRQS]
@@ -8505,8 +8385,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-RIRQT]
@@ -8515,8 +8394,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_30-IRQS]
@@ -8635,8 +8513,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-RIRQT]
@@ -8645,8 +8522,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_30-IRQS]
@@ -8765,8 +8641,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-RIRQT]
@@ -8775,8 +8650,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-outbound_mailbox_31-IRQS]
@@ -8895,8 +8769,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_31-RIRQT]
@@ -8905,8 +8778,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_smc_wrap-inbound_mailbox_31-IRQS]
