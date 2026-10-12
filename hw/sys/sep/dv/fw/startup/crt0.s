@@ -167,6 +167,26 @@ _start:
     #--------------------------------------------------------------------------
     snez    a0, a0                  # a0 = (a0 != 0) ? 1 : 0 (1=fail, 0=pass)
 
+    # An interrupt that reached _dummy_int_handler had no registered handler.
+    # The test did not expect it, so it fails: print "UNHANDLED IRQ n=<count>"
+    # and force the FAIL verdict.
+    la      t1, sep_dummy_int_count
+    lw      a1, 0(t1)
+    beqz    a1, _finish
+    li      t0, STDOUT
+    la      t2, .L_unhandled_irq_msg
+.L_unhandled_irq_puts:
+    lbu     t1, 0(t2)
+    beqz    t1, .L_unhandled_irq_count
+    sb      t1, 0(t0)
+    addi    t2, t2, 1
+    j       .L_unhandled_irq_puts
+.L_unhandled_irq_count:
+    jal     ra, _print_hex32
+    li      t1, '\n'
+    sb      t1, 0(t0)
+    li      a0, 1                   # Exit code = FAIL
+
 .global _finish
 _finish:
     li      t0, STDOUT
@@ -294,7 +314,9 @@ _print_hex32:
 #   - meicpct CSR does NOT exist (auto-capture)
 #
 # This default handler disables the interrupt source to prevent infinite loops
-# from level-triggered interrupts that aren't cleared at the source.
+# from level-triggered interrupts that aren't cleared at the source, and counts
+# the claim in sep_dummy_int_count. A non-zero count fails the test when main()
+# returns.
 #
 # Tests should register their own handlers for expected interrupts:
 #   la t0, INTVEC_BASE
@@ -455,9 +477,13 @@ tohost: .word STDOUT
 _nmi_handler_ptr:
     .word _default_nmi_handler
 
+.section .rodata
+.L_unhandled_irq_msg:
+    .asciz "UNHANDLED IRQ n="
+
 # Spurious-service count. _dummy_int_handler increments this on every claim.
-# Zeroed with BSS. Firmware that grades a quiet window reads it; other tests
-# ignore it.
+# Zeroed with BSS. A non-zero count when main() returns fails the test.
+# Firmware that grades a quiet window also reads it directly.
 .section .bss
 .align 4
 .global sep_dummy_int_count

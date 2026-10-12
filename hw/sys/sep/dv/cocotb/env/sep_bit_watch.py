@@ -14,6 +14,10 @@ docs/SEP_TB_ARCH.adoc).
 A watched bit that resolves to X or Z fails the leaf with ``BIT-WATCH-XZ
 FAIL`` while ``xz_fail`` is set. Verilator is 2-state.
 
+A query over a window the watcher never sampled (not started, stopped before
+the stimulus, or no clock since the mark) raises ``BitWatchIdleError``, so a
+"never rose" or "never high" check cannot pass on an empty record.
+
 Usage::
 
     irq = SepBitWatch(dut.sep_internal_interrupts_probe_o, {"chunk": 9, "err": 10}).start()
@@ -40,6 +44,10 @@ class BitWatchXZError(AssertionError):
 
 class BitWatchTimeout(AssertionError):
     """A bounded wait on a watched bit expired."""
+
+
+class BitWatchIdleError(AssertionError):
+    """A query covers a window in which the watcher took no sample."""
 
 
 @dataclass
@@ -118,9 +126,20 @@ class SepBitWatch:
         """The level of the last sample (None before the first sample)."""
         return self._rec(bit).level
 
-    def rise_clks_since(self, mark: BitMark, bit: str | None = None) -> list[int]:
+    def _require_sampled(self, mark: BitMark) -> None:
+        if self.clk <= mark.clk:
+            raise BitWatchIdleError(
+                f"BIT-WATCH FAIL: {self.name} took no sample after the mark "
+                f"(running={self._task is not None} clk={self.clk} mark_clk={mark.clk})"
+            )
+
+    def _rises_after(self, mark: BitMark, bit: str | None) -> list[int]:
         key = self._mark_key(mark, bit)
         return self.bits[key].rises[mark.rises[key] :]
+
+    def rise_clks_since(self, mark: BitMark, bit: str | None = None) -> list[int]:
+        self._require_sampled(mark)
+        return self._rises_after(mark, bit)
 
     def rises_since(self, mark: BitMark, bit: str | None = None) -> int:
         return len(self.rise_clks_since(mark, bit))
@@ -129,9 +148,11 @@ class SepBitWatch:
         return self.rises_since(mark, bit) > 0
 
     def fall_clks_since(self, mark: BitMark, bit: str | None = None) -> list[int]:
+        self._require_sampled(mark)
         return [c for c in self._rec(bit).falls if c > mark.clk]
 
     def high_clocks_since(self, mark: BitMark, bit: str | None = None) -> int:
+        self._require_sampled(mark)
         key = self._mark_key(mark, bit)
         return self.bits[key].high_clocks - mark.high[key]
 
@@ -142,7 +163,7 @@ class SepBitWatch:
         """Wait at most ``bound`` clocks for a rise after ``mark``; return its clock."""
         clk = self.dut.clk_i
         for _ in range(bound + 1):
-            rises = self.rise_clks_since(mark, bit)
+            rises = self._rises_after(mark, bit)
             if rises:
                 return rises[0]
             await RisingEdge(clk)

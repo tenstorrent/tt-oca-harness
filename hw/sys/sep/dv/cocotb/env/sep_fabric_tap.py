@@ -38,6 +38,10 @@ X or Z while the monitor runs fails the leaf with ``TAP-XZ FAIL``, so a check
 that counts no handshake cannot pass on an unknown handshake. Verilator is
 2-state; the X checks of the leaves therefore run on VCS.
 
+``since``, ``count`` and ``addrs`` raise ``TapIdleError`` when the monitor took
+no sample after the mark (not started, or stopped before the stimulus), so a
+zero-count check cannot pass on a monitor that never ran.
+
 Usage::
 
     tap = SepFabricTap("PR-OUT")
@@ -108,6 +112,21 @@ class TapXZError(AssertionError):
     """A tap handshake signal resolved to X or Z."""
 
 
+class TapIdleError(AssertionError):
+    """A query covers a window in which the tap took no sample."""
+
+
+class TapMark(int):
+    """A beat index that also carries the sampled clock count at the mark."""
+
+    clk: int
+
+    def __new__(cls, index: int, clk: int) -> "TapMark":
+        obj = super().__new__(cls, index)
+        obj.clk = clk
+        return obj
+
+
 @dataclass
 class TapBeat:
     """One handshake on one channel."""
@@ -148,6 +167,8 @@ class SepFabricTap:
         prefix, chans, kind = TAPS[name]
         self.kind = kind
         self.beats: list[TapBeat] = []
+        # Sampled clock edges since construction.
+        self.clk = 0
         self._task = None
         self._sigs: dict[str, tuple[object, object, dict[str, object]]] = {}
         for ch, names in chans.items():
@@ -170,6 +191,7 @@ class SepFabricTap:
         while True:
             await RisingEdge(clk)
             await ReadOnly()
+            self.clk += 1
             for ch, (valid, ready, flds) in self._sigs.items():
                 if not (_known(valid) and _known(ready)):
                     if not self.xz_fail:
@@ -197,11 +219,20 @@ class SepFabricTap:
             self._task.cancel()
             self._task = None
 
-    def mark(self) -> int:
+    def mark(self) -> "TapMark":
         """A position in the record; ``since`` returns the beats after it."""
-        return len(self.beats)
+        return TapMark(len(self.beats), self.clk)
+
+    def _require_sampled(self, mark: int) -> None:
+        mark_clk = getattr(mark, "clk", 0)
+        if self.clk <= mark_clk:
+            raise TapIdleError(
+                f"TAP FAIL: {self.name} took no sample after the mark "
+                f"(running={self._task is not None} clk={self.clk} mark_clk={mark_clk})"
+            )
 
     def since(self, mark: int, ch: str | None = None) -> list[TapBeat]:
+        self._require_sampled(mark)
         return [b for b in self.beats[mark:] if ch is None or b.ch == ch]
 
     def count(self, mark: int = 0, ch: str | None = None) -> int:

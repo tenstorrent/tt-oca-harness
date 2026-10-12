@@ -44,6 +44,9 @@ class sep_nmi_sanity_test(sep_base_test):
     """The NMI vector CSR and the WDT bark -> NMI path pass their firmware checks."""
 
     build_env = False
+    # The firmware runs every graded check and reports the result as its
+    # completion verdict, so that verdict is this leaf's own evidence.
+    required_evidence = ("CHK-FW-CONSOLE",)
 
     def build_phase(self) -> None:
         super().build_phase()

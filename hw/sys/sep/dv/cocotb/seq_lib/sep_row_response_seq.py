@@ -133,8 +133,8 @@ _HMAC_SWAP_FIELDS = tuple(
 # The None encodings are the RDL resets of the two fields; the legal one-hot
 # encodings are the SHA2_256/384/512 and Key_128..Key_1024 enums of hmac.hjson
 # (vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson, CFG).
-_HMAC_DS_NONE = (HMAC.reset("CFG") >> _HMAC_DS_LSB) & ((1 << _HMAC_DS_W) - 1)
-_HMAC_KL_NONE = (HMAC.reset("CFG") >> _HMAC_KL_LSB) & ((1 << _HMAC_KL_W) - 1)
+_HMAC_DS_NONE = HMAC.field_reset("CFG", "digest_size")
+_HMAC_KL_NONE = HMAC.field_reset("CFG", "key_length")
 _HMAC_DS_LEGAL = (0x1, 0x2, 0x4)
 _HMAC_KL_LEGAL = (0x1, 0x2, 0x4, 0x8, 0x10)
 
