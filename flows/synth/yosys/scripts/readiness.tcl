@@ -7,14 +7,9 @@ source [file join $script_dir common.tcl]
 # The prim cells instantiate technology cells, whose definitions come from Liberty.
 source [file join $script_dir init_tech.tcl]
 
-set slang_compat_args {}
-if { [info exists ::env(OCAH_SLANG_COMPAT_FLAGS)] } {
-    set slang_compat_args $::env(OCAH_SLANG_COMPAT_FLAGS)
-}
 yosys read_slang --top $top_design -f $sv_flist \
     --single-unit --keep-hierarchy \
     --allow-use-before-declare --ignore-assertions \
-    {*}$slang_compat_args \
     --unroll-limit=100000 --error-limit=100 \
     --timescale=$timescale
 yosys hierarchy -check -top $top_design

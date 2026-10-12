@@ -39,9 +39,6 @@ ifdef FLOW_DESIGN
 # TECH-scoped so different PDKs don't clobber each other's build output.
 OCAH_SYNTH_DIR := build/synth/$(TECH)
 OCAH_SYNTH_FLIST := $(OCAH_SYNTH_DIR)/$(FLOW_DESIGN).f
-FLOW_SYNTH_SLANG_EXPECTED_ERRORS ?=
-FLOW_SYNTH_SLANG_COMPAT_FLAGS ?=
-OCAH_SYNTH_SLANG_EXPECTED_ERRORS := $(addprefix $(OCAH_ROOT)/,$(FLOW_SYNTH_SLANG_EXPECTED_ERRORS))
 # synth drops the behavioral prim cells; tech_<TECH> selects their cell-level
 # replacements for that PDK.
 OCAH_SYNTH_BENDER_TARGETS := $(FLOW_BENDER_TARGETS) -t synth -t tech_$(subst -,_,$(TECH))
@@ -62,7 +59,7 @@ ocah-synth-yosys: ${PDK_SENTINEL}
 	@sed -i '1i +incdir+$(OCAH_YOSYS_ASSERT_INCDIR)' $(OCAH_SYNTH_FLIST)
 	$(call ocah_require_host_tool,yosys,./scripts/docker-run.sh run-here make ocah-synth-yosys)
 	$(call ocah_require_host_tool,slang,./scripts/docker-run.sh run-here make ocah-synth-yosys)
-	PDK=$(TECH) PDK_ROOT=$(PDK_ROOT) PROJ_NAME=$(FLOW_DESIGN) TOP_DESIGN=$(FLOW_DESIGN) SV_FLIST=$(OCAH_SYNTH_FLIST) OUT_DIR=$(OCAH_SYNTH_DIR) TIMESCALE=$(OCAH_FLOW_TIMESCALE) OCAH_YOSYS_SYNTH_TCL=$(OCAH_YOSYS_SYNTH_TCL) OCAH_SLANG_EXPECTED_ERROR_FILES="$(OCAH_SYNTH_SLANG_EXPECTED_ERRORS)" OCAH_SLANG_COMPAT_FLAGS="$(FLOW_SYNTH_SLANG_COMPAT_FLAGS)" $(OCAH_YOSYS_RUN)
+	PDK=$(TECH) PDK_ROOT=$(PDK_ROOT) PROJ_NAME=$(FLOW_DESIGN) TOP_DESIGN=$(FLOW_DESIGN) SV_FLIST=$(OCAH_SYNTH_FLIST) OUT_DIR=$(OCAH_SYNTH_DIR) TIMESCALE=$(OCAH_FLOW_TIMESCALE) OCAH_YOSYS_SYNTH_TCL=$(OCAH_YOSYS_SYNTH_TCL) $(OCAH_YOSYS_RUN)
 
 endif
 
