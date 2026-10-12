@@ -37,6 +37,31 @@ UNMAPPED_TESTS: dict[str, str] = {}
 
 # testcase -> ordered checkbox contracts (FEATURE_LIST / VPLAN aligned)
 TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
+    "smu_alias_cache_reset_test": [
+        (
+            "CHK-ALIAS-RESET-TRANSPARENT",
+            "ALIAS_RESET_TRANSPARENT",
+            "with every alias region invalid the outbound address is unchanged and VERSION_LO "
+            "at the local alias reads its reset value",
+        ),
+        (
+            "CHK-ALIAS-CACHE-HIT",
+            "ALIAS_CACHE_HIT",
+            "an alias hit carries the programmed cacheable value 0..15 on AW and AR",
+        ),
+        (
+            "CHK-ALIAS-CACHE-ZERO",
+            "ALIAS_CACHE_ZERO",
+            "cacheable 0 gives AxCACHE 0 on smu_axi_out against the measured bridge value",
+        ),
+        (
+            "CHK-ALIAS-CACHE-MISS",
+            "ALIAS_CACHE_MISS",
+            "an access that misses every region keeps the bridge AxCACHE",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and AXI waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S7<PASS"),
+    ],
     "smu_axi_alias_remap_manager_scope_test": [
         (
             "CHK-ALIAS-REMAP-SCOPE-S3",
@@ -835,6 +860,120 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "fabric config CSR write/readback held at every listed destination",
         ),
     ],
+    "smu_filter_cfg_register_map_test": [
+        (
+            "CHK-CFG-RESET-CONFIG",
+            "CFG_RESET_CONFIG",
+            "FILTER_CONFIG reads the reset value on all 32 entries of both instances",
+        ),
+        (
+            "CHK-CFG-RESET-RANGE",
+            "CFG_RESET_RANGE",
+            "START_ADDR reads 0x0 and END_ADDR 0x7 on all 32 entries",
+        ),
+        (
+            "CHK-CFG-RW-FIELDS",
+            "CFG_RW_FIELDS",
+            "one-hot walk of the read-write fields reads back; locked reads 1",
+        ),
+        (
+            "CHK-CFG-DBW-RO",
+            "CFG_DBW_RO",
+            "all-ones write to data_bus_width still reads the reset value",
+        ),
+        (
+            "CHK-CFG-ADDR-56",
+            "CFG_ADDR_56",
+            "START_ADDR and END_ADDR bits [55:0] store and read back a full bit walk",
+        ),
+        (
+            "CHK-CFG-ENTRY-STRIDE",
+            "CFG_ENTRY_STRIDE",
+            "unique value per entry reads back at its own 0x20-stride address only",
+        ),
+        (
+            "CHK-CFG-HALF-WORD",
+            "CFG_HALF_WORD",
+            "32-bit halves match the 64-bit value; half-only writes leave the other half",
+        ),
+        (
+            "CHK-CFG-GROUPID-RB",
+            "CFG_GROUPID_RB",
+            "group_id written 0xA reads back 0xA on both instances",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A and AXI waits with last state",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence S1<S2<...<S7<PASS",
+        ),
+    ],
+    "smu_smc_unmapped_response_test": [
+        (
+            "CHK-UNMAP-BETWEEN",
+            "CHK-UNMAP-BETWEEN",
+            "between-unit ext_in reads answer DECERR/0xBADCAB1E and writes DECERR",
+        ),
+        (
+            "CHK-UNMAP-PAST-EXTENT",
+            "CHK-UNMAP-PAST-EXTENT",
+            "past-extent reads answer DECERR/0xBADCAB1E; writes SLVERR or DECERR per block",
+        ),
+        (
+            "CHK-UNMAP-MMODE-XVISOR",
+            "CHK-UNMAP-MMODE-XVISOR",
+            "M-mode and Xvisor window reads and writes from ext_in answer DECERR",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A and AXI waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S5<PASS"),
+    ],
+    "smu_filter_lock_test": [
+        (
+            "CHK-LOCK-SET",
+            "LOCK_SET",
+            "locked reads 1 on entry 5 of both filter instances after the locking write",
+        ),
+        (
+            "CHK-LOCK-CONFIG-DECERR",
+            "LOCK_CONFIG_DECERR",
+            "FILTER_CONFIG writes to the locked entry return DECERR and the value stays",
+        ),
+        (
+            "CHK-LOCK-ADDR-DECERR",
+            "LOCK_ADDR_DECERR",
+            "START_ADDR and END_ADDR writes to the locked entry return DECERR, values unchanged",
+        ),
+        (
+            "CHK-LOCK-READBACK",
+            "LOCK_READBACK",
+            "the three locked registers read OKAY with the locked configuration",
+        ),
+        (
+            "CHK-LOCK-ISOLATION",
+            "LOCK_ISOLATION",
+            "entries 4 and 6 stay writable and read back on both instances",
+        ),
+        (
+            "CHK-LOCK-STILL-FILTERS",
+            "LOCK_STILL_FILTERS",
+            "locked inbound entry admits its page and locked outbound entry blocks its page",
+        ),
+        (
+            "CHK-LOCK-PARITY",
+            "LOCK_PARITY",
+            "response and value sequence of S2 to S6 equal on inbound and outbound",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and AXI waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S9<PASS"),
+    ],
     "smu_i3c_mem_port_connectivity_test": [
         (
             "CHK-SUB-AXIL-LOCAL-S1",
@@ -1275,6 +1414,40 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "NDM_PROCESS_S3",
             "NDMRESET_PROCESS and the process port read 0 after a cold reset",
         ),
+    ],
+    "smu_remap_cfg_register_map_test": [
+        (
+            "CHK-ALIAS-REGS-RESET",
+            "ALIAS_REGS_RESET",
+            "all 24 alias REGION_START/END/ATTRS registers read 0 before any write",
+        ),
+        (
+            "CHK-OREMAP-REGS-RESET",
+            "OREMAP_REGS_RESET",
+            "all 16 output remap REGION_ATTRS registers read 0 before any write",
+        ),
+        (
+            "CHK-ALIAS-REGS-PLACEMENT",
+            "ALIAS_REGS_PLACEMENT",
+            "unique alias register values read back at their own address only",
+        ),
+        (
+            "CHK-OREMAP-REGS-PLACEMENT",
+            "OREMAP_REGS_PLACEMENT",
+            "unique output remap offsets read back at their own address only",
+        ),
+        (
+            "CHK-ALIAS-REGS-MASKS",
+            "ALIAS_REGS_MASKS",
+            "alias start, end, offset, cacheable and valid bits store and read back",
+        ),
+        (
+            "CHK-OREMAP-REGS-MASKS",
+            "OREMAP_REGS_MASKS",
+            "output remap offset[55:0] and valid[63] store and read back",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and AXI waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S6<PASS"),
     ],
     "smu_reset_csr_access_test": [
         (
