@@ -1036,6 +1036,23 @@ module smu_wrapper_uvm_top
     $display("[smu_wrapper_uvm_top] loaded SEP boot ROM from %s", boot_rom_path);
   end
 
+  // The Key Manager ROM macro has no init-file hook. A leaf that releases
+  // km_jtag_rst_n names an image: an empty ROM returns X, and the CPU's
+  // look-ahead read takes u_km_rom.req_i to X once that reset is high.
+  string km_rom_path;
+  int    km_rom_fd;
+  initial begin
+    if ($value$plusargs("km_rom_hex=%s", km_rom_path)) begin
+      km_rom_fd = $fopen(km_rom_path, "r");
+      if (km_rom_fd == 0) begin
+        $fatal(1, "[smu_wrapper_uvm_top] +km_rom_hex=%s is not readable", km_rom_path);
+      end
+      $fclose(km_rom_fd);
+      $readmemh(km_rom_path, u_dut.u_sep_ip_integration.u_km_rom.mem);
+      $display("[smu_wrapper_uvm_top] loaded Key Manager ROM from %s", km_rom_path);
+    end
+  end
+
   // ------------------------------------------------------------------
   // DTP / JTAG observation taps -- SEP-independent, and kept in their own
   // block so they stay separate from the sep_* observables above.
