@@ -13070,7 +13070,8 @@ clearing of the pending interrupt.
 * SCALED_COUNT bracketed by COUNT readings with scale four and no 16-bit wrap.
 * Eight COUNT samples spanning at least two compare periods with zerocmp enabled.
 * Pending interrupt below CMP, above CMP, after clearing while elapsed remains
-  asserted, and after feeding then clearing while elapsed is low.
+  asserted, preserved across FEED before software clearing, and cleared while
+  elapsed is low.
 
 *Expectation Sources*: `wdt.rdl` defines effective byte enables and unlock
 consumption in its addrmap description. KEY defines the unlock magic and readback;
@@ -13087,6 +13088,8 @@ interrupt setting at or above CMP, and preservation of pending IP across FEED.
 FEED writes and their unlock consumption, bracket SCALED_COUNT, then sample COUNT
 with zerocmp enabled. Disable zerocmp and bracket every interrupt observation with
 COUNT readings on the intended side of CMP and below the 16-bit wrap limit.
+Read CTRL after FEED and before each interrupt-clear phase to require that FEED
+preserves pending IP, independently of the subsequent software clear.
 Read CMP after each CMP write. Finally feed the watchdog, disable counting and
 restore CMP. Wait with a bound for all predicted comparisons, then check exact
 access and comparison counts with no new mismatch.
@@ -13101,12 +13104,12 @@ access and comparison counts with no new mismatch.
 |`CHK-WDT-FEED-REJECT` |The selected one-bit-invalid FEED does not decrease COUNT
 |`CHK-WDT-FEED-SCALED` |Scaled count lies between shifted surrounding COUNT readings
 |`CHK-WDT-FEED-ZEROCMP` |All samples are at or below CMP and an observed sample decreases
-|`CHK-WDT-FEED-IP` |Interrupt observations match the compare condition and software-clear phases
+|`CHK-WDT-FEED-IP` |Interrupt observations match the compare condition, remain set after FEED and match the software-clear phases
 |`CHK-WDT-FEED-WINDOW` |Scaling, sample span, deadline and eight COUNT brackets are valid
 |`CHK-SB-WDT-CSR` |In-scope watchdog accesses return OKAY; CTRL (IP masked), KEY and CMP reads match the passive model
 |`CHK-WDT-CSR-SCOREBOARD` |Each pass completes exactly the predicted comparisons with no new mismatch
 |`CHK-SB-MIN-ACTIVITY` |Completed passes reach the minimum feature comparison count
-|`CHK-NONVAC` |The sequence completes 83 fixed SEP_IN CSR accesses plus every compare-poll read; this checks stimulus accounting, not passive bus activity
+|`CHK-NONVAC` |The sequence completes 85 fixed SEP_IN CSR accesses plus every compare-poll read; this checks stimulus accounting, not passive bus activity
 |`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP` |Bring-up and frontdoor responses complete
 |===
 
@@ -13127,13 +13130,14 @@ re-baselining is not validated.
 `+SMC_WDT_FEED_SEQUENCE_NEGATIVE` changes expectations only and fails exactly one
 record each of `CHK-WDT-FEED-CLEAR`,
 `CHK-WDT-FEED-REJECT`, `CHK-WDT-FEED-SCALED`,
-`CHK-WDT-FEED-ZEROCMP` and `CHK-WDT-FEED-IP` per pass.
+`CHK-WDT-FEED-ZEROCMP`, and three records of `CHK-WDT-FEED-IP` per pass:
+seven failed records per pass in total.
 The scoreboard records no mismatch in the sequence negative.
 Used alone, `+SMC_WDT_CSR_SCOREBOARD_NEGATIVE` corrupts predicted CTRL/KEY/CMP
-read bit 0 and predicts SLVERR for writes: 59 feature mismatches per pass
-(17 reads and 42 writes), plus one CHK-WDT-CSR-SCOREBOARD failure per pass.
+read bit 0 and predicts SLVERR for writes: 61 feature mismatches per pass
+(19 reads and 42 writes), plus one CHK-WDT-CSR-SCOREBOARD failure per pass.
 The 24 fixed response-only reads and compare-poll reads still pass.
-Positive runs complete 83 fixed comparisons plus poll reads per pass.
+Positive runs complete 85 fixed comparisons plus poll reads per pass.
 No directed run produces a real WDT error response; the negative validates
 comparison sensitivity, not real error-response handling.
 RATE and WINDOW remain unmodified in the negative run: they establish valid
@@ -13839,6 +13843,10 @@ to make, and waits on a ruling.
 [cols="2,1,3,3",options="header"]
 |===
 |Leaf |Groups |Why CI cannot run it |Closes when
+|`smc_wdt_feed_zerocmp_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
+|`smc_wdt_core_awake_gate_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
+|`smc_regblock_sparse_strobe_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
+|`smc_lock_pipelined_write_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_fw_hello_world_test` |`fw`, `all` |`firmware = "hello_world"`: `[c_build.default]` builds the DV C image with RISC-V GCC and picolibc |A toolchain image CI can pull is published to a registry, or `.github/actions/dv-run` installs `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` on the runner and exports `RISCV_TOOLCHAIN`; the weekly tier then gains a `dut: smc, items: all` row (one seed, ~240 min budget) and this row closes
 |`smc_fw_plic_claim_test` |`fw`, `all` |`firmware = "plic_sanity"`, same build path |As above
 |`smc_fw_hello_world_multicore_test` |`fw`, `all` |`firmware = "hello_world_multicore"`, same build path |As above
