@@ -127,7 +127,7 @@ Executable membership is resolved from the testlists; the groups and their
 |`smoke` |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
 |`hosted` |Nightly and weekly (`regress.yml`): `all` minus the twenty leaves that need the RISC-V toolchain (fifteen `fw` leaves, three dual-target leaves that run a ROM or firmware image, and the two `mmio_wedge` leaves of `cpu`)
 |`sanity` |The three dual-target leaves, held out of `all`
-|`occp_rom` |33 of the 34 BL0/SMC ROM cases (`smc_occp_ring_buffer_stress_test` is left out for runtime), including the hours-long dual-SMC unsecure boot
+|`occp_rom` |33 of the 34 BL0/SMC ROM cases (`smc_occp_ring_buffer_stress_test` is left out for runtime), including the hours-long dual-SMC unsecure boot. <<smc-rom-dv-verification-plan>> grades them
 |`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no feature credit
 |`all` |The package regression, gated by its `expected_count`; `holdout.toml` defines the non-ROM leaves outside it, `sanity` holds the dual-target leaves, and <<smc-held-out-testcases>> records the sign-off holdouts
 |===
@@ -193,7 +193,7 @@ carry it, so a reviewer can run one feature without the whole regression.
 |PLL/PVT clock config |none; `smc_pll_pvt_clock_config_test` is dispositioned in <<smc-deferred-disposition>> |none |macro handshake |OKAY+0 wrap |NO
 |I3C CCC/IBI |none; `smc_i3c_ccc_ibi_full_test` is dispositioned in <<smc-deferred-disposition>> |none |— |child I3C TB |NO
 |DTP CSR on smc_wrapper |idle port; no terminator |none — no terminator |— |do not add a placeholder slave for credit |NO
-|UART/SPI loopback, ROM boot |none; ROM boot runs under `occp_rom` without feature credit |not canonical |protocol / firmware |none credited |NO
+|UART/SPI loopback, ROM boot |none; ROM boot runs under `occp_rom` and <<smc-rom-dv-verification-plan>> grades it |not canonical |protocol / firmware |none credited |NO
 |===
 
 The SAMPLE-only observe names are (`smc_cold_reset_test`,
