@@ -720,6 +720,16 @@ sources), then the TB collateral both flows compile (`smc_cpu_mem_dv`),
 `smc_tb_if`, the generated SMC address map, `smc_env_pkg`, `smc_seq_lib_pkg`,
 and `tb_top.sv` last.
 
+`smc_tb_if.zeroer_busy` mirrors the existing `tb_zeroer_busy` execution tap.
+`zeroer_busy_sample_count` increments at each rising `clk_smc` edge whose busy
+value is not known zero, including X/Z. It is cumulative and does not clear on
+reset;
+scenarios compare snapshots within their observation window. The wide-register
+strobe scenario requires an idle tap before its first catalogued operation,
+then checks an unchanged sample count through the final status read. A busy
+pulse spanning a sampling edge cannot disappear from the no-start check.
+Sub-cycle pulses between sampling edges are outside this check.
+
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
 subscribes to the SEP_IN monitor stream, rebuilds a shadow of the

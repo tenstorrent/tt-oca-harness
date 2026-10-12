@@ -3154,9 +3154,18 @@ module smc_uvm_top
     assign u_tb_if.rst_primary_smc_clk_n     = rst_primary_smc_clk_no;
     assign u_tb_if.rst_wdt_smc_clk_n         = rst_wdt_smc_clk_no;
     assign u_tb_if.cpu_cluster_isolate       = tb_cpu_cluster_isolate;
+    assign u_tb_if.zeroer_busy               = tb_zeroer_busy;
     assign u_tb_if.fuse_sense_done           = tb_fuse_sense_done;
     assign u_tb_if.fuse_reset_n              = tb_fuse_reset_n;
     assign u_tb_if.rst_warm_smc_clk_n        = tb_rst_warm_smc_clk_n;
+
+    logic [31:0] zeroer_busy_sample_count = '0;
+    always @(posedge clk_smc) begin
+      if (u_tb_if.zeroer_busy !== 1'b0)
+        zeroer_busy_sample_count <= zeroer_busy_sample_count + 32'd1;
+    end
+    assign u_tb_if.zeroer_busy_sample_count = zeroer_busy_sample_count;
+
 
     // Cold-reset assertion counter: the scoreboard predictors re-baseline
     // their CSR shadows on it.

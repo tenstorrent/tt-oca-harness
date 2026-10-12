@@ -12975,18 +12975,26 @@ the strobed RW bytes of selected 64-bit register-block words.
   a predicted read. Passes 0 to 3 use all-ones, all-zeros, `0x55` and `0xAA`
   data; later passes use seeded data.
 * Every SEP_IN byte lane is strobed at least once across the selected words.
+* A passive Zeroer busy-sample count remains unchanged throughout the catalogued
+  operations, including a clock-sampled busy pulse that ends before the final
+  status read.
 
 *Expectation Sources*: The catalogued words use the generated field masks and
 defaults. The generated implementations of Zeroer, SMC base-config and
 alias-remap drive `cpuif_wr_err = '0`, so writes reaching these register blocks
 do not produce a register-block write error. This does not define the response
 of an access rejected earlier in the fabric.
+`zeroer_ctrl.rdl` defines DEST_ADDR and SIZE as the command address and byte count;
+writing CTRL_STATUS triggers the command. The passive busy tap observes execution;
+it is not a software-visible register interface.
 
 *Test Procedure*:
 
 Drive `smc_regblock_sparse_strobe_test_seq`. The safe-state reads run before
 the first write. The sequence applies the full, single-byte, sparse, null and
-restore operations to each catalogued word, checks Zeroer state and lane
+restore operations to each catalogued word, requires no Zeroer busy or unknown
+value sampled on a rising SMC clock edge from before the first catalogued
+operation through the final status read, checks Zeroer state and lane
 coverage, waits with a bound for all predicted comparisons, then checks
 scoreboard results and access counts.
 
@@ -13002,7 +13010,7 @@ scoreboard results and access counts.
 |`CHK-REGBLOCK-WIDE-NULL-STROBE` |A write with no strobed lane changes nothing
 |`CHK-REGBLOCK-WIDE-RESTORE` |Each word reads its reset value after the restore write
 |`CHK-REGBLOCK-WIDE-RESTORE-NONVAC` |At least one restore per pass changes an RW value
-|`CHK-REGBLOCK-WIDE-NO-ZEROER-START` |The Zeroer reads idle (`CTRL_STATUS.STATUS = 0`) after the last catalogued write
+|`CHK-REGBLOCK-WIDE-NO-ZEROER-START` |No rising SMC clock edge samples busy or X/Z during the catalogued operations; the busy tap and final `CTRL_STATUS.STATUS` are idle
 |`CHK-REGBLOCK-WIDE-LANE-COVERAGE` |All eight SEP_IN byte lanes were strobed
 |`CHK-SB-REGBLOCK-WIDE` |Each catalogued read and write returns OKAY; each read also matches the passive model's predicted 64-bit value
 |`CHK-REGBLOCK-WIDE-SCOREBOARD` |Every predicted read and write was compared with no new mismatch
@@ -13013,6 +13021,7 @@ scoreboard results and access counts.
 *Known Limitations*:
 
 The claim covers the seven selected words under the safe-state preconditions.
+The busy observation is clock-sampled; it does not grade sub-cycle glitches.
 It excludes registers whose writes change decode, gating, reset, lock or other
 operational state. `RESET_VECTOR_0` through `RESET_VECTOR_3` are excluded
 because a later core reset that does not also assert warm reset can consume a
@@ -13025,8 +13034,10 @@ handles a real error response; the error-read path has no directed run here.
 *Pass Criteria*: all checks hold on every pass;
 `+SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE` must fail `regblock_wide`
 comparisons. `+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
-full-write expectation and must fail `CHK-REGBLOCK-WIDE-FULL-RW` while the
-scoreboard records no mismatch.
+full-write and no-start expectations and must fail seven
+`CHK-REGBLOCK-WIDE-FULL-RW` records and one
+`CHK-REGBLOCK-WIDE-NO-ZEROER-START` record per pass (eight failures per pass),
+while the scoreboard records no mismatch.
 `+SMC_REGBLOCK_WIDE_RESPONSE_NEGATIVE`, used alone, changes only predicted
 write responses to SLVERR and must fail every catalogued write comparison and
 no read comparison: 50 write mismatches per pass (35 base writes and 15 fixed
