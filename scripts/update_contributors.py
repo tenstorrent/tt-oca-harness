@@ -6,7 +6,8 @@
 
 Every identity in the history goes through .mailmap first, so a contributor who committed
 under another name or address is matched to their existing entry rather than added twice.
-Bots and AI agents are skipped.
+Bots and AI agents are skipped. A new contributor joins the group that already lists their
+email domain, so filing one person under their organisation places later colleagues too.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ import argparse
 import re
 import subprocess
 import sys
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -77,8 +79,11 @@ def render(header: list[str], groups: list[Group]) -> str:
     return "\n\n".join(blocks) + "\n"
 
 
-def history_identities(rev: str) -> list[str]:
-    """Every author and Co-authored-by identity reachable from *rev*, oldest first."""
+def history_identities(rev: str) -> list[tuple[str, bool]]:
+    """Every author and Co-authored-by identity reachable from *rev*, oldest first.
+
+    Each identity is paired with whether it is the commit's author rather than a co-author.
+    """
     log = _git(
         "log",
         "--reverse",
@@ -87,37 +92,57 @@ def history_identities(rev: str) -> list[str]:
     )
     identities = []
     for line in log.splitlines():
-        identities += [part.strip() for part in line.split(TRAILER_SEP) if part.strip()]
+        parts = [part.strip() for part in line.split(TRAILER_SEP)]
+        identities += [(part, i == 0) for i, part in enumerate(parts) if part]
     return identities
 
 
-def canonical(identities: list[str]) -> list[str]:
-    """Map each identity through .mailmap, dropping unparsable ones and keeping first-seen order."""
-    valid = list(dict.fromkeys(i for i in identities if IDENTITY.match(i)))
+def canonical(identities: list[tuple[str, bool]]) -> list[tuple[str, bool]]:
+    """Map each identity through .mailmap, dropping unparsable ones."""
+    valid = list(dict.fromkeys(i for i, _ in identities if IDENTITY.match(i)))
     if not valid:
         return []
     mapped = _git("check-mailmap", "--stdin", stdin="\n".join(valid) + "\n").splitlines()
-    return list(dict.fromkeys(mapped))
+    to_canonical = dict(zip(valid, mapped))
+    return [(to_canonical[i], authored) for i, authored in identities if i in to_canonical]
 
 
-def missing(groups: list[Group], identities: list[str]) -> list[str]:
+def missing(groups: list[Group], identities: list[tuple[str, bool]]) -> list[str]:
+    """One identity per address absent from CONTRIBUTORS, in first-seen order.
+
+    An address listed under several names takes the name it authored the most commits
+    under, so a co-author trailer's handle never wins over the name its owner commits as.
+    """
     known = {_email(entry) for group in groups for entry in group.entries}
-    new = []
-    for identity in identities:
+    authored_count: dict[str, Counter[str]] = {}
+    seen_count: Counter[str] = Counter()
+    for identity, authored in identities:
         if NOT_A_PERSON.search(identity) or _email(identity) in known:
             continue
-        known.add(_email(identity))
-        new.append(identity)
-    return new
+        authored_count.setdefault(_email(identity), Counter())[identity] += authored
+        seen_count[identity] += 1
+    return [
+        max(names, key=lambda name: (names[name], seen_count[name]))
+        for names in authored_count.values()
+    ]
+
+
+def _group_for(groups: list[Group], domain: str) -> str:
+    """The group already listing *domain*, else the DOMAIN_GROUPS match, else OTHER_GROUP."""
+    for group in groups:
+        if group.name != OTHER_GROUP and any(
+            _email(entry).endswith("@" + domain) for entry in group.entries
+        ):
+            return group.name
+    return next(
+        (group for suffix, group in DOMAIN_GROUPS.items() if domain.endswith(suffix)),
+        OTHER_GROUP,
+    )
 
 
 def add(groups: list[Group], identities: list[str]) -> None:
     for identity in identities:
-        domain = _email(identity).rsplit("@", 1)[-1]
-        name = next(
-            (group for suffix, group in DOMAIN_GROUPS.items() if domain.endswith(suffix)),
-            OTHER_GROUP,
-        )
+        name = _group_for(groups, _email(identity).rsplit("@", 1)[-1])
         group = next((g for g in groups if g.name == name), None)
         if group is None:
             group = Group(name)

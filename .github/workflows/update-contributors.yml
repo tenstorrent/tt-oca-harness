@@ -43,13 +43,14 @@ jobs:
             ## Summary
             Add the commit authors and co-authors on `main` who are missing from `CONTRIBUTORS`.
 
-            Each new person is placed in the organisation group for their email domain
-            (`tenstorrent.com` -> Tenstorrent, `lowrisc.org` -> lowRISC). Anyone else lands
-            in Other.
+            Each new person is listed under the name they author commits as, in the group
+            that already lists their email domain. A domain no group lists yet lands in
+            Other.
 
             Before merging, check each new entry. If someone is already listed under another
             name or address, map that identity to their entry in `.mailmap` and drop the
-            duplicate. Move someone who landed in the wrong organisation group.
+            duplicate. Move anyone in Other into a group named for their organisation, as
+            the organisation writes it, so later contributors from that domain follow.
 
             ## Test plan
             `python3 scripts/update_contributors.py --check`
