@@ -5,11 +5,11 @@
 :description: SEP lifecycle states, demotion, feature control, and asset protection.
 ifdef::backend-html5[]
 :class-2-asset-manifest-link: xref:sep:attack_countermeasures.adoc#class-2-asset-manifest[Class 2 Asset Manifest and Naming]
-:entropy-source-fifo-access-link: xref:ip:entropy_source/doc/index.adoc#entropy-source-fifo-access[FIFO Software Access]
+:entropy-source-fifo-access-link: xref:ip:entropy_source/doc/index.adoc#entropy-source-fifo-access[FIFO Access Gate]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 :class-2-asset-manifest-link: <<class-2-asset-manifest,Class 2 Asset Manifest and Naming>>
-:entropy-source-fifo-access-link: <<entropy-source-fifo-access,FIFO Software Access>>
+:entropy-source-fifo-access-link: <<entropy-source-fifo-access,FIFO Access Gate>>
 endif::backend-pdf[]
 
 [[life-cycle-controller-lcc-life-cycle-controller-lcc]]

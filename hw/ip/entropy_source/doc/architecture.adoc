@@ -149,7 +149,7 @@ while it is closed, the FIFO neither captures nor reads out, whatever
 `FIFO_CTRL.ENABLE` holds.
 
 [[entropy-source-fifo-access]]
-== FIFO Software Access
+== FIFO Access Gate
 
 Three FIFOs are readable through the register block, and each exposes entropy
 that must not leave the block in the field. The output FIFO holds the words

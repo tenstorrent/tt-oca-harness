@@ -144,7 +144,7 @@ source quality, validates an external producer, or establishes FIPS compliance;
 qualification must justify the source and its operating configuration separately.
 
 [[sep-entropy-fifo-access]]
-== Software Access to Entropy
+== Entropy Access Paths
 
 Random data leaves the TRNG through the
 ifdef::backend-html5[xref:sep:entropy_pool.adoc#sep-entropy-pool[entropy pool],]
@@ -160,8 +160,8 @@ The FIFOs are therefore accessible exactly when the
 ifdef::backend-html5[xref:sep:lifecycle_controller.adoc#feature-control-table[per-LC-state feature control profile]]
 ifdef::backend-pdf[<<feature-control-table,per-LC-state feature control profile>>]
 enables DBG_1 bit 4, and the gate's behaviour is in the Entropy Source chapter
-ifdef::backend-html5[(xref:ip:entropy_source/doc/index.adoc#entropy-source-fifo-access[FIFO Software Access]).]
-ifdef::backend-pdf[(<<entropy-source-fifo-access,FIFO Software Access>>).]
+ifdef::backend-html5[(xref:ip:entropy_source/doc/index.adoc#entropy-source-fifo-access[FIFO Access Gate]).]
+ifdef::backend-pdf[(<<entropy-source-fifo-access,FIFO Access Gate>>).]
 `ENTROPY_DBG` does not gate the entropy pool, nor the CSRNG application
 interface, whose enable is `CSRNG.CTRL.SW_APP_ENABLE`.
 
