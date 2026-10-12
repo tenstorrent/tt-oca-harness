@@ -137,7 +137,7 @@ typedef union {
 
 // reg - reset_unit::SS_RESET_COMPLETE
 // Response signal from subsystem to indicate reset (or some other critical step) has completed.
-// Bitwise write 1 to clear
+// Each bit reads the synchronized live value of its subsystem's signal; it is not latched.
 #define RESET_UNIT__SS_RESET_COMPLETE__RESET_COMPLETE_bm 0xffffffff
 #define RESET_UNIT__SS_RESET_COMPLETE__RESET_COMPLETE_bp 0
 #define RESET_UNIT__SS_RESET_COMPLETE__RESET_COMPLETE_bw 32
@@ -145,7 +145,7 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         // Response signal from subsystem to indicate reset (or some other critical step) has completed.
-        // Bitwise write 1 to clear
+        // Each bit reads the synchronized live value of its subsystem's signal; it is not latched.
         uint32_t reset_complete :32;
     } f;
     uint32_t w;

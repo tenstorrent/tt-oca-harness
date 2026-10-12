@@ -151,8 +151,8 @@ typedef union {
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_bp 0
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_bw 16
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_reset 0x0
-// Timeout mode: 0 = give up and report error (stay withheld, do not apply);
-// 1 = force the reset on timeout.
+// Timeout mode: 0 = report the timeout and keep withholding the reset until
+// the drain completes, then apply it; 1 = force the reset on timeout.
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_bm 0x10000
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_bp 16
 #define CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_bw 1
@@ -174,8 +174,8 @@ typedef union {
         // Cycles (clk_smc) a software reset may stay pending (withheld, waiting
         // for drain) before timeout. 0 = disabled, wait indefinitely.
         uint64_t timeout_value :16;
-        // Timeout mode: 0 = give up and report error (stay withheld, do not apply);
-        // 1 = force the reset on timeout.
+        // Timeout mode: 0 = report the timeout and keep withholding the reset until
+        // the drain completes, then apply it; 1 = force the reset on timeout.
         uint64_t timeout_mode :1;
         uint64_t :15;
         // Live status: high while a requested software reset is applied at the cluster,

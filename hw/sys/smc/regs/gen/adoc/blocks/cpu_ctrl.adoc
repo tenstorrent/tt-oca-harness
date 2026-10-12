@@ -109,8 +109,8 @@ timeout_value and remains high until the request is deasserted. Set in both mode
 | 32 | `reset_applied` | R | 0x0 a| Live status: high while a requested software reset is applied at the cluster,
 either after drain completes or after a force-mode timeout.
 | 31:17 | `Reserved` | - | - a| Reserved
-| 16 | `timeout_mode` | RW | 0x0 a| Timeout mode: 0 = give up and report error (stay withheld, do not apply);
-1 = force the reset on timeout.
+| 16 | `timeout_mode` | RW | 0x0 a| Timeout mode: 0 = report the timeout and keep withholding the reset until
+the drain completes, then apply it; 1 = force the reset on timeout.
 | 15:0 | `timeout_value` | RW | 0x0 a| Cycles (clk_smc) a software reset may stay pending (withheld, waiting
 for drain) before timeout. 0 = disabled, wait indefinitely.
 |===
