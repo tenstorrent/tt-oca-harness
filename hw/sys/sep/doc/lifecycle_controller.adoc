@@ -238,7 +238,7 @@ endif::backend-html5[]
 
 |3 |debug (DBG_1) |SMC_FUSE_DBG |`1'b1`: the DFT-inserted access path into the SMC OTP is disabled. `1'b0`: enabled. (The bit is produced by SEP-LCC's `feat_ctrl_o`, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.)
 
-|4 |debug (DBG_1) |ENTROPY_DBG |Software read access to the entropy source's three readable FIFOs: the conditioned output FIFO (`FIFO_RDATA`), which holds the words that seed the DRBG, and the BIW and raw-noise observe FIFOs (`BIW_OBS_RDATA`, `NOISE_OBS_RDATA`), which hold entropy ahead of conditioning. `1'b1`: the three reads return zero without popping and the FIFOs stop capturing. `1'b0`: enabled. The gate applies to every initiator that reaches the entropy source registers, the SEP CPU included, and adds no term to <<dtp-path-gating>>. It does not gate the entropy pool, which is the production random-data interface. The per-FIFO contract and the per-state access table are in the Entropy Source chapter ({entropy-source-fifo-access-link}).
+|4 |debug (DBG_1) |ENTROPY_DBG |Access to the entropy source's readable FIFOs (`FIFO_RDATA`, `BIW_OBS_RDATA`, `NOISE_OBS_RDATA`), which hold the DRBG seed words and pre-conditioning entropy. `1'b1`: disabled for every initiator, the SEP CPU included. `1'b0`: enabled. Adds no term to <<dtp-path-gating>> and does not gate the entropy pool. See {entropy-source-fifo-access-link}. _Specified ahead of the hardware: until the RTL implements it, the FIFOs are accessible in every state._
 
 |5-23 |debug (DBG_1) |_Reserved_ |Available for adopter-defined local (DBG_1) debug scan chains. See <<adopter-extension>>.
 
