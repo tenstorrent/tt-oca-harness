@@ -1003,15 +1003,16 @@ class SepDrbgScoreboard:
         self._min_matches.update(mins)
 
     # ------------------------------------------------------------- frontdoor
-    def check_fifo_frontdoor(self, words):
+    def check_fifo_frontdoor(self, words, *, log_batch=True):
         """Compare AXI-frontdoor-drained FIFO_RDATA words (in pop = push order) to
-        the golden compressor/whitener stream (CHK2). Call once after the entropy
-        run, with the words from SepEsrcFifoDrainSeq. The FIFO retains every pushed
-        word until read (the DRBG taps pre-FIFO), so a post-run drain yields the
-        full ordered post-whitener stream without disturbing CHK3..CHK5."""
+        the golden compressor/whitener stream (CHK2). Call for each batch from
+        SepEsrcFifoDrainSeq. The FIFO retains every pushed word until read, and
+        the DRBG taps the pre-FIFO stream, so draining does not disturb
+        CHK3..CHK5."""
         for w in words:
             self._record("CHK2_compress", w & 0xFFFFFFFF)
-        self.log.info("CHK2 frontdoor: drained %d FIFO_RDATA words", len(words))
+        if log_batch:
+            self.log.info("CHK2 frontdoor: drained %d FIFO_RDATA words", len(words))
 
     # ----------------------------------------------------------------- report
     def report(self):
