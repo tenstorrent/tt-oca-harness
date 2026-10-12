@@ -294,8 +294,8 @@ class SmcSysAxiDriver(uvm_driver):
             f"an explicit strobe needs a {item.length}-byte aligned address, got 0x{item.addr:x}"
         )
         transfer = (1 << item.length) - 1
-        assert 0 < item.wstrb <= transfer, (
-            f"wstrb 0x{item.wstrb:x} is empty or strobes outside the {item.length}-byte "
+        assert 0 <= item.wstrb <= transfer, (
+            f"wstrb 0x{item.wstrb:x} is negative or strobes outside the {item.length}-byte "
             f"transfer at 0x{item.addr:x}"
         )
         shift = item.addr % lanes

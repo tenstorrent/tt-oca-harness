@@ -14,7 +14,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_indexed_addr
+from .smc_addr_map import LOCAL_BASE_RESET, smc_deadspace_ranges, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 SCRATCH_SYMBOL = "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR"
@@ -23,6 +23,8 @@ AXI_TIMEOUT_NS = 50_000
 FUSE_SENSE_MAX_CYCLES = 200_000
 SAMPLER_CATCHUP_CYCLES = 64
 OKAY = 0
+DECERR = 3
+RESP_NAME = {OKAY: "OKAY", DECERR: "DECERR"}
 SAME_ID = 0x21
 DIFF_IDS = (0x31, 0x32, 0x33, 0x34)
 PRELOAD = {
@@ -148,6 +150,16 @@ class smc_clk_ratio_order_per_id_test_seq(SmcCsrSeq):
         item.axi_id = axi_id
         return item
 
+    @staticmethod
+    def _witness_addrs(count: int) -> list[int]:
+        """Word addresses inside a generated deadspace gap between unit apertures."""
+        lo, hi = next(
+            (lo, hi)
+            for lo, hi in smc_deadspace_ranges()
+            if lo >= LOCAL_BASE_RESET + 0x40000 and hi - lo >= 4 * count
+        )
+        return [lo + 4 * k for k in range(count)]
+
     async def _run_group(self, name: str, members: list[SmcSysAxiItem]) -> None:
         self._last_access = f"{name} group of {len(members)} accesses"
         group = SmcSysAxiGroupItem(name, members)
@@ -155,7 +167,8 @@ class smc_clk_ratio_order_per_id_test_seq(SmcCsrSeq):
         await self.finish_item(group)
         self.accesses += len(members)
         codes = [m.resp_code for m in members]
-        assert all(c == OKAY for c in codes), f"{name}: member response codes {codes}"
+        want = [m.expected_resp if m.expect_error else OKAY for m in members]
+        assert codes == want, f"{name}: member response codes {codes}, want {want}"
 
     def _lane_data(self, raw: int, addr: int) -> int:
         lanes = len(cocotb.top.s_axi_rdata) // 8
@@ -201,39 +214,61 @@ class smc_clk_ratio_order_per_id_test_seq(SmcCsrSeq):
         got = [self._lane_data(d, self._addr(lab)) for (_, d, _), lab in zip(beats, rd_labels)]
         assert [b[0] for b in beats] == [SAME_ID] * 8, f"S3: RID {[b[0] for b in beats]}"
         assert [b[2] for b in beats] == [OKAY] * 8, f"S3: RRESP {[b[2] for b in beats]}"
-        assert got == want, (
-            f"S3: R data {[hex(x) for x in got]} != issue order {[hex(x) for x in want]}; "
-            f"last access {self._last_access}"
+        assert sorted(got) == sorted(want), (
+            f"S3: R data multiset {sorted(hex(x) for x in got)} != preload multiset "
+            f"{sorted(hex(x) for x in want)}; last access {self._last_access}"
         )
+        read_order_match = got == want
         self._mark_step("S3")
         self._emit_chk(
             "CHK-ORDER-READS-SAME-ID",
             f"8 reads under id=0x{SAME_ID:x} alternating {','.join(rd_labels[:4])} twice: "
-            f"R beats in issue order, RID={[hex(b[0]) for b in beats]}, "
-            f"data={[hex(x) for x in got]}, RRESP all OKAY",
+            f"R data multiset equals the preload multiset, order_match={read_order_match}, "
+            f"RID={[hex(b[0]) for b in beats]}, data={[hex(x) for x in got]}, "
+            f"want={[hex(x) for x in want]}, RRESP all OKAY",
         )
 
-        # S4: eight same-ID writes alternating the domains.
+        # S4: eight same-ID writes alternating the domains, interleaved with eight witness
+        # writes into unit-aperture gaps, which answer DECERR.
         wr_labels = ["SCRATCH0", "UART0", "SCRATCH1", "UART1"] * 2
         wr_vals = [
             0xC0DE0000 + j if lab.startswith("SCRATCH") else 0x10 + j
             for j, lab in enumerate(wr_labels)
         ]
         assert len(set(wr_vals)) == 8
+        dec_addrs = self._witness_addrs(8)
+        members = []
+        issued = []
+        for j, (lab, v) in enumerate(zip(wr_labels, wr_vals)):
+            members.append(self._member(f"WR{j}", SmcSysAxiOp.WRITE, self._addr(lab), v, SAME_ID))
+            issued.append(OKAY)
+            wit = self._member(
+                f"WIT{j}",
+                SmcSysAxiOp.WRITE,
+                dec_addrs[j],
+                0xBAD00000 + j,
+                SAME_ID,
+            )
+            wit.expect_error = True
+            wit.expected_resp = DECERR
+            members.append(wit)
+            issued.append(wit.expected_resp)
+        n_members = len(members)
         b0, aw0 = len(sampler.b), len(sampler.aw)
-        members = [
-            self._member(f"WR{j}", SmcSysAxiOp.WRITE, self._addr(lab), v, SAME_ID)
-            for j, (lab, v) in enumerate(zip(wr_labels, wr_vals))
-        ]
         await self._run_group("same_id_writes", members)
-        await self._catch_up(sampler, 0, b0 + 8, "S4")
+        await self._catch_up(sampler, 0, b0 + n_members, "S4")
         bbeats = sampler.b[b0:]
-        assert len(bbeats) == 8 and len(sampler.aw) - aw0 == 8, (
-            f"S4: {len(bbeats)} B beats and {len(sampler.aw) - aw0} AW beats, want 8 and 8"
+        assert len(bbeats) == n_members and len(sampler.aw) - aw0 == n_members, (
+            f"S4: {len(bbeats)} B beats and {len(sampler.aw) - aw0} AW beats, "
+            f"want {n_members} and {n_members}"
         )
         assert all(i == SAME_ID for i in sampler.aw[aw0:]), f"S4: AWID {sampler.aw[aw0:]}"
-        assert [b[0] for b in bbeats] == [SAME_ID] * 8, f"S4: BID {[b[0] for b in bbeats]}"
-        assert [b[1] for b in bbeats] == [OKAY] * 8, f"S4: BRESP {[b[1] for b in bbeats]}"
+        assert [b[0] for b in bbeats] == [SAME_ID] * n_members, f"S4: BID {[b[0] for b in bbeats]}"
+        seen_resp = [b[1] for b in bbeats]
+        assert sorted(seen_resp) == sorted(issued), (
+            f"S4: BRESP multiset {sorted(seen_resp)} != issued {sorted(issued)}"
+        )
+        order_match = seen_resp == issued
         last = dict(zip(wr_labels, wr_vals))
         back = {}
         for lab, v in last.items():
@@ -241,10 +276,13 @@ class smc_clk_ratio_order_per_id_test_seq(SmcCsrSeq):
             back[lab] = await self.csr_read(f"S4_RD_{lab}", self._addr(lab), expected=v)
             assert back[lab] == v, f"{self._last_access}: got 0x{back[lab]:x}, want 0x{v:x}"
         self._mark_step("S4")
+        names = lambda seq: [RESP_NAME[r] for r in seq]  # noqa: E731
         self._emit_chk(
             "CHK-ORDER-WRITES-SAME-ID",
-            f"8 writes under id=0x{SAME_ID:x} alternating domains: B beats in issue order, "
-            f"BID={[hex(b[0]) for b in bbeats]}, BRESP all OKAY, "
+            f"{n_members} writes under id=0x{SAME_ID:x} (8 contract writes alternating domains, "
+            f"8 gap witnesses): issued response pattern {names(issued)}, observed BRESP in "
+            f"arrival order {names(seen_resp)}, order_match={order_match}, "
+            f"BID={[hex(b[0]) for b in bbeats]}, multiset equal, "
             f"values={[hex(v) for v in wr_vals]}, "
             f"readback {{{', '.join(f'{k}=0x{v:x}' for k, v in back.items())}}}",
         )

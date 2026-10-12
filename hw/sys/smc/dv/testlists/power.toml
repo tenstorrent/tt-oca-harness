@@ -140,6 +140,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_telemetry_irq_aggregate_test"
+module = "smc_telemetry_irq_aggregate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_telemetry_receiver_csr_test"
 module = "smc_telemetry_receiver_csr_test"
 seed = 1
@@ -148,8 +156,72 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_telemetry_ctrl_access_test"
+module = "smc_telemetry_ctrl_access_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_telemetry_address_map_test"
+module = "smc_telemetry_address_map_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_telemetry_tx_flush_test"
+module = "smc_telemetry_tx_flush_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_telemetry_receiver_isolation_test"
+module = "smc_telemetry_receiver_isolation_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_wdt_key_csr_test"
 module = "smc_wdt_key_csr_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_ip0_clear_test"
+module = "smc_wdt_ip0_clear_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_key_relock_test"
+module = "smc_wdt_key_relock_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_write_width_test"
+module = "smc_wdt_write_width_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_octs_csr_access_test"
+module = "smc_octs_csr_access_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "wdt"]
@@ -166,6 +238,22 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_octs_sanity_test"
 module = "smc_octs_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_avsbus_pad_enable_test"
+module = "smc_avsbus_pad_enable_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_avsbus_resync_force_test"
+module = "smc_avsbus_resync_force_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci"]
