@@ -87,7 +87,14 @@ volatile uint32_t g_p[P_COUNT] = {
 _Static_assert(sizeof(filter_ctrl__FILTER_CONFIG_t) == 8u, "FILTER_CONFIG is 64-bit");
 _Static_assert(sizeof(filter_ctrl__START_ADDR_t) == 8u, "START_ADDR is 64-bit");
 _Static_assert(sizeof(filter_ctrl__END_ADDR_t) == 8u, "END_ADDR is 64-bit");
-#define MBX_IN_SPAN 0x800u
+// Inbound mailbox window: from the inbound block base to the next channel's
+// outbound block base (generated memory map).
+#define MBX_IN_SPAN \
+    (SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_1_BASE_ADDR - \
+     SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR)
+_Static_assert(SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR ==
+                   SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR,
+               "WRITE_DATA opens the inbound block");
 #define CFG_RW_EN \
     (FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm | \
      FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm)
