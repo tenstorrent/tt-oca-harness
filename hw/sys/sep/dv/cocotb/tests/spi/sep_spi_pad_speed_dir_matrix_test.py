@@ -26,7 +26,8 @@ Checks:
 * CHK-SPI-RXCNT: for DIRECTION 1 and 3 with LEN+1 a multiple of 4, the RXDATA
   words read and RXQD agree and equal (LEN+1)/4. Control: every Tx-only and
   dummy cell starts with RXEMPTY=1 and leaves RXQD at 0.
-* CHK-SPI-DUMMY: a dummy segment leaves TXQD and RXQD unchanged. Control: both
+* CHK-SPI-DUMMY: a dummy segment leaves TXQD and RXQD unchanged and runs LEN+1
+  sck cycles. Control: both
   are at least 1 before the segment.
 * CHK-SPI-CHAIN: a CSAAT chain of 2 to 6 segments shows one chip-select-low
   window, its sck count is the sum of the segment counts, and chip select is
@@ -472,7 +473,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             f"rxqd_before={before.rxqd} rxqd_after={after.rxqd} speed={seg.speed} "
             f"len={seg.len_field} len_class={seg.len_class} sck_cycles={got} expect={seg.expect}"
         )
-        if before.txqd != after.txqd or before.rxqd != after.rxqd:
+        if before.txqd != after.txqd or before.rxqd != after.rxqd or got != seg.expect:
             raise AssertionError(f"CHK-SPI-DUMMY FAIL {line}")
         self.logger.info("CHK-SPI-DUMMY PASS %s", line)
         self.ran.add("CHK-SPI-DUMMY")

@@ -288,6 +288,9 @@ _STRB_PAIRS = {
         ("EVENT_ENABLE", EVENT_ENABLE, _R.mask32("EVENT_ENABLE"), False),
     ),
 }
+_OFF_INTR = INTR_STATE - _SPI_BASE
+_OFF_TXDATA = TXDATA - _SPI_BASE
+_OFF_ERR_STATUS = ERROR_STATUS - _SPI_BASE
 _STROBES = (0x0F, 0xF0, 0xFF)
 _IE_EVENT = _R.field_mask("INTR_ENABLE", "spi_event")
 _IE_ERROR = _R.field_mask("INTR_ENABLE", "error")
@@ -1471,23 +1474,24 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             "ERROR_STATUS": 0,
             "EVENT_ENABLE": 0,
         }
-        if off == 0x00:
+        if off == _OFF_INTR:
             await self.ops.wr(INTR_TEST, INTR_ERROR)
             model["INTR_STATE"] = INTR_ERROR
-        elif off == 0x30:
+        elif off == _OFF_ERR_STATUS:
             await self._inject_cmdinval()
             es = await self._poll_reg(
                 ERROR_STATUS, ERR_CMDINVAL, "CMDINVAL before the strobed write"
             )
             if es != ERR_CMDINVAL:
                 self._ctrl_missing(
-                    f"ERROR_STATUS=0x{es:02x} before the strobed write, expected 0x08"
+                    f"ERROR_STATUS=0x{es:02x} before the strobed write, "
+                    f"expected 0x{ERR_CMDINVAL:02x}"
                 )
             model["ERROR_STATUS"] = ERR_CMDINVAL
-        tx = off == 0x28
+        tx = off == _OFF_TXDATA
         st0 = await self.ops.read_status()
         if tx and (st0.active or st0.txqd or st0.rxqd):
-            self._ctrl_missing(f"pair 0x28 needs ACTIVE=0 and empty FIFOs ({st0.fmt()})")
+            self._ctrl_missing(f"pair 0x{off:02x} needs ACTIVE=0 and empty FIFOs ({st0.fmt()})")
         lo_old = None if tx else await self.ops.rd(lo_addr)
         hi_old = await self.ops.rd(hi_addr)
         for name, got, mask in ((lo_name, lo_old, lo_mask), (hi_name, hi_old, hi_mask)):
@@ -1525,7 +1529,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"{lo_txt} hi=0x{hi_new & hi_mask:08x} expect_hi=0x{exp_hi & hi_mask:08x} "
             f"hi_mask=0x{hi_mask:08x} hi_rsvd=0x{fc_hi.rsvd:x} pair={lo_name},{hi_name}",
         )
-        if off != 0x30:
+        if off != _OFF_ERR_STATUS:
             es = await self.ops.rd(ERROR_STATUS)
             self.logger.info(
                 "OBS-SPI-STRB-ACCESSINVAL seed=%d off=0x%02x strb=0x%02x accessinval=%d",
