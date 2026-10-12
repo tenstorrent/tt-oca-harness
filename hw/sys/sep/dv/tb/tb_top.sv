@@ -3667,6 +3667,7 @@ module sep_uvm_top
 `ifndef SEP_CPU_STUB
 `define SEP_FCOV_PIC `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst
 `define SEP_FCOV_TLU `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.dec.tlu
+`define SEP_FCOV_LSU `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.lsu
     wire [255:0][3:0] fcov_pic_prio     = `SEP_FCOV_PIC.intpriority_reg;
     wire [255:0]      fcov_pic_en       = `SEP_FCOV_PIC.intenable_reg;
     wire [255:0][1:0] fcov_pic_gw_cfg   = `SEP_FCOV_PIC.gw_config_reg;
@@ -3676,7 +3677,26 @@ module sep_uvm_top
     wire [255:0]      fcov_pic_req_gw   = `SEP_FCOV_PIC.extintsrc_req_gw;
     wire              fcov_pic_wren     = `SEP_FCOV_PIC.picm_wren_ff;
     wire [14:0]       fcov_pic_waddr    = `SEP_FCOV_PIC.picm_waddr_ff[14:0];
-    wire [31:0]       fcov_pic_wdata    = `SEP_FCOV_PIC.picm_wr_data_ff;
+    // Data of a PIC write as the instruction stores it. The LSU ANDs a CPU
+    // store to the PIC with the field mask of the target register (the
+    // picm_mken read), so picm_wr_data is 0 for a hole, for entry 0 and for
+    // meigwclr. The copy takes the M-stage store data before that mask, moves
+    // it to the R stage, and to the picm_wren_ff clock on picm_wren, as the
+    // core moves picm_wr_data. A DMA write to the PIC has no mask and uses
+    // picm_wr_data.
+    wire [31:0] fcov_pic_st_m = `SEP_FCOV_LSU.lsu_lsc_ctl.lsu_pkt_m.store_data_bypass_m ?
+        `SEP_FCOV_LSU.lsu_lsc_ctl.lsu_result_m : `SEP_FCOV_LSU.lsu_lsc_ctl.store_data_pre_m;
+    logic [31:0] fcov_pic_st_r, fcov_pic_st_ff;
+    always_ff @(posedge clk_i) begin
+        if ((`SEP_FCOV_LSU.lsu_lsc_ctl.lsu_pkt_m.valid === 1'b1) &&
+            (`SEP_FCOV_LSU.lsu_lsc_ctl.lsu_pkt_m.store === 1'b1) &&
+            (`SEP_FCOV_LSU.lsu_lsc_ctl.addr_in_pic_m === 1'b1))
+            fcov_pic_st_r <= fcov_pic_st_m;
+        if (`SEP_FCOV_PIC.picm_wren === 1'b1)
+            fcov_pic_st_ff <= (`SEP_FCOV_LSU.dma_pic_wen === 1'b1) ? `SEP_FCOV_PIC.picm_wr_data :
+                fcov_pic_st_r;
+    end
+    wire [31:0]       fcov_pic_wdata    = fcov_pic_st_ff;
     wire [7:0]        fcov_pic_claim    = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.pic_claimid;
     wire              fcov_tlu_mstatus  = `SEP_FCOV_TLU.mstatus[0];
     wire [5:0]        fcov_tlu_mie      = `SEP_FCOV_TLU.mie;
@@ -3687,6 +3707,7 @@ module sep_uvm_top
     wire              fcov_tlu_take_sw  = `SEP_FCOV_TLU.take_soft_int;
 `undef SEP_FCOV_PIC
 `undef SEP_FCOV_TLU
+`undef SEP_FCOV_LSU
 `else
     wire [255:0][3:0] fcov_pic_prio     = '0;
     wire [255:0]      fcov_pic_en       = '0;

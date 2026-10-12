@@ -272,7 +272,9 @@ Observation probe groups:
 * Mailbox, IRQ and PIC FCOV sampler taps (`cov/sv/sep_fcov.sv`, mailbox,
   IRQ and PIC groups): read-only references from the `u_sep_fcov`
   connection block to the PIC (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`),
-  the claim ID (`veer.pic_claimid`), the trap unit (`veer.dec.tlu`), the
+  the claim ID (`veer.pic_claimid`), the trap unit (`veer.dec.tlu`), the LSU
+  store pipeline (`veer.lsu.lsu_lsc_ctl` store data, packet and PIC decode of
+  the M stage, and `veer.lsu.dma_pic_wen`), the
   mailbox ports and FIFOs (`u_sep_system_peripherals.u_sep_axil_mailbox.gen_mailbox[m]`,
   one explicit assign per index), the mailbox unit AXI-Lite bus
   (`u_sep_system_peripherals.mailbox_axil_req` and `mailbox_axil_resp`) and

@@ -281,7 +281,7 @@ module sep_fcov (
   input wire [255:0]         pic_req_gw_i,    // extintsrc_req_gw (gateway output)
   input wire                 pic_wren_i,      // picm_wren_ff
   input wire [14:0]          pic_waddr_i,     // picm_waddr_ff[14:0]
-  input wire [31:0]          pic_wdata_i,     // picm_wr_data_ff
+  input wire [31:0]          pic_wdata_i,     // store data of the write, before the PIC field mask
   // PICRD: pic_rd_data_probe_o {picm_rden_ff, picm_raddr_ff[14:0], picm_rd_data}.
   input wire [47:0]          pic_rd_i,
   // CLAIM: veer.pic_claimid. TLU: veer.dec.tlu.
@@ -7433,9 +7433,16 @@ module sep_fcov (
   endgroup
 
   // Vector bits of the 24 sources the walk asserts (bit = source - 1).
+  localparam int unsigned PulseWin = 4;
   localparam logic [42:0] SrcWalkMask = 43'h0FF | (43'd1 << 11) | (43'd1 << 13) |
       (43'h1FFF << 17) | (43'd1 << 32);
   logic hm_arm_q, km_arm_q, ext_seen_q;
+  // Gateway output of sources 19 and 22 at the LSU AW handshake of the
+  // INTR_ENABLE write (before it lands).
+  logic hm_aw_gw_q, km_aw_gw_q;
+  // Clocks left to see the gateway output of source 12 / 33 rise after the
+  // input pulse ends (two-flop synchronizer in front of the gateway).
+  logic [2:0] pc12_cnt_q, pc33_cnt_q;
   psm_t psm_q;
   always_ff @(posedge clk_i) begin
     psm_q <= '0;
@@ -7443,6 +7450,10 @@ module sep_fcov (
       hm_arm_q   <= 1'b0;
       km_arm_q   <= 1'b0;
       ext_seen_q <= 1'b0;
+      hm_aw_gw_q <= 1'b0;
+      km_aw_gw_q <= 1'b0;
+      pc12_cnt_q <= '0;
+      pc33_cnt_q <= '0;
     end else begin
       // Rising edge of an asserted source with its enable at 1.
       for (int k = 42; k >= 0; k--) begin
@@ -7468,13 +7479,24 @@ module sep_fcov (
           psm_q.mv_v <= own_pwalk;
         end
       end
-      // The pulse ended and the edge, active-high gateway holds it.
-      if (vec_fall[11] && (pic_gw_cfg_i[12] == 2'b10) && pic_req_gw_i[12]) begin
-        psm_q.pulse   <= 1'b0;
-        psm_q.pulse_v <= own_pwalk;
-      end else if (vec_fall[32] && (pic_gw_cfg_i[33] == 2'b10) && pic_req_gw_i[33]) begin
-        psm_q.pulse   <= 1'b1;
-        psm_q.pulse_v <= own_pwalk;
+      // The pulse ended and the edge, active-high gateway holds it: the
+      // gateway output is 1 with the input back at 0 within PulseWin clocks
+      // after the fall.
+      if (vec_fall[11] && (pic_gw_cfg_i[12] == 2'b10)) pc12_cnt_q <= 3'(PulseWin);
+      else if (pc12_cnt_q != 3'd0) begin
+        if (pic_req_gw_i[12] && !vec_i[11]) begin
+          pc12_cnt_q    <= 3'd0;
+          psm_q.pulse   <= 1'b0;
+          psm_q.pulse_v <= own_pwalk;
+        end else pc12_cnt_q <= pc12_cnt_q - 3'd1;
+      end
+      if (vec_fall[32] && (pic_gw_cfg_i[33] == 2'b10)) pc33_cnt_q <= 3'(PulseWin);
+      else if (pc33_cnt_q != 3'd0) begin
+        if (pic_req_gw_i[33] && !vec_i[32]) begin
+          pc33_cnt_q    <= 3'd0;
+          psm_q.pulse   <= 1'b1;
+          psm_q.pulse_v <= own_pwalk;
+        end else pc33_cnt_q <= pc33_cnt_q - 3'd1;
       end
       if (vec_rise[13] && (vec_i[13] == spi_irq_field_i)) begin
         psm_q.spi   <= 1'b0;
@@ -7483,17 +7505,22 @@ module sep_fcov (
         psm_q.spi   <= 1'b1;
         psm_q.spi_v <= own_pwalk;
       end
-      // INTR_ENABLE.fifo_empty cleared while the pending bit is 1, then the
-      // pending bit falls.
+      // INTR_ENABLE.fifo_empty cleared while the pending bit is 1 (taken at
+      // the AW handshake of the write, before it lands), then the pending bit
+      // is 0: at the B handshake or on a later clock.
+      if (aw_hs && (lsu_aw_addr_i == HMAC_INTR_ENABLE_REG_ADDR))
+        hm_aw_gw_q <= (pic_req_gw_i[19] === 1'b1);
+      if (aw_hs && (lsu_aw_addr_i == KMAC_INTR_ENABLE_REG_ADDR))
+        km_aw_gw_q <= (pic_req_gw_i[22] === 1'b1);
       if (wr_ev && (aw_addr_q == HMAC_INTR_ENABLE_REG_ADDR))
-        hm_arm_q <= ((wr_data & HMAC_INTR_ENABLE_FIFO_EMPTY_MASK) == 32'h0) && pic_req_gw_i[19];
+        hm_arm_q <= ((wr_data & HMAC_INTR_ENABLE_FIFO_EMPTY_MASK) == 32'h0) && hm_aw_gw_q;
       else if (hm_arm_q && !pic_req_gw_i[19]) begin
         hm_arm_q    <= 1'b0;
         psm_q.fe   <= 1'b0;
         psm_q.fe_v <= own_pwalk;
       end
       if (wr_ev && (aw_addr_q == KMAC_INTR_ENABLE_REG_ADDR))
-        km_arm_q <= ((wr_data & KMAC_INTR_ENABLE_FIFO_EMPTY_MASK) == 32'h0) && pic_req_gw_i[22];
+        km_arm_q <= ((wr_data & KMAC_INTR_ENABLE_FIFO_EMPTY_MASK) == 32'h0) && km_aw_gw_q;
       else if (km_arm_q && !pic_req_gw_i[22]) begin
         km_arm_q    <= 1'b0;
         psm_q.fe   <= 1'b1;
@@ -8122,8 +8149,10 @@ module sep_fcov (
     end
     if (filt_arvalid_i === 1'b1) fr_allow_q <= !filt_nrm_i && !filt_iso_r_i;
   end
+  // Local address of an inbound access: rebased inside the SEP window,
+  // unchanged outside it. The mailbox and PIC decode uses it in both cases.
   wire [31:0] xm_loc = si_local[31:0];
-  wire        xm_pic = si_in_win && (xm_loc >= PicBase) && (xm_loc < (PicBase + 32'h8000));
+  wire        xm_pic = (xm_loc >= PicBase) && (xm_loc < (PicBase + 32'h8000));
   wire        xm_allow = si_dir_w ? fw_allow_q : fr_allow_q;
 
   // PIC state: the arrays a write lands in.
@@ -8163,7 +8192,7 @@ module sep_fcov (
       pfi_q.ini_v <= own_pext;
     end
     if (pk_rdec && (pk_rd != 32'h0)) pfi_q.cl_v <= own_pext;
-    if (si_done && si_dir_w && si_in_win && (xm_loc >= MbxBase) && (xm_loc < MbxEnd) &&
+    if (si_done && si_dir_w && (xm_loc >= MbxBase) && (xm_loc < MbxEnd) &&
         (si_resp == AxiOkay) && fw_allow_q)
       pfi_q.wl_v <= own_pext;
     if (in_reset) pfi_q <= '0;
@@ -8277,6 +8306,7 @@ module sep_fcov (
   localparam logic [31:0] WdogEnMask = 32'h1;
   logic nv_wr_q, nv_lock_q, nv_en_q, nv_bark_q, nv_entry_q;
   logic [31:0] nv_val_q;
+  logic [2:0]  nv_cls_q;
   nvc_t nvc_q;
   always_ff @(posedge clk_i) begin
     nvc_q <= '0;
@@ -8290,8 +8320,7 @@ module sep_fcov (
       if (wr_ev && (aw_addr_q == SEP_CPU_CTRL_SEP_NMI_VEC_REG_ADDR)) begin
         nv_wr_q    <= 1'b1;
         nv_val_q   <= wr_data & 32'(SEP_CPU_CTRL_SEP_NMI_VEC_NMI_VEC_MASK);
-        nvc_q.vc   <= nmi_vcls(wr_data & 32'(SEP_CPU_CTRL_SEP_NMI_VEC_NMI_VEC_MASK));
-        nvc_q.vc_v <= own_nmi;
+        nv_cls_q   <= nmi_vcls(wr_data & 32'(SEP_CPU_CTRL_SEP_NMI_VEC_NMI_VEC_MASK));
       end
       if (wr_ev && (aw_addr_q == SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_ADDR) &&
           ((wr_data & 32'(SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_LOCK_MASK)) != 32'h0))
@@ -8301,14 +8330,22 @@ module sep_fcov (
         if (((wr_data & WdogEnMask) != 32'h0) && !nv_en_q) begin
           nvc_q.oe   <= !nv_wr_q ? 2'd0 : (nv_lock_q ? 2'd1 : 2'd2);
           nvc_q.oe_v <= own_nmi;
+          // Class of the last SEP_NMI_VEC write, taken at that write and
+          // sampled at the bark enable that arms it.
+          if (nv_wr_q) begin
+            nvc_q.vc   <= nv_cls_q;
+            nvc_q.vc_v <= own_nmi;
+          end
         end
       end
-      // Bark, then NMI entry, then the first retired PC.
+      // Bark, then NMI entry, then the first retired PC. The trace packet of
+      // the interrupt itself (exception flag set) carries the interrupted PC
+      // and is skipped.
       if (bark_r) nv_bark_q <= 1'b1;
       if (nv_bark_q && nmi_r) begin
         nv_bark_q  <= 1'b0;
         nv_entry_q <= 1'b1;
-      end else if (nv_entry_q && (cpu_trace_valid_i === 1'b1)) begin
+      end else if (nv_entry_q && (cpu_trace_valid_i === 1'b1) && (cpu_trace_exc_i !== 1'b1)) begin
         nv_entry_q <= 1'b0;
         if (!nv_wr_q && (cpu_trace_addr_i == NmiResetVec)) begin
           nvc_q.tg   <= 3'd0;
@@ -8837,8 +8874,9 @@ module sep_fcov (
   wire [1:0]   mx_rresp = mbx_resp_i.r.resp;
   wire [63:0]  mx_rdata = mbx_resp_i.r.data;
 
-  // Aperture position: 0 first register word, 1 last register word 0x48,
-  // 2 first hole word 0x50, 3 interior hole word, 4 last hole word 0x7F8.
+  // Aperture position of a 64-bit word (an access to either 32-bit half): 0
+  // first register word, 1 last register word 0x48, 2 first hole word 0x50, 3
+  // interior hole word, 4 last hole word 0x7F8.
   function automatic logic [3:0] mx_pos(input logic [10:0] off);
     if (off == MoWdata) return 4'd0;
     if (off == MoCtrl) return 4'd1;
@@ -8847,8 +8885,8 @@ module sep_fcov (
     if ((off > MoHole) && (off < MoLast)) return 4'd3;
     return 4'd8;
   endfunction
-  wire [3:0] mx_wpos = mx_pos(mx_wo);
-  wire [3:0] mx_rpos = mx_pos(mx_ro);
+  wire [3:0] mx_wpos = mx_pos({mx_wo[10:3], 3'b000});
+  wire [3:0] mx_rpos = mx_pos({mx_ro[10:3], 3'b000});
 
   // ---- quiet window state (fifo-model leaf) ----
   // *_qs hold the values of the last clock with quiet_win at 1.
@@ -8958,7 +8996,7 @@ module sep_fcov (
   logic [2:0]  ia_k_q;
   logic        ia_go_q;
   mbt_t mbt_q;
-  wire  xm_ext = si_done && si_in_win && (xm_loc >= MbxEnd) && (xm_loc < (MbxBase + 32'h8000));
+  wire  xm_ext = si_done && (xm_loc >= MbxEnd) && (xm_loc < (MbxBase + 32'h8000));
   always_ff @(posedge clk_i) begin
     mbt_q   <= '0;
     ia_go_q <= 1'b0;
@@ -9111,7 +9149,7 @@ module sep_fcov (
   mbq_t mbq_q;
   // An inbound write to the WRITE_DATA word of an inbound aperture.
   wire [31:0] xm_moff = xm_loc - MbxBase;
-  wire        xm_mbw = si_done && si_dir_w && si_in_win && (xm_loc >= MbxBase) &&
+  wire        xm_mbw = si_done && si_dir_w && (xm_loc >= MbxBase) &&
       (xm_loc < MbxEnd) && xm_moff[11] && (xm_moff[10:0] == MoWdata);
   always @(posedge clk_i) begin
     mbq_q <= '0;
@@ -9404,10 +9442,18 @@ module sep_fcov (
   logic wa_p_q, wa_c_q, el_p_q;
   logic [1:0] el_k_q;
   logic       gt_go_q;
+  // IRQS and line of every port at the mailbox AW handshake: the state before
+  // the write lands.
+  logic [7:0][1:0][2:0] el_irqs_aw_q;
+  logic [7:0][1:0]      el_irq_aw_q;
   mil_t mil_q;
   always @(posedge clk_i) begin
     mil_q   <= '0;
     gt_go_q <= 1'b0;
+    if (mx_aw_hs) begin
+      el_irqs_aw_q <= mb_irqs_i;
+      el_irq_aw_q  <= mb_irq_i;
+    end
     if (in_reset) begin
       wa_cnt_q   <= '0;
       el_cnt_q   <= '0;
@@ -9494,7 +9540,7 @@ module sep_fcov (
         el_p_q <= mx_rp;
         el_k_q <= 2'd0;
       end else if (mx_wdone && mx_win && (mx_wo == MoIrqen) && mx_wd_q[2] &&
-                   mb_irqs_i[mx_wm][mx_wp][2] && !mb_irq_i[mx_wm][mx_wp]) begin
+                   el_irqs_aw_q[mx_wm][mx_wp][2] && !el_irq_aw_q[mx_wm][mx_wp]) begin
         el_cnt_q <= 2'd3;
         el_m_q <= mx_wm;
         el_p_q <= mx_wp;
@@ -9506,7 +9552,7 @@ module sep_fcov (
         el_p_q <= mx_rp;
         el_k_q <= 2'd2;
       end else if (mx_wdone && mx_win && (mx_wo == MoIrqs) && mx_wd_q[2] &&
-                   mb_irq_i[mx_wm][mx_wp]) begin
+                   el_irq_aw_q[mx_wm][mx_wp]) begin
         el_cnt_q <= 2'd3;
         el_m_q <= mx_wm;
         el_p_q <= mx_wp;
@@ -9804,33 +9850,55 @@ module sep_fcov (
   logic fr_v_q, ru_push_q, ru_done_q;
   logic [3:0]  fr_f_q;
   mrs_t mrs_q;
-  // The in-flight operation at the mailbox unit bus.
-  wire [31:0] mx_awr = mx_off(mbx_req_i.aw.addr);
-  wire [31:0] mx_arr = mx_off(mbx_req_i.ar.addr);
+  logic [15:0][3:0] fr_src_q;
+  logic             rs_pw_q;
+  logic [1:0]       rs_pw_op_q;
+  // The in-flight operation at the LSU: a request handshake (the later of AW
+  // and W for a write) to a mailbox WRITE_DATA, IRQS or READ_DATA word with
+  // no response handshake yet. The mailbox unit bus has registered stages
+  // between it and the LSU, so its own response can complete while the LSU
+  // response is still held.
+  wire [31:0] rs_awr = mx_off(lsu_aw_addr_i);
+  wire [31:0] rs_arr = mx_off(lsu_ar_addr_i);
   always @(posedge clk_i) begin
     mrs_q <= '0;
+    // The filter source IDs reset asynchronously with sep_reset_n, so the
+    // value before the reset is the copy of the last clock with it high.
+    if (sep_reset_n_i === 1'b1) fr_src_q <= in_f_src_i;
     // Operation tracker: a request handshake with no response yet.
     if (sep_reset_n_i === 1'b1) begin
-      if (mx_aw_hs && (mx_awr < AXIL_MAILBOX_REG_MAP_SIZE) &&
-          ((mx_awr[10:0] == MoWdata) || (mx_awr[10:0] == MoIrqs))) begin
-        rs_on_q    <= 1'b1;
-        rs_op_q    <= (mx_awr[10:0] == MoWdata) ? 2'd0 : 2'd2;
-        rs_cnt_q   <= '0;
-        rs_flags_q <= pre_flags;
-      end else if (mx_ar_hs && (mx_arr < AXIL_MAILBOX_REG_MAP_SIZE) &&
-                   (mx_arr[10:0] == MoRdata)) begin
+      if (aw_hs && (rs_awr < AXIL_MAILBOX_REG_MAP_SIZE) &&
+          ((rs_awr[10:0] == MoWdata) || (rs_awr[10:0] == MoIrqs))) begin
+        if (w_hs || (w_beats_q != 2'd0)) begin
+          rs_on_q    <= 1'b1;
+          rs_op_q    <= (rs_awr[10:0] == MoWdata) ? 2'd0 : 2'd2;
+          rs_cnt_q   <= '0;
+          rs_flags_q <= pre_flags;
+        end else begin
+          rs_on_q    <= 1'b0;
+          rs_pw_q    <= 1'b1;
+          rs_pw_op_q <= (rs_awr[10:0] == MoWdata) ? 2'd0 : 2'd2;
+          rs_flags_q <= pre_flags;
+        end
+      end else if (rs_pw_q && w_hs) begin
+        rs_pw_q  <= 1'b0;
+        rs_on_q  <= 1'b1;
+        rs_op_q  <= rs_pw_op_q;
+        rs_cnt_q <= '0;
+      end else if (ar_hs && (rs_arr < AXIL_MAILBOX_REG_MAP_SIZE) && (rs_arr[10:0] == MoRdata)) begin
         rs_on_q    <= 1'b1;
         rs_op_q    <= 2'd1;
         rs_cnt_q   <= '0;
         rs_flags_q <= pre_flags;
       end else if (rs_on_q) begin
-        if (mx_b_hs || mx_r_hs) rs_on_q <= 1'b0;
+        if ((rs_op_q == 2'd1) ? r_hs : b_hs) rs_on_q <= 1'b0;
         else if (rs_cnt_q != 7'd127) rs_cnt_q <= rs_cnt_q + 7'd1;
       end
     end
     // Falling edge of sep_reset_n inside the window.
     if (sep_rst_fall) begin
       rs_on_q <= 1'b0;
+      rs_pw_q <= 1'b0;
       if (rs_on_q && (rs_cnt_q <= 7'd64)) begin
         mrs_q.oo   <= {rs_op_q, (rs_cnt_q <= 7'd7) ? 2'd0 : ((rs_cnt_q <= 7'd31) ? 2'd1 : 2'd2)};
         mrs_q.oo_v <= own_mrst;
@@ -9839,7 +9907,7 @@ module sep_fcov (
       end
       fr_v_q <= 1'b0;
       for (int f = 15; f >= 0; f--) begin
-        if (in_f_src_i[f] == 4'd5) begin
+        if (fr_src_q[f] == 4'd5) begin
           fr_v_q <= 1'b1;
           fr_f_q <= 4'(f);
           mrs_q.fr   <= 1'b0;
@@ -9961,12 +10029,20 @@ module sep_fcov (
       ai_k_q  <= 1'b0;
       ai_o_q  <= 1'b0;
     end else begin
-      // Alert kind: one receiver index of its block pulses, then source 33.
+      // Alert kind: one receiver index of its block pulses, with source 33
+      // high in the same clock (VEC[32] is combinational on the pulse) or
+      // within AlertWin clocks after it.
       for (int k = 10; k >= 0; k--) begin
         if (alert_pulse_i[k] && ((alert_pulse_i & alert_rng(alert_blk(k))) == (11'd1 << k))) begin
-          ka_on_q  <= 1'b1;
-          ka_k_q   <= 4'(k);
-          ka_cnt_q <= '0;
+          if (vec_i[32] === 1'b1) begin
+            ka_on_q    <= 1'b0;
+            pal_q.ka   <= 4'(k);
+            pal_q.ka_v <= own_pwalk;
+          end else begin
+            ka_on_q  <= 1'b1;
+            ka_k_q   <= 4'(k);
+            ka_cnt_q <= '0;
+          end
         end
       end
       if (ka_on_q && (alert_pulse_i == '0)) begin
