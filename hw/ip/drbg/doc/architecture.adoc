@@ -66,6 +66,11 @@ functionality of those IPs.
 
 == Bus Protocol Adaptation
 
-The CSRNG and EDN register interfaces use TL-UL, following the OpenTitan convention. The DRBG wrapper provides two levels of adaptation. The `drbg_axil64_lane_adapter` accepts 64-bit AXI4-Lite transactions from the SoC interconnect and narrows them to 32-bit AXI-Lite by selecting the appropriate data lane based on address bit [2]. Only aligned single-lane accesses with strobe `0x0F` or `0xF0` are forwarded; all others are rejected with SLVERR. Write address, write data, and read address are independent channels. The adapter holds a single downstream 32-bit slot: it accepts each write half as soon as that half is not already pending, and it accepts a read only when neither write half is pending. When a read address and a complete write handshake in the same idle cycle, the adapter forwards the read and holds the write until it returns to idle. The downstream `axi_lite_to_tlul` bridge then converts 32-bit AXI-Lite into TL-UL for the CSRNG and EDN register blocks.
+The CSRNG and EDN register interfaces use TL-UL, following the OpenTitan convention. The DRBG wrapper provides two levels of adaptation. The `drbg_axil64_lane_adapter` accepts 64-bit AXI4-Lite transactions from the SoC interconnect and narrows them to 32-bit AXI-Lite by selecting the appropriate data lane based on address bit [2]. It forwards only these single-lane accesses:
+
+* A write whose address is 4-byte aligned, with WSTRB `0x0F` when address bit [2] is clear or `0xF0` when it is set.
+* A read whose address is 4-byte aligned. The read returns the addressed 32-bit lane, bits [31:0] when address bit [2] is clear or bits [63:32] when it is set, and the other lane reads as zero.
+
+Every other access is rejected with SLVERR and sends no request downstream; a rejected read returns zero data. A forwarded access returns the response of the downstream bridge. Write address, write data, and read address are independent channels. The adapter holds a single downstream 32-bit slot: it accepts each write half as soon as that half is not already pending, and it accepts a read only when neither write half is pending. When a read address and a complete write handshake in the same idle cycle, the adapter forwards the read and holds the write until it returns to idle. The downstream `axi_lite_to_tlul` bridge then converts 32-bit AXI-Lite into TL-UL for the CSRNG and EDN register blocks.
 
 The CSRNG and EDN register maps are reported in the SEP detailed register map.
