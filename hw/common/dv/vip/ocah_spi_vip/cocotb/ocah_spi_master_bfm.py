@@ -5,7 +5,8 @@
 ``OcahSpiMasterBfm`` drives chip-select, clock, and MOSI and samples MISO on
 the rising clock edge, one frame per command: opcode, optional address,
 optional dummy bytes, payload bytes, then ``rx_len`` response bytes with MOSI
-held low. It is the master-side twin of the ``OcahSpiFlash`` device and the
+held low. ``tail_bits`` (0 to 7) clocks that many bits of a further byte after
+the payload, so a test can end a frame off a byte boundary. It is the master-side twin of the ``OcahSpiFlash`` device and the
 engine behind ``OcahSpiMasterSequence``. Non-UVM benches may use it directly;
 tests go through the sequence.
 
@@ -82,8 +83,11 @@ class OcahSpiMasterBfm:
         dummy_bytes: int = 0,
         tx: bytes = b"",
         rx_len: int = 0,
+        tail_bits: int = 0,
     ) -> bytes:
-        """One frame: opcode, address, dummies, payload out, then ``rx_len`` bytes in."""
+        """One frame: opcode, address, dummies, payload out, ``rx_len`` bytes in, then ``tail_bits`` bits."""
+        if not 0 <= tail_bits < 8:
+            raise ValueError(f"{self.name}: tail_bits={tail_bits} is outside 0..7")
         header = bytearray([int(opcode) & 0xFF])
         if addr is not None:
             header += int(addr).to_bytes(self.addr_bytes, "big")
@@ -96,6 +100,7 @@ class OcahSpiMasterBfm:
         received = bytearray()
         for _ in range(rx_len):
             received.append(await self._shift_byte(0))
+        await self._shift_bits(0, tail_bits)
         await Timer(self.half_period_ns, _TIME_UNIT)
         self._cs_n.value = 1
         await Timer(self.half_period_ns, _TIME_UNIT)
@@ -147,8 +152,12 @@ class OcahSpiMasterBfm:
     # ------------------------------------------------------------------
 
     async def _shift_byte(self, value: int) -> int:
+        return await self._shift_bits(value, 8)
+
+    async def _shift_bits(self, value: int, count: int) -> int:
+        """Shift the top ``count`` bits of the byte ``value``, MSB first."""
         received = 0
-        for bit_index in range(7, -1, -1):
+        for bit_index in range(7, 7 - count, -1):
             self._mosi.value = (value >> bit_index) & 0x1
             await Timer(self.half_period_ns, _TIME_UNIT)
             self._sclk.value = 1

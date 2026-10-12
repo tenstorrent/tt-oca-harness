@@ -18,6 +18,8 @@ emits one ``CHK-SPI-*`` record per rule through ``ocah_checker.OcahChecker``:
 ``CHK-SPI-STATUS-SR2``       READ STATUS REGISTER 2 reported the configured register
 ``CHK-SPI-WREN-ORDER``       a program or erase was accepted only with the latch set and
                              refused, taking no payload, only with it clear
+``CHK-SPI-FRAME-BYTES``      a PAGE PROGRAM sent with the latch set ended on a payload
+                             byte boundary
 ``CHK-SPI-READ-DATA``        READ and FAST READ streamed the model's bytes at that address
 ``CHK-SPI-HOST-*``           what the controller received equals what the device sent
 ``CHK-SPI-CMD-ORDER``        the in-scope opcode sequence equals the expected one
@@ -489,6 +491,16 @@ class OcahSpiFlashChecker:
         )
 
     def _check_program(self, rec: OcahSpiFlashRecord) -> None:
+        if self.ref_model.write_enabled:
+            if not self.expect_true(
+                "CHK-SPI-FRAME-BYTES",
+                rec.reason != "partial_byte",
+                context=(
+                    f"PAGE PROGRAM addr=0x{rec.addr:06x} complete_bytes={len(rec.data_in)} "
+                    f"reason={rec.reason}"
+                ),
+            ):
+                return
         self._check_write_gate(rec, "PAGE PROGRAM")
         if not rec.ok:
             self.ref_model.write_disable()
