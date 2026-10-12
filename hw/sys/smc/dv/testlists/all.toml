@@ -56,7 +56,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 322
+expected_count = 338
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -167,6 +167,9 @@ tests = [
     "smc_ecc_dfd_dbs_sanity_test",
     "smc_ecc_fault_inject_test",
     "smc_efuse_boundary_signals_test",
+    "smc_efuse_bank_ctrl_window_test",
+    "smc_efuse_sense_sequence_test",
+    "smc_efuse_fuse_reset_gate_test",
     "smc_efuse_chip_config_read_test",
     "smc_efuse_jtag_lc_access_matrix_test",
     "smc_efuse_jtag_lc_negative_test",
@@ -176,7 +179,19 @@ tests = [
     "smc_efuse_image_random_test",
     "smc_efuse_lock_guard_test",
     "smc_efuse_locked_access_interrupt_test",
+    "smc_efuse_map_layout_decode_test",
+    "smc_efuse_map_concurrency_test",
+    "smc_efuse_map_lock_field_enforce_test",
+    "smc_efuse_map_reset_persistence_test",
+    "smc_efuse_map_locks_register_test",
+    "smc_efuse_map_sep_write_test",
     "smc_efuse_map_read_test",
+    "smc_efuse_map_sense_image_test",
+    "smc_efuse_map_sense_image_zero_test",
+    "smc_efuse_map_sense_image_ones_test",
+    "smc_efuse_map_sense_image_walking_test",
+    "smc_efuse_map_sense_image_random_test",
+    "smc_efuse_map_sense_image_unique_test",
     "smc_efuse_otp_burn_shadow_test",
     "smc_efuse_otp_clock_config_depth_test",
     "smc_efuse_otp_clock_test",
@@ -246,6 +261,7 @@ tests = [
     "smc_i2c_bus_corners_test",
     "smc_i2c_fifo_full_test",
     "smc_i2c_fifo_reset_pulse_test",
+    "smc_i2c_fmtrst_repro_test",
     "smc_i2c_intr_mask_test",
     "smc_i2c_intr_reg_sweep_test",
     "smc_i2c_master_target_test",
