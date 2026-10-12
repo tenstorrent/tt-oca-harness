@@ -356,7 +356,10 @@ typedef union {
 } secure_dma__TRANSFER_WIDTH_t;
 
 // reg - secure_dma::CONTROL
-// Defines the type of DMA operations.
+// Defines the type of DMA operations: 0 copies, 1, 2 and 3 copy with inline SHA256,
+// SHA384 and SHA512 hashing, and 4 writes zeros to the destination without reading
+// the source. A zero fill writes only inside the enabled memory range and cannot be
+// combined with hardware handshake mode. Other values are invalid.
 #define SECURE_DMA__CONTROL__OPCODE_bm 0xf
 #define SECURE_DMA__CONTROL__OPCODE_bp 0
 #define SECURE_DMA__CONTROL__OPCODE_bw 4
@@ -404,7 +407,10 @@ typedef union {
 #define SECURE_DMA__CONTROL__GO_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Defines the type of DMA operations.
+        // Defines the type of DMA operations: 0 copies, 1, 2 and 3 copy with inline SHA256,
+        // SHA384 and SHA512 hashing, and 4 writes zeros to the destination without reading
+        // the source. A zero fill writes only inside the enabled memory range and cannot be
+        // combined with hardware handshake mode. Other values are invalid.
         uint32_t OPCODE :4;
         // Enable hardware handshake mode.
         // Used to clear FIFOs from low speed IO peripherals receiving data, e.g., I3C receive buffer.

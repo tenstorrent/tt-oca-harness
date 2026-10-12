@@ -206,7 +206,10 @@ addrmap secure_dma {
         field {
             sw = rw;
             hw = r;
-            desc = "Defines the type of DMA operations.";
+            desc = "Defines the type of DMA operations: 0 copies, 1, 2 and 3 copy with inline SHA256,
+            SHA384 and SHA512 hashing, and 4 writes zeros to the destination without reading
+            the source. A zero fill writes only inside the enabled memory range and cannot be
+            combined with hardware handshake mode. Other values are invalid.";
         } OPCODE[3:0] = 0x0;
         field {
             sw = rw;

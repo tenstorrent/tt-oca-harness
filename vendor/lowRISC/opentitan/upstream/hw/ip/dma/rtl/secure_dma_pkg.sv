@@ -36,12 +36,14 @@ package secure_dma_pkg;
     SocSystemAddr  = 4'h9
   } asid_encoding_e;
 
-  // Supported opcodes by the DMA
+  // Supported opcodes by the DMA. OpcZero writes zeros to the destination and never reads the
+  // source.
   typedef enum logic [3:0] {
     OpcCopy   = 4'h0,
     OpcSha256 = 4'h1,
     OpcSha384 = 4'h2,
-    OpcSha512 = 4'h3
+    OpcSha512 = 4'h3,
+    OpcZero   = 4'h4
   } opcode_e;
 
   // Named bit definitions for the SRC_ and DST_CTRL register for convenience

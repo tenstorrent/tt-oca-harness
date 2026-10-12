@@ -277,7 +277,10 @@ Copy to destination address.
 Number of bytes specified in size register.
 Note assumption is the peripheral lowers input once FIFO is cleared.
 No explicit clearing necessary.
-| 3:0 | `OPCODE` | RW | 0x0 a| Defines the type of DMA operations.
+| 3:0 | `OPCODE` | RW | 0x0 a| Defines the type of DMA operations: 0 copies, 1, 2 and 3 copy with inline SHA256,
+SHA384 and SHA512 hashing, and 4 writes zeros to the destination without reading
+the source. A zero fill writes only inside the enabled memory range and cannot be
+combined with hardware handshake mode. Other values are invalid.
 |===
 
 [#reg-{regmap-instance}-secure_dma-SRC_CONFIG]
