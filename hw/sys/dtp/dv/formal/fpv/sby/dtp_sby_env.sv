@@ -45,7 +45,7 @@ module dtp_sby_env #(
 
 `ifdef FORMAL
   logic released_q = 1'b0;
-  always_ff @(posedge tck_i) released_q <= 1'b1;
+  always @(posedge tck_i) released_q <= 1'b1;
 
   always_comb begin
     asm_env_resets_asserted : assume (released_q || !((trst_ni && pwr_on_rst_ni) || rst_ni));
@@ -73,7 +73,7 @@ module dtp_sby_env #(
 
   // The trace's first high phase has no rising edge before it.
   logic posedge_seen_q = 1'b0;
-  always_ff @(posedge tck_i) begin
+  always @(posedge tck_i) begin
     posedge_seen_q       <= 1'b1;
     returns_at_posedge_q <= returns;
   end

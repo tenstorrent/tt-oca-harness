@@ -42,7 +42,7 @@ module dtp_jtag2axi_sby_env (
 
 `ifdef FORMAL
   logic released_q = 1'b0;
-  always_ff @(posedge tck_i) released_q <= 1'b1;
+  always @(posedge tck_i) released_q <= 1'b1;
 
   always_comb begin
     asm_env_resets_asserted : assume (released_q || !(trst_ni || arst_ni));
