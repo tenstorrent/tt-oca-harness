@@ -747,8 +747,8 @@ lifetime, case completeness and hierarchy labels as manual changes requiring own
 names.
 
 Fix actionable findings rather than hiding them. Owner-local waivers belong under the source
-owner's `lint/` directory: `*.verible.waiver`, `*.verilator.vlt`, and synthesis-only
-`*.slang.expected-errors`. VC SpyGlass lint, CDC and RDC waivers follow the same ownership as
+owner's `lint/` directory: `*.verible.waiver` and `*.verilator.vlt`. VC SpyGlass lint, CDC
+and RDC waivers follow the same ownership as
 `hw/sys/<sys>/{lint,cdc,rdc}/<sys>.vc{lint,cdc,rdc}[.opensource_ip].waiver.tcl`: SPDX header
 plus `# tclint-disable line-length`, tclfmt-clean, hierarchical filter fields carrying the
 `${PREFIX}` token so a parent run can replay them, `#` blocks of one to three lines with the
@@ -758,9 +758,7 @@ constraints live beside them under `hw/sys/<sys>/cdc/`, the block SDC under
 `flows/synth/constraints/`; `flows/cdc/README.md` has the layout and the knobs. Central
 Makefiles only discover or pass those files, and each block
 `flow.mk` declares the exceptions relevant to its elaborated top. Use the narrowest
-diagnostic/path/hierarchy/source match and a constraint-focused rationale. Slang expected-error
-patterns must identify the path and message; the flow must fail if a pattern is unused or an
-additional error appears. Never replace a site-specific rule with whole-file suppression.
+diagnostic/path/hierarchy/source match and a constraint-focused rationale. Never replace a site-specific rule with whole-file suppression.
 
 The register generator owns `hw/common/regs/lint/peakrdl.verilator.vlt`, which the shared
 Verilator flow loads for every block. Its exact path and message matches cover only PeakRDL's

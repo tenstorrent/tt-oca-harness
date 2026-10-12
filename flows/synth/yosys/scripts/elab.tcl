@@ -6,17 +6,12 @@
 # any optimization runs. Assumes common.tcl and init_tech.tcl have already
 # been sourced (see synth.tcl) for
 # $sv_flist/$top_design/$proj_name/$tmp_dir/$rep_dir.
-set slang_compat_args {}
-if { [info exists ::env(OCAH_SLANG_COMPAT_FLAGS)] } {
-    set slang_compat_args $::env(OCAH_SLANG_COMPAT_FLAGS)
-}
 # --single-unit: slang defaults to one compilation unit per file in -f, so
 # macros defined in one file (including ocah_vendor_defines.svh) are not
 # visible in another. scripts/run.sh loads the plugin before this driver runs.
 yosys read_slang --top $top_design -f $sv_flist \
     --single-unit --keep-hierarchy \
     --allow-use-before-declare --ignore-assertions \
-    {*}$slang_compat_args \
     --unroll-limit=100000 --error-limit=100 \
     --timescale=$timescale
 
