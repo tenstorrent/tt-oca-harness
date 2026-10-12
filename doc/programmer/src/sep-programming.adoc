@@ -449,9 +449,11 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
   https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/sep/lifecycle_controller.html#feature-control-vector-definition[Lifecycle Controller chapter]
 endif::backend-pdf[]
-  and read as zero without popping while that bit is disabled, as it is in
-  PROD. Take random data from the <<sep-entropy-pool-access,entropy pool>>
-  instead.
+  and read as zero without popping while that bit disables them, as it does in
+  PROD without a demotion. Take random data from the
+  <<sep-entropy-pool-access,entropy pool>> instead. To keep the FIFOs closed in
+  PROD through a `DEMOTE_1` demotion, and in RMA_SIP, set `ENTROPY_DBG` in
+  `SIP_DIS` before SiP handoff.
 . Enable EDN with `EDN_ENABLE=true`, `AUTO_REQ_MODE=true`,
   `BOOT_REQ_MODE=false`, and `CMD_FIFO_RST=false`.
 . Wait for both `EDN.SW_CMD_STS.CMD_RDY` and `CMD_REG_RDY`, then write an
