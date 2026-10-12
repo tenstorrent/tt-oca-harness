@@ -885,6 +885,107 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "all required TCK labels ran at their programmed periods",
         ),
     ],
+    "smu_jtag_ic_reset_ext_override_test": [
+        ("CHK-ICEXT-EXT-ON", "ICEXT_EXT_ON", "enable=0 drives ovrd=1, ctrl_n follows control"),
+        ("CHK-ICEXT-EXT-OFF", "ICEXT_EXT_OFF", "enable=1 keeps ovrd=0, ctrl_n follows control"),
+        (
+            "CHK-ICEXT-EXT-INDEP",
+            "ICEXT_EXT_INDEP",
+            "single 0 and single 1 on the one external port, readback unchanged elsewhere",
+        ),
+        ("CHK-ICEXT-EXT-2STEP", "ICEXT_EXT_2STEP", "control moves val first, enable moves ovrd"),
+        (
+            "CHK-ICEXT-EXT-BOTH",
+            "ICEXT_EXT_BOTH",
+            "enable and control in one Update-DR settle to the written values",
+        ),
+        (
+            "CHK-ICEXT-EXT-UPDONLY",
+            "ICEXT_EXT_UPDONLY",
+            "outputs hold through Capture-DR, Shift-DR and Pause-DR",
+        ),
+        ("CHK-ICEXT-HOLD-1", "ICEXT_HOLD_1", "reset_hold=1: Test-Logic-Reset restores all ones"),
+        ("CHK-ICEXT-HOLD-0", "ICEXT_HOLD_0", "reset_hold=0: Test-Logic-Reset keeps the override"),
+        ("CHK-ICEXT-HOLD-TRST", "ICEXT_HOLD_TRST", "TRST_n restores every bit including hold"),
+        (
+            "CHK-ICEXT-HOLD-POR",
+            "ICEXT_HOLD_POR",
+            "power-on reset restores every bit including hold",
+        ),
+        ("CHK-ICEXT-HOLD-SELF", "ICEXT_HOLD_SELF", "Test-Logic-Reset leaves reset_hold unchanged"),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded JTAG waits with last TAP state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S12<PASS"),
+    ],
+    "smu_jtag_ic_reset_layout_caps_test": [
+        ("CHK-ICLAY-IC-LEN", "ICLAY_IC_LEN", "163-bit marker emerges after exactly 155 TCKs"),
+        (
+            "CHK-ICLAY-IC-SLICE",
+            "ICLAY_IC_SLICE",
+            "cleared control bit lands at each slice boundary position",
+        ),
+        (
+            "CHK-ICLAY-IC-PAIR",
+            "ICLAY_IC_PAIR",
+            "reset_control is bit 2n+2 and reset_enable bit 2n+1 of the external pair",
+        ),
+        (
+            "CHK-ICLAY-IC-NAMED",
+            "ICLAY_IC_NAMED",
+            "ten named ports sit at their documented TDR positions",
+        ),
+        ("CHK-ICLAY-IC-IMG", "ICLAY_IC_IMG", "all-ones image after power-on reset and TRST_n"),
+        (
+            "CHK-ICLAY-IC-RECAP",
+            "ICLAY_IC_RECAP",
+            "recapture returns the written image, no output moves",
+        ),
+        (
+            "CHK-ICLAY-CAPS-DEF",
+            "ICLAY_CAPS_DEF",
+            "JTAG_CAPS equals the default-configuration field map",
+        ),
+        (
+            "CHK-ICLAY-CAPS-RO",
+            "ICLAY_CAPS_RO",
+            "JTAG_CAPS ignores shifted-in bits and is exactly 60 bits",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded JTAG waits with last TAP state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S9<PASS"),
+    ],
+    "smu_jtag_trst_por_reset_test": [
+        (
+            "CHK-RSTH-POR-ONLY",
+            "RSTH_POR_ONLY",
+            "powergood_i drop holds the TAP in TLR, IR decodes IDCODE, DR scan returns IDCODE",
+        ),
+        (
+            "CHK-RSTH-TRST-ONLY",
+            "RSTH_TRST_ONLY",
+            "TRST_n low gives TLR with TCK running at TMS 0, TMS 1 and with TCK stopped",
+        ),
+        (
+            "CHK-RSTH-RST-COMB",
+            "RSTH_RST_COMB",
+            "either reset alone holds TLR across TMS-low TCKs; first TMS-low after both gives RTI",
+        ),
+        (
+            "CHK-RSTH-RST-RELEASE",
+            "RSTH_RST_RELEASE",
+            "TLR under TMS high after release, first TMS-low gives RTI, DR scan returns IDCODE",
+        ),
+        (
+            "CHK-RSTH-TLR-IDCODE",
+            "RSTH_TLR_IDCODE",
+            "TLR loads IDCODE for each of seven prior instructions",
+        ),
+        (
+            "CHK-RSTH-TDO-RST",
+            "RSTH_TDO_RST",
+            "jtag_tdo and jtag_tdo_oen match after TRST_n, power-on reset and both",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded JTAG waits with last TAP state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S7<PASS"),
+    ],
     "smu_jtag_reset_override_test": [
         (
             "CHK-IC-DEFAULT",

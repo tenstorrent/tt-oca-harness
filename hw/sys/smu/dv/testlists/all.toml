@@ -2415,6 +2415,72 @@ args = [
   "+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom.parhex",
 ]
 
+[[tests]]
+name = "smu_jtag_ic_reset_ext_override_test"
+module = "smu_jtag_ic_reset_ext_override_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "jtag", "no_sep", "reset"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex",
+  "+smc_efuse_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "+sep_efuse_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex",
+  "+sep_itcm_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex",
+  "+sep_dtcm_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
+[[tests]]
+name = "smu_jtag_trst_por_reset_test"
+module = "smu_jtag_trst_por_reset_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "jtag", "reset"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex",
+  "+smc_efuse_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "+sep_efuse_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex",
+  "+sep_itcm_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex",
+  "+sep_dtcm_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
+[[tests]]
+name = "smu_jtag_ic_reset_layout_caps_test"
+module = "smu_jtag_ic_reset_layout_caps_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "jtag", "no_sep"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/smc_rom_default.hex",
+  "+smc_efuse_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "+sep_efuse_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex",
+  "+sep_itcm_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex",
+  "+sep_dtcm_hex={repo_root}/hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
 # sep_lifecycle_ctrl.sv hardwires dbg_disable.smc_otp_jtag2axi and
 # .sep_otp_jtag2axi to 0 while deriving .smc_jtag2axi from the Case-2 gating
 # term, so the OTP bridges sit outside the lifecycle debug ladder. Every other
@@ -3050,6 +3116,9 @@ tests = [
   "smu_jtag2axi_vs_smn_same_csr_race_test",
   "smu_jtag_chain_enhanced_test",
   "smu_jtag_reset_override_test",
+  "smu_jtag_ic_reset_ext_override_test",
+  "smu_jtag_ic_reset_layout_caps_test",
+  "smu_jtag_trst_por_reset_test",
   "smu_dtp_ptap_ir_walk_test",
   "smu_otp_bridges_under_dbg_disable_test",
   "smu_otp_prod_error_resp_test",
@@ -3102,7 +3171,7 @@ tests = [
   "smu_axi_out_addr_len_size_test",
   "smu_axi_out_outstanding_test",
 ]
-expected_count = 126
+expected_count = 129
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
