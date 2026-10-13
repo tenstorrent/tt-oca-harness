@@ -50,5 +50,22 @@ localparam int unsigned FcovOwnSepDmaIrqErrorLockRandTest = 413;
 localparam int unsigned FcovOwnSepDmaAbortRecoveryRandTest = 414;
 localparam int unsigned FcovOwnSepSpiDmaHandshakeRandTest = 415;
 
-// Owner of sep_fabric_dedicated_port_cg.cp_tcm_dma_dir_range.
+// Memory, boot, reset, WDT and clock. SepTcmDmaApertureEccTest also owns
+// sep_fabric_dedicated_port_cg.cp_tcm_dma_dir_range.
+localparam int unsigned FcovOwnSepBootReleaseTermsTest = 513;
+localparam int unsigned FcovOwnSepColdResetPhaseTest = 514;
+localparam int unsigned FcovOwnSepCpuResetRetentionTest = 515;
+localparam int unsigned FcovOwnSepSwResetIsolationMatrixTest = 516;
+localparam int unsigned FcovOwnSepIpResetOverrideMatrixTest = 517;
+localparam int unsigned FcovOwnSepScanResetOverrideTest = 518;
+localparam int unsigned FcovOwnSepCpuResetEntryTest = 519;
+localparam int unsigned FcovOwnSepSecureTmStrapSamplingTest = 520;
+localparam int unsigned FcovOwnSepCpuCtrlRegShapeTest = 521;
+localparam int unsigned FcovOwnSepTimerClockContractTest = 522;
+localparam int unsigned FcovOwnSepBootRomApertureSweepTest = 523;
+localparam int unsigned FcovOwnSepSramAxiShapeMatrixTest = 524;
 localparam int unsigned FcovOwnSepTcmDmaApertureEccTest = 525;
+localparam int unsigned FcovOwnSepTcmEccCpuTrapTest = 526;
+localparam int unsigned FcovOwnSepCpuDemuxUnmappedFetchTest = 527;
+localparam int unsigned FcovOwnSepDebugMasterTargetMatrixTest = 528;
+localparam int unsigned FcovOwnSepCpuIsaPmpCsrTest = 529;

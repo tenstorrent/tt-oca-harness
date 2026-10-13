@@ -11,6 +11,7 @@ shadow array against that image after sense-done.
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import logging
 import os
@@ -269,16 +270,75 @@ class sep_base_test(uvm_test):
         if self.build_env:
             self.env = SepEnv("env", self)
 
-    def start_clocks(self, dut=None) -> None:
-        """Start the clocks exposed by tb_top."""
+    def start_clocks(self, dut=None, *, phases_ns: dict[str, float] | None = None) -> None:
+        """Start the clocks exposed by tb_top.
+
+        ``phases_ns`` maps a clock pin name (``clk_i``, ``clk_wdt_i``,
+        ``entropy_rosc_sample_clk_i``, ``clk_ref_i``) to a start delay in ns.
+        The clock pin stays at its value until the delay ends, then the clock
+        starts high. A pin that is not in the map starts at once, as with no map.
+        With no ``phases_ns`` argument the map is ``self.clock_phases_ns``, which
+        a leaf sets before a bring-up helper calls this method.
+        """
         if dut is None:
             dut = cocotb.top
-        cocotb.start_soon(Clock(dut.clk_i, self.cfg.sys_clk_period_ns, units="ns").start())
-        cocotb.start_soon(Clock(dut.clk_wdt_i, self.cfg.wdt_clk_period_ns, units="ns").start())
-        cocotb.start_soon(
-            Clock(dut.entropy_rosc_sample_clk_i, self.cfg.entropy_clk_period_ns, units="ns").start()
-        )
-        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
+        if phases_ns is None:
+            phases_ns = getattr(self, "clock_phases_ns", None)
+        phases = dict(phases_ns or {})
+        unknown = set(phases) - set(self._clock_periods_ns())
+        if unknown:
+            raise KeyError(f"start_clocks: unknown clock pin(s) {sorted(unknown)}")
+        for name, period_ns in self._clock_periods_ns().items():
+            self._start_clock(dut, name, period_ns, phases.get(name, 0))
+
+    def _clock_periods_ns(self) -> dict[str, float]:
+        return {
+            "clk_i": self.cfg.sys_clk_period_ns,
+            "clk_wdt_i": self.cfg.wdt_clk_period_ns,
+            "entropy_rosc_sample_clk_i": self.cfg.entropy_clk_period_ns,
+            "clk_ref_i": self.cfg.ref_clk_period_ns,
+        }
+
+    def _start_clock(self, dut, name: str, period_ns: float, phase_ns: float) -> None:
+        if not hasattr(self, "_clock_drivers"):
+            self._clock_drivers = {}
+        clk = Clock(getattr(dut, name), period_ns, units="ns")
+        if not phase_ns:
+            task = cocotb.start_soon(clk.start())
+        else:
+
+            async def _delayed() -> None:
+                await Timer(phase_ns, units="ns")
+                started = clk.start()
+                # cocotb 1.x returns the clock coroutine; cocotb 2.x runs its own task.
+                if inspect.iscoroutine(started):
+                    await started
+
+            task = cocotb.start_soon(_delayed())
+        self._clock_drivers[name] = (clk, task)
+
+    def restart_clock(self, name: str, period_ns: float, phase_ns: float = 0, dut=None) -> None:
+        """Stop the clock on pin ``name`` and start it again at ``period_ns``.
+
+        The pin holds its last value for ``phase_ns``, then the clock starts
+        high. The other clocks keep running.
+        """
+        if dut is None:
+            dut = cocotb.top
+        clocks = getattr(self, "_clock_drivers", {})
+        if name not in clocks:
+            raise KeyError(f"restart_clock: {name} was not started by start_clocks")
+        clk, task = clocks.pop(name)
+        stop = getattr(clk, "stop", None)
+        if stop is not None:
+            try:
+                stop()
+            except RuntimeError:
+                # cocotb 2.x: the clock of a delayed start had not started yet.
+                pass
+        if not task.done():
+            task.cancel()
+        self._start_clock(dut, name, period_ns, phase_ns)
 
     def bind_smc_responder(self, dut) -> None:
         """Attach the shared AXI slave agent to the SEP->SMC boundary.
@@ -353,6 +413,22 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "sep_ext_interrupts_i", 0)
         self._set_if_exists(dut, "smn_outbound_resp_hold_i", 0)
         self._set_if_exists(dut, "smn_outbound_rd_slverr_i", 0)
+        # DFT pins in functional mode, DMI enables off, the core TAP pins on the
+        # tb_top registers, and the TCM and ROM bit-flip injects idle
+        # (docs/SEP_TB_ARCH.adoc).
+        self._set_if_exists(dut, "test_en_i", 0)
+        self._set_if_exists(dut, "scan_rst_ni_i", 1)
+        self._set_if_exists(dut, "dmi_core_enable_i", 0)
+        self._set_if_exists(dut, "dmi_uncore_enable_i", 0)
+        self._set_if_exists(dut, "jtag_bench_own_i", 0)
+        self._set_if_exists(dut, "jtag_tck_i", 0)
+        self._set_if_exists(dut, "jtag_tms_i", 0)
+        self._set_if_exists(dut, "jtag_tdi_i", 0)
+        self._set_if_exists(dut, "jtag_trst_n_i", 0)
+        for pin in ("tcm_flip_i", "tcm_flip_addr_i", "tcm_flip_mask_i"):
+            self._set_if_exists(dut, pin, 0)
+        for pin in ("rom_flip_i", "rom_flip_index_i", "rom_flip_mask_i"):
+            self._set_if_exists(dut, pin, 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle
         # bus. Called before start_clocks. Env-built tests drive the same idle.

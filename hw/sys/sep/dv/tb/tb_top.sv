@@ -456,6 +456,16 @@ module sep_uvm_top
 
     localparam logic [4:0] ResetVectorTdrIr = 5'h18;
 
+    // Core TAP pin select (top-port drive, docs/SEP_TB_ARCH.adoc). With
+    // jtag_bench_own_i = 1 the cocotb pins drive the TAP; otherwise the
+    // registers above do, and every leaf that leaves the select at 0 sees the
+    // TAP exactly as before.
+    logic jtag_core_tck, jtag_core_tms, jtag_core_tdi, jtag_core_trst_n;
+    assign jtag_core_tck    = (jtag_bench_own_i === 1'b1) ? jtag_tck_i    : jtag_tck;
+    assign jtag_core_tms    = (jtag_bench_own_i === 1'b1) ? jtag_tms_i    : jtag_tms;
+    assign jtag_core_tdi    = (jtag_bench_own_i === 1'b1) ? jtag_tdi_i    : jtag_tdi;
+    assign jtag_core_trst_n = (jtag_bench_own_i === 1'b1) ? jtag_trst_n_i : jtag_trst_n;
+
     task automatic jtag_tb_clock(input logic tms, input logic tdi);
         jtag_tms = tms;
         jtag_tdi = tdi;
@@ -619,12 +629,13 @@ module sep_uvm_top
         .clk_ref_i                    (clk_ref_i),
         .wdt_timer_rst_req_o          (wdt_timer_rst_req_o),
 
-        // JTAG (TB-driven only during +cpu_boot reset-vector TDR setup)
-        .jtag_tck_i                   (jtag_tck),
-        .jtag_tms_i                   (jtag_tms),
-        .jtag_tdi_i                   (jtag_tdi),
-        .jtag_trst_ni                 (jtag_trst_n),
-        .jtag_tdo_o                   (),
+        // JTAG: the tb_top registers (driven only by the +cpu_boot reset-vector
+        // TDR setup) unless a leaf takes the pins with jtag_bench_own_i.
+        .jtag_tck_i                   (jtag_core_tck),
+        .jtag_tms_i                   (jtag_core_tms),
+        .jtag_tdi_i                   (jtag_core_tdi),
+        .jtag_trst_ni                 (jtag_core_trst_n),
+        .jtag_tdo_o                   (jtag_tdo_o),
         .jtag_tdoEn_o                 (),
         .jtag_sep_reset_ctrl_i        (jtag_sep_reset_ctrl_drive),
 
@@ -642,16 +653,16 @@ module sep_uvm_top
         .cpu_halt_req_i               (1'b0),
         .cpu_run_req_i                (i_cpu_run_req_i),
 
-        // DFT: functional mode.
-        .test_en_i                    (1'b0),
-        .scan_rst_ni                  (1'b1),
+        // DFT pins: functional mode (0 and 1) unless a leaf drives them.
+        .test_en_i                    (test_en_i === 1'b1),
+        .scan_rst_ni                  (scan_rst_ni_i !== 1'b0),
         .ext_boot_seq_done_i          (ext_boot_seq_done_i),
 
-        // DMI uncore (idle)
-        .dmi_core_enable              (1'b0),
-        .dmi_uncore_enable            (1'b0),
-        .dmi_uncore_en                (),
-        .dmi_uncore_wr_en             (),
+        // DMI enables: 0 unless a leaf drives them. Uncore read data held at 0.
+        .dmi_core_enable              (dmi_core_enable_i === 1'b1),
+        .dmi_uncore_enable            (dmi_uncore_enable_i === 1'b1),
+        .dmi_uncore_en                (dmi_uncore_en_o),
+        .dmi_uncore_wr_en             (dmi_uncore_wr_en_o),
         .dmi_uncore_addr              (),
         .dmi_uncore_wdata             (),
         .dmi_uncore_rdata             ('0),
@@ -1002,6 +1013,46 @@ module sep_uvm_top
         end
     end
 
+    // TCM bit-flip (error inject, docs/SEP_TB_ARCH.adoc): XOR `mask` into the
+    // stored 39-bit word (bits 31:0 data, 38:32 ECC) that holds byte address
+    // `addr`, with the bank and row map of the image load below (ICCM at
+    // 0xC000_0000, bank off[3:2], row off[17:4]; DCCM at 0xC004_0000, bank
+    // off[2], row off[16:3]). An address outside both ends the run.
+    localparam logic [31:0] BdIccmBase = 32'hC000_0000;
+    localparam logic [31:0] BdDccmBase = 32'hC004_0000;
+    task automatic bd_tcm_flip(input logic [31:0] addr, input logic [38:0] mask);
+        logic [31:0] off;
+        if (addr >= BdIccmBase && addr < BdIccmBase + 32'h0004_0000) begin
+            off = addr - BdIccmBase;
+            case (off[3:2])
+                2'd0: `BD_ICCM(0)[off[17:4]] = `BD_ICCM(0)[off[17:4]] ^ mask;
+                2'd1: `BD_ICCM(1)[off[17:4]] = `BD_ICCM(1)[off[17:4]] ^ mask;
+                2'd2: `BD_ICCM(2)[off[17:4]] = `BD_ICCM(2)[off[17:4]] ^ mask;
+                2'd3: `BD_ICCM(3)[off[17:4]] = `BD_ICCM(3)[off[17:4]] ^ mask;
+            endcase
+        end else if (addr >= BdDccmBase && addr < BdDccmBase + 32'h0002_0000) begin
+            off = addr - BdDccmBase;
+            if (off[2]) `BD_DCCM(1)[off[16:3]] = `BD_DCCM(1)[off[16:3]] ^ mask;
+            else        `BD_DCCM(0)[off[16:3]] = `BD_DCCM(0)[off[16:3]] ^ mask;
+        end else begin
+            $fatal(1, "[tb] TCM bit-flip address 0x%08x is outside ICCM and DCCM", addr);
+        end
+        $display("[tb] TCM bit-flip addr=0x%08x mask=0x%010x", addr, mask);
+    endtask
+
+    // Runtime TCM bit-flip on a rising edge of tcm_flip_i.
+    always @(posedge tcm_flip_i) begin : tcm_flip_hook
+        bd_tcm_flip(tcm_flip_addr_i, tcm_flip_mask_i);
+    end
+
+    // Runtime boot ROM bit-flip on a rising edge of rom_flip_i: XOR
+    // rom_flip_mask_i into the stored 64-bit word rom_flip_index_i.
+    always @(posedge rom_flip_i) begin : rom_flip_hook
+        `SEP_IPI.u_sep_boot_rom.mem[rom_flip_index_i] =
+            `SEP_IPI.u_sep_boot_rom.mem[rom_flip_index_i] ^ rom_flip_mask_i;
+        $display("[tb] ROM bit-flip word=%0d mask=0x%016x", rom_flip_index_i, rom_flip_mask_i);
+    end
+
     // TCM (ICCM/DCCM) firmware backdoor-load on tcm_load_i, de-interleaved into the
     // EL2 bank/row layout with per-word Hsiao ECC (ICCM bank=off[3:2] row=off[17:4],
     // DCCM bank=off[2] row=off[16:3]); byte buffers pre-zeroed so every row is
@@ -1012,6 +1063,10 @@ module sep_uvm_top
     logic [31:0]  iccm_poke_addr, iccm_poke_data;
     logic [38:0]  iccm_poke_word;
     int           iccm_poke_off;
+    string        tcm_flip_list;
+    int           tcm_flip_fd;
+    logic [31:0]  tcm_flip_list_addr;
+    logic [38:0]  tcm_flip_list_mask;
     always @(posedge tcm_load_i) begin : backdoor_tcm_load
         int off;
         logic [31:0] w;
@@ -1062,6 +1117,23 @@ module sep_uvm_top
             endcase
             $display("[tb] ICCM[0x%08x] = 0x%08x with ECC, AFTER the bulk load (+sep_iccm_word)",
                      iccm_poke_addr, iccm_poke_data);
+        end
+
+        // Time-0 TCM flip list: +sep_tcm_flip_list=<file>, one flip per line as
+        // "<hex byte address> <hex 39-bit mask>". Applied after the load and the
+        // poke above, so the flips land on the loaded words. The leaf writes the
+        // file before it raises tcm_load_i, so the file is checked here and not
+        // at time 0.
+        if ($value$plusargs("sep_tcm_flip_list=%s", tcm_flip_list)) begin
+            tcm_flip_fd = $fopen(tcm_flip_list, "r");
+            if (tcm_flip_fd == 0) begin
+                $fatal(1, "[tb] +sep_tcm_flip_list=%s is not readable", tcm_flip_list);
+            end
+            while ($fscanf(tcm_flip_fd, "%h %h\n", tcm_flip_list_addr,
+                           tcm_flip_list_mask) == 2) begin
+                bd_tcm_flip(tcm_flip_list_addr, tcm_flip_list_mask);
+            end
+            $fclose(tcm_flip_fd);
         end
     end
 `undef BD_ICCM
@@ -1586,6 +1658,26 @@ module sep_uvm_top
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.aes;
     assign otbn_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.otbn;
+    // Key Manager warm reset and the full isolate request and isolate-complete
+    // vectors (sep_pkg::sep_crypto_isolate_t bit order). Read-only XMRs, same
+    // class as the probes above.
+    assign km_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.km;
+    assign crypto_isolate_req_probe_o = `SEP_CORE.sep_crypto_isolate_req;
+    assign crypto_isolated_probe_o    = `SEP_CORE.sep_crypto_isolated;
+    // Watchdog timer-domain reset and the two Key Manager reset conditioner
+    // outputs. Read-only XMRs.
+    assign aon_rst_n_probe_o = `SEP_CORE.u_sep_wdt_wrap.rst_wdt_n;
+    assign km_cond_rst_probe_o = {
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.rst_cold_aasd_n,
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.rst_warm_sync_n
+    };
+    // Output of the CPU run-request synchronizer; the CPU stub has none.
+`ifndef SEP_CPU_STUB
+    assign mpc_run_sync_probe_o = `SEP_CORE.u_sep_cpu.mpc_reset_run_req_sync;
+`else
+    assign mpc_run_sync_probe_o = 1'b0;
+`endif
 
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are
@@ -1832,6 +1924,159 @@ module sep_uvm_top
     assign pr_rom_strb_o = u_dut.sep_boot_rom_req.strb;
     assign pr_rom_rvalid_o = u_dut.sep_boot_rom_rsp.rvalid;
     assign pr_rom_rdata_o = u_dut.sep_boot_rom_rsp.rdata;
+    // PR-ROM macro side: the request after the ROM interface shim and the read data.
+    assign pr_rom_macro_req_o   = `SEP_IPI.rom_macro_req;
+    assign pr_rom_macro_addr_o  = `SEP_IPI.rom_macro_addr;
+    assign pr_rom_macro_rdata_o = `SEP_IPI.rom_macro_rdata;
+    // PR-TCM: the ICCM and DCCM macro request and response (wrapper nets
+    // u_dut.sep_cpu_tcm_req and u_dut.sep_cpu_tcm_rsp), bank 0 in the low bits.
+    assign pr_tcm_iccm_clken_o = u_dut.sep_cpu_tcm_req.iccm_clken;
+    assign pr_tcm_iccm_wren_o  = u_dut.sep_cpu_tcm_req.iccm_wren_bank;
+    assign pr_tcm_iccm_addr_o  = u_dut.sep_cpu_tcm_req.iccm_addr_bank;
+    assign pr_tcm_iccm_wdata_o = u_dut.sep_cpu_tcm_req.iccm_bank_wr_data;
+    assign pr_tcm_iccm_wecc_o  = u_dut.sep_cpu_tcm_req.iccm_bank_wr_ecc;
+    assign pr_tcm_iccm_rdata_o = u_dut.sep_cpu_tcm_rsp.iccm_bank_dout;
+    assign pr_tcm_iccm_recc_o  = u_dut.sep_cpu_tcm_rsp.iccm_bank_ecc;
+    assign pr_tcm_dccm_clken_o = u_dut.sep_cpu_tcm_req.dccm_clken;
+    assign pr_tcm_dccm_wren_o  = u_dut.sep_cpu_tcm_req.dccm_wren_bank;
+    assign pr_tcm_dccm_addr_o  = u_dut.sep_cpu_tcm_req.dccm_addr_bank;
+    assign pr_tcm_dccm_wdata_o = u_dut.sep_cpu_tcm_req.dccm_wr_data_bank;
+    assign pr_tcm_dccm_wecc_o  = u_dut.sep_cpu_tcm_req.dccm_wr_ecc_bank;
+    assign pr_tcm_dccm_rdata_o = u_dut.sep_cpu_tcm_rsp.dccm_bank_dout;
+    assign pr_tcm_dccm_recc_o  = u_dut.sep_cpu_tcm_rsp.dccm_bank_ecc;
+    // PR-IFU: the IFU request before the IFU demux and its response; the CPU
+    // stub has no IFU.
+`ifndef SEP_CPU_STUB
+    assign pr_ifu_arvalid_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar_valid;
+    assign pr_ifu_arready_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp.ar_ready;
+    assign pr_ifu_araddr_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.addr;
+    assign pr_ifu_arid_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.id;
+    assign pr_ifu_arlen_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.len;
+    assign pr_ifu_arsize_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.ar.size;
+    assign pr_ifu_rvalid_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp.r_valid;
+    assign pr_ifu_rready_o = `SEP_CORE.u_sep_cpu.ifu_axi_req.r_ready;
+    assign pr_ifu_rresp_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp.r.resp;
+    assign pr_ifu_rid_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp.r.id;
+    assign pr_ifu_rlast_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp.r.last;
+`else
+    assign pr_ifu_arvalid_o = 1'b0;
+    assign pr_ifu_arready_o = 1'b0;
+    assign pr_ifu_araddr_o = '0;
+    assign pr_ifu_arid_o = '0;
+    assign pr_ifu_arlen_o = '0;
+    assign pr_ifu_arsize_o = '0;
+    assign pr_ifu_rvalid_o = 1'b0;
+    assign pr_ifu_rready_o = 1'b0;
+    assign pr_ifu_rresp_o = '0;
+    assign pr_ifu_rid_o = '0;
+    assign pr_ifu_rlast_o = '0;
+`endif
+    // PR-LSU-ROM: the LSU demux port to the ROM mux.
+    assign pr_lsu_rom_awvalid_o = `SEP_CORE.lsu_rom_axi_req.aw_valid;
+    assign pr_lsu_rom_awready_o = `SEP_CORE.lsu_rom_axi_resp.aw_ready;
+    assign pr_lsu_rom_awaddr_o = `SEP_CORE.lsu_rom_axi_req.aw.addr;
+    assign pr_lsu_rom_awid_o = `SEP_CORE.lsu_rom_axi_req.aw.id;
+    assign pr_lsu_rom_awlen_o = `SEP_CORE.lsu_rom_axi_req.aw.len;
+    assign pr_lsu_rom_awsize_o = `SEP_CORE.lsu_rom_axi_req.aw.size;
+    assign pr_lsu_rom_arvalid_o = `SEP_CORE.lsu_rom_axi_req.ar_valid;
+    assign pr_lsu_rom_arready_o = `SEP_CORE.lsu_rom_axi_resp.ar_ready;
+    assign pr_lsu_rom_araddr_o = `SEP_CORE.lsu_rom_axi_req.ar.addr;
+    assign pr_lsu_rom_arid_o = `SEP_CORE.lsu_rom_axi_req.ar.id;
+    assign pr_lsu_rom_arlen_o = `SEP_CORE.lsu_rom_axi_req.ar.len;
+    assign pr_lsu_rom_arsize_o = `SEP_CORE.lsu_rom_axi_req.ar.size;
+    assign pr_lsu_rom_wvalid_o = `SEP_CORE.lsu_rom_axi_req.w_valid;
+    assign pr_lsu_rom_wready_o = `SEP_CORE.lsu_rom_axi_resp.w_ready;
+    assign pr_lsu_rom_wstrb_o = `SEP_CORE.lsu_rom_axi_req.w.strb;
+    assign pr_lsu_rom_wlast_o = `SEP_CORE.lsu_rom_axi_req.w.last;
+    assign pr_lsu_rom_bvalid_o = `SEP_CORE.lsu_rom_axi_resp.b_valid;
+    assign pr_lsu_rom_bready_o = `SEP_CORE.lsu_rom_axi_req.b_ready;
+    assign pr_lsu_rom_bresp_o = `SEP_CORE.lsu_rom_axi_resp.b.resp;
+    assign pr_lsu_rom_bid_o = `SEP_CORE.lsu_rom_axi_resp.b.id;
+    assign pr_lsu_rom_rvalid_o = `SEP_CORE.lsu_rom_axi_resp.r_valid;
+    assign pr_lsu_rom_rready_o = `SEP_CORE.lsu_rom_axi_req.r_ready;
+    assign pr_lsu_rom_rresp_o = `SEP_CORE.lsu_rom_axi_resp.r.resp;
+    assign pr_lsu_rom_rid_o = `SEP_CORE.lsu_rom_axi_resp.r.id;
+    assign pr_lsu_rom_rlast_o = `SEP_CORE.lsu_rom_axi_resp.r.last;
+    // PR-LSU-XBAR: the LSU demux port to the local crossbar.
+    assign pr_lsu_xbar_awvalid_o = `SEP_CORE.lsu_xbar_axi_req.aw_valid;
+    assign pr_lsu_xbar_awready_o = `SEP_CORE.lsu_xbar_axi_resp.aw_ready;
+    assign pr_lsu_xbar_awaddr_o = `SEP_CORE.lsu_xbar_axi_req.aw.addr;
+    assign pr_lsu_xbar_awid_o = `SEP_CORE.lsu_xbar_axi_req.aw.id;
+    assign pr_lsu_xbar_awlen_o = `SEP_CORE.lsu_xbar_axi_req.aw.len;
+    assign pr_lsu_xbar_awsize_o = `SEP_CORE.lsu_xbar_axi_req.aw.size;
+    assign pr_lsu_xbar_arvalid_o = `SEP_CORE.lsu_xbar_axi_req.ar_valid;
+    assign pr_lsu_xbar_arready_o = `SEP_CORE.lsu_xbar_axi_resp.ar_ready;
+    assign pr_lsu_xbar_araddr_o = `SEP_CORE.lsu_xbar_axi_req.ar.addr;
+    assign pr_lsu_xbar_arid_o = `SEP_CORE.lsu_xbar_axi_req.ar.id;
+    assign pr_lsu_xbar_arlen_o = `SEP_CORE.lsu_xbar_axi_req.ar.len;
+    assign pr_lsu_xbar_arsize_o = `SEP_CORE.lsu_xbar_axi_req.ar.size;
+    assign pr_lsu_xbar_wvalid_o = `SEP_CORE.lsu_xbar_axi_req.w_valid;
+    assign pr_lsu_xbar_wready_o = `SEP_CORE.lsu_xbar_axi_resp.w_ready;
+    assign pr_lsu_xbar_wstrb_o = `SEP_CORE.lsu_xbar_axi_req.w.strb;
+    assign pr_lsu_xbar_wlast_o = `SEP_CORE.lsu_xbar_axi_req.w.last;
+    assign pr_lsu_xbar_bvalid_o = `SEP_CORE.lsu_xbar_axi_resp.b_valid;
+    assign pr_lsu_xbar_bready_o = `SEP_CORE.lsu_xbar_axi_req.b_ready;
+    assign pr_lsu_xbar_bresp_o = `SEP_CORE.lsu_xbar_axi_resp.b.resp;
+    assign pr_lsu_xbar_bid_o = `SEP_CORE.lsu_xbar_axi_resp.b.id;
+    assign pr_lsu_xbar_rvalid_o = `SEP_CORE.lsu_xbar_axi_resp.r_valid;
+    assign pr_lsu_xbar_rready_o = `SEP_CORE.lsu_xbar_axi_req.r_ready;
+    assign pr_lsu_xbar_rresp_o = `SEP_CORE.lsu_xbar_axi_resp.r.resp;
+    assign pr_lsu_xbar_rid_o = `SEP_CORE.lsu_xbar_axi_resp.r.id;
+    assign pr_lsu_xbar_rlast_o = `SEP_CORE.lsu_xbar_axi_resp.r.last;
+    // PR-XBAR-TCM: the crossbar cpu_tcm target (contract name xbar_tcm_req).
+    assign pr_xbar_tcm_awvalid_o = `SEP_CORE.cpu_tcm_axi_req.aw_valid;
+    assign pr_xbar_tcm_awready_o = `SEP_CORE.cpu_tcm_axi_resp.aw_ready;
+    assign pr_xbar_tcm_awaddr_o = `SEP_CORE.cpu_tcm_axi_req.aw.addr;
+    assign pr_xbar_tcm_awid_o = `SEP_CORE.cpu_tcm_axi_req.aw.id;
+    assign pr_xbar_tcm_awlen_o = `SEP_CORE.cpu_tcm_axi_req.aw.len;
+    assign pr_xbar_tcm_awsize_o = `SEP_CORE.cpu_tcm_axi_req.aw.size;
+    assign pr_xbar_tcm_arvalid_o = `SEP_CORE.cpu_tcm_axi_req.ar_valid;
+    assign pr_xbar_tcm_arready_o = `SEP_CORE.cpu_tcm_axi_resp.ar_ready;
+    assign pr_xbar_tcm_araddr_o = `SEP_CORE.cpu_tcm_axi_req.ar.addr;
+    assign pr_xbar_tcm_arid_o = `SEP_CORE.cpu_tcm_axi_req.ar.id;
+    assign pr_xbar_tcm_arlen_o = `SEP_CORE.cpu_tcm_axi_req.ar.len;
+    assign pr_xbar_tcm_arsize_o = `SEP_CORE.cpu_tcm_axi_req.ar.size;
+    assign pr_xbar_tcm_wvalid_o = `SEP_CORE.cpu_tcm_axi_req.w_valid;
+    assign pr_xbar_tcm_wready_o = `SEP_CORE.cpu_tcm_axi_resp.w_ready;
+    assign pr_xbar_tcm_wstrb_o = `SEP_CORE.cpu_tcm_axi_req.w.strb;
+    assign pr_xbar_tcm_wlast_o = `SEP_CORE.cpu_tcm_axi_req.w.last;
+    assign pr_xbar_tcm_bvalid_o = `SEP_CORE.cpu_tcm_axi_resp.b_valid;
+    assign pr_xbar_tcm_bready_o = `SEP_CORE.cpu_tcm_axi_req.b_ready;
+    assign pr_xbar_tcm_bresp_o = `SEP_CORE.cpu_tcm_axi_resp.b.resp;
+    assign pr_xbar_tcm_bid_o = `SEP_CORE.cpu_tcm_axi_resp.b.id;
+    assign pr_xbar_tcm_rvalid_o = `SEP_CORE.cpu_tcm_axi_resp.r_valid;
+    assign pr_xbar_tcm_rready_o = `SEP_CORE.cpu_tcm_axi_req.r_ready;
+    assign pr_xbar_tcm_rresp_o = `SEP_CORE.cpu_tcm_axi_resp.r.resp;
+    assign pr_xbar_tcm_rid_o = `SEP_CORE.cpu_tcm_axi_resp.r.id;
+    assign pr_xbar_tcm_rlast_o = `SEP_CORE.cpu_tcm_axi_resp.r.last;
+    // PR-DBG-SB: the debug-module system-bus master after its alias remap.
+    assign pr_dbg_sb_awvalid_o = `SEP_CORE.dbg_axi_req.aw_valid;
+    assign pr_dbg_sb_awready_o = `SEP_CORE.dbg_axi_resp.aw_ready;
+    assign pr_dbg_sb_awaddr_o = `SEP_CORE.dbg_axi_req.aw.addr;
+    assign pr_dbg_sb_awid_o = `SEP_CORE.dbg_axi_req.aw.id;
+    assign pr_dbg_sb_awlen_o = `SEP_CORE.dbg_axi_req.aw.len;
+    assign pr_dbg_sb_awsize_o = `SEP_CORE.dbg_axi_req.aw.size;
+    assign pr_dbg_sb_arvalid_o = `SEP_CORE.dbg_axi_req.ar_valid;
+    assign pr_dbg_sb_arready_o = `SEP_CORE.dbg_axi_resp.ar_ready;
+    assign pr_dbg_sb_araddr_o = `SEP_CORE.dbg_axi_req.ar.addr;
+    assign pr_dbg_sb_arid_o = `SEP_CORE.dbg_axi_req.ar.id;
+    assign pr_dbg_sb_arlen_o = `SEP_CORE.dbg_axi_req.ar.len;
+    assign pr_dbg_sb_arsize_o = `SEP_CORE.dbg_axi_req.ar.size;
+    assign pr_dbg_sb_wvalid_o = `SEP_CORE.dbg_axi_req.w_valid;
+    assign pr_dbg_sb_wready_o = `SEP_CORE.dbg_axi_resp.w_ready;
+    assign pr_dbg_sb_wdata_o = `SEP_CORE.dbg_axi_req.w.data;
+    assign pr_dbg_sb_wstrb_o = `SEP_CORE.dbg_axi_req.w.strb;
+    assign pr_dbg_sb_wlast_o = `SEP_CORE.dbg_axi_req.w.last;
+    assign pr_dbg_sb_bvalid_o = `SEP_CORE.dbg_axi_resp.b_valid;
+    assign pr_dbg_sb_bready_o = `SEP_CORE.dbg_axi_req.b_ready;
+    assign pr_dbg_sb_bresp_o = `SEP_CORE.dbg_axi_resp.b.resp;
+    assign pr_dbg_sb_bid_o = `SEP_CORE.dbg_axi_resp.b.id;
+    assign pr_dbg_sb_rvalid_o = `SEP_CORE.dbg_axi_resp.r_valid;
+    assign pr_dbg_sb_rready_o = `SEP_CORE.dbg_axi_req.r_ready;
+    assign pr_dbg_sb_rdata_o = `SEP_CORE.dbg_axi_resp.r.data;
+    assign pr_dbg_sb_rresp_o = `SEP_CORE.dbg_axi_resp.r.resp;
+    assign pr_dbg_sb_rid_o = `SEP_CORE.dbg_axi_resp.r.id;
+    assign pr_dbg_sb_rlast_o = `SEP_CORE.dbg_axi_resp.r.last;
 
     // Read-only XMRs observe the manifest at SRAM word 0 and the decrypted
     // payload at byte offset 0x1000. Firmware owns the SRAM AXI frontdoor during
@@ -3110,6 +3355,21 @@ module sep_uvm_top
     assign tcm_load_i               = 1'b0;
     assign esrc_noise_ext_i         = '0;
     assign spi_miso_i               = 1'b1;
+    assign test_en_i                = 1'b0;
+    assign scan_rst_ni_i            = 1'b1;
+    assign dmi_core_enable_i        = 1'b0;
+    assign dmi_uncore_enable_i      = 1'b0;
+    assign jtag_bench_own_i         = 1'b0;
+    assign jtag_tck_i               = 1'b0;
+    assign jtag_tms_i               = 1'b0;
+    assign jtag_tdi_i               = 1'b0;
+    assign jtag_trst_n_i            = 1'b0;
+    assign tcm_flip_i               = 1'b0;
+    assign tcm_flip_addr_i          = '0;
+    assign tcm_flip_mask_i          = '0;
+    assign rom_flip_i               = 1'b0;
+    assign rom_flip_index_i         = '0;
+    assign rom_flip_mask_i          = '0;
 
     // Test classes compile as part of this top (module scope).
     `include "sep_tests.sv"

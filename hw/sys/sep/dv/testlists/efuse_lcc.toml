@@ -316,3 +316,16 @@ tags = ["lcc", "efuse", "rma", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+lc_start=8", "+lc_transient_rma"]
+
+[[tests]]
+# SECURE_TM clears when cold reset asserts and samples the strap only at the sampling
+# events of the specification. The sampled value holds until the next sampling event.
+name = "sep_secure_tm_strap_sampling_test"
+module = "efuse.sep_secure_tm_strap_sampling_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["lcc", "efuse", "strap", "reset", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+sep_edn_jtag_reset_waive"]

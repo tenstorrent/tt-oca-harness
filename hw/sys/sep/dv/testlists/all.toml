@@ -30,12 +30,14 @@ tests = ["sep_axi_smoke_test"]
 
 [[groups]]
 # Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
-# (full-CPU target) are disjoint and together hold every member;
+# (full-CPU target) are disjoint and together hold every member except
+# sep_debug_master_target_matrix_test_sba: a no_cpu leaf graded only on the
+# full-CPU `default` build that the VCS coverage run of `all` elaborates;
 # `expected_count` pins the size. `rom_fw` is not a member: it runs a third RTL
 # target and states firmware rather than hardware contracts. `all` is the
 # coverage set.
 #
-# Three members are pinned to one simulator, so a single-simulator run of `all`
+# Eight members are pinned to one simulator, so a single-simulator run of `all`
 # logs the members pinned to the other simulator as skipped_wrong_tool:
 # - sep_km_ic_reset_release_test, VCS only (km.toml). Its contract is the
 #   prim_rom noXOnCsI assertion. Verilator is two-state and prim_assert.sv
@@ -45,8 +47,14 @@ tests = ["sep_axi_smoke_test"]
 #   `default` target, which keeps Adams Bridge.
 # - sep_spi_cold_reset_values_rand_test, VCS only (spi.toml). It reads SPI host
 #   state after rst_ni, and Verilator is two-state.
+# - sep_cold_reset_phase_test and sep_scan_reset_override_test, VCS only
+#   (system.toml). They grade sub-cycle reset phases and walk the hierarchy.
+# - sep_tcm_dma_aperture_ecc_test, sep_debug_master_target_matrix_test and
+#   sep_debug_master_target_matrix_test_sba, VCS only (memory.toml, cpu.toml),
+#   as their run modes state. The no_cpu members of the three grade on the
+#   full-CPU `default` build.
 name = "all"
-expected_count = 162
+expected_count = 181
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -210,6 +218,25 @@ tests = [
     "sep_cpu_bridge_fault_matrix_rand_test",
     "sep_cpu_ctrl_timeout_inert_rand_test",
     "sep_nmi_vector_bark_rand_test",
+    "sep_boot_release_terms_test",
+    "sep_boot_release_terms_test_smc_hold",
+    "sep_cold_reset_phase_test",
+    "sep_cpu_reset_retention_test",
+    "sep_sw_reset_isolation_matrix_test",
+    "sep_ip_reset_override_matrix_test",
+    "sep_scan_reset_override_test",
+    "sep_cpu_reset_entry_test",
+    "sep_secure_tm_strap_sampling_test",
+    "sep_cpu_ctrl_reg_shape_test",
+    "sep_timer_clock_contract_test",
+    "sep_boot_rom_aperture_sweep_test",
+    "sep_sram_axi_shape_matrix_test",
+    "sep_tcm_dma_aperture_ecc_test",
+    "sep_tcm_ecc_cpu_trap_test",
+    "sep_cpu_demux_unmapped_fetch_test",
+    "sep_debug_master_target_matrix_test",
+    "sep_debug_master_target_matrix_test_sba",
+    "sep_cpu_isa_pmp_csr_test",
 ]
 
 [[groups]]
@@ -243,6 +270,12 @@ tests = [
     "sep_pic_priority_gate_rand_test",
     "sep_pic_pending_map_walk_rand_test",
     "sep_nmi_vector_bark_rand_test",
+    "sep_cpu_reset_entry_test",
+    "sep_boot_rom_aperture_sweep_test",
+    "sep_tcm_ecc_cpu_trap_test",
+    "sep_cpu_demux_unmapped_fetch_test",
+    "sep_debug_master_target_matrix_test",
+    "sep_cpu_isa_pmp_csr_test",
 ]
 
 [[groups]]
@@ -385,6 +418,18 @@ tests = [
     "sep_mailbox_reset_clear_test",
     "sep_cpu_bridge_fault_matrix_rand_test",
     "sep_cpu_ctrl_timeout_inert_rand_test",
+    "sep_boot_release_terms_test",
+    "sep_boot_release_terms_test_smc_hold",
+    "sep_cold_reset_phase_test",
+    "sep_cpu_reset_retention_test",
+    "sep_sw_reset_isolation_matrix_test",
+    "sep_ip_reset_override_matrix_test",
+    "sep_scan_reset_override_test",
+    "sep_secure_tm_strap_sampling_test",
+    "sep_cpu_ctrl_reg_shape_test",
+    "sep_timer_clock_contract_test",
+    "sep_sram_axi_shape_matrix_test",
+    "sep_tcm_dma_aperture_ecc_test",
 ]
 
 [[groups]]
@@ -659,4 +704,32 @@ tests = [
     "sep_cpu_bridge_fault_matrix_rand_test",
     "sep_cpu_ctrl_timeout_inert_rand_test",
     "sep_nmi_vector_bark_rand_test",
+]
+
+[[groups]]
+# Convenience group of the memory, boot, reset, WDT and clock tests.
+# It is not a VPLAN group: `all`, `cpu_stub` and `cpu` hold the same tests, except
+# sep_debug_master_target_matrix_test_sba, which is in `all` only.
+name = "phase3_memory_boot_reset"
+expected_count = 19
+tests = [
+    "sep_boot_release_terms_test",
+    "sep_boot_release_terms_test_smc_hold",
+    "sep_cold_reset_phase_test",
+    "sep_cpu_reset_retention_test",
+    "sep_sw_reset_isolation_matrix_test",
+    "sep_ip_reset_override_matrix_test",
+    "sep_scan_reset_override_test",
+    "sep_cpu_reset_entry_test",
+    "sep_secure_tm_strap_sampling_test",
+    "sep_cpu_ctrl_reg_shape_test",
+    "sep_timer_clock_contract_test",
+    "sep_boot_rom_aperture_sweep_test",
+    "sep_sram_axi_shape_matrix_test",
+    "sep_tcm_dma_aperture_ecc_test",
+    "sep_tcm_ecc_cpu_trap_test",
+    "sep_cpu_demux_unmapped_fetch_test",
+    "sep_debug_master_target_matrix_test",
+    "sep_debug_master_target_matrix_test_sba",
+    "sep_cpu_isa_pmp_csr_test",
 ]

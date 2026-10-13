@@ -32,7 +32,25 @@ PR-CSR     ``sys_csr_axil`` aw, ar: addr (approved probe)
 PR-SRAM    ``pr_sram``      req: addr we wdata strb (req and gnt high);
                             rsp: rdata (rvalid high)
 PR-ROM     ``pr_rom``       as PR-SRAM
+PR-ROM-    ``pr_rom_macro`` req: addr (macro req high, after the ROM interface
+MACRO                       shim); rsp: rdata (the clock after a req beat)
+PR-TCM     ``pr_tcm``       iccm, dccm: clken wren addr wdata wecc (any clken
+                            bit high); iccm_rsp, dccm_rsp: rdata recc (the
+                            clock after a beat with a read bank, clken & ~wren)
+PR-IFU     ``pr_ifu``       ar: addr id len size; r: resp id last (IFU request
+                            before the IFU demux; 0 on the CPU stub build)
+PR-LSU-ROM ``pr_lsu_rom``   aw, ar: addr id len size; w: strb last;
+                            b: resp id; r: resp id last (LSU demux ROM port)
+PR-LSU-    ``pr_lsu_xbar``  as PR-LSU-ROM (LSU demux local crossbar port)
+XBAR
+PR-XBAR-   ``pr_xbar_tcm``  as PR-LSU-ROM, 6-bit ID (crossbar cpu_tcm target,
+TCM                         net cpu_tcm_axi_req; contract name xbar_tcm_req)
+PR-DBG-SB  ``pr_dbg_sb``    as PR-LSU-ROM plus w data and r data (debug-module
+                            system-bus master after its alias remap)
 ========== ================ ==================================================
+
+Bank fields of PR-TCM are packed with bank 0 in the low bits (port comments
+in tb/sep_tb_signal_list.svh).
 
 A field that resolves to X or Z is recorded as None, so a check that needs a
 known value fails on it instead of reading 0. A VALID or READY that resolves to
@@ -65,6 +83,16 @@ from cocotb.utils import get_sim_time
 
 _AXI_FULL = ("addr", "id", "user", "cache", "prot", "len", "size", "burst")
 _W_FIELDS = ("data", "strb", "last")
+_AXI_SHAPE = ("addr", "id", "len", "size")
+_AXI_PORT = {
+    "aw": _AXI_SHAPE,
+    "ar": _AXI_SHAPE,
+    "w": ("strb", "last"),
+    "b": ("resp", "id"),
+    "r": ("resp", "id", "last"),
+}
+_TCM_REQ = ("clken", "wren", "addr", "wdata", "wecc")
+_TCM_RSP = ("rdata", "recc")
 
 # name -> (prefix, {channel: fields}, kind)
 TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
@@ -92,6 +120,21 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
     "PR-CSR": ("sys_csr_axil", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
     "PR-SRAM": ("pr_sram", {"req": ("addr", "we", "wdata", "strb"), "rsp": ("rdata",)}, "mem"),
     "PR-ROM": ("pr_rom", {"req": ("addr", "we", "wdata", "strb"), "rsp": ("rdata",)}, "mem"),
+    "PR-ROM-MACRO": ("pr_rom_macro", {"req": ("addr",), "rsp": ("rdata",)}, "macro"),
+    "PR-TCM": (
+        "pr_tcm",
+        {"iccm": _TCM_REQ, "iccm_rsp": _TCM_RSP, "dccm": _TCM_REQ, "dccm_rsp": _TCM_RSP},
+        "tcm",
+    ),
+    "PR-IFU": ("pr_ifu", {"ar": _AXI_SHAPE, "r": ("resp", "id", "last")}, "axi"),
+    "PR-LSU-ROM": ("pr_lsu_rom", dict(_AXI_PORT), "axi"),
+    "PR-LSU-XBAR": ("pr_lsu_xbar", dict(_AXI_PORT), "axi"),
+    "PR-XBAR-TCM": ("pr_xbar_tcm", dict(_AXI_PORT), "axi"),
+    "PR-DBG-SB": (
+        "pr_dbg_sb",
+        {**_AXI_PORT, "w": ("data", "strb", "last"), "r": ("data", "resp", "id", "last")},
+        "axi",
+    ),
 }
 
 
@@ -109,6 +152,11 @@ def _hi(sig) -> bool:
 
 def _known(sig) -> bool:
     return sig is None or sig.value.is_resolvable
+
+
+def _nonzero(sig) -> bool:
+    v = sig.value
+    return v.is_resolvable and int(v) != 0
 
 
 class TapXZError(AssertionError):
@@ -174,7 +222,32 @@ class SepFabricTap:
         self.clk = 0
         self._task = None
         self._sigs: dict[str, tuple[object, object, dict[str, object]]] = {}
+        # Response channels of the macro kinds: channel -> request channel. A
+        # response beat is the field sample on the clock after a request beat
+        # that reads (PR-ROM-MACRO: every request; PR-TCM: clken & ~wren).
+        self._follow: dict[str, str] = {}
         for ch, names in chans.items():
+            if kind == "tcm":
+                if ch.endswith("_rsp"):
+                    valid = None
+                    self._follow[ch] = ch[: -len("_rsp")]
+                    flds = {
+                        n: getattr(self.dut, f"{prefix}_{ch[: -len('_rsp')]}_{n}_o") for n in names
+                    }
+                else:
+                    valid = getattr(self.dut, f"{prefix}_{ch}_clken_o")
+                    flds = {n: getattr(self.dut, f"{prefix}_{ch}_{n}_o") for n in names}
+                self._sigs[ch] = (valid, None, flds)
+                continue
+            if kind == "macro":
+                if ch == "req":
+                    valid = getattr(self.dut, f"{prefix}_req_o")
+                else:
+                    valid = None
+                    self._follow[ch] = "req"
+                flds = {n: getattr(self.dut, f"{prefix}_{n}_o") for n in names}
+                self._sigs[ch] = (valid, None, flds)
+                continue
             if kind == "axi":
                 valid = getattr(self.dut, f"{prefix}_{ch}valid_o")
                 ready = getattr(self.dut, f"{prefix}_{ch}ready_o")
@@ -189,13 +262,29 @@ class SepFabricTap:
                 flds = {n: getattr(self.dut, f"{prefix}_{n}_o") for n in names}
             self._sigs[ch] = (valid, ready, flds)
 
+    def _reads(self, ch: str, fields: dict[str, int | None]) -> bool:
+        """True when a request beat of ``ch`` has a response the next clock."""
+        if self.kind == "macro":
+            return True
+        clken, wren = fields.get("clken"), fields.get("wren")
+        return clken is not None and wren is not None and (clken & ~wren) != 0
+
     async def _run(self) -> None:
         clk = self.dut.clk_i
+        pending: set[str] = set()
         while True:
             await RisingEdge(clk)
             await ReadOnly()
             self.clk += 1
+            reads: set[str] = set()
             for ch, (valid, ready, flds) in self._sigs.items():
+                if valid is None:
+                    if self._follow[ch] in pending:
+                        t = get_sim_time("ps")
+                        self.beats.append(
+                            TapBeat(ch, t, len(self.beats), {n: _val(s) for n, s in flds.items()})
+                        )
+                    continue
                 if not (_known(valid) and _known(ready)):
                     if not self.xz_fail:
                         continue
@@ -206,11 +295,14 @@ class SepFabricTap:
                     )
                     logging.getLogger("cocotb.sep_fabric_tap").error(msg)
                     raise TapXZError(msg)
-                if _hi(valid) and (ready is None or _hi(ready)):
+                fire = _nonzero(valid) if self.kind == "tcm" else _hi(valid)
+                if fire and (ready is None or _hi(ready)):
                     t = get_sim_time("ps")
-                    self.beats.append(
-                        TapBeat(ch, t, len(self.beats), {n: _val(s) for n, s in flds.items()})
-                    )
+                    beat = TapBeat(ch, t, len(self.beats), {n: _val(s) for n, s in flds.items()})
+                    self.beats.append(beat)
+                    if self._reads(ch, beat.fields):
+                        reads.add(ch)
+            pending = reads
 
     def start(self) -> "SepFabricTap":
         if self._task is None:
