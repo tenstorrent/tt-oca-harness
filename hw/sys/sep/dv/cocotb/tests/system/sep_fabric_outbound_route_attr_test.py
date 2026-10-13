@@ -5,9 +5,9 @@
 RANDCFG. Real PROD fuse sense of a pinned image (PROD, SEC_DIS 0, fixed
 ``SIP_DIS`` and ``SYS_DIS`` whose DBG_1 bit 0 is clear), so the inbound filter
 is active, then one DEMOTE_1 write for the no-bypass leg. The seed draws the AP
-region ``i``, the STEE region ``j``, their offsets (bits 55:19, not the region
+region ``i``, the STEE region ``j``, their offsets (bits 54:19, not the region
 identity), the AxPROT values, the direction order and the LSU AxUSER[3:0] ``u``
-(1 to 15). The SMU aperture stays at its reset pair (``0x8000_0000``, size
+(1 to 15). Offset bit 55 is fixed: 1 for AP, 0 for STEE. The SMU aperture stays at its reset pair (``0x8000_0000``, size
 ``0x4000_0000``); the test never writes it.
 
 Contract (``hw/sys/sep/doc/fabric.adoc``, "Fabric Topology", "Transaction
@@ -51,6 +51,10 @@ Checkers:
                     issued AxPROT, AxUSER 0 for AP and STEE and the issued
                     AxUSER for SMU, and the issued W data and strobe. X or Z
                     fails (VCS).
+  CHK-OUT-HIBIT     address bit 55 does not carry a security attribute: AP
+                    captures with bit 55 set and STEE captures with bit 55
+                    clear each pass with AxPROT[1] 0 and 1, bit 55 as
+                    programmed and AxPROT as issued. STEE is the control.
 """
 
 from __future__ import annotations
@@ -143,8 +147,8 @@ class _Cfg:
         rng = SepSeededRng(seed)
         self.seed = seed
         self.u = rng.randrange(1, 16)
-        self.ap = self._draw_class(rng, "ap", AP_REGION_BASE, AP_BASE)
-        self.stee = self._draw_class(rng, "stee", STEE_REGION_BASE, STEE_BASE)
+        self.ap = self._draw_class(rng, "ap", AP_REGION_BASE, AP_BASE, bit55=1)
+        self.stee = self._draw_class(rng, "stee", STEE_REGION_BASE, STEE_BASE, bit55=0)
         self.dir_first_write = bool(rng.getrandbits(1))
         self.rng = rng
 
@@ -152,11 +156,14 @@ class _Cfg:
     def _bad_target(t: int) -> bool:
         return (SMU_BASE <= t <= SMU_LAST) or (LOCAL_LO <= t <= LOCAL_HI)
 
-    def _draw_class(self, rng: SepSeededRng, name: str, region_base: int, csr_base: int) -> _Cls:
+    def _draw_class(
+        self, rng: SepSeededRng, name: str, region_base: int, csr_base: int, *, bit55: int
+    ) -> _Cls:
         region = rng.randrange(N_REGIONS)
         identity = (region_base + (region << IDX_START)) >> IDX_START
         while True:
-            hi = rng.getrandbits(56 - IDX_START)
+            # Offset bit 55 is fixed per class; bits 54:19 are drawn.
+            hi = rng.getrandbits(55 - IDX_START) | (bit55 << (55 - IDX_START))
             if hi == identity:
                 continue
             c = _Cls(name, region_base, csr_base, region, hi << IDX_START)
@@ -219,6 +226,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         "CHK-OUT-NOEXTRA",
         "CHK-OUT-LOCAL-DATA",
         "CHK-OUT-CAPTURE",
+        "CHK-OUT-HIBIT",
     )
 
     # ------------------------------------------------------------------ access
@@ -326,6 +334,8 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         )
         self.logger.info("CHK-OUT-CAPTURE PASS: %s", line)
         self.n_capture += 1
+        if cls in ("ap", "stee"):
+            self.hibit.setdefault(cls, set()).add(((b.addr >> 55) & 1, (b.prot >> 1) & 1, d))
 
     # ---------------------------------------------------------------- filters
 
@@ -691,6 +701,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         self.logger.info("outbound route attr: %s", cfg.summary())
         self.n_capture = 0
         self.n_expect = 0
+        self.hibit: dict[str, set] = {}
         self._stack_prot1 = {"ap": cfg.rng.getrandbits(1), "stee": cfg.rng.getrandbits(1)}
 
         await self._bring_up()
@@ -714,6 +725,22 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             f"CHK-OUT-CAPTURE FAIL: {line}"
         )
         self.logger.info("OUT-CAPTURE-SUMMARY LOG: %s", line)
+        self._chk_hibit()
+
+    def _chk_hibit(self) -> None:
+        """CHK-OUT-HIBIT over the captures that CHK-OUT-CAPTURE passed."""
+        ok = True
+        parts = []
+        for cls, b55 in (("ap", 1), ("stee", 0)):
+            seen = self.hibit.get(cls, set())
+            want = {(b55, p1, d) for p1 in (0, 1) for d in ("R", "W")}
+            parts.append(
+                f"{cls}: bit55={b55} cells=" + ",".join(f"p{p}{d}" for _, p, d in sorted(seen))
+            )
+            ok = ok and seen == want
+        line = " ".join(parts)
+        assert ok, f"CHK-OUT-HIBIT FAIL: {line} -- each class needs R and W at AxPROT[1] 0 and 1"
+        self.logger.info("CHK-OUT-HIBIT PASS: %s", line)
 
 
 def _hx(v) -> str:

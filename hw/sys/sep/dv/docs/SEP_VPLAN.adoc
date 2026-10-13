@@ -457,6 +457,7 @@ they leave out; the checker table of each linked entry is the full set.
 |Token comparator fault latch cleared by reset |<<sep_efuse_rma_token_rand_test,`sep_efuse_rma_token_rand_test`>> |all, cpu_stub |None |`sep_efuse_rma_token_rand_test` (`CHK-FAULT-RESET`). The set-only phases prove the fault bits survive a valid retry; only this one separates that from a latch that never clears. After the two zeros it re-arms once, so the phase ends on a zero-to-one transition rather than on a wedged detector that stays at 0. |YES
 |Debug-disable gating ladder (`dbg_disable`) |<<sep_lcc_demote_feat_ctrl_matrix_test,`sep_lcc_demote_feat_ctrl_matrix_test`>> |all, cpu_stub |`sep_lc_demote_cg` |`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`, `CHK-FUSE-DFT-DIS`). All eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` is Case 3 and `dfd` is Case 1. The DFT-inserted fuse-path ports are separate DUT outputs, not members of `dbg_disable`: `sep_fuse_dft_disable` is Case 3 AND `sep_fuse_dbg`, inverted; `smc_fuse_dft_disable` is Case 2 AND `smc_fuse_dbg`, inverted. The compose cell closes those two bits while Case 2 and Case 3 stay open. |YES
 |Local-master alias remap datapath |<<sep_fabric_local_alias_datapath_test,`sep_fabric_local_alias_datapath_test`>>, <<sep_fabric_local_alias_offset_walk_test,`sep_fabric_local_alias_offset_walk_test`>> |all, cpu_stub |None |`sep_fabric_local_alias_datapath_test`, `sep_fabric_local_alias_offset_walk_test` (every region, full 56-bit bounds and offset) |YES
+|Local-master alias remap hit debug lane |<<sep_fabric_local_alias_datapath_test,`sep_fabric_local_alias_datapath_test`>> |all, cpu_stub |None |`sep_fabric_local_alias_datapath_test` (CHK-DBG-AR: the read hit index on `ext_debug_bus_o[207:192]` follows the read region; field positions not graded) |YES
 |CSR reset / RW / RO / reserved |<<sep_reg_bit_bash_rand_test,`sep_reg_bit_bash_rand_test`>> |all, cpu_stub |None |The checker table of each entry named. |YES
 |AXI AW/W channel ordering, write landing and neighbour displacement |<<sep_axi_order_sweep_test,`sep_axi_order_sweep_test`>>, <<sep_axi_order_sweep_m_axi_test,`sep_axi_order_sweep_m_axi_test`>> |all, cpu_stub |`sep_axi_decode_cg` |`sep_axi_order_sweep_test` (s_axi, 321 cells over 27 blocks, 107 per ordering) and `sep_axi_order_sweep_m_axi_test` (m_axi, 225 over 11, 75 per ordering), all three orderings presented and asserted by `CHK-ORDER-STIM`. `m_axi` grants a true W-first handshake; `s_axi` holds `wready` until AW, so its W-first presentation completes same-cycle at the slave, which is the slave's contract and not a stimulus failure. |YES
 |AXI narrow-write strobe and memory windows |<<sep_axi_strobe_window_test,`sep_axi_strobe_window_test`>> |all, cpu_stub |`sep_axi_decode_cg` |The checker table of each entry named. |YES
@@ -912,7 +913,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Scope is the sixteen programmable local-master regions ahead of the system-peripherals routing demux (`hw/sys/sep/doc/fabric.adoc`, "Address Remapping").
+|Scope is the sixteen programmable local-master regions ahead of the system-peripherals routing demux (`hw/sys/sep/doc/fabric.adoc`, "Address Remapping"), and the read hit index of the remap-hit debug lane.
 |<<sep_fabric_local_alias_offset_walk_test,`sep_fabric_local_alias_offset_walk_test`>>
 |2
 |no_cpu, +skip_fuse_sense
@@ -994,7 +995,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real PROD fuse sense, then DEMOTE_1
 |LSU and System Interface masters, outbound responder, filter reference model
-|Proves that the route demux sends the SMU aperture and the AP and STEE regions to the outbound port and that the AP and STEE remaps force the source ID to OTHERS while the LSU drives another value. Proves that local scratch and `SEP_SW_DEBUG` accesses stay off that port and that the outbound filter has no bypass. Extends the open outbound remap tests and the open lifecycle tests with the write cells and the no-bypass pair only.
+|Proves that the route demux sends the SMU aperture and the AP and STEE regions to the outbound port and that the AP and STEE remaps force the source ID to OTHERS while the LSU drives another value, and that AxPROT passes unchanged whether the remap offset sets address bit 55 (AP) or clears it (STEE). Proves that local scratch and `SEP_SW_DEBUG` accesses stay off that port and that the outbound filter has no bypass. Extends the open outbound remap tests and the open lifecycle tests with the write cells and the no-bypass pair only.
 
 |<<sep_fabric_alias_remap_attr_rand_test,`sep_fabric_alias_remap_attr_rand_test`>>
 |3
@@ -3650,7 +3651,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Outbound request fields at `smn_outbound_axi_req_o`
 |AW and AR fields (address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxBURST) and the W beats of `smn_outbound_axi_req_o`. The net `smn_outbound_req_w` exists and no port exports it.
 |ACCEPT-PROBE
-|PR-OUT is an observation tap. The always-ready outbound responder answers OKAY and shows nothing of the request. Checks that use it: CHK-OUT-ROUTE, CHK-OUT-CAPTURE and CHK-OUT-NOEXTRA of `sep_fabric_outbound_route_attr_test`, the supplement of `sep_fabric_filter_match_priority_rand_test`, CHK-DMA-USER and CHK-DMA-PAIR of `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`, and CHK-IFU-NEVER of `sep_cpu_demux_unmapped_fetch_test`.
+|PR-OUT is an observation tap. The always-ready outbound responder answers OKAY and shows nothing of the request. Checks that use it: CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-HIBIT and CHK-OUT-NOEXTRA of `sep_fabric_outbound_route_attr_test`, the supplement of `sep_fabric_filter_match_priority_rand_test`, CHK-DMA-USER and CHK-DMA-PAIR of `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`, and CHK-IFU-NEVER of `sep_cpu_demux_unmapped_fetch_test`.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Extension port request at `axi_extension_axi_req_o`
 |Address, AxSIZE, AxLEN, strobe and data of the extension port request
@@ -4248,7 +4249,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |PR-OUT
 |Read-only probe
 |AW and AR fields (address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxBURST) and W beats of `smn_outbound_axi_req_o`. The net `smn_outbound_req_w` exists and no port exports it.
-|`sep_fabric_outbound_route_attr_test` (CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-NOEXTRA), `sep_fabric_filter_match_priority_rand_test` (supplement), `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER, CHK-DMA-PAIR), `sep_fabric_smc_route_test`, `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-NEVER)
+|`sep_fabric_outbound_route_attr_test` (CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-HIBIT, CHK-OUT-NOEXTRA), `sep_fabric_filter_match_priority_rand_test` (supplement), `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER, CHK-DMA-PAIR), `sep_fabric_smc_route_test`, `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-NEVER)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-EXT
 |Read-only probe
