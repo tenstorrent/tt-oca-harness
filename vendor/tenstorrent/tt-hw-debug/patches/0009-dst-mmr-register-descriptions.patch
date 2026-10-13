@@ -1,0 +1,121 @@
+dst_mmrs, dst_sink_mmrs: correct DST register descriptions
+
+Several DST and DST sink MMR descriptions disagreed with the RTL, or
+were empty where software needs them:
+
+- trDstVendorStreamLength gave 32 * 2^(code + 1) frames. Codes 0 to 4
+  select 32 to 512 frames, 32 << code, and codes 5 to 7 fall back to 32.
+  The length applies only in stream-counting sync mode.
+- trDstSyncMode called every value other than 2'b10 "NA". 2'b01 enables
+  stream counting, 2'b10 sends periodic timestamps, and 2'b00 and 2'b11
+  do neither.
+- The packet header source ID comes from trDstInstFeatures[trDstSrcID]
+  bits [3:0]; CDbgDebugTraceCfg[trace_source_id] is stored but never
+  read.
+- The producer pads frames to trDstVendorFrameLength * 64 bytes, but the
+  sink finds frame boundaries at the power of two given by the highest
+  set bit of its own frame length, so only 1, 2, 4 and 8 agree. The two
+  frame-length fields now state that and that they must match.
+- A read of trDstRamData launches a trace-RAM read and, when unread data
+  is present, advances trDstRamRPLow by one 32-bit word, wrapping from
+  the limit to the start. Neither field described this.
+
+Recorded as a patch so the hand-mirrored upstream/ tree stays
+reproducible from the vendored spec plus patches/ applied in order.
+diff --git a/rtl/mmr/spec/dst_mmrs.yml b/rtl/mmr/spec/dst_mmrs.yml
+index fe1eef242..e6ceaecc0 100644
+--- a/rtl/mmr/spec/dst_mmrs.yml
++++ b/rtl/mmr/spec/dst_mmrs.yml
+@@ -140,8 +140,10 @@ trDstControl:
+     FIELDS_RANGE: '17:16'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: When the field is set tp 2'b10, sent timestamp. All other vlaues
+-      not NA.
++    DESCRIPTION: 'Periodic sync mode. 2''b00: off. 2''b01: stream counting, with
++      trDstVendorStreamLength frames between non-compressed packets. 2''b10: send
++      a timestamp packet every 2^(trDstSyncMax + 4) Cluster clocks. 2''b11: no
++      effect, as 2''b00.'
+     HW_READ: DST
+     SW_WRITE: W
+     SW_READ: R
+@@ -224,8 +226,11 @@ trDstImpl:
+     FIELDS_RANGE: '27:24'
+     RESET_VALUE: '1'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: Specify frame length. Frame Length = trDstVendorFrameLength* 64 ;
+-      Frame Length should be a multiple of Bank Data Width.
++    DESCRIPTION: Specify frame length. Frame Length = trDstVendorFrameLength* 64 bytes;
++      Frame Length should be a multiple of Bank Data Width. Only 1, 2, 4 and 8 (64,
++      128, 256 and 512 bytes) are supported, because the DST sink finds frame boundaries
++      at the power of two given by the highest set bit of its frame length. Program
++      the sink's trDstRamVendorFrameLength with the same value.
+     SW_WRITE: W
+     SW_READ: R
+     SW_TYPE: ''
+@@ -235,8 +240,9 @@ trDstImpl:
+     RESET_VALUE: '4'
+     LEGAL_VALUE: ''
+     DESCRIPTION: Specify Stream length. A stream starts with "no compressed packet".
+-      Stream length specifies number of frames before a non-compressed packet is sent.Stream
+-      Length = 32* 2^(trDstVendorStreamLength + 1)
++      Stream length specifies number of frames before a non-compressed packet is sent,
++      and applies only when trDstSyncMode is 2'b01. Values 0 to 4 give Stream Length
++      = 32* 2^trDstVendorStreamLength (32 to 512 frames); values 5 to 7 give 32.
+     SW_WRITE: W
+     SW_READ: R
+     SW_TYPE: ''
+@@ -289,7 +295,7 @@ trDstInstFeatures:
+     FIELDS_RANGE: '27:16'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: Source ID sent in the trace packet headers. Only bits [3:0] are used.
+     SW_WRITE: W
+     SW_READ: R
+     SW_TYPE: ''
+@@ -364,7 +370,7 @@ c_dbg_debug_trace_cfg:
+     FIELDS_RANGE: '3:0'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: 'Trace Source ID'
++    DESCRIPTION: Stored but not used. The trace packet headers carry trDstInstFeatures[trDstSrcID].
+     SW_WRITE: W
+     SW_READ: R
+     SW_TYPE: ''
+diff --git a/rtl/mmr/spec/dst_sink_mmrs.yml b/rtl/mmr/spec/dst_sink_mmrs.yml
+index 7968c05a2..e6ab2de16 100644
+--- a/rtl/mmr/spec/dst_sink_mmrs.yml
++++ b/rtl/mmr/spec/dst_sink_mmrs.yml
+@@ -112,7 +112,8 @@ trDstRamImpl:
+     FIELDS_RANGE: '27:24'
+     RESET_VALUE: '1'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: Frame length in 64-byte units. Only 1, 2, 4 and 8 (64, 128, 256 and
++      512 bytes) are supported, and the value must match the DST's trDstVendorFrameLength.
+     SW_WRITE: W
+     SW_READ: R
+     SW_TYPE: ''
+@@ -282,7 +283,9 @@ trDstRamRPLow:
+     FIELDS_RANGE: '31:2'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: Read pointer, in 32-bit words; bits [31:2] of the byte address of
++      the word the next trDstRamData read returns. Each trDstRamData read that returns
++      unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.
+     HW_WRITE: DST_SINK
+     SW_WRITE: W
+     SW_READ: R
+@@ -333,7 +336,9 @@ trDstRamData:
+     FIELDS_RANGE: '31:0'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: ''
++    DESCRIPTION: Reading launches a trace-RAM read at trDstRamRPLow. When the RAM
++      holds unread data, the read returns that 32-bit word and advances trDstRamRPLow;
++      otherwise the pointer does not move.
+     SW_READ: R
+     SW_TYPE: ''
+ scratch_lo:
