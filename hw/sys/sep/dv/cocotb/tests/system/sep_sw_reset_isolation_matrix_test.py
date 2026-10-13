@@ -60,11 +60,14 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-SWRST-SCOPE   ``ip_rst_n[6:1]`` are stable on every cycle of the
                     reserved-only leg and the unrelated registers keep their
                     value. Control: the first subset step moves a tap.
-  CHK-ISO-RESP      in the isolated window every 4-byte read returns
-                    ``0x1501A7ED``; for OTBN, AES, KMAC and Adams Bridge every
-                    access of the size sweep completes SLVERR (HMAC and TRNG log
-                    ``CTL-ISO-RESP``). The written value is absent after the
-                    release.
+  CHK-ISO-RESP      in the isolated window every 32-bit lane that an isolated
+                    read covers carries ``0x1501A7ED`` (the covered bytes for a
+                    1- or 2-byte read) with SLVERR; every 64-bit port (CSRNG,
+                    EDN, Adams Bridge) gets a read of its high lane on every
+                    seed. For OTBN, AES, KMAC and Adams Bridge every write of
+                    the size sweep also completes SLVERR (HMAC and TRNG log
+                    their write answers as ``CTL-ISO-RESP``). The written value
+                    is absent after the release.
   CHK-ISO-REL       the isolate-complete bits of D fall within the allowance of
                     the ``ip_rst_n[D]`` rise; the probe reads its RDL default.
   CHK-ISO-NEVER     the drawn never-isolated port answers as in the memory map
@@ -382,6 +385,43 @@ class Plan:
             f"hold={hold} never={never}"
         )
         return pd
+
+
+# 64-bit isolated host ports (memory_map.adoc windows); a read covers the high lane
+# when it reaches address bit 2 = 1 of the 8-byte word.
+WIDE_PORTS = {
+    "csrng": (sym("CSRNG_REG_MAP_BASE_ADDR"), 0x800),
+    "edn": (sym("EDN_REG_MAP_BASE_ADDR"), 0x800),
+    "abr": (sym("ABR_REG_MAP_BASE_ADDR"), 0x10000),
+}
+_ISO_BYTES = ISO_DATA.to_bytes(4, "little")
+
+
+def iso_lanes(size: int, addr: int, rdata: int, resp: int) -> list[tuple]:
+    """``(size, lane address, got, expected, ok)`` for every 32-bit lane a read covers.
+
+    The expected bytes of a lane are those of 0x1501A7ED at the same byte offsets
+    (reset_controller.adoc, Isolation and Reset Sequencing, step 2), and the read
+    answers SLVERR.
+    """
+    raw = rdata.to_bytes(size, "little")
+    out = []
+    for lane in range(addr & ~3, addr + size, 4):
+        lo, hi = max(addr, lane), min(addr + size, lane + 4)
+        got = int.from_bytes(raw[lo - addr : hi - addr], "little")
+        exp = int.from_bytes(_ISO_BYTES[lo - lane : hi - lane], "little")
+        out.append((size, lane, got, exp, got == exp and resp == RESP_SLVERR))
+    return out
+
+
+def high_lane_ports(reads) -> dict[str, bool]:
+    """For each 64-bit port a pass reads, whether one read covers its high lane."""
+    out: dict[str, bool] = {}
+    for size, addr in reads:
+        for name, (base, span) in WIDE_PORTS.items():
+            if base <= addr < base + span:
+                out[name] = out.get(name, False) or ((addr + size - 1) & 4) != 0
+    return out
 
 
 class IsoSlvLog:
@@ -1088,11 +1128,12 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         await self._grade_pass(pd, view, host_evs, fall, rel_marks, win, baseline)
 
     async def _window(self, pd: PassDraw) -> dict:
-        res = {"rd4": [], "slverr": 0, "n": 0, "other": [], "writes": 0}
+        res = {"rd4": [], "slverr": 0, "n": 0, "other": [], "writes": 0, "lanes": []}
         for size, addr in pd.reads:
             seq = await self._acc(SepAxiOp.READ, addr, size)
             res["n"] += 1
             res["slverr"] += int(seq.resp_code == RESP_SLVERR)
+            res["lanes"] += iso_lanes(size, addr, int(seq.rdata), seq.resp_code)
             if size == 4:
                 res["rd4"].append((addr, int(seq.rdata) & 0xFFFF_FFFF, seq.resp_code))
             else:
@@ -1277,7 +1318,13 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 f"sibling_retained={int(win['sibling_ok'])}",
             )
         # CHK-ISO-RESP / CTL-ISO-RESP.
-        rd4_ok = bool(win["rd4"]) and all(data == ISO_DATA for _, data, _ in win["rd4"])
+        # Every 32-bit lane every isolated read covers carries 0x1501A7ED (the bytes
+        # of the lane a 1- or 2-byte read covers carry the matching bytes).
+        lanes = win["lanes"]
+        bad = [ln for ln in lanes if not ln[4]]
+        hi_cov = high_lane_ports(pd.reads) if d in ("trng", "abr") else {}
+        hi_ok = all(hi_cov.values()) if hi_cov else True
+        rd4_ok = bool(win["rd4"]) and not bad and hi_ok
         graded = d in ("otbn", "aes", "kmac", "abr")
         written_absent = all(ok for ok, _ in post_ok[d])
         if not graded:
@@ -1296,6 +1343,18 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             ok,
             f"dom={d} pass={name} rd4={len(win['rd4'])} rd4_data="
             + ",".join(f"0x{data:08x}/{RESP_NAME[r]}@0x{a:08x}" for a, data, r in win["rd4"])
+            + f" lanes_ok={len(lanes) - len(bad)}/{len(lanes)}"
+            + (
+                " bad_lanes="
+                + ",".join(f"{sz}B@0x{la:08x}:got=0x{g:x}/exp=0x{e:x}" for sz, la, g, e, _ in bad)
+                if bad
+                else ""
+            )
+            + (
+                " high_lane_reads=" + ",".join(f"{k}:{int(v)}" for k, v in hi_cov.items())
+                if hi_cov
+                else ""
+            )
             + f" graded_slverr={win['slverr'] if graded else 0}"
             f"{('/' + str(win['n'])) if graded else ''} "
             f"other_size_data=[{';'.join(win['other'])}] control_okay={int(written_absent)} "
