@@ -163,3 +163,19 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_burst_shaping_test"
+module = "smc_dma_burst_shaping_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_accel_egress_attrs_test"
+module = "smc_accel_egress_attrs_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]

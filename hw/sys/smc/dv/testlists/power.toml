@@ -156,6 +156,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_telemetry_rx_flush_test"
+module = "smc_telemetry_rx_flush_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_telemetry_ctrl_access_test"
 module = "smc_telemetry_ctrl_access_test"
 seed = 1
@@ -188,8 +196,32 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_wdt_irq_source_ids_test"
+module = "smc_wdt_irq_source_ids_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_wdt_key_csr_test"
 module = "smc_wdt_key_csr_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_register_map_test"
+module = "smc_wdt_register_map_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_scale_zerocmp_test"
+module = "smc_wdt_scale_zerocmp_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "wdt"]
@@ -257,4 +289,20 @@ module = "smc_avsbus_resync_force_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_count_feed_test"
+module = "smc_wdt_count_feed_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_octs_primary_count_test"
+module = "smc_octs_primary_count_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
 run_modes = ["smoke"]

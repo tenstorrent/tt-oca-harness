@@ -49,7 +49,6 @@ KIB = 1024
 _GUARD = 8
 _GUARD_BYTE = 0xEE
 _POISON_BYTE = 0xA5
-_MAX_BURST_BYTES = 256 * 8
 
 _S2_DEST = OUTPUT_FABRIC_ADDR + 0x1000
 _S3_DEST = OUTPUT_FABRIC_ADDR + 0x3000
@@ -63,7 +62,7 @@ _JOB_96K = 96 * KIB
 
 LONG_HOLD_RISES = 4096
 HOLD_POLLS = 16
-PLATEAU_RISES = 256
+QUIET_RISES = 1024
 
 # Liveness ceilings, not checked quantities: expiry FAILS with the last observed state.
 _WAIT_RISES = 60000
@@ -82,6 +81,8 @@ _PROBES = (
     "tb_zeroer_wlast",
     "tb_output_axi_awvalid",
     "tb_output_axi_awready",
+    "tb_output_axi_wvalid",
+    "tb_output_axi_wready",
     "tb_output_axi_bvalid",
     "tb_output_axi_bready",
     "tb_output_axi_resp_hold",
@@ -97,6 +98,11 @@ class _Wire:
         self.w: list[tuple[int, int]] = []
         self.b_rises: list[int] = []
         self.out_aw_hs = 0
+        self.out_w_hs = 0
+        self.last_issue = 0
+        self.q_out_max = 0
+        self.q_z_max = 0
+        self.last_ch = (0, 0, 0, 0)
         self.out_b_hs = 0
         self.out_count = 0
         self.out_max = 0
@@ -125,6 +131,9 @@ class _Wire:
     def reset_maxima(self) -> None:
         self.out_max = self.out_count
         self.z_max = 0
+        self.last_issue = self.rise
+        self.q_out_max = self.out_count
+        self.q_z_max = 0
 
     def check(self) -> None:
         assert self.error is None, self.error
@@ -156,6 +165,8 @@ class _Wire:
             )
         self.checked += 1
         self.z_max = max(self.z_max, z_out)
+        self.q_z_max = max(self.q_z_max, z_out)
+        self.q_out_max = max(self.q_out_max, self.out_count)
         self.out_max = max(self.out_max, self.out_count)
         state = g("tb_zeroer_state")
         if state != self._prev_state:
@@ -178,8 +189,18 @@ class _Wire:
         if wv and not wr:
             self.stall_w += 1
         out_awv, out_awr = g("tb_output_axi_awvalid"), g("tb_output_axi_awready")
+        out_wv, out_wr = g("tb_output_axi_wvalid"), g("tb_output_axi_wready")
+        self.last_ch = (out_awv, out_awr, out_wv, out_wr)
+        if out_wv and out_wr:
+            self.out_w_hs += 1
+            self.last_issue = self.rise
+            self.q_out_max = self.out_count
+            self.q_z_max = z_out
         if out_awv and out_awr:
             self.out_aw_hs += 1
+            self.last_issue = self.rise
+            self.q_out_max = self.out_count + 1
+            self.q_z_max = z_out
         if out_awv and not out_awr:
             self.stall_aw += 1
         if g("tb_output_axi_bvalid") and g("tb_output_axi_bready"):
@@ -189,6 +210,10 @@ class _Wire:
         if count != self.out_count:
             self.last_out_change = self.rise
         self.out_count = count
+
+    @property
+    def quiet_rises(self) -> int:
+        return self.rise - self.last_issue
 
     @property
     def plateau_rises(self) -> int:
@@ -495,25 +520,44 @@ class smc_zeroer_busy_outstanding_test_seq(output_fabric_pass_all_cfg_seq):
     async def _s6(self) -> str:
         wire = self._wire
         self._prime(_S6_DEST, _JOB_96K)
-        aw0, b0 = len(wire.aw), wire.out_b_hs
+        aw0, w0, b0 = len(wire.aw), len(wire.w), wire.out_b_hs
+        sys_aw0, sys_w0 = wire.out_aw_hs, wire.out_w_hs
         wire.reset_maxima()
         await self._hold(1)
         try:
             await self._start("S6", _S6_DEST, _JOB_96K)
             await self._wait(
-                "the SYS_OUT outstanding AW plateau",
-                lambda: wire.out_count >= 1 and wire.plateau_rises >= PLATEAU_RISES,
+                f"{QUIET_RISES} consecutive rises without a SYS_OUT AW or W handshake",
+                lambda: wire.out_count >= 1 and wire.quiet_rises >= QUIET_RISES,
             )
             status = await self._status("ZEROER_S6_HELD")
             assert status == 1, f"STATUS reads {status} with all B held"
+            quiet = wire.quiet_rises
+            assert quiet >= QUIET_RISES, f"only {quiet} quiet rises before the release"
+            awv, awr, wv, wr = wire.last_ch
+            if awv and not awr:
+                side = "awvalid=1 awready=0 (the responder or fabric stopped accepting AW)"
+            elif wv and not wr:
+                side = "wvalid=1 wready=0 (the responder or fabric stopped accepting W)"
+            elif not awv and not wv:
+                side = "awvalid=0 wvalid=0 (the zeroer stopped issuing on its own)"
+            else:
+                side = f"awvalid={awv} awready={awr} wvalid={wv} wready={wr}"
             self._held = {
-                "out_max": wire.out_max,
-                "z_max": wire.z_max,
+                "out_max": wire.q_out_max,
+                "z_max": wire.q_z_max,
                 "plateau": wire.plateau_rises,
+                "quiet": quiet,
                 "out_at": wire.out_count,
-                "aw_issued": len(wire.aw) - aw0,
+                "side": side,
+                "bursts": len(wire.aw) - aw0,
+                "beats": len(wire.w) - w0,
+                "sys_aw": wire.out_aw_hs - sys_aw0,
+                "sys_w": wire.out_w_hs - sys_w0,
+                "responder_depth": getattr(self._responder, "max_outstanding", "n/a"),
                 "out_b": wire.out_b_hs - b0,
             }
+            assert self._held["out_b"] == 0, "a B handshake completed during the hold"
         finally:
             await self._hold(0)
         busy_reads = await self._finish("S6", _S6_DEST, _JOB_96K)
@@ -522,15 +566,16 @@ class smc_zeroer_busy_outstanding_test_seq(output_fabric_pass_all_cfg_seq):
         assert wire.out_b_hs - b0 == bursts, (
             f"{wire.out_b_hs - b0} B handshakes for {bursts} AW handshakes"
         )
-        assert self._held["out_b"] == 0, "a B handshake completed during the hold"
         self._stamp("S6")
         h = self._held
         return (
-            f"{_JOB_96K}-byte job of {bursts} bursts with all B held: {h['aw_issued']} AW "
-            f"handshakes issued before the ready handshakes stopped it with {h['out_at']} "
-            f"outstanding at SYS_OUT and no B handshake; after the release every response was "
-            f"consumed ({wire.out_b_hs - b0} B), STATUS read 1 {busy_reads} more time(s) then 0, "
-            f"tb_zeroer_outstanding 0 and the range is exactly zero"
+            f"{_JOB_96K}-byte job of {bursts} bursts with all B held: {h['bursts']} bursts "
+            f"({h['beats']} W beats) issued before the stall with {h['out_at']} outstanding at "
+            f"SYS_OUT and no B handshake; AW and W were quiet for {h['quiet']} rises (at least "
+            f"{QUIET_RISES}); the stall ended on {h['side']}; {bursts - h['bursts']} bursts "
+            f"issued after the release; every response was consumed ({wire.out_b_hs - b0} B), "
+            f"STATUS read 1 {busy_reads} more time(s) then 0, tb_zeroer_outstanding 0 and the "
+            f"range is exactly zero"
         )
 
     async def _s7(self) -> str:
@@ -540,11 +585,21 @@ class smc_zeroer_busy_outstanding_test_seq(output_fabric_pass_all_cfg_seq):
         assert again == 0, f"STATUS reads {again} after the held job completed"
         assert wire.checked > 0, "no rise was sampled"
         self._stamp("S7")
+        bound = (
+            "the stall side has a SYS_OUT ready low, so the maximum is bounded by the "
+            "responder, not necessarily by the DUT cap"
+            if "ready=0" in h["side"]
+            else "the zeroer stopped issuing with both readys high"
+        )
         return (
-            f"during the held {_JOB_96K}-byte job the maximum outstanding AW count at SYS_OUT "
-            f"was {h['out_max']} and the maximum tb_zeroer_outstanding was {h['z_max']}, "
-            f"plateau {h['plateau']} rises; at all {wire.checked} sampled rises the SYS_OUT count "
-            f"was not above tb_zeroer_outstanding; the cap value is not asserted (SF-017 open)"
+            f"in the quiet window of {h['quiet']} rises of the held {_JOB_96K}-byte job the "
+            f"maximum outstanding AW count at SYS_OUT was {h['out_max']} "
+            f"({h['sys_aw']} AW and {h['sys_w']} W handshakes in all) and the maximum "
+            f"tb_zeroer_outstanding was {h['z_max']}, plateau {h['plateau']} rises; "
+            f"responder max_outstanding {h['responder_depth']} is fixed at bench build with no "
+            f"public runtime knob and was not changed; {bound}; at all {wire.checked} sampled "
+            f"rises the SYS_OUT count was not above tb_zeroer_outstanding; the cap value is not "
+            f"asserted (SF-017 open)"
         )
 
     async def _s8(self) -> str:

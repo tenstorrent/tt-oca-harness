@@ -56,10 +56,16 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 388
+expected_count = 396
 tests = [
+    "smc_accel_egress_attrs_test",
+    "smc_octs_primary_count_test",
+    "smc_wdt_count_feed_test",
+    "smc_dma_burst_shaping_test",
     "smc_accel_window_decode_test",
     "smc_wdt_ip0_clear_test",
+    "smc_wdt_irq_source_ids_test",
+    "smc_wdt_scale_zerocmp_test",
     "smc_5agent_observability_test",
     "smc_dma_linear_copy_test",
     "smc_dma_completion_status_test",
@@ -403,6 +409,7 @@ tests = [
     "smc_telemetry_buffer_overflow_test",
     "smc_telemetry_irq_aggregate_test",
     "smc_telemetry_receiver_csr_test",
+    "smc_telemetry_rx_flush_test",
     "smc_telemetry_ctrl_access_test",
     "smc_telemetry_tx_flush_test",
     "smc_telemetry_receiver_isolation_test",
@@ -426,6 +433,7 @@ tests = [
     "smc_uart_spi_log_engine_test",
     "smc_wdt_key_csr_test",
     "smc_wdt_key_relock_test",
+    "smc_wdt_register_map_test",
     "smc_wdt_timeout_pin_test",
     "smc_wdt_write_width_test",
     "smc_xvisor_remap_test",
