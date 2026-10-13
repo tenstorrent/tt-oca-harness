@@ -42,7 +42,10 @@ Checkers:
                     has at least one such probe.
   CHK-PRESENSE-CTL  after both taps rise, the same words read OKAY with the
                     staged word of the image (the golden is the staged image,
-                    not a DUT read).
+                    not a DUT read). Words staged 0 stay graded, and each epoch
+                    compares at least one word with a nonzero staged value, so
+                    a dead read that returns 0 fails; the zero-valued words are
+                    logged in ``CTL-PRESENSE-WORDS``.
 
 Controls and observations: in BOOT_FIRST, BOOT_WITH_RST and BOOT_MID the
 sensing is the last term, so those cells are controls of CHK-REL-GATE. The
@@ -530,7 +533,36 @@ class sep_boot_release_terms_test(sep_base_test):
             f"CHK-PRESENSE FAIL: epoch={ep.kind} no probe answered inside the pre-sense window"
         )
 
+    def _ensure_nonzero_word(self, rng: SepSeededRng, image) -> None:
+        """Make each epoch probe at least one word whose staged value is nonzero.
+
+        A word staged 0 (the unlocked LOCKS words 0 to 2) stays graded, but a
+        compare made only of such words also passes on a dead read that
+        returns 0. When every drawn word of an epoch is staged 0, the last
+        drawn word is replaced by a drawn word with a nonzero staged value, so
+        N stays as drawn.
+        """
+        nonzero = [w for w in range(256) if image.shadow_word(w) != 0]
+        assert nonzero, "test error: the staged image has no nonzero shadow word"
+        for ep in self.epochs:
+            if any(image.shadow_word(w) != 0 for w in ep.words):
+                continue
+            old = ep.words[-1]
+            ep.words[-1] = rng.choice(nonzero)
+            self.logger.info(
+                "DRAW nonzero_word[%s]=%d replaces word %d (every drawn word staged 0)",
+                ep.kind,
+                ep.words[-1],
+                old,
+            )
+
     async def _presense_ctl(self, ep: _Epoch, image) -> None:
+        zero_words = [w for w in ep.words if image.shadow_word(w) == 0]
+        nonzero_words = [w for w in ep.words if image.shadow_word(w) != 0]
+        assert nonzero_words, (
+            f"CHK-PRESENSE-CTL FAIL: epoch={ep.kind} test error, every compared word is staged 0, "
+            "so a dead read would pass"
+        )
         for i, idx in enumerate(ep.words):
             exp = image.shadow_word(idx)
             seq = SepAxiAccessSeq(
@@ -556,6 +588,13 @@ class sep_boot_release_terms_test(sep_base_test):
                 exp,
                 got,
             )
+        self.logger.info(
+            "CTL-PRESENSE-WORDS: epoch=%s words=%d nonzero_expected=%s zero_expected=%s",
+            ep.kind,
+            len(ep.words),
+            nonzero_words,
+            zero_words,
+        )
 
     async def _sense_status(self, hold: bool) -> None:
         dut = cocotb.top
@@ -633,6 +672,7 @@ class sep_boot_release_terms_test(sep_base_test):
         )
         self.write_efuse_image(image)
 
+        self._ensure_nonzero_word(rng, image)
         t_cal = await self._calibrate()
 
         open_graded_window(TEST, self.logger)
