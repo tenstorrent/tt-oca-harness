@@ -60,6 +60,13 @@ model.
 Environment bounds (not from the specification): the tap rise after the last
 term within ``_REL_BOUND`` ``clk_i`` cycles, sensing within ``_SENSE_BOUND``
 cycles of the release, and the bench SMC input high within ``_SMC_BOUND`` cycles.
+The calibration boot also measures L, the worst issue-to-response latency of
+``_CAL_PROBES`` shadow-map reads. A drawn probe clock is capped so that the last
+pre-release probe issues by release + T-1-L and the cap of each earlier one
+is L cycles before the cap of the next: the bench probe path is the core load path, which on silicon
+is idle while the core is in reset, so a probe that crosses the ``sep_reset_n``
+rise exists only on the bench. Each probe response is checked to land before
+that rise.
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense, Verilator and VCS;
 the X check of CHK-REL-GATE runs on VCS only. RANDCFG.
@@ -70,6 +77,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import Event, ReadOnly, RisingEdge
+from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_image import SHADOW_BASE
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -108,6 +116,7 @@ _DIS_VECTORS = (
 )
 
 _CAL_W = 20
+_CAL_PROBES = 4
 _SENSE_BOUND = 20_000
 _REL_BOUND = 64
 _SMC_BOUND = 1_000
@@ -232,6 +241,8 @@ class sep_boot_release_terms_test(sep_base_test):
             await RisingEdge(dut.clk_i)
         dut.rst_ni.value = 1
         self.cfg.reset_done.set()
+        cal_lat: list[int] = []
+        cal = cocotb.start_soon(self._cal_probes(cal_lat))
         t = None
         for cyc in range(1, _SENSE_BOUND + 1):
             await RisingEdge(dut.clk_i)
@@ -250,7 +261,11 @@ class sep_boot_release_terms_test(sep_base_test):
                 f"{_SENSE_BOUND} clk_i cycles of the rst_ni release"
             )
         await RisingEdge(dut.clk_i)
+        if not cal.done():
+            await cal
         self._check_efuse_shadow_after_sense()
+        self.lat = max(cal_lat)
+        self.cutoff = t - 1 - self.lat
         self.logger.info(
             "CAL-BOOT LOG: W=%d T=%d clk_i cycles (release to sep_fuse_sense_done_o); taps high "
             "at cycle %d",
@@ -258,22 +273,49 @@ class sep_boot_release_terms_test(sep_base_test):
             t,
             cyc,
         )
+        self.logger.info(
+            "CAL-LATENCY LOG: probe latencies=%s clk_i cycles L=%d cutoff=T-1-L=%d (environment "
+            "choice: the last pre-release probe issues by release+cutoff, each earlier cap L "
+            "cycles before the next cap)",
+            cal_lat,
+            self.lat,
+            self.cutoff,
+        )
         return t
+
+    async def _cal_probes(self, out: list[int]) -> None:
+        """Shadow-map reads of the calibration boot: issue-to-response latency in clk_i cycles.
+
+        Ungraded (window closed). The latency places the pre-release probes of
+        the epochs so that each completes before ``sep_reset_n`` rises.
+        """
+        await RisingEdge(cocotb.top.clk_i)
+        for i in range(_CAL_PROBES):
+            out.append(await self._timed_read(i, f"cal_probe{i}"))
+
+    async def _timed_read(self, idx: int, name: str) -> int:
+        p_ps = round(self.cfg.sys_clk_period_ns * 1000)
+        t0 = int(get_sim_time("ps"))
+        seq = SepAxiAccessSeq(
+            name,
+            op=SepAxiOp.READ,
+            addr=SHADOW_BASE + 4 * idx,
+            length=4,
+            size=2,
+            allow_ungraded_read_resp=True,
+        )
+        await self.start_seq(seq)
+        self._last_seq = seq
+        return -(-(int(get_sim_time("ps")) - t0) // p_ps)
 
     # -- one epoch -----------------------------------------------------------
 
     async def _probe_runner(self, ep: _Epoch, events: list[Event]) -> None:
         for i, idx in enumerate(ep.words):
             await events[i].wait()
-            seq = SepAxiAccessSeq(
-                f"presense_probe{i}",
-                op=SepAxiOp.READ,
-                addr=SHADOW_BASE + 4 * idx,
-                length=4,
-                size=2,
-                allow_ungraded_read_resp=True,
-            )
-            await self.start_seq(seq)
+            ep.probes[i]["issued"] = self._k
+            ep.probes[i]["lat"] = await self._timed_read(idx, f"presense_probe{i}")
+            seq = self._last_seq
             ep.probes[i]["resp"] = seq.resp_code
             ep.probes[i]["data"] = seq.rdata & 0xFFFF_FFFF
             ep.probes[i]["timed_out"] = seq.timed_out
@@ -307,7 +349,16 @@ class sep_boot_release_terms_test(sep_base_test):
 
         w = ep.w
         release_k = w
-        probe_k = [release_k + 1] + [release_k + _scaled(u, t_cal - 1) for u in ep.u_probe]
+        drawn_k = [release_k + 1] + [release_k + _scaled(u, t_cal - 1) for u in ep.u_probe]
+        # Each pre-release probe completes before sep_reset_n rises: the last
+        # issues by release + T-1-L, and the cap of each earlier one is L cycles
+        # before the cap of the next, so the sequential chain ends in time.
+        probe_k = list(drawn_k)
+        cap = release_k + self.cutoff
+        for i in range(len(probe_k) - 1, -1, -1):
+            probe_k[i] = min(probe_k[i], cap)
+            cap -= self.lat
+        assert probe_k[0] > release_k, "test error: probe caps reach the release clock"
         ep.probes = [{"word": idx, "target": k} for idx, k in zip(ep.words, probe_k)]
         events = [Event() for _ in ep.words]
         if ep.kind == BOOT_FIRST:
@@ -328,10 +379,11 @@ class sep_boot_release_terms_test(sep_base_test):
         after = ep.delay if ep.kind == BOOT_AFTER else 2 * t_cal + ep.delay
         for i, (u, k) in enumerate(zip([None, *ep.u_probe], probe_k)):
             self.logger.info(
-                "PLACE probe%d word=%d u=%s -> issue %d clocks after the release",
+                "PLACE probe%d word=%d u=%s -> drawn %d, issue %d clocks after the release",
                 i,
                 ep.words[i],
                 "fixed" if u is None else f"{_frac(u):.6f}",
+                drawn_k[i] - release_k,
                 k - release_k,
             )
 
@@ -342,11 +394,13 @@ class sep_boot_release_terms_test(sep_base_test):
         dut.ext_boot_seq_done_i.value = 0
         runner = cocotb.start_soon(self._probe_runner(ep, events))
         k = 0
+        self._k = 0
         sense_k = None
         deadline = release_k + _SENSE_BOUND
         while True:
             await RisingEdge(clk)
             k += 1
+            self._k = k
             if k == release_k:
                 dut.rst_ni.value = 1
             if ext_k is not None and k == ext_k:
@@ -503,6 +557,22 @@ class sep_boot_release_terms_test(sep_base_test):
                 f"but the master returned resp={p['resp']}"
             )
             p["cyc"] = cyc
+            # Placement precondition: the bench probe path is the core load path,
+            # idle on silicon while the core is in reset, so no probe may cross
+            # the sep_reset_n rise.
+            assert cyc < ep.t["sep_rise"], (
+                f"test error: epoch={ep.kind} probe{i} issued at sample {p['issued']} answered at "
+                f"{cyc}, not before the sep_reset_n rise {ep.t['sep_rise']} (L={self.lat})"
+            )
+            self.logger.info(
+                "PLACE-CHECK epoch=%s probe%d issued=%d resp=%d lat=%d sep_rise=%d",
+                ep.kind,
+                i,
+                p["issued"],
+                cyc,
+                p["lat"],
+                ep.t["sep_rise"],
+            )
             p["done_at_resp"] = rec[cyc]["done"]
             if rec[cyc]["done"] != 0:
                 self.logger.info(
