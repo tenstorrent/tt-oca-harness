@@ -234,9 +234,23 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         await self._edge()
         dut.jtag_sep_reset_n_val_i.value = 0
         dut.jtag_sep_reset_n_ovrd_i.value = 1
-        await self._until(self._now() + _OVRD_CYCLES)
+        o0 = self._now()
+        await self._until(o0 + _OVRD_CYCLES)
         dut.jtag_sep_reset_n_ovrd_i.value = 0
+        o1 = self._now()
         await self._wait_sample("sep", 1, _TAP_BOUND, "sep_reset_n after the override")
+        # The event is a sep_reset_n pulse only if the override reached it.
+        low = sum(1 for i in range(o0, o1) if self.rec[i]["sep"] == 0)
+        assert low > 0, (
+            f"CHK-STM-RETAIN FAIL: leg=B event=sep_reset_n_ovrd: dbg_sep_reset_n_o never read 0 "
+            f"in the override window (samples {o0}..{o1 - 1}), so the event did not happen"
+        )
+        self.logger.info(
+            "LEG-B sep_reset_n override reached sep_reset_n: low on %d of samples %d..%d",
+            low,
+            o0,
+            o1 - 1,
+        )
 
     async def _present_sec_dis(self) -> int:
         """Present the SEC_DIS token over j_axi; return the settled match code."""

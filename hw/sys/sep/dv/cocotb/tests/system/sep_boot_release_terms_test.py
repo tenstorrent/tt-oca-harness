@@ -39,7 +39,15 @@ Checkers:
                     leaf; bits 63:1 are masked and logged.
   CHK-PRESENSE      every window probe whose R handshake falls while
                     ``sep_fuse_sense_done_o`` is 0 answers SLVERR; each epoch
-                    has at least one such probe.
+                    has at least one such probe. Control in the same window:
+                    a read of ``FEAT_CTRL`` on the same LSU path, right after
+                    probe 1, answers OKAY with ``sep_fuse_sense_done_o`` and
+                    ``sep_reset_n`` both 0. ``lifecycle_controller.adoc`` (LC
+                    State Machine) has the life-cycle controller present the
+                    INVALID feature-control profile until sensing completes,
+                    so the register answers while sensing runs; a path that
+                    refused every access during the SEP reset fails here, so
+                    the SLVERR is the shadow-map refusal.
   CHK-PRESENSE-CTL  after both taps rise, the same words read OKAY with the
                     staged word of the image (the golden is the staged image,
                     not a DUT read). Words staged 0 stay graded, and each epoch
@@ -82,7 +90,13 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_image import SHADOW_BASE
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
-from env.sep_lcc_golden import LC_RMA_CHIP_0, LC_RMA_SIP_0, LC_TEST_DEV, lc_state_name
+from env.sep_lcc_golden import (
+    LC_RMA_CHIP_0,
+    LC_RMA_SIP_0,
+    LC_TEST_DEV,
+    LCC_FEAT_CTRL,
+    lc_state_name,
+)
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import SEP_CPU_CTRL
@@ -153,6 +167,7 @@ class _Epoch:
         self.u_probe: list[int] = []
         self.rec: list[dict] = []
         self.probes: list[dict] = []
+        self.ctl: dict = {}
 
 
 @pyuvm.test()
@@ -293,13 +308,13 @@ class sep_boot_release_terms_test(sep_base_test):
         for i in range(_CAL_PROBES):
             out.append(await self._timed_read(i, f"cal_probe{i}"))
 
-    async def _timed_read(self, idx: int, name: str) -> int:
+    async def _timed_read(self, idx: int, name: str, addr: int | None = None) -> int:
         p_ps = round(self.cfg.sys_clk_period_ns * 1000)
         t0 = int(get_sim_time("ps"))
         seq = SepAxiAccessSeq(
             name,
             op=SepAxiOp.READ,
-            addr=SHADOW_BASE + 4 * idx,
+            addr=SHADOW_BASE + 4 * idx if addr is None else addr,
             length=4,
             size=2,
             allow_ungraded_read_resp=True,
@@ -319,6 +334,15 @@ class sep_boot_release_terms_test(sep_base_test):
             ep.probes[i]["resp"] = seq.resp_code
             ep.probes[i]["data"] = seq.rdata & 0xFFFF_FFFF
             ep.probes[i]["timed_out"] = seq.timed_out
+            if i == 0:
+                # Path control: a read on the same LSU path to FEAT_CTRL, which
+                # answers while sensing runs, right after the first probe.
+                ep.ctl = {"issued": self._k}
+                ep.ctl["lat"] = await self._timed_read(0, "presense_path_ctl", LCC_FEAT_CTRL)
+                seq = self._last_seq
+                ep.ctl["resp"] = seq.resp_code
+                ep.ctl["data"] = seq.rdata & 0xFFFF_FFFF
+                ep.ctl["timed_out"] = seq.timed_out
 
     async def _run_epoch(self, ep: _Epoch, t_cal: int) -> None:
         dut = cocotb.top
@@ -357,7 +381,8 @@ class sep_boot_release_terms_test(sep_base_test):
         cap = release_k + self.cutoff
         for i in range(len(probe_k) - 1, -1, -1):
             probe_k[i] = min(probe_k[i], cap)
-            cap -= self.lat
+            # The path control read runs between probe 0 and probe 1.
+            cap -= self.lat * (2 if i == 1 else 1)
         assert probe_k[0] > release_k, "test error: probe caps reach the release clock"
         ep.probes = [{"word": idx, "target": k} for idx, k in zip(ep.words, probe_k)]
         events = [Event() for _ in ep.words]
@@ -545,9 +570,34 @@ class sep_boot_release_terms_test(sep_base_test):
     def _grade_presense(self, ep: _Epoch) -> None:
         rec = ep.rec
         hs = [i for i, r in enumerate(rec) if r["r_hs"]]
-        assert len(hs) == len(ep.probes), (
+        assert len(hs) == len(ep.probes) + 1, (
             f"CHK-PRESENSE FAIL: epoch={ep.kind} saw {len(hs)} R handshakes on s_axi for "
-            f"{len(ep.probes)} probes"
+            f"{len(ep.probes)} probes and the path control read"
+        )
+        # R handshake order: probe 0, the path control read, probes 1 to N-1.
+        ctl_cyc = hs.pop(1)
+        c = ep.ctl
+        c_ok = (
+            not c["timed_out"]
+            and c["resp"] == RESP_OKAY
+            and rec[ctl_cyc]["rresp"] == RESP_OKAY
+            and rec[ctl_cyc]["done"] == 0
+            and rec[ctl_cyc]["sep"] == 0
+        )
+        assert c_ok, (
+            f"CHK-PRESENSE FAIL: epoch={ep.kind} path control FEAT_CTRL @0x{LCC_FEAT_CTRL:08x} "
+            f"resp={_RESP_NAME.get(c['resp'], c['resp'])} timed_out={int(c['timed_out'])} at "
+            f"sample {ctl_cyc} sense_done={rec[ctl_cyc]['done']} sep_reset_n={rec[ctl_cyc]['sep']}; "
+            "expected OKAY inside the pre-sense window"
+        )
+        self.logger.info(
+            "CTL-PRESENSE-PATH: epoch=%s FEAT_CTRL @0x%08x resp=OKAY data=0x%08x issued=%d "
+            "resp_cyc=%d done_at_resp=0 sep_reset_n_at_resp=0",
+            ep.kind,
+            LCC_FEAT_CTRL,
+            c["data"],
+            c["issued"],
+            ctl_cyc,
         )
         hits = 0
         for i, (p, cyc) in enumerate(zip(ep.probes, hs)):
