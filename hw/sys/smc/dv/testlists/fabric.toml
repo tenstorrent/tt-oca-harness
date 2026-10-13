@@ -20,6 +20,37 @@ tags = ["i3c_decode"]
 run_modes = ["smoke"]
 
 [[tests]]
+# Reset, read-only, read-write, write-one-to-clear and isolation sweep of the I3C base, PIO and
+# standby controller registers on all six instances.
+name = "smc_i3c_csr_sweep_core_test"
+module = "smc_i3c_csr_sweep_core_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+# Reset, read-only, read-write, write-one-to-clear and isolation sweep of the I3C TTI, SoC
+# management and recovery registers on all six instances.
+name = "smc_i3c_csr_sweep_ext_test"
+module = "smc_i3c_csr_sweep_ext_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+# I3C window SLVERR/restore across CLOCK_GATE_CONTROL.i3c_cg_en: gated reads and writes, other
+# windows unaffected, eight set/clear cycles, first-access and post-write bounds, idempotence
+# and outstanding groups.
+name = "smc_i3c_clock_gate_window_test"
+module = "smc_i3c_clock_gate_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["i3c_decode"]
+run_modes = ["smoke"]
+
+[[tests]]
 # DAT write/read and DCT reads on all six I3C instances through the CSR window.
 name = "smc_i3c_dxt_table_test"
 module = "smc_i3c_dxt_table_test"
