@@ -875,7 +875,39 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 words.append(self._sw_word(st.shapes[wi], st.rsvd[wi]))
                 fields_seq.append(self.sw)
                 wi += 1
-            evs = await self._issue_writes(words, st.spacing)
+            if st.style == "per":
+                # One write per domain: read SW_RESET_N back after each write's
+                # response and grade it against the fields of that write, then wait
+                # the drawn spacing before the next write.
+                evs = []
+                for k, (word, fields_k) in enumerate(zip(words, fields_seq)):
+                    if k and st.spacing:
+                        await self._cycles(st.spacing)
+                    ev = (await self._issue_writes([word], 0))[0]
+                    evs.append(ev)
+                    code = (
+                        int(max(ev.data.resp))
+                        if isinstance(ev.data.resp, (list, tuple))
+                        else int(ev.data.resp)
+                    )
+                    rbk = await self._sw_read64()
+                    self._chk(
+                        "CHK-SWRST-RSVD",
+                        (rbk & SW_FIELDS) == fields_k,
+                        f"leg=subset step={st.idx} phase={phase} write={k + 1}/{len(words)} "
+                        f"n=1 writes responses=1 ({RESP_NAME.get(code, str(code))}) "
+                        f"hi=0x{(word[2] >> RSVD_LSB):x} written_fields=0b{fields_k:07b} "
+                        f"readback_fields=0b{rbk & SW_FIELDS:07b}",
+                    )
+                    self.logger.info(
+                        "OBS-SWRST-RSVD: leg=subset step=%d phase=%s write=%d bits63:7=0x%x",
+                        st.idx,
+                        phase,
+                        k + 1,
+                        rbk >> RSVD_LSB,
+                    )
+            else:
+                evs = await self._issue_writes(words, st.spacing)
             codes = [
                 int(max(ev.data.resp))
                 if isinstance(ev.data.resp, (list, tuple))
