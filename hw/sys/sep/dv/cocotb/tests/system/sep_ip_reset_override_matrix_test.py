@@ -657,14 +657,18 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
             seprst_low = sum(1 for s in win if s[0] == 0)
             ip_high = sum(1 for s in win if s[1] != 0)
             aon_low = sum(1 for s in samples if s[3] == 0)
+            taps_or = 0
+            for smp in win:
+                taps_or |= smp[1]
             sense_low = sum(1 for s in samples if s[2] == 0)
             self._chk(
                 "CHK-OVR-AND",
                 seprst_low == len(win) and ip_high == 0 and aon_low == 0,
                 f"event={ev} width={self.plan.seprst_width} graded_cycles={len(win)} "
-                f"sep_reset_n_low={seprst_low} ip_rst_n[6:1]=0b000000 "
-                f"(cycles_with_a_high_tap={ip_high}) aon_rst_n=1 (low_cycles={aon_low} of "
-                f"{len(samples)}) SW_RESET_N_before=0x{sw_before & SW_MASK:02x}",
+                f"sep_reset_n_low={seprst_low} ip_rst_n[6:1]=0b{taps_or >> 1:06b} "
+                f"(OR over the graded cycles, cycles_with_a_high_tap={ip_high}) "
+                f"aon_rst_n={int(aon_low == 0)} (low_cycles={aon_low} of {len(samples)}) "
+                f"SW_RESET_N_before=0x{sw_before & SW_MASK:02x}",
             )
             self.sense_ovr.append((ev, sense_low, len(samples)))
             for d in DOMS:

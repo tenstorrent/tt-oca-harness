@@ -680,6 +680,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         mi = self.irq.mark()
         events = self.plan.seq[cls]
         stay = True
+        mins = [1, 1]
         for i, (w, s) in enumerate(events):
             mr = self.taps.mark()
             first = await self._pulse(cls, w)
@@ -707,6 +708,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             b40, b42 = self._irq(IRQ_DMA_REG_PATH), self._irq(IRQ_PERIPH_OR)
             await FallingEdge(cocotb.top.clk_i)
             stay &= bool(b40 and b42)
+            mins = [min(mins[0], b40), min(mins[1], b42)]
             self.logger.info(
                 "SEQ %s event=%d width=%d spacing=%d first_low_clk=%d src41=%d src43=%d",
                 cls,
@@ -722,7 +724,14 @@ class sep_cpu_reset_retention_test(sep_base_test):
             self.irq.fall_clks_since(mi, "src43")
         )
         new = self.irq.rises_since(mi, "src42")
-        self.seq_res = {"stay": stay, "falls": falls, "new": new, "events": len(events)}
+        self.seq_res = {
+            "stay": stay,
+            "falls": falls,
+            "new": new,
+            "events": len(events),
+            "src41": mins[0],
+            "src43": mins[1],
+        }
 
     # ---- step 6: retention reads -----------------------------------------------
     async def _retention_reads(self, cls: str) -> None:
@@ -774,7 +783,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             and (pst2 & PERIPH_MASK) == 0
         )
         self.agg[cls] = (
-            f"event={cls} latch={lat} src41=1 src43=1 new_faults={r['new']} "
+            f"event={cls} latch={lat} src41={r['src41']} src43={r['src43']} new_faults={r['new']} "
             f"falls_during_pulses={r['falls']} pulses={r['events']} "
             f"DMA_BUS_ERR_STATUS=0x{dst:x} PERIPH_BUS_ERR_STATUS=0x{pst:x} "
             f"after_clear={a40 | a42} status_after_clear=0x{dst2:x},0x{pst2:x}"

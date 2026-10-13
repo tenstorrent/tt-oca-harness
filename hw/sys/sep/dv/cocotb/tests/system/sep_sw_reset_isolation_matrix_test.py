@@ -962,6 +962,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         sib = next(s for s in DOMS if s not in pd.victims and s != "trng")
         ok, desc = await self._expect(PROBE[sib], self.armed[PROBE[sib].name])
         self._ctl("CTL-ISO-SIBLING", ok, f"pass={pd.name} sibling={sib} {desc}")
+        res["sibling_ok"] = ok
         addr, need_okay = NEVER[pd.never]
         # The external TRNG window is adopter-defined; with no TRNG fitted the
         # reference integration answers DECERR (memory_map.adoc, note 2).
@@ -1096,7 +1097,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             )
             self._chk(
                 "CHK-ISO-PAIR",
-                both_iso and both_rel and probe_ok,
+                both_iso and both_rel and probe_ok and win["sibling_ok"],
                 f"victims={','.join(pd.victims)} both_isolated={int(both_iso)} "
                 f"both_released={int(both_rel)} write_order={pd.order} gap={pd.gap} "
                 + " ".join(
@@ -1104,7 +1105,8 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                     f"rise={rel[v][1]},ack_fall={rel[v][2]}"
                     for v in pd.victims
                 )
-                + f" allow={REL_ALLOW} probes_default={int(probe_ok)} sibling_retained=1",
+                + f" allow={REL_ALLOW} probes_default={int(probe_ok)} "
+                f"sibling_retained={int(win['sibling_ok'])}",
             )
         # CHK-ISO-RESP / CTL-ISO-RESP.
         rd4_ok = bool(win["rd4"]) and all(data == ISO_DATA for _, data, _ in win["rd4"])
@@ -1128,7 +1130,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             + ",".join(f"0x{data:08x}/{RESP_NAME[r]}@0x{a:08x}" for a, data, r in win["rd4"])
             + f" graded_slverr={win['slverr'] if graded else 0}"
             f"{('/' + str(win['n'])) if graded else ''} "
-            f"other_size_data=[{';'.join(win['other'])}] control_okay=1 "
+            f"other_size_data=[{';'.join(win['other'])}] control_okay={int(written_absent)} "
             f"written_absent={int(written_absent)} in_window={int(win['still_low'])}",
         )
         port, resp, data, need_okay = win["never"]
