@@ -126,8 +126,8 @@ addrmap cpu_ctrl {
         field {
             sw=rw;
             hw=r;
-            desc="Timeout mode: 0 = give up and report error (stay withheld, do not apply);
-                  1 = force the reset on timeout.";
+            desc="Timeout mode: 0 = report the timeout and keep withholding the reset until
+                  the drain completes, then apply it; 1 = force the reset on timeout.";
         } timeout_mode [16:16] = 0x0;
 
         field {

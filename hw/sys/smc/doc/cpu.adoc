@@ -266,8 +266,8 @@ completes. The boundary then reconnects.
 `CPU_CTRL.RESET_TIMEOUT` limits how long a software-requested reset waits for
 the drain handshake. A `timeout_value` of zero disables the timer. When the
 timer expires, `timeout_mode=0` reports the timeout and continues to withhold
-the reset. `timeout_mode=1` forces the reset and flushes both AXI isolation
-blocks.
+the reset until the drain completes, then applies it. `timeout_mode=1` forces
+the reset and flushes both AXI isolation blocks.
 
 `reset_timeout` remains high until the software reset request is removed,
 including after a recovery flush completes. `reset_applied` is high once the

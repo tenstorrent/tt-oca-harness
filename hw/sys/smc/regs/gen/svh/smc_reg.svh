@@ -12936,10 +12936,10 @@ localparam     int unsigned AXIL_MAILBOX_ERROR_READ_ERROR_SHIFT                 
 localparam longint unsigned AXIL_MAILBOX_ERROR_WRITE_ERROR_MASK                                                   = 64'h2;
 localparam     int unsigned AXIL_MAILBOX_ERROR_WRITE_ERROR_SHIFT                                                  = 1;
 
-localparam longint unsigned AXIL_MAILBOX_WIRQT_WIRQT_MASK                                                         = 64'hFF;
+localparam longint unsigned AXIL_MAILBOX_WIRQT_WIRQT_MASK                                                         = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned AXIL_MAILBOX_WIRQT_WIRQT_SHIFT                                                        = 0;
 
-localparam longint unsigned AXIL_MAILBOX_RIRQT_RIRQT_MASK                                                         = 64'hFF;
+localparam longint unsigned AXIL_MAILBOX_RIRQT_RIRQT_MASK                                                         = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned AXIL_MAILBOX_RIRQT_RIRQT_SHIFT                                                        = 0;
 
 localparam longint unsigned AXIL_MAILBOX_IRQS_WTIRQ_MASK                                                          = 64'h1;
@@ -18515,13 +18515,13 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [7:0]   wirqt ;
+    logic [63:0]   wirqt ;
 } axil_mailbox_wirqt_reg_t;
 
 
 
 typedef struct packed {
-    logic [7:0]   rirqt ;
+    logic [63:0]   rirqt ;
 } axil_mailbox_rirqt_reg_t;
 
 

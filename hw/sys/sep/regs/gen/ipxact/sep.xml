@@ -12502,7 +12502,7 @@ The outbound/inbound naming reflects intended use, not an access restriction.</i
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -12519,7 +12519,7 @@ The outbound/inbound naming reflects intended use, not an access restriction.</i
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -12852,7 +12852,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -12869,7 +12869,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -13202,7 +13202,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -13219,7 +13219,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -13552,7 +13552,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -13569,7 +13569,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -13902,7 +13902,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -13919,7 +13919,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -14252,7 +14252,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -14269,7 +14269,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -14602,7 +14602,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -14619,7 +14619,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -14952,7 +14952,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -14969,7 +14969,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -15302,7 +15302,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -15319,7 +15319,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -15652,7 +15652,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -15669,7 +15669,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -16002,7 +16002,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -16019,7 +16019,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -16352,7 +16352,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -16369,7 +16369,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -16702,7 +16702,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -16719,7 +16719,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -17052,7 +17052,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -17069,7 +17069,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -17402,7 +17402,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -17419,7 +17419,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -17752,7 +17752,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
@@ -17769,7 +17769,7 @@ On write:
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>8</ipxact:bitWidth>
+                <ipxact:bitWidth>64</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>

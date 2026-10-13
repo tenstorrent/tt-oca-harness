@@ -107,7 +107,7 @@ in {
       markdownlint-cli
       vale
       # Synthesis
-      pdk-ciel
+      ciel
       # ciel builds
       magic-vlsi
       yosys

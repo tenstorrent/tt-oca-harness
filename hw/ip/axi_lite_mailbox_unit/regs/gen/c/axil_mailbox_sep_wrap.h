@@ -100,30 +100,28 @@ typedef union {
 
 // reg - axil_mailbox::WIRQT
 // When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
-#define AXIL_MAILBOX__WIRQT__WIRQT_bm 0xff
+#define AXIL_MAILBOX__WIRQT__WIRQT_bm 0xffffffffffffffff
 #define AXIL_MAILBOX__WIRQT__WIRQT_bp 0
-#define AXIL_MAILBOX__WIRQT__WIRQT_bw 8
+#define AXIL_MAILBOX__WIRQT__WIRQT_bw 64
 #define AXIL_MAILBOX__WIRQT__WIRQT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         // When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
-        uint64_t wirqt :8;
-        uint64_t :56;
+        uint64_t wirqt :64;
     } f;
     uint64_t w;
 } axil_mailbox__WIRQT_t;
 
 // reg - axil_mailbox::RIRQT
 // When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
-#define AXIL_MAILBOX__RIRQT__RIRQT_bm 0xff
+#define AXIL_MAILBOX__RIRQT__RIRQT_bm 0xffffffffffffffff
 #define AXIL_MAILBOX__RIRQT__RIRQT_bp 0
-#define AXIL_MAILBOX__RIRQT__RIRQT_bw 8
+#define AXIL_MAILBOX__RIRQT__RIRQT_bw 64
 #define AXIL_MAILBOX__RIRQT__RIRQT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         // When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
-        uint64_t rirqt :8;
-        uint64_t :56;
+        uint64_t rirqt :64;
     } f;
     uint64_t w;
 } axil_mailbox__RIRQT_t;
