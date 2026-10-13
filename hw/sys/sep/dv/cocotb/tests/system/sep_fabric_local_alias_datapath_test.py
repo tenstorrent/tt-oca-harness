@@ -21,9 +21,12 @@ from an address that was never in range.
 The cacheable flag that ``fabric.adoc`` lists per region is not checked
 here: this bench has no observable on the outbound cache bits.
 
-The ``ext_debug_bus_o`` lane is logged after the aliased write and read as
-information only. No RDL, generated header or document defines its layout,
-so no checker decodes it.
+CHK-DBG-AR covers the remap-hit debug lane on ``ext_debug_bus_o[207:192]``.
+The lane carries one hit index per channel, and the read index follows the
+read region. No document defines the field positions in the lane, so the
+check is layout-free: with the write held, two reads that hit different
+regions must leave different lane values. A lane whose read field copies the
+write index cannot tell the two reads apart.
 
 no_cpu, +skip_fuse_sense: the remapper does not depend on sense.
 """
@@ -39,6 +42,11 @@ from seq_lib.sep_fabric_local_alias_seq import (
     SepLocalAliasCfg,
     alias_probe_seq,
 )
+
+# The local-master remap-hit lane of ext_debug_bus_o (hw/sys/sep/rtl/sep.sv, debug bus
+# assembly). Field positions inside the lane are not graded.
+DBG_LANE_LSB = 192
+DBG_LANE_MASK = 0xFFFF << DBG_LANE_LSB
 
 
 @pyuvm.test()
@@ -82,13 +90,6 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         await alias.program(cfg)
 
         await alias._wr(cfg.access_addr, cfg.marker)
-        # Information only. No RDL, generated header or document defines the
-        # layout of this ext_debug_bus_o lane, so the raw value is logged and
-        # not graded.
-        self.logger.info(
-            "local-alias info: ext_debug_bus_o[207:192]=0x%04x after the aliased write",
-            self.rd(cocotb.top.ext_debug_bus_o, mask=0xFFFF << 192, allow_unknown=True) >> 192,
-        )
 
         landed = alias_probe_seq(cfg.expect_addr)
         await self.start_seq(landed)
@@ -112,10 +113,6 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         hit = alias_probe_seq(cfg.access_addr)
         await self.start_seq(hit)
         assert hit.resp_ok, f"remapped 0x{cfg.access_addr:08x} resp not OKAY"
-        self.logger.info(
-            "local-alias info: ext_debug_bus_o[207:192]=0x%04x after the aliased read",
-            self.rd(cocotb.top.ext_debug_bus_o, mask=0xFFFF << 192, allow_unknown=True) >> 192,
-        )
         got = hit.rdata & 0xFFFF_FFFF
         assert got == dest_data, (
             f"CHK-OFFSET FAIL: access 0x{cfg.access_addr:08x} read "
@@ -176,6 +173,8 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
             dest_data,
         )
 
+        await self._chk_dbg_ar(alias, cfg)
+
         self.logger.info(
             "local-alias config: region=%d of %d src=0x%08x dest=0x%08x seed %d",
             cfg.region,
@@ -184,3 +183,47 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
             cfg.expect_addr,
             cfg.seed,
         )
+
+    def _lane(self) -> int:
+        """The remap-hit debug lane, ``ext_debug_bus_o[207:192]``. X or Z fails."""
+        return self.rd(cocotb.top.ext_debug_bus_o, mask=DBG_LANE_MASK) >> DBG_LANE_LSB
+
+    async def _chk_dbg_ar(self, alias: SepLocalAlias, cfg: SepLocalAliasCfg) -> None:
+        """CHK-DBG-AR: the read hit index follows the read region, not the write."""
+        sib = SepLocalAliasCfg(cfg.seed, sibling_of=cfg)
+        self.logger.info("local-alias debug: second window %s", sib.summary())
+        await alias.program(cfg)
+        await alias.program(sib)
+        # One write in region cfg.region, then reads in two different regions
+        # with no write in between: the write side of the lane is the same for
+        # both reads.
+        await alias._wr(cfg.access_addr, cfg.marker)
+        reads = []
+        for c in (cfg, sib):
+            rd = alias_probe_seq(c.access_addr)
+            await self.start_seq(rd)
+            assert rd.resp_ok, f"CHK-DBG-AR: remapped 0x{c.access_addr:08x} resp not OKAY"
+            assert (rd.rdata & 0xFFFF_FFFF) == cfg.marker, (
+                f"CHK-DBG-AR: region {c.region} read 0x{rd.rdata & 0xFFFF_FFFF:08x} "
+                f"!= marker 0x{cfg.marker:08x} -- the read did not hit its window"
+            )
+            reads.append(self._lane())
+        line = (
+            f"write region={cfg.region} read region={cfg.region} lane=0x{reads[0]:04x} "
+            f"read region={sib.region} lane=0x{reads[1]:04x}"
+        )
+        assert reads[0] != reads[1], (
+            f"CHK-DBG-AR FAIL: {line} -- the lane does not follow the read region"
+        )
+        # Control: a write in the second region with the read held in it moves
+        # the lane, so the lane is live on the write side too.
+        await alias._wr(sib.access_addr, cfg.marker)
+        rd = alias_probe_seq(sib.access_addr)
+        await self.start_seq(rd)
+        assert rd.resp_ok, f"CHK-DBG-AR: remapped 0x{sib.access_addr:08x} resp not OKAY"
+        moved = self._lane()
+        line += f" control: write region={sib.region} read region={sib.region} lane=0x{moved:04x}"
+        assert moved != reads[1], (
+            f"CHK-DBG-AR FAIL: {line} -- the lane does not follow the write region"
+        )
+        self.logger.info("CHK-DBG-AR PASS: %s", line)
