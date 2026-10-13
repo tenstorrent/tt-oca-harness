@@ -1144,12 +1144,14 @@ class sep_timer_clock_contract_test(sep_base_test):
                 done.append(ev)
                 self.logger.info("REGWEN-HOLD LOG: rep=%d event=%s %s", rep, ev, st)
         if self.dbg_cell:
-            assert self.n_dbg == cfg.repeat, (
-                f"CHK-REGWEN-HOLD-DBG FAIL: {self.n_dbg} dbg_rstb_i events"
+            # On the VCS full-CPU build the dbg_rstb_i cell must have run and been graded.
+            assert self.n_dbg == cfg.repeat and self.n_dbg == done.count("DBG_PULSE"), (
+                f"CHK-REGWEN-HOLD FAIL: event=DBG_PULSE ran {self.n_dbg} times, expected "
+                f"{cfg.repeat}; the dbg_rstb_i cell was not graded"
             )
             self.logger.info(
-                "CHK-REGWEN-HOLD-DBG PASS: dbg_rstb_i_events=%d regwen=0 bark=0x%08x bite=0x%08x "
-                "wkup_hi=0x%08x wkup_lo=0x%08x unchanged",
+                "CHK-REGWEN-HOLD PASS: event=DBG_PULSE count=%d dbg_rst_l_low=1 regwen=0 "
+                "bark=0x%08x bite=0x%08x wkup_hi=0x%08x wkup_lo=0x%08x unchanged",
                 self.n_dbg,
                 cfg.xb,
                 cfg.xd,
@@ -1211,8 +1213,6 @@ class sep_timer_clock_contract_test(sep_base_test):
         full_cpu = hasattr(cocotb.top.u_dut.u_sep.u_sep_cpu, "u_el2_veer_wrapper")
         self.dbg_cell = vcs and full_cpu
         self.n_dbg = 0
-        if self.dbg_cell:
-            self.required_evidence = (*type(self).required_evidence, "CHK-REGWEN-HOLD-DBG")
         self.logger.info(
             "OBS-DBG-EVENT: build=%s tool=%s dbg_rstb_i_cell=%s",
             "full_cpu" if full_cpu else "cpu_stub",
