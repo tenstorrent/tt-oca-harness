@@ -1147,8 +1147,18 @@ class sep_cpu_reset_retention_test(sep_base_test):
             raise AssertionError("cold leg: HANDSHAKE_INTR_ENABLE did not take the write of 0")
         sw_pre = await self._rd(SW)
         armed_pre = {}
+        at_default = []
         for p in (*self._armed_probes(), *RANGE_PROBES):
             armed_pre[p.name] = await self.pd.read(p)
+            if (armed_pre[p.name] & p.mask) == (p.reset & p.mask):
+                at_default.append(f"{p.name}=0x{armed_pre[p.name]:x}")
+        # Every register the cold reset grades must read a value other than its RDL
+        # reset first, or a missing reset could not show.
+        self._ctl(
+            "CTL-COLD-ARMED",
+            not at_default,
+            f"registers={len(armed_pre)} at_rdl_default={at_default or 'none'}",
+        )
         await self.dma.go()
         t_go = self.clk
         while self.clk < t_go + self.copy_delay:

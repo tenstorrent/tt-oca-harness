@@ -104,6 +104,7 @@ import pyuvm
 from cocotb.triggers import FallingEdge, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_axi_chan_mon import SepAxiChanMon, SepAxiReadyHold
+from env.sep_decode_resp import sep_map_rows
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_reset_taps import (
@@ -235,17 +236,23 @@ SIZES = (1, 2, 4, 8)
 _SIZE_CODE = {1: 0, 2: 1, 4: 2, 8: 3}
 
 
-def _rsvd57(rng) -> int:
+# Reserved bits start above the last SW_RESET_N field.
+RSVD_LSB = SW_FIELDS.bit_length()
+RSVD_W64 = 64 - RSVD_LSB
+RSVD_W32 = 32 - RSVD_LSB
+
+
+def _rsvd_w64(rng) -> int:
     v = 0
     while v == 0:
-        v = rng.getrandbits(57)
+        v = rng.getrandbits(RSVD_W64)
     return v
 
 
-def _rsvd25(rng) -> int:
+def _rsvd_w32(rng) -> int:
     v = 0
     while v == 0:
-        v = rng.getrandbits(25)
+        v = rng.getrandbits(RSVD_W32)
     return v
 
 
@@ -305,13 +312,13 @@ class Plan:
             for _ in range(n_writes):
                 shape = rng.choice(("w64", "lo32"))
                 st.shapes.append(shape)
-                st.rsvd.append(_rsvd57(rng) if shape == "w64" else _rsvd25(rng))
+                st.rsvd.append(_rsvd_w64(rng) if shape == "w64" else _rsvd_w32(rng))
             self.lines.append(
                 f"DRAW legA step={st.idx} S={','.join(st.doms)} style={st.style} "
                 f"spacing={st.spacing} shapes={','.join(st.shapes)} "
                 f"rsvd={','.join(hex(r) for r in st.rsvd)}"
             )
-        self.rsvd_leg = {"w64": _rsvd57(rng), "hi32": 0, "lo32": _rsvd25(rng)}
+        self.rsvd_leg = {"w64": _rsvd_w64(rng), "hi32": 0, "lo32": _rsvd_w32(rng)}
         while self.rsvd_leg["hi32"] == 0:
             self.rsvd_leg["hi32"] = rng.getrandbits(32)
         self.lines.append(
@@ -389,10 +396,18 @@ class Plan:
 
 # 64-bit isolated host ports (memory_map.adoc windows); a read covers the high lane
 # when it reaches address bit 2 = 1 of the 8-byte word.
+def _aperture(base: int) -> tuple[int, int]:
+    """``(base, aperture size)`` of the generated memory-map row that starts at ``base``."""
+    for row in sep_map_rows():
+        if row.base == base:
+            return base, row.end - row.base + 1
+    raise KeyError(f"no sep-components memory-map row starts at 0x{base:08x}")
+
+
 WIDE_PORTS = {
-    "csrng": (sym("CSRNG_REG_MAP_BASE_ADDR"), 0x800),
-    "edn": (sym("EDN_REG_MAP_BASE_ADDR"), 0x800),
-    "abr": (sym("ABR_REG_MAP_BASE_ADDR"), 0x10000),
+    "csrng": _aperture(sym("CSRNG_REG_MAP_BASE_ADDR")),
+    "edn": _aperture(sym("EDN_REG_MAP_BASE_ADDR")),
+    "abr": _aperture(sym("ABR_REG_MAP_BASE_ADDR")),
 }
 _ISO_BYTES = ISO_DATA.to_bytes(4, "little")
 
@@ -780,13 +795,13 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         for shape in ("w64", "hi32", "lo32"):
             rs = self.plan.rsvd_leg[shape]
             if shape == "w64":
-                seq = await self._acc(SepAxiOp.WRITE, SW, 8, (rs << 7) | fields)
+                seq = await self._acc(SepAxiOp.WRITE, SW, 8, (rs << RSVD_LSB) | fields)
                 hi = rs
             elif shape == "hi32":
                 seq = await self._acc(SepAxiOp.WRITE, SW + 4, 4, rs)
-                hi = rs << 25
+                hi = rs << RSVD_W32
             else:
-                seq = await self._acc(SepAxiOp.WRITE, SW, 4, (rs << 7) | fields)
+                seq = await self._acc(SepAxiOp.WRITE, SW, 4, (rs << RSVD_LSB) | fields)
                 hi = rs
             n_resp += 1
             rb = await self._sw_read64()
@@ -797,7 +812,9 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 f"hi=0x{hi:x} written_fields=0b{fields:07b} readback_fields=0b{rb & SW_FIELDS:07b} "
                 f"readback_resp=OKAY",
             )
-            self.logger.info("OBS-SWRST-RSVD: leg=rsvd shape=%s bits63:7=0x%x", shape, rb >> 7)
+            self.logger.info(
+                "OBS-SWRST-RSVD: leg=rsvd shape=%s bits63:7=0x%x", shape, rb >> RSVD_LSB
+            )
         await RisingEdge(cocotb.top.clk_i)
         cycles = self.taps.ip_rst[1].clk - m["ip_rst_1"].clk
         edges = sum(
@@ -823,8 +840,8 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
     def _sw_word(self, shape: str, rsvd: int) -> tuple[int, int, int]:
         """(address, size, data) of a field write in ``shape`` with reserved bits."""
         if shape == "w64":
-            return SW, 8, (rsvd << 7) | self.sw
-        return SW, 4, ((rsvd << 7) | self.sw) & 0xFFFF_FFFF
+            return SW, 8, (rsvd << RSVD_LSB) | self.sw
+        return SW, 4, ((rsvd << RSVD_LSB) | self.sw) & 0xFFFF_FFFF
 
     async def _issue_writes(self, words: list[tuple[int, int, int]], spacing: int) -> list:
         evs = []
@@ -866,7 +883,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 for ev in evs
             ]
             rb = await self._sw_read64()
-            his = ",".join(f"0x{(w[2] >> 7):x}" for w in words)
+            his = ",".join(f"0x{(w[2] >> RSVD_LSB):x}" for w in words)
             self._chk(
                 "CHK-SWRST-RSVD",
                 (rb & SW_FIELDS) == self.sw,
@@ -875,7 +892,10 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 f"hi={his} written_fields=0b{self.sw:07b} readback_fields=0b{rb & SW_FIELDS:07b}",
             )
             self.logger.info(
-                "OBS-SWRST-RSVD: leg=subset step=%d phase=%s bits63:7=0x%x", st.idx, phase, rb >> 7
+                "OBS-SWRST-RSVD: leg=subset step=%d phase=%s bits63:7=0x%x",
+                st.idx,
+                phase,
+                rb >> RSVD_LSB,
             )
             for d in st.doms:
                 await self._wait_ip(IPRST[d], level, f"step {st.idx} {phase} {d}")
@@ -1118,11 +1138,14 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         rel_order = list(victims) if pd.order != "rev" else list(reversed(victims))
         rel_evs = []
         rel_marks = []
+        # The i-th release write is the i-th ID-0 AW handshake after this count, so
+        # each victim is graded against its own write, also at a gap of 0 or 1.
+        rel_base = len(view.beats("aw", (SW_ID,)))
         for i, v in enumerate(rel_order):
             if i:
                 await self._cycles(pd.gap)
             self.sw |= 1 << IPRST[v]
-            rel_marks.append((v, len(view.beats("aw", (SW_ID,)))))
+            rel_marks.append((v, rel_base + i))
             rel_evs.append(self._sw_issue(self.sw))
         for ev in rel_evs:
             await ev.wait()
