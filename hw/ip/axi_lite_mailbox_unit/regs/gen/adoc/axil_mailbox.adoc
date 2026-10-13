@@ -71,8 +71,7 @@ Register interface for a single AXI-Lite mailbox: data FIFOs, level and status f
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+| 63:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox-RIRQT]
@@ -81,8 +80,7 @@ Register interface for a single AXI-Lite mailbox: data FIFOs, level and status f
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+| 63:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox-IRQS]
