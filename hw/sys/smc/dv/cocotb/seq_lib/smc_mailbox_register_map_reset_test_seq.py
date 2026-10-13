@@ -388,6 +388,13 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         await self._wr("S12_ACK", 31, "A", "IRQS", 7)
         await self._wr("S12_EN0", 31, "A", "IRQEN", 0)
         fall, vec_off = await self._poll_vectors("S12_fall", 0, 0)
+        await self._wr("S12_IN_EN", 31, "B", "IRQEN", EIRQ)
+        await self._empty_read("S12_IN_EMPTY", 31, "B")
+        rise_in, vec_in_on = await self._poll_vectors("S12_in_rise", 1 << 31, 0)
+        await self._wr("S12_IN_ACK", 31, "B", "IRQS", 7)
+        await self._wr("S12_IN_EN0", 31, "B", "IRQEN", 0)
+        fall_in, vec_in_off = await self._poll_vectors("S12_in_fall", 0, 0)
+        await self._val("S12_IN_EF", 31, "B", "ERROR_FLAGS")
         self._mark_step("S12")
         self._log_chk(
             "CHK-ATTRIBUTES-MATCH-OBSERVED-UNIT",
@@ -403,7 +410,10 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             f"outbound IRQS[2] with IRQEN[2] set raised tb_ext_mailbox_interrupts=0x"
             f"{vec_on[1]:08x} (in=0x{vec_on[0]:08x} cpu=0x{vec_on[2]:08x}) after {rise} cycles "
             f"and read 0x{vec_off[0]:08x}/0x{vec_off[1]:08x}/0x{vec_off[2]:08x} after the "
-            f"acknowledge and IRQEN clear ({fall} cycles)",
+            f"acknowledge and IRQEN clear ({fall} cycles); positive control: outbound bit 31 "
+            f"rose after {rise} rises (vectors {vec_on}) and fell after {fall} rises; inbound "
+            f"bit 31 rose after {rise_in} rises (vectors {vec_in_on}, cpu[319]=1) and fell "
+            f"after {fall_in} rises (vectors {vec_in_off})",
         )
 
         word = 0x5000_0000_0000_0005
