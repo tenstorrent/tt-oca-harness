@@ -10,6 +10,10 @@ Sources and destinations sit in the output-fabric window and are preloaded and r
 through the responder's backdoor, so no bus traffic other than the DMA's own is added.
 The outstanding AR and AW counts come from the SYS_OUT handshakes: AR minus RLAST
 handshakes, and AW minus B handshakes.
+
+Every S2 copy holds SYS_OUT AR READY low from before its launch until the egress tally has
+seen an ARVALID without ARREADY and the drawn number of further rises has passed. READY then
+follows the free-running stall pattern for the rest of the copy.
 """
 
 from __future__ import annotations
@@ -322,11 +326,24 @@ class smc_dma_backpressure_breadth_test_seq(SmcCsrSeq):
             f"{d.name}: DONE_0 reached {done}, not id {d.id} within {POLL_LIMIT} polls"
         )
 
-    async def _copy(self, d: _Desc) -> bytes:
-        payload = self._seed_copy(d)
-        await self._program(d)
-        await self._launch(d)
-        return payload
+    async def _hold_ar(self, d: _Desc, ar: int, before: int) -> tuple[int, int]:
+        t = self.tally
+        clk = cocotb.top.clk_smc_i
+        rises = 0
+        while t.stalls["ar"] <= before:
+            assert rises < WAIT_LIMIT, (
+                f"{d.name}: no ARVALID without ARREADY within {WAIT_LIMIT} clk_smc_i rises "
+                f"of the AR hold: ar_issued={t.ar_issued} ar_out={t.ar_out}"
+            )
+            await ClockCycles(clk, 1)
+            rises += 1
+        await ClockCycles(clk, ar)
+        await FallingEdge(clk)
+        self._responder.driver.read_if.ar_channel.pause = False
+        self._responder.enable_backpressure(channels=["ar"], stall_cycles=ar)
+        delta = t.stalls["ar"] - before
+        assert delta >= 1, f"{d.name}: no bus-observed AR stall ({delta})"
+        return delta, rises
 
     async def _wait_flag(self, what: str, cond, limit: int = WAIT_LIMIT) -> None:
         for _ in range(limit):
@@ -367,18 +384,27 @@ class smc_dma_backpressure_breadth_test_seq(SmcCsrSeq):
                 yield self.rng.randint(1, 8)
 
         stall_log = []
+        ar_counts = []
+        ar_waits = []
         for i, length in enumerate(RANDOM_LENGTHS):
             base = WINDOW + i * RANDOM_STRIDE
             d = _Desc(f"RND{i}", base + 0x10, base + 0x810, length)
             ar, aw, w = (self.rng.randint(1, 5) for _ in range(3))
             resp.disable_backpressure()
-            resp.enable_backpressure(channels=["ar"], stall_cycles=ar)
             resp.enable_backpressure(channels=["aw"], stall_cycles=aw)
             resp.enable_backpressure(channels=["w"], stall_cycles=w)
             resp.set_response_delay(draws("r_delay", 4096), read=True, write=False)
             resp.set_response_delay(draws("b_delay", 4096), read=False, write=True)
             stall_log.append(f"{length}B(ar={ar},aw={aw},w={w})")
-            payload = await self._copy(d)
+            payload = self._seed_copy(d)
+            await self._program(d)
+            await FallingEdge(cocotb.top.clk_smc_i)
+            resp.driver.read_if.ar_channel.pause = True
+            before = self.tally.stalls["ar"]
+            await self._launch(d)
+            delta, rises = await self._hold_ar(d, ar, before)
+            ar_counts.append(delta)
+            ar_waits.append(rises)
             await self._await_done(d)
             self._compare(d, payload)
         resp.disable_backpressure()
@@ -390,7 +416,8 @@ class smc_dma_backpressure_breadth_test_seq(SmcCsrSeq):
         self._mark("S2")
         return (
             f"seed {self.seed}; six copies of {', '.join(stall_log)} delivered their exact "
-            f"payload with DONE_0 equal to each id; stall and delay counts {kinds}"
+            f"payload with DONE_0 equal to each id; per-copy bus-observed AR stalls {ar_counts}, "
+            f"rises of AR hold before the first AR {ar_waits}; stall and delay counts {kinds}"
         )
 
     async def _plateau_copy(self, d: _Desc, hold: bool) -> bytes:
