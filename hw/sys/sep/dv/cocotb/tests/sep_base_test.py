@@ -1368,16 +1368,19 @@ class sep_base_test(uvm_test):
         batch = SepEsrcFifoDrainSeq("esrc_fifo_drain")
         await self.start_seq(batch)
         if batch.words:
-            self.drbg_sb.check_fifo_frontdoor(batch.words)
+            self.drbg_sb.check_fifo_frontdoor(
+                batch.words, log_batch=getattr(self, "_drain_log_batches", True)
+            )
 
     async def _fifo_drain_loop(self) -> None:
         while not self._drain_stop:
             await self._drain_fifo_once()
             await ClockCycles(cocotb.top.clk_i, 40)
 
-    def start_fifo_drain(self) -> None:
+    def start_fifo_drain(self, *, log_batches: bool = True) -> None:
         """Fork the concurrent FIFO drain (no-op for backdoor-CHK2 configs)."""
         self._drain_stop = False
+        self._drain_log_batches = log_batches
         self._drain_task = (
             None
             if getattr(self, "entropy_cfg", None) and self.entropy_cfg.chk2_backdoor

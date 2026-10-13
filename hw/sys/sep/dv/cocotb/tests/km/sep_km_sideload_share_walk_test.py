@@ -61,8 +61,7 @@ Checkers (``r`` is the round, 1 or 2):
                 shred of D and Z only Z is delivered again and the read must
                 fail (D is clear). Each single-half leg then delivers the other
                 half too and the read must complete, so the re-delivered half
-                is shown valid. The engine STATUS is logged, not graded: no SEP
-                document states it
+                is shown valid
   CHK-KMAC-CLR  a keyed operation on the delivered key with KEY_VALID clear
                 raises kmac_err (hw/sys/sep/doc/kmac.adoc) with ERR_CODE[31:24] ==
                 KeyNotValid (OpenTitan KMAC "Error Report" table). Both read
@@ -368,14 +367,14 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             self.abr, ABR_STATUS, ST_ERROR, ST_READY, ST_READY, what=f"{what} pre-command READY"
         )
         if seed_words is not None:
-            await self.abr.write_words(ABR_SEED, seed_words)
-        await self.abr.write_words(ABR_ENTROPY, self.walk.abr_entropy)
+            await self.abr.write_word_pairs(ABR_SEED, seed_words)
+        await self.abr.write_word_pairs(ABR_ENTROPY, self.walk.abr_entropy)
         await self.abr.wr32(ABR_CTRL, CMD_KEYGEN)
         st = await self._abr_wait(
             self.abr, ABR_STATUS, ST_ERROR, ST_VALID, ST_VALID, what=f"{what} VALID"
         )
         assert (st & ST_ERROR) == 0, f"{what}: VALID with ERROR (0x{st:08x})"
-        pk = await self.abr.read_words(ABR_PUBKEY, PK_WORDS)
+        pk = await self.abr.read_word_pairs(ABR_PUBKEY, PK_WORDS)
         assert any(w != 0 for w in pk), f"{what} FAIL: the public key is all zero"
         return pk
 
@@ -391,15 +390,15 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             what=f"{what} pre-command READY",
         )
         if d is not None:
-            await self.kem.write_words(MLKEM_SEED_D, d)
+            await self.kem.write_word_pairs(MLKEM_SEED_D, d)
         if z is not None:
-            await self.kem.write_words(MLKEM_SEED_Z, z)
+            await self.kem.write_word_pairs(MLKEM_SEED_Z, z)
         await self.kem.wr32(MLKEM_CTRL, KEM_CMD_KEYGEN)
         st = await self._abr_wait(
             self.kem, MLKEM_STATUS, KEM_ST_ERROR, KEM_ST_VALID, KEM_ST_VALID, what=f"{what} VALID"
         )
         assert (st & KEM_ST_ERROR) == 0, f"{what}: VALID with ERROR (0x{st:08x})"
-        ek = await self.kem.read_words(MLKEM_ENCAPS_KEY, KEM_EK_WORDS)
+        ek = await self.kem.read_word_pairs(MLKEM_ENCAPS_KEY, KEM_EK_WORDS)
         assert any(w != 0 for w in ek), f"{what} FAIL: the encapsulation key is all zero"
         return ek
 
@@ -412,15 +411,15 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             KEM_ST_READY,
             what=f"{what} pre-command READY",
         )
-        await self.kem.write_words(MLKEM_ENCAPS_KEY, ek)
+        await self.kem.write_word_pairs(MLKEM_ENCAPS_KEY, ek)
         if msg is not None:
-            await self.kem.write_words(MLKEM_MSG, msg)
+            await self.kem.write_word_pairs(MLKEM_MSG, msg)
         await self.kem.wr32(MLKEM_CTRL, KEM_CMD_ENCAPS)
         st = await self._abr_wait(
             self.kem, MLKEM_STATUS, KEM_ST_ERROR, KEM_ST_VALID, KEM_ST_VALID, what=f"{what} VALID"
         )
         assert (st & KEM_ST_ERROR) == 0, f"{what}: VALID with ERROR (0x{st:08x})"
-        ct = await self.kem.read_words(MLKEM_CIPHERTEXT, KEM_CT_WORDS)
+        ct = await self.kem.read_word_pairs(MLKEM_CIPHERTEXT, KEM_CT_WORDS)
         assert any(w != 0 for w in ct), f"{what} FAIL: the ciphertext is all zero"
         return ct
 
@@ -525,7 +524,6 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         out["kmac"] = digest
 
         # OTBN: the key-dump program reads both key shares from the sideload WSRs.
-        await self.otbn.load_program()
         await self.otbn.execute()
         errbits = await self.otbn.read_errbits()
         assert errbits == 0, f"CHK-OTBN-{tag} FAIL: ERR_BITS=0x{errbits:08x}"
@@ -568,7 +566,6 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             pk_kv[0],
         )
         out["mldsa"] = pk_kv
-        await self._mldsa_zeroize(what=f"CHK-MLDSA-{tag} post")
 
         # ABR ML-KEM seed D||Z: KV leg first, then the direct-seed reference.
         d = keys[KM_DEST_ABR_MLKEM_SEED_D]
@@ -622,7 +619,6 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             ct_kv[0],
         )
         out["mlkem_msg"] = ct_kv
-        await self._mlkem_zeroize(what=f"CHK-MLKEM-MSG-{tag} post")
         return out
 
     async def _shred(self, r: int, dest: int = ALL_DESTS) -> None:
@@ -639,8 +635,6 @@ class sep_km_sideload_share_walk_test(sep_base_test):
 
         # HMAC with KEY_VALID clear takes its software key registers.
         sw = self.walk.hmac_sw[r]
-        await self.hmac.write_key(sw)
-        await self.hmac.configure_keyed_256()
         digest = await self.hmac.run_keyed_mac(list(self.walk.hmac_msg))
         golden_sw = hmac_sha256_words(sw, self.walk.hmac_msg, key_word_rev=False, key_be=True)
         golden_k = hmac_sha256_words(self.walk.keys[r][KM_DEST_HMAC], self.walk.hmac_msg)
@@ -660,7 +654,6 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         )
 
         # OTBN: reading a share whose key is not valid sets KEY_INVALID.
-        await self.otbn.load_program()
         await self.otbn.execute()
         errbits = await self.otbn.read_errbits()
         assert errbits == OTBN_ERR_KEY_INVALID, (
@@ -675,41 +668,35 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 "ML-DSA seed",
                 ABR_MLDSA_KV_RD_SEED_CTRL,
                 ABR_MLDSA_KV_RD_SEED_STATUS,
-                ABR_STATUS,
                 self._mldsa_zeroize,
             ),
             (
                 "ML-KEM seed",
                 MLKEM_KV_SEED_RD_CTRL,
                 MLKEM_KV_SEED_RD_STATUS,
-                MLKEM_STATUS,
                 self._mlkem_zeroize,
             ),
             (
                 "ML-KEM msg",
                 MLKEM_KV_MSG_RD_CTRL,
                 MLKEM_KV_MSG_RD_STATUS,
-                MLKEM_STATUS,
                 self._mlkem_zeroize,
             ),
         )
-        for name, ctrl, status, eng_status, zeroize in legs:
+        for name, ctrl, status, zeroize in legs:
             await zeroize(what=f"CHK-ABR-CLR-{tag} {name} pre")
             st, err = await self._kv_read(ctrl, status, what=f"CHK-ABR-CLR-{tag} {name}")
             assert err == KV_READ_FAIL, (
                 f"CHK-ABR-CLR-{tag} FAIL: {name} KV read after the shred reports ERROR={err} "
                 f"(status 0x{st:08x}), expected KV_READ_FAIL={KV_READ_FAIL}"
             )
-            est = await self.abr.rd32(eng_status)
             self.logger.info(
                 "CHK-ABR-CLR-%d PASS: %s KV read on the shredded block: status 0x%08x "
-                "(ERROR=KV_READ_FAIL); engine STATUS 0x%08x (logged, not graded)",
+                "(ERROR=KV_READ_FAIL)",
                 tag,
                 name,
                 st,
-                est,
             )
-            await zeroize(what=f"CHK-ABR-CLR-{tag} {name} recover")
 
         # D and Z one at a time: deliver one of them again, so the D||Z read
         # can only fail on the other one's KEY_VALID. Then deliver the other one
@@ -759,9 +746,6 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 other,
                 DEST_NAME[other_dest],
                 st_ok,
-            )
-            await self._mlkem_zeroize(
-                what=f"CHK-ABR-CLR-{tag} {DEST_NAME[again]} then {DEST_NAME[other_dest]} recover"
             )
         # Leave every destination shredded, as the round expects.
         await self._shred(r, MLKEM_SEED_DESTS)
@@ -844,7 +828,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             score_sinks={"aes": "observe", "kmac": "observe", "otbn_urnd": "observe"},
         )
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
-        self.start_fifo_drain()
+        self.start_fifo_drain(log_batches=False)
 
         await self.swrst.release("km")
         await self.km.wait_km_ready()
@@ -857,6 +841,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         await self.hmac.wait_idle("post-release")
         await self.kmac.wait_idle("post-release")
         await self.otbn.wait_idle("post-release")
+        await self.otbn.load_program()
 
         outputs = []
         for r in range(ROUNDS):

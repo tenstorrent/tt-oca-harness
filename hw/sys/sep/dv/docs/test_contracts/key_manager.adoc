@@ -1060,8 +1060,8 @@ pairwise-distinct words, so these compares fail a delivery that reorders them.
 . `CMD_ENGINE_SHRED` with all eight destination bits. The firmware response is
 a precondition; the hardware effect is graded in the next step.
 . HMAC with a software key (CHK-HMAC-CLR); OTBN key dump (CHK-OTBN-CLR); for
-each ABR KV lane, `ZEROIZE`, set the read enable, read the KV status and the
-engine status, `ZEROIZE`. Then `CMD_KEY_TRANSFER` the round's `D` handle to
+each ABR KV lane, `ZEROIZE`, set the read enable and read the KV status. Then
+`CMD_KEY_TRANSFER` the round's `D` handle to
 `MLKEM_SEED_D` only and read the `D` then `Z` lane; `CMD_ENGINE_SHRED`
 `MLKEM_SEED_D` and `MLKEM_SEED_Z`, the only two destinations that are valid at
 that point, transfer the `Z` handle to `MLKEM_SEED_Z` only and read the lane
@@ -1099,7 +1099,7 @@ last.
 |CHK-OTBN-CLR-1/2
 |After the shred the key-dump program stops with `ERR_BITS` = `KEY_INVALID` (`doc/otbn.adoc`).
 |CHK-ABR-CLR-1/2
-|After the shred each of the three ABR KV reads reports `ERROR` = `KV_READ_FAIL` (`doc/crypto.adoc`, `km-key-delivery-summary`: "Seed read does not complete"; the encoding is the `kv_error_e` enum of `kv_def.rdl`). `D` and `Z` have their own `KEY_VALID` and the `D` then `Z` read fails if either is clear, so each is also graded alone: with only `D` delivered again the read reports `KV_READ_FAIL` (`Z` is clear), and after a shred of `D` and `Z`, with only `Z` delivered again, it reports `KV_READ_FAIL` (`D` is clear). Each single-half leg then delivers the other half too and the read must complete (`VALID`, `ERROR` = `SUCCESS`): the control that the re-delivered half became valid, so each failure belongs to the shredded half. The engine `STATUS` is logged and not graded: no SEP document states it.
+|After the shred each of the three ABR KV reads reports `ERROR` = `KV_READ_FAIL` (`doc/crypto.adoc`, `km-key-delivery-summary`: "Seed read does not complete"; the encoding is the `kv_error_e` enum of `kv_def.rdl`). `D` and `Z` have their own `KEY_VALID` and the `D` then `Z` read fails if either is clear, so each is also graded alone: with only `D` delivered again the read reports `KV_READ_FAIL` (`Z` is clear), and after a shred of `D` and `Z`, with only `Z` delivered again, it reports `KV_READ_FAIL` (`D` is clear). Each single-half leg then delivers the other half too and the read must complete (`VALID`, `ERROR` = `SUCCESS`): the control that the re-delivered half became valid, so each failure belongs to the shredded half.
 |CHK-KMAC-CLR
 |A keyed KMAC on the shredded delivered key raises `INTR_STATE.kmac_err` (`doc/kmac.adoc`) with `ERR_CODE[31:24]` = `KeyNotValid` (0x01, the "Error Report" table of the OpenTitan KMAC documentation that `doc/kmac.adoc` names as the authority; the field position is from `kmac.rdl`). Both read clear after the engine is programmed and just before `CMD_START`, so the error belongs to that start and not to an earlier operation.
 |CHK-AES-CLR
@@ -1118,7 +1118,7 @@ write lane stays on `sep_km_abr_mlkem_sideload_test`. ABR has no independent
 golden in this tree for a seed of the run's choosing, so each ABR compare is
 against the same engine fed through its registers. KMAC and AES recovery after
 the invalid-key refusal is not claimed. The ABR engine state after a failed KV
-read is logged, not graded.
+read is not claimed.
 
 *Preconditions*: `rom_main` boots on real entropy and announces
 `RESP_KM_READY`; this is the bench build with the boot and unrecoverable-fault
