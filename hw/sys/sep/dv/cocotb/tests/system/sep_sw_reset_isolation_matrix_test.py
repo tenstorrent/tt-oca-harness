@@ -128,7 +128,7 @@ from seq_lib.sep_reset_mid_transfer_seq import (
     SepResetProbeDriver,
     other_value,
 )
-from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_RESET_DEFAULT, SCRATCH_WARM_0
+from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
 from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N, SW_RESET_N_BIT
 
 TEST = "sep_sw_reset_isolation_matrix_test"
@@ -198,8 +198,8 @@ PROBE = {d: _BY_NAME["csrng" if d == "trng" else d] for d in DOMS}
 PROBES_B = {d: (PROBE[d],) for d in DOMS}
 PROBES_B["trng"] = (ESRC_PROBE, _BY_NAME["csrng"], _BY_NAME["edn"])
 SCRATCH = (
-    ResetProbe("scratch_cold0", SCRATCH_COLD_0, SCRATCH_RESET_DEFAULT, 0xFFFF_FFFF),
-    ResetProbe("scratch_warm0", SCRATCH_WARM_0, SCRATCH_RESET_DEFAULT, 0xFFFF_FFFF),
+    _probe_at("scratch_cold0", SCRATCH_COLD_0),
+    _probe_at("scratch_warm0", SCRATCH_WARM_0),
 )
 UNRELATED = (_BY_NAME["spi"], _BY_NAME["dma"], MBOX_PROBE, *SCRATCH)
 ALL_PROBES = (*{p.name: p for d in DOMS for p in PROBES_B[d]}.values(), *UNRELATED)

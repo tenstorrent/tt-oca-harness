@@ -127,6 +127,20 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# The same leaf on the full-CPU model: it adds the dbg_rstb_i sequence, the dbg_rstb_i
+# overlap runs and the run-request synchronizer check, and fails without the full CPU.
+name = "sep_cpu_reset_retention_test_dbg"
+module = "system.sep_cpu_reset_retention_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["reset", "cpu", "scratch", "dma", "memory", "subsystem"]
+run_modes = ["no_cpu"]
+tools = ["vcs"]
+target = "default"
+args = ["+skip_fuse_sense", "+sep_require_full_cpu"]
+
+[[tests]]
 # A SW_RESET_N field resets exactly its domain after the domain paths report isolated.
 # Accepted host transactions drain, later ones answer SLVERR, and sibling domains keep
 # their state. The Key Manager leg uses the KM ROM image of the open Key Manager tests.

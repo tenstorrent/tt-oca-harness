@@ -746,3 +746,17 @@ tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+sep_edn_jtag_reset_waive"]
+
+[[tests]]
+# The same leaf on the full-CPU model, where the dbg_rstb_i cell of the WDOG_REGWEN hold
+# check runs; it fails without the full CPU on VCS.
+name = "sep_timer_clock_contract_test_dbg"
+module = "system.sep_timer_clock_contract_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem"]
+run_modes = ["no_cpu"]
+tools = ["vcs"]
+target = "default"
+args = ["+skip_fuse_sense", "+sep_edn_jtag_reset_waive", "+sep_require_full_cpu"]

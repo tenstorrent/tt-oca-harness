@@ -1218,6 +1218,15 @@ class sep_timer_clock_contract_test(sep_base_test):
         full_cpu = self.full_cpu_build()
         self.dbg_cell = vcs and full_cpu
         self.n_dbg = 0
+        # The full-CPU testlist entry passes +sep_require_full_cpu: there the dbg_rstb_i
+        # cell is required, so a build or simulator without it fails the leaf.
+        if "sep_require_full_cpu" in cocotb.plusargs and not self.dbg_cell:
+            msg = (
+                "CTL-FULL-CPU FAIL: +sep_require_full_cpu needs the VCS full-CPU build for the "
+                f"dbg_rstb_i cell (full_cpu={int(full_cpu)} vcs={int(vcs)})"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
         self.logger.info(
             "OBS-DBG-EVENT: build=%s tool=%s dbg_rstb_i_cell=%s reason=%s",
             "full_cpu" if full_cpu else "cpu_stub",

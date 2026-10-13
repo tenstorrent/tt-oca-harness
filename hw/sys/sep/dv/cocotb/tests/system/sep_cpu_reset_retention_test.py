@@ -439,6 +439,12 @@ class sep_cpu_reset_retention_test(sep_base_test):
         await self.bring_up_no_cpu()
         dut = cocotb.top
         self.full_cpu = self.full_cpu_build()
+        # The full-CPU testlist entry passes +sep_require_full_cpu: there the DBG legs and
+        # CHK-DBG-SYNC are required, so a stub build fails the leaf.
+        if "sep_require_full_cpu" in cocotb.plusargs and not self.full_cpu:
+            msg = "CTL-FULL-CPU FAIL: +sep_require_full_cpu and the build has the CPU stub"
+            self.logger.error(msg)
+            raise AssertionError(msg)
         self.classes = ("WDT", "DBG") if self.full_cpu else ("WDT",)
         if self.full_cpu:
             self.required_evidence = (*type(self).required_evidence, "CHK-DBG-SYNC")
