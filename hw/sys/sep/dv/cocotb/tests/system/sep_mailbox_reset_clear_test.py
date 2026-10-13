@@ -612,4 +612,4 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         await self._post()
         close_graded_window(self.logger)
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, seed, self.n_checks)
+        self.result_pass(TEST, seed, self.n_checks)

@@ -806,6 +806,4 @@ class sep_boot_release_terms_test(sep_base_test):
 
         await self._sense_status(hold)
         close_graded_window(self.logger)
-        self.logger.info(
-            "RESULT %s seed=%d PASS checks=%d", TEST, seed, len(self.required_evidence)
-        )
+        self.result_pass(TEST, seed, len(self.required_evidence))

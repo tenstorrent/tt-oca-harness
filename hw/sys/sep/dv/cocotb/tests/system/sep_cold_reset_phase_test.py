@@ -397,6 +397,4 @@ class sep_cold_reset_phase_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         await self._pass("graded")
         close_graded_window(self.logger)
-        self.logger.info(
-            "RESULT %s seed=%d PASS checks=%d", TEST, seed, len(self.required_evidence)
-        )
+        self.result_pass(TEST, seed, len(self.required_evidence))

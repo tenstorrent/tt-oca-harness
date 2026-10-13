@@ -630,4 +630,4 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
 
         await self.tap.stop()
         await self.busy.stop()
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, seed, self.n_checks)
+        self.result_pass(TEST, seed, self.n_checks)

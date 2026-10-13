@@ -57,6 +57,10 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-SWRST-RSVD    after each write with bits 63:7 set a response arrives and
                     the 64-bit readback answers OKAY with bits 6:0 equal to the
                     written fields (bits 63:7 are logged as ``OBS-SWRST-RSVD``).
+                    For the earlier writes of a one-write-per-domain step, every
+                    field of bits 6:0 is graded on its isolate request and
+                    engine reset taps: each tap moves once per write that
+                    changes its field and never otherwise.
   CHK-SWRST-SCOPE   ``ip_rst_n[6:1]`` are stable on every cycle of the
                     reserved-only leg and the unrelated registers keep their
                     value. Control: the first subset step moves a tap.
@@ -173,6 +177,9 @@ def _mask(names) -> int:
 TABLE = {d: _mask(HOST[d] + KEYP[d]) for d in (*DOMS, "km")}
 HOST_MASK = {d: _mask(HOST[d]) for d in (*DOMS, "km")}
 KM_SET = TABLE["km"]  # bench indices 8 to 13
+# Isolate request paths that follow one SW_RESET_N field alone (the key paths of a
+# domain follow its own field and the Key Manager field both).
+FIELD_REQ = {**{d: HOST[d] for d in DOMS}, "km": ("km_efuse",)}
 KM_KEY_HKA = _mask(("km_hmac", "km_kmac", "km_abr"))
 
 _BY_NAME = {p.name: p for p in PROBES}
@@ -743,7 +750,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             await self.isolog.stop()
         if self.late_fail:
             raise AssertionError("; ".join(self.late_fail))
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.k)
+        self.result_pass(TEST, self.seed, self.k)
 
     # ---- leg A --------------------------------------------------------------
     async def _leg_a(self) -> None:
@@ -862,11 +869,58 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             await ev.wait()
         return evs
 
+    async def _grade_write_fields(
+        self, view: PassView, before: int, seq: list[int], doms: tuple[str, ...], level: int
+    ) -> tuple[bool, str]:
+        """Grade bits 6:0 of every write of a step on the isolate and reset taps.
+
+        ``seq[k]`` is the field value written by write ``k``; ``before`` is the
+        value before the first write. Every field ``F`` (Key Manager and the six
+        domains) has isolate request paths that follow ``F`` alone
+        (``FIELD_REQ``) and the engine reset ``ip_rst_n[F]``. Each of those taps
+        moves once for every write that changes ``F`` and never otherwise, so
+        a field that a write does not target, a reserved bit that sets a field
+        for one write, or a dropped write, changes an edge count. With the
+        order check of the caller (each edge after its own write's AW handshake
+        and before the edge of the next write) the state of every field after
+        every write equals the written value.
+        """
+        for d in doms:
+            for x in FIELD_REQ[d]:
+                await self.taps.iso_req.wait_level(1 - level, TAP_BOUND, bit=iso_name(X[x]))
+            await self._wait_ip(IPRST[d], level, f"field grade {d}")
+        ok = True
+        parts = []
+        for f in ("km", *DOMS):
+            i = IPRST[f]
+            prev, want = before, 0
+            for v in seq:
+                want += ((prev ^ v) >> i) & 1
+                prev = v
+            w = self.taps.iso_req
+            req_n = [
+                w.rises_since(view.m["iso_req"], iso_name(X[x]))
+                + len(w.fall_clks_since(view.m["iso_req"], iso_name(X[x])))
+                for x in FIELD_REQ[f]
+            ]
+            ipw = self.taps.ip_rst[i]
+            ip_n = ipw.rises_since(view.m[f"ip_rst_{i}"]) + len(
+                ipw.fall_clks_since(view.m[f"ip_rst_{i}"])
+            )
+            ok &= all(n == want for n in req_n) and ip_n == want
+            parts.append(f"{f}:{want}/{'+'.join(map(str, req_n))}/{ip_n}")
+        written = ",".join(f"0b{v & SW_FIELDS:07b}" for v in seq)
+        return ok, (
+            f" per_write_fields={written} field_edges(want/req/ip_rst)={';'.join(parts)}"
+            f" field_grade={int(ok)}"
+        )
+
     async def _subset_step(self, st: StepDraw) -> None:
         wi = 0
         for phase, level in (("assert", 0), ("release", 1)):
             words = []
             fields_seq = []
+            sw_before = self.sw
             group = [st.doms] if st.style == "one" else [(d,) for d in st.doms]
             for g in group:
                 for d in g:
@@ -907,6 +961,11 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 effect = " write_effects=" + ",".join(
                     f"{d}:aw={aw_k}->req_{'fall' if level else 'rise'}={e}" for d, aw_k, e in edges
                 )
+                fields_ok, fields_log = await self._grade_write_fields(
+                    view, sw_before, fields_seq, st.doms, level
+                )
+                effect_ok &= fields_ok
+                effect += fields_log
             codes = [
                 int(max(ev.data.resp))
                 if isinstance(ev.data.resp, (list, tuple))
@@ -931,6 +990,8 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             )
             for d in st.doms:
                 await self._wait_ip(IPRST[d], level, f"step {st.idx} {phase} {d}")
+                for x in FIELD_REQ[d]:
+                    await self.taps.iso_req.wait_level(1 - level, TAP_BOUND, bit=iso_name(X[x]))
         # Probes and unrelated registers.
         n_reset = n_kept = 0
         bad = []

@@ -1035,4 +1035,4 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         bad = {k: (self.n_pass[k], v) for k, v in want.items() if self.n_pass[k] != v}
         assert not bad, f"CHK-COUNT FAIL (got, want): {bad}"
         self.logger.info("CHK-COUNT LOG %s", " ".join(f"{k}={v}" for k, v in want.items()))
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", _TEST, c.seed, len(want))
+        self.result_pass(_TEST, c.seed, len(want))

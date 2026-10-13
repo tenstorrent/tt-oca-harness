@@ -686,6 +686,4 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         expect = {"CHK-ARMED": 1, "CHK-STALL-REAL": 13, "CHK-TO-INERT": 13}
         if self.counts != expect:
             raise AssertionError(f"CHK-COUNT FAIL seed={seed} counts={self.counts} expect={expect}")
-        self.logger.info(
-            "RESULT %s seed=%d PASS checks=%d counts=%s", TEST, seed, self.n_checks, self.counts
-        )
+        self.result_pass(TEST, seed, self.n_checks, f" counts={self.counts}")

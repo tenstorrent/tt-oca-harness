@@ -378,4 +378,4 @@ class sep_pic_reg_rand_test(sep_base_test):
         for rec in self.con.records("OBS-IDLE-UNSTATED"):
             self.logger.info("%s", rec.text)
         n_host = self._chk_reset_x(four_state)
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, seed, n_fw + n_host)
+        self.result_pass(TEST, seed, n_fw + n_host)

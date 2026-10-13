@@ -712,4 +712,4 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         missing = [c for c in self.required_evidence if c not in self.ran]
         if missing:
             raise AssertionError(f"CTRL-MISSING seed={self.seed} checks not run: {missing}")
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, len(self.ran))
+        self.result_pass(TEST, self.seed, len(self.ran))

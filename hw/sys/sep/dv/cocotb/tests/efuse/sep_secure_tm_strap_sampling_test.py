@@ -552,6 +552,4 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             "control_legD=1",
             len(late),
         )
-        self.logger.info(
-            "RESULT %s seed=%d PASS checks=%d", TEST, seed, len(self.required_evidence)
-        )
+        self.result_pass(TEST, seed, len(self.required_evidence))

@@ -451,4 +451,4 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         missing = [x for x in self.required_evidence if x not in self.ran]
         if missing:
             raise AssertionError(f"CTRL-MISSING seed={self.seed} checks not run: {missing}")
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, len(self.ran))
+        self.result_pass(TEST, self.seed, len(self.ran))

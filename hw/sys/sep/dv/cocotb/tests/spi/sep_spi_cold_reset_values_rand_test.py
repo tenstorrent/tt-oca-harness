@@ -145,7 +145,7 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         finally:
             close_graded_window(self.logger)
             await self.pads.stop()
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.checks)
+        self.result_pass(TEST, self.seed, self.checks)
 
     # ---- draws ------------------------------------------------------------
     @staticmethod

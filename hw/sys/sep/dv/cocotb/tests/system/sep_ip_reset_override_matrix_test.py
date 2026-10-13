@@ -376,7 +376,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
             await self._gate(False)
             await self.taps.stop()
             await self.sense.stop()
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.k)
+        self.result_pass(TEST, self.seed, self.k)
 
     # ---- steps 3 and 7: the (E, V) passes -----------------------------------
     async def _pass(self, n: int) -> dict[str, list[int]]:

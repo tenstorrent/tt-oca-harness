@@ -440,6 +440,4 @@ class sep_mailbox_filter_type_matrix_test(sep_base_test):
         }
         if any(self.counts.get(k, 0) != v for k, v in expect.items()):
             raise AssertionError(f"CHK-COUNT FAIL seed={seed} counts={self.counts} expect={expect}")
-        self.logger.info(
-            "RESULT %s seed=%d PASS checks=%d counts=%s", TEST, seed, self.n_checks, self.counts
-        )
+        self.result_pass(TEST, seed, self.n_checks, f" counts={self.counts}")

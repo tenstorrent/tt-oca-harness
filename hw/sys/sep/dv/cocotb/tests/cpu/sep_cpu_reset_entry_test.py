@@ -961,9 +961,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self._grade_store_resp()
         if self.failures:
             raise AssertionError("; ".join(self.failures))
-        self.logger.info(
-            "RESULT %s seed=%d PASS checks=%d", TEST, self.random_seed(), self.n_checks
-        )
+        self.result_pass(TEST, self.random_seed(), self.n_checks)
 
     async def _jtag_legs(self) -> None:
         dut = cocotb.top

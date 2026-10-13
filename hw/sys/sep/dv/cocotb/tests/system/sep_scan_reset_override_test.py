@@ -501,4 +501,4 @@ class sep_scan_reset_override_test(sep_base_test):
                 None if r is None else r - t_rise,
             )
         self.logger.info("CHK-SCAN-REPLACE PASS: %s", line)
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, seed, 3)
+        self.result_pass(TEST, seed, 3)

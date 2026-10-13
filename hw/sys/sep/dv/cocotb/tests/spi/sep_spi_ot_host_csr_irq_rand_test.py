@@ -805,9 +805,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         finally:
             close_graded_window(self.logger)
             await self.pads.stop()
-        self.logger.info(
-            "RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.checks + _OPEN_CHECKS
-        )
+        self.result_pass(TEST, self.seed, self.checks + _OPEN_CHECKS)
 
     # ---- draws ------------------------------------------------------------
     def _leg_draw(self, rng: SepSeededRng) -> dict:

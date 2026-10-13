@@ -970,4 +970,4 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
             in_rises > 0 and out_rises > 0,
             f"in_rises={in_rises} out_rises={out_rises}",
         )
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.n_checks)
+        self.result_pass(TEST, self.seed, self.n_checks)

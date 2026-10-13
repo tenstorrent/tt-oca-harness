@@ -520,7 +520,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 await w.stop()
             await self.taps.stop()
             await self.chan.stop()
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.k)
+        self.result_pass(TEST, self.seed, self.k)
 
     # ---- step 2: calibration -------------------------------------------------
     async def _calibrate(self) -> None:
@@ -912,6 +912,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             # Release after the pulse.
             await self.taps.resets["sep_cpu_reset_n"].wait_level(1, TAP_BOUND)
             await FallingEdge(dut.clk_i)
+            cm_rel = self.chan.mark()
             rel = self._sw_issue(SW_HMAC_HELD)
             try:
                 await self._wait_ev(rel, f"overlap run={n} release write of SW_RESET_N")
@@ -926,18 +927,25 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 )
                 raise
             await self._wait_ip(d, 1, f"CHK-OVL run={n} release")
+            rel_aw = self._aw_after(cm_rel)[0]
             rise = self.taps.ip_rst[IPRST[d]].rise_clks_since(m[f"ip_rst_{IPRST[d]}"])
+            rise_c = rise[0] if rise else None
+            # ip_rst_n[D] holds low on every clock from its fall to the AW handshake
+            # of the release write, and its first rise comes after that handshake.
+            held = rise_c is not None and fall < rel_aw < rise_c
             pd_, ps_ = _BY_NAME[d], _BY_NAME[sib]
             got_d = await self.pd.read(pd_)
             got_s = await self.pd.read(ps_)
             swv = await self._rd(SW)
             fd = field_compare(got_d, pd_.reset, pd_.mask)
             fs = field_compare(got_s, self.armed[ps_.name], ps_.mask)
-            iso_order = pre_iso == 0 and pre_key == 1 and ack_c is not None and ack_c <= fall
-            ok = iso_order and bool(rise) and fd.ok and fs.ok and (swv & SW_FIELDS) == SW_HMAC_HELD
+            iso_order = pre_iso == 0 and pre_key == 1 and ack_c is not None and ack_c < fall
+            ok = iso_order and held and fd.ok and fs.ok and (swv & SW_FIELDS) == SW_HMAC_HELD
             line = (
                 f"dom={d} pulse={run.cls} band={run.band} iso_ack={ack_c - h if ack_c else None} "
-                f"rst_assert={fall - h} host_iso_before_write={pre_iso} key_iso_before_write={pre_key} "
+                f"rst_assert={fall - h} rst_fall_clk={fall} release_aw_clk={rel_aw} "
+                f"first_rise_clk={rise_c} held_to_release={int(held)} "
+                f"host_iso_before_write={pre_iso} key_iso_before_write={pre_key} "
                 f"engine_default_after_release={int(fd.ok)} sibling_retained={int(fs.ok)} "
                 f"SW_RESET_N=0x{swv & SW_FIELDS:02x} pulse_free_ack={self.pf_ack} "
                 f"pulse_free_fall={self.tiso}"

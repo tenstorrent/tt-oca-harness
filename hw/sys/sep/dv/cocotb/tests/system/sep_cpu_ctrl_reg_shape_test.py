@@ -657,4 +657,4 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
         assert self.scr_shape_lines == n_scr, (
             f"CHK-SCR-SHAPE FAIL: {self.scr_shape_lines} register checks, expected {n_scr}"
         )
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, seed, 4)
+        self.result_pass(TEST, seed, 4)

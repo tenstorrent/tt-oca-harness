@@ -830,4 +830,4 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         await self._err_line()
         await self._wo_read()
         close_graded_window(self.logger)
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.n_checks)
+        self.result_pass(TEST, self.seed, self.n_checks)

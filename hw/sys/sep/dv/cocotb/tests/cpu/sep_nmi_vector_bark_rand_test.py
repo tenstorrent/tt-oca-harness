@@ -442,4 +442,4 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         if cases != ["a", CASES[cfg.case]]:
             raise AssertionError(f"CHK-NMI-NOPIC FAIL: cases {cases}, drawn a,{CASES[cfg.case]}")
         n_host = self._chk_taken(sy) + self._chk_bark_vec(sy, boot2_clk)
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, seed, n_fw + n_host)
+        self.result_pass(TEST, seed, n_fw + n_host)

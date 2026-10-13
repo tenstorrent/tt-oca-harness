@@ -478,4 +478,4 @@ class sep_pic_external_access_refuse_test(sep_base_test):
         self.con.relay_chk()
         self.con.require_counts({"CHK-CPU-READ": 1, "CHK-LANDED": 1})
         self._grade()
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", _TEST, c.seed, 6)
+        self.result_pass(_TEST, c.seed, 6)

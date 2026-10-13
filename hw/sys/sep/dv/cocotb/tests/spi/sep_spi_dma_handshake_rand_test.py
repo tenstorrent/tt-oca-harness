@@ -419,7 +419,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             for w in (self.tw, self.busy, self.irq):
                 await w.stop()
             await self.pads.stop()
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, cfg.seed, self.n_checks)
+        self.result_pass(TEST, cfg.seed, self.n_checks)
 
     async def _body(self) -> None:
         cfg = self.cfg_

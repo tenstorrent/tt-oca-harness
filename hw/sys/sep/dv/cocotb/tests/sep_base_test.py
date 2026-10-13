@@ -1945,9 +1945,28 @@ class sep_base_test(uvm_test):
                 + " -- the run exited cleanly without grading what it claims to grade"
             )
 
+    def result_pass(self, test: str, seed: int, checks: int, extra: str = "") -> None:
+        """Hold the ``RESULT <test> seed=<n> PASS checks=<k>`` line of the leaf.
+
+        A leaf calls this at the end of ``run_scenario``. The line is logged in
+        ``report_phase``, so it appears only after the evidence gate and every
+        component ``check_phase`` passed; a leaf that fails either one logs no
+        ``RESULT ... PASS`` line.
+        """
+        self._result_pass = (test, seed, checks, extra)
+
     async def run_phase(self) -> None:
         self.raise_objection()
         self._log_run_identity()
         await self.run_scenario()
         self._finalize_evidence()
+        self._evidence_passed = True
         self.drop_objection()
+
+    def report_phase(self) -> None:
+        # pyuvm runs report_phase after check_phase of every component, and only
+        # when none of them raised.
+        held = getattr(self, "_result_pass", None)
+        if held is not None and getattr(self, "_evidence_passed", False):
+            test, seed, checks, extra = held
+            self.logger.info("RESULT %s seed=%d PASS checks=%d%s", test, seed, checks, extra)

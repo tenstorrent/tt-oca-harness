@@ -1323,6 +1323,4 @@ class sep_timer_clock_contract_test(sep_base_test):
         await self._leg_s()
         await self._leg_l()
         self._gate(False)
-        self.logger.info(
-            "RESULT %s seed=%d PASS checks=%d", TEST, seed, len(self.required_evidence)
-        )
+        self.result_pass(TEST, seed, len(self.required_evidence))

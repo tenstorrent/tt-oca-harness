@@ -316,4 +316,4 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
             self._pass("CHK-DBG-ACCEPT", txt)
 
         close_graded_window(self.logger)
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.n_checks)
+        self.result_pass(TEST, self.seed, self.n_checks)

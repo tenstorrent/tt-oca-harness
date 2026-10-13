@@ -629,4 +629,4 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         close_graded_window(self.logger)
         await self.irq.stop()
         await self.busy.stop()
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, seed, self.n_checks)
+        self.result_pass(TEST, seed, self.n_checks)
