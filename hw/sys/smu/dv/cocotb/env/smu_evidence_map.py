@@ -1378,6 +1378,26 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<PASS"),
     ],
+    "smu_smc_base_config_state_test": [
+        (
+            "CHK-BOOT-BASECFG-APERTURE",
+            "BOOT_BASECFG_APERTURE",
+            "GLOBAL_BASE, LOCAL_BASE and the REGION_SIZE size field read their RDL reset values",
+        ),
+        (
+            "CHK-BOOT-BASECFG-REGION-PORT",
+            "BOOT_BASECFG_REGION_PORT",
+            "smc_region_size_o equals 0x0100_0000 and the REGION_SIZE value read over JTAG2AXI",
+        ),
+        (
+            "CHK-BOOT-BASECFG-CG-HANG",
+            "BOOT_BASECFG_CG_HANG",
+            "CLOCK_GATE_CONTROL, the three hang-detector controls and the three thresholds "
+            "read their RDL reset values",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<PASS"),
+    ],
     "smu_smc_boundary_io_test": [
         (
             "CHK-SMU-NDMRESET-REQ",
@@ -1587,6 +1607,63 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "dtp_stop_clks_o returns to 1 three clk_smu_i cycles after the primary reset releases",
         ),
     ],
+    "smu_smc_cold_boot_release_order_test": [
+        (
+            "CHK-BOOT-PG-HOLD",
+            "BOOT_PG_HOLD",
+            "with powergood_i low and rst_cold_ni high for 600 clk_ref the stable power-good "
+            "and the stable cold reset read 0 at every sample",
+        ),
+        (
+            "CHK-BOOT-PG-STRETCH",
+            "BOOT_PG_STRETCH",
+            "the stable power-good reads 0 for the first 32 clk_ref after powergood_i rises "
+            "and rises once",
+        ),
+        (
+            "CHK-BOOT-COLD-HELD",
+            "BOOT_COLD_HELD",
+            "the stable cold reset reads 0 at every sample from its assertion (after the "
+            "32-sample de-glitch) while rst_cold_ni is low, and stays 0 through the extension "
+            "window after the first release request",
+        ),
+        (
+            "CHK-BOOT-COLD-EXT",
+            "BOOT_COLD_EXT",
+            "the stable cold reset reads 0 for the first 255 clk_ref after the later of the "
+            "powergood_i and rst_cold_ni rises",
+        ),
+        (
+            "CHK-BOOT-COLD-REASSERT",
+            "BOOT_COLD_REASSERT",
+            "a 64-clk_ref rst_cold_ni pulse inside the extension: the stable cold reset stays "
+            "0 from the first release request through the pulse, and rises within the bound "
+            "and no earlier than 255 clk_ref after the later release",
+        ),
+        (
+            "CHK-BOOT-PRIM-SMC-ORDER",
+            "BOOT_PRIM_SMC_ORDER",
+            "rst_primary_smc_clk_n_o reads 0 at every sample while the cold reset is asserted",
+        ),
+        (
+            "CHK-BOOT-PRIM-REF-ORDER",
+            "BOOT_PRIM_REF_ORDER",
+            "rst_primary_ref_clk_no reads 0 at every sample while the cold reset is asserted",
+        ),
+        (
+            "CHK-BOOT-PRIM-EDGE",
+            "BOOT_PRIM_EDGE",
+            "each primary reset has one 0 to 1 edge per boot on its destination clock and "
+            "does not read 0 afterwards",
+        ),
+        (
+            "CHK-BOOT-COLD-TO-PRIMARY",
+            "BOOT_COLD_TO_PRIMARY",
+            "each primary reset rises within its bounded wait and reads 1 at the end of each boot",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded reset-pin waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<S8<PASS"),
+    ],
     "smu_smc_cool_reset_pin_test": [
         (
             "CHK-SMU-COOL-PIN-DEGLITCH",
@@ -1609,6 +1686,50 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "its straps rise and holds when they drop again",
         ),
     ],
+    "smu_smc_cpu_ctrl_boot_state_test": [
+        (
+            "CHK-BOOT-SCRATCH0-RESET",
+            "BOOT_SCRATCH0_RESET",
+            "SCRATCH[0] bits[31:0] read 0 after boot over JTAG2AXI",
+        ),
+        (
+            "CHK-BOOT-SCRATCH0-UPPER",
+            "BOOT_SCRATCH0_UPPER",
+            "SCRATCH[0] upper word logged, read status SUCCESS",
+        ),
+        (
+            "CHK-BOOT-RESET-VECTORS",
+            "BOOT_RESET_VECTORS",
+            "RESET_VECTOR[0..3] each read 0xC004_0000",
+        ),
+        (
+            "CHK-BOOT-RESET-CTRL-VALUES",
+            "BOOT_RESET_CTRL_VALUES",
+            "RESET_CTRL, CORE_RESET_PULSE_COUNT and RESET_TIMEOUT read their RDL reset values",
+        ),
+        (
+            "CHK-BOOT-WDT-TIMEOUT-RESET",
+            "BOOT_WDT_TIMEOUT_RESET",
+            "WDT_TIMEOUT reads 0x4000 and WDT_TIMEOUT_RESET reads 0",
+        ),
+        (
+            "CHK-BOOT-SCRATCH-1-15",
+            "BOOT_SCRATCH_1_15",
+            "SCRATCH[1..15] bits[31:0] read 0, upper words logged",
+        ),
+        (
+            "CHK-BOOT-ATTRIBUTES",
+            "BOOT_ATTRIBUTES",
+            "SMC_ATTRIBUTES cores, sram_size, mailboxes, ext interrupts and primary strap decoded",
+        ),
+        (
+            "CHK-BOOT-DUMMY-ROM",
+            "BOOT_DUMMY_ROM",
+            "DUMMY_ROM_0..3 read their words and DUMMY_ROM_NULL[0..3] read 0",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS"),
+    ],
     "smu_smc_dtp_jtag2axi_smoke_test": [
         ("CHK-JTAG2AXI-SMOKE-SCRATCH", "CHK-JTAG2AXI-SMOKE-SCRATCH", "J2A scratch write/readback"),
     ],
@@ -1625,9 +1746,111 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_mailbox_sanity_test": [
         ("CHK-MBX-IRQEN", "SMC_MBX_CSR_OK", "outbound-0 IRQEN write/readback"),
     ],
+    "smu_smc_mailbox_status_error_test": [
+        (
+            "CHK-MBX-ERR-READ-EMPTY",
+            "MBX_ERR_READ_EMPTY",
+            "empty READ_DATA read is SLVERR with 0xFEEDDEAD, ERROR_FLAGS 0x1, IRQS bit 2 set",
+        ),
+        (
+            "CHK-MBX-STATUS-LEVELS",
+            "MBX_STATUS_LEVELS",
+            "STATUS reads 0x5 after one push and 0x7 after two (depth 2)",
+        ),
+        (
+            "CHK-MBX-ERR-WRITE-FULL",
+            "MBX_ERR_WRITE_FULL",
+            "write to the full FIFO is SLVERR, ERROR_FLAGS 0x2, IRQS bit 2 set, STATUS 0x7",
+        ),
+        (
+            "CHK-MBX-ERR-CLEAR-ON-READ",
+            "MBX_ERR_CLEAR_ON_READ",
+            "second ERROR_FLAGS read is 0 while IRQS bit 2 stays set",
+        ),
+        (
+            "CHK-MBX-ERR-IRQ-ACK",
+            "MBX_ERR_IRQ_ACK",
+            "IRQEN.eirq raises lane 0, IRQS write-one acknowledge clears bit 2 and drops lane 0",
+        ),
+        (
+            "CHK-MBX-STATUS-FLUSH",
+            "MBX_STATUS_FLUSH",
+            "wflush leaves STATUS 0x1 and the latched IRQS bit 0 set",
+        ),
+        (
+            "CHK-MBX-RO-WRITES",
+            "MBX_RO_WRITES",
+            "writes to STATUS, READ_DATA, ERROR_FLAGS and IRQP are SLVERR and change nothing",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and lane-0 waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11<PASS"),
+    ],
+    "smu_smc_mailbox_threshold_lane_test": [
+        (
+            "CHK-MBX-WT-LATCH-GATED",
+            "MBX_WT_LATCH_GATED",
+            "with IRQEN 0 and one word queued IRQS bit 0 and STATUS bit 2 read 1, lane 0 stays low",
+        ),
+        (
+            "CHK-MBX-IRQP-GATING",
+            "MBX_IRQP_GATING",
+            "IRQP reads 0 with IRQEN 0 and 1 after IRQEN is set, lane 0 rises",
+        ),
+        (
+            "CHK-MBX-WT-ENABLE-DROP",
+            "MBX_WT_ENABLE_DROP",
+            "clearing IRQEN drops lane 0 while STATUS bit 2 stays 1",
+        ),
+        (
+            "CHK-MBX-WT-ACK-BASELINE",
+            "MBX_WT_ACK_BASELINE",
+            "flush empties STATUS, IRQS stays latched until the write-one acknowledge drops lane 0",
+        ),
+        (
+            "CHK-MBX-WT-CLAMP",
+            "MBX_WT_CLAMP",
+            "WIRQT 5 clamps to depth - 1: one word no IRQ, two words raise lane 0",
+        ),
+        (
+            "CHK-MBX-WT-REASSERT-LOG",
+            "MBX_WT_REASSERT_LOG",
+            "acknowledge with occupancy above WIRQT observed and logged, STATUS bit 2 stays 1",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and lane-0 waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS"),
+    ],
     "smu_smc_reset_ctrl_test": [
         ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "SMC primary reset released"),
         ("CHK-RST-COLD-STABLE", "RST_COLD_STABLE_1", "cold stable released"),
+    ],
+    "smu_smc_reset_unit_state_test": [
+        (
+            "CHK-BOOT-RSTUNIT-CONFIG",
+            "BOOT_RSTUNIT_CONFIG",
+            "SS_CONFIG, locks, cold reset and force read 0 and SS_WARM_RESET_N reads all ones",
+        ),
+        (
+            "CHK-BOOT-RSTUNIT-HOLDS",
+            "BOOT_RSTUNIT_HOLDS",
+            "the four hold registers read their RDL reset value 0",
+        ),
+        (
+            "CHK-BOOT-RSTUNIT-ISOLATION",
+            "BOOT_RSTUNIT_ISOLATION",
+            "isolation request, FLR counter and SYNC registers read their RDL reset value 0",
+        ),
+        (
+            "CHK-BOOT-RSTUNIT-VIS",
+            "BOOT_RSTUNIT_VIS",
+            "ISOLATE_REQ_VIS bits 4 and 8 read their RDL reset value 1",
+        ),
+        (
+            "CHK-BOOT-RSTUNIT-IDLE-OUTPUTS",
+            "BOOT_RSTUNIT_IDLE_OUTPUTS",
+            "isolate_req_o, skip_mem_repair_o and sync_irq_o are 0 with the pins idle",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<PASS"),
     ],
     "smu_smc_gpio_pad_output_test": [
         (
@@ -1756,6 +1979,26 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "SMC firmware wrote TEST_PASS and never TEST_FAIL",
         ),
         ("CHK-NONVAC", "CHK-NONVAC", "boot scoreboard verdict on the SEP=1 wrapper"),
+    ],
+    "smu_smc_sram_init_sequence_test": [
+        (
+            "CHK-BOOT-INIT-DONE-ONCE",
+            "BOOT_INIT_DONE_ONCE",
+            "smc_init_mem_done_o rises once on the cold boot, with scratch writes above 0 at the "
+            "rise and none in the next 64 clk_smu",
+        ),
+        (
+            "CHK-BOOT-INIT-BEFORE-FETCH",
+            "BOOT_INIT_BEFORE_FETCH",
+            "smc_rom_read_count_o is 0 until the done rise and first increments after it",
+        ),
+        (
+            "CHK-BOOT-INIT-REARM",
+            "BOOT_INIT_REARM",
+            "a second cold reset restarts the write count and done rises once more",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded done/ROM-read waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<PASS"),
     ],
     "smu_smc_ss_reset_ctrl_sweep_test": [
         (
@@ -2069,6 +2312,34 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-FUSE-SENSE-S2",
             "sep_fuse_sense_done_o rises once, after reset release and after SEP eFuse traffic",
         ),
+    ],
+    "smu_smc_efuse_shadow_map_readback_test": [
+        (
+            "CHK-BOOT-SHADOW-SAMPLES",
+            "BOOT_SHADOW_SAMPLES",
+            "sampled SMC eFuse map words read over JTAG2AXI equal the stream word of the same index",
+        ),
+        (
+            "CHK-BOOT-SHADOW-ELEMENTS",
+            "BOOT_SHADOW_ELEMENTS",
+            "the first word of each named smc_efuse_map element equals its stream word",
+        ),
+        (
+            "CHK-BOOT-SENSE-STATUS",
+            "BOOT_SENSE_STATUS",
+            "EFUSE_INTERFACE_CTRL_STATUS.efuse_sense_done reads 1 after smc_fuse_sense_done_o rose",
+        ),
+        (
+            "CHK-BOOT-SHADOW-PORT",
+            "BOOT_SHADOW_PORT",
+            "smc_shadow_regs resolves and is not all zero after the sense",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded sense, capture and J2A waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<PASS"),
     ],
     "smu_smc_efuse_shadow_sense_reset_test": [
         (
