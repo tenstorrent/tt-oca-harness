@@ -5,8 +5,11 @@
 The 768 MiB window at ``SEP_LOCAL_BASE_ADDR`` (reset ``0xD000_0000``) rewrites
 to ``0x1000_0000`` (``hw/sys/sep/doc/fabric.adoc``, "Address Remapping" and
 "Fabric Topology"; ``hw/sys/sep/doc/memory_map.adoc``), so the alias of a local
-address is the direct address plus ``0xC000_0000``. The window base stays at its
-reset value, because the specification states no legal range for it.
+address is the direct address plus ``0xC000_0000`` at the reset base. After the
+reset-base reads the firmware moves the window to a base B that the test draws
+from the run seed, 16 MiB aligned in [``0xD100_0000``, ``0xEF00_0000``]; the
+specification states no legal range for ``SEP_LOCAL_BASE_ADDR``, so the legal
+range is an open specification question.
 
 The ``alias_twin_test`` firmware runs on the CPU: the alias remap sits in the
 core path, so the ``no_cpu`` splice cannot drive it. The host draws the values
@@ -15,7 +18,11 @@ firmware writes the writable words at their direct addresses, reads one static
 word of each unit class (cold scratch, AES ``CTRL_SHADOWED``, ``SEP_VERSION_ID``,
 SPI host ``CSID``, entropy source ``COMPONENT_ID``) direct, alias, direct, reads
 the SRAM start and last words direct then alias, writes a marker through the
-alias of the scratch word and reads it back direct. It prints every value. The
+alias of the scratch word and reads it back direct. It then writes B to
+``SEP_LOCAL_BASE_ADDR`` and reads it back, reads the scratch word and SPI host
+``CSID`` direct, through the moved alias at ``B + (direct - 0x1000_0000)``,
+direct, writes a second marker through the moved alias of the scratch word and
+reads it back direct, and restores the reset base. It prints every value. The
 host grades the printed values against the seeded values and the RDL:
 
 * CHK-TWIN: per unit class and SRAM word, the alias read equals the direct read
@@ -25,14 +32,21 @@ host grades the printed values against the seeded values and the RDL:
   read request for the direct read and one for the alias read, at one address.
 * CHK-TWIN-WR: the marker written through the alias reads back at the direct
   address.
+* CHK-TWIN-MOVED: ``SEP_LOCAL_BASE_ADDR`` reads back B; per word, the moved-alias
+  read equals the direct read, the two direct reads agree and the direct read
+  equals the expected value (the first marker for the scratch word, the seeded
+  ``CSID``); the second marker written through the moved alias reads back at the
+  direct address; ``SEP_LOCAL_BASE_ADDR`` reads back its reset value after the
+  restore.
 
 An X in a read value makes the console byte unknown, and the console sampler
 of ``sep_base_test`` raises on it, so the leaf fails on VCS. PR-SRAM records an
 unknown field as None, which the SRAM part of CHK-TWIN fails.
 
-The leaf drives no LSU access to the extension window: its tie-off answers
-DECERR and the specification states no CPU consequence of an error response on
-a load.
+The leaf drives no LSU access to the extension window, and no access to the
+reset-base alias while the window is at B: the extension tie-off answers DECERR,
+the reset-base alias then matches no local route, and the specification states
+no CPU consequence of an error response on a load.
 
 cpu / ``+skip_fuse_sense``: the leaf reads no fuse data.
 """
@@ -93,15 +107,31 @@ _SRAM_WORDS: dict[str, int] = {
 _HEX = r"0x([0-9a-f]{8})"
 _RE_PARAMS = re.compile(
     rf"TWIN-PARAMS scratch={_HEX} csid={_HEX} sram_start={_HEX} sram_end={_HEX} marker={_HEX}"
-    rf" local_base={_HEX}"
+    rf" local_base={_HEX} moved_base={_HEX} moved_marker={_HEX}"
 )
 _RE_STATIC = re.compile(rf"TWIN unit=(\w+) d1={_HEX} a={_HEX} d2={_HEX}\n")
 _RE_SRAM = re.compile(rf"TWIN unit=(\w+) d1={_HEX} a={_HEX}\n")
 _RE_WR = re.compile(rf"TWIN-WR alias={_HEX} direct={_HEX}")
+_RE_MOVED_BASE = re.compile(rf"TWIN-MOVED-BASE base={_HEX} readback={_HEX}")
+_RE_MOVED = re.compile(rf"TWIN-MOVED unit=(\w+) d1={_HEX} a={_HEX} d2={_HEX}\n")
+_RE_MOVED_WR = re.compile(rf"TWIN-MOVED-WR alias={_HEX} direct={_HEX}")
+_RE_MOVED_RESTORE = re.compile(rf"TWIN-MOVED-RESTORE readback={_HEX}")
+
+# Moved window base B: 16 MiB aligned in [_MOVED_LO, _MOVED_HI]. The range keeps
+# B above the reset base and keeps every moved alias the leaf uses below 2**32.
+_MOVED_LO = 0xD100_0000
+_MOVED_HI = 0xEF00_0000
+_MOVED_ALIGN = 0x0100_0000
+# Units read through the moved window.
+_MOVED_UNITS = ("scratch", "spi_word")
 
 
 def _alias(direct: int) -> int:
     return direct + _ALIAS_DELTA
+
+
+def _moved_alias(direct: int, base: int) -> int:
+    return direct + base - _LOCAL_BASE
 
 
 def _word_fields(addr: int) -> tuple[int, int]:
@@ -135,6 +165,8 @@ class SepAliasTwinCfg:
     sram_start: int
     sram_end: int
     marker: int
+    moved_base: int
+    moved_marker: int
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepAliasTwinCfg":
@@ -147,7 +179,15 @@ class SepAliasTwinCfg:
             v = rng.getrandbits(32)
             if v != 0 and v not in vals:
                 vals.append(v)
-        return cls(seed, *vals)
+        moved_base = _MOVED_LO + _MOVED_ALIGN * rng.randrange(
+            (_MOVED_HI - _MOVED_LO) // _MOVED_ALIGN + 1
+        )
+        # Differs from the first marker, so a moved-alias write that is lost
+        # leaves the scratch word at a different value.
+        moved_marker = 0
+        while moved_marker == 0 or moved_marker in vals:
+            moved_marker = rng.getrandbits(32)
+        return cls(seed, *vals, moved_base, moved_marker)
 
     def param_words(self) -> list[int]:
         return [
@@ -158,6 +198,8 @@ class SepAliasTwinCfg:
             self.sram_end,
             self.marker,
             _LOCAL_BASE,
+            self.moved_base,
+            self.moved_marker,
         ]
 
 
@@ -166,7 +208,7 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
     """An alias read of each local unit class and SRAM edge word equals its direct twin."""
 
     build_env = False
-    required_evidence = ("CHK-TWIN", "CHK-TWIN-WR", "CHK-CPU-AXPROT")
+    required_evidence = ("CHK-TWIN", "CHK-TWIN-WR", "CHK-TWIN-MOVED", "CHK-CPU-AXPROT")
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -178,7 +220,8 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
         patch_param_block(_DTCM_HEX, patched, _PARAM_MAGIC, cfg.param_words())
         self.logger.info(
             "alias twin RANDCFG seed=%d scratch=0x%08x csid=0x%08x sram_start=0x%08x "
-            "sram_end=0x%08x marker=0x%08x window_base=0x%08x",
+            "sram_end=0x%08x marker=0x%08x window_base=0x%08x moved_base=0x%08x "
+            "moved_marker=0x%08x",
             cfg.seed,
             cfg.scratch,
             cfg.csid,
@@ -186,6 +229,8 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
             cfg.sram_end,
             cfg.marker,
             _WINDOW_BASE,
+            cfg.moved_base,
+            cfg.moved_marker,
         )
         self._cfg = cfg
         return patched
@@ -232,6 +277,7 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
         self._check_params(console)
         self._check_twin(console, sram)
         self._check_twin_wr(console)
+        self._check_twin_moved(console)
         assert "TWIN-DONE" in console, "CHK-TWIN FAIL: firmware console has no TWIN-DONE line"
         assert self.sb.fw_done and self.sb.fw_pass, (
             "CHK-TWIN FAIL: the alias_twin_test firmware did not complete with PASS "
@@ -360,3 +406,64 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
         )
         assert cmp.ok, f"CHK-TWIN-WR FAIL: {line}"
         self.logger.info("CHK-TWIN-WR PASS: %s", line)
+
+    def _check_twin_moved(self, console: str) -> None:
+        cfg = self._cfg
+        base = cfg.moved_base
+        m = _RE_MOVED_BASE.search(console)
+        assert m is not None, "CHK-TWIN-MOVED FAIL: firmware console has no TWIN-MOVED-BASE line"
+        wrote, rb = (int(x, 16) for x in m.groups())
+        assert wrote == base and rb == base, (
+            f"CHK-TWIN-MOVED FAIL: SEP_LOCAL_BASE_ADDR wrote=0x{wrote:08x} readback=0x{rb:08x}, "
+            f"expected 0x{base:08x}"
+        )
+        moved = {m.group(1): m.groups()[1:] for m in _RE_MOVED.finditer(console)}
+        expects = {"scratch": cfg.marker, "spi_word": cfg.csid}
+        for unit in _MOVED_UNITS:
+            assert unit in moved, f"CHK-TWIN-MOVED FAIL: unit={unit} has no TWIN-MOVED line"
+            d1, a, d2 = (int(x, 16) for x in moved[unit])
+            direct = _UNITS[unit][0]
+            mask, _ = _word_fields(direct)
+            cmp_d1 = field_compare(d1, expects[unit], mask)
+            cmp_a = field_compare(a, d1, mask)
+            cmp_d2 = field_compare(d2, d1, mask)
+            line = (
+                f"unit={unit} base=0x{base:08x} direct=0x{direct:08x} "
+                f"alias=0x{_moved_alias(direct, base):08x} value=0x{d1 & mask:08x} "
+                f"expect=0x{expects[unit] & mask:08x} alias_value=0x{a & mask:08x} "
+                f"direct2_value=0x{d2 & mask:08x} field_mask=0x{mask:08x} "
+                f"alias_rsvd=0x{cmp_a.rsvd:x}"
+            )
+            assert cmp_d1.ok, (
+                f"CHK-TWIN-MOVED FAIL: {line} match=0 (direct read differs from expect)"
+            )
+            assert cmp_a.ok, (
+                f"CHK-TWIN-MOVED FAIL: {line} match=0 (moved-alias read differs from direct)"
+            )
+            assert cmp_d2.ok, f"CHK-TWIN-MOVED FAIL: {line} match=0 (second direct read differs)"
+            self.logger.info("CHK-TWIN-MOVED PASS: %s match=1", line)
+
+        m = _RE_MOVED_WR.search(console)
+        assert m is not None, "CHK-TWIN-MOVED FAIL: firmware console has no TWIN-MOVED-WR line"
+        alias, back = (int(x, 16) for x in m.groups())
+        direct = _UNITS["scratch"][0]
+        mask, _ = _word_fields(direct)
+        want_alias = _moved_alias(direct, base)
+        assert alias == want_alias, (
+            f"CHK-TWIN-MOVED FAIL: firmware wrote alias=0x{alias:08x}, "
+            f"model alias=0x{want_alias:08x}"
+        )
+        m = _RE_MOVED_RESTORE.search(console)
+        assert m is not None, "CHK-TWIN-MOVED FAIL: firmware console has no TWIN-MOVED-RESTORE line"
+        restored = int(m.group(1), 16)
+        cmp = field_compare(back, cfg.moved_marker, mask)
+        line = (
+            f"wr base=0x{base:08x} alias=0x{alias:08x} marker=0x{cfg.moved_marker:08x} "
+            f"direct_read=0x{back:08x} prior=0x{cfg.marker:08x} field_mask=0x{mask:08x} "
+            f"rsvd=0x{cmp.rsvd:x} restored=0x{restored:08x}"
+        )
+        assert cmp.ok, f"CHK-TWIN-MOVED FAIL: {line} (moved-alias write not at the direct word)"
+        assert restored == _WINDOW_BASE, (
+            f"CHK-TWIN-MOVED FAIL: {line} (reset base 0x{_WINDOW_BASE:08x} not restored)"
+        )
+        self.logger.info("CHK-TWIN-MOVED PASS: %s", line)
