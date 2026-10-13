@@ -40,7 +40,10 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          unchanged); DONE=1, ERROR=0, ERROR_CODE=0.
   CHK-DMA-ZERO-BEAT      per Leg Z cell: no AR handshake; one AW per model
                          beat with AxLEN 0, AxADDR[31:2] and the WSTRB lanes
-                         of that beat; one OKAY B per AW.
+                         of that beat; one OKAY B per AW. Control: the
+                         4-byte-wide copy before the fill records one AR
+                         handshake per source word, at the source word
+                         addresses, through the same tap, else CTRL-MISSING.
   CHK-DMA-ZERO-RESIDUE   per Leg Z cell: the cleared bytes read 0 although the
                          last word of the copy before the fill is non-zero.
   CHK-DMA-ZERO-WIN-OK    the fill of the whole range completes, clears the
@@ -151,6 +154,7 @@ PIC_DONE_BIT = 8
 PIC_ERROR_BIT = 10
 
 GUARD = 8  # bytes kept on each side of a destination
+COPY_BYTES = 32  # the 4-byte-wide copy before each Leg Z fill: eight AR beats
 ERR_POLL_BOUND = 400  # STATUS reads in a wait for ERROR or ABORTED
 TRIGGER_BOUND = 200  # clocks in a wait for the SPI trigger
 IRQ_SETTLE = 50  # clocks of line sampling after DONE or ERROR
@@ -267,8 +271,8 @@ class Plan:
             reach = max(b.addr + b.nbytes for b in probe.beats())
             region = draw_region(rng, alloc, GUARD + reach + GUARD)
             fill = DmaZeroFill(region.addr + GUARD + off, total, chunk, enc, inc, wrap)
-            copy_src = draw_region(rng, alloc, 32)
-            copy_dst = alloc.take(32)
+            copy_src = draw_region(rng, alloc, COPY_BYTES)
+            copy_dst = alloc.take(COPY_BYTES)
             self.cells.append(ZCell(mode, enc, fill, region, copy_src, copy_dst))
             self.lines.append(
                 f"DRAW leg=Z mode={mode} enc={enc} total={total} chunk={chunk} "
@@ -527,10 +531,22 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             await self.mem.fill(c.region.addr, c.region.words)
             await self.mem.fill(c.copy_src.addr, c.copy_src.words)
             cp = await self._run(
-                opcode=OP_COPY, src=c.copy_src.addr, dst=c.copy_dst, total=32, chunk=32
+                opcode=OP_COPY,
+                src=c.copy_src.addr,
+                dst=c.copy_dst,
+                total=COPY_BYTES,
+                chunk=COPY_BYTES,
             )
             if not cp.status.done or cp.status.error:
                 self._ctrl_missing("CHK-DMA-ZERO-RESIDUE", f"{tag} copy {cp.status.fmt()}")
+            cp_ar = [b.addr for b in cp.ev.ar]
+            exp_ar = [c.copy_src.addr + 4 * i for i in range(COPY_BYTES // 4)]
+            if cp_ar != exp_ar:
+                self._ctrl_missing(
+                    "CHK-DMA-ZERO-BEAT",
+                    f"{tag} copy ar={len(cp_ar)} expect={len(exp_ar)} "
+                    f"addrs={[f'0x{a or 0:08x}' for a in cp_ar[:4]]}",
+                )
             inc, wrap = MODES[c.mode]
             run = await self._run(
                 opcode=OP_ZERO,
@@ -556,7 +572,8 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             self._pass(
                 "CHK-DMA-ZERO-BEAT",
                 not probs,
-                f"{tag} ar={len(run.ev.ar)} aw={len(run.ev.aw)} beats={len(beats)} "
+                f"{tag} ar={len(run.ev.ar)} copy_ar={len(cp_ar)} aw={len(run.ev.aw)} "
+                f"beats={len(beats)} "
                 f"{' '.join(probs) or 'shape=model'}",
             )
             cleared = sorted({beat.addr + b for beat in beats for b in range(beat.nbytes)})
