@@ -1024,7 +1024,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, `+skip_fuse_sense`
 |CPU LSU firmware master, direct-address twin model
-|Proves that an address in the 768 MiB local alias window answers as its direct twin on the scratch, AES, system CSR, SPI host, entropy source and SRAM targets, that with `SEP_LOCAL_BASE_ADDR` moved to a drawn base the moved alias of the scratch word and the SPI host `CSID` answers as its direct twin for a read and a write, and that every LSU read and write carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`). Extends the open alias matrix test with the unit classes and the window edges only.
+|Proves that an address in the 768 MiB local alias window answers as its direct twin on the scratch, AES, system CSR, SPI host, entropy source and SRAM targets, that with `SEP_LOCAL_BASE_ADDR` moved to a drawn base the moved alias of the scratch word and the SPI host `CSID` answers as its direct twin for a read and a write, and that every LSU read and write carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`). Extends the open alias matrix test with the unit classes, the window edges and a moved window base.
 
 |<<sep_fabric_dma_endpoint_matrix_test,`sep_fabric_dma_endpoint_matrix_test`>>
 |3
