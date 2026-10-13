@@ -70,20 +70,26 @@ from seq_lib.smu_jtag_helpers import (
 from seq_lib.smu_tb_pins import smu_scope
 from smu_base_test import smu_base_test
 
-assert SMU_IC_RESET_LEN == 155
-assert SMU_IC_RESET_NUM_SMC_PORTS == 68
-assert SMU_IC_RESET_NUM_SEP_PORTS == 8
-assert SMU_IC_RESET_EXT_PORT == 0
-assert SMU_IC_RESET_SMC_FUSE_PORT == 9
-assert SMU_IC_RESET_SMC_WARM_PORT == 10
-assert SMU_IC_RESET_SMC_COOL_PORT == 11
-assert SMU_IC_RESET_SMC_COLD_PORT == 12
-assert SMU_IC_RESET_SMC_SS_COLD0_PORT == 13
-assert SMU_IC_RESET_SMC_SS_WARM0_PORT == 45
-assert ic_reset_enable_bit(5) == 11 and ic_reset_control_bit(5) == 12
-assert DTP_JTAG_CAPS_LEN == 60
-assert DTP_IR_JTAG_CAPS == 0x19
-assert smc_reset_ctrl_packed_bit("fuse_reset_n_val") == 0
+
+def _check_tdr_layout() -> None:
+    """The IC_RESET TDR shape this leaf assumes; SMU_IC_RESET_NUM_SEP_PORTS is resolved from
+    the elaborated top, so this runs inside the simulation, not at import."""
+    assert SMU_IC_RESET_LEN == 155
+    assert SMU_IC_RESET_NUM_SMC_PORTS == 68
+    assert SMU_IC_RESET_NUM_SEP_PORTS == 8
+    assert SMU_IC_RESET_EXT_PORT == 0
+    assert SMU_IC_RESET_SMC_FUSE_PORT == 9
+    assert SMU_IC_RESET_SMC_WARM_PORT == 10
+    assert SMU_IC_RESET_SMC_COOL_PORT == 11
+    assert SMU_IC_RESET_SMC_COLD_PORT == 12
+    assert SMU_IC_RESET_SMC_SS_COLD0_PORT == 13
+    assert SMU_IC_RESET_SMC_SS_WARM0_PORT == 45
+    assert (SMU_IC_RESET_SMC_SS_COLD0_PORT + 31, SMU_IC_RESET_SMC_SS_WARM0_PORT + 31) == (44, 76)
+    assert ic_reset_enable_bit(5) == 11 and ic_reset_control_bit(5) == 12
+    assert DTP_JTAG_CAPS_LEN == 60
+    assert DTP_IR_JTAG_CAPS == 0x19
+    assert smc_reset_ctrl_packed_bit("fuse_reset_n_val") == 0
+
 
 SAMPLE_AFTER_UPDATE_SMU_CYCLES = 16
 BOUND_TCK = 2000
@@ -109,7 +115,6 @@ PORT_SS_COLD0 = SMU_IC_RESET_SMC_SS_COLD0_PORT
 PORT_SS_WARM0 = SMU_IC_RESET_SMC_SS_WARM0_PORT
 PORT_SS_COLD31 = PORT_SS_COLD0 + 31
 PORT_SS_WARM31 = PORT_SS_WARM0 + 31
-assert (PORT_SS_COLD31, PORT_SS_WARM31) == (44, 76)
 
 # (name, port, SMC leaf field, SMC vector index)
 NAMED_PORTS = [
@@ -222,6 +227,7 @@ class smu_jtag_ic_reset_layout_caps_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
+        _check_tdr_layout()
         dut = cocotb.top
         sb = self.env.scoreboard
         self.timeout_paths: list[str] = []
