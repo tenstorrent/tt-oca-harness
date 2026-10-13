@@ -36,6 +36,8 @@
 
 `ifndef VERILATOR
 
+`timescale 1ps / 1fs
+
 module sep_fcov (
   input wire        clk_i,
   input wire        rst_ni,
@@ -327,7 +329,45 @@ module sep_fcov (
   input wire                 out_resp_hold_i, // smn_outbound_resp_hold_i
   input wire                 out_rd_slverr_i, // smn_outbound_rd_slverr_i
   // The irq field of the DUT port sep_io_spi_req_o.
-  input wire                 spi_irq_field_i
+  input wire                 spi_irq_field_i,
+
+  // Memory, boot, reset, WDT and clock taps (docs/SEP_FCOV.adoc, memory,
+  // boot, reset groups, Sampled signal paths): read-only, no force.
+  input wire                 clk_wdt_i,
+  input wire                 clk_ref_i,
+  input wire                 wdt_rst_n_i,       // wdt_rst_ni
+  input wire                 dbg_rstb_i,
+  input wire                 scan_rst_n_i,      // scan_rst_ni as sep receives it
+  input wire                 test_en_i,         // test_en_i as sep receives it
+  input wire                 jtag_tck_i,        // core TAP pins after the bench select
+  input wire                 jtag_tms_i,
+  input wire                 jtag_tdi_i,
+  input wire                 jtag_trst_n_i,
+  input wire                 jtag_tdo_i,
+  input wire                 ext_boot_done_i,   // ext_boot_seq_done_i
+  input wire                 mpc_run_req_i,     // mpc_reset_run_req_i
+  input wire                 mpc_run_sync_i,    // u_sep_cpu.mpc_reset_run_req_sync
+  input wire                 strap_i,           // secure_tm_req_i
+  input wire                 wdt_rst_req_i,     // wdt_timer_rst_req_o
+  input wire [6:0]           ip_rst_n_i,        // sep_crypto_gated_rst_n, SW_RESET_N order
+  input wire [13:0]          iso_req_i,         // sep_crypto_isolate_req
+  input wire [13:0]          iso_ack_i,         // sep_crypto_isolated
+  input wire                 aon_rst_n_i,       // u_sep_wdt_wrap.rst_wdt_n
+  input wire [1:0]           km_cond_rst_n_i,   // {rst_cold_aasd_n, rst_warm_sync_n}
+  input sep_pkg::jtag_sep_reset_ctrl_t jtag_rst_ctrl_i,  // after the pin-or-TDR mux
+  input wire [30:0]          dmi_rst_vec_i,     // reset-vector TDR, bits 31:1
+  // u_sep_wdt_wrap adapter stages.
+  input sep_pkg::sep_32_32_6_12_axi_req_t  wdt_axi_req_i,
+  input sep_pkg::sep_32_32_6_12_axi_req_t  wdt_axi_off_req_i,
+  input sep_pkg::sep_32_32_6_12_axi_resp_t wdt_axi_resp_i,
+  input sep_pkg::sep_32_32_axil_req_t      wdt_axil_req_i,
+  input sep_pkg::sep_32_32_axil_resp_t     wdt_axil_resp_i,
+  input tlul_pkg::tl_h2d_t                 wdt_tl_h2d_i,
+  input tlul_pkg::tl_d2h_t                 wdt_tl_d2h_i,
+  // test_en_i consumer pins, bit 0 the clock gater, bit 1 the AXI cells:
+  // every pin of the class at 1, every pin of the class at 0.
+  input wire [1:0]           te_pins_one_i,
+  input wire [1:0]           te_pins_zero_i
 );
 
   import sep_top_addrmap_pkg::*;
@@ -5215,7 +5255,13 @@ module sep_fcov (
   endfunction
 
   covergroup sep_aperture_reserved_access_cg with function sample (
-      logic [7:0] row_c, logic [1:0] init_dir, logic [2:0] rst_off, logic [1:0] noalias, logic own
+      logic [7:0] row_c,
+      logic [1:0] init_dir,
+      logic [2:0] rst_off,
+      logic [1:0] noalias,
+      logic own,
+      logic [3:0] rfw,
+      logic rfw_v
   );
     option.per_instance = 1;
     option.name = "sep_aperture_reserved_access_cg";
@@ -5288,6 +5334,19 @@ module sep_fcov (
     }
     cp_non_aliasing: coverpoint noalias iff (own) {
       bins reset_ctrl = {2'd1}; bins hmac = {2'd2}; bins kmac = {2'd3};
+    }
+    // Write to reserved register bits, then the next read returns the written
+    // field bits. {register 0 SW_RESET_N 1 cold SCRATCH 2 warm SCRATCH,
+    // shape 0 64-bit lane 1 high half only 2 low half with data above the
+    // field}.
+    cp_reserved_field_write: coverpoint rfw iff (rfw_v) {
+      bins sw_reset_n_lane64 = {4'b00_00};
+      bins sw_reset_n_high_half = {4'b00_01};
+      bins sw_reset_n_low_half_above_field = {4'b00_10};
+      bins cold_scratch_lane64 = {4'b01_00};
+      bins cold_scratch_high_half = {4'b01_01};
+      bins warm_scratch_lane64 = {4'b10_00};
+      bins warm_scratch_high_half = {4'b10_01};
     }
   endgroup
 
@@ -5736,7 +5795,7 @@ module sep_fcov (
           u_sep_aperture_reserved_access_cg.sample(
               row_cell(
               si_c.addr[31:0], si_dir_w, si_resp, si_c.addr[2] ? si_rdata[63:32] : si_rdata[31:0]),
-              {1'b1, si_dir_w}, 3'd0, 2'd0, own_row && (si_c.addr[55:32] == '0));
+              {1'b1, si_dir_w}, 3'd0, 2'd0, own_row && (si_c.addr[55:32] == '0), 4'd0, 1'b0);
         end
       end
       // Outbound filter completions.
@@ -5777,7 +5836,7 @@ module sep_fcov (
         u_sep_aperture_reserved_access_cg.sample(
             ((lq_c.size == 3'd2) && ((row_of(lq_a) == 2) || !lq_dir_w)) ? row_cell(
             lq_a, lq_dir_w, lq_resp, lq_a[2] ? lq_rdata[63:32] : lq_rdata[31:0]) : 8'hFF, {
-            1'b0, lq_dir_w}, ro, na_sample, own_row);
+            1'b0, lq_dir_w}, ro, na_sample, own_row, 4'd0, 1'b0);
         if (in_rng(
                 lq_a, FapBaseOtbn, FOtbnRegLast
             ) && fcov_crypto_reg_addr(
@@ -6345,7 +6404,16 @@ module sep_fcov (
   // The DMA reset-retention coverpoints of the memory, boot and reset area
   // extend this group with their own coverpoints.
   covergroup sep_periph_reset_state_cg with function sample (
-      logic [1:0] dom, logic dom_v, logic hold, logic hold_v
+      logic [1:0] dom,
+      logic dom_v,
+      logic hold,
+      logic hold_v,
+      logic [3:0] rv,
+      logic rv_v,
+      logic nz,
+      logic nz_v,
+      logic [1:0] fs,
+      logic fs_v
   );
     option.per_instance = 1;
     option.name = "sep_periph_reset_state_cg";
@@ -6356,6 +6424,27 @@ module sep_fcov (
     }
     cp_sw_rst_hold: coverpoint hold iff (hold_v) {
       bins reads_back_1_while_held = {1'b0}; bins cleared_by_fw_write = {1'b1};
+    }
+    // DMA register read after the rst_ni release, before any DMA write, that
+    // the owner read at another value before the reset.
+    cp_dma_reset_value: coverpoint rv iff (rv_v) {
+      bins src_addr_lo = {4'd0};
+      bins dst_addr_lo = {4'd1};
+      bins enabled_memory_range_base = {4'd2};
+      bins enabled_memory_range_limit = {4'd3};
+      bins range_valid = {4'd4};
+      bins range_regwen = {4'd5};
+      bins total_data_size = {4'd6};
+      bins chunk_data_size = {4'd7};
+      bins handshake_intr_enable = {4'd8};
+    }
+    cp_dma_nonzero_reset: coverpoint nz iff (nz_v) {
+      bins range_regwen_0x6_from_0x0 = {1'b0}; bins handshake_intr_enable_0x7ff_from_0 = {1'b1};
+    }
+    cp_dma_failsecure: coverpoint fs iff (fs_v) {
+      bins range_valid_0 = {2'd0};
+      bins range_regwen_0x6 = {2'd1};
+      bins handshake_mask_open = {2'd2};
     }
   endgroup
 
@@ -6555,12 +6644,12 @@ module sep_fcov (
     cp_abort_quiet: coverpoint aq_v {bins no_beat_after_aborted = {1'b1};}
   endgroup
 
-  // sep_dma_containment_cg is not defined here. Its four range-lock
-  // coverpoints (cp_locked_write_refused, cp_regwen_invalid_value,
+  // sep_dma_containment_cg is defined with the memory, boot and reset groups,
+  // with its one executable coverpoint, cp_dma_lock_recovery. Its four
+  // range-lock coverpoints (cp_locked_write_refused, cp_regwen_invalid_value,
   // cp_lock_recovery, cp_lock_ctx) are parked: each needs the write that
   // applies the range lock, which the register description does not name
-  // (secure_dma.adoc, RANGE_REGWEN). The group's executable coverpoint,
-  // cp_dma_lock_recovery, belongs to the memory, boot and reset area.
+  // (secure_dma.adoc, RANGE_REGWEN).
 
   sep_spi_command_segment_cg u_sep_spi_command_segment_cg = new();
   sep_spi_seg_rand_cg        u_sep_spi_seg_rand_cg        = new();
@@ -6824,13 +6913,16 @@ module sep_fcov (
     if (sw_ctrl && ctl_swrst && !new_swrst && (s_txqd == 8'd0) && s_txe && (s_rxqd == 8'd0) &&
         s_rxe && !s_act) begin
       for (int d = 0; d < 3; d++)
-      u_sep_periph_reset_state_cg.sample(2'(d), own_spi_csr, 1'b0, 1'b0);
+      u_sep_periph_reset_state_cg.sample(2'(d), own_spi_csr, 1'b0, 1'b0, 4'd0, 1'b0, 1'b0, 1'b0,
+                                         2'd0, 1'b0);
     end
     if (sr_ctrl && ctl_swrst && ((sr_ctrl_d & SPI_CONTROLLER_CONTROL_SW_RST_MASK) != 32'h0))
-      u_sep_periph_reset_state_cg.sample(2'd0, 1'b0, 1'b0, own_spi_csr);
+      u_sep_periph_reset_state_cg.sample(2'd0, 1'b0, 1'b0, own_spi_csr, 4'd0, 1'b0, 1'b0, 1'b0,
+                                         2'd0, 1'b0);
     if (sr_ctrl && swr_clr_q && !ctl_swrst &&
         ((sr_ctrl_d & SPI_CONTROLLER_CONTROL_SW_RST_MASK) == 32'h0))
-      u_sep_periph_reset_state_cg.sample(2'd0, 1'b0, 1'b1, own_spi_csr);
+      u_sep_periph_reset_state_cg.sample(2'd0, 1'b0, 1'b1, own_spi_csr, 4'd0, 1'b0, 1'b0, 1'b0,
+                                         2'd0, 1'b0);
 
     // ---- DMA use case and transfer configuration at GO ----
     if (uc_v_q && sw_cmd && (sc_dir == SpiDirRx) && d_cgo_q)
@@ -8533,6 +8625,10 @@ module sep_fcov (
     logic        da_v;
     logic [2:0]  rl;
     logic rl_v;   // {latched, kind}: kind 0 hmac 1 kmac 2 otbn 3 host path
+    logic [1:0]  lk;
+    logic lk_v;   // {latch 0 DMA reg_path_err 1 PERIPH bit of L, reset 0 wdt_rst_ni 1 rst_ni}
+    logic        bc;
+    logic bc_v;   // 0 source 41 (bit 40), 1 source 43 (bit 42)
   } fsa_t;
 
   covergroup sep_fault_source_ack_cg with function sample (fsa_t s);
@@ -8567,6 +8663,16 @@ module sep_fcov (
       bins otbn = {3'b1_10};
       bins host_path_err = {3'b1_11};
       illegal_bins latch_dropped = {[3'b0_00 : 3'b0_11]};
+    }
+    // A CPU-only reset keeps the latch and a full reset clears it.
+    cp_latch_x_reset_kind: coverpoint s.lk iff (s.lk_v) {
+      bins dma_kept_cpu_only = {2'b0_0};
+      bins dma_cleared_full = {2'b0_1};
+      bins periph_kept_cpu_only = {2'b1_0};
+      bins periph_cleared_full = {2'b1_1};
+    }
+    cp_boot_consequence: coverpoint s.bc iff (s.bc_v) {
+      bins source41_pending = {1'b0}; bins source43_pending = {1'b1};
     }
   endgroup
 
@@ -9268,6 +9374,8 @@ module sep_fcov (
     logic sb_v;   // stalled block
     logic [3:0] si;
     logic si_v;   // {not inert, block}
+    logic       ti;
+    logic ti_v;   // 0 TIMEOUT_CLEAR, 1 TIMEOUT_MODE
   } tmo_t;
 
   covergroup sep_cpu_ctrl_timeout_inert_cg with function sample (tmo_t s);
@@ -9293,6 +9401,9 @@ module sep_fcov (
     }
     cp_stall_inert: coverpoint s.si iff (s.si_v) {
       bins inert[] = {[4'd0 : 4'd7]}; illegal_bins timeout_or_vector = {[4'd8 : 4'd15]};
+    }
+    cp_timeout_write_inert: coverpoint s.ti iff (s.ti_v) {
+      bins timeout_clear_write = {1'b0}; bins timeout_mode_write = {1'b1};
     }
   endgroup
 
@@ -10264,6 +10375,2920 @@ module sep_fcov (
         end
       end
       if (pal_q != '0) u_sep_pic_alert_cg.sample(pal_q);
+    end
+  end
+
+  // =====================================================================
+  // Memory, boot, reset, WDT and clock groups (docs/SEP_FCOV.adoc, memory,
+  // boot, reset, WDT and clock groups). Every point samples only while
+  // graded_owner holds the code of a test that owns the point or the cell.
+  // The reset-edge and sub-cycle points sample in blocks that the in_reset
+  // gate does not hold off. The tolerances, settle times, bands and timeouts
+  // below are choices of the environment; the specification gives none.
+  // =====================================================================
+  wire mr_own_rel = (graded_owner == FcovOwnSepBootReleaseTermsTest);
+  wire mr_own_cold = (graded_owner == FcovOwnSepColdResetPhaseTest);
+  wire mr_own_ret = (graded_owner == FcovOwnSepCpuResetRetentionTest);
+  wire mr_own_swiso = (graded_owner == FcovOwnSepSwResetIsolationMatrixTest);
+  wire mr_own_ovr = (graded_owner == FcovOwnSepIpResetOverrideMatrixTest);
+  wire mr_own_scan = (graded_owner == FcovOwnSepScanResetOverrideTest);
+  wire mr_own_entry = (graded_owner == FcovOwnSepCpuResetEntryTest);
+  wire mr_own_stm = (graded_owner == FcovOwnSepSecureTmStrapSamplingTest);
+  wire mr_own_ccreg = (graded_owner == FcovOwnSepCpuCtrlRegShapeTest);
+  wire mr_own_tmr = (graded_owner == FcovOwnSepTimerClockContractTest);
+
+  localparam realtime MrEdgeTol = 1.0;  // 1 ps with `timescale 1ps/1fs
+  localparam int unsigned MrHeldK = 401;  // cp_release_order K, from 401 to 514
+  localparam int unsigned MrSmcSettle = 8;  // smc_fuse_sense_done_i stable cycles
+  localparam int unsigned MrClkRecent = 64;  // exception clock toggled within
+  localparam int unsigned MrScanMinW = 4;  // scan_rst_ni low width
+  localparam int unsigned MrMpcAllow = 4;  // two-flop latency 2 plus 2
+  localparam int unsigned MrIsoAllow = 16;  // isolate-complete fall vs reset rise
+  localparam int unsigned MrSeqTimeout = 4096;  // SW_RESET_N assert sequence
+  localparam int unsigned MrPulseBand = 64;  // cp_pulse_vs_sequence band
+  localparam int unsigned MrOvrdSettle = 8;  // override settle (at least 3)
+  localparam int unsigned MrSwSettle = 256;  // sequenced software reset settle
+  localparam int unsigned MrRelSettle = 4;  // cycles after a CPU-only release
+  localparam int unsigned MrWdtGap = 64;  // clk_wdt_i ticks between count reads
+  localparam int unsigned MrStmCapWin = 3;  // early capture edges after release
+  localparam int unsigned MrStmSenseWin = 8;  // cycles after the sense-done rise
+  localparam int unsigned MrStmHold = 64;  // hold after a strap change
+  localparam int unsigned MrStmSettle = 8;  // hold after a non-sampling event
+  localparam int unsigned MrTeSettle = 2;  // test_en_i to consumer pins
+
+  localparam logic [31:0] MrSwRst = SEP_RESET_CTRL_SW_RESET_N_REG_ADDR;
+  localparam logic [31:0] MrRefCnt = SEP_CPU_CTRL_REFERENCE_COUNTER_REG_ADDR;
+  localparam logic [31:0] MrVerId = SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR;
+  localparam logic [31:0] MrNmiVec = SEP_CPU_CTRL_SEP_NMI_VEC_REG_ADDR;
+  localparam logic [31:0] MrNmiLock = SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_ADDR;
+  localparam logic [31:0] MrSepSense = SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_ADDR;
+  localparam logic [31:0] MrSmcSense = SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR;
+  localparam logic [31:0] MrTmoClear = SEP_CPU_CTRL_TIMEOUT_CLEAR_REG_ADDR;
+  localparam logic [31:0] MrTmoMode = SEP_CPU_CTRL_TIMEOUT_MODE_REG_ADDR;
+  localparam logic [31:0] MrWkCtrl = WDT_TIMER_WKUP_CTRL_REG_ADDR;
+  localparam logic [31:0] MrWkThHi = WDT_TIMER_WKUP_THOLD_HI_REG_ADDR;
+  localparam logic [31:0] MrWkThLo = WDT_TIMER_WKUP_THOLD_LO_REG_ADDR;
+  localparam logic [31:0] MrWkCntLo = WDT_TIMER_WKUP_COUNT_LO_REG_ADDR;
+  localparam logic [31:0] MrWdRegwen = WDT_TIMER_WDOG_REGWEN_REG_ADDR;
+  localparam logic [31:0] MrWdCtrl = WDT_TIMER_WDOG_CTRL_REG_ADDR;
+  localparam logic [31:0] MrWdBark = WDT_TIMER_WDOG_BARK_THOLD_REG_ADDR;
+  localparam logic [31:0] MrWdBite = WDT_TIMER_WDOG_BITE_THOLD_REG_ADDR;
+  localparam logic [31:0] MrWdCount = WDT_TIMER_WDOG_COUNT_REG_ADDR;
+  localparam logic [31:0] MrWdIntrState = WDT_TIMER_INTR_STATE_REG_ADDR;
+  localparam logic [31:0] MrWdIntrTest = WDT_TIMER_INTR_TEST_REG_ADDR;
+  localparam logic [31:0] MrTrngLo = TRNG_APERTURE_MEM_BASE_ADDR;
+  localparam logic [31:0] MrTrngHi = TRNG_APERTURE_MEM_BASE_ADDR + TRNG_APERTURE_MEM_SIZE;
+  localparam logic [31:0] MrPoolStatus = ENTROPY_POOL_STATUS_REG_ADDR;
+  // Isolated-window read data (hw/sys/sep/doc/reset_controller.adoc,
+  // Isolation and Reset Sequencing, step 2) and the SEP_VERSION_ID reset value
+  // (regs/blocks/sep_cpu_ctrl.adoc).
+  localparam logic [31:0] MrIsoData = 32'h1501_A7ED;
+  localparam logic [31:0] MrVerVal = 32'(SEP_CPU_CTRL_SEP_VERSION_ID_REG_DEFAULT);
+  localparam logic [6:0] MrSwRstDef = 7'(SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT);
+  localparam logic [30:0] MrRomVec = BootRomBase[31:1];
+  // aon_timer fields (aon_timer.hjson): WKUP_CTRL enable[0] prescaler[12:1],
+  // WDOG_CTRL enable[0], WDOG_REGWEN regwen[0], INTR_STATE and INTR_TEST
+  // wkup_timer_expired[0] wdog_timer_bark[1].
+  localparam int unsigned MrWdBarkBit = 1;
+  // Reset-vector TDR (doc/cpu.adoc, Reset Vector): IR 0x18 and a 32-bit shift
+  // path from jtag_tdi_i to jtag_tdo_o.
+  localparam logic [4:0] MrIrRstVec = 5'h18;
+  localparam int unsigned MrTdrLen = 32;
+
+  // Isolate stages in sep_pkg::sep_crypto_isolate_t bit order: 13
+  // trng_entropy_source, 12 trng_csrng, 11 trng_edn, 10 host_otbn, 9 host_aes,
+  // 8 host_hmac, 7 host_kmac, 6 host_abr, 5 km_otbn, 4 km_aes, 3 km_hmac,
+  // 2 km_kmac, 1 km_abr, 0 km_efuse. Table sets of reset_controller.adoc.
+  localparam logic [13:0] MrSetKm = 14'b00_0000_0011_1111;
+  localparam logic [13:0] MrSetOtbn = 14'b00_0100_0010_0000;
+  localparam logic [13:0] MrSetAes = 14'b00_0010_0001_0000;
+  localparam logic [13:0] MrSetKmac = 14'b00_0000_1000_0100;
+  localparam logic [13:0] MrSetTrng = 14'b11_1000_0000_0000;
+  // Host-path bits per software reset field (SW_RESET_N bit order 1 otbn,
+  // 2 aes, 3 hmac, 4 kmac, 5 trng, 6 abr).
+  localparam logic [13:0] MrHostOtbn = 14'b00_0100_0000_0000;
+  localparam logic [13:0] MrHostAes = 14'b00_0010_0000_0000;
+  localparam logic [13:0] MrHostHmac = 14'b00_0001_0000_0000;
+  localparam logic [13:0] MrHostKmac = 14'b00_0000_1000_0000;
+  localparam logic [13:0] MrHostTrng = 14'b11_1000_0000_0000;
+  localparam logic [13:0] MrHostAbr = 14'b00_0000_0100_0000;
+  // Approved isolate-complete probes: HMAC, KMAC and Adams Bridge host and key
+  // paths, and the three TRNG paths.
+  localparam logic [13:0] MrAckApproved = 14'b11_1001_1100_1110;
+
+  function automatic logic [13:0] mr_host_set(input int unsigned i);
+    case (i)
+      1: return MrHostOtbn;
+      2: return MrHostAes;
+      3: return MrHostHmac;
+      4: return MrHostKmac;
+      5: return MrHostTrng;
+      6: return MrHostAbr;
+      default: return 14'd0;
+    endcase
+  endfunction
+
+  // Domains of cp_iso_order_per_domain: 0 Key Manager, 1 OTBN, 2 AES, 3 KMAC,
+  // 4 TRNG, with their ip_rst_n index and isolate set.
+  localparam int unsigned MrIsoIdx[5] = '{0, 1, 2, 4, 5};
+  function automatic logic [13:0] mr_iso_set(input int unsigned d);
+    case (d)
+      0: return MrSetKm;
+      1: return MrSetOtbn;
+      2: return MrSetAes;
+      3: return MrSetKmac;
+      default: return MrSetTrng;
+    endcase
+  endfunction
+
+  // Secure DMA registers of the cold-reset points and their RDL reset values
+  // (secure_dma.adoc, Reset column, through sep_reg.svh).
+  localparam logic [31:0] MrDmaAddr[9] = '{
+      SECURE_DMA_SRC_ADDR_LO_REG_ADDR,
+      SECURE_DMA_DST_ADDR_LO_REG_ADDR,
+      SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_REG_ADDR,
+      SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_REG_ADDR,
+      SECURE_DMA_RANGE_VALID_REG_ADDR,
+      SECURE_DMA_RANGE_REGWEN_REG_ADDR,
+      SECURE_DMA_TOTAL_DATA_SIZE_REG_ADDR,
+      SECURE_DMA_CHUNK_DATA_SIZE_REG_ADDR,
+      SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_ADDR
+  };
+  localparam logic [31:0] MrDmaDef[9] = '{
+      32'(SECURE_DMA_SRC_ADDR_LO_REG_DEFAULT),
+      32'(SECURE_DMA_DST_ADDR_LO_REG_DEFAULT),
+      32'(SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_REG_DEFAULT),
+      32'(SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_REG_DEFAULT),
+      32'(SECURE_DMA_RANGE_VALID_REG_DEFAULT),
+      32'(SECURE_DMA_RANGE_REGWEN_REG_DEFAULT),
+      32'(SECURE_DMA_TOTAL_DATA_SIZE_REG_DEFAULT),
+      32'(SECURE_DMA_CHUNK_DATA_SIZE_REG_DEFAULT),
+      32'(SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_DEFAULT)
+  };
+  localparam int unsigned MrDmaRangeValid = 4;
+  localparam int unsigned MrDmaRegwen = 5;
+  localparam int unsigned MrDmaHsie = 8;
+
+  function automatic logic [1:0] mr_third(input realtime off, input realtime per);
+    if (per <= 0.0) return 2'd3;
+    if (off * 3.0 < per) return 2'd0;
+    if (off * 3.0 < per * 2.0) return 2'd1;
+    return 2'd2;
+  endfunction
+
+  function automatic logic [1:0] mr_quart(input realtime off, input realtime per);
+    if (per <= 0.0) return 2'd0;
+    if (off * 4.0 < per) return 2'd0;
+    if (off * 4.0 < per * 2.0) return 2'd1;
+    if (off * 4.0 < per * 3.0) return 2'd2;
+    return 2'd3;
+  endfunction
+
+  // TAP states (IEEE 1149.1; the encoding of dmi/rvjtag_tap.v).
+  localparam logic [3:0] TapTlr = 4'd0;
+  localparam logic [3:0] TapRti = 4'd1;
+  localparam logic [3:0] TapSelDr = 4'd2;
+  localparam logic [3:0] TapCapDr = 4'd3;
+  localparam logic [3:0] TapShDr = 4'd4;
+  localparam logic [3:0] TapEx1Dr = 4'd5;
+  localparam logic [3:0] TapPauseDr = 4'd6;
+  localparam logic [3:0] TapEx2Dr = 4'd7;
+  localparam logic [3:0] TapUpdDr = 4'd8;
+  localparam logic [3:0] TapSelIr = 4'd9;
+  localparam logic [3:0] TapCapIr = 4'd10;
+  localparam logic [3:0] TapShIr = 4'd11;
+  localparam logic [3:0] TapEx1Ir = 4'd12;
+  localparam logic [3:0] TapPauseIr = 4'd13;
+  localparam logic [3:0] TapEx2Ir = 4'd14;
+  localparam logic [3:0] TapUpdIr = 4'd15;
+
+  function automatic logic [3:0] mr_tap_next(input logic [3:0] s, input logic tms);
+    case (s)
+      TapTlr: return tms ? TapTlr : TapRti;
+      TapRti: return tms ? TapSelDr : TapRti;
+      TapSelDr: return tms ? TapSelIr : TapCapDr;
+      TapCapDr: return tms ? TapEx1Dr : TapShDr;
+      TapShDr: return tms ? TapEx1Dr : TapShDr;
+      TapEx1Dr: return tms ? TapUpdDr : TapPauseDr;
+      TapPauseDr: return tms ? TapEx2Dr : TapPauseDr;
+      TapEx2Dr: return tms ? TapUpdDr : TapShDr;
+      TapUpdDr: return tms ? TapSelDr : TapRti;
+      TapSelIr: return tms ? TapTlr : TapCapIr;
+      TapCapIr: return tms ? TapEx1Ir : TapShIr;
+      TapShIr: return tms ? TapEx1Ir : TapShIr;
+      TapEx1Ir: return tms ? TapUpdIr : TapPauseIr;
+      TapPauseIr: return tms ? TapEx2Ir : TapPauseIr;
+      TapEx2Ir: return tms ? TapUpdIr : TapShIr;
+      default: return tms ? TapSelDr : TapRti;
+    endcase
+  endfunction
+
+  // ---------------------------------------------------------------------
+  // Covergroups. Each sample carries one point; the valid bit is set only
+  // when the owner of the point is in its window.
+  // ---------------------------------------------------------------------
+  typedef struct packed {
+    logic [3:0] se;
+    logic se_v;  // {source, 0 assert / 1 release}
+    logic [2:0] rs;
+    logic rs_v;  // {aligned, third}
+    logic [2:0] as;
+    logic as_v;  // {aligned, third}
+    logic [1:0] ro;
+    logic ro_v;  // 0 held window, 1 release after it, 2 early release
+    logic [1:0] sb;
+    logic sb_v;  // {scan_rst_ni, test_en_i}
+    logic [5:0] sn;
+    logic sn_v;  // {case, net}
+    logic [1:0] jm;
+    logic jm_v;  // {mechanism, programmed}
+    logic ms;
+    logic ms_v;  // 0 held while low, 1 follows after release
+  } mr_src_t;
+
+  covergroup sep_reset_source_cg with function sample (mr_src_t s);
+    option.per_instance = 1;
+    option.name = "sep_reset_source_cg";
+    // Source: 0 rst_ni, 1 wdt_rst_ni, 2 dbg_rstb_i, 3 scan_rst_ni,
+    // 4 jtag_trst_ni, 5 TAP Test-Logic-Reset.
+    cp_source_edge: coverpoint s.se iff (s.se_v) {
+      bins rst_ni_assert = {4'b000_0};
+      bins rst_ni_release = {4'b000_1};
+      bins wdt_rst_ni_assert = {4'b001_0};
+      bins wdt_rst_ni_release = {4'b001_1};
+      bins dbg_rstb_i_assert = {4'b010_0};
+      bins dbg_rstb_i_release = {4'b010_1};
+      bins scan_rst_ni_assert = {4'b011_0};
+      bins scan_rst_ni_release = {4'b011_1};
+      bins jtag_trst_ni_assert = {4'b100_0};
+      bins jtag_trst_ni_release = {4'b100_1};
+      bins tlr_entry = {4'b101_0};
+      bins tlr_exit = {4'b101_1};
+    }
+    cp_rst_release_sync: coverpoint s.rs iff (s.rs_v) {
+      bins third0_aligned = {3'b1_00};
+      bins third1_aligned = {3'b1_01};
+      bins third2_aligned = {3'b1_10};
+      illegal_bins unaligned = {3'b0_00, 3'b0_01, 3'b0_10};
+      ignore_bins no_period = {3'b0_11, 3'b1_11};
+    }
+    cp_aon_release_sync: coverpoint s.as iff (s.as_v) {
+      bins third0_aligned = {3'b1_00};
+      bins third1_aligned = {3'b1_01};
+      bins third2_aligned = {3'b1_10};
+      illegal_bins unaligned = {3'b0_00, 3'b0_01, 3'b0_10};
+      ignore_bins no_period = {3'b0_11, 3'b1_11};
+    }
+    cp_release_order: coverpoint s.ro iff (s.ro_v) {
+      bins held_window = {2'd0};
+      bins release_after_ext_boot_rise = {2'd1};
+      illegal_bins released_before_terms = {2'd2};
+    }
+    cp_scan_bypass: coverpoint s.sb iff (s.sb_v) {
+      bins scan0_te0 = {2'b00};
+      bins scan0_te1 = {2'b01};
+      bins scan1_te0 = {2'b10};
+      bins scan1_te1 = {2'b11};
+    }
+    // Net: 0 sep_reset_n, 1 sep_cpu_reset_n, 2..7 ip_rst_n[1..6],
+    // 8 aon_rst_n, 9 Key Manager cold, 10 Key Manager warm. Case 0 keeps
+    // its value (test_en_i 0), 1 low before the rise (test_en_i 1), 2 the
+    // release of net 0 or 8 off the clock edge.
+    cp_scan_net_effect: coverpoint s.sn iff (s.sn_v) {
+      bins te0_keeps[] = {[6'd0 : 6'd10]};
+      bins te1_low[] = {[6'd16 : 6'd26]};
+      bins sep_reset_n_release_bypassed = {6'd32};
+      bins aon_rst_n_release_bypassed = {6'd40};
+    }
+    cp_jtag_mech: coverpoint s.jm iff (s.jm_v) {
+      bins trst_default = {2'b00};
+      bins trst_programmed = {2'b01};
+      bins tlr_default = {2'b10};
+      bins tlr_programmed = {2'b11};
+    }
+    cp_mpc_sync_reset: coverpoint s.ms iff (s.ms_v) {
+      bins held_while_dbg_rstb_low = {1'b0}; bins follows_after_release = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] dc;
+    logic dc_v;  // 0 clk_wdt_i, 1 clk_ref_i, 2 jtag_tck_i
+    logic [1:0] xp;
+    logic xp_v;  // clk_ref_i quartile
+  } mr_clk_t;
+
+  covergroup sep_clk_domain_cg with function sample (mr_clk_t s);
+    option.per_instance = 1;
+    option.name = "sep_clk_domain_cg";
+    cp_domain_crossing: coverpoint s.dc iff (s.dc_v) {
+      bins clk_wdt_i = {2'd0}; bins clk_ref_i = {2'd1}; bins jtag_tck_i = {2'd2};
+    }
+    cp_xdomain_phase: coverpoint s.xp iff (s.xp_v) {
+      bins clk_ref_q1 = {2'd0};
+      bins clk_ref_q2 = {2'd1};
+      bins clk_ref_q3 = {2'd2};
+      bins clk_ref_q4 = {2'd3};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] sf;
+    logic sf_v;  // {smc_fuse_sense_done_i, readback}
+    logic [1:0] pw;
+    logic pw_v;  // 0 SLVERR before sense, 1 OKAY readback, 2 OKAY before sense
+    logic [1:0] ff;
+    logic ff_v;  // 0 Boot ROM base, 1 other, 2 retired in reset
+  } mr_boot_t;
+
+  covergroup sep_boot_milestone_cg with function sample (mr_boot_t s);
+    option.per_instance = 1;
+    option.name = "sep_boot_milestone_cg";
+    cp_smc_status_follow: coverpoint s.sf iff (s.sf_v) {
+      bins done0_read0 = {2'b00};
+      bins done1_read1 = {2'b11};
+      illegal_bins mismatch = {2'b01, 2'b10};
+    }
+    cp_presense_window: coverpoint s.pw iff (s.pw_v) {
+      bins slverr_sense0 = {2'd0};
+      bins okay_sense1_after_slverr = {2'd1};
+      illegal_bins okay_sense0 = {2'd2};
+    }
+    cp_first_fetch: coverpoint s.ff iff (s.ff_v) {
+      bins boot_rom_base = {2'd0};
+      bins other_address = {2'd1};
+      illegal_bins retired_in_reset = {2'd2};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] tc;
+    logic tc_v;  // {test_en_i, class 0 clock gater 1 AXI cell}
+  } mr_tie_t;
+
+  covergroup sep_static_tieoff_cg with function sample (mr_tie_t s);
+    option.per_instance = 1;
+    option.name = "sep_static_tieoff_cg";
+    cp_test_en_consumer: coverpoint s.tc iff (s.tc_v) {
+      bins te0_clock_gater = {2'b00};
+      bins te0_axi_cell = {2'b01};
+      bins te1_clock_gater = {2'b10};
+      bins te1_axi_cell = {2'b11};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [3:0] ft;
+    logic ft_v;  // {field, 0 assert / 1 release}
+    logic mw;
+    logic mw_v;  // 0 assert, 1 release
+    logic pu;
+    logic pu_v;  // 0 hmac field, 1 aggregate
+  } mr_swc_t;
+
+  covergroup sep_reset_sw_ctrl_cg with function sample (mr_swc_t s);
+    option.per_instance = 1;
+    option.name = "sep_reset_sw_ctrl_cg";
+    // Field in SW_RESET_N bit order: 0 km, 1 otbn, 2 aes, 3 hmac, 4 kmac,
+    // 5 trng, 6 abr.
+    cp_field_transition: coverpoint s.ft iff (s.ft_v) {
+      bins km_assert = {4'b000_0};
+      bins km_release = {4'b000_1};
+      bins otbn_assert = {4'b001_0};
+      bins otbn_release = {4'b001_1};
+      bins aes_assert = {4'b010_0};
+      bins aes_release = {4'b010_1};
+      bins hmac_assert = {4'b011_0};
+      bins hmac_release = {4'b011_1};
+      bins kmac_assert = {4'b100_0};
+      bins kmac_release = {4'b100_1};
+      bins trng_assert = {4'b101_0};
+      bins trng_release = {4'b101_1};
+      bins abr_assert = {4'b110_0};
+      bins abr_release = {4'b110_1};
+    }
+    cp_multi_field_write: coverpoint s.mw iff (s.mw_v) {
+      bins asserts_two_or_more = {1'b0}; bins releases_two_or_more = {1'b1};
+    }
+    cp_power_up_value: coverpoint s.pu iff (s.pu_v) {
+      bins hmac_field_1 = {1'b0}; bins aggregate_0x7e = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [3:0] eo;
+    logic eo_v;  // {enable, outcome 0 no count 1 advances 2 crossed}
+    logic [2:0] bs;
+    logic bs_v;  // bark status cell, 4 bite in a forced window
+    logic [1:0] lk;
+    logic lk_v;  // 0 sticky, 1 cold landed, 2 locked landed, 3 unlocked ignored
+    logic [2:0] ad;
+    logic ad_v;  // {stage, high half}
+    logic ax;
+    logic ax_v;  // 0 WDOG_CTRL, 1 WDOG_COUNT
+    logic [1:0] to;
+    logic to_v;  // 0 bark first, 1 later bark, 2 near 2^32, 3 bite without bark
+  } mr_wdt_t;
+
+  covergroup sep_wdt_config_bark_cg with function sample (mr_wdt_t s);
+    option.per_instance = 1;
+    option.name = "sep_wdt_config_bark_cg";
+    cp_enable_outcome: coverpoint s.eo iff (s.eo_v) {
+      bins enable1_crossed = {4'b1_010};
+      ignore_bins control_cells = {4'b0_000, 4'b1_001};
+      illegal_bins enable0_counts = {4'b0_001, 4'b0_010};
+      illegal_bins enable1_no_count = {4'b1_000};
+    }
+    cp_bark_status: coverpoint s.bs iff (s.bs_v) {
+      bins set_by_threshold = {3'd0};
+      bins cleared_w1c_after_forced = {3'd1};
+      bins forced_enable0 = {3'd2};
+      bins forced_enable1_count_far_below = {3'd3};
+      illegal_bins bite_in_forced_window = {3'd4};
+    }
+    cp_lock_x_reg: coverpoint s.lk iff (s.lk_v) {
+      bins regwen_sticky_after_clear = {2'd0};
+      bins cold_reset_regwen1_write_lands = {2'd1};
+      illegal_bins regwen0_landed = {2'd2};
+      illegal_bins regwen1_ignored = {2'd3};
+    }
+    // Stage: 0 sep_wdt_tlul_axi_req, 1 sep_wdt_tlul_axi_req_offset,
+    // 2 axi_lite_req, 3 tl_d_i.
+    cp_adapt_stage: coverpoint s.ad iff (s.ad_v) {
+      bins dw_conv_low = {3'b00_0};
+      bins dw_conv_high = {3'b00_1};
+      bins offset_low = {3'b01_0};
+      bins offset_high = {3'b01_1};
+      bins axi_lite_low = {3'b10_0};
+      bins axi_lite_high = {3'b10_1};
+      bins tlul_low = {3'b11_0};
+      bins tlul_high = {3'b11_1};
+    }
+    cp_access_x_register: coverpoint s.ax iff (s.ax_v) {
+      bins wdog_ctrl_read = {1'b0}; bins wdog_count_read = {1'b1};
+    }
+    cp_thold_order: coverpoint s.to iff (s.to_v) {
+      bins bark_with_bite_low = {2'd0};
+      bins larger_threshold_later_bark = {2'd1};
+      bins near_2_32_bark_and_bite = {2'd2};
+      illegal_bins bite_without_bark = {2'd3};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [2:0] wp;
+    logic wp_v;  // 0..3 prescaler class, 4 HI first, 5 LO first, 6 expired
+  } mr_wkup_t;
+
+  covergroup sep_wdt_wakeup_timer_cg with function sample (mr_wkup_t s);
+    option.per_instance = 1;
+    option.name = "sep_wdt_wakeup_timer_cg";
+    cp_wkup_thold_x_presc: coverpoint s.wp iff (s.wp_v) {
+      bins presc0_crossing = {3'd0};
+      bins presc1_crossing = {3'd1};
+      bins presc_mid_crossing = {3'd2};
+      bins split_hi_first = {3'd4};
+      bins split_lo_first = {3'd5};
+      bins expired_crossing = {3'd6};
+      ignore_bins presc_4095 = {3'd3};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic cs;
+    logic cs_v;  // 0 DMA_BUS_ERR_STATUS (bit 40), 1 PERIPH_BUS_ERR_STATUS (bit 42)
+  } mr_esc_t;
+
+  covergroup sep_wdt_escalation_fault_cg with function sample (mr_esc_t s);
+    option.per_instance = 1;
+    option.name = "sep_wdt_escalation_fault_cg";
+    cp_cpu_only_reset_scope: coverpoint s.cs iff (s.cs_v) {
+      bins dma_reg_path_err_kept = {1'b0}; bins periph_bus_err_kept = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic rc;
+    logic rc_v;  // 0 restart after the cold reset, 1 write takes effect
+    logic [2:0] rr;
+    logic rr_v;  // ratio code
+    logic [1:0] rw;
+    logic rw_v;  // {low word class, carry}
+    logic vi_v;
+    logic nv_v;
+    logic nl;
+    logic nl_v;  // written 0 or all-ones
+    logic sr;
+    logic sr_v;  // 0 SEP_FUSE_SENSE_STATUS, 1 SMC_FUSE_SENSE_STATUS
+  } mr_cc_t;
+
+  covergroup sep_cpu_ctrl_reg_cg with function sample (mr_cc_t s);
+    option.per_instance = 1;
+    option.name = "sep_cpu_ctrl_reg_cg";
+    cp_refcnt: coverpoint s.rc iff (s.rc_v) {
+      bins restarts_after_cold_reset = {1'b0}; bins write_takes_effect = {1'b1};
+    }
+    // Ratio: 0 two, 1 three, 2 five, 3 eight, 4 thirteen.
+    cp_refcnt_ratio: coverpoint s.rr iff (s.rr_v) {
+      bins ratio_2 = {3'd0};
+      bins ratio_3 = {3'd1};
+      bins ratio_5 = {3'd2};
+      bins ratio_8 = {3'd3};
+      bins ratio_13 = {3'd4};
+    }
+    cp_refcnt_write_class: coverpoint s.rw iff (s.rw_v) {
+      bins low_equal = {2'b00};
+      bins high_equal = {2'b10};
+      bins high_carry = {2'b11};
+      ignore_bins low_carry = {2'b01};
+    }
+    cp_version_id: coverpoint s.vi_v iff (s.vi_v) {bins write_ignored = {1'b1};}
+    cp_nmi_vec: coverpoint s.nv_v iff (s.nv_v) {bins locked_write_ignored = {1'b1};}
+    cp_nmi_lock: coverpoint s.nl iff (s.nl_v) {
+      bins write_zero_keeps_lock = {1'b0}; bins write_ones_keeps_lock = {1'b1};
+    }
+    cp_status_ro_write: coverpoint s.sr iff (s.sr_v) {
+      bins sep_fuse_sense_status = {1'b0}; bins smc_fuse_sense_status = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [4:0] ba;
+    logic ba_v;  // {bank, index, shape}
+  } mr_scr_t;
+
+  covergroup sep_scratch_reg_access_cg with function sample (mr_scr_t s);
+    option.per_instance = 1;
+    option.name = "sep_scratch_reg_access_cg";
+    // {bank 0 cold 1 warm, register index, shape 0 one 64-bit lane write
+    // 1 two 32-bit half writes}.
+    cp_bank_reg_access: coverpoint s.ba iff (s.ba_v) {
+      bins cells[] = {[5'd0 : 5'd31]};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [2:0] rc;
+    logic rc_v;  // reset class
+    logic [4:0] bo;
+    logic bo_v;  // {bank, class, retained}
+    logic km;
+    logic km_v;  // 0 asserted idle, 1 released
+    logic ti_v;  // TRNG release
+    logic [2:0] nu;
+    logic nu_v;  // unit
+    logic [4:0] io;
+    logic io_v;  // {domain, event}
+    logic [2:0] np;
+    logic np_v;  // {port, isolated answer}
+    logic [2:0] pv;
+    logic pv_v;  // {pulse class, position}
+    logic [3:0] on;
+    logic on_v;  // {domain, rises}
+  } mr_scope_t;
+
+  covergroup sep_reset_scope_retention_cg with function sample (mr_scope_t s);
+    option.per_instance = 1;
+    option.name = "sep_reset_scope_retention_cg";
+    cp_reset_class: coverpoint s.rc iff (s.rc_v) {
+      bins power_on = {3'd0};
+      bins watchdog = {3'd1};
+      bins per_ip_software = {3'd2};
+      bins dbg_rstb = {3'd3};
+      bins jtag_tap = {3'd4};
+      bins jtag_sep_reset_n_override = {3'd5};
+    }
+    // Class: 0 power-on, 1 watchdog, 2 per-IP software, 3 dbg_rstb_i, 4 TAP.
+    cp_bank_class_outcome: coverpoint s.bo iff (s.bo_v) {
+      bins cold_software_retained = {5'b0_010_1};
+      bins warm_software_retained = {5'b1_010_1};
+      bins cold_tap_retained = {5'b0_100_1};
+      bins warm_tap_retained = {5'b1_100_1};
+      ignore_bins phase1_watchdog = {5'b0_001_1, 5'b1_001_0};
+      ignore_bins power_on_cleared = {5'b0_000_0, 5'b1_000_0};
+      ignore_bins dbg_retained = {5'b0_011_1, 5'b1_011_1};
+      illegal_bins cold_cleared = {5'b0_001_0, 5'b0_010_0, 5'b0_011_0, 5'b0_100_0};
+      illegal_bins warm_cleared = {5'b1_010_0, 5'b1_011_0, 5'b1_100_0};
+      illegal_bins power_on_retained = {5'b0_000_1, 5'b1_000_1};
+      illegal_bins warm_retained_watchdog = {5'b1_001_1};
+    }
+    cp_km_reset_condition: coverpoint s.km iff (s.km_v) {
+      bins asserted_idle = {1'b0}; bins released = {1'b1};
+    }
+    cp_trng_iso_order: coverpoint s.ti_v iff (s.ti_v) {bins release_with_reset = {1'b1};}
+    // Unit: 0 SPI host, 1 DMA engine, 2 watchdog timer, 3 inbound mailbox
+    // window, 4 scratch banks.
+    cp_no_sw_reset_units: coverpoint s.nu iff (s.nu_v) {
+      bins spi_host = {3'd0};
+      bins dma_engine = {3'd1};
+      bins watchdog_timer = {3'd2};
+      bins mailbox_inbound_window = {3'd3};
+      bins scratch_banks = {3'd4};
+    }
+    // {domain 0 km 1 otbn 2 aes 3 kmac 4 trng, event 0 fall 1 release 2 fall
+    // before the set is isolated}.
+    cp_iso_order_per_domain: coverpoint s.io iff (s.io_v) {
+      bins km_fall = {5'b000_00};
+      bins km_release = {5'b000_01};
+      bins otbn_fall = {5'b001_00};
+      bins otbn_release = {5'b001_01};
+      bins aes_fall = {5'b010_00};
+      bins aes_release = {5'b010_01};
+      bins kmac_release = {5'b011_01};
+      bins trng_release = {5'b100_01};
+      ignore_bins open_owner_falls = {5'b011_00, 5'b100_00};
+      illegal_bins fall_before_isolated = {5'b000_10, 5'b001_10, 5'b010_10, 5'b011_10, 5'b100_10};
+    }
+    // Port: 0 external TRNG window, 1 Key Manager mailbox, 2 lifecycle,
+    // 3 entropy pool STATUS.
+    cp_never_isolated_port: coverpoint s.np iff (s.np_v) {
+      bins ext_trng = {3'b00_0};
+      bins km_mailbox = {3'b01_0};
+      bins lifecycle = {3'b10_0};
+      bins pool_status = {3'b11_0};
+      illegal_bins isolated_answer = {3'b00_1, 3'b01_1, 3'b10_1, 3'b11_1};
+    }
+    // {class 0 wdt_rst_ni 1 dbg_rstb_i, position 0 before the write 1 between
+    // write and fall 2 while low or after the fall}; 3'b111 the sequence lost.
+    cp_pulse_vs_sequence: coverpoint s.pv iff (s.pv_v) {
+      bins wdt_before_write = {3'b0_00};
+      bins wdt_between = {3'b0_01};
+      bins wdt_while_low = {3'b0_10};
+      bins dbg_before_write = {3'b1_00};
+      bins dbg_between = {3'b1_01};
+      bins dbg_while_low = {3'b1_10};
+      illegal_bins sequence_lost = {3'b0_11, 3'b1_11};
+    }
+    // {domain 0 otbn 1 aes 2 hmac 3 kmac 4 trng 5 abr, isolate bit rose}.
+    cp_ovrd_no_iso: coverpoint s.on iff (s.on_v) {
+      bins otbn = {4'b000_0};
+      bins aes = {4'b001_0};
+      bins hmac = {4'b010_0};
+      bins kmac = {4'b011_0};
+      bins trng = {4'b100_0};
+      bins abr = {4'b101_0};
+      illegal_bins isolated_under_override = {4'b000_1, 4'b001_1, 4'b010_1, 4'b011_1, 4'b100_1, 4'b101_1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [5:0] ip;
+    logic ip_v;  // {aggressor, victim}
+    logic [6:0] ox;
+    logic ox_v;  // {domain, E, V, sw, mismatch}
+    logic [3:0] op;
+    logic op_v;  // {domain, first released 0 sw 1 override, rose early}
+    logic tn;
+    logic tn_v;  // 0 pool OKAY, 1 external TRNG window
+  } mr_crst_t;
+
+  covergroup sep_crypto_reset_cg with function sample (mr_crst_t s);
+    option.per_instance = 1;
+    option.name = "sep_crypto_reset_cg";
+    // Domain codes 1 otbn, 2 aes, 3 hmac, 4 kmac, 5 trng.
+    cp_independence_pair: coverpoint s.ip iff (s.ip_v) {
+      bins pairs[] = {
+        6'o12, 6'o13, 6'o14, 6'o15, 6'o21, 6'o23, 6'o24, 6'o25, 6'o31, 6'o32,
+        6'o34, 6'o35, 6'o41, 6'o42, 6'o43, 6'o45, 6'o51, 6'o52, 6'o53, 6'o54
+      };
+    }
+    // Domain 0 otbn 1 aes 2 hmac 3 kmac 4 trng 5 abr; E = 0 carries V = 0.
+    cp_ip_ovrd_x_sw: coverpoint s.ox iff (s.ox_v) {
+      bins cells[] = {
+        7'b000_000_0, 7'b000_001_0, 7'b000_100_0, 7'b000_101_0, 7'b000_110_0, 7'b000_111_0,
+        7'b001_000_0, 7'b001_001_0, 7'b001_100_0, 7'b001_101_0, 7'b001_110_0, 7'b001_111_0,
+        7'b010_000_0, 7'b010_001_0, 7'b010_100_0, 7'b010_101_0, 7'b010_110_0, 7'b010_111_0,
+        7'b011_000_0, 7'b011_001_0, 7'b011_100_0, 7'b011_101_0, 7'b011_110_0, 7'b011_111_0,
+        7'b100_000_0, 7'b100_001_0, 7'b100_110_0, 7'b100_111_0,
+        7'b101_000_0, 7'b101_001_0, 7'b101_110_0, 7'b101_111_0
+      };
+      ignore_bins open_owner_e1_v0 = {7'b100_100_0, 7'b100_101_0, 7'b101_100_0, 7'b101_101_0};
+      wildcard illegal_bins tap_differs = {7'b???_???_1};
+    }
+    cp_ovrd_priority: coverpoint s.op iff (s.op_v) {
+      bins otbn_sw_first = {4'b00_0_0};
+      bins otbn_ovrd_first = {4'b00_1_0};
+      bins aes_sw_first = {4'b01_0_0};
+      bins aes_ovrd_first = {4'b01_1_0};
+      bins hmac_sw_first = {4'b10_0_0};
+      bins hmac_ovrd_first = {4'b10_1_0};
+      bins kmac_sw_first = {4'b11_0_0};
+      bins kmac_ovrd_first = {4'b11_1_0};
+      wildcard illegal_bins rose_after_first_release = {4'b??_?_1};
+    }
+    cp_trng_nonmember: coverpoint s.tn iff (s.tn_v) {
+      bins pool_read_okay = {1'b0}; bins ext_trng_window_completes = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [4:0] ti;
+    logic ti_v;  // IR value at Update-IR
+    logic rt;
+    logic rt_v;  // 0 shift through, 1 dmi_rst_vec changes at Update-DR
+    logic ta;
+    logic ta_v;  // 0 quiet reset then a beat, 1 beat in reset
+  } mr_dbg_t;
+
+  covergroup sep_debug_trace_cg with function sample (mr_dbg_t s);
+    option.per_instance = 1;
+    option.name = "sep_debug_trace_cg";
+    cp_tap_instruction: coverpoint s.ti iff (s.ti_v) {
+      bins reset_vector_tdr = {5'h18}; ignore_bins not_stated = {[5'h00 : 5'h17], [5'h19 : 5'h1F]};
+    }
+    cp_rstvec_tdr: coverpoint s.rt iff (s.rt_v) {
+      bins shift_tdi_to_tdo = {1'b0}; bins update_dr_changes_vector = {1'b1};
+    }
+    cp_trace_activity: coverpoint s.ta iff (s.ta_v) {
+      bins quiet_reset_then_beat = {1'b0}; illegal_bins beat_in_reset = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic st_v;
+    logic [2:0] ev;
+    logic ev_v;  // 0 early capture, 1..4 non-sampling event, 5 change outside
+    logic sk;
+    logic sk_v;  // 0 strap change held, 1 change after the capture
+  } mr_abs_t;
+
+  covergroup sep_documented_absence_cg with function sample (mr_abs_t s);
+    option.per_instance = 1;
+    option.name = "sep_documented_absence_cg";
+    cp_secure_tm_state: coverpoint s.st_v iff (s.st_v) {bins cold_reset_clear = {1'b1};}
+    cp_stm_event_x_strap: coverpoint s.ev iff (s.ev_v) {
+      bins early_capture_strap1 = {3'd0};
+      bins wdt_rst_ni_unchanged = {3'd1};
+      bins dbg_rstb_i_unchanged = {3'd2};
+      bins sw_engine_reset_unchanged = {3'd3};
+      bins sep_reset_n_override_unchanged = {3'd4};
+      illegal_bins change_outside_sampling_event = {3'd5};
+    }
+    cp_stm_strap_stability: coverpoint s.sk iff (s.sk_v) {
+      bins strap_change_held = {1'b0}; illegal_bins change_after_capture = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic lr;
+    logic lr_v;
+  } mr_dmac_t;  // 0 kept on pulse, 1 restored
+
+  covergroup sep_dma_containment_cg with function sample (mr_dmac_t s);
+    option.per_instance = 1;
+    option.name = "sep_dma_containment_cg";
+    cp_dma_lock_recovery: coverpoint s.lr iff (s.lr_v) {
+      bins kept_across_cpu_only_pulse = {1'b0}; bins restored_after_rst_ni = {1'b1};
+    }
+  endgroup
+
+  sep_reset_source_cg          u_sep_reset_source_cg          = new();
+  sep_clk_domain_cg            u_sep_clk_domain_cg            = new();
+  sep_boot_milestone_cg        u_sep_boot_milestone_cg        = new();
+  sep_static_tieoff_cg         u_sep_static_tieoff_cg         = new();
+  sep_reset_sw_ctrl_cg         u_sep_reset_sw_ctrl_cg         = new();
+  sep_wdt_config_bark_cg       u_sep_wdt_config_bark_cg       = new();
+  sep_wdt_wakeup_timer_cg      u_sep_wdt_wakeup_timer_cg      = new();
+  sep_wdt_escalation_fault_cg  u_sep_wdt_escalation_fault_cg  = new();
+  sep_cpu_ctrl_reg_cg          u_sep_cpu_ctrl_reg_cg          = new();
+  sep_scratch_reg_access_cg    u_sep_scratch_reg_access_cg    = new();
+  sep_reset_scope_retention_cg u_sep_reset_scope_retention_cg = new();
+  sep_crypto_reset_cg          u_sep_crypto_reset_cg          = new();
+  sep_debug_trace_cg           u_sep_debug_trace_cg           = new();
+  sep_documented_absence_cg    u_sep_documented_absence_cg    = new();
+  sep_dma_containment_cg       u_sep_dma_containment_cg       = new();
+
+  // One-point sample helpers.
+  task automatic mr_se(input logic [2:0] src, input logic rel);
+    mr_src_t e;
+    e      = '0;
+    e.se   = {src, rel};
+    e.se_v = 1'b1;
+    u_sep_reset_source_cg.sample(e);
+  endtask
+
+  task automatic mr_rc(input logic [2:0] c);
+    mr_scope_t e;
+    e      = '0;
+    e.rc   = c;
+    e.rc_v = 1'b1;
+    u_sep_reset_scope_retention_cg.sample(e);
+  endtask
+
+  task automatic mr_jm(input logic tlr, input logic [30:0] vec);
+    mr_src_t e;
+    e      = '0;
+    e.jm   = {tlr, vec != MrRomVec};
+    e.jm_v = 1'b1;
+    u_sep_reset_source_cg.sample(e);
+  endtask
+
+  task automatic mr_dc(input logic [1:0] d);
+    mr_clk_t e;
+    e      = '0;
+    e.dc   = d;
+    e.dc_v = 1'b1;
+    u_sep_clk_domain_cg.sample(e);
+  endtask
+
+  task automatic mr_dbg_s(input logic [1:0] which, input logic [4:0] v);
+    mr_dbg_t e;
+    e = '0;
+    case (which)
+      2'd0: begin
+        e.ti   = v;
+        e.ti_v = 1'b1;
+      end
+      2'd1: begin
+        e.rt   = v[0];
+        e.rt_v = 1'b1;
+      end
+      default: begin
+        e.ta   = v[0];
+        e.ta_v = 1'b1;
+      end
+    endcase
+    u_sep_debug_trace_cg.sample(e);
+  endtask
+
+  // ---------------------------------------------------------------------
+  // Levels, edges and clock edge times.
+  // ---------------------------------------------------------------------
+  wire mr_rst = (rst_ni === 1'b1);
+  wire mr_wdt = (wdt_rst_n_i !== 1'b0);
+  wire mr_dbg = (dbg_rstb_i !== 1'b0);
+  wire mr_scan = (scan_rst_n_i !== 1'b0);
+  wire mr_te = (test_en_i === 1'b1);
+  wire mr_trst = (jtag_trst_n_i === 1'b1);
+  wire mr_srn = (sep_reset_n_i === 1'b1);
+  wire mr_cpurn = (cpu_reset_n_i === 1'b1);
+  wire mr_ext = (ext_boot_done_i === 1'b1);
+  wire mr_fuse = (fuse_sense_done_i === 1'b1);
+  wire mr_secdis = (sec_dis_i === 1'b1);
+  wire mr_stm = (secure_tm_i === 1'b1);
+  wire mr_strap = (strap_i === 1'b1);
+  wire mr_bark = (wdt_bark_irq_i === 1'b1);
+  wire mr_bite = (wdt_rst_req_i === 1'b1);
+  wire mr_sovr = (jtag_sep_reset_n_ovrd_i === 1'b1);
+  wire mr_ovr_cond = mr_sovr && (jtag_sep_reset_n_val_i !== 1'b1);
+  logic [6:0] mr_ip;
+  always_comb begin
+    for (int i = 0; i < 7; i++) mr_ip[i] = (ip_rst_n_i[i] !== 1'b0);
+  end
+  // Per-domain override enable and value, SW_RESET_N bit order.
+  wire [6:0] mr_ovrd = {
+    jtag_rst_ctrl_i.ovrd.abr_jtag_rst_n_ovrd,
+    jtag_rst_ctrl_i.ovrd.trng_jtag_rst_n_ovrd,
+    jtag_rst_ctrl_i.ovrd.kmac_jtag_rst_n_ovrd,
+    jtag_rst_ctrl_i.ovrd.hmac_jtag_rst_n_ovrd,
+    jtag_rst_ctrl_i.ovrd.aes_jtag_rst_n_ovrd,
+    jtag_rst_ctrl_i.ovrd.otbn_jtag_rst_n_ovrd,
+    jtag_rst_ctrl_i.ovrd.km_jtag_rst_n_ovrd
+  };
+  wire [6:0] mr_oval = {
+    jtag_rst_ctrl_i.val.abr_jtag_rst_n_val,
+    jtag_rst_ctrl_i.val.trng_jtag_rst_n_val,
+    jtag_rst_ctrl_i.val.kmac_jtag_rst_n_val,
+    jtag_rst_ctrl_i.val.hmac_jtag_rst_n_val,
+    jtag_rst_ctrl_i.val.aes_jtag_rst_n_val,
+    jtag_rst_ctrl_i.val.otbn_jtag_rst_n_val,
+    jtag_rst_ctrl_i.val.km_jtag_rst_n_val
+  };
+  // A software-path reset event: sep_reset_n high and every override off.
+  wire mr_sw_ok = mr_srn && !mr_sovr;
+
+  logic mr_rst_q = 1'b0;
+  logic mr_wdt_q = 1'b1;
+  logic mr_dbg_q = 1'b1;
+  logic mr_scan_q = 1'b1;
+  logic mr_te_q = 1'b0;
+  logic mr_trst_q = 1'b0;
+  logic mr_srn_q = 1'b0;
+  logic mr_cpurn_q = 1'b0;
+  logic mr_ext_q = 1'b0;
+  logic mr_fuse_q = 1'b0;
+  logic mr_stm_q = 1'b0;
+  logic mr_strap_q = 1'b0;
+  logic mr_bark_q = 1'b0;
+  logic mr_bite_q = 1'b0;
+  logic mr_ovr_cond_q = 1'b0;
+  logic [6:0] mr_ip_q = '1;
+  logic [6:0] mr_ovrd_q = '0;
+  logic [13:0] mr_ack_q = '0;
+  logic [42:0] mr_vec_q = '0;
+  logic mr_mpc_q = 1'b0;
+  logic [30:0] mr_rv_q = '0;  // dmi_rst_vec at the previous clk_i edge
+  always @(posedge clk_i) begin
+    mr_rst_q      <= mr_rst;
+    mr_wdt_q      <= mr_wdt;
+    mr_dbg_q      <= mr_dbg;
+    mr_scan_q     <= mr_scan;
+    mr_te_q       <= mr_te;
+    mr_trst_q     <= mr_trst;
+    mr_srn_q      <= mr_srn;
+    mr_cpurn_q    <= mr_cpurn;
+    mr_ext_q      <= mr_ext;
+    mr_fuse_q     <= mr_fuse;
+    mr_stm_q      <= mr_stm;
+    mr_strap_q    <= mr_strap;
+    mr_bark_q     <= mr_bark;
+    mr_bite_q     <= mr_bite;
+    mr_ovr_cond_q <= mr_ovr_cond;
+    mr_ip_q       <= mr_ip;
+    mr_ovrd_q     <= mr_ovrd;
+    mr_ack_q      <= iso_ack_i;
+    mr_vec_q      <= vec_i;
+    mr_mpc_q      <= (mpc_run_req_i === 1'b1);
+    mr_rv_q       <= dmi_rst_vec_i;
+  end
+  wire mr_rst_fall = mr_rst_q && !mr_rst;
+  wire mr_rst_rise = !mr_rst_q && mr_rst;
+  wire mr_wdt_fall = mr_wdt_q && !mr_wdt;
+  wire mr_wdt_rise = !mr_wdt_q && mr_wdt;
+  wire mr_dbg_fall = mr_dbg_q && !mr_dbg;
+  wire mr_dbg_rise = !mr_dbg_q && mr_dbg;
+  wire mr_trst_fall = mr_trst_q && !mr_trst;
+  wire mr_trst_rise = !mr_trst_q && mr_trst;
+  wire mr_ovr_rise = !mr_ovr_cond_q && mr_ovr_cond;
+  wire mr_ovr_fall = mr_ovr_cond_q && !mr_ovr_cond;
+  wire [6:0] mr_ip_fall = mr_ip_q & ~mr_ip;
+  wire [6:0] mr_ip_rise = ~mr_ip_q & mr_ip;
+  // ip_rst_n falls of the software path (sep_reset_n high, overrides off).
+  wire [6:0] mr_ip_sw_fall = mr_ip_fall & ~mr_ovrd & {7{mr_sw_ok}};
+  wire mr_eng_rst = |mr_ip_sw_fall[6:1];
+
+  longint unsigned mr_cyc = 0;
+  always @(posedge clk_i) mr_cyc <= mr_cyc + 1;
+
+  realtime mr_t_clk = 0.0;
+  realtime mr_t_clk_p = 0.0;
+  realtime mr_t_wdt = 0.0;
+  realtime mr_t_wdt_p = 0.0;
+  realtime mr_t_ref[5] = '{default: 0.0};
+  always @(posedge clk_i) begin
+    mr_t_clk_p = mr_t_clk;
+    mr_t_clk   = $realtime;
+  end
+  always @(posedge clk_wdt_i) begin
+    mr_t_wdt_p = mr_t_wdt;
+    mr_t_wdt   = $realtime;
+  end
+
+  // ---------------------------------------------------------------------
+  // Sub-cycle release points (cp_rst_release_sync, cp_aon_release_sync, the
+  // two release cells of cp_scan_net_effect). The phase is taken at the
+  // rst_ni or scan_rst_ni rise; the release net rise is compared with the
+  // last edge of its clock.
+  // ---------------------------------------------------------------------
+  logic [1:0] mr_rr_third = 2'd3;
+  logic [1:0] mr_ar_third = 2'd3;
+  logic mr_rr_arm = 1'b0;
+  logic mr_ar_arm = 1'b0;
+  logic mr_sn_arm = 1'b0;
+  always @(posedge rst_ni) begin
+    mr_rr_arm   = mr_own_cold;
+    mr_ar_arm   = mr_own_cold;
+    mr_rr_third = mr_third($realtime - mr_t_clk, mr_t_clk - mr_t_clk_p);
+    mr_ar_third = mr_third($realtime - mr_t_wdt, mr_t_wdt - mr_t_wdt_p);
+  end
+  always @(posedge scan_rst_n_i) mr_sn_arm = mr_own_scan && mr_te;
+  always @(negedge scan_rst_n_i) mr_sn_arm = 1'b0;
+  always @(posedge sep_reset_n_i) begin
+    if (sep_reset_n_i === 1'b1) begin
+      realtime off;
+      realtime per;
+      off = $realtime - mr_t_clk;
+      per = mr_t_clk - mr_t_clk_p;
+      if (mr_rr_arm && mr_own_cold) begin
+        mr_src_t e;
+        e      = '0;
+        e.rs   = {(off <= MrEdgeTol), mr_rr_third};
+        e.rs_v = 1'b1;
+        u_sep_reset_source_cg.sample(e);
+      end
+      mr_rr_arm = 1'b0;
+      if (mr_sn_arm && mr_own_scan && (off > MrEdgeTol) && (off < per - MrEdgeTol)) begin
+        mr_src_t e;
+        e      = '0;
+        e.sn   = 6'd32;
+        e.sn_v = 1'b1;
+        u_sep_reset_source_cg.sample(e);
+      end
+    end
+  end
+  always @(posedge aon_rst_n_i) begin
+    if (aon_rst_n_i === 1'b1) begin
+      realtime off;
+      realtime per;
+      off = $realtime - mr_t_wdt;
+      per = mr_t_wdt - mr_t_wdt_p;
+      if (mr_ar_arm && mr_own_cold) begin
+        mr_src_t e;
+        e      = '0;
+        e.as   = {(off <= MrEdgeTol), mr_ar_third};
+        e.as_v = 1'b1;
+        u_sep_reset_source_cg.sample(e);
+      end
+      mr_ar_arm = 1'b0;
+      if (mr_sn_arm && mr_own_scan && (off > MrEdgeTol) && (off < per - MrEdgeTol)) begin
+        mr_src_t e;
+        e      = '0;
+        e.sn   = 6'd40;
+        e.sn_v = 1'b1;
+        u_sep_reset_source_cg.sample(e);
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // TAP state tracker: a model of the TAP from the pins only. It reads no
+  // RTL net of the TAP. dmi_rst_vec is read at the Update-DR edge (before
+  // the TDR takes the shifted value) and at the Test-Logic-Reset entry.
+  // ---------------------------------------------------------------------
+  logic [3:0] mr_tap = TapTlr;
+  logic [4:0] mr_irs = 5'd0;
+  logic [4:0] mr_ir = 5'd1;
+  logic [63:0] mr_tdi_h = '0;
+  int unsigned mr_sh_n = 0;
+  int unsigned mr_sh_cmp = 0;
+  logic mr_sh_bad = 1'b0;
+  logic [30:0] mr_tdr_before = '0;
+  int unsigned mr_tdr_upd = 0;
+  int unsigned mr_tlr_ev = 0;
+  always @(posedge jtag_tck_i or negedge jtag_trst_n_i) begin
+    if (jtag_trst_n_i !== 1'b1) begin
+      mr_tap <= TapTlr;
+      mr_ir  <= 5'd1;
+    end else begin
+      logic [3:0] nx;
+      nx = mr_tap_next(mr_tap, jtag_tms_i === 1'b1);
+      case (mr_tap)
+        TapTlr: mr_ir <= 5'd1;
+        TapCapDr: begin
+          mr_sh_n   <= 0;
+          mr_sh_cmp <= 0;
+          mr_sh_bad <= 1'b0;
+        end
+        TapShDr: begin
+          if ((mr_ir == MrIrRstVec) && (mr_sh_n >= MrTdrLen)) begin
+            mr_sh_cmp <= mr_sh_cmp + 1;
+            if ((jtag_tdo_i === 1'b1) != mr_tdi_h[MrTdrLen-1]) mr_sh_bad <= 1'b1;
+          end
+          mr_tdi_h <= {mr_tdi_h[62:0], (jtag_tdi_i === 1'b1)};
+          mr_sh_n  <= mr_sh_n + 1;
+        end
+        TapUpdDr: begin
+          if (mr_ir == MrIrRstVec) begin
+            if (mr_own_entry) begin
+              if ((mr_sh_cmp != 0) && !mr_sh_bad) mr_dbg_s(2'd1, 5'd0);
+              mr_dc(2'd2);
+            end
+            mr_tdr_before <= dmi_rst_vec_i;
+            mr_tdr_upd    <= mr_tdr_upd + 1;
+          end
+        end
+        TapShIr: mr_irs <= {(jtag_tdi_i === 1'b1), mr_irs[4:1]};
+        TapUpdIr: begin
+          mr_ir <= (mr_irs == 5'd0) ? 5'h1f : mr_irs;
+          if (mr_own_entry) mr_dbg_s(2'd0, (mr_irs == 5'd0) ? 5'h1f : mr_irs);
+        end
+        default: ;
+      endcase
+      if ((nx == TapTlr) && (mr_tap != TapTlr)) begin
+        if (mr_own_entry) begin
+          mr_se(3'd5, 1'b0);
+          mr_rc(3'd4);
+          mr_jm(1'b1, dmi_rst_vec_i);
+        end
+        mr_tlr_ev <= mr_tlr_ev + 1;
+      end
+      if ((nx != TapTlr) && (mr_tap == TapTlr) && mr_own_entry) mr_se(3'd5, 1'b1);
+      mr_tap <= nx;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Register trackers. The tracked value of a register is the last value the
+  // LSU wrote or read, so a readback always resynchronises it.
+  // ---------------------------------------------------------------------
+  wire [31:0] mr_wbase = {aw_addr_q[31:3], 3'b000};
+  wire [31:0] mr_rbase = {ar_addr_q[31:3], 3'b000};
+  wire mr_wlo = wr_ev && (aw_addr_q[2:0] == 3'd0) && (w_strb_q[3:0] == 4'hF);
+  wire mr_rd_lo = rd_ev && (ar_addr_q[2:0] == 3'd0);
+  wire mr_rd64 = mr_rd_lo && (ar_size_q == 3'd3);
+  wire [31:0] mr_rlo = lsu_r_data_i[31:0];
+  // A full 32-bit lane write and its lane data, for the 32-bit registers.
+  wire mr_wl32 = wr_ev && (wr_strb == 4'hF);
+  function automatic int mr_scr_idx(input logic [31:0] a);
+    if (in_win(a, ColdBase, ColdEnd)) return int'(a[5:3]);
+    if (in_win(a, WarmBase, WarmEnd)) return 8 + int'(a[5:3]);
+    return -1;
+  endfunction
+
+  logic [6:0] mr_swv = MrSwRstDef;  // SW_RESET_N fields
+  logic [6:0] mr_sw_wd = MrSwRstDef;  // last written fields
+  logic mr_sw_wd_v = 1'b0;
+  logic [31:0] mr_scr[16] = '{default: '0};
+  logic [15:0] mr_scr_v = '0;
+  always @(posedge clk_i) begin
+    if (!mr_srn) mr_swv <= MrSwRstDef;
+    else if (mr_wlo && (aw_addr_q == MrSwRst)) mr_swv <= w_data_q[6:0];
+    else if (mr_rd_lo && (ar_addr_q == MrSwRst)) mr_swv <= lsu_r_data_i[6:0];
+    if (mr_wlo && (aw_addr_q == MrSwRst)) begin
+      mr_sw_wd   <= w_data_q[6:0];
+      mr_sw_wd_v <= 1'b1;
+    end
+    if (!mr_rst) mr_scr_v <= '0;
+    else begin
+      int k;
+      if (!mr_cpurn) mr_scr_v[15:8] <= '0;
+      k = mr_scr_idx(aw_addr_q);
+      if (mr_wlo && (k >= 0)) begin
+        mr_scr[k]   <= w_data_q[31:0];
+        mr_scr_v[k] <= 1'b1;
+      end
+      k = mr_scr_idx(ar_addr_q);
+      if (mr_rd_lo && (k >= 0)) begin
+        mr_scr[k]   <= mr_rlo;
+        mr_scr_v[k] <= 1'b1;
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_reset_source_cg (clocked points), cp_reset_class and the TAP reset
+  // events of the clock domain.
+  // ---------------------------------------------------------------------
+  int unsigned mr_ro_cnt = 0;
+  logic mr_ro_held = 1'b0;
+  logic mr_ro_arm = 1'b0;
+  logic mr_ro_low = 1'b0;
+  logic mr_ro_bad_q = 1'b0;
+  logic [10:0] mr_sn_snap = '0;
+  logic [10:0] mr_sn_keep = '0;
+  logic [10:0] mr_sn_now_q = '0;
+  logic mr_sn_on = 1'b0;
+  logic mr_sn_te = 1'b0;
+  logic mr_sn_te_ok = 1'b0;
+  int unsigned mr_sn_w = 0;
+  logic mr_mp_on = 1'b0;
+  logic mr_mp_hold = 1'b0;
+  logic mr_mp_s0 = 1'b0;
+  int unsigned mr_mp_tog = 0;
+  logic mr_mp_rel = 1'b0;
+  int unsigned mr_mp_cnt = 0;
+  wire [10:0] mr_sn_now = {
+    km_cond_rst_n_i[0] === 1'b1,
+    km_cond_rst_n_i[1] === 1'b1,
+    aon_rst_n_i === 1'b1,
+    mr_ip[6:1],
+    mr_cpurn,
+    mr_srn
+  };
+  always @(posedge clk_i) begin
+    logic held;
+    logic bad;
+    mr_sn_now_q <= mr_sn_now;
+    // cp_source_edge
+    if (mr_own_cold && mr_rst_fall) mr_se(3'd0, 1'b0);
+    if (mr_own_cold && mr_rst_rise) mr_se(3'd0, 1'b1);
+    if (mr_own_ret && mr_wdt_fall) mr_se(3'd1, 1'b0);
+    if (mr_own_ret && mr_wdt_rise) mr_se(3'd1, 1'b1);
+    if (mr_own_ret && mr_dbg_fall) mr_se(3'd2, 1'b0);
+    if (mr_own_ret && mr_dbg_rise) mr_se(3'd2, 1'b1);
+    if (mr_own_scan && mr_scan_q && !mr_scan) mr_se(3'd3, 1'b0);
+    if (mr_own_scan && !mr_scan_q && mr_scan) mr_se(3'd3, 1'b1);
+    if (mr_own_entry && mr_trst_fall) mr_se(3'd4, 1'b0);
+    if (mr_own_entry && mr_trst_rise) mr_se(3'd4, 1'b1);
+    // cp_reset_class (the TAP walk is sampled by the TAP tracker)
+    if (mr_rst_fall && (mr_own_ret || mr_own_tmr)) mr_rc(3'd0);
+    if (mr_wdt_fall && mr_srn && (mr_own_ret || mr_own_ovr || mr_own_tmr)) mr_rc(3'd1);
+    if ((mr_own_ret && |(mr_ip_sw_fall & 7'b101_0110)) ||
+        ((mr_own_ovr || mr_own_tmr) && |mr_ip_sw_fall[6:1]))
+      mr_rc(3'd2);
+    if (mr_dbg_fall && (mr_own_ret || mr_own_tmr)) mr_rc(3'd3);
+    if (mr_trst_fall && mr_own_entry) mr_rc(3'd4);
+    if (mr_ovr_rise && (mr_own_ovr || mr_own_tmr)) mr_rc(3'd5);
+    // cp_jtag_mech, jtag_trst_ni mechanism: the vector before the reset.
+    if (mr_trst_fall && mr_own_entry) mr_jm(1'b0, mr_rv_q);
+
+    // cp_release_order
+    held = mr_own_rel && mr_rst && mr_fuse && !mr_ext && !mr_srn;
+    mr_ro_cnt <= held ? ((mr_ro_cnt < MrHeldK) ? mr_ro_cnt + 1 : mr_ro_cnt) : 0;
+    if (!mr_rst || !mr_own_rel) begin
+      mr_ro_held <= 1'b0;
+      mr_ro_arm  <= 1'b0;
+      mr_ro_low  <= 1'b0;
+    end else begin
+      if (!mr_srn) mr_ro_low <= 1'b1;
+      if (held && (mr_ro_cnt == MrHeldK - 1)) begin
+        mr_src_t e;
+        e          = '0;
+        e.ro       = 2'd0;
+        e.ro_v     = 1'b1;
+        u_sep_reset_source_cg.sample(e);
+        mr_ro_held <= 1'b1;
+      end
+      if (mr_ro_held && !mr_ext_q && mr_ext) mr_ro_arm <= 1'b1;
+      if (mr_ro_arm && !mr_srn_q && mr_srn) begin
+        mr_src_t e;
+        e          = '0;
+        e.ro       = 2'd1;
+        e.ro_v     = 1'b1;
+        u_sep_reset_source_cg.sample(e);
+        mr_ro_arm  <= 1'b0;
+        mr_ro_held <= 1'b0;
+      end
+    end
+    // Illegal cell: released while a term is missing, override off and no
+    // SEC_DIS release, after sep_reset_n was low in this rst_ni high window.
+    bad = mr_own_rel && mr_rst && mr_ro_low && mr_srn && (!mr_ext || !mr_fuse) && !mr_sovr &&
+        !mr_secdis;
+    mr_ro_bad_q <= bad;
+    if (bad && !mr_ro_bad_q) begin
+      mr_src_t e;
+      e      = '0;
+      e.ro   = 2'd2;
+      e.ro_v = 1'b1;
+      u_sep_reset_source_cg.sample(e);
+    end
+
+    // cp_scan_bypass
+    if (mr_own_scan && ((mr_scan != mr_scan_q) || (mr_te != mr_te_q))) begin
+      mr_src_t e;
+      e      = '0;
+      e.sb   = {mr_scan, mr_te};
+      e.sb_v = 1'b1;
+      u_sep_reset_source_cg.sample(e);
+    end
+
+    // cp_scan_net_effect, the 22 net cells
+    if (mr_scan_q && !mr_scan) begin
+      mr_sn_on    <= mr_own_scan;
+      mr_sn_snap  <= mr_sn_now_q;
+      mr_sn_keep  <= ~(mr_sn_now ^ mr_sn_now_q);
+      mr_sn_te    <= mr_te;
+      mr_sn_te_ok <= 1'b1;
+      mr_sn_w     <= 1;
+    end else if (mr_sn_on && !mr_scan) begin
+      mr_sn_keep <= mr_sn_keep & ~(mr_sn_now ^ mr_sn_snap);
+      if (mr_te != mr_sn_te) mr_sn_te_ok <= 1'b0;
+      mr_sn_w <= mr_sn_w + 1;
+    end else if (mr_sn_on && !mr_scan_q && mr_scan) begin
+      mr_sn_on <= 1'b0;
+      if (mr_own_scan && mr_sn_te_ok && (mr_sn_w >= MrScanMinW)) begin
+        for (int n = 0; n < 11; n++) begin
+          if (mr_sn_te ? !mr_sn_now_q[n] : mr_sn_keep[n]) begin
+            mr_src_t e;
+            e      = '0;
+            e.sn   = {1'b0, mr_sn_te, 4'(n)};
+            e.sn_v = 1'b1;
+            u_sep_reset_source_cg.sample(e);
+          end
+        end
+      end
+    end
+
+    // cp_mpc_sync_reset
+    if (mr_dbg_fall && mr_own_ret) begin
+      mr_mp_on   <= 1'b1;
+      mr_mp_hold <= 1'b1;
+      mr_mp_s0   <= (mpc_run_sync_i === 1'b1);
+      mr_mp_tog  <= 0;
+      mr_mp_rel  <= 1'b0;
+    end else if (mr_mp_on && !mr_dbg) begin
+      if ((mpc_run_req_i === 1'b1) != mr_mpc_q) mr_mp_tog <= mr_mp_tog + 1;
+      if ((mpc_run_sync_i === 1'b1) != mr_mp_s0) mr_mp_hold <= 1'b0;
+    end else if (mr_mp_on && mr_dbg_rise) begin
+      mr_mp_on <= 1'b0;
+      if (mr_own_ret && (mr_mp_tog != 0) && mr_mp_hold) begin
+        mr_src_t e;
+        e      = '0;
+        e.ms   = 1'b0;
+        e.ms_v = 1'b1;
+        u_sep_reset_source_cg.sample(e);
+      end
+      mr_mp_rel <= 1'b1;
+      mr_mp_cnt <= 0;
+    end else if (mr_mp_rel) begin
+      mr_mp_cnt <= mr_mp_cnt + 1;
+      if ((mpc_run_sync_i === 1'b1) == (mpc_run_req_i === 1'b1)) begin
+        mr_mp_rel <= 1'b0;
+        if (mr_own_ret) begin
+          mr_src_t e;
+          e      = '0;
+          e.ms   = 1'b1;
+          e.ms_v = 1'b1;
+          u_sep_reset_source_cg.sample(e);
+        end
+      end else if (mr_mp_cnt >= 2 + MrMpcAllow) mr_mp_rel <= 1'b0;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_clk_domain_cg, cp_refcnt_ratio and the TDR update check.
+  // ---------------------------------------------------------------------
+  logic mr_wclk_l = 1'b0;
+  logic mr_rclk_l = 1'b0;
+  int unsigned mr_wclk_age = MrClkRecent;
+  int unsigned mr_rclk_age = MrClkRecent;
+  int unsigned mr_tdr_seen = 0;
+  logic [1:0] mr_tdr_dly = 2'd0;
+  always @(posedge clk_i) begin
+    logic [31:0] wa;
+    logic [31:0] ra;
+    mr_wclk_l   <= (clk_wdt_i === 1'b1);
+    mr_rclk_l   <= (clk_ref_i === 1'b1);
+    mr_wclk_age <= ((clk_wdt_i === 1'b1) != mr_wclk_l) ? 0 :
+        ((mr_wclk_age < MrClkRecent) ? mr_wclk_age + 1 : mr_wclk_age);
+    mr_rclk_age <= ((clk_ref_i === 1'b1) != mr_rclk_l) ? 0 :
+        ((mr_rclk_age < MrClkRecent) ? mr_rclk_age + 1 : mr_rclk_age);
+    wa = aw_addr_q;
+    ra = ar_addr_q;
+    if (((wr_ev && in_blk(
+            wa, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE
+        )) || (rd_ev && in_blk(
+            ra, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE
+        ))) && (mr_wclk_age < MrClkRecent) && (mr_own_cold || mr_own_tmr))
+      mr_dc(2'd0);
+    if (((wr_ev && ({wa[31:3], 3'b000} == MrRefCnt)) ||
+         (rd_ev && ({ra[31:3], 3'b000} == MrRefCnt))) && (mr_rclk_age < MrClkRecent) &&
+        mr_own_tmr)
+      mr_dc(2'd1);
+    // cp_xdomain_phase: clk_ref_i quartile at the clk_i edge that completes
+    // a REFERENCE_COUNTER read.
+    if (rd_ev && ({ra[31:3], 3'b000} == MrRefCnt) && mr_own_tmr) begin
+      mr_clk_t e;
+      e      = '0;
+      e.xp   = mr_quart($realtime - mr_t_ref[0], mr_t_ref[0] - mr_t_ref[1]);
+      e.xp_v = 1'b1;
+      u_sep_clk_domain_cg.sample(e);
+    end
+    // cp_rstvec_tdr, the Update-DR cell: two clk_i edges after the update.
+    if (mr_tdr_upd != mr_tdr_seen) begin
+      mr_tdr_seen <= mr_tdr_upd;
+      mr_tdr_dly  <= 2'd2;
+    end else if (mr_tdr_dly != 2'd0) begin
+      mr_tdr_dly <= mr_tdr_dly - 2'd1;
+      if ((mr_tdr_dly == 2'd1) && (dmi_rst_vec_i != mr_tdr_before) && mr_own_entry)
+        mr_dbg_s(2'd1, 5'd1);
+    end
+  end
+
+  // cp_refcnt_ratio: four clk_ref_i periods against the clk_i period, exact
+  // to MrEdgeTol over the four periods.
+  logic [2:0] mr_ratio_last = 3'd7;
+  always @(posedge clk_ref_i) begin
+    realtime p4;
+    realtime pc;
+    int n;
+    for (int i = 4; i > 0; i--) mr_t_ref[i] = mr_t_ref[i-1];
+    mr_t_ref[0] = $realtime;
+    p4 = mr_t_ref[0] - mr_t_ref[4];
+    pc = mr_t_clk - mr_t_clk_p;
+    if (!mr_own_tmr) mr_ratio_last = 3'd7;
+    else if ((mr_t_ref[4] > 0.0) && (pc > 0.0)) begin
+      logic [2:0] code;
+      n    = int'(p4 / (4.0 * pc));
+      code = 3'd7;
+      if ((p4 - 4.0 * n * pc <= MrEdgeTol) && (4.0 * n * pc - p4 <= MrEdgeTol)) begin
+        case (n)
+          2: code = 3'd0;
+          3: code = 3'd1;
+          5: code = 3'd2;
+          8: code = 3'd3;
+          13: code = 3'd4;
+          default: code = 3'd7;
+        endcase
+      end
+      if ((code != 3'd7) && (code != mr_ratio_last)) begin
+        mr_cc_t e;
+        e      = '0;
+        e.rr   = code;
+        e.rr_v = 1'b1;
+        u_sep_cpu_ctrl_reg_cg.sample(e);
+      end
+      mr_ratio_last = code;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_boot_milestone_cg, cp_trace_activity, sep_static_tieoff_cg.
+  // ---------------------------------------------------------------------
+  int unsigned mr_smc_st = 0;
+  logic mr_smc_l = 1'b0;
+  logic [31:0] mr_pw_addr[16] = '{default: '0};
+  logic [15:0] mr_pw_v = '0;
+  logic [3:0] mr_pw_wp = '0;
+  logic mr_ff_arm = 1'b0;
+  logic mr_ta_on = 1'b0;
+  logic mr_ta_clean = 1'b0;
+  logic mr_ta_arm = 1'b0;
+  int unsigned mr_te_st = 0;
+  always @(posedge clk_i) begin
+    logic tv;
+    tv = (cpu_trace_valid_i === 1'b1);
+    // cp_smc_status_follow
+    mr_smc_l  <= (smc_fuse_done_i === 1'b1);
+    mr_smc_st <= ((smc_fuse_done_i === 1'b1) != mr_smc_l) ? 0 :
+        ((mr_smc_st < MrSmcSettle) ? mr_smc_st + 1 : mr_smc_st);
+    if (mr_own_rel && mr_rd_lo && (ar_addr_q == MrSmcSense) && (mr_smc_st >= MrSmcSettle)) begin
+      mr_boot_t e;
+      e      = '0;
+      e.sf   = {(smc_fuse_done_i === 1'b1), lsu_r_data_i[0]};
+      e.sf_v = 1'b1;
+      u_sep_boot_milestone_cg.sample(e);
+    end
+    // cp_presense_window
+    if (!mr_rst) mr_pw_v <= '0;
+    else if (mr_own_rel && r_any && !mr_secdis && in_blk(
+            ar_addr_q, SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, SEP_EFUSE_MAP_REG_MAP_SIZE
+        )) begin
+      logic hit;
+      hit = 1'b0;
+      for (int i = 0; i < 16; i++) if (mr_pw_v[i] && (mr_pw_addr[i] == ar_addr_q)) hit = 1'b1;
+      if (!mr_fuse && (lsu_r_resp_i == 2'b10)) begin
+        mr_boot_t e;
+        e                   = '0;
+        e.pw                = 2'd0;
+        e.pw_v              = 1'b1;
+        u_sep_boot_milestone_cg.sample(e);
+        mr_pw_addr[mr_pw_wp] <= ar_addr_q;
+        mr_pw_v[mr_pw_wp]    <= 1'b1;
+        mr_pw_wp             <= mr_pw_wp + 4'd1;
+      end else if (lsu_r_resp_i == AxiOkay) begin
+        if (!mr_fuse || hit) begin
+          mr_boot_t e;
+          e      = '0;
+          e.pw   = mr_fuse ? 2'd1 : 2'd2;
+          e.pw_v = 1'b1;
+          u_sep_boot_milestone_cg.sample(e);
+        end
+      end
+    end
+    // cp_first_fetch and cp_trace_activity
+    if (!mr_cpurn_q && mr_cpurn) begin
+      mr_ff_arm <= (mpc_run_req_i === 1'b1);
+      mr_ta_arm <= mr_ta_on && mr_ta_clean;
+      mr_ta_on  <= 1'b0;
+    end else if (tv && mr_cpurn) begin
+      if (mr_ff_arm && mr_own_entry) begin
+        mr_boot_t e;
+        e      = '0;
+        e.ff   = (cpu_trace_addr_i == BootRomBase) ? 2'd0 : 2'd1;
+        e.ff_v = 1'b1;
+        u_sep_boot_milestone_cg.sample(e);
+      end
+      if (mr_ta_arm && mr_own_entry) mr_dbg_s(2'd2, 5'd0);
+      mr_ff_arm <= 1'b0;
+      mr_ta_arm <= 1'b0;
+    end
+    if (mr_cpurn_q && !mr_cpurn) begin
+      mr_ta_on    <= 1'b1;
+      mr_ta_clean <= !tv;
+    end else if (!mr_cpurn && tv) mr_ta_clean <= 1'b0;
+    if (!mr_cpurn && tv && mr_own_entry) begin
+      mr_boot_t e;
+      e      = '0;
+      e.ff   = 2'd2;
+      e.ff_v = 1'b1;
+      u_sep_boot_milestone_cg.sample(e);
+      mr_dbg_s(2'd2, 5'd1);
+    end
+    // cp_test_en_consumer: every pin of a class equals test_en_i after the
+    // settle.
+    mr_te_st <= (mr_te != mr_te_q) ? 0 : ((mr_te_st < MrTeSettle + 1) ? mr_te_st + 1 : mr_te_st);
+    if (mr_own_scan && (mr_te_st == MrTeSettle)) begin
+      for (int c = 0; c < 2; c++) begin
+        if (mr_te ? te_pins_one_i[c] : te_pins_zero_i[c]) begin
+          mr_tie_t e;
+          e      = '0;
+          e.tc   = {mr_te, 1'(c)};
+          e.tc_v = 1'b1;
+          u_sep_static_tieoff_cg.sample(e);
+        end
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_reset_sw_ctrl_cg, cp_reserved_field_write.
+  // ---------------------------------------------------------------------
+  logic [6:0] mr_mw_a = '0;
+  logic [6:0] mr_mw_r = '0;
+  longint unsigned mr_mw_t = 0;
+  logic mr_pu_arm = 1'b0;
+  logic mr_rf_pend = 1'b0;
+  logic [1:0] mr_rf_reg = '0;
+  logic [1:0] mr_rf_shape = '0;
+  logic [31:0] mr_rf_exp = '0;
+  logic [31:0] mr_rf_base = '0;
+  always @(posedge clk_i) begin
+    // cp_field_transition
+    if (mr_own_swiso && mr_sw_wd_v && mr_srn && !mr_sovr) begin
+      for (int i = 0; i < 7; i++) begin
+        if (!mr_ovrd[i] && ((mr_ip_fall[i] && !mr_sw_wd[i]) || (mr_ip_rise[i] && mr_sw_wd[i]))) begin
+          mr_swc_t e;
+          e      = '0;
+          e.ft   = {3'(i), mr_ip_rise[i]};
+          e.ft_v = 1'b1;
+          u_sep_reset_sw_ctrl_cg.sample(e);
+        end
+      end
+    end
+    // cp_multi_field_write: the write, then every written tap moves.
+    if (mr_own_swiso && mr_wlo && (aw_addr_q == MrSwRst)) begin
+      logic [6:0] a;
+      logic [6:0] r;
+      a = mr_swv & ~w_data_q[6:0];
+      r = ~mr_swv & w_data_q[6:0];
+      mr_mw_a <= ($countones(a) >= 2) ? a : 7'd0;
+      mr_mw_r <= ($countones(r) >= 2) ? r : 7'd0;
+      mr_mw_t <= mr_cyc;
+    end else begin
+      if ((mr_mw_a != 0) && ((mr_ip & mr_mw_a) == 7'd0)) begin
+        if (mr_own_swiso) begin
+          mr_swc_t e;
+          e      = '0;
+          e.mw   = 1'b0;
+          e.mw_v = 1'b1;
+          u_sep_reset_sw_ctrl_cg.sample(e);
+        end
+        mr_mw_a <= '0;
+      end
+      if ((mr_mw_r != 0) && ((mr_ip & mr_mw_r) == mr_mw_r)) begin
+        if (mr_own_swiso) begin
+          mr_swc_t e;
+          e      = '0;
+          e.mw   = 1'b1;
+          e.mw_v = 1'b1;
+          u_sep_reset_sw_ctrl_cg.sample(e);
+        end
+        mr_mw_r <= '0;
+      end
+      if (mr_cyc - mr_mw_t > MrSeqTimeout) begin
+        mr_mw_a <= '0;
+        mr_mw_r <= '0;
+      end
+    end
+    // cp_power_up_value: a cold reset with the hmac field at 0 and a copy
+    // running, then the first SW_RESET_N read after the release.
+    if (mr_rst_fall) mr_pu_arm <= mr_own_ret && !mr_swv[3] && (dma_busy_i === 1'b1);
+    else if (mr_pu_arm && mr_rd_lo && (ar_addr_q == MrSwRst)) begin
+      if (mr_own_ret) begin
+        mr_swc_t e;
+        e = '0;
+        if (lsu_r_data_i[3]) begin
+          e.pu   = 1'b0;
+          e.pu_v = 1'b1;
+          u_sep_reset_sw_ctrl_cg.sample(e);
+        end
+        if (lsu_r_data_i[6:0] == MrSwRstDef) begin
+          e.pu   = 1'b1;
+          e.pu_v = 1'b1;
+          u_sep_reset_sw_ctrl_cg.sample(e);
+        end
+      end
+      mr_pu_arm <= 1'b0;
+    end
+    // cp_reserved_field_write: register 0 SW_RESET_N, 1 cold, 2 warm SCRATCH.
+    if (b_any) begin
+      int k;
+      k = mr_scr_idx(aw_addr_q);
+      if (mr_own_swiso && (mr_wbase == MrSwRst)) begin
+        if ((aw_addr_q[2:0] == 3'd0) && (w_strb_q == 8'hFF) && (w_data_q[63:7] != '0)) begin
+          mr_rf_pend  <= 1'b1;
+          mr_rf_reg   <= 2'd0;
+          mr_rf_shape <= 2'd0;
+          mr_rf_exp   <= 32'(w_data_q[6:0]);
+          mr_rf_base  <= MrSwRst;
+        end else if ((aw_addr_q[2:0] == 3'd4) && (w_strb_q == 8'hF0) &&
+                     (w_data_q[63:32] != '0)) begin
+          mr_rf_pend  <= 1'b1;
+          mr_rf_reg   <= 2'd0;
+          mr_rf_shape <= 2'd1;
+          mr_rf_exp   <= 32'(mr_swv);
+          mr_rf_base  <= MrSwRst;
+        end else if ((aw_addr_q[2:0] == 3'd0) && (w_strb_q == 8'h0F) &&
+                     (w_data_q[31:7] != '0)) begin
+          mr_rf_pend  <= 1'b1;
+          mr_rf_reg   <= 2'd0;
+          mr_rf_shape <= 2'd2;
+          mr_rf_exp   <= 32'(w_data_q[6:0]);
+          mr_rf_base  <= MrSwRst;
+        end
+      end else if (mr_own_ccreg && (k >= 0)) begin
+        if ((aw_addr_q[2:0] == 3'd0) && (w_strb_q == 8'hFF) && (w_data_q[63:32] != '0)) begin
+          mr_rf_pend  <= 1'b1;
+          mr_rf_reg   <= (k >= 8) ? 2'd2 : 2'd1;
+          mr_rf_shape <= 2'd0;
+          mr_rf_exp   <= w_data_q[31:0];
+          mr_rf_base  <= mr_wbase;
+        end else if ((aw_addr_q[2:0] == 3'd4) && (w_strb_q == 8'hF0) &&
+                     (w_data_q[63:32] != '0) && mr_scr_v[k]) begin
+          mr_rf_pend  <= 1'b1;
+          mr_rf_reg   <= (k >= 8) ? 2'd2 : 2'd1;
+          mr_rf_shape <= 2'd1;
+          mr_rf_exp   <= mr_scr[k];
+          mr_rf_base  <= mr_wbase;
+        end
+      end
+    end else if (mr_rf_pend && mr_rd_lo && (ar_addr_q == mr_rf_base)) begin
+      mr_rf_pend <= 1'b0;
+      if (((mr_rf_reg == 2'd0) ? (32'(lsu_r_data_i[6:0]) == mr_rf_exp) : (mr_rlo == mr_rf_exp)) &&
+          ((mr_rf_reg == 2'd0) ? mr_own_swiso : mr_own_ccreg))
+        u_sep_aperture_reserved_access_cg.sample(8'hFF, 2'd0, 3'd0, 2'd0, 1'b0, {
+                                                 mr_rf_reg, mr_rf_shape}, 1'b1);
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_cpu_ctrl_reg_cg (register points), sep_scratch_reg_access_cg and
+  // cp_timeout_write_inert.
+  // ---------------------------------------------------------------------
+  logic mr_rc_armed = 1'b0;
+  logic mr_rc_cold = 1'b0;
+  logic mr_rc_v1_ok = 1'b0;
+  logic [63:0] mr_rc_v1 = '0;
+  logic mr_rc_wpend = 1'b0;
+  logic [63:0] mr_rc_w = '0;
+  logic mr_vi_pend = 1'b0;
+  logic mr_nl = 1'b0;
+  logic mr_nl_ok = 1'b0;
+  logic [30:0] mr_nv = '0;
+  logic mr_nv_ok = 1'b0;
+  logic mr_nv_pend = 1'b0;
+  logic [1:0] mr_nl_pend = '0;  // {pending, value}
+  logic [1:0] mr_ss = '0;  // tracked bit 0 of SEP_ and SMC_FUSE_SENSE_STATUS
+  logic [1:0] mr_ss_ok = '0;
+  logic [1:0] mr_ss_pend = '0;
+  logic [1:0] mr_ba_pend[16] = '{default: '0};  // {pending, shape}
+  logic [31:0] mr_ba_exp[16] = '{default: '0};
+  logic [15:0] mr_ba_lo = '0;
+  logic [15:0] mr_ba_hi = '0;
+  logic [31:0] mr_ba_lov[16] = '{default: '0};
+  always @(posedge clk_i) begin
+    int k;
+    // cp_refcnt (a): a readback at or above 2^40, the rst_ni pulse, then a
+    // first read below 2^40 and a later larger read.
+    if (mr_rd64 && (ar_addr_q == MrRefCnt)) begin
+      mr_rc_armed <= (lsu_r_data_i >= 64'h100_0000_0000);
+      if (mr_rc_cold) begin
+        if (!mr_rc_v1_ok) begin
+          if (lsu_r_data_i < 64'h100_0000_0000) begin
+            mr_rc_v1    <= lsu_r_data_i;
+            mr_rc_v1_ok <= 1'b1;
+          end else mr_rc_cold <= 1'b0;
+        end else begin
+          if ((lsu_r_data_i > mr_rc_v1) && mr_own_tmr) begin
+            mr_cc_t e;
+            e      = '0;
+            e.rc   = 1'b0;
+            e.rc_v = 1'b1;
+            u_sep_cpu_ctrl_reg_cg.sample(e);
+          end
+          mr_rc_cold <= 1'b0;
+        end
+      end
+      // cp_refcnt (b) and cp_refcnt_write_class: the first read after a
+      // 64-bit write.
+      if (mr_rc_wpend) begin
+        mr_rc_wpend <= 1'b0;
+        if (mr_own_tmr) begin
+          mr_cc_t e;
+          e = '0;
+          if (lsu_r_data_i >= mr_rc_w) begin
+            e.rc   = 1'b1;
+            e.rc_v = 1'b1;
+            u_sep_cpu_ctrl_reg_cg.sample(e);
+          end
+          e = '0;
+          if (lsu_r_data_i[63:32] == mr_rc_w[63:32]) begin
+            e.rw   = {(mr_rc_w[31:0] >= 32'hFFFF_FFF0), 1'b0};
+            e.rw_v = 1'b1;
+          end else if (lsu_r_data_i[63:32] == mr_rc_w[63:32] + 32'd1) begin
+            e.rw   = {(mr_rc_w[31:0] >= 32'hFFFF_FFF0), 1'b1};
+            e.rw_v = 1'b1;
+          end
+          if (e.rw_v) u_sep_cpu_ctrl_reg_cg.sample(e);
+        end
+      end
+    end
+    if (mr_rst_fall) begin
+      mr_rc_cold  <= mr_own_tmr && mr_rc_armed;
+      mr_rc_v1_ok <= 1'b0;
+    end
+    if (wr_ev && (aw_addr_q == MrRefCnt) && (w_strb_q == 8'hFF)) begin
+      mr_rc_wpend <= 1'b1;
+      mr_rc_w     <= w_data_q;
+    end
+
+    // cp_version_id
+    if (b_any && (mr_wbase == MrVerId)) mr_vi_pend <= 1'b1;
+    else if (mr_vi_pend && mr_rd_lo && (ar_addr_q == MrVerId)) begin
+      mr_vi_pend <= 1'b0;
+      if ((mr_rlo == MrVerVal) && mr_own_ccreg) begin
+        mr_cc_t e;
+        e      = '0;
+        e.vi_v = 1'b1;
+        u_sep_cpu_ctrl_reg_cg.sample(e);
+      end
+    end
+    // SEP_NMI_VEC_LOCK and SEP_NMI_VEC trackers, cp_nmi_lock, cp_nmi_vec.
+    if (!mr_srn) begin
+      mr_nl_ok <= 1'b0;
+      mr_nv_ok <= 1'b0;
+    end else begin
+      if (mr_rd_lo && (ar_addr_q == MrNmiLock)) begin
+        mr_nl    <= lsu_r_data_i[0];
+        mr_nl_ok <= 1'b1;
+        if (mr_nl_pend[1] && lsu_r_data_i[0] && mr_own_ccreg) begin
+          mr_cc_t e;
+          e      = '0;
+          e.nl   = mr_nl_pend[0];
+          e.nl_v = 1'b1;
+          u_sep_cpu_ctrl_reg_cg.sample(e);
+        end
+        mr_nl_pend <= '0;
+      end else if (b_any && (aw_addr_q == MrNmiLock) && (w_strb_q[3:0] == 4'hF)) begin
+        if (mr_nl_ok && mr_nl) begin
+          if (w_data_q[31:0] == 32'h0) mr_nl_pend <= 2'b10;
+          else if (w_data_q[31:0] == 32'hFFFF_FFFF) mr_nl_pend <= 2'b11;
+        end
+        if (w_data_q[0]) mr_nl <= 1'b1;
+      end
+      if (mr_rd_lo && (ar_addr_q == MrNmiVec)) begin
+        if (mr_nv_pend && mr_nv_ok && (lsu_r_data_i[31:1] == mr_nv) && mr_own_ccreg) begin
+          mr_cc_t e;
+          e      = '0;
+          e.nv_v = 1'b1;
+          u_sep_cpu_ctrl_reg_cg.sample(e);
+        end
+        mr_nv      <= lsu_r_data_i[31:1];
+        mr_nv_ok   <= 1'b1;
+        mr_nv_pend <= 1'b0;
+      end else if (b_any && (aw_addr_q == MrNmiVec)) begin
+        mr_nv_pend <= mr_nl_ok && mr_nl && mr_nv_ok && (w_data_q[31:1] != mr_nv) &&
+            (((w_strb_q == 8'hFF) && (w_data_q[63:32] != '0)) || (w_strb_q == 8'h0F));
+        if (!(mr_nl_ok && mr_nl)) mr_nv_ok <= 1'b0;
+      end
+    end
+    // cp_status_ro_write: 0 SEP_FUSE_SENSE_STATUS, 1 SMC_FUSE_SENSE_STATUS.
+    for (int r = 0; r < 2; r++) begin
+      logic [31:0] ra;
+      ra = (r == 0) ? MrSepSense : MrSmcSense;
+      if (mr_rd_lo && (ar_addr_q == ra)) begin
+        if (mr_ss_pend[r] && mr_ss_ok[r] && (lsu_r_data_i[0] == mr_ss[r]) && mr_own_ccreg) begin
+          mr_cc_t e;
+          e      = '0;
+          e.sr   = 1'(r);
+          e.sr_v = 1'b1;
+          u_sep_cpu_ctrl_reg_cg.sample(e);
+        end
+        mr_ss[r]      <= lsu_r_data_i[0];
+        mr_ss_ok[r]   <= 1'b1;
+        mr_ss_pend[r] <= 1'b0;
+      end else if (b_any && (aw_addr_q == ra) && w_strb_q[0]) begin
+        mr_ss_pend[r] <= mr_ss_ok[r] && (w_data_q[0] != mr_ss[r]);
+      end
+    end
+    // cp_timeout_write_inert
+    if (wr_ev && ((mr_wbase == MrTmoClear) || (mr_wbase == MrTmoMode)) && mr_own_ccreg) begin
+      tmo_t e;
+      e      = '0;
+      e.ti   = (mr_wbase == MrTmoMode);
+      e.ti_v = 1'b1;
+      u_sep_cpu_ctrl_timeout_inert_cg.sample(e);
+    end
+    // cp_bank_reg_access
+    k = mr_scr_idx(aw_addr_q);
+    if (wr_ev && (k >= 0)) begin
+      if ((aw_addr_q[2:0] == 3'd0) && (w_strb_q == 8'hFF)) begin
+        mr_ba_pend[k] <= {(w_data_q[63:32] != '0), 1'b0};
+        mr_ba_exp[k]  <= w_data_q[31:0];
+        mr_ba_lo[k]   <= 1'b0;
+        mr_ba_hi[k]   <= 1'b0;
+      end else if ((aw_addr_q[2:0] == 3'd0) && (w_strb_q == 8'h0F)) begin
+        mr_ba_lov[k] <= w_data_q[31:0];
+        if (mr_ba_hi[k]) begin
+          mr_ba_pend[k] <= 2'b11;
+          mr_ba_exp[k]  <= w_data_q[31:0];
+          mr_ba_hi[k]   <= 1'b0;
+        end else mr_ba_lo[k] <= 1'b1;
+      end else if ((aw_addr_q[2:0] == 3'd4) && (w_strb_q == 8'hF0)) begin
+        if (w_data_q[63:32] == '0) begin
+          mr_ba_lo[k] <= 1'b0;
+          mr_ba_hi[k] <= 1'b0;
+        end else if (mr_ba_lo[k]) begin
+          mr_ba_pend[k] <= 2'b11;
+          mr_ba_exp[k]  <= mr_ba_lov[k];
+          mr_ba_lo[k]   <= 1'b0;
+        end else mr_ba_hi[k] <= 1'b1;
+      end
+    end
+    k = mr_scr_idx(ar_addr_q);
+    if (mr_rd64 && (k >= 0)) begin
+      if (mr_ba_pend[k][1] && (mr_rlo == mr_ba_exp[k]) && mr_own_ccreg) begin
+        mr_scr_t e;
+        e      = '0;
+        e.ba   = {(k >= 8), 3'(k % 8), mr_ba_pend[k][0]};
+        e.ba_v = 1'b1;
+        u_sep_scratch_reg_access_cg.sample(e);
+      end
+      mr_ba_pend[k] <= '0;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Watchdog and wakeup timer (sep_wdt_config_bark_cg,
+  // sep_wdt_wakeup_timer_cg). WDT state follows the 32-bit lane of each
+  // register; the aon_timer resets with rst_ni.
+  // ---------------------------------------------------------------------
+  longint unsigned mr_wtick = 0;
+  always @(posedge clk_wdt_i) mr_wtick <= mr_wtick + 1;
+  logic mr_wd_en = 1'b0;
+  logic mr_wd_en_ok = 1'b0;
+  logic [31:0] mr_wd_bark = '0;
+  logic mr_wd_bark_ok = 1'b0;
+  logic [31:0] mr_wd_bite = '0;
+  logic [31:0] mr_wd_cnt = '0;
+  logic mr_wd_cnt_ok = 1'b0;
+  longint unsigned mr_wd_cnt_t = 0;
+  logic mr_wd_pair = 1'b0;  // no write between two count reads
+  logic [31:0] mr_wd_prev_rd = '0;  // previous WDT read address
+  logic mr_ax_ctrl = 1'b0;
+  logic mr_bs_forced = 1'b0;
+  logic mr_bs_clr = 1'b0;
+  logic mr_bs_f0 = 1'b0;
+  logic mr_bs_f1 = 1'b0;
+  logic mr_rw = 1'b1;
+  logic mr_rw_ok = 1'b0;
+  logic mr_lk_sticky = 1'b0;
+  logic mr_lk_cold = 1'b0;
+  logic mr_lk_rw1 = 1'b0;
+  logic mr_bt_pend = 1'b0;
+  logic [31:0] mr_bt_w = '0;
+  logic [31:0] mr_bt_prev = '0;
+  logic mr_bt_prev_ok = 1'b0;
+  logic [1:0] mr_bt_rw = '0;  // {known, regwen}
+  logic mr_bt_cold = 1'b0;
+  logic [31:0] mr_to_prev = '0;
+  logic mr_to_prev_ok = 1'b0;
+  logic mr_to_near = 1'b0;
+  logic mr_ad_sz32 = 1'b0;
+  logic [31:0] mr_wk_hi = '0;
+  logic mr_wk_pre = 1'b0;
+  logic [1:0] mr_wk_seen = '0;  // {LO written, HI written} since WKUP_CTRL
+  logic mr_wk_first = 1'b0;  // 1 LO written first
+  logic mr_wk_exp = 1'b0;
+  logic mr_bs_bad_q = 1'b0;
+  wire mr_wd_wr = mr_wl32;
+  wire [31:0] mr_wd_wa = aw_addr_q;
+  wire [31:0] mr_wd_ra = ar_addr_q;
+  always @(posedge clk_i) begin
+    if (!mr_rst) begin
+      mr_wd_en_ok   <= 1'b0;
+      mr_wd_bark_ok <= 1'b0;
+      mr_wd_cnt_ok  <= 1'b0;
+      mr_bs_forced  <= 1'b0;
+      mr_bs_clr     <= 1'b0;
+      mr_bs_f0      <= 1'b0;
+      mr_bs_f1      <= 1'b0;
+      mr_rw_ok      <= 1'b0;
+      mr_lk_sticky  <= 1'b0;
+      mr_bt_pend    <= 1'b0;
+      mr_to_near    <= 1'b0;
+      mr_wk_exp     <= 1'b0;
+      mr_wk_seen    <= '0;
+      mr_wk_pre     <= 1'b0;
+    end else begin
+      if (mr_rst_rise) mr_lk_cold <= mr_own_tmr;
+      // Writes.
+      if (mr_wd_wr && in_blk(mr_wd_wa, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE)) begin
+        case (mr_wd_wa)
+          MrWdCtrl: begin
+            mr_wd_en    <= wr_data[0];
+            mr_wd_en_ok <= 1'b1;
+            mr_wd_pair  <= 1'b0;
+          end
+          MrWdCount: mr_wd_pair <= 1'b0;
+          MrWdBark: begin
+            mr_bt_pend    <= 1'b1;
+            mr_bt_w       <= wr_data;
+            mr_bt_prev    <= mr_wd_bark;
+            mr_bt_prev_ok <= mr_wd_bark_ok;
+            mr_bt_rw      <= {mr_rw_ok, mr_rw};
+            mr_bt_cold    <= mr_lk_rw1;
+            mr_wd_pair    <= 1'b0;
+          end
+          MrWdBite: mr_wd_bite <= wr_data;
+          MrWdRegwen: begin
+            if (!wr_data[0]) begin
+              mr_rw    <= 1'b0;
+              mr_rw_ok <= 1'b1;
+            end else if (mr_rw_ok && !mr_rw) mr_lk_sticky <= 1'b1;
+          end
+          MrWdIntrTest: begin
+            if (wr_data[MrWdBarkBit]) begin
+              mr_bs_forced <= 1'b1;
+              if (mr_wd_en_ok && !mr_wd_en) mr_bs_f0 <= 1'b1;
+              if (mr_wd_en_ok && mr_wd_en && mr_wd_cnt_ok && mr_wd_bark_ok &&
+                  (mr_wd_cnt < (mr_wd_bark >> 1)))
+                mr_bs_f1 <= 1'b1;
+            end
+          end
+          MrWdIntrState: begin
+            if (wr_data[MrWdBarkBit] && mr_bs_forced) begin
+              mr_bs_forced <= 1'b0;
+              mr_bs_clr    <= 1'b1;
+            end
+          end
+          MrWkCtrl: begin
+            mr_wk_exp <= 1'b0;
+            if (wr_data[0] && mr_own_tmr && (mr_wk_hi != 0) && mr_wk_pre) begin
+              mr_wkup_t e;
+              logic [11:0] p;
+              p      = wr_data[12:1];
+              e      = '0;
+              e.wp   = (p == 12'd0) ? 3'd0 : ((p == 12'd1) ? 3'd1 : ((p == 12'hFFF) ? 3'd3 : 3'd2));
+              e.wp_v = 1'b1;
+              u_sep_wdt_wakeup_timer_cg.sample(e);
+              if (mr_wk_seen == 2'b11) begin
+                e.wp = mr_wk_first ? 3'd5 : 3'd4;
+                u_sep_wdt_wakeup_timer_cg.sample(e);
+              end
+              mr_wk_exp <= 1'b1;
+            end
+            mr_wk_seen <= '0;
+          end
+          MrWkThHi: begin
+            mr_wk_hi <= wr_data;
+            if (mr_wk_seen == 2'b00) mr_wk_first <= 1'b0;
+            mr_wk_seen[0] <= 1'b1;
+          end
+          MrWkThLo: begin
+            if (mr_wk_seen == 2'b00) mr_wk_first <= 1'b1;
+            mr_wk_seen[1] <= 1'b1;
+          end
+          MrWkCntLo: mr_wk_pre <= (wr_data == 32'hFFFF_FFF0);
+          default: ;
+        endcase
+      end
+      // Reads.
+      if (rd_ev && in_blk(mr_wd_ra, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE)) begin
+        mr_wd_prev_rd <= mr_wd_ra;
+        case (mr_wd_ra)
+          MrWdCtrl: begin
+            mr_wd_en    <= rd_data[0];
+            mr_wd_en_ok <= 1'b1;
+            if (mr_wd_prev_rd == MrWdCount) mr_ax_ctrl <= 1'b1;
+          end
+          MrWdBark: begin
+            mr_wd_bark    <= rd_data;
+            mr_wd_bark_ok <= 1'b1;
+            if (mr_bt_pend && mr_bt_prev_ok && (mr_bt_w != mr_bt_prev) && mr_own_tmr) begin
+              mr_wdt_t e;
+              e    = '0;
+              e.lk = 2'd0;
+              if (rd_data == mr_bt_w) begin
+                if (mr_bt_cold) begin
+                  e.lk   = 2'd1;
+                  e.lk_v = 1'b1;
+                end else if (mr_bt_rw == 2'b10) begin
+                  e.lk   = 2'd2;
+                  e.lk_v = 1'b1;
+                end
+              end else if ((rd_data == mr_bt_prev) && (mr_bt_rw == 2'b11)) begin
+                e.lk   = 2'd3;
+                e.lk_v = 1'b1;
+              end
+              if (e.lk_v) u_sep_wdt_config_bark_cg.sample(e);
+            end
+            mr_bt_pend <= 1'b0;
+            if (mr_bt_cold) mr_lk_rw1 <= 1'b0;
+          end
+          MrWdBite: mr_wd_bite <= rd_data;
+          MrWdRegwen: begin
+            if (mr_lk_sticky && !rd_data[0] && mr_own_tmr) begin
+              mr_wdt_t e;
+              e      = '0;
+              e.lk   = 2'd0;
+              e.lk_v = 1'b1;
+              u_sep_wdt_config_bark_cg.sample(e);
+            end
+            mr_lk_sticky <= 1'b0;
+            mr_rw        <= rd_data[0];
+            mr_rw_ok     <= 1'b1;
+            if (mr_lk_cold) begin
+              mr_lk_rw1  <= rd_data[0];
+              mr_lk_cold <= 1'b0;
+            end
+          end
+          MrWdCount: begin
+            logic chg;
+            chg = mr_wd_cnt_ok && (rd_data != mr_wd_cnt);
+            // cp_enable_outcome
+            if (mr_own_tmr && mr_wd_cnt_ok && mr_wd_pair && mr_wd_en_ok) begin
+              mr_wdt_t e;
+              e = '0;
+              if (mr_wd_bark_ok && (mr_wd_cnt < mr_wd_bark) && (rd_data >= mr_wd_bark)) begin
+                e.eo   = {mr_wd_en, 3'd2};
+                e.eo_v = 1'b1;
+              end else if (mr_wtick - mr_wd_cnt_t >= MrWdtGap) begin
+                e.eo   = {mr_wd_en, (rd_data == mr_wd_cnt) ? 3'd0 : 3'd1};
+                e.eo_v = 1'b1;
+              end
+              if (e.eo_v) u_sep_wdt_config_bark_cg.sample(e);
+            end
+            // cp_access_x_register
+            if (mr_own_tmr && chg && mr_wd_en_ok && mr_wd_en) begin
+              mr_wdt_t e;
+              e      = '0;
+              e.ax_v = 1'b1;
+              if (mr_ax_ctrl) begin
+                e.ax = 1'b0;
+                u_sep_wdt_config_bark_cg.sample(e);
+              end
+              if ((mr_wd_prev_rd == MrWdCount) || (mr_wd_prev_rd == MrWdCtrl)) begin
+                e.ax = 1'b1;
+                u_sep_wdt_config_bark_cg.sample(e);
+              end
+            end
+            mr_ax_ctrl   <= 1'b0;
+            mr_wd_cnt    <= rd_data;
+            mr_wd_cnt_ok <= 1'b1;
+            mr_wd_cnt_t  <= mr_wtick;
+            mr_wd_pair   <= 1'b1;
+          end
+          MrWdIntrState: begin
+            mr_wdt_t e;
+            e      = '0;
+            e.bs_v = mr_own_tmr;
+            if (mr_bs_f0 && rd_data[MrWdBarkBit]) begin
+              e.bs = 3'd2;
+              if (e.bs_v) u_sep_wdt_config_bark_cg.sample(e);
+            end
+            if (mr_bs_f1 && rd_data[MrWdBarkBit]) begin
+              e.bs = 3'd3;
+              if (e.bs_v) u_sep_wdt_config_bark_cg.sample(e);
+            end
+            if (mr_bs_clr && !rd_data[MrWdBarkBit]) begin
+              e.bs = 3'd1;
+              if (e.bs_v) u_sep_wdt_config_bark_cg.sample(e);
+            end
+            if (rd_data[MrWdBarkBit] && !mr_bs_forced) begin
+              e.bs = 3'd0;
+              if (e.bs_v) u_sep_wdt_config_bark_cg.sample(e);
+            end
+            mr_bs_f0  <= 1'b0;
+            mr_bs_f1  <= 1'b0;
+            mr_bs_clr <= 1'b0;
+            if (rd_data[0] && mr_wk_exp && (mr_wk_hi != 0) && mr_own_tmr) begin
+              mr_wkup_t w;
+              w         = '0;
+              w.wp      = 3'd6;
+              w.wp_v    = 1'b1;
+              u_sep_wdt_wakeup_timer_cg.sample(w);
+              mr_wk_exp <= 1'b0;
+            end
+          end
+          MrWkThHi: mr_wk_hi <= rd_data;
+          default: ;
+        endcase
+      end
+    end
+    // cp_bark_status illegal cell: the bite request in a forced window.
+    mr_bs_bad_q <= mr_bs_forced && mr_bite;
+    if (mr_bs_forced && mr_bite && !mr_bs_bad_q && mr_own_tmr) begin
+      mr_wdt_t e;
+      e      = '0;
+      e.bs   = 3'd4;
+      e.bs_v = 1'b1;
+      u_sep_wdt_config_bark_cg.sample(e);
+    end
+    // cp_thold_order
+    if (!mr_own_tmr) mr_to_prev_ok <= 1'b0;
+    if (!mr_bark_q && mr_bark && mr_own_tmr) begin
+      mr_wdt_t e;
+      e      = '0;
+      e.to_v = 1'b1;
+      if (!mr_bite) begin
+        e.to = 2'd0;
+        u_sep_wdt_config_bark_cg.sample(e);
+      end
+      if (mr_to_prev_ok && mr_wd_bark_ok && (mr_wd_bark > mr_to_prev)) begin
+        e.to = 2'd1;
+        u_sep_wdt_config_bark_cg.sample(e);
+      end
+      mr_to_prev    <= mr_wd_bark;
+      mr_to_prev_ok <= mr_wd_bark_ok;
+      mr_to_near    <= mr_wd_bark_ok && (mr_wd_bark[31:16] == 16'hFFFF);
+    end
+    if (!mr_bite_q && mr_bite && mr_own_tmr) begin
+      mr_wdt_t e;
+      e      = '0;
+      e.to_v = 1'b1;
+      if (mr_to_near && (mr_wd_bite[31:16] == 16'hFFFF)) begin
+        e.to = 2'd2;
+        u_sep_wdt_config_bark_cg.sample(e);
+      end
+      if (!mr_bark) begin
+        e.to = 2'd3;
+        u_sep_wdt_config_bark_cg.sample(e);
+      end
+      mr_to_near <= 1'b0;
+    end
+    // cp_adapt_stage: a stage handshake of a 32-bit LSU access to the
+    // watchdog window, by the lane of the stage address.
+    if ((aw_hs && in_blk(lsu_aw_addr_i, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE)))
+      mr_ad_sz32 <= (lsu_aw_size_i == 3'd2);
+    else if (ar_hs && in_blk(lsu_ar_addr_i, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE))
+      mr_ad_sz32 <= (lsu_ar_size_i == 3'd2);
+    if (mr_own_tmr && mr_ad_sz32) begin
+      logic [3:0] hs;
+      logic [3:0] hi;
+      hs[0] = (wdt_axi_req_i.ar_valid && wdt_axi_resp_i.ar_ready) ||
+          (wdt_axi_req_i.aw_valid && wdt_axi_resp_i.aw_ready);
+      hi[0] = (wdt_axi_req_i.ar_valid && wdt_axi_resp_i.ar_ready) ?
+          wdt_axi_req_i.ar.addr[2] : wdt_axi_req_i.aw.addr[2];
+      hs[1] = (wdt_axi_off_req_i.ar_valid && wdt_axi_resp_i.ar_ready) ||
+          (wdt_axi_off_req_i.aw_valid && wdt_axi_resp_i.aw_ready);
+      hi[1] = (wdt_axi_off_req_i.ar_valid && wdt_axi_resp_i.ar_ready) ?
+          wdt_axi_off_req_i.ar.addr[2] : wdt_axi_off_req_i.aw.addr[2];
+      hs[2] = (wdt_axil_req_i.ar_valid && wdt_axil_resp_i.ar_ready) ||
+          (wdt_axil_req_i.aw_valid && wdt_axil_resp_i.aw_ready);
+      hi[2] = (wdt_axil_req_i.ar_valid && wdt_axil_resp_i.ar_ready) ?
+          wdt_axil_req_i.ar.addr[2] : wdt_axil_req_i.aw.addr[2];
+      hs[3] = wdt_tl_h2d_i.a_valid && wdt_tl_d2h_i.a_ready;
+      hi[3] = wdt_tl_h2d_i.a_address[2];
+      for (int g = 0; g < 4; g++) begin
+        if (hs[g] === 1'b1) begin
+          mr_wdt_t e;
+          e      = '0;
+          e.ad   = {2'(g), hi[g] === 1'b1};
+          e.ad_v = 1'b1;
+          u_sep_wdt_config_bark_cg.sample(e);
+        end
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // CPU-only reset and the bus-error latches (sep_wdt_escalation_fault_cg,
+  // cp_latch_x_reset_kind, cp_boot_consequence), the DMA reset points
+  // (sep_periph_reset_state_cg, sep_dma_containment_cg).
+  // ---------------------------------------------------------------------
+  logic [1:0] mr_co_pre = '0;  // {bit 42, bit 40} before the pulse
+  logic mr_co_newf = 1'b0;
+  logic mr_co_on = 1'b0;
+  logic mr_co_rel = 1'b0;
+  int unsigned mr_co_cnt = 0;
+  logic mr_lt_dma = 1'b0;
+  logic [1:0] mr_lt_per = '0;  // PERIPH_BUS_ERR_STATUS bits 3 (otbn) and 2 (kmac)
+  logic [1:0] mr_lk_pend = '0;  // {pending, kind}
+  logic mr_lk_dma = 1'b0;
+  logic [1:0] mr_lk_per = '0;
+  logic mr_lk_dma_done = 1'b0;
+  logic mr_lk_per_done = 1'b0;
+  logic [31:0] mr_dr_pre[9] = '{default: '0};
+  logic [8:0] mr_dr_pre_ok = '0;
+  logic [31:0] mr_dr_snap[9] = '{default: '0};
+  logic [8:0] mr_dr_snap_ok = '0;
+  logic [8:0] mr_dr_done = '0;
+  logic mr_dr_arm = 1'b0;
+  logic mr_dr_wr = 1'b0;
+  logic mr_rg_cleared = 1'b0;
+  logic mr_rg_pulse = 1'b0;
+  logic mr_rg_cold = 1'b0;
+  always @(posedge clk_i) begin
+    int di;
+    // CPU-only pulse.
+    if (mr_wdt_fall) begin
+      mr_co_pre  <= {mr_vec_q[42], mr_vec_q[40]};
+      mr_co_newf <= 1'b0;
+      mr_co_on   <= mr_own_ret;
+      mr_co_rel  <= 1'b0;
+    end else if (mr_co_on && !mr_wdt) begin
+      if (|err_pulse_i[8:0]) mr_co_newf <= 1'b1;
+    end else if (mr_co_on && mr_wdt_rise) begin
+      mr_co_on  <= 1'b0;
+      mr_co_rel <= 1'b1;
+      mr_co_cnt <= 0;
+      if (|err_pulse_i[8:0]) mr_co_newf <= 1'b1;
+    end else if (mr_co_rel) begin
+      mr_co_cnt <= mr_co_cnt + 1;
+      if (|err_pulse_i[8:0]) mr_co_newf <= 1'b1;
+      if (mr_co_cnt == MrRelSettle) begin
+        mr_co_rel <= 1'b0;
+        if (mr_own_ret && !mr_co_newf) begin
+          for (int b = 0; b < 2; b++) begin
+            logic now;
+            now = (b == 0) ? vec_i[40] : vec_i[42];
+            if (now) begin
+              mr_esc_t e;
+              fsa_t    f;
+              f      = '0;
+              f.bc   = 1'(b);
+              f.bc_v = 1'b1;
+              u_sep_fault_source_ack_cg.sample(f);
+              if (mr_co_pre[b]) begin
+                e      = '0;
+                e.cs   = 1'(b);
+                e.cs_v = 1'b1;
+                u_sep_wdt_escalation_fault_cg.sample(e);
+              end
+            end
+          end
+        end
+      end
+    end
+    // cp_latch_x_reset_kind: the latch read set before the reset, then the
+    // first status read after it.
+    if (dbe_rd) mr_lt_dma <= dbe_val[0];
+    if (pbe_rd) mr_lt_per <= {pbe_val[3], pbe_val[2]};
+    if ((mr_wdt_fall || mr_rst_fall) && mr_own_ret) begin
+      mr_lk_pend     <= {1'b1, mr_rst_fall};
+      mr_lk_dma      <= mr_lt_dma;
+      mr_lk_per      <= mr_lt_per;
+      mr_lk_dma_done <= 1'b0;
+      mr_lk_per_done <= 1'b0;
+    end else if (mr_lk_pend[1]) begin
+      if (dbe_rd && mr_lk_dma && !mr_lk_dma_done) begin
+        mr_lk_dma_done <= 1'b1;
+        if ((dbe_val[0] != mr_lk_pend[0]) && mr_own_ret) begin
+          fsa_t f;
+          f      = '0;
+          f.lk   = {1'b0, mr_lk_pend[0]};
+          f.lk_v = 1'b1;
+          u_sep_fault_source_ack_cg.sample(f);
+        end
+      end
+      if (pbe_rd && (mr_lk_per != 0) && !mr_lk_per_done) begin
+        mr_lk_per_done <= 1'b1;
+        if ((((pbe_val[3] & mr_lk_per[1]) | (pbe_val[2] & mr_lk_per[0])) != mr_lk_pend[0]) &&
+            mr_own_ret) begin
+          fsa_t f;
+          f      = '0;
+          f.lk   = {1'b1, mr_lk_pend[0]};
+          f.lk_v = 1'b1;
+          u_sep_fault_source_ack_cg.sample(f);
+        end
+      end
+    end
+    // DMA registers: the value read before the cold reset, then the first
+    // read after the release and before any DMA write.
+    di = -1;
+    for (int i = 0; i < 9; i++) if (ar_addr_q == MrDmaAddr[i]) di = i;
+    if (rd_ev && (di >= 0)) begin
+      mr_dr_pre[di]    <= rd_data;
+      mr_dr_pre_ok[di] <= 1'b1;
+    end
+    if (mr_rst_fall) begin
+      mr_dr_arm     <= mr_own_ret;
+      mr_dr_snap    <= mr_dr_pre;
+      mr_dr_snap_ok <= mr_dr_pre_ok;
+      mr_dr_done    <= '0;
+      mr_dr_wr      <= 1'b0;
+    end else if (mr_dr_arm && mr_rst) begin
+      if (wr_ev && in_blk(aw_addr_q, SECURE_DMA_REG_MAP_BASE_ADDR, SECURE_DMA_REG_MAP_SIZE))
+        mr_dr_wr <= 1'b1;
+      if (rd_ev && (di >= 0) && !mr_dr_wr && mr_dr_snap_ok[di] && !mr_dr_done[di] &&
+          mr_own_ret) begin
+        logic [31:0] pre;
+        pre = mr_dr_snap[di];
+        mr_dr_done[di] <= 1'b1;
+        if (pre != MrDmaDef[di])
+          u_sep_periph_reset_state_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, 4'(di), 1'b1, 1'b0, 1'b0, 2'd0,
+                                             1'b0);
+        if ((di == MrDmaRegwen) && (pre[3:0] == 4'h0) && (rd_data[3:0] == 4'h6))
+          u_sep_periph_reset_state_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, 4'd0, 1'b0, 1'b0, 1'b1, 2'd0,
+                                             1'b0);
+        if ((di == MrDmaHsie) && (pre[10:0] == 11'h0) && (rd_data[10:0] == 11'h7FF))
+          u_sep_periph_reset_state_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, 4'd0, 1'b0, 1'b1, 1'b1, 2'd0,
+                                             1'b0);
+        if ((di == MrDmaRangeValid) && (pre[0] != 1'b0) && (rd_data[0] == 1'b0))
+          u_sep_periph_reset_state_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, 4'd0, 1'b0, 1'b0, 1'b0, 2'd0,
+                                             1'b1);
+        if ((di == MrDmaRegwen) && (pre[3:0] != 4'h6) && (rd_data[3:0] == 4'h6))
+          u_sep_periph_reset_state_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, 4'd0, 1'b0, 1'b0, 1'b0, 2'd1,
+                                             1'b1);
+        if ((di == MrDmaHsie) && (pre[10:0] != 11'h7FF) && (rd_data[10:0] == 11'h7FF))
+          u_sep_periph_reset_state_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, 4'd0, 1'b0, 1'b0, 1'b0, 2'd2,
+                                             1'b1);
+      end
+    end
+    // cp_dma_lock_recovery: RANGE_REGWEN cleared to 0x0, then a CPU-only pulse
+    // or a cold reset, then the next read.
+    if (rd_ev && (di == MrDmaRegwen)) begin
+      if (mr_rg_pulse && (rd_data[3:0] == 4'h0) && mr_own_ret) begin
+        mr_dmac_t e;
+        e      = '0;
+        e.lr   = 1'b0;
+        e.lr_v = 1'b1;
+        u_sep_dma_containment_cg.sample(e);
+      end
+      if (mr_rg_cold && (rd_data[3:0] == 4'h6) && mr_own_ret) begin
+        mr_dmac_t e;
+        e      = '0;
+        e.lr   = 1'b1;
+        e.lr_v = 1'b1;
+        u_sep_dma_containment_cg.sample(e);
+      end
+      mr_rg_pulse   <= 1'b0;
+      mr_rg_cold    <= 1'b0;
+      mr_rg_cleared <= (rd_data[3:0] == 4'h0);
+    end else begin
+      if ((mr_wdt_fall || mr_dbg_fall) && mr_rg_cleared && mr_own_ret) mr_rg_pulse <= 1'b1;
+      if (mr_rst_fall && mr_rg_cleared && mr_own_ret) begin
+        mr_rg_cold    <= 1'b1;
+        mr_rg_pulse   <= 1'b0;
+        mr_rg_cleared <= 1'b0;
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_reset_scope_retention_cg (bank outcome, units, isolation order,
+  // never-isolated ports, pulse position, override without isolation) and
+  // sep_crypto_reset_cg.
+  // ---------------------------------------------------------------------
+  int unsigned mr_tlr_seen = 0;
+  logic [1:0] mr_bo_pend = '0;
+  logic [2:0] mr_bo_cls[2] = '{default: '0};
+  logic [31:0] mr_bo_snap[16] = '{default: '0};
+  logic [15:0] mr_bo_snap_ok = '0;
+  logic [31:0] mr_nu_addr[5][4] = '{default: '{default: '0}};
+  logic [31:0] mr_nu_data[5][4] = '{default: '{default: '0}};
+  logic [3:0] mr_nu_v[5] = '{default: '0};
+  logic [3:0] mr_nu_arm[5] = '{default: '0};
+  logic [1:0] mr_nu_wp[5] = '{default: '0};
+  longint unsigned mr_ack_clr_t[5] = '{default: 0};
+  logic [4:0] mr_rel_wait = '0;
+  longint unsigned mr_rel_t[5] = '{default: 0};
+  logic mr_ps_on = 1'b0;
+  logic mr_ps_fell = 1'b0;
+  int unsigned mr_ps_d = 0;
+  longint unsigned mr_ps_tw = 0;
+  longint unsigned mr_ps_tf = 0;
+  logic [1:0] mr_lp_ok = '0;
+  longint unsigned mr_lp_t[2] = '{default: 0};
+  logic [5:0] mr_on_on = '0;
+  logic [5:0] mr_on_ok = '0;
+  logic [5:0] mr_on_cond_q = '0;
+  logic [5:0] mr_ox_combo_q[6] = '{default: '0};
+  int unsigned mr_ox_cnt[6] = '{default: 0};
+  logic [3:0] mr_op_state[4] = '{default: '0};  // {phase, first 0 sw 1 override, 0}
+  longint unsigned mr_op_t[4] = '{default: 0};
+  logic [5:0] mr_ip_s = '0;  // independence step set, ip_rst_n[6:1]
+  logic mr_ip_post = 1'b0;
+  logic [5:0] mr_ip_done = '0;
+  logic [31:0] mr_eg_addr[6][4] = '{default: '{default: '0}};
+  logic [31:0] mr_eg_data[6][4] = '{default: '{default: '0}};
+  logic [3:0] mr_eg_v[6] = '{default: '0};
+  logic [1:0] mr_eg_wp[6] = '{default: '0};
+
+  function automatic int mr_unit(input logic [31:0] a);
+    blk_e b;
+    b = blk_of(a);
+    case (b)
+      BLK_SPI: return 0;
+      BLK_DMA: return 1;
+      BLK_WDT: return 2;
+      BLK_AXIL_MBOX: return 3;
+      BLK_SCRATCH_COLD, BLK_SCRATCH_WARM: return 4;
+      default: return -1;
+    endcase
+  endfunction
+
+  // Engine domain of a register block, SW_RESET_N bit order 1..5.
+  function automatic int mr_engine(input logic [31:0] a);
+    blk_e b;
+    b = blk_of(a);
+    case (b)
+      BLK_OTBN: return 1;
+      BLK_AES: return 2;
+      BLK_HMAC: return 3;
+      BLK_KMAC: return 4;
+      BLK_ESRC, BLK_CSRNG, BLK_EDN: return 5;
+      default: return -1;
+    endcase
+  endfunction
+
+  always @(posedge clk_i) begin
+    int u;
+    int g;
+    logic tap_ev;
+    // Event classes of cp_bank_class_outcome: 0 power-on, 1 watchdog,
+    // 2 per-IP software, 3 dbg_rstb_i, 4 TAP.
+    tap_ev = mr_trst_fall || (mr_tlr_ev != mr_tlr_seen);
+    mr_tlr_seen <= mr_tlr_ev;
+    if ((mr_own_swiso || mr_own_entry) &&
+        (mr_rst_fall || mr_wdt_fall || mr_eng_rst || mr_dbg_fall || tap_ev)) begin
+      logic [2:0] c;
+      c = mr_rst_fall ? 3'd0 : (mr_wdt_fall ? 3'd1 : (mr_eng_rst ? 3'd2 :
+          (mr_dbg_fall ? 3'd3 : 3'd4)));
+      mr_bo_pend    <= 2'b11;
+      mr_bo_cls[0]  <= c;
+      mr_bo_cls[1]  <= c;
+      mr_bo_snap    <= mr_scr;
+      for (int k = 0; k < 16; k++) mr_bo_snap_ok[k] <= mr_scr_v[k] && (mr_scr[k] != '0);
+    end else if (mr_rd_lo && (mr_scr_idx(ar_addr_q) >= 0)) begin
+      int k;
+      int b;
+      k = mr_scr_idx(ar_addr_q);
+      b = (k >= 8) ? 1 : 0;
+      if (mr_bo_pend[b] && mr_bo_snap_ok[k]) begin
+        mr_bo_pend[b] <= 1'b0;
+        if ((mr_own_swiso || mr_own_entry) && ((mr_rlo == mr_bo_snap[k]) || (mr_rlo == '0))) begin
+          mr_scope_t e;
+          e      = '0;
+          e.bo   = {1'(b), mr_bo_cls[b], (mr_rlo == mr_bo_snap[k])};
+          e.bo_v = 1'b1;
+          u_sep_reset_scope_retention_cg.sample(e);
+        end
+      end
+    end
+    if (!mr_own_swiso && !mr_own_entry) mr_bo_pend <= '0;
+
+    // cp_km_reset_condition
+    if (mr_own_swiso && mr_sw_ok && !mr_ovrd[0]) begin
+      if (mr_ip_fall[0] && (&iso_req_i[5:0])) begin
+        mr_scope_t e;
+        e      = '0;
+        e.km   = 1'b0;
+        e.km_v = 1'b1;
+        u_sep_reset_scope_retention_cg.sample(e);
+      end
+      if (mr_ip_rise[0]) begin
+        mr_scope_t e;
+        e      = '0;
+        e.km   = 1'b1;
+        e.km_v = 1'b1;
+        u_sep_reset_scope_retention_cg.sample(e);
+      end
+    end
+
+    // cp_iso_order_per_domain and cp_trng_iso_order.
+    for (int d = 0; d < 5; d++) begin
+      int i;
+      logic [13:0] set;
+      i   = MrIsoIdx[d];
+      set = mr_iso_set(d);
+      if (((mr_ack_q & set) != 0) && ((iso_ack_i & set) == 0)) mr_ack_clr_t[d] <= mr_cyc;
+      if (mr_own_swiso && mr_ip_sw_fall[i]) begin
+        mr_scope_t e;
+        e      = '0;
+        e.io   = {3'(d), ((iso_ack_i & set) == set) ? 2'd0 : 2'd2};
+        e.io_v = 1'b1;
+        u_sep_reset_scope_retention_cg.sample(e);
+      end
+      if (mr_ip_rise[i] && mr_sw_ok && !mr_ovrd[i]) begin
+        if (((iso_ack_i & set) == 0) && (mr_cyc - mr_ack_clr_t[d] <= MrIsoAllow)) begin
+          if (mr_own_swiso) begin
+            mr_scope_t e;
+            e      = '0;
+            e.io   = {3'(d), 2'd1};
+            e.io_v = 1'b1;
+            u_sep_reset_scope_retention_cg.sample(e);
+            if (d == 4) begin
+              e      = '0;
+              e.ti_v = 1'b1;
+              u_sep_reset_scope_retention_cg.sample(e);
+            end
+          end
+        end else if ((iso_ack_i & set) != 0) begin
+          mr_rel_wait[d] <= 1'b1;
+          mr_rel_t[d]    <= mr_cyc;
+        end
+      end else if (mr_rel_wait[d]) begin
+        if ((iso_ack_i & set) == 0) begin
+          mr_rel_wait[d] <= 1'b0;
+          if (mr_own_swiso) begin
+            mr_scope_t e;
+            e      = '0;
+            e.io   = {3'(d), 2'd1};
+            e.io_v = 1'b1;
+            u_sep_reset_scope_retention_cg.sample(e);
+            if (d == 4) begin
+              e      = '0;
+              e.ti_v = 1'b1;
+              u_sep_reset_scope_retention_cg.sample(e);
+            end
+          end
+        end else if (mr_cyc - mr_rel_t[d] > MrIsoAllow) mr_rel_wait[d] <= 1'b0;
+      end
+    end
+
+    // cp_never_isolated_port and cp_trng_nonmember.
+    if (r_any && (mr_own_swiso)) begin
+      int p;
+      logic iso;
+      logic [31:0] a;
+      a   = ar_addr_q;
+      iso = (lsu_r_resp_i == 2'b10) && (rd_data == MrIsoData);
+      p   = -1;
+      if (in_win(a, MrTrngLo, MrTrngHi)) p = 0;
+      else if (blk_of(a) == BLK_KM_MBOX) p = 1;
+      else if (blk_of(a) == BLK_LIFECYCLE) p = 2;
+      else if (a == MrPoolStatus) p = 3;
+      if ((p >= 0) && ((iso_ack_i & MrAckApproved) != 0)) begin
+        if (iso || ((p == 0) ? 1'b1 : (lsu_r_resp_i == AxiOkay))) begin
+          mr_scope_t e;
+          e      = '0;
+          e.np   = {2'(p), iso};
+          e.np_v = 1'b1;
+          u_sep_reset_scope_retention_cg.sample(e);
+        end
+      end
+      if (!mr_ip[5]) begin
+        mr_crst_t e;
+        e = '0;
+        if ((blk_of(a) == BLK_POOL) && (lsu_r_resp_i == AxiOkay)) begin
+          e.tn   = 1'b0;
+          e.tn_v = 1'b1;
+        end else if (in_win(a, MrTrngLo, MrTrngHi) && !iso) begin
+          e.tn   = 1'b1;
+          e.tn_v = 1'b1;
+        end
+        if (e.tn_v) u_sep_crypto_reset_cg.sample(e);
+      end
+    end
+
+    // cp_no_sw_reset_units: an armed write that reads back unchanged after
+    // a software engine reset.
+    u = mr_unit(aw_addr_q);
+    if (mr_wl32 && (u >= 0)) begin
+      logic hit;
+      hit = 1'b0;
+      for (int j = 0; j < 4; j++) begin
+        if (mr_nu_v[u][j] && (mr_nu_addr[u][j] == aw_addr_q)) begin
+          mr_nu_data[u][j] <= wr_data;
+          mr_nu_arm[u][j]  <= 1'b0;
+          hit = 1'b1;
+        end
+      end
+      if (!hit) begin
+        mr_nu_addr[u][mr_nu_wp[u]] <= aw_addr_q;
+        mr_nu_data[u][mr_nu_wp[u]] <= wr_data;
+        mr_nu_v[u][mr_nu_wp[u]]    <= 1'b1;
+        mr_nu_arm[u][mr_nu_wp[u]]  <= 1'b0;
+        mr_nu_wp[u]                <= mr_nu_wp[u] + 2'd1;
+      end
+    end else if (mr_eng_rst) begin
+      for (int x = 0; x < 5; x++) mr_nu_arm[x] <= mr_nu_v[x];
+    end
+    u = mr_unit(ar_addr_q);
+    if (rd_ev && (u >= 0)) begin
+      for (int j = 0; j < 4; j++) begin
+        if (mr_nu_arm[u][j] && (mr_nu_addr[u][j] == ar_addr_q)) begin
+          mr_nu_arm[u][j] <= 1'b0;
+          if ((rd_data == mr_nu_data[u][j]) && ((u == 2) ? mr_own_tmr : mr_own_swiso)) begin
+            mr_scope_t e;
+            e      = '0;
+            e.nu   = 3'(u);
+            e.nu_v = 1'b1;
+            u_sep_reset_scope_retention_cg.sample(e);
+          end
+        end
+      end
+    end
+
+    // cp_pulse_vs_sequence: the domain D of an overlap run is the first
+    // field of OTBN, AES, KMAC or Adams Bridge that the write clears.
+    if (mr_wlo && (aw_addr_q == MrSwRst) && mr_own_ret) begin
+      logic [6:0] clr;
+      int dd;
+      clr = mr_swv & ~w_data_q[6:0] & 7'b101_0110;
+      dd  = -1;
+      for (int i = 6; i >= 1; i--) if (clr[i]) dd = i;
+      if (dd >= 0) begin
+        mr_ps_on   <= 1'b1;
+        mr_ps_fell <= 1'b0;
+        mr_ps_d    <= dd;
+        mr_ps_tw   <= mr_cyc;
+        for (int c = 0; c < 2; c++) begin
+          if (mr_lp_ok[c] && (mr_cyc - mr_lp_t[c] <= MrPulseBand)) begin
+            mr_scope_t e;
+            e      = '0;
+            e.pv   = {1'(c), 2'd0};
+            e.pv_v = 1'b1;
+            u_sep_reset_scope_retention_cg.sample(e);
+          end
+        end
+      end
+    end else if (mr_ps_on) begin
+      if (!mr_ps_fell && mr_ip_fall[mr_ps_d]) begin
+        mr_ps_fell <= 1'b1;
+        mr_ps_tf   <= mr_cyc;
+      end else if (!mr_ps_fell && (mr_cyc - mr_ps_tw > MrSeqTimeout)) begin
+        mr_ps_on <= 1'b0;
+        if (mr_own_ret) begin
+          mr_scope_t e;
+          e      = '0;
+          e.pv   = 3'b0_11;
+          e.pv_v = 1'b1;
+          u_sep_reset_scope_retention_cg.sample(e);
+        end
+      end else if (mr_ps_fell && mr_ip[mr_ps_d] && (mr_cyc - mr_ps_tf > MrPulseBand))
+        mr_ps_on <= 1'b0;
+    end
+    for (int c = 0; c < 2; c++) begin
+      if ((c == 0) ? mr_wdt_fall : mr_dbg_fall) begin
+        mr_lp_ok[c] <= 1'b1;
+        mr_lp_t[c]  <= mr_cyc;
+        if (mr_ps_on && mr_own_ret) begin
+          mr_scope_t e;
+          e = '0;
+          if (!mr_ps_fell) begin
+            e.pv   = {1'(c), 2'd1};
+            e.pv_v = 1'b1;
+          end else if (!mr_ip[mr_ps_d] || (mr_cyc - mr_ps_tf <= MrPulseBand)) begin
+            e.pv   = {1'(c), 2'd2};
+            e.pv_v = 1'b1;
+          end
+          if (e.pv_v) u_sep_reset_scope_retention_cg.sample(e);
+        end
+      end
+    end
+    if (!mr_own_ret) begin
+      mr_ps_on <= 1'b0;
+      mr_lp_ok <= '0;
+    end
+
+    // cp_ovrd_no_iso: an override with value 0 while the software bit is 1;
+    // the host-path isolate-complete bits of the domain stay 0.
+    for (int j = 0; j < 6; j++) begin
+      int i;
+      logic cond;
+      logic [13:0] hm;
+      i    = j + 1;
+      hm   = mr_host_set(i);
+      cond = mr_ovrd[i] && !mr_oval[i];
+      mr_on_cond_q[j] <= cond;
+      if (cond && !mr_on_cond_q[j]) begin
+        mr_on_on[j] <= mr_own_ovr && mr_swv[i];
+        mr_on_ok[j] <= 1'b1;
+      end else if (mr_on_on[j] && cond) begin
+        if (!mr_swv[i] || !mr_own_ovr) mr_on_on[j] <= 1'b0;
+        else if (((iso_ack_i & hm) != 0) && mr_on_ok[j]) begin
+          mr_scope_t e;
+          mr_on_ok[j] <= 1'b0;
+          e      = '0;
+          e.on   = {3'(j), 1'b1};
+          e.on_v = 1'b1;
+          u_sep_reset_scope_retention_cg.sample(e);
+        end
+      end else if (mr_on_on[j] && !cond) begin
+        mr_on_on[j] <= 1'b0;
+        if (mr_on_ok[j] && mr_own_ovr) begin
+          mr_scope_t e;
+          e      = '0;
+          e.on   = {3'(j), 1'b0};
+          e.on_v = 1'b1;
+          u_sep_reset_scope_retention_cg.sample(e);
+        end
+      end
+    end
+
+    // cp_ip_ovrd_x_sw: each (E, V, software bit) held for its settle time.
+    for (int j = 0; j < 6; j++) begin
+      int i;
+      logic [5:0] combo;
+      i     = j + 1;
+      combo = {3'(j), mr_ovrd[i], mr_ovrd[i] && mr_oval[i], mr_swv[i]};
+      if ((combo != mr_ox_combo_q[j]) || !mr_sw_ok) mr_ox_cnt[j] <= 0;
+      else if (mr_ox_cnt[j] <= MrSwSettle) mr_ox_cnt[j] <= mr_ox_cnt[j] + 1;
+      mr_ox_combo_q[j] <= combo;
+      if (mr_own_ovr && mr_sw_ok && (combo == mr_ox_combo_q[j]) &&
+          (mr_ox_cnt[j] == (mr_ovrd[i] ? MrOvrdSettle : MrSwSettle))) begin
+        mr_crst_t e;
+        logic expv;
+        expv   = mr_ovrd[i] ? mr_oval[i] : mr_swv[i];
+        e      = '0;
+        e.ox   = {combo, (mr_ip[i] != expv)};
+        e.ox_v = 1'b1;
+        u_sep_crypto_reset_cg.sample(e);
+      end
+    end
+
+    // cp_ovrd_priority: both the software bit and the override hold the
+    // domain; the tap stays low after the first release and rises after the
+    // second. State: 0 idle, 1 both, 2 one released, 3 both released.
+    for (int j = 0; j < 4; j++) begin
+      int i;
+      logic swa;
+      logic ova;
+      i   = j + 1;
+      swa = !mr_swv[i];
+      ova = mr_ovrd[i] && !mr_oval[i];
+      case (mr_op_state[j][3:2])
+        2'd0: if (swa && ova && !mr_ip[i] && mr_own_ovr) mr_op_state[j] <= 4'b01_0_0;
+        2'd1: begin
+          if (!swa && !ova) mr_op_state[j] <= '0;
+          else if (!swa || !ova) mr_op_state[j] <= {2'd2, swa, 1'b0};
+        end
+        2'd2: begin
+          if (mr_ip[i]) begin
+            if (mr_own_ovr) begin
+              mr_crst_t e;
+              e      = '0;
+              e.op   = {2'(j), mr_op_state[j][1], 1'b1};
+              e.op_v = 1'b1;
+              u_sep_crypto_reset_cg.sample(e);
+            end
+            mr_op_state[j] <= '0;
+          end else if (!swa && !ova) begin
+            mr_op_state[j] <= {2'd3, mr_op_state[j][1], 1'b0};
+            mr_op_t[j]     <= mr_cyc;
+          end
+        end
+        default: begin
+          if (mr_ip[i]) begin
+            if (mr_own_ovr) begin
+              mr_crst_t e;
+              e      = '0;
+              e.op   = {2'(j), mr_op_state[j][1], 1'b0};
+              e.op_v = 1'b1;
+              u_sep_crypto_reset_cg.sample(e);
+            end
+            mr_op_state[j] <= '0;
+          end else if (mr_cyc - mr_op_t[j] > MrSeqTimeout) mr_op_state[j] <= '0;
+        end
+      endcase
+      if (!mr_own_ovr) mr_op_state[j] <= '0;
+    end
+
+    // cp_independence_pair: a step that asserts two or more domains, its
+    // release, then a victim read that returns an armed value.
+    g = mr_engine(aw_addr_q);
+    if (mr_wl32 && (g >= 1)) begin
+      logic hit;
+      hit = 1'b0;
+      for (int j = 0; j < 4; j++) begin
+        if (mr_eg_v[g][j] && (mr_eg_addr[g][j] == aw_addr_q)) begin
+          mr_eg_data[g][j] <= wr_data;
+          hit = 1'b1;
+        end
+      end
+      if (!hit) begin
+        mr_eg_addr[g][mr_eg_wp[g]] <= aw_addr_q;
+        mr_eg_data[g][mr_eg_wp[g]] <= wr_data;
+        mr_eg_v[g][mr_eg_wp[g]]    <= 1'b1;
+        mr_eg_wp[g]                <= mr_eg_wp[g] + 2'd1;
+      end
+    end
+    if (mr_wlo && (aw_addr_q == MrSwRst)) begin
+      logic [6:0] a;
+      a = mr_swv & ~w_data_q[6:0];
+      if (a[6:1] != 0) begin
+        mr_ip_s    <= ($countones(a[6:1]) >= 2) ? a[6:1] : 6'd0;
+        mr_ip_post <= 1'b0;
+      end else if ((mr_ip_s != 0) && ((w_data_q[6:1] & mr_ip_s) == mr_ip_s)) begin
+        mr_ip_post <= 1'b1;
+        mr_ip_done <= '0;
+      end
+    end
+    g = mr_engine(ar_addr_q);
+    if (rd_ev && (g >= 1) && mr_ip_post && !mr_ip_s[g-1] && !mr_ip_done[g-1] && mr_own_swiso) begin
+      for (int j = 0; j < 4; j++) begin
+        if (mr_eg_v[g][j] && (mr_eg_addr[g][j] == ar_addr_q) && (rd_data == mr_eg_data[g][j])) begin
+          mr_ip_done[g-1] <= 1'b1;
+          for (int ag = 1; ag <= 5; ag++) begin
+            if (mr_ip_s[ag-1]) begin
+              mr_crst_t e;
+              e      = '0;
+              e.ip   = {3'(ag), 3'(g)};
+              e.ip_v = 1'b1;
+              u_sep_crypto_reset_cg.sample(e);
+            end
+          end
+        end
+      end
+    end
+    if (!mr_own_swiso) begin
+      mr_ip_s    <= '0;
+      mr_ip_post <= 1'b0;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_documented_absence_cg: secure_tm_o around the sampling events.
+  // ---------------------------------------------------------------------
+  logic mr_st_was1 = 1'b0;
+  logic mr_st_arm = 1'b0;
+  logic mr_st_lvl = 1'b0;
+  logic mr_st_strap = 1'b0;
+  int unsigned mr_st_rel = 0;  // clk_i edges since the rst_ni release
+  int unsigned mr_st_sense = 0;  // clk_i edges since the sense-done rise
+  logic mr_st_cap = 1'b0;
+  logic [3:0] mr_ne_on = '0;
+  logic [3:0] mr_ne_ok = '0;
+  logic [3:0] mr_ne_s0 = '0;
+  int unsigned mr_ne_hold[4] = '{default: 0};
+  logic mr_ss_on = 1'b0;
+  logic mr_ss_s0 = 1'b0;
+  int unsigned mr_ss_cnt = 0;
+  always @(posedge clk_i) begin
+    logic chg;
+    logic in_win_ev;
+    logic [3:0] ev_start;
+    logic [3:0] ev_end;
+    // cp_secure_tm_state: the clear with rst_ni low and the strap at 1.
+    if (mr_rst && mr_stm) mr_st_was1 <= 1'b1;
+    if (mr_rst_fall) begin
+      mr_st_arm  <= mr_own_stm && mr_st_was1;
+      mr_st_was1 <= 1'b0;
+    end
+    if (!mr_rst) begin
+      mr_st_lvl   <= mr_stm;
+      mr_st_strap <= mr_strap;
+    end
+    if (mr_rst_rise) begin
+      if (mr_st_arm && mr_own_stm && !mr_st_lvl && mr_st_strap) begin
+        mr_abs_t e;
+        e      = '0;
+        e.st_v = 1'b1;
+        u_sep_documented_absence_cg.sample(e);
+      end
+      mr_st_arm <= 1'b0;
+    end
+    // Sampling-event windows.
+    if (!mr_rst) begin
+      mr_st_rel <= 0;
+      mr_st_cap <= 1'b0;
+    end else if (mr_st_rel < MrStmCapWin + 2) mr_st_rel <= mr_st_rel + 1;
+    if (!mr_fuse_q && mr_fuse) mr_st_sense <= 1;
+    else if ((mr_st_sense != 0) && (mr_st_sense < MrStmSenseWin + 1))
+      mr_st_sense <= mr_st_sense + 1;
+    else if (mr_st_sense == MrStmSenseWin + 1) begin
+      mr_st_sense <= 0;
+      mr_st_cap   <= mr_rst;
+    end
+    // Early capture: secure_tm_o rises within MrStmCapWin edges of the
+    // release, SEC_DIS asserted and the strap at 1.
+    chg = mr_rst && mr_rst_q && (mr_stm != mr_stm_q);
+    if (chg && mr_stm && (mr_st_rel <= MrStmCapWin) && mr_secdis && mr_strap && mr_own_stm) begin
+      mr_abs_t e;
+      e      = '0;
+      e.ev   = 3'd0;
+      e.ev_v = 1'b1;
+      u_sep_documented_absence_cg.sample(e);
+      mr_st_cap <= 1'b1;
+    end
+    in_win_ev = (mr_st_rel <= MrStmCapWin + 1) || (mr_st_sense != 0) || (!mr_fuse_q && mr_fuse);
+    if (chg && !in_win_ev && mr_own_stm) begin
+      mr_abs_t e;
+      e      = '0;
+      e.ev   = 3'd5;
+      e.ev_v = 1'b1;
+      if (mr_st_cap) begin
+        e.sk   = 1'b1;
+        e.sk_v = 1'b1;
+      end
+      u_sep_documented_absence_cg.sample(e);
+    end
+    // Non-sampling events: 0 wdt_rst_ni, 1 dbg_rstb_i, 2 software engine
+    // reset (ip_rst_n[3]), 3 sep_reset_n override.
+    ev_start = {mr_ovr_rise, mr_ip_sw_fall[3], mr_dbg_fall, mr_wdt_fall};
+    ev_end   = {mr_ovr_fall, mr_ip_rise[3], mr_dbg_rise, mr_wdt_rise};
+    for (int x = 0; x < 4; x++) begin
+      if (!mr_rst || !mr_own_stm) mr_ne_on[x] <= 1'b0;
+      else if (ev_start[x]) begin
+        mr_ne_on[x]   <= 1'b1;
+        mr_ne_ok[x]   <= 1'b1;
+        mr_ne_s0[x]   <= mr_stm_q;
+        mr_ne_hold[x] <= 0;
+      end else if (mr_ne_on[x]) begin
+        if (mr_stm != mr_ne_s0[x]) mr_ne_ok[x] <= 1'b0;
+        if (ev_end[x] || (mr_ne_hold[x] != 0)) mr_ne_hold[x] <= mr_ne_hold[x] + 1;
+        if (mr_ne_hold[x] == MrStmSettle) begin
+          mr_ne_on[x] <= 1'b0;
+          if (mr_ne_ok[x] && (mr_stm == mr_ne_s0[x])) begin
+            mr_abs_t e;
+            e      = '0;
+            e.ev   = 3'(x + 1);
+            e.ev_v = 1'b1;
+            u_sep_documented_absence_cg.sample(e);
+          end
+        end
+      end
+    end
+    // cp_stm_strap_stability: after a capture, a strap change and a hold.
+    if (!mr_rst || !mr_own_stm) mr_ss_on <= 1'b0;
+    else if (mr_st_cap && (mr_strap != mr_strap_q)) begin
+      mr_ss_on  <= 1'b1;
+      mr_ss_s0  <= mr_stm;
+      mr_ss_cnt <= 0;
+    end else if (mr_ss_on) begin
+      if (mr_stm != mr_ss_s0) mr_ss_on <= 1'b0;
+      else if (mr_ss_cnt == MrStmHold) begin
+        mr_abs_t e;
+        mr_ss_on <= 1'b0;
+        e      = '0;
+        e.sk   = 1'b0;
+        e.sk_v = 1'b1;
+        u_sep_documented_absence_cg.sample(e);
+      end else mr_ss_cnt <= mr_ss_cnt + 1;
     end
   end
 

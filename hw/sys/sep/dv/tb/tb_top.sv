@@ -4069,6 +4069,61 @@ module sep_uvm_top
     assign fcov_filt_locked[14] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[14].locked;
     assign fcov_filt_locked[15] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[15].locked;
 
+    // Memory, boot, reset, WDT and clock sampler taps (docs/SEP_FCOV.adoc,
+    // memory, boot, reset groups, Sampled signal paths): read-only, no force.
+    // The reset-vector TDR and the IFU-side AXI cells exist only with the full
+    // core; the stub build ties the TDR to 0 and lists no IFU cell.
+`ifndef SEP_CPU_STUB
+    wire [30:0] fcov_dmi_rst_vec = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_rst_vec;
+    wire [2:0]  fcov_te_cpu = {
+        `SEP_CORE.u_sep_cpu.u_ifu_axi_demux.test_i,
+        `SEP_CORE.u_sep_cpu.u_ifu_axi_err_slv.test_i,
+        `SEP_CORE.u_sep_cpu.u_lsu_axi_demux.test_i
+    };
+`else
+    wire [30:0] fcov_dmi_rst_vec = '0;
+    wire [2:0]  fcov_te_cpu = {3{`SEP_CORE.u_sep_cpu.u_lsu_axi_demux.test_i}};
+`endif
+    // Consumers of test_en_i: the Secure DMA clock gater, and the AXI cell
+    // test inputs that test_en_i drives.
+`define SEP_FCOV_IC `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect
+    wire        fcov_te_gater = `SEP_CORE.u_sep_dma_wrap.u_secure_dma.dma_clk_gate.test_en_i;
+    wire [33:0] fcov_te_axi = {
+        fcov_te_cpu,
+        `SEP_CORE.u_efuse_shim_demux.test_i,
+        `SEP_CORE.u_sram_burst_demux.test_i,
+        `SEP_CORE.u_sram_burst_err_slv.test_i,
+        `SEP_CORE.u_boot_rom_axi_mux.test_i,
+        `SEP_CORE.u_sep_crypto.u_efuse_shim_axi_mux.test_i,
+        `SEP_FCOV_IC.u_axi_demux.test_i,
+        `SEP_FCOV_IC.u_axi_err_slv.test_i,
+        `SEP_FCOV_IC.u_otbn_axi_to_axi_lite.test_i,
+        `SEP_FCOV_IC.u_otbn_host_isolate.test_i,
+        `SEP_FCOV_IC.u_hmac_axi_to_axi_lite.test_i,
+        `SEP_FCOV_IC.u_hmac_host_isolate.test_i,
+        `SEP_FCOV_IC.u_aes_axi_to_axi_lite.test_i,
+        `SEP_FCOV_IC.u_aes_host_isolate.test_i,
+        `SEP_FCOV_IC.u_kmac_axi_to_axi_lite.test_i,
+        `SEP_FCOV_IC.u_kmac_host_isolate.test_i,
+        `SEP_FCOV_IC.u_otbn_key_isolate.test_i,
+        `SEP_FCOV_IC.u_aes_key_isolate.test_i,
+        `SEP_FCOV_IC.u_hmac_key_isolate.test_i,
+        `SEP_FCOV_IC.u_kmac_key_isolate.test_i,
+        `SEP_FCOV_IC.u_abr_key_isolate.test_i,
+        `SEP_FCOV_IC.u_km_efuse_isolate.test_i,
+        `SEP_FCOV_IC.u_km_axi_to_axi_lite.test_i,
+        `SEP_FCOV_IC.u_esrc_axi_to_axi_lite.test_i,
+        `SEP_FCOV_IC.u_esrc_host_isolate.test_i,
+        `SEP_FCOV_IC.u_csrng_axi_to_axi_lite.test_i,
+        `SEP_FCOV_IC.u_csrng_host_isolate.test_i,
+        `SEP_FCOV_IC.u_edn_axi_to_axi_lite.test_i,
+        `SEP_FCOV_IC.u_edn_host_isolate.test_i,
+        `SEP_FCOV_IC.u_trng_axi_to_axi_lite.test_i,
+        `SEP_CORE.u_sep_wdt_wrap.u_wdt_axi_to_axi_lite.test_i,
+        `SEP_CORE.u_sep_reset_ctrl.u_axi_to_axi_lite.test_i
+    };
+`undef SEP_FCOV_IC
+
     sep_fcov u_sep_fcov (
         .clk_i                 (clk_i),
         .rst_ni                (rst_n_int),
@@ -4317,7 +4372,41 @@ module sep_uvm_top
         .ext_irq_i         (sep_ext_interrupts_i),
         .out_resp_hold_i   (smn_outbound_resp_hold_i),
         .out_rd_slverr_i   (smn_outbound_rd_slverr_i),
-        .spi_irq_field_i   (sep_io_spi_req_w.irq)
+        .spi_irq_field_i   (sep_io_spi_req_w.irq),
+
+        // Memory, boot, reset, WDT and clock taps.
+        .clk_wdt_i         (clk_wdt_i),
+        .clk_ref_i         (clk_ref_i),
+        .wdt_rst_n_i       (wdt_rst_ni_i),
+        .dbg_rstb_i        (dbg_rstb_i),
+        .scan_rst_n_i      (scan_rst_ni_i !== 1'b0),
+        .test_en_i         (test_en_i === 1'b1),
+        .jtag_tck_i        (jtag_core_tck),
+        .jtag_tms_i        (jtag_core_tms),
+        .jtag_tdi_i        (jtag_core_tdi),
+        .jtag_trst_n_i     (jtag_core_trst_n),
+        .jtag_tdo_i        (jtag_tdo_o),
+        .ext_boot_done_i   (ext_boot_seq_done_i),
+        .mpc_run_req_i     (mpc_reset_run_req),
+        .mpc_run_sync_i    (mpc_run_sync_probe_o),
+        .strap_i           (test_en_strap_i),
+        .wdt_rst_req_i     (wdt_timer_rst_req_o),
+        .ip_rst_n_i        (`SEP_CORE.sep_crypto_gated_rst_n),
+        .iso_req_i         (crypto_isolate_req_probe_o),
+        .iso_ack_i         (crypto_isolated_probe_o),
+        .aon_rst_n_i       (aon_rst_n_probe_o),
+        .km_cond_rst_n_i   (km_cond_rst_probe_o),
+        .jtag_rst_ctrl_i   (jtag_sep_reset_ctrl_drive),
+        .dmi_rst_vec_i     (fcov_dmi_rst_vec),
+        .wdt_axi_req_i     (`SEP_CORE.u_sep_wdt_wrap.sep_wdt_tlul_axi_req),
+        .wdt_axi_off_req_i (`SEP_CORE.u_sep_wdt_wrap.sep_wdt_tlul_axi_req_offset),
+        .wdt_axi_resp_i    (`SEP_CORE.u_sep_wdt_wrap.sep_wdt_tlul_axi_resp),
+        .wdt_axil_req_i    (`SEP_CORE.u_sep_wdt_wrap.axi_lite_req),
+        .wdt_axil_resp_i   (`SEP_CORE.u_sep_wdt_wrap.axi_lite_resp),
+        .wdt_tl_h2d_i      (`SEP_CORE.u_sep_wdt_wrap.tl_d_i),
+        .wdt_tl_d2h_i      (`SEP_CORE.u_sep_wdt_wrap.tl_d_o),
+        .te_pins_one_i     ({&fcov_te_axi, fcov_te_gater === 1'b1}),
+        .te_pins_zero_i    ({~|fcov_te_axi, fcov_te_gater === 1'b0})
     );
 `endif
 
