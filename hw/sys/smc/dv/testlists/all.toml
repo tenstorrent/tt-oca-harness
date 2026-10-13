@@ -56,7 +56,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 433
+expected_count = 456
 tests = [
     "smc_dfd_csr_field_access_test",
     "smc_dfx_aperture_extent_test",
@@ -491,6 +491,29 @@ tests = [
   "smc_uart_irq_thre_identify_test",
   "smc_uart_fifo_control_depth_test",
   "smc_uart_reg_reset_rw_test",
+  "smc_mbx_inbound_irq_vector_test",
+  "smc_mailbox_access_error_test",
+  "smc_mailbox_flush_status_test",
+  "smc_mailbox_pair_datapath_test",
+  "smc_mailbox_threshold_irqs_test",
+  "smc_mailbox_irq_ack_output_test",
+  "smc_mailbox_register_map_reset_test",
+  "smc_hang_sys_timeout_window_test",
+  "smc_hang_irq_or_matrix_test",
+  "smc_hang_data_timeout_window_test",
+  "smc_hang_sep_timeout_window_test",
+  "smc_hang_sep_threshold_test",
+  "smc_hang_sep_drop_controls_test",
+  "smc_sync_irq_isolation_test",
+  "smc_irq_csr_readback_test",
+  "smc_irq_vector_assembly_test",
+  "smc_sep_wdt_irq_level_test",
+  "smc_irq_reserved_idle_zero_test",
+  "smc_sep_mbx_irq_vector_test",
+  "smc_ndm_irq_or_test",
+  "smc_ext_irq_low_bits_test",
+  "smc_ext_irq_hold_release_test",
+  "smc_ext_irq_pulse_sampling_test",
 ]
 
 [[groups]]
