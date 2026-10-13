@@ -254,6 +254,34 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "lane 0 are low, and with the enable clear lane 0 stays low under the action",
         ),
     ],
+    "smu_octs_reset_and_secondary_hold_test": [
+        (
+            "CHK-OCTSR-RESET-CSR",
+            "OCTSR_RESET_CSR",
+            "OCTS CTRL reads its RDL reset word, the seven other CSRs read 0 and STATUS.RUNNING is 0",
+        ),
+        (
+            "CHK-OCTSR-RESET-PIN",
+            "OCTSR_RESET_PIN",
+            "timer_count_o is 0 on every clk_smu sample from reset release until the START write",
+        ),
+        (
+            "CHK-OCTSR-STRAP-LOW",
+            "OCTSR_STRAP_LOW",
+            "strap low: SMC_ATTRIBUTES.chiplet_is_primary reads 0 and STATUS.MODE reads SECONDARY",
+        ),
+        (
+            "CHK-OCTSR-SECONDARY-HOLD",
+            "OCTSR_SECONDARY_HOLD",
+            "SECONDARY ignores TIMER_START: STATUS.RUNNING 0 and timer_count_o 0 for 1024 cycles",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A waits and pin samplers with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<PASS"),
+    ],
     "smu_otp_prod_error_resp_test": [
         (
             "CHK-OTP-PROD-SMC-REFUSED",
@@ -458,6 +486,41 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "BSR_EXTEST_TDO_MATCH",
             "TB BSR scan loopback TDO (declared stub; pad BSR out of scope)",
         ),
+    ],
+    "smu_dtp_debug_control_fields_test": [
+        (
+            "CHK-DBGCTL-RESET-VALUES",
+            "CHK-DBGCTL-RESET-VALUES",
+            "DEBUG_CONTROL bits 3:0 and bit 4 read 0 after reset with every request idle",
+        ),
+        (
+            "CHK-DBGCTL-RW-BITS",
+            "CHK-DBGCTL-RW-BITS",
+            "bits 0..3 each read back the written 1 and the written 0 with the other bits 0",
+        ),
+        (
+            "CHK-DBGCTL-BIT4-READONLY",
+            "CHK-DBGCTL-BIT4-READONLY",
+            "bit 4 reads 0 with a 1 shifted in and no request, and 1 with a lane request "
+            "while 0 is shifted in",
+        ),
+        (
+            "CHK-JTAG-STOP-LATENCY",
+            "CHK-JTAG-STOP-LATENCY",
+            "dtp_stop_clks_o rises and falls within 64 clk_smu of the jtag_clock_stop TDR update",
+        ),
+        (
+            "CHK-DBGCTL-RESET-CLEARS",
+            "CHK-DBGCTL-RESET-CLEARS",
+            "TRST, Test-Logic-Reset via TMS and power-on reset each clear jtag_clock_stop, "
+            "cla_clock_stop_en and dtp_stop_clks_o",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded TDR, pin and reset waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<PASS"),
     ],
     "smu_dtp_scan_chain_boundary_test": [
         (
@@ -1296,6 +1359,25 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-SEP-DCCM-WRITE", "SEP_DCCM_WRITE_OK", "SEP firmware stored results into DCCM"),
         ("CHK-NONVAC", "CHK-NONVAC", "boot scoreboard verdict with the SMC arm TEST_PASS seen"),
     ],
+    "smu_smc_aperture_reset_state_test": [
+        (
+            "CHK-APRT-BASES",
+            "APRT_BASES",
+            "GLOBAL_BASE, LOCAL_BASE and REGION_SIZE read their RDL reset values over JTAG2AXI",
+        ),
+        (
+            "CHK-APRT-REGION-PIN",
+            "APRT_REGION_PIN",
+            "smc_region_size_o carries the REGION_SIZE reset value 0x0100_0000",
+        ),
+        (
+            "CHK-APRT-CLOCK-GATES",
+            "APRT_CLOCK_GATES",
+            "the five peripheral cg_en bits read 0 and cg_hysteresis reads its reset value",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<PASS"),
+    ],
     "smu_smc_boundary_io_test": [
         (
             "CHK-SMU-NDMRESET-REQ",
@@ -1652,6 +1734,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "store landed in the CSR and not only in a testbench mirror",
         ),
     ],
+    "smu_smc_scratch_bridge_readback_test": [
+        (
+            "CHK-COMP-SCRATCH-READBACK",
+            "COMP_SCRATCH_READBACK",
+            "SCRATCH[0..15] read 0 at reset and read back the written pattern over JTAG2AXI",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<PASS"),
+    ],
     "smu_smc_smoke_test": [
         ("CHK-SMC-ROM-READ", "SMC_ROM_READ_OK", "SMC ROM read activity observed"),
         (
@@ -1721,6 +1812,24 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_wdt_timeout_irq_test": [
         ("CHK-WDT-IP0", "WDT_WDOGIP0", "WDOGIP0 sets after enable+CMP"),
     ],
+    "smu_ss_config_lane_drive_test": [
+        (
+            "CHK-COMP-SS-CONFIG-SINGLE-LANE",
+            "COMP_SS_CONFIG_SINGLE_LANE",
+            "writing SS_CONFIG = 1 << i leaves ss_config_o equal to 1 << i for each of the 32 lanes",
+        ),
+        (
+            "CHK-COMP-SS-CONFIG-ALL-ONES-ZERO",
+            "COMP_SS_CONFIG_ALL_ONES_ZERO",
+            "all-ones then all-zeros writes drive ss_config_o to the same value and SS_CONFIG reads 0",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A and pin waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
+    ],
     "smu_sys_in_filter_program_jtag_test": [
         ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "after program window OKAY"),
     ],
@@ -1769,6 +1878,21 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "request at the pin and clears the register field, and lowering it "
             "again at the wrapper pin leaves the request retired",
         ),
+    ],
+    "smu_telemetry_reset_state_test": [
+        (
+            "CHK-TELR-CTRL-STATUS",
+            "TELR_CTRL_STATUS",
+            "STATUS reads BUFFER_EMPTY set and BUFFER_FULL clear, and CTRL, INTR_STATUS, "
+            "INTR_ENABLE and INTR_TEST read 0, on all three receivers",
+        ),
+        (
+            "CHK-TELR-MESSAGE-ZERO",
+            "TELR_MESSAGE_ZERO",
+            "PROBE_ID, COUNTER_VLDS and the counters read 0 on the empty queue",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_system_timer_octs_test": [
         (
@@ -2064,11 +2188,70 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "lane quiet",
         ),
     ],
+    "smu_xtrig_cold_reset_clears_ctn_test": [
+        (
+            "CHK-CTN-RESET-CLEARS-REGS",
+            "CHK-CTN-RESET-CLEARS-REGS",
+            "CT_SRC[0], CTP[0].CONFIG and STRETCH_MULT read their programmed values before the "
+            "cold reset and their RDL reset value 0 after it",
+        ),
+        (
+            "CHK-CTP-RESET-MID-REQUEST",
+            "CHK-CTP-RESET-MID-REQUEST",
+            "xtrig_ctp_req_out_dout_o[1] is low within 16 clk_smu of the reset and stays low, "
+            "CTP[1].STATUS reads 0, from REQ_ASSERTED and WAIT_ACK_DEASSERT",
+        ),
+        (
+            "CHK-CLKSTOP-RESET-LOW",
+            "CHK-CLKSTOP-RESET-LOW",
+            "dtp_stop_clks_o is 0 while the DTP reset is asserted with the lane request held "
+            "and on the first edge after release",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A, reset and pin waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<PASS"),
+    ],
     "smu_xtrig_ctm_illegal_phase_test": [
         ("CHK-XT-ILLEGAL", "XT_ILLEGAL_PHASE", "DTP[9:2] follows abort/double-req pin patterns"),
     ],
     "smu_xtrig_ctm_remap_test": [
         ("CHK-XT-CTM-REMAP", "XT_CTM_REMAP", "product-pin CTM remap"),
+    ],
+    "smu_xtrig_ctp_status_reset_test": [
+        (
+            "CHK-STATUS-BUSY",
+            "CHK-STATUS-BUSY",
+            "STATUS.BUSY reads 1 while the request is outstanding and 0 after the handshake completes",
+        ),
+        (
+            "CHK-STATUS-LEVELS",
+            "CHK-STATUS-LEVELS",
+            "REQ_OUT, ACK_IN, REQ_IN and ACK_OUT read 1 at INVERT 0 and 1; REQ_OUT and ACK_OUT read 0 in wire-OR",
+        ),
+        (
+            "CHK-HS-RESET-RECOVER",
+            "CHK-HS-RESET-RECOVER",
+            "RESET drops a stuck req_out and REQ_OUT; the first trigger after RESET clears raises it again",
+        ),
+        (
+            "CHK-HS-RESET-DISCARD",
+            "CHK-HS-RESET-DISCARD",
+            "req_out_dout[2] stays low for 64 clk_smu while a trigger arrives with RESET = 1",
+        ),
+        (
+            "CHK-HS-RESET-RX",
+            "CHK-HS-RESET-RX",
+            "with RESET = 1 a request in is acknowledged and BUSY holds until it is released",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A and pad waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<PASS"),
     ],
 }
 
