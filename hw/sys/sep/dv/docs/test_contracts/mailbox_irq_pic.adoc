@@ -1130,7 +1130,7 @@ A check on an outbound mailbox 0 cell that an open test grades (Test Coverage) p
 
 *Source Module*: `sep_pic_external_access_refuse_test`
 
-*BFM / Model*: CPU firmware (PIC, mailbox and filter drivers under `hw/sys/sep/dv/fw/drivers/`); the external SMN master (`ocah_axi_vip`) on the inbound port and its response codes. Probes and injects: the external SMN master and its response codes, the firmware CSR reads of the armed PIC state, and the firmware reads of the inbound filter entry registers. No PROPOSED item. Every check is a reached check.
+*BFM / Model*: CPU firmware (PIC, mailbox and filter drivers under `hw/sys/sep/dv/fw/drivers/`); the external SMN master (`ocah_axi_vip`) on the inbound port and its response codes, with the passive bus monitor of that port (DECERR tallied, not failed). Probes and injects: the external SMN master and its response codes, the firmware CSR reads of the armed PIC state, and the firmware reads of the inbound filter entry registers. No PROPOSED item. Every check is a reached check.
 
 *Randomization*: RAND-REP. `SepSeededRng` from the run seed. Dimensions: the interior entry J of each array (2 to 254, never one of the sources 13, 15, 16, 37, 38 and 39); the interior `meip` word (1 to 6); the hole address; the past-extent address; the access order; the order of read and write on each target. Addresses are aligned and lie inside 0xC008_0000 to 0xC008_7FFF. `SEP_DBG` stays off. `reseed = 3` samples different interior registers, addresses and orders. Both regimes and every target are walked on every seed.
 
