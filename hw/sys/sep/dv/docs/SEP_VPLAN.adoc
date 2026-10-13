@@ -1025,7 +1025,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, `+skip_fuse_sense`
 |CPU LSU firmware master, direct-address twin model
-|Proves that an address in the 768 MiB local alias window answers as its direct twin on the scratch, AES, system CSR, SPI host, entropy source and SRAM targets, and that every LSU read and write carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`). Extends the open alias matrix test with the unit classes and the window edges only.
+|Proves that an address in the 768 MiB local alias window answers as its direct twin on the scratch, AES, system CSR, SPI host, entropy source and SRAM targets, that with `SEP_LOCAL_BASE_ADDR` moved to a drawn base the moved alias of the scratch word and the SPI host `CSID` answers as its direct twin for a read and a write, and that every LSU read and write carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`). Extends the open alias matrix test with the unit classes, the window edges and a moved window base.
 
 |<<sep_fabric_dma_endpoint_matrix_test,`sep_fabric_dma_endpoint_matrix_test`>>
 |3
@@ -1232,7 +1232,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real fuse sense (one leg VCS only)
 |ocah_axi_vip, `sep_internal_interrupts_probe_o` and `dbg_sep_reset_n_o` (approved)
-|Proves the enable gate on PIC sources 9, 10 and 11, STATUS.ERROR, SIZE_ERROR and INTR_STATE.DMA_ERROR for a zero size and for hashing at width 1 or 2, and that the engine takes a legal copy after a size error with no reset. The range lock check is Blocked: the specification does not name the write that applies the lock.
+|Proves the enable gate on PIC sources 9, 10 and 11, STATUS.ERROR, SIZE_ERROR and INTR_STATE.DMA_ERROR for a zero size and for hashing at width 1 or 2, and that the engine takes a legal copy after a size error with no reset. It also proves that a copy with a non-zero SRC_ADDR_HI or DST_ADDR_HI and legal LO addresses moves no data to the 32-bit destination; ERROR_CODE for that copy is logged only. The range lock check is Blocked: the specification does not name the write that applies the lock.
 |<<sep_dma_abort_recovery_rand_test,`sep_dma_abort_recovery_rand_test`>>
 |3
 |no_cpu, real fuse sense
@@ -2639,6 +2639,10 @@ the test does.
 |What are the legal values of `SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE` (alignment, power of two, size 0, upper bound)? The legal values of the SMU aperture registers are also unstated. `sep_fabric_inbound_rebase_test` uses fixed values only for the stated rule, and no leaf writes the SMU aperture registers.
 |-
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
+|`SEP_LOCAL_BASE_ADDR` legal values
+|What are the legal values of `SEP_LOCAL_BASE_ADDR` (alignment, lower and upper bound)? `fabric.adoc` ("Address Remapping") rewrites the window at `SEP_LOCAL_BASE_ADDR`, and `memory_map.adoc` names the alias span as `0xD000_0000` to `0xFFFF_FFFF`.
+|`sep_cpu_lsu_alias_window_twin_test` (CHK-TWIN-MOVED) draws the base 16 MiB aligned in [`0xD100_0000`, `0xEF00_0000`], a range the test chooses, and grades the twin through the moved window
+|<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Effect time of a routing or filter CSR write
 |Does a routing or filter CSR write take effect before the next transaction of the same initiator, and which setting applies to a transaction in flight? Every test puts a read-back between the write and the first dependent transaction.
 |-
@@ -2816,8 +2820,8 @@ the test does.
 |Graded leg: None. `sep_spi_ot_host_csr_irq_rand_test` avoids the cells
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA ADDR_HI
-|What does a non-zero ADDR_HI do in a 32-bit SEP (`secure_dma.adoc`, SRC_ADDR_HI, DST_ADDR_HI)?
-|Graded leg: None
+|What does a non-zero ADDR_HI do in a 32-bit SEP (`secure_dma.adoc`, SRC_ADDR_HI, DST_ADDR_HI)? `dma.adoc` gives the DMA master 32-bit addresses and ASID 0x7 as the only route, and no document states the STATUS or ERROR_CODE response.
+|Graded leg: No data at the 32-bit DST_ADDR_LO (`sep_dma_irq_error_lock_rand_test`, CHK-DMA-HI-ADDR). STATUS.ERROR and ERROR_CODE are logged (`OBS-DMA-HI-ADDR`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA maximum size
 |What is the maximum TOTAL_DATA_SIZE and what happens to a tail (`secure_dma.adoc`, TOTAL_DATA_SIZE)?
@@ -4853,7 +4857,7 @@ test that owns the feature, or states why no pass or fail value exists.
 |An open unmapped-policy test grades them.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |`SEP_LOCAL_BASE_ADDR` legal values
-|An open alias test grades the live base. Legal base values are unstated, so no leaf draws them.
+|An open alias test grades the live base. `sep_cpu_lsu_alias_window_twin_test` draws a base from a range the test chooses. Legal base values are unstated (an open specification question).
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |SMC request hang during SMC fuse sense
 |The hang is a property of the SMC fabric. The testbench SMC responder is the only SMC, and a hang that the responder models cannot fail the SEP RTL. `sep_fabric_smc_route_test` grades the route.
