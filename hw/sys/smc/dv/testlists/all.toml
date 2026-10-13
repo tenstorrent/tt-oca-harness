@@ -56,7 +56,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 498
+expected_count = 518
 tests = [
     "smc_dfd_csr_field_access_test",
     "smc_dfx_aperture_extent_test",
@@ -556,6 +556,26 @@ tests = [
   "smc_i3c_csr_sweep_ext_test",
   "smc_i3c_clock_gate_window_test",
   "smc_reg_island_boundary_sweep_test",
+  "smc_i2c_reg_access_class_test",
+  "smc_i2c_target_event_flags_test",
+  "smc_smbus_alert_instance_isolation_test",
+  "smc_i2c_intr_output_path_test",
+  "smc_i2c_intr_test_state_test",
+  "smc_i2c_clock_gate_response_test",
+  "smc_i2c_ctrl_role_gate_test",
+  "smc_i2c_ctrl_intr_w1c_test",
+  "smc_i2c_pad_override_test",
+  "smc_smbus_alert_irq_route_test",
+  "smc_smbus_alert_self_clear_test",
+  "smc_i2c_ctrl_nack_modes_test",
+  "smc_i2c_ctrl_wire_frames_test",
+  "smc_i2c_target_tx_read_test",
+  "smc_i2c_target_addr_gate_test",
+  "smc_i2c_ctrl_xinst_events_test",
+  "smc_i2c_target_bus_symbol_test",
+  "smc_i2c_window_decode_test",
+  "smc_smbus_pmbus_linear11_read_test",
+  "smc_i2c_target_instance_pair_test",
 ]
 
 [[groups]]
