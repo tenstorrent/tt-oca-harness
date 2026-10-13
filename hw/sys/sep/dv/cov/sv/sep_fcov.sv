@@ -997,7 +997,17 @@ module sep_fcov (
   wire  dma_complete = dma_status_done || dma_irq_done;
 
   // Which opcode was GO'd still labels the cell, so an interrupt cannot score
-  // the wrong one.
+  // the wrong one. Every GO sets the label from its own opcode, and a rise of
+  // STATUS.ERROR or STATUS.ABORTED clears it, so a failed COPY or SHA-256
+  // does not label a later transfer of another opcode.
+  logic dma_err_q, dma_abt_q;
+  always_ff @(posedge clk_i) begin
+    dma_err_q <= (dma_reg2hw_i.status.error.q === 1'b1);
+    dma_abt_q <= (dma_aborted_i === 1'b1);
+  end
+  wire  dma_fail_rise = !in_reset &&
+      (((dma_reg2hw_i.status.error.q === 1'b1) && !dma_err_q) ||
+       ((dma_aborted_i === 1'b1) && !dma_abt_q));
   wire  dma_copy_done = dma_complete && dma_copy_q;
   wire  dma_hash_done = dma_complete && dma_hash_q;
 
@@ -2826,19 +2836,14 @@ module sep_fcov (
         if (km_rsp_idx_q == 9'd3) km_rsp_rc_q <= rd_data[7:0];
       end
 
-      if (dma_copy_go) begin
-        dma_copy_q <= 1'b1;
-        dma_hash_q <= 1'b0;
-      end
-      if (dma_hash_go) begin
-        dma_hash_q <= 1'b1;
-        dma_copy_q <= 1'b0;
-      end
-      if (dma_go)
-        dma_hs_q <= (wr_data & SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK) != 32'h0;
-      if (dma_complete) begin
+      if (dma_complete || dma_fail_rise) begin
         dma_copy_q <= 1'b0;
         dma_hash_q <= 1'b0;
+      end
+      if (dma_go) begin
+        dma_copy_q <= dma_copy_go;
+        dma_hash_q <= dma_hash_go;
+        dma_hs_q   <= (wr_data & SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK) != 32'h0;
       end
 
       if (filt_start_wr && filt_lo_lane) begin

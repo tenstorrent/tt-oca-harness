@@ -504,7 +504,10 @@ both routes: `dma_basic_test` polls `STATUS`, while `dma_hash_test` enables
 software reads it -- so on that path no `STATUS` read with the DONE bit ever
 reaches the bus. A `STATUS`-only bin therefore cannot fill `cp_hash_done`.
 The GO'd opcode still labels the cell, so an interrupt cannot score the
-wrong one.
+wrong one: every `CONTROL.GO` sets the label from its own opcode, and a rise
+of `STATUS.ERROR` or `STATUS.ABORTED` clears it. A COPY or SHA-256 that fails
+therefore does not label the completion of a later ZERO, SHA-384 or SHA-512
+transfer.
 
 The destination-matches-source and digest-matches-golden claims stay in the
 DMA firmware. These cells are driven only by the firmware tests
