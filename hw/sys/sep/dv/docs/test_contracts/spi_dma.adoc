@@ -1145,7 +1145,7 @@ The offsets come from `spi_controller.adoc`, and TXDATA at 0x28 and RXDATA at 0x
 |CHK-DMA-ZERO-COPY-CTRL
 |Control: a copy whose destination is outside the range completes with the data copied, so the range bounds a fill and not a copy.
 |CHK-DMA-ZERO-IRQ
-|PIC source 9 rises and PIC source 11 does not for the fill of the whole range; PIC source 11 rises and PIC source 9 does not for the fill past LIMIT.
+|PIC sources 9 and 11 are low before each graded fill, so a line left high fails. PIC source 9 rises and PIC source 11 does not for the fill of the whole range; PIC source 11 rises and PIC source 9 does not for the fill past LIMIT.
 |CHK-DMA-ZERO-OPC
 |OPCODE 5 sets ERROR with ERROR_CODE equal to OPCODE_ERROR alone, moves no beat and leaves the destination; after the write of 1 to STATUS.ERROR a zero fill completes.
 |CHK-DMA-ZERO-HS

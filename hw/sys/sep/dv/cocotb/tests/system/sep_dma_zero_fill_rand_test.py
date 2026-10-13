@@ -54,7 +54,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
   CHK-DMA-ZERO-COPY-CTRL a copy whose destination is outside the range
                          completes with the data copied (control: the range
                          bounds a fill, not a copy).
-  CHK-DMA-ZERO-IRQ       PIC source 9 rises for the completed fill of the whole
+  CHK-DMA-ZERO-IRQ       PIC sources 9 and 11 are low before the fill; PIC
+                         source 9 rises for the completed fill of the whole
                          range and PIC source 11 does not; PIC source 11 rises
                          for the fill past LIMIT and PIC source 9 does not.
   CHK-DMA-ZERO-OPC       OPCODE 5 sets ERROR with ERROR_CODE equal to
@@ -476,6 +477,10 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             await ops.poll_status(lambda s: not s.busy, ERR_POLL_BOUND, "BUSY=0 after DONE")
         return FillRun(res.status, ec, self.tap.since(mark), res.go_writes)
 
+    def _irq_levels(self) -> tuple[int | None, int | None]:
+        """PIC source 9 and 11 levels at the last sample."""
+        return self.irq.level("done"), self.irq.level("error")
+
     async def _wait_status(self, mask: int, what: str) -> DmaStatus:
         return await self.ops.poll_status(lambda s: bool(s.raw & mask), ERR_POLL_BOUND, what)
 
@@ -570,6 +575,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         await self.ops.program_range(base, limit, valid=True)
         await self.mem.fill(d.region.addr, d.region.words)
         m_irq = self.irq.mark()
+        lvl0 = self._irq_levels()
         run = await self._run(
             opcode=OP_ZERO,
             dst=fill.dst_base,
@@ -597,8 +603,9 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             err_r = self.irq.rises_since(m_irq, "error")
             self._pass(
                 "CHK-DMA-ZERO-IRQ",
-                err_r >= 1 and done_r == 0,
-                f"case={case} pic_src11_rises={err_r} pic_src9_rises={done_r}",
+                lvl0 == (0, 0) and err_r >= 1 and done_r == 0,
+                f"case={case} pic_src9_at_mark={lvl0[0]} pic_src11_at_mark={lvl0[1]} "
+                f"pic_src11_rises={err_r} pic_src9_rises={done_r}",
             )
         await self._idle()
 
@@ -613,6 +620,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         await self.mem.fill(d.region.addr, d.region.words)
         fill = DmaZeroFill(d.base, size, size)
         m_irq = self.irq.mark()
+        lvl0 = self._irq_levels()
         run = await self._run(opcode=OP_ZERO, dst=d.base, total=size, chunk=size)
         await ClockCycles(cocotb.top.clk_i, IRQ_SETTLE)
         got = await self._read_region(d.region)
@@ -628,8 +636,9 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         err_r = self.irq.rises_since(m_irq, "error")
         self._pass(
             "CHK-DMA-ZERO-IRQ",
-            done_r >= 1 and err_r == 0,
-            f"case=in_range pic_src9_rises={done_r} pic_src11_rises={err_r}",
+            lvl0 == (0, 0) and done_r >= 1 and err_r == 0,
+            f"case=in_range pic_src9_at_mark={lvl0[0]} pic_src11_at_mark={lvl0[1]} "
+            f"pic_src9_rises={done_r} pic_src11_rises={err_r}",
         )
         await self._idle()
 
