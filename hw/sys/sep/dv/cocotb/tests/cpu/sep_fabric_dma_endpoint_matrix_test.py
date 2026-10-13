@@ -426,7 +426,8 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
     def _beats(self, tap: str, leg_i: int, ch: str):
         start = self.legs[leg_i].marks[tap]
         stop = self.legs[leg_i + 1].marks[tap] if leg_i + 1 < len(self.legs) else None
-        beats = self.taps[tap].beats[start:stop]
+        # since() fails when the tap took no sample after the leg's mark.
+        beats = self.taps[tap].since(start)[: None if stop is None else stop - start]
         return [b for b in beats if b.ch == ch]
 
     def _sram_in(self, leg_i: int):

@@ -26,7 +26,8 @@ Rules:
 
 The model takes only the programmed register fields and the request
 attributes. It states no verdict for an inverted range or for a range that
-touches 2^56-1, because the specification states none.
+touches 2^56-1, because the specification states none: ``verdict`` raises when
+it reaches an enabled entry whose start granule is above its end granule.
 """
 
 from __future__ import annotations
@@ -72,6 +73,12 @@ class FilterEntry:
         """(lowest admitted byte, highest admitted byte)."""
         g = self.granule
         return (self.start & ~(g - 1)) & ADDR_MASK, (self.end | (g - 1)) & ADDR_MASK
+
+    @property
+    def inverted(self) -> bool:
+        """The start granule is above the end granule."""
+        g = self.granule
+        return (self.start & ADDR_MASK) // g > (self.end & ADDR_MASK) // g
 
     def covers(self, addr: int) -> bool:
         lo, hi = self.widened
@@ -146,6 +153,12 @@ class FilterModel:
         lowest_fails: list[str] = []
         winner = None
         for i, e in enumerate(self.entries):
+            if e.enabled and e.inverted:
+                raise ValueError(
+                    f"{self.name} filter entry {i}: start=0x{e.start:x} is above "
+                    f"end=0x{e.end:x}; the specification states no verdict for an "
+                    "inverted range"
+                )
             fails = e.failed_terms(addr, prot1=prot1, user=user, axlen=axlen)
             if lowest_cover is None and TERM_RANGE not in fails:
                 lowest_cover = i
@@ -221,6 +234,18 @@ def _selftest() -> None:
     m.reset()
     m.set(0, FilterEntry(start=0, end=0x1FFF, enabled=True, read_allowed=True))
     assert m.verdict(0x10, write=False, axlen=1).reason == "no_match"
+    # An enabled inverted range has no verdict; a start above end inside one
+    # granule is not inverted.
+    m.reset()
+    m.set(0, FilterEntry(start=0x2000, end=0x1000, enabled=True, read_allowed=True))
+    try:
+        m.verdict(0x1000, write=False)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("an inverted enabled range must raise")
+    m.set(0, FilterEntry(start=0x1FFF, end=0x1000, enabled=True, allow_burst=True))
+    assert not m.entries[0].inverted
 
 
 if __name__ == "__main__":

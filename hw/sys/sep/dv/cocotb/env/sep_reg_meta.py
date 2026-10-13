@@ -165,8 +165,38 @@ class RegBlock:
     def addr(self, name: str) -> int:
         return int(self._sym(name, "REG_ADDR", alias_ok=False))
 
-    def reset(self, name: str) -> int:
+    def reset_raw(self, name: str) -> int:
+        """The generated ``_REG_DEFAULT``, which holds 0 for every bit of a field
+        with no RDL reset. Pair it with ``unreset_mask``; it is not a reset value
+        for those bits."""
         return int(self._sym(name, "REG_DEFAULT", alias_ok=True))
+
+    def unreset_mask(self, name: str) -> int:
+        """Bits of the register held by fields with no RDL reset (all its words)."""
+        addr = self.addr(name)
+        nwords = max(1, (self.mask_all(name).bit_length() + 31) // 32)
+        bits = 0
+        for k in range(nwords):
+            bits |= word_unreset_mask(addr + 4 * k) << (32 * k)
+        return bits
+
+    def reset(self, name: str) -> int:
+        """The reset value. Raises when a field of the register has no RDL reset:
+        the generated 0 there is a placeholder (``reset_raw``, ``field_reset``)."""
+        unreset = self.unreset_mask(name)
+        if unreset:
+            raise ValueError(
+                f"{self.block}.{name} has bits with no RDL reset (mask 0x{unreset:x}); "
+                "use field_reset() for a reset field or reset_raw() with unreset_mask()"
+            )
+        return self.reset_raw(name)
+
+    def field_reset(self, name: str, field_name: str) -> int:
+        """Reset value of one field. Raises when the field has no RDL reset."""
+        fmask = self.field_mask(name, field_name)
+        if self.unreset_mask(name) & fmask:
+            raise ValueError(f"{self.block}.{name}.{field_name} has no RDL reset")
+        return (self.reset_raw(name) & fmask) >> self.field_lsb(name, field_name)
 
     def mask(self, name: str) -> int:
         """Union of the register's IMPLEMENTED field bits.
@@ -245,8 +275,15 @@ class RegBlock:
         return self.mask_all(name) & 0xFFFF_FFFF
 
     def reset32(self, name: str) -> int:
-        """Reset value truncated to the low 32 bits (the DV access width)."""
-        return self.reset(name) & 0xFFFF_FFFF
+        """Reset value truncated to the low 32 bits (the DV access width).
+
+        Raises when a field bit of the low word has no RDL reset."""
+        unreset = self.unreset_mask(name) & 0xFFFF_FFFF
+        if unreset:
+            raise ValueError(
+                f"{self.block}.{name} low word has bits with no RDL reset (mask 0x{unreset:x})"
+            )
+        return self.reset_raw(name) & 0xFFFF_FFFF
 
     def mask32(self, name: str) -> int:
         """Implemented-field mask truncated to the low 32 bits."""
@@ -313,23 +350,37 @@ class CHeaderRegBlock:
         return sum(meta.get("bm", 0) for meta in self.fields(reg).values())
 
     def reset(self, reg: str) -> int:
-        """Register reset value assembled from its per-field resets."""
+        """Register reset value assembled from its per-field resets.
+
+        Raises when a field has no ``_reset`` define: it has no RDL reset, so
+        there is no reset value to state for it."""
+        known = self.fields(reg)
+        unreset = sorted(name for name, meta in known.items() if "reset" not in meta)
+        if unreset:
+            raise ValueError(f"{self.block}.{reg} field(s) {unreset} have no RDL reset")
         total = 0
-        for meta in self.fields(reg).values():
-            total |= (meta.get("reset", 0) << meta.get("bp", 0)) & meta.get("bm", 0)
+        for meta in known.values():
+            total |= (meta["reset"] << meta.get("bp", 0)) & meta.get("bm", 0)
         return total
 
     def value(self, reg: str, **overrides: int) -> int:
-        """Build a register value: named fields as given, the rest at their reset."""
+        """Build a register value: named fields as given, the rest at their reset.
+
+        A field with no RDL reset has no default here, so the caller names it."""
         known = self.fields(reg)
         unknown = set(overrides) - set(known)
         if unknown:
             raise KeyError(
                 f"unknown field(s) {sorted(unknown)} for {self.block}.{reg}; known: {sorted(known)}"
             )
+        unnamed = sorted(n for n, m in known.items() if "reset" not in m and n not in overrides)
+        if unnamed:
+            raise ValueError(
+                f"{self.block}.{reg} field(s) {unnamed} have no RDL reset; name a value for each"
+            )
         total = 0
         for name, meta in known.items():
-            raw = overrides.get(name, meta.get("reset", 0))
+            raw = overrides.get(name, meta.get("reset"))
             total |= (raw << meta.get("bp", 0)) & meta.get("bm", 0)
         return total
 
@@ -888,7 +939,8 @@ def iter_register_walk() -> RegisterWalk:
         view = RegBlock(block)
         try:
             addr = view.addr(reg)
-            reset = view.reset32(reg)
+            # The raw default, with its unreset mask stored beside it in RegInfo.
+            reset = view.reset_raw(reg) & 0xFFFF_FFFF
             mask = view.mask32(reg)
             mask_all = view.mask32_all(reg)
         except KeyError:

@@ -17,11 +17,12 @@ AES, CSRNG, EDN and WDT windows are packed to the last register; an unmapped
 beat there is past the rule and DECERRs. Their PERIPH_BUS_ERR_STATUS bits are
 unreachable here, which is why periph_holes() names three blocks and not seven.
 
-OpenTitan interrupt-register layout (per IP base):
-  INTR_STATE  @ +0x00  Event: RW1C; Status: RO
-  INTR_ENABLE @ +0x04  RW    -- gates the IP intr_o = INTR_STATE & INTR_ENABLE
-  INTR_TEST   @ +0x08  WO    -- Event: sets INTR_STATE; Status: held until written 0
-CSRNG/EDN bases from the generated register map. Aggregator bit =
+OpenTitan interrupt registers (per IP):
+  INTR_STATE   Event: RW1C; Status: RO
+  INTR_ENABLE  RW    -- gates the IP intr_o = INTR_STATE & INTR_ENABLE
+  INTR_TEST    WO    -- Event: sets INTR_STATE; Status: held until written 0
+Each source takes the three addresses of its own IP from the generated
+register map (``<IP>_INTR_*_REG_ADDR``). Aggregator bit =
 documented PIC source ID minus 1 (`hw/sys/sep/doc/interrupts.adoc`; PIC
 IDs are 1-based). 32-bit AXI beats (size=2) via the sep_crypto TL-UL
 bridge, like the AES/OTBN drivers.
@@ -40,13 +41,7 @@ from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 CSRNG_BASE = sym("CSRNG_REG_MAP_BASE_ADDR")
 EDN_BASE = sym("EDN_REG_MAP_BASE_ADDR")
-HMAC_BASE = HMAC.addr("INTR_STATE")
 SECURE_DMA = RegBlock("SECURE_DMA")
-DMA_BASE = SECURE_DMA.addr("INTR_STATE")
-
-INTR_STATE = sym("CSRNG_INTR_STATE_REG_ADDR") - CSRNG_BASE
-INTR_ENABLE = sym("CSRNG_INTR_ENABLE_REG_ADDR") - CSRNG_BASE
-INTR_TEST = sym("CSRNG_INTR_TEST_REG_ADDR") - CSRNG_BASE
 
 RESP_SLVERR = 2
 RESP_DECERR = 3
@@ -172,18 +167,31 @@ def otbn_reg_unmapped_addr() -> int:
 
 @dataclass(frozen=True)
 class IrqSrc:
-    """One interrupt source: its IP base, the bit in that IP's INTR_* registers,
-    and the bit it drives in sep_internal_interrupts.
+    """One interrupt source: its IP (the generated register-map prefix), the
+    bit in that IP's INTR_* registers, and the bit it drives in
+    sep_internal_interrupts.
 
     kind is ``event`` (W1C INTR_STATE deasserts) or ``status`` (INTR_STATE is
     read-only; writing INTR_TEST=0 is the deassert path).
     """
 
     name: str
-    base: int
+    ip: str
     test_bit: int
     agg_idx: int
     kind: str = "event"
+
+    @property
+    def state_addr(self) -> int:
+        return sym(f"{self.ip}_INTR_STATE_REG_ADDR")
+
+    @property
+    def enable_addr(self) -> int:
+        return sym(f"{self.ip}_INTR_ENABLE_REG_ADDR")
+
+    @property
+    def test_addr(self) -> int:
+        return sym(f"{self.ip}_INTR_TEST_REG_ADDR")
 
 
 # CSRNG/EDN Event sources plus HMAC error (Event) and DMA done/chunk/error
@@ -192,63 +200,63 @@ class IrqSrc:
 IRQ_TABLE = (
     IrqSrc(
         "csrng_cmd_req_done",
-        CSRNG_BASE,
+        "CSRNG",
         CSRNG.fields("INTR_STATE")["CS_CMD_REQ_DONE"]["bp"],
         agg_from_pic(PIC_CSRNG_CMD_REQ_DONE),
     ),
     IrqSrc(
         "csrng_entropy_req",
-        CSRNG_BASE,
+        "CSRNG",
         CSRNG.fields("INTR_STATE")["CS_ENTROPY_REQ"]["bp"],
         agg_from_pic(PIC_CSRNG_ENTROPY_REQ),
     ),
     IrqSrc(
         "csrng_hw_inst_exc",
-        CSRNG_BASE,
+        "CSRNG",
         CSRNG.fields("INTR_STATE")["CS_HW_INST_EXC"]["bp"],
         agg_from_pic(PIC_CSRNG_HW_INST_EXC),
     ),
     IrqSrc(
         "csrng_fatal_err",
-        CSRNG_BASE,
+        "CSRNG",
         CSRNG.fields("INTR_STATE")["CS_FATAL_ERR"]["bp"],
         agg_from_pic(PIC_CSRNG_FATAL_ERR),
     ),
     IrqSrc(
         "edn_cmd_req_done",
-        EDN_BASE,
+        "EDN",
         EDN.fields("INTR_STATE")["EDN_CMD_REQ_DONE"]["bp"],
         agg_from_pic(PIC_EDN_CMD_REQ_DONE),
     ),
     IrqSrc(
         "edn_fatal_err",
-        EDN_BASE,
+        "EDN",
         EDN.fields("INTR_STATE")["EDN_FATAL_ERR"]["bp"],
         agg_from_pic(PIC_EDN_FATAL_ERR),
     ),
     IrqSrc(
         "hmac_err",
-        HMAC_BASE,
+        "HMAC",
         HMAC.field_lsb("INTR_STATE", "hmac_err"),
         agg_from_pic(PIC_HMAC_ERR),
     ),
     IrqSrc(
         "dma_done",
-        DMA_BASE,
+        "SECURE_DMA",
         SECURE_DMA.field_lsb("INTR_STATE", "dma_done"),
         agg_from_pic(PIC_DMA_DONE),
         "status",
     ),
     IrqSrc(
         "dma_chunk_done",
-        DMA_BASE,
+        "SECURE_DMA",
         SECURE_DMA.field_lsb("INTR_STATE", "dma_chunk_done"),
         agg_from_pic(PIC_DMA_CHUNK),
         "status",
     ),
     IrqSrc(
         "dma_error",
-        DMA_BASE,
+        "SECURE_DMA",
         SECURE_DMA.field_lsb("INTR_STATE", "dma_error"),
         agg_from_pic(PIC_DMA_ERROR),
         "status",
@@ -263,22 +271,22 @@ class SepIrqIp(SepAxiRegDriver):
 
     async def enable(self, src: IrqSrc) -> None:
         """Enable only this source's interrupt (INTR_ENABLE = 1<<bit)."""
-        await self._wr(src.base + INTR_ENABLE, 1 << src.test_bit)
+        await self._wr(src.enable_addr, 1 << src.test_bit)
 
     async def inject(self, src: IrqSrc) -> None:
         """Assert the interrupt via INTR_TEST (sets the INTR_STATE bit)."""
-        await self._wr(src.base + INTR_TEST, 1 << src.test_bit)
+        await self._wr(src.test_addr, 1 << src.test_bit)
 
     async def stop_inject(self, src: IrqSrc) -> None:
         """Stop driving INTR_TEST (WO; does not itself clear INTR_STATE)."""
-        await self._wr(src.base + INTR_TEST, 0)
+        await self._wr(src.test_addr, 0)
 
     async def clear_state(self, src: IrqSrc) -> None:
         """W1C the INTR_STATE bit (the real deassert path)."""
-        await self._wr(src.base + INTR_STATE, 1 << src.test_bit)
+        await self._wr(src.state_addr, 1 << src.test_bit)
 
     async def read_state_bit(self, src: IrqSrc) -> int:
-        return (await self._rd(src.base + INTR_STATE) >> src.test_bit) & 1
+        return (await self._rd(src.state_addr) >> src.test_bit) & 1
 
     async def read32(self, addr: int) -> int:
         return await self._rd(addr)
