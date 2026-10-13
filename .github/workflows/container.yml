@@ -71,12 +71,12 @@ jobs:
         include:
           - arch: amd64
             system: x86_64-linux
-            runner: ${{ vars.OCAH_CONTAINER_AMD64_RUNNER || 'ubuntu-latest' }}
+            runner: ${{ vars.OCAH_CONTAINER_AMD64_RUNNER || 'ubuntu-latest-16-cores' }}
           - arch: arm64
             system: aarch64-linux
-            runner: ubuntu-24.04-arm
+            runner: ${{ vars.OCAH_CONTAINER_ARM64_RUNNER || 'ubuntu-latest-16-core-ARM' }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: ${{ matrix.runner == 'ubuntu-latest-16-cores' && 240 || 360 }}
+    timeout-minutes: ${{ contains(matrix.runner, '16-core') && 240 || 360 }}
     outputs:
       image_hash: ${{ steps.build.outputs.image_hash }}
     steps:
@@ -100,7 +100,7 @@ jobs:
       # concurrent derivation. Reclaim the preinstalled toolchains, add swap,
       # and cap parallelism when installing Nix.
       - name: Free disk space and add swap
-        if: matrix.runner != 'ubuntu-latest-16-cores'
+        if: ${{ !contains(matrix.runner, '16-core') }}
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
             /usr/local/.ghcup /opt/hostedtoolcache /usr/local/share/boost
@@ -123,8 +123,8 @@ jobs:
         uses: cachix/install-nix-action@v31.11.1
         with:
           extra_nix_config: |
-            max-jobs = ${{ matrix.runner == 'ubuntu-latest-16-cores' && 'auto' || 2 }}
-            cores = ${{ matrix.runner == 'ubuntu-latest-16-cores' && '0' || 2 }}
+            max-jobs = ${{ contains(matrix.runner, '16-core') && 'auto' || 2 }}
+            cores = ${{ contains(matrix.runner, '16-core') && '0' || 2 }}
             ${{ matrix.arch != 'amd64' && 'extra-platforms = x86_64-linux' || '' }}
 
       - name: Ensure skopeo
@@ -252,7 +252,7 @@ jobs:
         include:
           - arch: amd64
             machine: x86_64
-            runner: ${{ vars.OCAH_CONTAINER_AMD64_RUNNER || 'ubuntu-latest' }}
+            runner: ubuntu-latest
           - arch: arm64
             machine: aarch64
             runner: ubuntu-24.04-arm
