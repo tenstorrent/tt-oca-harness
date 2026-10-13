@@ -75,7 +75,7 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge
+from cocotb.triggers import FallingEdge, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -218,6 +218,14 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
         self.logger.info(line)
         self.k += 1
 
+    async def _gate(self, on: bool) -> None:
+        """Write the graded-window gate outside the read-only phase of a clock."""
+        await NextTimeStep()
+        if on:
+            open_graded_window(TEST, self.logger)
+        else:
+            close_graded_window(self.logger)
+
     def _ctl(self, ctl: str, ok: bool, values: str) -> None:
         line = f"{ctl}: {values}"
         if not ok:
@@ -353,19 +361,19 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
             for d in DOMS:
                 await self._arm(d)
 
-            open_graded_window(TEST, self.logger)
+            await self._gate(True)
             skip_iso = await self._pass(1)
-            close_graded_window(self.logger)
+            await self._gate(False)
             ctl_iso = await self._sw_assert_control()
             self._grade_skip_iso(skip_iso, ctl_iso)
             await self._pulse_leg()
             await self._priority_leg()
             await self._pass(2)
             await self._seprst_leg()
-            close_graded_window(self.logger)
+            await self._gate(False)
             await self._rst_ni_control()
         finally:
-            close_graded_window(self.logger)
+            await self._gate(False)
             await self.taps.stop()
             await self.sense.stop()
         self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.k)
@@ -511,7 +519,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
         # Set-up write, window closed.
         await self._sw_write(self.sw & ~(1 << IPRST[d1]))
         await self._wait_tap(d1, 0, "pulse leg set-up")
-        open_graded_window(TEST, self.logger)
+        await self._gate(True)
         word = tdr_word(
             apply=(TDR_PORT[d0], TDR_PORT[d1]),
             hold=(TDR_PORT[d0],),
@@ -641,10 +649,14 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
                 tdr_word(apply=(SEP_RESET_PORT,), hold=(SEP_RESET_PORT,)),
                 f"sep_reset_n override event={ev}",
             )
+            # Window marks are taken on falling edges, where every rising-edge sample
+            # before them is already recorded, so the window holds exactly the drawn
+            # width of samples on every simulator. It ends where the shift of the idle
+            # word starts; its Update-DR removes the override before the shift returns.
+            await FallingEdge(dut.clk_i)
             start = len(samples)
             await self._cycles(self.plan.seprst_width)
-            # The graded window ends where the shift of the idle word starts; its
-            # Update-DR removes the override before the shift returns.
+            await FallingEdge(dut.clk_i)
             removal = len(samples)
             await self._shift(IC_RESET_IDLE, f"sep_reset_n override remove event={ev}")
             await self.taps.resets["sep_reset_n"].wait_level(1, SEPRST_BOUND)
@@ -652,8 +664,11 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
             stop[0] = True
             await task
             win = samples[start + SETTLE : removal]
-            if len(win) < self.plan.seprst_width - SETTLE:
-                raise AssertionError("sep_reset_n override window shorter than drawn")
+            if len(win) != self.plan.seprst_width - SETTLE:
+                raise AssertionError(
+                    f"sep_reset_n override window holds {len(win)} samples, drawn "
+                    f"{self.plan.seprst_width} - settle {SETTLE}"
+                )
             seprst_low = sum(1 for s in win if s[0] == 0)
             ip_high = sum(1 for s in win if s[1] != 0)
             aon_low = sum(1 for s in samples if s[3] == 0)

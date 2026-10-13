@@ -96,7 +96,7 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge
+from cocotb.triggers import FallingEdge, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_axi_chan_mon import SepAxiChanMon
 from env.sep_bit_watch import SepBitWatch
@@ -334,11 +334,19 @@ class sep_cpu_reset_retention_test(sep_base_test):
             raise AssertionError(f"{ctl} control not met: {values}")
         self.logger.info("%s: %s", ctl, values)
 
-    def _open(self) -> None:
-        open_graded_window(TEST, self.logger)
+    async def _open(self) -> None:
+        await self._gate(True)
 
-    def _close(self) -> None:
-        close_graded_window(self.logger)
+    async def _close(self) -> None:
+        await self._gate(False)
+
+    async def _gate(self, on: bool) -> None:
+        """Write the graded-window gate outside the read-only phase of a clock."""
+        await NextTimeStep()
+        if on:
+            open_graded_window(TEST, self.logger)
+        else:
+            close_graded_window(self.logger)
 
     async def _cycles(self, n: int) -> None:
         for _ in range(n):
@@ -489,7 +497,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 await self._dma_leg(mode)
             r1 = await self._cold_leg()
             await self._after_cold(r1)
-            self._close()
+            await self._close()
             await self._recovery()
             if self.full_cpu:
                 await self._dbg_sync_leg()
@@ -501,7 +509,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             # Last, after every other check: a CPU reset with a write in flight.
             await self._wdt_inflight_leg()
         finally:
-            self._close()
+            await self._close()
             for w in (self.irq, self.mpc, *self.pins.values()):
                 await w.stop()
             await self.taps.stop()
@@ -602,7 +610,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         await self._wait_ip("hmac", 0, "arm HMAC hold")
         for x in (HOST_X["hmac"], KEY_X["hmac"]):
             await self.taps.iso_ack.wait_level(1, TAP_BOUND, bit=iso_name(x))
-        self._open()
+        await self._open()
         for p in self._armed_probes():
             await self._arm_probe(p, 0)
         await self.dma.program_range(RANGE_LO, RANGE_HI, valid=True)
@@ -636,7 +644,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 await self._wr(a, v)
 
     async def _bank_ctl(self, event: str) -> None:
-        self._close()
+        await self._close()
         out = {}
         for name, addrs in (("warm", SCRATCH_WARM_ADDRS), ("cold", SCRATCH_COLD_ADDRS)):
             vals = [await self._rd(a) for a in addrs]
@@ -648,7 +656,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 out[name] = "mixed:" + ",".join(f"0x{v:x}" for v in vals)
         self.logger.info("CTL-BANK: event=%s warm=%s cold=%s", event, out["warm"], out["cold"])
         await self._write_banks(warm_only=True)
-        self._open()
+        await self._open()
 
     # ---- step 4: fault latches ----------------------------------------------
     async def _latch_faults(self, what: str) -> None:
@@ -946,7 +954,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         counter asserts on the next edge and the simulator stops there.
         """
         dut = cocotb.top
-        self._open()
+        await self._open()
         sw_now = await self._rd(SW)
         await FallingEdge(dut.clk_i)
         cm = self.chan.mark()
@@ -1250,7 +1258,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             got = await self.pd.read(p)
             rng_ok &= field_compare(got, p.reset, p.mask).ok
         self._ctl("CTL-RANGE-RESET", rng_ok, f"RANGE_REGWEN=0x{lk:x} range registers at reset")
-        self._open()
+        await self._open()
         src = self.plan.words(COPY_WORDS)
         pat_a = self.plan.words(COPY_WORDS, avoid=src)
         await self.mem.fill(COPY_SRC, src)
@@ -1274,7 +1282,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             f"done={st.done} error={st.error} mem_mismatch={mism} words={COPY_WORDS}",
         )
         await self.dma.wr(st_addr, ST_DONE | ST_CHUNK_DONE)
-        self._close()
+        await self._close()
 
     # ---- step 12: run-request synchronizer (full-CPU build) ----------------------
     async def _follow(self, value: int, what: str) -> int:
@@ -1303,7 +1311,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         control_follow = all(c <= lim for c in ctl)
         self._ctl("CTL-DBG-SYNC", control_follow, f"follow_cycles={ctl} limit={lim}")
         # Error injection: toggle the input while dbg_rstb_i is low.
-        self._open()
+        await self._open()
         w = self.plan.dbg_sync_width
         await FallingEdge(dut.clk_i)
         dut.dbg_rstb_i.value = 0
@@ -1332,4 +1340,4 @@ class sep_cpu_reset_retention_test(sep_base_test):
             f"constant_cycles={constant}/{w} toggles_in_window={toggles} held={held} "
             f"follow_cycles={f1},{f2} limit={lim} control_follow={int(control_follow)}",
         )
-        self._close()
+        await self._close()

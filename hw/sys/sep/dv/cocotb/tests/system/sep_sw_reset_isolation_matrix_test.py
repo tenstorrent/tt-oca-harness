@@ -101,7 +101,7 @@ from dataclasses import dataclass, field
 
 import cocotb
 import pyuvm
-from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge
+from cocotb.triggers import FallingEdge, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_axi_chan_mon import SepAxiChanMon, SepAxiReadyHold
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -601,6 +601,14 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         self.logger.info(line)
         self.k += 1
 
+    async def _gate(self, on: bool) -> None:
+        """Write the graded-window gate outside the read-only phase of a clock."""
+        await NextTimeStep()
+        if on:
+            open_graded_window(TEST, self.logger)
+        else:
+            close_graded_window(self.logger)
+
     def _ctl(self, ctl: str, ok: bool, values: str) -> None:
         if not ok:
             self.logger.error("%s FAIL (control not met): %s", ctl, values)
@@ -712,7 +720,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             await self._leg_b()
         finally:
             self.hold.release_all()
-            close_graded_window(self.logger)
+            await self._gate(False)
             await self.taps.stop()
             await self.chan.stop()
             await self.isolog.stop()
@@ -726,12 +734,12 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             await self._arm(PROBE[d])
         for p in UNRELATED:
             await self._arm(p)
-        open_graded_window(TEST, self.logger)
+        await self._gate(True)
         scope = await self._rsvd_leg()
         falls: dict[str, int] = {d: 0 for d in DOMS}
         for st in self.plan.steps:
             if len(st.doms) == 1:
-                close_graded_window(self.logger)
+                await self._gate(False)
             m = self.taps.mark()
             await self._subset_step(st)
             for d in DOMS:
@@ -755,7 +763,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                     f"fall={fl[0] if fl else -1} rise={rs[0] if rs else -1}",
                 )
                 scope = None
-            open_graded_window(TEST, self.logger)
+            await self._gate(True)
         self._chk(
             "CHK-SUBSET-COVER",
             all(falls[d] >= 1 for d in DOMS),
@@ -938,7 +946,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         values only, never expected values.
         """
         dut = cocotb.top
-        close_graded_window(self.logger)
+        await self._gate(False)
         await FallingEdge(dut.clk_i)
         m = self.taps.mark()
         c0 = self.taps.iso_req.clk
@@ -980,7 +988,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             self.lat_req,
             ",".join(f"{d}/{op}:{v}" for (d, op), v in self.lat_stage.items()),
         )
-        open_graded_window(TEST, self.logger)
+        await self._gate(True)
 
     async def _sw_write_seq(self, value: int) -> None:
         seq = await self._acc(SepAxiOp.WRITE, SW, 4, value)
