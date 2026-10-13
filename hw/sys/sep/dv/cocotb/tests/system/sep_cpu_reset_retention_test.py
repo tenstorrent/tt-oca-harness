@@ -419,7 +419,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             self.logger.info(line)
         await self.bring_up_no_cpu()
         dut = cocotb.top
-        self.full_cpu = self._full_cpu_build()
+        self.full_cpu = self.full_cpu_build()
         self.classes = ("WDT", "DBG") if self.full_cpu else ("WDT",)
         if self.full_cpu:
             self.required_evidence = (*type(self).required_evidence, "CHK-DBG-SYNC")
@@ -494,21 +494,6 @@ class sep_cpu_reset_retention_test(sep_base_test):
             await self.taps.stop()
             await self.chan.stop()
         self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.k)
-
-    def _full_cpu_build(self) -> bool:
-        """True when the build carries the full ``sep_cpu`` (not the LSU stub).
-
-        ``tb_top`` ties ``fcov_lsu_raw_live`` to 1 only when ``SEP_CPU_STUB`` is
-        undefined; the wire exists on the VCS builds. A build without it is the
-        Verilator stub build.
-        """
-        top = cocotb.top
-        try:
-            sig = top.fcov_lsu_raw_live
-        except AttributeError:
-            return False
-        v = sig.value
-        return bool(v.is_resolvable and int(v) == 1)
 
     # ---- step 2: calibration -------------------------------------------------
     async def _calibrate(self) -> None:

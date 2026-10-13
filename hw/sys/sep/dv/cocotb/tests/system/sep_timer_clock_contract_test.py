@@ -1210,7 +1210,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         vcs = "vcs" in cocotb.SIM_NAME.lower()
         # The dbg_rstb_i cell of CHK-REGWEN-HOLD runs on VCS on the full-CPU build only,
         # selected from the build the leaf runs on (the stub CPU has no load on the pin).
-        full_cpu = hasattr(cocotb.top.u_dut.u_sep.u_sep_cpu, "u_el2_veer_wrapper")
+        full_cpu = self.full_cpu_build()
         self.dbg_cell = vcs and full_cpu
         self.n_dbg = 0
         self.logger.info(

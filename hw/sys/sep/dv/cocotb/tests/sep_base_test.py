@@ -241,6 +241,20 @@ class sep_base_test(uvm_test):
         return sep_base_test.rd(sig, mask)
 
     @staticmethod
+    def full_cpu_build() -> bool:
+        """True when the build carries the full ``sep_cpu`` with the VeeR core.
+
+        The ``lsu_stub_all_live`` build replaces ``sep_cpu`` with the LSU stub, which has
+        no ``u_el2_veer_wrapper``. A build whose hierarchy does not expose the core
+        reads as not full.
+        """
+        try:
+            cocotb.top.u_dut.u_sep.u_sep_cpu.u_el2_veer_wrapper  # noqa: B018 - hierarchy probe
+        except AttributeError:
+            return False
+        return True
+
+    @staticmethod
     def _set_if_exists(dut, name: str, value: int) -> None:
         try:
             getattr(dut, name).value = value
