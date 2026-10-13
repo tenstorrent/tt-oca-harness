@@ -335,7 +335,7 @@ class Plan:
 
 @dataclass
 class FillRun:
-    """What one fill or copy showed: the last STATUS, ERROR_CODE and its tap window."""
+    """What one fill or copy showed: the last STATUS, ERROR_CODE and the tap window GO..BUSY=0."""
 
     status: DmaStatus
     error_code: int
@@ -447,7 +447,14 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         hs: int = 0,
         stop_on_error: bool = True,
     ) -> FillRun:
-        """Program one transfer, GO, and wait for DONE or ERROR (re-GO between chunks)."""
+        """Program one transfer, GO, and wait for DONE or ERROR (re-GO between chunks).
+
+        The tap window runs from GO to BUSY=0, so it holds every beat the DMA
+        issues. The DMA leaves its error state only after a W1C of
+        STATUS.ERROR, so a stop on ERROR or ABORTED runs ``_idle`` (W1C, then
+        a bounded wait for BUSY=0 that fails on expiry) before the window
+        closes. ``status`` and ``error_code`` are read before that W1C.
+        """
         ops = self.ops
         await ops.program_transfer(
             src=src,
@@ -463,6 +470,10 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         stop = (lambda s: bool(s.error or s.aborted)) if stop_on_error else (lambda s: False)
         res = await ops.run_to_done(2 * total, busy=self.busy, stop_on=stop)
         ec = await ops.rd(ERROR_CODE)
+        if res.status.error or res.status.aborted:
+            await self._idle()
+        elif res.status.busy:
+            await ops.poll_status(lambda s: not s.busy, ERR_POLL_BOUND, "BUSY=0 after DONE")
         return FillRun(res.status, ec, self.tap.since(mark), res.go_writes)
 
     async def _wait_status(self, mask: int, what: str) -> DmaStatus:
