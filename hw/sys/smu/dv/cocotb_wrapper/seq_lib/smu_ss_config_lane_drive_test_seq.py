@@ -12,7 +12,7 @@ SS_CONFIG is written over the JTAG2AXI bridge and ss_config_o is sampled on clk_
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
 from ocah_jtag_vip import OcahJtagState
 
@@ -234,7 +234,7 @@ class smu_ss_config_lane_drive_test_seq:
         sb.expect_eq("J2A wait sites exercised", j2a, CONTRACT_J2A_ACCESSES)
         sb.expect_eq("pin wait sites exercised", pin, CONTRACT_PIN_WAITS)
 
-        await RisingEdge(dut.clk_smu_i)
+        await ClockCycles(dut.clk_smu_i, 2)
         self.step_ts["PASS"] = float(get_sim_time(unit="ns"))
         order = ["S1", "S2", "S3", "S4", "PASS"]
         deltas = [self.step_ts[b] - self.step_ts[a] for a, b in zip(order, order[1:])]

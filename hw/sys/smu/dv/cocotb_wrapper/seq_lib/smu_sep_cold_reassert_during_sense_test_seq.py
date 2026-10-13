@@ -112,7 +112,7 @@ class smu_sep_cold_reassert_during_sense_test_seq:
             await RisingEdge(self.dut.clk_smu_i)
         self._expire(label, rec)
 
-    async def _release(self, label: str) -> None:
+    async def _release(self, label: str, walk: bool = True) -> None:
         """Release the cold reset and restart the per-leg strobe and rise counters."""
         self.base = self.probe.resp_words["sep_efuse_shim"]
         self.rises_before = len(self.probe.rises["sep_fuse_sense_done_o"])
@@ -128,6 +128,9 @@ class smu_sep_cold_reassert_during_sense_test_seq:
                 break
         else:
             self._expire(f"cold_rise_{label}", rec)
+        if not walk:
+            self.log.info("TAP reset walk %s: skipped (trigger armed at release)", label)
+            return
         await self.test.jtag_tap_reset(TAP_RESET_TCK)
         self.log.info(
             "TAP reset walk %s: %d TCK pulses (fixed loop, no wait)", label, TAP_RESET_TCK
@@ -211,10 +214,23 @@ class smu_sep_cold_reassert_during_sense_test_seq:
 
     async def _abort_leg(self, name: str, label: str, target: int) -> int:
         """Release, trigger at ``target`` strobes, re-assert, compare the held samples."""
-        await self._release(label)
+        await self._release(label, walk=False)
         await self._wait_strobes(f"strobe_{name}", target)
         strobes_at_trigger = self._strobes()
+        self.sb.expect_eq(
+            f"abort after word {name}: trigger taken at the target strobe count",
+            strobes_at_trigger,
+            target,
+            evidence=ABORT_RESTART,
+        )
         strobes_at_fall = await self._assert_cold(f"abort_{name}")
+        self.log.info(
+            "CELL abort_trigger_%s target=%d strobes_at_trigger=%d strobes_at_fall=%d",
+            name,
+            target,
+            strobes_at_trigger,
+            strobes_at_fall,
+        )
         self.fall_latency_strobes.append(strobes_at_fall - strobes_at_trigger)
         held = await self._hold(f"abort_{name}")
         await self._compare_held(name, strobes_at_fall, held, ABORT_RESTART)
@@ -326,12 +342,28 @@ class smu_sep_cold_reassert_during_sense_test_seq:
 
         await self._step("S6", "leg 4: abort near word 255")
         latency = max(self.fall_latency_strobes)
-        trigger = LAST_WORD - latency
-        self.log.info("CELL word_255_trigger latency_strobes=%d trigger=%d", latency, trigger)
-        await self._release("leg4")
+        trigger = LAST_WORD - latency - 1
+        self.log.info(
+            "CELL word_255_trigger latency_strobes=%d trigger=%d formula=255-latency-1",
+            latency,
+            trigger,
+        )
+        await self._release("leg4", walk=False)
         await self._wait_strobes(f"strobe_{trigger}", trigger)
         at_trigger = self._strobes()
+        sb.expect_eq(
+            "abort after word 255: trigger taken at the target strobe count",
+            at_trigger,
+            trigger,
+            evidence=ABORT_RESTART,
+        )
         at_fall = await self._assert_cold("abort_255")
+        self.log.info(
+            "CELL abort_trigger_255 target=%d strobes_at_trigger=%d strobes_at_fall=%d",
+            trigger,
+            at_trigger,
+            at_fall,
+        )
         self.log.info(
             "CHK-SEP-SENSE-ABORT-RESTART: word255 trigger=%d strobes_at_trigger=%d at_fall=%d",
             trigger,
