@@ -1237,7 +1237,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real fuse sense
 |ocah_axi_vip, `dma_busy_probe_o` (approved); `dma_axi_req_probe_o`, `dma_status_probe_o` (observation taps)
-|Proves that CONTROL.ABORT during a transfer sets ABORTED, that no beat follows the ABORTED rise before the recovery GO write, and that the engine copies correctly after the abort with no reset.
+|Proves that CONTROL.ABORT during a transfer sets ABORTED, that no AR, AW, W or B beat follows the ABORTED rise before the recovery GO write, and that the engine copies correctly after the abort with no reset.
 |<<sep_dma_zero_fill_rand_test,`sep_dma_zero_fill_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
