@@ -308,6 +308,34 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "with SUCCESS",
         ),
     ],
+    "smu_lc_rma_chip_1_export_test": [
+        (
+            "CHK-LCG-RMACHIP1-LC-EXPORT",
+            "CHK-LCG-RMACHIP1-LC-EXPORT",
+            "under the RMA_CHIPLET raw 4'b0111 image lc_state_o, obs_sep_lc_state_o and "
+            "smc_lc_state_in_o each equal 0x87 on one sampled cycle",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "bounded lc_settle and dbg_settle waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<S2<S3<PASS"),
+    ],
+    "smu_lc_rma_sip_1_export_test": [
+        (
+            "CHK-LCG-RMASIP1-LC-EXPORT",
+            "CHK-LCG-RMASIP1-LC-EXPORT",
+            "under the RMA_SIP raw 4'b0011 image lc_state_o, obs_sep_lc_state_o and "
+            "smc_lc_state_in_o each equal 0xC3 on one sampled cycle",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "bounded lc_settle and dbg_settle waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<S2<S3<PASS"),
+    ],
     "smu_lc_sigint_fail_closed_test": [
         (
             "CHK-LC-SIGINT-LEGAL-PAIR",
@@ -735,6 +763,26 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "programming all 32 bits of a word reads back 0xFFFFFFFF and the next word reads 0",
         ),
     ],
+    "smu_sep_inbound_burst_extension_test": [
+        (
+            "CHK-DBG-EXT-BURST",
+            "DBG_EXT_BURST",
+            "an INCR burst at SEP-local 0x2000_1000 reaches the extension port routed on its "
+            "first address with its length, size and beats, and nothing reaches the SHIM port",
+        ),
+        (
+            "CHK-DBG-SHIM-BURST",
+            "DBG_SHIM_BURST",
+            "an INCR burst from the SHIM base carries every beat to the eFuse bank control port "
+            "at advancing addresses and none to the extension port",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded SBA/burst/beat/posture waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S5<PASS"),
+    ],
     "smu_sep_lsu_fabric_test": [
         (
             "CHK-SEP-DMI-DMSTATUS",
@@ -857,6 +905,27 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the SEP watchdog reset request is low before the watchdog is enabled and rises "
             "when it bites",
         ),
+    ],
+    "smu_sep_stap_hold_reset_test": [
+        (
+            "CHK-DBG-STAP-TMS-HOLD",
+            "DBG_STAP_TMS_HOLD",
+            "with the SEP STAP deselected its host TMS holds the TMS-Hold value (0 and 1) with no "
+            "edges while the PTAP TMS toggles, and the scan path is the PTAP register plus the "
+            "SIB bits",
+        ),
+        (
+            "CHK-DBG-STAP-3DCR-RESET",
+            "DBG_STAP_3DCR_RESET",
+            "the SEP STAP 3DCR reads 3'b111 before a TRST pulse and 0 after it, survives "
+            "Test-Logic-Reset with Config-Hold set and clears on it with Config-Hold clear",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded posture/TMS-window/TRST waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S6<PASS"),
     ],
     "smu_dtp_sep_dm_sba_test": [
         (
@@ -1861,6 +1930,53 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "with that lane low",
         ),
     ],
+    "smu_smc_gpio_spi_pad_ownership_test": [
+        (
+            "CHK-DBG-GPIO-SPI-OWNED",
+            "DBG_GPIO_SPI_OWNED",
+            "pads 0-3, 8 and 9 read lsio_enable 1 and keep their level under core2pad 1 and 0",
+        ),
+        (
+            "CHK-DBG-GPIO-SPI-DISABLE",
+            "DBG_GPIO_SPI_DISABLE",
+            "lsio_disable clears lsio_enable on pads 0, 8 and 9 and the pad follows core2pad",
+        ),
+        (
+            "CHK-DBG-GPIO-SPI-UNDRIVEN",
+            "DBG_GPIO_SPI_UNDRIVEN",
+            "pads 4-7, 10 and 54 are not driven by the SPI host in either direction until "
+            "lsio_disable is set",
+        ),
+        (
+            "CHK-DBG-GPIO-SPI-PRIORITY",
+            "DBG_GPIO_SPI_PRIORITY",
+            "the same register write is ignored with lsio_disable clear and obeyed with it set",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A/AXI/settle waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S6<PASS"),
+    ],
+    "smu_smc_gpio_access_filter_test": [
+        (
+            "CHK-DBG-GPIO-FILTER-RESET",
+            "DBG_GPIO_FILTER_RESET",
+            "ACCESS_FILTER of pad 11 reads its reset value and AxPROT 0 and 7 are admitted "
+            "with both filters disabled",
+        ),
+        (
+            "CHK-DBG-GPIO-FILTER-WRITE",
+            "DBG_GPIO_FILTER_WRITE",
+            "with write_filter_enable set only AWPROT equal to awprot_requirement is admitted "
+            "and the other seven values are refused without changing the pad",
+        ),
+        (
+            "CHK-DBG-GPIO-FILTER-READ",
+            "DBG_GPIO_FILTER_READ",
+            "with read_filter_enable set only ARPROT equal to arprot_requirement returns the "
+            "DATA_CTRL value and the other seven values are refused",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A/AXI/settle waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S5<PASS"),
+    ],
     "smu_smc_boundary_lane_sweep_test": [
         (
             "CHK-SMU-LANE-EXT-IRQ",
@@ -1924,6 +2040,52 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "code the UART RDL assigns to Transmitter Holding Register Empty, and "
             "the IIR read retires it",
         ),
+    ],
+    "smu_secure_tm_real_sense_window_test": [
+        (
+            "CHK-SEP-SECURE-TM-CLEAR-REAL",
+            "SEP_SECURE_TM_CLEAR_REAL",
+            "secure_tm_o latches 1 in leg 1, reads 0 under the second cold reset and stays 0 "
+            "from release to the real done rise",
+        ),
+        (
+            "CHK-SEP-SECURE-TM-NO-EARLY-FOLLOW",
+            "SEP_SECURE_TM_NO_EARLY_FOLLOW",
+            "a strap pulse between response strobes 100 and 180 and the strap at 0 after done "
+            "leave secure_tm_o at 0",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded done/reset/strobe/TAP waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S7<PASS"),
+    ],
+    "smu_sep_cold_reassert_during_sense_test": [
+        (
+            "CHK-SEP-RESET-REASSERT",
+            "SEP_RESET_REASSERT",
+            "sep_reset_n_o reads 0 on every sample while the cold reset is re-asserted after done "
+            "and after response words 0, 128 and near 255",
+        ),
+        (
+            "CHK-SEP-DONE-COLD-CLEAR",
+            "SEP_DONE_COLD_CLEAR",
+            "done reads 0 under the re-asserted cold reset and rises once, after at least 256 "
+            "response strobes, in the second sense",
+        ),
+        (
+            "CHK-SEP-SENSE-ABORT-RESTART",
+            "SEP_SENSE_ABORT_RESTART",
+            "an aborted sense leaves done at 0 with no rise and the final sense restarts and "
+            "delivers at least 256 strobes before its single done rise",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded done/strobe/cold-reset/TAP waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S8<PASS"),
     ],
     "smu_sep_secure_tm_test": [
         (

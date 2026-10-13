@@ -42,9 +42,14 @@ from seq_lib.smu_jtag_helpers import (
 )
 from smu_base_test import smu_base_test
 
-assert SMU_IC_RESET_LEN == 155
-assert ic_reset_enable_bit(SMU_IC_RESET_EXT_PORT) == 1
-assert ic_reset_control_bit(SMU_IC_RESET_EXT_PORT) == 2
+
+def _check_tdr_layout() -> None:
+    """The IC_RESET TDR shape this leaf assumes; SMU_IC_RESET_NUM_SEP_PORTS is resolved from
+    the elaborated top, so this runs inside the simulation, not at import."""
+    assert SMU_IC_RESET_LEN == 155
+    assert ic_reset_enable_bit(SMU_IC_RESET_EXT_PORT) == 1
+    assert ic_reset_control_bit(SMU_IC_RESET_EXT_PORT) == 2
+
 
 ENABLE_BIT = ic_reset_enable_bit(SMU_IC_RESET_EXT_PORT)
 CONTROL_BIT = ic_reset_control_bit(SMU_IC_RESET_EXT_PORT)
@@ -91,6 +96,7 @@ class smu_jtag_ic_reset_ext_override_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
+        _check_tdr_layout()
         dut = cocotb.top
         sb = self.env.scoreboard
         self.timeout_paths: list[str] = []
