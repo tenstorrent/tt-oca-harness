@@ -1698,6 +1698,10 @@ module sep_fcov (
   localparam logic [31:0] DmaBase = SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_REG_ADDR;
   localparam logic [31:0] DmaLimit = SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_REG_ADDR;
   localparam logic [31:0] DmaRangeValid = SECURE_DMA_RANGE_VALID_REG_ADDR;
+  localparam logic [31:0] DmaRegwen = SECURE_DMA_RANGE_REGWEN_REG_ADDR;
+  // RANGE_REGWEN MuBi4 values (secure_dma.rdl): True 0x6, False 0x9.
+  localparam logic [3:0] RegwenTrue = 4'(SECURE_DMA_RANGE_REGWEN_REG_DEFAULT);
+  localparam logic [3:0] RegwenFalse = ~RegwenTrue;
   localparam logic [31:0] DmaTotal = SECURE_DMA_TOTAL_DATA_SIZE_REG_ADDR;
   localparam logic [31:0] DmaChunk = SECURE_DMA_CHUNK_DATA_SIZE_REG_ADDR;
   localparam logic [31:0] DmaWidth = SECURE_DMA_TRANSFER_WIDTH_REG_ADDR;
@@ -1804,6 +1808,34 @@ module sep_fcov (
   logic [3:0]  rv_old_q;   // RANGE_REGWEN at the issue of a range write
   logic [31:0] rb_old_q, rl_old_q;
   logic rvv_old_q;
+  logic [3:0]  rw_q;       // RANGE_REGWEN one clock earlier
+  // Unlock values written to RANGE_REGWEN since it became False, one bit
+  // each: 0 True, 1 0xF, 2 False, 3 0x0. Cleared whenever it is not False.
+  logic [3:0]  lk_try_q;
+
+  function automatic logic [3:0] lk_try_bit(input logic [3:0] v);
+    case (v)
+      RegwenTrue:  return 4'b0001;
+      4'hF:        return 4'b0010;
+      RegwenFalse: return 4'b0100;
+      4'h0:        return 4'b1000;
+      default:     return 4'b0000;
+    endcase
+  endfunction
+  // A write that the DUT refuses because of the lock: RANGE_REGWEN is False
+  // at the issue of the write and at its response.
+  wire dl_locked = wr_ev && (rv_old_q == RegwenFalse) && (d_regwen == RegwenFalse);
+  wire dl_regwen_wr = dl_locked && hit4(aw_addr_q, w_strb_q, DmaRegwen);
+  wire [3:0] dl_wd = wr_data[3:0];
+  wire dl_valid_wd = wr_data[SECURE_DMA_RANGE_VALID_RANGE_VALID_SHIFT];
+  // A refused write of a value other than the stored one to BASE, LIMIT or
+  // RANGE_VALID; the register value is unchanged.
+  wire dl_base = dl_locked && hit4(aw_addr_q, w_strb_q, DmaBase) &&
+      (wr_data != rb_old_q) && (d_base_now == rb_old_q);
+  wire dl_limit = dl_locked && hit4(aw_addr_q, w_strb_q, DmaLimit) &&
+      (wr_data != rl_old_q) && (d_limit_now == rl_old_q);
+  wire dl_valid = dl_locked && hit4(aw_addr_q, w_strb_q, DmaRangeValid) &&
+      (dl_valid_wd != rvv_old_q) && (d_valid_now == rvv_old_q);
 
   // Position of a region against the range: 0 at BASE, 1 interior,
   // 2 at LIMIT (last byte at LIMIT), 3 other.
@@ -1895,6 +1927,9 @@ module sep_fcov (
       rl_old_q  <= d_limit_now;
       rvv_old_q <= d_valid_now;
     end
+    rw_q <= d_regwen;
+    if (in_reset || (d_regwen !== RegwenFalse)) lk_try_q <= 4'h0;
+    else if (dl_regwen_wr) lk_try_q <= lk_try_q | lk_try_bit(dl_wd);
     if (!spi_on) begin
       d_src_q    <= 32'(SECURE_DMA_SRC_ADDR_LO_REG_DEFAULT);
       d_dst_q    <= 32'(SECURE_DMA_DST_ADDR_LO_REG_DEFAULT);
@@ -6400,11 +6435,15 @@ module sep_fcov (
     }
   endgroup
 
-  // RANGE_REGWEN value bin (cp_regwen_value) is parked: it needs the write
-  // that applies the range lock, which the register description does not
-  // name. It is not in the group.
   covergroup sep_dma_range_config_cg with function sample (
-      logic rv_v, logic bl_v, logic [2:0] ip, logic ip_v, logic [1:0] uw, logic uw_v
+      logic rv_v,
+      logic bl_v,
+      logic [2:0] ip,
+      logic ip_v,
+      logic [1:0] uw,
+      logic uw_v,
+      logic [3:0] rw,
+      logic rw_v
   );
     option.per_instance = 1;
     option.name = "sep_dma_range_config_cg";
@@ -6422,6 +6461,10 @@ module sep_fcov (
     }
     cp_unlocked_write: coverpoint uw iff (uw_v) {
       bins base = {2'd0}; bins limit = {2'd1}; bins valid = {2'd2};
+    }
+    // RANGE_REGWEN at each change of its value.
+    cp_regwen_value: coverpoint rw iff (rw_v) {
+      bins false_0x9 = {RegwenFalse};
     }
   endgroup
 
@@ -6521,12 +6564,35 @@ module sep_fcov (
     }
   endgroup
 
-  // sep_dma_containment_cg is not defined here. Its four range-lock
-  // coverpoints (cp_locked_write_refused, cp_regwen_invalid_value,
-  // cp_lock_recovery, cp_lock_ctx) are parked: each needs the write that
-  // applies the range lock, which the register description does not name
-  // (secure_dma.adoc, RANGE_REGWEN). The group's executable coverpoint,
-  // cp_dma_lock_recovery, belongs to the memory, boot and reset area.
+  // Range lock (sep-programming.adoc, zero fill procedure; dma.adoc, Zero
+  // Fill). Every bin is a write that the DUT refuses while RANGE_REGWEN is
+  // False (dl_locked). cp_dma_lock_recovery of the memory, boot and reset
+  // area is not sampled in this group.
+  covergroup sep_dma_containment_cg with function sample (
+      logic [1:0] lw, logic lw_v, logic [1:0] iv, logic iv_v, logic lr_v, logic lc, logic lc_v
+  );
+    option.per_instance = 1;
+    option.name = "sep_dma_containment_cg";
+    // The register of a refused write; regwen_true is a write of True to
+    // RANGE_REGWEN. The register value is unchanged.
+    cp_locked_write_refused: coverpoint lw iff (lw_v) {
+      bins base = {2'd0}; bins limit = {2'd1}; bins valid = {2'd2}; bins regwen_true = {2'd3};
+    }
+    // A refused RANGE_REGWEN write of a value other than True.
+    cp_regwen_invalid_value: coverpoint iv iff (iv_v) {
+      bins invalid_0xf = {2'd0}; bins false_0x9 = {2'd1}; bins zero_0x0 = {2'd2};
+    }
+    // RANGE_REGWEN stays False from the lock until each of True, 0xF, False
+    // and 0x0 has been written to it.
+    cp_lock_recovery: coverpoint lr_v {
+      bins held_across_unlock_attempts = {1'b1};
+    }
+    // State of the engine at a refused write: idle (no BUSY, no ERROR) or
+    // after an error (STATUS.ERROR set).
+    cp_lock_ctx: coverpoint lc iff (lc_v) {
+      bins idle = {1'b0}; bins after_error = {1'b1};
+    }
+  endgroup
 
   sep_spi_command_segment_cg u_sep_spi_command_segment_cg = new();
   sep_spi_seg_rand_cg        u_sep_spi_seg_rand_cg        = new();
@@ -6548,6 +6614,7 @@ module sep_fcov (
   sep_dma_config_fault_cg    u_sep_dma_config_fault_cg    = new();
   sep_dma_error_terminal_cg  u_sep_dma_error_terminal_cg  = new();
   sep_dma_zero_cg            u_sep_dma_zero_cg            = new();
+  sep_dma_containment_cg     u_sep_dma_containment_cg     = new();
 
   // --- SPI and DMA sampling ----------------------------------------------
   // LEN class of a segment: 0 len0, 1 sub_word, 2 max, 3 word_multiple,
@@ -6821,7 +6888,7 @@ module sep_fcov (
                                      own_dma_matrix && !dg_hs && (d_single || d_multi_exact));
       u_sep_dma_range_config_cg.sample(
           d_rvalid_q && (own_dma_matrix || own_dma_irq || own_dma_abort),
-          own_dma_matrix && (d_limit_q > d_base_q), 3'd0, 1'b0, 2'd0, 1'b0);
+          own_dma_matrix && (d_limit_q > d_base_q), 3'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0);
       u_sep_dma_hash_cg.sample(
           dg_init,
           own_dma_matrix && !dg_hs && (dg_op inside {DmaOpSha256, DmaOpSha384, DmaOpSha512}), 1'b0,
@@ -6896,9 +6963,11 @@ module sep_fcov (
       // ---- DMA range ----
       if (d_done && !done_q && ir_v_q && d_no_err && !d_err) begin
         u_sep_dma_range_config_cg.sample(1'b0, 1'b0, {1'b0, ir_src_q},
-                                         own_dma_matrix && (ir_src_q != 2'd3), 2'd0, 1'b0);
+                                         own_dma_matrix && (ir_src_q != 2'd3), 2'd0, 1'b0, 4'd0,
+                                         1'b0);
         u_sep_dma_range_config_cg.sample(1'b0, 1'b0, {1'b1, ir_dst_q},
-                                         own_dma_matrix && (ir_dst_q != 2'd3), 2'd0, 1'b0);
+                                         own_dma_matrix && (ir_dst_q != 2'd3), 2'd0, 1'b0, 4'd0,
+                                         1'b0);
       end
 
       // ---- DMA hash ----
@@ -6948,13 +7017,29 @@ module sep_fcov (
     if (wr_ev && (rv_old_q == 4'h6)) begin
       if (hit4(aw_addr_q, w_strb_q, DmaBase) && (d_base_now != rb_old_q))
         u_sep_dma_range_config_cg.sample(1'b0, 1'b0, 3'd0, 1'b0, 2'd0,
-                                         own_dma_matrix || own_dma_irq);
+                                         own_dma_matrix || own_dma_irq, 4'd0, 1'b0);
       if (hit4(aw_addr_q, w_strb_q, DmaLimit) && (d_limit_now != rl_old_q))
         u_sep_dma_range_config_cg.sample(1'b0, 1'b0, 3'd0, 1'b0, 2'd1,
-                                         own_dma_matrix || own_dma_irq);
+                                         own_dma_matrix || own_dma_irq, 4'd0, 1'b0);
       if (hit4(aw_addr_q, w_strb_q, DmaRangeValid) && (d_valid_now != rvv_old_q))
         u_sep_dma_range_config_cg.sample(1'b0, 1'b0, 3'd0, 1'b0, 2'd2,
-                                         own_dma_matrix || own_dma_irq);
+                                         own_dma_matrix || own_dma_irq, 4'd0, 1'b0);
+    end
+    if (!in_reset && (d_regwen != rw_q))
+      u_sep_dma_range_config_cg.sample(1'b0, 1'b0, 3'd0, 1'b0, 2'd0, 1'b0, d_regwen, own_dma_irq);
+    // Refused writes while RANGE_REGWEN is False.
+    if (dl_locked) begin
+      if (dl_base || dl_limit || dl_valid)
+        u_sep_dma_containment_cg.sample(dl_base ? 2'd0 : (dl_limit ? 2'd1 : 2'd2), own_dma_irq,
+                                        2'd0, 1'b0, 1'b0, d_err, own_dma_irq && (d_err || !d_busy));
+      if (dl_regwen_wr) begin
+        u_sep_dma_containment_cg.sample(
+            2'd3, own_dma_irq && (dl_wd == RegwenTrue),
+            (dl_wd == 4'hF) ? 2'd0 : ((dl_wd == RegwenFalse) ? 2'd1 : 2'd2),
+            own_dma_irq && (dl_wd inside {4'hF, RegwenFalse, 4'h0}),
+            own_dma_irq && ((lk_try_q | lk_try_bit(dl_wd)) == 4'hF) && (lk_try_q != 4'hF), d_err,
+            own_dma_irq && (d_err || !d_busy));
+      end
     end
   end
 
