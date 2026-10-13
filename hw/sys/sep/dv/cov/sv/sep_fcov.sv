@@ -1745,6 +1745,8 @@ module sep_fcov (
   wire        di_go = di_ctrl && ((di_ctrl_d & SECURE_DMA_CONTROL_GO_MASK) != 32'h0);
   wire [3:0]  di_op = 4'(fld(di_ctrl_d, SECURE_DMA_CONTROL_OPCODE_MASK,
                              SECURE_DMA_CONTROL_OPCODE_SHIFT));
+  // A SHA2 opcode: the GO starts a hash (copy and zero fill do not).
+  wire        di_hash = di_op inside {DmaOpSha256, DmaOpSha384, DmaOpSha512};
   wire        di_init = (di_ctrl_d & SECURE_DMA_CONTROL_INITIAL_TRANSFER_MASK) != 32'h0;
   wire        di_status = wr_issue && hit4(wi_addr, wi_strb, DmaStatus);
   wire [31:0] di_status_d = word4(wi_data, DmaStatus);
@@ -2059,19 +2061,19 @@ module sep_fcov (
       end
 
       // Digest valid lifecycle.
-      if (di_go && di_init && (di_op != DmaOpCopy)) dv_arm_q <= 1'b1;
+      if (di_go && di_init && di_hash) dv_arm_q <= 1'b1;
       else if ((dvalid_q && !d_dvalid) ||
                (dr_status && ((dr_status_d & SECURE_DMA_STATUS_BUSY_MASK) != 0) &&
                 ((dr_status_d & SECURE_DMA_STATUS_SHA2_DIGEST_VALID_MASK) == 0)))
         dv_arm_q <= 1'b0;
-      if (di_go && (di_op != DmaOpCopy)) dv_hash_q <= 1'b1;
+      if (di_go && di_hash) dv_hash_q <= 1'b1;
       else if (d_dvalid && !dvalid_q) dv_hash_q <= 1'b0;
 
       // Configuration faults: the GO kind waits for the SIZE_ERROR rise.
       if (di_go) begin
         szk_v_q <= (d_total_q == 32'h0) || (d_chunk_q == 32'h0);
         szk_q   <= (d_total_q == 32'h0) ? ((d_chunk_q == 32'h0) ? 2'd2 : 2'd0) : 2'd1;
-        hwf_v_q <= (di_op != DmaOpCopy) && (d_width_q <= 2'd1);
+        hwf_v_q <= di_hash && (d_width_q <= 2'd1);
         hwf_q   <= d_width_q[0];
       end else if (d_size_err && !size_err_q) begin
         szk_v_q <= 1'b0;
