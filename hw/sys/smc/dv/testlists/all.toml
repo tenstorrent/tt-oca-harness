@@ -56,9 +56,16 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 396
+expected_count = 415
 tests = [
+    "smc_beu_register_test",
+    "smc_plic_register_test",
+    "smc_flr_isolation_sources_test",
+    "smc_ext_window_aperture_test",
+    "smc_cpu_ctrl_mutex_all_test",
+    "smc_clint_register_test",
     "smc_accel_egress_attrs_test",
+    "smc_avsbus_resync_timing_test",
     "smc_octs_primary_count_test",
     "smc_wdt_count_feed_test",
     "smc_dma_burst_shaping_test",
@@ -150,9 +157,17 @@ tests = [
     "smc_cool_reset_from_pcie_test",
     "smc_cool_reset_x_cold_reset_test",
     "smc_cool_reset_zero_delay_test",
+    "smc_cpu_ctrl_access_rules_test",
     "smc_cpu_ctrl_map_depth_test",
+    "smc_beu_csr_access_test",
+    "smc_cpu_boot_regs_read_test",
+    "smc_cpu_ctrl_wdt_regs_test",
     "smc_cpu_ctrl_read_only_write_test",
     "smc_cpu_ctrl_scratch_window_test",
+    "smc_cpu_ctrl_scratch_all_test",
+    "smc_cpu_ctrl_sema_test",
+    "smc_cpu_ctrl_dummy_rom_test",
+    "smc_cpu_ctrl_wb_pc_test",
     "smc_cpu_ecc_lint_pint_depth_test",
     "smc_cpu_firmware_boot_test",
     "smc_cpu_l2_read_wedge_test",
@@ -189,6 +204,8 @@ tests = [
     "smc_dfd_trace_vlt_format_test",
     "smc_dfd_trace_xor_format_test",
     "smc_dfx_status_abort_test",
+    "smc_dfx_debug_ctrl_storage_test",
+    "smc_dfx_debug_bus_mux_storage_test",
     "smc_dma_cg_activity_test",
     "smc_dma_decouple_rw_test",
     "smc_zeroer_size_corners_test",
@@ -398,6 +415,7 @@ tests = [
     "smc_smbus_hostnotify_test",
     "smc_smbus_pmbus_test",
     "smc_spi_pad_bfm_test",
+    "smc_spm_aperture_region_size_test",
     "smc_spm_mem_boundary_test",
     "smc_ss_reset_complete_test",
     "smc_state_fault_inject_test",
@@ -454,6 +472,7 @@ tests = [
     "smc_clk_relation_regxbar_periph3_test",
     "smc_clk_relation_regxbar_ref8_test",
     "smc_clk_relation_regxbar_slowest_periph_test",
+    "smc_cpu_boot_release_sequence_test",
 ]
 
 [[groups]]

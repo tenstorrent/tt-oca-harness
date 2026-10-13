@@ -306,6 +306,11 @@ class smc_avsbus_resync_force_test_seq(SmcCsrSeq):
             f"{[hex(w) for w in want]}; {self._last()}"
         )
         assert occupied == len(want), f"S3: {occupied} replies for {len(want)} launched commands"
+        if state_at_force == "AVS_SHIFT_1ST_SUBFRAME":
+            assert late == 0, (
+                f"S3: {late} subframes launched between the force write and the episode; "
+                f"state_at_force {state_at_force}; {self._last()}"
+            )
         await ClockCycles(dut.clk_smc_i, 1)
         self._stamp("S3")
         self._chk(
@@ -316,7 +321,8 @@ class smc_avsbus_resync_force_test_seq(SmcCsrSeq):
             f"{episodes} resync episode followed (state before "
             f"it {prior}); subframes started before the write {before_req}, between the write "
             f"and the episode {late}, inside the probe-reported episode {inside}, after it "
-            f"{after} (request-seen instant not observable, SF-029)",
+            f"{after} (late asserted 0 only when the force landed in AVS_SHIFT_1ST_SUBFRAME; "
+            f"later states timing dependent)",
         )
         self._chk(
             "S3",

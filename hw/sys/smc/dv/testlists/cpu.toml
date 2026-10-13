@@ -20,6 +20,134 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_beu_csr_access_test"
+module = "smc_beu_csr_access_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_boot_regs_read_test"
+module = "smc_cpu_boot_regs_read_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfx_debug_ctrl_storage_test"
+module = "smc_dfx_debug_ctrl_storage_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfx_debug_bus_mux_storage_test"
+module = "smc_dfx_debug_bus_mux_storage_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_beu_register_test"
+module = "smc_beu_register_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_plic_register_test"
+module = "smc_plic_register_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_ext_window_aperture_test"
+module = "smc_ext_window_aperture_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_spm_aperture_region_size_test"
+module = "smc_spm_aperture_region_size_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_ctrl_mutex_all_test"
+module = "smc_cpu_ctrl_mutex_all_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clint_register_test"
+module = "smc_clint_register_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_ctrl_access_rules_test"
+module = "smc_cpu_ctrl_access_rules_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_ctrl_scratch_all_test"
+module = "smc_cpu_ctrl_scratch_all_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_ctrl_sema_test"
+module = "smc_cpu_ctrl_sema_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_ctrl_wdt_regs_test"
+module = "smc_cpu_ctrl_wdt_regs_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_ctrl_dummy_rom_test"
+module = "smc_cpu_ctrl_dummy_rom_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_ctrl_wb_pc_test"
+module = "smc_cpu_ctrl_wb_pc_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_cpu_ctrl_scratch_window_test"
 module = "smc_cpu_ctrl_scratch_window_test"
 seed = 1
@@ -385,6 +513,23 @@ args = [
     "+smc_hold_cpu_boot",
     "+smc_scratch_ram_hex=mmio_wedge.ecc.hex",
 ]
+
+[[tests]]
+name = "smc_flr_isolation_sources_test"
+module = "smc_flr_isolation_sources_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_boot_release_sequence_test"
+module = "smc_cpu_boot_release_sequence_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+args = ["+smc_hold_ext_boot"]
 
 [[groups]]
 name = "cpu"
