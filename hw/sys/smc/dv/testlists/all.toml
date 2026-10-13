@@ -56,7 +56,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 415
+expected_count = 419
 tests = [
     "smc_beu_register_test",
     "smc_plic_register_test",
@@ -345,6 +345,9 @@ tests = [
     "smc_i2c_target_nack_timeout_test",
     "smc_i2c_target_read_abort_test",
     "smc_i2c_target_smbus_test",
+    "smc_i3c_csr_sweep_core_test",
+    "smc_i3c_csr_sweep_ext_test",
+    "smc_i3c_clock_gate_window_test",
     "smc_i3c_dxt_table_test",
     "smc_i3c_private_write_test",
     "smc_i3c_to_fabric_test",
@@ -398,6 +401,7 @@ tests = [
     "smc_regblock_partial_write_test",
     "smc_region_size_plic_clint_beu_decode_test",
     "smc_register_boundary_depth_test",
+    "smc_reg_island_boundary_sweep_test",
     "smc_register_sanity_test",
     "smc_remap_cla_test",
     "smc_reset_recovery_matrix_test",
