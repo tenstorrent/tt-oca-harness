@@ -419,11 +419,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             and rec_ok,
         )
 
-    async def _l2_control(self) -> int:
-        """SHA-256 at TRANSFER_WIDTH encoding 2 completes with ERROR clear (window closed)."""
+    async def _l2_control(self, kind: str) -> int:
+        """SHA-256 at the size of `kind` and TRANSFER_WIDTH encoding 2 completes with ERROR clear."""
         c = self.cfg_t
         ops = self.ops
-        size = c.l2_size["hash_w0"]
+        size = c.l2_size[kind]
         await self._cold_reset()
         await self._base_config(MAX_BYTES // 4)
         await ops.wr(INTR_ENABLE, INTR_EN_ALL)
@@ -433,9 +433,10 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         ecode = await ops.rd(ERROR_CODE)
         ok = int(res.status.done and not res.status.error and (ecode & ERROR_CODE_MASK) == 0)
         self.logger.info(
-            "CTL-DMA-SIZE-ERR LOG seed=%d hash_width_enc=2 size=%d control_width_ok=%d "
+            "CTL-DMA-SIZE-ERR LOG seed=%d kind=%s hash_width_enc=2 size=%d control_width_ok=%d "
             "error_code=0x%x %s",
             c.seed,
+            kind,
             size,
             ok,
             ecode,
@@ -445,11 +446,19 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
 
     async def _leg_l2(self) -> None:
         results = [await self._l2_kind(k) for k in L2_KINDS]
-        ctl = await self._l2_control()
-        if not ctl:
-            self._ctrl_missing("CHK-DMA-SIZE-ERR control: SHA-256 at width encoding 2 failed")
-        for line, ok in results:
-            line = line.replace("@@CTRL@@", f"control_width_ok={ctl}")
+        # One control per hash kind, at that kind's size: the SIZE_ERROR of each
+        # width case then comes from the width alone.
+        hash_kinds = [k for k in L2_KINDS if k.startswith("hash")]
+        ctl = {k: await self._l2_control(k) for k in hash_kinds}
+        for k in hash_kinds:
+            if not ctl[k]:
+                self._ctrl_missing(
+                    f"CHK-DMA-SIZE-ERR control: SHA-256 at width encoding 2 and size "
+                    f"{self.cfg_t.l2_size[k]} (kind={k}) failed"
+                )
+        for (line, ok), k in zip(results, L2_KINDS):
+            k_ctl = ctl[k] if k in ctl else int(all(ctl.values()))
+            line = line.replace("@@CTRL@@", f"control_width_ok={k_ctl}")
             if not ok:
                 self._fail("CHK-DMA-SIZE-ERR", line)
             self._pass("CHK-DMA-SIZE-ERR", line)
