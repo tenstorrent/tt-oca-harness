@@ -88,6 +88,7 @@ from seq_lib.sep_dma_ops import (
     ST_CHUNK_DONE,
     SepDmaOps,
     SepMemWords,
+    asid_word,
     control_word,
 )
 
@@ -97,7 +98,7 @@ TEST = "sep_dma_abort_recovery_rand_test"
 SRAM_BASE = 0x1000_0000
 SRAM_LIMIT = 0x1003_FFFF
 SRAM_SIZE = SRAM_LIMIT - SRAM_BASE + 1
-ASID_SEP = 0x77
+ASID_SEP = asid_word(7, 7)
 
 MAX_REDRAW = 8
 MAX_LANDING = 8
