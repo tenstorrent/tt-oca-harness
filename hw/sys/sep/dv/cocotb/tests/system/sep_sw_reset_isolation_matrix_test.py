@@ -558,6 +558,9 @@ class PassView:
     def ack_rise(self, mask: int, after: int = 0) -> int | None:
         return self._first_rise(self.taps.iso_ack, mask, after)
 
+    def req_fall(self, mask: int, after: int) -> int | None:
+        return self._first_fall(self.taps.iso_req, mask, after)
+
     def ack_fall(self, mask: int, after: int) -> int | None:
         return self._first_fall(self.taps.iso_ack, mask, after)
 
@@ -875,39 +878,36 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 words.append(self._sw_word(st.shapes[wi], st.rsvd[wi]))
                 fields_seq.append(self.sw)
                 wi += 1
+            await RisingEdge(cocotb.top.clk_i)
+            view = PassView(self.taps, self.chan, self.off)
+            evs = await self._issue_writes(words, st.spacing)
+            effect_ok, effect = True, ""
             if st.style == "per":
-                # One write per domain: read SW_RESET_N back after each write's
-                # response and grade it against the fields of that write, then wait
-                # the drawn spacing before the next write.
-                evs = []
-                for k, (word, fields_k) in enumerate(zip(words, fields_seq)):
-                    if k and st.spacing:
-                        await self._cycles(st.spacing)
-                    ev = (await self._issue_writes([word], 0))[0]
-                    evs.append(ev)
-                    code = (
-                        int(max(ev.data.resp))
-                        if isinstance(ev.data.resp, (list, tuple))
-                        else int(ev.data.resp)
+                # One write per domain at the drawn spacing: each write's field shows
+                # on the isolate request of its own domain (it rises on an assert and
+                # falls on a release) after that write's AW handshake and before the
+                # edge of the next domain, so no write changes a field it does not
+                # carry and none is dropped.
+                for d in st.doms:
+                    await self._wait_ip(IPRST[d], level, f"step {st.idx} {phase} {d}")
+                aws = view.beats("aw", (SW_ID,))
+                edges = []
+                for k, d in enumerate(st.doms):
+                    if level:
+                        e = view.req_fall(HOST_MASK[d], view.m["iso_req"].clk)
+                    else:
+                        e = view.req_rise(HOST_MASK[d], view.m["iso_req"].clk)
+                    aw_k = aws[k][0] if k < len(aws) else None
+                    edges.append((d, aw_k, e))
+                for k, (d, aw_k, e) in enumerate(edges):
+                    after_own = aw_k is not None and e is not None and e > aw_k
+                    before_next = k + 1 == len(edges) or (
+                        e is not None and edges[k + 1][2] is not None and e < edges[k + 1][2]
                     )
-                    rbk = await self._sw_read64()
-                    self._chk(
-                        "CHK-SWRST-RSVD",
-                        (rbk & SW_FIELDS) == fields_k,
-                        f"leg=subset step={st.idx} phase={phase} write={k + 1}/{len(words)} "
-                        f"n=1 writes responses=1 ({RESP_NAME.get(code, str(code))}) "
-                        f"hi=0x{(word[2] >> RSVD_LSB):x} written_fields=0b{fields_k:07b} "
-                        f"readback_fields=0b{rbk & SW_FIELDS:07b}",
-                    )
-                    self.logger.info(
-                        "OBS-SWRST-RSVD: leg=subset step=%d phase=%s write=%d bits63:7=0x%x",
-                        st.idx,
-                        phase,
-                        k + 1,
-                        rbk >> RSVD_LSB,
-                    )
-            else:
-                evs = await self._issue_writes(words, st.spacing)
+                    effect_ok &= after_own and before_next
+                effect = " write_effects=" + ",".join(
+                    f"{d}:aw={aw_k}->req_{'fall' if level else 'rise'}={e}" for d, aw_k, e in edges
+                )
             codes = [
                 int(max(ev.data.resp))
                 if isinstance(ev.data.resp, (list, tuple))
@@ -918,10 +918,11 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             his = ",".join(f"0x{(w[2] >> RSVD_LSB):x}" for w in words)
             self._chk(
                 "CHK-SWRST-RSVD",
-                (rb & SW_FIELDS) == self.sw,
+                (rb & SW_FIELDS) == self.sw and effect_ok,
                 f"leg=subset step={st.idx} phase={phase} n={len(words)} writes "
                 f"responses={len(codes)} ({','.join(RESP_NAME.get(c, str(c)) for c in codes)}) "
-                f"hi={his} written_fields=0b{self.sw:07b} readback_fields=0b{rb & SW_FIELDS:07b}",
+                f"hi={his} written_fields=0b{self.sw:07b} readback_fields=0b{rb & SW_FIELDS:07b}"
+                f"{effect}",
             )
             self.logger.info(
                 "OBS-SWRST-RSVD: leg=subset step=%d phase=%s bits63:7=0x%x",
