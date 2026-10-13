@@ -1879,6 +1879,48 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "again at the wrapper pin leaves the request retired",
         ),
     ],
+    "smu_telemetry_queue_threshold_test": [
+        (
+            "CHK-TELQ-POP-EMPTY",
+            "TELQ_POP_EMPTY",
+            "a pop on the empty queue leaves BUFFER_EMPTY set and PROBE_ID 0",
+        ),
+        (
+            "CHK-TELQ-EMPTY-FULL",
+            "TELQ_EMPTY_FULL",
+            "BUFFER_EMPTY drops after the first message and BUFFER_FULL sets only on the eighth",
+        ),
+        (
+            "CHK-TELQ-THRESHOLD-LIVE",
+            "TELQ_THRESHOLD_LIVE",
+            "INTR_STATUS.BUFFER_THRESHOLD is 0 up to three queued and 1 above the threshold",
+        ),
+        (
+            "CHK-TELQ-ORDER",
+            "TELQ_ORDER",
+            "successive pops expose probe ids 2 to 8 in arrival order, then 0 when empty",
+        ),
+        (
+            "CHK-TELQ-THRESHOLD-CLEAR",
+            "TELQ_THRESHOLD_CLEAR",
+            "a write of 1 leaves the status at 1; draining to the threshold or raising it reads 0",
+        ),
+        (
+            "CHK-TELQ-THRESHOLD-TEST",
+            "TELQ_THRESHOLD_TEST",
+            "INTR_TEST.BUFFER_THRESHOLD forces the status to 1 and releases it to 0",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A and ATB waits with last state",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence S1<S2<S3<S4<S5<S6<PASS",
+        ),
+    ],
     "smu_telemetry_reset_state_test": [
         (
             "CHK-TELR-CTRL-STATUS",
@@ -2219,6 +2261,44 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_xtrig_ctm_remap_test": [
         ("CHK-XT-CTM-REMAP", "XT_CTM_REMAP", "product-pin CTM remap"),
+    ],
+    "smu_xtrig_ctm_select_walk_test": [
+        (
+            "CHK-CT-SRC-WALK",
+            "CHK-CT-SRC-WALK",
+            "CT_DST_SELECT[25:0] stores each walked bit and reads it back exactly",
+        ),
+        (
+            "CHK-CT-SRC-KINDS",
+            "CHK-CT-SRC-KINDS",
+            "each CT_SRC index kind takes at least 8 distinct bits and reads 0 after the clear",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
+    ],
+    "smu_xtrig_ctn_csr_rw_test": [
+        (
+            "CHK-CTP-CFG-STRETCH-RW",
+            "CHK-CTP-CFG-STRETCH-RW",
+            "port 3 CONFIG reads back 0x7 and 0x0 and STRETCH_MULT reads back 0, 1 and 0xFFFF as written",
+        ),
+        (
+            "CHK-CTP-STATUS-WRITE-IGNORED",
+            "CHK-CTP-STATUS-WRITE-IGNORED",
+            "a STATUS write completes with success and the next read equals the read before it",
+        ),
+        (
+            "CHK-CTP-WINDOW-INDEPENDENCE",
+            "CHK-CTP-WINDOW-INDEPENDENCE",
+            "each of 16 ports reads back its own STRETCH_MULT and ports 0 and 15 their own CONFIG",
+        ),
+        (
+            "CHK-CTN-SERIALISED-ACCESS",
+            "CHK-CTN-SERIALISED-ACCESS",
+            "back-to-back CT_SRC and CTP accesses return the values last written to each register",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<PASS"),
     ],
     "smu_xtrig_ctp_status_reset_test": [
         (

@@ -1825,35 +1825,6 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
-[[groups]]
-name = "smc_under_smu"
-tests = [
-  "smu_dtp_bsr_extest_loopback_test",
-  "smu_ext_boot_seq_gate_test",
-  "smu_i3c_mem_port_connectivity_test",
-  "smu_ic_reset_ss_domain_matrix_test",
-  "smu_smc_mailbox_int_test",
-  "smu_smc_mailbox_sanity_test",
-  "smu_smc_rom_boot_min_pass_test",
-  "smu_smc_reset_ctrl_test",
-  "smu_smc_wdt_sanity_test",
-  "smu_smc_wdt_timeout_irq_test",
-  "smu_system_timer_octs_test",
-  "smu_periph_ext_window_test",
-  "smu_smc_boundary_io_test",
-  "smu_smc_ss_reset_ctrl_sweep_test",
-  "smu_smc_boundary_lane_sweep_test",
-  "smu_smc_gpio_pad_output_test",
-  "smu_smc_efuse_shadow_sense_reset_test",
-  "smu_smc_cool_reset_pin_test",
-  "smu_smc_peripheral_irq_test",
-  "smu_sram_auto_init_disabled_test",
-  "smu_telemetry_atb_capture_test",
-  "smu_cla_action_test",
-  "smu_smc_wdt_boundary_timeout_test",
-]
-
-# DTP leaves.
 [[tests]]
 name = "smu_smc_scratch_bridge_readback_test"
 module = "smu_smc_scratch_bridge_readback_test"
@@ -3403,8 +3374,11 @@ tests = [
   "smu_smc_scratch_bridge_readback_test",
   "smu_xtrig_ctp_status_reset_test",
   "smu_telemetry_reset_state_test",
+  "smu_telemetry_queue_threshold_test",
+  "smu_xtrig_ctm_select_walk_test",
+  "smu_xtrig_ctn_csr_rw_test",
 ]
-expected_count = 142
+expected_count = 145
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -3749,7 +3723,30 @@ module = "smu_telemetry_reset_state_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 3000
+tags = ["smc", "telemetry", "sep", "real_rtl"]
+run_modes = ["sep_rtl"]
+args = [
+  "+expected_sep=1",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
+[[tests]]
+name = "smu_telemetry_queue_threshold_test"
+module = "smu_telemetry_queue_threshold_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3000
 tags = ["smc", "telemetry", "sep", "real_rtl"]
 run_modes = ["sep_rtl"]
 args = [
@@ -3802,6 +3799,52 @@ firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
 tags = ["dtp", "xtrig", "sep", "real_rtl"]
+run_modes = ["sep_rtl"]
+args = [
+  "+expected_sep=1",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
+[[tests]]
+name = "smu_xtrig_ctm_select_walk_test"
+module = "smu_xtrig_ctm_select_walk_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3000
+tags = ["dtp", "no_sep", "xtrig"]
+run_modes = ["sep_rtl"]
+args = [
+  "+expected_sep=1",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
+[[tests]]
+name = "smu_xtrig_ctn_csr_rw_test"
+module = "smu_xtrig_ctn_csr_rw_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3000
+tags = ["dtp", "no_sep", "xtrig"]
 run_modes = ["sep_rtl"]
 args = [
   "+expected_sep=1",
