@@ -554,24 +554,24 @@
 // of sep_crypto_gated_rst_no.
 `SEP_TB_OUT(logic, km_gated_rst_n_probe_o)
 // The 14-bit isolate request and isolate-complete vectors at the crypto AXI
-// interconnect (sep.sv sep_crypto_isolate_req and sep_crypto_isolated), in the
-// bit order of sep_pkg::sep_crypto_isolate_t, MSB to LSB: trng_entropy_source,
-// trng_csrng, trng_edn, host_otbn, host_aes, host_hmac, host_kmac, host_abr,
-// km_otbn, km_aes, km_hmac, km_kmac, km_abr, km_efuse. The VPLAN bench index
-// is a cocotb table (env/sep_reset_taps.py) that maps to this order.
-`SEP_TB_OUT(logic [$bits(sep_pkg::sep_crypto_isolate_t)-1:0], crypto_isolate_req_probe_o)
-`SEP_TB_OUT(logic [$bits(sep_pkg::sep_crypto_isolate_t)-1:0], crypto_isolated_probe_o)
+// interconnect (sep.sv sep_crypto_isolate_req and sep_crypto_isolated). Bit x
+// is VPLAN bench isolate stage x: 0 host_otbn, 1 host_aes, 2 host_hmac,
+// 3 host_kmac, 4 host_abr, 5 trng_entropy_source, 6 trng_csrng, 7 trng_edn,
+// 8 km_otbn, 9 km_aes, 10 km_hmac, 11 km_kmac, 12 km_abr, 13 km_efuse. tb_top
+// assigns each bit from the isolate struct field of that name.
+`SEP_TB_OUT(logic [13:0], crypto_isolate_req_probe_o)
+`SEP_TB_OUT(logic [13:0], crypto_isolated_probe_o)
 // Slave side of the 14 isolate stages of the crypto AXI interconnect, one bit per
 // stage in the same order as crypto_isolated_probe_o: the AW, AR, B and R handshakes
 // (valid and ready on the same clock) and the B and R response codes (two bits per
 // stage, stage i at [2i+1:2i]). Read-only taps of the isolate units' slv_req_i and
 // slv_resp_o ports.
-`SEP_TB_OUT(logic [$bits(sep_pkg::sep_crypto_isolate_t)-1:0], iso_slv_aw_hs_probe_o)
-`SEP_TB_OUT(logic [$bits(sep_pkg::sep_crypto_isolate_t)-1:0], iso_slv_ar_hs_probe_o)
-`SEP_TB_OUT(logic [$bits(sep_pkg::sep_crypto_isolate_t)-1:0], iso_slv_b_hs_probe_o)
-`SEP_TB_OUT(logic [$bits(sep_pkg::sep_crypto_isolate_t)-1:0], iso_slv_r_hs_probe_o)
-`SEP_TB_OUT(logic [2*$bits(sep_pkg::sep_crypto_isolate_t)-1:0], iso_slv_bresp_probe_o)
-`SEP_TB_OUT(logic [2*$bits(sep_pkg::sep_crypto_isolate_t)-1:0], iso_slv_rresp_probe_o)
+`SEP_TB_OUT(logic [13:0], iso_slv_aw_hs_probe_o)
+`SEP_TB_OUT(logic [13:0], iso_slv_ar_hs_probe_o)
+`SEP_TB_OUT(logic [13:0], iso_slv_b_hs_probe_o)
+`SEP_TB_OUT(logic [13:0], iso_slv_r_hs_probe_o)
+`SEP_TB_OUT(logic [27:0], iso_slv_bresp_probe_o)
+`SEP_TB_OUT(logic [27:0], iso_slv_rresp_probe_o)
 // Watchdog timer-domain reset (u_sep_wdt_wrap.rst_wdt_n, rst_aon_ni of the AON
 // timer).
 `SEP_TB_OUT(logic, aon_rst_n_probe_o)

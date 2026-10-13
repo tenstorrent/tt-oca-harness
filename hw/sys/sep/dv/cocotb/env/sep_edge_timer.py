@@ -16,6 +16,16 @@ and is never an expected value.
 Verilator is 2-state and its delta ordering differs from VCS, so a check that
 grades a sub-cycle phase runs on VCS.
 
+A pass through X or Z between two known values counts as the transition
+between them: ``1 -> X -> 0`` is a fall at the time the net resolves to 0, so
+an absence check ("no fall in the window") fails on it. ``xz_episodes`` lists
+every stretch at X or Z with the known values around it, for the leaf to log.
+
+A query on a timer that was never started, or a ``SepPinEdgeCounter.since``
+over a window the counter did not sample for its whole length (not running at
+the mark, or stopped or restarted after it), raises ``SepEdgeIdleError``, so a
+count or an absence cannot pass on an empty record.
+
 Usage::
 
     clk = SepPinEdgeCounter(("clk_i", "clk_wdt_i")).start()
@@ -36,6 +46,23 @@ from typing import Any, Iterable
 import cocotb
 from cocotb.triggers import Edge, RisingEdge
 from cocotb.utils import get_sim_time
+
+
+class SepEdgeIdleError(AssertionError):
+    """A query over a window the recorder did not sample."""
+
+
+@dataclass(frozen=True)
+class XzEpisode:
+    """One stretch at X or Z of a timed signal (or of the selected bit)."""
+
+    t_start_ps: int
+    t_end_ps: int | None
+    """The time the value resolves again; None while it is still X or Z."""
+    before: int | None
+    """The last known value before the stretch; None if none is recorded."""
+    after: int | None
+    """The known value that ends the stretch; None while it is still X or Z."""
 
 
 @dataclass(frozen=True)
@@ -110,29 +137,68 @@ class SepEdgeTimer:
             await Edge(self.sig)
             self.changes.append(TimedChange(_now_ps(), _value(self.sig)))
 
+    def _require_started(self) -> None:
+        if not self.changes:
+            raise SepEdgeIdleError(f"SEP-EDGE FAIL: {self.name} timer was never started")
+
     def since(self, t_ps: int) -> list[TimedChange]:
         """The changes at or after ``t_ps``."""
+        self._require_started()
         return [c for c in self.changes if c.t_ps >= t_ps]
 
-    def rises(self, since_ps: int = 0) -> list[int]:
-        """Times of 0 to 1 changes of a 1-bit signal."""
-        return self._edges(since_ps, 0, 1)
+    def rises(self, since_ps: int = 0, *, bit: int | None = None) -> list[int]:
+        """Times of 0 to 1 transitions (of ``bit``, or of a 1-bit signal).
 
-    def falls(self, since_ps: int = 0) -> list[int]:
-        """Times of 1 to 0 changes of a 1-bit signal."""
-        return self._edges(since_ps, 1, 0)
+        A ``0 -> X/Z -> 1`` pass counts, at the time the value resolves to 1.
+        """
+        return self._edges(since_ps, 0, 1, bit)
 
-    def _edges(self, since_ps: int, frm: int, to: int) -> list[int]:
+    def falls(self, since_ps: int = 0, *, bit: int | None = None) -> list[int]:
+        """Times of 1 to 0 transitions (of ``bit``, or of a 1-bit signal).
+
+        A ``1 -> X/Z -> 0`` pass counts, at the time the value resolves to 0.
+        """
+        return self._edges(since_ps, 1, 0, bit)
+
+    def _values(self, bit: int | None) -> list[tuple[int, int | None]]:
+        self._require_started()
+        if bit is None:
+            return [(c.t_ps, c.value) for c in self.changes]
+        return [(c.t_ps, None if c.value is None else (c.value >> bit) & 1) for c in self.changes]
+
+    def _edges(self, since_ps: int, frm: int, to: int, bit: int | None) -> list[int]:
         out = []
-        prev = None
-        for c in self.changes:
-            if prev is not None and prev == frm and c.value == to and c.t_ps >= since_ps:
-                out.append(c.t_ps)
-            prev = c.value
+        known = None
+        for t_ps, v in self._values(bit):
+            if v is None:
+                continue
+            if known == frm and v == to and t_ps >= since_ps:
+                out.append(t_ps)
+            known = v
+        return out
+
+    def xz_episodes(self, since_ps: int = 0, *, bit: int | None = None) -> list[XzEpisode]:
+        """Every stretch at X or Z that ends at or after ``since_ps`` (or is still open)."""
+        out = []
+        known = None
+        start = None
+        for t_ps, v in self._values(bit):
+            if v is None:
+                if start is None:
+                    start = (t_ps, known)
+                continue
+            if start is not None:
+                if t_ps >= since_ps:
+                    out.append(XzEpisode(start[0], t_ps, start[1], v))
+                start = None
+            known = v
+        if start is not None:
+            out.append(XzEpisode(start[0], None, start[1], None))
         return out
 
     def value_at(self, t_ps: int) -> int | None:
         """The value after every change at or before ``t_ps``."""
+        self._require_started()
         val = None
         for c in self.changes:
             if c.t_ps > t_ps:
@@ -147,6 +213,15 @@ class SepEdgeTimer:
         return f"{self.name}[{body}]"
 
 
+@dataclass(frozen=True)
+class PinMark:
+    """A point in a ``SepPinEdgeCounter`` record."""
+
+    epoch: int
+    """The counter run the mark was taken in; 0 when the counter was not running."""
+    count: dict[str, int]
+
+
 class SepPinEdgeCounter:
     """Counts rising edges of clock pins and keeps the last edge times."""
 
@@ -156,9 +231,11 @@ class SepPinEdgeCounter:
         self.count: dict[str, int] = {p: 0 for p in self.pins}
         self.edges: dict[str, deque[int]] = {p: deque(maxlen=keep) for p in self.pins}
         self._tasks: list[Any] = []
+        self._epoch = 0
 
     def start(self) -> "SepPinEdgeCounter":
         if not self._tasks:
+            self._epoch += 1
             self._tasks = [cocotb.start_soon(self._run(p)) for p in self.pins]
         return self
 
@@ -174,12 +251,23 @@ class SepPinEdgeCounter:
             self.count[pin] += 1
             self.edges[pin].append(_now_ps())
 
-    def mark(self) -> dict[str, int]:
-        return dict(self.count)
+    def mark(self) -> PinMark:
+        """The edge counts now, with the run the counter is in (0: not running)."""
+        return PinMark(self._epoch if self._tasks else 0, dict(self.count))
 
-    def since(self, mark: dict[str, int], pin: str) -> int:
-        """Rising edges of ``pin`` after ``mark``."""
-        return self.count[pin] - mark[pin]
+    def since(self, mark: PinMark, pin: str) -> int:
+        """Rising edges of ``pin`` after ``mark``.
+
+        Raises ``SepEdgeIdleError`` unless the counter ran from the mark to now
+        without a stop.
+        """
+        running = self._epoch if self._tasks else 0
+        if mark.epoch == 0 or running != mark.epoch:
+            raise SepEdgeIdleError(
+                f"SEP-EDGE FAIL: pin counter did not sample {pin} for the whole window "
+                f"(mark run={mark.epoch} current run={running})"
+            )
+        return self.count[pin] - mark.count[pin]
 
     def edge_times(self, pin: str) -> list[int]:
         return list(self.edges[pin])
@@ -205,4 +293,10 @@ if __name__ == "__main__":
     assert nearest_edge_offset_ps(2900, edges) == -100
     assert nearest_edge_offset_ps(2100, edges) == 100
     assert phase_pct(250, 1000) == 25.0
+    tm = SepEdgeTimer(None, name="t")
+    tm.changes.extend(
+        TimedChange(t, v) for t, v in ((0, 1), (10, None), (20, 0), (30, 1), (40, None), (50, 1))
+    )
+    assert tm.falls() == [20] and tm.rises() == [30]
+    assert tm.xz_episodes(15) == [XzEpisode(10, 20, 1, 0), XzEpisode(40, 50, 1, 1)]
     print("sep_edge_timer self-check PASS")

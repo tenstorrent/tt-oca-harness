@@ -776,7 +776,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         await self.assert_cold_reset(dut)
         dut.jtag_trst_n_i.value = 0
         await Timer(1, units="ns")
-        self._set_if_exists(dut, "dbg_rstb_i", 0)
+        self._set_pin(dut, "dbg_rstb_i", 0)
         self._stage_rom()
         self._stage_sram()
         self.start_clocks(dut)
@@ -787,7 +787,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         await ClockCycles(dut.clk_i, RST_HOLD)
         dut.rst_ni.value = 1
-        self._set_if_exists(dut, "dbg_rstb_i", 1)
+        self._set_pin(dut, "dbg_rstb_i", 1)
         await ClockCycles(dut.clk_i, self.d)
         dut.ext_boot_seq_done_i.value = 1
         return ep, 0

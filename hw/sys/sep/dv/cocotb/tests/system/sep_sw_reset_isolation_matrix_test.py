@@ -113,7 +113,6 @@ from env.sep_reset_taps import (
     ISO_WIDTH,
     SepResetTaps,
     iso_name,
-    iso_rtl_bit,
 )
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -475,8 +474,8 @@ class IsoSlvLog:
                 if ch in resp and resp[ch].value.is_resolvable:
                     codes = int(resp[ch].value)
                 for x in range(ISO_WIDTH):
-                    if (v >> iso_rtl_bit(x)) & 1:
-                        code = (codes >> (2 * iso_rtl_bit(x))) & 3 if codes >= 0 else -1
+                    if (v >> x) & 1:
+                        code = (codes >> (2 * x)) & 3 if codes >= 0 else -1
                         self.ev.append((self.clk, ch, x, code))
 
     def start(self) -> "IsoSlvLog":
