@@ -608,7 +608,7 @@ tests = [
 # Convenience group of the SPI and DMA Phase 3 tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_spi_dma"
-expected_count = 9
+expected_count = 10
 tests = [
     "sep_spi_pad_speed_dir_matrix_test",
     "sep_spi_pad_timing_cfg_rand_test",
@@ -619,4 +619,5 @@ tests = [
     "sep_dma_irq_error_lock_rand_test",
     "sep_dma_abort_recovery_rand_test",
     "sep_spi_dma_handshake_rand_test",
+    "sep_dma_zero_fill_rand_test",
 ]
