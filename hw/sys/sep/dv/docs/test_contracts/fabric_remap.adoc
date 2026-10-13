@@ -613,7 +613,7 @@ and STEE output-remap banks.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Scope*: This entry is distinct from the CPU high-alias window (`sep_cpu_ifu_lsu_alias_remap_matrix_test`). CSR programming stays on `sep_fabric_remap_filter_csr_bank_test`. Local-master `REGION_ATTRS` has `valid` and `cacheable`. Cacheable overrides AXI `cache` on a hit; this vehicle does not observe that field. The `ext_debug_bus_o` lane is information only. No RDL, generated header or document defines its layout, so no checker decodes it.
+*Scope*: This entry is distinct from the CPU high-alias window (`sep_cpu_ifu_lsu_alias_remap_matrix_test`). CSR programming stays on `sep_fabric_remap_filter_csr_bank_test`. Local-master `REGION_ATTRS` has `valid` and `cacheable`. Cacheable overrides AXI `cache` on a hit; this vehicle does not observe that field. CHK-DBG-AR grades the remap-hit lane `ext_debug_bus_o[207:192]` without decoding it: no RDL, generated header or document defines its field layout, so the check compares lane values only.
 
 '''''
 
