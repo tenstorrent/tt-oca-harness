@@ -56,8 +56,9 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 396
+expected_count = 405
 tests = [
+    "smc_gpio_irq_or_test",
     "smc_accel_egress_attrs_test",
     "smc_octs_primary_count_test",
     "smc_wdt_count_feed_test",
@@ -261,10 +262,17 @@ tests = [
     "smc_fw_uart_log_engine_single_entry_test",
     "smc_gpio_boot_stall_test",
     "smc_gpio_ctrl_full_sweep_test",
+    "smc_gpio_data_ctrl_enable_fields_test",
     "smc_gpio_data_ctrl_field_test",
+    "smc_gpio_data_ctrl_ro_status_test",
+    "smc_gpio_data_ctrl_rw_values_test",
     "smc_gpio_filter_access_sep_test",
+    "smc_gpio_filter_reg_fields_test",
     "smc_gpio_intf_full_sweep_test",
+    "smc_gpio_ext_extra_decode_test",
     "smc_gpio_intf_regblock_sweep_test",
+    "smc_gpio_intf_reset_writeback_test",
+    "smc_gpio_intf_decode_map_test",
     "smc_gpio_irq_active_test",
     "smc_gpio_irq_mask_deassert_test",
     "smc_gpio_irq_type_matrix_test",
@@ -274,6 +282,7 @@ tests = [
     "smc_gpio_p0_int_test",
     "smc_gpio_p0_mux_test",
     "smc_gpio_pad_input_readback_test",
+    "smc_gpio_rst_primary_test",
     "smc_hang_detector_data_timeout_test",
     "smc_hang_detector_plic_route_test",
     "smc_hang_detector_sanity_test",

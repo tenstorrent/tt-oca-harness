@@ -46,6 +46,7 @@ class SmcScoreboard(uvm_subscriber):
         self.axil_samples_seen = 0
         self.sys_axi_checks_seen = 0
         self.sys_axi_value_checks_seen = 0
+        self.sys_axi_reset_aborted_seen = 0
         # MEASURED per-bus tally of AXI accesses that actually completed (the
         # driver stamps `item.bus_name`; a timed-out access is not counted
         # because nothing was performed). This is the observed left-hand side of
@@ -690,6 +691,9 @@ class SmcScoreboard(uvm_subscriber):
         self.logger.info(
             "Scoreboard SYS AXI check #%d [%s]: %s", self.sys_axi_checks_seen, bus, item
         )
+        if item.reset_aborted and item.allow_reset_abort:
+            self.sys_axi_reset_aborted_seen += 1
+            return
         if getattr(item, "expect_error", False):
             # Negative-path probe (mirrors the SEP expect_error guard): a real
             # error response is the expected outcome. Two vacuous passes are
@@ -719,7 +723,10 @@ class SmcScoreboard(uvm_subscriber):
                 )
             self._cov("sys_axi", (item.op.value, item.addr >> 12))
             return
-        assert item.resp_ok, f"SYS AXI {item.op.value} @ 0x{item.addr:014x} returned non-OKAY"
+        assert item.resp_ok, (
+            f"SYS AXI {item.op.value} @ 0x{item.addr:014x} returned non-OKAY "
+            f"(reset_aborted={item.reset_aborted}: completed with no response)"
+        )
         if item.expected_resp is not None:
             assert item.resp_code == item.expected_resp, (
                 f"SYS AXI {item.op.value} @ 0x{item.addr:014x} resp "
@@ -922,6 +929,10 @@ class SmcScoreboard(uvm_subscriber):
             self.sys_axi_checks_seen,
             self.protocol_vip_checks_seen,
             self.protocol_vip_auto_stamps_seen,
+        )
+        self.logger.info(
+            "Scoreboard SYS AXI reset-aborted accesses accepted: %d",
+            self.sys_axi_reset_aborted_seen,
         )
         self.logger.info(
             "Scoreboard measured AXI accesses per bus (completed, non-timeout): %s",
