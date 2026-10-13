@@ -84,7 +84,7 @@
 <tr><td>35:33</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>32</td><td>reset_applied</td><td>R</td><td>0x0</td><td>Live status: high while a requested software reset is applied at the cluster,<br>either after drain completes or after a force-mode timeout.</td></tr>
 <tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>timeout_mode</td><td>RW</td><td>0x0</td><td>Timeout mode: 0 = give up and report error (stay withheld, do not apply);<br>1 = force the reset on timeout.</td></tr>
+<tr><td>16</td><td>timeout_mode</td><td>RW</td><td>0x0</td><td>Timeout mode: 0 = report the timeout and keep withholding the reset until<br>the drain completes, then apply it; 1 = force the reset on timeout.</td></tr>
 <tr><td>15:0</td><td>timeout_value</td><td>RW</td><td>0x0</td><td>Cycles (clk_smc) a software reset may stay pending (withheld, waiting<br>for drain) before timeout. 0 = disabled, wait indefinitely.</td></tr>
 </table>
 <h3 id="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>

@@ -1338,7 +1338,7 @@ subsystem specific registers are preserved</ipxact:description>
             <ipxact:field>
               <ipxact:name>reset_complete</ipxact:name>
               <ipxact:description>Response signal from subsystem to indicate reset (or some other critical step) has completed.
-Bitwise write 1 to clear</ipxact:description>
+Each bit reads the synchronized live value of its subsystem's signal; it is not latched.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33391,8 +33391,8 @@ for drain) before timeout. 0 = disabled, wait indefinitely.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>timeout_mode</ipxact:name>
-              <ipxact:description>Timeout mode: 0 = give up and report error (stay withheld, do not apply);
-1 = force the reset on timeout.</ipxact:description>
+              <ipxact:description>Timeout mode: 0 = report the timeout and keep withholding the reset until
+the drain completes, then apply it; 1 = force the reset on timeout.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
