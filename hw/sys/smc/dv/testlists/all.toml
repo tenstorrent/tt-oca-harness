@@ -56,7 +56,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 415
+expected_count = 432
 tests = [
     "smc_beu_register_test",
     "smc_plic_register_test",
@@ -311,6 +311,12 @@ tests = [
     "smc_i2c_controller_stretch_test",
     "smc_i2c_error_fifo_depth_test",
     "smc_i2c_event_retain_test",
+    "smc_i2c_intr_output_path_test",
+    "smc_i2c_intr_test_state_test",
+    "smc_i2c_clock_gate_response_test",
+    "smc_i2c_ctrl_role_gate_test",
+    "smc_i2c_ctrl_intr_w1c_test",
+    "smc_i2c_pad_override_test",
     "smc_i2c_window_landing_test",
     "smc_i2c_bus_corners_test",
     "smc_i2c_fifo_full_test",
@@ -412,6 +418,17 @@ tests = [
     "smc_sideband_protocol_smoke_test",
     "smc_smbus_alert_ara_test",
     "smc_smbus_alert_suspend_test",
+    "smc_smbus_alert_irq_route_test",
+    "smc_smbus_alert_self_clear_test",
+    "smc_i2c_ctrl_nack_modes_test",
+    "smc_i2c_ctrl_wire_frames_test",
+    "smc_i2c_target_tx_read_test",
+    "smc_i2c_target_addr_gate_test",
+    "smc_i2c_ctrl_xinst_events_test",
+    "smc_i2c_target_bus_symbol_test",
+    "smc_i2c_window_decode_test",
+    "smc_smbus_pmbus_linear11_read_test",
+    "smc_i2c_target_instance_pair_test",
     "smc_smbus_hostnotify_test",
     "smc_smbus_pmbus_test",
     "smc_spi_pad_bfm_test",
