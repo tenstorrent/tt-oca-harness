@@ -580,3 +580,19 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric", "decode"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_inbound_window_port_matrix_test"
+module = "smc_inbound_window_port_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_axi_channel_timing_ports_test"
+module = "smc_axi_channel_timing_ports_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]

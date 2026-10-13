@@ -56,8 +56,10 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 451
+expected_count = 453
 tests = [
+    "smc_axi_channel_timing_ports_test",
+    "smc_inbound_window_port_matrix_test",
     "smc_invalid_probe_recovery_test",
     "smc_inbound_concurrency_limits_test",
     "smc_infilt_default_liveness_test",
