@@ -10630,14 +10630,12 @@ module sep_fcov (
       bins third1_aligned = {3'b1_01};
       bins third2_aligned = {3'b1_10};
       illegal_bins unaligned = {3'b0_00, 3'b0_01, 3'b0_10};
-      ignore_bins no_period = {3'b0_11, 3'b1_11};
     }
     cp_aon_release_sync: coverpoint s.as iff (s.as_v) {
       bins third0_aligned = {3'b1_00};
       bins third1_aligned = {3'b1_01};
       bins third2_aligned = {3'b1_10};
       illegal_bins unaligned = {3'b0_00, 3'b0_01, 3'b0_10};
-      ignore_bins no_period = {3'b0_11, 3'b1_11};
     }
     cp_release_order: coverpoint s.ro iff (s.ro_v) {
       bins held_window = {2'd0};
@@ -11359,7 +11357,7 @@ module sep_fcov (
       realtime per;
       off = $realtime - mr_t_clk;
       per = mr_t_clk - mr_t_clk_p;
-      if (mr_rr_arm && mr_own_cold) begin
+      if (mr_rr_arm && mr_own_cold && (mr_rr_third != 2'd3)) begin
         mr_src_t e;
         e      = '0;
         e.rs   = {(off <= MrEdgeTol), mr_rr_third};
@@ -11382,7 +11380,7 @@ module sep_fcov (
       realtime per;
       off = $realtime - mr_t_wdt;
       per = mr_t_wdt - mr_t_wdt_p;
-      if (mr_ar_arm && mr_own_cold) begin
+      if (mr_ar_arm && mr_own_cold && (mr_ar_third != 2'd3)) begin
         mr_src_t e;
         e      = '0;
         e.as   = {(off <= MrEdgeTol), mr_ar_third};
@@ -11488,14 +11486,25 @@ module sep_fcov (
   logic [6:0] mr_swv = MrSwRstDef;  // SW_RESET_N fields
   logic [6:0] mr_sw_wd = MrSwRstDef;  // last written fields
   logic mr_sw_wd_v = 1'b0;
+  // SW_RESET_N fields as the register holds them: the write lands when its
+  // AW and W beats are accepted, cycles before the B beat that updates
+  // mr_swv. The reset sequencer can move ip_rst_n before that B beat, so the
+  // points that compare a tap with the software bit use this copy.
+  logic [6:0] mr_swv_e = MrSwRstDef;
+  wire [31:0] mr_w_addr = aw_hs ? lsu_aw_addr_i : aw_addr_q;
+  wire mr_w_sw = w_hs && (lsu_w_strb_i[0] === 1'b1) && (aw_hs || (aw_out_q != 4'd0)) &&
+      (mr_w_addr == MrSwRst);
   logic [31:0] mr_scr[16] = '{default: '0};
   logic [15:0] mr_scr_v = '0;
   always @(posedge clk_i) begin
     if (!mr_srn) mr_swv <= MrSwRstDef;
     else if (mr_wlo && (aw_addr_q == MrSwRst)) mr_swv <= w_data_q[6:0];
     else if (mr_rd_lo && (ar_addr_q == MrSwRst)) mr_swv <= lsu_r_data_i[6:0];
-    if (mr_wlo && (aw_addr_q == MrSwRst)) begin
-      mr_sw_wd   <= w_data_q[6:0];
+    if (!mr_srn) mr_swv_e <= MrSwRstDef;
+    else if (mr_w_sw) mr_swv_e <= lsu_w_data_i[6:0];
+    else if (mr_rd_lo && (ar_addr_q == MrSwRst)) mr_swv_e <= lsu_r_data_i[6:0];
+    if (mr_w_sw) begin
+      mr_sw_wd   <= lsu_w_data_i[6:0];
       mr_sw_wd_v <= 1'b1;
     end
     if (!mr_rst) mr_scr_v <= '0;
@@ -12955,10 +12964,10 @@ module sep_fcov (
 
     // cp_pulse_vs_sequence: the domain D of an overlap run is the first
     // field of OTBN, AES, KMAC or Adams Bridge that the write clears.
-    if (mr_wlo && (aw_addr_q == MrSwRst) && mr_own_ret) begin
+    if (mr_w_sw && mr_own_ret) begin
       logic [6:0] clr;
       int dd;
-      clr = mr_swv & ~w_data_q[6:0] & 7'b101_0110;
+      clr = mr_swv_e & ~lsu_w_data_i[6:0] & 7'b101_0110;
       dd  = -1;
       for (int i = 6; i >= 1; i--) if (clr[i]) dd = i;
       if (dd >= 0) begin
@@ -13026,10 +13035,10 @@ module sep_fcov (
       cond = mr_ovrd[i] && !mr_oval[i];
       mr_on_cond_q[j] <= cond;
       if (cond && !mr_on_cond_q[j]) begin
-        mr_on_on[j] <= mr_own_ovr && mr_swv[i];
+        mr_on_on[j] <= mr_own_ovr && mr_swv_e[i];
         mr_on_ok[j] <= 1'b1;
       end else if (mr_on_on[j] && cond) begin
-        if (!mr_swv[i] || !mr_own_ovr) mr_on_on[j] <= 1'b0;
+        if (!mr_swv_e[i] || !mr_own_ovr) mr_on_on[j] <= 1'b0;
         else if (((iso_ack_i & hm) != 0) && mr_on_ok[j]) begin
           mr_scope_t e;
           mr_on_ok[j] <= 1'b0;
@@ -13055,7 +13064,7 @@ module sep_fcov (
       int i;
       logic [5:0] combo;
       i     = j + 1;
-      combo = {3'(j), mr_ovrd[i], mr_ovrd[i] && mr_oval[i], mr_swv[i]};
+      combo = {3'(j), mr_ovrd[i], mr_ovrd[i] && mr_oval[i], mr_swv_e[i]};
       if ((combo != mr_ox_combo_q[j]) || !mr_sw_ok) mr_ox_cnt[j] <= 0;
       else if (mr_ox_cnt[j] <= MrSwSettle) mr_ox_cnt[j] <= mr_ox_cnt[j] + 1;
       mr_ox_combo_q[j] <= combo;
@@ -13063,7 +13072,7 @@ module sep_fcov (
           (mr_ox_cnt[j] == (mr_ovrd[i] ? MrOvrdSettle : MrSwSettle))) begin
         mr_crst_t e;
         logic expv;
-        expv   = mr_ovrd[i] ? mr_oval[i] : mr_swv[i];
+        expv   = mr_ovrd[i] ? mr_oval[i] : mr_swv_e[i];
         e      = '0;
         e.ox   = {combo, (mr_ip[i] != expv)};
         e.ox_v = 1'b1;
@@ -13079,7 +13088,7 @@ module sep_fcov (
       logic swa;
       logic ova;
       i   = j + 1;
-      swa = !mr_swv[i];
+      swa = !mr_swv_e[i];
       ova = mr_ovrd[i] && !mr_oval[i];
       case (mr_op_state[j][3:2])
         2'd0: if (swa && ova && !mr_ip[i] && mr_own_ovr) mr_op_state[j] <= 4'b01_0_0;
@@ -13115,7 +13124,9 @@ module sep_fcov (
           end else if (mr_cyc - mr_op_t[j] > MrSeqTimeout) mr_op_state[j] <= '0;
         end
       endcase
-      if (!mr_own_ovr) mr_op_state[j] <= '0;
+      // An override with value 1 forces the tap high: it is neither a release
+      // of the pair nor part of the priority case, so the case ends unsampled.
+      if (!mr_own_ovr || (mr_ovrd[i] && mr_oval[i])) mr_op_state[j] <= '0;
     end
 
     // cp_independence_pair: a step that asserts two or more domains, its
