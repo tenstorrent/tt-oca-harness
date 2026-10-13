@@ -86,6 +86,10 @@ _AON_BOUND = 64
 # Thirds of a period in percent (each away from the edge).
 _THIRDS = {1: (10, 33), 2: (33, 67), 3: (67, 90)}
 _CTL_RELEASE_PCT = 10
+# The clk_wdt_i start phase is a whole number of 125 ps steps. The bench clock
+# start takes the delay in ns, and a multiple of 0.125 ns is exact in binary,
+# so the delay is a whole step count at 1 ps and at 1 fs simulator precision.
+_WDT_PHASE_STEP_PS = 125
 
 _BARK = 0x0FFF_0000
 _BITE = 0x0FFF_1000
@@ -157,7 +161,7 @@ class sep_cold_reset_phase_test(sep_base_test):
             self.pr_graded,
             phase_pct(self.pr_graded, p),
         )
-        self.wdt_phase = rng.randrange(0, self.pw_ps)
+        self.wdt_phase = rng.randrange(0, self.pw_ps // _WDT_PHASE_STEP_PS) * _WDT_PHASE_STEP_PS
         log.info(
             "DRAW clk_wdt_i start phase=%d ps (period %d ps)",
             self.wdt_phase,
