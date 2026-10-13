@@ -12,8 +12,11 @@ The codes come from one table, ``tb/sep_fcov_owner_codes.svh``, which the
 sampler includes. This module reads the same file, so the leaf and the sampler
 cannot disagree on a code.
 
-``u_sep_fcov`` exists only on VCS. On Verilator every call here is a no-op and
-returns False; a check of a leaf never depends on the gate.
+``u_sep_fcov`` exists on every simulator except Verilator (``tb/tb_top.sv``
+instantiates it under ``ifndef VERILATOR``). On Verilator every call here is a
+no-op and returns False; a check of a leaf never depends on the gate. On any
+other simulator a missing sampler or ``graded_owner`` is a testbench error, so a
+build that lost the sampler fails instead of leaving the owner-gated bins empty.
 """
 
 from __future__ import annotations
@@ -51,16 +54,27 @@ def owner_code(test_name: str) -> int:
         ) from exc
 
 
+def _sampler_expected() -> bool:
+    return "verilator" not in str(getattr(cocotb, "SIM_NAME", "") or "").lower()
+
+
 def _gate_handle():
+    if not _sampler_expected():
+        return None
     dut = cocotb.top
     if not hasattr(dut, "u_sep_fcov"):
-        return None
+        raise AttributeError(
+            f"{cocotb.SIM_NAME}: tb_top has no u_sep_fcov; the FCOV sampler must exist on "
+            "every simulator except Verilator (tb/tb_top.sv, cov/sv/sep_fcov.sv)"
+        )
     fcov = dut.u_sep_fcov
-    return fcov.graded_owner if hasattr(fcov, "graded_owner") else None
+    if not hasattr(fcov, "graded_owner"):
+        raise AttributeError("u_sep_fcov has no graded_owner variable (cov/sv/sep_fcov.sv)")
+    return fcov.graded_owner
 
 
 def fcov_present() -> bool:
-    """True when the build carries the sampler (VCS)."""
+    """True when the build carries the sampler (every simulator except Verilator)."""
     return _gate_handle() is not None
 
 
@@ -73,6 +87,26 @@ def open_graded_window(test_name: str, log=None) -> bool:
     gate.value = code
     if log is not None:
         log.info("FCOV-GATE open owner=%s code=%d", test_name, code)
+    return True
+
+
+def set_quiet_window(on: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.quiet_win`` (1 inside a quiet window, else 0).
+
+    The mailbox leaf sets it at the end of the settle wait of a check cycle and
+    clears it before the next access to the mailbox unit (docs/SEP_FCOV.adoc,
+    mailbox, IRQ and PIC sampling rules). Same rules as ``graded_owner``: a
+    no-op that returns False on Verilator. On VCS a sampler without the
+    variable is a testbench error.
+    """
+    if _gate_handle() is None:
+        return False
+    fcov = cocotb.top.u_sep_fcov
+    if not hasattr(fcov, "quiet_win"):
+        raise AttributeError("u_sep_fcov has no quiet_win variable (cov/sv/sep_fcov.sv)")
+    fcov.quiet_win.value = 1 if on else 0
+    if log is not None:
+        log.info("FCOV-QUIET %s", "open" if on else "closed")
     return True
 
 

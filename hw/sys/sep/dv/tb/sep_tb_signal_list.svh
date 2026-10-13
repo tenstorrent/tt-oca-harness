@@ -115,6 +115,21 @@
 // than a plusarg so a test can raise it after the ROM's short self-test hash.
 // See the force block in tb_top.sv.
 `SEP_TB_IN(logic, hmac_fifo_drain_stall_i)
+// KMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
+// side idle (no FIFO read, no word to the KMAC core), so the FIFO fills. See the
+// force block in tb_top.sv.
+`SEP_TB_IN(logic, kmac_fifo_drain_stall_i)
+// Boundary interrupt input of the PIC (sep_wrapper sep_ext_interrupts_i,
+// extintsrc_req_i of sep). Default 0. A leaf drives one or two bits to raise a
+// pending source above PIC source 43 (top-port drive, docs/SEP_TB_ARCH.adoc).
+`SEP_TB_IN(logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0], sep_ext_interrupts_i)
+// Outbound responder response control (tb/sep_outbound_mbx.sv), default 0.
+// smn_outbound_resp_hold_i=1 holds every B and R response of the responder;
+// the requests are still accepted. smn_outbound_rd_slverr_i=1 at the AR
+// handshake makes every R beat of that read answer SLVERR. Error inject,
+// docs/SEP_TB_ARCH.adoc.
+`SEP_TB_IN(logic, smn_outbound_resp_hold_i)
+`SEP_TB_IN(logic, smn_outbound_rd_slverr_i)
 
 // ------------------------------------------------------------------
 // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -533,6 +548,23 @@
 // STATUS bit i (0 BUSY, 1 DONE, 2 ABORTED, 3 ERROR, 4 SHA2_DIGEST_VALID,
 // 5 CHUNK_DONE), read from the register flops on each clock.
 `SEP_TB_OUT(logic [5:0], dma_status_probe_o)
+// Crypto alert receiver pulses, observation-only: bit i is
+// u_sep_crypto.crypto_alert_pulse[i], the alert of receiver index i (HMAC [0],
+// OTBN [2:1], AES [4:3], KMAC [6:5], CSRNG [8:7], EDN [10:9]).
+`SEP_TB_OUT(logic [10:0], crypto_alert_pulse_probe_o)
+// PIC register read data, observation-only (VeeR EL2 el2_pic_ctrl): [31:0]
+// picm_rd_data, [46:32] picm_raddr_ff[14:0], [47] picm_rden_ff. The data is
+// the read data of a PIC register read on a clock with bit 47 high. 4-state on
+// VCS. Tied to 0 on the CPU stub build.
+`SEP_TB_OUT(logic [47:0], pic_rd_data_probe_o)
+// Fault and clear pulses of the bridge-fault latches, observation-only. Bit
+// order of each half: [0] aes, [1] hmac, [2] kmac, [3] otbn, [4] csrng,
+// [5] edn, [6] wdt (sep_pkg::periph_bus_err_e), [7] DMA reg_path_err,
+// [8] DMA host_path_err. [8:0] is the set term of each latch (a TL-UL error
+// response at the register bridge; a non-OKAY AXI response or an integrity
+// error at the DMA master bridge). [17:9] is the err_clr_i pulse of the same
+// latch.
+`SEP_TB_OUT(logic [17:0], sep_cpu_ctrl_err_pulse_probe_o)
 // W handshakes at the AXI-Lite port of each fabric remap/filter slot register
 // block in sep_system_csr: saturating count of all beats, saturating count of
 // beats with non-zero data on a byte lane whose WSTRB bit is 0, and one sticky
@@ -596,6 +628,17 @@
 `SEP_TB_OUT(logic [63:0], pr_out_wdata_o)
 `SEP_TB_OUT(logic [7:0], pr_out_wstrb_o)
 `SEP_TB_OUT(logic, pr_out_wlast_o)
+// PR-OUT-RSP: the responses on smn_outbound_axi_resp_i (net
+// smn_outbound_resp_w), READY from the request net.
+`SEP_TB_OUT(logic, pr_out_bvalid_o)
+`SEP_TB_OUT(logic, pr_out_bready_o)
+`SEP_TB_OUT(logic [1:0], pr_out_bresp_o)
+`SEP_TB_OUT(logic [7:0], pr_out_bid_o)
+`SEP_TB_OUT(logic, pr_out_rvalid_o)
+`SEP_TB_OUT(logic, pr_out_rready_o)
+`SEP_TB_OUT(logic [1:0], pr_out_rresp_o)
+`SEP_TB_OUT(logic [7:0], pr_out_rid_o)
+`SEP_TB_OUT(logic, pr_out_rlast_o)
 // PR-SMC: sep_ext_to_smc_axi_req_o (the net ext_to_smc_req_w).
 `SEP_TB_OUT(logic, pr_smc_awvalid_o)
 `SEP_TB_OUT(logic, pr_smc_awready_o)

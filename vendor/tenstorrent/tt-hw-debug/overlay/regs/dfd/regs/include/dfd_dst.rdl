@@ -57,7 +57,7 @@ addrmap dfd_dst {
         field {
             sw = rw;
             hw = r;
-            desc = "When the field is set tp 2'b10, sent timestamp. All other vlaues not NA.";
+            desc = "Periodic sync mode. 2'b00: off. 2'b01: stream counting, with trDstVendorStreamLength frames between non-compressed packets. 2'b10: send a timestamp packet every 2^(trDstSyncMax + 4) Cluster clocks. 2'b11: no effect, as 2'b00.";
         } Trdstsyncmode[17:16] = 0x0;
         field {
             sw = rw;
@@ -96,12 +96,12 @@ addrmap dfd_dst {
         field {
             sw = rw;
             hw = r;
-            desc = "Specify frame length. Frame Length = trDstVendorFrameLength* 64 ; Frame Length should be a multiple of Bank Data Width.";
+            desc = "Specify frame length. Frame Length = trDstVendorFrameLength* 64 bytes; Frame Length should be a multiple of Bank Data Width. Only 1, 2, 4 and 8 (64, 128, 256 and 512 bytes) are supported, because the DST sink finds frame boundaries at the power of two given by the highest set bit of its frame length. Program the sink's trDstRamVendorFrameLength with the same value.";
         } Trdstvendorframelength[27:24] = 0x1;
         field {
             sw = rw;
             hw = r;
-            desc = "Specify Stream length. A stream starts with \"no compressed packet\". Stream length specifies number of frames before a non-compressed packet is sent.Stream Length = 32* 2^(trDstVendorStreamLength + 1)";
+            desc = "Specify Stream length. A stream starts with \"no compressed packet\". Stream length specifies number of frames before a non-compressed packet is sent, and applies only when trDstSyncMode is 2'b01. Values 0 to 4 give Stream Length = 32* 2^trDstVendorStreamLength (32 to 512 frames); values 5 to 7 give 32.";
         } Trdstvendorstreamlength[30:28] = 0x4;
         field {
             sw = rw;
@@ -127,6 +127,7 @@ addrmap dfd_dst {
         field {
             sw = rw;
             hw = r;
+            desc = "Source ID sent in the trace packet headers. Only bits [3:0] are used.";
         } Trdstsrcid[27:16] = 0x0;
         field {
             sw = rw;
@@ -139,7 +140,7 @@ addrmap dfd_dst {
         field {
             sw = rw;
             hw = r;
-            desc = "Trace Source ID";
+            desc = "Stored but not used. The trace packet headers carry trDstInstFeatures[trDstSrcID].";
         } TraceSourceId[3:0] = 0x0;
         field {
             sw = rw;

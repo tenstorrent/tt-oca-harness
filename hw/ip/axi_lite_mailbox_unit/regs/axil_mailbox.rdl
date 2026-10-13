@@ -91,7 +91,7 @@ addrmap axil_mailbox {
             sw = rw;
             hw = r;
             desc = "When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.";
-        } wirqt [7:0] = 0x0;
+        } wirqt [63:0] = 0x0;
     };
 
     reg RIRQT {
@@ -101,7 +101,7 @@ addrmap axil_mailbox {
             sw = rw;
             hw = r;
             desc = "When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.";
-        } rirqt [7:0] = 0x0;
+        } rirqt [63:0] = 0x0;
     };
 
     reg IRQS {

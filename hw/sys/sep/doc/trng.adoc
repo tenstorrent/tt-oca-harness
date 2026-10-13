@@ -143,6 +143,32 @@ The external mux also attaches 1 unconditionally. Neither constant measures
 source quality, validates an external producer, or establishes FIPS compliance;
 qualification must justify the source and its operating configuration separately.
 
+[[sep-entropy-fifo-access]]
+== Entropy Access Paths
+
+Random data leaves the TRNG through the
+ifdef::backend-html5[xref:sep:entropy_pool.adoc#sep-entropy-pool[entropy pool],]
+ifdef::backend-pdf[<<sep-entropy-pool,entropy pool>>,]
+which EDN fills from the source selected for stream 2. The entropy source's
+three readable FIFOs (`FIFO_RDATA`, `BIW_OBS_RDATA` and `NOISE_OBS_RDATA`)
+expose the DRBG seed words and pre-conditioning entropy, so they are debug
+interfaces. SEP drives the entropy source's FIFO access enable from the
+`ENTROPY_DBG` feature-control bit, bit 4 of the DBG_1 group in the
+ifdef::backend-html5[xref:sep:lifecycle_controller.adoc#feature-control-vector-definition[disable vector format].]
+ifdef::backend-pdf[<<feature-control-vector-definition,disable vector format>>.]
+The FIFOs are therefore accessible exactly when the
+ifdef::backend-html5[xref:sep:lifecycle_controller.adoc#feature-control-table[per-LC-state feature control profile]]
+ifdef::backend-pdf[<<feature-control-table,per-LC-state feature control profile>>]
+enables DBG_1 bit 4, and the gate's behaviour is in the Entropy Source chapter
+ifdef::backend-html5[(xref:ip:entropy_source/doc/index.adoc#entropy-source-fifo-access[FIFO Access Gate]).]
+ifdef::backend-pdf[(<<entropy-source-fifo-access,FIFO Access Gate>>).]
+`ENTROPY_DBG` does not gate the entropy pool, nor the CSRNG application
+interface, whose enable is `CSRNG.CTRL.SW_APP_ENABLE`.
+
+NOTE: `ENTROPY_DBG` and its wiring are specified ahead of the hardware. Until
+the RTL implements them, the three FIFOs are accessible in every lifecycle
+state, subject only to `FIPS_LOCK`.
+
 == Reset and Recovery Boundaries
 
 `SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N` controls one internal reset domain:

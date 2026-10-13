@@ -81,7 +81,17 @@ def _rewrite(src: str, dst: str, patches: dict) -> None:
 
 def patch_param_block(src_hex: str, dst_hex: str, magic: int, words: list) -> None:
     """Write ``words`` (a list of 32-bit ints, magic first) into ``src_hex`` at the
-    ``magic`` sentinel, emitting the patched image to ``dst_hex``."""
+    ``magic`` sentinel, emitting the patched image to ``dst_hex``.
+
+    Raises when ``words`` does not start with ``magic``, and when a read-back of
+    ``dst_hex`` differs from ``src_hex`` with the patch applied, so the image
+    the firmware boots holds exactly the drawn block.
+    """
+    if not words or (words[0] & 0xFFFF_FFFF) != (magic & 0xFFFF_FFFF):
+        raise ValueError(
+            f"param block must start with the magic 0x{magic & 0xFFFF_FFFF:08x}, "
+            f"got {('0x%08x' % (words[0] & 0xFFFF_FFFF)) if words else 'no words'}"
+        )
     cells = parse_hex_cells(src_hex)
     base = find_magic(cells, magic.to_bytes(4, "little"))
     patches = {}
@@ -96,3 +106,43 @@ def patch_param_block(src_hex: str, dst_hex: str, magic: int, words: list) -> No
         )
     os.makedirs(os.path.dirname(dst_hex) or ".", exist_ok=True)
     _rewrite(src_hex, dst_hex, patches)
+    expected = {**cells, **patches}
+    got = parse_hex_cells(dst_hex)
+    if got != expected:
+        diff = sorted(a for a in expected.keys() | got.keys() if got.get(a) != expected.get(a))
+        a0 = diff[0]
+        raise RuntimeError(
+            f"patched image {dst_hex} read-back mismatch at {len(diff)} bytes: first 0x{a0:x} "
+            f"got {got.get(a0)} expected {expected.get(a0)}"
+        )
+
+
+def place_words(src_hex: str, dst_hex: str, byte_off: int, words: list, *, limit: int) -> None:
+    """Write ``words`` (32-bit, little-endian) at image byte offset ``byte_off``.
+
+    The target bytes must lie outside the bytes that ``src_hex`` holds, so the
+    placed code or data never overwrites the image: an overlap raises. The
+    words go to ``dst_hex`` as a new ``@<offset>`` block after the image. The
+    image is a ``$readmemh`` byte image whose offset 0 is the first byte of the
+    memory, so ``limit`` is the memory size in bytes (262144 for the ITCM image
+    that ``tb_backdoor_mem`` loads), and a block that runs past it raises.
+    """
+    if byte_off < 0 or byte_off % 4 or byte_off + 4 * len(words) > limit:
+        raise ValueError(
+            f"block of {len(words)} words at 0x{byte_off:x} is unaligned or runs past 0x{limit:x}"
+        )
+    cells = parse_hex_cells(src_hex)
+    taken = sorted(a for a in range(byte_off, byte_off + 4 * len(words)) if a in cells)
+    if taken:
+        raise RuntimeError(
+            f"block at 0x{byte_off:x} overlaps the image: first held byte 0x{taken[0]:x}"
+        )
+    data = b"".join((w & 0xFFFF_FFFF).to_bytes(4, "little") for w in words)
+    lines = [f"@{byte_off:08X}"]
+    for i in range(0, len(data), 16):
+        lines.append(" ".join(f"{b:02X}" for b in data[i : i + 16]))
+    with open(src_hex) as fh:
+        text = fh.read().rstrip("\n")
+    os.makedirs(os.path.dirname(dst_hex) or ".", exist_ok=True)
+    with open(dst_hex, "w") as fh:
+        fh.write(text + "\n" + "\n".join(lines) + "\n")

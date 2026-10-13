@@ -130,6 +130,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |SMN-inbound AXI |Flattens the real inbound port to `m_axi_*` for a second master agent. Traverses `u_inbound_filter`.
 |SEP->SMC AXI |`rom_boot` target: `ocah_axi_struct_bridge` places the wrapper's `sep_ext_to_smc_axi` struct port on `u_smc_axi_if` and the shared `OcahAxiSlaveAgent` answers it. `env/sep_smc_mem.py` holds the geometry and preloads the scratch, status, strap, and manifest+BL1 image words from the testlist plusargs; the SMC address-decode check counts accesses outside the generated map. Every other target answers the port through the BH-SMC responder `u_smc_route_mem` (`tb/sep_smc_route_mem.sv`), which is idle unless BH-SMC is enabled; the decode check is not compiled there.
 |BH-SMC: SMC aperture inputs and SMC responder |Added hook (top-port drive) on every target without `SEP_SMC_MEM_MODEL`. `tb_top` drives `smc_global_base_addr_i` and `smc_region_size_i` from `bh_smc_base_i` and `bh_smc_size_i` when the leaf sets `bh_smc_en_i` to 1 before it releases reset (`env/sep_bh_smc.py`), or else from `+sep_smc_aperture_base=<hex>` and `+sep_smc_aperture_size=<hex>`; with neither, both inputs are 0. While the hook is on, `u_smc_route_mem` answers `sep_ext_to_smc_axi_resp_i`: OKAY with the request ID, one burst per channel in flight, written bytes stored and returned, and `{~a, a}` (`a` the low 32 bits of the 8-byte-aligned address) for a word no write touched. Owners: `sep_fabric_smc_route_test` (leaf drive), `sep_fabric_dma_endpoint_matrix_test` (plusargs).
+|Boundary PIC input |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `sep_ext_interrupts_i` (`extintsrc_req_i` of `sep`, the PIC sources above 43) from the TB input of the same name, which is 0 unless a leaf drives it. Owner: `sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN).
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
 |SPI host pads |Scalar MISO/MOSI/SCK/CS ports for `OcahSpiFlash`
@@ -182,6 +183,19 @@ Observation probe groups:
   STATUS bit (BUSY, DONE, ABORTED, ERROR, SHA2_DIGEST_VALID, CHUNK_DONE) on
   each clock. Owners: `sep_dma_transfer_matrix_rand_test`,
   `sep_dma_abort_recovery_rand_test`.
+* Crypto alert receiver probe (`crypto_alert_pulse_probe_o`): bit i is the
+  alert pulse of receiver index i (`u_sep_crypto.crypto_alert_pulse`). Owner:
+  `sep_pic_pending_map_walk_rand_test` (CHK-ALERT-IDX).
+* PIC read-data probe (`pic_rd_data_probe_o`): `picm_rd_data` of the VeeR
+  EL2 PIC with the registered read strobe and read address
+  (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`), four-state on VCS;
+  tied to 0 on the CPU stub build. Owners: `sep_pic_reg_rand_test`
+  (CHK-RESET-X), `sep_pic_pending_map_walk_rand_test` (the `meip` X part of
+  CHK-BASE).
+* Bridge-fault pulse probe (`sep_cpu_ctrl_err_pulse_probe_o`): the set term
+  and the `err_clr_i` pulse of the seven peripheral register-bridge latches
+  and of the two DMA latches (`reg_path_err`, `host_path_err`). Owner:
+  `sep_cpu_bridge_fault_matrix_rand_test` (CHK-RACE).
 * Adams Bridge ML-KEM seed Z words (`abr_mlkem_seed_z_probe_o`).
 * Fabric-slot register-block W-channel counters (`fabric_slot_w_*`).
 * Fabric port taps, each a read-only copy of a DUT net with the AW and AR
@@ -192,6 +206,10 @@ Observation probe groups:
    Owners: `sep_fabric_outbound_route_attr_test`,
    `sep_fabric_filter_match_priority_rand_test`,
    `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`.
+   Its replies (monitor PR-OUT-RSP): B (`resp`, `id`) and R (`resp`, `id`,
+   `last`) on `smn_outbound_axi_resp_i`, with READY from the request net.
+   Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST),
+   `sep_cpu_ctrl_timeout_inert_rand_test` (CHK-STALL-REAL).
 ** PR-SMC (`pr_smc_*`): `sep_ext_to_smc_axi_req_o`, same fields. Owners:
    `sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test`.
 ** PR-EXT (`pr_ext_*`): the AXI Extension port, wrapper net
@@ -247,6 +265,21 @@ Observation probe groups:
   that a leaf writes through the `u_sep_fcov` handle (`env/sep_fcov_gate.py`;
   codes in `tb/sep_fcov_owner_codes.svh`). It drives nothing and touches no
   DUT net.
+* The quiet-window gate `u_sep_fcov.quiet_win` of the mailbox groups: a
+  sampler variable that the mailbox leaf writes under the rules of
+  `graded_owner` (`env/sep_fcov_gate.py`, `set_quiet_window`). It drives
+  nothing and touches no DUT net. Owner: `sep_mailbox_fifo_model_rand_test`.
+* Mailbox, IRQ and PIC FCOV sampler taps (`cov/sv/sep_fcov.sv`, mailbox,
+  IRQ and PIC groups): read-only references from the `u_sep_fcov`
+  connection block to the PIC (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`),
+  the claim ID (`veer.pic_claimid`), the trap unit (`veer.dec.tlu`), the LSU
+  store pipeline (`veer.lsu.lsu_lsc_ctl` store data, packet and PIC decode of
+  the M stage, and `veer.lsu.dma_pic_wen`), the
+  mailbox ports and FIFOs (`u_sep_system_peripherals.u_sep_axil_mailbox.gen_mailbox[m]`,
+  one explicit assign per index), the mailbox unit AXI-Lite bus
+  (`u_sep_system_peripherals.mailbox_axil_req` and `mailbox_axil_resp`) and
+  the inbound filter (`u_sep_system_peripherals.u_inbound_filter`). Owners: the owning tests of
+  the mailbox, IRQ and PIC groups.
 * The covergroup sampler's direct reads of the WDT bark interrupt
   (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read
   `ARSIZE` (owner `sep_axi_partial_lane_read_test`); and, for the Phase 2 SPI
@@ -296,6 +329,17 @@ Exceptions (a closed set):
   asserts on the next DMA command. Software cannot emit a broken command
   user code. The force targets that input only. `DMA_BUS_ERR_STATUS` and
   the interrupt aggregate stay frontdoor. Owner: `sep_dma_basic_test`.
+* *Crypto message-FIFO drain stall* — `hmac_fifo_drain_stall_i` holds the
+  read-ready of the HMAC message FIFO at 0. `kmac_fifo_drain_stall_i` holds
+  the read-ready of the KMAC message FIFO and the FIFO valid toward the KMAC
+  core at 0. While the input is 1 the engine takes no message word, so the
+  FIFO fills and `STATUS.fifo_full` reads 1. The engine absorbs a message as
+  fast as the firmware writes it, so a full FIFO has no frontdoor. Both
+  inputs are 0 by default, and the force is released when the input drops.
+  The force targets those nets only. `STATUS`, `INTR_STATE` and the
+  interrupt lines the checkers read stay frontdoor. Owners:
+  `sep_rom_hmac_fifo_stall_terminal_test` (HMAC),
+  `sep_pic_pending_map_walk_rand_test` (HMAC and KMAC, CHK-FIFO-EMPTY).
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for
@@ -327,6 +371,24 @@ Exceptions (a closed set):
   sample STATUS on each clock to order DONE, CHUNK_DONE and the last beat.
   Read-only; no force. Owners: `sep_dma_transfer_matrix_rand_test`,
   `sep_dma_abort_recovery_rand_test`.
+* *Mailbox, IRQ and PIC observation taps* — the crypto alert receiver pulses
+  (`crypto_alert_pulse_probe_o`), the PIC register read data
+  (`pic_rd_data_probe_o`) and the bridge-fault set and clear pulses
+  (`sep_cpu_ctrl_err_pulse_probe_o`). No CSR shows which alert receiver
+  pulsed, firmware reads cannot show an X on the PIC read data, and no CSR
+  shows a fault and a clear in one cycle. Read-only; no force. Owners:
+  `sep_pic_pending_map_walk_rand_test`, `sep_pic_reg_rand_test`,
+  `sep_cpu_bridge_fault_matrix_rand_test`.
+* *Outbound responder response control* — error inject on the `sep` input
+  `smn_outbound_axi_resp_i`. `smn_outbound_resp_hold_i` holds the B and R
+  responses of `tb/sep_outbound_mbx.sv` while the requests are still accepted;
+  `smn_outbound_rd_slverr_i`, sampled at the AR handshake, makes that read
+  answer SLVERR. Both are 0 by default, and the responder then answers OKAY at
+  once. A held response also holds a firmware console store, so no CPU leaf
+  raises the hold. The responder state and the DUT nets the checkers read are
+  not forced. Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST,
+  CHK-DMA-CLR, CHK-RACE), `sep_cpu_ctrl_timeout_inert_rand_test`
+  (CHK-STALL-REAL, CHK-TO-INERT).
 * *Crypto reset-sequencer probes* — the per-domain gated resets, the
   `isolated_o` completion bits and the host `isolate_req_i` bits at the crypto
   AXI interconnect (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`,

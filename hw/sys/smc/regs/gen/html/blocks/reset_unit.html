@@ -75,7 +75,7 @@
 <h3 id="SS_RESET_COMPLETE">SS_RESET_COMPLETE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>reset_complete</td><td>R</td><td>0x0</td><td>Response signal from subsystem to indicate reset (or some other critical step) has completed.<br>Bitwise write 1 to clear</td></tr>
+<tr><td>31:0</td><td>reset_complete</td><td>R</td><td>0x0</td><td>Response signal from subsystem to indicate reset (or some other critical step) has completed.<br>Each bit reads the synchronized live value of its subsystem&#x27;s signal; it is not latched.</td></tr>
 </table>
 <h3 id="SS_COLD_RESET_LOCK">SS_COLD_RESET_LOCK</h3>
 <table>

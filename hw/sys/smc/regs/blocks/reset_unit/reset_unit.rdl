@@ -101,7 +101,7 @@ addrmap reset_unit {
             sw = r;
             hw = w;
             desc = "Response signal from subsystem to indicate reset (or some other critical step) has completed.
-                    Bitwise write 1 to clear";
+                    Each bit reads the synchronized live value of its subsystem's signal; it is not latched.";
         } reset_complete [31:0] = 0x0;
     };
 
