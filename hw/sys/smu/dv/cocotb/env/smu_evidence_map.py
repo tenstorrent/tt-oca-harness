@@ -308,6 +308,34 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "with SUCCESS",
         ),
     ],
+    "smu_lc_rma_chip_1_export_test": [
+        (
+            "CHK-LCG-RMACHIP1-LC-EXPORT",
+            "CHK-LCG-RMACHIP1-LC-EXPORT",
+            "under the RMA_CHIPLET raw 4'b0111 image lc_state_o, obs_sep_lc_state_o and "
+            "smc_lc_state_in_o each equal 0x87 on one sampled cycle",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "bounded lc_settle and dbg_settle waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<S2<S3<PASS"),
+    ],
+    "smu_lc_rma_sip_1_export_test": [
+        (
+            "CHK-LCG-RMASIP1-LC-EXPORT",
+            "CHK-LCG-RMASIP1-LC-EXPORT",
+            "under the RMA_SIP raw 4'b0011 image lc_state_o, obs_sep_lc_state_o and "
+            "smc_lc_state_in_o each equal 0xC3 on one sampled cycle",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "bounded lc_settle and dbg_settle waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<S2<S3<PASS"),
+    ],
     "smu_lc_sigint_fail_closed_test": [
         (
             "CHK-LC-SIGINT-LEGAL-PAIR",
@@ -1701,6 +1729,52 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "code the UART RDL assigns to Transmitter Holding Register Empty, and "
             "the IIR read retires it",
         ),
+    ],
+    "smu_secure_tm_real_sense_window_test": [
+        (
+            "CHK-SEP-SECURE-TM-CLEAR-REAL",
+            "SEP_SECURE_TM_CLEAR_REAL",
+            "secure_tm_o latches 1 in leg 1, reads 0 under the second cold reset and stays 0 "
+            "from release to the real done rise",
+        ),
+        (
+            "CHK-SEP-SECURE-TM-NO-EARLY-FOLLOW",
+            "SEP_SECURE_TM_NO_EARLY_FOLLOW",
+            "a strap pulse between response strobes 100 and 180 and the strap at 0 after done "
+            "leave secure_tm_o at 0",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded done/reset/strobe/TAP waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S7<PASS"),
+    ],
+    "smu_sep_cold_reassert_during_sense_test": [
+        (
+            "CHK-SEP-RESET-REASSERT",
+            "SEP_RESET_REASSERT",
+            "sep_reset_n_o reads 0 on every sample while the cold reset is re-asserted after done "
+            "and after response words 0, 128 and near 255",
+        ),
+        (
+            "CHK-SEP-DONE-COLD-CLEAR",
+            "SEP_DONE_COLD_CLEAR",
+            "done reads 0 under the re-asserted cold reset and rises once, after at least 256 "
+            "response strobes, in the second sense",
+        ),
+        (
+            "CHK-SEP-SENSE-ABORT-RESTART",
+            "SEP_SENSE_ABORT_RESTART",
+            "an aborted sense leaves done at 0 with no rise and the final sense restarts and "
+            "delivers at least 256 strobes before its single done rise",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded done/strobe/cold-reset/TAP waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S8<PASS"),
     ],
     "smu_sep_secure_tm_test": [
         (

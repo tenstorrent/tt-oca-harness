@@ -2764,6 +2764,48 @@ args = [
 ]
 
 [[tests]]
+name = "smu_lc_rma_sip_1_export_test"
+module = "smu_lc_rma_sip_1_export_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["sep", "real_rtl", "lifecycle"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_sip_1.preload",
+]
+
+[[tests]]
+name = "smu_lc_rma_chip_1_export_test"
+module = "smu_lc_rma_chip_1_export_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["sep", "real_rtl", "lifecycle"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_chip_1.preload",
+]
+
+[[tests]]
 name = "smu_otp_vs_fabric_map_race_test"
 module = "smu_otp_vs_fabric_map_race_test"
 target = "compile_smu_chiplet"
@@ -3095,6 +3137,42 @@ args = [
   "+sep_dtcm_hex=sep_dtcm_default.hex",
 ]
 
+[[tests]]
+name = "smu_secure_tm_real_sense_window_test"
+module = "smu_secure_tm_real_sense_window_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3600
+tags = ["sep", "efuse", "real_rtl"]
+run_modes = ["sep_rtl_fuse_sense"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
+[[tests]]
+name = "smu_sep_cold_reassert_during_sense_test"
+module = "smu_sep_cold_reassert_during_sense_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3600
+tags = ["sep", "efuse", "real_rtl"]
+run_modes = ["sep_rtl_fuse_sense"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
 # The DTP leaves as one group.
 [[groups]]
 name = "dtp_under_smu"
@@ -3403,8 +3481,12 @@ tests = [
   "smu_smc_scratch_bridge_readback_test",
   "smu_xtrig_ctp_status_reset_test",
   "smu_telemetry_reset_state_test",
+  "smu_lc_rma_sip_1_export_test",
+  "smu_lc_rma_chip_1_export_test",
+  "smu_secure_tm_real_sense_window_test",
+  "smu_sep_cold_reassert_during_sense_test",
 ]
-expected_count = 142
+expected_count = 146
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
