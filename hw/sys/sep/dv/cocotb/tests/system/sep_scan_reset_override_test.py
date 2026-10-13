@@ -354,14 +354,17 @@ class sep_scan_reset_override_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         await self._toggle_test_en(strap=1)
 
-        # Step 5: strap toggles with test_en_i = 0. Graded over the walked pins that
-        # followed test_en_i in step 4, so each graded pin can move.
+        # Step 5: strap toggles with test_en_i = 0. Every walked pin is compared with
+        # its own value before the toggles; control: at least one pin followed
+        # test_en_i in step 4, so a pin can move.
         following = [p for p, _x in self._pins() if p not in self.pin_stuck]
         assert following, (
             "CHK-STRAP-INDEP FAIL: no walked pin followed test_en_i, so a strap toggle "
             "could not show a moved pin"
         )
-        follow_set = set(following)
+        await ReadOnly()
+        before = dict(self._pins())
+        await RisingEdge(dut.clk_i)
         moved = []
         for v in (0, 1):
             await RisingEdge(dut.clk_i)
@@ -370,14 +373,16 @@ class sep_scan_reset_override_test(sep_base_test):
             for _ in range(H):
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
-                moved += [(p, x) for p, x in self._pins() if p in follow_set and x != 0]
+                moved += [(p, x) for p, x in self._pins() if x != before[p]]
         assert not moved, (
             f"CHK-STRAP-INDEP FAIL: pin(s) moved across the strap toggles: {moved[:6]}"
         )
         await RisingEdge(dut.clk_i)
         self.logger.info(
-            "STRAP-INDEP LOG: strap toggles 1,0,1 with test_en_i=0: %d pins stayed 0",
-            len(self._pins()),
+            "STRAP-INDEP LOG: strap toggles 1,0,1 with test_en_i=0: %d pins compared, all "
+            "unchanged (%d of them follow test_en_i)",
+            len(before),
+            len(following),
         )
 
         # Step 6: strap at 0, rst_ni pulse (not graded), toggles again.
@@ -410,10 +415,11 @@ class sep_scan_reset_override_test(sep_base_test):
         )
         self.logger.info(
             "CHK-STRAP-INDEP PASS: secure_tm_o=1 unchanged across %d test_en_i toggles at strap=1 "
-            "and secure_tm_o=0 unchanged across %d at strap=0; %d pins that follow test_en_i "
-            "unchanged across %d strap toggles",
+            "and secure_tm_o=0 unchanged across %d at strap=0; pins_compared=%d (%d follow "
+            "test_en_i) unchanged across %d strap toggles",
             3,
             3,
+            len(before),
             len(following),
             self.strap_toggles,
         )
