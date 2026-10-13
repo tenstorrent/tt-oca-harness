@@ -23,7 +23,7 @@ this order, over the CPU-LSU master on ``s_axi``:
 * Leg S. The watchdog registers answer 32-bit accesses on either lane with the
   value their access type gives; ``WDOG_COUNT`` reads never fall while counting.
 * Leg L. ``WDOG_REGWEN`` stays 0 after a write of 1, and ``regwen`` and the four
-  thresholds keep their values over ``wdt_rst_ni``, ``dbg_rstb_i`` (VCS only), a
+  thresholds keep their values over ``wdt_rst_ni``, ``dbg_rstb_i`` (VCS, full-CPU build only), a
   software engine reset and a ``sep_reset_n`` override; only the cold reset
   restores the defaults (``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture).
 
@@ -159,7 +159,7 @@ def _gap(order: list[int]) -> str:
 class _Cfg:
     """Seed-drawn configuration of the leaf (single source of truth)."""
 
-    def __init__(self, seed: int, sys_ps: int, *, vcs: bool) -> None:
+    def __init__(self, seed: int, sys_ps: int, *, dbg_cell: bool) -> None:
         rng = SepSeededRng(seed)
         self.seed = seed
         self.ratios = list(RATIOS)
@@ -217,7 +217,7 @@ class _Cfg:
         self.xb, self.xd, self.xh, self.xl = (rng.randrange(1, 1 << 32) for _ in range(4))
         self.locked_b = self.xb ^ rng.randrange(1, 1 << 32)
         self.locked_d = self.xd ^ rng.randrange(1, 1 << 32)
-        events = ["WDT_PULSE", "SW_RESET", "OVRD"] + (["DBG_PULSE"] if vcs else [])
+        events = ["WDT_PULSE", "SW_RESET", "OVRD"] + (["DBG_PULSE"] if dbg_cell else [])
         rng.shuffle(events)
         self.events = events
         self.repeat = rng.randrange(1, 4)
@@ -1065,19 +1065,19 @@ class sep_timer_clock_contract_test(sep_base_test):
             assert low == 0, "sep_cpu_reset_n_o did not fall during the wdt_rst_ni pulse"
             await self._wait_high(dut.sep_cpu_reset_n_o, "sep_cpu_reset_n_o")
         elif ev == "DBG_PULSE":
-            # dbg_rstb_i resets the EL2 debug module of the full CPU; the stub CPU of
-            # lsu_stub_all_live has no load on it. The build is logged with the event.
-            full_cpu = hasattr(dut.u_dut.u_sep.u_sep_cpu, "u_el2_veer_wrapper")
-            self.logger.info(
-                "OBS-DBG-EVENT: build=%s dbg_rstb_i_load=%d",
-                "full_cpu" if full_cpu else "cpu_stub",
-                int(full_cpu),
-            )
+            # Runs only on the full-CPU build, where dbg_rstb_i resets the EL2 debug
+            # module; the debug reset input of the CPU core must read 0 in the pulse.
+            load = dut.u_dut.u_sep.u_sep_cpu.u_el2_veer_wrapper.dbg_rst_l
             await RisingEdge(dut.clk_i)
             dut.dbg_rstb_i.value = 0
             await ClockCycles(dut.clk_i, PULSE_CYCLES)
+            await ReadOnly()
+            low = self.rd(load)
+            await RisingEdge(dut.clk_i)
             dut.dbg_rstb_i.value = 1
+            assert low == 0, "u_el2_veer_wrapper.dbg_rst_l did not fall during the dbg_rstb_i pulse"
             await ClockCycles(dut.clk_i, PULSE_CYCLES)
+            self.n_dbg += 1
         elif ev == "SW_RESET":
             hmac = dut.hmac_gated_rst_n_probe_o
             self.swrst.value = await self.swrst.read_back()
@@ -1143,6 +1143,19 @@ class sep_timer_clock_contract_test(sep_base_test):
                 last = st
                 done.append(ev)
                 self.logger.info("REGWEN-HOLD LOG: rep=%d event=%s %s", rep, ev, st)
+        if self.dbg_cell:
+            assert self.n_dbg == cfg.repeat, (
+                f"CHK-REGWEN-HOLD-DBG FAIL: {self.n_dbg} dbg_rstb_i events"
+            )
+            self.logger.info(
+                "CHK-REGWEN-HOLD-DBG PASS: dbg_rstb_i_events=%d regwen=0 bark=0x%08x bite=0x%08x "
+                "wkup_hi=0x%08x wkup_lo=0x%08x unchanged",
+                self.n_dbg,
+                cfg.xb,
+                cfg.xd,
+                cfg.xh,
+                cfg.xl,
+            )
         self.logger.info(
             "CHK-REGWEN-HOLD PASS: events=%s regwen=0 bark=0x%08x bite=0x%08x wkup_hi=0x%08x "
             "wkup_lo=0x%08x unchanged",
@@ -1193,8 +1206,21 @@ class sep_timer_clock_contract_test(sep_base_test):
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
         vcs = "vcs" in cocotb.SIM_NAME.lower()
+        # The dbg_rstb_i cell of CHK-REGWEN-HOLD runs on VCS on the full-CPU build only,
+        # selected from the build the leaf runs on (the stub CPU has no load on the pin).
+        full_cpu = hasattr(cocotb.top.u_dut.u_sep.u_sep_cpu, "u_el2_veer_wrapper")
+        self.dbg_cell = vcs and full_cpu
+        self.n_dbg = 0
+        if self.dbg_cell:
+            self.required_evidence = (*type(self).required_evidence, "CHK-REGWEN-HOLD-DBG")
+        self.logger.info(
+            "OBS-DBG-EVENT: build=%s tool=%s dbg_rstb_i_cell=%s",
+            "full_cpu" if full_cpu else "cpu_stub",
+            "vcs" if vcs else "verilator",
+            "run" if self.dbg_cell else "skipped",
+        )
         self.sys_ps = int(round(self.cfg.sys_clk_period_ns * 1000))
-        self.tcfg = cfg = _Cfg(seed, self.sys_ps, vcs=vcs)
+        self.tcfg = cfg = _Cfg(seed, self.sys_ps, dbg_cell=self.dbg_cell)
         self.logger.info(
             "DRAW clocks ratios=%s ref_phase_ps=%s wdt_phase_ps=%d P_w=%d",
             cfg.ratios,
@@ -1256,7 +1282,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             WDT_WAIT,
             RESET_BOUND,
             OVRD_CYCLES,
-            "run" if vcs else "skipped (VCS only)",
+            "run" if self.dbg_cell else "skipped (VCS full-CPU build only)",
         )
 
         k0 = cfg.ratios[0]
