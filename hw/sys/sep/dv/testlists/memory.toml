@@ -153,7 +153,7 @@ timeout_sec = 3600
 tags = ["reset", "jtag", "crypto", "isolation", "memory", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+sep_edn_jtag_reset_waive"]
+args = ["+sep_edn_jtag_reset_waive", "+sep_efuse_preload"]
 
 [[tests]]
 # Every boot ROM word reads the loaded image for 1, 2 and 4-byte reads, a store does not
