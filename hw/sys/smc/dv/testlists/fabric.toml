@@ -86,6 +86,38 @@ tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_outremap_prot_srcid_test"
+module = "smc_outremap_prot_srcid_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_infilt_attr_match_test"
+module = "smc_infilt_attr_match_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_reset_word_test"
+module = "smc_filter_reset_word_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_outstage_order_test"
+module = "smc_outstage_order_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_filter_multi_entry_test"
 module = "smc_filter_multi_entry_test"
 seed = 1
@@ -142,6 +174,14 @@ tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_cpuif_ro_wo_edge_test"
+module = "smc_cpuif_ro_wo_edge_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_cpuif_wrong_direction_test"
 module = "smc_cpuif_wrong_direction_test"
 seed = 1
@@ -184,6 +224,22 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_address_map_region_decode_test"
 module = "smc_address_map_region_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sys_out_path_responder_control_test"
+module = "smc_sys_out_path_responder_control_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_past_extent_decerr_units_test"
+module = "smc_past_extent_decerr_units_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric", "decode"]
@@ -299,4 +355,244 @@ module = "smc_peripheral_instance_decode_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_ext_window_routing_test"
+module = "smc_ext_window_routing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_outfilt_addr_match_test"
+module = "smc_outfilt_addr_match_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_lock_scope_test"
+module = "smc_filter_lock_scope_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_region_zero_reset_recovery_test"
+module = "smc_region_zero_reset_recovery_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_outremap_window_translate_test"
+module = "smc_outremap_window_translate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clock_gated_window_slverr_test"
+module = "smc_clock_gated_window_slverr_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_axi_inbound_ports_burst_test"
+module = "smc_axi_inbound_ports_burst_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_past_extent_slverr_units_test"
+module = "smc_past_extent_slverr_units_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_range_granule_test"
+module = "smc_filter_range_granule_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_outfilt_attr_match_test"
+module = "smc_outfilt_attr_match_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_infilt_addr_burst_match_test"
+module = "smc_infilt_addr_burst_match_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gap_decode_response_test"
+module = "smc_gap_decode_response_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_xbar_outstanding_limits_test"
+module = "smc_xbar_outstanding_limits_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_alias_remap_attr_test"
+module = "smc_alias_remap_attr_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_region_gated_units_decode_test"
+module = "smc_region_gated_units_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_alias_remap_translate_test"
+module = "smc_alias_remap_translate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_outfilt_deny_concurrency_test"
+module = "smc_outfilt_deny_concurrency_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_inbound_outside_window_decerr_test"
+module = "smc_inbound_outside_window_decerr_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_unit_extent_register_decode_test"
+module = "smc_unit_extent_register_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_outfilt_priority_perm_test"
+module = "smc_outfilt_priority_perm_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_axi_contested_ports_test"
+module = "smc_axi_contested_ports_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_traffic_shape_test"
+module = "smc_dma_traffic_shape_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_infilt_default_liveness_test"
+module = "smc_infilt_default_liveness_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_infilt_priority_deny_test"
+module = "smc_infilt_priority_deny_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_unit_base_register_port_matrix_test"
+module = "smc_unit_base_register_port_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_inbound_concurrency_limits_test"
+module = "smc_inbound_concurrency_limits_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_invalid_probe_recovery_test"
+module = "smc_invalid_probe_recovery_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_instance_storage_isolation_test"
+module = "smc_instance_storage_isolation_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_inbound_window_port_matrix_test"
+module = "smc_inbound_window_port_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_axi_channel_timing_ports_test"
+module = "smc_axi_channel_timing_ports_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
 run_modes = ["smoke"]
