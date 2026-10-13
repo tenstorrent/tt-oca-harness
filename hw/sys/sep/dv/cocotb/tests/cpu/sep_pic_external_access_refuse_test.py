@@ -47,6 +47,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_axi_agent import SepAxiAgent, SepAxiOp
+from env.sep_axi_monitor import SepAxiMonitor
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_decode_resp import sep_map_row
 from env.sep_dtcm_param_patch import patch_param_block
@@ -265,6 +266,12 @@ class sep_pic_external_access_refuse_test(sep_base_test):
         self.sb = SepBootScoreboard("sb", self)
         self.ext_agent = SepAxiAgent("ext_axi_agent", self)
         self.ext_agent.axi_prefix = "m_axi"
+        # The agent requires the monitor of its bus. Refused SMN accesses
+        # answer DECERR by contract, so the monitor tallies DECERR without
+        # failing, as sep_env configures it for this bus.
+        self.ext_monitor = SepAxiMonitor("ext_axi_monitor", self)
+        self.ext_monitor.bus_prefix = "m_axi"
+        self.ext_monitor.fail_decerr = False
 
     async def start_ext_seq(self, seq) -> None:
         await seq.start(self.ext_agent.sequencer)
