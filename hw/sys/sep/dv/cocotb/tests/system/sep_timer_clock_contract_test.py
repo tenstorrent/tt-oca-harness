@@ -1058,9 +1058,21 @@ class sep_timer_clock_contract_test(sep_base_test):
             await RisingEdge(dut.clk_i)
             dut.wdt_rst_ni_i.value = 0
             await ClockCycles(dut.clk_i, PULSE_CYCLES)
+            await ReadOnly()
+            low = self.rd(dut.sep_cpu_reset_n_o)
+            await RisingEdge(dut.clk_i)
             dut.wdt_rst_ni_i.value = 1
+            assert low == 0, "sep_cpu_reset_n_o did not fall during the wdt_rst_ni pulse"
             await self._wait_high(dut.sep_cpu_reset_n_o, "sep_cpu_reset_n_o")
         elif ev == "DBG_PULSE":
+            # dbg_rstb_i resets the EL2 debug module of the full CPU; the stub CPU of
+            # lsu_stub_all_live has no load on it. The build is logged with the event.
+            full_cpu = hasattr(dut.u_dut.u_sep.u_sep_cpu, "u_el2_veer_wrapper")
+            self.logger.info(
+                "OBS-DBG-EVENT: build=%s dbg_rstb_i_load=%d",
+                "full_cpu" if full_cpu else "cpu_stub",
+                int(full_cpu),
+            )
             await RisingEdge(dut.clk_i)
             dut.dbg_rstb_i.value = 0
             await ClockCycles(dut.clk_i, PULSE_CYCLES)
