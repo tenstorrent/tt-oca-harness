@@ -271,7 +271,8 @@ static int chk_zero_tcm_narrow(void) {
     st = zero_fill(ICCM_ZERO_BASE, 8u, SEP_DMA_WIDTH_4B);
     e += expect_clean("CHK-ZERO-TCM-NARROW", "4-byte-wide recovery fill", st);
     if (e == 0) {
-        sep_mbx_puts("PASS: CHK-ZERO-TCM-NARROW 2-byte-wide ICCM fill rejected, errors cleared before GO, recovery clean\n");
+        sep_mbx_puts("PASS: CHK-ZERO-TCM-NARROW 2-byte-wide ICCM fill rejected, errors cleared "
+                     "before GO, recovery clean\n");
     }
     return e;
 }
