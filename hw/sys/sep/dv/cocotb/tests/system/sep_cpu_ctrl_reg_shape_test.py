@@ -520,7 +520,6 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             )
             assert fc.ok, f"CHK-SCR-SHAPE FAIL: {line}"
             assert probe is None or probe == lo, f"CHK-SCR-SHAPE FAIL: cold probe {line}"
-            self.logger.info("CHK-SCR-SHAPE PASS: %s", line)
             self.logger.info(
                 "OBS-CC-RSVD: reg=SCRATCH_%s_%d reserved=0x%x mask=0x%x",
                 bank.upper(),
@@ -528,7 +527,6 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
                 got & ~SCR_FIELD & M64,
                 ~SCR_FIELD & M64,
             )
-            self.scr_shape_lines += 1
             # Neighbour compare (control) against the snapshot.
             same = 0
             for b2, i2, a2 in self._all_regs():
@@ -548,6 +546,8 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
                 same,
                 2 * SCRATCH_N - 1,
             )
+            self.logger.info("CHK-SCR-SHAPE PASS: %s", line)
+            self.scr_shape_lines += 1
             self.snapshot[(bank, i)] = lo
 
     async def _wait_high(self, sig, name: str) -> int:

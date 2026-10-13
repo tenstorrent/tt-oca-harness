@@ -1185,6 +1185,8 @@ class sep_timer_clock_contract_test(sep_base_test):
             if (last[name] & AON[name][1]) == (w & AON[name][1])
             and (w & AON[name][1]) != (AON[name][2] & AON[name][1])
         )
+        # Control: the registers held their armed values before the reset.
+        assert armed == 5, f"CHK-REGWEN-COLD FAIL: armed_before={armed}/5"
         await self.pulse_rst_ni(hold_cycles=PULSE_CYCLES, release_bound=RESET_BOUND)
         st = await self._read_lock_state()
         for name in ("WDOG_REGWEN",) + THOLD_REGS:
@@ -1204,7 +1206,6 @@ class sep_timer_clock_contract_test(sep_base_test):
             st["WKUP_THOLD_LO"],
             armed,
         )
-        assert armed == 5, f"CHK-REGWEN-COLD FAIL: armed_before={armed}/5"
 
     # -- leaf -------------------------------------------------------------------
 
