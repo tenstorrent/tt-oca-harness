@@ -117,10 +117,19 @@ class _Cfg:
         def rand64() -> int:
             return rng.getrandbits(64)
 
-        # SEP_VERSION_ID: 8 values, one of them all-ones, at a drawn position.
+        # SEP_VERSION_ID: 8 values, one of them all-ones, at a drawn position. At
+        # least 4 writes, the all-ones write among them, use a lane that reaches the
+        # version_id field (64-bit lane or low half).
         vals = [rand64() for _ in range(N_WRITES)]
-        vals[rng.randrange(N_WRITES)] = M64
-        self.ver = [(v, rng.choice(LANES)) for v in vals]
+        ones = rng.randrange(N_WRITES)
+        vals[ones] = M64
+        others = [i for i in range(N_WRITES) if i != ones]
+        rng.shuffle(others)
+        low = {ones, *others[:3]}
+        self.ver = [
+            (v, rng.choice(LOW_LANES) if i in low else rng.choice(LANES))
+            for i, v in enumerate(vals)
+        ]
 
         # SEP_NMI_VEC before the lock: bit 0 set in at least 4 writes and bits
         # 63:32 non-zero in at least 4.
@@ -318,10 +327,17 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             self.logger.info("CC-RO LOG: %s", line)
             self._rsvd("SEP_VERSION_ID", got, VERSION_FIELD)
         close_graded_window(self.logger)
+        n_low = sum(1 for _v, lane in cfg.ver if lane in LOW_LANES)
+        ones_low = any(v == M64 and lane in LOW_LANES for v, lane in cfg.ver)
+        assert n_low >= 4 and ones_low, (
+            f"CHK-CC-RO FAIL: {n_low} writes reach the field (all-ones on a field lane: "
+            f"{ones_low}); at least 4 and the all-ones write are needed"
+        )
         self.logger.info(
-            "CHK-CC-RO PASS: SEP_VERSION_ID[31:0]=0x%08x after %d writes",
+            "CHK-CC-RO PASS: SEP_VERSION_ID[31:0]=0x%08x after %d writes field_lane_writes=%d",
             VERSION_RESET,
             len(cfg.ver),
+            n_low,
         )
 
     async def _nmi(self) -> None:

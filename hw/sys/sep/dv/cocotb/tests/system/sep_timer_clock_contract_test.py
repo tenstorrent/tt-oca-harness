@@ -945,11 +945,15 @@ class sep_timer_clock_contract_test(sep_base_test):
             await self._wr(INTR_STATE, M32)
             await self._poll_eq("INTR_STATE", INTR_STATE, 0, INTR_FIELDS, "CHK-WDT-SHAPE")
             await self._wr(INTR_TEST, pat)
-            await self._poll_eq("INTR_STATE", INTR_STATE, pat & 0x3, INTR_FIELDS, "CHK-WDT-SHAPE")
+            await self._poll_eq(
+                "INTR_STATE", INTR_STATE, pat & INTR_FIELDS, INTR_FIELDS, "CHK-WDT-SHAPE"
+            )
             await self._wr(INTR_TEST, M32)
-            await self._poll_eq("INTR_STATE", INTR_STATE, 0x3, INTR_FIELDS, "CHK-WDT-SHAPE")
+            await self._poll_eq("INTR_STATE", INTR_STATE, INTR_FIELDS, INTR_FIELDS, "CHK-WDT-SHAPE")
             await self._wr(INTR_STATE, pat)
-            await self._poll_eq("INTR_STATE", INTR_STATE, 0x3 & ~pat, INTR_FIELDS, "CHK-WDT-SHAPE")
+            await self._poll_eq(
+                "INTR_STATE", INTR_STATE, INTR_FIELDS & ~pat, INTR_FIELDS, "CHK-WDT-SHAPE"
+            )
             await self._wr(INTR_STATE, M32)
             n_checks += 3
             self.logger.info("WDT-SHAPE LOG: reg=INTR_STATE/INTR_TEST pattern=0x%08x exact", pat)
@@ -1214,10 +1218,13 @@ class sep_timer_clock_contract_test(sep_base_test):
         self.dbg_cell = vcs and full_cpu
         self.n_dbg = 0
         self.logger.info(
-            "OBS-DBG-EVENT: build=%s tool=%s dbg_rstb_i_cell=%s",
+            "OBS-DBG-EVENT: build=%s tool=%s dbg_rstb_i_cell=%s reason=%s",
             "full_cpu" if full_cpu else "cpu_stub",
             "vcs" if vcs else "verilator",
             "run" if self.dbg_cell else "skipped",
+            "VCS full-CPU build"
+            if self.dbg_cell
+            else ("no dbg_rstb_i load on this build" if not full_cpu else "VCS only"),
         )
         self.sys_ps = int(round(self.cfg.sys_clk_period_ns * 1000))
         self.tcfg = cfg = _Cfg(seed, self.sys_ps, dbg_cell=self.dbg_cell)
