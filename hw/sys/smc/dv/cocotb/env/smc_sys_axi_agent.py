@@ -114,6 +114,12 @@ class SmcSysAxiItem(uvm_sequence_item):
         # True states why incomplete traffic is acceptable there.
         self.allow_timeout: bool = False
         self.timed_out: bool = False
+        # Accept an access abandoned because a reset lands while it is outstanding:
+        # the transfer completes with no response, no timeout, and the driver reads
+        # rst_primary_smc_clk_no == 0 at that moment. Default False. Never covers a
+        # timeout or an error response code. `reset_aborted` records that outcome.
+        self.allow_reset_abort: bool = False
+        self.reset_aborted: bool = False
         self.timeout_ns: int | None = None
         # TB-local SmcMemoryModel golden.
         # OKAY WR with update_golden updates the model; OKAY RD with
@@ -166,7 +172,7 @@ class SmcSysAxiItem(uvm_sequence_item):
             f"{self.op.value} addr=0x{self.addr:014x} len={self.length} "
             f"beats={self.beats} burst={self.burst} "
             f"wdata=0x{self.wdata:x}{strb} rdata=0x{self.rdata:x} exp={exp} "
-            f"ok={self.resp_ok}"
+            f"ok={self.resp_ok} reset_aborted={self.reset_aborted}"
         )
 
 
@@ -343,7 +349,18 @@ class SmcSysAxiDriver(uvm_driver):
         what = item.op.value
         resp = await self._timed_event(event, item, what)
         if resp is None:
-            item.resp_ok = item.allow_timeout
+            if not item.timed_out:
+                rst = cocotb.top.rst_primary_smc_clk_no.value
+                level = int(rst) if rst.is_resolvable else None
+                item.reset_aborted = level == 0
+                self.logger.info(
+                    "%s %s 0x%014x completed with no response (rst_primary_smc_clk_no=%s)",
+                    self.bus_name,
+                    what,
+                    item.addr,
+                    level,
+                )
+            item.resp_ok = item.allow_timeout or (item.reset_aborted and item.allow_reset_abort)
             return
         item.resp_code = self._resp_code(resp)
         _raw_ok = self._resp_ok(resp)
