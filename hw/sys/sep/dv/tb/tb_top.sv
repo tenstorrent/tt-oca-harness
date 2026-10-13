@@ -1659,14 +1659,32 @@ module sep_uvm_top
     assign otbn_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.otbn;
     // Key Manager warm reset and the full isolate request and isolate-complete
-    // vectors (sep_pkg::sep_crypto_isolate_t bit order). Read-only XMRs, same
-    // class as the probes above.
+    // vectors. Read-only XMRs, same class as the probes above. Bit x of each
+    // vector is VPLAN bench isolate stage x, assigned from the isolate struct
+    // field of that path by name, so the tap carries the bench layout.
     assign km_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.km;
-    assign crypto_isolate_req_probe_o = `SEP_CORE.sep_crypto_isolate_req;
-    assign crypto_isolated_probe_o    = `SEP_CORE.sep_crypto_isolated;
-    // Slave side of each isolate stage (sep_crypto_axi_interconnect.sv), bit i in the
-    // order of sep_pkg::sep_crypto_isolate_t. Read-only XMRs of the stage ports.
+`define SEP_TB_ISO_BIT(x, f) \
+    assign crypto_isolate_req_probe_o[x] = `SEP_CORE.sep_crypto_isolate_req.f; \
+    assign crypto_isolated_probe_o[x]    = `SEP_CORE.sep_crypto_isolated.f;
+    `SEP_TB_ISO_BIT(0, host_otbn)
+    `SEP_TB_ISO_BIT(1, host_aes)
+    `SEP_TB_ISO_BIT(2, host_hmac)
+    `SEP_TB_ISO_BIT(3, host_kmac)
+    `SEP_TB_ISO_BIT(4, host_abr)
+    `SEP_TB_ISO_BIT(5, trng_entropy_source)
+    `SEP_TB_ISO_BIT(6, trng_csrng)
+    `SEP_TB_ISO_BIT(7, trng_edn)
+    `SEP_TB_ISO_BIT(8, km_otbn)
+    `SEP_TB_ISO_BIT(9, km_aes)
+    `SEP_TB_ISO_BIT(10, km_hmac)
+    `SEP_TB_ISO_BIT(11, km_kmac)
+    `SEP_TB_ISO_BIT(12, km_abr)
+    `SEP_TB_ISO_BIT(13, km_efuse)
+`undef SEP_TB_ISO_BIT
+    // Slave side of each isolate stage (sep_crypto_axi_interconnect.sv), bit x the
+    // VPLAN bench isolate stage x, as in the vectors above. Read-only XMRs of the
+    // stage ports.
 `define SEP_TB_ISO_SLV(i, inst) \
     assign iso_slv_aw_hs_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.aw_valid & \
                                       `SEP_ISO_IC.inst.slv_resp_o.aw_ready; \
@@ -1679,20 +1697,20 @@ module sep_uvm_top
     assign iso_slv_bresp_probe_o[2*(i)+:2] = `SEP_ISO_IC.inst.slv_resp_o.b.resp; \
     assign iso_slv_rresp_probe_o[2*(i)+:2] = `SEP_ISO_IC.inst.slv_resp_o.r.resp;
 `define SEP_ISO_IC `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect
-    `SEP_TB_ISO_SLV(13, u_esrc_host_isolate)
-    `SEP_TB_ISO_SLV(12, u_csrng_host_isolate)
-    `SEP_TB_ISO_SLV(11, u_edn_host_isolate)
-    `SEP_TB_ISO_SLV(10, u_otbn_host_isolate)
-    `SEP_TB_ISO_SLV(9, u_aes_host_isolate)
-    `SEP_TB_ISO_SLV(8, u_hmac_host_isolate)
-    `SEP_TB_ISO_SLV(7, u_kmac_host_isolate)
-    `SEP_TB_ISO_SLV(6, u_abr_host_isolate)
-    `SEP_TB_ISO_SLV(5, u_otbn_key_isolate)
-    `SEP_TB_ISO_SLV(4, u_aes_key_isolate)
-    `SEP_TB_ISO_SLV(3, u_hmac_key_isolate)
-    `SEP_TB_ISO_SLV(2, u_kmac_key_isolate)
-    `SEP_TB_ISO_SLV(1, u_abr_key_isolate)
-    `SEP_TB_ISO_SLV(0, u_km_efuse_isolate)
+    `SEP_TB_ISO_SLV(0, u_otbn_host_isolate)
+    `SEP_TB_ISO_SLV(1, u_aes_host_isolate)
+    `SEP_TB_ISO_SLV(2, u_hmac_host_isolate)
+    `SEP_TB_ISO_SLV(3, u_kmac_host_isolate)
+    `SEP_TB_ISO_SLV(4, u_abr_host_isolate)
+    `SEP_TB_ISO_SLV(5, u_esrc_host_isolate)
+    `SEP_TB_ISO_SLV(6, u_csrng_host_isolate)
+    `SEP_TB_ISO_SLV(7, u_edn_host_isolate)
+    `SEP_TB_ISO_SLV(8, u_otbn_key_isolate)
+    `SEP_TB_ISO_SLV(9, u_aes_key_isolate)
+    `SEP_TB_ISO_SLV(10, u_hmac_key_isolate)
+    `SEP_TB_ISO_SLV(11, u_kmac_key_isolate)
+    `SEP_TB_ISO_SLV(12, u_abr_key_isolate)
+    `SEP_TB_ISO_SLV(13, u_km_efuse_isolate)
 `undef SEP_TB_ISO_SLV
 `undef SEP_ISO_IC
     // Watchdog timer-domain reset and the two Key Manager reset conditioner

@@ -274,18 +274,8 @@ class sep_scan_reset_override_test(sep_base_test):
             await t.stop()
         rises = {}
         for (name, _p, bit), t in zip(NETS, timers):
-            vals = [
-                (c.t_ps, None if c.value is None else (c.value >> (bit or 0)) & 1)
-                for c in t.changes
-            ]
-            r = None
-            prev = None
-            for ts, v in vals:
-                if ts >= t_rise and prev == 0 and v == 1:
-                    r = ts
-                    break
-                prev = v
-            rises[name] = r
+            r = t.rises(t_rise, bit=bit or 0)
+            rises[name] = r[0] if r else None
         return {
             "samples": [s for s in samples if s[0] >= t_fall],
             "t_fall": t_fall,

@@ -4,12 +4,12 @@
 
 ``tb_top`` brings out the 14-bit isolate request and isolate-complete vectors
 of the crypto AXI interconnect (``crypto_isolate_req_probe_o``,
-``crypto_isolated_probe_o``) in the bit order of
-``sep_pkg::sep_crypto_isolate_t``, and one port per sequenced engine reset
-(``*_gated_rst_n_probe_o``). The VPLAN names the same nets by a bench index.
-The index is a table that resolves a path name; it is never an expected value.
+``crypto_isolated_probe_o``) with bit ``x`` the VPLAN bench isolate stage
+``x`` (``docs/SEP_TB_ARCH.adoc``, crypto reset-sequencer probes), and one port
+per sequenced engine reset (``*_gated_rst_n_probe_o``). The index is a table
+that resolves a path name; it is never an expected value.
 
-Isolate stage ``x`` (VPLAN bench index):
+Isolate stage ``x`` (VPLAN bench index, bit ``x`` of each vector):
 
 ==  ====================  ==  ====================
 x   path                  x   path
@@ -46,25 +46,6 @@ from typing import Any
 import cocotb
 from sep_bit_watch import BitMark, SepBitWatch
 
-# sep_pkg::sep_crypto_isolate_t, MSB first.
-ISO_RTL_ORDER: tuple[str, ...] = (
-    "trng_entropy_source",
-    "trng_csrng",
-    "trng_edn",
-    "host_otbn",
-    "host_aes",
-    "host_hmac",
-    "host_kmac",
-    "host_abr",
-    "km_otbn",
-    "km_aes",
-    "km_hmac",
-    "km_kmac",
-    "km_abr",
-    "km_efuse",
-)
-ISO_WIDTH = len(ISO_RTL_ORDER)
-
 # VPLAN bench index x -> path name.
 ISO_BENCH: tuple[str, ...] = (
     "host_otbn",
@@ -82,6 +63,7 @@ ISO_BENCH: tuple[str, ...] = (
     "km_abr",
     "km_efuse",
 )
+ISO_WIDTH = len(ISO_BENCH)
 
 # ip_rst_n[i] -> tb_top port.
 IP_RST_PORTS: tuple[str, ...] = (
@@ -103,19 +85,9 @@ RESET_TAP_PORTS: dict[str, str] = {
 }
 
 
-def iso_rtl_bit(x: int) -> int:
-    """Bit position in the probe vector of bench isolate stage ``x``."""
-    return ISO_WIDTH - 1 - ISO_RTL_ORDER.index(ISO_BENCH[x])
-
-
 def iso_name(x: int) -> str:
     """Watcher bit name of bench isolate stage ``x``."""
     return f"x{x}_{ISO_BENCH[x]}"
-
-
-def iso_bench_vector(rtl_value: int) -> int:
-    """Re-order a probe vector value so that bit ``x`` is bench stage ``x``."""
-    return sum(((rtl_value >> iso_rtl_bit(x)) & 1) << x for x in range(ISO_WIDTH))
 
 
 class SepResetTaps:
@@ -123,7 +95,7 @@ class SepResetTaps:
 
     def __init__(self, dut: Any = None, *, xz_fail: bool = True) -> None:
         self.dut = dut if dut is not None else cocotb.top
-        bits = {iso_name(x): iso_rtl_bit(x) for x in range(ISO_WIDTH)}
+        bits = {iso_name(x): x for x in range(ISO_WIDTH)}
         self.iso_req = SepBitWatch(
             self.dut.crypto_isolate_req_probe_o,
             bits,
@@ -199,7 +171,7 @@ class SepResetTaps:
     def log_map(log) -> None:
         """Log the bench index tables the leaf uses."""
         for x in range(ISO_WIDTH):
-            log.info("OBS-ISO-MAP: x=%d path=%s rtl_bit=%d", x, ISO_BENCH[x], iso_rtl_bit(x))
+            log.info("OBS-ISO-MAP: x=%d path=%s", x, ISO_BENCH[x])
         for i, port in enumerate(IP_RST_PORTS):
             log.info("OBS-IPRST-MAP: i=%d engine=%s port=%s", i, IP_RST_NAMES[i], port)
 
@@ -208,15 +180,4 @@ def _bench_now(sig) -> int | None:
     v = sig.value
     if not v.is_resolvable:
         return None
-    return iso_bench_vector(int(v))
-
-
-if __name__ == "__main__":
-    # Self-check of the index tables (no simulator).
-    assert sorted(ISO_BENCH) == sorted(ISO_RTL_ORDER)
-    assert iso_rtl_bit(13) == 0  # km_efuse is the LSB
-    assert iso_rtl_bit(5) == 13  # trng_entropy_source is the MSB
-    assert iso_rtl_bit(0) == 10  # host_otbn
-    assert iso_bench_vector(1 << 10) == 1
-    assert iso_bench_vector((1 << ISO_WIDTH) - 1) == (1 << ISO_WIDTH) - 1
-    print("sep_reset_taps self-check PASS")
+    return int(v)

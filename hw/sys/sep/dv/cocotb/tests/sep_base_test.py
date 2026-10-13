@@ -256,10 +256,25 @@ class sep_base_test(uvm_test):
 
     @staticmethod
     def _set_if_exists(dut, name: str, value: int) -> None:
+        """Idle-default drive: a pin the build does not have is skipped.
+
+        Only for idle defaults. A graded or stimulus drive uses ``_set_pin``.
+        """
         try:
             getattr(dut, name).value = value
         except AttributeError:
             pass
+
+    @staticmethod
+    def _set_pin(dut, name: str, value: int) -> None:
+        """Stimulus drive: raises when the build does not have the pin."""
+        try:
+            sig = getattr(dut, name)
+        except AttributeError as exc:
+            raise AssertionError(
+                f"PIN-DRIVE FAIL: {name} is not a port of this build; the stimulus cannot be driven"
+            ) from exc
+        sig.value = value
 
     def build_phase(self) -> None:
         require_file_plusargs(FILE_PLUSARGS)
@@ -536,9 +551,9 @@ class sep_base_test(uvm_test):
         dut = cocotb.top
         val = 1 if hold else 0
         for eng in engines:
-            port = self._JTAG_SW_RST_HOLD.get(eng)
-            if port is not None:
-                self._set_if_exists(dut, port, val)
+            if eng not in self._JTAG_SW_RST_HOLD:
+                raise KeyError(f"no JTAG SW-reset hold pin for engine {eng!r}")
+            self._set_pin(dut, self._JTAG_SW_RST_HOLD[eng], val)
         if engines:
             self.logger.info(
                 "JTAG SW-reset hold %s -> %s",
@@ -765,7 +780,7 @@ class sep_base_test(uvm_test):
         self.drive_idle_defaults(dut, cpu_run=True, rst_vec=rst_vec)
         await self.assert_cold_reset(dut)
         # CPU boot: EL2 debug reset follows cold reset.
-        self._set_if_exists(dut, "dbg_rstb_i", 0)
+        self._set_pin(dut, "dbg_rstb_i", 0)
         self._jtag_sw_rst_hold(park, True)
         self.start_clocks(dut)
         await ClockCycles(dut.clk_i, 20)
@@ -775,7 +790,7 @@ class sep_base_test(uvm_test):
             self.logger.info("CPU boot: pre-reset hook complete")
         self.logger.info("Releasing rst_ni")
         dut.rst_ni.value = 1
-        self._set_if_exists(dut, "dbg_rstb_i", 1)
+        self._set_pin(dut, "dbg_rstb_i", 1)
         # Gate on the real fabric-release signal, then a small CPU settle margin.
         await self._wait_fuse_sense(max_cycles)
         if park and release_park:

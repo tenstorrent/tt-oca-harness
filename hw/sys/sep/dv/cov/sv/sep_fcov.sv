@@ -350,8 +350,8 @@ module sep_fcov (
   input wire                 strap_i,           // secure_tm_req_i
   input wire                 wdt_rst_req_i,     // wdt_timer_rst_req_o
   input wire [6:0]           ip_rst_n_i,        // sep_crypto_gated_rst_n, SW_RESET_N order
-  input wire [13:0]          iso_req_i,         // sep_crypto_isolate_req
-  input wire [13:0]          iso_ack_i,         // sep_crypto_isolated
+  input wire [13:0]          iso_req_i,         // sep_crypto_isolate_req, bench index
+  input wire [13:0]          iso_ack_i,         // sep_crypto_isolated, bench index
   input wire                 aon_rst_n_i,       // u_sep_wdt_wrap.rst_wdt_n
   input wire [1:0]           km_cond_rst_n_i,   // {rst_cold_aasd_n, rst_warm_sync_n}
   input sep_pkg::jtag_sep_reset_ctrl_t jtag_rst_ctrl_i,  // after the pin-or-TDR mux
@@ -10455,26 +10455,27 @@ module sep_fcov (
   localparam logic [4:0] MrIrRstVec = 5'h18;
   localparam int unsigned MrTdrLen = 32;
 
-  // Isolate stages in sep_pkg::sep_crypto_isolate_t bit order: 13
-  // trng_entropy_source, 12 trng_csrng, 11 trng_edn, 10 host_otbn, 9 host_aes,
-  // 8 host_hmac, 7 host_kmac, 6 host_abr, 5 km_otbn, 4 km_aes, 3 km_hmac,
-  // 2 km_kmac, 1 km_abr, 0 km_efuse. Table sets of reset_controller.adoc.
-  localparam logic [13:0] MrSetKm = 14'b00_0000_0011_1111;
-  localparam logic [13:0] MrSetOtbn = 14'b00_0100_0010_0000;
-  localparam logic [13:0] MrSetAes = 14'b00_0010_0001_0000;
-  localparam logic [13:0] MrSetKmac = 14'b00_0000_1000_0100;
-  localparam logic [13:0] MrSetTrng = 14'b11_1000_0000_0000;
+  // Isolate stages in the VPLAN bench index of the tb_top isolate taps: 0
+  // host_otbn, 1 host_aes, 2 host_hmac, 3 host_kmac, 4 host_abr, 5
+  // trng_entropy_source, 6 trng_csrng, 7 trng_edn, 8 km_otbn, 9 km_aes, 10
+  // km_hmac, 11 km_kmac, 12 km_abr, 13 km_efuse. Table sets of
+  // reset_controller.adoc.
+  localparam logic [13:0] MrSetKm = 14'b11_1111_0000_0000;
+  localparam logic [13:0] MrSetOtbn = 14'b00_0001_0000_0001;
+  localparam logic [13:0] MrSetAes = 14'b00_0010_0000_0010;
+  localparam logic [13:0] MrSetKmac = 14'b00_1000_0000_1000;
+  localparam logic [13:0] MrSetTrng = 14'b00_0000_1110_0000;
   // Host-path bits per software reset field (SW_RESET_N bit order 1 otbn,
   // 2 aes, 3 hmac, 4 kmac, 5 trng, 6 abr).
-  localparam logic [13:0] MrHostOtbn = 14'b00_0100_0000_0000;
-  localparam logic [13:0] MrHostAes = 14'b00_0010_0000_0000;
-  localparam logic [13:0] MrHostHmac = 14'b00_0001_0000_0000;
-  localparam logic [13:0] MrHostKmac = 14'b00_0000_1000_0000;
-  localparam logic [13:0] MrHostTrng = 14'b11_1000_0000_0000;
-  localparam logic [13:0] MrHostAbr = 14'b00_0000_0100_0000;
+  localparam logic [13:0] MrHostOtbn = 14'b00_0000_0000_0001;
+  localparam logic [13:0] MrHostAes = 14'b00_0000_0000_0010;
+  localparam logic [13:0] MrHostHmac = 14'b00_0000_0000_0100;
+  localparam logic [13:0] MrHostKmac = 14'b00_0000_0000_1000;
+  localparam logic [13:0] MrHostTrng = 14'b00_0000_1110_0000;
+  localparam logic [13:0] MrHostAbr = 14'b00_0000_0001_0000;
   // Approved isolate-complete probes: HMAC, KMAC and Adams Bridge host and key
   // paths, and the three TRNG paths.
-  localparam logic [13:0] MrAckApproved = 14'b11_1001_1100_1110;
+  localparam logic [13:0] MrAckApproved = 14'b01_1100_1111_1100;
 
   function automatic logic [13:0] mr_host_set(input int unsigned i);
     case (i)
@@ -12821,7 +12822,7 @@ module sep_fcov (
 
     // cp_km_reset_condition
     if (mr_own_swiso && mr_sw_ok && !mr_ovrd[0]) begin
-      if (mr_ip_fall[0] && (&iso_req_i[5:0])) begin
+      if (mr_ip_fall[0] && (&iso_req_i[13:8])) begin
         mr_scope_t e;
         e      = '0;
         e.km   = 1'b0;

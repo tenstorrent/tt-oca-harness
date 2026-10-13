@@ -168,14 +168,13 @@ Observation probe groups:
   the VPLAN bench index). `crypto_isolate_req_probe_o` and
   `crypto_isolated_probe_o` are the 14-bit isolate request and
   isolate-complete vectors at the crypto AXI interconnect (`sep.sv` nets
-  `sep_crypto_isolate_req` and `sep_crypto_isolated`) in the bit order of
-  `sep_pkg::sep_crypto_isolate_t`, MSB to LSB: `trng_entropy_source`,
-  `trng_csrng`, `trng_edn`, `host_otbn`, `host_aes`, `host_hmac`, `host_kmac`,
-  `host_abr`, `km_otbn`, `km_aes`, `km_hmac`, `km_kmac`, `km_abr`, `km_efuse`.
-  The VPLAN bench index (0 to 4 the OTBN, AES, HMAC, KMAC and Adams Bridge host
-  paths, 5 to 7 the ESRC, CSRNG and EDN paths, 8 to 12 the five Key Manager key
-  paths, 13 the Key Manager to eFuse path) is the table of
-  `env/sep_reset_taps.py`. Owners of the KM reset and the two vectors:
+  `sep_crypto_isolate_req` and `sep_crypto_isolated`). Bit x of each vector is
+  VPLAN bench isolate stage x: 0 `host_otbn`, 1 `host_aes`, 2 `host_hmac`,
+  3 `host_kmac`, 4 `host_abr`, 5 `trng_entropy_source`, 6 `trng_csrng`,
+  7 `trng_edn`, 8 `km_otbn`, 9 `km_aes`, 10 `km_hmac`, 11 `km_kmac`,
+  12 `km_abr`, 13 `km_efuse`. `tb_top` assigns each bit from the isolate
+  struct field of that name, so the RTL field order does not reach a test; the
+  same table is in `env/sep_reset_taps.py` and the FCOV isolate sets. Owners of the KM reset and the two vectors:
   `sep_cpu_reset_retention_test`, `sep_sw_reset_isolation_matrix_test`,
   `sep_ip_reset_override_matrix_test`.
 * Isolate-stage slave-side taps: `iso_slv_aw_hs_probe_o`,
@@ -184,8 +183,8 @@ Observation probe groups:
   `iso_slv_bresp_probe_o`, `iso_slv_rresp_probe_o` (two bits per stage, stage i
   at `[2i+1:2i]`), read from the `slv_req_i` and `slv_resp_o` ports of the 14
   isolate units of `sep_crypto_axi_interconnect.sv` (`u_*_host_isolate`,
-  `u_*_key_isolate`, `u_km_efuse_isolate`), in the bit order of
-  `crypto_isolated_probe_o`. They show when a stage accepts a transaction and
+  `u_*_key_isolate`, `u_km_efuse_isolate`), bit x the bench isolate stage x
+  as in `crypto_isolated_probe_o`. They show when a stage accepts a transaction and
   when it returns the response, the point where the specification drains a
   domain before its reset. No frontdoor shows the stage side of the fabric.
   Owner `sep_sw_reset_isolation_matrix_test`.

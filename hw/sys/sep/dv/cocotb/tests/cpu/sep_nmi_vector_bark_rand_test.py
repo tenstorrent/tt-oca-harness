@@ -262,7 +262,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         dut = cocotb.top
         await RisingEdge(dut.clk_i)
         dut.rst_ni.value = 0
-        self._set_if_exists(dut, "dbg_rstb_i", 0)
+        self._set_pin(dut, "dbg_rstb_i", 0)
         await ClockCycles(dut.clk_i, 20)
         shutil.copyfile(itcm, os.path.join(os.getcwd(), "sep_itcm.hex"))
         shutil.copyfile(dtcm, os.path.join(os.getcwd(), "sep_dtcm.hex"))
@@ -272,7 +272,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         await ClockCycles(dut.clk_i, 4)
         self.logger.info("cold reset: TCM reloaded with the leg-2 parameter block")
         dut.rst_ni.value = 1
-        self._set_if_exists(dut, "dbg_rstb_i", 1)
+        self._set_pin(dut, "dbg_rstb_i", 1)
         await self._wait_fuse_sense(20_000)
         await ClockCycles(dut.clk_i, 30)
         dut.i_cpu_run_req_i.value = 1
