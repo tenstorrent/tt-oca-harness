@@ -1230,9 +1230,9 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |Proves that all 16 source and destination address-mode cells, each at a drawn width, give the stated destination image, that sizes up to 16 KB complete with DONE and GO auto-clear, that a transfer exactly on the range edges completes, and that SHA-256, SHA-384 and SHA-512 digests, SHA2_DIGEST_VALID and DIGEST_SWAP follow the register text. It also proves single-beat DMA transactions, the beat addresses, the CHUNK_DONE rises and their hardware clear, and the DONE rise after the last B response.
 |<<sep_dma_irq_error_lock_rand_test,`sep_dma_irq_error_lock_rand_test`>>
 |3
-|no_cpu, real fuse sense (one leg VCS only)
+|no_cpu, real fuse sense
 |ocah_axi_vip, `sep_internal_interrupts_probe_o` and `dbg_sep_reset_n_o` (approved)
-|Proves the enable gate on PIC sources 9, 10 and 11, STATUS.ERROR, SIZE_ERROR and INTR_STATE.DMA_ERROR for a zero size and for hashing at width 1 or 2, and that the engine takes a legal copy after a size error with no reset. The range lock check is Blocked: the specification does not name the write that applies the lock.
+|Proves the enable gate on PIC sources 9, 10 and 11, STATUS.ERROR, SIZE_ERROR and INTR_STATE.DMA_ERROR for a zero size and for hashing at width 1 or 2, and that the engine takes a legal copy after a size error with no reset. It also proves that after a write of MuBi4 False (0x9) to RANGE_REGWEN, from idle and after a size error, RANGE_REGWEN reads 0x9 and no write of 0x6, 0xF, 0x9 or 0x0 re-opens it, and that writes to ENABLED_MEMORY_RANGE_BASE, ENABLED_MEMORY_RANGE_LIMIT and RANGE_VALID do not change their read-back.
 |<<sep_dma_abort_recovery_rand_test,`sep_dma_abort_recovery_rand_test`>>
 |3
 |no_cpu, real fuse sense
@@ -1931,7 +1931,7 @@ another test.
 |Mailbox lines, FIFOs, errors, filter types and reset; PIC registers, priority, gateway cells, source map and external inputs; bridge fault latches and the fault-versus-clear race; timeout registers; NMI vector; timer and software interrupt tie-offs.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |4.7 to 4.15
-|SPI pad, FIFO, interrupt, error, strobe and reset contracts (one entry extends an open SPI test); DMA address modes, geometry, interrupt gate, abort, inline hash and SPI handshake. The DMA range-lock checks are blocked legs: they need a value that the specification does not state (<<sep-vplan-phase3-blocked-legs,Blocked legs>>).
+|SPI pad, FIFO, interrupt, error, strobe and reset contracts (one entry extends an open SPI test); DMA address modes, geometry, interrupt gate, range lock, abort, inline hash and SPI handshake.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset, WDT, clock>>
 |5.13 to 5.29
 |Reset release, cold and CPU-only reset, software reset and isolation, JTAG and scan overrides, reset vector and run request, `SECURE_TM`, scratch and CPU control registers, watchdog, wakeup timer and reference counter, memory apertures and ECC, CPU demux, debug master, ISA and PMP.
@@ -3356,10 +3356,6 @@ feature, and the note says how the test treats the blocked leg.
 |SPI RX watermark meaning
 |Does RXWM mean "reaches" or "exceeds" the threshold (`spi_controller.adoc`, CONTROL, STATUS, EVENT_ENABLE)?
 |Effect: Equality is never driven (`sep_spi_fifo_stall_watermark_rand_test`, `sep_spi_ot_host_csr_irq_rand_test`). `sep_spi_dma_handshake_rand_test` keeps C/4 at or below RX_WATERMARK
-|<<sep-vplan-phase3-spi-dma,SPI and DMA>>
-|DMA RANGE_REGWEN false value
-|Which write gives the RANGE_REGWEN false value, given RW0C (`secure_dma.adoc`, RANGE_REGWEN)? A write-zero-to-clear from the reset value 0x6 cannot give the False encoding 0x9.
-|Effect: CHK-DMA-LOCK of `sep_dma_irq_error_lock_rand_test` is blocked. The leaf writes 0x9, logs the read-backs as `OBS-DMA-LOCK` and grades nothing. `sep_cpu_reset_retention_test` writes 0, grades only the stored value 0x0 across a CPU-only reset and its return to 0x6 at a cold reset, and claims no lock effect
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |Partial strobe merge
 |What is the merge rule for a partial strobe inside a half (`spi.adoc`, Features)?
