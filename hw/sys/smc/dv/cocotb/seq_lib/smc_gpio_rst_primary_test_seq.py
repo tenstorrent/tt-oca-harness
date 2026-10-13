@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO primary-reset effect on interrupt state and on an in-flight access.
 
-Contract SMC_GPIO_PAD_IRQ_024, anchor smc_gpio_rst_primary_test.
+Contract SMC_GPIO_PAD_IRQ_024 revision 3, anchor smc_gpio_rst_primary_test.
 Allocated scenarios: PADIRQ-RST-PRIMARY.S2, PADIRQ-RST-PRIMARY.S3, PADIRQ-RST-PRIMARY.S4.
 Spec sources: hw/ip/gpio/doc/architecture.adoc (Interrupts, Reset and Strap Capture),
 hw/ip/gpio/regs/gpio_intf.rdl, hw/sys/smc/doc/clk_rst.adoc.
@@ -333,14 +333,16 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
         )
         assert task.done(), "write coroutine did not finish"
         self.accesses += 1
-        after_fall = fall is not None and (
-            fall <= done_at if item.reset_aborted else fall < done_at
-        )
-        assert issued is not None and after_fall and issued <= fall, (
+        assert issued is not None and fall is not None and issued <= fall <= done_at, (
             f"write not outstanding across the effective reset fall: launch-to-AW {issued}, "
             f"launch-to-fall {fall}, launch-to-completion {done_at} (L={latency})"
         )
-        resp = "reset-aborted: no response" if item.reset_aborted else f"resp={item.resp_code}"
+        if item.reset_aborted:
+            assert fall <= done_at, f"reset abort reported before the fall ({state})"
+            kind = "bench master reset flush (BENCH-41)"
+        else:
+            assert item.resp_code is not None, f"completion without response or abort ({state})"
+            kind = f"DUT's own response resp={item.resp_code}"
         rise = await self._hold_and_release("S4")
         await self.wait_fuse_sense_done()
         ctrl = await self.csr_read("S4_DATA_CTRL_RB", DATA_CTRL)
@@ -354,11 +356,12 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
             f"{latency - AXI_LAUNCH_LEAD_CYCLES} cycles after the rst_cold_ni assert "
             f"(L={latency}) was issued {issued} cycles after the launch, "
             f"rst_primary_smc_clk_no fell {fall} cycles after the launch and the "
-            f"write completed with {resp} (0 OKAY, 2 SLVERR, 3 DECERR) {done_at} cycles after the "
-            f"launch, bound {AXI_BOUND_CYCLES} cycles (SEP_IN driver bound {driver_bound_ns} ns); "
-            f"effective reset rose {rise} cycles after the release; after it DATA_CTRL read "
-            f"0x{ctrl:08x} and DATA_CTRL_ENABLE 0x{enable:08x}, zero under mask "
-            f"0x{_RESET_READ_MASK:08x} (SF-020: cold-only reset not separable)"
+            f"write completed {done_at} cycles after the launch; completion kind: {kind} "
+            f"(0 OKAY, 2 SLVERR, 3 DECERR); bound {AXI_BOUND_CYCLES} cycles (SEP_IN driver "
+            f"bound {driver_bound_ns} ns); effective reset rose {rise} cycles after the "
+            f"release; after it DATA_CTRL read 0x{ctrl:08x} and DATA_CTRL_ENABLE "
+            f"0x{enable:08x}, zero under mask 0x{_RESET_READ_MASK:08x}; DUT handling measured "
+            f"only (BENCH-41; SF-020: cold-only reset not separable)"
         )
 
     def _nonvac(self) -> None:

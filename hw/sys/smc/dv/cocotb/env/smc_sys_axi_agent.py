@@ -114,10 +114,10 @@ class SmcSysAxiItem(uvm_sequence_item):
         # True states why incomplete traffic is acceptable there.
         self.allow_timeout: bool = False
         self.timed_out: bool = False
-        # Accept an access the DUT abandons because a reset lands while it is
-        # outstanding: the transfer completes with no response and no timeout.
-        # Default False. Never covers a timeout or an error response code.
-        # `reset_aborted` records that outcome.
+        # Accept an access abandoned because a reset lands while it is outstanding:
+        # the transfer completes with no response, no timeout, and the driver reads
+        # rst_primary_smc_clk_no == 0 at that moment. Default False. Never covers a
+        # timeout or an error response code. `reset_aborted` records that outcome.
         self.allow_reset_abort: bool = False
         self.reset_aborted: bool = False
         self.timeout_ns: int | None = None
@@ -350,12 +350,15 @@ class SmcSysAxiDriver(uvm_driver):
         resp = await self._timed_event(event, item, what)
         if resp is None:
             if not item.timed_out:
-                item.reset_aborted = True
+                rst = cocotb.top.rst_primary_smc_clk_no.value
+                level = int(rst) if rst.is_resolvable else None
+                item.reset_aborted = level == 0
                 self.logger.info(
-                    "%s %s 0x%014x completed with no response",
+                    "%s %s 0x%014x completed with no response (rst_primary_smc_clk_no=%s)",
                     self.bus_name,
                     what,
                     item.addr,
+                    level,
                 )
             item.resp_ok = item.allow_timeout or (item.reset_aborted and item.allow_reset_abort)
             return
