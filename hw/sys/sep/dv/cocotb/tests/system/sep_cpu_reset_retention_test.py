@@ -535,6 +535,12 @@ class sep_cpu_reset_retention_test(sep_base_test):
         self.pf_ack = (ack[0] - h) if ack else None
         b_beats = [b.clk - self.off for b in self.chan.since(cm, "b") if b.axi_id == 0]
         self.lat_b = (b_beats[0] - h) if b_beats else None
+        # The B latency places the in-flight leg and proves the s_axi B tap live.
+        self._ctl(
+            "CTL-CAL-B",
+            self.lat_b is not None and self.lat_b > 0,
+            f"calibration write id=0 b_after_aw={self.lat_b}",
+        )
         ev = self._sw_issue(SW_DEFAULT)
         await self._wait_ev(ev, "calibration release")
         await self._wait_ip(d, 1, "calibration release")
