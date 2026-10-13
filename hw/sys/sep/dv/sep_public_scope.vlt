@@ -37,3 +37,7 @@ public_flat_rw -module "ram_16384x39" -var "ram_core"
 // access to the leaf register storage, which sits outside the fabric AXI
 // ready/valid combinational cones.
 public_flat_rw -module "sep_scratch_reg" -var "field_storage"
+
+// The mailbox FIFO model leaf reads the declared width of the DUT SMC mailbox
+// interrupt port. Read-only access to this one output port adds no write path.
+public_flat_rd -module "sep_wrapper" -var "smc_mailbox_interrupt_o"

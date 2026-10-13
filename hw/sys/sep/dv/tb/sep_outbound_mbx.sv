@@ -23,6 +23,15 @@
 //   * a magic pair at any other outbound address sets fw_done with fw_pass
 //     low and prints an error, so a PASS pair that misses STDOUT cannot pass.
 // tb_top surfaces the decoded signals to cocotb.
+//
+// Response control (an error inject on smn_outbound_axi_resp_i, both inputs 0
+// by default, which answers OKAY at once):
+//   * resp_hold_i=1 holds B VALID and R VALID low. AW, W and AR are still
+//     accepted, so a request reaches the port and waits for its response. The
+//     held responses go out in order when the input falls. A firmware console
+//     store waits too, so a CPU leaf does not raise it.
+//   * rd_slverr_i, sampled at the AR handshake, makes every R beat of that
+//     read answer SLVERR (data 0).
 
 `timescale 1ps / 1fs
 
@@ -35,6 +44,9 @@ module sep_outbound_mbx
   input  wire logic rst_ni,
   input  sep_pkg::sep_system_peripherals_outbound_axi_req_t  req_i,
   output sep_pkg::sep_system_peripherals_outbound_axi_resp_t resp_o,
+  // Response control: hold every B and R response; SLVERR on the next read.
+  input  wire logic resp_hold_i,
+  input  wire logic rd_slverr_i,
   // Decoded firmware-console observables (read by cocotb via tb_top).
   output logic       fw_done_o,
   output logic       fw_pass_o,
@@ -78,6 +90,7 @@ module sep_outbound_mbx
   logic           ar_active_q;
   logic [Idw-1:0] r_id_q;
   logic [8:0]     r_beats_q;
+  logic           r_err_q;
   logic           magic_seen_q;
   logic           stray_seen_q;
   logic [Aw-1:0]  stray_addr_q;
@@ -99,7 +112,7 @@ module sep_outbound_mbx
   wire aw_push = aw_fire && !aw_bypass;
   wire aw_pop = w_fire && !w_active_q && (aw_cnt_q != '0);
   wire b_push = w_fire && req_i.w.last;
-  wire b_pop = (b_cnt_q != '0) && req_i.b_ready;
+  wire b_pop = resp_o.b_valid && req_i.b_ready;
   wburst_t w_next;
   always_comb begin
     w_next      = w_burst;
@@ -115,14 +128,14 @@ module sep_outbound_mbx
     resp_o          = '0;
     resp_o.aw_ready = (aw_cnt_q < (Pw + 1)'(Depth));
     resp_o.w_ready  = w_known && (b_cnt_q < (Pw + 1)'(Depth));
-    resp_o.b_valid  = (b_cnt_q != '0);
+    resp_o.b_valid  = (b_cnt_q != '0) && !resp_hold_i;
     resp_o.b.id     = b_fifo[b_rd_q];
     resp_o.b.resp   = 2'b00;  // OKAY
     resp_o.ar_ready = !ar_active_q;
-    resp_o.r_valid  = ar_active_q;
+    resp_o.r_valid  = ar_active_q && !resp_hold_i;
     resp_o.r.id     = r_id_q;
     resp_o.r.data   = '0;
-    resp_o.r.resp   = 2'b00;  // OKAY
+    resp_o.r.resp   = r_err_q ? 2'b10 : 2'b00;  // SLVERR under rd_slverr_i, else OKAY
     resp_o.r.last   = (r_beats_q == 9'd1);
   end
 
@@ -142,6 +155,7 @@ module sep_outbound_mbx
       ar_active_q     <= 1'b0;
       r_id_q          <= '0;
       r_beats_q       <= '0;
+      r_err_q         <= 1'b0;
       magic_seen_q    <= 1'b0;
       stray_seen_q    <= 1'b0;
       stray_addr_q    <= '0;
@@ -178,12 +192,14 @@ module sep_outbound_mbx
       if (b_pop) b_rd_q <= b_rd_q + 1'b1;
       b_cnt_q <= b_cnt_q + (Pw + 1)'(b_push) - (Pw + 1)'(b_pop);
 
-      // Read response: OKAY, zero data, honour the burst length.
+      // Read response: zero data, honour the burst length. The response code
+      // of the whole burst is taken at the AR handshake.
       if (req_i.ar_valid & resp_o.ar_ready) begin
         ar_active_q <= 1'b1;
         r_id_q      <= req_i.ar.id;
         r_beats_q   <= req_i.ar.len + 9'd1;
-      end else if (ar_active_q & req_i.r_ready) begin
+        r_err_q     <= rd_slverr_i;
+      end else if (resp_o.r_valid & req_i.r_ready) begin
         if (r_beats_q <= 9'd1) ar_active_q <= 1'b0;
         else r_beats_q <= r_beats_q - 9'd1;
       end

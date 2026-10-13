@@ -46,7 +46,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_spi_cold_reset_values_rand_test, VCS only (spi.toml). It reads SPI host
 #   state after rst_ni, and Verilator is two-state.
 name = "all"
-expected_count = 153
+expected_count = 165
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -201,6 +201,18 @@ tests = [
     "sep_dma_zero_fill_rand_test",
     "sep_dma_zero_fill_continuation_test",
     "sep_spi_dma_handshake_rand_test",
+    "sep_mailbox_fifo_model_rand_test",
+    "sep_mailbox_access_error_inject_test",
+    "sep_mailbox_filter_type_matrix_test",
+    "sep_mailbox_debug_bypass_test",
+    "sep_mailbox_reset_clear_test",
+    "sep_pic_reg_rand_test",
+    "sep_pic_external_access_refuse_test",
+    "sep_pic_priority_gate_rand_test",
+    "sep_pic_pending_map_walk_rand_test",
+    "sep_cpu_bridge_fault_matrix_rand_test",
+    "sep_cpu_ctrl_timeout_inert_rand_test",
+    "sep_nmi_vector_bark_rand_test",
 ]
 
 [[groups]]
@@ -230,6 +242,11 @@ tests = [
     "sep_spi_ot_dma_tx_test",
     "sep_cpu_lsu_alias_window_twin_test",
     "sep_fabric_dma_endpoint_matrix_test",
+    "sep_pic_reg_rand_test",
+    "sep_pic_external_access_refuse_test",
+    "sep_pic_priority_gate_rand_test",
+    "sep_pic_pending_map_walk_rand_test",
+    "sep_nmi_vector_bark_rand_test",
 ]
 
 [[groups]]
@@ -367,6 +384,13 @@ tests = [
     "sep_dma_zero_fill_rand_test",
     "sep_dma_zero_fill_continuation_test",
     "sep_spi_dma_handshake_rand_test",
+    "sep_mailbox_fifo_model_rand_test",
+    "sep_mailbox_access_error_inject_test",
+    "sep_mailbox_filter_type_matrix_test",
+    "sep_mailbox_debug_bypass_test",
+    "sep_mailbox_reset_clear_test",
+    "sep_cpu_bridge_fault_matrix_rand_test",
+    "sep_cpu_ctrl_timeout_inert_rand_test",
 ]
 
 [[groups]]
@@ -623,4 +647,24 @@ tests = [
     "sep_spi_dma_handshake_rand_test",
     "sep_dma_zero_fill_rand_test",
     "sep_dma_zero_fill_continuation_test",
+]
+
+[[groups]]
+# Convenience group of the mailbox, IRQ and PIC tests.
+# The `all`, `cpu_stub` and `cpu` groups hold the same tests.
+name = "mailbox_irq_pic"
+expected_count = 12
+tests = [
+    "sep_mailbox_fifo_model_rand_test",
+    "sep_mailbox_access_error_inject_test",
+    "sep_mailbox_filter_type_matrix_test",
+    "sep_mailbox_debug_bypass_test",
+    "sep_mailbox_reset_clear_test",
+    "sep_pic_reg_rand_test",
+    "sep_pic_external_access_refuse_test",
+    "sep_pic_priority_gate_rand_test",
+    "sep_pic_pending_map_walk_rand_test",
+    "sep_cpu_bridge_fault_matrix_rand_test",
+    "sep_cpu_ctrl_timeout_inert_rand_test",
+    "sep_nmi_vector_bark_rand_test",
 ]

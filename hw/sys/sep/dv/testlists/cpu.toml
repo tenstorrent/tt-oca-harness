@@ -173,3 +173,65 @@ timeout_sec = 3600
 tags = ["fabric", "dma", "smc", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+sep_smc_aperture_base=40000000", "+sep_smc_aperture_size=1000000"]
+
+# Mailbox, IRQ and PIC (docs/SEP_VPLAN.adoc, docs/test_contracts/mailbox_irq_pic.adoc).
+
+[[tests]]
+# PIC register map, reset values, holes and past-extent range, entry 0 and source 0 from firmware. The host patches the seeded entries, values and hole addresses into the firmware parameter block.
+name = "sep_pic_reg_rand_test"
+module = "cpu.sep_pic_reg_rand_test"
+firmware = "pic_reg_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["pic", "interrupt", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# An external access through the inbound port to any PIC address answers DECERR and changes no PIC register, in the default-block and the open-window regimes. The host patches the seeded registers, addresses and orders into the firmware parameter block.
+name = "sep_pic_external_access_refuse_test"
+module = "cpu.sep_pic_external_access_refuse_test"
+firmware = "pic_external_access_refuse_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["pic", "fabric", "filter", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# PIC delivery gates, the winner by effective priority in both orders, the never value, the order flip and the idle timer and software paths. The host patches the seeded rounds into the firmware parameter block.
+name = "sep_pic_priority_gate_rand_test"
+module = "cpu.sep_pic_priority_gate_rand_test"
+firmware = "pic_priority_gate_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["pic", "interrupt", "priority", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# meip pending map of the driven sources, the FIFO-empty sources, the crypto alert aggregate, the gateway cells and the boundary input. The host patches the seeded orders, masks and gateway assignment into the firmware parameter block.
+name = "sep_pic_pending_map_walk_rand_test"
+module = "cpu.sep_pic_pending_map_walk_rand_test"
+firmware = "pic_pending_map_walk_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["pic", "interrupt", "alert", "gateway", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# WDT bark NMI at the reset vector, through a locked trampoline copy with the PIC in four gate states, and at a free handler address after a cold reset. The host patches the seeded copy, address and cases into the firmware parameter block.
+name = "sep_nmi_vector_bark_rand_test"
+module = "cpu.sep_nmi_vector_bark_rand_test"
+firmware = "nmi_vector_bark_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["nmi", "wdt", "pic", "interrupt", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]

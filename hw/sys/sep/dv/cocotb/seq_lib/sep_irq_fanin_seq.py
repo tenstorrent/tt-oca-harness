@@ -8,8 +8,8 @@ driven bits with NO neighbor aliasing, for the crypto/KM region. This asserts se
 sources at once (vs sep_irq_ip_to_aggregator_test, which asserts one at a time).
 
 Reuses the generic INTR_TEST driver (SepIrqIp) and IrqSrc from
-sep_irq_aggregator_seq -- the OpenTitan INTR_STATE/ENABLE/TEST layout is identical
-across these IPs. The CROSS-IP set spans four different
+sep_irq_aggregator_seq; each source takes its own IP's INTR_STATE/ENABLE/TEST
+addresses from the generated register map. The CROSS-IP set spans four different
 IPs (HMAC, KMAC, CSRNG, EDN) at non-adjacent aggregator bits so the anti-alias
 check exercises a real OR-network fan-in, not adjacent bits of one IP.
 
@@ -24,11 +24,9 @@ from __future__ import annotations
 
 from itertools import combinations
 
-from sep_reg_meta import CSRNG, EDN, HMAC, KMAC, sym
+from sep_reg_meta import CSRNG, EDN, HMAC, KMAC
 
 from seq_lib.sep_irq_aggregator_seq import (
-    CSRNG_BASE,
-    EDN_BASE,
     PIC_CSRNG_CMD_REQ_DONE,
     PIC_EDN_CMD_REQ_DONE,
     PIC_HMAC_DONE,
@@ -37,32 +35,29 @@ from seq_lib.sep_irq_aggregator_seq import (
     agg_from_pic,
 )
 
-HMAC_BASE = sym("HMAC_REG_MAP_BASE_ADDR")
-KMAC_BASE = sym("KMAC_REG_MAP_BASE_ADDR")
-
 # The simultaneous cross-IP set: four IPs, four non-adjacent aggregator bits.
 FANIN_SOURCES = (
     IrqSrc(
         "hmac_done",
-        HMAC_BASE,
+        "HMAC",
         HMAC.field_lsb("INTR_STATE", "hmac_done"),
         agg_from_pic(PIC_HMAC_DONE),
     ),
     IrqSrc(
         "kmac_done",
-        KMAC_BASE,
+        "KMAC",
         KMAC.field_lsb("INTR_STATE", "kmac_done"),
         agg_from_pic(PIC_KMAC_DONE),
     ),
     IrqSrc(
         "csrng_cmd_req_done",
-        CSRNG_BASE,
+        "CSRNG",
         CSRNG.fields("INTR_STATE")["CS_CMD_REQ_DONE"]["bp"],
         agg_from_pic(PIC_CSRNG_CMD_REQ_DONE),
     ),
     IrqSrc(
         "edn_cmd_req_done",
-        EDN_BASE,
+        "EDN",
         EDN.fields("INTR_STATE")["EDN_CMD_REQ_DONE"]["bp"],
         agg_from_pic(PIC_EDN_CMD_REQ_DONE),
     ),

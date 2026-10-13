@@ -56,6 +56,9 @@ class sep_boot_rom_lsu_read_test(sep_base_test):
     """Boot-ROM LSU loads match the staged image, and a ROM store leaves the content unchanged."""
 
     build_env = False
+    # The firmware runs every graded check and reports the result as its
+    # completion verdict, so that verdict is this leaf's own evidence.
+    required_evidence = ("CHK-FW-CONSOLE",)
 
     def build_phase(self) -> None:
         super().build_phase()

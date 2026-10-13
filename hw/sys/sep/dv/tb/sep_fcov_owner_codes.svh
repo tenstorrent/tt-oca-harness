@@ -25,6 +25,20 @@ localparam int unsigned FcovOwnSepFabricRowResponseMatrixTest = 231;
 localparam int unsigned FcovOwnSepCpuLsuAliasWindowTwinTest = 232;
 localparam int unsigned FcovOwnSepFabricDmaEndpointMatrixTest = 233;
 
+// Mailbox, IRQ and PIC.
+localparam int unsigned FcovOwnSepMailboxFifoModelRandTest = 313;
+localparam int unsigned FcovOwnSepMailboxAccessErrorInjectTest = 314;
+localparam int unsigned FcovOwnSepMailboxFilterTypeMatrixTest = 315;
+localparam int unsigned FcovOwnSepMailboxDebugBypassTest = 316;
+localparam int unsigned FcovOwnSepMailboxResetClearTest = 317;
+localparam int unsigned FcovOwnSepPicRegRandTest = 318;
+localparam int unsigned FcovOwnSepPicExternalAccessRefuseTest = 319;
+localparam int unsigned FcovOwnSepPicPriorityGateRandTest = 320;
+localparam int unsigned FcovOwnSepPicPendingMapWalkRandTest = 321;
+localparam int unsigned FcovOwnSepCpuBridgeFaultMatrixRandTest = 322;
+localparam int unsigned FcovOwnSepCpuCtrlTimeoutInertRandTest = 323;
+localparam int unsigned FcovOwnSepNmiVectorBarkRandTest = 324;
+
 // SPI and DMA.
 localparam int unsigned FcovOwnSepSpiPadSpeedDirMatrixTest = 407;
 localparam int unsigned FcovOwnSepSpiPadTimingCfgRandTest = 408;

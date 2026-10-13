@@ -155,6 +155,8 @@ DBW_MASK = _DBW_MASK >> DBW_LSB
 DBW_RO_VAL = (INBOUND_FILTER_CTRL_0.reset32("FILTER_CONFIG") >> DBW_LSB) & DBW_MASK
 F_SRC_ID_LSB = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "src_id")
 F_GROUP_ID_LSB = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "group_id")
+F_SRC_ID_WIDTH = INBOUND_FILTER_CTRL_0.field_width("FILTER_CONFIG", "src_id")
+F_GROUP_ID_WIDTH = INBOUND_FILTER_CTRL_0.field_width("FILTER_CONFIG", "group_id")
 F_ALLOW_BURST = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "allow_burst")
 
 # A representative RW pattern across the writable FILTER_CONFIG fields (NOT touching
@@ -218,7 +220,7 @@ class SepFabricCsrCfg:
         # Masked-random field values (read back exactly). REGION_START/END are both
         # 4KB-aligned (low 12 bits masked in RTL); START must be nonzero for NONVAC.
         self.start_lo = (rng.getrandbits(32) & ALIAS_START_MASK) or 0x1000  # 4KB-aligned, nonzero
-        self.start_hi = rng.getrandbits(24)  # addr[55:32]
+        self.start_hi = rng.getrandbits(32) & ALIAS_START_HI_MASK  # addr[55:32]
         self.end_lo = rng.getrandbits(32) & ALIAS_END_MASK  # 4KB-aligned
         self.attrs_lo = rng.getrandbits(32) & ALIAS_ATTRS_MASK  # remap offset [31:12]
         self.ap_lo = rng.getrandbits(32) & REMAP_OFFSET_LO_MASK
@@ -230,7 +232,9 @@ class SepFabricCsrCfg:
         for b in (F_READ_ALLOWED, F_WRITE_ALLOWED, F_ENTRY_ENABLED, F_ALLOW_NS, F_ALLOW_BURST):
             if rng.getrandbits(1):
                 p |= b
-        p |= (rng.randrange(16) << F_SRC_ID_LSB) | (rng.randrange(16) << F_GROUP_ID_LSB)
+        p |= (rng.randrange(1 << F_SRC_ID_WIDTH) << F_SRC_ID_LSB) | (
+            rng.randrange(1 << F_GROUP_ID_WIDTH) << F_GROUP_ID_LSB
+        )
         self.filter_pattern = p & FILTER_RW_MASK
 
     def summary(self) -> str:
