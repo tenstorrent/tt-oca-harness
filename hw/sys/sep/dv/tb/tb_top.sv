@@ -542,6 +542,10 @@ module sep_uvm_top
     // (the vendored VeeR tap has no reset-vector TDR).
     // ------------------------------------------------------------------
     sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_w;
+    // The irq field of the SPI request, selected by name, so a leaf that
+    // samples it does not depend on the struct layout.
+    logic sep_io_spi_irq_w;
+    assign sep_io_spi_irq_w = sep_io_spi_req_w.irq;
     // EXT_TRNG_NUM_AXIS must equal sep_crypto_pkg::SepCryptoEdnEndpointCount (3):
     // sep_crypto.u_sep_trng binds u_drbg_s3c_scan.edn_axis_o/i to drbg_int_axis_req/rsp as a
     // DIRECT packed-array connection, one mux leg per DRBG EDN endpoint
@@ -658,10 +662,12 @@ module sep_uvm_top
         .rst_vec                      (rst_vec_i),
         .jtag_id                      ('0),
 
-        // Interrupts (idle)
+        // Interrupts. timer_int and soft_int are tied to 0. The boundary PIC
+        // input is the top-port drive sep_ext_interrupts_i (0 unless a leaf
+        // drives it).
         .timer_int                    (1'b0),
         .soft_int                     (1'b0),
-        .sep_ext_interrupts_i         ('0),
+        .sep_ext_interrupts_i         (sep_ext_interrupts_i),
 
         // SMN external AXI (outbound captured by the mailbox responder; inbound
         // driven by the flat m_axi_* master when live).
@@ -1341,6 +1347,52 @@ module sep_uvm_top
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_busy_qs
     };
 
+    // Mailbox, IRQ and PIC observation taps (docs/SEP_TB_ARCH.adoc). Read-only
+    // copies of DUT nets; no force.
+    assign crypto_alert_pulse_probe_o = `SEP_CORE.u_sep_crypto.crypto_alert_pulse;
+`ifndef SEP_CPU_STUB
+`define SEP_PIC_CTRL `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst
+    assign pic_rd_data_probe_o = {
+        `SEP_PIC_CTRL.picm_rden_ff,
+        `SEP_PIC_CTRL.picm_raddr_ff[14:0],
+        `SEP_PIC_CTRL.picm_rd_data
+    };
+`undef SEP_PIC_CTRL
+`else
+    assign pic_rd_data_probe_o = '0;
+`endif
+    // Set term and clear pulse of each bridge-fault latch. The register bridges
+    // (axi_lite_to_tlul) set on a TL-UL error response; the DMA master bridge
+    // (tlul_to_axi_lite) sets on a non-OKAY AXI response or an integrity error.
+`define SEP_BRIDGE_ERR_SET(b) (b.tl_i.d_valid & b.tl_i.d_error)
+`define SEP_CRYPTO `SEP_CORE.u_sep_crypto
+    assign sep_cpu_ctrl_err_pulse_probe_o = {
+        `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.err_clr_i,
+        `SEP_CORE.u_sep_dma_wrap.u_axi_lite_to_tlul_reg.err_clr_i,
+        `SEP_CORE.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul.err_clr_i,
+        `SEP_DRBG.u_edn_axi_lite_to_tlul.err_clr_i,
+        `SEP_DRBG.u_csrng_axi_lite_to_tlul.err_clr_i,
+        `SEP_CRYPTO.u_sep_crypto_otbn_wrapper_s3c_scan.u_axi_lite_to_tlul.err_clr_i,
+        `SEP_CRYPTO.u_kmac_wrapper_s3c_scan.u_kmac_axi_lite_to_tlul.err_clr_i,
+        `SEP_CRYPTO.u_hmac_wrapper_s3c_scan.u_hmac_axi_lite_to_tlul.err_clr_i,
+        `SEP_CRYPTO.u_aes_wrapper_s3c_scan.u_aes_axi_lite_to_tlul.err_clr_i,
+        (`SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.axi_lite_rsp_i.b_valid &
+         (`SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.axi_lite_rsp_i.b.resp != 2'b00)) |
+        (`SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.axi_lite_rsp_i.r_valid &
+         (`SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.axi_lite_rsp_i.r.resp != 2'b00)) |
+        `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.intg_err,
+        `SEP_BRIDGE_ERR_SET(`SEP_CORE.u_sep_dma_wrap.u_axi_lite_to_tlul_reg),
+        `SEP_BRIDGE_ERR_SET(`SEP_CORE.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_DRBG.u_edn_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_DRBG.u_csrng_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_CRYPTO.u_sep_crypto_otbn_wrapper_s3c_scan.u_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_CRYPTO.u_kmac_wrapper_s3c_scan.u_kmac_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_CRYPTO.u_hmac_wrapper_s3c_scan.u_hmac_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_CRYPTO.u_aes_wrapper_s3c_scan.u_aes_axi_lite_to_tlul)
+    };
+`undef SEP_CRYPTO
+`undef SEP_BRIDGE_ERR_SET
+
     // Fabric-slot W channel, sampled at the AXI-Lite port of each of the 96
     // remap/filter slot register blocks in sep_system_csr (the block that
     // applies WSTRB). A beat counts as fill when a byte lane whose WSTRB bit is
@@ -1625,6 +1677,16 @@ module sep_uvm_top
     assign pr_out_wdata_o  = smn_outbound_req_w.w.data;
     assign pr_out_wstrb_o  = smn_outbound_req_w.w.strb;
     assign pr_out_wlast_o  = smn_outbound_req_w.w.last;
+    // PR-OUT-RSP: the responses on smn_outbound_axi_resp_i.
+    assign pr_out_bvalid_o = smn_outbound_resp_w.b_valid;
+    assign pr_out_bready_o = smn_outbound_req_w.b_ready;
+    assign pr_out_bresp_o  = smn_outbound_resp_w.b.resp;
+    assign pr_out_bid_o    = smn_outbound_resp_w.b.id;
+    assign pr_out_rvalid_o = smn_outbound_resp_w.r_valid;
+    assign pr_out_rready_o = smn_outbound_req_w.r_ready;
+    assign pr_out_rresp_o  = smn_outbound_resp_w.r.resp;
+    assign pr_out_rid_o    = smn_outbound_resp_w.r.id;
+    assign pr_out_rlast_o  = smn_outbound_resp_w.r.last;
     // PR-SMC: sep_ext_to_smc_axi_req_o (the net ext_to_smc_req_w).
     assign pr_smc_awvalid_o = ext_to_smc_req_w.aw_valid;
     assign pr_smc_awready_o = ext_to_smc_resp_w.aw_ready;
@@ -2055,6 +2117,28 @@ module sep_uvm_top
         end
     end
 `undef HMAC_FIFO_RREADY
+
+    // ------------------------------------------------------------------
+    // KMAC message-FIFO drain stall.
+    // ------------------------------------------------------------------
+    // kmac_fifo_drain_stall_i=1 holds the read side of the message FIFO idle:
+    // the FIFO read-ready and the FIFO valid toward the KMAC core are both 0, so
+    // the engine takes no word and the FIFO fills until STATUS.fifo_full reads 1.
+    // msgfifo_ready and msgfifo_valid are the kmac-local nets between u_msgfifo
+    // and u_kmac_core. After the release the FIFO drains and the message can
+    // complete. Re-issued every clock for Verilator, released when the port
+    // drops.
+`define KMAC_FIFO_RD `SEP_CORE.u_sep_crypto.u_kmac_wrapper_s3c_scan.u_tt_kmac
+    always @(posedge clk_i) begin
+        if (kmac_fifo_drain_stall_i === 1'b1) begin
+            force `KMAC_FIFO_RD.msgfifo_ready = 1'b0;
+            force `KMAC_FIFO_RD.msgfifo_valid = 1'b0;
+        end else begin
+            release `KMAC_FIFO_RD.msgfifo_ready;
+            release `KMAC_FIFO_RD.msgfifo_valid;
+        end
+    end
+`undef KMAC_FIFO_RD
 
     // ------------------------------------------------------------------
     // DMA host-port stall.
@@ -2539,12 +2623,16 @@ module sep_uvm_top
     assign km_mbox_sep_wr_err_count_o = km_mbox_sep_wr_err_cnt_q;
     assign km_mbox_sep_wr_err_addr_o  = km_mbox_sep_wr_err_addr_q;
 
-    // Outbound mailbox responder + firmware-console/PASS-magic monitor.
+    // Outbound mailbox responder + firmware-console/PASS-magic monitor. The
+    // response control (hold, read SLVERR) is an error inject on
+    // smn_outbound_axi_resp_i; both inputs are 0 unless a leaf drives them.
     sep_outbound_mbx u_mbx (
         .clk_i           (clk_i),
         .rst_ni          (rst_n_int),
         .req_i           (smn_outbound_req_w),
         .resp_o          (smn_outbound_resp_w),
+        .resp_hold_i     (smn_outbound_resp_hold_i),
+        .rd_slverr_i     (smn_outbound_rd_slverr_i),
         .fw_done_o       (fw_done_o),
         .fw_pass_o       (fw_pass_o),
         .fw_char_o       (fw_char_o),
@@ -3013,6 +3101,10 @@ module sep_uvm_top
     assign token_digest_test_en_inject_i = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
+    assign kmac_fifo_drain_stall_i  = 1'b0;
+    assign sep_ext_interrupts_i     = '0;
+    assign smn_outbound_resp_hold_i = 1'b0;
+    assign smn_outbound_rd_slverr_i = 1'b0;
     assign rst_vec_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
     assign tcm_load_i               = 1'b0;
@@ -3567,6 +3659,156 @@ module sep_uvm_top
     assign fcov_lsu_raw_req = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw;
 `endif
 
+    // Mailbox, IRQ and PIC sampler taps (docs/SEP_FCOV.adoc, mailbox, IRQ and
+    // PIC groups, Signal aliases): read-only hierarchical references into the
+    // CPU (PIC, CLAIM, TLU), the mailbox unit (MB[m]) and the inbound filter
+    // (FILT). No force. The PIC, CLAIM and TLU exist only with the full core;
+    // the stub build ties them to 0.
+`ifndef SEP_CPU_STUB
+`define SEP_FCOV_PIC `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst
+`define SEP_FCOV_TLU `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.dec.tlu
+`define SEP_FCOV_LSU `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.lsu
+    wire [255:0][3:0] fcov_pic_prio     = `SEP_FCOV_PIC.intpriority_reg;
+    wire [255:0]      fcov_pic_en       = `SEP_FCOV_PIC.intenable_reg;
+    wire [255:0][1:0] fcov_pic_gw_cfg   = `SEP_FCOV_PIC.gw_config_reg;
+    wire              fcov_pic_cfg      = `SEP_FCOV_PIC.config_reg;
+    wire [255:0]      fcov_pic_gw_clr   = `SEP_FCOV_PIC.gw_clear_reg_we;
+    wire [255:0]      fcov_pic_req      = `SEP_FCOV_PIC.extintsrc_req;
+    wire [255:0]      fcov_pic_req_gw   = `SEP_FCOV_PIC.extintsrc_req_gw;
+    wire              fcov_pic_wren     = `SEP_FCOV_PIC.picm_wren_ff;
+    wire [14:0]       fcov_pic_waddr    = `SEP_FCOV_PIC.picm_waddr_ff[14:0];
+    // Data of a PIC write as the instruction stores it. The LSU ANDs a CPU
+    // store to the PIC with the field mask of the target register (the
+    // picm_mken read), so picm_wr_data is 0 for a hole, for entry 0 and for
+    // meigwclr. The copy takes the M-stage store data before that mask, moves
+    // it to the R stage, and to the picm_wren_ff clock on picm_wren, as the
+    // core moves picm_wr_data. A DMA write to the PIC has no mask and uses
+    // picm_wr_data.
+    wire [31:0] fcov_pic_st_m = `SEP_FCOV_LSU.lsu_lsc_ctl.lsu_pkt_m.store_data_bypass_m ?
+        `SEP_FCOV_LSU.lsu_lsc_ctl.lsu_result_m : `SEP_FCOV_LSU.lsu_lsc_ctl.store_data_pre_m;
+    logic [31:0] fcov_pic_st_r, fcov_pic_st_ff;
+    always_ff @(posedge clk_i) begin
+        if ((`SEP_FCOV_LSU.lsu_lsc_ctl.lsu_pkt_m.valid === 1'b1) &&
+            (`SEP_FCOV_LSU.lsu_lsc_ctl.lsu_pkt_m.store === 1'b1) &&
+            (`SEP_FCOV_LSU.lsu_lsc_ctl.addr_in_pic_m === 1'b1))
+            fcov_pic_st_r <= fcov_pic_st_m;
+        if (`SEP_FCOV_PIC.picm_wren === 1'b1)
+            fcov_pic_st_ff <= (`SEP_FCOV_LSU.dma_pic_wen === 1'b1) ? `SEP_FCOV_PIC.picm_wr_data :
+                fcov_pic_st_r;
+    end
+    wire [31:0]       fcov_pic_wdata    = fcov_pic_st_ff;
+    wire [7:0]        fcov_pic_claim    = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.pic_claimid;
+    wire              fcov_tlu_mstatus  = `SEP_FCOV_TLU.mstatus[0];
+    wire [5:0]        fcov_tlu_mie      = `SEP_FCOV_TLU.mie;
+    wire [5:0]        fcov_tlu_mip      = `SEP_FCOV_TLU.mip;
+    wire              fcov_tlu_take_ext = `SEP_FCOV_TLU.take_ext_int;
+    wire              fcov_tlu_take_nmi = `SEP_FCOV_TLU.take_nmi;
+    wire              fcov_tlu_take_tmr = `SEP_FCOV_TLU.take_timer_int;
+    wire              fcov_tlu_take_sw  = `SEP_FCOV_TLU.take_soft_int;
+`undef SEP_FCOV_PIC
+`undef SEP_FCOV_TLU
+`undef SEP_FCOV_LSU
+`else
+    wire [255:0][3:0] fcov_pic_prio     = '0;
+    wire [255:0]      fcov_pic_en       = '0;
+    wire [255:0][1:0] fcov_pic_gw_cfg   = '0;
+    wire              fcov_pic_cfg      = 1'b0;
+    wire [255:0]      fcov_pic_gw_clr   = '0;
+    wire [255:0]      fcov_pic_req      = '0;
+    wire [255:0]      fcov_pic_req_gw   = '0;
+    wire              fcov_pic_wren     = 1'b0;
+    wire [14:0]       fcov_pic_waddr    = '0;
+    wire [31:0]       fcov_pic_wdata    = '0;
+    wire [7:0]        fcov_pic_claim    = '0;
+    wire              fcov_tlu_mstatus  = 1'b0;
+    wire [5:0]        fcov_tlu_mie      = '0;
+    wire [5:0]        fcov_tlu_mip      = '0;
+    wire              fcov_tlu_take_ext = 1'b0;
+    wire              fcov_tlu_take_nmi = 1'b0;
+    wire              fcov_tlu_take_tmr = 1'b0;
+    wire              fcov_tlu_take_sw  = 1'b0;
+`endif
+    // One explicit set of assigns per mailbox index.
+    logic [7:0][1:0][3:0] fcov_mb_status;
+    logic [7:0][1:0][2:0] fcov_mb_irqs;
+    logic [7:0][1:0][2:0] fcov_mb_irqen;
+    logic [7:0][1:0][1:0] fcov_mb_error;
+    logic [7:0][1:0][7:0] fcov_mb_wirqt;
+    logic [7:0][1:0][7:0] fcov_mb_rirqt;
+    logic [7:0][1:0]      fcov_mb_irq;
+    logic [7:0][1:0][2:0] fcov_mf_usage;
+    logic [7:0][1:0]      fcov_mf_full;
+    logic [7:0][1:0]      fcov_mf_push;
+    logic [7:0][1:0]      fcov_mf_pop;
+    logic [7:0][1:0]      fcov_mf_flush;
+`define SEP_FCOV_MB(m) `SEP_CORE.u_sep_system_peripherals.u_sep_axil_mailbox.gen_mailbox[m].u_axi_lite_mailbox
+`define SEP_FCOV_MB_PORT(m, p) \
+    assign fcov_mb_status[m][p] = `SEP_FCOV_MB(m).i_slv_port_``p.status_q; \
+    assign fcov_mb_irqs[m][p]   = `SEP_FCOV_MB(m).i_slv_port_``p.irqs_q; \
+    assign fcov_mb_irqen[m][p]  = `SEP_FCOV_MB(m).i_slv_port_``p.irqen_q; \
+    assign fcov_mb_error[m][p]  = `SEP_FCOV_MB(m).i_slv_port_``p.error_q; \
+    assign fcov_mb_wirqt[m][p]  = `SEP_FCOV_MB(m).i_slv_port_``p.wirqt_q[7:0]; \
+    assign fcov_mb_rirqt[m][p]  = `SEP_FCOV_MB(m).i_slv_port_``p.rirqt_q[7:0]; \
+    assign fcov_mb_irq[m][p]    = `SEP_FCOV_MB(m).i_slv_port_``p.irq_o;
+`define SEP_FCOV_MB_FIFO(m, f, inst) \
+    assign fcov_mf_usage[m][f] = `SEP_FCOV_MB(m).inst.usage_o; \
+    assign fcov_mf_full[m][f]  = `SEP_FCOV_MB(m).inst.full_o; \
+    assign fcov_mf_push[m][f]  = `SEP_FCOV_MB(m).inst.push_i; \
+    assign fcov_mf_pop[m][f]   = `SEP_FCOV_MB(m).inst.pop_i; \
+    assign fcov_mf_flush[m][f] = `SEP_FCOV_MB(m).inst.flush_i;
+    `SEP_FCOV_MB_PORT(0, 0)
+    `SEP_FCOV_MB_PORT(0, 1)
+    `SEP_FCOV_MB_FIFO(0, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(0, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(1, 0)
+    `SEP_FCOV_MB_PORT(1, 1)
+    `SEP_FCOV_MB_FIFO(1, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(1, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(2, 0)
+    `SEP_FCOV_MB_PORT(2, 1)
+    `SEP_FCOV_MB_FIFO(2, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(2, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(3, 0)
+    `SEP_FCOV_MB_PORT(3, 1)
+    `SEP_FCOV_MB_FIFO(3, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(3, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(4, 0)
+    `SEP_FCOV_MB_PORT(4, 1)
+    `SEP_FCOV_MB_FIFO(4, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(4, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(5, 0)
+    `SEP_FCOV_MB_PORT(5, 1)
+    `SEP_FCOV_MB_FIFO(5, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(5, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(6, 0)
+    `SEP_FCOV_MB_PORT(6, 1)
+    `SEP_FCOV_MB_FIFO(6, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(6, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(7, 0)
+    `SEP_FCOV_MB_PORT(7, 1)
+    `SEP_FCOV_MB_FIFO(7, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(7, 1, i_mbox_1_to_0)
+`undef SEP_FCOV_MB_FIFO
+`undef SEP_FCOV_MB_PORT
+`undef SEP_FCOV_MB
+    logic [15:0] fcov_filt_locked;
+    assign fcov_filt_locked[0] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[0].locked;
+    assign fcov_filt_locked[1] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[1].locked;
+    assign fcov_filt_locked[2] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[2].locked;
+    assign fcov_filt_locked[3] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[3].locked;
+    assign fcov_filt_locked[4] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[4].locked;
+    assign fcov_filt_locked[5] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[5].locked;
+    assign fcov_filt_locked[6] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[6].locked;
+    assign fcov_filt_locked[7] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[7].locked;
+    assign fcov_filt_locked[8] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[8].locked;
+    assign fcov_filt_locked[9] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[9].locked;
+    assign fcov_filt_locked[10] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[10].locked;
+    assign fcov_filt_locked[11] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[11].locked;
+    assign fcov_filt_locked[12] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[12].locked;
+    assign fcov_filt_locked[13] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[13].locked;
+    assign fcov_filt_locked[14] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[14].locked;
+    assign fcov_filt_locked[15] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[15].locked;
+
     sep_fcov u_sep_fcov (
         .clk_i                 (clk_i),
         .rst_ni                (rst_n_int),
@@ -3763,7 +4005,59 @@ module sep_uvm_top
             `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_src_addr_error_qs}),
         .dma_busy_i        (dma_busy_probe_o),
         .irq_dma_chunk_i   (sep_internal_interrupts_probe_o[9]),
-        .irq_spi_i         (sep_internal_interrupts_probe_o[13])
+        .irq_spi_i         (sep_internal_interrupts_probe_o[13]),
+
+        // Mailbox, IRQ and PIC taps (docs/SEP_FCOV.adoc, mailbox, IRQ and
+        // PIC groups, Signal aliases): read-only, no force.
+        .vec_i             (sep_internal_interrupts_probe_o),
+        .smc_irq_i         (smc_mailbox_interrupt_o),
+        .pic_prio_i        (fcov_pic_prio),
+        .pic_en_i          (fcov_pic_en),
+        .pic_gw_cfg_i      (fcov_pic_gw_cfg),
+        .pic_cfg_i         (fcov_pic_cfg),
+        .pic_gw_clr_i      (fcov_pic_gw_clr),
+        .pic_req_i         (fcov_pic_req),
+        .pic_req_gw_i      (fcov_pic_req_gw),
+        .pic_wren_i        (fcov_pic_wren),
+        .pic_waddr_i       (fcov_pic_waddr),
+        .pic_wdata_i       (fcov_pic_wdata),
+        .pic_rd_i          (pic_rd_data_probe_o),
+        .pic_claim_i       (fcov_pic_claim),
+        .tlu_mstatus_mie_i (fcov_tlu_mstatus),
+        .tlu_mie_i         (fcov_tlu_mie),
+        .tlu_mip_i         (fcov_tlu_mip),
+        .tlu_take_ext_i    (fcov_tlu_take_ext),
+        .tlu_take_nmi_i    (fcov_tlu_take_nmi),
+        .tlu_take_timer_i  (fcov_tlu_take_tmr),
+        .tlu_take_soft_i   (fcov_tlu_take_sw),
+        .mb_status_i       (fcov_mb_status),
+        .mb_irqs_i         (fcov_mb_irqs),
+        .mb_irqen_i        (fcov_mb_irqen),
+        .mb_error_i        (fcov_mb_error),
+        .mb_wirqt_i        (fcov_mb_wirqt),
+        .mb_rirqt_i        (fcov_mb_rirqt),
+        .mb_irq_i          (fcov_mb_irq),
+        .mf_usage_i        (fcov_mf_usage),
+        .mf_full_i         (fcov_mf_full),
+        .mf_push_i         (fcov_mf_push),
+        .mf_pop_i          (fcov_mf_pop),
+        .mf_flush_i        (fcov_mf_flush),
+        .mbx_req_i         (`SEP_CORE.u_sep_system_peripherals.mailbox_axil_req),
+        .mbx_resp_i        (`SEP_CORE.u_sep_system_peripherals.mailbox_axil_resp),
+        .filt_iso_w_i      (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.isolate_write),
+        .filt_iso_r_i      (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.isolate_read),
+        .filt_nwm_i        (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.no_write_filter_matches),
+        .filt_nrm_i        (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.no_read_filter_matches),
+        .filt_hit_i        (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.write_filter_hit_idx),
+        .filt_awvalid_i    (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.axi_in_req_i.aw_valid),
+        .filt_arvalid_i    (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.axi_in_req_i.ar_valid),
+        .filt_locked_i     (fcov_filt_locked),
+        .alert_pulse_i     (crypto_alert_pulse_probe_o),
+        .err_pulse_i       (sep_cpu_ctrl_err_pulse_probe_o),
+        .ext_irq_i         (sep_ext_interrupts_i),
+        .out_resp_hold_i   (smn_outbound_resp_hold_i),
+        .out_rd_slverr_i   (smn_outbound_rd_slverr_i),
+        .spi_irq_field_i   (sep_io_spi_req_w.irq)
     );
 `endif
 
