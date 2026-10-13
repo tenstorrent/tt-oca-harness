@@ -56,10 +56,28 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 427
+expected_count = 451
 tests = [
+    "smc_invalid_probe_recovery_test",
+    "smc_inbound_concurrency_limits_test",
+    "smc_infilt_default_liveness_test",
+    "smc_alias_remap_translate_test",
+    "smc_axi_contested_ports_test",
+    "smc_outfilt_deny_concurrency_test",
+    "smc_alias_remap_attr_test",
+    "smc_xbar_outstanding_limits_test",
+    "smc_infilt_addr_burst_match_test",
+    "smc_filter_range_granule_test",
+    "smc_axi_inbound_ports_burst_test",
+    "smc_clock_gated_window_slverr_test",
     "smc_outfilt_addr_match_test",
+    "smc_outfilt_attr_match_test",
+    "smc_outfilt_priority_perm_test",
     "smc_past_extent_decerr_units_test",
+    "smc_past_extent_slverr_units_test",
+    "smc_region_gated_units_decode_test",
+    "smc_gap_decode_response_test",
+    "smc_cpuif_ro_wo_edge_test",
     "smc_beu_register_test",
     "smc_plic_register_test",
     "smc_flr_isolation_sources_test",
@@ -91,6 +109,7 @@ tests = [
     "smc_address_window_top_decode_test",
     "smc_alias_remap_region_attrs_test",
     "smc_cpuif_handshake_test",
+    "smc_dma_traffic_shape_test",
     "smc_cpuif_external_stall_test",
     "smc_cpuif_wrong_direction_test",
     "smc_alias_remap_spare_block_decode_test",
@@ -269,6 +288,7 @@ tests = [
     "smc_filter_lock_scope_test",
     "smc_outremap_prot_srcid_test",
     "smc_infilt_attr_match_test",
+    "smc_infilt_priority_deny_test",
     "smc_outstage_order_test",
     "smc_filter_multi_entry_test",
     "smc_filter_region_span_test",
@@ -485,6 +505,10 @@ tests = [
     "smc_clk_relation_regxbar_ref8_test",
     "smc_clk_relation_regxbar_slowest_periph_test",
     "smc_cpu_boot_release_sequence_test",
+    "smc_inbound_outside_window_decerr_test",
+    "smc_unit_extent_register_decode_test",
+    "smc_unit_base_register_port_matrix_test",
+    "smc_instance_storage_isolation_test",
 ]
 
 [[groups]]
