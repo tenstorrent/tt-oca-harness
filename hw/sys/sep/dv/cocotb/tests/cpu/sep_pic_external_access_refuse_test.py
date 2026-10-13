@@ -15,8 +15,18 @@ control); regime B has one allow window per NS value over 0xC008_0000 to
 test writes one completion word to the inbound port of mailbox 7, and the
 firmware pops it; after regime B the firmware reads the armed state again.
 
+Before ``rst_ni`` release the test stages a pinned PROD eFuse image (SEC_DIS 0,
+fixed ``SIP_DIS`` and ``SYS_DIS`` whose DBG_1 bit 0 is clear); real fuse sense
+of that image completes before the CPU run request. In PROD the inbound filter
+is active, so regime A is a default-block control only while ``SEP_DBG``
+(FEAT_CTRL bit 0) is off.
+
 Checks:
 
+* CHK-DBG-OFF     (control) at the ``REQ regime_a`` request, before the first
+                  external access, the sensed LC state (``efuse_shadow_probe_o``)
+                  is PROD, ``lcc_security_disable_probe_o`` is 0 and FEAT_CTRL
+                  bit 0 (``lcc_feat_ctrl_probe_o``, ``SEP_DBG``) is 0.
 * CHK-CPU-READ    (control, firmware) every armed register reads non-zero and
                   ``meip[0]`` bit 1 reads 1 before the external accesses.
 * CHK-DECERR      every external read and write to a PIC address answers
@@ -34,7 +44,7 @@ Checks:
 
 Every expected value comes from the stimulus (the armed constants of the
 contract and the drawn J) or from the RDL field layout; no expected value is
-read from the DUT. cpu run mode, ``+skip_fuse_sense``, ``SEP_DBG`` off.
+read from the DUT. cpu run mode, real PROD fuse sense.
 """
 
 from __future__ import annotations
@@ -47,10 +57,13 @@ import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_axi_agent import SepAxiAgent, SepAxiOp
+from env.sep_axi_monitor import SepAxiMonitor
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_decode_resp import sep_map_row
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_efuse_image import LC_WORD_IDX
 from env.sep_fw_console import SepFwConsole, parse_kv
+from env.sep_lcc_golden import LC_PROD, lc_state_name
 from env.sep_pic_map import EXCLUDED_IDLE_SOURCES, meip_idle_mask_words, meip_words
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -74,6 +87,10 @@ _BANNER = "SEP PIC external access refuse test"
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 6_000_000
 _NO_BOOT_CYCLES = 80_000
+# Pinned image: DBG_1 bit 0 (SEP_DBG) is clear in both disable vectors. PROD
+# with no demotion keeps SEP_DBG off, so the inbound filter stays active.
+_SIP_DIS = 0x0F0F_0F0F_0F0F_0F0C
+_SYS_DIS = 0x00FF_00FF_00FF_00FC
 
 # ---- PIC map (generated register map) ----
 MEIPL0 = sym("PIC_MEIPL_0__REG_ADDR")
@@ -247,6 +264,7 @@ class sep_pic_external_access_refuse_test(sep_base_test):
     """External reads and writes to every PIC target answer DECERR and land nowhere."""
 
     required_evidence = (
+        "CHK-DBG-OFF",
         "CHK-CPU-READ",
         "CHK-DECERR",
         "CHK-NO-LEAK",
@@ -265,6 +283,12 @@ class sep_pic_external_access_refuse_test(sep_base_test):
         self.sb = SepBootScoreboard("sb", self)
         self.ext_agent = SepAxiAgent("ext_axi_agent", self)
         self.ext_agent.axi_prefix = "m_axi"
+        # The agent requires the monitor of its bus. Refused SMN accesses
+        # answer DECERR by contract, so the monitor tallies DECERR without
+        # failing, as sep_env configures it for this bus.
+        self.ext_monitor = SepAxiMonitor("ext_axi_monitor", self)
+        self.ext_monitor.bus_prefix = "m_axi"
+        self.ext_monitor.fail_decerr = False
 
     async def start_ext_seq(self, seq) -> None:
         await seq.start(self.ext_agent.sequencer)
@@ -285,6 +309,8 @@ class sep_pic_external_access_refuse_test(sep_base_test):
         async def handler(_kv: dict) -> None:
             try:
                 await RisingEdge(self.dut.clk_i)
+                if regime == "A":
+                    self._check_dbg_off()
                 for tgt, op in self.rc.accesses():
                     resp, rdata = await self._ext(op, tgt.addr, tgt.wdata)
                     self.acc.append(
@@ -322,6 +348,22 @@ class sep_pic_external_access_refuse_test(sep_base_test):
         return handler
 
     # ---- grading ----
+    def _check_dbg_off(self) -> None:
+        """CHK-DBG-OFF: the DUT holds PROD with SEP_DBG off before the regime A accesses."""
+        dut = self.dut
+        lc_mask = 0xF << (32 * LC_WORD_IDX)
+        lc = self.rd_known(dut.efuse_shadow_probe_o, lc_mask) >> (32 * LC_WORD_IDX)
+        sec_dis = self.rd_known(dut.lcc_security_disable_probe_o) & 0x1
+        feat = self.rd_known(dut.lcc_feat_ctrl_probe_o)
+        sep_dbg = feat & 0x1
+        line = (
+            f"seed={self.rc.seed} lc={lc_state_name(lc)} lc_raw=0x{lc:x} sec_dis={sec_dis} "
+            f"feat_ctrl=0x{feat:016x} sep_debug={sep_dbg} clk={self.con.clk}"
+        )
+        assert lc == LC_PROD and sec_dis == 0 and sep_dbg == 0, f"CHK-DBG-OFF FAIL {line}"
+        self.logger.info("CHK-DBG-OFF PASS %s", line)
+        self.dbg_off_checked = True
+
     def _fw_line(self, prefix: str) -> tuple[int, dict]:
         hits = [(c, t) for c, t in self.con.lines if t.startswith(prefix)]
         assert len(hits) == 1, f"expected one '{prefix}' console line, got {len(hits)}"
@@ -457,6 +499,11 @@ class sep_pic_external_access_refuse_test(sep_base_test):
         self.ext_done: dict[str, int] = {}
         self.cw: dict[str, tuple[int, int]] = {}
         self.handler_err: list[str] = []
+        self.dbg_off_checked = False
+        image = self.select_efuse_image(
+            lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS}
+        )
+        self.write_efuse_image(image)
         self.mbx7 = SepMboxPortOps(self, MBX_COMPLETE, in_prot1=0, in_user=0)
         self.sb.expected_line = _BANNER
         self.con = SepFwConsole(self, graded_test=_TEST).start()
@@ -475,7 +522,8 @@ class sep_pic_external_access_refuse_test(sep_base_test):
             await self.con.stop()
         assert not self.handler_err, "host regime handler failed: " + "; ".join(self.handler_err)
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
+        assert self.dbg_off_checked, "CHK-DBG-OFF never ran: firmware sent no REQ regime_a"
         self.con.relay_chk()
         self.con.require_counts({"CHK-CPU-READ": 1, "CHK-LANDED": 1})
         self._grade()
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", _TEST, c.seed, 6)
+        self.logger.info("RESULT %s seed=%d PASS checks=%d", _TEST, c.seed, 7)
