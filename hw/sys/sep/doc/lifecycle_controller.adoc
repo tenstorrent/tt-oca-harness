@@ -5,9 +5,11 @@
 :description: SEP lifecycle states, demotion, feature control, and asset protection.
 ifdef::backend-html5[]
 :class-2-asset-manifest-link: xref:sep:attack_countermeasures.adoc#class-2-asset-manifest[Class 2 Asset Manifest and Naming]
+:entropy-source-fifo-access-link: xref:ip:entropy_source/doc/index.adoc#entropy-source-fifo-access[FIFO Access Gate]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 :class-2-asset-manifest-link: <<class-2-asset-manifest,Class 2 Asset Manifest and Naming>>
+:entropy-source-fifo-access-link: <<entropy-source-fifo-access,FIFO Access Gate>>
 endif::backend-pdf[]
 
 [[life-cycle-controller-lcc-life-cycle-controller-lcc]]
@@ -236,7 +238,9 @@ endif::backend-html5[]
 
 |3 |debug (DBG_1) |SMC_FUSE_DBG |`1'b1`: the DFT-inserted access path into the SMC OTP is disabled. `1'b0`: enabled. (The bit is produced by SEP-LCC's `feat_ctrl_o`, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.)
 
-|4-23 |debug (DBG_1) |_Reserved_ |Available for adopter-defined local (DBG_1) debug scan chains. See <<adopter-extension>>.
+|4 |debug (DBG_1) |ENTROPY_DBG |Access to the entropy source's readable FIFOs (`FIFO_RDATA`, `BIW_OBS_RDATA`, `NOISE_OBS_RDATA`), which hold the DRBG seed words and pre-conditioning entropy. `1'b1`: disabled for every initiator, the SEP CPU included. `1'b0`: enabled. Adds no term to <<dtp-path-gating>> and does not gate the entropy pool. See {entropy-source-fifo-access-link}. _Specified ahead of the hardware: until the RTL implements it, the FIFOs are accessible in every state._
+
+|5-23 |debug (DBG_1) |_Reserved_ |Available for adopter-defined local (DBG_1) debug scan chains. See <<adopter-extension>>.
 
 |24 |debug (DBG_2) |SIP_DBG |Coarse-grained debug enable for the *SiP* scope: the inter-chiplet debug-bypass gate (DBG_2, gated by Demotion 2) that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. Debugging a chiplet's assets requires SIP_DBG enabled on each LCC-bearing chiplet along the debug path, including the target itself when it has its own LCC; chiplets without a local SEP/LCC contribute no gate (see <<multiple-security-domains>>). `1'b1`: disabled. `1'b0`: enabled.
 
@@ -633,7 +637,7 @@ endif::backend-html5[]
 Reserved-bit ranges available for adopter-defined scan chains (see
 <<adopter-extension>>):
 
-* Debug group: bits 4-23 (DBG_1, 20 reserved bits) and bits 25-47 (DBG_2, 23 reserved bits)
+* Debug group: bits 5-23 (DBG_1, 19 reserved bits) and bits 25-47 (DBG_2, 23 reserved bits)
 * Function group: bits 48-63 (16 reserved bits)
 
 [[dtp-path-gating]]
@@ -768,7 +772,7 @@ chiplet-scope SEP scan chain or the general-logic scan chain in
 accommodates this via the *reserved bits* in `feat_ctrl_o` (and the
 matching positions in SIP_DIS / SYS_DIS):
 
-* Debug group: bits 4-23 (DBG_1, 20 reserved bits) and bits 25-47 (DBG_2, 23 reserved bits)
+* Debug group: bits 5-23 (DBG_1, 19 reserved bits) and bits 25-47 (DBG_2, 23 reserved bits)
 * Function group: bits 48-63 (16 reserved bits)
 
 OCAH assigns no standard function to these reserved bits. An adopter may
