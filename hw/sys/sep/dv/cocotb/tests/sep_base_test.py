@@ -284,21 +284,22 @@ class sep_base_test(uvm_test):
         if self.build_env:
             self.env = SepEnv("env", self)
 
-    def start_clocks(self, dut=None, *, phases_ns: dict[str, float] | None = None) -> None:
+    def start_clocks(self, dut=None, *, phases_ps: dict[str, int] | None = None) -> None:
         """Start the clocks exposed by tb_top.
 
-        ``phases_ns`` maps a clock pin name (``clk_i``, ``clk_wdt_i``,
-        ``entropy_rosc_sample_clk_i``, ``clk_ref_i``) to a start delay in ns.
+        ``phases_ps`` maps a clock pin name (``clk_i``, ``clk_wdt_i``,
+        ``entropy_rosc_sample_clk_i``, ``clk_ref_i``) to a start delay in whole ps.
         The clock pin stays at its value until the delay ends, then the clock
         starts high. A pin that is not in the map starts at once, as with no map.
-        With no ``phases_ns`` argument the map is ``self.clock_phases_ns``, which
-        a leaf sets before a bring-up helper calls this method.
+        With no ``phases_ps`` argument the map is ``self.clock_phases_ps``, which
+        a leaf sets before a bring-up helper calls this method. Periods and phases
+        are whole ps, so every delay is exact at a 1 ps or 1 fs simulator precision.
         """
         if dut is None:
             dut = cocotb.top
-        if phases_ns is None:
-            phases_ns = getattr(self, "clock_phases_ns", None)
-        phases = dict(phases_ns or {})
+        if phases_ps is None:
+            phases_ps = getattr(self, "clock_phases_ps", None)
+        phases = dict(phases_ps or {})
         unknown = set(phases) - set(self._clock_periods_ns())
         if unknown:
             raise KeyError(f"start_clocks: unknown clock pin(s) {sorted(unknown)}")
@@ -313,16 +314,26 @@ class sep_base_test(uvm_test):
             "clk_ref_i": self.cfg.ref_clk_period_ns,
         }
 
-    def _start_clock(self, dut, name: str, period_ns: float, phase_ns: float) -> None:
+    @staticmethod
+    def _whole_ps(value_ns: float, what: str) -> int:
+        ps = round(value_ns * 1000)
+        if abs(value_ns * 1000 - ps) > 1e-6:
+            raise ValueError(f"{what} {value_ns} ns is not a whole number of ps")
+        return ps
+
+    def _start_clock(self, dut, name: str, period_ns: float, phase_ps: int) -> None:
         if not hasattr(self, "_clock_drivers"):
             self._clock_drivers = {}
-        clk = Clock(getattr(dut, name), period_ns, units="ns")
-        if not phase_ns:
+        if phase_ps != int(phase_ps) or phase_ps < 0:
+            raise ValueError(f"{name} start phase {phase_ps} is not a whole, non-negative ps")
+        period_ps = self._whole_ps(period_ns, f"{name} period")
+        clk = Clock(getattr(dut, name), period_ps, units="ps")
+        if not phase_ps:
             task = cocotb.start_soon(clk.start())
         else:
 
             async def _delayed() -> None:
-                await Timer(phase_ns, units="ns")
+                await Timer(int(phase_ps), units="ps")
                 started = clk.start()
                 # cocotb 1.x returns the clock coroutine; cocotb 2.x runs its own task.
                 if inspect.iscoroutine(started):
@@ -331,11 +342,11 @@ class sep_base_test(uvm_test):
             task = cocotb.start_soon(_delayed())
         self._clock_drivers[name] = (clk, task)
 
-    def restart_clock(self, name: str, period_ns: float, phase_ns: float = 0, dut=None) -> None:
+    def restart_clock(self, name: str, period_ns: float, phase_ps: int = 0, dut=None) -> None:
         """Stop the clock on pin ``name`` and start it again at ``period_ns``.
 
-        The pin holds its last value for ``phase_ns``, then the clock starts
-        high. The other clocks keep running.
+        The pin holds its last value for ``phase_ps`` (whole ps), then the clock
+        starts high. The other clocks keep running.
         """
         if dut is None:
             dut = cocotb.top
@@ -352,7 +363,7 @@ class sep_base_test(uvm_test):
                 pass
         if not task.done():
             task.cancel()
-        self._start_clock(dut, name, period_ns, phase_ns)
+        self._start_clock(dut, name, period_ns, phase_ps)
 
     def bind_smc_responder(self, dut) -> None:
         """Attach the shared AXI slave agent to the SEP->SMC boundary.

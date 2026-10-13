@@ -329,7 +329,7 @@ class sep_scan_reset_override_test(sep_base_test):
         )
         dut = cocotb.top
         self.cfg.wdt_clk_period_ns = P_W * self.cfg.sys_clk_period_ns
-        self.clock_phases_ns = {"clk_wdt_i": WDT_PHASE_PCT * self.sys_ps / 100 / 1000}
+        self.clock_phases_ps = {"clk_wdt_i": WDT_PHASE_PCT * self.sys_ps // 100}
         self.pins_clk = SepPinEdgeCounter(("clk_i", "clk_wdt_i"), keep=1 << 14).start()
         self.test_en_toggles = 0
         self.strap_toggles = 0

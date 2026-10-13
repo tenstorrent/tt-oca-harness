@@ -371,7 +371,7 @@ class sep_cold_reset_phase_test(sep_base_test):
         self._draw(rng)
         close_graded_window()
         self.cfg.wdt_clk_period_ns = self.pw_ps / 1000
-        self.clock_phases_ns = {"clk_wdt_i": self.wdt_phase / 1000}
+        self.clock_phases_ps = {"clk_wdt_i": self.wdt_phase}
         self.edges = SepPinEdgeCounter(("clk_i", "clk_wdt_i")).start()
         self.sep_t = SepEdgeTimer(dut.dbg_sep_reset_n_o, name="sep_reset_n").start()
         self.aon_t = SepEdgeTimer(dut.aon_rst_n_probe_o, name="aon_rst_n").start()

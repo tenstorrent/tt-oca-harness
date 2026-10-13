@@ -379,7 +379,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             if idx:
                 await FallingEdge(dut.clk_ref_i)
                 self.restart_clock(
-                    "clk_ref_i", k * self.cfg.sys_clk_period_ns, cfg.ref_phase_ps[idx] / 1000
+                    "clk_ref_i", k * self.cfg.sys_clk_period_ns, cfg.ref_phase_ps[idx]
                 )
                 await ClockCycles(dut.clk_ref_i, 8)
             self.logger.info(
@@ -1288,9 +1288,9 @@ class sep_timer_clock_contract_test(sep_base_test):
         k0 = cfg.ratios[0]
         self.cfg.ref_clk_period_ns = k0 * self.cfg.sys_clk_period_ns
         self.cfg.wdt_clk_period_ns = P_W * self.cfg.sys_clk_period_ns
-        self.clock_phases_ns = {
-            "clk_ref_i": cfg.ref_phase_ps[0] / 1000,
-            "clk_wdt_i": cfg.wdt_phase_ps / 1000,
+        self.clock_phases_ps = {
+            "clk_ref_i": cfg.ref_phase_ps[0],
+            "clk_wdt_i": cfg.wdt_phase_ps,
         }
         self.pins = SepPinEdgeCounter(("clk_i", "clk_ref_i", "clk_wdt_i"), keep=1 << 16).start()
         self.rst_timer = SepEdgeTimer(cocotb.top.rst_ni, name="rst_ni").start()
