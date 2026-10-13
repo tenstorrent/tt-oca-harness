@@ -42,6 +42,15 @@ Checks:
   CTL-RUNREQ         : (control) the first retirement falls inside the
                        observation window after the tap rise, for the drawn
                        ``ext_boot_seq_done_i`` delay and for the zero delay.
+  CHK-WDT-STORE-RESP : every write to a WDT register pair (``WKUP_THOLD_HI/LO``,
+                       ``WKUP_COUNT_HI/LO``, ``WDOG_BARK/BITE_THOLD``) ends with
+                       BRESP OKAY and the written value reads back: (a) one
+                       full-strobe 64-bit write per pair from the debug-module
+                       system bus, (b) a CPU 32-bit store to the even word,
+                       (c) a CPU 32-bit store to the odd word. One line per
+                       access (watchdog.adoc Bus Interface: the 64-bit port is
+                       narrowed to the 32-bit ``aon_timer`` register block).
+                       Graded last, after every other check.
 
 Every CPU reset is applied at a quiet point: after a pass-count store of the
 routine has its write response, while the core runs the routine spin loop in
@@ -65,6 +74,21 @@ the registers. A store that ends in a bus error raises an NMI on VeeR EL2; the
 handler stores ``mcause`` and ``mdseac`` to the mailbox, unlocks ``mdseac`` and
 returns, and the leaf logs each record (``OBS-STORE-BUS-ERR``). The retention
 compares, not the bus response, decide whether a register holds its value.
+
+The WDT store leg runs after the last scope leg. The bench sets a flag word in
+the SRAM; the routine reads it after each spin and jumps to the store routine,
+which issues the (b) and (c) stores, reads each register back and stores the
+read value to the mailbox, then idles in a self-loop. The CPU issues no 8-byte
+store (RV32), so the full 64-bit write (a) comes from the debug-module system
+bus (``sbaccess`` 64) through the core TAP with ``dmi_core_enable_i`` at 1, and
+read back the same way. The write address, size, strobe and BRESP of each access
+are read on the PR-LSU-XBAR tap (CPU) and the PR-DBG-SB tap (system bus). The
+WDT is idle in this leaf (``WKUP_CTRL`` and ``WDOG_CTRL`` keep their reset
+values, ``enable`` 0), so the six registers are plain read-write storage
+(integration/rdl/sep/aon_timer.rdl: 32-bit ``sw = rw`` fields). The other
+64-bit-aligned pairs are not written: ``ALERT_TEST`` and ``INTR_TEST`` are
+write-only, ``WKUP_CTRL`` and ``WDOG_CTRL`` start the counters,
+``WDOG_REGWEN``, ``INTR_STATE`` and ``WKUP_CAUSE`` clear on write.
 
 cpu run mode (real core), ``+skip_fuse_sense``; Verilator and VCS.
 """
@@ -100,6 +124,9 @@ VEC_LO = 0x1000_1000
 VEC_HI = 0x1003_F000
 ROUTINE = SRAM_BASE + 0x400
 NMI_HANDLER = SRAM_BASE + 0x300
+# Store-leg flag (one 64-bit SRAM word, written by backdoor) and store routine.
+ST_FLAG = SRAM_BASE + 0x100
+STORE_RT = SRAM_BASE + 0xC00
 
 _CPU_CTRL = RegBlock("SEP_CPU_CTRL")
 _WDT = RegBlock("WDT_TIMER")
@@ -116,6 +143,9 @@ OFF_PASS = 0x30
 OFF_FAIL = 0x34
 OFF_NMI_CAUSE = 0x38
 OFF_NMI_ADDR = 0x3C
+OFF_ST_RD = 0x40
+OFF_ST_DONE = 0x44
+ST_DONE = 0x5D0E_0519
 MARKERS = {"M_ROM": 0x4D52_4F4D, "M1": 0x4D31_0001, "M2": 0x4D32_0002}
 MARKER_NAME = {v: k for k, v in MARKERS.items()}
 
@@ -134,6 +164,34 @@ V_COLD = ARMED[0][3]
 # Warm scratch value after a CPU reset: its RDL reset value.
 WARM_RESET = _WARM.reset("SCRATCH_0_") & 0xFFFF_FFFF
 
+# WDT register pairs of the store leg: (even word, odd word) of one 64-bit
+# aligned doubleword, each a 32-bit read-write field.
+WDT_PAIRS = (
+    ("WKUP_THOLD_HI", "WKUP_THOLD_LO"),
+    ("WKUP_COUNT_HI", "WKUP_COUNT_LO"),
+    ("WDOG_BARK_THOLD", "WDOG_BITE_THOLD"),
+)
+WDT_LO = sym("WDT_TIMER_REG_MAP_BASE_ADDR")
+WDT_HI = WDT_LO + sym("WDT_TIMER_REG_MAP_SIZE")
+for _p, (_e, _o) in enumerate(WDT_PAIRS):
+    if _WDT.addr(_e) % 8 or _WDT.addr(_o) != _WDT.addr(_e) + 4:
+        raise RuntimeError(f"{_e}/{_o} is not one 64-bit aligned doubleword")
+    for _r in (_e, _o):
+        if (_WDT.mask(_r) & 0xFFFF_FFFF) != 0xFFFF_FFFF:
+            raise RuntimeError(f"{_r}: field mask does not cover bits 31:0")
+# CPU accesses, in store-routine order: (kind, register, address, value).
+# (b) a 32-bit store to the even word, (c) to the odd word.
+CPU_ACCESSES = tuple(
+    (kind, reg, _WDT.addr(reg), 0x5700_0000 | (p << 16) | (0xB0 if kind == "b" else 0xC0) << 8 | w)
+    for p, pair in enumerate(WDT_PAIRS)
+    for kind, w, reg in (("b", 0, pair[0]), ("c", 1, pair[1]))
+)
+# (a) one full-strobe 64-bit system-bus write per pair: (even register, value).
+SBA_ACCESSES = tuple(
+    (pair[0], ((0x5A00_A001 | (p << 16)) << 32) | (0x5A00_A000 | (p << 16)))
+    for p, pair in enumerate(WDT_PAIRS)
+)
+
 FILTER_CFG_OPEN = (
     _OUTF.field_mask("FILTER_CONFIG", "read_allowed")
     | _OUTF.field_mask("FILTER_CONFIG", "write_allowed")
@@ -150,6 +208,7 @@ RISE_BOUND = 20_000  # clk_i cycles from a reset release to the sep_cpu_reset_n 
 B_BOUND = 2_000  # clk_i cycles for the write responses of the outbound stores
 QUIET = 8  # clk_i cycles after the last write response before a CPU reset
 SPIN = 400  # spin-loop iterations after each routine pass
+ST_SETTLE = 2_000  # clk_i cycles after the store-routine end record (late NMI records)
 
 
 # ---- RV32I encoder for the staged images ----
@@ -337,8 +396,22 @@ def routine_words() -> list[int]:
     a.label("spin_loop")
     a.op(_addi(T5, T5, -1))
     a.br(1, T5, ZERO, "spin_loop")
-    a.j("loop")
+    # Store-leg flag: 0 continues the loop, any other value starts the store routine.
+    a.op(*_li(T1, ST_FLAG), _lw(T1, T1, 0))
+    a.br(0, T1, ZERO, "loop")  # beq
+    a.op(*_li(T3, STORE_RT), _jalr(ZERO, T3, 0))
     return a.words()
+
+
+def store_words() -> list[int]:
+    """WDT store routine: each CPU access, a fence, a read-back to the mailbox; then idle."""
+    w = _li(T0, MBX)
+    for _k, _r, addr, val in CPU_ACCESSES:
+        w += _li(S0, addr) + _li(A0, val) + [_sw(A0, S0, 0), FENCE]
+        w += [_lw(T1, S0, 0), _sw(T1, T0, OFF_ST_RD), FENCE]
+    w += _li(T2, ST_DONE) + [_sw(T2, T0, OFF_ST_DONE), FENCE]
+    w += [_jal(ZERO, 0)]
+    return w
 
 
 def _to_bytes(words: list[int]) -> bytes:
@@ -347,8 +420,11 @@ def _to_bytes(words: list[int]) -> bytes:
 
 ENTRY_BYTES = len(_to_bytes(entry_words(0)))
 ROUTINE_BYTES = len(_to_bytes(routine_words()))
-if NMI_HANDLER + len(_to_bytes(nmi_words())) > ROUTINE or ROUTINE + ROUTINE_BYTES > VEC_LO:
-    raise RuntimeError("the routine overlaps the vector range")
+STORE_BYTES = len(_to_bytes(store_words()))
+if NMI_HANDLER + len(_to_bytes(nmi_words())) > ROUTINE or ROUTINE + ROUTINE_BYTES > STORE_RT:
+    raise RuntimeError("the routine overlaps the store routine")
+if STORE_RT + STORE_BYTES > VEC_LO or ST_FLAG + 8 > NMI_HANDLER:
+    raise RuntimeError("the store routine or flag overlaps another image")
 
 
 @dataclass
@@ -418,7 +494,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self.logger.info("DRAW trst_width=%d TCK cycles", self.trst_tck)
         self.logger.info("DRAW d=%d clk_i cycles", self.d)
         self.logger.info(
-            "ENV W_obs=%d rst_hold=%d pass_bound=%d rise_bound=%d quiet=%d spin=%d routine=0x%08x",
+            "ENV W_obs=%d rst_hold=%d pass_bound=%d rise_bound=%d quiet=%d spin=%d routine=0x%08x "
+            "store_routine=0x%08x st_settle=%d",
             W_OBS,
             RST_HOLD,
             PASS_BOUND,
@@ -426,6 +503,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
             QUIET,
             SPIN,
             ROUTINE,
+            STORE_RT,
+            ST_SETTLE,
         )
 
     @property
@@ -474,8 +553,10 @@ class sep_cpu_reset_entry_test(sep_base_test):
             SRAM_BASE,
             SRAM_WORDS,
             {
+                ST_FLAG: bytes(8),
                 NMI_HANDLER: _to_bytes(nmi_words()),
                 ROUTINE: _to_bytes(routine_words()),
+                STORE_RT: _to_bytes(store_words()),
                 self.a1: _to_bytes(entry_words(MARKERS["M1"])),
                 self.a2: _to_bytes(entry_words(MARKERS["M2"])),
             },
@@ -816,7 +897,10 @@ class sep_cpu_reset_entry_test(sep_base_test):
             "CHK-RSTVEC-PERSIST",
             "CHK-RSTVEC-TAPRST",
             "CHK-TRST-SCOPE",
+            "CHK-WDT-STORE-RESP",
         )
+        self.st_rows: list[dict] = []
+        self.st_errors: list[str] = []
 
         # Steps 4-6: three cold resets with the default TDR (TAP held in TRST).
         ep, mark = await self._power_on()
@@ -834,6 +918,13 @@ class sep_cpu_reset_entry_test(sep_base_test):
 
         # Step 12.
         await self._quiet_point()
+        for leg in (self._cpu_store_leg, self._sba_store_leg):
+            try:
+                await leg()
+            except AssertionError as exc:
+                # Graded at the end with the other store results, so the other
+                # checks of the leaf still run.
+                self.st_errors.append(f"{leg.__name__}: {exc}")
         self._stop = True
         await ClockCycles(dut.clk_i, 2)
         close_graded_window(self.logger)
@@ -853,6 +944,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
             ),
         )
         self._grade_no_early()
+        # Graded last: every other check above has already run.
+        self._grade_store_resp()
         if self.failures:
             raise AssertionError("; ".join(self.failures))
         self.logger.info(
@@ -922,6 +1015,149 @@ class sep_cpu_reset_entry_test(sep_base_test):
             "CTL-TDR-ARM: vector=0x%08x first_pc=0x%08x marker=%s", self.a2, pc, marker
         )
         await self._scope_leg("TLR", "programmed", mark)
+
+    # ---------------------------------------------------------------- WDT stores
+    @staticmethod
+    def _writes(tap: SepFabricTap) -> list[tuple]:
+        """(aw, w, b) per write on ``tap``: W in AW order, B by ID in AW order."""
+        aws = [b for b in tap.beats if b.ch == "aw"]
+        ws = [b for b in tap.beats if b.ch == "w"]
+        bs = [b for b in tap.beats if b.ch == "b"]
+        used: set[int] = set()
+        out = []
+        for k, aw in enumerate(aws):
+            w = ws[k] if k < len(ws) else None
+            b = next(
+                (x for x in bs if x.seq not in used and x.id == aw.id and x.seq > aw.seq), None
+            )
+            if b is not None:
+                used.add(b.seq)
+            out.append((aw, w, b))
+        return out
+
+    async def _cpu_store_leg(self) -> None:
+        """(b) and (c): the store routine, started by the SRAM flag at a quiet point."""
+        dut = cocotb.top
+        tap = SepFabricTap("PR-LSU-XBAR").start()
+        await RisingEdge(dut.clk_i)
+        mark = len(self._mbx())
+        mem = self._mem("sram")
+        mem[(ST_FLAG - SRAM_BASE) // 8].value = 1
+        self.logger.info("CTL-STORE-LEG: flag set at 0x%08x", ST_FLAG)
+        await self._wait_rec(mark, OFF_ST_DONE, PASS_BOUND, "store routine end")
+        await self._wait_b_drain()
+        await ClockCycles(dut.clk_i, ST_SETTLE)
+        await tap.stop()
+        recs = self._mbx()[mark:]
+        rds = [r.val for r in recs if r.off == OFF_ST_RD]
+        causes = [r for r in recs if r.off == OFF_NMI_CAUSE]
+        addrs = [r for r in recs if r.off == OFF_NMI_ADDR]
+        nmis = [(c.val, a.val) for c, a in zip(causes, addrs)]
+        wdt = [
+            x for x in self._writes(tap) if x[0].addr is not None and WDT_LO <= x[0].addr < WDT_HI
+        ]
+        self.logger.info(
+            "OBS-STORE-LEG LOG wdt_writes=%d readbacks=%d nmi=%s",
+            len(wdt),
+            len(rds),
+            " ".join(f"mcause=0x{c:08x}/mdseac=0x{a:08x}" for c, a in nmis) or "-",
+        )
+        for i, (kind, reg, addr, val) in enumerate(CPU_ACCESSES):
+            aw, w, b = wdt[i] if i < len(wdt) else (None, None, None)
+            self.st_rows.append(
+                {
+                    "kind": kind,
+                    "master": "cpu",
+                    "reg": reg,
+                    "addr": addr,
+                    "aw": aw,
+                    "w": w,
+                    "b": b,
+                    "exp": val,
+                    "rd": rds[i] if i < len(rds) else None,
+                    "nmi": [c for c, a in nmis if a == addr],
+                    "sberr": None,
+                }
+            )
+        if len(wdt) != len(CPU_ACCESSES):
+            self.st_errors.append(
+                f"{len(wdt)} WDT writes on PR-LSU-XBAR, expected {len(CPU_ACCESSES)}"
+            )
+
+    async def _sba_store_leg(self) -> None:
+        """(a): one full-strobe 64-bit system-bus write per pair, read back the same way."""
+        from env.sep_jtag_dmi import DM_DMCONTROL, DMCONTROL_DMACTIVE
+
+        dut = cocotb.top
+        dut.dmi_core_enable_i.value = 1
+        tap = SepFabricTap("PR-DBG-SB").start()
+        await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE)
+        res = []
+        for reg, val in SBA_ACCESSES:
+            addr = _WDT.addr(reg)
+            werr = await self.dmi.sba_write(addr, val, size=8)
+            rd, rerr = await self.dmi.sba_read(addr, size=8)
+            res.append((reg, addr, val, werr, rd, rerr))
+        await ClockCycles(dut.clk_i, QUIET)
+        await tap.stop()
+        dut.dmi_core_enable_i.value = 0
+        wdt = [
+            x for x in self._writes(tap) if x[0].addr is not None and WDT_LO <= x[0].addr < WDT_HI
+        ]
+        for i, (reg, addr, val, werr, rd, rerr) in enumerate(res):
+            aw, w, b = wdt[i] if i < len(wdt) else (None, None, None)
+            self.st_rows.append(
+                {
+                    "kind": "a",
+                    "master": "sba",
+                    "reg": f"{reg}+next",
+                    "addr": addr,
+                    "aw": aw,
+                    "w": w,
+                    "b": b,
+                    "exp": val,
+                    "rd": rd,
+                    "nmi": [],
+                    "sberr": (werr, rerr),
+                }
+            )
+        if len(wdt) != len(SBA_ACCESSES):
+            self.st_errors.append(
+                f"{len(wdt)} WDT writes on PR-DBG-SB, expected {len(SBA_ACCESSES)}"
+            )
+
+    def _grade_store_resp(self) -> None:
+        """One CHK-WDT-STORE-RESP line per access: BRESP OKAY and the value reads back."""
+
+        def h(v, width=8):
+            return "X" if v is None else f"0x{v:0{width}x}"
+
+        for err in self.st_errors:
+            self._grade("CHK-WDT-STORE-RESP", False, f"leg error: {err}")
+        for row in self.st_rows:
+            aw, w, b = row["aw"], row["w"], row["b"]
+            resp = None if b is None else b.resp
+            ok = (
+                aw is not None
+                and w is not None
+                and resp == 0
+                and row["rd"] == row["exp"]
+                and (row["kind"] != "a" or (aw.size == 3 and w.strb == 0xFF))
+                and (row["sberr"] is None or row["sberr"] == (0, 0))
+            )
+            width = 16 if row["kind"] == "a" else 8
+            text = (
+                f"access=({row['kind']}) master={row['master']} reg={row['reg']} "
+                f"addr={h(row['addr'])} bus_addr={h(None if aw is None else aw.addr)} "
+                f"size={'X' if aw is None else aw.size} strb={h(None if w is None else w.strb, 2)} "
+                f"resp={'X' if resp is None else resp} "
+                f"wrote={h(row['exp'], width)} read={h(row['rd'], width)}"
+            )
+            if row["nmi"]:
+                text += " nmi_mcause=" + ",".join(f"0x{c:08x}" for c in row["nmi"])
+            if row["sberr"] is not None:
+                text += f" sberror_wr={row['sberr'][0]} sberror_rd={row['sberr'][1]}"
+            self._grade("CHK-WDT-STORE-RESP", ok, text)
 
     def _grade_no_early(self) -> None:
         eps = self.epochs
