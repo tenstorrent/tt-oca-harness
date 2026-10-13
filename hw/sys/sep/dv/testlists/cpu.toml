@@ -151,7 +151,7 @@ run_modes = ["cpu"]
 # Fabric and remap tests.
 
 [[tests]]
-# CPU LSU local alias window at SEP_LOCAL_BASE_ADDR: the alias read of one static word per unit class equals the direct read. The host patches the seeded values into the firmware parameter block.
+# CPU LSU local alias window at SEP_LOCAL_BASE_ADDR: the alias read of one static word per unit class equals the direct read, at the reset base and at a drawn moved base. The host patches the seeded values into the firmware parameter block.
 name = "sep_cpu_lsu_alias_window_twin_test"
 module = "cpu.sep_cpu_lsu_alias_window_twin_test"
 firmware = "alias_twin_test"
@@ -198,7 +198,6 @@ reseed = 3
 timeout_sec = 3600
 tags = ["pic", "fabric", "filter", "cpu", "subsystem"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
 
 [[tests]]
 # PIC delivery gates, the winner by effective priority in both orders, the never value, the order flip and the idle timer and software paths. The host patches the seeded rounds into the firmware parameter block.
