@@ -65,7 +65,10 @@ expected value is read from the DUT.
 
 The core TAP pins are bench-owned for the whole leaf. At power-on
 ``jtag_trst_ni`` presents 1 and then 0, so the asynchronous TAP reset fires,
-and it stays low through the three cold resets. From step 7 the TAP is driven
+and it stays low through the first cold reset. It rises after the first cold
+reset with TCK, TMS and TDI idle, so the second and third cold resets run with
+no TAP reset and grade the TDR default that the power-on TAP reset left. From
+step 7 the TAP is driven
 through ``env/sep_jtag_dmi`` on the shared ``OcahJtagMasterDriver``, with a TCK
 period of the drawn number of ``clk_i`` periods.
 
@@ -765,7 +768,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         # Power-on TAP reset on the bench-owned pins: jtag_trst_ni presents 1 and
         # then 0, so the asynchronous TAP reset fires (a level that is low from
         # time 0 has no falling edge) and the TDR holds its default. TRST stays
-        # low through the three cold resets.
+        # low through the first cold reset.
         for pin, val in (("jtag_tck_i", 0), ("jtag_tms_i", 1), ("jtag_tdi_i", 0)):
             getattr(dut, pin).value = val
         dut.jtag_trst_n_i.value = 1
@@ -902,10 +905,20 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self.st_rows: list[dict] = []
         self.st_errors: list[str] = []
 
-        # Steps 4-6: three cold resets with the default TDR (TAP held in TRST).
+        # Steps 4-6: three cold resets with the default TDR. The first runs under
+        # the power-on TAP reset; TRST then rises with TCK idle, so the second and
+        # third run with no TAP reset.
         ep, mark = await self._power_on()
         await self._run_req_leg(ep, mark, self.d, "cold1")
         self.control_sep_low = ep.sep_low
+        dut.jtag_trst_n_i.value = 1
+        await ClockCycles(dut.clk_i, 2)
+        self.logger.info(
+            "TAP jtag_trst_ni=%d tck=%d tms=%d (no TAP reset from here to step 7)",
+            self.rd(dut.jtag_trst_n_i),
+            self.rd(dut.jtag_tck_i),
+            self.rd(dut.jtag_tms_i),
+        )
         ep, mark = await self._cold_pulse()
         await self._run_req_leg(ep, mark, 0, "cold2")
         ep, mark = await self._cold_pulse()
