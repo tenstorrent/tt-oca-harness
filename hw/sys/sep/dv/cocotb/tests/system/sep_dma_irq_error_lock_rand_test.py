@@ -86,7 +86,9 @@ from seq_lib.sep_dma_ops import (
     DmaTimeout,
     SepDmaOps,
     SepMemWords,
+    asid_word,
     control_word,
+    transfer_width_word,
 )
 
 TEST = "sep_dma_irq_error_lock_rand_test"
@@ -95,7 +97,7 @@ TEST = "sep_dma_irq_error_lock_rand_test"
 SRAM_BASE = 0x1000_0000
 SRAM_LIMIT = 0x1003_FFFF
 SRAM_SIZE = SRAM_LIMIT - SRAM_BASE + 1
-ASID_SEP = 0x77
+ASID_SEP = asid_word(7, 7)
 
 EVENTS = ("done", "chunk", "error")
 EVENT_BIT = {
@@ -358,7 +360,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         if kind in ("chunk", "both"):
             await ops.wr(CHUNK_DATA_SIZE, 0)
         if kind.startswith("hash"):
-            await ops.wr(TRANSFER_WIDTH, int(kind[-1]))
+            await ops.wr(TRANSFER_WIDTH, transfer_width_word(int(kind[-1])))
             await ops.go(opcode=OP_SHA256, initial=1)
         else:
             await ops.go(opcode=OP_COPY, initial=1)
