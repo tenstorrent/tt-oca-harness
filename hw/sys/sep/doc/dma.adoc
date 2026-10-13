@@ -73,6 +73,18 @@ Only handshake input 0 is connected, to the SPI host's LSIO trigger.
 All other trigger inputs are tied low; SEP does not wire UART or I3C handshake paths.
 This does not prevent software-initiated accesses to reachable peripheral registers.
 
+[[sep-dma-start-capture]]
+=== Configuration Taken at Each Start
+
+A start is a write of `CONTROL.GO` while `STATUS.BUSY` is clear: the first
+chunk of a transfer, with `INITIAL_TRANSFER` set, or a later chunk, with `GO`
+alone. The engine takes `OPCODE` and `DIGEST_SWAP` at the first start of a
+transfer and keeps them for its later chunks. It takes
+`HARDWARE_HANDSHAKE_ENABLE`, `RANGE_VALID`, `ENABLED_MEMORY_RANGE_BASE` and
+`ENABLED_MEMORY_RANGE_LIMIT` at every start, so a range narrowed or locked
+between chunks bounds the next chunk. The upstream DMA takes all of them at the
+first start only.
+
 [[sep-dma-zero-fill]]
 === Zero Fill
 
@@ -89,16 +101,20 @@ reporting, interrupts and `CONTROL.ABORT` behave as they do for a copy.
   it, so the bound holds across chunks and in every address mode. The first
   write that would leave the range is not issued: the fill stops with
   `STATUS.ERROR` and `ERROR_CODE.DST_ADDR_ERROR`, and the writes before it
-  remain. Locking the range with `RANGE_REGWEN` fixes this erase window until
-  reset. The range does not bound a copy between internal addresses.
+  remain. Every start takes the range again (<<sep-dma-start-capture>>), so
+  locking it with `RANGE_REGWEN`, also between chunks, fixes this erase window
+  until reset. The range does not bound a copy between internal addresses.
 * The source registers are not used, but they are validated as for a copy, so
   program `SRC_ADDR_LO` and `SRC_ADDR_HI` as 0 with source address-space ID
   `0x7`.
 * A zero fill cannot run in hardware handshake mode. With
-  `HARDWARE_HANDSHAKE_ENABLE` set it ends in `ERROR_CODE.OPCODE_ERROR` when the
-  first trigger arrives.
+  `HARDWARE_HANDSHAKE_ENABLE` set at any start, a later chunk included, it ends
+  in `ERROR_CODE.OPCODE_ERROR` when the first trigger arrives.
 * When the size is not a multiple of the transfer width, the last write covers
   only the remaining bytes.
+* A zero fill writes no byte past `TOTAL_DATA_SIZE`. A start with no bytes
+  left, such as `GO` alone after the last chunk, ends in
+  `ERROR_CODE.SIZE_ERROR` without a write.
 * ICCM and DCCM take only whole 32-bit words from the DMA. A zero fill there
   needs 4-byte transfers, a 4-byte-aligned destination and a size that is a
   multiple of 4; any other write ends in `ERROR_CODE.BUS_ERROR` and sets the
