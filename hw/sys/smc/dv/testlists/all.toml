@@ -56,8 +56,10 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 415
+expected_count = 427
 tests = [
+    "smc_outfilt_addr_match_test",
+    "smc_past_extent_decerr_units_test",
     "smc_beu_register_test",
     "smc_plic_register_test",
     "smc_flr_isolation_sources_test",
@@ -83,6 +85,9 @@ tests = [
     "smc_6agent_observability_test",
     "smc_decode_hole_test",
     "smc_address_map_region_decode_test",
+    "smc_sys_out_path_responder_control_test",
+    "smc_region_zero_reset_recovery_test",
+    "smc_ext_window_routing_test",
     "smc_address_window_top_decode_test",
     "smc_alias_remap_region_attrs_test",
     "smc_cpuif_handshake_test",
@@ -125,6 +130,7 @@ tests = [
     "smc_axi_error_response_depth_test",
     "smc_axil_burst_idle_test",
     "smc_axil_downstream_concurrency_test",
+    "smc_axil_write_side_test",
     "smc_axil_idle_test",
     "smc_canonical_smoke_test",
     "smc_cg_dft_reset_bringup_test",
@@ -258,6 +264,12 @@ tests = [
     "smc_filter_config_field_sweep_test",
     "smc_filter_field_sweep_test",
     "smc_filter_lock_window_test",
+    "smc_outremap_window_translate_test",
+    "smc_filter_reset_word_test",
+    "smc_filter_lock_scope_test",
+    "smc_outremap_prot_srcid_test",
+    "smc_infilt_attr_match_test",
+    "smc_outstage_order_test",
     "smc_filter_multi_entry_test",
     "smc_filter_region_span_test",
     "smc_flr_sanity_test",

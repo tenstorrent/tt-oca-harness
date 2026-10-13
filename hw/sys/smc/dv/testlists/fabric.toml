@@ -86,6 +86,38 @@ tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_outremap_prot_srcid_test"
+module = "smc_outremap_prot_srcid_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_infilt_attr_match_test"
+module = "smc_infilt_attr_match_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_reset_word_test"
+module = "smc_filter_reset_word_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_outstage_order_test"
+module = "smc_outstage_order_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_filter_multi_entry_test"
 module = "smc_filter_multi_entry_test"
 seed = 1
@@ -184,6 +216,22 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_address_map_region_decode_test"
 module = "smc_address_map_region_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sys_out_path_responder_control_test"
+module = "smc_sys_out_path_responder_control_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_past_extent_decerr_units_test"
+module = "smc_past_extent_decerr_units_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric", "decode"]
@@ -299,4 +347,44 @@ module = "smc_peripheral_instance_decode_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_ext_window_routing_test"
+module = "smc_ext_window_routing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_outfilt_addr_match_test"
+module = "smc_outfilt_addr_match_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_lock_scope_test"
+module = "smc_filter_lock_scope_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_region_zero_reset_recovery_test"
+module = "smc_region_zero_reset_recovery_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_outremap_window_translate_test"
+module = "smc_outremap_window_translate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
 run_modes = ["smoke"]
