@@ -70,8 +70,9 @@ jobs:
 
             The `container` workflow rebuilds and verifies the candidate image on this
             PR automatically (its path filter covers `flake.lock`, `uv.lock` and
-            `nix/**`), so a green check here means the refreshed closure builds and
-            passes the image smoke test.
+            `nix/**`), so a green check here means the refreshed closure builds,
+            passes the image smoke test, and still runs the AoU synthesis readiness
+            check.
 
             The `tt-oca-manifest` submodule is deliberately not bumped here: it is a
             TT-owned repository whose changes can be breaking, and the container CI
@@ -82,4 +83,5 @@ jobs:
             review.
 
             ## Test plan
-            `container` workflow (build + verify the candidate image).
+            `container` workflow (build + verify the candidate image, then the AoU
+            synthesis readiness check).
