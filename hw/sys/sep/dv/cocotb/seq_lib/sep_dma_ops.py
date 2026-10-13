@@ -138,6 +138,11 @@ def asid_word(src_asid: int, dst_asid: int) -> int:
     return _put("ADDR_SPACE_ID", "src_asid", src_asid) | _put("ADDR_SPACE_ID", "dst_asid", dst_asid)
 
 
+def transfer_width_word(width_enc: int) -> int:
+    """TRANSFER_WIDTH value for a TRANSACTION_WIDTH encoding."""
+    return _put("TRANSFER_WIDTH", "transaction_width", width_enc)
+
+
 @dataclass(frozen=True)
 class DmaStatus:
     raw: int
@@ -218,7 +223,7 @@ class SepDmaOps:
     async def program_range(self, base: int, limit: int, *, valid: bool = True) -> None:
         await self.wr(RANGE_BASE, base)
         await self.wr(RANGE_LIMIT, limit)
-        await self.wr(RANGE_VALID, 1 if valid else 0)
+        await self.wr(RANGE_VALID, _put("RANGE_VALID", "range_valid", 1 if valid else 0))
 
     async def set_asid(self, src_asid: int, dst_asid: int) -> None:
         await self.wr(ADDR_SPACE_ID, asid_word(src_asid, dst_asid))
@@ -247,7 +252,7 @@ class SepDmaOps:
             "DST_ADDR_HI": dst_hi,
             "TOTAL_DATA_SIZE": total,
             "CHUNK_DATA_SIZE": chunk,
-            "TRANSFER_WIDTH": width_enc,
+            "TRANSFER_WIDTH": transfer_width_word(width_enc),
             "SRC_CONFIG": addr_cfg(src_inc, src_wrap),
             "DST_CONFIG": addr_cfg(dst_inc, dst_wrap),
         }
