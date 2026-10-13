@@ -605,14 +605,6 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
         since_end = first_ps - t_end
         since_write = first_ps - t_write
         following = second_ps - first_end
-        assert since_end <= period_default + self.t_avs_ns * 1000, (
-            f"S8: next resync {since_end / 1000:.1f} ns after the previous one ended, beyond the "
-            f"old interval period {period_default / 1000:.1f} ns plus one avs_clock_o period"
-        )
-        assert abs(following - period_small) <= self.t_avs_ns * 1000, (
-            f"S8: the following resync came {following / 1000:.1f} ns after the end of the "
-            f"first, the 0x{INTERVAL_SMALL:04x} period measured {period_small / 1000:.1f} ns"
-        )
         await self._write_interval("S8_FINAL_RESTORE", cfg0, INTERVAL_RESET)
         await ClockCycles(dut.clk_smc_i, 1)
         self._stamp("S8")
@@ -624,7 +616,10 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"{since_end / 1000:.1f} ns after that end and {since_write / 1000:.1f} ns after the "
             f"write (old interval period {period_default / 1000:.1f} ns), the following one "
             f"{following / 1000:.1f} ns after the end of the first (new interval period "
-            f"{period_small / 1000:.1f} ns); owner answer SF-014 pending, times printed",
+            f"{period_small / 1000:.1f} ns); since_end {since_end / 1000:.1f} ns, since_write "
+            f"{since_write / 1000:.1f} ns, following {following / 1000:.1f} ns, period_default "
+            f"{period_default / 1000:.1f} ns, period_small {period_small / 1000:.1f} ns; rule per "
+            "SF-014, crossing term per SF-013, measured only",
         )
 
         # S9: timeouts and fence

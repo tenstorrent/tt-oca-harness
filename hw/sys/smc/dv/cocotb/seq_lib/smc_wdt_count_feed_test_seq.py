@@ -151,8 +151,14 @@ class smc_wdt_count_feed_test_seq(SmcCsrSeq):
 
         # S5
         await self._wr("S5_EN", "CTRL", WDT_ENALWAYS)
+        pre = await self._rd("S5_PRE", "COUNT")
         await self._wr("S5_100", "COUNT", 0x100)
         s5 = await self._window("S5_R", 3)
+        allowance = max(b - a for a, b in zip(s5, s5[1:]))
+        assert pre > 0x100 + 2 * allowance, (
+            f"S5: vacuous leg, pre-write COUNT 0x{pre:x} not above 0x100 + 2 * {allowance}: {s5}"
+        )
+        assert s5[0] < pre, f"S5: first read 0x{s5[0]:x} not below pre-write COUNT 0x{pre:x}"
         assert all(r >= 0x100 for r in s5), f"S5: a COUNT read is below 0x100: {s5}"
         assert _increasing(s5), f"S5: COUNT not strictly increasing after the write: {s5}"
         await self._wr("S5_DIS", "CTRL", 0)
@@ -160,13 +166,17 @@ class smc_wdt_count_feed_test_seq(SmcCsrSeq):
         c31 = await self._rd("S5_BIT31_RB", "COUNT")
         assert not c31 >> 31, f"S5: COUNT bit 31 reads 1 after the 0x80000010 write: 0x{c31:x}"
         assert (c31 & 0x7FFF_FFFF) >= 0x10, f"S5: COUNT[30:0] 0x{c31:x} below 0x10"
+        assert (c31 & 0x7FFF_FFFF) <= 0x10 + allowance, (
+            f"S5: COUNT[30:0] 0x{c31:x} above 0x10 + allowance {allowance}"
+        )
         self._mark_step("S5")
         self._log_chk(
             "CHK-WDT-COUNT-WRITE",
             f"COUNT=0x100 with wdogenalways: reads {_hexes(s5)} each >= 0x100 and strictly "
-            f"increasing (first read minus written value {s5[0] - 0x100}, V or V+1 is SF-007); "
+            f"increasing (first read minus written value {s5[0] - 0x100}, V or V+1 is SF-007), "
+            f"pre-write 0x{pre:x} above first read 0x{s5[0]:x}, allowance {allowance}; "
             f"COUNT=0x80000010 both enables clear read 0x{c31:08x} with bit 31 = 0 and "
-            f"bits 30:0 >= 0x10",
+            f"bits 30:0 within 0x10..0x10+{allowance}",
         )
 
         # S6
