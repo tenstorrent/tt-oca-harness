@@ -13581,6 +13581,432 @@ Each row names the blocker whose clearing restores the module, and its sequence,
 |smc_external_test
 |adopter-pending OUT
 |Needs an external AXI traffic path that is not Force. Reintroduce with a real SYS_OUT / ext-AXI stimulus.
+|smc_pll_disabled_gpio_loader
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
+|smc_pll_flr_isolation_test
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
+|smc_pll_gpio_observe_test
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
+|smc_pll_por_cold_primary_test
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
+|smc_pll_ref_force_gating_test
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
+|smc_occp_rom_pll_phase15_test
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
+|droop_sanity
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
+|process_sanity
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
+|temp_sensor_sanity
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only; `smc_temp_interrupt_test` covers only the digital temperature interrupt pin. Reintroduce when real PLL/PVT IP lands.
+|smc_tsel_configuration
+|adopter-pending OUT
+|`smc_wrapper` declares no `tsel` input, and `smc_dfd_wrap` ties its trace-sink RAM tsel settings to zero, so there is no tap to drive. Restore when the product pin reaches the wrapper.
+|smc_psyscrit_vrhot_interrupt_test
+|adopter-pending OUT
+|`smc_wrapper` declares no psyscrit or vrhot input, so there is no tap to drive. Restore when the product pin reaches the wrapper.
+|smc_psyscrit_vrhot_loader
+|adopter-pending OUT
+|`smc_wrapper` declares no psyscrit or vrhot input, so there is no tap to drive. Restore when the product pin reaches the wrapper.
+|smc_psyscrit_vrhot_test
+|adopter-pending OUT
+|`smc_wrapper` declares no psyscrit or vrhot input, so there is no tap to drive. Restore when the product pin reaches the wrapper.
+|smc_xtrigger_pads
+|adopter-pending OUT
+|`tb_top.sv` leaves `xtrigger_ss_o` unconnected and ties `xtrigger_ss_i` to 0 on both `smc_wrapper` instances, so the pads are neither driven nor observed. Restore with a driven bench input in place of the tie-off.
+|smc_gpio_pad_electrical_test
+|adopter-pending OUT
+|The bench's GPIO pads are logic nets with no pad cell or electrical model; `smc_gpio_pad_input_readback_test` and `smc_gpio_output_driveback_test` cover logic-level capture and drive only. Restore with a pad cell model.
+|smc_external_interrupts_test
+|waived
+|Intent already proven under smc_ext_interrupts_pin_test; catalog-only.
+|dual_i2c
+|waived
+|Intent already proven under smc_i2c_multi_instance_test (I2C_1/2 reset and per-instance TARGET_ID co-residence) and smc_i2c_p0_multictrl_test (I2C0 and I2C2 hosts both writing the I2C1 target); catalog-only.
+|dual_i2c_slave
+|waived
+|Intent already proven under smc_i2c_p0_multictrl_test; catalog-only.
+|dual_i2c_fw
+|adopter-pending OUT
+|No `fw.toml` leaf runs a concurrent two-instance I2C image; `fw/tests/i2c_p2_concurrent` exists under `hw/sys/smc/dv/fw/tests/` but no leaf loads it. Reintroduce with a `smc_fw_plic_claim_test`-pattern leaf that names it.
+|smc_i2c_p1_dma
+|adopter-pending OUT
+|The enrolled firmware leaf `smc_fw_i2c_p1_fifo_depth_xfer_test` moves data through the CPU FIFO path and states that no DMA is involved; no image under `hw/sys/smc/dv/fw/tests/` drives I2C through the DMA engine. Reintroduce with such an image and a `fw.toml` leaf.
+|smc_i2c_p1_fifo_stress
+|waived
+|Intent already proven under smc_fw_i2c_p1_fifo_depth_xfer_test; catalog-only.
+|smc_i2c_pmbus_p0
+|waived
+|Intent already proven under smc_smbus_pmbus_test; catalog-only.
+|smc_i2c_vip_smbus_test
+|waived
+|Intent already proven under smc_smbus_pmbus_test; catalog-only.
+|smc_i2c_smbus_alert
+|waived
+|Intent already proven under smc_smbus_alert_ara_test; catalog-only.
+|smc_i2c_target_bfm
+|waived
+|Intent already proven under smc_i2c_master_target_test; catalog-only.
+|smc_i2c_boot
+|adopter-pending OUT
+|No `smc_rom.toml` entry passes `+BOOT_I2C`, so no leaf deterministically boots or runs OCCP over I2C; the seven entries that pass no transport plusarg get a randomised transport from `smc_dual_base_test`. Reintroduce with an entry that passes `+BOOT_I2C` and a controller image that drives I2C.
+|smc_i2c_occp_comprehensive_error_verification_test
+|adopter-pending OUT
+|No `smc_rom.toml` entry passes `+BOOT_I2C`, so no leaf deterministically boots or runs OCCP over I2C; the seven entries that pass no transport plusarg get a randomised transport from `smc_dual_base_test`. Reintroduce with an entry that passes `+BOOT_I2C` and a controller image that drives I2C.
+|smc_i2c_occp_invalid_cmd_test
+|adopter-pending OUT
+|No `smc_rom.toml` entry passes `+BOOT_I2C`, so no leaf deterministically boots or runs OCCP over I2C; the seven entries that pass no transport plusarg get a randomised transport from `smc_dual_base_test`. Reintroduce with an entry that passes `+BOOT_I2C` and a controller image that drives I2C.
+|smc_i2c_occp_secure_boot_test
+|adopter-pending OUT
+|No `smc_rom.toml` entry passes `+BOOT_I2C`, so no leaf deterministically boots or runs OCCP over I2C; the seven entries that pass no transport plusarg get a randomised transport from `smc_dual_base_test`. Reintroduce with an entry that passes `+BOOT_I2C` and a controller image that drives I2C.
+|smc_i2c_occp_unsecure_boot_test
+|adopter-pending OUT
+|No `smc_rom.toml` entry passes `+BOOT_I2C`, so no leaf deterministically boots or runs OCCP over I2C; the seven entries that pass no transport plusarg get a randomised transport from `smc_dual_base_test`. Reintroduce with an entry that passes `+BOOT_I2C` and a controller image that drives I2C.
+|smc_occp_i2c_max_size_transfer_test
+|adopter-pending OUT
+|No `smc_rom.toml` entry passes `+BOOT_I2C`, so no leaf deterministically boots or runs OCCP over I2C; the seven entries that pass no transport plusarg get a randomised transport from `smc_dual_base_test`. Reintroduce with an entry that passes `+BOOT_I2C` and a controller image that drives I2C.
+|smc_occp_i2c_min_size_transfer_test
+|adopter-pending OUT
+|No `smc_rom.toml` entry passes `+BOOT_I2C`, so no leaf deterministically boots or runs OCCP over I2C; the seven entries that pass no transport plusarg get a randomised transport from `smc_dual_base_test`. Reintroduce with an entry that passes `+BOOT_I2C` and a controller image that drives I2C.
+|smc_occp_i2c_random_command_test
+|adopter-pending OUT
+|No `smc_rom.toml` entry passes `+BOOT_I2C`, so no leaf deterministically boots or runs OCCP over I2C; the seven entries that pass no transport plusarg get a randomised transport from `smc_dual_base_test`. Reintroduce with an entry that passes `+BOOT_I2C` and a controller image that drives I2C.
+|smc_occp_zero_length_transfer_test
+|adopter-pending OUT
+|The enrolled zero-length OCCP case does not select I2C: no `smc_rom.toml` entry passes `+BOOT_I2C`. `fw/tests/occp_zero_length_test` exists but no `smc_rom.toml` entry names it. Reintroduce with an entry for that image that passes `+BOOT_I2C`.
+|smc_occp_rom_endian_memcfg_test
+|adopter-pending OUT
+|No image under `hw/sys/smc/dv/fw/tests/` and no `smc_rom.toml` entry exercises ROM endianness or memory configuration selection. Reintroduce with a ROM image variant and an `occp_rom` entry that names it.
+|smc_occp_rom_endian_memcfg_flip1_test
+|adopter-pending OUT
+|No image under `hw/sys/smc/dv/fw/tests/` and no `smc_rom.toml` entry exercises ROM endianness or memory configuration selection. Reintroduce with a ROM image variant and an `occp_rom` entry that names it.
+|smc_i3c_cadence_common
+|adopter-pending OUT
+|Needs a bus-level I3C VIP on the single-instance `smc_wrapper` bench and real DAT/DCT macros (see `smc-idle-boundaries`); the `dual` target's only I3C peer is a second SMC running OCCP firmware. Restore when a peer VIP and the macros reach the bench.
+|smc_i3c_cadence_to_oca_sanity
+|adopter-pending OUT
+|Needs a bus-level I3C VIP on the single-instance `smc_wrapper` bench and real DAT/DCT macros (see `smc-idle-boundaries`); the `dual` target's only I3C peer is a second SMC running OCCP firmware. Restore when a peer VIP and the macros reach the bench.
+|smc_i3c_cadence_to_oca_test
+|adopter-pending OUT
+|Needs a bus-level I3C VIP on the single-instance `smc_wrapper` bench and real DAT/DCT macros (see `smc-idle-boundaries`); the `dual` target's only I3C peer is a second SMC running OCCP firmware. Restore when a peer VIP and the macros reach the bench.
+|smc_i3c_oca_to_cadence_sanity
+|adopter-pending OUT
+|Needs a bus-level I3C VIP on the single-instance `smc_wrapper` bench and real DAT/DCT macros (see `smc-idle-boundaries`); the `dual` target's only I3C peer is a second SMC running OCCP firmware. Restore when a peer VIP and the macros reach the bench.
+|smc_i3c_oca_to_cadence_test
+|adopter-pending OUT
+|Needs a bus-level I3C VIP on the single-instance `smc_wrapper` bench and real DAT/DCT macros (see `smc-idle-boundaries`); the `dual` target's only I3C peer is a second SMC running OCCP firmware. Restore when a peer VIP and the macros reach the bench.
+|smc_i3c_oca_sanity
+|adopter-pending OUT
+|Needs a bus-level I3C VIP on the single-instance `smc_wrapper` bench and real DAT/DCT macros (see `smc-idle-boundaries`); the `dual` target's only I3C peer is a second SMC running OCCP firmware. Restore when a peer VIP and the macros reach the bench.
+|smc_i3c_oca_test
+|adopter-pending OUT
+|Needs a bus-level I3C VIP on the single-instance `smc_wrapper` bench and real DAT/DCT macros (see `smc-idle-boundaries`); the `dual` target's only I3C peer is a second SMC running OCCP firmware. Restore when a peer VIP and the macros reach the bench.
+|smc_i3c_oca_write_read_sanity_test
+|adopter-pending OUT
+|Needs a bus-level I3C VIP on the single-instance `smc_wrapper` bench and real DAT/DCT macros (see `smc-idle-boundaries`); the `dual` target's only I3C peer is a second SMC running OCCP firmware. Restore when a peer VIP and the macros reach the bench.
+|smc_i3c_write_read_sanity
+|adopter-pending OUT
+|Needs a bus-level I3C VIP on the single-instance `smc_wrapper` bench and real DAT/DCT macros (see `smc-idle-boundaries`); the `dual` target's only I3C peer is a second SMC running OCCP firmware. Restore when a peer VIP and the macros reach the bench.
+|smc_i3c_immediate_write
+|adopter-pending OUT
+|Needs a bus-level I3C VIP on the single-instance `smc_wrapper` bench and real DAT/DCT macros (see `smc-idle-boundaries`); the `dual` target's only I3C peer is a second SMC running OCCP firmware. Restore when a peer VIP and the macros reach the bench.
+|smc_i3c_oca_immediate_write_test
+|adopter-pending OUT
+|Needs a bus-level I3C VIP on the single-instance `smc_wrapper` bench and real DAT/DCT macros (see `smc-idle-boundaries`); the `dual` target's only I3C peer is a second SMC running OCCP firmware. Restore when a peer VIP and the macros reach the bench.
+|i3c_loop_back
+|adopter-pending OUT
+|Needs a bus-level I3C VIP on the single-instance `smc_wrapper` bench and real DAT/DCT macros (see `smc-idle-boundaries`); the `dual` target's only I3C peer is a second SMC running OCCP firmware. Restore when a peer VIP and the macros reach the bench.
+|smc_i3c_error_abort_fifo_test
+|child-TB-owned
+|I3C CCC/IBI and transfer-shape protocol completeness is block-level I3C DV. This bench has no bus-level I3C VIP and no real DAT/DCT macros (see `smc-idle-boundaries`). Restore when the peer VIP and macros reach `smc_wrapper`.
+|smc_i3c_oca_full_ccc_cadence_test
+|child-TB-owned
+|I3C CCC/IBI and transfer-shape protocol completeness is block-level I3C DV. This bench has no bus-level I3C VIP and no real DAT/DCT macros (see `smc-idle-boundaries`). Restore when the peer VIP and macros reach `smc_wrapper`.
+|smc_i3c_oca_ibi_payload_cadence
+|child-TB-owned
+|I3C CCC/IBI and transfer-shape protocol completeness is block-level I3C DV. This bench has no bus-level I3C VIP and no real DAT/DCT macros (see `smc-idle-boundaries`). Restore when the peer VIP and macros reach `smc_wrapper`.
+|smc_i3c_oca_max_length_cadence_test
+|child-TB-owned
+|I3C CCC/IBI and transfer-shape protocol completeness is block-level I3C DV. This bench has no bus-level I3C VIP and no real DAT/DCT macros (see `smc-idle-boundaries`). Restore when the peer VIP and macros reach `smc_wrapper`.
+|smc_i3c_oca_to_cadence_ibi
+|child-TB-owned
+|I3C CCC/IBI and transfer-shape protocol completeness is block-level I3C DV. This bench has no bus-level I3C VIP and no real DAT/DCT macros (see `smc-idle-boundaries`). Restore when the peer VIP and macros reach `smc_wrapper`.
+|smc_i3c_oca_to_cadence_ibi_broadcast_test
+|child-TB-owned
+|I3C CCC/IBI and transfer-shape protocol completeness is block-level I3C DV. This bench has no bus-level I3C VIP and no real DAT/DCT macros (see `smc-idle-boundaries`). Restore when the peer VIP and macros reach `smc_wrapper`.
+|smc_i3c_random_transfer_cadence
+|child-TB-owned
+|I3C CCC/IBI and transfer-shape protocol completeness is block-level I3C DV. This bench has no bus-level I3C VIP and no real DAT/DCT macros (see `smc-idle-boundaries`). Restore when the peer VIP and macros reach `smc_wrapper`.
+|smc_input_fabric_i3c_to_output_rd_test
+|adopter-pending OUT
+|Needs I3C bus traffic as the fabric stimulus: a bus-level I3C VIP and real DAT/DCT macros (see `smc-idle-boundaries`). `smc_i3c_to_fabric_test` drives only the HCI_VERSION decode over SEP_IN, and `smc_input_output_fabric_wr_rd_test` drives the output fabric through JTAG AXI.
+|smc_input_fabric_i3c_to_output_wr_test
+|adopter-pending OUT
+|Needs I3C bus traffic as the fabric stimulus: a bus-level I3C VIP and real DAT/DCT macros (see `smc-idle-boundaries`). `smc_i3c_to_fabric_test` drives only the HCI_VERSION decode over SEP_IN, and `smc_input_output_fabric_wr_rd_test` drives the output fabric through JTAG AXI.
+|input_fabric_i3c_to_output_wr_rd_test
+|adopter-pending OUT
+|Needs I3C bus traffic as the fabric stimulus: a bus-level I3C VIP and real DAT/DCT macros (see `smc-idle-boundaries`). `smc_i3c_to_fabric_test` drives only the HCI_VERSION decode over SEP_IN, and `smc_input_output_fabric_wr_rd_test` drives the output fabric through JTAG AXI.
+|smc_i3c_boot
+|waived
+|Intent already proven under smc_occp_dual_unsecure_boot_test; catalog-only.
+|smc_prod_rom_sanity_test
+|waived
+|Intent already proven under smc_prod_rom_occp_ready_test; catalog-only.
+|smc_prod_rom_sanity_test_i2c1
+|adopter-pending OUT
+|No `smc_rom.toml` entry passes `+BOOT_I2C`, so no ROM leaf deterministically boots over I2C. Reintroduce with an entry that passes `+BOOT_I2C` and a controller image that drives I2C.
+|smc_rom_only
+|waived
+|Intent already proven under smc_prod_rom_occp_ready_test; catalog-only.
+|smc_rom_mbist_failures
+|waived
+|Intent already proven under smc_rom_mbist_fail_test and smc_rom_mbist_timeout_test; catalog-only.
+|smc_rom_padding_trap
+|adopter-pending OUT
+|No image under `hw/sys/smc/dv/fw/tests/` and no `smc_rom.toml` entry exercises a ROM padding trap. Reintroduce with a ROM image variant and an `occp_rom` entry that names it.
+|smc_rom_padding_trap_generic_test
+|adopter-pending OUT
+|No image under `hw/sys/smc/dv/fw/tests/` and no `smc_rom.toml` entry exercises a ROM padding trap. Reintroduce with a ROM image variant and an `occp_rom` entry that names it.
+|smc_rom_test_master_bfm_secure_boot
+|waived
+|Intent already proven under smc_occp_secure_boot_test; catalog-only.
+|smc_rom_test_master_bfm_binary_loader
+|waived
+|Intent already proven under smc_occp_dual_unsecure_boot_test; catalog-only.
+|smc_binary_loader
+|waived
+|Intent already proven under smc_occp_dual_unsecure_boot_test; catalog-only.
+|smc_rom_test_binary_loader
+|waived
+|Intent already proven under smc_cpu_firmware_boot_test; catalog-only.
+|smc_master_bfm_sanity_test
+|waived
+|Intent already proven under smc_occp_sanity_test, where the controller SMC runs the OCCP master image against the production ROM; catalog-only.
+|uart_binary_loader
+|adopter-pending OUT
+|No leaf loads an image over the UART: images enter through the `+smc_rom_hex` / `+smc_scratch_ram_hex` backdoors in `smc_cpu_mem_dv.sv` or the `smc_fw_*` scratch loader, and no image under `hw/sys/smc/dv/fw/tests/` is a UART boot loader. Reintroduce with such an image and a `fw.toml` leaf.
+|uart_engine_binary_loader
+|adopter-pending OUT
+|No leaf loads an image over the UART: images enter through the `+smc_rom_hex` / `+smc_scratch_ram_hex` backdoors in `smc_cpu_mem_dv.sv` or the `smc_fw_*` scratch loader, and no image under `hw/sys/smc/dv/fw/tests/` is a UART boot loader. Reintroduce with such an image and a `fw.toml` leaf.
+|sep_load_and_run_binary_test
+|adopter-pending OUT
+|SEP_IN is an AXI VIP port with no SEP behind it, so nothing on the bench loads a binary for a SEP to run. Restore with a real SEP on the bench.
+|qsr_dv_rom
+|adopter-pending OUT
+|No image under `hw/sys/smc/dv/fw/tests/` and no `smc_rom.toml` entry is named for this scenario. Reintroduce with an image source for the scenario and a ROM-image leaf.
+|smc_dv_rom_sanity_test
+|adopter-pending OUT
+|No image under `hw/sys/smc/dv/fw/tests/` and no `smc_rom.toml` entry is named for this scenario. Reintroduce with an image source for the scenario and a ROM-image leaf.
+|smc_coremark_perf_test
+|adopter-pending OUT
+|`hw/sys/smc/dv/fw/tests/coremark` exists but no `fw.toml` leaf loads it. Reintroduce with a `smc_fw_plic_claim_test`-pattern leaf that names it.
+|smc_quicksort_perf_test
+|adopter-pending OUT
+|`hw/sys/smc/dv/fw/tests/quicksort` exists but no `fw.toml` leaf loads it. Reintroduce with a `smc_fw_plic_claim_test`-pattern leaf that names it.
+|smc_mergesort_perf_test
+|adopter-pending OUT
+|`hw/sys/smc/dv/fw/tests/mergesort` exists but no `fw.toml` leaf loads it. Reintroduce with a `smc_fw_plic_claim_test`-pattern leaf that names it.
+|smc_matrix_mult_perf_test
+|adopter-pending OUT
+|`hw/sys/smc/dv/fw/tests/matrix_mult` exists but no `fw.toml` leaf loads it. Reintroduce with a `smc_fw_plic_claim_test`-pattern leaf that names it.
+|smc_front_port_perf
+|adopter-pending OUT
+|`hw/sys/smc/dv/fw/tests/system_bus_perf` exists but no `fw.toml` leaf loads it. Reintroduce with a `smc_fw_plic_claim_test`-pattern leaf that names it.
+|smc_dhrystone_perf_test
+|adopter-pending OUT
+|No firmware source for the benchmark exists under `hw/sys/smc/dv/fw/tests/`, and no `fw.toml` leaf runs it. Reintroduce with an image source and a leaf that names it.
+|smc_whetstone_perf_test
+|adopter-pending OUT
+|No firmware source for the benchmark exists under `hw/sys/smc/dv/fw/tests/`, and no `fw.toml` leaf runs it. Reintroduce with an image source and a leaf that names it.
+|smc_cpu_perf_loader
+|adopter-pending OUT
+|`hw/sys/smc/dv/fw/tests/cpu_perf.h` is a shared header, not an image, and no `fw.toml` leaf loads a perf image. Reintroduce with the perf images and leaves.
+|smc_cpu_traffic_sep_axi_test
+|adopter-pending OUT
+|Needs CPU firmware that generates SEP-bound AXI traffic, and SEP_IN is an AXI VIP port with no SEP behind it; `smc_cpu_to_sep_axi_test` covers only CPU-control to SEP-facing CSR reachability. Reintroduce with that image and a SEP-side responder.
+|smc_power_idle
+|adopter-pending OUT
+|No image under `hw/sys/smc/dv/fw/tests/` generates a power workload and the bench has no power observable. Reintroduce with a workload image and a measurable observable.
+|smc_power_virus
+|adopter-pending OUT
+|No image under `hw/sys/smc/dv/fw/tests/` generates a power workload and the bench has no power observable. Reintroduce with a workload image and a measurable observable.
+|smc_chiplet_base_test
+|adopter-pending OUT
+|This bench is `smc_wrapper` under `tb_top`; there is no chiplet-level top to run it in. Reintroduce when a chiplet top is on the bench.
+|smc_chiplet_jtag_base_test
+|adopter-pending OUT
+|This bench is `smc_wrapper` under `tb_top`; there is no chiplet-level top to run it in. Reintroduce when a chiplet top is on the bench.
+|smc_chiplet_jtag_sram_test
+|adopter-pending OUT
+|This bench is `smc_wrapper` under `tb_top`; there is no chiplet-level top to run it in. Reintroduce when a chiplet top is on the bench.
+|smc_chiplet_reg_jtag_test
+|adopter-pending OUT
+|This bench is `smc_wrapper` under `tb_top`; there is no chiplet-level top to run it in. Reintroduce when a chiplet top is on the bench.
+|smc_chiplet_reg_wr_test
+|adopter-pending OUT
+|This bench is `smc_wrapper` under `tb_top`; there is no chiplet-level top to run it in. Reintroduce when a chiplet top is on the bench.
+|smc_reg_boundary_test_group_1
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_2
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_3
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_4
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_5
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_6
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_7
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_8
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_9
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_10
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_11
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_12
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_13
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_14
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_15
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_16
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_17
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_18
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_reg_boundary_test_group_19
+|waived
+|`smc_register_boundary_depth_test` proves the SCRATCH_COLD, SCRATCH_COLD_WARM and CHIP_CONFIG windows, `smc_rdl_field_sweep_test` the software-owned fields of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, and `smc_periph_regblock_sweep_test` the peripheral register blocks no other leaf writes; the catalog's per-group boundary list is not enrolled as such.
+|smc_random_default_reg_rd_test
+|waived
+|Intent already proven under smc_default_reg_rd_test; catalog-only.
+|mailbox_register_2_test
+|waived
+|Intent already proven under smc_mailbox_register_map_reset_test; catalog-only.
+|local_fabric_external_reg_xbar_rd_test
+|waived
+|Intent already proven under smc_local_fabric_csr_depth_test; catalog-only.
+|local_fabric_external_reg_xbar_wr_test
+|waived
+|"External register crossbar" is not a tree identifier. Read as the peripheral CSR crossbar (`smc_periph_axi_lite_xbar.sv`) the write-with-read-back scenario is enrolled through `smc_filter_region_span_test` and `smc_scratch_banks_test`; read as the `smc_external` window, `smc_ext_window_aperture_test` covers the decode and a write that must land in an external target has no open-source target to land in. Waived under those leaves.
+|smc_local_fabric_external_reg_xbar_wr_rd_test
+|waived
+|Same reading as the row above: peripheral CSR crossbar write and read-back enrolled through `smc_filter_region_span_test` and `smc_scratch_banks_test`; the `smc_external` window decode through `smc_ext_window_aperture_test`. Waived under those leaves.
+|smc_local_fabric_internal_reg_xbar_wr_rd_test
+|waived
+|Writes through the internal register crossbar (`smc_internal_axi_lite_xbar.sv`, target outbound_filter_ctrl) with read-back are enrolled: `smc_filter_region_span_test` (fabric.toml) writes the outbound filter START/END registers and checks them back. Waived under that leaf.
+|local_fabric_reg_bar_wr_test
+|waived
+|"Register bar" is not a tree identifier. Read as the peripheral CSR crossbar (`smc_periph_axi_lite_xbar.sv`) the write scenario is enrolled through `smc_filter_region_span_test`; read as the fabric configuration bar (filter / alias remap registers) it is covered by `smc_filter_region_span_test` and `smc_output_remap_window_test`. Waived under those leaves.
+|smc_local_fabric_reg_bar_wr_rd_test
+|waived
+|Same reading as the row above: write and read-back of the fabric configuration bar enrolled through `smc_filter_region_span_test` and `smc_output_remap_window_test`. Waived under those leaves.
+|smc_local_fabric_input_axi_wr_rd_test
+|waived
+|Writes through the SEP_IN input path with read-back are enrolled: `smc_scratch_banks_test` (reset.toml) writes the 16 scratch registers over SEP_IN and reads each back, `smc_cpu_ctrl_scratch_all_test` (cpu.toml) does the same for CPU_CTRL scratch; `smc_local_fabric_csr_depth_test` adds the reset-value reads. Waived under those leaves.
+|smc_local_fabric_sep_input_wr_rd_test
+|waived
+|Same coverage as the row above: SEP_IN write and read-back are enrolled through `smc_scratch_banks_test` and `smc_cpu_ctrl_scratch_all_test`. Waived under those leaves.
+|smc_fabric_sanity
+|waived
+|Intent already proven under smc_input_output_fabric_wr_rd_test; catalog-only.
+|smc_fabric_stress
+|adopter-pending OUT
+|`smc_sep_in_axi_flow_control_test` proves directed SEP_IN back-pressure with several outstanding transactions; randomised stress across the fabrics stays out of reach.
+|smc_fabric_random
+|adopter-pending OUT
+|The enrolled fabric leaves (`smc_input_output_fabric_wr_rd_test`, `smc_local_fabric_csr_depth_test`) are directed; no constrained-random SEP_IN traffic source is enrolled.
+|smc_output_fabric_wr_rd_same_id_test
+|adopter-pending OUT
+|`smc_clk_ratio_order_per_id_test` proves per-ID response order on SEP_IN; the output-fabric leaves (`smc_output_fabric_wr_rd_responder_test`, `smc_input_output_fabric_wr_rd_test`) check memory golden data, not ID order toward SYS_OUT.
+|smc_fabric_inbound_filter_ports_test
+|adopter-pending OUT
+|`smc_filter_region_span_test` proves a programmed filter entry is enforced on the bus for the outbound entries and `smc_filter_config_field_sweep_test` sweeps the CONFIG fields and write-once lock; enforcement on each inbound entry stays out of reach.
+|smc_local_fabric_input_axi_filtering_test
+|adopter-pending OUT
+|`smc_filter_region_span_test` proves a programmed filter entry is enforced on the bus for the outbound entries and `smc_filter_config_field_sweep_test` sweeps the CONFIG fields and write-once lock; enforcement on each inbound entry stays out of reach.
+|smc_filter_sanity
+|waived
+|Intent already proven under smc_filter_region_span_test; catalog-only.
+|axi_traffic_filters
+|waived
+|Intent already proven under smc_filter_region_span_test; catalog-only.
+|atb_sanity_basic
+|waived
+|Intent already proven under smc_telemetry_atb_capture_test; catalog-only.
+|smc_sep_ring_buffer_overflow_underflow
+|waived
+|Intent already proven under smc_sep_ring_buffer_overflow_test and smc_sep_ring_buffer_underflow_test; catalog-only.
+|smc_basic_ijtag_test
+|waived
+|Intent already proven under smc_ijtag_basic_test; catalog-only.
+|smc_mixed_boot_stall_sanity_test
+|waived
+|Intent already proven under smc_mixed_boot_stall_test; catalog-only.
+|smc_wdt_escalation
+|waived
+|Intent already proven under smc_wdt_timeout_pin_test; catalog-only.
+|smc_system_timer_sanity
+|adopter-pending OUT
+|`smc_ref_clock_timer_rate_test` is held out of `all` and fails the rate comparison it makes: `clk_rst.adoc` and `smc_peripherals.sv` clock the OCTS system timer from `clk_smc_i`, not the reference clock the leaf measures against. Restore when the leaf's expectation is reconciled with the spec and it is scheduled.
+|smc_remap_sanity
+|waived
+|Intent already proven under smc_remap_cla_test; catalog-only.
+|smc_reri_sanity
+|adopter-pending OUT
+|No RERI register or leaf exists in the SMC DV tree, so there is no scenario input to enrol.
+|smc_l1_ecc_fault_injection
+|adopter-pending OUT
+|The bench's ECC injection acts on the scratch bank0 array (`smc_ecc_fault_inject_test`, `smc_ecc_codeword_sec_test`); no enrolled leaf injects into the L1 arrays.
+|smc_efuse_oob_addr_test
+|adopter-pending OUT
+|The raw OTP window has no responder on `smc_wrapper`, so an out-of-range eFuse address has no bank to answer or refuse it; `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary. Restore with a raw-OTP responder on the bench.
+|octs_p0_sync_load_wrapper
+|adopter-pending OUT
+|`hw/sys/smc/dv/fw/tests/octs_p0_sync_load_test` exists but no `fw.toml` leaf loads it; the enrolled firmware leaf is `smc_fw_octs_p0_primary_test`. Reintroduce with a leaf that names the image.
+|smc_dma_stride_repeat_test
+|waived
+|Intent already proven under smc_dma_2d_copy_test; catalog-only.
+|smc_dma_dual_bank_test
+|adopter-pending OUT
+|The build has `NUM_CTRL_STREAMS = 1`; the other stream banks are reserved and launch nothing (`smc_dma_reserved_stream_banks_test`). Reintroduce when a second stream bank is built.
+|smc_dma_setup_reject_test
+|adopter-pending OUT
+|No enrolled DMA leaf submits an invalid descriptor and reads back a refusal; `smc_dma_reg_byte_enable_error_test` covers sub-word register writes only.
 |===
 
 [[smc-bench-standins]]
