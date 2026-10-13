@@ -169,7 +169,9 @@ _start:
 
     # An interrupt that reached _dummy_int_handler had no registered handler.
     # The test did not expect it, so it fails: print "UNHANDLED IRQ n=<count>"
-    # and force the FAIL verdict.
+    # and force the FAIL verdict. Interrupts are masked first, so the count
+    # read here is final for the verdict.
+    csrci   mstatus, 8              # mstatus.mie = 0
     la      t1, sep_dummy_int_count
     lw      a1, 0(t1)
     beqz    a1, _finish

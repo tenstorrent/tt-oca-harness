@@ -27,6 +27,8 @@ static inline void test_pass(int code) {
     (void)code;
     volatile unsigned int *stdout_w = (volatile unsigned int *)STDOUT;
     // An unhandled interrupt fails the test, the same rule as a main() return.
+    // Interrupts are masked first, so the count read here is final for the verdict.
+    __asm__ volatile("csrc mstatus, %0" ::"r"(1u << 3) : "memory"); // mstatus.mie
     int unhandled = (&sep_dummy_int_count != 0) && (sep_dummy_int_count != 0);
     *stdout_w = (unsigned int)TEST_MAGIC0;
     __asm__ volatile("fence" ::: "memory"); // Ensure first write completes
