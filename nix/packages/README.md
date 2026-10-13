@@ -80,6 +80,12 @@ Toml++ uses the source of the nixpkgs version.
 
 This bundles the nixpkgs Yosys with the above plugin.
 
+#### Ciel
+
+Ciel is used to fetch the PDKs used for synthesis. The upstream nixpkgs ciel has 
+been updated to version 3.0.0, which isn't compatible with the older version of 
+IHP used in OCAH. The older version 2.6.1 is pinned here.
+
 ### Virtual Platform
 
 The Virtual Platform Repository is able to build all it's dependencies from
