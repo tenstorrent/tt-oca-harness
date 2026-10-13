@@ -178,6 +178,17 @@ Observation probe groups:
   `env/sep_reset_taps.py`. Owners of the KM reset and the two vectors:
   `sep_cpu_reset_retention_test`, `sep_sw_reset_isolation_matrix_test`,
   `sep_ip_reset_override_matrix_test`.
+* Isolate-stage slave-side taps: `iso_slv_aw_hs_probe_o`,
+  `iso_slv_ar_hs_probe_o`, `iso_slv_b_hs_probe_o`, `iso_slv_r_hs_probe_o`
+  (one bit per isolate stage, valid and ready on the same clock) and
+  `iso_slv_bresp_probe_o`, `iso_slv_rresp_probe_o` (two bits per stage, stage i
+  at `[2i+1:2i]`), read from the `slv_req_i` and `slv_resp_o` ports of the 14
+  isolate units of `sep_crypto_axi_interconnect.sv` (`u_*_host_isolate`,
+  `u_*_key_isolate`, `u_km_efuse_isolate`), in the bit order of
+  `crypto_isolated_probe_o`. They show when a stage accepts a transaction and
+  when it returns the response, the point where the specification drains a
+  domain before its reset. No frontdoor shows the stage side of the fabric.
+  Owner `sep_sw_reset_isolation_matrix_test`.
 * Reset and clock taps: `aon_rst_n_probe_o`, the watchdog timer-domain reset
   (`u_sep_wdt_wrap.rst_wdt_n`, `rst_aon_ni` of the AON timer); owners
   `sep_cold_reset_phase_test`, `sep_ip_reset_override_matrix_test`,

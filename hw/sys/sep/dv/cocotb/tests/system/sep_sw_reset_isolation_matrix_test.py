@@ -35,15 +35,17 @@ high-half write carries no field bit. Leg B releases the Key Manager with the bo
 Manager tests and runs single-victim passes of OTBN, AES, HMAC, KMAC and Adams
 Bridge, two victim pairs (one releases the first victim first, the other the
 second), a Key Manager pass and a TRNG pass with the Key Manager held. In a
-pass the leaf puts host transactions in flight on the path of the victim; for
-OTBN and AES the master holds RREADY low until the isolate request rises, so a
-read is outstanding at the request.
+pass the leaf puts host transactions in flight on the path of the victim. For
+OTBN and AES the first host transaction is placed from measured latencies
+(``CAL-DRAIN``) so that the host isolate stage accepts it one clock before the
+isolate request rises, and the master holds RREADY low until the request rises.
 
 Probes. Approved: ``ip_rst_n[6:1]`` (``*_gated_rst_n_probe_o``). Observation
 taps: ``ip_rst_n[0]`` (``km_gated_rst_n_probe_o``) and the 14-bit isolate
 request and isolate-complete vectors (``crypto_isolate_req_probe_o``,
 ``crypto_isolated_probe_o``), read in the bench index of
-``env/sep_reset_taps.py``. The handshakes of ``s_axi`` are sampled on the same
+``env/sep_reset_taps.py``, and the slave-side handshakes of the 14 isolate
+stages (``iso_slv_{aw,ar,b,r}_hs_probe_o``, ``iso_slv_{b,r}resp_probe_o``). The handshakes of ``s_axi`` are sampled on the same
 clock as the taps.
 
 Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
@@ -72,12 +74,13 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-ISO-ORDER     OTBN, AES, Key Manager: the tap falls at or after the cycle
                     all isolate-complete bits of D are high (HMAC, KMAC, Adams
                     Bridge and TRNG log ``CTL-ISO-ORDER``).
-  CHK-ISO-DRAIN     OTBN, AES: a transaction is open at the isolate request
-                    rise, and every accepted transaction has its response on
-                    ``s_axi`` before the reset asserts (the others log
-                    ``CTL-ISO-DRAIN``). A transaction that the isolate stage
-                    answered (SLVERR, and for a read ``0x1501A7ED``) arrived
-                    after the request and is not an accepted one.
+  CHK-ISO-DRAIN     OTBN, AES: at the slave side of the host isolate stage of
+                    D a transaction is open when the isolate request rises,
+                    and every transaction the stage accepted before the
+                    request has its response there before ``ip_rst_n[D]``
+                    falls (the others log ``CTL-ISO-DRAIN``). The ``s_axi``
+                    arrival of the same responses is logged as
+                    ``OBS-ISO-DRAIN-SAXI``.
   CHK-ISO-PATHS     the isolate requests that rise from the baseline equal the
                     table set of the victims written.
 
@@ -100,7 +103,14 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_axi_chan_mon import SepAxiChanMon, SepAxiReadyHold
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
-from env.sep_reset_taps import IP_RST_PORTS, ISO_BENCH, ISO_WIDTH, SepResetTaps, iso_name
+from env.sep_reset_taps import (
+    IP_RST_PORTS,
+    ISO_BENCH,
+    ISO_WIDTH,
+    SepResetTaps,
+    iso_name,
+    iso_rtl_bit,
+)
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import AES, HMAC, KMAC, OTBN, SEP_RESET_CTRL, register_fields, sym, word_reset
@@ -374,12 +384,67 @@ class Plan:
         return pd
 
 
-def _ev_word(ev) -> int | None:
-    """The 32-bit read data of a completed VIP read event (None for a write)."""
-    data = getattr(ev.data, "data", None)
-    if isinstance(data, (bytes, bytearray)) and len(data) >= 4:
-        return int.from_bytes(bytes(data[:4]), "little")
-    return None
+class IsoSlvLog:
+    """Per-clock record of the isolate-stage slave-side taps, in the bench index.
+
+    Reads ``iso_slv_{aw,ar,b,r}_hs_probe_o`` and the response codes on every rising
+    edge of ``clk_i`` in the read-only phase and drives nothing. A handshake is one
+    clock with valid and ready high, so every high clock is recorded. ``clk`` counts
+    the sampled edges from ``start``.
+    """
+
+    CH = ("aw", "ar", "b", "r")
+
+    def __init__(self, dut) -> None:
+        self.dut = dut
+        self.clk = 0
+        self.ev: list[tuple[int, str, int, int]] = []  # (clk, ch, bench stage, resp)
+        self._task = None
+
+    async def _run(self) -> None:
+        d = self.dut
+        sig = {ch: getattr(d, f"iso_slv_{ch}_hs_probe_o") for ch in self.CH}
+        resp = {"b": d.iso_slv_bresp_probe_o, "r": d.iso_slv_rresp_probe_o}
+        while True:
+            await RisingEdge(d.clk_i)
+            await ReadOnly()
+            self.clk += 1
+            for ch in self.CH:
+                v = sig[ch].value
+                if not v.is_resolvable:
+                    raise AssertionError(f"iso_slv_{ch}_hs_probe_o is X/Z at clock {self.clk}")
+                v = int(v)
+                if not v:
+                    continue
+                codes = -1
+                if ch in resp and resp[ch].value.is_resolvable:
+                    codes = int(resp[ch].value)
+                for x in range(ISO_WIDTH):
+                    if (v >> iso_rtl_bit(x)) & 1:
+                        code = (codes >> (2 * iso_rtl_bit(x))) & 3 if codes >= 0 else -1
+                        self.ev.append((self.clk, ch, x, code))
+
+    def start(self) -> "IsoSlvLog":
+        self._task = cocotb.start_soon(self._run())
+        return self
+
+    async def stop(self) -> None:
+        if self._task is not None:
+            self._task.cancel()
+            self._task = None
+
+    def since(self, start: int, stages: int, off: int) -> dict[str, list]:
+        """Handshake clocks (tap clock) of ``stages`` after ``start``, per channel."""
+        out: dict[str, list] = {ch: [] for ch in self.CH}
+        out["bresp"], out["rresp"] = [], []
+        for c, ch, x, code in self.ev:
+            tc = c - off
+            if tc <= start or not (stages >> x) & 1:
+                continue
+            out[ch].append(tc)
+            if ch in ("b", "r"):
+                out[f"{ch}resp"].append(RESP_NAME.get(code, code))
+        return out
 
 
 class PassView:
@@ -576,6 +641,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         dut = cocotb.top
         self.taps = SepResetTaps(dut).start()
         self.chan = SepAxiChanMon("s_axi", dut).start()
+        self.isolog = IsoSlvLog(dut).start()
         self.taps.log_map(self.logger)
         self.late_fail: list[str] = []
         self.pd = SepResetProbeDriver(self)
@@ -593,11 +659,13 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             self.off = self.chan.clk - self.taps.iso_req.clk
+            self.iso_off = self.isolog.clk - self.taps.iso_req.clk
             self.logger.info(
-                "OBS-CLOCKS: chan_mon_clk=%d tap_clk=%d offset=%d",
+                "OBS-CLOCKS: chan_mon_clk=%d tap_clk=%d offset=%d iso_stage_offset=%d",
                 self.chan.clk,
                 self.taps.iso_req.clk,
                 self.off,
+                self.iso_off,
             )
             await FallingEdge(dut.clk_i)
             await self._leg_a()
@@ -607,6 +675,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             close_graded_window(self.logger)
             await self.taps.stop()
             await self.chan.stop()
+            await self.isolog.stop()
         if self.late_fail:
             raise AssertionError("; ".join(self.late_fail))
         self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.k)
@@ -807,6 +876,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         self.sw = SW_RESET_N_RELEASE_KM & SW_FIELDS
         await self._wait_ip(IPRST["km"], 1, "Key Manager release")
         await self._wait_ack(KM_KEY_HKA, 0, "Key Manager key paths after release")
+        await self._calibrate_drain_placement()
         for name in ("otbn", "aes", "hmac", "kmac", "abr", "pair0", "pair1"):
             await self._pass(self.plan.passes[name])
         await self._km_pass()
@@ -817,6 +887,60 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         await self._pass(self.plan.passes["trng"], baseline=KM_SET)
         await self._sw_write_seq(self.sw | KM_BIT)
         await self._wait_ip(IPRST["km"], 1, "Key Manager release after TRNG")
+
+    async def _calibrate_drain_placement(self) -> None:
+        """Latencies that place a host transaction at the isolate stage of OTBN and AES.
+
+        ``lat_req``: clocks from the issue of a ``SW_RESET_N`` write to the rise of
+        the host isolate request it causes (measured on HMAC, released again).
+        ``lat_stage[(d, op)]``: clocks from the issue of a host read or write of D
+        to its handshake at the slave side of D's host isolate stage. Placement
+        values only, never expected values.
+        """
+        dut = cocotb.top
+        close_graded_window(self.logger)
+        await FallingEdge(dut.clk_i)
+        m = self.taps.mark()
+        c0 = self.taps.iso_req.clk
+        ev = self._sw_issue(self.sw & ~(1 << IPRST["hmac"]))
+        rise = await self.taps.iso_req.wait_rise(
+            m["iso_req"], TAP_BOUND, bit=iso_name(X["host_hmac"])
+        )
+        self.lat_req = rise - c0
+        await ev.wait()
+        await self._wait_ip(IPRST["hmac"], 0, "drain calibration")
+        await self._sw_write_seq(self.sw)
+        await self._wait_ip(IPRST["hmac"], 1, "drain calibration release")
+        await self._arm(PROBE["hmac"], 2)
+        self.lat_stage: dict[tuple[str, str], int] = {}
+        for d in ("otbn", "aes"):
+            probe = PROBES_B[d][0]
+            for op in ("rd", "wr"):
+                await FallingEdge(dut.clk_i)
+                start = self.taps.iso_req.clk
+                c0 = start
+                if op == "rd":
+                    ev = self.axi.init_read(address=probe.addr, length=4, size=2, arid=HOST_IDS[0])
+                else:
+                    ev = self.axi.init_write(
+                        address=probe.addr,
+                        data=self.armed[probe.name].to_bytes(4, "little"),
+                        size=2,
+                        awid=HOST_IDS[0],
+                    )
+                await ev.wait()
+                await self._cycles(4)
+                ch = "ar" if op == "rd" else "aw"
+                hs = self.isolog.since(start, HOST_MASK[d], self.iso_off)[ch]
+                if not hs:
+                    raise AssertionError(f"drain calibration: no {ch} handshake at the {d} stage")
+                self.lat_stage[(d, op)] = hs[0] - c0
+        self.logger.info(
+            "CAL-DRAIN: issue_to_iso_req=%d issue_to_stage=%s",
+            self.lat_req,
+            ",".join(f"{d}/{op}:{v}" for (d, op), v in self.lat_stage.items()),
+        )
+        open_graded_window(TEST, self.logger)
 
     async def _sw_write_seq(self, value: int) -> None:
         seq = await self._acc(SepAxiOp.WRITE, SW, 4, value)
@@ -858,31 +982,62 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         hold_r = d in ("otbn", "aes")
         if hold_r:
             self.hold.hold("r")
-        # Step 7: host transactions, then the SW_RESET_N write(s).
+        # Step 7: host transactions and the SW_RESET_N write(s). For OTBN and AES the
+        # first host transaction is placed from the calibration so that the
+        # isolate stage accepts it one clock before the isolate request rises, and
+        # the SW_RESET_N write goes out first; the other domains take the drawn
+        # delay after their transactions.
         host_evs = []
         probe = PROBES_B[d][0]
-        for i, op in enumerate(pd.ops):
-            tid = HOST_IDS[i]
-            if op == "rd":
-                ev = self.axi.init_read(address=probe.addr, length=4, size=2, arid=tid)
-            else:
-                ev = self.axi.init_write(
-                    address=probe.addr,
-                    data=self.armed[probe.name].to_bytes(4, "little"),
-                    size=2,
-                    awid=tid,
-                )
-            host_evs.append((op, tid, ev))
-        await self._cycles(pd.delay)
+
+        def issue_host() -> None:
+            for i, op in enumerate(pd.ops):
+                tid = HOST_IDS[i]
+                if op == "rd":
+                    ev = self.axi.init_read(address=probe.addr, length=4, size=2, arid=tid)
+                else:
+                    ev = self.axi.init_write(
+                        address=probe.addr,
+                        data=self.armed[probe.name].to_bytes(4, "little"),
+                        size=2,
+                        awid=tid,
+                    )
+                host_evs.append((op, tid, ev))
+
         v1 = self.sw & ~(1 << IPRST[d])
-        sw_evs = [self._sw_issue(v1)]
+        v2 = v1 & ~(1 << IPRST[victims[1]]) if len(victims) == 2 else v1
+        sw_evs: list = []
+        # Falling-edge offsets of the actions, relative to the first SW_RESET_N write.
+        t_host = -pd.delay
+        if hold_r:
+            t_host = self.lat_req - 1 - self.lat_stage[(d, pd.ops[0])]
+            self.logger.info(
+                "DRAIN-PLACE: pass=%s first_op=%s host_issue_after_write=%d (drawn delay %d "
+                "not used)",
+                pd.name,
+                pd.ops[0],
+                t_host,
+                pd.delay,
+            )
+        # At an equal offset the SW_RESET_N write goes first, so a host write cannot
+        # queue ahead of it on the AW channel.
+        actions = [(0, "sw1"), (t_host, "host")]
         if len(victims) == 2:
-            await self._cycles(pd.gap)
-            v2 = v1 & ~(1 << IPRST[victims[1]])
-            sw_evs.append(self._sw_issue(v2))
-            self.sw = v2
-        else:
-            self.sw = v1
+            actions.append((pd.gap, "sw2"))
+        base = min(t for t, _ in actions)
+        await FallingEdge(dut.clk_i)
+        for t in range(max(t for t, _ in actions) - base + 1):
+            for at, what in actions:
+                if at - base != t:
+                    continue
+                if what == "host":
+                    issue_host()
+                elif what == "sw1":
+                    sw_evs.insert(0, self._sw_issue(v1))
+                else:
+                    sw_evs.append(self._sw_issue(v2))
+            await FallingEdge(dut.clk_i)
+        self.sw = v2
         if hold_r:
             # The master takes R beats again once the isolate request of D reads 1.
             for _ in range(DRAIN_BOUND):
@@ -1014,31 +1169,44 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 c,
                 RESP_NAME.get(r, r),
             )
-        # A transaction that the isolate stage answered (SLVERR, and for a read the
-        # data 0x1501A7ED) arrived after the request and was not accepted by the IP;
-        # every other one was accepted by the IP and is drained.
-        ops = {tid: (op, ev) for op, tid, ev in host_evs}
-        terminated = set()
-        for tid, (op, ev) in ops.items():
-            c, r = done.get(tid, (None, None))
-            if r == RESP_SLVERR and (op == "wr" or _ev_word(ev) == ISO_DATA):
-                terminated.add(tid)
-        drained = {i: c for i, c in acc.items() if i not in terminated}
-        inflight = sum(
-            1 for i, c in drained.items() if c < reqrise and done.get(i, (10**9, 0))[0] >= reqrise
+        # s_axi view of the same transactions, for information only.
+        self.logger.info(
+            "OBS-ISO-DRAIN-SAXI: dom=%s pass=%s accepted=%d resp_cycles=%s iso_req_cycle=%s "
+            "rst_assert_cycle=%s",
+            d,
+            name,
+            len(acc),
+            ",".join(f"{i}:{done[i][0]}" for i in sorted(done)),
+            reqrise,
+            fall[d],
         )
-        completed = sum(1 for i in drained if i in done and done[i][0] < fall[d])
+        # CHK-ISO-DRAIN at the isolate stages of D (slave side): every transaction a
+        # stage accepted before the isolate request rose has its response there
+        # before ip_rst_n[D] falls. AXI-Lite stages answer in order per channel, so
+        # the k-th response of a channel closes its k-th accepted transaction.
+        st = self.isolog.since(view.m["iso_req"].clk, HOST_MASK[d], self.iso_off)
+        acc_r = [c for c in st["ar"] if c < reqrise]
+        acc_w = [c for c in st["aw"] if c < reqrise]
+        rsp_r = st["r"][: len(acc_r)]
+        rsp_w = st["b"][: len(acc_w)]
+        open_r = sum(1 for c in rsp_r if c >= reqrise) + len(acc_r) - len(rsp_r)
+        open_w = sum(1 for c in rsp_w if c >= reqrise) + len(acc_w) - len(rsp_w)
+        late = [c for c in rsp_r + rsp_w if c >= fall[d]]
+        missing = len(acc_r) - len(rsp_r) + len(acc_w) - len(rsp_w)
+        accepted = len(acc_r) + len(acc_w)
+        completed = accepted - missing - len(late)
+        inflight = open_r + open_w
         vals = (
-            f"dom={d} pass={name} accepted={len(drained)} completed={completed} "
-            f"inflight_at_iso_req={inflight} terminated={len(terminated)} "
-            f"iso_req_cycle={reqrise} rst_assert_cycle={fall[d]} resp_cycles="
-            + ",".join(f"{i}:{done[i][0]}" for i in sorted(drained) if i in done)
+            f"dom={d} pass={name} accepted={accepted} completed={completed} "
+            f"inflight_at_iso_req={inflight} iso_req_cycle={reqrise} rst_assert_cycle={fall[d]} "
+            f"stage_accept_cycles=r:{acc_r},w:{acc_w} stage_resp_cycles=r:{rsp_r},w:{rsp_w} "
+            f"stage_resp_codes=r:{st['rresp'][: len(acc_r)]},w:{st['bresp'][: len(acc_w)]}"
         )
         if d in ("otbn", "aes"):
             if inflight == 0:
                 self.logger.error("CHK-ISO-DRAIN FAIL (precondition, no read in flight): %s", vals)
                 raise AssertionError(f"CHK-ISO-DRAIN precondition: {vals}")
-            self._chk_late("CHK-ISO-DRAIN", completed == len(drained), vals)
+            self._chk("CHK-ISO-DRAIN", completed == accepted, vals)
         else:
             self.logger.info("CTL-ISO-DRAIN: %s", vals)
         # CHK-ISO-ORDER / CTL-ISO-ORDER (single-victim passes).

@@ -1665,6 +1665,36 @@ module sep_uvm_top
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.km;
     assign crypto_isolate_req_probe_o = `SEP_CORE.sep_crypto_isolate_req;
     assign crypto_isolated_probe_o    = `SEP_CORE.sep_crypto_isolated;
+    // Slave side of each isolate stage (sep_crypto_axi_interconnect.sv), bit i in the
+    // order of sep_pkg::sep_crypto_isolate_t. Read-only XMRs of the stage ports.
+`define SEP_TB_ISO_SLV(i, inst) \
+    assign iso_slv_aw_hs_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.aw_valid & \
+                                      `SEP_ISO_IC.inst.slv_resp_o.aw_ready; \
+    assign iso_slv_ar_hs_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.ar_valid & \
+                                      `SEP_ISO_IC.inst.slv_resp_o.ar_ready; \
+    assign iso_slv_b_hs_probe_o[i]  = `SEP_ISO_IC.inst.slv_resp_o.b_valid & \
+                                      `SEP_ISO_IC.inst.slv_req_i.b_ready; \
+    assign iso_slv_r_hs_probe_o[i]  = `SEP_ISO_IC.inst.slv_resp_o.r_valid & \
+                                      `SEP_ISO_IC.inst.slv_req_i.r_ready; \
+    assign iso_slv_bresp_probe_o[2*(i)+:2] = `SEP_ISO_IC.inst.slv_resp_o.b.resp; \
+    assign iso_slv_rresp_probe_o[2*(i)+:2] = `SEP_ISO_IC.inst.slv_resp_o.r.resp;
+`define SEP_ISO_IC `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect
+    `SEP_TB_ISO_SLV(13, u_esrc_host_isolate)
+    `SEP_TB_ISO_SLV(12, u_csrng_host_isolate)
+    `SEP_TB_ISO_SLV(11, u_edn_host_isolate)
+    `SEP_TB_ISO_SLV(10, u_otbn_host_isolate)
+    `SEP_TB_ISO_SLV(9, u_aes_host_isolate)
+    `SEP_TB_ISO_SLV(8, u_hmac_host_isolate)
+    `SEP_TB_ISO_SLV(7, u_kmac_host_isolate)
+    `SEP_TB_ISO_SLV(6, u_abr_host_isolate)
+    `SEP_TB_ISO_SLV(5, u_otbn_key_isolate)
+    `SEP_TB_ISO_SLV(4, u_aes_key_isolate)
+    `SEP_TB_ISO_SLV(3, u_hmac_key_isolate)
+    `SEP_TB_ISO_SLV(2, u_kmac_key_isolate)
+    `SEP_TB_ISO_SLV(1, u_abr_key_isolate)
+    `SEP_TB_ISO_SLV(0, u_km_efuse_isolate)
+`undef SEP_TB_ISO_SLV
+`undef SEP_ISO_IC
     // Watchdog timer-domain reset and the two Key Manager reset conditioner
     // outputs. Read-only XMRs.
     assign aon_rst_n_probe_o = `SEP_CORE.u_sep_wdt_wrap.rst_wdt_n;

@@ -561,6 +561,17 @@
 // is a cocotb table (env/sep_reset_taps.py) that maps to this order.
 `SEP_TB_OUT(logic [$bits(sep_pkg::sep_crypto_isolate_t)-1:0], crypto_isolate_req_probe_o)
 `SEP_TB_OUT(logic [$bits(sep_pkg::sep_crypto_isolate_t)-1:0], crypto_isolated_probe_o)
+// Slave side of the 14 isolate stages of the crypto AXI interconnect, one bit per
+// stage in the same order as crypto_isolated_probe_o: the AW, AR, B and R handshakes
+// (valid and ready on the same clock) and the B and R response codes (two bits per
+// stage, stage i at [2i+1:2i]). Read-only taps of the isolate units' slv_req_i and
+// slv_resp_o ports.
+`SEP_TB_OUT(logic [$bits(sep_pkg::sep_crypto_isolate_t)-1:0], iso_slv_aw_hs_probe_o)
+`SEP_TB_OUT(logic [$bits(sep_pkg::sep_crypto_isolate_t)-1:0], iso_slv_ar_hs_probe_o)
+`SEP_TB_OUT(logic [$bits(sep_pkg::sep_crypto_isolate_t)-1:0], iso_slv_b_hs_probe_o)
+`SEP_TB_OUT(logic [$bits(sep_pkg::sep_crypto_isolate_t)-1:0], iso_slv_r_hs_probe_o)
+`SEP_TB_OUT(logic [2*$bits(sep_pkg::sep_crypto_isolate_t)-1:0], iso_slv_bresp_probe_o)
+`SEP_TB_OUT(logic [2*$bits(sep_pkg::sep_crypto_isolate_t)-1:0], iso_slv_rresp_probe_o)
 // Watchdog timer-domain reset (u_sep_wdt_wrap.rst_wdt_n, rst_aon_ni of the AON
 // timer).
 `SEP_TB_OUT(logic, aon_rst_n_probe_o)
