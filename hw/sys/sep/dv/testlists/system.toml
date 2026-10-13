@@ -718,7 +718,7 @@ tags = ["reset", "dft", "scan", "system", "subsystem"]
 tools = ["vcs"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = []
+args = ["+sep_edn_jtag_reset_waive"]
 
 [[tests]]
 # SEP_CPU_CTRL version ID, NMI vector lock, read-only status and write-only timeout
