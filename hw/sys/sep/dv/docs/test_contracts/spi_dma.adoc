@@ -1200,7 +1200,7 @@ The offsets come from `spi_controller.adoc`, and TXDATA at 0x28 and RXDATA at 0x
 |CHK-ZERO-ICCM
 |The three transfers end with DONE and ERROR_CODE 0; the copy back shows the inner 16 words 0 and the first and last with the pattern.
 |CHK-ZERO-TCM-NARROW
-|The 2-byte-wide fill ends with ERROR, ERROR_CODE equal to BUS_ERROR alone and DMA_BUS_ERR_STATUS equal to the host-path bit alone; both clear; the 4-byte-wide fill then completes.
+|The 2-byte-wide fill ends with ERROR, ERROR_CODE equal to BUS_ERROR alone and DMA_BUS_ERR_STATUS equal to the host-path bit alone. After the DMA_BUS_ERR_CLEAR write and the STATUS RW1C write, and before the next GO, DMA_BUS_ERR_STATUS reads 0, STATUS.ERROR reads 0 and ERROR_CODE reads 0 (`secure_dma.adoc`, STATUS.ERROR: RW1C; `dma.hjson`, ERROR_CODE: cleared by the RW1C write of STATUS.ERROR). A DUT whose RW1C clear does not land shows ERROR or ERROR_CODE set at that read, which a check after the next GO cannot see. The 4-byte-wide fill then completes.
 |===
 
 *Pass Criteria*: Every named checker PASSes, and the firmware returns 0. UVM_ERROR == 0.

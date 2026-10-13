@@ -22,8 +22,10 @@
 //   CHK-ZERO-TCM-NARROW : a 2-byte-wide fill into ICCM, which the core accepts
 //                         only as whole words, ends in ERROR with BUS_ERROR
 //                         alone and the exclusive host-path error in
-//                         DMA_BUS_ERR_STATUS; after both clears a 4-byte-wide
-//                         fill completes.
+//                         DMA_BUS_ERR_STATUS; after both clears, and before
+//                         the next GO, DMA_BUS_ERR_STATUS reads 0, STATUS.ERROR
+//                         reads 0 and ERROR_CODE reads 0; a 4-byte-wide fill
+//                         then completes.
 
 #include <stdint.h>
 
@@ -254,16 +256,22 @@ static int chk_zero_tcm_narrow(void) {
     wr(clear_addr, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
     wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     bus = rd(status_addr);
-    if (bus != 0) {
+    st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    if (bus != 0 || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
         sep_mbx_puts("FAIL: CHK-ZERO-TCM-NARROW after CLEAR DMA_BUS_ERR_STATUS=");
         sep_mbx_puthex(bus);
-        sep_mbx_puts(", expected 0\n");
+        sep_mbx_puts(" STATUS=");
+        sep_mbx_puthex(st);
+        sep_mbx_puts(" ERROR_CODE=");
+        sep_mbx_puthex(err);
+        sep_mbx_puts(", expected 0, ERROR clear and 0\n");
         e++;
     }
     st = zero_fill(ICCM_ZERO_BASE, 8u, SEP_DMA_WIDTH_4B);
     e += expect_clean("CHK-ZERO-TCM-NARROW", "4-byte-wide recovery fill", st);
     if (e == 0) {
-        sep_mbx_puts("PASS: CHK-ZERO-TCM-NARROW 2-byte-wide ICCM fill rejected, recovery clean\n");
+        sep_mbx_puts("PASS: CHK-ZERO-TCM-NARROW 2-byte-wide ICCM fill rejected, errors cleared before GO, recovery clean\n");
     }
     return e;
 }
