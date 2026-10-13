@@ -33,7 +33,12 @@ Checkers:
                    strap only at sense completion.
   CHK-STM-RETAIN   in legs B, C and D ``secure_tm_o`` keeps its value on every
                    sample through every event and after every strap change.
-                   Control: leg A shows ``secure_tm_o`` = 1.
+                   Control: leg A shows ``secure_tm_o`` = 1. In both leg-D
+                   boots ``lcc_security_disable_probe_o`` reads 1 on every
+                   sample from the release to the end of the hold, so the
+                   match is shown present (a lost match runs a sense that
+                   ends past the leg-D windows, which the sense-done level
+                   alone does not show).
   CHK-STM-CLEAR    with ``rst_ni`` low and the strap at 1, ``secure_tm_o`` reads 0
                    at the last ``clk_i`` edge before the release. Control: it
                    reads 1 before the reset.
@@ -127,6 +132,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
                     "stm": _bit(dut.secure_tm_o),
                     "done": _bit(dut.sep_fuse_sense_done_o),
                     "sep": _bit(dut.dbg_sep_reset_n_o),
+                    "secdis": _bit(dut.lcc_security_disable_probe_o),
                 }
             )
 
@@ -252,11 +258,26 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             o1 - 1,
         )
 
-    async def _present_sec_dis(self) -> int:
+    def _require_match(self, a: int, b: int, chk: str, label: str) -> None:
+        """The SEC_DIS match is present on every sample a..b of a leg-D boot.
+
+        ``lcc_security_disable_probe_o`` is the security-disable state the
+        life-cycle controller receives. A boot whose match was lost runs a
+        fuse sense that ends after ``T_sense``, past the leg-D windows, so the
+        sense-done level alone cannot show the match; this read does.
+        """
+        vals = self._window(a, b, "secdis")
+        assert all(v == 1 for v in vals), (
+            f"{chk} FAIL: {label}: security_disable read 0 at samples "
+            f"{[a + i for i, v in enumerate(vals) if v != 1][:8]} (match_present=0 at this boot)"
+        )
+        self.logger.info("LEG-D %s match_present=1 on samples %d..%d", label, a, b)
+
+    async def _present_sec_dis(self, token: int = _SEC_DIS_TOKEN) -> int:
         """Present the SEC_DIS token over j_axi; return the settled match code."""
         for i, addr in enumerate(_SEC_DIS_TOKEN_I):
             resp, _ = await self.jtag_axil_op(
-                write=True, addr=addr, wdata=(_SEC_DIS_TOKEN >> (32 * i)) & 0xFFFF_FFFF
+                write=True, addr=addr, wdata=(token >> (32 * i)) & 0xFFFF_FFFF
             )
             assert resp == 0, f"SEC_DIS token word {i} write over j_axi resp={resp}"
         resp, _ = await self.jtag_axil_op(write=True, addr=_TOKEN_EOP, wdata=_EOP_SEC_DIS)
@@ -449,12 +470,14 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
 
         # Leg D, strap 1: early capture with the match present.
         _a, rel = await self._cold_reset()
+        await self._until(rel + 2)
+        self._require_match(rel, rel, "CHK-STM-CAPTURE", "strap=1 release")
         cap = None
         while self._now() <= rel + t_sense:
             await RisingEdge(dut.clk_i)
             last = len(self.rec) - 1
             if last >= rel and self.rec[last]["stm"] == 1:
-                cap = last
+                cap = next(i for i in range(rel, last + 1) if self.rec[i]["stm"] == 1)
                 break
         assert cap is not None, (
             f"CHK-STM-CAPTURE FAIL: match_present=1 strap=1: secure_tm_o did not read 1 within "
@@ -469,6 +492,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         f0 = self._now()
         f1 = await self._hold()
         after = self._window(cap, f1 - 1)
+        self._require_match(rel, f1 - 1, "CHK-STM-CAPTURE", "strap=1 window")
         done_d = self._window(rel, f1 - 1, "done")
         assert all(v == 0 for v in done_d), (
             "leg D precondition FAIL: sep_fuse_sense_done_o rose, so the token did not match "
@@ -506,6 +530,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         f0 = self._now()
         f1 = await self._hold()
         vals = self._window(f0, f1 - 1)
+        self._require_match(rel, f1 - 1, "CHK-STM-RETAIN", "strap=0 window")
         done_d = self._window(rel, f1 - 1, "done")
         assert all(v == 0 for v in done_d), (
             "leg D strap 0 precondition FAIL: sep_fuse_sense_done_o rose (match_present=0)"
