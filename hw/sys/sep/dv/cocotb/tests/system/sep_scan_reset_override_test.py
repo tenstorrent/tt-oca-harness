@@ -354,7 +354,14 @@ class sep_scan_reset_override_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         await self._toggle_test_en(strap=1)
 
-        # Step 5: strap toggles with test_en_i = 0; every pin stays 0.
+        # Step 5: strap toggles with test_en_i = 0. Graded over the walked pins that
+        # followed test_en_i in step 4, so each graded pin can move.
+        following = [p for p, _x in self._pins() if p not in self.pin_stuck]
+        assert following, (
+            "CHK-STRAP-INDEP FAIL: no walked pin followed test_en_i, so a strap toggle "
+            "could not show a moved pin"
+        )
+        follow_set = set(following)
         moved = []
         for v in (0, 1):
             await RisingEdge(dut.clk_i)
@@ -363,7 +370,7 @@ class sep_scan_reset_override_test(sep_base_test):
             for _ in range(H):
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
-                moved += [(p, x) for p, x in self._pins() if x != 0]
+                moved += [(p, x) for p, x in self._pins() if p in follow_set and x != 0]
         assert not moved, (
             f"CHK-STRAP-INDEP FAIL: pin(s) moved across the strap toggles: {moved[:6]}"
         )
@@ -403,10 +410,11 @@ class sep_scan_reset_override_test(sep_base_test):
         )
         self.logger.info(
             "CHK-STRAP-INDEP PASS: secure_tm_o=1 unchanged across %d test_en_i toggles at strap=1 "
-            "and secure_tm_o=0 unchanged across %d at strap=0; pins unchanged across %d strap "
-            "toggles",
+            "and secure_tm_o=0 unchanged across %d at strap=0; %d pins that follow test_en_i "
+            "unchanged across %d strap toggles",
             3,
             3,
+            len(following),
             self.strap_toggles,
         )
 
