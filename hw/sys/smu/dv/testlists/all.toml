@@ -3696,6 +3696,7 @@ tests = [
   "smu_sep_inbound_burst_extension_test",
   "smu_sep_stap_hold_reset_test",
 ]
+expected_count = 161
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
