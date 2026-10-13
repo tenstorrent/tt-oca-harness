@@ -482,7 +482,7 @@ bin records it. A bin needs a leaf that resets ABR with the KM released.
 |Coverpoint |Bins
 |`cp_copy` |`CONTROL.GO` with opcode COPY
 |`cp_hash` |`CONTROL.GO` with opcode SHA256
-|`cp_hash_opcode` |Which inline-hash opcode was commanded on a `CONTROL.GO`: `sha256`, `sha384`. `cp_hash` above is SHA-256 only, so it does not distinguish a SHA-384 transfer. SHA-512 is a legal opcode (`OpcSha512`) that no leaf commands, so it has no bin rather than a permanent hole.
+|`cp_hash_opcode` |Which inline-hash opcode was commanded on a `CONTROL.GO`: `sha256`, `sha384`, `sha512`. `cp_hash` above is SHA-256 only, so it does not distinguish a SHA-384 or SHA-512 transfer. The `sha512` bin samples only in the window of its owner, `sep_dma_transfer_matrix_rand_test`.
 |`cp_copy_done` |Completion after a COPY GO
 |`cp_hash_done` |Completion after a SHA256 GO
 |`cp_chunk` |`STATUS.chunk_done` observed while a GO'd transfer is outstanding
@@ -1047,7 +1047,7 @@ human. Other members may fill a group in passing.
 |`sep_km_wipe_cg` |`sep_km_wipe_reset_test`
 |`sep_km_sw_reset_cg` |`sep_km_wipe_reset_test`, `sep_km_handover_test`
 |`sep_crypto_isolate_cg` |`sep_km_isolate_termination_test` (the three HMAC/KM bins: it parks HMAC with the KM released, so the KM path isolates under the HMAC request, and then reopens it). `sep_km_command_set_rand_test` also parks HMAC at bring-up with the KM released and fills `cp_km_iso` / `cp_rst_ordered`. `cp_abr_rst_ordered` `sep_crypto_per_ip_reset_isolation_test` (`CHK-ABR-DRAIN-ORDER`, the host term); `sep_reset_wdt_sanity_test` (its firmware pulses each crypto `SW_RESET_N` bit) and `sep_abr_mlkem_kat_test` also fill it. Those leaves hold the KM in reset, so their KM path bits are high from time 0 and cannot fill the three HMAC/KM bins.
-|`sep_dma_copy_hash_cg` |`sep_dma_basic_test` (copy), `sep_dma_hash_test` (hash; both `cp_hash_opcode` bins -- it is the only leaf that commands an inline hash, and it walks SHA-256 then SHA-384)
+|`sep_dma_copy_hash_cg` |`sep_dma_basic_test` (copy), `sep_dma_hash_test` (hash; `cp_hash_opcode` bins `sha256` and `sha384`: it walks SHA-256 then SHA-384), `sep_dma_transfer_matrix_rand_test` (`cp_hash_opcode` bin `sha512`)
 |`sep_spi_flash_cg` |`sep_spi_flash_jedec_smoke_test`, `sep_spi_ot_host_csr_irq_rand_test`; DMA handshake `sep_spi_ot_dma_rx_test` / `sep_spi_ot_dma_tx_test`; `cp_opcode` `sep_spi_ot_flash_cmd_rand_test` (every opcode is in its fixed BFM sequence)
 |`sep_inbound_filter_allow_cg` |`sep_fabric_inbound_filter_rule_matrix_test`
 |`sep_efuse_sense_cg` |`sep_efuse_sense_test`, `sep_efuse_image_test` (any leaf passing `+skip_fuse_sense` cannot fill it)
