@@ -33,7 +33,10 @@ Checkers:
                    strap only at sense completion.
   CHK-STM-RETAIN   in legs B, C and D ``secure_tm_o`` keeps its value on every
                    sample through every event and after every strap change.
-                   Control: leg A shows ``secure_tm_o`` = 1. In both leg-D
+                   Control: leg A shows ``secure_tm_o`` = 1. The leg-B
+                   ``wdt_rst_ni`` pulse reads ``sep_cpu_reset_n_o`` low and the
+                   override pulse reads ``dbg_sep_reset_n_o`` low inside the
+                   pulse window, so both events reach the DUT. In both leg-D
                    boots ``lcc_security_disable_probe_o`` reads 1 on every
                    sample from the release to the end of the hold, so the
                    match is shown present (a lost match runs a sense that
@@ -57,7 +60,8 @@ reaches the token block.
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense,
 ``+sep_edn_jtag_reset_waive`` for the ``sep_reset_n`` override pulse of leg B.
-Verilator and VCS; the ``dbg_rstb_i`` event of leg B runs on VCS only. RAND-REP:
+Verilator and VCS; the ``dbg_rstb_i`` event of leg B runs on VCS only, and no
+approved probe of the CPU stub build shows its reach (``OBS-STM-DBG-REACH``). RAND-REP:
 the seed draws ``c`` (8 to 200) and the order of the leg B events.
 """
 
@@ -132,6 +136,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
                     "stm": _bit(dut.secure_tm_o),
                     "done": _bit(dut.sep_fuse_sense_done_o),
                     "sep": _bit(dut.dbg_sep_reset_n_o),
+                    "cpu": _bit(dut.sep_cpu_reset_n_o),
                     "secdis": _bit(dut.lcc_security_disable_probe_o),
                 }
             )
@@ -207,8 +212,23 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         dut = cocotb.top
         await self._edge()
         dut.wdt_rst_ni_i.value = 0
-        await self._until(self._now() + _PULSE)
+        w0 = self._now()
+        await self._until(w0 + _PULSE)
         dut.wdt_rst_ni_i.value = 1
+        w1 = self._now()
+        await self._wait_sample("cpu", 1, _TAP_BOUND, "sep_cpu_reset_n after the wdt pulse")
+        # The event is a CPU reset only if the pulse reached sep_cpu_reset_n.
+        low = sum(1 for i in range(w0, w1) if self.rec[i]["cpu"] == 0)
+        assert low > 0, (
+            f"CHK-STM-RETAIN FAIL: leg=B event=wdt_rst_ni: sep_cpu_reset_n_o never read 0 "
+            f"in the pulse window (samples {w0}..{w1 - 1}), so the event did not happen"
+        )
+        self.logger.info(
+            "LEG-B wdt_rst_ni pulse reached sep_cpu_reset_n: low on %d of samples %d..%d",
+            low,
+            w0,
+            w1 - 1,
+        )
 
     async def _ev_dbg(self) -> None:
         dut = cocotb.top
@@ -216,6 +236,11 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         dut.dbg_rstb_i.value = 0
         await self._until(self._now() + _PULSE)
         dut.dbg_rstb_i.value = 1
+        self.logger.info(
+            "OBS-STM-DBG-REACH: dbg_rstb_i low for %d cycles; reach not shown (the CPU stub "
+            "build has no debug module or run-request synchronizer for a probe to read)",
+            _PULSE,
+        )
 
     async def _ev_swrst(self) -> None:
         dut = cocotb.top

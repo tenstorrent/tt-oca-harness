@@ -34,7 +34,9 @@ Checkers:
   CHK-CC-INERT    bit 0 of both sense status registers after the complement
                   write; every write response, the timeout registers included.
   CHK-SCR-SHAPE   the low word of each written scratch register (64-bit
-                  readback, and ``scratch_cold_probe_o`` for the cold bank).
+                  readback, and ``scratch_cold_probe_o`` for the cold bank);
+                  in the high-half-first order also after the high-half
+                  write, against the value before it.
 Controls (not counted): CTL-NMI-DEFAULT, CTL-NMI-STORE, CTL-SCR-SEQ,
 CTL-SCR-NEIGHBOUR. Observations: OBS-CC-RSVD, OBS-TIMEOUT.
 
@@ -494,6 +496,34 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
     def _probe_cold(self, i: int) -> int:
         return self.rd(cocotb.top.scratch_cold_probe_o, M32 << (32 * i)) >> (32 * i)
 
+    async def _sample_cold(self, i: int) -> int:
+        """Word ``i`` of ``scratch_cold_probe_o`` one clock after a readback."""
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        probe = self._probe_cold(i)
+        await RisingEdge(cocotb.top.clk_i)
+        return probe
+
+    async def _hi_first_mid(self, bank: str, i: int, addr: int, v: int, pre: int) -> str:
+        """Write the high half alone, then grade that the low word is still ``pre``.
+
+        Bits 63:32 have no field, so the high-half write changes no field: the
+        64-bit readback and, for the cold bank, the probe word show the value
+        from before that write.
+        """
+        await self._write(addr, v, "hi", tolerant=False)
+        mid = await self._read64(addr)
+        fc = field_compare(mid, pre, SCR_FIELD)
+        probe = await self._sample_cold(i) if bank == "cold" else None
+        text = f"after_hi: low_word=0x{mid & SCR_FIELD:08x} {fc.fields()}" + (
+            "" if probe is None else f" cold_probe=0x{probe:08x}"
+        )
+        assert fc.ok, f"CHK-SCR-SHAPE FAIL: high-half write changed the low word: {text}"
+        assert probe is None or probe == pre, (
+            f"CHK-SCR-SHAPE FAIL: high-half write changed the cold probe word: {text}"
+        )
+        return text
+
     async def _write_bank(self, step: int) -> None:
         cfg = self.tcfg
         bank = cfg.events[step].split(":")[1]
@@ -501,22 +531,29 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
         for j, i in enumerate(perm):
             lo, hi = cfg.values[step][j]
             addr = BANKS[bank][i]
+            pre = self.snapshot[(bank, i)]
+            hi_first = shape == "2x32" and order == "hi_first"
+            if hi_first and hi == pre:
+                # A high word equal to the stored low word cannot show a
+                # high-half write that reaches the field.
+                hi ^= 1
             open_graded_window(TEST, self.logger)
-            await self._write_scratch(addr, lo, hi, shape, order)
+            mid = ""
+            if hi_first:
+                mid = " " + await self._hi_first_mid(bank, i, addr, (hi << 32) | lo, pre)
+                await self._write(addr, (hi << 32) | lo, "lo", tolerant=False)
+            else:
+                await self._write_scratch(addr, lo, hi, shape, order)
             got = await self._read64(addr)
             close_graded_window(self.logger)
             fc = field_compare(got, lo, SCR_FIELD)
-            probe = None
-            if bank == "cold":
-                await RisingEdge(cocotb.top.clk_i)
-                await ReadOnly()
-                probe = self._probe_cold(i)
-                await RisingEdge(cocotb.top.clk_i)
+            probe = await self._sample_cold(i) if bank == "cold" else None
             line = (
                 f"bank={bank} index={i} order={perm} shape={shape}"
                 f"{'' if shape == '64' else '(' + order + ')'} low_word=0x{got & SCR_FIELD:08x} "
                 f"upper32_written=0x{hi:08x} {fc.fields()}"
                 + ("" if probe is None else f" cold_probe=0x{probe:08x}")
+                + (f" before_hi=0x{pre:08x}{mid}" if hi_first else "")
             )
             assert fc.ok, f"CHK-SCR-SHAPE FAIL: {line}"
             assert probe is None or probe == lo, f"CHK-SCR-SHAPE FAIL: cold probe {line}"

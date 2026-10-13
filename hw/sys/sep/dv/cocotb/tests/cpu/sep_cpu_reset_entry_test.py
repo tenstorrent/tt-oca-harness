@@ -39,6 +39,8 @@ Checks:
                        in every cold reset and every CPU reset of the leaf.
   CHK-NO-EARLY-FETCH : no ``rom_req`` or ``ifu_req`` request while the
                        ``sep_cpu_reset_n`` tap is low, in the same resets.
+                       Control: every reset shows an ``ifu_req`` request
+                       after the tap rise, and one reset a ``rom_req``.
   CTL-RUNREQ         : (control) the first retirement falls inside the
                        observation window after the tap rise, for the drawn
                        ``ext_boot_seq_done_i`` delay and for the zero delay.
@@ -445,6 +447,7 @@ class _Epoch:
     early_retire: list = field(default_factory=list)
     early_fetch: list = field(default_factory=list)
     first_rom_fetch_clk: int | None = None
+    first_ifu_fetch_clk: int | None = None
 
 
 @dataclass
@@ -611,6 +614,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
                         ep.retired_in_window += 1
                 if rom_req and ep.first_rom_fetch_clk is None:
                     ep.first_rom_fetch_clk = self.clk
+                if ifu_req and ep.first_ifu_fetch_clk is None:
+                    ep.first_ifu_fetch_clk = self.clk
 
     # ---------------------------------------------------------------- mailbox
     def _mbx(self) -> list[_Rec]:
@@ -1181,6 +1186,15 @@ class sep_cpu_reset_entry_test(sep_base_test):
         ctl_fetch = next(
             (e.first_rom_fetch_clk - e.start_clk for e in eps if e.first_rom_fetch_clk), None
         )
+        # Every reset fetches through the IFU after the tap rise (the ROM
+        # entry and the SRAM vectors both run the routine in the SRAM), so an
+        # epoch with no ifu_req after the rise shows a dead or unbound tap.
+        no_ifu = [e.idx for e in eps if e.first_ifu_fetch_clk is None]
+        ifu_after_rise = ",".join(
+            f"{e.idx}:{e.kind}:"
+            + ("none" if e.first_ifu_fetch_clk is None else str(e.first_ifu_fetch_clk - e.rise_clk))
+            for e in eps
+        )
         kinds = f"cold={sum(e.kind == 'cold' for e in eps)} cpu={sum(e.kind == 'cpu' for e in eps)}"
         self._grade(
             "CHK-NO-EARLY-RETIRE",
@@ -1190,7 +1204,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
         )
         self._grade(
             "CHK-NO-EARLY-FETCH",
-            not fetch_bad and not no_low and ctl_fetch is not None,
+            not fetch_bad and not no_low and ctl_fetch is not None and not no_ifu,
             f"resets={len(eps)} ({kinds}) fetch_before_release={len(fetch_bad)} "
-            f"control_fetch_cycle={ctl_fetch} tap_never_low={no_low} first={fetch_bad[:4]}",
+            f"control_fetch_cycle={ctl_fetch} ifu_req_after_rise={ifu_after_rise} "
+            f"no_ifu_req={no_ifu} tap_never_low={no_low} first={fetch_bad[:4]}",
         )
