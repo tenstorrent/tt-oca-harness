@@ -452,10 +452,7 @@ Note that the value 3 for this register represents an invalid configuration that
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>OPCODE</ipxact:name>
-            <ipxact:description>Defines the type of DMA operations: 0 copies, 1, 2 and 3 copy with inline SHA256,
-SHA384 and SHA512 hashing, and 4 writes zeros to the destination without reading
-the source. A zero fill writes only inside the enabled memory range and cannot be
-combined with hardware handshake mode. Other values are invalid.</ipxact:description>
+            <ipxact:description>Defines the type of DMA operations.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

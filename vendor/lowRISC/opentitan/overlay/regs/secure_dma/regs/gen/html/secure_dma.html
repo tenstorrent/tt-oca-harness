@@ -159,7 +159,7 @@
 <tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>DIGEST_SWAP</td><td>RW</td><td>0x0</td><td>Digest register byte swap.<br><br>If 1 the value in each digest output register is converted to big-endian byte order.<br>This setting does not affect the order of the digest output registers, !!SHA2_DIGEST_0 still contains the first 4 bytes of the digest.</td></tr>
 <tr><td>4</td><td>HARDWARE_HANDSHAKE_ENABLE</td><td>RW</td><td>0x0</td><td>Enable hardware handshake mode.<br>Used to clear FIFOs from low speed IO peripherals receiving data, e.g., I3C receive buffer.<br>Listen to an input trigger signal.<br>Read data from source address location.<br>Copy to destination address.<br>Number of bytes specified in size register.<br>Note assumption is the peripheral lowers input once FIFO is cleared.<br>No explicit clearing necessary.</td></tr>
-<tr><td>3:0</td><td>OPCODE</td><td>RW</td><td>0x0</td><td>Defines the type of DMA operations: 0 copies, 1, 2 and 3 copy with inline SHA256,<br>SHA384 and SHA512 hashing, and 4 writes zeros to the destination without reading<br>the source. A zero fill writes only inside the enabled memory range and cannot be<br>combined with hardware handshake mode. Other values are invalid.</td></tr>
+<tr><td>3:0</td><td>OPCODE</td><td>RW</td><td>0x0</td><td>Defines the type of DMA operations.</td></tr>
 </table>
 <h3 id="SRC_CONFIG">SRC_CONFIG</h3>
 <table>

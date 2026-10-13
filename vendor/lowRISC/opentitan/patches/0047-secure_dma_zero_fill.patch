@@ -5,22 +5,10 @@
 # hardware handshake mode.
 
 diff --git a/hw/ip/dma/data/dma.hjson b/hw/ip/dma/data/dma.hjson
-index a3f7aaada6..b9bf6b9a8a 100644
+index a3f7aaada6..e2d9818895 100644
 --- a/hw/ip/dma/data/dma.hjson
 +++ b/hw/ip/dma/data/dma.hjson
-@@ -460,7 +460,10 @@
-           name: "opcode"
-           resval: 0x0
-           desc: '''
--                Defines the type of DMA operations.
-+                Defines the type of DMA operations: 0 copies, 1, 2 and 3 copy with inline SHA256,
-+                SHA384 and SHA512 hashing, and 4 writes zeros to the destination without reading
-+                the source. A zero fill writes only inside the enabled memory range and cannot be
-+                combined with hardware handshake mode. Other values are invalid.
-                 '''
-           enum: [
-             { value: "0",
-@@ -479,6 +482,10 @@
+@@ -479,6 +479,10 @@
                name: "SHA512"
                desc: "Perform inline hashing using SHA512."
              }
