@@ -914,6 +914,12 @@ module secure_dma
             next_error[DmaSrcAddrErr] = 1'b1;
           end
 
+          // A zero fill writes no byte past TOTAL_DATA_SIZE: a start with no bytes left fails
+          // without a write
+          if (zero_fill && (transfer_byte_q >= reg2hw.total_data_size.q)) begin
+            next_error[DmaSizeErr] = 1'b1;
+          end
+
           // A zero fill writes only inside the enabled memory range, whatever the address spaces.
           // Each beat is checked, so the bound holds across chunks and in every addressing mode.
           zero_fill_beat_end = dst_addr_d - SYS_ADDR_WIDTH'(1) +
