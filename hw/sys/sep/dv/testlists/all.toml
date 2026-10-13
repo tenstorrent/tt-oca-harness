@@ -46,7 +46,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_spi_cold_reset_values_rand_test, VCS only (spi.toml). It reads SPI host
 #   state after rst_ni, and Verilator is two-state.
 name = "all"
-expected_count = 152
+expected_count = 153
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -199,6 +199,7 @@ tests = [
     "sep_dma_irq_error_lock_rand_test",
     "sep_dma_abort_recovery_rand_test",
     "sep_dma_zero_fill_rand_test",
+    "sep_dma_zero_fill_continuation_test",
     "sep_spi_dma_handshake_rand_test",
 ]
 
@@ -364,6 +365,7 @@ tests = [
     "sep_dma_irq_error_lock_rand_test",
     "sep_dma_abort_recovery_rand_test",
     "sep_dma_zero_fill_rand_test",
+    "sep_dma_zero_fill_continuation_test",
     "sep_spi_dma_handshake_rand_test",
 ]
 
@@ -608,7 +610,7 @@ tests = [
 # Convenience group of the SPI and DMA Phase 3 tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_spi_dma"
-expected_count = 10
+expected_count = 11
 tests = [
     "sep_spi_pad_speed_dir_matrix_test",
     "sep_spi_pad_timing_cfg_rand_test",
@@ -620,4 +622,5 @@ tests = [
     "sep_dma_abort_recovery_rand_test",
     "sep_spi_dma_handshake_rand_test",
     "sep_dma_zero_fill_rand_test",
+    "sep_dma_zero_fill_continuation_test",
 ]

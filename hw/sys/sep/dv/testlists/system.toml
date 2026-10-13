@@ -617,3 +617,14 @@ tags = ["dma", "zero", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Secure DMA zero fill continued by GO=1 with INITIAL_TRANSFER=0: the range bound at LIMIT, the locked range and the handshake rule hold for the continuation. Directed.
+name = "sep_dma_zero_fill_continuation_test"
+module = "system.sep_dma_zero_fill_continuation_test"
+seed = 1
+timeout_sec = 3600
+tags = ["dma", "zero", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
