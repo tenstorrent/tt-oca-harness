@@ -16,9 +16,9 @@ class smc_dma_2d_copy_test(smc_base_test):
     required_evidence = (
         "CHK-DMA-2D-INDEP-STRIDES",
         "CHK-DMA-2D-ROW-COUNTS",
-        "CHK-DMA-2D-UNALIGNED-ROWS",
         "CHK-DMA-2D-SINGLE-ID",
         "CHK-DMA-2D-STRIDE-EDGES",
+        "CHK-DMA-2D-UNALIGNED-ROWS",
         "CHK-DMA-2D-WRAP-2POW56",
         "CHK-NONVAC",
     )

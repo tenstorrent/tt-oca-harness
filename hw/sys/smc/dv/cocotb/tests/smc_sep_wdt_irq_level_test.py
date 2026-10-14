@@ -14,11 +14,11 @@ class smc_sep_wdt_irq_level_test(smc_base_test):
     """Idle zero, first high after the pin falls, zero after pin release and warm reset release."""
 
     required_evidence = (
-        "CHK-SEPWDT-IDLE-ZERO",
-        "CHK-SEPWDT-ASSERT-HIGH",
-        "CHK-SEPWDT-RELEASE-ZERO",
-        "CHK-SEPWDT-LATENCY-LOG",
         "CHK-NONVAC",
+        "CHK-SEPWDT-ASSERT-HIGH",
+        "CHK-SEPWDT-IDLE-ZERO",
+        "CHK-SEPWDT-LATENCY-LOG",
+        "CHK-SEPWDT-RELEASE-ZERO",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 6

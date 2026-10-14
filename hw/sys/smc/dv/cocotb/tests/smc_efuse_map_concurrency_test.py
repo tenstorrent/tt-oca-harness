@@ -121,10 +121,10 @@ class smc_efuse_map_concurrency_test(smc_base_test):
     """Race SEP_IN and JTAG accesses to one word and keep eight SEP_IN reads outstanding."""
 
     required_evidence = (
-        "CHK-EMAP-CONC-SAME-READ",
-        "CHK-EMAP-CONC-WR-RD",
         "CHK-EMAP-CONC-ALTERNATE",
         "CHK-EMAP-CONC-OUTSTANDING",
+        "CHK-EMAP-CONC-SAME-READ",
+        "CHK-EMAP-CONC-WR-RD",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

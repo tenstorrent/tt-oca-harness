@@ -22,12 +22,12 @@ class smc_axil_write_side_test(smc_base_test):
     """Alternate eFuse-shim and external-window writes, then check the idle windows."""
 
     required_evidence = (
-        "CHK-AXLWS-PROBE-ALIVE",
-        "CHK-AXLWS-IDLE-AFTER-RESET",
-        "CHK-AXLWS-WRITE-INTERLEAVE",
-        "CHK-AXLWS-MIXED-RDWR",
         "CHK-AXLWS-EXT-WRITE-PENDING",
         "CHK-AXLWS-IDLE-AFTER-BURST",
+        "CHK-AXLWS-IDLE-AFTER-RESET",
+        "CHK-AXLWS-MIXED-RDWR",
+        "CHK-AXLWS-PROBE-ALIVE",
+        "CHK-AXLWS-WRITE-INTERLEAVE",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

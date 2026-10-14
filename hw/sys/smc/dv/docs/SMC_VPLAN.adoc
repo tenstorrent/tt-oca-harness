@@ -284,8 +284,8 @@ MISSING_LAST interrupt untouched.
 while `afready_i` is low, clears when it rises, keeps `BUFFER_THRESHOLD`, and is separate from the
 receiver flush.
 |`smc_wdt_count_feed_test` |Watchdog COUNT counts under `wdogenalways` or `wdogcoreawake`, takes
-keyed writes, reads COUNT_HI as 0, restarts on the feed word only, and keeps counting through a core
-1 level reset.
+keyed writes, reads COUNT_HI as 0, restarts on the feed word only, and counts again after a core 1
+level reset is released; the reads taken while that reset is held are measured.
 |`smc_wdt_ip0_clear_test` |`CTRL.wdogip0` sets while the scaled count is at or above `CMP`, holds
 against a clear in that window, and clears only through `KEY` and a `CTRL` write with bit 28 low
 once the count is below `CMP`.
@@ -308,7 +308,7 @@ single-byte writes.
 |`smc_dma_2d_copy_test` |Two-dimensional copies land row by row for each stride and row count.
 |`smc_dma_backpressure_breadth_test` |DMA copies stay exact under stalled and held SYS_OUT channels.
 |`smc_dma_burst_shaping_test` |CONFIG burst bits shape AR and AW bursts of a 4 KiB copy.
-|`smc_dma_completion_status_test` |DONE_0 and STATUS_0 report reset, idle, busy, no-data, held.
+|`smc_dma_completion_status_test` |DONE_0 and STATUS_0 report reset, idle, no-data and held; the busy indication is measured.
 |`smc_dma_csr_config_test` |DMA descriptor registers and CONFIG hold, keep and alias their values.
 |`smc_dma_field_widths_test` |DMA fields drop bits above their effective widths and keep bits 55:32.
 |`smc_dma_linear_copy_test` |Linear DMA copies match byte for byte across offsets and sizes.
@@ -2949,8 +2949,8 @@ bounded SEP_IN read through the driver's tolerated-timeout path for the access m
 held in reset
 
 *Objective*: Watchdog COUNT counts under `wdogenalways` or `wdogcoreawake`, takes
-keyed writes, reads COUNT_HI as 0, restarts on the feed word only, and keeps counting through a core
-1 level reset.
+keyed writes, reads COUNT_HI as 0, restarts on the feed word only, and counts again after a core 1
+level reset is released; the reads taken while that reset is held are measured.
 
 *Test Coverage*:
 
@@ -2958,19 +2958,23 @@ keyed writes, reads COUNT_HI as 0, restarts on the feed word only, and keeps cou
   `doc/programmer/src/smc-programming.adoc`, watchdog): three consecutive `COUNT` reads are strictly
   increasing with `wdogenalways` alone and with `wdogenalways` plus `wdogcoreawake`. With both
   enables clear the three reads and their increase are printed (whether the counter holds or counts
-  is not stated by the specification), and after `wdogenalways` is cleared again the three reads must
-  show the same behaviour as that earlier both-clear window.
+  is not stated by the specification), and after `wdogenalways` is cleared again the three reads
+  must show the same behaviour as that earlier both-clear window.
 * COUNT write: with `wdogenalways` set, a keyed write of 0x100 makes the next reads at least 0x100
   and strictly increasing, with the first read below the `COUNT` read taken right before the write
   (which must exceed 0x100 plus twice the largest per-read increase measured in the window, so the
-  leg is not vacuous). Whether the first read is the written value or the written value plus one is not stated by the specification and is printed. With both enables clear a write of 0x8000_0010
+  leg is not vacuous) and must not exceed 0x100 plus twice that increase. Whether the first read
+  is the written value or the written value plus one is not stated by the specification and is
+  printed. With both enables clear a write of 0x8000_0010
   reads bit 31 as 0 and bits 30:0 between 0x10 and 0x10 plus that increase (`wdt.rdl`,
   `COUNT.wdogcount` is 31 bits).
 * `COUNT_HI` reads 0 (`wdt.rdl`) while `COUNT` reads nonzero after a keyed write of 0x1234_5678.
 * Rollover: eight consecutive `COUNT` reads from 0x7FFF_FFF0 never have bit 31 set; the first read
-  below 0x7FFF_FFF0 is printed with its value (the value after 0x7FFF_FFFF is not stated by the specification).
+  below 0x7FFF_FFF0 is printed with its value (the value after 0x7FFF_FFFF is not stated by the
+  specification).
 * Feed (`wdt.rdl`, `FEED`): after a keyed `COUNT` write of 0x0010_0000 and a keyed `FEED` write of
-  0x0D09F00D the first `COUNT` read is below 0x0010_0000 and the second is larger. A keyed `FEED`
+  0x0D09F00D the first `COUNT` read is below 0x0010_0000 and at most four times the largest
+  per-read increase measured earlier, and the second is larger. A keyed `FEED`
   write of 0x0D09F00C and a `FEED` write of 0x0D09F00D with the watchdog locked each leave `COUNT`
   at or above 0x0010_0000 (`hw/sys/smc/doc/watchdog.adoc`, Register Access); `KEY` read after the
   non-feed word is printed (whether that write locks is not stated by the specification), and `KEY`
@@ -4100,7 +4104,7 @@ responses; passive probes `tb_output_axi_arvalid`, `tb_output_axi_arready`, `tb_
 `clk_smc_i` rise; DMA registers `DONE_0`, `STATUS_0` (bits [7:0], 8 and 9), `NEXT_ID_0`, `CONFIG`,
 `NUM_REPETITIONS`, `SRC_ADDRESS`, `DST_ADDRESS`, `LENGTH`, `SRC_STRIDE`, `DST_STRIDE`
 
-*Objective*: DONE_0 and STATUS_0 report reset, idle, busy, no-data, held.
+*Objective*: DONE_0 and STATUS_0 report reset, idle, no-data and held; the busy indication is measured.
 
 *Test Coverage*:
 
@@ -4110,10 +4114,11 @@ responses; passive probes `tb_output_axi_arvalid`, `tb_output_axi_arready`, `tb_
   command, and bit 9 is zero (`dma.adoc`, status and notification table): two idle reads must both
   have bits [7:0] equal to 0xFF, bit 9 clear, and be equal to each other.
 * `STATUS_0` bit 8 is the midend activity indication (`dma.adoc`). It must read 0 at the two idle
-  reads before the copy. While an eight-row copy runs, bit 8 is sampled with its time since
-  submission on every poll and the samples, the polls with bit 8 high and the transitions are
-  printed; when and for how long it rises is measured, not compared (the specification does not state the value). The copy
-  must still retire with its id, move its data and produce AR and AW handshakes.
+  reads before the copy (a compare a bit stuck at 0 also passes). While an eight-row copy runs,
+  bit 8 is sampled with its time since submission on every poll and the samples, the polls with
+  bit 8 high and the transitions are printed; when and for how long it rises is measured, not
+  compared (the specification does not state the value). The copy must still retire with its id,
+  move its data and produce AR and AW handshakes.
 * No-data commands: clearing `CONFIG.ENABLED_ND` forces the repetition count to zero, and a command
   with a zero repetition count also moves no data, yet each still retires its transfer id
   (`dma.adoc`, Linear and Two-Dimensional Copies; `dma_ctrl.rdl`, `CONFIG.ENABLED_ND`). For each,
@@ -9910,7 +9915,7 @@ and the stall reached the bus.
 |`CHK-WSPLIT-W-FIRST` |With W presented first and the AW channel stalled the W handshake comes
 before the AW handshake, the B handshake after AW, the write answers OKAY, the stored word matches
 and the stall reached the bus.
-|`CHK-WSPLIT-SAME-CYCLE` |The unstalled write answers OKAY and its stored word matches; the number
+|`CHK-WSPLIT-SAME-CYCLE` |The write released from the stall answers OKAY and its stored word matches; the number
 of cycles with AW and W handshakes together and the first-valid offsets are measured and printed,
 not compared.
 |`CHK-OUT-READ-RECOVERY` |After the SLVERR read, the DECERR read and the OKAY read each plain read
@@ -22224,7 +22229,7 @@ assert holds; `CHK-CMDC-RS-OBS` records the counts without an expected value. En
 
 *BFM / Model*: ocah_axi_vip (AXI) on SYS_IN (SEP_IN frontdoor); bench targets on the I2C0 pads: an
 I2C protocol VIP NACK target at 0x10 (NACKs its address), a bench target at 0x12 that NACKs one
-chosen data byte index, an I2C protocol VIP EEPROM at 0x50; the I2C wire monitor on the same pads;
+chosen data byte index; the I2C wire monitor on the same pads;
 probes `tb_i2c0_scl`, `tb_i2c0_sda`, `tb_i2c0_scl_i`, `tb_i2c0_scl_dut_low`, `tb_i2c0_sda_dut_low`;
 `clk_smc_i`; I2C0 registers CTRL, FDATA, FIFO_CTRL, STATUS, CONTROLLER_EVENTS, INTR_STATE,
 HOST_NACK_HANDLER_TIMEOUT, TIMING0-4, OVRD and the I2C0 wrapper control register;
@@ -22302,7 +22307,8 @@ followed by 0xD2 and 0xD3.
 both read 0 after `CTRL` 0 and a written 1 to `NACK`.
 |`CHK-NTO-ENABLED` |With `HOST_NACK_HANDLER_TIMEOUT` = EN | 256 and the NACK unhandled,
 `UNHANDLED_NACK_TIMEOUT` sets within the poll bound after `NACK`, the wire monitor counts exactly
-one STOP, and the events read 0 after the clear; the flag order is printed without comparing.
+one STOP, and the events read 0 after the clear; `UNHANDLED_NACK_TIMEOUT` must set after `NACK`
+(the measured latency is the window of the disabled-timeout leg).
 |`CHK-NTO-DISABLED` |With `HOST_NACK_HANDLER_TIMEOUT` = 0, over at least four times the measured
 latency `NACK` stays 1, `UNHANDLED_NACK_TIMEOUT` stays 0 and no STOP appears on the wire.
 |`CHK-NTO-CLEAR-OBS` |The written 1 to `NACK` must complete within 400 cycles of the NACK and before

@@ -14,15 +14,15 @@ class smc_i2c_intr_output_path_test(smc_base_test):
     """INTR_ENABLE masking, one-hot raise, instance independence and the CPU vector bits."""
 
     required_evidence = (
-        "CHK-I2C-IRQ-RESET-LOW",
-        "CHK-I2C-IRQ-PERIPH-ONEHOT",
+        "CHK-I2C-CPU-NEIGHBOURS",
+        "CHK-I2C-CPU-VEC-FALL-OBS",
         "CHK-I2C-CPU-VEC-RAISE-OBS",
         "CHK-I2C-ENABLE-MASK-OBS",
-        "CHK-I2C-PAIR-MASK",
-        "CHK-I2C-IRQ-THREE-INDEPENDENT",
         "CHK-I2C-INSTANCE-INTR-ISOLATION",
-        "CHK-I2C-CPU-VEC-FALL-OBS",
-        "CHK-I2C-CPU-NEIGHBOURS",
+        "CHK-I2C-IRQ-PERIPH-ONEHOT",
+        "CHK-I2C-IRQ-RESET-LOW",
+        "CHK-I2C-IRQ-THREE-INDEPENDENT",
+        "CHK-I2C-PAIR-MASK",
         "CHK-NONVAC",
     )
     min_evidence = 10

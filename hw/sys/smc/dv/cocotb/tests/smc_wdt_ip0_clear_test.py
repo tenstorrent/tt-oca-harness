@@ -17,13 +17,13 @@ class smc_wdt_ip0_clear_test(smc_base_test):
     """wdogip0 sets at the compare, holds above it and clears only through KEY and a CTRL write."""
 
     required_evidence = (
-        "CHK-WDT-IP0-SET",
+        "CHK-NONVAC",
         "CHK-WDT-IP0-CLEAR-SEQUENCE",
-        "CHK-WDT-IP0-UNLOCK-CONSUMED",
         "CHK-WDT-IP0-NO-CLEAR-ABOVE",
         "CHK-WDT-IP0-RESET-AFTER-CLEAR",
+        "CHK-WDT-IP0-SET",
+        "CHK-WDT-IP0-UNLOCK-CONSUMED",
         "CHK-WDT-IP0-WRITE-ONE",
-        "CHK-NONVAC",
     )
     min_evidence = 7
 

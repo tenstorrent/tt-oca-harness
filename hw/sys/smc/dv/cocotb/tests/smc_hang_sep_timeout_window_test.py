@@ -14,11 +14,11 @@ class smc_hang_sep_timeout_window_test(smc_base_test):
     """A 16-rise stall stays quiet; a held SEP_IN read raises sep irq and raw bit 286."""
 
     required_evidence = (
+        "CHK-NONVAC",
+        "CHK-SEPWIN-AT-LOG",
         "CHK-SEPWIN-BELOW",
         "CHK-SEPWIN-BEYOND",
-        "CHK-SEPWIN-AT-LOG",
         "CHK-SEPWIN-EXACT-DELTA",
-        "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 6

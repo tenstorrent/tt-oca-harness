@@ -14,9 +14,9 @@ class smc_mbx_inbound_irq_vector_test(smc_base_test):
     """Single, grouped and clear-one inbound mailbox pushes against raw bits 319:288."""
 
     required_evidence = (
-        "CHK-MBXIN-POSITION-LOG",
-        "CHK-MBXIN-MULTI-LOG",
         "CHK-MBXIN-CLEAR-LOG",
+        "CHK-MBXIN-MULTI-LOG",
+        "CHK-MBXIN-POSITION-LOG",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

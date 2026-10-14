@@ -19,13 +19,13 @@ class smc_telemetry_ctrl_access_test(smc_base_test):
     """CTRL, INTR_ENABLE and INTR_TEST field access and read-only register writes."""
 
     required_evidence = (
-        "CHK-TELEMETRY-THRESHOLD-FIELD-RW",
-        "CHK-TELEMETRY-CTRL-PULSE-READ",
+        "CHK-NONVAC",
         "CHK-TELEMETRY-CTRL-FULL-WORD",
+        "CHK-TELEMETRY-CTRL-PULSE-READ",
         "CHK-TELEMETRY-INTR-ENABLE-BITS",
         "CHK-TELEMETRY-INTR-TEST-ACCESS",
         "CHK-TELEMETRY-RO-WRITE-IGNORED",
-        "CHK-NONVAC",
+        "CHK-TELEMETRY-THRESHOLD-FIELD-RW",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 8

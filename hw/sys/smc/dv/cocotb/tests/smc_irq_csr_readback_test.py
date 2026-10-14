@@ -14,11 +14,11 @@ class smc_irq_csr_readback_test(smc_base_test):
     """Frontdoor readback of the three hang detectors and the SMC_ATTRIBUTES counts."""
 
     required_evidence = (
+        "CHK-ATTR-COUNTS-LOG",
         "CHK-HANGREG-CTRL-RW",
         "CHK-HANGREG-IRQ-RO",
-        "CHK-HANGREG-THR-RANGE",
         "CHK-HANGREG-ISOLATION",
-        "CHK-ATTR-COUNTS-LOG",
+        "CHK-HANGREG-THR-RANGE",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

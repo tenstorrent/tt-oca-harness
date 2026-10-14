@@ -14,13 +14,13 @@ class smc_dma_burst_shaping_test(smc_base_test):
     """4 KiB copies under every CONFIG burst-shaping mode, AR and AW bursts checked."""
 
     required_evidence = (
-        "CHK-DMA-BURST-REDUCE-OFF",
-        "CHK-DMA-BURST-SRC-LLEN",
-        "CHK-DMA-BURST-DST-LLEN",
-        "CHK-DMA-BURST-IGNORED-INDEPENDENT",
         "CHK-DMA-AW-AFTER-FIRST-R",
         "CHK-DMA-AW-BEFORE-FIRST-R",
         "CHK-DMA-BURST-ALL-BITS",
+        "CHK-DMA-BURST-DST-LLEN",
+        "CHK-DMA-BURST-IGNORED-INDEPENDENT",
+        "CHK-DMA-BURST-REDUCE-OFF",
+        "CHK-DMA-BURST-SRC-LLEN",
         "CHK-NONVAC",
     )
     min_evidence = 8

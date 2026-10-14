@@ -105,14 +105,14 @@ class smc_efuse_map_locks_register_test(smc_base_test):
     """Set LOCKS bits by 32-bit, 64-bit and single-bit writes and check each slot's lock."""
 
     required_evidence = (
-        "CHK-EMAP-LOCKS-SENSED",
+        "CHK-EMAP-LOCK-PERSIST",
+        "CHK-EMAP-LOCKS-BITWISE",
         "CHK-EMAP-LOCKS-HALVES",
         "CHK-EMAP-LOCKS-IDEMPOTENT",
+        "CHK-EMAP-LOCKS-SENSED",
         "CHK-EMAP-LOCKS-WIDE",
-        "CHK-EMAP-LOCKS-BITWISE",
-        "CHK-EMAP-SLOT-MAP",
         "CHK-EMAP-SLOT-ISOLATION",
-        "CHK-EMAP-LOCK-PERSIST",
+        "CHK-EMAP-SLOT-MAP",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

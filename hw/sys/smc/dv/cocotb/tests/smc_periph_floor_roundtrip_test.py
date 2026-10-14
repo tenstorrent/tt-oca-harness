@@ -24,7 +24,11 @@ SMC_CLK_PERIOD_NS = 1.25
 class smc_periph_floor_roundtrip_test(smc_base_test):
     """AVS_CFG_0 write, read-back and restore at the run's peripheral clock period."""
 
-    required_evidence = ("CHK-PERIPH-FLOOR-ROUNDTRIP", "CHK-NONVAC", "CHK-TIMEOUT-PATHS")
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-PERIPH-FLOOR-ROUNDTRIP",
+        "CHK-TIMEOUT-PATHS",
+    )
     min_evidence = 3
 
     auto_protocol_vip = False

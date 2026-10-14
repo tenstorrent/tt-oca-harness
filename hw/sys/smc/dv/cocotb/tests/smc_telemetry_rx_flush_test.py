@@ -19,13 +19,13 @@ class smc_telemetry_rx_flush_test(smc_base_test):
     """Receiver flush of the queue, the assembly pointer and the interrupt state."""
 
     required_evidence = (
+        "CHK-NONVAC",
+        "CHK-TELEMETRY-RX-FLUSH-BEATS-AROUND",
         "CHK-TELEMETRY-RX-FLUSH-EMPTIES",
+        "CHK-TELEMETRY-RX-FLUSH-KEEPS-MISSING-LAST",
+        "CHK-TELEMETRY-RX-FLUSH-MID-MESSAGE",
         "CHK-TELEMETRY-RX-FLUSH-ONE-SHOT",
         "CHK-TELEMETRY-RX-FLUSH-RESTART",
-        "CHK-TELEMETRY-RX-FLUSH-MID-MESSAGE",
-        "CHK-TELEMETRY-RX-FLUSH-BEATS-AROUND",
-        "CHK-TELEMETRY-RX-FLUSH-KEEPS-MISSING-LAST",
-        "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 8

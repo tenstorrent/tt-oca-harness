@@ -17,11 +17,11 @@ class smc_dfx_aperture_extent_test(smc_base_test):
     """dfx_ctrl aperture: registers, past-extent DECERR, next block, gap."""
 
     required_evidence = (
-        "CHK-APERTURE-REGISTERS",
+        "CHK-APERTURE-HOLE",
+        "CHK-APERTURE-NEXT-BLOCK",
         "CHK-APERTURE-PAST-READ",
         "CHK-APERTURE-PAST-WRITE",
-        "CHK-APERTURE-NEXT-BLOCK",
-        "CHK-APERTURE-HOLE",
+        "CHK-APERTURE-REGISTERS",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

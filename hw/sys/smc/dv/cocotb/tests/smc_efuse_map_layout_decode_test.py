@@ -123,16 +123,16 @@ class smc_efuse_map_layout_decode_test(smc_base_test):
     """Read every region, both widths and the past-extent responder against the marker image."""
 
     required_evidence = (
-        "CHK-EMAP-LAYOUT-JPI-I2C",
         "CHK-EMAP-LAYOUT-CFG-OCCP",
+        "CHK-EMAP-LAYOUT-JPI-I2C",
         "CHK-EMAP-LAYOUT-SPARE",
         "CHK-EMAP-LAYOUT-SWEEP",
+        "CHK-EMAP-PAST-NOCHANGE",
+        "CHK-EMAP-PAST-READ",
+        "CHK-EMAP-PAST-WRITE",
         "CHK-EMAP-WIDTH-32",
         "CHK-EMAP-WIDTH-64",
         "CHK-EMAP-WIDTH-CFG",
-        "CHK-EMAP-PAST-READ",
-        "CHK-EMAP-PAST-WRITE",
-        "CHK-EMAP-PAST-NOCHANGE",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

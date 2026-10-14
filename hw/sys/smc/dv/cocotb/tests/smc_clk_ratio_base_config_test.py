@@ -13,8 +13,8 @@ from smc_base_test import smc_base_test
 
 REQUIRED = (
     "CHK-BASECFG-RESET-READ",
-    "CHK-BASECFG-THRESHOLD-WRITE",
     "CHK-BASECFG-RO-IGNORED",
+    "CHK-BASECFG-THRESHOLD-WRITE",
     "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
 )

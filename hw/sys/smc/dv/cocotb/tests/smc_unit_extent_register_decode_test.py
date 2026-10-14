@@ -24,17 +24,17 @@ class smc_unit_extent_register_decode_test(smc_base_test):
     """Base registers, last registers and memory words of the unit apertures."""
 
     required_evidence = (
-        "CHK-MAILBOX-BASE-PORTS",
-        "CHK-EFUSE-BASE-PORTS",
-        "CHK-TIMER-BASE-PORTS",
         "CHK-CLA-BASE-PORTS",
-        "CHK-ROM-WORDS-PORTS",
-        "CHK-SPM-WORDS-BASES",
-        "CHK-SPARE-LAST-REGS",
-        "CHK-LAST-REG-MAILBOX-EFUSE-TIMER",
+        "CHK-EFUSE-BASE-PORTS",
         "CHK-LAST-REG-DMA-ZEROER",
+        "CHK-LAST-REG-MAILBOX-EFUSE-TIMER",
+        "CHK-MAILBOX-BASE-PORTS",
         "CHK-NONVAC",
+        "CHK-ROM-WORDS-PORTS",
+        "CHK-SPARE-LAST-REGS",
+        "CHK-SPM-WORDS-BASES",
         "CHK-TIMEOUT-PATHS",
+        "CHK-TIMER-BASE-PORTS",
     )
     min_evidence = 11
 

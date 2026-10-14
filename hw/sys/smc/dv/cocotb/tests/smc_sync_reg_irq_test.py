@@ -14,10 +14,10 @@ class smc_sync_reg_irq_test(smc_base_test):
     """Write SYNC_REG and follow sync_irq_o; upper bits do not reach the pin."""
 
     required_evidence = (
-        "CHK-SYNC-RESET-0",
+        "CHK-NONVAC",
         "CHK-SYNC-DRIVES-IRQ",
         "CHK-SYNC-ONLY-BIT-0",
-        "CHK-NONVAC",
+        "CHK-SYNC-RESET-0",
     )
     min_evidence = 4
 

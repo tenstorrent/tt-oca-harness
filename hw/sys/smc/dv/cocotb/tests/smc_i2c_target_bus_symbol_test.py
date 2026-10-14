@@ -14,14 +14,14 @@ class smc_i2c_target_bus_symbol_test(smc_base_test):
     """Early STOP, repeated START and read NACK, the detect flags and UNEXP_STOP."""
 
     required_evidence = (
-        "CHK-I2C-TGT-REPSTART-ENTRIES",
-        "CHK-I2C-TGT-ABANDON-READ-NACK",
         "CHK-I2C-TGT-ABANDON-LOG",
+        "CHK-I2C-TGT-ABANDON-READ-NACK",
         "CHK-I2C-TGT-ABANDON-RECOVER",
-        "CHK-I2C-TGT-UNEXP-STOP-LOG",
-        "CHK-I2C-TGT-UNEXP-STOP-REG",
         "CHK-I2C-TGT-DETECT-FLAGS",
         "CHK-I2C-TGT-DETECT-RACE-LOG",
+        "CHK-I2C-TGT-REPSTART-ENTRIES",
+        "CHK-I2C-TGT-UNEXP-STOP-LOG",
+        "CHK-I2C-TGT-UNEXP-STOP-REG",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

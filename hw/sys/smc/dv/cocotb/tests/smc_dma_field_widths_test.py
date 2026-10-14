@@ -14,11 +14,11 @@ class smc_dma_field_widths_test(smc_base_test):
     """Copy with HI words carrying bits above the effective widths and bits 55:32."""
 
     required_evidence = (
+        "CHK-DMA-FW-ADDR-55-32",
         "CHK-DMA-FW-ADDR-TOP-BYTE",
         "CHK-DMA-FW-LENGTH-TOP-BYTE",
-        "CHK-DMA-FW-STRIDE-TOP-BYTE",
         "CHK-DMA-FW-REPS-HI",
-        "CHK-DMA-FW-ADDR-55-32",
+        "CHK-DMA-FW-STRIDE-TOP-BYTE",
         "CHK-NONVAC",
     )
     min_evidence = 6

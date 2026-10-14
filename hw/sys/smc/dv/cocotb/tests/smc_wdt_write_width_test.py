@@ -17,12 +17,12 @@ class smc_wdt_write_width_test(smc_base_test):
     """Narrow and zero-strobe watchdog writes answer OKAY and act only where the strobes cover."""
 
     required_evidence = (
-        "CHK-WDT-NARROW-KEY-FEED",
-        "CHK-WDT-HALFWORD-CMP-SCALED",
-        "CHK-WDT-CTRL-BYTELANES",
-        "CHK-WDT-NARROW-COUNT",
-        "CHK-WDT-ZERO-STROBE",
         "CHK-NONVAC",
+        "CHK-WDT-CTRL-BYTELANES",
+        "CHK-WDT-HALFWORD-CMP-SCALED",
+        "CHK-WDT-NARROW-COUNT",
+        "CHK-WDT-NARROW-KEY-FEED",
+        "CHK-WDT-ZERO-STROBE",
     )
     min_evidence = 6
 

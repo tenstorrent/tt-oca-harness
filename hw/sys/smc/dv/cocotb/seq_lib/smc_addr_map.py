@@ -410,6 +410,14 @@ def cpu_ctrl_u32(symbol: str) -> int:
     return _field_mask(_CPU_CTRL_H, symbol)
 
 
+_WDT_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "wdt.h"
+
+
+def wdt_u32(symbol: str) -> int:
+    """Field mask from generated ``wdt.h``."""
+    return _field_mask(_WDT_H, symbol)
+
+
 _RESET_UNIT_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "reset_unit.h"
 
 

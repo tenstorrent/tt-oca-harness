@@ -14,15 +14,15 @@ class smc_i2c_target_instance_pair_test(smc_base_test):
     """Pairs of wrapper instances on one bus, the I2C clock gate and the NACK handler."""
 
     required_evidence = (
+        "CHK-I2C-TGT-CG-GATED",
+        "CHK-I2C-TGT-CG-MIDXFER",
+        "CHK-I2C-TGT-CG-UNGATE",
+        "CHK-I2C-TGT-INSTANCE-CONTENTION-LOG",
         "CHK-I2C-TGT-INSTANCE-IRQ",
         "CHK-I2C-TGT-INSTANCE-ISOLATION",
-        "CHK-I2C-TGT-INSTANCE-CONTENTION-LOG",
         "CHK-I2C-TGT-LOOP-PAIRS",
-        "CHK-I2C-TGT-CG-GATED",
-        "CHK-I2C-TGT-CG-UNGATE",
-        "CHK-I2C-TGT-CG-MIDXFER",
-        "CHK-I2C-TGT-NACKH-STOP",
         "CHK-I2C-TGT-NACKH-LOG",
+        "CHK-I2C-TGT-NACKH-STOP",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

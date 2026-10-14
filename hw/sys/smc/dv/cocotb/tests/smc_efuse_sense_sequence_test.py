@@ -19,12 +19,12 @@ class smc_efuse_sense_sequence_test(smc_base_test):
     """Observe the request, the 256 strobes, sense done and the hand-over per clock edge."""
 
     required_evidence = (
-        "CHK-SENSE-REQ-LATENCY",
-        "CHK-SENSE-STROBE-COUNT",
+        "CHK-NONVAC",
         "CHK-SENSE-DONE-LOW",
         "CHK-SENSE-DONE-OFFSET",
         "CHK-SENSE-REQ-HANDOVER",
-        "CHK-NONVAC",
+        "CHK-SENSE-REQ-LATENCY",
+        "CHK-SENSE-STROBE-COUNT",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 7

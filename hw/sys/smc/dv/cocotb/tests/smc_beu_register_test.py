@@ -14,11 +14,11 @@ class smc_beu_register_test(smc_base_test):
     """Drive the four BEU register blocks over SEP_IN with a widened REGION_SIZE."""
 
     required_evidence = (
-        "CHK-BEUREG-RESET",
-        "CHK-BEUREG-BITS",
         "CHK-BEUREG-ACCRUED",
+        "CHK-BEUREG-BITS",
         "CHK-BEUREG-CAUSE",
         "CHK-BEUREG-PHYS",
+        "CHK-BEUREG-RESET",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

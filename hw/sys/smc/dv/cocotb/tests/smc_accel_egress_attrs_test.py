@@ -9,8 +9,8 @@ from seq_lib.smc_accel_egress_attrs_test_seq import smc_accel_egress_attrs_test_
 from smc_base_test import smc_base_test
 
 REQUIRED = (
-    "CHK-ACCEL-EGRESS-INCR",
     "CHK-ACCEL-EGRESS-CACHE",
+    "CHK-ACCEL-EGRESS-INCR",
     "CHK-ACCEL-EGRESS-PROT-USER",
     "CHK-NONVAC",
 )

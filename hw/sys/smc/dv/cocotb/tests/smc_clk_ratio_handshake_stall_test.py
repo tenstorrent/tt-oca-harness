@@ -14,10 +14,10 @@ from seq_lib.smc_clk_ratio_handshake_stall_test_seq import (
 from smc_base_test import smc_base_test
 
 REQUIRED = (
+    "CHK-NONVAC",
     "CHK-STALL-PERIPH-READ",
     "CHK-STALL-PERIPH-WRITE",
     "CHK-STALL-SMC",
-    "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
 )
 

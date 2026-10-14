@@ -14,12 +14,12 @@ class smc_spm_aperture_region_size_test(smc_base_test):
     """Local alias, global aperture and REGION_SIZE limits on one scratchpad word."""
 
     required_evidence = (
-        "CHK-SPM-ALIAS",
-        "CHK-SPM-REGION-REACH",
-        "CHK-SPM-REGION-DECERR",
-        "CHK-SPM-REGION-B2B",
-        "CHK-SPM-REGION-INFLIGHT",
         "CHK-NONVAC",
+        "CHK-SPM-ALIAS",
+        "CHK-SPM-REGION-B2B",
+        "CHK-SPM-REGION-DECERR",
+        "CHK-SPM-REGION-INFLIGHT",
+        "CHK-SPM-REGION-REACH",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 7

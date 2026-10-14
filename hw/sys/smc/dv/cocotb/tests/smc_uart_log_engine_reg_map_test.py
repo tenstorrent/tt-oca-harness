@@ -20,17 +20,17 @@ class smc_uart_log_engine_reg_map_test(smc_base_test):
     """Log-engine bank, wrapper CTRL, UART reset words and bank placement on four instances."""
 
     required_evidence = (
-        "CHK-LOGENG-RESET-ZERO",
-        "CHK-LOGENG-RESET-UART",
-        "CHK-LOGENG-RW-EN-SIZE",
-        "CHK-LOGENG-RW-ADDR",
-        "CHK-LOGENG-RW-INTR-ENABLE",
-        "CHK-LOGENG-RW-ISOLATION",
         "CHK-LOGENG-ACCESS-INTR-TEST-READ",
         "CHK-LOGENG-ACCESS-PULSE-W1C",
         "CHK-LOGENG-ACCESS-UNIMPL",
-        "CHK-LOGENG-UART-EN-RW",
         "CHK-LOGENG-BANK-PLACEMENT",
+        "CHK-LOGENG-RESET-UART",
+        "CHK-LOGENG-RESET-ZERO",
+        "CHK-LOGENG-RW-ADDR",
+        "CHK-LOGENG-RW-EN-SIZE",
+        "CHK-LOGENG-RW-INTR-ENABLE",
+        "CHK-LOGENG-RW-ISOLATION",
+        "CHK-LOGENG-UART-EN-RW",
         "CHK-NONVAC",
     )
     min_evidence = 12

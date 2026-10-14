@@ -14,8 +14,8 @@ class smc_ext_irq_low_bits_test(smc_base_test):
     """Each pin alone and both in either release order, whole-vector compare to the baseline."""
 
     required_evidence = (
-        "CHK-LOW2-BIT1",
         "CHK-LOW2-BIT0",
+        "CHK-LOW2-BIT1",
         "CHK-LOW2-BOTH-BIT0-FIRST",
         "CHK-LOW2-BOTH-BIT1-FIRST",
         "CHK-NONVAC",

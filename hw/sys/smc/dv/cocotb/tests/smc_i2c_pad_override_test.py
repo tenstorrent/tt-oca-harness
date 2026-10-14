@@ -15,9 +15,9 @@ class smc_i2c_pad_override_test(smc_base_test):
 
     required_evidence = (
         "CHK-I2C-OVRD-DISABLED-OBS",
+        "CHK-I2C-OVRD-INSTANCE-ISOLATION",
         "CHK-I2C-OVRD-PULL-OBS",
         "CHK-I2C-OVRD-RELEASE-OBS",
-        "CHK-I2C-OVRD-INSTANCE-ISOLATION",
         "CHK-I2C-VAL-SENSE-OBS",
         "CHK-NONVAC",
     )

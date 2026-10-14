@@ -17,10 +17,10 @@ class smc_cpu_ctrl_mutex_all_test(smc_base_test):
     """MUTEX[0..3] held reads, release values, independence, b2b and stalled response."""
 
     required_evidence = (
-        "CHK-MUTEX-HELD-READS",
-        "CHK-MUTEX-RELEASE-VALUES",
-        "CHK-MUTEX-INDEP",
         "CHK-MUTEX-BACK2BACK",
+        "CHK-MUTEX-HELD-READS",
+        "CHK-MUTEX-INDEP",
+        "CHK-MUTEX-RELEASE-VALUES",
         "CHK-MUTEX-RSTALL",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",

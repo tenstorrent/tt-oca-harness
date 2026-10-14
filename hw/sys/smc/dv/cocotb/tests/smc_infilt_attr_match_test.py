@@ -14,14 +14,14 @@ class smc_infilt_attr_match_test(smc_base_test):
     """Inbound entries match AxPROT[1] equality, fall through, and ignore group_id."""
 
     required_evidence = (
+        "CHK-INB-GROUPID-INERT",
+        "CHK-INB-NS-FALLTHROUGH",
+        "CHK-INB-NS-PER-CHANNEL",
         "CHK-INB-NS0-EQUALITY",
         "CHK-INB-NS1-EQUALITY",
-        "CHK-INB-NS-FALLTHROUGH",
         "CHK-INB-PROT-BITS-IGNORED",
-        "CHK-INB-NS-PER-CHANNEL",
-        "CHK-INB-SRCID-WILDCARD-ZERO",
         "CHK-INB-SRCID-NONZERO-VS-ZERO",
-        "CHK-INB-GROUPID-INERT",
+        "CHK-INB-SRCID-WILDCARD-ZERO",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

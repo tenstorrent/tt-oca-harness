@@ -17,12 +17,12 @@ class smc_wdt_scale_zerocmp_test(smc_base_test):
     """SCALED_COUNT equals COUNT >> wdogscale and wdogzerocmp clears COUNT at the compare."""
 
     required_evidence = (
-        "CHK-WDT-SCALED-COUNT-WIDE",
-        "CHK-WDT-SCALED-COUNT-SHIFT",
-        "CHK-WDT-ZEROCMP-OFF",
-        "CHK-WDT-ZEROCMP-CMP0",
-        "CHK-WDT-ZEROCMP-CLEAR",
         "CHK-NONVAC",
+        "CHK-WDT-SCALED-COUNT-SHIFT",
+        "CHK-WDT-SCALED-COUNT-WIDE",
+        "CHK-WDT-ZEROCMP-CLEAR",
+        "CHK-WDT-ZEROCMP-CMP0",
+        "CHK-WDT-ZEROCMP-OFF",
     )
     min_evidence = 6
 

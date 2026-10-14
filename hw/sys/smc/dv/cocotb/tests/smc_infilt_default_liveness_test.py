@@ -17,15 +17,15 @@ class smc_infilt_default_liveness_test(smc_base_test):
     """SYS_IN is blocked at reset, admitted by entry 2, denied by entry 1 and flooded."""
 
     required_evidence = (
-        "CHK-INB-RESET-BLOCKS-SYS-IN",
-        "CHK-INB-UNMATCHED-STAYS-BLOCKED",
-        "CHK-INB-SEP-NOT-FILTERED",
-        "CHK-INB-READ-FILTER-CONFIG",
-        "CHK-INB-ENABLE-LIFECYCLE",
-        "CHK-INB-SIMULTANEOUS-PORTS",
         "CHK-INB-ADMIT-AFTER-DENY",
         "CHK-INB-DENY-FLOOD",
+        "CHK-INB-ENABLE-LIFECYCLE",
+        "CHK-INB-READ-FILTER-CONFIG",
         "CHK-INB-RECONFIG-OUTSTANDING",
+        "CHK-INB-RESET-BLOCKS-SYS-IN",
+        "CHK-INB-SEP-NOT-FILTERED",
+        "CHK-INB-SIMULTANEOUS-PORTS",
+        "CHK-INB-UNMATCHED-STAYS-BLOCKED",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

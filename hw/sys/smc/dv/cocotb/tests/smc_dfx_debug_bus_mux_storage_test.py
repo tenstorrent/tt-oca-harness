@@ -14,13 +14,13 @@ class smc_dfx_debug_bus_mux_storage_test(smc_base_test):
     """Write and read back every DEBUG_BUS_MUX field over SEP_IN."""
 
     required_evidence = (
-        "CHK-DFX-MUX-MODE",
+        "CHK-DFX-MUX-B2B",
         "CHK-DFX-MUX-ID",
+        "CHK-DFX-MUX-MODE",
+        "CHK-DFX-MUX-ONEATATIME",
         "CHK-DFX-MUX-SEL03",
         "CHK-DFX-MUX-SEL47",
         "CHK-DFX-MUX-WALK1",
-        "CHK-DFX-MUX-ONEATATIME",
-        "CHK-DFX-MUX-B2B",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

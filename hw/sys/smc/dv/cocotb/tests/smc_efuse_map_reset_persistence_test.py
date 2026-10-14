@@ -105,12 +105,12 @@ class smc_efuse_map_reset_persistence_test(smc_base_test):
     """Check shadow words and locks across warm and cold resets, idle and mid-access."""
 
     required_evidence = (
-        "CHK-EMAP-RST-WARM-VALUES",
-        "CHK-EMAP-RST-WARM-LOCKS",
-        "CHK-EMAP-RST-WARM-NORESENSE",
-        "CHK-EMAP-RST-WARM-MID",
         "CHK-EMAP-RST-COLD-LOCKS",
         "CHK-EMAP-RST-COLD-MID",
+        "CHK-EMAP-RST-WARM-LOCKS",
+        "CHK-EMAP-RST-WARM-MID",
+        "CHK-EMAP-RST-WARM-NORESENSE",
+        "CHK-EMAP-RST-WARM-VALUES",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

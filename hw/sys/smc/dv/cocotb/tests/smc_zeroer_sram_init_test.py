@@ -17,12 +17,12 @@ class smc_zeroer_sram_init_test(smc_base_test):
     """Clear SRAM, partial ranges and an egress region; aim the zeroer and DMA at local targets."""
 
     required_evidence = (
-        "CHK-ZEROER-SRAM-FULL",
-        "CHK-ZEROER-SRAM-PARTIAL",
-        "CHK-ZEROER-EGRESS-REGION",
-        "CHK-ZEROER-UNMAPPED-OR-DENIED",
         "CHK-ACCEL-LOCAL-TARGETS",
         "CHK-NONVAC",
+        "CHK-ZEROER-EGRESS-REGION",
+        "CHK-ZEROER-SRAM-FULL",
+        "CHK-ZEROER-SRAM-PARTIAL",
+        "CHK-ZEROER-UNMAPPED-OR-DENIED",
     )
     min_evidence = 6
 

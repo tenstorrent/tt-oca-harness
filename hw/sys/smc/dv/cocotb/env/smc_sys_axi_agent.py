@@ -154,11 +154,7 @@ class SmcSysAxiItem(uvm_sequence_item):
         # completed the access, not from the test that claims to have issued it.
         self.bus_name: str = ""
         # AXI ARID/AWID of this access. None keeps the VIP's own ID allocation.
-        # `rid` / `bid` hold the response ID when the VIP exposes it; the
-        # response objects of the current VIP carry no ID, so they stay None.
         self.axi_id: int | None = None
-        self.rid: int | None = None
-        self.bid: int | None = None
 
     @property
     def transfer_bytes(self) -> int:

@@ -18,16 +18,16 @@ class smc_avsbus_resync_timing_test(smc_base_test):
     """Follow the resync after a cold reset, its length, flags and interval on the FSM probe."""
 
     required_evidence = (
-        "CHK-AVS-RESYNC-STARTUP",
-        "CHK-AVS-FSM-RESET-SEQUENCE",
-        "CHK-AVS-RESYNC-LEN35",
-        "CHK-AVS-RESYNC-PIN-HIGH",
-        "CHK-AVS-RESYNC-FLAG",
         "CHK-AVS-FSM-IDLE-FLAG",
         "CHK-AVS-FSM-ONEHOT",
+        "CHK-AVS-FSM-RESET-SEQUENCE",
+        "CHK-AVS-RESYNC-FLAG",
         "CHK-AVS-RESYNC-INTERVAL",
         "CHK-AVS-RESYNC-INTERVAL-ZERO",
+        "CHK-AVS-RESYNC-LEN35",
+        "CHK-AVS-RESYNC-PIN-HIGH",
         "CHK-AVS-RESYNC-REWRITE",
+        "CHK-AVS-RESYNC-STARTUP",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

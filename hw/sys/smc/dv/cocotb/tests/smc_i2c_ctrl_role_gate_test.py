@@ -14,13 +14,13 @@ class smc_i2c_ctrl_role_gate_test(smc_base_test):
     """Queue three FDATA entries with the roles off, enable the controller, observe the stream."""
 
     required_evidence = (
-        "CHK-ROLE-OFF-IDLE",
-        "CHK-ROLE-ON-RUNS",
         "CHK-FMTEMPTY-TRACK",
         "CHK-IEN-ROLE-INDEP",
-        "CHK-VAL-OBS",
         "CHK-NONVAC",
+        "CHK-ROLE-OFF-IDLE",
+        "CHK-ROLE-ON-RUNS",
         "CHK-TIMEOUT-PATHS",
+        "CHK-VAL-OBS",
     )
     min_evidence = 7
 

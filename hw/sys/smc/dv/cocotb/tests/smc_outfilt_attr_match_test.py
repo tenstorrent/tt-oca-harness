@@ -12,16 +12,16 @@ from seq_lib.smc_outfilt_attr_match_test_seq import smc_outfilt_attr_match_test_
 from smc_base_test import smc_base_test
 
 REQUIRED = (
-    "CHK-OUT-NS0-EQUALITY",
-    "CHK-OUT-NS1-EQUALITY",
-    "CHK-OUT-NS-FALLTHROUGH",
-    "CHK-OUT-PROT-BITS-IGNORED",
+    "CHK-NONVAC",
+    "CHK-OUT-BURST-FALLTHROUGH",
     "CHK-OUT-BURST0-SINGLE-ONLY",
     "CHK-OUT-BURST1-BOTH",
-    "CHK-OUT-BURST-FALLTHROUGH",
-    "CHK-OUT-SRCID-WILDCARD",
     "CHK-OUT-GROUPID-INERT",
-    "CHK-NONVAC",
+    "CHK-OUT-NS-FALLTHROUGH",
+    "CHK-OUT-NS0-EQUALITY",
+    "CHK-OUT-NS1-EQUALITY",
+    "CHK-OUT-PROT-BITS-IGNORED",
+    "CHK-OUT-SRCID-WILDCARD",
     "CHK-TIMEOUT-PATHS",
 )
 

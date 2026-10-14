@@ -15,9 +15,9 @@ class smc_clint_register_test(smc_base_test):
 
     required_evidence = (
         "CHK-CLINT-MSIP",
-        "CHK-CLINT-MTIMECMP",
         "CHK-CLINT-MTIME-ADV",
         "CHK-CLINT-MTIME-LOAD",
+        "CHK-CLINT-MTIMECMP",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

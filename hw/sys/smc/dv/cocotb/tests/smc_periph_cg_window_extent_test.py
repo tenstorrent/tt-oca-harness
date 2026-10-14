@@ -17,11 +17,11 @@ class smc_periph_cg_window_extent_test(smc_base_test):
     """Each gated window answers SLVERR/0xBADCAB1E, isolates the others and prints its extent."""
 
     required_evidence = (
+        "CHK-AVS-CLOCK-PRINT",
+        "CHK-NONVAC",
         "CHK-WINDOW-EXTENT",
         "CHK-WINDOW-ISOLATION",
         "CHK-WINDOW-WRITE-DELIVERY-PRINT",
-        "CHK-AVS-CLOCK-PRINT",
-        "CHK-NONVAC",
     )
     min_evidence = len(required_evidence)
 

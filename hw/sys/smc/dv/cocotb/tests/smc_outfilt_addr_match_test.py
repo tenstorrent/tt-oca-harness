@@ -12,13 +12,13 @@ from seq_lib.smc_outfilt_addr_match_test_seq import smc_outfilt_addr_match_test_
 from smc_base_test import smc_base_test
 
 REQUIRED = (
+    "CHK-GRANULE-MULTI-ADMIT",
+    "CHK-NONVAC",
     "CHK-OUT-ADDR-GRANULE",
     "CHK-OUT-DISABLED-NO-MATCH",
     "CHK-OUT-HIGH-ADDRESS-BITS",
     "CHK-OUT-SPAN-WHOLE",
     "CHK-OUT-START-EQ-END",
-    "CHK-GRANULE-MULTI-ADMIT",
-    "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
 )
 

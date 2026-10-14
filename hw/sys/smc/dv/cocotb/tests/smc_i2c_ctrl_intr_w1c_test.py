@@ -14,13 +14,13 @@ class smc_i2c_ctrl_intr_w1c_test(smc_base_test):
     """Set, clear and gate CMD_COMPLETE, SDA_UNSTABLE and SCL_INTERFERENCE on instance 0."""
 
     required_evidence = (
-        "CHK-CMDC-STOP",
         "CHK-CMDC-REASSERT",
         "CHK-CMDC-RS-OBS",
-        "CHK-SDAU-W1C",
-        "CHK-SCLI-W1C",
-        "CHK-SCLI-GATE",
+        "CHK-CMDC-STOP",
         "CHK-NONVAC",
+        "CHK-SCLI-GATE",
+        "CHK-SCLI-W1C",
+        "CHK-SDAU-W1C",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 8

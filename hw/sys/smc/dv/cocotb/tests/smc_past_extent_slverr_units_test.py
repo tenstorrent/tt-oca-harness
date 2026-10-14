@@ -24,15 +24,15 @@ class smc_past_extent_slverr_units_test(smc_base_test):
     """Exact DECERR and 0xBADCAB1E past the extent of the SLVERR-declared units."""
 
     required_evidence = (
-        "CHK-PAST-EXTENT-RESET-UNIT",
-        "CHK-PAST-EXTENT-EFUSE",
-        "CHK-PAST-EXTENT-TIMER",
-        "CHK-PAST-EXTENT-BASE-CONFIG",
-        "CHK-PAST-EXTENT-FABRIC-CTRL",
-        "CHK-PAST-EXTENT-SPARE",
-        "CHK-PAST-EXTENT-PERIPH",
-        "CHK-PAST-EXTENT-CLA",
         "CHK-NONVAC",
+        "CHK-PAST-EXTENT-BASE-CONFIG",
+        "CHK-PAST-EXTENT-CLA",
+        "CHK-PAST-EXTENT-EFUSE",
+        "CHK-PAST-EXTENT-FABRIC-CTRL",
+        "CHK-PAST-EXTENT-PERIPH",
+        "CHK-PAST-EXTENT-RESET-UNIT",
+        "CHK-PAST-EXTENT-SPARE",
+        "CHK-PAST-EXTENT-TIMER",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 10

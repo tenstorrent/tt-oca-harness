@@ -15,10 +15,10 @@ class smc_gpio_rst_primary_test(smc_base_test):
     """A cold reset clears a wrap's interrupt state and bounds an in-flight access."""
 
     required_evidence = (
-        "CHK-RST-PRIMARY-LEVEL-IRQ",
-        "CHK-RST-PRIMARY-EDGE",
-        "CHK-RST-PRIMARY-AXI-BOUNDED",
         "CHK-NONVAC",
+        "CHK-RST-PRIMARY-AXI-BOUNDED",
+        "CHK-RST-PRIMARY-EDGE",
+        "CHK-RST-PRIMARY-LEVEL-IRQ",
     )
     min_evidence = 4
 

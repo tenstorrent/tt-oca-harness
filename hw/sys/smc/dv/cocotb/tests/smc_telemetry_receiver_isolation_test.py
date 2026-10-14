@@ -17,10 +17,10 @@ class smc_telemetry_receiver_isolation_test(smc_base_test):
     """Single-receiver traffic, simultaneous traffic and CSR operations against the others."""
 
     required_evidence = (
-        "CHK-TELEMETRY-ISOLATION-TRAFFIC",
-        "CHK-TELEMETRY-ISOLATION-SIMULTANEOUS",
-        "CHK-TELEMETRY-ISOLATION-OPS",
         "CHK-NONVAC",
+        "CHK-TELEMETRY-ISOLATION-OPS",
+        "CHK-TELEMETRY-ISOLATION-SIMULTANEOUS",
+        "CHK-TELEMETRY-ISOLATION-TRAFFIC",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 5

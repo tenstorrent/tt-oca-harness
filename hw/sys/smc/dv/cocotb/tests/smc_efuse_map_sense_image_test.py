@@ -149,6 +149,16 @@ class smc_efuse_map_sense_image_test(smc_base_test):
     auto_protocol_vip = False
 
     run_written_file_plusargs: tuple[str, ...] = ()
+    # The default image; build_phase replaces the sense checker with the selected image's.
+    required_evidence = (
+        "CHK-EMAP-SENSE-DEFAULT",
+        "CHK-EMAP-SENSE-DONE-ONCE",
+        "CHK-EMAP-SENSE-FIRST-DONE",
+        "CHK-EMAP-SHADOW-OUT-SENSED",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 5
 
     def build_phase(self) -> None:
         self.kind = str(cocotb.plusargs.get("smc_efuse_image", "default"))

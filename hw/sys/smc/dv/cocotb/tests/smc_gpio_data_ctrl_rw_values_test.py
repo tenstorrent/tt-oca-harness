@@ -28,10 +28,10 @@ class smc_gpio_data_ctrl_rw_values_test(smc_base_test):
     """Drive DATA_CTRL field values and read-modify-writes on one idle GPIO instance."""
 
     required_evidence = (
-        "CHK-GPIO-DATA-CTRL-RX-TX-VALUES",
         "CHK-GPIO-DATA-CTRL-INTERRUPT-TYPE-VALUES",
-        "CHK-GPIO-DATA-CTRL-RMW-ISOLATION",
         "CHK-GPIO-DATA-CTRL-PG-CONSTANTS",
+        "CHK-GPIO-DATA-CTRL-RMW-ISOLATION",
+        "CHK-GPIO-DATA-CTRL-RX-TX-VALUES",
         "CHK-NONVAC",
     )
     min_evidence = 5

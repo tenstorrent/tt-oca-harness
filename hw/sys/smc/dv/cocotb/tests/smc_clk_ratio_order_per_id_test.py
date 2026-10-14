@@ -12,10 +12,10 @@ from seq_lib.smc_clk_ratio_order_per_id_test_seq import smc_clk_ratio_order_per_
 from smc_base_test import smc_base_test
 
 REQUIRED = (
+    "CHK-NONVAC",
+    "CHK-ORDER-DIFFERENT-IDS",
     "CHK-ORDER-READS-SAME-ID",
     "CHK-ORDER-WRITES-SAME-ID",
-    "CHK-ORDER-DIFFERENT-IDS",
-    "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
 )
 

@@ -18,11 +18,11 @@ class smc_axi_contested_ports_test(smc_base_test):
     """Release reads on SEP_IN, SYS_IN and JTAG together, hold one, reset mid-access."""
 
     required_evidence = (
+        "CHK-CONT-LOCAL-GLOBAL",
+        "CHK-CONT-PENDING-NEW",
+        "CHK-CONT-RESET-MID",
         "CHK-CONT-SYS-SEP",
         "CHK-CONT-THREE-PORTS",
-        "CHK-CONT-PENDING-NEW",
-        "CHK-CONT-LOCAL-GLOBAL",
-        "CHK-CONT-RESET-MID",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

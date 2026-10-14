@@ -20,13 +20,13 @@ class smc_reg_island_boundary_sweep_test(smc_base_test):
     """Probe the first, last decoded, past-extent and aperture-end word of every island."""
 
     required_evidence = (
-        "CHK-ISL-SETUP-GOLDENS",
         "CHK-ISL-FIRST-WORD-WRITE-OKAY",
         "CHK-ISL-LAST-DECODED-WORD-WRITE-OKAY",
+        "CHK-ISL-PASTEXT-NOCHANGE",
         "CHK-ISL-PASTEXT-READ-DECERR",
         "CHK-ISL-PASTEXT-WRITE-DECERR-CLASS",
         "CHK-ISL-PASTEXT-WRITE-SLVERR-CLASS",
-        "CHK-ISL-PASTEXT-NOCHANGE",
+        "CHK-ISL-SETUP-GOLDENS",
         "CHK-ISL-TABLE",
         "CHK-NONVAC",
     )

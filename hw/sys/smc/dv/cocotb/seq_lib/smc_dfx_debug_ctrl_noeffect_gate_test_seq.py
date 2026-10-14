@@ -282,8 +282,7 @@ class smc_dfx_debug_ctrl_noeffect_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._chk(
             "CHK-DEBUGCTRL-RESET-BIT31",
             f"DEBUG_CTRL=0x{after_reset:08x} after a cold reset; write 0x{ALL_ONES_WORD:08x} read "
-            f"back 0x{ones_back:08x} with bit 31 = 0; restored to 0 (bit 31 is asserted 0 "
-            "here; the document does not state its value, and the storage leaf only prints it)",
+            f"back 0x{ones_back:08x} with bit 31 = 0; restored to 0",
         )
 
         # S5

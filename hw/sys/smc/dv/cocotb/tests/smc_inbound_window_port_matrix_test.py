@@ -21,15 +21,15 @@ class smc_inbound_window_port_matrix_test(smc_base_test):
     """Base registers, window words and scratch storage on sep, sys and jtag at both bases."""
 
     required_evidence = (
+        "CHK-JTAG-CROSS-PORT-STORAGE",
+        "CHK-JTAG-LOCAL-WINDOW",
+        "CHK-NONVAC",
+        "CHK-SYS-SEP-WINDOW-WORDS",
+        "CHK-TIMEOUT-PATHS",
+        "CHK-WIN-CROSS-BASE-STORAGE",
+        "CHK-WIN-GLOBAL-RESET-PORTS",
         "CHK-WIN-LOCAL-BASEREG-PORTS",
         "CHK-WIN-LOCAL-REGS-PORTS",
-        "CHK-WIN-GLOBAL-RESET-PORTS",
-        "CHK-SYS-SEP-WINDOW-WORDS",
-        "CHK-WIN-CROSS-BASE-STORAGE",
-        "CHK-JTAG-LOCAL-WINDOW",
-        "CHK-JTAG-CROSS-PORT-STORAGE",
-        "CHK-NONVAC",
-        "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 9
 

@@ -102,14 +102,14 @@ class smc_efuse_map_sep_write_test(smc_base_test):
     """Write every writable class over SEP_IN and check read-back, neighbours and the port."""
 
     required_evidence = (
-        "CHK-EMAP-WR-JPI",
-        "CHK-EMAP-WR-I2C",
-        "CHK-EMAP-WR-CFG-OCCP",
         "CHK-EMAP-RSVD-BITS",
-        "CHK-EMAP-WR-SPARE",
-        "CHK-EMAP-WR-NEIGHBOUR",
-        "CHK-EMAP-WR-HALVES",
         "CHK-EMAP-SHADOW-OUT-WRITE",
+        "CHK-EMAP-WR-CFG-OCCP",
+        "CHK-EMAP-WR-HALVES",
+        "CHK-EMAP-WR-I2C",
+        "CHK-EMAP-WR-JPI",
+        "CHK-EMAP-WR-NEIGHBOUR",
+        "CHK-EMAP-WR-SPARE",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

@@ -14,9 +14,9 @@ class smc_dma_backpressure_breadth_test(smc_base_test):
     """Copy through a SYS_OUT responder that stalls, delays and holds its channels."""
 
     required_evidence = (
-        "CHK-DMA-BP-RANDOM",
-        "CHK-DMA-BP-OUTSTANDING-CAP",
         "CHK-DMA-BP-LONG-STALL",
+        "CHK-DMA-BP-OUTSTANDING-CAP",
+        "CHK-DMA-BP-RANDOM",
         "CHK-DMA-BP-REALIGN",
         "CHK-NONVAC",
     )

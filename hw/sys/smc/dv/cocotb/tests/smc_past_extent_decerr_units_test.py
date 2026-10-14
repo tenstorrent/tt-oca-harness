@@ -22,12 +22,12 @@ class smc_past_extent_decerr_units_test(smc_base_test):
     """Exact DECERR and 0xBADCAB1E past the extent of six DECERR write units."""
 
     required_evidence = (
-        "CHK-PAST-EXTENT-WDT",
-        "CHK-PAST-EXTENT-MAILBOX",
-        "CHK-PAST-EXTENT-DMA-ZEROER",
-        "CHK-PAST-EXTENT-DFX",
-        "CHK-PAST-EXTENT-CPU-CTRL",
         "CHK-NONVAC",
+        "CHK-PAST-EXTENT-CPU-CTRL",
+        "CHK-PAST-EXTENT-DFX",
+        "CHK-PAST-EXTENT-DMA-ZEROER",
+        "CHK-PAST-EXTENT-MAILBOX",
+        "CHK-PAST-EXTENT-WDT",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 7

@@ -32,7 +32,7 @@ name = "smc_dfx_aperture_extent_test"
 module = "smc_dfx_aperture_extent_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci"]
+tags = ["ci", "dfx"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -40,7 +40,7 @@ name = "smc_dfx_debug_ctrl_noeffect_gate_test"
 module = "smc_dfx_debug_ctrl_noeffect_gate_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci"]
+tags = ["ci", "dfx"]
 run_modes = ["smoke"]
 
 [[tests]]

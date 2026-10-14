@@ -14,12 +14,12 @@ class smc_plic_register_test(smc_base_test):
     """Drive the PLIC registers over SEP_IN beside the exported PLIC probes."""
 
     required_evidence = (
-        "CHK-PLICREG-PRIORITY",
-        "CHK-PLICREG-PENDING",
-        "CHK-PLICREG-ENABLE",
-        "CHK-PLICREG-THRESHOLD",
-        "CHK-PLICREG-CLAIM",
         "CHK-NONVAC",
+        "CHK-PLICREG-CLAIM",
+        "CHK-PLICREG-ENABLE",
+        "CHK-PLICREG-PENDING",
+        "CHK-PLICREG-PRIORITY",
+        "CHK-PLICREG-THRESHOLD",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 7

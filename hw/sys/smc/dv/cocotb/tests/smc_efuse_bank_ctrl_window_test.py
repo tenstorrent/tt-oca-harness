@@ -20,12 +20,12 @@ class smc_efuse_bank_ctrl_window_test(smc_base_test):
 
     required_evidence = (
         "CHK-BANKCTRL-IDLE",
-        "CHK-WINDOW-READ",
-        "CHK-WINDOW-WRITE",
         "CHK-BANKCTRL-ORDER",
         "CHK-INITTIME-RESENSE",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
+        "CHK-WINDOW-READ",
+        "CHK-WINDOW-WRITE",
     )
     min_evidence = 7
 

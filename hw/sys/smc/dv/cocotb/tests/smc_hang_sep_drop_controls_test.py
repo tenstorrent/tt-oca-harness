@@ -14,13 +14,13 @@ class smc_hang_sep_drop_controls_test(smc_base_test):
     """Clearing irq_en or enable drops the SEP_AXI timeout irq while the read stays held."""
 
     required_evidence = (
-        "CHK-DROPCTL-IRQEN-CLEAR",
-        "CHK-DROPCTL-GATE-HOLD",
+        "CHK-DROPCTL-BOTH-CAUSES-LOG",
         "CHK-DROPCTL-ENABLE-CLEAR",
+        "CHK-DROPCTL-GATE-HOLD",
+        "CHK-DROPCTL-IRQEN-CLEAR",
         "CHK-DROPCTL-REENABLE-LOG",
         "CHK-DROPCTL-TOGGLE-GATING",
         "CHK-DROPCTL-TOGGLE-LOG",
-        "CHK-DROPCTL-BOTH-CAUSES-LOG",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

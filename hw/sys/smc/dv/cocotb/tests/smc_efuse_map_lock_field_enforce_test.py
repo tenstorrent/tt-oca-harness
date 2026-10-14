@@ -103,15 +103,15 @@ class smc_efuse_map_lock_field_enforce_test(smc_base_test):
     """Set write, read and both locks per field and check each field's enforcement."""
 
     required_evidence = (
-        "CHK-EMAP-ENF-WR-SPARE",
         "CHK-EMAP-ENF-NEIGHBOUR",
         "CHK-EMAP-ENF-PORT",
-        "CHK-EMAP-WHOLE-I2C-WR",
+        "CHK-EMAP-ENF-WR-SPARE",
+        "CHK-EMAP-PAIR-BOTH",
+        "CHK-EMAP-PAIR-RDONLY",
         "CHK-EMAP-WHOLE-I2C-RD",
+        "CHK-EMAP-WHOLE-I2C-WR",
         "CHK-EMAP-WHOLE-JPI",
         "CHK-EMAP-WHOLE-SPARE",
-        "CHK-EMAP-PAIR-RDONLY",
-        "CHK-EMAP-PAIR-BOTH",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

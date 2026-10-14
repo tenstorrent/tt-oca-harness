@@ -14,10 +14,10 @@ class smc_cpu_ctrl_wb_pc_test(smc_base_test):
     """Read the 32 WB_PC words over SEP_IN and print them beside the exported probes."""
 
     required_evidence = (
-        "CHK-WBPC-DECODE",
-        "CHK-WBPC-IDLE",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
+        "CHK-WBPC-DECODE",
+        "CHK-WBPC-IDLE",
     )
     min_evidence = 4
 

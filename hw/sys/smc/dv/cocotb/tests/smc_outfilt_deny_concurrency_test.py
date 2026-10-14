@@ -13,12 +13,12 @@ from seq_lib.smc_outfilt_deny_concurrency_test_seq import smc_outfilt_deny_concu
 from smc_base_test import smc_base_test
 
 REQUIRED = (
-    "CHK-OUT-DENY-READ-RRESP",
+    "CHK-NONVAC",
+    "CHK-OUT-DENY-ADMIT-SIMULTANEOUS",
     "CHK-OUT-DENY-CLASSES",
     "CHK-OUT-DENY-FLOOD",
-    "CHK-OUT-DENY-ADMIT-SIMULTANEOUS",
+    "CHK-OUT-DENY-READ-RRESP",
     "CHK-OUT-RECONFIG-OUTSTANDING",
-    "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
 )
 

@@ -6,10 +6,9 @@ Sources: hw/ip/i2c/regs/i2c.rdl (CONTROLLER_EVENTS.NACK, INTR_STATE.CONTROLLER_H
 FDATA.NAKOK, HOST_NACK_HANDLER_TIMEOUT, STATUS.HOSTIDLE).
 
 Bench targets on the I2C0 pads answer for the controller: 0x10 NACKs its address, 0x12
-NACKs one chosen data byte, 0x50 is an EEPROM. A passive wire monitor frames every
-transfer. Each leg ends with CTRL cleared before the events. The handler-timeout effect on
-the bus and HOSTIDLE while halted: the specification does not state the values;
-they are logged and not compared.
+NACKs one chosen data byte. A passive wire monitor frames every transfer. Each leg ends with
+CTRL cleared before the events. The handler-timeout effect on the bus and HOSTIDLE while
+halted: the specification does not state the values; they are logged and not compared.
 """
 
 from __future__ import annotations
@@ -62,7 +61,6 @@ from .smc_i2c_master_target_test_seq import (
 from .smc_i2c_protocol_vip import (
     _SCL_LOW,
     _SDA_LOW,
-    SmcI2cEepromSlave,
     SmcI2cNackSlave,
     _pads,
     _set_ext_low,
@@ -80,7 +78,6 @@ I2C_FDATA_NAKOK = _i2c_u32("I2C__FDATA__NAKOK_bm")
 
 NACK_ADDR = 0x10
 DATA_NACK_ADDR = 0x12
-EEPROM_ADDR = 0x50
 EV_NACK = I2C_CONTROLLER_EVENTS_NACK
 EV_UNHANDLED = I2C_CONTROLLER_EVENTS_UNHANDLED_NACK_TIMEOUT
 
@@ -226,7 +223,6 @@ class smc_i2c_ctrl_nack_modes_test_seq(SmcCsrSeq):
         self.monitor: SmcFwI2cWireMonitor | None = None
         self.nack_target: SmcI2cNackSlave | None = None
         self.data_target: _NthDataNackTarget | None = None
-        self.eeprom: SmcI2cEepromSlave | None = None
         self.cycle = 0
         self.stamps: list[tuple[str, int]] = []
         self.chk_lines: list[tuple[str, int]] = []
@@ -329,7 +325,6 @@ class smc_i2c_ctrl_nack_modes_test_seq(SmcCsrSeq):
             addr=NACK_ADDR, nack_at_address=True, name="smc_i2c0_nack_addr"
         )
         self.data_target = _NthDataNackTarget(DATA_NACK_ADDR, "smc_i2c0_nack_data")
-        self.eeprom = SmcI2cEepromSlave(addr=EEPROM_ADDR, name="smc_i2c0_nack_eeprom")
         self._stamp("BRINGUP")
 
     async def _leg_start(self, label: str) -> None:

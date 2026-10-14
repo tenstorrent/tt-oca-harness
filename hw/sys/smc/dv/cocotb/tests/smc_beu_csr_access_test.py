@@ -18,15 +18,15 @@ class smc_beu_csr_access_test(smc_base_test):
     """Drive the four BEU register blocks over SEP_IN across the REGION_SIZE aperture."""
 
     required_evidence = (
-        "CHK-BEU-DECERR-RESET",
-        "CHK-BEU-WIDENED-REACH",
-        "CHK-BEU-ENABLE-RESET",
-        "CHK-BEU-CAUSE-PHYS",
         "CHK-BEU-ACCRUED",
-        "CHK-BEU-INDEPENDENT",
-        "CHK-BEU-RESERVED-BITS",
+        "CHK-BEU-CAUSE-PHYS",
+        "CHK-BEU-DECERR-RESET",
         "CHK-BEU-ENABLE-B2B",
+        "CHK-BEU-ENABLE-RESET",
+        "CHK-BEU-INDEPENDENT",
         "CHK-BEU-INFLIGHT",
+        "CHK-BEU-RESERVED-BITS",
+        "CHK-BEU-WIDENED-REACH",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

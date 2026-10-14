@@ -14,15 +14,15 @@ class smc_i2c_target_tx_read_test(smc_base_test):
     """The bench controller reads bytes software loaded into the I2C0 target TX FIFO."""
 
     required_evidence = (
+        "CHK-I2C-TGT-TX-AUTO-MIDREAD-LOG",
+        "CHK-I2C-TGT-TX-AUTO-STRETCH",
         "CHK-I2C-TGT-TX-READ-ORDER",
         "CHK-I2C-TGT-TX-READ-RESIDUE",
-        "CHK-I2C-TGT-TX-AUTO-STRETCH",
-        "CHK-I2C-TGT-TX-AUTO-MIDREAD-LOG",
-        "CHK-I2C-TGT-TX-TXRST-STRETCH-LOG",
-        "CHK-I2C-TGT-TX-TXRST-RECOVER",
-        "CHK-I2C-TGT-TX-SW-STRETCH",
-        "CHK-I2C-TGT-TX-SW-RESET-RELOAD",
         "CHK-I2C-TGT-TX-SW-RACE-LOG",
+        "CHK-I2C-TGT-TX-SW-RESET-RELOAD",
+        "CHK-I2C-TGT-TX-SW-STRETCH",
+        "CHK-I2C-TGT-TX-TXRST-RECOVER",
+        "CHK-I2C-TGT-TX-TXRST-STRETCH-LOG",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

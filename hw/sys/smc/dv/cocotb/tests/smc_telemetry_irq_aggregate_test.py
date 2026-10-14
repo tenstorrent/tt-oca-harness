@@ -14,11 +14,11 @@ class smc_telemetry_irq_aggregate_test(smc_base_test):
     """One, two, independent and masked interrupt sources across the three receivers."""
 
     required_evidence = (
-        "CHK-TELEMETRY-IRQ-ANY-OF-THREE",
-        "CHK-TELEMETRY-IRQ-LAST-RELEASE",
-        "CHK-TELEMETRY-IRQ-EACH-SOURCE",
-        "CHK-TELEMETRY-IRQ-MASKED-QUIET",
         "CHK-NONVAC",
+        "CHK-TELEMETRY-IRQ-ANY-OF-THREE",
+        "CHK-TELEMETRY-IRQ-EACH-SOURCE",
+        "CHK-TELEMETRY-IRQ-LAST-RELEASE",
+        "CHK-TELEMETRY-IRQ-MASKED-QUIET",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 6

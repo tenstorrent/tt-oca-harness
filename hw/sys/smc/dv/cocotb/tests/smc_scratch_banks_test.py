@@ -14,9 +14,9 @@ class smc_scratch_banks_test(smc_base_test):
     """Sixteen scratch registers reset to 0 and hold independent values."""
 
     required_evidence = (
-        "CHK-SCRATCH-RESET-0",
-        "CHK-SCRATCH-INDEPENDENT-RW",
         "CHK-NONVAC",
+        "CHK-SCRATCH-INDEPENDENT-RW",
+        "CHK-SCRATCH-RESET-0",
     )
     min_evidence = 3
 

@@ -14,14 +14,14 @@ class smc_smbus_alert_irq_route_test(smc_base_test):
     """INTR_TEST.SMBALERT on each I2C instance, masked, routed, toggled and cleared."""
 
     required_evidence = (
-        "CHK-IRQ-MASKED",
-        "CHK-IRQ-TEST-STATE",
-        "CHK-IRQ-ROUTE",
-        "CHK-IRQ-ENABLE-TOGGLE",
         "CHK-IRQ-CLEAR",
+        "CHK-IRQ-ENABLE-TOGGLE",
         "CHK-IRQ-LATENCY-LOG",
-        "CHK-TIMEOUT-PATHS",
+        "CHK-IRQ-MASKED",
+        "CHK-IRQ-ROUTE",
+        "CHK-IRQ-TEST-STATE",
         "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 8
 

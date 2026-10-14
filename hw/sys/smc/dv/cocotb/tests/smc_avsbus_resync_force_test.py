@@ -17,9 +17,9 @@ class smc_avsbus_resync_force_test(smc_base_test):
     """Force the slave resync four ways and follow the FSM probe and the master subframes."""
 
     required_evidence = (
-        "CHK-AVS-FORCE-ONE-RESYNC",
         "CHK-AVS-FORCE-FRAME-COMPLETES",
         "CHK-AVS-FORCE-INFLIGHT-INT",
+        "CHK-AVS-FORCE-ONE-RESYNC",
         "CHK-AVS-FORCE-QUEUE-ORDER",
         "CHK-AVS-FORCE-TWICE",
         "CHK-NONVAC",

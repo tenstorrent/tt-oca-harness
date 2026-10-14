@@ -14,13 +14,13 @@ class smc_octs_csr_access_test(smc_base_test):
     """Read, write and decode the nine OCTS registers over SEP_IN on the PRIMARY strap."""
 
     required_evidence = (
-        "CHK-OCTS-RESET-VALUES",
-        "CHK-OCTS-CTRL-PRESET-READBACK",
-        "CHK-OCTS-GPIO-ENABLE-RW",
-        "CHK-OCTS-DECODE-OFFSETS",
-        "CHK-OCTS-READONLY-START",
-        "CHK-OCTS-APERTURE-PAST",
         "CHK-NONVAC",
+        "CHK-OCTS-APERTURE-PAST",
+        "CHK-OCTS-CTRL-PRESET-READBACK",
+        "CHK-OCTS-DECODE-OFFSETS",
+        "CHK-OCTS-GPIO-ENABLE-RW",
+        "CHK-OCTS-READONLY-START",
+        "CHK-OCTS-RESET-VALUES",
     )
     min_evidence = 7
 

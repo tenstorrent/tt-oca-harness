@@ -22,12 +22,12 @@ class smc_i2c_fmtrst_repro_test(smc_base_test):
     """Bus-timeout halt followed by FMTRST recovery with and without an ENABLEHOST toggle."""
 
     required_evidence = (
-        "CHK-FMTRST-REPRO-START-SEEN",
         "CHK-FMTRST-REPRO-CMD-COMPLETE",
-        "CHK-FMTRST-REPRO-FDATA-CONSUMED",
-        "CHK-FMTRST-REPRO-START-SEEN-CTRL",
         "CHK-FMTRST-REPRO-CMD-COMPLETE-CTRL",
+        "CHK-FMTRST-REPRO-FDATA-CONSUMED",
         "CHK-FMTRST-REPRO-FDATA-CONSUMED-CTRL",
+        "CHK-FMTRST-REPRO-START-SEEN",
+        "CHK-FMTRST-REPRO-START-SEEN-CTRL",
         "CHK-NONVAC",
     )
     min_evidence = 7

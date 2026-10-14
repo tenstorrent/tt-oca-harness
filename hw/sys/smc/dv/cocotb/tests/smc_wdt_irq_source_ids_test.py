@@ -14,9 +14,9 @@ class smc_wdt_irq_source_ids_test(smc_base_test):
     """The raw vector is 328 bits; SEP WDT reset bit 282 and core-2 WDT pending are independent."""
 
     required_evidence = (
+        "CHK-NONVAC",
         "CHK-SEP-WDT-IRQ-DISTINCT",
         "CHK-SEP-WDT-IRQ-LEVEL",
-        "CHK-NONVAC",
     )
     min_evidence = 3
 

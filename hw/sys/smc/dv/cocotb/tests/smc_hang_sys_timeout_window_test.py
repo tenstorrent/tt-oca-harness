@@ -14,10 +14,10 @@ class smc_hang_sys_timeout_window_test(smc_base_test):
     """A 16-rise stall stays quiet; a held stall raises sys irq and raw bit 286."""
 
     required_evidence = (
+        "CHK-NONVAC",
+        "CHK-SYSWIN-AT-LOG",
         "CHK-SYSWIN-BELOW",
         "CHK-SYSWIN-BEYOND",
-        "CHK-SYSWIN-AT-LOG",
-        "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 5

@@ -15,15 +15,15 @@ class smc_i2c_ctrl_nack_modes_test(smc_base_test):
 
     required_evidence = (
         "CHK-ADDR-NACK-READ",
-        "CHK-HALT-LEVEL",
         "CHK-DATA-NACK-LATER",
-        "CHK-NAKOK-DATA",
+        "CHK-HALT-LEVEL",
         "CHK-NAKOK-CONTROL",
-        "CHK-NTO-ENABLED",
-        "CHK-NTO-DISABLED",
-        "CHK-NTO-CLEAR-OBS",
-        "CHK-STATUS-HALT-OBS",
+        "CHK-NAKOK-DATA",
         "CHK-NONVAC",
+        "CHK-NTO-CLEAR-OBS",
+        "CHK-NTO-DISABLED",
+        "CHK-NTO-ENABLED",
+        "CHK-STATUS-HALT-OBS",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 11

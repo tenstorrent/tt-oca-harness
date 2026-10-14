@@ -14,11 +14,11 @@ class smc_irq_reserved_idle_zero_test(smc_base_test):
     """Tied raw bits 287 and 327:324 read 0 over a 256-rise idle window; the rest are logged."""
 
     required_evidence = (
+        "CHK-NONVAC",
         "CHK-RSVDIDLE-287",
-        "CHK-RSVDIDLE-TAIL",
         "CHK-RSVDIDLE-INTERNAL-LOG",
         "CHK-RSVDIDLE-PERIPH-LOG",
-        "CHK-NONVAC",
+        "CHK-RSVDIDLE-TAIL",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 6

@@ -9,16 +9,16 @@ from seq_lib.smc_octs_primary_count_test_seq import smc_octs_primary_count_test_
 from smc_base_test import smc_base_test
 
 REQUIRED = (
-    "CHK-OCTS-NEVER-RUN",
-    "CHK-OCTS-PRESET-LOAD-COUNT",
-    "CHK-OCTS-NO-STOP",
-    "CHK-OCTS-COUNT-PORT-REGISTER",
-    "CHK-OCTS-COUNT-CARRY",
-    "CHK-OCTS-COUNT-WRAP",
-    "CHK-OCTS-ZERO-PRESET-START",
-    "CHK-OCTS-ROLE-PERSISTS",
-    "CHK-OCTS-EXPIRED-PRIMARY-ZERO",
     "CHK-NONVAC",
+    "CHK-OCTS-COUNT-CARRY",
+    "CHK-OCTS-COUNT-PORT-REGISTER",
+    "CHK-OCTS-COUNT-WRAP",
+    "CHK-OCTS-EXPIRED-PRIMARY-ZERO",
+    "CHK-OCTS-NEVER-RUN",
+    "CHK-OCTS-NO-STOP",
+    "CHK-OCTS-PRESET-LOAD-COUNT",
+    "CHK-OCTS-ROLE-PERSISTS",
+    "CHK-OCTS-ZERO-PRESET-START",
 )
 
 

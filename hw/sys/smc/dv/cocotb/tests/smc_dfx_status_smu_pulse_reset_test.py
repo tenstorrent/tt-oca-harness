@@ -19,15 +19,15 @@ class smc_dfx_status_smu_pulse_reset_test(smc_base_test):
     """STATUS_SMU abort bits: independence, reserved bits, pulse capture, resets, RO writes."""
 
     required_evidence = (
-        "CHK-DFX-STATUS-RO-CLEAN",
-        "CHK-DFX-STATUS-MBIST-ALONE",
-        "CHK-DFX-STATUS-STAGGER",
-        "CHK-DFX-STATUS-RESERVED",
-        "CHK-DFX-STATUS-RO-SET",
-        "CHK-DFX-STATUS-WRITE-RESP",
-        "CHK-DFX-STATUS-PULSE",
-        "CHK-DFX-STATUS-RESET-CLEARS",
         "CHK-DFX-STATUS-HIGH-THROUGH-RESET",
+        "CHK-DFX-STATUS-MBIST-ALONE",
+        "CHK-DFX-STATUS-PULSE",
+        "CHK-DFX-STATUS-RESERVED",
+        "CHK-DFX-STATUS-RESET-CLEARS",
+        "CHK-DFX-STATUS-RO-CLEAN",
+        "CHK-DFX-STATUS-RO-SET",
+        "CHK-DFX-STATUS-STAGGER",
+        "CHK-DFX-STATUS-WRITE-RESP",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

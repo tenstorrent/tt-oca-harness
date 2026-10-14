@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_isolation_retention_test. No Force.
+"""Sequence for smu_isolation_retention_test. No signal is forced; every value goes over the
+JTAG2AXI frontdoor.
 
 Steps S1-S5, checkers CHK-ISO-RETAIN-S1..S4.
 Spec: hw/sys/smc/doc/clk_rst.adoc (Isolation Controls, Isolation Connections, Timing and Recovery).

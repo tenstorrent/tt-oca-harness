@@ -190,6 +190,7 @@ class smc_jtag_dm_sbcs_haltsum_test_seq(SmcCsrSeq):
         self._chk("S6", f"haltsum0=0x{haltsum0:08X} (bits 31:4 and 3:0 both 0)")
 
         haltsum1 = await self._dmi_read(DMI_HALTSUM1)
+        self.haltsum_words = (haltsum0, haltsum1)
         self._step_done("S7")
         assert haltsum1 == 0, f"haltsum1=0x{haltsum1:08X} with no hart halted"
         self._chk("S7", f"haltsum1=0x{haltsum1:08X} (bits 31:1 and 0 both 0)")

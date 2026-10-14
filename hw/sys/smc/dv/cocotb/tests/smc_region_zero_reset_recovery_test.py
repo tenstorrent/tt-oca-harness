@@ -18,13 +18,13 @@ class smc_region_zero_reset_recovery_test(smc_base_test):
     """Write REGION_SIZE 0, then recover through cold resets, including resets mid-transaction."""
 
     required_evidence = (
+        "CHK-NONVAC",
         "CHK-REGION-ZERO-DECERR",
         "CHK-REGION-ZERO-JTAG-OUTBOUND",
         "CHK-REGION-ZERO-RESET-RECOVERY",
         "CHK-RESET-MID-INBOUND",
         "CHK-RESET-MID-OUTBOUND",
         "CHK-RESET-RESTORES-WINDOW",
-        "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 8

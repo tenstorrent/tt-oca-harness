@@ -16,22 +16,22 @@ class smc_mailbox_register_map_reset_test(smc_base_test):
     """All 64 mailbox apertures decode, reset clean and keep state across the enabled gate."""
 
     required_evidence = (
-        "CHK-CG-ENABLE-RESET-AND-SET",
-        "CHK-IRQ-VECTORS-LOW-AT-RESET",
-        "CHK-RESET-REGISTERS-REPRESENTATIVE-PAIRS",
-        "CHK-RESET-ALL-64-APERTURES",
-        "CHK-RESET-EMPTY-READ-BOTH-DIRECTIONS",
-        "CHK-APERTURE-DECODE-OUTBOUND",
-        "CHK-APERTURE-DECODE-INBOUND",
-        "CHK-REGISTER-OFFSETS-PAIR0",
-        "CHK-REGISTER-STATE-PER-APERTURE",
         "CHK-ADDRESS-EXAMPLES-PAIR0",
+        "CHK-APERTURE-DECODE-INBOUND",
+        "CHK-APERTURE-DECODE-OUTBOUND",
         "CHK-ATTRIBUTES-OBSERVED",
-        "CHK-PAIR31-DEPTH-TWO",
+        "CHK-CG-BACK-TO-BACK-IN-ORDER",
+        "CHK-CG-ENABLE-RESET-AND-SET",
         "CHK-CG-FIRST-ACCESS-AFTER-IDLE",
         "CHK-CG-RETENTION-ACROSS-IDLE",
-        "CHK-CG-BACK-TO-BACK-IN-ORDER",
+        "CHK-IRQ-VECTORS-LOW-AT-RESET",
         "CHK-NONVAC",
+        "CHK-PAIR31-DEPTH-TWO",
+        "CHK-REGISTER-OFFSETS-PAIR0",
+        "CHK-REGISTER-STATE-PER-APERTURE",
+        "CHK-RESET-ALL-64-APERTURES",
+        "CHK-RESET-EMPTY-READ-BOTH-DIRECTIONS",
+        "CHK-RESET-REGISTERS-REPRESENTATIVE-PAIRS",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 17

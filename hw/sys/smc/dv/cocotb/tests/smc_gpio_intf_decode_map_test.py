@@ -19,8 +19,8 @@ class smc_gpio_intf_decode_map_test(smc_base_test):
     required_evidence = (
         "CHK-GPIO-DECODE-ENDPOINTS",
         "CHK-GPIO-DECODE-NO-ALIAS",
-        "CHK-GPIO-DECODE-REG-DISTINCT",
         "CHK-GPIO-DECODE-PG-FORMULA",
+        "CHK-GPIO-DECODE-REG-DISTINCT",
         "CHK-NONVAC",
     )
     min_evidence = 5

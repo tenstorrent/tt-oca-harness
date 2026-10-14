@@ -14,14 +14,14 @@ class smc_i2c_target_addr_gate_test(smc_base_test):
     """A bench controller addresses the I2C0 target; CTRL and TARGET_ID decide the ACK."""
 
     required_evidence = (
+        "CHK-I2C-TGT-ADDR-ONLY",
+        "CHK-I2C-TGT-GATE-MASKZERO",
+        "CHK-I2C-TGT-GATE-NONMATCH",
         "CHK-I2C-TGT-GATE-PAIR0",
         "CHK-I2C-TGT-GATE-PAIR1",
-        "CHK-I2C-TGT-GATE-NONMATCH",
-        "CHK-I2C-TGT-GATE-MASKZERO",
         "CHK-I2C-TGT-GATE-REWRITE",
-        "CHK-I2C-TGT-ROLE-GATE",
-        "CHK-I2C-TGT-ADDR-ONLY",
         "CHK-I2C-TGT-RESTART-ADDRESS",
+        "CHK-I2C-TGT-ROLE-GATE",
         "CHK-I2C-TGT-ROLE-MIDTRANSFER-LOG",
         "CHK-I2C-TGT-ROLE-MIDTRANSFER-RECOVER",
         "CHK-NONVAC",

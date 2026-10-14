@@ -14,10 +14,10 @@ class smc_cpu_ctrl_access_rules_test(smc_base_test):
     """Exercise CPU_CTRL zero writes, read-only writes, reserved bits and AxPROT over SEP_IN."""
 
     required_evidence = (
-        "CHK-ACCR-ZERO",
-        "CHK-ACCR-RO-RESP",
-        "CHK-ACCR-RESERVED",
         "CHK-ACCR-PROT",
+        "CHK-ACCR-RESERVED",
+        "CHK-ACCR-RO-RESP",
+        "CHK-ACCR-ZERO",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

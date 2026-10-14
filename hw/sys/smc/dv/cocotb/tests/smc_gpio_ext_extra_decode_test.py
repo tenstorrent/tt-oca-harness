@@ -21,8 +21,8 @@ class smc_gpio_ext_extra_decode_test(smc_base_test):
     """gpio_extra_intf / gpio_extra_ctrl forwarding and the SHIM boundary."""
 
     required_evidence = (
-        "CHK-GPIO-EXT-EXTRA-INTF-ROUTED",
         "CHK-GPIO-EXT-EXTRA-CTRL-ROUTED",
+        "CHK-GPIO-EXT-EXTRA-INTF-ROUTED",
         "CHK-GPIO-EXT-EXTRA-RESPONSE",
         "CHK-GPIO-EXT-EXTRA-SHIM-BOUNDARY",
         "CHK-NONVAC",

@@ -14,9 +14,9 @@ class smc_hang_data_timeout_window_test(smc_base_test):
     """A 16-rise stall stays quiet; a held stall raises data irq and raw bit 286."""
 
     required_evidence = (
+        "CHK-DATAWIN-AT-LOG",
         "CHK-DATAWIN-BELOW",
         "CHK-DATAWIN-BEYOND",
-        "CHK-DATAWIN-AT-LOG",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

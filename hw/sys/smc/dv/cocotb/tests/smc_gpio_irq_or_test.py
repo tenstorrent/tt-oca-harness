@@ -17,12 +17,12 @@ class smc_gpio_irq_or_test(smc_base_test):
     """Wraps 4, 31, 32 and 60 drive the two OR-reduced interrupt lines."""
 
     required_evidence = (
-        "CHK-OR-LOWER",
-        "CHK-OR-UPPER",
+        "CHK-NONVAC",
+        "CHK-OR-EDGE-PULSE",
         "CHK-OR-HOLD-UNTIL-ALL-CLEAR",
         "CHK-OR-IDLE",
-        "CHK-OR-EDGE-PULSE",
-        "CHK-NONVAC",
+        "CHK-OR-LOWER",
+        "CHK-OR-UPPER",
     )
     min_evidence = 6
 

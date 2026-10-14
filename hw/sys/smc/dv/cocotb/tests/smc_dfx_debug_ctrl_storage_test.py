@@ -14,12 +14,12 @@ class smc_dfx_debug_ctrl_storage_test(smc_base_test):
     """Write and read back every DEBUG_CTRL field over SEP_IN."""
 
     required_evidence = (
-        "CHK-DFX-CTRL-FIELDS",
-        "CHK-DFX-CTRL-CLK-BITS",
-        "CHK-DFX-CTRL-XTRIG",
-        "CHK-DFX-CTRL-WALK1",
-        "CHK-DFX-CTRL-BIT31",
         "CHK-DFX-CTRL-B2B",
+        "CHK-DFX-CTRL-BIT31",
+        "CHK-DFX-CTRL-CLK-BITS",
+        "CHK-DFX-CTRL-FIELDS",
+        "CHK-DFX-CTRL-WALK1",
+        "CHK-DFX-CTRL-XTRIG",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

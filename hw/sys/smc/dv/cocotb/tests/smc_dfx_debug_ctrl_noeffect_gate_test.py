@@ -20,12 +20,12 @@ class smc_dfx_debug_ctrl_noeffect_gate_test(smc_base_test):
     """DEBUG_CTRL no-effect readback, cold reset, DFD probes and cg_en access liveness."""
 
     required_evidence = (
-        "CHK-DEBUGCTRL-FIELD-HOLD",
-        "CHK-DEBUGCTRL-EFFECT-CLEAR",
-        "CHK-DEBUGCTRL-RESET-BIT31",
-        "CHK-DEBUGCTRL-NO-OBSERVABLE",
         "CHK-CLKGATE-INFLIGHT",
         "CHK-CLKGATE-STATUS-ACCESS",
+        "CHK-DEBUGCTRL-EFFECT-CLEAR",
+        "CHK-DEBUGCTRL-FIELD-HOLD",
+        "CHK-DEBUGCTRL-NO-OBSERVABLE",
+        "CHK-DEBUGCTRL-RESET-BIT31",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

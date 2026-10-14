@@ -14,17 +14,17 @@ class smc_uart_reg_reset_rw_test(smc_base_test):
     """Reset vectors, field read/write and isolation of the four UART register blocks."""
 
     required_evidence = (
-        "CHK-UART-RESET-VALUES",
-        "CHK-UART-RESET-MSR",
+        "CHK-NONVAC",
         "CHK-UART-RESET-DL",
         "CHK-UART-RESET-INSTANCES",
+        "CHK-UART-RESET-MSR",
+        "CHK-UART-RESET-VALUES",
+        "CHK-UART-RW-DL",
+        "CHK-UART-RW-ECR-ITR",
         "CHK-UART-RW-IER",
+        "CHK-UART-RW-ISOLATION",
         "CHK-UART-RW-LCR",
         "CHK-UART-RW-MCR",
-        "CHK-UART-RW-ECR-ITR",
-        "CHK-UART-RW-DL",
-        "CHK-UART-RW-ISOLATION",
-        "CHK-NONVAC",
     )
     min_evidence = 11
 

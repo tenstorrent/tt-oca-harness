@@ -16,16 +16,16 @@ class smc_sys_out_path_responder_control_test(smc_base_test):
     """Drive the SYS_OUT responder knobs behind JTAG accesses and local accesses."""
 
     required_evidence = (
-        "CHK-TIMEOUT-PATHS",
         "CHK-JTAG-OUTBOUND-ROUTE",
         "CHK-JTAG-OUTBOUND-SILENT",
-        "CHK-WSPLIT-AW-FIRST",
-        "CHK-WSPLIT-W-FIRST",
-        "CHK-WSPLIT-SAME-CYCLE",
+        "CHK-NONVAC",
         "CHK-OUT-READ-RECOVERY",
         "CHK-OUT-WRITE-RECOVERY",
         "CHK-STALLED-OUTBOUND-LOCAL-ANSWERED",
-        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
+        "CHK-WSPLIT-AW-FIRST",
+        "CHK-WSPLIT-SAME-CYCLE",
+        "CHK-WSPLIT-W-FIRST",
     )
     min_evidence = 10
 

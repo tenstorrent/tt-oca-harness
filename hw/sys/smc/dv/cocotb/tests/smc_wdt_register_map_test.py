@@ -18,15 +18,15 @@ class smc_wdt_register_map_test(smc_base_test):
     """Four-core watchdog aperture isolation, offset decode, CTRL fields and CMP width."""
 
     required_evidence = (
+        "CHK-NONVAC",
+        "CHK-WDT-APERTURE-INTERLEAVE",
+        "CHK-WDT-APERTURE-ISOLATION",
+        "CHK-WDT-CMP-WIDE-WRITE",
+        "CHK-WDT-CTRL-FIELD-READBACK",
+        "CHK-WDT-CTRL-LOCKED-WRITE",
+        "CHK-WDT-CTRL-RESERVED",
         "CHK-WDT-CTRL-RESET",
         "CHK-WDT-OFFSET-DECODE",
-        "CHK-WDT-APERTURE-ISOLATION",
-        "CHK-WDT-APERTURE-INTERLEAVE",
-        "CHK-WDT-CTRL-FIELD-READBACK",
-        "CHK-WDT-CTRL-RESERVED",
-        "CHK-WDT-CTRL-LOCKED-WRITE",
-        "CHK-WDT-CMP-WIDE-WRITE",
-        "CHK-NONVAC",
     )
     min_evidence = 9
 

@@ -14,18 +14,18 @@ class smc_uart_irq_thre_identify_test(smc_base_test):
     """THRE interrupt raise, clear, re-arm and mask, and IIR priority ordering on UART0."""
 
     required_evidence = (
-        "CHK-UART-THRE-RAISE",
-        "CHK-UART-THRE-WRITE-CLEARS",
-        "CHK-UART-THRE-IIR-CLEAR",
-        "CHK-UART-THRE-REARM",
-        "CHK-UART-THRE-MASK",
-        "CHK-UART-THRE-ETBEI-EMPTY",
-        "CHK-UART-LSR-THRE-STICKY",
-        "CHK-UART-ID-ORDER",
-        "CHK-UART-ID-SERVICE-LOOP",
-        "CHK-UART-ID-IIR-SIDE-EFFECT",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
+        "CHK-UART-ID-IIR-SIDE-EFFECT",
+        "CHK-UART-ID-ORDER",
+        "CHK-UART-ID-SERVICE-LOOP",
+        "CHK-UART-LSR-THRE-STICKY",
+        "CHK-UART-THRE-ETBEI-EMPTY",
+        "CHK-UART-THRE-IIR-CLEAR",
+        "CHK-UART-THRE-MASK",
+        "CHK-UART-THRE-RAISE",
+        "CHK-UART-THRE-REARM",
+        "CHK-UART-THRE-WRITE-CLEARS",
     )
     min_evidence = 12
 

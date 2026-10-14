@@ -15,12 +15,12 @@ class smc_telemetry_address_map_test(smc_base_test):
     """Receivers 0 to 2 register and counter offsets; past-extent and unbacked responses."""
 
     required_evidence = (
+        "CHK-NONVAC",
         "CHK-TELEMETRY-APERTURE-REGS",
         "CHK-TELEMETRY-COUNTER-WINDOW",
+        "CHK-TELEMETRY-NO-FOURTH-RECEIVER",
         "CHK-TELEMETRY-PAST-EXTENT",
         "CHK-TELEMETRY-UNBACKED-OFFSETS",
-        "CHK-TELEMETRY-NO-FOURTH-RECEIVER",
-        "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 7

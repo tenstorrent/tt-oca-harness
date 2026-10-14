@@ -14,10 +14,10 @@ class smc_accel_window_decode_test(smc_base_test):
     """Drive both accelerator register windows and their neighbours from SEP_IN."""
 
     required_evidence = (
-        "CHK-ACCEL-WIN-NO-ALIAS",
+        "CHK-ACCEL-WIN-DECERR-NEIGHBOURS",
         "CHK-ACCEL-WIN-FIRST-LAST",
         "CHK-ACCEL-WIN-HOLES",
-        "CHK-ACCEL-WIN-DECERR-NEIGHBOURS",
+        "CHK-ACCEL-WIN-NO-ALIAS",
         "CHK-ACCEL-WIN-REGION-SIZE",
         "CHK-ACCEL-WIN-RO-WRITES",
         "CHK-NONVAC",

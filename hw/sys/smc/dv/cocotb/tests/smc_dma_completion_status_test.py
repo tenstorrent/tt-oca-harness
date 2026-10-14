@@ -15,11 +15,11 @@ class smc_dma_completion_status_test(smc_base_test):
 
     required_evidence = (
         "CHK-DMA-DONE-RESET",
-        "CHK-DMA-STATUS-IDLE",
-        "CHK-DMA-STATUS-BIT8",
         "CHK-DMA-NO-DATA-ND-CLEAR",
         "CHK-DMA-NO-DATA-REPS-ZERO",
         "CHK-DMA-POLL-IN-FLIGHT",
+        "CHK-DMA-STATUS-BIT8",
+        "CHK-DMA-STATUS-IDLE",
         "CHK-NONVAC",
     )
     min_evidence = 7

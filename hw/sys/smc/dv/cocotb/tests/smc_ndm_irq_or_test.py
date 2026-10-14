@@ -15,8 +15,8 @@ class smc_ndm_irq_or_test(smc_base_test):
 
     required_evidence = (
         "CHK-NDM-EACH-ALONE",
-        "CHK-NDM-OR-DROP",
         "CHK-NDM-HOLD",
+        "CHK-NDM-OR-DROP",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

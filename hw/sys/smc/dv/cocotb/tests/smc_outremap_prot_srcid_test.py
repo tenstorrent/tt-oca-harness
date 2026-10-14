@@ -14,16 +14,16 @@ class smc_outremap_prot_srcid_test(smc_base_test):
     """JTAG accesses with all eight AxPROT values through the remaps and the direct path."""
 
     required_evidence = (
+        "CHK-NONVAC",
+        "CHK-PROT-AFTER-REMAPS",
+        "CHK-PROT-DIRECT",
         "CHK-PROT-MMODE",
         "CHK-PROT-XVISOR",
-        "CHK-PROT-DIRECT",
-        "CHK-PROT-AFTER-REMAPS",
         "CHK-SRCID-DIRECT-OBSERVE",
         "CHK-SRCID-MMODE-OBSERVE",
         "CHK-SRCID-XVISOR-OBSERVE",
-        "CHK-VALID0-SRCID-OBSERVE",
-        "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
+        "CHK-VALID0-SRCID-OBSERVE",
     )
     min_evidence = 10
 

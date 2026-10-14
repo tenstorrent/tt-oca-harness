@@ -23,14 +23,14 @@ class smc_inbound_outside_window_decerr_test(smc_base_test):
     """DECERR outside both windows and at BASE+REGION_SIZE on both inbound ports."""
 
     required_evidence = (
-        "CHK-REGION-SIZE-LIMIT-DECERR",
         "CHK-BELOW-BASE-DECERR",
-        "CHK-WINDOW-LAST-WORD-ROUTED",
-        "CHK-OUTSIDE-WINDOW-DECERR",
-        "CHK-OUTSIDE-NO-OUTPUT-REQUEST",
-        "CHK-REMAP-REGION-RESET-DECERR",
         "CHK-NONVAC",
+        "CHK-OUTSIDE-NO-OUTPUT-REQUEST",
+        "CHK-OUTSIDE-WINDOW-DECERR",
+        "CHK-REGION-SIZE-LIMIT-DECERR",
+        "CHK-REMAP-REGION-RESET-DECERR",
         "CHK-TIMEOUT-PATHS",
+        "CHK-WINDOW-LAST-WORD-ROUTED",
     )
     min_evidence = 8
 

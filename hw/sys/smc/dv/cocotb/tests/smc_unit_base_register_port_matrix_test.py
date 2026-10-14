@@ -25,18 +25,18 @@ class smc_unit_base_register_port_matrix_test(smc_base_test):
     """Unit base registers read from sep_axi_in, sys_axi_in and jtag_axi_in at both bases."""
 
     required_evidence = (
-        "CHK-WDT-BASE-PORTS",
-        "CHK-RESET-UNIT-BASE-PORTS",
-        "CHK-SPARE-FIRST-REGS-PORTS",
         "CHK-BASE-CONFIG-RESETS-PORTS",
-        "CHK-HANG-DET-RESETS",
+        "CHK-CPU-CTRL-FIRST-REG-PORTS",
         "CHK-DFX-REGS-PORTS",
+        "CHK-DMA-ZEROER-BASE-PORTS",
         "CHK-FABRIC-ARRAY-BASES-PORTS",
         "CHK-FABRIC-ARRAY-LAST-INSTANCE",
-        "CHK-DMA-ZEROER-BASE-PORTS",
-        "CHK-CPU-CTRL-FIRST-REG-PORTS",
+        "CHK-HANG-DET-RESETS",
         "CHK-NONVAC",
+        "CHK-RESET-UNIT-BASE-PORTS",
+        "CHK-SPARE-FIRST-REGS-PORTS",
         "CHK-TIMEOUT-PATHS",
+        "CHK-WDT-BASE-PORTS",
     )
     min_evidence = 12
 

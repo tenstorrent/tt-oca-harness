@@ -16,12 +16,12 @@ class smc_axi_inbound_ports_burst_test(smc_base_test):
     """8-byte round trips and 2/4/16/256-beat INCR bursts into the SPM on every inbound port."""
 
     required_evidence = (
-        "CHK-IPB-WIDTH-ROUNDTRIP",
-        "CHK-IPB-INCR-MEMORY",
         "CHK-IPB-INCR-256",
+        "CHK-IPB-INCR-MEMORY",
         "CHK-IPB-INCR-REG-OBS",
         "CHK-IPB-REJECT-READ-OBS",
         "CHK-IPB-REJECT-RECOVERY",
+        "CHK-IPB-WIDTH-ROUNDTRIP",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

@@ -14,15 +14,15 @@ class smc_i2c_clock_gate_response_test(smc_base_test):
     """Gate the I2C window, read the error answers, ungate and check what was kept."""
 
     required_evidence = (
-        "CHK-I2C-GATE-READ-SLVERR",
-        "CHK-I2C-GATE-WRITE-SLVERR",
         "CHK-I2C-GATE-GAP-OBS",
-        "CHK-I2C-GATE-UNGATE-OKAY",
         "CHK-I2C-GATE-IRQ-OBS",
-        "CHK-I2C-RETAIN-REGS",
-        "CHK-I2C-RETAIN-INTR",
-        "CHK-I2C-RETAIN-GATED-WRITE-OBS",
+        "CHK-I2C-GATE-READ-SLVERR",
+        "CHK-I2C-GATE-UNGATE-OKAY",
+        "CHK-I2C-GATE-WRITE-SLVERR",
         "CHK-I2C-RETAIN-CYCLES",
+        "CHK-I2C-RETAIN-GATED-WRITE-OBS",
+        "CHK-I2C-RETAIN-INTR",
+        "CHK-I2C-RETAIN-REGS",
         "CHK-NONVAC",
     )
     min_evidence = 10

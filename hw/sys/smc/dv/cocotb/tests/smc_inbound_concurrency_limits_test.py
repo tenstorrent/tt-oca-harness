@@ -23,16 +23,16 @@ class smc_inbound_concurrency_limits_test(smc_base_test):
     """Outstanding groups of 4 to 33 on SEP_IN and simultaneous reads on all inbound ports."""
 
     required_evidence = (
-        "CHK-LIMIT-FABRIC-32",
-        "CHK-LIMIT-ERRSLV-32",
-        "CHK-LIMIT-LOCAL-XBAR-8",
-        "CHK-LIMIT-AXIL-XBAR-4",
-        "CHK-SAME-PORT-OUTSTANDING",
-        "CHK-CONCURRENT-DISTINCT-TARGETS",
-        "CHK-CONCURRENT-SAME-TARGET",
         "CHK-CONCURRENT-DECERR-BESIDE-VALID",
+        "CHK-CONCURRENT-DISTINCT-TARGETS",
         "CHK-CONCURRENT-READ-WRITE",
+        "CHK-CONCURRENT-SAME-TARGET",
+        "CHK-LIMIT-AXIL-XBAR-4",
+        "CHK-LIMIT-ERRSLV-32",
+        "CHK-LIMIT-FABRIC-32",
+        "CHK-LIMIT-LOCAL-XBAR-8",
         "CHK-NONVAC",
+        "CHK-SAME-PORT-OUTSTANDING",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 11

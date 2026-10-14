@@ -23,12 +23,12 @@ class smc_axi_channel_timing_ports_test(smc_base_test):
     """Skew, hold and stall AW, W, AR, B and R on SEP_IN, SYS_IN and JTAG."""
 
     required_evidence = (
-        "CHK-CTP-W-FIRST",
         "CHK-CTP-AW-FIRST",
         "CHK-CTP-AW-QUEUE",
         "CHK-CTP-BREADY-PORTS",
-        "CHK-CTP-RREADY-BEATS",
         "CHK-CTP-RANDOM-STALLS",
+        "CHK-CTP-RREADY-BEATS",
+        "CHK-CTP-W-FIRST",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

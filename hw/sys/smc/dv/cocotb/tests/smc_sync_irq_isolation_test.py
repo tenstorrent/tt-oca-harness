@@ -14,10 +14,10 @@ class smc_sync_irq_isolation_test(smc_base_test):
     """SYNC_REG set and clear leave the vector at baseline; asserted sources do not raise sync."""
 
     required_evidence = (
+        "CHK-NONVAC",
+        "CHK-SYNCIRQ-POSCTRL",
         "CHK-SYNCIRQ-SET-CLR",
         "CHK-SYNCIRQ-SOURCES-ZERO",
-        "CHK-SYNCIRQ-POSCTRL",
-        "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 5

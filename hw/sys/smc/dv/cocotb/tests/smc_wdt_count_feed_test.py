@@ -17,14 +17,14 @@ class smc_wdt_count_feed_test(smc_base_test):
     """COUNT counts under wdogenalways or wdogcoreawake, accepts keyed writes and clears on FEED."""
 
     required_evidence = (
+        "CHK-NONVAC",
+        "CHK-WDT-COREAWAKE",
         "CHK-WDT-COUNT-ENABLE-MATRIX",
+        "CHK-WDT-COUNT-ROLLOVER",
         "CHK-WDT-COUNT-WRITE",
         "CHK-WDT-COUNTHI-ZERO",
-        "CHK-WDT-COUNT-ROLLOVER",
-        "CHK-WDT-FEED-RESET",
         "CHK-WDT-FEED-NONMAGIC",
-        "CHK-WDT-COREAWAKE",
-        "CHK-NONVAC",
+        "CHK-WDT-FEED-RESET",
     )
     min_evidence = 8
 

@@ -14,12 +14,12 @@ class smc_cpu_ctrl_wdt_regs_test(smc_base_test):
     """Exercise the watchdog timeout and test-control scalar registers over SEP_IN."""
 
     required_evidence = (
+        "CHK-NONVAC",
+        "CHK-TESTCTRL-RO",
+        "CHK-TIMEOUT-PATHS",
         "CHK-WDT-RESET",
         "CHK-WDT-RW",
         "CHK-WDTRST-PULSE",
-        "CHK-TESTCTRL-RO",
-        "CHK-NONVAC",
-        "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 6
 

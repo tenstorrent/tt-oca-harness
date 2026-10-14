@@ -14,15 +14,15 @@ class smc_cpu_boot_regs_read_test(smc_base_test):
     """Read the boot-time registers over SEP_IN and compare them with their reset values."""
 
     required_evidence = (
-        "CHK-BOOT-RESET-VECTOR-RESET",
-        "CHK-BOOT-DEBUG-RESET-N",
-        "CHK-BOOT-STRAP-WORD",
-        "CHK-BOOT-CHIPCFG-RESET",
         "CHK-BOOT-APERTURE-RESET",
-        "CHK-BOOT-LOCALBASE-RO",
-        "CHK-BOOT-DUMMY-WORDS",
+        "CHK-BOOT-CHIPCFG-RESET",
+        "CHK-BOOT-DEBUG-RESET-N",
         "CHK-BOOT-DUMMY-BURST",
+        "CHK-BOOT-DUMMY-WORDS",
+        "CHK-BOOT-LOCALBASE-RO",
+        "CHK-BOOT-RESET-VECTOR-RESET",
         "CHK-BOOT-SCRATCH-WIDTH",
+        "CHK-BOOT-STRAP-WORD",
         "CHK-NONVAC",
     )
     min_evidence = 10

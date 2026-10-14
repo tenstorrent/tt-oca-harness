@@ -28,9 +28,9 @@ class smc_ref_reset_cycles_test(smc_base_test):
     """Release hold and de-glitch of rst_cold_ni measured in clk_ref_i cycles."""
 
     required_evidence = (
-        "CHK-REF-RESET-RELEASE-CYCLES",
-        "CHK-REF-RESET-DEGLITCH",
         "CHK-NONVAC",
+        "CHK-REF-RESET-DEGLITCH",
+        "CHK-REF-RESET-RELEASE-CYCLES",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 4

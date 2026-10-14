@@ -15,8 +15,8 @@ class smc_ext_irq_hold_release_test(smc_base_test):
 
     required_evidence = (
         "CHK-EXTHOLD-BIT0",
-        "CHK-EXTHOLD-BIT2",
         "CHK-EXTHOLD-BIT16",
+        "CHK-EXTHOLD-BIT2",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

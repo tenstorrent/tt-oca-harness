@@ -17,11 +17,11 @@ class smc_flr_isolation_sources_test(smc_base_test):
     """Drive the three isolation sources and the FLR latch; sample the two outputs."""
 
     required_evidence = (
-        "CHK-FLR-REG-SOURCE",
-        "CHK-FLR-PIN-SOURCE",
-        "CHK-FLR-SOURCE-OR",
-        "CHK-FLR-LATCH-SET",
         "CHK-FLR-LATCH-CLEAR",
+        "CHK-FLR-LATCH-SET",
+        "CHK-FLR-PIN-SOURCE",
+        "CHK-FLR-REG-SOURCE",
+        "CHK-FLR-SOURCE-OR",
         "CHK-FLR-SW-NO-SKIP",
         "CHK-NONVAC",
     )

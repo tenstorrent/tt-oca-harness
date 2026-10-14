@@ -15,14 +15,14 @@ class smc_filter_reset_word_test(smc_base_test):
     """Read reset words, program non-reset values, cold reset, read them back."""
 
     required_evidence = (
-        "CHK-RESET-WORD-INBOUND",
-        "CHK-RESET-WORD-OUTBOUND",
-        "CHK-RESET-ALIAS-REMAP",
-        "CHK-RESET-OUTPUT-REMAP",
-        "CHK-RESET-FILTER-PROGRAMMED",
-        "CHK-RESET-CLEARS-LOCK",
         "CHK-LOCK-WRITABLE-AFTER-RESET",
         "CHK-NONVAC",
+        "CHK-RESET-ALIAS-REMAP",
+        "CHK-RESET-CLEARS-LOCK",
+        "CHK-RESET-FILTER-PROGRAMMED",
+        "CHK-RESET-OUTPUT-REMAP",
+        "CHK-RESET-WORD-INBOUND",
+        "CHK-RESET-WORD-OUTBOUND",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 9

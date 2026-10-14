@@ -17,13 +17,13 @@ class smc_cpu_boot_release_sequence_test(smc_base_test):
     """Per-edge record of the CPU resets, init-done and isolate across two cold resets."""
 
     required_evidence = (
-        "CHK-FUSE-CORES-HELD-UNTIL-SENSE",
-        "CHK-FUSE-HELD-WITHOUT-EXT-BOOT",
-        "CHK-FUSE-RELEASE-BOTH-TERMS",
-        "CHK-FUSE-EXT-BOOT-MID-SENSE",
-        "CHK-INIT-MEM-DONE-BYPASS",
         "CHK-COLD-SELF-ISOLATE-HELD",
         "CHK-COLD-SELF-ISOLATE-RELEASE",
+        "CHK-FUSE-CORES-HELD-UNTIL-SENSE",
+        "CHK-FUSE-EXT-BOOT-MID-SENSE",
+        "CHK-FUSE-HELD-WITHOUT-EXT-BOOT",
+        "CHK-FUSE-RELEASE-BOTH-TERMS",
+        "CHK-INIT-MEM-DONE-BYPASS",
         "CHK-NONVAC",
     )
     min_evidence = 8

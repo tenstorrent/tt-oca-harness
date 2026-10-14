@@ -17,13 +17,13 @@ class smc_cpu_ctrl_sema_test(smc_base_test):
     """SEMA[0..3] signed accumulate over SEP_IN AXI."""
 
     required_evidence = (
-        "CHK-SEMA-SEQ",
+        "CHK-NONVAC",
         "CHK-SEMA-INDEP",
         "CHK-SEMA-NEG",
-        "CHK-SEMA-WRAP",
-        "CHK-SEMA-UPPER",
         "CHK-SEMA-PIPELINED",
-        "CHK-NONVAC",
+        "CHK-SEMA-SEQ",
+        "CHK-SEMA-UPPER",
+        "CHK-SEMA-WRAP",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 8

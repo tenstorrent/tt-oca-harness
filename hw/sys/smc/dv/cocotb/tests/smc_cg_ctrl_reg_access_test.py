@@ -17,13 +17,13 @@ class smc_cg_ctrl_reg_access_test(smc_base_test):
     """CLOCK_GATE_CONTROL reset value, walking enables, hysteresis, reserved, narrow, rewrite."""
 
     required_evidence = (
+        "CHK-CGC-HYST-RANGE",
+        "CHK-CGC-NARROW-ACCESS",
+        "CHK-CGC-RESERVED-BITS",
         "CHK-CGC-RESET-VALUE",
+        "CHK-CGC-REWRITE",
         "CHK-CGC-WALKING-ONE",
         "CHK-CGC-WALKING-ZERO",
-        "CHK-CGC-HYST-RANGE",
-        "CHK-CGC-RESERVED-BITS",
-        "CHK-CGC-NARROW-ACCESS",
-        "CHK-CGC-REWRITE",
         "CHK-NONVAC",
     )
     min_evidence = 8

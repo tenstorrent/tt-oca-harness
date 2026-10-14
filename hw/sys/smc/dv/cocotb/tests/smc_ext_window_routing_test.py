@@ -17,15 +17,15 @@ class smc_ext_window_routing_test(smc_base_test):
     """eFuse SHIM range, supplementary region, equal offsets, responses and window top."""
 
     required_evidence = (
+        "CHK-EXT-REGIONS-IDENTICAL",
+        "CHK-EXT-RESPONSE-RETURN",
+        "CHK-EXT-SUPPLEMENTARY-ROUTED",
+        "CHK-EXT-WINDOW-TOP",
+        "CHK-NONVAC",
         "CHK-SHIM-BASE-ROUTED",
         "CHK-SHIM-LAST-WORD-ROUTED",
         "CHK-SHIM-PAST-RANGE-NOT-EFUSE",
-        "CHK-EXT-SUPPLEMENTARY-ROUTED",
-        "CHK-EXT-REGIONS-IDENTICAL",
-        "CHK-EXT-RESPONSE-RETURN",
-        "CHK-EXT-WINDOW-TOP",
         "CHK-TIMEOUT-PATHS",
-        "CHK-NONVAC",
     )
     min_evidence = 9
 

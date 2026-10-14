@@ -14,25 +14,25 @@ class smc_mailbox_access_error_test(smc_base_test):
     """Empty reads, full writes and read-only writes on pair 2 answer as the spec states."""
 
     required_evidence = (
-        "CHK-EMPTY-READ-SLVERR-DATA",
+        "CHK-CHANNELS-COMPLETE-BOUNDED",
+        "CHK-CHANNELS-CTRL-WITH-IRQS",
+        "CHK-CHANNELS-WRITE-WITH-READ",
+        "CHK-CHANNELS-WRITE-WITH-STATUS",
         "CHK-EMPTY-READ-FLAGS",
         "CHK-EMPTY-READ-NO-SIDE-EFFECT",
-        "CHK-FULL-WRITE-FLAGS",
-        "CHK-FULL-WRITE-RECOVERS",
+        "CHK-EMPTY-READ-SLVERR-DATA",
         "CHK-ERRFLAGS-BOTH-THEN-ZERO",
+        "CHK-ERRFLAGS-PER-APERTURE",
         "CHK-ERRFLAGS-READ-KEEPS-IRQS-ERROR",
         "CHK-ERRFLAGS-STICKY-ONE-READ-CLEARS",
-        "CHK-ERRFLAGS-PER-APERTURE",
+        "CHK-FULL-WRITE-FLAGS",
+        "CHK-FULL-WRITE-RECOVERS",
+        "CHK-NONVAC",
+        "CHK-READ-ONLY-WRITES-NO-SIDE-EFFECT-OBSERVED",
+        "CHK-READ-ONLY-WRITES-REJECTED",
+        "CHK-TIMEOUT-PATHS",
         "CHK-WRITE-DATA-READ-EMPTY",
         "CHK-WRITE-DATA-READ-NO-EFFECT",
-        "CHK-READ-ONLY-WRITES-REJECTED",
-        "CHK-READ-ONLY-WRITES-NO-SIDE-EFFECT-OBSERVED",
-        "CHK-CHANNELS-WRITE-WITH-STATUS",
-        "CHK-CHANNELS-WRITE-WITH-READ",
-        "CHK-CHANNELS-CTRL-WITH-IRQS",
-        "CHK-CHANNELS-COMPLETE-BOUNDED",
-        "CHK-NONVAC",
-        "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 19
 

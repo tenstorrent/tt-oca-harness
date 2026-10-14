@@ -18,9 +18,9 @@ class smc_filter_range_granule_test(smc_base_test):
 
     required_evidence = (
         "CHK-DBW-READ-ONLY",
-        "CHK-GRANULE-BURST0",
         "CHK-GRANULE-ALIGNED",
         "CHK-GRANULE-BANK-PARITY",
+        "CHK-GRANULE-BURST0",
         "CHK-GRANULE-WRITEBACK-OBSERVE",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",

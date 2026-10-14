@@ -9,11 +9,12 @@ hw/sys/dtp/doc/clk_rst.adoc (Reset Architecture, Reset Distribution), hw/sys/smu
 Expected values: Test-Logic-Reset is jtag_ptap_state 16'h0001 and Run-Test/Idle 16'h0002 (one-hot
 encodings of the state machine table). The combined reset jtag_trst_n = pwr_on_rst_ni && TRST_n
 holds the controller in Test-Logic-Reset without TCK, and Test-Logic-Reset loads IDCODE into the
-instruction register, so the decoded instruction is the one-hot 64'h2 (bit <opcode>) and a DR scan
-returns the IDCODE 0x0000_0001. A TMS-low TCK is the first one that leaves Test-Logic-Reset. The
-reset values of jtag_tdo and jtag_tdo_oen are not documented: the samples after TRST_n,
-after power-on reset and after both are compared with each other and logged. How powergood_stable
-is derived is not documented: the test drives powergood_i and observes the TAP only.
+instruction register, so the decoded instruction is the one-hot 64'h2 (bit 1, the IDCODE
+opcode) and a DR scan returns the IDCODE 0x0000_0001. A TMS-low TCK is the first one that leaves
+Test-Logic-Reset. The reset values of jtag_tdo and jtag_tdo_oen are not documented: the samples
+after TRST_n, after power-on reset and after both are compared with each other and logged. How
+powergood_stable is derived is not documented: the test drives powergood_i and observes the TAP
+only.
 """
 
 from __future__ import annotations

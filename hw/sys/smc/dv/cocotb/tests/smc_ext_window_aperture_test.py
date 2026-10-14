@@ -14,11 +14,11 @@ class smc_ext_window_aperture_test(smc_base_test):
     """Window reads and writes reach the external port; REGION_SIZE limits the window."""
 
     required_evidence = (
-        "CHK-EXT-READ-REQ",
-        "CHK-EXT-WRITE-REQ",
-        "CHK-EXT-SHIM-ISOLATION",
-        "CHK-EXT-REGION-DECERR",
         "CHK-EXT-INFLIGHT",
+        "CHK-EXT-READ-REQ",
+        "CHK-EXT-REGION-DECERR",
+        "CHK-EXT-SHIM-ISOLATION",
+        "CHK-EXT-WRITE-REQ",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

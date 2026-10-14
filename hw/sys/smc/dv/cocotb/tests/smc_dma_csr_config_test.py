@@ -14,11 +14,11 @@ class smc_dma_csr_config_test(smc_base_test):
     """Read back the twelve descriptor registers and CONFIG through every access shape."""
 
     required_evidence = (
-        "CHK-DMA-CSR-OWN-VALUE",
-        "CHK-DMA-CSR-HI-FULL32",
         "CHK-DMA-CSR-CONFIG-FIELDS",
-        "CHK-DMA-CSR-RETAIN-AFTER-COPY",
         "CHK-DMA-CSR-GLOBAL-ALIAS",
+        "CHK-DMA-CSR-HI-FULL32",
+        "CHK-DMA-CSR-OWN-VALUE",
+        "CHK-DMA-CSR-RETAIN-AFTER-COPY",
         "CHK-NONVAC",
     )
     min_evidence = 6

@@ -19,12 +19,12 @@ class smc_telemetry_tx_flush_test(smc_base_test):
     """Transmitter flush over the ATB AF handshake on receiver 0."""
 
     required_evidence = (
-        "CHK-TELEMETRY-TX-FLUSH-READY-HIGH",
+        "CHK-NONVAC",
+        "CHK-TELEMETRY-FLUSH-PATH-SEPARATION",
         "CHK-TELEMETRY-TX-FLUSH-PENDING-HOLD",
+        "CHK-TELEMETRY-TX-FLUSH-READY-HIGH",
         "CHK-TELEMETRY-TX-FLUSH-REWRITE",
         "CHK-TELEMETRY-TX-FLUSH-THRESHOLD-KEPT",
-        "CHK-TELEMETRY-FLUSH-PATH-SEPARATION",
-        "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 7

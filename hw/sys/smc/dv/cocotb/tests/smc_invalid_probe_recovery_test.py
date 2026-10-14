@@ -22,11 +22,11 @@ class smc_invalid_probe_recovery_test(smc_base_test):
     """Valid accesses answer OKAY after DECERR probe runs of 1, 32 and 33 on every inbound port."""
 
     required_evidence = (
-        "CHK-RECOVERY-OUTSIDE-WINDOW",
-        "CHK-RECOVERY-GAP-PAST-EXTENT",
-        "CHK-RECOVERY-WRITE-READBACK",
         "CHK-GAP-RUN-BOUNDED",
         "CHK-NONVAC",
+        "CHK-RECOVERY-GAP-PAST-EXTENT",
+        "CHK-RECOVERY-OUTSIDE-WINDOW",
+        "CHK-RECOVERY-WRITE-READBACK",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 6

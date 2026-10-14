@@ -12,10 +12,10 @@ from seq_lib.smc_clk_ratio_resp_once_test_seq import smc_clk_ratio_resp_once_tes
 from smc_base_test import smc_base_test
 
 REQUIRED = (
-    "CHK-RESP-ONCE-SMC",
-    "CHK-RESP-ONCE-PERIPH",
-    "CHK-RESP-ONCE-MIXED",
     "CHK-NONVAC",
+    "CHK-RESP-ONCE-MIXED",
+    "CHK-RESP-ONCE-PERIPH",
+    "CHK-RESP-ONCE-SMC",
     "CHK-TIMEOUT-PATHS",
 )
 

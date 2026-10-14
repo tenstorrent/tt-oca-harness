@@ -11,13 +11,13 @@ import cocotb
 from cocotb.triggers import RisingEdge
 from cocotb.utils import get_sim_time
 
-from .smc_addr_map import cpu_ctrl_u32, smc_addr
+from .smc_addr_map import cpu_ctrl_u32, smc_addr, wdt_u32
 from .smc_csr_seq_utils import SmcCsrSeq
 
 WDT_MAGIC_KEY = 0x51F15E
-WDT_ENALWAYS = 0x1000
-WDT_ENALWAYS_COREAWAKE = 0x3000
-WDT_COREAWAKE = 0x2000
+WDT_ENALWAYS = wdt_u32("WDT__CTRL__WDOGENALWAYS_bm")
+WDT_COREAWAKE = wdt_u32("WDT__CTRL__WDOGCOREAWAKE_bm")
+WDT_ENALWAYS_COREAWAKE = WDT_ENALWAYS | WDT_COREAWAKE
 FEED_WORD = 0x0D09F00D
 FEED_NOT_WORD = 0x0D09F00C
 COUNT_START = 0x0010_0000
@@ -159,6 +159,9 @@ class smc_wdt_count_feed_test_seq(SmcCsrSeq):
         )
         assert s5[0] < pre, f"S5: first read 0x{s5[0]:x} not below pre-write COUNT 0x{pre:x}"
         assert all(r >= 0x100 for r in s5), f"S5: a COUNT read is below 0x100: {s5}"
+        assert s5[0] <= 0x100 + 2 * allowance, (
+            f"S5: first read 0x{s5[0]:x} above 0x100 + 2 * allowance {allowance}"
+        )
         assert _increasing(s5), f"S5: COUNT not strictly increasing after the write: {s5}"
         await self._wr("S5_DIS", "CTRL", 0)
         await self._wr("S5_BIT31", "COUNT", 0x8000_0010)
@@ -217,6 +220,9 @@ class smc_wdt_count_feed_test_seq(SmcCsrSeq):
         await self._wr("S8_FEED", "FEED", FEED_WORD)
         s8 = await self._window("S8_R", 2)
         assert s8[0] < COUNT_START, f"S8: COUNT 0x{s8[0]:x} not below 0x100000 after the feed"
+        assert s8[0] <= 4 * allowance, (
+            f"S8: COUNT 0x{s8[0]:x} after the feed above 4 * allowance {allowance}"
+        )
         assert s8[1] > s8[0], f"S8: second COUNT read 0x{s8[1]:x} not above first 0x{s8[0]:x}"
         self._mark_step("S8")
         self._log_chk(

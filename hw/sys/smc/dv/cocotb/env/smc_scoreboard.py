@@ -680,7 +680,6 @@ class SmcScoreboard(uvm_subscriber):
         return (not item.timed_out) and item.resp_code == 0
 
     def _check_sys_axi(self, item):
-        self.sys_axi_checks_seen += 1
         # Per-bus measured access tally. `bus_name` is stamped by the driver that
         # actually drove the item, so this counts accesses the DUT completed on a
         # named port -- not accesses a test says it issued. A timed-out access is
@@ -689,11 +688,12 @@ class SmcScoreboard(uvm_subscriber):
         if not getattr(item, "timed_out", False):
             self.axi_accesses_by_bus[bus] = self.axi_accesses_by_bus.get(bus, 0) + 1
         self.logger.info(
-            "Scoreboard SYS AXI check #%d [%s]: %s", self.sys_axi_checks_seen, bus, item
+            "Scoreboard SYS AXI check #%d [%s]: %s", self.sys_axi_checks_seen + 1, bus, item
         )
         if item.reset_aborted and item.allow_reset_abort:
             self.sys_axi_reset_aborted_seen += 1
             return
+        self.sys_axi_checks_seen += 1
         if getattr(item, "expect_error", False):
             # Negative-path probe (mirrors the SEP expect_error guard): a real
             # error response is the expected outcome. Two vacuous passes are

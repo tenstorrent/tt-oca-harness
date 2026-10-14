@@ -12,14 +12,14 @@ from seq_lib.smc_outfilt_priority_perm_test_seq import smc_outfilt_priority_perm
 from smc_base_test import smc_base_test
 
 REQUIRED = (
-    "CHK-OUT-DEFAULT-PASS-RESET",
-    "CHK-OUT-ALLOW-NOT-ALLOWLIST",
-    "CHK-OUT-PRIO-DENY-OVER-PERMIT",
-    "CHK-OUT-PRIO-PERMIT-OVER-DENY",
-    "CHK-OUT-PER-CHANNEL",
-    "CHK-OUT-RD-WR-DIFF-ENTRY",
-    "CHK-OUT-PRIO-PAIRS",
     "CHK-NONVAC",
+    "CHK-OUT-ALLOW-NOT-ALLOWLIST",
+    "CHK-OUT-DEFAULT-PASS-RESET",
+    "CHK-OUT-PER-CHANNEL",
+    "CHK-OUT-PRIO-DENY-OVER-PERMIT",
+    "CHK-OUT-PRIO-PAIRS",
+    "CHK-OUT-PRIO-PERMIT-OVER-DENY",
+    "CHK-OUT-RD-WR-DIFF-ENTRY",
     "CHK-TIMEOUT-PATHS",
 )
 

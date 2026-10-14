@@ -24,13 +24,13 @@ class smc_region_gated_units_decode_test(smc_base_test):
     """DECERR until REGION_SIZE covers the PLIC, CLINT and BEU units and the remap regions."""
 
     required_evidence = (
-        "CHK-CLUSTER-UNITS-RESET-DECERR",
-        "CHK-REMAP-REGION-WIDENED-DECERR",
-        "CHK-REMAP-REGION-JTAG-OBSERVE",
         "CHK-CLUSTER-UNITS-DECODED-AFTER-WIDEN",
         "CHK-CLUSTER-UNITS-LAST-REGISTER",
         "CHK-CLUSTER-UNITS-PAST-EXTENT",
+        "CHK-CLUSTER-UNITS-RESET-DECERR",
         "CHK-NONVAC",
+        "CHK-REMAP-REGION-JTAG-OBSERVE",
+        "CHK-REMAP-REGION-WIDENED-DECERR",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 8

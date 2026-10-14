@@ -23,11 +23,11 @@ class smc_zeroer_job_breadth_test(smc_base_test):
     """Aligned job beats, restart, high destination address and a random job mix."""
 
     required_evidence = (
+        "CHK-NONVAC",
         "CHK-ZEROER-JOB-ALIGNED-BEATS",
-        "CHK-ZEROER-JOB-RESTART",
         "CHK-ZEROER-JOB-HIGH-ADDR",
         "CHK-ZEROER-JOB-RANDOM",
-        "CHK-NONVAC",
+        "CHK-ZEROER-JOB-RESTART",
     )
     min_evidence = 5
 

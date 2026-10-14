@@ -32,6 +32,17 @@ CELLS = {
 class smc_clk_relation_regxbar_test(smc_base_test):
     """HANG_DET threshold and AVS_CFG_0 round trips at one clock cell."""
 
+    # Every cell's checkers; build_phase narrows the tuple to the selected cell's.
+    required_evidence = (
+        "CHK-CLK-RELATION-BACKPRESSURE",
+        "CHK-CLK-RELATION-ROUNDTRIP",
+        "CHK-NONVAC",
+        "CHK-REGXBAR-PERIODS",
+        "CHK-REGXBAR-RESET-RT",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     def build_phase(self) -> None:

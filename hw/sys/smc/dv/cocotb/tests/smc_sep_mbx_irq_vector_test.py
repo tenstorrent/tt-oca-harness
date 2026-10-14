@@ -14,11 +14,11 @@ class smc_sep_mbx_irq_vector_test(smc_base_test):
     """Walk, hold, subsets and latency log on tb_sep_mailbox_interrupts[7:0]."""
 
     required_evidence = (
-        "CHK-SEPMBX-WALK",
-        "CHK-SEPMBX-HOLD",
-        "CHK-SEPMBX-SUBSETS",
-        "CHK-SEPMBX-LATENCY-LOG",
         "CHK-NONVAC",
+        "CHK-SEPMBX-HOLD",
+        "CHK-SEPMBX-LATENCY-LOG",
+        "CHK-SEPMBX-SUBSETS",
+        "CHK-SEPMBX-WALK",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 6

@@ -17,13 +17,13 @@ class smc_avs_cfg_csr_cdc_test(smc_base_test):
     """AVS_CFG_1 and AVS_CONFIG resets, fields, strobes, pulse and ordering."""
 
     required_evidence = (
-        "CHK-AVS-CSR-RESET",
-        "CHK-AVS-CSR-FIELDS",
         "CHK-AVS-CSR-BYTE-LANE-2",
+        "CHK-AVS-CSR-FIELDS",
         "CHK-AVS-CSR-FORCE-PULSE",
+        "CHK-AVS-CSR-RESET",
         "CHK-AVS-CSR-UNALLOCATED",
-        "CHK-CDC-AVS-RT",
         "CHK-CDC-AVS-ORDER",
+        "CHK-CDC-AVS-RT",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

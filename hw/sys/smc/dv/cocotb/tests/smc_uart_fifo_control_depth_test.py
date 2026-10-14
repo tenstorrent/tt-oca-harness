@@ -14,16 +14,16 @@ class smc_uart_fifo_control_depth_test(smc_base_test):
     """FCR and ECR programming of the UART0 FIFOs in system loopback."""
 
     required_evidence = (
-        "CHK-UART-FIFO-ENABLE-CHANGE",
-        "CHK-UART-FIFO-DEPTH-32",
-        "CHK-UART-FIFO-ENABLE-SAME",
-        "CHK-UART-RESET-BITS-NOFIFO",
-        "CHK-UART-TRIG-NONFIFO",
-        "CHK-UART-TRIG-COMPOSE",
-        "CHK-UART-RX-ORDER",
-        "CHK-UART-RBR-EMPTY",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
+        "CHK-UART-FIFO-DEPTH-32",
+        "CHK-UART-FIFO-ENABLE-CHANGE",
+        "CHK-UART-FIFO-ENABLE-SAME",
+        "CHK-UART-RBR-EMPTY",
+        "CHK-UART-RESET-BITS-NOFIFO",
+        "CHK-UART-RX-ORDER",
+        "CHK-UART-TRIG-COMPOSE",
+        "CHK-UART-TRIG-NONFIFO",
     )
     min_evidence = 10
 

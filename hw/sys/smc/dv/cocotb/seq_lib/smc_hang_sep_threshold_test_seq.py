@@ -353,7 +353,7 @@ class smc_hang_sep_threshold_test_seq(SmcCsrSeq):
             ],
         )
         self._need_irq(st, "enclr", ENABLE_CLEAR_CEILING)
-        reenable = st.marks[-1]
+        enable_rise = st.marks[-1]
         await self._release(task, "enclr")
         cleared = await self._ctrl_off("enclr")
         self.phases += 1
@@ -361,8 +361,8 @@ class smc_hang_sep_threshold_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-THR-AFTER-ENABLE-CLEAR-LOG",
             f"threshold 0x{THR_LOW:x} written at rise {st.marks[0]}, enable re-set after "
-            f"rise {reenable}; sep irq first 1 at rise {st.first} of the stall, "
-            f"rises_from_reenable={st.first - reenable} "
+            f"rise {enable_rise}; sep irq first 1 at rise {st.first} of the stall, "
+            f"rises_from_enable={st.first - enable_rise} "
             f"(ceiling {ENABLE_CLEAR_CEILING}); cleared after {cleared} rises "
             "(observe-and-log, not specified, measured)",
         )

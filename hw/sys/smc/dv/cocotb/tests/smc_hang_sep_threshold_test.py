@@ -14,15 +14,15 @@ class smc_hang_sep_threshold_test(smc_base_test):
     """A threshold written during a held SEP_IN read, then new thresholds on later stalls."""
 
     required_evidence = (
-        "CHK-THR-RAISE-DURING",
-        "CHK-THR-LOWER-DURING",
+        "CHK-NONVAC",
         "CHK-THR-AFTER-COMPLETION",
         "CHK-THR-AFTER-ENABLE-CLEAR-LOG",
         "CHK-THR-DEFAULT-BEYOND",
         "CHK-THR-DEFAULT-EXACT-LOG",
-        "CHK-THR-SMALL-RISE",
+        "CHK-THR-LOWER-DURING",
+        "CHK-THR-RAISE-DURING",
         "CHK-THR-SMALL-LOG",
-        "CHK-NONVAC",
+        "CHK-THR-SMALL-RISE",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 10

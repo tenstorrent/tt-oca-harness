@@ -21,11 +21,11 @@ class smc_cpuif_ro_wo_edge_test(smc_base_test):
     """Partial-strobe write at a read-only register and the unreadable and past-extent edges."""
 
     required_evidence = (
-        "CHK-EDGE-RO-PARTIAL",
-        "CHK-EDGE-WO-WRITE-READ-OBS",
-        "CHK-EDGE-UNREADABLE-OBS",
         "CHK-EDGE-PAST-EXTENT-OBS",
         "CHK-EDGE-RECOVERY",
+        "CHK-EDGE-RO-PARTIAL",
+        "CHK-EDGE-UNREADABLE-OBS",
+        "CHK-EDGE-WO-WRITE-READ-OBS",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

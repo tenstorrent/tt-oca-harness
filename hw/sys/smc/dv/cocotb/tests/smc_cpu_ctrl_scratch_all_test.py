@@ -14,10 +14,10 @@ class smc_cpu_ctrl_scratch_all_test(smc_base_test):
     """Sweep all sixteen SCRATCH entries for isolation, walking-entry and 32-bit storage."""
 
     required_evidence = (
+        "CHK-NONVAC",
+        "CHK-SCRATCH-BITS",
         "CHK-SCRATCH-UNIQUE",
         "CHK-SCRATCH-WALK",
-        "CHK-SCRATCH-BITS",
-        "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 5

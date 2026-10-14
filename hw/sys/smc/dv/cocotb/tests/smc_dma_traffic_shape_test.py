@@ -19,8 +19,8 @@ class smc_dma_traffic_shape_test(smc_base_test):
     required_evidence = (
         "CHK-DTS-COUPLED-COPY",
         "CHK-DTS-LINEAR",
-        "CHK-DTS-QUEUE-FOUR",
         "CHK-DTS-PAGE-ALIGNED",
+        "CHK-DTS-QUEUE-FOUR",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

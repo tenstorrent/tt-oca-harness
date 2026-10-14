@@ -30,6 +30,13 @@ CELLS = {
 class smc_octs_clk_rate_test(smc_base_test):
     """OCTS TIMER_COUNT delta against bench edge counters on the three input clocks."""
 
+    # The default cell; build_phase replaces the rate checker with the selected cell's.
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-OCTS-RATE-DEFAULT",
+        "CHK-OCTS-START-RELOAD",
+        "CHK-TIMEOUT-PATHS",
+    )
     min_evidence = 4
 
     auto_protocol_vip = False

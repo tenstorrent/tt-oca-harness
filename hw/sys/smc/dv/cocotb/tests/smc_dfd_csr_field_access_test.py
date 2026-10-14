@@ -21,14 +21,14 @@ class smc_dfd_csr_field_access_test(smc_base_test):
     """Write patterns into DST fields and scratch registers and prove storage and isolation."""
 
     required_evidence = (
-        "CHK-DST-RW-PATTERNS",
-        "CHK-DST-FIELD-ISOLATION",
-        "CHK-DST-UNDEFINED-BITS",
-        "CHK-DST-INST-FIELDS-RW",
-        "CHK-SCRATCH-PATTERNS",
-        "CHK-SCRATCH-NO-ALIAS",
         "CHK-APERTURE-OFFSET-ISOLATION",
+        "CHK-DST-FIELD-ISOLATION",
+        "CHK-DST-INST-FIELDS-RW",
+        "CHK-DST-RW-PATTERNS",
+        "CHK-DST-UNDEFINED-BITS",
         "CHK-NONVAC",
+        "CHK-SCRATCH-NO-ALIAS",
+        "CHK-SCRATCH-PATTERNS",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 9

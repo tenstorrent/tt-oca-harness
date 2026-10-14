@@ -17,8 +17,8 @@ class smc_gpio_filter_reg_fields_test(smc_base_test):
     """Drive ACCESS_FILTER fields on one idle GPIO instance."""
 
     required_evidence = (
-        "CHK-GPIO-FILTER-REG-REQ-VALUES",
         "CHK-GPIO-FILTER-REG-ENABLE-BITS",
+        "CHK-GPIO-FILTER-REG-REQ-VALUES",
         "CHK-NONVAC",
     )
     min_evidence = 3

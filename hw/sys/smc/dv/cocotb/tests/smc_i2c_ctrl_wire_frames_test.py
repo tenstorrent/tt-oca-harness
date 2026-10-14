@@ -14,17 +14,17 @@ class smc_i2c_ctrl_wire_frames_test(smc_base_test):
     """Plain writes, STOP placement, address values, reads and queueing while busy on I2C0."""
 
     required_evidence = (
-        "CHK-ONE-START-PER-STOP",
-        "CHK-STOP-POSITION",
         "CHK-ADDR-VALUES",
-        "CHK-WRITE-PATTERN",
-        "CHK-READ-LAST-NACK",
-        "CHK-READ-COUNTS",
-        "CHK-RX-POP",
-        "CHK-QUEUE-WHILE-BUSY",
         "CHK-HOSTIDLE-OBS",
         "CHK-NONVAC",
+        "CHK-ONE-START-PER-STOP",
+        "CHK-QUEUE-WHILE-BUSY",
+        "CHK-READ-COUNTS",
+        "CHK-READ-LAST-NACK",
+        "CHK-RX-POP",
+        "CHK-STOP-POSITION",
         "CHK-TIMEOUT-PATHS",
+        "CHK-WRITE-PATTERN",
     )
     min_evidence = 11
 

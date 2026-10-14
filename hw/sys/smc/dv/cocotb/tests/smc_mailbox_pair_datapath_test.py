@@ -14,19 +14,19 @@ class smc_mailbox_pair_datapath_test(smc_base_test):
     """Words written to one aperture of a pair come out of the peer aperture."""
 
     required_evidence = (
-        "CHK-PAIR-FORWARD-PAIRS",
-        "CHK-PAIR-REVERSE-PAIRS",
-        "CHK-PAIR-OWN-READ-FIFO-EMPTY",
-        "CHK-PAIR-ISOLATION",
+        "CHK-NONVAC",
         "CHK-PAIR-BOTH-DIRECTIONS",
+        "CHK-PAIR-FORWARD-PAIRS",
+        "CHK-PAIR-ISOLATION",
+        "CHK-PAIR-OWN-READ-FIFO-EMPTY",
+        "CHK-PAIR-REVERSE-PAIRS",
+        "CHK-PARTIAL-FILLS-FIFO",
         "CHK-PARTIAL-LANES-ZERO",
         "CHK-PARTIAL-NO-MERGE",
         "CHK-PARTIAL-ZERO-STROBE-OBSERVED",
-        "CHK-PARTIAL-FILLS-FIFO",
-        "CHK-PUSHPOP-OCCUPANCY-ONE",
-        "CHK-PUSHPOP-FULL-OBSERVED",
         "CHK-PUSHPOP-EMPTY-OBSERVED",
-        "CHK-NONVAC",
+        "CHK-PUSHPOP-FULL-OBSERVED",
+        "CHK-PUSHPOP-OCCUPANCY-ONE",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 14

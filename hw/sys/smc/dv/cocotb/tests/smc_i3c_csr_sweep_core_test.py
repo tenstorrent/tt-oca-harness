@@ -17,11 +17,11 @@ class smc_i3c_csr_sweep_core_test(smc_base_test):
     """Reset, read-only, read-write, write-one-to-clear and isolation sweep over SEP_IN."""
 
     required_evidence = (
+        "CHK-I3C-SWEEP-INSTANCE-ISOLATION",
         "CHK-I3C-SWEEP-RESET-READ",
         "CHK-I3C-SWEEP-RO-IGNORED",
         "CHK-I3C-SWEEP-RW-ROUNDTRIP",
         "CHK-I3C-SWEEP-W1C-CLEAR",
-        "CHK-I3C-SWEEP-INSTANCE-ISOLATION",
         "CHK-NONVAC",
     )
     min_evidence = 6

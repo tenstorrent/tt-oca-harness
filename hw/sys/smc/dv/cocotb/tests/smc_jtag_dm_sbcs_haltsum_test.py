@@ -15,14 +15,14 @@ class smc_jtag_dm_sbcs_haltsum_test(smc_base_test):
     """sbcs capabilities are fixed under an all-ones write; haltsum reads 0 and ignores writes."""
 
     required_evidence = (
-        "CHK-SBCS-VERSION",
-        "CHK-SBCS-ASIZE",
-        "CHK-SBCS-ACCESS-CAPS",
-        "CHK-SBCS-CAPS-WRITE-ALL-ONES",
+        "CHK-HALTSUM-WRITE-IGNORED",
         "CHK-HALTSUM0-IDLE",
         "CHK-HALTSUM1-IDLE",
-        "CHK-HALTSUM-WRITE-IGNORED",
         "CHK-NONVAC",
+        "CHK-SBCS-ACCESS-CAPS",
+        "CHK-SBCS-ASIZE",
+        "CHK-SBCS-CAPS-WRITE-ALL-ONES",
+        "CHK-SBCS-VERSION",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 9
@@ -40,6 +40,6 @@ class smc_jtag_dm_sbcs_haltsum_test(smc_base_test):
             min_csr_accesses=0,
             proxy=False,
             details="CPU JTAG DMI: sbcs capability and haltsum idle readbacks",
-            expected_bytes=bytes([1]),
-            observed_bytes=bytes([1 if seq.dm_ok else 0]),
+            expected_bytes=bytes(8),
+            observed_bytes=b"".join(w.to_bytes(4, "big") for w in seq.haltsum_words),
         )

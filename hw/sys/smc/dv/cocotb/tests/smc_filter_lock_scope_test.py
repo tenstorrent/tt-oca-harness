@@ -14,12 +14,12 @@ class smc_filter_lock_scope_test(smc_base_test):
     """Locked entries refuse FILTER_CONFIG, START_ADDR and END_ADDR writes, even queued ones."""
 
     required_evidence = (
-        "CHK-LOCK-WRITES-REFUSED",
-        "CHK-LOCK-READS-OKAY",
-        "CHK-LOCK-QUEUED-WRITES",
-        "CHK-LOCK-FROZEN-PERMIT",
         "CHK-LOCK-FROZEN-DENY",
+        "CHK-LOCK-FROZEN-PERMIT",
+        "CHK-LOCK-QUEUED-WRITES",
+        "CHK-LOCK-READS-OKAY",
         "CHK-LOCK-WITH-FIELDS-OBSERVE",
+        "CHK-LOCK-WRITES-REFUSED",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

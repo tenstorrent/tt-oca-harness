@@ -14,12 +14,12 @@ class smc_dma_linear_copy_test(smc_base_test):
     """Linear copies through the SYS_OUT responder checked byte for byte."""
 
     required_evidence = (
-        "CHK-DMA-LIN-UNALIGNED",
         "CHK-DMA-LIN-2KIB-BOUNDARY",
-        "CHK-DMA-LIN-LARGE",
         "CHK-DMA-LIN-HI-ADDR",
+        "CHK-DMA-LIN-LARGE",
         "CHK-DMA-LIN-OVERLAP",
         "CHK-DMA-LIN-RANDOM",
+        "CHK-DMA-LIN-UNALIGNED",
         "CHK-NONVAC",
     )
     min_evidence = 7

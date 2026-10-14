@@ -15,12 +15,12 @@ class smc_infilt_addr_burst_match_test(smc_base_test):
 
     required_evidence = (
         "CHK-INB-ADDR-GRANULE",
-        "CHK-INB-DISABLED-NO-MATCH",
         "CHK-INB-ADDR-HIGH-BITS-GLOBAL",
+        "CHK-INB-BURST-FALLTHROUGH",
+        "CHK-INB-BURST0-SINGLE-ONLY",
+        "CHK-INB-DISABLED-NO-MATCH",
         "CHK-INB-SPAN-WHOLE",
         "CHK-INB-START-EQ-END",
-        "CHK-INB-BURST0-SINGLE-ONLY",
-        "CHK-INB-BURST-FALLTHROUGH",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

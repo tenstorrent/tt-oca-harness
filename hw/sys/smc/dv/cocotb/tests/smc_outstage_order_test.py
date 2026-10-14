@@ -15,14 +15,14 @@ class smc_outstage_order_test(smc_base_test):
     """JTAG and DMA traffic through the outbound stages, and a cold reset with a write in flight."""
 
     required_evidence = (
-        "CHK-STAGE-FILTER-POST-REMAP",
         "CHK-INT-REMAP-FILTER",
+        "CHK-NONVAC",
         "CHK-STAGE-ALIAS-THEN-OUTPUT",
         "CHK-STAGE-BLOCKED-NOTHING-ON-OUTPUT",
-        "CHK-STAGE-SIMULTANEOUS",
-        "CHK-STAGE-SECOND-WHILE-PENDING",
+        "CHK-STAGE-FILTER-POST-REMAP",
         "CHK-STAGE-RESET-IN-FLIGHT",
-        "CHK-NONVAC",
+        "CHK-STAGE-SECOND-WHILE-PENDING",
+        "CHK-STAGE-SIMULTANEOUS",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 9

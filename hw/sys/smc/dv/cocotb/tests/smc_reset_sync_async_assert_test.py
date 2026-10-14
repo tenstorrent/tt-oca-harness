@@ -20,11 +20,11 @@ class smc_reset_sync_async_assert_test(smc_base_test):
     """Asynchronous assertion and own-edge release of every synchronized reset output."""
 
     required_evidence = (
-        "CHK-REF-OUTPUTS-ASSERT-ASYNC",
-        "CHK-PERIPH-OUTPUT-ASSERTS-ASYNC",
         "CHK-EACH-OUTPUT-RELEASES-ON-OWN-EDGE",
-        "CHK-SOURCE-REASSERTS-IN-LATENCY",
         "CHK-NONVAC",
+        "CHK-PERIPH-OUTPUT-ASSERTS-ASYNC",
+        "CHK-REF-OUTPUTS-ASSERT-ASYNC",
+        "CHK-SOURCE-REASSERTS-IN-LATENCY",
     )
     min_evidence = 5
 

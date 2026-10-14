@@ -18,8 +18,8 @@ class smc_smbus_alert_instance_isolation_test(smc_base_test):
     required_evidence = (
         "CHK-GATE-ALL-SEE-ALERT",
         "CHK-GATE-OTHERS-UNMASKED",
-        "CHK-TIMEOUT-PATHS",
         "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 4
 

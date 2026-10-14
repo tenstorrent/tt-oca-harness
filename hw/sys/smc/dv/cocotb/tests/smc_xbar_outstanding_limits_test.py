@@ -21,16 +21,16 @@ class smc_xbar_outstanding_limits_test(smc_base_test):
     """Outstanding read groups of 4 to 24 over the AXI-Lite and local AXI4 crossbars."""
 
     required_evidence = (
-        "CHK-XLIM-LITE-N4",
-        "CHK-XLIM-LITE-OVER",
-        "CHK-XLIM-LITE-MULTI",
-        "CHK-XLIM-LITE-TWO-MGR",
-        "CHK-XLIM-LOCAL-N8",
-        "CHK-XLIM-LOCAL-OVER",
-        "CHK-XLIM-LOCAL-MULTI",
-        "CHK-XLIM-LOCAL-MIXED",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
+        "CHK-XLIM-LITE-MULTI",
+        "CHK-XLIM-LITE-N4",
+        "CHK-XLIM-LITE-OVER",
+        "CHK-XLIM-LITE-TWO-MGR",
+        "CHK-XLIM-LOCAL-MIXED",
+        "CHK-XLIM-LOCAL-MULTI",
+        "CHK-XLIM-LOCAL-N8",
+        "CHK-XLIM-LOCAL-OVER",
     )
     min_evidence = 10
 

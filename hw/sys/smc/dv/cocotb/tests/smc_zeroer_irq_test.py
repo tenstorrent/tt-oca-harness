@@ -25,12 +25,12 @@ class smc_zeroer_irq_test(smc_base_test):
     """Count zeroer completion interrupt pulses for INT_EN set, clear, held and repeated jobs."""
 
     required_evidence = (
-        "CHK-ZEROER-IRQ-ONE-PULSE",
-        "CHK-ZEROER-IRQ-NONE-WHEN-DISABLED",
+        "CHK-NONVAC",
         "CHK-ZEROER-IRQ-AFTER-LAST-B",
+        "CHK-ZEROER-IRQ-NONE-WHEN-DISABLED",
+        "CHK-ZEROER-IRQ-ONE-PULSE",
         "CHK-ZEROER-IRQ-TWO-JOBS",
         "CHK-ZEROER-IRQ-ZERO-SIZE-WIDTH",
-        "CHK-NONVAC",
     )
     min_evidence = 6
 

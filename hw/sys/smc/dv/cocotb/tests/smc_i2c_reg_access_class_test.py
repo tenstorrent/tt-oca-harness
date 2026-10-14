@@ -14,16 +14,16 @@ class smc_i2c_reg_access_class_test(smc_base_test):
     """Read-write patterns, access classes, I2C_CTRL fields and instance isolation."""
 
     required_evidence = (
-        "CHK-I2C-RW-PATTERNS",
-        "CHK-I2C-RW-FIELD-INDEP",
-        "CHK-I2C-RW-PERSIST",
-        "CHK-I2C-RW-OBSERVED",
-        "CHK-I2C-RO-IGNORED",
-        "CHK-I2C-ROWO-OBSERVED",
         "CHK-I2C-CTRL-FIELDS",
         "CHK-I2C-CTRL-NEIGHBOURS",
-        "CHK-I2C-ISOLATION-MATRIX",
         "CHK-I2C-CTRL-NO-ENGINE",
+        "CHK-I2C-ISOLATION-MATRIX",
+        "CHK-I2C-RO-IGNORED",
+        "CHK-I2C-ROWO-OBSERVED",
+        "CHK-I2C-RW-FIELD-INDEP",
+        "CHK-I2C-RW-OBSERVED",
+        "CHK-I2C-RW-PATTERNS",
+        "CHK-I2C-RW-PERSIST",
         "CHK-NONVAC",
     )
     min_evidence = 11

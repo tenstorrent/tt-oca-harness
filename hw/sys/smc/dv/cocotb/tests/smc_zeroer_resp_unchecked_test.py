@@ -25,10 +25,10 @@ class smc_zeroer_resp_unchecked_test(smc_base_test):
     """Complete multi-burst zeroer jobs under SLVERR, DECERR and mixed B responses."""
 
     required_evidence = (
-        "CHK-ZEROER-SLVERR-COMPLETES",
+        "CHK-NONVAC",
         "CHK-ZEROER-DECERR-ALL-COMPLETES",
         "CHK-ZEROER-MIXED-RESP",
-        "CHK-NONVAC",
+        "CHK-ZEROER-SLVERR-COMPLETES",
     )
     min_evidence = 4
 

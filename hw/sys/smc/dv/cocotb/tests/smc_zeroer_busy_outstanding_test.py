@@ -24,15 +24,15 @@ class smc_zeroer_busy_outstanding_test(smc_base_test):
     """Zeroer STATUS, busy until the last B, stalls, holds, more than 32 bursts, AW and W order."""
 
     required_evidence = (
-        "CHK-ZEROER-BUSY-LIFECYCLE",
-        "CHK-ZEROER-BUSY-UNTIL-LAST-B",
-        "CHK-ZEROER-RANDOM-STALL",
-        "CHK-ZEROER-LONG-STALL",
-        "CHK-ZEROER-NO-TIMEOUT-INDICATION",
-        "CHK-ZEROER-GT32-BURSTS",
+        "CHK-NONVAC",
         "CHK-ZEROER-AW-CAP",
         "CHK-ZEROER-AW-W-ORDER",
-        "CHK-NONVAC",
+        "CHK-ZEROER-BUSY-LIFECYCLE",
+        "CHK-ZEROER-BUSY-UNTIL-LAST-B",
+        "CHK-ZEROER-GT32-BURSTS",
+        "CHK-ZEROER-LONG-STALL",
+        "CHK-ZEROER-NO-TIMEOUT-INDICATION",
+        "CHK-ZEROER-RANDOM-STALL",
     )
     min_evidence = 9
 

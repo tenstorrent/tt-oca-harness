@@ -14,15 +14,15 @@ class smc_irq_vector_assembly_test(smc_base_test):
     """Ext, SEP mailbox, NDM, hang, inbound mailbox and zeroer sources against the baseline."""
 
     required_evidence = (
-        "CHK-VECASM-ALL-REGIONS",
-        "CHK-VECASM-DROP-EACH",
-        "CHK-VECASM-HOLD",
-        "CHK-VECASM-RSVD-287",
-        "CHK-VECASM-TAIL-ZERO",
-        "CHK-VECASM-EDGES",
-        "CHK-VECASM-INBOUND-LOG",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
+        "CHK-VECASM-ALL-REGIONS",
+        "CHK-VECASM-DROP-EACH",
+        "CHK-VECASM-EDGES",
+        "CHK-VECASM-HOLD",
+        "CHK-VECASM-INBOUND-LOG",
+        "CHK-VECASM-RSVD-287",
+        "CHK-VECASM-TAIL-ZERO",
     )
     min_evidence = 9
 

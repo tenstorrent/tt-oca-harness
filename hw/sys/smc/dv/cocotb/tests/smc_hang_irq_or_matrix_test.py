@@ -14,9 +14,9 @@ class smc_hang_irq_or_matrix_test(smc_base_test):
     """irq_test on the three detectors drives raw bit 286 as their OR; 285 and 287 stay quiet."""
 
     required_evidence = (
-        "CHK-HANGOR-PAIRS",
-        "CHK-HANGOR-ORDERS",
         "CHK-HANGOR-NEIGHBOURS",
+        "CHK-HANGOR-ORDERS",
+        "CHK-HANGOR-PAIRS",
         "CHK-HANGOR-THR0-TEST",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",

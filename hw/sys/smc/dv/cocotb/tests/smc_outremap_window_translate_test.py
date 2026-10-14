@@ -12,16 +12,16 @@ from seq_lib.smc_outremap_window_translate_test_seq import (
 from smc_base_test import smc_base_test
 
 REQUIRED = (
-    "CHK-OUTREMAP-IDENTITY-RESET",
-    "CHK-MMODE-REGIONS",
-    "CHK-XVISOR-REGIONS",
     "CHK-MMODE-EDGES",
-    "CHK-XVISOR-EDGES",
-    "CHK-XVISOR-INDEPENDENT",
+    "CHK-MMODE-REGIONS",
+    "CHK-NONVAC",
+    "CHK-OUTREMAP-IDENTITY-RESET",
     "CHK-OUTREMAP-VALID-TOGGLE",
     "CHK-OUTROUTE-DIRECT-ADDRS",
-    "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
+    "CHK-XVISOR-EDGES",
+    "CHK-XVISOR-INDEPENDENT",
+    "CHK-XVISOR-REGIONS",
 )
 
 

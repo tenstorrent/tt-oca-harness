@@ -14,15 +14,15 @@ class smc_i2c_ctrl_xinst_events_test(smc_base_test):
     """One controller at a time on the shared bus against a DUT target, then the irq lines."""
 
     required_evidence = (
-        "CHK-XINST-READ-1-2",
-        "CHK-XINST-UNCFG-OBS",
-        "CHK-UNEXP-STOP-OBS",
-        "CHK-UNEXP-CLEAR-OBS",
-        "CHK-UNEXP-NORMAL-OBS",
         "CHK-IRQ-CMDC-LINES",
         "CHK-IRQ-HALT-LINES",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
+        "CHK-UNEXP-CLEAR-OBS",
+        "CHK-UNEXP-NORMAL-OBS",
+        "CHK-UNEXP-STOP-OBS",
+        "CHK-XINST-READ-1-2",
+        "CHK-XINST-UNCFG-OBS",
     )
     min_evidence = 9
 

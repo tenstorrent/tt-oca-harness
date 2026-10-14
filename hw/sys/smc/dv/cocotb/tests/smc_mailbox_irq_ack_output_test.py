@@ -16,7 +16,9 @@ from smc_base_test import smc_base_test
 class smc_mailbox_irq_ack_output_test(smc_base_test):
     """IRQS write-one acknowledge and per-pair interrupt outputs on representative pairs."""
 
-    required_evidence = (*(c for c, _ in _CHECKERS), "CHK-TIMEOUT-PATHS", "CHK-NONVAC")
+    required_evidence = tuple(
+        sorted((*(c for c, _ in _CHECKERS), "CHK-TIMEOUT-PATHS", "CHK-NONVAC"))
+    )
     min_evidence = 17
 
     auto_protocol_vip = False

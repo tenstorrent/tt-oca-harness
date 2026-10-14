@@ -17,11 +17,11 @@ class smc_clock_gated_window_slverr_test(smc_base_test):
     """Each CLOCK_GATE_CONTROL peripheral enable turns its window into an SLVERR responder."""
 
     required_evidence = (
-        "CHK-CG-READ-SLVERR",
-        "CHK-CG-WRITE-SLVERR",
-        "CHK-CG-RESTORED",
         "CHK-CG-ISOLATION",
+        "CHK-CG-READ-SLVERR",
+        "CHK-CG-RESTORED",
         "CHK-CG-TRANSITION-BOUNDED",
+        "CHK-CG-WRITE-SLVERR",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

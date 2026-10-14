@@ -22,17 +22,17 @@ class smc_gap_decode_response_test(smc_base_test):
     """DECERR gap reads and writes, observed SLVERR-window writes and debug-aperture DECERR."""
 
     required_evidence = (
+        "CHK-DEBUG-APERTURE-DECERR",
+        "CHK-GAP-PORT-BASE-MATRIX",
         "CHK-GAP-READ-DECERR",
         "CHK-GAP-WRITE-DECERR",
         "CHK-GAP-ZEROER-CPU-DECERR",
-        "CHK-GAP-PORT-BASE-MATRIX",
-        "CHK-SLVERR-WINDOW-WRITE-FIRST",
-        "CHK-SLVERR-WINDOW-WRITE-LAST",
-        "CHK-SLVERR-WINDOW-READ",
+        "CHK-NONVAC",
         "CHK-SLVERR-WINDOW-NEIGHBOURS",
         "CHK-SLVERR-WINDOW-PORT-BASE",
-        "CHK-DEBUG-APERTURE-DECERR",
-        "CHK-NONVAC",
+        "CHK-SLVERR-WINDOW-READ",
+        "CHK-SLVERR-WINDOW-WRITE-FIRST",
+        "CHK-SLVERR-WINDOW-WRITE-LAST",
         "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 12

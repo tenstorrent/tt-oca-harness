@@ -16,13 +16,13 @@ class smc_smbus_pmbus_linear11_read_test(smc_base_test):
     """Two-byte word reads, one with SMBSUS written mid-transfer, one with the mode field clear."""
 
     required_evidence = (
-        "CHK-PMBUS-WORD-BYTES",
-        "CHK-PMBUS-NEG-WORD-BYTES",
-        "CHK-PMBUS-DECODE-LOG",
-        "CHK-SUS-DURING-XFER",
-        "CHK-SCL-SDA-FIELD-INVARIANT",
-        "CHK-TIMEOUT-PATHS",
         "CHK-NONVAC",
+        "CHK-PMBUS-DECODE-LOG",
+        "CHK-PMBUS-NEG-WORD-BYTES",
+        "CHK-PMBUS-WORD-BYTES",
+        "CHK-SCL-SDA-FIELD-INVARIANT",
+        "CHK-SUS-DURING-XFER",
+        "CHK-TIMEOUT-PATHS",
     )
     min_evidence = 7
 

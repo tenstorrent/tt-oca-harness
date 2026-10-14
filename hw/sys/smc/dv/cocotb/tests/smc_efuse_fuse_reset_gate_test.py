@@ -19,11 +19,11 @@ class smc_efuse_fuse_reset_gate_test(smc_base_test):
     """Observe smc_fuse_reset_n_delayed_o per clock edge against sense done and ext_boot."""
 
     required_evidence = (
-        "CHK-FRST-HELD-LOW",
         "CHK-FRST-16-STAGE",
-        "CHK-FRST-EARLY-BOOT",
         "CHK-FRST-BOOT-DROP",
         "CHK-FRST-COLD-REARM",
+        "CHK-FRST-EARLY-BOOT",
+        "CHK-FRST-HELD-LOW",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

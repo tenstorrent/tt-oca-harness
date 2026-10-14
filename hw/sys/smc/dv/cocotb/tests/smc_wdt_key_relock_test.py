@@ -17,14 +17,14 @@ class smc_wdt_key_relock_test(smc_base_test):
     """Core 0 watchdog KEY corners and relock after a write to each register."""
 
     required_evidence = (
+        "CHK-NONVAC",
         "CHK-WDT-KEY-NONMAGIC",
-        "CHK-WDT-KEY-REPEATED-MAGIC",
         "CHK-WDT-KEY-READ-UNLOCKED",
+        "CHK-WDT-KEY-REPEATED-MAGIC",
+        "CHK-WDT-LOCKED-WRITE-DROP",
         "CHK-WDT-RELOCK-CMP",
         "CHK-WDT-RELOCK-REGISTERS",
-        "CHK-WDT-LOCKED-WRITE-DROP",
         "CHK-WDT-WIDE-WRITE-LOCK",
-        "CHK-NONVAC",
     )
     min_evidence = 8
 
