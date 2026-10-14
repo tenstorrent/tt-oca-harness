@@ -56,7 +56,6 @@ class MonitorLife:
         self.epoch = 0
         self.runs: list[MonitorRun] = []
         self._task: Any = None
-        self._stopping = False
         self._fault: BaseException | None = None
 
     @property
@@ -70,7 +69,6 @@ class MonitorLife:
     def start(self, coro: Coroutine[Any, Any, None]) -> Any:
         """Open a new run epoch and start ``coro`` in it; returns the task."""
         self.epoch += 1
-        self._stopping = False
         self._fault = None
         self.runs.append(MonitorRun(self.epoch, self._clk()))
         self._task = cocotb.start_soon(self._guard(coro, self.runs[-1]))
@@ -80,8 +78,7 @@ class MonitorLife:
         try:
             await coro
         except CancelledError:
-            if not self._stopping:
-                self._died(run, MonitorLifeError(f"{self.name}: task cancelled outside stop()"))
+            self._died(run, MonitorLifeError(f"{self.name}: task cancelled outside stop()"))
             raise
         except BaseException as exc:
             self._died(run, exc)
@@ -90,6 +87,9 @@ class MonitorLife:
             self._died(run, MonitorLifeError(f"{self.name}: task returned"))
 
     def _died(self, run: MonitorRun, exc: BaseException) -> None:
+        # A run that stop() closed ended on purpose; its late cancel is not a death.
+        if run.end == "stopped":
+            return
         run.end_clk = self._clk()
         run.end = "died"
         self._fault = exc
@@ -109,7 +109,6 @@ class MonitorLife:
         if self._fault is not None:
             self._task = None
             self._raise_fault()
-        self._stopping = True
         run = self.runs[-1]
         run.end_clk = self._clk()
         run.end = "stopped"

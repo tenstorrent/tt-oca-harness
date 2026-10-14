@@ -587,6 +587,8 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         for _ in range(REQ_BOUND):
             await RisingEdge(dut.clk_i)
             # The tap samples on the same edge; query once it has sampled past the mark.
+            # A tap that stopped sampling fails here, not on the request bound.
+            self.out.check_life(m_req)
             if self.out.clk <= m_req.clk:
                 continue
             req = self.out.count(m_req, "aw" if write else "ar")
@@ -637,6 +639,8 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         for _ in range(REQ_BOUND):
             await RisingEdge(dut.clk_i)
             # The tap samples on the same edge; query once it has sampled past the mark.
+            # A tap that stopped sampling fails here, not on the request bound.
+            self.out.check_life(m_req)
             if self.out.clk <= m_req.clk:
                 continue
             req = self.out.count(m_req, "ar")

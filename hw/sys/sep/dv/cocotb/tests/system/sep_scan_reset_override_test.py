@@ -226,6 +226,8 @@ class sep_scan_reset_override_test(sep_base_test):
         t_end = int(get_sim_time("ps"))
         stop["v"] = True
         await task
+        # The watcher ends in ReadOnly; leave it before the caller drives or samples.
+        await RisingEdge(dut.clk_i)
         assert seen["n"] and seen["last"] >= t_end, (
             f"CHK-STRAP-INDEP FAIL: secure_tm_o watcher did not sample through the toggles "
             f"(samples={seen['n']} last={seen['last']} ps end={t_end} ps)"
@@ -279,6 +281,7 @@ class sep_scan_reset_override_test(sep_base_test):
         )
         for t in timers:
             await t.stop()
+        await RisingEdge(dut.clk_i)
         rises = {}
         for (name, _p, bit), t in zip(NETS, timers):
             r = t.rises(t_rise, until_ps=t_end, bit=bit or 0)
