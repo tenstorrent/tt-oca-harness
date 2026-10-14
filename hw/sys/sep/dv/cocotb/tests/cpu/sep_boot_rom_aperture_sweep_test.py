@@ -47,6 +47,10 @@ Checks:
 
 The routine first sets ``mrac`` as the SEP firmware start-up does
 (``fw/startup/crt0.s``), so each register store leaves the core at its own size.
+The CSR number and the value are parsed from the first ``li t0`` and
+``csrw <csr>, t0`` pair of ``_start`` in that file, and the routine reads the
+CSR back into a mailbox record; a read-back that differs fails the leaf
+(``CTL-ROM-MRAC``).
 The core can serve two pending loads of one doubleword with one bus read, and
 it can merge two pending stores to one address. The 16 loads of a block are
 therefore in 16 different words, the two loads of each store-leg readback have
@@ -69,7 +73,9 @@ cpu run mode (real core), real fuse sense; Verilator and VCS.
 from __future__ import annotations
 
 import hashlib
+import re
 from collections import Counter
+from pathlib import Path
 
 import cocotb
 import pyuvm
@@ -178,6 +184,7 @@ OFF_DONE = 0xA0
 OFF_TRAP = 0xA8
 OFF_NMI = 0xB0
 OFF_NMI_ADDR = 0xB8
+OFF_MRAC = 0xC0
 FAIL_ROMCTL, FAIL_FLAG = 1, 2
 
 # SRAM layout of the generated image.
@@ -196,11 +203,28 @@ SIZES = (1, 2, 4)
 BLOCK_REGS = tuple(range(5, 21))  # x5..x20
 TAG_REG = 21
 
-# VeeR EL2 mrac (region access control): two bits per 256 MiB region, bit 2r
-# cacheable, bit 2r+1 side-effect. The SEP firmware value of fw/startup/crt0.s:
-# every region side-effect except region 12 (ICCM, DCCM, PIC).
-CSR_MRAC = 0x7C0
-MRAC_SEP = 0xA8AA_AAAA
+CRT0 = Path(__file__).resolve().parents[3] / "fw" / "startup" / "crt0.s"
+
+
+def _crt0_mrac(path: Path) -> tuple[int, int]:
+    """(CSR number, value) of the first ``li t0, V`` / ``csrw C, t0`` pair of ``_start``.
+
+    That pair is the VeeR EL2 ``mrac`` write of the SEP firmware start-up.
+    """
+    text = path.read_text()
+    equ = {m[1]: int(m[2], 0) for m in re.finditer(r"^\s*\.equ\s+(\w+)\s*,\s*(\w+)", text, re.M)}
+    body = text.split("_start:", 1)[1]
+    m = re.search(r"^\s*li\s+t0\s*,\s*(\w+)\s*\n\s*csrw\s+(\w+)\s*,\s*t0\b", body, re.M)
+    if m is None:
+        raise RuntimeError(f"{path}: no li t0 / csrw t0 pair in _start")
+    csr = equ.get(m[2])
+    if csr is None:
+        csr = int(m[2], 0)
+    return csr, int(m[1], 0)
+
+
+# VeeR EL2 mrac (region access control) as fw/startup/crt0.s writes it.
+CSR_MRAC, MRAC_SEP = _crt0_mrac(CRT0)
 
 # Environment choices (logged).
 RST_HOLD = 20  # clk_i cycles of each rst_ni pulse
@@ -322,6 +346,7 @@ def build_code(p: _Plan) -> Asm:
     a = Asm(FW_BASE)
     a.li(T0, MRAC_SEP).op(csrw(CSR_MRAC, T0))
     a.li(GP, MBX)
+    a.op(csrr(T0, CSR_MRAC), sw(T0, GP, OFF_MRAC), FENCE)
     for reg, val in (
         ("START_ADDR", MBX),
         ("END_ADDR", MBX + 0xFF),
@@ -601,6 +626,12 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         p = self.plan
         mbx = self.mbx
         await self._calibrate()
+        mrac = await mbx.wait(OFF_MRAC, ROMCTL_BOUND, what="mrac record")
+        line = f"csr=0x{CSR_MRAC:03x} readback=0x{mrac.val:08x} crt0=0x{MRAC_SEP:08x}"
+        if mrac.val != MRAC_SEP:
+            self.logger.error("CTL-ROM-MRAC FAIL: %s", line)
+            raise AssertionError(f"CTL-ROM-MRAC FAIL: {line}")
+        self.logger.info("CTL-ROM-MRAC: %s", line)
         # Step 4.
         ctl = await mbx.wait(OFF_ROMCTL, ROMCTL_BOUND, what="ROM_CTL record")
         await self._check_fail()
