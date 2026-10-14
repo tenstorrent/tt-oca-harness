@@ -1228,7 +1228,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, `dma_busy_probe_o` and `sep_internal_interrupts_probe_o` (approved); `dma_axi_req_probe_o`, `dma_status_probe_o` (observation taps)
-|Proves that all 16 source and destination address-mode cells, each at a drawn width, give the stated destination image, that sizes up to 16 KB complete with DONE and GO auto-clear, that a transfer exactly on the range edges completes, and that SHA-256, SHA-384 and SHA-512 digests, SHA2_DIGEST_VALID and DIGEST_SWAP follow the register text. It also proves single-beat DMA transactions, the beat addresses, the CHUNK_DONE rises and their hardware clear, and the DONE rise after the last B response.
+|Proves that all 16 source and destination address-mode cells, each at a drawn width, give the stated destination image, that sizes up to 16 KB complete with DONE and GO auto-clear, that a transfer exactly on the range edges completes, and that SHA-256, SHA-384 and SHA-512 digests, SHA2_DIGEST_VALID and DIGEST_SWAP follow the register text. It also proves single-beat DMA transactions, the beat addresses (the full AxADDR at width 4; at widths 1 and 2 AxADDR[31:2] and the WSTRB byte lanes of each write beat, with AxADDR[1:0] logged only), the CHUNK_DONE rises and their hardware clear, and the DONE rise after the last B response.
 |<<sep_dma_irq_error_lock_rand_test,`sep_dma_irq_error_lock_rand_test`>>
 |3
 |no_cpu, real fuse sense
@@ -2911,8 +2911,8 @@ the test does.
 |Graded leg: Multi-chunk legs accept both readings and log `go_writes` (`sep_dma_transfer_matrix_rand_test`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |AxSIZE of a narrow DMA transaction
-|Does the TL-UL to AXI4 path set AxSIZE to the TL-UL size (1, 2 or 4 bytes) or to the bus width with narrow strobes (`dma.adoc`, overview; `fabric.adoc`, Top Level AXI4)?
-|Graded leg: WSTRB popcount, read address step and beat count. AxSIZE is logged only
+|Does the TL-UL to AXI4 path set AxSIZE to the TL-UL size (1, 2 or 4 bytes) or to the bus width with narrow strobes, and which AxADDR[1:0] does a 1-byte or 2-byte transaction carry (`dma.adoc`, overview; `fabric.adoc`, Top Level AXI4)?
+|Graded leg: WSTRB popcount and lanes, AxADDR[31:2], read address step and beat count (`sep_dma_transfer_matrix_rand_test`). AxSIZE and the AxADDR[1:0] of a 1-byte or 2-byte transaction are logged only
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA STATUS clear against BUSY set
 |In which order do the clear of `STATUS.DONE` and the set of `STATUS.BUSY` happen at the start of a transfer, and the clear of `STATUS.SHA2_DIGEST_VALID` and the set of `STATUS.BUSY`? (`secure_dma.adoc`, STATUS, CONTROL.GO.)
