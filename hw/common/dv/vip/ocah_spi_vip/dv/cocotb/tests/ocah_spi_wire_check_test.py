@@ -3,8 +3,9 @@
 """Shared SPI VIP selftest: the monitor grades the controller pins in all four SPI modes.
 
 ``CHK-SPI-WIRE-LEGAL``: in each of the four modes the controller sends legal
-frames of seeded bits; the monitor records no violation and decodes the bits
-it was sent, so it samples on the mode's sample edge. Two hand-driven frames
+READ frames with a seeded address; the monitor records no violation and
+decodes all 32 bits it was sent (command byte and address), so it samples on
+the mode's sample edge. Two hand-driven frames
 are legal too: MOSI changes half way through the half period that starts at a
 shift edge (Mode 0), and MOSI changes in a held gap after a sample edge before
 the next segment (Mode 1).
@@ -35,7 +36,7 @@ import logging
 from typing import Any
 
 import cocotb
-from ocah_spi_vip import OcahSpiMonitorError
+from ocah_spi_vip import OcahSpiMonitorError, OcahSpiOpcode
 from ocah_spi_vip_harness import build_stack, scenario_rng
 
 log = logging.getLogger("cocotb.tb.ocah_spi_wire_check_test")
@@ -80,16 +81,19 @@ async def ocah_spi_wire_check_test(dut) -> None:
         set_mode(cpol, cpha)
         await bfm.drive(hold_ns=2 * bfm.half_period_ns)
         for _ in range(2):
-            value = rng.randrange(1 << 16)
-            bits = [(value >> i) & 1 for i in range(15, -1, -1)]
+            addr = rng.randrange(1 << 24)
+            frame = bytes([OcahSpiOpcode.READ]) + addr.to_bytes(3, "big")
+            bits = [(byte >> i) & 1 for byte in frame for i in range(7, -1, -1)]
             before = len(monitor.get_transactions())
             await bfm.raw_frame(bits)
             txns = monitor.get_transactions()[before:]
-            log.info("legal mode=%d%d bits=0x%04x frames=%s", cpol, cpha, value, txns)
+            log.info("legal mode=%d%d frame=%s frames=%s", cpol, cpha, frame.hex(), txns)
             observed = [
-                (t["bit_count"], t["opcode"], t["wire_errors"], t["cpol"], t["cpha"]) for t in txns
+                (t["bit_count"], t["opcode"], t["addr"], t["wire_errors"], t["cpol"], t["cpha"])
+                for t in txns
             ]
-            legal.append((f"mode{cpol}{cpha}", observed, [(16, value >> 8, (), cpol, cpha)]))
+            expected = [(32, int(OcahSpiOpcode.READ), addr, (), cpol, cpha)]
+            legal.append((f"mode{cpol}{cpha}", observed, expected))
     checker.expect_equal(
         "CHK-SPI-WIRE-LEGAL",
         [(name, got) for name, got, _ in legal],
@@ -207,7 +211,9 @@ async def ocah_spi_wire_check_test(dut) -> None:
     else:
         log.info("OBS-SPI-WIRE-XZ graded=0 reason=2-state simulator holds no X")
 
-    total = len(monitor.get_wire_errors())
+    errors = monitor.get_wire_errors()
+    total = len(errors)
+    expected_stop = f"{monitor.name}: {total} wire-check violation(s); first: {errors[0]}"
     stop_error: BaseException | None = None
     try:
         await monitor.stop()
@@ -215,7 +221,7 @@ async def ocah_spi_wire_check_test(dut) -> None:
         stop_error = exc
     checker.expect_true(
         "CHK-SPI-WIRE-STOP",
-        stop_error is not None and str(total) in str(stop_error),
+        stop_error is not None and str(stop_error) == expected_stop,
         context=f"violations={total} stop() raised {stop_error!r}",
     )
     await harness.flash.stop()

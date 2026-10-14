@@ -510,9 +510,13 @@ The harness selftests (`ocah_spi_jedec_test`, `ocah_spi_program_readback_test`,
 `ocah_spi_partial_byte_test`, `ocah_spi_frame_shape_test`,
 `ocah_spi_wire_check_test`, `ocah_spi_lanes_test`)
 prove the device, the controller engine, the monitor, and the checker against
-each other; each carries an in-band probe that hands a fail-fast checker a
-wrong identifier, pattern, order, vacuous erase, or unprotected program and
-records that it was rejected (`CHK-SPI-NEG-*`).
+each other. `ocah_spi_jedec_test`, `ocah_spi_program_readback_test`,
+`ocah_spi_erase_test`, `ocah_spi_ordering_test`, `ocah_spi_partial_byte_test`
+and `ocah_spi_frame_shape_test` carry an in-band probe that hands a fail-fast checker a
+wrong identifier, pattern, order, vacuous erase, unprotected program, or
+malformed frame and records that it was rejected (`CHK-SPI-NEG-*`). The wire
+and lane selftests drive each violation they grade on the pins and require
+exactly that violation.
 `ocah_spi_lanes_test` programs and reads a page through every lane command on
 the four-lane link, compares the controller, the device record and the
 monitor's lane decode, refuses lane phases cut short, and drives each

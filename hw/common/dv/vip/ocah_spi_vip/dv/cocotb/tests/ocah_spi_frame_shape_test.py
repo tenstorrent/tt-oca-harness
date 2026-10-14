@@ -91,6 +91,7 @@ REQUIRED_IDS = (
 
 ADDR_BYTES = 3
 _ENGINE_FAULT_OPCODE = 0xA5
+_ENGINE_FAULT_TEXT = "selftest fault inside the protocol engine"
 
 
 def bits_of(data: bytes, count: int | None = None) -> list[int]:
@@ -358,7 +359,7 @@ async def ocah_spi_frame_shape_test(dut) -> None:
 
     # Engine fault: a raising callback must surface at stop().
     async def faulty(opcode, addr, data):
-        raise RuntimeError("selftest fault inside the protocol engine")
+        raise RuntimeError(_ENGINE_FAULT_TEXT)
 
     flash.register_command_callback(_ENGINE_FAULT_OPCODE, faulty)
     await host.raw_frame(bits_of(bytes([_ENGINE_FAULT_OPCODE]) + addr_bytes))
@@ -372,7 +373,9 @@ async def ocah_spi_frame_shape_test(dut) -> None:
         stop_error = exc
     checker.expect_true(
         "CHK-SPI-ENGINE-STOP",
-        stop_error is not None and isinstance(stop_error.__cause__, RuntimeError),
+        stop_error is not None
+        and isinstance(stop_error.__cause__, RuntimeError)
+        and str(stop_error.__cause__) == _ENGINE_FAULT_TEXT,
         context=f"stop() raised {stop_error!r} cause={getattr(stop_error, '__cause__', None)!r}",
     )
 
