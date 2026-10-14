@@ -75,7 +75,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml `tools`). It grades the KM
 #   OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 270
+expected_count = 272
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -120,6 +120,8 @@ tests = [
     "sep_km_kmac_sideload_kat_test",
     "sep_lcc_uvm_inbound_filter_gating_test",
     "sep_nmi_sanity_test",
+    "sep_abr_mldsa87_verify_test",
+    "sep_abr_cmd_drop_test",
     "sep_reset_wdt_sanity_test",
     "sep_efuse_jtag_axil_el2_cpu_mux_test",
     "sep_cpu_ifu_lsu_alias_remap_matrix_test",
@@ -364,6 +366,8 @@ tests = [
     "sep_hmac_kmac_cpu_crypto_smoke_test",
     "sep_efuse_km_axil_cpu_mux_coexist_test",
     "sep_nmi_sanity_test",
+    "sep_abr_mldsa87_verify_test",
+    "sep_abr_cmd_drop_test",
     "sep_pic_irq_source_map_delivery_test",
     "sep_efuse_token_match_fault_pic_test",
     "sep_dma_basic_test",
