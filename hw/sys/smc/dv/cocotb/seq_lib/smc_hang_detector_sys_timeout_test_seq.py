@@ -8,6 +8,7 @@ import cocotb
 from cocotb.triggers import RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from ._hang_status import check_hang_status
 from .smc_addr_map import (
     HANG_DET_ARMED,
     HANG_DET_DATA_ACCEL_CTRL,
@@ -134,12 +135,21 @@ class smc_hang_detector_sys_timeout_test_seq(SmcCsrSeq):
             cocotb.log.info(
                 "CHK-HANG-SYS-TIMEOUT-FIRE: sys=1 OR=1 sep=0 data=0 after outstanding stall"
             )
+            await check_hang_status(self.csr_read, "SYS_TIMEOUT_FIRE", {"SYS"})
+            cocotb.log.info(
+                "CHK-HANG-SYS-TIMEOUT-STATUS-FIRE: only HANG_DET_SYS_AXI_CTRL.irq read 1 "
+                "during the stall"
+            )
 
         await self._hold_sys_read_until(dut, "SYS_STALL_RD", _expect_fire)
         await self._await_irq(dut, "tb_axi_hang_irq_sys", 0, _IRQ_BOUND, "SYS_TIMEOUT_DROP")
         assert self._bit(dut.tb_axi_hang_irq, "tb_axi_hang_irq") == 0
         self.drop_ok = True
         cocotb.log.info("CHK-HANG-SYS-TIMEOUT-DROP: sys=0 OR=0 after R completion")
+        await check_hang_status(self.csr_read, "SYS_TIMEOUT_DROP", set())
+        cocotb.log.info(
+            "CHK-HANG-SYS-TIMEOUT-STATUS-DROP: every HANG_DET_*_CTRL.irq read 0 after R completion"
+        )
 
         await self.csr_write("HANG_SYS_THR0", HANG_DET_SYS_AXI_TIMEOUT, 0)
         await self.csr_read("HANG_SYS_THR0_RB", HANG_DET_SYS_AXI_TIMEOUT, expected=0)

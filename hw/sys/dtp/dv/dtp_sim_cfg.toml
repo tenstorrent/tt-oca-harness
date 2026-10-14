@@ -10,7 +10,7 @@ schema_version = 1
 name = "dtp"
 profile = "native"
 default_framework = "cocotb"
-description = "DTP (Debug & Test Ports) OSS DV flow (cocotb/PyUVM default, SV-UVM via --framework uvm)"
+description = "DTP (Debug & Test Ports) DV flow (cocotb/PyUVM default, SV-UVM via --framework uvm)"
 
 [testlist]
 path = "testlists/all.toml"
@@ -22,7 +22,7 @@ paths = ["{run_dir}", "hw/sys/dtp/dv/build"]
 
 [build]
 # Native build is driven by the Bender/filelist keys below.
-top_module = "dtp_uvm_top"
+top_module = "tb_top"
 top_file = "hw/sys/dtp/dv/tb/tb_top.sv"
 filelist = "hw/sys/dtp/dv/build/dtp_dut_compile.f"
 bender_filelist = "hw/sys/dtp/dv/build/dtp_bender.f"
@@ -68,7 +68,6 @@ sources = [
 cocotb_access = ["-debug_access+r+w"]
 
 [frameworks.cocotb]
-# Uniform flow-first layout: cocotb env/seq_lib/tests live under cocotb/.
 python_root = "hw/sys/dtp/dv/cocotb"
 test_dir = "hw/sys/dtp/dv/cocotb/tests"
 python_paths = [
@@ -90,38 +89,33 @@ timeout_sec = 1800
 args = []
 
 [run_modes.basic_jtag]
-description = "PyUVM DTP primary TAP and basic JTAG instruction scenarios"
-timeout_sec = 1800
-args = []
-
-[run_modes.functional]
-description = "PyUVM JTAG2AXI directed tests against OCAH AXI memory BFMs"
+description = "DTP primary TAP and basic JTAG instruction scenarios"
 timeout_sec = 1800
 args = []
 
 [run_modes.debug_tdr]
-description = "PyUVM DTP TMP, DEBUG_CONTROL, IC_RESET, and capabilities TDR tests"
+description = "DTP TMP, DEBUG_CONTROL, IC_RESET, and capabilities TDR tests"
 timeout_sec = 1800
 args = []
 
 [run_modes.jtag2axi]
-description = "PyUVM JTAG2AXI scenario tests against the SMC fabric and OTP AXI targets"
+description = "JTAG2AXI scenario tests against the SMC fabric and OTP AXI targets"
 timeout_sec = 1800
 args = []
 
 [run_modes.scan]
-description = "PyUVM STAP, 3DCR, and iJTAG scan network tests"
+description = "STAP, 3DCR, and iJTAG scan network tests"
 timeout_sec = 1800
 args = []
 
 [run_modes.xtrig]
-description = "PyUVM cross-trigger XTRIG, CTP, and CTM tests"
+description = "Cross-trigger XTRIG, CTP, and CTM tests"
 timeout_sec = 1800
 args = []
 
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
 [targets.default]
-description = "DTP cocotb target for public JTAG/JTAG2AXI smoke and coverage"
+description = "DTP cocotb target"
 build_dir = "hw/sys/dtp/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
 
 [targets.default.tools.verilator]
@@ -138,14 +132,23 @@ flags = [
 
 [coverage.verilator]
 # Instrument line/branch (--coverage-line), expression, and SVL user coverage
-# (the dtp_fcov cover-property points); toggle instrumentation stays off to
+# (the cov/sv cover-property points); toggle instrumentation stays off to
 # keep per-test databases lean. Replaces the simulator-default `--coverage`
 # (which enables all forms including toggle).
 # --output-groups 0 compiles the generated .cpp files one by one instead of
 # in --build-jobs groups. Verilator groups by file count, and on a
 # coverage-instrumented model one group can become a translation unit of
 # several hundred MB that a hosted runner cannot compile.
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
+# dtp_cov_scope.vlt applies the coverage scope at compile time, so what it
+# drops never enters the database.
+build_args = [
+  "--coverage-line",
+  "--coverage-expr",
+  "--coverage-user",
+  "--output-groups",
+  "0",
+  "{repo_root}/hw/sys/dtp/dv/cov/config/verilator/dtp_cov_scope.vlt",
+]
 
 [coverage.vcs]
 # Restates the simulator defaults (`-cm`, `-cm_dir`) because a DUT table replaces
@@ -177,8 +180,9 @@ compile_args = [
 
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
 # profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
-# for both frameworks: +define+UVM (below) adds the harness block of tb/tb_top.sv (clock
-# generator, uvm_config_db publication, run_test()), which `include`s uvm/tests/dtp_tests.sv.
+# for both frameworks: the native profile's `UVM` define adds the harness block of tb/tb_top.sv
+# (clock generator, uvm_config_db publication, run_test()), which `include`s
+# uvm/tests/dtp_tests.sv.
 [frameworks.uvm]
 description = "DTP SV-UVM flow (VCS)"
 

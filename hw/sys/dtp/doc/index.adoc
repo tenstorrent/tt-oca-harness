@@ -12,11 +12,12 @@ into a single instantiable subsystem that exposes a standard external JTAG
 port, internal debug bridges, and a configurable cross-trigger fabric.
 
 ifdef::backend-html5[]
+[subs=attributes]
 ++++
 <p class="dashboard-badges">
-  <a href="../dashboard-block.html?flow=dtp&amp;framework=uvm&amp;tool=vcs"><img class="dashboard-badge" src="../data/badge-dtp-uvm-vcs-status.svg" alt="DTP (uvm, vcs) verification status"></a>
-  <a href="../dashboard-block.html?flow=dtp&amp;framework=uvm&amp;tool=vcs"><img class="dashboard-badge" src="../data/badge-dtp-uvm-vcs-tests.svg" alt="DTP (uvm, vcs) test pass rate"></a>
-  <a href="../dashboard-block.html?flow=dtp&amp;framework=uvm&amp;tool=vcs"><img class="dashboard-badge" src="../data/badge-dtp-uvm-vcs-coverage.svg" alt="DTP (uvm, vcs) coverage"></a>
+  <a href="../../../ocah-home/{page-component-version}/dashboard-block.html?flow=dtp&amp;framework=uvm&amp;tool=vcs"><img class="dashboard-badge" src="../../../ocah-home/{page-component-version}/data/badge-dtp-uvm-vcs-status.svg" alt="DTP (uvm, vcs) verification status"></a>
+  <a href="../../../ocah-home/{page-component-version}/dashboard-block.html?flow=dtp&amp;framework=uvm&amp;tool=vcs"><img class="dashboard-badge" src="../../../ocah-home/{page-component-version}/data/badge-dtp-uvm-vcs-tests.svg" alt="DTP (uvm, vcs) test pass rate"></a>
+  <a href="../../../ocah-home/{page-component-version}/dashboard-block.html?flow=dtp&amp;framework=uvm&amp;tool=vcs"><img class="dashboard-badge" src="../../../ocah-home/{page-component-version}/data/badge-dtp-uvm-vcs-coverage.svg" alt="DTP (uvm, vcs) coverage"></a>
 </p>
 ++++
 endif::[]

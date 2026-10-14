@@ -54,6 +54,13 @@ KMAC_CMD_START = 0x1D
 KMAC_CMD_PROCESS = 0x2E
 KMAC_CMD_DONE = 0x16
 
+# ERR_CODE: bits 31:24 hold the error code (kmac.rdl ERR_CODE). The code values
+# are the "Error Report" table of the OpenTitan KMAC Theory of Operation, which
+# hw/sys/sep/doc/kmac.adoc names as the authority for the core:
+# https://opentitan.org/book/hw/ip/kmac/doc/theory_of_operation.html#error-report
+KMAC_ERR_CODE_SHIFT = 24
+KMAC_ERR_KEY_NOT_VALID = 0x01  # sideloaded key not ready in KMAC mode
+
 # STATUS bits from the generated export, as the CFG path already does.
 KMAC_STATUS_IDLE = KMAC.field_mask("STATUS", "sha3_idle")
 KMAC_STATUS_SQUEEZE = KMAC.field_mask("STATUS", "sha3_squeeze")
@@ -227,16 +234,18 @@ class SepKmac(SepAxiRegDriver):
         await self._wr(KMAC_CFG_SHADOWED, cfg)
         await self._wait_idle("pre-start")
 
-    async def start_sideload_keyed_err(
-        self, polls: int, *, poll_cycles: int = 20
-    ) -> tuple[int, int]:
-        """Start a keyed KMAC-256 on the delivered key and poll for its error.
+    async def program_sideload_keyed(self) -> None:
+        """Program a keyed KMAC-256 on the delivered key, up to CMD_START."""
+        await self._program_keyed(sideload=True, sw_key=None)
+
+    async def start_poll_err(self, polls: int, *, poll_cycles: int = 20) -> tuple[int, int]:
+        """Issue CMD_START and poll for ``kmac_err``.
 
         Returns ``(INTR_STATE, ERR_CODE)`` at the first poll that shows
-        ``kmac_err``, or at the end of the window. The engine is left in its
-        error state: the caller must not run another KMAC operation after this.
+        ``kmac_err``, or at the end of the window. After an error the engine
+        stays in its error state: the caller must not run another KMAC
+        operation.
         """
-        await self._program_keyed(sideload=True, sw_key=None)
         await self._wr(KMAC_CMD, KMAC_CMD_START)
         intr = 0
         for _ in range(polls):

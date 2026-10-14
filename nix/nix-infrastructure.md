@@ -33,8 +33,9 @@ Currently the flake defines the following outputs:
   - `default` — Alias for `without_uv_deps`. `nix develop $REPO_ROOT` (no
     `#name`) activates this.
 - `dockerContainers.${system}` — OCI container images built by Nix (no
-  Dockerfile). The image is always built for `x86_64-linux` regardless of the
-  host platform. Two variants:
+  Dockerfile). The image holds Linux packages for the host's CPU:
+  `aarch64-linux` on `aarch64-*` hosts, Apple silicon included, and
+  `x86_64-linux` everywhere else. Two variants:
   - `without_uv_deps` — All dependencies except `uv` packages. The default
     image used by `docker-run.sh`.
   - `with_uv_deps` — All dependencies including `uv` packages. Useful for
@@ -115,7 +116,9 @@ The repository is able to build two different containers (`ocah-container` and
 [nix/container.nix](./container.nix). This Loads the OCAH Dependencies described
 [above](#dependencies), and outputs a container configuration and hash. The
 container hashes are pinned to the x86_64-linux build hash for all build
-platforms, for consistency.
+platforms, for consistency, so the x86_64 and arm64 images share one tag. CI
+publishes that tag as a multi-architecture index, and the engine pulls the image
+for the host's architecture.
 
 The containers also include standard utilities for interactive development.
 Use `OCAH_IMAGE_WITH_UV=true` to select the `with_uv_deps` variant (default:

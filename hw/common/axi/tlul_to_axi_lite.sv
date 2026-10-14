@@ -3,12 +3,13 @@
 //
 // TL-UL device to AXI4-Lite master protocol converter.
 
-module tlul_to_axi_lite
-	import tlul_pkg::*;
+`include "ocah_registers.svh"
 
-	`include "prim_assert.sv"
-	import axi_pkg::*;
-	import prim_mubi_pkg::mubi4_t;
+module tlul_to_axi_lite
+	import tlul_pkg::tl_h2d_t;
+	import tlul_pkg::tl_d2h_t;
+
+	`include "ocah_assert.svh"
 	#(
 		parameter int unsigned AXI_ADDR_WIDTH    = 32,
 		parameter int unsigned AXI_DATA_WIDTH    = 32,  // Must be 32 to match TL-UL
@@ -60,7 +61,7 @@ module tlul_to_axi_lite
 	logic [AXI_ADDR_WIDTH-1:0]   req_addr_q, req_addr_d;
 	logic [AXI_DATA_WIDTH-1:0]   req_data_q, req_data_d;
 	logic [AXI_DATA_WIDTH/8-1:0] req_mask_q, req_mask_d;
-	tl_a_op_e                    req_opcode_q, req_opcode_d;
+	tlul_pkg::tl_a_op_e                    req_opcode_q, req_opcode_d;
 	logic [7:0]                  req_source_q, req_source_d;
 	logic [ReqSizeW-1:0]         req_size_q, req_size_d;
 
@@ -76,8 +77,8 @@ module tlul_to_axi_lite
 	logic                          sticky_err_q, sticky_err_d;
 
 	// Integrity signals
-	logic [D2H_RSP_INTG_WIDTH-1:0] rsp_intg;
-	logic [DATA_INTG_WIDTH-1:0]    data_intg;
+	logic [tlul_pkg::D2H_RSP_INTG_WIDTH-1:0] rsp_intg;
+	logic [tlul_pkg::DATA_INTG_WIDTH-1:0]    data_intg;
 
 	// --------------------------------------------------
 	// TL-UL Incoming Command Integrity Checking
@@ -95,35 +96,18 @@ module tlul_to_axi_lite
 	// --------------------------------------------------
 	// FSM Sequential Logic
 	// --------------------------------------------------
-	always_ff @(posedge clk_i or negedge rst_ni) begin
-		if (!rst_ni) begin
-			state_q      <= IDLE;
-			req_addr_q   <= '0;
-			req_data_q   <= '0;
-			req_mask_q   <= '0;
-			req_opcode_q <= tlul_pkg::GET;
-			req_source_q <= '0;
-			req_size_q   <= '0;
-			aw_done_q    <= 1'b0;
-			w_done_q     <= 1'b0;
-			resp_data_q  <= '0;
-			resp_error_q <= 1'b0;
-			sticky_err_q <= 1'b0;
-		end else begin
-			state_q      <= state_d;
-			req_addr_q   <= req_addr_d;
-			req_data_q   <= req_data_d;
-			req_mask_q   <= req_mask_d;
-			req_opcode_q <= req_opcode_d;
-			req_source_q <= req_source_d;
-			req_size_q   <= req_size_d;
-			aw_done_q    <= aw_done_d;
-			w_done_q     <= w_done_d;
-			resp_data_q  <= resp_data_d;
-			resp_error_q <= resp_error_d;
-			sticky_err_q <= sticky_err_d;
-		end
-	end
+	`OCAH_FF(state_q, state_d, IDLE, clk_i, rst_ni)
+	`OCAH_FF(req_addr_q, req_addr_d, '0, clk_i, rst_ni)
+	`OCAH_FF(req_data_q, req_data_d, '0, clk_i, rst_ni)
+	`OCAH_FF(req_mask_q, req_mask_d, '0, clk_i, rst_ni)
+	`OCAH_FF(req_opcode_q, req_opcode_d, tlul_pkg::GET, clk_i, rst_ni)
+	`OCAH_FF(req_source_q, req_source_d, '0, clk_i, rst_ni)
+	`OCAH_FF(req_size_q, req_size_d, '0, clk_i, rst_ni)
+	`OCAH_FF(aw_done_q, aw_done_d, 1'b0, clk_i, rst_ni)
+	`OCAH_FF(w_done_q, w_done_d, 1'b0, clk_i, rst_ni)
+	`OCAH_FF(resp_data_q, resp_data_d, '0, clk_i, rst_ni)
+	`OCAH_FF(resp_error_q, resp_error_d, 1'b0, clk_i, rst_ni)
+	`OCAH_FF(sticky_err_q, sticky_err_d, 1'b0, clk_i, rst_ni)
 
 	// Assign sticky error output
 	assign err_o = sticky_err_q;
@@ -279,33 +263,33 @@ module tlul_to_axi_lite
 	always_comb begin
 		// Generate response integrity (SECDED ECC for opcode, size, error)
 		if (ENABLE_RSP_INTG_GEN) begin
-			automatic tl_d2h_rsp_intg_t rsp;
-			automatic logic [D2H_RSP_MAX_WIDTH-1:0] unused_payload;
+			automatic tlul_pkg::tl_d2h_rsp_intg_t rsp;
+			automatic logic [tlul_pkg::D2H_RSP_MAX_WIDTH-1:0] unused_payload;
 
 			rsp.opcode = tl_o.d_opcode;
 			rsp.size = tl_o.d_size;
 			rsp.error = tl_o.d_error;
 
 			{rsp_intg, unused_payload} =
-				prim_secded_pkg::prim_secded_inv_64_57_enc(D2H_RSP_MAX_WIDTH'(rsp));
+				prim_secded_pkg::prim_secded_inv_64_57_enc(tlul_pkg::D2H_RSP_MAX_WIDTH'(rsp));
 		end else begin
-			rsp_intg = {D2H_RSP_INTG_WIDTH{1'b1}};
+			rsp_intg = {tlul_pkg::D2H_RSP_INTG_WIDTH{1'b1}};
 		end
 
 		// Generate data integrity (SECDED ECC for data)
 		if (ENABLE_DATA_INTG_GEN) begin
-			automatic logic [DATA_MAX_WIDTH-1:0] unused_data;
+			automatic logic [tlul_pkg::DATA_MAX_WIDTH-1:0] unused_data;
 
 			{data_intg, unused_data} =
-				prim_secded_pkg::prim_secded_inv_39_32_enc(DATA_MAX_WIDTH'(tl_o.d_data));
+				prim_secded_pkg::prim_secded_inv_39_32_enc(tlul_pkg::DATA_MAX_WIDTH'(tl_o.d_data));
 		end else begin
-			data_intg = {DATA_INTG_WIDTH{1'b1}};
+			data_intg = {tlul_pkg::DATA_INTG_WIDTH{1'b1}};
 		end
 	end
 
 	// --------------------------------------------------
 	// Assertions
 	// --------------------------------------------------
-	`OCAH_OT_ASSERT_INIT(AxiDataWidthMatches, AXI_DATA_WIDTH == 32)
+	`OCAH_ASSERT_STATIC(AxiDataWidthMatches, AXI_DATA_WIDTH == 32)
 
 endmodule : tlul_to_axi_lite

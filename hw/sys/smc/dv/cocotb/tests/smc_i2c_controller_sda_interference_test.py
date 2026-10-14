@@ -35,8 +35,9 @@ class smc_i2c_controller_sda_interference_test(smc_base_test):
             type(self).__name__,
             # Directed stimulus floor: the LSIO arming for three instances, and
             # per instance the control transaction plus a hard reset of both
-            # instances and an injection for each of the four points. Literal
-            # here, not read from `seq.accesses`.
+            # instances and an injection for each of the four points; the floor
+            # is independent of `seq.accesses`, so a sequence that stops issuing
+            # accesses cannot lower it.
             min_csr_accesses=250,
             csr_accesses=seq.accesses,
             proxy=False,

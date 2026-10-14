@@ -144,7 +144,6 @@ endif::release[]
 *** xref:rtl-modules-reference/common/ocah_prim_generic.adoc[ocah_prim_generic]
 *** xref:rtl-modules-reference/common/tlul.adoc[TL-UL]
 * xref:ip-reference.adoc[IP Reference]
-* xref:dashboard.adoc[Verification Dashboard]
 * Appendices
 ** xref:register-field-access.adoc[Register Field Access Notation]
 ** xref:referenced-documents.adoc[Referenced Documents]

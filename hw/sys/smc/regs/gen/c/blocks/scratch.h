@@ -14,18 +14,21 @@ extern "C" {
 #include <assert.h>
 
 // reg - scratch::SCRATCH
+// Scratch register
 #define SCRATCH__SCRATCH__DATA_bm 0xffffffff
 #define SCRATCH__SCRATCH__DATA_bp 0
 #define SCRATCH__SCRATCH__DATA_bw 32
 #define SCRATCH__SCRATCH__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Scratch register
         uint32_t data :32;
     } f;
     uint32_t w;
 } scratch__SCRATCH_t;
 
 // addrmap - scratch
+// General-purpose scratch register bank.
 typedef struct __attribute__ ((__packed__)) {
     scratch__SCRATCH_t SCRATCH[8];
 } scratch_t;

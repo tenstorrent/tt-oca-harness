@@ -37,8 +37,8 @@ and one whose observable has been proven able to change.
 
 Only the output-*enable* vector carries that claim. The pad *value* vector also
 carries free-running DUT outputs (the AVSBus clock is ``core2pad_o[49]``,
-tb_top.sv:818), so it changes with no GPIO stimulus and an exact cross-sample
-expectation on it would be flaky rather than proof -- see
+observed in ``tb_top.sv``), so it changes with no GPIO stimulus and an exact
+cross-sample expectation on it would be flaky rather than proof -- see
 ``env.smc_gpio_item.GPIO_STABLE_VECTOR_FIELDS``. It is reported as a diagnostic.
 """
 

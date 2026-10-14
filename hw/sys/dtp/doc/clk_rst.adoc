@@ -102,7 +102,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#dtp-ic-reset-overrides[override sequence].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ic-reset-overrides[override sequence].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ic-reset-overrides[override sequence].
 endif::backend-pdf[]
 
 At the SMU the TDR concatenates three slices from TDI to TDO: SMC, SEP, then

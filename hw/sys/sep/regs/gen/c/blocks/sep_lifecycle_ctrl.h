@@ -14,40 +14,49 @@ extern "C" {
 #include <assert.h>
 
 // reg - sep_lifecycle_ctrl::FEAT_CTRL
+// Lifecycle feature control bits,
 #define SEP_LIFECYCLE_CTRL__FEAT_CTRL__FEATURE_CONTROL_bm 0xffffffffffffffff
 #define SEP_LIFECYCLE_CTRL__FEAT_CTRL__FEATURE_CONTROL_bp 0
 #define SEP_LIFECYCLE_CTRL__FEAT_CTRL__FEATURE_CONTROL_bw 64
 #define SEP_LIFECYCLE_CTRL__FEAT_CTRL__FEATURE_CONTROL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Lifecycle feature control bits,
         uint64_t feature_control :64;
     } f;
     uint64_t w;
 } sep_lifecycle_ctrl__FEAT_CTRL_t;
 
 // reg - sep_lifecycle_ctrl::DEMOTE
+// Demote bit to enter PROD_DBG state
 #define SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bm 0x1
 #define SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bp 0
 #define SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bw 1
 #define SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_reset 0x0
+// Demote lock bit. Once locked, demote can no longer be changed
 #define SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_bm 0x2
 #define SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_bp 1
 #define SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_bw 1
 #define SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_reset 0x0
+// Not used
 #define SEP_LIFECYCLE_CTRL__DEMOTE__RSVD_bm 0xfffffffffffffffc
 #define SEP_LIFECYCLE_CTRL__DEMOTE__RSVD_bp 2
 #define SEP_LIFECYCLE_CTRL__DEMOTE__RSVD_bw 62
 #define SEP_LIFECYCLE_CTRL__DEMOTE__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Demote bit to enter PROD_DBG state
         uint64_t demote :1;
+        // Demote lock bit. Once locked, demote can no longer be changed
         uint64_t lock :1;
+        // Not used
         uint64_t rsvd :62;
     } f;
     uint64_t w;
 } sep_lifecycle_ctrl__DEMOTE_t;
 
 // addrmap - sep_lifecycle_ctrl
+// Lifecycle feature-control and demotion registers with their associated locks.
 typedef struct __attribute__ ((__packed__)) {
     sep_lifecycle_ctrl__FEAT_CTRL_t FEAT_CTRL;
     sep_lifecycle_ctrl__DEMOTE_t DEMOTE_1;

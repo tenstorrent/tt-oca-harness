@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Several IP interrupts asserted at once set exactly their own aggregator bits and no neighbour.
 
+OCAH provenance: ``sep_irq_extended_connectivity_test`` checks
+interrupt-source connectivity.
+
 With the CPU held off, the host asserts several IP interrupts at once (HMAC done,
 KMAC done, CSRNG cmd_req_done, EDN cmd_req_done -> sep_internal_interrupts bits
 17/20/23/27, per hw/sys/sep/doc/interrupts.adoc) via each IP's real INTR_TEST

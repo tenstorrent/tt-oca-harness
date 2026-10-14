@@ -102,7 +102,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>BYPASS_ENTROPY_COMPRESSOR</ipxact:name>
-            <ipxact:description>Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
+            <ipxact:description>Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words, word 0 first, with generator 4n+k in bits [8k+7:8k] of word n. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

@@ -7,7 +7,7 @@ ocah_synth_pdk_mk := 1
 PDKS = sky130 ihp-sg13g2 gf180mcuD
 
 # Default PDK, forwarded into yosys as PDK=$(TECH) (see
-# flows/synth/yosys/tech/ and scripts/init_tech.tcl).
+# flows/synth/pdk/ and scripts/init_tech.tcl).
 TECH ?= ihp-sg13g2
 
 # Warn if unsupported PDK
@@ -20,6 +20,7 @@ PDK_ROOT ?= $(OCAH_ROOT)/local/pdks
 PDK_SENTINEL = $(PDK_ROOT)/ciel/$(TECH)/versions/$($(TECH)_HASH)
 
 # Hashes for PDKs to install - currently matching prior EDA container
+# Updating these hashes may allow unpinning ciel version - see `nix/packages/ciel.nix`
 sky130_HASH ?= d400e26845538beaeb7cc5fdb9bfc06c30ea27cb
 ihp-sg13g2_HASH ?= a2bf8ea81aee7d0fcdd6d62168edca0d7d0bcb08
 gf180mcuD_HASH ?= 8f2d1529c86235d726979eb9ecb7e9628108590b
@@ -55,6 +56,6 @@ ${PDK_SENTINEL}: ocah-synth-pdk
 ocah-synth-pdks-clean:
 	rm -rf $(PDK_ROOT)
 
-OCAH_PHONY += ocah-synth-pdks-all ocah-synth-pdk ocah-synth-pdks-clean
+OCAH_PHONY += ocah-synth-pdks ocah-synth-pdk ocah-synth-pdks-clean
 
 endif

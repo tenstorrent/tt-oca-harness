@@ -74,7 +74,7 @@ CHIP_CONFIG_READS = [
 
 
 class smc_efuse_otp_clock_test_seq(SmcCsrSeq):
-    """Use OSS-safe chip-config fields as eFuse/OTP observable proxy."""
+    """Use chip-config fields as the eFuse/OTP observable proxy."""
 
     def __init__(self, name: str = "smc_efuse_otp_clock_test_seq") -> None:
         super().__init__(name)

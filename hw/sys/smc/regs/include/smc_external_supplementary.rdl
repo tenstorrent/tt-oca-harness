@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SMC_EXTERNAL_SUPPLEMENTARY_RDL
+`define SMC_EXTERNAL_SUPPLEMENTARY_RDL
+
+`include "ext_memory.rdl"
+
+// Supplementary (optional) region of the smc_external adopter window.
+// Adopters MAY omit these blocks, these are purely suggestions.
+// Hardware treats this region identically to the mandatory region; 
+// the split exists purely for readability/documentation.
+// 
+addrmap smc_external_supplementary {
+    name = "SMC External Supplementary Region Address Map";
+    desc = "Supplementary adopter blocks in the external window: extra controllers, extra GPIO registers, and PVT.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    external ext_memory #(.NUM_ENTRIES(228), .WIDTH(32)) controller_wrap        @0x0000; // Dummy RDL
+
+    external ext_memory #(.NUM_ENTRIES(3), .WIDTH(32))   gpio_extra_intf        @0x1000; // Dummy RDL
+    external ext_memory #(.NUM_ENTRIES(1), .WIDTH(32))   gpio_extra_ctrl        @0x100c; // Dummy RDL
+
+    external ext_memory #(.NUM_ENTRIES(594), .WIDTH(32)) smc_pvt_wrap           @0x1c00; // Dummy RDL
+
+};
+
+`endif

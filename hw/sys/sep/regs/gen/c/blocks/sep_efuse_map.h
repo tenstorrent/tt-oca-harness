@@ -14,570 +14,699 @@ extern "C" {
 #include <assert.h>
 
 // reg - sep_efuse_map::LOCKS
+// lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_WRITE_LOCK_bm 0x1
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_WRITE_LOCK_bp 0
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_WRITE_LOCK_reset 0x0
+// lc_state_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_READ_LOCK_bm 0x2
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_READ_LOCK_bp 1
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_READ_LOCK_reset 0x0
+// sboot_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_WRITE_LOCK_bm 0x4
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_WRITE_LOCK_bp 2
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_WRITE_LOCK_reset 0x0
+// sboot_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_READ_LOCK_bm 0x8
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_READ_LOCK_bp 3
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SBOOT_DIS_READ_LOCK_reset 0x0
+// TRANSIENT_RMA_EN_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_WRITE_LOCK_bm 0x10
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_WRITE_LOCK_bp 4
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_WRITE_LOCK_reset 0x0
+// TRANSIENT_RMA_EN_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_READ_LOCK_bm 0x20
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_READ_LOCK_bp 5
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__TRANSIENT_RMA_EN_READ_LOCK_reset 0x0
+// sip_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_WRITE_LOCK_bm 0x40
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_WRITE_LOCK_bp 6
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_WRITE_LOCK_reset 0x0
+// sip_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_READ_LOCK_bm 0x80
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_READ_LOCK_bp 7
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_DIS_READ_LOCK_reset 0x0
+// sys_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_WRITE_LOCK_bm 0x100
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_WRITE_LOCK_bp 8
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_WRITE_LOCK_reset 0x0
+// sys_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_READ_LOCK_bm 0x200
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_READ_LOCK_bp 9
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_DIS_READ_LOCK_reset 0x0
+// rma_sip_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_WRITE_LOCK_bm 0x400
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_WRITE_LOCK_bp 10
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_WRITE_LOCK_reset 0x0
+// rma_sip_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_READ_LOCK_bm 0x800
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_READ_LOCK_bp 11
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_READ_LOCK_reset 0x0
+// rma_chiplet_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK_bm 0x1000
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK_bp 12
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK_reset 0x0
+// rma_chiplet_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_bm 0x2000
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_bp 13
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_reset 0x0
+// class_key_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_WRITE_LOCK_bm 0x4000
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_WRITE_LOCK_bp 14
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_WRITE_LOCK_reset 0x0
+// class_key_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_READ_LOCK_bm 0x8000
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_READ_LOCK_bp 15
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CLASS_KEY_READ_LOCK_reset 0x0
+// chiplet_pubk_revoke_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_WRITE_LOCK_bm 0x10000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_WRITE_LOCK_bp 16
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_WRITE_LOCK_reset 0x0
+// chiplet_pubk_revoke_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_READ_LOCK_bm 0x20000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_READ_LOCK_bp 17
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_REVOKE_READ_LOCK_reset 0x0
+// bl1_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_WRITE_LOCK_bm 0x40000
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_WRITE_LOCK_bp 18
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_WRITE_LOCK_reset 0x0
+// bl1_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_READ_LOCK_bm 0x80000
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_READ_LOCK_bp 19
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__BL1_VERSION_READ_LOCK_reset 0x0
+// bl2_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_WRITE_LOCK_bm 0x100000
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_WRITE_LOCK_bp 20
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_WRITE_LOCK_reset 0x0
+// bl2_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_READ_LOCK_bm 0x200000
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_READ_LOCK_bp 21
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__BL2_VERSION_READ_LOCK_reset 0x0
+// chiplet_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_WRITE_LOCK_bm 0x400000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_WRITE_LOCK_bp 22
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_WRITE_LOCK_reset 0x0
+// chiplet_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_READ_LOCK_bm 0x800000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_READ_LOCK_bp 23
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_READ_LOCK_reset 0x0
+// sip_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_WRITE_LOCK_bm 0x1000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_WRITE_LOCK_bp 24
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_WRITE_LOCK_reset 0x0
+// sip_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_READ_LOCK_bm 0x2000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_READ_LOCK_bp 25
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH0_READ_LOCK_reset 0x0
+// sip_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_WRITE_LOCK_bm 0x4000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_WRITE_LOCK_bp 26
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_WRITE_LOCK_reset 0x0
+// sip_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_READ_LOCK_bm 0x8000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_READ_LOCK_bp 27
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_UID_READ_LOCK_reset 0x0
+// sys_pubk_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_WRITE_LOCK_bm 0x10000000
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_WRITE_LOCK_bp 28
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_WRITE_LOCK_reset 0x0
+// sys_pubk_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_READ_LOCK_bm 0x20000000
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_READ_LOCK_bp 29
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_HASH_READ_LOCK_reset 0x0
+// sys_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_WRITE_LOCK_bm 0x40000000
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_WRITE_LOCK_bp 30
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_WRITE_LOCK_reset 0x0
+// sys_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_READ_LOCK_bm 0x80000000
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_READ_LOCK_bp 31
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_UID_READ_LOCK_reset 0x0
+// status_rpt_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_WRITE_LOCK_bm 0x100000000
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_WRITE_LOCK_bp 32
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_WRITE_LOCK_reset 0x0
+// status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_READ_LOCK_bm 0x200000000
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_READ_LOCK_bp 33
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__STATUS_RPT_READ_LOCK_reset 0x0
+// rom_ctl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_WRITE_LOCK_bm 0x400000000
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_WRITE_LOCK_bp 34
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_WRITE_LOCK_reset 0x0
+// rom_ctl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_READ_LOCK_bm 0x800000000
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_READ_LOCK_bp 35
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_READ_LOCK_reset 0x0
+// sysclk_freq_mhz_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_WRITE_LOCK_bm 0x1000000000
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_WRITE_LOCK_bp 36
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_WRITE_LOCK_reset 0x0
+// sysclk_freq_mhz_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_READ_LOCK_bm 0x2000000000
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_READ_LOCK_bp 37
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_READ_LOCK_reset 0x0
+// chiplet_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_WRITE_LOCK_bm 0x4000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_WRITE_LOCK_bp 38
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_WRITE_LOCK_reset 0x0
+// chiplet_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_READ_LOCK_bm 0x8000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_READ_LOCK_bp 39
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_READ_LOCK_reset 0x0
+// chiplet_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_WRITE_LOCK_bm 0x10000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_WRITE_LOCK_bp 40
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_WRITE_LOCK_reset 0x0
+// chiplet_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_READ_LOCK_bm 0x20000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_READ_LOCK_bp 41
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH1_READ_LOCK_reset 0x0
+// required_signers_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_WRITE_LOCK_bm 0x40000000000
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_WRITE_LOCK_bp 42
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_WRITE_LOCK_reset 0x0
+// required_signers_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_READ_LOCK_bm 0x80000000000
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_READ_LOCK_bp 43
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_SIGNERS_READ_LOCK_reset 0x0
+// required_algs_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_WRITE_LOCK_bm 0x100000000000
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_WRITE_LOCK_bp 44
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_WRITE_LOCK_reset 0x0
+// required_algs_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_READ_LOCK_bm 0x200000000000
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_READ_LOCK_bp 45
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__REQUIRED_ALGS_READ_LOCK_reset 0x0
+// chiplet_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK_bm 0x400000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK_bp 46
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK_reset 0x0
+// chiplet_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_READ_LOCK_bm 0x800000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_READ_LOCK_bp 47
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH0_READ_LOCK_reset 0x0
+// chiplet_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK_bm 0x1000000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK_bp 48
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK_reset 0x0
+// chiplet_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_READ_LOCK_bm 0x2000000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_READ_LOCK_bp 49
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_PQC_HASH1_READ_LOCK_reset 0x0
+// sip_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_WRITE_LOCK_bm 0x4000000000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_WRITE_LOCK_bp 50
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_WRITE_LOCK_reset 0x0
+// sip_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_READ_LOCK_bm 0x8000000000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_READ_LOCK_bp 51
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH0_READ_LOCK_reset 0x0
+// sys_pubk_pqc_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_WRITE_LOCK_bm 0x10000000000000
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_WRITE_LOCK_bp 52
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_WRITE_LOCK_reset 0x0
+// sys_pubk_pqc_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_READ_LOCK_bm 0x20000000000000
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_READ_LOCK_bp 53
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SYS_PUBK_PQC_HASH_READ_LOCK_reset 0x0
+// sip_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_WRITE_LOCK_bm 0x40000000000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_WRITE_LOCK_bp 54
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_WRITE_LOCK_reset 0x0
+// sip_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_READ_LOCK_bm 0x80000000000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_READ_LOCK_bp 55
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_HASH1_READ_LOCK_reset 0x0
+// sip_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_WRITE_LOCK_bm 0x100000000000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_WRITE_LOCK_bp 56
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_WRITE_LOCK_reset 0x0
+// sip_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_READ_LOCK_bm 0x200000000000000
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_READ_LOCK_bp 57
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SIP_PUBK_PQC_HASH1_READ_LOCK_reset 0x0
+// sep_chiplet_id_write_lock (slot 29): when set, SEP_CHIPLET_ID is not write-able.
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_WRITE_LOCK_bm 0x400000000000000
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_WRITE_LOCK_bp 58
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_WRITE_LOCK_reset 0x0
+// sep_chiplet_id_read_lock (slot 29): when set, SEP_CHIPLET_ID is not read-able.
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_READ_LOCK_bm 0x800000000000000
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_READ_LOCK_bp 59
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SEP_CHIPLET_ID_READ_LOCK_reset 0x0
+// sep_sip_id_write_lock (slot 30): when set, SEP_SIP_ID is not write-able.
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_WRITE_LOCK_bm 0x1000000000000000
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_WRITE_LOCK_bp 60
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_WRITE_LOCK_reset 0x0
+// sep_sip_id_read_lock (slot 30): when set, SEP_SIP_ID is not read-able.
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_READ_LOCK_bm 0x2000000000000000
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_READ_LOCK_bp 61
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SEP_SIP_ID_READ_LOCK_reset 0x0
+// sep_sys_id_write_lock (slot 31): when set, SEP_SYS_ID is not write-able.
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_WRITE_LOCK_bm 0x4000000000000000
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_WRITE_LOCK_bp 62
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_WRITE_LOCK_reset 0x0
+// sep_sys_id_read_lock (slot 31): when set, SEP_SYS_ID is not read-able.
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_READ_LOCK_bm 0x8000000000000000
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_READ_LOCK_bp 63
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__SEP_SYS_ID_READ_LOCK_reset 0x0
 
 // reg - sep_efuse_map::LOCKS_SPARE
+// spare0_write_lock (slot 32): when set, spare0 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_WRITE_LOCK_bm 0x1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_WRITE_LOCK_bp 0
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_WRITE_LOCK_reset 0x0
+// spare0_read_lock (slot 32): when set, spare0 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_READ_LOCK_bm 0x2
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_READ_LOCK_bp 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE0_READ_LOCK_reset 0x0
+// spare1_write_lock (slot 33): when set, spare1 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_WRITE_LOCK_bm 0x4
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_WRITE_LOCK_bp 2
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_WRITE_LOCK_reset 0x0
+// spare1_read_lock (slot 33): when set, spare1 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_READ_LOCK_bm 0x8
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_READ_LOCK_bp 3
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE1_READ_LOCK_reset 0x0
+// spare2_write_lock (slot 34): when set, spare2 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_WRITE_LOCK_bm 0x10
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_WRITE_LOCK_bp 4
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_WRITE_LOCK_reset 0x0
+// spare2_read_lock (slot 34): when set, spare2 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_READ_LOCK_bm 0x20
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_READ_LOCK_bp 5
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE2_READ_LOCK_reset 0x0
+// spare3_write_lock (slot 35): when set, spare3 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_WRITE_LOCK_bm 0x40
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_WRITE_LOCK_bp 6
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_WRITE_LOCK_reset 0x0
+// spare3_read_lock (slot 35): when set, spare3 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_READ_LOCK_bm 0x80
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_READ_LOCK_bp 7
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE3_READ_LOCK_reset 0x0
+// spare4_write_lock (slot 36): when set, spare4 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_WRITE_LOCK_bm 0x100
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_WRITE_LOCK_bp 8
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_WRITE_LOCK_reset 0x0
+// spare4_read_lock (slot 36): when set, spare4 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_READ_LOCK_bm 0x200
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_READ_LOCK_bp 9
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE4_READ_LOCK_reset 0x0
+// spare5_write_lock (slot 37): when set, spare5 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_WRITE_LOCK_bm 0x400
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_WRITE_LOCK_bp 10
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_WRITE_LOCK_reset 0x0
+// spare5_read_lock (slot 37): when set, spare5 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_READ_LOCK_bm 0x800
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_READ_LOCK_bp 11
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE5_READ_LOCK_reset 0x0
+// spare6_write_lock (slot 38): when set, spare6 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_WRITE_LOCK_bm 0x1000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_WRITE_LOCK_bp 12
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_WRITE_LOCK_reset 0x0
+// spare6_read_lock (slot 38): when set, spare6 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_READ_LOCK_bm 0x2000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_READ_LOCK_bp 13
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE6_READ_LOCK_reset 0x0
+// spare7_write_lock (slot 39): when set, spare7 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_WRITE_LOCK_bm 0x4000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_WRITE_LOCK_bp 14
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_WRITE_LOCK_reset 0x0
+// spare7_read_lock (slot 39): when set, spare7 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_READ_LOCK_bm 0x8000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_READ_LOCK_bp 15
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_READ_LOCK_reset 0x0
+// spare8_write_lock (slot 40): when set, spare8 is not write-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_WRITE_LOCK_bm 0x10000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_WRITE_LOCK_bp 16
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_WRITE_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_WRITE_LOCK_reset 0x0
+// spare8_read_lock (slot 40): when set, spare8 is not read-able.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_READ_LOCK_bm 0x20000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_READ_LOCK_bp 17
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_READ_LOCK_reset 0x0
+// Unassigned lock slots 41-47. Reserved for future field lock assignments.
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_bm 0xfffc0000
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_bp 18
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_bw 14
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_reset 0x0
 
 // reg - sep_efuse_map::LC_STATE
+// Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm 0xff
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp 0
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_bw 8
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_reset 0xf0
+// Unused
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_bm 0xffffff00
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_bp 8
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_bw 24
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_reset 0x0
 
 // reg - sep_efuse_map::SBOOT_DIS
+// Chicken bit to disable secure boot in SEP ROM.
 #define SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm 0x1
 #define SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bp 0
 #define SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bw 1
 #define SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_reset 0x0
+// Unused
 #define SEP_EFUSE_MAP__SBOOT_DIS__RSVD_bm 0xfffffffe
 #define SEP_EFUSE_MAP__SBOOT_DIS__RSVD_bp 1
 #define SEP_EFUSE_MAP__SBOOT_DIS__RSVD_bw 31
 #define SEP_EFUSE_MAP__SBOOT_DIS__RSVD_reset 0x0
 
 // reg - sep_efuse_map::TRANSIENT_RMA_EN
+// When Transient RMA EN is 1, matching on corresponding *_Tokens will automatically transfer the chip to the corresponding RMA state by setting the LC_STATE reg
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__TRANSIENT_RMA_EN_bm 0x1
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__TRANSIENT_RMA_EN_bp 0
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__TRANSIENT_RMA_EN_bw 1
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__TRANSIENT_RMA_EN_reset 0x0
+// Unused
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__RSVD_bm 0xfffffffe
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__RSVD_bp 1
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__RSVD_bw 31
 #define SEP_EFUSE_MAP__TRANSIENT_RMA_EN__RSVD_reset 0x0
 
 // reg - sep_efuse_map::LC_DISABLE
+// An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
+// SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_DEBUG_bm 0x1
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_DEBUG_bp 0
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_DEBUG_bw 1
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_DEBUG_reset 0x0
+// CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.
 #define SEP_EFUSE_MAP__LC_DISABLE__CHIPLET_DBG_bm 0x2
 #define SEP_EFUSE_MAP__LC_DISABLE__CHIPLET_DBG_bp 1
 #define SEP_EFUSE_MAP__LC_DISABLE__CHIPLET_DBG_bw 1
 #define SEP_EFUSE_MAP__LC_DISABLE__CHIPLET_DBG_reset 0x0
+// SEP_FUSE_DBG (bit 2): 1'b1: the DFT-inserted access path into the SEP OTP is disabled. 1'b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_FUSE_DBG_bm 0x4
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_FUSE_DBG_bp 2
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_FUSE_DBG_bw 1
 #define SEP_EFUSE_MAP__LC_DISABLE__SEP_FUSE_DBG_reset 0x0
+// SMC_FUSE_DBG (bit 3): 1'b1: the DFT-inserted access path into the SMC OTP is disabled. 1'b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.
 #define SEP_EFUSE_MAP__LC_DISABLE__SMC_FUSE_DBG_bm 0x8
 #define SEP_EFUSE_MAP__LC_DISABLE__SMC_FUSE_DBG_bp 3
 #define SEP_EFUSE_MAP__LC_DISABLE__SMC_FUSE_DBG_bw 1
 #define SEP_EFUSE_MAP__LC_DISABLE__SMC_FUSE_DBG_reset 0x0
+// Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG1_bm 0xfffff0
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG1_bp 4
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG1_bw 20
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG1_reset 0x0
+// SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1'b1: disabled. 1'b0: enabled.
 #define SEP_EFUSE_MAP__LC_DISABLE__SIP_DEBUG_bm 0x1000000
 #define SEP_EFUSE_MAP__LC_DISABLE__SIP_DEBUG_bp 24
 #define SEP_EFUSE_MAP__LC_DISABLE__SIP_DEBUG_bw 1
 #define SEP_EFUSE_MAP__LC_DISABLE__SIP_DEBUG_reset 0x0
+// Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG2_bm 0xfffffe000000
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG2_bp 25
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG2_bw 23
 #define SEP_EFUSE_MAP__LC_DISABLE__DEBUG_RESERVED_DBG2_reset 0x0
+// Reserved for adopter-defined functional feature gating (bits 63:48).
 #define SEP_EFUSE_MAP__LC_DISABLE__FUNC_RESERVED_bm 0xffff000000000000
 #define SEP_EFUSE_MAP__LC_DISABLE__FUNC_RESERVED_bp 48
 #define SEP_EFUSE_MAP__LC_DISABLE__FUNC_RESERVED_bw 16
 #define SEP_EFUSE_MAP__LC_DISABLE__FUNC_RESERVED_reset 0x0
 
 // reg - sep_efuse_map::RMA_SIP_TOKEN_DIGEST
+// Hash digest of life cycle secret that allows entering RMA_SIP state / Note this is a 256 bit field
 #define SEP_EFUSE_MAP__RMA_SIP_TOKEN_DIGEST__TOKEN_DIGEST_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__RMA_SIP_TOKEN_DIGEST__TOKEN_DIGEST_bp 0
 #define SEP_EFUSE_MAP__RMA_SIP_TOKEN_DIGEST__TOKEN_DIGEST_bw 256
 #define SEP_EFUSE_MAP__RMA_SIP_TOKEN_DIGEST__TOKEN_DIGEST_reset 0x0
 
 // reg - sep_efuse_map::RMA_CHIPLET_TOKEN_DIGEST
+// Hash digest of life cycle secret that allows entering RMA_CHIPLET state/ Note this is a 256 bit field
 #define SEP_EFUSE_MAP__RMA_CHIPLET_TOKEN_DIGEST__TOKEN_DIGEST_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__RMA_CHIPLET_TOKEN_DIGEST__TOKEN_DIGEST_bp 0
 #define SEP_EFUSE_MAP__RMA_CHIPLET_TOKEN_DIGEST__TOKEN_DIGEST_bw 256
 #define SEP_EFUSE_MAP__RMA_CHIPLET_TOKEN_DIGEST__TOKEN_DIGEST_reset 0x0
 
 // reg - sep_efuse_map::CLASS_KEY
+// Class key that could be used for FW encryption/decryption
 #define SEP_EFUSE_MAP__CLASS_KEY__KEY_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__CLASS_KEY__KEY_bp 0
 #define SEP_EFUSE_MAP__CLASS_KEY__KEY_bw 256
 #define SEP_EFUSE_MAP__CLASS_KEY__KEY_reset 0x0
 
 // reg - sep_efuse_map::CHIPLET_PUBK_REVOKE
+// Global public-key revocation vector covering every boot-verification key of every owner (classical and PQC). SEP ROM embeds a set of public-key hash digests and accesses additional fused key hashes; each key entry maps to one bit here. Once set, SEP ROM rejects the corresponding key. Bit map: [7:0] ROM chiplet-creator classical keys (bits 0,1 are development keys); [15:8] ROM chiplet-creator PQC keys; [16]/[17] CHIPLET_PUBK_HASH0/1; [18]/[19] CHIPLET_PUBK_PQC_HASH0/1; [20]/[21] SIP_PUBK_HASH0 / SIP_PUBK_PQC_HASH0; [22]/[23] SYS_PUBK_HASH / SYS_PUBK_PQC_HASH; [24]/[25] SIP_PUBK_HASH1 / SIP_PUBK_PQC_HASH1; [31:26] reserved. Before the chiplet owner transfers a part to the customer, the development-key bits shall be set (revoked).
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_REVOKE__SELECT_bm 0xffffffff
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_REVOKE__SELECT_bp 0
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_REVOKE__SELECT_bw 32
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_REVOKE__SELECT_reset 0x0
 
 // reg - sep_efuse_map::BL1_VERSION
+// Minimum BL1 version that can be loaded by SEPROM
 #define SEP_EFUSE_MAP__BL1_VERSION__VERSION_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__BL1_VERSION__VERSION_bp 0
 #define SEP_EFUSE_MAP__BL1_VERSION__VERSION_bw 256
 #define SEP_EFUSE_MAP__BL1_VERSION__VERSION_reset 0x0
 
 // reg - sep_efuse_map::BL2_VERSION
+// Minimum BL2 version that can be loaded by BL1. If more boot stages exist, rollback protection can be implemented by BL2.
 #define SEP_EFUSE_MAP__BL2_VERSION__VERSION_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__BL2_VERSION__VERSION_bp 0
 #define SEP_EFUSE_MAP__BL2_VERSION__VERSION_bw 256
 #define SEP_EFUSE_MAP__BL2_VERSION__VERSION_reset 0x0
 
 // reg - sep_efuse_map::CHIPLET_UID
+// Silicon creator's secret device unique ID (also referred to as UDS - Unique Device Secret). The chiplet creator is responsible for CHIPLET_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.
 #define SEP_EFUSE_MAP__CHIPLET_UID__UID_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__CHIPLET_UID__UID_bp 0
 #define SEP_EFUSE_MAP__CHIPLET_UID__UID_bw 256
 #define SEP_EFUSE_MAP__CHIPLET_UID__UID_reset 0x0
 
 // reg - sep_efuse_map::SIP_PUBK_HASH
+// Hash digest of SiP owner's root public key for secure boot. The chiplet creator's actual root public key is embedded in the SEPROM; this digest is used to validate that public key.
 #define SEP_EFUSE_MAP__SIP_PUBK_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SIP_PUBK_HASH__KEY_HASH_bp 0
 #define SEP_EFUSE_MAP__SIP_PUBK_HASH__KEY_HASH_bw 256
 #define SEP_EFUSE_MAP__SIP_PUBK_HASH__KEY_HASH_reset 0x0
 
 // reg - sep_efuse_map::SIP_UID
+// SiP owner's secret device unique ID. The SiP owner is responsible for SIP_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.
 #define SEP_EFUSE_MAP__SIP_UID__UID_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SIP_UID__UID_bp 0
 #define SEP_EFUSE_MAP__SIP_UID__UID_bw 256
 #define SEP_EFUSE_MAP__SIP_UID__UID_reset 0x0
 
 // reg - sep_efuse_map::SYS_PUBK_HASH
+// Hash digest of system owner's root public key for secure boot.
 #define SEP_EFUSE_MAP__SYS_PUBK_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SYS_PUBK_HASH__KEY_HASH_bp 0
 #define SEP_EFUSE_MAP__SYS_PUBK_HASH__KEY_HASH_bw 256
 #define SEP_EFUSE_MAP__SYS_PUBK_HASH__KEY_HASH_reset 0x0
 
 // reg - sep_efuse_map::SYS_UID
+// System owner's secret device unique ID. The system owner is responsible for SYS_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.
 #define SEP_EFUSE_MAP__SYS_UID__UID_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SYS_UID__UID_bp 0
 #define SEP_EFUSE_MAP__SYS_UID__UID_bw 256
 #define SEP_EFUSE_MAP__SYS_UID__UID_reset 0x0
 
 // reg - sep_efuse_map::STATUS_RPT
+// BOOTROM report status based on the bit. 2'b00-> bootrom report status based on GPIO; 2'b01->bootrom report status;otherwise, bootrom does not report status
 #define SEP_EFUSE_MAP__STATUS_RPT__RPT_bm 0x3
 #define SEP_EFUSE_MAP__STATUS_RPT__RPT_bp 0
 #define SEP_EFUSE_MAP__STATUS_RPT__RPT_bw 2
 #define SEP_EFUSE_MAP__STATUS_RPT__RPT_reset 0x0
+// reserved
 #define SEP_EFUSE_MAP__STATUS_RPT__RESERVED_bm 0xfffffffc
 #define SEP_EFUSE_MAP__STATUS_RPT__RESERVED_bp 2
 #define SEP_EFUSE_MAP__STATUS_RPT__RESERVED_bw 30
 #define SEP_EFUSE_MAP__STATUS_RPT__RESERVED_reset 0x0
 
 // reg - sep_efuse_map::ROM_CTL
+// controls the endianness of the rom data out. 0->little endian; 1->big endian
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_ENDIANNESS_CTRL_bm 0x1
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_ENDIANNESS_CTRL_bp 0
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_ENDIANNESS_CTRL_bw 1
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_ENDIANNESS_CTRL_reset 0x0
+// controls how the rom slices are swapped
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_SWAP_CTRL_bm 0x3e
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_SWAP_CTRL_bp 1
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_SWAP_CTRL_bw 5
 #define SEP_EFUSE_MAP__ROM_CTL__ROM_SWAP_CTRL_reset 0x0
+// reserved
 #define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bm 0xffffffc0
 #define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bp 6
 #define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bw 26
 #define SEP_EFUSE_MAP__ROM_CTL__RESERVED_reset 0x0
 
 // reg - sep_efuse_map::SYSCLK_FREQ_MHZ
+// Configured sysclk PLL frequency in MHz; ignored if 0. Consumed by boot ROM clock math.
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bm 0x7ff
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bp 0
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bw 11
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_reset 0x0
+// Reserved
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__RSVD_bm 0xfffff800
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__RSVD_bp 11
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__RSVD_bw 21
 #define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__RSVD_reset 0x0
 
 // reg - sep_efuse_map::CHIPLET_PUBK_HASH
+// Chiplet owner authentication key hash digest, fused. These chiplet owner fused key hashes can be used in addition to the hashes in the ROM itself to authenticate manifests.
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_HASH__KEY_HASH_bp 0
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_HASH__KEY_HASH_bw 256
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_HASH__KEY_HASH_reset 0x0
 
 // reg - sep_efuse_map::REQUIRED_SIGNERS
+// Owners whose signature is required to authenticate any image loadable by SEP ROM. Per owner, 1 = required, 0 = not-required; the default all-zero value requires no additional owner. [0] SiP owner, [1] system owner. The chiplet creator is the root of trust and always authenticates BL1, so it has no bit here.
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__REQUIRED_SIGNERS_bm 0x3
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__REQUIRED_SIGNERS_bp 0
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__REQUIRED_SIGNERS_bw 2
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__REQUIRED_SIGNERS_reset 0x0
+// Reserved
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__RESERVED_bm 0xfffffffc
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__RESERVED_bp 2
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__RESERVED_bw 30
 #define SEP_EFUSE_MAP__REQUIRED_SIGNERS__RESERVED_reset 0x0
 
 // reg - sep_efuse_map::REQUIRED_ALGS
+// Per-owner required signature algorithms for chiplet. Each nibble: bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__CHIPLET_ALGS_bm 0xf
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__CHIPLET_ALGS_bp 0
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__CHIPLET_ALGS_bw 4
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__CHIPLET_ALGS_reset 0x0
+// Per-owner required signature algorithms for SiP owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SIP_ALGS_bm 0xf0
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SIP_ALGS_bp 4
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SIP_ALGS_bw 4
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SIP_ALGS_reset 0x0
+// Per-owner required signature algorithms for system owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SYS_ALGS_bm 0xf00
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SYS_ALGS_bp 8
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SYS_ALGS_bw 4
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__SYS_ALGS_reset 0x0
+// Reserved
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__RESERVED_bm 0xfffff000
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__RESERVED_bp 12
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__RESERVED_bw 20
 #define SEP_EFUSE_MAP__REQUIRED_ALGS__RESERVED_reset 0x0
 
 // reg - sep_efuse_map::CHIPLET_PUBK_PQC_HASH
+// Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_PQC_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_PQC_HASH__KEY_HASH_bp 0
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_PQC_HASH__KEY_HASH_bw 256
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_PQC_HASH__KEY_HASH_reset 0x0
 
 // reg - sep_efuse_map::SIP_PUBK_PQC_HASH
+// Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.
 #define SEP_EFUSE_MAP__SIP_PUBK_PQC_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SIP_PUBK_PQC_HASH__KEY_HASH_bp 0
 #define SEP_EFUSE_MAP__SIP_PUBK_PQC_HASH__KEY_HASH_bw 256
 #define SEP_EFUSE_MAP__SIP_PUBK_PQC_HASH__KEY_HASH_reset 0x0
 
 // reg - sep_efuse_map::SYS_PUBK_PQC_HASH
+// Hash digest of the system owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.
 #define SEP_EFUSE_MAP__SYS_PUBK_PQC_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SYS_PUBK_PQC_HASH__KEY_HASH_bp 0
 #define SEP_EFUSE_MAP__SYS_PUBK_PQC_HASH__KEY_HASH_bw 256
 #define SEP_EFUSE_MAP__SYS_PUBK_PQC_HASH__KEY_HASH_reset 0x0
 
 // reg - sep_efuse_map::SEP_ID
+// Per-owner public identity fuse. Personalization input for the Key Manager identity root. Being public, no read protection is required. Individually lockable via LOCKS[58:63] (slots 29-31).
 #define SEP_EFUSE_MAP__SEP_ID__ID_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SEP_ID__ID_bp 0
 #define SEP_EFUSE_MAP__SEP_ID__ID_bw 256
 #define SEP_EFUSE_MAP__SEP_ID__ID_reset 0x0
 
 // reg - sep_efuse_map::SPARE_256_BITS
+// Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 #define SEP_EFUSE_MAP__SPARE_256_BITS__RSVD_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SEP_EFUSE_MAP__SPARE_256_BITS__RSVD_bp 0
 #define SEP_EFUSE_MAP__SPARE_256_BITS__RSVD_bw 256
 #define SEP_EFUSE_MAP__SPARE_256_BITS__RSVD_reset 0x0
 
 // addrmap - sep_efuse_map
+// Per-field write-lock and read-lock registers for the SEP eFuse map.
 typedef struct __attribute__ ((__packed__)) {
     uint64_t LOCKS;
     uint32_t LOCKS_SPARE;

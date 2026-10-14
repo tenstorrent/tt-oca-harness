@@ -56,9 +56,8 @@ args = ["-elfile", "{path}"]
 # EFUSE-IMAGE-COPY, EFUSE-FIELD-MAP-CONST, VERSION-ID-CONST, ERR-SLV-CONST,
 # ATOP-ZERO, EXT-IRQ-TIED and PARTIAL-VECTOR; README.md, "Toggle granularity"
 # and "Units graded on their ports", gives each class's fact and granularity.
-# Only the bit-directions the graded run leaves uncovered are written, so the
-# companion's gen_smc_toggle_exclusions.py regenerates both files from each
-# graded run.
+# Only the bit-directions the graded run leaves uncovered are written, so both
+# files are regenerated from each graded run.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -75,8 +74,8 @@ args = ["-elfile", "{path}"]
 
 # The line blocks and condition rows inside the ports-only units T2 to T12,
 # which smc_reviewed_exclusions.toml records; their toggle points are in the two
-# files above. The companion's gen_smc_ports_only_exclusions.py writes the file
-# from each graded run. README.md, "Units graded on their ports".
+# files above. The file is regenerated from each graded run. README.md, "Units
+# graded on their ports".
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -87,8 +86,7 @@ args = ["-elfile", "{path}"]
 # Covergroups declared inside vendored RTL, class GROUP-VENDORED-I3C: `-cm_hier`
 # does not reach covergroups, so the six I3C controllers' groups would otherwise
 # sit in urg's GROUP score beside SMC's own. Regenerated from urg's group
-# exclusion template by the companion's gen_smc_group_exclusions.py. README.md,
-# "Exclusion files".
+# exclusion template. README.md, "Exclusion files".
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -98,8 +96,8 @@ args = ["-elfile", "{path}"]
 
 # Fields design engineering reviewed as not exercised by this bench, R1 to R9 by
 # family, recorded in smc_reviewed_exclusions.toml. Report-gated per bit and
-# direction and written from each graded run by the companion's
-# gen_smc_cov_exclusions.py. README.md, "Exclusions design engineering reviewed".
+# direction and regenerated from each graded run. README.md, "Exclusions design
+# engineering reviewed".
 [[native_files]]
 tool = "vcs"
 role = "exclude"

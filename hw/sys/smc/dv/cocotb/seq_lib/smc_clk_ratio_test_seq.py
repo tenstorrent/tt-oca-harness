@@ -36,9 +36,16 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 
-from .smc_addr_map import GLOBAL_BASE_RESET, smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    _REPO,
+    GLOBAL_BASE_RESET,
+    reg_field_encode,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
-from .smc_output_fabric_vip_utils import reg_field_pack
+
+_I2C_H = _REPO / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c.h"
 
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -244,7 +251,7 @@ class smc_clk_ratio_test_seq(SmcDecodeProbeSeq):
                 (
                     f"I2C{idx}_TARGET_ID",
                     _i2c_target_id(idx),
-                    reg_field_pack("I2C_TARGET_ID_reg_t", address0=0x31 + idx, mask0=0x7F),
+                    reg_field_encode(_I2C_H, "I2C", "TARGET_ID", address0=0x31 + idx, mask0=0x7F),
                     I2C_TARGET_ID_REG_DEFAULT,
                 )
                 for idx in range(I2C_NUM)

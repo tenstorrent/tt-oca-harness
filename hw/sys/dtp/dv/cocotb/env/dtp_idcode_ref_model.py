@@ -3,9 +3,9 @@
 """idcode reference model: every DR scan under IDCODE shifts out the device identification.
 
 Every DR scan while IDCODE is the active instruction (after Test-Logic-Reset
-by TRST or TMS, or an explicit load) shifts out the public DTP device
-identification in its low 32 bits. Consumes the reconstructed scan stream
-(``write``) and the per-TCK event stream (``event_export``) through a
+by TRST or TMS, or an explicit load) shifts out the DTP device identification
+(``DTP_DEFAULT_IDCODE``) in its low 32 bits. Consumes the reconstructed scan
+stream (``write``) and the per-TCK event stream (``event_export``) through a
 ``DtpJtagIrModel``, re-baselines on power-on reset through the TB
 interface, and publishes one ``DtpExpectedItem`` per scan item so the
 scoreboard pairs the two streams in lockstep: IR scans, scans under another
@@ -43,6 +43,7 @@ class DtpIdcodeRefModel(OcahRefModel):
         self._model = DtpJtagIrModel()
 
     def write(self, item: OcahJtagScanItem) -> None:
+        """Track IR scans; predict the IDCODE bits of a DR scan under a known IDCODE instruction."""
         self._model.sync_power_on_reset(self.tb_if.sample("por_assert_count"))
         expected = DtpExpectedItem(compare=False, time_ns=item.end_time_ns)
         if item.is_ir:

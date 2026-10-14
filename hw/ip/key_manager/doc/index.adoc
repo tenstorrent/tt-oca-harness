@@ -19,7 +19,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
 endif::backend-pdf[]
 of the Programmer's Guide defines the implemented services, command protocol
 and handover rules.
@@ -39,7 +39,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
 endif::backend-pdf[]
 of the Programmer's Guide is the firmware reference: initialization, the
 mailbox command and response protocol, interrupt handling, key management and

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_dbg_ctrl_clk_stop_cla_clock_stop_test — CLA clock-stop request aggregation drives stop_clks and the
-// read-only DEBUG_CONTROL status bit
-// (looped runner with per-pass family evidence, 16-pass floor).
+// dtp_dbg_ctrl_clk_stop_cla_clock_stop_test — CLA clock-stop request
+// aggregation drives stop_clks and the read-only DEBUG_CONTROL status bit
+// (looped runner with per-pass family evidence).
 
 class dtp_dbg_ctrl_clk_stop_cla_clock_stop_test extends dtp_base_test;
   `uvm_component_utils(dtp_dbg_ctrl_clk_stop_cla_clock_stop_test)

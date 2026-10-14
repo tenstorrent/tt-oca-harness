@@ -117,7 +117,6 @@ int main(void) {
         test_fail(0);
     }
 
-    // Validate ARA address
     if (ARA_ADDR < 0x08 || ARA_ADDR > 0x77) {
         simputs("  ERROR: Invalid ARA address\n");
         simputshex32("  ARA Address 0x", ARA_ADDR);
@@ -131,7 +130,6 @@ int main(void) {
     simputshex32("", ARA_ADDR);
     simputs(")...\n");
 
-    // Compute optimal timing parameters from physical characteristics
     i2c_timing_physical_t physical_params = {
         .speed = I2C_SPEED_STANDARD, // 100 kHz
         .clock_period_nanos = 5,     // 200 MHz peripheral clock

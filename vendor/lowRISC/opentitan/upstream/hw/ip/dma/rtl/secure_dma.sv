@@ -283,9 +283,11 @@ module secure_dma
   // some registers already have a different REGWEN attached (range locking) or the CONTROL
   // register, which needs to be partly writable. To lock those registers, we capture their value
   // during the start of the operation and, later on, only use the captured value in the state
-  // machine. The captured state is stored in control_q.
+  // machine. The captured state is stored in control_q. Every start captures the handshake enable
+  // and the enabled memory range, so a range locked between chunks bounds the next chunk. Only the
+  // first start of a transfer captures the opcode and the digest swap.
   control_state_t control_d, control_q;
-  logic           capture_state;
+  logic           capture_state, capture_operation;
 
   // Fiddle out control bits into captured state
   always_comb begin
@@ -295,6 +297,10 @@ module secure_dma
     control_d.range_valid                = reg2hw.range_valid.q;
     control_d.enabled_memory_range_base  = reg2hw.enabled_memory_range_base.q;
     control_d.enabled_memory_range_limit = reg2hw.enabled_memory_range_limit.q;
+    if (!capture_operation) begin
+      control_d.opcode          = control_q.opcode;
+      control_d.cfg_digest_swap = control_q.cfg_digest_swap;
+    end
   end
 
   prim_flop_en #(
@@ -413,6 +419,12 @@ module secure_dma
   sha_word64_t [7:0] sha2_digest;
 
   assign use_inline_hashing = control_q.opcode inside {OpcSha256,  OpcSha384, OpcSha512};
+
+  logic zero_fill;
+  assign zero_fill = (control_q.opcode == OpcZero);
+  // Last byte address a zero-fill beat writes, checked against the enabled memory range
+  logic [SYS_ADDR_WIDTH-1:0] zero_fill_beat_end;
+
   // When reaching DmaShaFinalize, we are consuming data and start computing the digest value
   assign sha2_hash_process = (ctrl_state_q == DmaShaFinalize);
 
@@ -495,7 +507,7 @@ module secure_dma
                              (dma_host_read  ? {src_addr_q[top_pkg::TL_AW-1:2], 2'b0} :
                         (dma_host_clear_intr ? reg2hw.intr_src_addr[clear_index_q].q : 'b0));
     dma_host_tlul_req_we    = dma_host_write | dma_host_clear_intr;
-    dma_host_tlul_req_wdata = dma_host_write ? read_return_data_q :
+    dma_host_tlul_req_wdata = dma_host_write ? (zero_fill ? '0 : read_return_data_q) :
                         (dma_host_clear_intr ? reg2hw.intr_src_wr_val[clear_index_q].q : 'b0);
     dma_host_tlul_req_be    = dma_host_write ? req_dst_be_q :
                              (dma_host_read  ? req_src_be_q
@@ -513,7 +525,7 @@ module secure_dma
                             (dma_ctn_read  ? {src_addr_q[top_pkg::TL_AW-1:2], 2'b0} :
                        (dma_ctn_clear_intr ? reg2hw.intr_src_addr[clear_index_q].q : 'b0));
     dma_ctn_tlul_req_we    = dma_ctn_write | dma_ctn_clear_intr;
-    dma_ctn_tlul_req_wdata = dma_ctn_write ? read_return_data_q :
+    dma_ctn_tlul_req_wdata = dma_ctn_write ? (zero_fill ? '0 : read_return_data_q) :
                        (dma_ctn_clear_intr ? reg2hw.intr_src_wr_val[clear_index_q].q : 'b0);
     dma_ctn_tlul_req_be    = dma_ctn_write ? req_dst_be_q :
                             (dma_ctn_read  ? req_src_be_q : {top_pkg::TL_DBW{dma_ctn_clear_intr}});
@@ -531,7 +543,7 @@ module secure_dma
                                          {dst_addr_q[(SYS_ADDR_WIDTH-1):2], 2'b0} : 'b0;
     sys_req_d.racl_vec    [SysCmdWrite] = SysRaclRole;
 
-    sys_req_d.write_data = {SYS_DATA_WIDTH{dma_sys_write}} & read_return_data_q;
+    sys_req_d.write_data = {SYS_DATA_WIDTH{dma_sys_write & !zero_fill}} & read_return_data_q;
     sys_req_d.write_be   = {SYS_DATA_BYTEWIDTH{dma_sys_write}} & req_dst_be_q;
 
     sys_req_d.vld_vec     [SysCmdRead] = dma_sys_read;
@@ -606,11 +618,14 @@ module secure_dma
     transfer_width_d       = '0;
     capture_return_data    = 1'b0;
     capture_state          = 1'b0;
+    capture_operation      = 1'b0;
 
     next_error   = '0;
     capture_addr = 1'b0;
     src_addr_d   = '0;
     dst_addr_d   = '0;
+
+    zero_fill_beat_end = '0;
 
     capture_be   = '0;
     req_src_be_d = '0;
@@ -672,12 +687,15 @@ module secure_dma
 
           // Wait for `go` bit to be set to proceed with data movement
           if (reg2hw.control.go.q || reg2hw.status.busy.q) begin
-            // Clear the transferred bytes only on the very first iteration
+            // Capture unlocked state on every start; a roundtrip via idle keeps it
+            if (!reg2hw.status.busy.q) begin
+              capture_state = 1'b1;
+            end
+            // Clear the transferred bytes and take the operation only on the very first iteration
             if (reg2hw.control.initial_transfer.q && !reg2hw.status.busy.q) begin
               transfer_byte_d       = '0;
               capture_transfer_byte = 1'b1;
-              // Capture unlocked state when starting the transfer.
-              capture_state = 1'b1;
+              capture_operation     = 1'b1;
             end
             // if not handshake start transfer
             if (!cfg_handshake_en) begin
@@ -754,6 +772,9 @@ module secure_dma
           capture_addr           = 1'b1;
           capture_be             = 1'b1;
           sha2_consumed_d        = 1'b0;
+          // A zero fill clears the data register, which may still hold the last word of an
+          // earlier copy
+          capture_return_data    = zero_fill;
 
           // Convert the `transfer_width` encoding to bytes per transaction
           unique case (reg2hw.transfer_width.q)
@@ -829,7 +850,12 @@ module secure_dma
             next_error[DmaSizeErr] = 1'b1;
           end
 
-          if (!(control_q.opcode inside {OpcCopy, OpcSha256, OpcSha384, OpcSha512})) begin
+          if (!(control_q.opcode inside {OpcCopy, OpcSha256, OpcSha384, OpcSha512, OpcZero})) begin
+            next_error[DmaOpcodeErr] = 1'b1;
+          end
+
+          // A zero fill is a memory operation, not paced by hardware handshake triggers
+          if (zero_fill && control_q.cfg_handshake_en) begin
             next_error[DmaOpcodeErr] = 1'b1;
           end
 
@@ -898,6 +924,24 @@ module secure_dma
             next_error[DmaSrcAddrErr] = 1'b1;
           end
 
+          // A zero fill writes no byte past TOTAL_DATA_SIZE: a start with no bytes left fails
+          // without a write
+          if (zero_fill && (transfer_byte_q >= reg2hw.total_data_size.q)) begin
+            next_error[DmaSizeErr] = 1'b1;
+          end
+
+          // A zero fill writes only inside the enabled memory range, whatever the address spaces.
+          // Each beat is checked, so the bound holds across chunks and in every addressing mode.
+          zero_fill_beat_end = dst_addr_d - SYS_ADDR_WIDTH'(1) +
+                               ((remaining_bytes < TRANSFER_BYTES_WIDTH'(transfer_width_d)) ?
+                                SYS_ADDR_WIDTH'(remaining_bytes) :
+                                SYS_ADDR_WIDTH'(transfer_width_d));
+          if (zero_fill &&
+              ((dst_addr_d < SYS_ADDR_WIDTH'(control_q.enabled_memory_range_base)) ||
+               (zero_fill_beat_end > SYS_ADDR_WIDTH'(control_q.enabled_memory_range_limit)))) begin
+            next_error[DmaDstAddrErr] = 1'b1;
+          end
+
           // If the source ASID is the SOC control port or the OT internal port, we are accessing a
           // 32-bit address space. Thus the upper bits of the source address must be zero
           if ((src_asid inside {SocControlAddr, OtInternalAddr}) &&
@@ -928,7 +972,7 @@ module secure_dma
                 sha2_hash_start = 1'b1;
               end
             end
-            ctrl_state_d = DmaSendRead;
+            ctrl_state_d = zero_fill ? DmaSendWrite : DmaSendRead;
           end
         end
 
@@ -1078,6 +1122,10 @@ module secure_dma
                                                           : dma_rsp_data[31:16]}};
       default: read_return_data_d = dma_rsp_data;
     endcase
+
+    if (zero_fill) begin
+      read_return_data_d = '0;
+    end
   end
 
 
@@ -1581,4 +1629,13 @@ module secure_dma
 
   // Alert assertion for sparse FSM.
   `OCAH_OT_ASSERT_PRIM_FSM_ERROR_TRIGGER_ALERT(CtrlStateFsmCheck_A, aff_ctrl_state_q, alert_tx_o[0])
+
+  // A zero fill never reads and writes only zeros
+  `OCAH_OT_ASSERT(ZeroFillNoRead_A, zero_fill |-> !(dma_host_read || dma_ctn_read || dma_sys_read))
+  `OCAH_OT_ASSERT(ZeroFillHostWdataZero_A, zero_fill && dma_host_write |->
+                  dma_host_tlul_req_wdata == '0)
+  `OCAH_OT_ASSERT(ZeroFillCtnWdataZero_A, zero_fill && dma_ctn_write |->
+                  dma_ctn_tlul_req_wdata == '0)
+  `OCAH_OT_ASSERT(ZeroFillSysWdataZero_A, zero_fill && dma_sys_write |->
+                  sys_req_d.write_data == '0)
 endmodule

@@ -6,15 +6,14 @@
 gives `CTRL.EN` the other half of the contract: "When cleared, the engine stops
 fetching and writing, discards buffered log data and resets transfer progress.
 Configuration and pending LOG_LEN values are retained." So clearing it in the
-middle of a transfer has to stop the engine where it stands, and no leaf has
-asked it to.
+middle of a transfer has to stop the engine where it stands.
 
-Each wrapper gets one log filling its whole slot. The slot is deliberately
-large: `log_engine.rdl` sizes it as the region size over the sixteen LOG_CTRL
-elements, and this region makes it twice the UART transmit FIFO the
-`uart_log_engine_disable_during_xfer` firmware image pins, so the writer cannot
-have finished by the time the disable one register access later lands, and it
-is several fetch beats deep so the fetch side is still working too.
+Each wrapper gets one log filling its whole slot. `log_engine.rdl` sizes it as
+the region size over the sixteen LOG_CTRL elements, and this region makes it
+twice the UART transmit FIFO the `uart_log_engine_disable_during_xfer` firmware
+image pins, so the writer cannot have finished by the time the disable one
+register access later lands, and it is several fetch beats deep so the fetch
+side is still working too.
 
 The three legs are an allow, a deny and an allow again, so the deny cannot pass
 on a dead bus:

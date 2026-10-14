@@ -13,8 +13,7 @@ ROM must record the right code in scratch 15, and it must then stay halted. A RO
 recorded the failure and carried on booting would pass a scratch-15-only test while being
 exactly the defect this is looking for.
 
-The controller instance is irrelevant here -- it boots normally and is not gated on. The
-reference runs it with the occp_master image for the same reason.
+The controller instance boots normally and is not gated on.
 
 Halt is checked on the target's retired PC. A WFI loop is either one instruction or the
 two-instruction `wfi; j` pair, so both a static PC and a two-PC cycle are accepted; a third

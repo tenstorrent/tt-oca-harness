@@ -5,8 +5,7 @@
 Clock stretching is the one thing an I2C target can do to a controller, and
 `hw/ip/i2c/doc/architecture.adoc` describes the controller side of it: the
 controller releases SCL and waits for the line to actually rise before it
-counts the bit as clocked. Every controller leaf in the package talks to a
-device that never holds the clock, so that wait has never been taken.
+counts the bit as clocked.
 
 The DUT's I2C0 host writes to the bench's EEPROM target, and another device on
 the same open-drain bus -- a second bench pad driver -- holds SCL low for a
@@ -79,9 +78,9 @@ HOLD_NS = 20_000
 #: Which SCL low period of the transfer the hold covers, counted from the
 #: START seen on the pads. Eight falls clock the address byte and the ninth
 #: its acknowledge, so the spread walks the hold across the address byte, the
-#: acknowledge and the payload bytes. It was a set of delays measured from the
-#: queue before, which landed in a different part of the bit loop from seed to
-#: seed because the write that queues the transfer does not complete at a
+#: acknowledge and the payload bytes. Counting falls on the pads puts the hold
+#: in the same part of the bit loop on every seed; a delay measured from the
+#: queue does not, since the write that queues the transfer completes at no
 #: fixed time.
 HOLD_FALLS = (2, 5, 9, 12, 16, 20)
 #: Bound on the wait for a pad edge, in clk_smc_i cycles.

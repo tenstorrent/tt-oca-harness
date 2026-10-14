@@ -3,8 +3,8 @@
 """DTP-IO-STAP: IO STAP host TCK edges during PTAP IDCODE / BYPASS scans.
 
 S1: During IDCODE IR+DR, ``tb_stap_io_tck`` (product ``jtag_stap_io_host_tap_ctrl_o.tck``)
-    shows >=2 edges.
-S2: During BYPASS IR + non-zero DR payload, TCK shows >=2 edges again.
+    shows at least MIN_TCK_EDGES edges.
+S2: During BYPASS IR + non-zero DR payload, TCK shows at least MIN_TCK_EDGES edges again.
 
 No Force. Not claimed:
 adjacent-die STAP BFM IDCODE or extra-STAP matrix.
@@ -24,8 +24,8 @@ from seq_lib.smu_jtag_helpers import (
 
 EDGE_SAMPLE_CYCLES = 1000
 IDLE_SAMPLE_CYCLES = 200
-# Lower bound: IR (6b) + DR (32b) each bit needs a TCK edge pair in practice;
-# require at least one edge per DR bit so a 2-edge floor cannot false-pass.
+# At least one TCK edge per DR bit: an IR (6b) + DR (32b) scan toggles TCK for
+# every bit shifted.
 MIN_TCK_EDGES = 32
 BYPASS_IR = (1 << DTP_IR_WIDTH) - 1
 PAYLOAD_BITS = [1, 0, 1, 0, 1, 1, 0, 0] * 4

@@ -10,6 +10,7 @@
 // Shift-IR and Shift-DR, one episode per visit, which is the scan length the
 // DUT performed rather than the length the driver requested. The scan-length
 // and scan-count evidence compares those episodes with the sequence's intent.
+// The cocotb twin is env/dtp_jtag_scan_builder.py.
 
 class dtp_jtag_scan_builder extends ocah_jtag_scan_builder;
   `uvm_component_utils(dtp_jtag_scan_builder)

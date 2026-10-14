@@ -8,6 +8,8 @@
 // gate, core reset sequencing, scratch RAM zero-fill and a registered uncorrectable-error flag.
 // Exposes TileLink/AXI cluster ports and interrupt inputs to smc_cpu_wrapper.
 
+`include "ocah_registers.svh"
+
 module smc_4core_cpu (
   input  logic                                            clk_i,  // Cluster clock for the core,
                                                                   // uncore and debug domains and
@@ -169,13 +171,7 @@ module smc_4core_cpu (
     .q_o(debug_dmactiveAck)
   );
 
-  always_ff @(posedge clk_i or negedge rst_debug_ni) begin
-    if (~rst_debug_ni) begin
-      clock_en <= 1'b1;
-    end else begin
-      clock_en <= debug_dmactiveAck;
-    end
-  end
+  `OCAH_FF(clock_en, debug_dmactiveAck, 1'b1, clk_i, rst_debug_ni)
 
   prim_clock_gating u_debug_clock_gate (
     .clk_i    (clk_i),
@@ -188,13 +184,8 @@ module smc_4core_cpu (
   logic [4-1:0][1-1:0] io_errors_uncorrectable_valid;
   logic [32-1:0][1-1:0] uncorrectable_2;
 
-  always_ff @(posedge clk_i or negedge rst_uncore_ni) begin
-    if (~rst_uncore_ni) begin
-      cluster_ded_o <= 1'b0;
-    end else begin
-      cluster_ded_o <= |{io_errors_uncorrectable_valid, uncorrectable_2};
-    end
-  end
+  `OCAH_FF(cluster_ded_o, |{io_errors_uncorrectable_valid, uncorrectable_2}, 1'b0, clk_i,
+           rst_uncore_ni)
 
   // ----------
   // Cluster boundary isolation & clamping: isolate the L2-frontend AXI slave +
@@ -231,15 +222,9 @@ module smc_4core_cpu (
                                   & ~isolate_req_i;
 
   // Delays de-isolation by ClusterIsolateCycles after the boundary is ready.
-  always_ff @(posedge clk_i or negedge rst_uncore_ni) begin
-    if (~rst_uncore_ni) begin
-      cluster_boundary_isolate_shift <= '0;
-    end else begin
-      cluster_boundary_isolate_shift <= {
-        cluster_boundary_isolate_shift[ClusterIsolateCycles-2:0], cluster_boundary_ready
-      };
-    end
-  end
+  `OCAH_FF(cluster_boundary_isolate_shift, {
+           cluster_boundary_isolate_shift[ClusterIsolateCycles-2:0], cluster_boundary_ready}, '0,
+           clk_i, rst_uncore_ni)
 
   // Isolate immediately when not ready; release only after ready holds for the full shift depth.
   assign cluster_boundary_isolate = ~cluster_boundary_ready
@@ -530,17 +515,9 @@ module smc_4core_cpu (
 
   // RAM initialization
 
-  always_ff @(posedge clk_i or negedge mem_init_reset_ni) begin
-    if (!mem_init_reset_ni) begin
-      state             <= MEM_ZERO_IDLE;
-      zero_addr         <= '0;
-      init_mem_complete <= 1'b0;
-    end else begin
-      state <= nxt_state;
-      zero_addr <= next_zero_addr;
-      init_mem_complete <= nxt_init_mem_complete;
-    end
-  end
+  `OCAH_FF(state, nxt_state, MEM_ZERO_IDLE, clk_i, mem_init_reset_ni)
+  `OCAH_FF(zero_addr, next_zero_addr, '0, clk_i, mem_init_reset_ni)
+  `OCAH_FF(init_mem_complete, nxt_init_mem_complete, 1'b0, clk_i, mem_init_reset_ni)
 
   always_comb begin
     nxt_state = state;

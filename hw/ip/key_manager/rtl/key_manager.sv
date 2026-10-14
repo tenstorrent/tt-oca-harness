@@ -39,10 +39,20 @@
 // The ROM and SRAM hard macros are instantiated at integration level and connect through
 // the exposed memory ports.
 
+`include "ocah_registers.svh"
+
 module key_manager
-  import km_intf_pkg::*;
-  import axi_pkg::*;
-  import prim_mubi_pkg::*;
+  import km_intf_pkg::km_addr_t;
+  import km_intf_pkg::km_axil_req_t;
+  import km_intf_pkg::km_axil_resp_t;
+  import km_intf_pkg::km_rom_mem_req_t;
+  import km_intf_pkg::km_rom_mem_rsp_t;
+  import km_intf_pkg::km_sram_mem_req_t;
+  import km_intf_pkg::km_sram_mem_rsp_t;
+  import km_intf_pkg::km_drbg_axis_req_t;
+  import km_intf_pkg::km_drbg_axis_resp_t;
+  import km_intf_pkg::km_otp_data_t;
+  import km_intf_pkg::OtpPageMask;
 #(
   parameter int unsigned ROM_SIZE_BYTES   = 16384,          // Size of the KM boot ROM in bytes.
                                                             // Must equal the ROM window of the
@@ -137,7 +147,7 @@ module key_manager
                               // conditioned resets while test_en_i is high.
 );
 
-  `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   //=========================================================================
   // Parameter Validation
@@ -147,18 +157,23 @@ module key_manager
   // Pinned against the address map rather than a literal: the memory sizes and
   // the decode ranges have to agree, and the map is the one that also feeds the
   // write-lock and exec region indices.
-  `OCAH_OT_ASSERT_INIT(RomSizeValid_A, ROM_SIZE_BYTES == km_intf_pkg::RomSizeBytes)
-  `OCAH_OT_ASSERT_INIT(SramSizeValid_A, SRAM_SIZE_BYTES == km_intf_pkg::SramSizeBytes)
-  `OCAH_OT_ASSERT_INIT(MailboxDepthMin_A, MAILBOX_DEPTH >= 16)
-  `OCAH_OT_ASSERT_INIT(MailboxDepthPow2_A, (MAILBOX_DEPTH & (MAILBOX_DEPTH - 1)) == 0)
+  `OCAH_ASSERT_STATIC(RomSizeValid_A, ROM_SIZE_BYTES == km_intf_pkg::RomSizeBytes)
+  `OCAH_ASSERT_STATIC(SramSizeValid_A, SRAM_SIZE_BYTES == km_intf_pkg::SramSizeBytes)
+  `OCAH_ASSERT_STATIC(MailboxDepthMin_A, MAILBOX_DEPTH >= 16)
+  `OCAH_ASSERT_STATIC(MailboxDepthPow2_A, (MAILBOX_DEPTH & (MAILBOX_DEPTH - 1)) == 0)
 
   // The remap keeps only the page offset, so every OTP register map has to sit inside the
   // page the crossbar routes to the OTP port.
-  `OCAH_OT_ASSERT_INIT(OtpRemapBaseAligned_A, (OTP_EFUSE_REMAP_BASE & OtpPageMask) == '0)
-  `OCAH_OT_ASSERT_INIT(OtpMapInPage_A, OtpMapBaseAddr >= OtpBaseAddr && OtpMapEndAddr <= OtpEndAddr)
-  `OCAH_OT_ASSERT_INIT(OtpCtrlInPage_A,
-                       OtpCtrlBaseAddr >= OtpBaseAddr && OtpCtrlEndAddr <= OtpEndAddr)
-  `OCAH_OT_ASSERT_INIT(OtpMmrInPage_A, OtpMmrBaseAddr >= OtpBaseAddr && OtpMmrEndAddr <= OtpEndAddr)
+  `OCAH_ASSERT_STATIC(OtpRemapBaseAligned_A, (OTP_EFUSE_REMAP_BASE & OtpPageMask) == '0)
+  `OCAH_ASSERT_STATIC(
+      OtpMapInPage_A,
+      km_intf_pkg::OtpMapBaseAddr >= km_intf_pkg::OtpBaseAddr && km_intf_pkg::OtpMapEndAddr <= km_intf_pkg::OtpEndAddr)
+  `OCAH_ASSERT_STATIC(
+      OtpCtrlInPage_A,
+      km_intf_pkg::OtpCtrlBaseAddr >= km_intf_pkg::OtpBaseAddr && km_intf_pkg::OtpCtrlEndAddr <= km_intf_pkg::OtpEndAddr)
+  `OCAH_ASSERT_STATIC(
+      OtpMmrInPage_A,
+      km_intf_pkg::OtpMmrBaseAddr >= km_intf_pkg::OtpBaseAddr && km_intf_pkg::OtpMmrEndAddr <= km_intf_pkg::OtpEndAddr)
 
   //=========================================================================
   // Internal Signals
@@ -265,10 +280,7 @@ module key_manager
   // Wipe KPV on either external wipe_state_i or CPU trap.
   // Pulse once on rising edge to avoid repeated full-regfile clears.
   assign wipe_event = wipe_state_i | cpu_trap;
-  always_ff @(posedge clk_i or negedge rst_cold_aasd_n) begin
-    if (!rst_cold_aasd_n) wipe_event_d <= 1'b0;
-    else wipe_event_d <= wipe_event;
-  end
+  `OCAH_FF(wipe_event_d, wipe_event, 1'b0, clk_i, rst_cold_aasd_n)
   assign wipe_pulse = wipe_event & ~wipe_event_d;
 
   //=========================================================================
@@ -339,15 +351,15 @@ module key_manager
   // hands every address outside them to its shim control port, so an offset the KM CPU
   // must not reach is answered here.
 
-  assign otp_aw_select = otp_addr_decoded(otp_axil_req.aw.addr) ? OtpForwarded : OtpRefused;
-  assign otp_ar_select = otp_addr_decoded(otp_axil_req.ar.addr) ? OtpForwarded : OtpRefused;
+  assign otp_aw_select = km_intf_pkg::otp_addr_decoded(otp_axil_req.aw.addr) ? OtpForwarded : OtpRefused;
+  assign otp_ar_select = km_intf_pkg::otp_addr_decoded(otp_axil_req.ar.addr) ? OtpForwarded : OtpRefused;
 
   axi_lite_demux #(
-    .aw_chan_t   (km_axil_aw_chan_t),
-    .w_chan_t    (km_axil_w_chan_t),
-    .b_chan_t    (km_axil_b_chan_t),
-    .ar_chan_t   (km_axil_ar_chan_t),
-    .r_chan_t    (km_axil_r_chan_t),
+    .aw_chan_t   (km_intf_pkg::km_axil_aw_chan_t),
+    .w_chan_t    (km_intf_pkg::km_axil_w_chan_t),
+    .b_chan_t    (km_intf_pkg::km_axil_b_chan_t),
+    .ar_chan_t   (km_intf_pkg::km_axil_ar_chan_t),
+    .r_chan_t    (km_intf_pkg::km_axil_r_chan_t),
     .axi_req_t   (km_axil_req_t),
     .axi_resp_t  (km_axil_resp_t),
     .NoMstPorts  (2),
@@ -371,13 +383,13 @@ module key_manager
   );
 
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (KmAxiAddrWidth),
-    .AXI_DATA_WIDTH (KmAxiDataWidth),
+    .AXI_ADDR_WIDTH (km_intf_pkg::KmAxiAddrWidth),
+    .AXI_DATA_WIDTH (km_intf_pkg::KmAxiDataWidth),
     .axil_req_t     (km_axil_req_t),
     .axil_resp_t    (km_axil_resp_t),
     .RESP           (axi_pkg::RESP_SLVERR),
-    .RESP_WIDTH     (KmAxiDataWidth),
-    .RESP_DATA      (KmAxiDataWidth'('hBADCAB1E)),
+    .RESP_WIDTH     (km_intf_pkg::KmAxiDataWidth),
+    .RESP_DATA      (km_intf_pkg::KmAxiDataWidth'('hBADCAB1E)),
     .MAX_TRANS      (1)
   ) u_otp_err_slv (
     .clk_i       (clk_i),

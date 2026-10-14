@@ -24,30 +24,33 @@ from collections.abc import Iterable
 
 import cocotb
 from cocotb.triggers import ReadOnly, RisingEdge
+from ocah_jtag_vip import OcahJtagState
 
-from env.dtp_types import DtpTapState
+from .dtp_tb_if import DtpTbIf
 
-_SHIFT_STATES = frozenset({int(DtpTapState.SHIFT_DR), int(DtpTapState.SHIFT_IR)})
+__all__ = ["DtpScanControlWindowMonitor", "DtpTapShiftMonitor"]
+
+_SHIFT_STATES = frozenset({int(OcahJtagState.SHIFT_DR), int(OcahJtagState.SHIFT_IR)})
 # The DR-column states in which the selected data register captures, shifts,
 # and updates.
 _DR_SCAN_STATES = frozenset(
     int(state)
     for state in (
-        DtpTapState.CAPTURE_DR,
-        DtpTapState.SHIFT_DR,
-        DtpTapState.EXIT1_DR,
-        DtpTapState.PAUSE_DR,
-        DtpTapState.EXIT2_DR,
-        DtpTapState.UPDATE_DR,
+        OcahJtagState.CAPTURE_DR,
+        OcahJtagState.SHIFT_DR,
+        OcahJtagState.EXIT1_DR,
+        OcahJtagState.PAUSE_DR,
+        OcahJtagState.EXIT2_DR,
+        OcahJtagState.UPDATE_DR,
     )
 )
-_RUN_TEST_IDLE = int(DtpTapState.RUN_TEST_IDLE)
+_RUN_TEST_IDLE = int(OcahJtagState.RUN_TEST_IDLE)
 
 
 class DtpScanControlWindowMonitor:
     """Count high samples of named observables on each rising TCK edge."""
 
-    def __init__(self, tb_if, signals: Iterable[str]) -> None:
+    def __init__(self, tb_if: DtpTbIf, signals: Iterable[str]) -> None:
         self.tb_if = tb_if
         self.signals = tuple(signals)
         self.high_counts: dict[str, int] = {name: 0 for name in self.signals}
@@ -63,7 +66,7 @@ class DtpScanControlWindowMonitor:
         # Exported TAP state and each observable's value at the latest sample.
         self.last_state: int | None = None
         self.last_high: dict[str, int] = {name: 0 for name in self.signals}
-        self._task = None
+        self._task: cocotb.Task | None = None
         for name in self.signals:
             if not tb_if.has(name):
                 raise AttributeError(f"{name} is not a DTP TB observable")
@@ -98,7 +101,7 @@ class DtpScanControlWindowMonitor:
         """End the window; return (tck_edges, high sample count per signal)."""
         if self._task is None:
             raise RuntimeError("scan window monitor was never started")
-        self._task.kill()
+        self._task.cancel()
         self._task = None
         return self.edges, dict(self.high_counts)
 
@@ -114,20 +117,20 @@ class DtpTapShiftMonitor:
     edges, which the ``tb_top`` assertion counter records.
     """
 
-    def __init__(self, tb_if) -> None:
+    def __init__(self, tb_if: DtpTbIf) -> None:
         self.tb_if = tb_if
         self.ir_lens: list[int] = []
         self.dr_lens: list[int] = []
         self._run_len = 0
         self._in_state: int | None = None
-        self._task = None
+        self._task: cocotb.Task | None = None
 
     async def _run(self) -> None:
         por_count = self.tb_if.sample("por_assert_count")
         while True:
             await RisingEdge(self.tb_if.jtag.tck)
             await ReadOnly()
-            if not int(self.tb_if.jtag.trst_n.value) or not int(self.tb_if.por_rst_n.value):
+            if not self.tb_if.sample("jtag_trst") or not self.tb_if.sample("pwr_on_rst_ni"):
                 self._run_len = 0
                 self._in_state = None
                 continue
@@ -139,7 +142,9 @@ class DtpTapShiftMonitor:
             state = self.tb_if.sample("jtag_ptap_state")
             current = state if state in _SHIFT_STATES else None
             if self._in_state is not None and current != self._in_state:
-                lens = self.ir_lens if self._in_state == int(DtpTapState.SHIFT_IR) else self.dr_lens
+                lens = (
+                    self.ir_lens if self._in_state == int(OcahJtagState.SHIFT_IR) else self.dr_lens
+                )
                 lens.append(self._run_len)
             if current is None:
                 self._run_len = 0
@@ -158,5 +163,5 @@ class DtpTapShiftMonitor:
     def stop(self) -> None:
         if self._task is None:
             raise RuntimeError("TAP shift monitor was never started")
-        self._task.kill()
+        self._task.cancel()
         self._task = None

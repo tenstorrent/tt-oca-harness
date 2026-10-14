@@ -3,7 +3,7 @@
 """smu_smc_peripheral_irq_test - the raw GPIO and UART interrupt vectors.
 
 port_table.adoc brings gpio_interrupt_o and uart_interrupt_o out of the
-wrapper as raw per-instance interrupt vectors, and nothing had raised either.
+wrapper as raw per-instance interrupt vectors.
 This leaf arms GPIO pin 0 through its SMC register -- taking the pin away from
 its LSIO owner so the pad input buffer opens -- drives the pad and requires
 the interrupt and the DATA_CTRL.PAD2CORE mirror to follow it both ways, then

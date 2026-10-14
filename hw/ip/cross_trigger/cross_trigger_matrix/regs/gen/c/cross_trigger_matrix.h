@@ -14,12 +14,25 @@ extern "C" {
 #include <assert.h>
 
 // reg - cross_trigger_matrix::CT_SRC::CONFIG_0
+// Cross Trigger Source Configuration - CT_Dst select mask
+// Selects the CT_Dst port(s) to forward on the CT_Src output
+// at this array index. Each bit corresponds to one CT_Dst
+// port, from CT_Dst[0] at bit 0 upwards. Multiple ports may
+// be selected as a trigger source. All selected source ports
+// are then OR'd together to produce the CT_Src output. Set
+// this register to all-zero to disable that output.
 #define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_bm 0x3ffffff
 #define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_bp 0
 #define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_bw 26
 #define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects the CT_Dst port(s) to forward on the CT_Src output
+        // at this array index. Each bit corresponds to one CT_Dst
+        // port, from CT_Dst[0] at bit 0 upwards. Multiple ports may
+        // be selected as a trigger source. All selected source ports
+        // are then OR'd together to produce the CT_Src output. Set
+        // this register to all-zero to disable that output.
         uint32_t CT_DST_SELECT :26;
         uint32_t :6;
     } f;
@@ -27,12 +40,14 @@ typedef union {
 } cross_trigger_matrix__CT_SRC__CONFIG_0_t;
 
 // regfile - cross_trigger_matrix::CT_SRC
+// Cross trigger destination selection for one CT_Src output port
 typedef struct __attribute__ ((__packed__)) {
     cross_trigger_matrix__CT_SRC__CONFIG_0_t CONFIG_0;
     uint8_t RESERVED_4_7[0x4];
 } cross_trigger_matrix__CT_SRC__stride8_t;
 
 // addrmap - cross_trigger_matrix
+// Configuration registers for the cross trigger matrix
 typedef struct __attribute__ ((__packed__)) {
     cross_trigger_matrix__CT_SRC__stride8_t CT_SRC[26];
 } cross_trigger_matrix_t;

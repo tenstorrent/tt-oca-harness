@@ -16,9 +16,6 @@ class dtp_jtag2axi_status_item extends ocah_sequence_item;
   string              target;
   dtp_j2a_scan_kind_e kind = DTP_J2A_SCAN_NONE;
   dtp_j2a_status_e    status = DTP_J2A_SUCCESS;
-  // A second status the capture may present instead of `status`.
-  bit                 alt_valid;
-  dtp_j2a_status_e    alt_status = DTP_J2A_SUCCESS;
   // Read data is part of the contract only after a completed OKAY read.
   bit                 compare_rdata;
   bit [63:0]          rdata;
@@ -36,8 +33,6 @@ class dtp_jtag2axi_status_item extends ocah_sequence_item;
     target        = rhs_item.target;
     kind          = rhs_item.kind;
     status        = rhs_item.status;
-    alt_valid     = rhs_item.alt_valid;
-    alt_status    = rhs_item.alt_status;
     compare_rdata = rhs_item.compare_rdata;
     rdata         = rhs_item.rdata;
     rdata_mask    = rhs_item.rdata_mask;
@@ -47,11 +42,10 @@ class dtp_jtag2axi_status_item extends ocah_sequence_item;
     if (!compare)
       return $sformatf("no-contract %s %s @%0t %s", target, kind.name(), timestamp, context_s);
     return $sformatf(
-        "%s %s status=%s%s%s @%0t %s",
+        "%s %s status=%s%s @%0t %s",
         target,
         kind.name(),
         status.name(),
-        alt_valid ? {" or ", alt_status.name()} : "",
         compare_rdata ? $sformatf(
             " rdata=0x%0h", rdata & rdata_mask
         ) : "",

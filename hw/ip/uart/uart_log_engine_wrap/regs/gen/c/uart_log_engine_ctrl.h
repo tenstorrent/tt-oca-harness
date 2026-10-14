@@ -14,12 +14,17 @@ extern "C" {
 #include <assert.h>
 
 // reg - uart_log_engine_ctrl::CTRL
+// Control Register
+// UART Enable. When set, the pad-mux downstream will be forced to accept UART
+// traffic.
 #define UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm 0x1
 #define UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bp 0
 #define UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bw 1
 #define UART_LOG_ENGINE_CTRL__CTRL__UART_EN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // UART Enable. When set, the pad-mux downstream will be forced to accept UART
+        // traffic.
         uint32_t UART_EN :1;
         uint32_t :31;
     } f;
@@ -27,6 +32,7 @@ typedef union {
 } uart_log_engine_ctrl__CTRL_t;
 
 // addrmap - uart_log_engine_ctrl
+// Top-level enable register for the UART log-engine block.
 typedef struct __attribute__ ((__packed__)) {
     uart_log_engine_ctrl__CTRL_t CTRL;
 } uart_log_engine_ctrl_t;

@@ -17,6 +17,9 @@
 // the stored values are the new ones, while a value registered on the edge
 // that entered the state is the one the update acted on.
 //
+// The TAP reset is TRST AND power-on reset, as the PTAP combines them and
+// forwards the result to the STAPs.
+//
 // CONVENTION (see dtp_fcov.sv): every cover-property body and disable-iff
 // argument is a single continuous-assign wire; no declaration initializers
 // on always_ff-driven variables; declare wires before use.
@@ -25,7 +28,7 @@
 
 module dtp_scan_fcov (
   input wire        tck_i,
-  input wire        trst_ni,
+  input wire        tap_rst_ni,
   input wire [15:0] tap_state_i,
   input wire [63:0] inst_decoded_i,
   input wire sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_sync_i,
@@ -79,7 +82,7 @@ module dtp_scan_fcov (
   // ------------------------------------------------------------------
   // Common scan decode.
   // ------------------------------------------------------------------
-  wire in_reset = (trst_ni !== 1'b1);
+  wire in_reset = (tap_rst_ni !== 1'b1);
   logic [15:0] tap_state_q;
   logic in_reset_q;
   always_ff @(posedge tck_i) begin
@@ -233,11 +236,11 @@ module dtp_scan_fcov (
   // cg_3dcr_hold: CONFIG_HOLD across the TAP resets. Each 3DCR image is
   // {config_hold, select, tms_hold}, PTAP first (it has no tms_hold), and
   // only a non-zero image is sampled. The snapshot holds the images from the
-  // last edge outside TRST. A TMS walk enters Test-Logic-Reset only from
-  // Select-IR-Scan and resets the 3DCRs on the falling edge inside the first
-  // Test-Logic-Reset cycle, so the edge leaving that cycle compares the
-  // snapshot taken on entry with the result; a TRST compares on the first
-  // edge after its release.
+  // last edge outside the TAP reset. A TMS walk enters Test-Logic-Reset only
+  // from Select-IR-Scan and resets the 3DCRs on the falling edge inside the
+  // first Test-Logic-Reset cycle, so the edge leaving that cycle compares the
+  // snapshot taken on entry with the result; a TAP reset, TRST or power-on
+  // reset, compares on the first edge after its release.
   // ------------------------------------------------------------------
   localparam int unsigned HoldRegs = 5;
   wire [3*HoldRegs-1:0] tdcr_image = {
@@ -452,7 +455,7 @@ module dtp_scan_fcov (
   endgroup
 
   // hold_case is {ok, trst, held}: ok is the result the reset and
-  // CONFIG_HOLD call for (TRST clears, Test-Logic-Reset clears unless
+  // CONFIG_HOLD call for (the TAP reset clears, Test-Logic-Reset clears unless
   // CONFIG_HOLD is set); any other result is a design failure.
   covergroup cg_3dcr_hold with function sample (logic [2:0] reg_idx, logic [2:0] hold_case);
     option.per_instance = 1;

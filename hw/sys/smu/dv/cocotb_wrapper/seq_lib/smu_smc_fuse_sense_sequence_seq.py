@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_smc_fuse_sense_sequence_test (SMU_108).
+"""Sequence for smu_smc_fuse_sense_sequence_test.
 
 SMU-FUSE-SENSE.S1 and .S3 on the wrapper (its single profile elaborates SEP=1),
 with the run mode leaving
@@ -12,8 +12,7 @@ smc_fuse_reset_n_delayed_o releases after that rise rather than with the cold
 reset.
 
 Only the ordering is asserted. The delay on smc_fuse_reset_n_delayed_o is unstated
-(SF-026) and so is the sense duration, so both are logged rather than
-compared.
+and so is the sense duration, so both are logged rather than compared.
 """
 
 from __future__ import annotations

@@ -367,7 +367,8 @@ class SmcXxxAgent(uvm_agent):
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.sequencer = uvm_sequencer("sequencer", self)
         self.driver = SmcXxxDriver("driver", self)
-        # NOTE: do NOT touch self.driver.ap here
+        # driver.ap is created in the driver's build_phase, which runs after
+        # this one; read it in connect_phase
 
     def connect_phase(self):
         self.driver.seq_item_port.connect(self.sequencer.seq_item_export)
@@ -690,13 +691,15 @@ on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
 . `hw/common/dv/vip/ocah_axi_vip/uvm/ocah_axi_uvm_pkg.sv` — the shared
   SV-UVM AXI VIP (items, configs, master driver and sequence API, passive
   monitor, agents, environments) with its interface, SVA, and coverage
-  collateral. The SEP_IN AXI4 ingress is the first driven interface: the
+  collateral. The SEP_IN AXI4 ingress is the driven interface: the
   active `ocah_axi_master_env` issues the traffic and a monitor-only passive
   `ocah_axi_env` feeds the SMC scoreboard.
 . `tb/smc_tb_if.sv` — the SMC-local TB interface: the wait-math clock periods,
   power-good and the cold/cool reset pins, the reset-unit outputs, the
   fuse-sense / warm-domain release observables, the cold-reset assertion
-  counter, the SVA enable.
+  counter, the SVA enable, and CPU-cluster isolation. The watchdog core-awake
+  scenario reads the live cluster-boundary isolation tap through this interface
+  and waits with a bound for release before accessing the cluster again.
 . `uvm/env/smc_env_pkg.sv` — `smc_types` (SEP_IN geometry, the scratch CSR
   windows from the generated `smc_top_addrmap_pkg`, 32-bit-CSR lane helpers
   for the 64-bit bus), `smc_test_cfg`, `smc_env_cfg`,
@@ -717,6 +720,23 @@ sources), then the TB collateral both flows compile (`smc_cpu_mem_dv`),
 `smc_tb_if`, the generated SMC address map, `smc_env_pkg`, `smc_seq_lib_pkg`,
 and `tb_top.sv` last.
 
+The SEP_IN read operations validate the VIP's per-beat `data_xz_masks`
+before using its two-state data. `smc_axi_csr_read_seq` checks only the
+selected 32-bit CSR lanes; X/Z in the other half of the bus is ignored.
+`smc_axi_mem_read_seq` checks all 64 bits. A completed read must carry one
+data beat and one mask beat. An unknown selected bit or missing beat records
+`SMC-CSR-READ-XZ` or `SMC-MEM-READ-XZ`, even when response checking is disabled.
+Timed-out reads remain subject to the existing timeout policy.
+
+`smc_tb_if.zeroer_busy` mirrors the existing `tb_zeroer_busy` execution tap.
+`zeroer_busy_sample_count` increments at each rising `clk_smc` edge whose busy
+value is not known zero, including X/Z. It is cumulative and does not clear on reset;
+scenarios compare snapshots within their observation window. The wide-register
+strobe scenario requires an idle tap before its first catalogued operation,
+then checks an unchanged sample count through the final status read. A busy
+pulse spanning a sampling edge cannot disappear from the no-start check.
+Sub-cycle pulses between sampling edges are outside this check.
+
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
 subscribes to the SEP_IN monitor stream, rebuilds a shadow of the
@@ -734,8 +754,8 @@ Logical item names stay framework-neutral and match the VPLAN scenarios, and
 the UVM class name equals the scenario name (testlist
 `name = "smc_register_sanity_test"`,
 `module = { cocotb = "smc_register_sanity_test", uvm = "smc_register_sanity_test" }`),
-so `--items <name>` selects the same scenario in either realization. The
-first bound scenario is `smc_register_sanity_test` (TC_SMC_P0_006): SEP_IN
+so `--items <name>` selects the same scenario in either realization.
+`smc_register_sanity_test` (TC_SMC_P0_006) is one bound scenario: SEP_IN
 idle-read, directed and seeded-random write/readback, and restore of
 `SCRATCH_COLD[0..1]` and `SCRATCH_COLD_WARM[0]` after the warm-domain
 release, with the non-vacuity count of real CSR accesses as evidence. Every looped UVM test runs at least 16

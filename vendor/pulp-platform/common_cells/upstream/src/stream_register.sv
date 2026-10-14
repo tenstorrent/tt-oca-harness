@@ -8,7 +8,7 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Register with a simple stream-like ready/valid handshake.
 /// This register does not cut combinatorial paths on all control signals; if you need a complete
@@ -34,7 +34,7 @@ module stream_register #(
     assign ready_o = ready_i | ~valid_o;
     assign reg_ena = valid_i & ready_o;
     // Load-enable FFs with synch clear
-    `FFLARNC(valid_o, valid_i, ready_o, clr_i, 1'b0  , clk_i, rst_ni)
-    `FFLARNC(data_o,   data_i, reg_ena, clr_i, T'('0), clk_i, rst_ni)
+    `OCAH_FFLARNC(valid_o, valid_i, ready_o, clr_i, 1'b0  , clk_i, rst_ni)
+    `OCAH_FFLARNC(data_o,   data_i, reg_ena, clr_i, T'('0), clk_i, rst_ni)
 
 endmodule

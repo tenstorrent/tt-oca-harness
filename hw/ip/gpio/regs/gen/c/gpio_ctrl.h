@@ -14,51 +14,67 @@ extern "C" {
 #include <assert.h>
 
 // reg - gpio_ctrl::CONTROL
+// Register-driven drive-strength.
 #define GPIO_CTRL__CONTROL__DRIVE_STRENGTH_bm 0x7
 #define GPIO_CTRL__CONTROL__DRIVE_STRENGTH_bp 0
 #define GPIO_CTRL__CONTROL__DRIVE_STRENGTH_bw 3
 #define GPIO_CTRL__CONTROL__DRIVE_STRENGTH_reset 0x2
+// Register-driven pull enable. Default is disabled
 #define GPIO_CTRL__CONTROL__PULL_ENABLE_N0_SCAN_bm 0x100
 #define GPIO_CTRL__CONTROL__PULL_ENABLE_N0_SCAN_bp 8
 #define GPIO_CTRL__CONTROL__PULL_ENABLE_N0_SCAN_bw 1
 #define GPIO_CTRL__CONTROL__PULL_ENABLE_N0_SCAN_reset 0x0
+// Register-driven pull select - by default we pull down
 #define GPIO_CTRL__CONTROL__PULL_SELECT_bm 0x200
 #define GPIO_CTRL__CONTROL__PULL_SELECT_bp 9
 #define GPIO_CTRL__CONTROL__PULL_SELECT_bw 1
 #define GPIO_CTRL__CONTROL__PULL_SELECT_reset 0x0
+// Register-driven schmitt select.
 #define GPIO_CTRL__CONTROL__SCHMITT_SELECT_bm 0x400
 #define GPIO_CTRL__CONTROL__SCHMITT_SELECT_bp 10
 #define GPIO_CTRL__CONTROL__SCHMITT_SELECT_bw 1
 #define GPIO_CTRL__CONTROL__SCHMITT_SELECT_reset 0x0
+// Setting this choosing the register values for PAD settings. This includes pull_enable, pull_select, and schmitt_select
 #define GPIO_CTRL__CONTROL__CONFIG_ENABLE_bm 0x10000
 #define GPIO_CTRL__CONTROL__CONFIG_ENABLE_bp 16
 #define GPIO_CTRL__CONTROL__CONFIG_ENABLE_bw 1
 #define GPIO_CTRL__CONTROL__CONFIG_ENABLE_reset 0x0
+// When set, this bit indicates that the strap value is valid. This field is not set if the GPIO is not an input by default
 #define GPIO_CTRL__CONTROL__STRAP_VALID_bm 0x100000
 #define GPIO_CTRL__CONTROL__STRAP_VALID_bp 20
 #define GPIO_CTRL__CONTROL__STRAP_VALID_bw 1
 #define GPIO_CTRL__CONTROL__STRAP_VALID_reset 0x1
+// This register holds the captured value that was applied to the pad when reset was de-asserted.
 #define GPIO_CTRL__CONTROL__STRAP_VALUE_bm 0x200000
 #define GPIO_CTRL__CONTROL__STRAP_VALUE_bp 21
 #define GPIO_CTRL__CONTROL__STRAP_VALUE_bw 1
 #define GPIO_CTRL__CONTROL__STRAP_VALUE_reset 0x0
+// Setting this register will enable the secondary HW function to override the GPIO enable and data lines.
 #define GPIO_CTRL__CONTROL__HW2_OVRD_bm 0x1000000
 #define GPIO_CTRL__CONTROL__HW2_OVRD_bp 24
 #define GPIO_CTRL__CONTROL__HW2_OVRD_bw 1
 #define GPIO_CTRL__CONTROL__HW2_OVRD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Register-driven drive-strength.
         uint32_t drive_strength :3;
         uint32_t :5;
+        // Register-driven pull enable. Default is disabled
         uint32_t pull_enable_n0_scan :1;
+        // Register-driven pull select - by default we pull down
         uint32_t pull_select :1;
+        // Register-driven schmitt select.
         uint32_t schmitt_select :1;
         uint32_t :5;
+        // Setting this choosing the register values for PAD settings. This includes pull_enable, pull_select, and schmitt_select
         uint32_t config_enable :1;
         uint32_t :3;
+        // When set, this bit indicates that the strap value is valid. This field is not set if the GPIO is not an input by default
         uint32_t strap_valid :1;
+        // This register holds the captured value that was applied to the pad when reset was de-asserted.
         uint32_t strap_value :1;
         uint32_t :2;
+        // Setting this register will enable the secondary HW function to override the GPIO enable and data lines.
         uint32_t hw2_ovrd :1;
         uint32_t :7;
     } f;
@@ -66,6 +82,7 @@ typedef union {
 } gpio_ctrl__CONTROL_t;
 
 // addrmap - gpio_ctrl
+// Per-pin GPIO pad control registers: drive strength, pull configuration, and strap capture.
 typedef struct __attribute__ ((__packed__)) {
     gpio_ctrl__CONTROL_t CONTROL;
 } gpio_ctrl_t;

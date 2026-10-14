@@ -35,7 +35,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-prod-rom-memory-security[memory and security section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-prod-rom-memory-security[memory and security section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-prod-rom-memory-security[memory and security section]
 endif::backend-pdf[]
 of the SEP Boot ROM appendix in the Programmer's Guide gives the linker layout.
 
@@ -76,7 +76,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
 endif::backend-pdf[]
 of the Programmer's Guide describes that behavior and its build artifacts in
 detail.
@@ -96,7 +96,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
 endif::backend-pdf[]
 of the Programmer's Guide.
 
@@ -108,6 +108,6 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
 endif::backend-pdf[]
 of the Programmer's Guide.

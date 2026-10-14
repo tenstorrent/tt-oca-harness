@@ -2,13 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Writes at the CPU_CTRL registers software cannot write.
 
-`smc_rdl_field_sweep_test` owns CPU_CTRL and drives every register whose RDL
-contract makes it writable. What it never does is write at the addresses of
-the registers the contract makes `sw = r`, so the decode row those addresses
-take on a write has never been exercised, and neither has a write of 0 into
-the `singlepulse` fields of `WDT_TIMEOUT_RESET` -- that leaf writes them set
-and then writes 0 only over the half they do not occupy.
-
 The read-only registers here are `TEST_CTRL`, `SMC_ATTRIBUTES` and the four
 per-core writeback program counters. Every field of each is `sw = r`, so a
 write cannot change one and the claim is exactly that: the register reads the

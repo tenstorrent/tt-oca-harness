@@ -2,9 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_jtag2axi_sep_otp_axi_read_random_ops_test — the `read_random_ops` SEP OTP
-// AXI-Lite JTAG2AXI scenario: randomized single reads (address/size/payload)
-// of backdoor-preloaded responder memory, every returned value checked in
-// the sequence and every observed read compared by the shared passive env.
+// AXI-Lite JTAG2AXI scenario: randomized single reads at the bus width
+// (address/payload) of backdoor-preloaded responder memory, every returned
+// value checked in the sequence and every observed read compared by the
+// shared passive env.
 
 class dtp_jtag2axi_sep_otp_axi_read_random_ops_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_sep_otp_axi_read_random_ops_test)
@@ -42,16 +43,6 @@ class dtp_jtag2axi_sep_otp_axi_read_random_ops_test extends dtp_base_test;
 
   virtual function string group_loops_knob();
     return "DTP_JTAG2AXI_TEST_LOOPS";
-  endfunction
-
-  virtual function void plumb_scenario_seq(ocah_sequence seq);
-    dtp_jtag2axi_otp_axi_test_seq t_seq;
-    super.plumb_scenario_seq(seq);
-    if (!$cast(t_seq, seq))
-      `uvm_fatal(get_type_name(), "scenario sequence is not a dtp_jtag2axi_otp_axi_test_seq")
-    t_seq.axi_cfg       = m_env.m_sep_otp_axi_cfg;
-    t_seq.axi_evidence  = m_env.m_sep_otp_axi_env.m_checker;
-    t_seq.axi_ref_model = m_env.m_sep_otp_axi_env.m_ref_model;
   endfunction
 
 endclass : dtp_jtag2axi_sep_otp_axi_read_random_ops_test

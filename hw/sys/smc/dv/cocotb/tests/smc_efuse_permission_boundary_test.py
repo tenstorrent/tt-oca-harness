@@ -52,7 +52,8 @@ class smc_efuse_permission_boundary_test(smc_base_test):
             SmcProtocolVipKind.EFUSE,
             type(self).__name__,
             # Directed stimulus floor: 4 chip-config reads + 1 eFuse-shim
-            # positive-control read. Literal here, not read from `seq.accesses`.
+            # positive-control read; a floor taken from `seq.accesses` would
+            # shrink with a sequence that stopped issuing them.
             min_csr_accesses=5,
             # The scoreboard's own per-bus tally, stamped by the driver that
             # completed each access, rather than `seq.accesses`, which the

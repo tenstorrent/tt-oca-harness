@@ -12,6 +12,7 @@
 // is_programing_o and program_target_addr_o feed the guard while a program is active.
 
 `include "prim_assert.sv"
+`include "ocah_registers.svh"
 
 module efuse_program_interface #(
   parameter unsigned EFUSE_WORD_WIDTH = 32,  // Program/read data word width; declared but not used
@@ -215,30 +216,17 @@ module efuse_program_interface #(
   end
 
   // Register the state
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      program_state_q                  <= ST_PROGRAM_IDLE;
-      program_err_q                    <= 1'b0;
-      program_done_q                   <= 1'b0;
-      program_busy_q                   <= 1'b0;
-      program_read_back_data_q_n0_scan <= efuse_data_t'(0);
-      timeout_count_q                  <= 'd0;
-    end else begin
-      program_state_q                  <= program_state_d;
-      program_err_q                    <= program_err_d;
-      program_done_q                   <= program_done_d;
-      program_busy_q                   <= program_busy_d;
-      program_read_back_data_q_n0_scan <= program_read_back_data_d;
-      timeout_count_q                  <= timeout_count_d;
-    end
-  end
+  `OCAH_FF(program_state_q, program_state_d, ST_PROGRAM_IDLE, clk_i, rst_ni)
+  `OCAH_FF(program_err_q, program_err_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(program_done_q, program_done_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(program_busy_q, program_busy_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(program_read_back_data_q_n0_scan, program_read_back_data_d, efuse_data_t'(0), clk_i,
+           rst_ni)
+  `OCAH_FF(timeout_count_q, timeout_count_d, 'd0, clk_i, rst_ni)
 
   // Fuse command output register: on the Class 2b secure scan chain
   if (1'b1) begin : gen_fuse_cmd_req_s3c_scan
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) fuse_command_req_q <= FuseCommandReqDefault;
-      else fuse_command_req_q <= fuse_command_req_d;
-    end
+    `OCAH_FF(fuse_command_req_q, fuse_command_req_d, FuseCommandReqDefault, clk_i, rst_ni)
   end
 
   // Set-priority sticky latch: a new OOB pulse in the same cycle as a clear

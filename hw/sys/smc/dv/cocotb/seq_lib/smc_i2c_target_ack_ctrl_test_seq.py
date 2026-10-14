@@ -7,7 +7,7 @@
 the clock, raises `STATUS.ACK_CTRL_STRETCH`, and waits for software either to
 accept the new bytes by reloading the counter or to reject them by writing
 `TARGET_ACK_CTRL.NACK`. It is the mechanism behind SMBus's mid-transfer
-responses, and neither answer had ever been given to the block.
+responses.
 
 Both are given here, on transfers whose acquisition FIFO has room throughout:
 the hold is the ACK counter's doing, and `STATUS.ACQFULL` is required to be

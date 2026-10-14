@@ -9,16 +9,6 @@
 
 package sep_crypto_pkg;
 
-  import sep_pkg::*;
-
-  // import otbn_pkg::*;
-  import lc_ctrl_pkg::*;
-  import edn_pkg::*;
-  import otp_ctrl_pkg::*;
-  import keymgr_pkg::*;
-  import prim_ram_1p_pkg::*;
-
-
   parameter axi_pkg::xbar_rule_32_t OTBN_RULE = '{
       idx: 0,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_OTBN_BASE_ADDR,

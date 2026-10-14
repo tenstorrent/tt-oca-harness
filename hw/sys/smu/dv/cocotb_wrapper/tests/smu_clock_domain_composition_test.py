@@ -5,9 +5,8 @@
 `hw/sys/smu/doc/port_table.adoc` declares the clock and reset ports this leaf
 reads (`clk_telemetry_i`, `rst_telemetry_ni`, `clk_sep_wdt_i`, the
 `rst_primary_*` outputs) and names each one's domain; it does not tabulate
-which logic each domain clocks, and this tree carries no SMU clock/reset
-specification that does. What is checked below is therefore per-domain identity
-and rate at the consumers inside the elaborated design. On the `--dut smu`
+which logic each domain clocks, so the checks below are per-domain identity and
+rate at the consumers inside the elaborated design. On the `--dut smu`
 production wrapper built with
 compile_smu_chiplet: the telemetry, SEP-watchdog and peripheral clocks
 are read at their consumers for identity with the wrapper pins and for a toggle

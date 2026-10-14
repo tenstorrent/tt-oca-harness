@@ -11,7 +11,6 @@
 
 package sep_local_axi_xbar_pkg;
 
-  import axi_pkg::*;
 
   // ===========================================================================
   // Fabric Parameters

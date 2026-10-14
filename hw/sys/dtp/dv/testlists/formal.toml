@@ -11,7 +11,7 @@ schema_version = 1
 [[tests]]
 name = "dtp_tap_fpv"
 module = "tap_fpv"
-tags = ["formal", "smoke", "ci"]
+tags = ["formal", "smoke"]
 
 [[tests]]
 name = "dtp_ir_fpv"
@@ -39,22 +39,22 @@ module = "dbgctl_fpv"
 tags = ["formal"]
 
 [[tests]]
-name = "jtag2axi_ctrl_fpv"
+name = "dtp_jtag2axi_ctrl_fpv"
 module = "j2a_ctrl_fpv"
 tags = ["formal"]
 
 [[tests]]
-name = "ctn_clkstop_fpv"
+name = "dtp_ctn_clkstop_fpv"
 module = "ctn_clkstop_fpv"
 tags = ["formal"]
 
 [[tests]]
-name = "ctn_xtrig_fpv"
+name = "dtp_ctn_xtrig_fpv"
 module = "ctn_xtrig_fpv"
 tags = ["formal"]
 
 [[tests]]
-name = "ctn_csr_fpv"
+name = "dtp_ctn_csr_fpv"
 module = "ctn_csr_fpv"
 tags = ["formal"]
 
@@ -72,8 +72,8 @@ tests = [
   "dtp_stap_fpv",
   "dtp_sib_fpv",
   "dtp_dbgctl_fpv",
-  "jtag2axi_ctrl_fpv",
-  "ctn_clkstop_fpv",
-  "ctn_xtrig_fpv",
-  "ctn_csr_fpv",
+  "dtp_jtag2axi_ctrl_fpv",
+  "dtp_ctn_clkstop_fpv",
+  "dtp_ctn_xtrig_fpv",
+  "dtp_ctn_csr_fpv",
 ]

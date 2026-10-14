@@ -1,23 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The UART mode selectors no leaf drives: FIFOs off, DMA mode 1, line loopback.
-
-Every UART leaf in the package configures the UART the same way -- the FIFOs
-enabled, DMA mode 0, the receive trigger at one character and `MCR.LOOP` for the
-loopback -- so three of the core's mode selectors have never been moved off
-their reset or their setup value on any wrapper:
+"""Three UART mode selectors: FIFOs off, DMA mode 1, line loopback.
 
 * **The receive path with the FIFOs disabled.** `FCR.FIFO_ENABLE` resets clear,
   and `hw/ip/uart/uart_16550/doc/architecture.adoc` describes the two receive
-  paths the 16550 has: software reads "from RBR or FIFO". Every leaf enables the
-  FIFOs, so the receiver buffer register itself -- the path a character takes
-  when they are off -- has never held a character.
+  paths the 16550 has: software reads "from RBR or FIFO". With the FIFOs off a
+  character goes through the receiver buffer register itself.
 * **DMA mode 1.** The Programmer's Guide UART FIFO section says "Set
   `FCR.DMA_MODE_SELECT` only to use mode-1 DMA service indications" and
-  `uart_16550_main_wo.rdl` gives FCR a `DMA_MODE_SELECT` bit, but no leaf writes
-  it, so the receive and transmit ready handshakes it selects have never run.
+  `uart_16550_main_wo.rdl` gives FCR a `DMA_MODE_SELECT` bit, which selects the
+  receive and transmit ready handshakes.
 * **Line loopback.** `MCR.LINE_LOOPBACK` is the second of the two loopback modes
-  the Programmer's Guide documents, and no leaf sets it.
+  the Programmer's Guide documents.
 
 The leaf drives all three and checks what each one is specified to do.
 
@@ -26,8 +20,8 @@ receive FIFO and `FCR.FIFO_ENABLE` is then written clear. `IIR.FIFOS_ENABLED`
 has to report the FIFOs off -- `uart_16550_main.rdl` gives that field `0x0` --
 and `LSR.DR` has to read clear, because the character parked in the FIFO is no
 longer on the path software reads. Two further characters are then sent one at a
-time and compared against what comes back, which is the only traffic in the
-package that goes through the receiver buffer register rather than the FIFO.
+time and compared against what comes back; with the FIFOs off that traffic
+goes through the receiver buffer register rather than the FIFO.
 
 **DMA mode 1 and the reception timeout.** With the FIFOs on, DMA mode 1
 selected and `FCR.RCVR_TRIGGER` programmed to four characters, one character is
@@ -157,7 +151,7 @@ _LINE_LOOPBACK_ACCESSES = 13 + len(_TX_BURST)
 
 
 class smc_uart_core_mode_select_test_seq(SmcCsrSeq):
-    """Drive the UART mode selectors no other leaf moves, and check each one."""
+    """Drive the FIFOs-off receive path, DMA mode 1 and line loopback, and check each one."""
 
     def __init__(self, name: str = "smc_uart_core_mode_select_test_seq") -> None:
         super().__init__(name)

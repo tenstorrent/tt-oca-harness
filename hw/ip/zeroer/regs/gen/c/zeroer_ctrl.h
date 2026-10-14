@@ -14,42 +14,51 @@ extern "C" {
 #include <assert.h>
 
 // reg - zeroer_ctrl::DEST_ADDR
+// Byte address to write zeros to
 #define ZEROER_CTRL__DEST_ADDR__DEST_ADDR_bm 0xffffffffffffffff
 #define ZEROER_CTRL__DEST_ADDR__DEST_ADDR_bp 0
 #define ZEROER_CTRL__DEST_ADDR__DEST_ADDR_bw 64
 #define ZEROER_CTRL__DEST_ADDR__DEST_ADDR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Byte address to write zeros to
         uint64_t DEST_ADDR :64;
     } f;
     uint64_t w;
 } zeroer_ctrl__DEST_ADDR_t;
 
 // reg - zeroer_ctrl::SIZE
+// Size in bytes of zeros to write
 #define ZEROER_CTRL__SIZE__SIZE_bm 0xffffffffffffffff
 #define ZEROER_CTRL__SIZE__SIZE_bp 0
 #define ZEROER_CTRL__SIZE__SIZE_bw 64
 #define ZEROER_CTRL__SIZE__SIZE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Size in bytes of zeros to write
         uint64_t SIZE :64;
     } f;
     uint64_t w;
 } zeroer_ctrl__SIZE_t;
 
 // reg - zeroer_ctrl::CTRL_STATUS
+// Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.
+// If enabled, an interrupt will be outputted once zeroer completes.
 #define ZEROER_CTRL__CTRL_STATUS__INT_EN_bm 0x1
 #define ZEROER_CTRL__CTRL_STATUS__INT_EN_bp 0
 #define ZEROER_CTRL__CTRL_STATUS__INT_EN_bw 1
 #define ZEROER_CTRL__CTRL_STATUS__INT_EN_reset 0x0
+// Indicates whether the zeroer is busy. 1 means the zeroer is active, has pending work, or is in an error state; 0 means it is idle with no pending or outstanding work, including after completion.
 #define ZEROER_CTRL__CTRL_STATUS__STATUS_bm 0x100000000
 #define ZEROER_CTRL__CTRL_STATUS__STATUS_bp 32
 #define ZEROER_CTRL__CTRL_STATUS__STATUS_bw 1
 #define ZEROER_CTRL__CTRL_STATUS__STATUS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // If enabled, an interrupt will be outputted once zeroer completes.
         uint64_t INT_EN :1;
         uint64_t :31;
+        // Indicates whether the zeroer is busy. 1 means the zeroer is active, has pending work, or is in an error state; 0 means it is idle with no pending or outstanding work, including after completion.
         uint64_t STATUS :1;
         uint64_t :31;
     } f;
@@ -57,6 +66,7 @@ typedef union {
 } zeroer_ctrl__CTRL_STATUS_t;
 
 // addrmap - zeroer_ctrl
+// Control and status registers for the AXI memory-zeroing engine.
 typedef struct __attribute__ ((__packed__)) {
     zeroer_ctrl__DEST_ADDR_t DEST_ADDR;
     zeroer_ctrl__SIZE_t SIZE;

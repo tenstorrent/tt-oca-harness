@@ -141,10 +141,9 @@ def _stop_bits_admitted(wls: int, stb: int) -> tuple[float, ...]:
     """Stop-bit counts the frame-length compare admits for a format.
 
     Every format is held to the RDL count, except the 5-bit word with STB=1:
-    the RDL says 1.5 stop bits and the transmitter measured 2 (#2121). That
-    difference is recorded under the plan's Known Limitations rather than
-    hidden, and the compare admits both counts for that one format so a
-    transmitter emitting one stop bit still fails.
+    the RDL says 1.5 stop bits and the transmitter emits 2. The plan's Known
+    Limitations records that difference, and the compare admits both counts
+    for that one format so a transmitter emitting one stop bit still fails.
     """
     if stb and wls == 0:
         return (1.5, 2.0)

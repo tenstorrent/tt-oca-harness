@@ -19,7 +19,7 @@ local target without passing the SEP outbound filter. SEP also has a local SPI
 host for boot-flash access. The SPI chapter describes that controller; SMC
 documents the shared peripherals.
 
-SEP boot uses configuration straps supplied from the SMC GPIO interface.
+SEP boot uses configuration straps, which it reads from the SMC strap registers.
 For their role in selecting boot options, see
 ifdef::backend-html5[]
 xref:cpu.adoc#configuration-straps[Configuration Straps] and

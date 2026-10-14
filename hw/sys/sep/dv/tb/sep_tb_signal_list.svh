@@ -115,6 +115,21 @@
 // than a plusarg so a test can raise it after the ROM's short self-test hash.
 // See the force block in tb_top.sv.
 `SEP_TB_IN(logic, hmac_fifo_drain_stall_i)
+// KMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
+// side idle (no FIFO read, no word to the KMAC core), so the FIFO fills. See the
+// force block in tb_top.sv.
+`SEP_TB_IN(logic, kmac_fifo_drain_stall_i)
+// Boundary interrupt input of the PIC (sep_wrapper sep_ext_interrupts_i,
+// extintsrc_req_i of sep). Default 0. A leaf drives one or two bits to raise a
+// pending source above PIC source 43 (top-port drive, docs/SEP_TB_ARCH.adoc).
+`SEP_TB_IN(logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0], sep_ext_interrupts_i)
+// Outbound responder response control (tb/sep_outbound_mbx.sv), default 0.
+// smn_outbound_resp_hold_i=1 holds every B and R response of the responder;
+// the requests are still accepted. smn_outbound_rd_slverr_i=1 at the AR
+// handshake makes every R beat of that read answer SLVERR. Error inject,
+// docs/SEP_TB_ARCH.adoc.
+`SEP_TB_IN(logic, smn_outbound_resp_hold_i)
+`SEP_TB_IN(logic, smn_outbound_rd_slverr_i)
 
 // ------------------------------------------------------------------
 // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -520,6 +535,36 @@
 `SEP_TB_OUT(logic [7:0], spi_tx_qd_probe_o)
 `SEP_TB_OUT(logic, spi_lsio_trigger_probe_o)
 `SEP_TB_OUT(logic, dma_busy_probe_o)
+// Secure DMA master request after the DMA local-alias remap (net
+// u_sep.dma_axi_req, response u_sep.dma_axi_resp), observation-only. Bit
+// layout, LSB first: [0] ar_valid, [1] ar_ready, [33:2] ar.addr, [41:34]
+// ar.len, [44:42] ar.size, [45] aw_valid, [46] aw_ready, [78:47] aw.addr,
+// [86:79] aw.len, [89:87] aw.size, [90] w_valid, [91] w_ready, [99:92] w.strb,
+// [100] w.last, [101] b_valid, [102] b_ready, [104:103] b.resp.
+// cocotb/env/sep_dma_tap.py decodes it. A handshake is VALID and READY high on
+// one clk_i edge. Outside every tb ready/valid cone.
+`SEP_TB_OUT(logic [104:0], dma_axi_req_probe_o)
+// Secure DMA STATUS levels, observation-only: bit i is the stored value of
+// STATUS bit i (0 BUSY, 1 DONE, 2 ABORTED, 3 ERROR, 4 SHA2_DIGEST_VALID,
+// 5 CHUNK_DONE), read from the register flops on each clock.
+`SEP_TB_OUT(logic [5:0], dma_status_probe_o)
+// Crypto alert receiver pulses, observation-only: bit i is
+// u_sep_crypto.crypto_alert_pulse[i], the alert of receiver index i (HMAC [0],
+// OTBN [2:1], AES [4:3], KMAC [6:5], CSRNG [8:7], EDN [10:9]).
+`SEP_TB_OUT(logic [10:0], crypto_alert_pulse_probe_o)
+// PIC register read data, observation-only (VeeR EL2 el2_pic_ctrl): [31:0]
+// picm_rd_data, [46:32] picm_raddr_ff[14:0], [47] picm_rden_ff. The data is
+// the read data of a PIC register read on a clock with bit 47 high. 4-state on
+// VCS. Tied to 0 on the CPU stub build.
+`SEP_TB_OUT(logic [47:0], pic_rd_data_probe_o)
+// Fault and clear pulses of the bridge-fault latches, observation-only. Bit
+// order of each half: [0] aes, [1] hmac, [2] kmac, [3] otbn, [4] csrng,
+// [5] edn, [6] wdt (sep_pkg::periph_bus_err_e), [7] DMA reg_path_err,
+// [8] DMA host_path_err. [8:0] is the set term of each latch (a TL-UL error
+// response at the register bridge; a non-OKAY AXI response or an integrity
+// error at the DMA master bridge). [17:9] is the err_clr_i pulse of the same
+// latch.
+`SEP_TB_OUT(logic [17:0], sep_cpu_ctrl_err_pulse_probe_o)
 // W handshakes at the AXI-Lite port of each fabric remap/filter slot register
 // block in sep_system_csr: saturating count of all beats, saturating count of
 // beats with non-zero data on a byte lane whose WSTRB bit is 0, and one sticky
@@ -553,6 +598,189 @@
 `SEP_TB_OUT(logic, xbar_ext_in_awvalid_o)
 `SEP_TB_OUT(logic, xbar_ext_in_awready_o)
 `SEP_TB_OUT(logic [31:0], xbar_ext_in_awaddr_o)
+// Fabric observation taps (docs/SEP_TB_ARCH.adoc, observation-probe list).
+// Read-only copies of DUT nets: each AXI tap carries the AW and AR VALID,
+// READY and request fields, and the W beat where named. A handshake is
+// VALID and READY high on one clk_i edge. Outside every tb ready/valid cone.
+// PR-OUT: smn_outbound_axi_req_o (the net smn_outbound_req_w).
+`SEP_TB_OUT(logic, pr_out_awvalid_o)
+`SEP_TB_OUT(logic, pr_out_awready_o)
+`SEP_TB_OUT(logic [55:0], pr_out_awaddr_o)
+`SEP_TB_OUT(logic [7:0], pr_out_awid_o)
+`SEP_TB_OUT(logic [11:0], pr_out_awuser_o)
+`SEP_TB_OUT(logic [3:0], pr_out_awcache_o)
+`SEP_TB_OUT(logic [2:0], pr_out_awprot_o)
+`SEP_TB_OUT(logic [7:0], pr_out_awlen_o)
+`SEP_TB_OUT(logic [2:0], pr_out_awsize_o)
+`SEP_TB_OUT(logic [1:0], pr_out_awburst_o)
+`SEP_TB_OUT(logic, pr_out_arvalid_o)
+`SEP_TB_OUT(logic, pr_out_arready_o)
+`SEP_TB_OUT(logic [55:0], pr_out_araddr_o)
+`SEP_TB_OUT(logic [7:0], pr_out_arid_o)
+`SEP_TB_OUT(logic [11:0], pr_out_aruser_o)
+`SEP_TB_OUT(logic [3:0], pr_out_arcache_o)
+`SEP_TB_OUT(logic [2:0], pr_out_arprot_o)
+`SEP_TB_OUT(logic [7:0], pr_out_arlen_o)
+`SEP_TB_OUT(logic [2:0], pr_out_arsize_o)
+`SEP_TB_OUT(logic [1:0], pr_out_arburst_o)
+`SEP_TB_OUT(logic, pr_out_wvalid_o)
+`SEP_TB_OUT(logic, pr_out_wready_o)
+`SEP_TB_OUT(logic [63:0], pr_out_wdata_o)
+`SEP_TB_OUT(logic [7:0], pr_out_wstrb_o)
+`SEP_TB_OUT(logic, pr_out_wlast_o)
+// PR-OUT-RSP: the responses on smn_outbound_axi_resp_i (net
+// smn_outbound_resp_w), READY from the request net.
+`SEP_TB_OUT(logic, pr_out_bvalid_o)
+`SEP_TB_OUT(logic, pr_out_bready_o)
+`SEP_TB_OUT(logic [1:0], pr_out_bresp_o)
+`SEP_TB_OUT(logic [7:0], pr_out_bid_o)
+`SEP_TB_OUT(logic, pr_out_rvalid_o)
+`SEP_TB_OUT(logic, pr_out_rready_o)
+`SEP_TB_OUT(logic [1:0], pr_out_rresp_o)
+`SEP_TB_OUT(logic [7:0], pr_out_rid_o)
+`SEP_TB_OUT(logic, pr_out_rlast_o)
+// PR-SMC: sep_ext_to_smc_axi_req_o (the net ext_to_smc_req_w).
+`SEP_TB_OUT(logic, pr_smc_awvalid_o)
+`SEP_TB_OUT(logic, pr_smc_awready_o)
+`SEP_TB_OUT(logic [55:0], pr_smc_awaddr_o)
+`SEP_TB_OUT(logic [5:0], pr_smc_awid_o)
+`SEP_TB_OUT(logic [11:0], pr_smc_awuser_o)
+`SEP_TB_OUT(logic [3:0], pr_smc_awcache_o)
+`SEP_TB_OUT(logic [2:0], pr_smc_awprot_o)
+`SEP_TB_OUT(logic [7:0], pr_smc_awlen_o)
+`SEP_TB_OUT(logic [2:0], pr_smc_awsize_o)
+`SEP_TB_OUT(logic [1:0], pr_smc_awburst_o)
+`SEP_TB_OUT(logic, pr_smc_arvalid_o)
+`SEP_TB_OUT(logic, pr_smc_arready_o)
+`SEP_TB_OUT(logic [55:0], pr_smc_araddr_o)
+`SEP_TB_OUT(logic [5:0], pr_smc_arid_o)
+`SEP_TB_OUT(logic [11:0], pr_smc_aruser_o)
+`SEP_TB_OUT(logic [3:0], pr_smc_arcache_o)
+`SEP_TB_OUT(logic [2:0], pr_smc_arprot_o)
+`SEP_TB_OUT(logic [7:0], pr_smc_arlen_o)
+`SEP_TB_OUT(logic [2:0], pr_smc_arsize_o)
+`SEP_TB_OUT(logic [1:0], pr_smc_arburst_o)
+`SEP_TB_OUT(logic, pr_smc_wvalid_o)
+`SEP_TB_OUT(logic, pr_smc_wready_o)
+`SEP_TB_OUT(logic [63:0], pr_smc_wdata_o)
+`SEP_TB_OUT(logic [7:0], pr_smc_wstrb_o)
+`SEP_TB_OUT(logic, pr_smc_wlast_o)
+// PR-EXT: the AXI Extension port, wrapper net u_dut.axi_extension_axi_req.
+`SEP_TB_OUT(logic, pr_ext_awvalid_o)
+`SEP_TB_OUT(logic, pr_ext_awready_o)
+`SEP_TB_OUT(logic [31:0], pr_ext_awaddr_o)
+`SEP_TB_OUT(logic [5:0], pr_ext_awid_o)
+`SEP_TB_OUT(logic [11:0], pr_ext_awuser_o)
+`SEP_TB_OUT(logic [3:0], pr_ext_awcache_o)
+`SEP_TB_OUT(logic [2:0], pr_ext_awprot_o)
+`SEP_TB_OUT(logic [7:0], pr_ext_awlen_o)
+`SEP_TB_OUT(logic [2:0], pr_ext_awsize_o)
+`SEP_TB_OUT(logic [1:0], pr_ext_awburst_o)
+`SEP_TB_OUT(logic, pr_ext_arvalid_o)
+`SEP_TB_OUT(logic, pr_ext_arready_o)
+`SEP_TB_OUT(logic [31:0], pr_ext_araddr_o)
+`SEP_TB_OUT(logic [5:0], pr_ext_arid_o)
+`SEP_TB_OUT(logic [11:0], pr_ext_aruser_o)
+`SEP_TB_OUT(logic [3:0], pr_ext_arcache_o)
+`SEP_TB_OUT(logic [2:0], pr_ext_arprot_o)
+`SEP_TB_OUT(logic [7:0], pr_ext_arlen_o)
+`SEP_TB_OUT(logic [2:0], pr_ext_arsize_o)
+`SEP_TB_OUT(logic [1:0], pr_ext_arburst_o)
+`SEP_TB_OUT(logic, pr_ext_wvalid_o)
+`SEP_TB_OUT(logic, pr_ext_wready_o)
+`SEP_TB_OUT(logic [63:0], pr_ext_wdata_o)
+`SEP_TB_OUT(logic [7:0], pr_ext_wstrb_o)
+`SEP_TB_OUT(logic, pr_ext_wlast_o)
+// PR-EXT reply: the B and R channels of the AXI Extension port, wrapper net
+// u_dut.axi_extension_axi_resp (READY from u_dut.axi_extension_axi_req).
+`SEP_TB_OUT(logic, pr_ext_bvalid_o)
+`SEP_TB_OUT(logic, pr_ext_bready_o)
+`SEP_TB_OUT(logic [1:0], pr_ext_bresp_o)
+`SEP_TB_OUT(logic [5:0], pr_ext_bid_o)
+`SEP_TB_OUT(logic, pr_ext_rvalid_o)
+`SEP_TB_OUT(logic, pr_ext_rready_o)
+`SEP_TB_OUT(logic [1:0], pr_ext_rresp_o)
+`SEP_TB_OUT(logic [5:0], pr_ext_rid_o)
+`SEP_TB_OUT(logic, pr_ext_rlast_o)
+// PR-DMACSR: the request at the DMA CSR target port (sep.sv dma_csr_req).
+`SEP_TB_OUT(logic, pr_dmacsr_awvalid_o)
+`SEP_TB_OUT(logic, pr_dmacsr_awready_o)
+`SEP_TB_OUT(logic [31:0], pr_dmacsr_awaddr_o)
+`SEP_TB_OUT(logic, pr_dmacsr_arvalid_o)
+`SEP_TB_OUT(logic, pr_dmacsr_arready_o)
+`SEP_TB_OUT(logic [31:0], pr_dmacsr_araddr_o)
+// PR-INFLT: the request out of the inbound filter (u_inbound_filter), before
+// the global-to-local remap; it carries the global address.
+`SEP_TB_OUT(logic, pr_inflt_awvalid_o)
+`SEP_TB_OUT(logic, pr_inflt_awready_o)
+`SEP_TB_OUT(logic [55:0], pr_inflt_awaddr_o)
+`SEP_TB_OUT(logic, pr_inflt_arvalid_o)
+`SEP_TB_OUT(logic, pr_inflt_arready_o)
+`SEP_TB_OUT(logic [55:0], pr_inflt_araddr_o)
+// PR-CPU: AxPROT of the raw CPU LSU (AR, AW) and IFU (AR) requests, before any
+// remap (u_sep_cpu lsu_axi_req_raw, ifu_axi_req_raw); tied to 0 on the CPU stub build.
+`SEP_TB_OUT(logic, pr_cpu_lsu_awvalid_o)
+`SEP_TB_OUT(logic, pr_cpu_lsu_awready_o)
+`SEP_TB_OUT(logic [2:0], pr_cpu_lsu_awprot_o)
+`SEP_TB_OUT(logic, pr_cpu_lsu_arvalid_o)
+`SEP_TB_OUT(logic, pr_cpu_lsu_arready_o)
+`SEP_TB_OUT(logic [2:0], pr_cpu_lsu_arprot_o)
+`SEP_TB_OUT(logic, pr_cpu_ifu_arvalid_o)
+`SEP_TB_OUT(logic, pr_cpu_ifu_arready_o)
+`SEP_TB_OUT(logic [2:0], pr_cpu_ifu_arprot_o)
+// PR-DMA-RAW: AxPROT of the raw secure DMA master request, before its window
+// remap (u_sep_dma_wrap dma_axi_req_raw).
+`SEP_TB_OUT(logic, pr_dma_raw_awvalid_o)
+`SEP_TB_OUT(logic, pr_dma_raw_awready_o)
+`SEP_TB_OUT(logic [2:0], pr_dma_raw_awprot_o)
+`SEP_TB_OUT(logic, pr_dma_raw_arvalid_o)
+`SEP_TB_OUT(logic, pr_dma_raw_arready_o)
+`SEP_TB_OUT(logic [2:0], pr_dma_raw_arprot_o)
+// PR-ALIAS input: the request into u_local_master_remap_wrap.
+`SEP_TB_OUT(logic, pr_alias_in_awvalid_o)
+`SEP_TB_OUT(logic, pr_alias_in_awready_o)
+`SEP_TB_OUT(logic [55:0], pr_alias_in_awaddr_o)
+`SEP_TB_OUT(logic [3:0], pr_alias_in_awcache_o)
+`SEP_TB_OUT(logic [2:0], pr_alias_in_awprot_o)
+`SEP_TB_OUT(logic, pr_alias_in_arvalid_o)
+`SEP_TB_OUT(logic, pr_alias_in_arready_o)
+`SEP_TB_OUT(logic [55:0], pr_alias_in_araddr_o)
+`SEP_TB_OUT(logic [3:0], pr_alias_in_arcache_o)
+`SEP_TB_OUT(logic [2:0], pr_alias_in_arprot_o)
+// PR-ALIAS output: the request out of u_local_master_remap_wrap.
+`SEP_TB_OUT(logic, pr_alias_out_awvalid_o)
+`SEP_TB_OUT(logic, pr_alias_out_awready_o)
+`SEP_TB_OUT(logic [55:0], pr_alias_out_awaddr_o)
+`SEP_TB_OUT(logic [3:0], pr_alias_out_awcache_o)
+`SEP_TB_OUT(logic [2:0], pr_alias_out_awprot_o)
+`SEP_TB_OUT(logic, pr_alias_out_arvalid_o)
+`SEP_TB_OUT(logic, pr_alias_out_arready_o)
+`SEP_TB_OUT(logic [55:0], pr_alias_out_araddr_o)
+`SEP_TB_OUT(logic [3:0], pr_alias_out_arcache_o)
+`SEP_TB_OUT(logic [2:0], pr_alias_out_arprot_o)
+// PR-SRAM: the SRAM macro request (wrapper net u_dut.sep_sram_req) and response.
+`SEP_TB_OUT(logic, pr_sram_req_o)
+`SEP_TB_OUT(logic, pr_sram_gnt_o)
+`SEP_TB_OUT(logic [31:0], pr_sram_addr_o)
+`SEP_TB_OUT(logic, pr_sram_we_o)
+`SEP_TB_OUT(logic [63:0], pr_sram_wdata_o)
+`SEP_TB_OUT(logic [7:0], pr_sram_strb_o)
+`SEP_TB_OUT(logic, pr_sram_rvalid_o)
+`SEP_TB_OUT(logic [63:0], pr_sram_rdata_o)
+// PR-ROM: the boot ROM macro request (wrapper net u_dut.sep_boot_rom_req) and response.
+`SEP_TB_OUT(logic, pr_rom_req_o)
+`SEP_TB_OUT(logic, pr_rom_gnt_o)
+`SEP_TB_OUT(logic [31:0], pr_rom_addr_o)
+`SEP_TB_OUT(logic, pr_rom_we_o)
+`SEP_TB_OUT(logic [63:0], pr_rom_wdata_o)
+`SEP_TB_OUT(logic [7:0], pr_rom_strb_o)
+`SEP_TB_OUT(logic, pr_rom_rvalid_o)
+`SEP_TB_OUT(logic [63:0], pr_rom_rdata_o)
+// BH-SMC (docs/SEP_TB_ARCH.adoc, HDL Top port table). A leaf drives these
+// before it releases reset; bh_smc_en_i other than 1 leaves the hook off.
+`SEP_TB_IN(logic, bh_smc_en_i)
+`SEP_TB_IN(logic [55:0], bh_smc_base_i)
+`SEP_TB_IN(logic [55:0], bh_smc_size_i)
 // Lifecycle status observability. security_disable and lc_sigint_err are DUT
 // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
 // TEST_EN strap -- so a strap test can observe the latch rather than assume it.

@@ -14,87 +14,149 @@ extern "C" {
 #include <assert.h>
 
 // reg - km_kpv::key_word_reg
+// One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+// 32-bit key data word. No reset for security; power-up value undefined.
+// Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
 #define KM_KPV__KEY_WORD_REG__DATA_bm 0xffffffff
 #define KM_KPV__KEY_WORD_REG__DATA_bp 0
 #define KM_KPV__KEY_WORD_REG__DATA_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit key data word. No reset for security; power-up value undefined.
+        // Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
         uint32_t data :32;
     } f;
     uint32_t w;
 } km_kpv__key_word_reg_t;
 
 // regfile - km_kpv::key_entry_rf
+// One key entry (16 x 32-bit words = 512 bits)
 typedef struct __attribute__ ((__packed__)) {
     km_kpv__key_word_reg_t WORD[16];
 } km_kpv__key_entry_rf_t;
 
 // reg - km_kpv::ctrl_reg
+// Per-slot control: lock bits (W1S) and the erase trigger
+// Prevents KM write to this key entry data until reset; this register stays
+// writable so that a locked slot can still be read-locked and erased.
+// Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is
+// set, so sealing a slot write-locks it without a separate write here.
 #define KM_KPV__CTRL_REG__LOCK_WRITE_bm 0x1
 #define KM_KPV__CTRL_REG__LOCK_WRITE_bp 0
 #define KM_KPV__CTRL_REG__LOCK_WRITE_bw 1
 #define KM_KPV__CTRL_REG__LOCK_WRITE_reset 0x0
+// Prevents KM read of this key entry data until reset. Read-any, write-1-only.
+// Hardware sets this bit when an erase of a sealed slot completes, retiring
+// the slot: its destroyed contents cannot be read back.
 #define KM_KPV__CTRL_REG__LOCK_USE_bm 0x2
 #define KM_KPV__CTRL_REG__LOCK_USE_bp 1
 #define KM_KPV__CTRL_REG__LOCK_USE_bw 1
 #define KM_KPV__CTRL_REG__LOCK_USE_reset 0x0
+// Write-1 to start hardware erase of this slot: an LFSR fills all 16 key
+// words (through the KPV scrambler). Hardware self-clears this bit when the
+// erase completes. Never blocked: neither lock_write, lock_use nor seal
+// prevents an erase. The slot's seal state when the erase completes decides
+// the outcome. Unsealed, the slot CTRL register is cleared and the slot is
+// reusable. Sealed, lock_write stays set and lock_use is set, retiring the
+// slot: its data is destroyed and it can be neither read, rewritten nor
+// reused until warm reset. A seal taken while an erase is already in flight
+// therefore still retires the slot.
 #define KM_KPV__CTRL_REG__ERASE_bm 0x4
 #define KM_KPV__CTRL_REG__ERASE_bp 2
 #define KM_KPV__CTRL_REG__ERASE_bw 1
 #define KM_KPV__CTRL_REG__ERASE_reset 0x0
+// Seals this key entry until warm reset. Read-any, write-1-only. Setting this
+// bit also sets lock_write in hardware, so a single write seals the slot: its
+// data can be read but not overwritten. Erase remains available, and erasing
+// a sealed slot retires it rather than freeing it (see ERASE), so a sealed
+// slot's material can be destroyed but its slot never reused.
 #define KM_KPV__CTRL_REG__SEAL_bm 0x8
 #define KM_KPV__CTRL_REG__SEAL_bp 3
 #define KM_KPV__CTRL_REG__SEAL_bw 1
 #define KM_KPV__CTRL_REG__SEAL_reset 0x0
+// Reserved
 #define KM_KPV__CTRL_REG__RSVD_31_4_bm 0xfffffff0
 #define KM_KPV__CTRL_REG__RSVD_31_4_bp 4
 #define KM_KPV__CTRL_REG__RSVD_31_4_bw 28
 #define KM_KPV__CTRL_REG__RSVD_31_4_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Prevents KM write to this key entry data until reset; this register stays
+        // writable so that a locked slot can still be read-locked and erased.
+        // Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is
+        // set, so sealing a slot write-locks it without a separate write here.
         uint32_t lock_write :1;
+        // Prevents KM read of this key entry data until reset. Read-any, write-1-only.
+        // Hardware sets this bit when an erase of a sealed slot completes, retiring
+        // the slot: its destroyed contents cannot be read back.
         uint32_t lock_use :1;
+        // Write-1 to start hardware erase of this slot: an LFSR fills all 16 key
+        // words (through the KPV scrambler). Hardware self-clears this bit when the
+        // erase completes. Never blocked: neither lock_write, lock_use nor seal
+        // prevents an erase. The slot's seal state when the erase completes decides
+        // the outcome. Unsealed, the slot CTRL register is cleared and the slot is
+        // reusable. Sealed, lock_write stays set and lock_use is set, retiring the
+        // slot: its data is destroyed and it can be neither read, rewritten nor
+        // reused until warm reset. A seal taken while an erase is already in flight
+        // therefore still retires the slot.
         uint32_t erase :1;
+        // Seals this key entry until warm reset. Read-any, write-1-only. Setting this
+        // bit also sets lock_write in hardware, so a single write seals the slot: its
+        // data can be read but not overwritten. Erase remains available, and erasing
+        // a sealed slot retires it rather than freeing it (see ERASE), so a sealed
+        // slot's material can be destroyed but its slot never reused.
         uint32_t seal :1;
+        // Reserved
         uint32_t rsvd_31_4 :28;
     } f;
     uint32_t w;
 } km_kpv__ctrl_reg_t;
 
 // reg - km_kpv::kpv_scrambler_key_reg
+// 32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.
+// Scrambler key. No reset for security. HW clears to 0 on wipe via hwclr.
 #define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bm 0xffffffff
 #define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bp 0
 #define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Scrambler key. No reset for security. HW clears to 0 on wipe via hwclr.
         uint32_t key :32;
     } f;
     uint32_t w;
 } km_kpv__kpv_scrambler_key_reg_t;
 
 // reg - km_kpv::kpv_scrambler_ctrl_reg
+// KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.
+// 1 = scramble key entry data on write, descramble on read; 0 = passthrough.
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bm 0x1
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bp 0
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bw 1
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_reset 0x0
+// Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bm 0x2
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bp 1
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bw 1
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_reset 0x0
+// Reserved
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_bm 0xfffffffc
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_bp 2
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_bw 30
 #define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 1 = scramble key entry data on write, descramble on read; 0 = passthrough.
         uint32_t enable :1;
+        // Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.
         uint32_t lock :1;
+        // Reserved
         uint32_t rsvd :30;
     } f;
     uint32_t w;
 } km_kpv__kpv_scrambler_ctrl_reg_t;
 
 // addrmap - km_kpv
+// Key entry storage and KM control registers. Access conditioned by lock_write/lock_use.
 typedef struct __attribute__ ((__packed__)) {
     km_kpv__key_entry_rf_t KEY_ENTRY[64];
     km_kpv__ctrl_reg_t CTRL[64];

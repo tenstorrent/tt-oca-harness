@@ -11,13 +11,16 @@
 // transaction so the scoreboard pairs the two streams in lockstep. An OKAY
 // read of a hole reads 0 across the full word; writes, STATUS reads,
 // unmapped accesses, and non-OKAY completions carry no contract, and a
-// write to a hole leaves the shadow unchanged. No comparison, no reporting.
-// The cocotb twin is env/dtp_xtrig_csr_ref_model.py.
+// write to a hole leaves the shadow unchanged. `negative`
+// (+DTP_XTRIG_CSR_REF_MODEL_NEGATIVE) flips the lowest implemented bit of
+// every predicted readback, so the run must fail. No comparison, no
+// reporting. The cocotb twin is env/dtp_xtrig_csr_ref_model.py.
 
 class dtp_xtrig_csr_ref_model extends ocah_ref_model #(ocah_axi_item, dtp_expected_item);
   `uvm_component_utils(dtp_xtrig_csr_ref_model)
 
   virtual dtp_tb_if tb_vif;
+  bit               negative;
 
   protected dtp_xtrig_csr_model m_model;
   protected bit [31:0]          m_sys_rst_seen;
@@ -31,6 +34,11 @@ class dtp_xtrig_csr_ref_model extends ocah_ref_model #(ocah_axi_item, dtp_expect
     super.build_phase(phase);
     if (tb_vif == null) `uvm_fatal(get_type_name(), "virtual dtp_tb_if `tb_vif` not set by the env")
     m_model = new();
+    if (negative)
+      `uvm_info(get_type_name(), {
+                "NEGATIVE VALIDATION: every predicted CSR readback is corrupted ",
+                "(DTP_XTRIG_CSR_REF_MODEL_NEGATIVE)"
+                }, UVM_LOW)
   endfunction
 
   function void write(ocah_axi_item t);
@@ -50,7 +58,7 @@ class dtp_xtrig_csr_ref_model extends ocah_ref_model #(ocah_axi_item, dtp_expect
       if (t.direction != OCAH_AXI_DIR_WRITE) begin
         exp.compare   = 1'b1;
         exp.mask      = 64'hFFFF_FFFF;
-        exp.expected  = '0;
+        exp.expected  = corrupt(64'd0, exp.mask);
         exp.context_s = $sformatf("%s addr=0x%03h", kind.name(), t.address);
       end
       expected_ap.write(exp);
@@ -64,9 +72,15 @@ class dtp_xtrig_csr_ref_model extends ocah_ref_model #(ocah_axi_item, dtp_expect
     end
     exp.compare   = 1'b1;
     exp.mask      = 64'(mask);
-    exp.expected  = 64'(m_model.read(t.address, mask, dtp_xtrig_csr_default(kind)));
+    exp.expected  = corrupt(64'(m_model.read(t.address, mask, dtp_xtrig_csr_default(kind))),
+                            exp.mask);
     exp.context_s = $sformatf("%s addr=0x%03h", kind.name(), t.address);
     expected_ap.write(exp);
+  endfunction
+
+  // `value`, with the lowest bit of `mask` flipped under `negative`.
+  protected function bit [63:0] corrupt(bit [63:0] value, bit [63:0] mask);
+    return negative ? value ^ (mask & (~mask + 64'd1)) : value;
   endfunction
 
   // Every system or power-on reset clears the CSR block.

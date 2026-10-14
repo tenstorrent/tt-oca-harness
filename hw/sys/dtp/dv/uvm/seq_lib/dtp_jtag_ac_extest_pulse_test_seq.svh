@@ -30,22 +30,21 @@ class dtp_jtag_ac_extest_pulse_test_seq extends dtp_jtag_base_test_seq;
     seed_scenario_rng();
     attach_family_checker(required);
     reset_to_tlr();
+    log_step("1", "EXTEST_TRAIN preload through the looped-back chain");
     check_loopback_scan(6'(EXTEST_TRAIN_INSTR), 64'h33);
+    log_step("2", "EXTEST_PULSE loopback across directed, walking-one, and edge patterns");
     check_loopback_patterns(6'(EXTEST_PULSE_INSTR));
     foreach (walking_patterns[p]) check_loopback_scan(6'(EXTEST_PULSE_INSTR), walking_patterns[p]);
     foreach (edge_patterns[p]) check_loopback_scan(6'(EXTEST_PULSE_INSTR), edge_patterns[p]);
-    `uvm_info(get_type_name(),
-              "Step 3: EXTEST_PULSE scan controls; run_test_idle high only on the return", UVM_LOW)
+    log_step("3", "EXTEST_PULSE scan controls; run_test_idle high only on the return");
     check_bsr_scan_ctrl_counts(6'(EXTEST_PULSE_INSTR), random_pattern(DtpBsrModelLen),
                                DtpBsrModelLen, DTP_SCAN_CTRL_SELECTED, extra, counts);
     check_run_test_idle_window(RtiCheckId, RtiSignal, counts, "EXTEST_PULSE DR scan");
-    `uvm_info(get_type_name(),
-              "Step 4: EXTEST_PULSE parked in Run-Test/Idle holds run_test_idle high", UVM_LOW)
+    log_step("4", "EXTEST_PULSE parked in Run-Test/Idle holds run_test_idle high");
     check_scan_observable(RtiCheckId, RtiSignal, 1'b1, "EXTEST_PULSE parked in Run-Test/Idle");
     check_scan_observable(RtiCheckId, "jtag_bsr_select", 1'b0,
                           "EXTEST_PULSE parked in Run-Test/Idle");
-    `uvm_info(get_type_name(), "Step 5: BYPASS scan: select stays low while the TAP strobes pulse",
-              UVM_LOW)
+    log_step("5", "BYPASS scan: select stays low while the TAP strobes pulse");
     check_bsr_scan_ctrl(6'(BYPASS_INSTR), 64'h3C3C, 16, DTP_SCAN_CTRL_UNSELECTED);
     finalize_family_checker();
   endtask

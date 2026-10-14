@@ -11,16 +11,26 @@ The seed, loop, pattern, and step-logging helpers come from ``ocah_lib.OcahSeque
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Protocol
+
 from cocotb.triggers import ClockCycles
-from env.dtp_dbg_disable import (
-    DBG_DISABLE_FIELDS,
-    format_dbg_disable,
-    full_dbg_disable,
-    validate_dbg_disable,
-)
+from env.dtp_dbg_disable import format_dbg_disable, full_dbg_disable, validate_dbg_disable
+from env.dtp_env_cfg import DtpEnvCfg
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
-from env.dtp_types import DTP_IR_WIDTH, RESET_COUNT_CHECK_ID, DtpJtagInstr, DtpTapState
+from env.dtp_types import DTP_IR_WIDTH, RESET_COUNT_CHECK_ID, DtpJtagInstr
+from ocah_jtag_vip import OcahJtagState
 from ocah_lib import OcahSequence
+
+
+class DtpEvidenceRecorder(Protocol):
+    """An evidence recorder: ``OcahChecker``, ``OcahJtagChecker`` or ``OcahAxiScoreboard``."""
+
+    def expect_equal(
+        self, check_id: str, observed: object, expected: object, *, context: str = ""
+    ) -> bool: ...
+
+    def expect_true(self, check_id: str, condition: object, *, context: str = "") -> bool: ...
 
 
 class dtp_base_test_seq(OcahSequence):
@@ -35,11 +45,11 @@ class dtp_base_test_seq(OcahSequence):
     ) -> None:
         super().__init__(name, scenario_seed=scenario_seed, random_count=random_count)
         # Assigned by the test (dtp_base_test.plumb_scenario_seq) before the sequence runs.
-        self.cfg = None
+        self.cfg: DtpEnvCfg | None = None
         # DUT-confirmed TAP states and (state, TMS) transitions of this pass.
-        self.visited_tap_states: set[DtpTapState] = set()
-        self.visited_tap_arcs: set[tuple[DtpTapState, int]] = set()
-        self.current_tap_state: DtpTapState | None = None
+        self.visited_tap_states: set[OcahJtagState] = set()
+        self.visited_tap_arcs: set[tuple[OcahJtagState, int]] = set()
+        self.current_tap_state: OcahJtagState | None = None
 
     # --- quality logging / checking -----------------------------------------
     def log_banner(self, title: str) -> None:
@@ -56,38 +66,39 @@ class dtp_base_test_seq(OcahSequence):
             self.log.info("  %s = %s", key, value)
         self.log.info("-" * 70)
 
-    def assert_equal(self, name: str, observed: int, expected: int, context: str = "") -> None:
-        """Log and assert an expected/observed integer comparison."""
-        context_suffix = f" ({context})" if context else ""
-        self.log.info(
-            "CHECK %-36s expected=0x%x observed=0x%x%s",
-            name,
-            expected,
-            observed,
-            context_suffix,
-        )
-        assert observed == expected, (
-            f"{name}{context_suffix}: expected 0x{expected:x}, got 0x{observed:x}"
-        )
+    @staticmethod
+    def check_equal(
+        recorder: DtpEvidenceRecorder,
+        check_id: str,
+        observed: object,
+        expected: object,
+        *,
+        context: str,
+    ) -> None:
+        """Record one named comparison on ``recorder`` and stop the pass on a mismatch.
 
-    def assert_bit(self, name: str, value: int, bit_pos: int, expected: int) -> None:
-        """Log and assert one bit of a packed value."""
-        self.assert_equal(f"{name}[{bit_pos}]", self.bit(value, bit_pos), expected)
+        The FAIL record is the evidence; a recorder that does not fail fast
+        keeps it for its summary.
+        """
+        if not recorder.expect_equal(check_id, observed, expected, context=context):
+            raise AssertionError(f"{check_id} FAIL: {context}")
+
+    @staticmethod
+    def check_true(
+        recorder: DtpEvidenceRecorder, check_id: str, condition: object, *, context: str
+    ) -> None:
+        """Record one named condition on ``recorder`` and stop the pass when it does not hold."""
+        if not recorder.expect_true(check_id, condition, context=context):
+            raise AssertionError(f"{check_id} FAIL: {context}")
 
     def check_reset_counted(self, counter: str, before: int, after: int, context: str) -> None:
         """``CHK-RESET-COUNT``: the tb_top assertion counter of a reset this
         sequence drove advanced by exactly one across the pulse, so a reset
         claim rests on a reset that happened.
 
-        Sequences that own an evidence checker override this to record the
-        comparison under that checker.
+        Each family base records it on the checker that family owns.
         """
-        self.assert_equal(
-            RESET_COUNT_CHECK_ID,
-            after - before,
-            1,
-            context=f"{counter} before={before} after={after} {context}",
-        )
+        raise NotImplementedError(f"{type(self).__name__} records no {RESET_COUNT_CHECK_ID}")
 
     # --- bit helpers ---------------------------------------------------------
     @staticmethod
@@ -101,11 +112,13 @@ class dtp_base_test_seq(OcahSequence):
         return (value >> lsb) & ((1 << width) - 1)
 
     # --- low-level item issue ------------------------------------------------
-    async def _send(self, **fields) -> DtpJtagItem:
+    async def _send(self, **fields: object) -> DtpJtagItem:
         """Create, populate, and run a single DtpJtagItem; return it with results."""
         item = DtpJtagItem()
         await self.start_item(item)
         for key, value in fields.items():
+            if not hasattr(item, key):
+                raise AttributeError(f"DtpJtagItem has no field {key!r}")
             setattr(item, key, value)
         await self.finish_item(item)
         return item
@@ -135,7 +148,7 @@ class dtp_base_test_seq(OcahSequence):
             back_to_rti=back_to_rti,
         )
         if back_to_rti:
-            self.current_tap_state = DtpTapState.RUN_TEST_IDLE
+            self.current_tap_state = OcahJtagState.RUN_TEST_IDLE
         return item
 
     async def shift_ir(
@@ -159,7 +172,7 @@ class dtp_base_test_seq(OcahSequence):
             back_to_rti=back_to_rti,
         )
         if back_to_rti:
-            self.current_tap_state = DtpTapState.RUN_TEST_IDLE
+            self.current_tap_state = OcahJtagState.RUN_TEST_IDLE
         return item
 
     async def shift_dr(
@@ -177,7 +190,7 @@ class dtp_base_test_seq(OcahSequence):
             back_to_rti=back_to_rti,
         )
         if back_to_rti:
-            self.current_tap_state = DtpTapState.RUN_TEST_IDLE
+            self.current_tap_state = OcahJtagState.RUN_TEST_IDLE
         return item
 
     async def sample_observables(self) -> DtpJtagItem:
@@ -240,7 +253,7 @@ class dtp_base_test_seq(OcahSequence):
         self.log.info("dbg_disable set %s", format_dbg_disable(named))
         await self.wait_dbg_disable_sync()
 
-    async def set_dbg_disable_vector(self, values) -> None:
+    async def set_dbg_disable_vector(self, values: Mapping[str, int]) -> None:
         """Drive all eleven dbg_disable fields; unnamed fields are enabled (0)."""
         await self.set_dbg_disable(**full_dbg_disable(values))
 
@@ -252,18 +265,12 @@ class dtp_base_test_seq(OcahSequence):
         """Assert one or more named disables; other fields keep state."""
         await self.set_dbg_disable(**{name: 1 for name in names})
 
-    def dbg_resource_enabled(self, name: str) -> bool:
-        """Read back one driven dbg_disable input; True when enabled (0)."""
-        if name not in DBG_DISABLE_FIELDS:
-            raise ValueError(f"unknown dbg_disable field {name!r}")
-        return self.cfg.tb_if.dbg_field(name) == 0
-
     # --- system-domain helpers ----------------------------------------------
     async def wait_sys_cycles(self, cycles: int = 4) -> None:
         """Wait in the system-clock domain for registered DTP outputs to update."""
         await ClockCycles(self.cfg.tb_if.clk, cycles)
 
-    async def pulse_system_reset(self, cycles: int = 5) -> None:
+    async def pulse_system_reset(self, cycles: int = 5, *, context: str = "") -> None:
         """Pulse rst_n_i without asserting POR/TRST, preserving TAP accessibility."""
         before = self.cfg.tb_if.sample("sys_rst_assert_count")
         self.cfg.tb_if.sys_rst_n.value = 0
@@ -274,15 +281,8 @@ class dtp_base_test_seq(OcahSequence):
             "sys_rst_assert_count",
             before,
             self.cfg.tb_if.sample("sys_rst_assert_count"),
-            f"pulse_system_reset cycles={cycles}",
+            context or f"pulse_system_reset cycles={cycles}",
         )
-
-    async def expect_signal(self, name: str, expected: int) -> None:
-        """Sample a DTP observable by its flat name and compare it."""
-        item = await self.sample_observables()
-        assert name in item.signals, f"{name} is not exposed by the DTP JTAG driver"
-        observed = item.signals[name]
-        self.assert_equal(name, observed, expected)
 
     async def body(self) -> None:
         raise NotImplementedError("override body() in a concrete test sequence")

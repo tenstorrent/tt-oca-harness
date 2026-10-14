@@ -24,9 +24,7 @@ class dtp_jtag2axi_smc_axi_read_security_gating_test extends dtp_base_test;
                             "CHK-AXI-RADDR",
                             "CHK-AXI-RDATA",
                             "CHK-AXI-COMPLETION",
-                            "CHK-AXI-GATE-AW",
-                            "CHK-AXI-GATE-W",
-                            "CHK-AXI-GATE-AR",
+                            "CHK-AXI-NOACT",
                             "CHK-AXI-GATE-EXACT",
                             "CHK-AXI-NONVAC",
                             DtpJ2aGateTdrCheckId
@@ -45,16 +43,6 @@ class dtp_jtag2axi_smc_axi_read_security_gating_test extends dtp_base_test;
 
   virtual function string group_loops_knob();
     return "DTP_JTAG2AXI_TEST_LOOPS";
-  endfunction
-
-  virtual function void plumb_scenario_seq(ocah_sequence seq);
-    dtp_jtag2axi_smc_axi_rd_test_seq rd_seq;
-    super.plumb_scenario_seq(seq);
-    if (!$cast(rd_seq, seq))
-      `uvm_fatal(get_type_name(), "scenario sequence is not the rd-side type")
-    rd_seq.axi_cfg       = m_env.m_smc_axi_cfg;
-    rd_seq.axi_evidence  = m_env.m_smc_axi_env.m_checker;
-    rd_seq.axi_ref_model = m_env.m_smc_axi_env.m_ref_model;
   endfunction
 
 endclass : dtp_jtag2axi_smc_axi_read_security_gating_test

@@ -14,12 +14,19 @@ extern "C" {
 #include <assert.h>
 
 // reg - system_timer_octs::TIMER_START
+// System Timer Start Register
+// Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.
+// In SECONDARY mode, the write has no effect; a secondary starts on the primary's sync-load pulse, which is what loads its preset.
+// Ensure both primary and secondary are out of reset.
 #define SYSTEM_TIMER_OCTS__TIMER_START__START_bm 0x1
 #define SYSTEM_TIMER_OCTS__TIMER_START__START_bp 0
 #define SYSTEM_TIMER_OCTS__TIMER_START__START_bw 1
 #define SYSTEM_TIMER_OCTS__TIMER_START__START_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.
+        // In SECONDARY mode, the write has no effect; a secondary starts on the primary's sync-load pulse, which is what loads its preset.
+        // Ensure both primary and secondary are out of reset.
         uint32_t START :1;
         uint32_t :31;
     } f;
@@ -27,22 +34,29 @@ typedef union {
 } system_timer_octs__TIMER_START_t;
 
 // reg - system_timer_octs::CTRL
+// System Timer Control Register
+// Credit value factor. WARNING: This value must be greater than PULSE_WIDTH
 #define SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bm 0xff
 #define SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bp 0
 #define SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bw 8
 #define SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_reset 0xa
+// Pulse width for sync load and credit signals. A value of 0 will be rounded up to 1. WARNING: This value must be less than CREDIT_VAL
 #define SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bm 0xff00
 #define SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bp 8
 #define SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bw 8
 #define SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_reset 0x2
+// Step amount for secondary timer
 #define SYSTEM_TIMER_OCTS__CTRL__STEP_bm 0xff0000
 #define SYSTEM_TIMER_OCTS__CTRL__STEP_bp 16
 #define SYSTEM_TIMER_OCTS__CTRL__STEP_bw 8
 #define SYSTEM_TIMER_OCTS__CTRL__STEP_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Credit value factor. WARNING: This value must be greater than PULSE_WIDTH
         uint32_t CREDIT_VAL :8;
+        // Pulse width for sync load and credit signals. A value of 0 will be rounded up to 1. WARNING: This value must be less than CREDIT_VAL
         uint32_t PULSE_WIDTH :8;
+        // Step amount for secondary timer
         uint32_t STEP :8;
         uint32_t :8;
     } f;
@@ -50,18 +64,23 @@ typedef union {
 } system_timer_octs__CTRL_t;
 
 // reg - system_timer_octs::STATUS
+// System Timer Status Register
+// Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).
 #define SYSTEM_TIMER_OCTS__STATUS__MODE_bm 0x1
 #define SYSTEM_TIMER_OCTS__STATUS__MODE_bp 0
 #define SYSTEM_TIMER_OCTS__STATUS__MODE_bw 1
 #define SYSTEM_TIMER_OCTS__STATUS__MODE_reset 0x0
+// Timer is enabled and its count is nonzero.
 #define SYSTEM_TIMER_OCTS__STATUS__RUNNING_bm 0x10
 #define SYSTEM_TIMER_OCTS__STATUS__RUNNING_bp 4
 #define SYSTEM_TIMER_OCTS__STATUS__RUNNING_bw 1
 #define SYSTEM_TIMER_OCTS__STATUS__RUNNING_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).
         uint32_t MODE :1;
         uint32_t :3;
+        // Timer is enabled and its count is nonzero.
         uint32_t RUNNING :1;
         uint32_t :27;
     } f;
@@ -69,72 +88,96 @@ typedef union {
 } system_timer_octs__STATUS_t;
 
 // reg - system_timer_octs::TIMER_PRESET_LO
+// System Timer Preset Value [31:0]
+// Lower 32 bits of preset value
 #define SYSTEM_TIMER_OCTS__TIMER_PRESET_LO__PRESET_LO_bm 0xffffffff
 #define SYSTEM_TIMER_OCTS__TIMER_PRESET_LO__PRESET_LO_bp 0
 #define SYSTEM_TIMER_OCTS__TIMER_PRESET_LO__PRESET_LO_bw 32
 #define SYSTEM_TIMER_OCTS__TIMER_PRESET_LO__PRESET_LO_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Lower 32 bits of preset value
         uint32_t PRESET_LO :32;
     } f;
     uint32_t w;
 } system_timer_octs__TIMER_PRESET_LO_t;
 
 // reg - system_timer_octs::TIMER_PRESET_HI
+// System Timer Preset Value [63:32]
+// Upper 32 bits of preset value
 #define SYSTEM_TIMER_OCTS__TIMER_PRESET_HI__PRESET_HI_bm 0xffffffff
 #define SYSTEM_TIMER_OCTS__TIMER_PRESET_HI__PRESET_HI_bp 0
 #define SYSTEM_TIMER_OCTS__TIMER_PRESET_HI__PRESET_HI_bw 32
 #define SYSTEM_TIMER_OCTS__TIMER_PRESET_HI__PRESET_HI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Upper 32 bits of preset value
         uint32_t PRESET_HI :32;
     } f;
     uint32_t w;
 } system_timer_octs__TIMER_PRESET_HI_t;
 
 // reg - system_timer_octs::TIMER_COUNT_LO
+// Current System Timer Count [31:0]
+// Lower 32 bits of current timer count
 #define SYSTEM_TIMER_OCTS__TIMER_COUNT_LO__COUNT_LO_bm 0xffffffff
 #define SYSTEM_TIMER_OCTS__TIMER_COUNT_LO__COUNT_LO_bp 0
 #define SYSTEM_TIMER_OCTS__TIMER_COUNT_LO__COUNT_LO_bw 32
 #define SYSTEM_TIMER_OCTS__TIMER_COUNT_LO__COUNT_LO_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Lower 32 bits of current timer count
         uint32_t COUNT_LO :32;
     } f;
     uint32_t w;
 } system_timer_octs__TIMER_COUNT_LO_t;
 
 // reg - system_timer_octs::TIMER_COUNT_HI
+// Current System Timer Count [63:32]
+// Upper 32 bits of current timer count
 #define SYSTEM_TIMER_OCTS__TIMER_COUNT_HI__COUNT_HI_bm 0xffffffff
 #define SYSTEM_TIMER_OCTS__TIMER_COUNT_HI__COUNT_HI_bp 0
 #define SYSTEM_TIMER_OCTS__TIMER_COUNT_HI__COUNT_HI_bw 32
 #define SYSTEM_TIMER_OCTS__TIMER_COUNT_HI__COUNT_HI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Upper 32 bits of current timer count
         uint32_t COUNT_HI :32;
     } f;
     uint32_t w;
 } system_timer_octs__TIMER_COUNT_HI_t;
 
 // reg - system_timer_octs::CREDIT_EXPIRED
+// Credit Expired Register
+// Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.
+// If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not received a count credit pulse in a while, and is likely not syncing properly with the primary.
+// This register can also be used to determine the clock skew between the primary and secondary.
+// If PRIMARY, this field is always 0.
 #define SYSTEM_TIMER_OCTS__CREDIT_EXPIRED__MAX_CYCLES_EXPIRED_bm 0xffffffff
 #define SYSTEM_TIMER_OCTS__CREDIT_EXPIRED__MAX_CYCLES_EXPIRED_bp 0
 #define SYSTEM_TIMER_OCTS__CREDIT_EXPIRED__MAX_CYCLES_EXPIRED_bw 32
 #define SYSTEM_TIMER_OCTS__CREDIT_EXPIRED__MAX_CYCLES_EXPIRED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.
+        // If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not received a count credit pulse in a while, and is likely not syncing properly with the primary.
+        // This register can also be used to determine the clock skew between the primary and secondary.
+        // If PRIMARY, this field is always 0.
         uint32_t MAX_CYCLES_EXPIRED :32;
     } f;
     uint32_t w;
 } system_timer_octs__CREDIT_EXPIRED_t;
 
 // reg - system_timer_octs::TIMER_GPIO_ENABLE
+// System Timer GPIO Enable Register
+// Enable the GPIO pad lsio interface for the system timer. This is done to prevent X-prop on reset into the secondary timer, which can cause the secondary timer to start counting early.
 #define SYSTEM_TIMER_OCTS__TIMER_GPIO_ENABLE__GPIO_ENABLE_bm 0x1
 #define SYSTEM_TIMER_OCTS__TIMER_GPIO_ENABLE__GPIO_ENABLE_bp 0
 #define SYSTEM_TIMER_OCTS__TIMER_GPIO_ENABLE__GPIO_ENABLE_bw 1
 #define SYSTEM_TIMER_OCTS__TIMER_GPIO_ENABLE__GPIO_ENABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable the GPIO pad lsio interface for the system timer. This is done to prevent X-prop on reset into the secondary timer, which can cause the secondary timer to start counting early.
         uint32_t GPIO_ENABLE :1;
         uint32_t :31;
     } f;
@@ -142,6 +185,7 @@ typedef union {
 } system_timer_octs__TIMER_GPIO_ENABLE_t;
 
 // addrmap - system_timer_octs
+// Open Chiplet Time Synchronization (OCTS) System Timer Registers
 typedef struct __attribute__ ((__packed__)) {
     system_timer_octs__TIMER_START_t TIMER_START;
     system_timer_octs__CTRL_t CTRL;

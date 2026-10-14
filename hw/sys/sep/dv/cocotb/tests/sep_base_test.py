@@ -11,6 +11,7 @@ shadow array against that image after sense-done.
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import re
@@ -98,9 +99,12 @@ class _EvidenceFilter(logging.Filter):
     _CHK = re.compile(r"\b(CHK-[A-Z0-9_-]+)\b\s*(?:\([^)]*\)\s*)?(PASS|OK)\b")
 
     # IDs excluded from `own`, which is what a floor grades; `observed` counts
-    # them. Empty, so the CHK records the base-class helpers emit
-    # (CHK-FW-IDENTITY, CHK-VERDICT, CHK-FW-CONSOLE, ...) count as the leaf's own.
-    BASE_IDS: frozenset[str] = frozenset()
+    # them. These are the records the base class emits for every firmware boot
+    # (image identity and the firmware completion verdict), so a leaf whose own
+    # checks stopped running cannot pass on the boot alone. A leaf whose graded
+    # contract is the firmware self-check names that ID in `required_evidence`;
+    # a base ID named there counts as the leaf's own.
+    BASE_IDS: frozenset[str] = frozenset({"CHK-FW-IDENTITY", "CHK-FW-CONSOLE", "CHK-VERDICT"})
 
     # Leaves allowed to pass with no own CHK record. A new entry hides a logging gap.
     NO_OWN_EVIDENCE: dict[str, str] = {}
@@ -157,7 +161,8 @@ class sep_base_test(uvm_test):
     #
     #   required_evidence -- IDs this test must emit. Missing any one fails.
     #   min_evidence      -- fewest distinct IDs of the test's OWN (IDs not in
-    #                        _EvidenceFilter.BASE_IDS). 0 disables it.
+    #                        _EvidenceFilter.BASE_IDS, plus any base ID named
+    #                        in required_evidence). 0 disables it.
     #
     # Both default to off. They tighten a leaf that already emits records; they
     # do not replace the unconditional floor in `_finalize_evidence`. A leaf
@@ -342,6 +347,12 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "token_digest_test_en_inject_i", 0)
         self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         self._set_if_exists(dut, "hmac_fifo_drain_stall_i", 0)
+        self._set_if_exists(dut, "kmac_fifo_drain_stall_i", 0)
+        # Boundary PIC input and outbound responder control: idle (0) unless a
+        # leaf drives them (docs/SEP_TB_ARCH.adoc).
+        self._set_if_exists(dut, "sep_ext_interrupts_i", 0)
+        self._set_if_exists(dut, "smn_outbound_resp_hold_i", 0)
+        self._set_if_exists(dut, "smn_outbound_rd_slverr_i", 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle
         # bus. Called before start_clocks. Env-built tests drive the same idle.
@@ -544,6 +555,14 @@ class sep_base_test(uvm_test):
             await ClockCycles(cocotb.top.clk_i, 2)
             self._jtag_sw_rst_hold(park, False)
 
+    def suppress_host_axi_transaction_info(self) -> None:
+        """Suppress per-access host AXI INFO while retaining errors and summaries."""
+        axi_driver = self.env.axi_agent.driver
+        axi_driver.logger.setLevel(logging.WARNING)
+        axi_backend = axi_driver.axi.driver.backend
+        axi_backend.read_if.log.setLevel(logging.WARNING)
+        axi_backend.write_if.log.setLevel(logging.WARNING)
+
     async def bring_up_and_wait_fuse_sense(self, *, max_cycles: int = 20_000) -> None:
         """Alias for ``bring_up_no_cpu``; both gate on real fuse-sense-done."""
         await self.bring_up_no_cpu(max_cycles=max_cycles)
@@ -567,6 +586,57 @@ class sep_base_test(uvm_test):
         dut.rst_ni.value = 1
         await self._wait_fuse_sense(max_cycles)
         self.cfg.reset_done.set()
+
+    async def pulse_rst_ni(
+        self,
+        *,
+        hold_cycles: int = 20,
+        release_bound: int = 20_000,
+        max_sense_cycles: int = 20_000,
+    ) -> dict[str, int]:
+        """Cold reset with clocks running: pulse ``rst_ni``, then wait for the SEP reset release.
+
+        Drives ``rst_ni`` low at the next ``clk_i`` rising edge (so a caller in
+        the read-only phase may call it), holds it low for ``hold_cycles``
+        clocks and releases it. Then
+        waits at most ``release_bound`` clocks for ``dbg_sep_reset_n_o`` to read
+        1 (the SEP Reset Controller release of ``sep_reset_n``), and then for
+        fuse-sense-done with the post-sense shadow compare (the ``resense``
+        rules apply: the OTP bank keeps its content across the reset). An
+        expired bound raises. Returns ``sep_reset_n_at_hold_end`` (the probe
+        level on the last clock of the hold) and ``release_clks`` (clocks from
+        the ``rst_ni`` release to the first ``dbg_sep_reset_n_o`` = 1 sample),
+        for the leaf to log or grade.
+        """
+        dut = cocotb.top
+        await RisingEdge(dut.clk_i)
+        dut.rst_ni.value = 0
+        await ClockCycles(dut.clk_i, hold_cycles)
+        await ReadOnly()
+        held = self.rd(dut.dbg_sep_reset_n_o)
+        await RisingEdge(dut.clk_i)
+        dut.rst_ni.value = 1
+        release = None
+        for cycle in range(1, release_bound + 1):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True):
+                release = cycle
+                break
+        if release is None:
+            raise AssertionError(
+                f"dbg_sep_reset_n_o did not read 1 within {release_bound} clocks after the "
+                "rst_ni release"
+            )
+        await self._wait_fuse_sense(max_sense_cycles)
+        self.cfg.reset_done.set()
+        self.logger.info(
+            "rst_ni pulse: hold=%d sep_reset_n_at_hold_end=%d release_clks=%d",
+            hold_cycles,
+            held,
+            release,
+        )
+        return {"sep_reset_n_at_hold_end": held, "release_clks": release}
 
     async def bring_up_cpu_boot(
         self,
@@ -798,9 +868,16 @@ class sep_base_test(uvm_test):
                 self.logger.info("CHK-FW-CONSOLE PASS: firmware mailbox completion with PASS magic")
         if not (sb.fw_done and sb.fw_pass):
             # Hang, no-boot, run-cycle exhaustion, or firmware FAIL: put the
-            # symbolized backtrace in the log before the scoreboard's
-            # check_phase assertion ends the run.
+            # symbolized backtrace in the log, then fail here, so no later step
+            # of the leaf runs against firmware that did not pass. A leaf that
+            # expects a refusal clears sb.expect_fw_pass and grades it itself.
             mon.dump_diagnostics(logging.ERROR)
+            if sb.expect_fw_pass:
+                raise AssertionError(
+                    f"boot poll ended without firmware PASS: done={int(sb.fw_done)} "
+                    f"pass={int(bool(sb.fw_pass))} last_cycle={cycle} "
+                    f"retired={mon.trace_count}"
+                )
 
     def select_efuse_image(
         self,
@@ -1308,16 +1385,19 @@ class sep_base_test(uvm_test):
         batch = SepEsrcFifoDrainSeq("esrc_fifo_drain")
         await self.start_seq(batch)
         if batch.words:
-            self.drbg_sb.check_fifo_frontdoor(batch.words)
+            self.drbg_sb.check_fifo_frontdoor(
+                batch.words, log_batch=getattr(self, "_drain_log_batches", True)
+            )
 
     async def _fifo_drain_loop(self) -> None:
         while not self._drain_stop:
             await self._drain_fifo_once()
             await ClockCycles(cocotb.top.clk_i, 40)
 
-    def start_fifo_drain(self) -> None:
+    def start_fifo_drain(self, *, log_batches: bool = True) -> None:
         """Fork the concurrent FIFO drain (no-op for backdoor-CHK2 configs)."""
         self._drain_stop = False
+        self._drain_log_batches = log_batches
         self._drain_task = (
             None
             if getattr(self, "entropy_cfg", None) and self.entropy_cfg.chk2_backdoor
@@ -1573,14 +1653,29 @@ class sep_base_test(uvm_test):
                         pass
                 else:
                     exe_digest = f"not-hashed(>{_SIM_BINARY_HASH_MAX_BYTES}B)"
+            # The build directory's own record (tools/dv/runlib/stages.py,
+            # build_record.json): the fingerprint of the inputs that built this
+            # binary and when it was written. git-head is the run's commit, not
+            # the commit that compiled the binary; a written-at time before the
+            # run started means the binary was reused.
+            build_fp, build_at = "none", "none"
+            try:
+                rec = json.loads((Path(exe).parent / "build_record.json").read_text())
+                build_fp = str(rec.get("fingerprint", "none"))
+                build_at = str(rec.get("written_at", "none"))
+            except (OSError, ValueError):
+                pass
             self.logger.info(
-                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d git-head=%s",
+                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d git-head=%s "
+                "build-fingerprint=%s build-written-at=%s",
                 exe,
                 exe_digest,
                 digest_src,
                 st.st_size,
                 int(st.st_mtime),
                 rev or "unknown",
+                build_fp,
+                build_at,
             )
         except (OSError, ValueError) as exc:
             # Say so rather than omit the line: a missing build identity is a
@@ -1695,12 +1790,12 @@ class sep_base_test(uvm_test):
         Runs only after run_scenario() returns normally. A test that already
         failed raised, and this must not turn that into a different complaint.
 
-        `own` excludes the IDs in ``_EvidenceFilter.BASE_IDS``. That set is empty,
-        so base-class CHK records count toward a declared floor.
+        `own` excludes the IDs in ``_EvidenceFilter.BASE_IDS`` that the leaf does
+        not name in ``required_evidence``.
         """
         seen = sorted(getattr(self, "_evidence", _EvidenceFilter()).seen)
-        own = [c for c in seen if c not in _EvidenceFilter.BASE_IDS]
         required = tuple(self.required_evidence)
+        own = [c for c in seen if c not in _EvidenceFilter.BASE_IDS or c in required]
         missing = [check_id for check_id in required if check_id not in seen]
 
         self.logger.info(

@@ -1,0 +1,358 @@
+diff --git a/src/backend/idma_axi_read.sv b/src/backend/idma_axi_read.sv
+index af8b9dd..005d37a 100644
+--- a/src/backend/idma_axi_read.sv
++++ b/src/backend/idma_axi_read.sv
+@@ -6,7 +6,7 @@
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ // - Tobias Senti <tsenti@ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Implementing the AXI4 read task in the iDMA transport layer.
+ module idma_axi_read #(
+diff --git a/src/backend/idma_axi_write.sv b/src/backend/idma_axi_write.sv
+index 4cedbbd..432f4fb 100644
+--- a/src/backend/idma_axi_write.sv
++++ b/src/backend/idma_axi_write.sv
+@@ -6,7 +6,7 @@
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ // - Tobias Senti <tsenti@ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Implementing the AXI4 write task in the iDMA transport layer.
+ module idma_axi_write #(
+diff --git a/src/backend/idma_channel_coupler.sv b/src/backend/idma_channel_coupler.sv
+index e0d5a57..71312f3 100644
+--- a/src/backend/idma_channel_coupler.sv
++++ b/src/backend/idma_channel_coupler.sv
+@@ -5,7 +5,7 @@
+ // Authors:
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "axi/typedef.svh"
+ 
+ /// Couples the `R` to the `AW` channel by keeping writes back until the corresponding
+diff --git a/src/backend/idma_error_handler.sv b/src/backend/idma_error_handler.sv
+index d309c28..7833be1 100644
+--- a/src/backend/idma_error_handler.sv
++++ b/src/backend/idma_error_handler.sv
+@@ -5,7 +5,7 @@
+ // Authors:
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "common_cells/assertions.svh"
+ `include "idma/guard.svh"
+ 
+diff --git a/src/backend/idma_tilelink_read.sv b/src/backend/idma_tilelink_read.sv
+index 06487db..6da48dc 100644
+--- a/src/backend/idma_tilelink_read.sv
++++ b/src/backend/idma_tilelink_read.sv
+@@ -6,7 +6,7 @@
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ // - Tobias Senti <tsenti@ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Implementing the TileLink read task in the iDMA transport layer.
+ module idma_tilelink_read #(
+diff --git a/src/backend/idma_tilelink_write.sv b/src/backend/idma_tilelink_write.sv
+index 5aa7d0a..d242e12 100644
+--- a/src/backend/idma_tilelink_write.sv
++++ b/src/backend/idma_tilelink_write.sv
+@@ -6,7 +6,7 @@
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ // - Tobias Senti <tsenti@ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Implementing the TileLink write task in the iDMA transport layer.
+ module idma_tilelink_write #(
+diff --git a/src/backend/tpl/idma_legalizer.sv.tpl b/src/backend/tpl/idma_legalizer.sv.tpl
+index 3fd077f..85e9208 100644
+--- a/src/backend/tpl/idma_legalizer.sv.tpl
++++ b/src/backend/tpl/idma_legalizer.sv.tpl
+@@ -6,7 +6,7 @@
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ // - Tobias Senti <tsenti@ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "common_cells/assertions.svh"
+ `include "idma/guard.svh"
+ 
+diff --git a/src/backend/tpl/idma_transport_layer.sv.tpl b/src/backend/tpl/idma_transport_layer.sv.tpl
+index 67d7283..8d0d11f 100644
+--- a/src/backend/tpl/idma_transport_layer.sv.tpl
++++ b/src/backend/tpl/idma_transport_layer.sv.tpl
+@@ -7,7 +7,7 @@
+ // - Tobias Senti <tsenti@ethz.ch>
+ 
+ `include "idma/guard.svh"
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Implementing the transport layer in the iDMA backend.
+ module idma_transport_layer_${name_uniqueifier} #(
+diff --git a/src/frontend/desc64/idma_desc64_ar_gen.sv b/src/frontend/desc64/idma_desc64_ar_gen.sv
+index c489907..4786d09 100644
+--- a/src/frontend/desc64/idma_desc64_ar_gen.sv
++++ b/src/frontend/desc64/idma_desc64_ar_gen.sv
+@@ -6,7 +6,7 @@
+ // - Axel Vanoni <axvanoni@ethz.ch>
+ 
+ `include "common_cells/assertions.svh"
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// This module generates AR packets to fetch descriptors from memory
+ module idma_desc64_ar_gen #(
+@@ -122,9 +122,9 @@ always_comb begin : proc_ar
+     axi_ar_chan_o.burst = axi_pkg::BURST_INCR;
+ end
+ 
+-`FF(inflight_q, inflight_d, 1'b0)
+-`FF(next_addr_from_desc_valid_q, next_addr_from_desc_valid_d, 1'b0)
+-`FF(next_addr_q, next_addr_d, '1)
++`OCAH_FF(inflight_q, inflight_d, 1'b0, clk_i, rst_ni)
++`OCAH_FF(next_addr_from_desc_valid_q, next_addr_from_desc_valid_d, 1'b0, clk_i, rst_ni)
++`OCAH_FF(next_addr_q, next_addr_d, '1, clk_i, rst_ni)
+ 
+ assign feedback_addr_o       = ar_addr;
+ assign feedback_addr_valid_o = axi_ar_chan_ready_i && axi_ar_chan_valid_o;
+diff --git a/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv b/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
+index ab26a8c..5a9c015 100644
+--- a/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
++++ b/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv
+@@ -6,7 +6,7 @@
+ // - Axel Vanoni <axvanoni@ethz.ch>
+ 
+ `include "common_cells/assertions.svh"
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// This module generates AR packets to fetch descriptors from memory
+ module idma_desc64_ar_gen_prefetch #(
+@@ -231,11 +231,11 @@ end
+ 
+ assign queued_address_ready_o = !take_from_next && (!base_valid_q || next_addr_valid_this_cycle);
+ 
+-`FF(inflight_counter_q, inflight_counter_d, '0)
+-`FF(base_addr_q, base_addr_d, '0)
+-`FF(next_addr_valid_q, next_addr_valid_d, 1'b0)
+-`FF(base_valid_q, base_valid_d, 1'b0)
+-`FF(flush_q, flush_d, 1'b0)
++`OCAH_FF(inflight_counter_q, inflight_counter_d, '0, clk_i, rst_ni)
++`OCAH_FF(base_addr_q, base_addr_d, '0, clk_i, rst_ni)
++`OCAH_FF(next_addr_valid_q, next_addr_valid_d, 1'b0, clk_i, rst_ni)
++`OCAH_FF(base_valid_q, base_valid_d, 1'b0, clk_i, rst_ni)
++`OCAH_FF(flush_q, flush_d, 1'b0, clk_i, rst_ni)
+ assign flush_d = flush;
+ 
+ stream_fifo #(
+diff --git a/src/frontend/desc64/idma_desc64_reader.sv b/src/frontend/desc64/idma_desc64_reader.sv
+index 29402b7..2fc9eef 100644
+--- a/src/frontend/desc64/idma_desc64_reader.sv
++++ b/src/frontend/desc64/idma_desc64_reader.sv
+@@ -5,7 +5,7 @@
+ // Authors:
+ // - Axel Vanoni <axvanoni@ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// This module takes in an AXI R-channel, and reads descriptors from it.
+ /// Note that an using an address width other than 64 bits will need
+@@ -97,8 +97,8 @@ end else if (DataWidth == 128) begin : gen_128_data_path
+         end
+     end
+ 
+-    `FF(first_half_of_descriptor_q, first_half_of_descriptor_d, 128'b0)
+-    `FF(irq_addr_valid_q, irq_addr_valid_d, 1'b0)
++    `OCAH_FF(first_half_of_descriptor_q, first_half_of_descriptor_d, 128'b0, clk_i, rst_ni)
++    `OCAH_FF(irq_addr_valid_q, irq_addr_valid_d, 1'b0, clk_i, rst_ni)
+ end else if (DataWidth == 64) begin : gen_64_data_path
+     logic [1:0]       fetch_counter_q, fetch_counter_d;
+     logic [2:0][63:0] descriptor_data_q, descriptor_data_d;
+@@ -128,8 +128,8 @@ end else if (DataWidth == 64) begin : gen_64_data_path
+         end
+     end
+ 
+-    `FF(descriptor_data_q, descriptor_data_d, 192'b0)
+-    `FF(fetch_counter_q, fetch_counter_d, 2'b0)
++    `OCAH_FF(descriptor_data_q, descriptor_data_d, 192'b0, clk_i, rst_ni)
++    `OCAH_FF(fetch_counter_q, fetch_counter_d, 2'b0, clk_i, rst_ni)
+ end else if (DataWidth == 32) begin : gen_32_data_path
+     logic [2:0]       fetch_counter_q, fetch_counter_d;
+     logic [6:0][31:0] descriptor_data_q, descriptor_data_d;
+diff --git a/src/frontend/desc64/idma_desc64_reader_gater.sv b/src/frontend/desc64/idma_desc64_reader_gater.sv
+index cce23db..6dea7df 100644
+--- a/src/frontend/desc64/idma_desc64_reader_gater.sv
++++ b/src/frontend/desc64/idma_desc64_reader_gater.sv
+@@ -5,7 +5,7 @@
+ // Authors:
+ // - Axel Vanoni <axvanoni@ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// This module takes in an AXI R-channel, and reads descriptors from it.
+ /// Note that an using an address width other than 64 bits will need
+@@ -50,8 +50,8 @@ always_comb begin
+     end
+ end
+ 
+-`FF(n_to_flush_q, n_to_flush_d, 'b0)
+-`FF(engage_q, engage_d, 'b0)
++`OCAH_FF(n_to_flush_q, n_to_flush_d, 'b0, clk_i, rst_ni)
++`OCAH_FF(engage_q, engage_d, 'b0, clk_i, rst_ni)
+ 
+ assign r_valid_o = flush ? 1'b0 : r_valid_i;
+ assign r_ready_o = flush ? 1'b1 : r_ready_i;
+diff --git a/src/frontend/desc64/idma_desc64_reg_wrapper.sv b/src/frontend/desc64/idma_desc64_reg_wrapper.sv
+index 6bc5900..66d468b 100644
+--- a/src/frontend/desc64/idma_desc64_reg_wrapper.sv
++++ b/src/frontend/desc64/idma_desc64_reg_wrapper.sv
+@@ -5,7 +5,7 @@
+ // Authors:
+ // - Axel Vanoni <axvanoni@ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// This module implements backpressure via ready/valid handshakes
+ /// for the regbus registers and exposes it to the descriptor fifo
+@@ -79,6 +79,6 @@ import idma_desc64_reg_pkg::idma_desc64_hw2reg_t; #(
+             input_addr_valid_d = '0;
+         end
+     end
+-    `FF(input_addr_valid_q, input_addr_valid_d, '0)
++    `OCAH_FF(input_addr_valid_q, input_addr_valid_d, '0, clk_i, rst_ni)
+ 
+ endmodule
+diff --git a/src/frontend/desc64/idma_desc64_top.sv b/src/frontend/desc64/idma_desc64_top.sv
+index 3d32c7a..ada8b8c 100644
+--- a/src/frontend/desc64/idma_desc64_top.sv
++++ b/src/frontend/desc64/idma_desc64_top.sv
+@@ -5,7 +5,7 @@
+ // Authors:
+ // - Axel Vanoni <axvanoni@ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "common_cells/assertions.svh"
+ 
+ /// This module serves as a descriptor-based frontend for the iDMA in the CVA6-core
+@@ -222,7 +222,7 @@ if (DataWidth == 32) begin : gen_aw_w_chan_32
+         master_req_o.w.strb  = 4'hf;
+         master_req_o.w.last  = w_is_last_q;
+     end
+-    `FF(w_is_last_q, w_is_last_d, 1'b0)
++    `OCAH_FF(w_is_last_q, w_is_last_d, 1'b0, clk_i, rst_ni)
+ end else begin : gen_aw_w_chan
+     assign ws_per_writeback = 2'd1;
+     always_comb begin : proc_w
+@@ -458,7 +458,7 @@ stream_fifo #(
+     .ready_i   (master_rsp_i.aw_ready)
+ );
+ 
+-`FF(w_counter_q, w_counter_d, '0)
++`OCAH_FF(w_counter_q, w_counter_d, '0, clk_i, rst_ni)
+ 
+ 
+ assign idma_rsp_ready_o = next_wb_addr_ready && next_wb_addr_valid;
+diff --git a/src/frontend/inst64/idma_inst64_top.sv b/src/frontend/inst64/idma_inst64_top.sv
+index 9d8a6ae..168f9b9 100644
+--- a/src/frontend/inst64/idma_inst64_top.sv
++++ b/src/frontend/inst64/idma_inst64_top.sv
+@@ -5,7 +5,7 @@
+ // Authors:
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "common_cells/assertions.svh"
+ `include "idma/typedef.svh"
+ `include "idma/tracer.svh"
+@@ -525,7 +525,7 @@ module idma_inst64_top #(
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FF(idma_fe_req_q, idma_fe_req_d, '0)
++    `OCAH_FF(idma_fe_req_q, idma_fe_req_d, '0, clk_i, rst_ni)
+ 
+ 
+     //--------------------------------------
+diff --git a/src/midend/idma_mp_dist_midend.sv b/src/midend/idma_mp_dist_midend.sv
+index 5100d45..ac0b155 100644
+--- a/src/midend/idma_mp_dist_midend.sv
++++ b/src/midend/idma_mp_dist_midend.sv
+@@ -6,7 +6,7 @@
+ // - Samuel Riedel <sriedel@iis.ee.ethz.ch>
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Distribute DMA requests over several backends
+ module idma_mp_dist_midend #(
+diff --git a/src/midend/idma_mp_midend_synth.sv b/src/midend/idma_mp_midend_synth.sv
+index c6ebcf2..be9f956 100644
+--- a/src/midend/idma_mp_midend_synth.sv
++++ b/src/midend/idma_mp_midend_synth.sv
+@@ -5,7 +5,7 @@
+ // Authors:
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Synthesis wrapper for the Mempool mid-ends
+ module idma_mp_midend_synth #(
+diff --git a/src/midend/idma_mp_split_midend.sv b/src/midend/idma_mp_split_midend.sv
+index 8815af5..5734ae7 100644
+--- a/src/midend/idma_mp_split_midend.sv
++++ b/src/midend/idma_mp_split_midend.sv
+@@ -6,7 +6,7 @@
+ // - Samuel Riedel <sriedel@iis.ee.ethz.ch>
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Splits DMA transactions along a given region boundaries
+ module idma_mp_split_midend #(
+diff --git a/src/midend/idma_nd_midend.sv b/src/midend/idma_nd_midend.sv
+index 3d07fd5..876cd9e 100644
+--- a/src/midend/idma_nd_midend.sv
++++ b/src/midend/idma_nd_midend.sv
+@@ -5,7 +5,7 @@
+ // Authors:
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "idma/guard.svh"
+ 
+ /// ND midend for the iDMA. This module takes an n-dimensional transfer and splits it into
+@@ -230,9 +230,9 @@ module idma_nd_midend #(
+     //--------------------------------------
+     // State
+     //--------------------------------------
+-    `FFL(stride_sel_q, stride_sel_d, nd_req_valid_i, NumDim - 'd1, clk_i, rst_ni)
+-    `FFL(src_addr_q,   src_addr_d,   nd_req_valid_i, '0,           clk_i, rst_ni)
+-    `FFL(dst_addr_q,   dst_addr_d,   nd_req_valid_i, '0,           clk_i, rst_ni)
++    `OCAH_FFL(stride_sel_q, stride_sel_d, nd_req_valid_i, NumDim - 'd1, clk_i, rst_ni)
++    `OCAH_FFL(src_addr_q,   src_addr_d,   nd_req_valid_i, '0,           clk_i, rst_ni)
++    `OCAH_FFL(dst_addr_q,   dst_addr_d,   nd_req_valid_i, '0,           clk_i, rst_ni)
+ 
+     always_ff @(posedge clk_i or negedge rst_ni) begin
+         if (!rst_ni) begin

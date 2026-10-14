@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A crypto engine's SW reset clears its own result and leaves a sibling's held result intact.
 
+OCAH provenance: ``sep_clock_uvm_sw_reset_per_ip_test`` checks each
+``SW_RESET_N`` bit's reset-domain mapping.
+
 no_cpu host-AXI test that proves the SEP per-IP SW_RESET_N domains are isolated
 while a neighbour engine holds a live, golden-checked crypto result in its
 datapath output registers: pulsing one engine's reset clears that engine's own

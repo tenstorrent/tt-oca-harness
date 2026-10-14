@@ -14,69 +14,96 @@ extern "C" {
 #include <assert.h>
 
 // reg - wdt::CTRL
+// KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
+// WDT counter scale value. Scales the current cycle count (time) by count / 2 ^ wdogscale value
 #define WDT__CTRL__WDOGSCALE_bm 0xf
 #define WDT__CTRL__WDOGSCALE_bp 0
 #define WDT__CTRL__WDOGSCALE_bw 4
 #define WDT__CTRL__WDOGSCALE_reset 0x0
+// Reserved
 #define WDT__CTRL__RSVD0_bm 0xf0
 #define WDT__CTRL__RSVD0_bp 4
 #define WDT__CTRL__RSVD0_bw 4
 #define WDT__CTRL__RSVD0_reset 0x0
+// Enables a sticky reset signal to outputted to top level, can be used for a second stage wdt
 #define WDT__CTRL__WDOGRSTEN_bm 0x100
 #define WDT__CTRL__WDOGRSTEN_bp 8
 #define WDT__CTRL__WDOGRSTEN_bw 1
 #define WDT__CTRL__WDOGRSTEN_reset 0x0
+// Enable cycle counter to be reset to 0 when compare value has been reached
 #define WDT__CTRL__WDOGZEROCMP_bm 0x200
 #define WDT__CTRL__WDOGZEROCMP_bp 9
 #define WDT__CTRL__WDOGZEROCMP_bw 1
 #define WDT__CTRL__WDOGZEROCMP_reset 0x0
+// Reserved
 #define WDT__CTRL__RSVD1_bm 0xc00
 #define WDT__CTRL__RSVD1_bp 10
 #define WDT__CTRL__RSVD1_bw 2
 #define WDT__CTRL__RSVD1_reset 0x0
+// Enable WDT to always count. This has priority over wdogcoreawake
 #define WDT__CTRL__WDOGENALWAYS_bm 0x1000
 #define WDT__CTRL__WDOGENALWAYS_bp 12
 #define WDT__CTRL__WDOGENALWAYS_bw 1
 #define WDT__CTRL__WDOGENALWAYS_reset 0x0
+// Enable WDT to only count when the core is not in reset
 #define WDT__CTRL__WDOGCOREAWAKE_bm 0x2000
 #define WDT__CTRL__WDOGCOREAWAKE_bp 13
 #define WDT__CTRL__WDOGCOREAWAKE_bw 1
 #define WDT__CTRL__WDOGCOREAWAKE_reset 0x0
+// Reserved
 #define WDT__CTRL__RSVD2_bm 0xfffc000
 #define WDT__CTRL__RSVD2_bp 14
 #define WDT__CTRL__RSVD2_bw 14
 #define WDT__CTRL__RSVD2_reset 0x0
+// Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.
+// To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.
 #define WDT__CTRL__WDOGIP0_bm 0x10000000
 #define WDT__CTRL__WDOGIP0_bp 28
 #define WDT__CTRL__WDOGIP0_bw 1
 #define WDT__CTRL__WDOGIP0_reset 0x0
+// Reserved
 #define WDT__CTRL__RSVD3_bm 0xe0000000
 #define WDT__CTRL__RSVD3_bp 29
 #define WDT__CTRL__RSVD3_bw 3
 #define WDT__CTRL__RSVD3_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // WDT counter scale value. Scales the current cycle count (time) by count / 2 ^ wdogscale value
         uint32_t wdogscale :4;
+        // Reserved
         uint32_t rsvd0 :4;
+        // Enables a sticky reset signal to outputted to top level, can be used for a second stage wdt
         uint32_t wdogrsten :1;
+        // Enable cycle counter to be reset to 0 when compare value has been reached
         uint32_t wdogzerocmp :1;
+        // Reserved
         uint32_t rsvd1 :2;
+        // Enable WDT to always count. This has priority over wdogcoreawake
         uint32_t wdogenalways :1;
+        // Enable WDT to only count when the core is not in reset
         uint32_t wdogcoreawake :1;
+        // Reserved
         uint32_t rsvd2 :14;
+        // Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.
+        // To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.
         uint32_t wdogip0 :1;
+        // Reserved
         uint32_t rsvd3 :3;
     } f;
     uint32_t w;
 } wdt__CTRL_t;
 
 // reg - wdt::COUNT
+// 31 bit wdt counter registers. On write, the counter will be set to the written value, then continue counting up.
+// KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
 #define WDT__COUNT__WDOGCOUNT_bm 0x7fffffff
 #define WDT__COUNT__WDOGCOUNT_bp 0
 #define WDT__COUNT__WDOGCOUNT_bw 31
 #define WDT__COUNT__WDOGCOUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 31 bit wdt counter registers. On write, the counter will be set to the written value, then continue counting up.
+        // KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
         uint32_t wdogcount :31;
         uint32_t :1;
     } f;
@@ -84,24 +111,30 @@ typedef union {
 } wdt__COUNT_t;
 
 // reg - wdt::COUNT_HI
+// Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.
 #define WDT__COUNT_HI__WDOGCOUNTHI_bm 0xffffffff
 #define WDT__COUNT_HI__WDOGCOUNTHI_bp 0
 #define WDT__COUNT_HI__WDOGCOUNTHI_bw 32
 #define WDT__COUNT_HI__WDOGCOUNTHI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.
         uint32_t wdogcounthi :32;
     } f;
     uint32_t w;
 } wdt__COUNT_HI_t;
 
 // reg - wdt::SCALED_COUNT
+// Scaled value of wdt counter. (i.e. count >> wdogscale). Writing to this reg has no effect, but will lock the WDT (meaning KEY must be written to KEY reg to unlock it again).
+// KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
 #define WDT__SCALED_COUNT__WDOGS_bm 0xffff
 #define WDT__SCALED_COUNT__WDOGS_bp 0
 #define WDT__SCALED_COUNT__WDOGS_bw 16
 #define WDT__SCALED_COUNT__WDOGS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Scaled value of wdt counter. (i.e. count >> wdogscale). Writing to this reg has no effect, but will lock the WDT (meaning KEY must be written to KEY reg to unlock it again).
+        // KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
         uint32_t wdogs :16;
         uint32_t :16;
     } f;
@@ -109,36 +142,48 @@ typedef union {
 } wdt__SCALED_COUNT_t;
 
 // reg - wdt::FEED
+// Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.
+// KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
 #define WDT__FEED__WDOGFEED_bm 0xffffffff
 #define WDT__FEED__WDOGFEED_bp 0
 #define WDT__FEED__WDOGFEED_bw 32
 #define WDT__FEED__WDOGFEED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.
+        // KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
         uint32_t wdogfeed :32;
     } f;
     uint32_t w;
 } wdt__FEED_t;
 
 // reg - wdt::KEY
+// Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
+// is unlocked, 0 otherwise.
 #define WDT__KEY__WDOGKEY_bm 0xffffffff
 #define WDT__KEY__WDOGKEY_bp 0
 #define WDT__KEY__WDOGKEY_bw 32
 #define WDT__KEY__WDOGKEY_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it
+        // is unlocked, 0 otherwise.
         uint32_t wdogkey :32;
     } f;
     uint32_t w;
 } wdt__KEY_t;
 
 // reg - wdt::CMP
+// Compare register. Value that gets compared to wdogs.
+// KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
 #define WDT__CMP__WDOGCMP0_bm 0xffff
 #define WDT__CMP__WDOGCMP0_bp 0
 #define WDT__CMP__WDOGCMP0_bw 16
 #define WDT__CMP__WDOGCMP0_reset 0x1000
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Compare register. Value that gets compared to wdogs.
+        // KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.
         uint32_t wdogcmp0 :16;
         uint32_t :16;
     } f;
@@ -146,6 +191,9 @@ typedef union {
 } wdt__CMP_t;
 
 // addrmap - wdt
+// Watchdog timer configuration, counter, compare, and feed and key registers.
+// A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.
+// Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.
 typedef struct __attribute__ ((__packed__)) {
     wdt__CTRL_t CTRL;
     uint8_t RESERVED_4_7[0x4];

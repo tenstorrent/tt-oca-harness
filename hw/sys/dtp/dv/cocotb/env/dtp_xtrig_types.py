@@ -8,14 +8,14 @@ generated SystemRDL Python headers of the cross-trigger IP,
 ``cross_trigger_port_reg`` under ``hw/ip/cross_trigger/*/regs/gen/py`` (on the
 import path through the DTP sim config ``python_paths``). The port counts are
 the bench configuration's (``dtp_dv_cfg``, which reads them from the network
-map) and are checked against the generated select-field width at import.
+map) and are checked against the generated select-field width at import. The SV-UVM
+twin is the cross-trigger section of ``dtp_types.svh``.
 """
 
 from __future__ import annotations
 
 import re
 from ctypes import Structure
-from dataclasses import dataclass
 from enum import IntEnum
 
 import cross_trigger_matrix_reg as _ctm_reg
@@ -29,6 +29,65 @@ from .dtp_dv_cfg import (
     DTP_WIRE_OR_ASSERT,
     DTP_WIRE_OR_PULL,
 )
+
+__all__ = [
+    "DtpXtrigCsrKind",
+    "XTRIG_CSR_END",
+    "XTRIG_CTM_BASE",
+    "XTRIG_CTM_END",
+    "XTRIG_CTM_SELECT_DEFAULT",
+    "XTRIG_CTM_SELECT_MASK",
+    "XTRIG_CTM_STRIDE",
+    "XTRIG_CTP_BASE",
+    "XTRIG_CTP_CONFIG_DEFAULT",
+    "XTRIG_CTP_CONFIG_INVERT_MASK",
+    "XTRIG_CTP_CONFIG_MASK",
+    "XTRIG_CTP_CONFIG_MODE_MASK",
+    "XTRIG_CTP_CONFIG_OFFSET",
+    "XTRIG_CTP_CONFIG_RESET_MASK",
+    "XTRIG_CTP_MODE_P2P",
+    "XTRIG_CTP_MODE_WIRE_OR",
+    "XTRIG_CTP_REG_SIZE",
+    "XTRIG_CTP_STATUS_ACK_IN",
+    "XTRIG_CTP_STATUS_ACK_OUT",
+    "XTRIG_CTP_STATUS_BUSY",
+    "XTRIG_CTP_STATUS_DEFAULT",
+    "XTRIG_CTP_STATUS_OFFSET",
+    "XTRIG_CTP_STATUS_REQ_IN",
+    "XTRIG_CTP_STATUS_REQ_OUT",
+    "XTRIG_CTP_STRETCH_DEFAULT",
+    "XTRIG_CTP_STRETCH_MASK",
+    "XTRIG_CTP_STRETCH_MULT_OFFSET",
+    "XTRIG_CTP_STRIDE",
+    "XTRIG_CT_DST_LATENCY",
+    "XTRIG_CT_SRC_SIZE",
+    "XTRIG_NUM_CTM_PORTS",
+    "XTRIG_NUM_CTP",
+    "XTRIG_NUM_INT_CT",
+    "XTRIG_UNMAPPED_BASE",
+    "XTRIG_WIRE_OR_ASSERT",
+    "XTRIG_WIRE_OR_PULL",
+    "apply_wstrb",
+    "check_ctm_port",
+    "check_ctp_idx",
+    "ctm_config_addr",
+    "ctm_hole_addr",
+    "ctp_base_addr",
+    "ctp_config_addr",
+    "ctp_hole_addr",
+    "ctp_mask",
+    "ctp_status_addr",
+    "ctp_stretch_addr",
+    "external_ctp_port",
+    "internal_ct_mask",
+    "internal_ct_port",
+    "pack_ctp_config",
+    "project_ctp_mask",
+    "project_internal_mask",
+    "xtrig_csr_decode",
+    "xtrig_csr_default",
+    "xtrig_csr_word",
+]
 
 _RESERVED_FIELD_RE = re.compile(r"^(?:rsvd|reserved)(?:_\d+)?$")
 
@@ -282,75 +341,3 @@ def xtrig_csr_decode(addr: int) -> tuple[DtpXtrigCsrKind, int]:
     if offset == XTRIG_CTP_STRETCH_MULT_OFFSET:
         return DtpXtrigCsrKind.CTP_STRETCH, XTRIG_CTP_STRETCH_MASK
     return DtpXtrigCsrKind.HOLE, 0
-
-
-@dataclass
-class DtpCtpCfg:
-    mode: int = XTRIG_CTP_MODE_WIRE_OR
-    invert: int = 0
-    reset: int = 0
-    stretch_mult: int = 0
-
-    @property
-    def config_word(self) -> int:
-        return pack_ctp_config(mode=self.mode, invert=self.invert, reset=self.reset)
-
-
-class DtpXtrigCtpShadow:
-    """Programmed CONFIG.MODE and CONFIG.INVERT of every external CTP.
-
-    Held by the env cfg, so it outlives a scenario pass: the DUT keeps its CTP
-    configuration from one pass to the next. A system reset or a CONFIG clear
-    returns every CTP to wire-OR, not inverted (the register reset value).
-    """
-
-    def __init__(self) -> None:
-        self.modes = [XTRIG_CTP_MODE_WIRE_OR] * XTRIG_NUM_CTP
-        self.inverts = [0] * XTRIG_NUM_CTP
-
-    def clear(self) -> None:
-        self.modes = [XTRIG_CTP_MODE_WIRE_OR] * XTRIG_NUM_CTP
-        self.inverts = [0] * XTRIG_NUM_CTP
-
-    def note(self, ctp_idx: int, *, mode: int, invert: int) -> None:
-        check_ctp_idx(ctp_idx)
-        self.modes[ctp_idx] = mode
-        self.inverts[ctp_idx] = invert
-
-    @property
-    def p2p_mask(self) -> int:
-        return sum(1 << i for i, mode in enumerate(self.modes) if mode == XTRIG_CTP_MODE_P2P)
-
-    @property
-    def invert_mask(self) -> int:
-        return sum(1 << i for i, inv in enumerate(self.inverts) if inv)
-
-    @property
-    def wire_pull_mask(self) -> int:
-        """Rest level of every CTP's private wire: the pull of the board built for its INVERT."""
-        return sum(XTRIG_WIRE_OR_PULL[inv] << i for i, inv in enumerate(self.inverts))
-
-
-class DtpCtmRefModel:
-    """CTM routing model from the register contract.
-
-    ``CT_SRC[k].CONFIG_0.CT_DST_SELECT`` (cross_trigger_matrix.rdl) holds one
-    bit per CT_Dst input port; the pulses of the selected inputs are OR'd onto
-    CT_Src output ``k``. ``route`` returns the output vector a set of input
-    pulses reaches.
-    """
-
-    def __init__(self) -> None:
-        self.select = [0 for _ in range(XTRIG_NUM_CTM_PORTS)]
-
-    def program(self, output_port: int, input_mask: int) -> None:
-        check_ctm_port(output_port, "CTM output port")
-        self.select[output_port] = input_mask & XTRIG_CTM_SELECT_MASK
-
-    def route(self, input_pulses: int) -> int:
-        input_pulses &= XTRIG_CTM_SELECT_MASK
-        routed = 0
-        for output_port, input_mask in enumerate(self.select):
-            if input_pulses & input_mask:
-                routed |= 1 << output_port
-        return routed & XTRIG_CTM_SELECT_MASK

@@ -42,10 +42,8 @@ class smc_efuse_read_program_timeout_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_efuse_read_program_timeout_test_seq("efuse_tmo_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # Gate on the emitted CHK token names, not on relayed booleans: the four
-        # `*_ok` flags are literal `True` assignments on lines unreachable
-        # unless the real compares already passed, so asserting on them
-        # carries no fail capability of its own ([NO-DUMMY-DEAD-CODE]).
+        # Each token is emitted only after its leg's compares passed, so the
+        # emitted CHK tokens are the record of which legs ran.
         required = (
             "CHK-EFUSE-TMO-PROG",
             "CHK-EFUSE-TMO-PROG-SET",

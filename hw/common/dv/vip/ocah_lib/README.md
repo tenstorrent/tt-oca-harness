@@ -13,7 +13,7 @@ plus a noun.
 
 | Basename | UVM parent | Provides |
 |---|---|---|
-| `ocah_test` | `uvm_test` | seed accessor, knob accessor, loop policy, `run_looped_scenario`, pass banner |
+| `ocah_test` | `uvm_test` | seed accessor, knob accessor, loop policy, `run_looped_scenario`, `run_single_scenario`, `start_seq`, pass banner |
 | `ocah_env` | `uvm_env` | composition base for `<dut>_env` |
 | `ocah_sequence #(REQ)` | `uvm_sequence` | per-pass seed, loop index, seeded pattern helpers, step logging |
 | `ocah_sequencer #(REQ)` | `uvm_sequencer` | base of `<dut>_virtual_sequencer` |
@@ -44,8 +44,9 @@ The two realizations differ only where the language forces it:
 | File-path plusarg guard | `require_file_plusargs(names)`, first statement of the bench base test's `build_phase` | `ocah_require_file_plusargs(names)` from an undelayed `initial` in the bench top, which `` `include ``s `ocah_path_plusargs.svh` |
 | Seed source | `RANDOM_SEED`, read once by `OcahTest.base_seed` | `+ntb_random_seed`, read once by `ocah_test::base_seed` |
 | Per-pass randomness | `OcahSequence.rng(label)`: one `random.Random` per helper, seeded by `OcahRng.salted_seed` | `seed_scenario_rng()` seeds the `body()` process once; helpers draw from `$urandom` |
-| Looped scenario | `run_looped_scenario()` over the same hooks, plus `start_looped_seq(seq_cls, ...)` since a class is a value | `run_looped_scenario()` over `create_scenario_seq()` |
-| Scoreboard verdict | a mismatch or an unpaired item folds into the feature's `CHK-SB-*` record, which fails `check_phase` through `OcahChecker.finalize` | a mismatch or an unpaired item is a `uvm_error` at once |
+| Looped scenario | `run_looped_scenario()` over the same hooks, plus `start_looped_seq(seq_cls, ...)` since a class is a value; `start_seq(seq)` starts one pass, at the runner seed when the sequence has no `scenario_seed` | `run_looped_scenario()` over `create_scenario_seq()`; `run_single_scenario()` runs one pass of it at the runner seed through `start_seq(seq)`, which starts a sequence at the `scenario_seed` its caller set, since an `int unsigned` has no unset value |
+| Scoreboard verdict | a mismatch or an unpaired item folds into the feature's `CHK-SB-*` record, which fails `check_phase` through `OcahChecker.finalize` | the same record; each mismatch, and each lane left holding unpaired items, is also a `uvm_error` |
+| Flush on every lane | `flush_expected(feature)`, `lane=None` | `flush_expected(feature)`, `lane` defaulting to `ocah_scoreboard::AllLanes` (`"*"`), since a `string` cannot be null |
 | Run verdict | an exception escaping a phase; `results.xml`; no banner from test code | `UVM_ERROR`/`UVM_FATAL` counts plus `UVM TEST PASSED` from `report_phase` |
 
 Knob names, feature names, `CHK-SB-*` IDs, the loop-count resolution order,

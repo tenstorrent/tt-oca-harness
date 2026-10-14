@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SRAM data reaches the flash through the Secure DMA and SPI TX FIFO, paced by the TX watermark.
 
+OCAH provenance: ``spi_ot_dma_tx_test`` checks the raw SRAM-to-SPI byte
+stream, DMA done, and no error.
+
 SPI DMA-TX breadth: the TX complement of
 `sep_spi_ot_dma_rx_test` (SPI RX FIFO -> DMA -> SRAM). Here SRAM -> Secure DMA (hardware
 handshake) -> OT SPI host TX FIFO -> flash: the OT SPI TX watermark drives
@@ -30,7 +33,9 @@ Checks:
                     Handshake mode does not raise STATUS.chunk_done (RTL: only when
                     hardware handshake is off); sep_dma_basic_test covers that status.
     CHK-SPI-IDLE  : OT SPI reaches idle, ERROR_STATUS==0.
-    CHK-DMA-TX    : flash read-back == the DMA-fed data (SRAM->DMA->TXFIFO->flash).
+    CHK-DMA-TX    : flash read-back == the DMA-fed data (SRAM->DMA->TXFIFO->flash),
+                    and the device accepted each PAGE PROGRAM (its frame ended on a
+                    byte boundary).
     CHK-NONVAC    : the programmed data differs from the erased 0xFF (data landed).
     CHK-ERR-OVERFLOW : a TXDATA write past STATUS.TXFULL latches exactly
                     ERROR_STATUS.OVERFLOW; CTRL.SW_RST + W1C releases the host and
@@ -68,6 +73,7 @@ import pyuvm
 from cocotb.triggers import FallingEdge, RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_log_error_counter import attach_error_counter
 from env.sep_seeded_rng import SepSeededRng
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
@@ -220,6 +226,9 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             name="sep_spi3_flash",
             verbose=True,
         )
+        # The BFM logs and drops a frame whose handler raised; such an error
+        # fails the leaf.
+        bfm_errors = attach_error_counter(flash.log)
         await flash.start()
         windows: list[_DmaTxWindow] = []
         cocotb.start_soon(self._watch_dma_pacing(dut, windows))
@@ -237,6 +246,10 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             )
             self._golden_check(flash, cfg, cases)
             self._pacing_check(windows, cases)
+            assert not bfm_errors.records, (
+                f"SPI-BFM FAIL: the flash model logged {len(bfm_errors.records)} error(s): "
+                f"{bfm_errors.records[:3]}"
+            )
         finally:
             await flash.stop()
 
@@ -350,6 +363,11 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
                 raise AssertionError(
                     f"SPI DMA-TX breadth golden case[{case.idx}]: missing PP addr=0x{case.addr:06x} "
                     f"data={exp.hex()}"
+                )
+            if not match.get("ok"):
+                raise AssertionError(
+                    f"SPI DMA-TX breadth golden case[{case.idx}]: the flash refused PP "
+                    f"addr=0x{case.addr:06x} reason={match.get('reason')}"
                 )
             mem = flash.read_memory(case.addr, case.nwords * 4)
             if mem != exp:

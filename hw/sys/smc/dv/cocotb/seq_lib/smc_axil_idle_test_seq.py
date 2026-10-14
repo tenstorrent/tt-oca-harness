@@ -37,13 +37,10 @@ class SmcAxilMasterActivitySeq(SmcCsrSeq):
     """Frontdoor traffic leg for the ``tb_axil_*_active`` positive control.
 
     The AXI-Lite agent is SAMPLE-only (``env/smc_env.py``: observability, not a
-    BFM), so the traffic that makes the activity OR read 1 must come from a real
-    bus master. The shared prover
+    BFM), so the traffic that makes the activity OR read 1 comes from the SEP_IN
+    AXI master. The shared prover
     ``smc_diagnostic_vip_utils.prove_axil_any_master_activity`` needs
-    ``SmcCsrSeq.csr_read``, i.e. a sequence running on the SEP_IN AXI
-    sequencer -- this one-line wrapper is what lets an AXI-Lite *observability*
-    sequence (started on the axil sequencer) reuse that helper instead of
-    re-implementing the stimulus (`[REUSE-AND-LAYERING]`).
+    ``SmcCsrSeq.csr_read``, so this sequence runs on the SEP_IN AXI sequencer.
     """
 
     async def body(self) -> None:
@@ -73,15 +70,11 @@ def assert_axil_idle(item: SmcAxilItem) -> str:
     """Exact idle compare on every *backable* activity bit (fail-capable).
 
     Iterates ``AXIL_CHECKABLE_FIELDS``, not ``AXIL_SAMPLE_FIELDS``:
-    ``dtp_csr_active`` has no positive control that can exist in this TB
-    (``tb_top.sv:1119`` ties ``axil_dtp_csr_resp = '0'`` so an access into the
-    DTP CSR window would wedge instead of completing; the DTP CSR port is idle on
-    ``smc_wrapper`` with no TB terminator (``hw/sys/smc/dv/README.md``). Exact-comparing
-    it would be an unbacked negative check forever -- a stuck-at-0, undriven or
-    mis-tied probe passes it identically
-    (`[NEGATIVE-NEEDS-POSITIVE-CONTROL]`). Its sampled value is returned as
-    OBSERVED-ONLY text for the caller's evidence token and must never be
-    presented as checked evidence; the scoreboard books it the same way
+    ``dtp_csr_active`` has no positive control in this TB (``tb_top.sv`` ties
+    ``axil_dtp_csr_resp = '0'``, so an access into the DTP CSR window wedges
+    instead of completing). Its sampled value is returned as OBSERVED-ONLY text
+    for the caller's evidence token and must never be presented as checked
+    evidence; the scoreboard books it the same way
     (``env/smc_probe_liveness.UNBACKABLE_PROBES``).
 
     Returns the OBSERVED-ONLY summary string.

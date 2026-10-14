@@ -12,7 +12,7 @@
 // release (CHK-BSR-SELECT). Mirrors the cocotb
 // dtp_jtag_clamp_release_test_seq.
 
-class dtp_jtag_clamp_release_test_seq extends dtp_jtag_base_test_seq;
+class dtp_jtag_clamp_release_test_seq extends dtp_debug_tdr_base_test_seq;
   `uvm_object_utils(dtp_jtag_clamp_release_test_seq)
 
   function new(string name = "dtp_jtag_clamp_release_test_seq");
@@ -28,7 +28,7 @@ class dtp_jtag_clamp_release_test_seq extends dtp_jtag_base_test_seq;
     seed_scenario_rng();
     attach_family_checker(required);
 
-    // Release without a prior hold must be harmless.
+    log_step("1", "Reset TAP and confirm release is harmless without a prior hold");
     reset_to_tlr();
     load_ir(6'(CLAMP_RELEASE_INSTR));
     read_tmp_status(persistence, bypass_escape);
@@ -36,11 +36,10 @@ class dtp_jtag_clamp_release_test_seq extends dtp_jtag_base_test_seq;
                  "initial release");
 
     directed_patterns(DtpBsrModelLen, patterns);
+    log_step("2", "Loop through hold/release patterns");
     foreach (patterns[p]) begin
-      `uvm_info(
-          get_type_name(), $sformatf(
-          "Iteration %0d/%0d: SAMPLE_PRELOAD pattern=0x%02h", p + 1, patterns.size(), patterns[p]),
-          UVM_LOW)
+      log_iteration(p + 1, patterns.size(), $sformatf("SAMPLE_PRELOAD pattern=0x%02h", patterns[p]
+                    ));
       check_bsr_scan_ctrl(6'(SAMPLE_PRELOAD_INSTR), patterns[p], DtpBsrModelLen);
 
       load_ir(6'(CLAMP_HOLD_INSTR));
@@ -59,13 +58,12 @@ class dtp_jtag_clamp_release_test_seq extends dtp_jtag_base_test_seq;
                    "release clear");
     end
 
-    // Repeated release keeps persistence clear.
+    log_step("3", "Confirm repeated CLAMP_RELEASE keeps persistence clear");
     load_ir(6'(CLAMP_RELEASE_INSTR));
     read_tmp_status(persistence, bypass_escape);
     family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", 64'(persistence), 64'd0,
                  "repeated release");
-    // SAMPLE/PRELOAD after the release selects the chain and loops the
-    // pattern back.
+    log_step("4", "SAMPLE/PRELOAD after the release selects the chain and loops the pattern back");
     check_bsr_scan_ctrl(6'(SAMPLE_PRELOAD_INSTR), patterns[patterns.size()-1], DtpBsrModelLen);
 
     finalize_family_checker();

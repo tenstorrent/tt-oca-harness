@@ -9,20 +9,22 @@
 # explicitly (multiclock on); dtp_jtag2axi_sby_env.sv supplies the reset model, the JTAG-side
 # control shape and the single-beat fact, and dtp_jtag2axi_axi_fv_bind.sv binds the shared AXI
 # checker on the CDC's response side toward the request machine with the responder's rules assumed
-# and the machine's asserted. Two cutpoints keep the target on the control: the
-# shared shift register is free at every step in every task, so an Update-DR can present any
-# request without the 72 shift cycles that loading it through TDI costs; and in the bounded and
-# cover tasks the CDC's response side toward the request machine is free, so a response needs no
-# round trip through the clearable CDC and its post-reset clear handshake. The checker instance on
-# that side constrains it as a responder in every task, which holds for the real CDC too. Every
-# proof over the control logic holds for the real signals because the free ones include every
-# value they can take. The prove task keeps the CDC in the loop: the property-directed engine
-# generalizes over its state, while the free response side makes its clause set outgrow the
-# host's memory, and k-induction cannot close `$past` relations under explicit clocks, since an
-# induction window may hold a single tck edge. The cover depth must exceed the step at which the
-# deepest cov_ label is reached; the bmc depth matches it. The bmc and prove engines keep going past
-# a failed assertion, and the prove engine solves each assertion on its own, so a failure leaves
-# every other assertion its own verdict.
+# and the machine's asserted. Cutpoints keep the target on the control: the shared shift register
+# is free at every step in every task, so an Update-DR can present any request without the 72 shift
+# cycles that loading it through TDI costs; and in the bounded and cover tasks the CDC's response
+# side toward the request machine and its clear-pending flag are free, so a response needs no round
+# trip through the clearable CDC and its post-reset clear handshake, which holds the machine idle
+# while it runs; dtp_jtag2axi_free_resp_sby_env.sv lets that handshake hold the machine for any
+# prefix of the trace and never again. The checker instance on that side constrains it as a
+# responder in every task, which holds for the real CDC too. Every proof over the control logic
+# holds for the real signals because the free ones include every value they can take and the
+# clear-pending flag every shape the CDC gives it. The prove task keeps the CDC in the loop: the
+# property-directed engine generalizes over its state, while the free response side makes its
+# clause set outgrow the host's memory, and k-induction cannot close `$past` relations under
+# explicit clocks, since an induction window may hold a single tck edge. The cover depth must
+# exceed the step at which the deepest cov_ label is reached; the bmc depth matches it. The bmc and
+# prove engines keep going past a failed assertion, and the prove engine solves each assertion on
+# its own, so a failure leaves every other assertion its own verdict.
 
 [tasks]
 j2a_ctrl_bmc    j2a_ctrl bmc free_resp
@@ -45,9 +47,11 @@ prove: abc --keep-going pdr
 
 [script]
 plugin -i slang
-j2a_ctrl: read_slang -D FORMAL --top jtag2axi -G ADDR_WIDTH=32 -G DATA_WIDTH=32 -G ID_WIDTH=1 -G USER_WIDTH=1 -G FIFO_DEPTH=3 --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_jtag2axi_ctrl_props.sv dtp_jtag2axi_ctrl_bind.sv dtp_jtag2axi_axi_fv_bind.sv dtp_jtag2axi_sby_env.sv
+free_resp: read_slang -D FORMAL --top jtag2axi -G ADDR_WIDTH=32 -G DATA_WIDTH=32 -G ID_WIDTH=1 -G USER_WIDTH=1 -G FIFO_DEPTH=3 --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_jtag2axi_ctrl_props.sv dtp_jtag2axi_ctrl_bind.sv dtp_jtag2axi_axi_fv_bind.sv dtp_jtag2axi_sby_env.sv dtp_jtag2axi_free_resp_sby_env.sv
+prove:     read_slang -D FORMAL --top jtag2axi -G ADDR_WIDTH=32 -G DATA_WIDTH=32 -G ID_WIDTH=1 -G USER_WIDTH=1 -G FIFO_DEPTH=3 --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_jtag2axi_ctrl_props.sv dtp_jtag2axi_ctrl_bind.sv dtp_jtag2axi_axi_fv_bind.sv dtp_jtag2axi_sby_env.sv
 cutpoint jtag2axi/w:shift_register_q_tclk
 free_resp: cutpoint jtag2axi/w:src_resp
+free_resp: cutpoint jtag2axi/w:src_clear_pending_tclk
 prep -top jtag2axi
 
 [files]
@@ -56,3 +60,4 @@ dtp_jtag2axi_sby_env.sv
 j2a_ctrl: ../../props/dtp_jtag2axi_ctrl_props.sv
 j2a_ctrl: ../../props/dtp_jtag2axi_ctrl_bind.sv
 j2a_ctrl: ../../props/dtp_jtag2axi_axi_fv_bind.sv
+free_resp: dtp_jtag2axi_free_resp_sby_env.sv

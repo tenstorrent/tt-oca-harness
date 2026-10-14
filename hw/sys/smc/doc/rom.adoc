@@ -57,7 +57,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-cpu[SMC CPU]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-cpu[SMC CPU]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-cpu[SMC CPU]
 endif::backend-pdf[]
 bring-up section of the Programmer's Guide gives the linker layout and the
 initialization it requires.
@@ -75,6 +75,6 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
 endif::backend-pdf[]
 of the Programmer's Guide.

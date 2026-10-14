@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Two ways an I2C controller transaction ends that no leaf had produced.
+"""A read that continues past its last byte, and a NACK left unhandled.
 
-Every controller leaf in the package queues a transfer that runs to the STOP
-it was given, and clears a NACK as soon as it sees one. Two other endings:
+Two endings of an I2C controller transaction:
 
 * **A read that continues.** When the last byte of a read carries no STOP, the
   controller goes back to the format FIFO for the next entry instead of
@@ -12,8 +11,7 @@ it was given, and clears a NACK as soon as it sees one. Two other endings:
 * **A NACK left unhandled.** `i2c.rdl` describes `HOST_NACK_HANDLER_TIMEOUT`
   as the limit on how long software may leave the controller halted on an
   unexpected NACK; past it the controller raises
-  `CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT` as well. Leaves so far clear a
-  NACK as soon as they see it, so the timeout had never run out.
+  `CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT` as well.
 
 The last leg is also where `CONTROLLER_EVENTS` is checked as a register rather
 than as a flag. Its fields clear on a written one, so two writes that must

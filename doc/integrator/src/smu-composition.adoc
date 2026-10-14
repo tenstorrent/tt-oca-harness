@@ -95,6 +95,13 @@ the SMC outbound master (`smc_out`), and the external SMU AXI input
 SMC inbound subordinates, and the external SMU AXI output
 (`ext_out` / `smu_axi_out`).
 
+The SMU instantiates `smu_axi_xbar` only when `CFG.SEP` is 1. When `CFG.SEP`
+is 0, AXI ID-width converters connect the SMC system AXI ports to
+`smu_axi_in` / `smu_axi_out` instead: every SMC-initiated transaction leaves
+through `smu_axi_out`, every `smu_axi_in` transaction targets the SMC, and the
+aperture rules below do not apply. The `smu_axi_in` / `smu_axi_out` port types
+are the same in both configurations.
+
 ifdef::backend-html5[]
 Connectivity is described in
 xref:ocah-docs:ROOT:architecture.adoc#smu-axi-crossbar[SMU AXI Crossbar];
@@ -1001,6 +1008,7 @@ depends on `CFG.SEP`.
 |===
 |Module/Signal |Implementation |Description
 
+|SMU AXI fabric |`smu_axi_xbar` when `CFG.SEP=1`, else `u_iw_conv_smc_out` / `u_iw_conv_smc_in` between the SMC system AXI ports and `smu_axi_out` / `smu_axi_in` |System-level AXI routing between SEP, SMC and the SMU boundary
 |SMC SEP AXI Input |`sep_axi_in_req_i` = SEP traffic when `CFG.SEP=1`, else `'0` |Dedicated SEP-to-SMC subordinate path
 |DTP SEP OTP JTAG |SEP `axil_sep_otp_jtag_*` when `CFG.SEP=1`, else `u_sep_otp_axil_err_slv` |SEP OTP debug AXI-Lite path
 |DTP SEP STAP return |SEP `jtag_tdo_o` when `CFG.SEP=1`, else `sep_stap_tdo_to_dtp = 1'b0` |SEP JTAG STAP return path

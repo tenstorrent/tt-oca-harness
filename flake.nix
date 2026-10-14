@@ -79,9 +79,14 @@
 
     dockerContainers = lib.forAllSystems (
       system: let
-        # Build the image with the native toolchain but always target x86_64-linux contents.
+        # Build the image with the native toolchain, targeting Linux contents for the
+        # host's CPU: arm64 hosts, Apple silicon included, run aarch64-linux natively.
         nativePkgs = lib.pkgsFor system;
-        pkgs = lib.pkgsFor "x86_64-linux";
+        pkgs = lib.pkgsFor (
+          if lib.hasPrefix "aarch64-" system
+          then "aarch64-linux"
+          else "x86_64-linux"
+        );
       in {
         without_uv_deps =
           nativePkgs.dockerTools.buildLayeredImage

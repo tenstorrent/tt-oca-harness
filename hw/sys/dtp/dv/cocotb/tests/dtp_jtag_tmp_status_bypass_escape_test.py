@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP TMP_STATUS BYPASS_ESCAPE test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_jtag_tmp_status_bypass_escape_test_seq import (
@@ -11,7 +13,7 @@ from seq_lib.dtp_jtag_tmp_status_bypass_escape_test_seq import (
 
 @pyuvm.test()
 class dtp_jtag_tmp_status_bypass_escape_test(dtp_base_test):
-    """Run the DTP VPLAN TMP BYPASS_ESCAPE scenario."""
+    """BYPASS_ESCAPE then BYPASS forces the TMP FSM out of persistence."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

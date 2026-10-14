@@ -28,12 +28,14 @@ class dtp_dbg_jtag_caps_test_seq extends dtp_debug_tdr_base_test_seq;
     seed_scenario_rng();
     attach_family_checker(required);
 
+    log_step("1", "Reset TAP and read JTAG_CAPS");
     reset_to_tlr();
     read_caps_tdr(6'(JTAG_CAPS_INSTR), JtagCapsLen, value);
     `uvm_info(get_type_name(), $sformatf("JTAG_CAPS raw=0x%015h", value), UVM_LOW)
     family_check("CHK-CAPS", "JTAG_CAPS", value, expected, "packed value");
 
     // Every decoded field ("JTAG Capabilities" table, PTAP document).
+    log_step("2", "Verify every decoded JTAG_CAPS field");
     check_caps_field(value, expected, "num_xtrig_int_ct", 54, 6);
     check_caps_field(value, expected, "num_xtrig_ctp", 48, 6);
     check_caps_field(value, expected, "num_extra_staps", 44, 4);
@@ -54,10 +56,12 @@ class dtp_dbg_jtag_caps_test_seq extends dtp_debug_tdr_base_test_seq;
     check_caps_field(value, expected, "bsr_en", 8, 1);
     check_caps_field(value, expected, "och_ver", 0, 8);
 
+    log_step("3", "Check multiple reads are stable");
     check_caps_multi_read(6'(JTAG_CAPS_INSTR), JtagCapsLen, value, "JTAG_CAPS");
+    log_step("4", "Check read-only behavior with directed and random patterns");
     check_caps_read_only_patterns(6'(JTAG_CAPS_INSTR), JtagCapsLen, value, "JTAG_CAPS");
 
-    // Instruction switches must not disturb the capability value.
+    log_step("5", "Switch through other instructions and read JTAG_CAPS again");
     load_ir(6'(IDCODE_INSTR));
     read_caps_tdr(6'(JTAG_CAPS_INSTR), JtagCapsLen, reread);
     family_check("CHK-CAPS", "JTAG_CAPS after IDCODE", reread, value);

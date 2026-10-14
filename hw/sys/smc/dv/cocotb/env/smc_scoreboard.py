@@ -89,7 +89,7 @@ class SmcScoreboard(uvm_subscriber):
         self._pending_idle_legs: list[tuple[str, str, int, int, str]] = []
         # probe -> how many idle legs were skipped because no control can exist.
         self._unbackable_idle_legs: dict[str, int] = {}
-        # TB-local golden only — never a DUT hierarchy backdoor (U1-3).
+        # TB-local golden store, updated and compared from OKAY fabric traffic.
         self.memory_model: SmcMemoryModel | None = None
         try:
             cfg = ConfigDB().get(self, "", "cfg")
@@ -184,13 +184,9 @@ class SmcScoreboard(uvm_subscriber):
                 count,
                 UNBACKABLE_PROBES[probe],
             )
-        # A probe that is neither credited nor declared unbackable leaves this
-        # testcase's idle legs uncompared. There are two legitimate outcomes for
-        # an idle leg -- it is checked against a same-run control, or the probe
-        # is declared unbackable -- and silently dropping the compare is not a
-        # third one. A `tb_top.sv` assign orphaned by an RTL rename reaches this
-        # branch, and reporting it at `info` would remove checks from the
-        # regression while it stays green.
+        # A probe neither credited nor declared unbackable leaves its idle legs
+        # uncompared, which is an error; a `tb_top.sv` assign orphaned by an RTL
+        # rename reaches this branch.
         if unbacked:
             detail = "; ".join(
                 f"{probe}: {count} leg(s) sampled, {probe_evidence(probe)}"
@@ -551,7 +547,7 @@ class SmcScoreboard(uvm_subscriber):
         # evidence.
         #
         # (a) The three OR-reduction aggregates (tb_gpio_*_any). tb_top.sv
-        #     :1375-1377 ORs the WHOLE pad bus, which also carries idle-high LSIO
+        #     ORs the WHOLE pad bus, which also carries idle-high LSIO
         #     pads (UART TX) and default-enabled pad inputs, so all three read 1
         #     from reset onward and NO frontdoor stimulus can drive any of them to
         #     0. A net tied to constant 1 is therefore indistinguishable from the
@@ -598,10 +594,9 @@ class SmcScoreboard(uvm_subscriber):
                 f"{label} expected {SmcGpioItem.fmt_vec(exp)}, got "
                 f"{SmcGpioItem.fmt_vec(got)} ({item})"
             )
-            # Do not book a pending idle leg: the compare already ran. A
-            # check_phase raise for "compares did not happen" would be a false
-            # diagnostic on a passing vector check, which is worse than leaving
-            # the line OBSERVED-ONLY until prove_gpio_pad_bus_probe credits it.
+            # The compare already ran, so the leg is not queued as pending; the
+            # liveness credit only decides whether the kept log presents it as
+            # checked or OBSERVED-ONLY.
             if probe_alive(probe):
                 self.idle_legs_checked += 1
                 checked.append(field)
@@ -742,7 +737,7 @@ class SmcScoreboard(uvm_subscriber):
         self._check_sys_axi_memory_model(item)
 
     def _check_sys_axi_memory_model(self, item: SmcSysAxiItem) -> None:
-        """U1-3: update/compare TB-local SmcMemoryModel on OKAY fabric traffic."""
+        """Update or compare the TB-local SmcMemoryModel on OKAY fabric traffic."""
         if self.memory_model is None:
             return
         if item.update_golden:
@@ -872,7 +867,6 @@ class SmcScoreboard(uvm_subscriber):
                 f"protocol VIP {item.scenario}: timeouts ({item.timeouts}) exceed "
                 f"csr_accesses ({item.csr_accesses})"
             )
-        # U6-3: optional byte-level golden — mismatch fails the test.
         if item.expected_bytes is not None:
             obs = item.observed_bytes if item.observed_bytes is not None else b""
             assert obs == item.expected_bytes, (

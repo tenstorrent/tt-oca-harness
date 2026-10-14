@@ -93,6 +93,8 @@ in {
       gnumake
       bender-patched
       verilator
+      # cocotb's Verilator runner invokes the verilator script through `perl`
+      perl
       sv-lang
       gcc
       ccache
@@ -105,7 +107,9 @@ in {
       markdownlint-cli
       vale
       # Synthesis
-      pdk-ciel
+      ciel
+      # ciel builds
+      magic-vlsi
       yosys
       # Formal DV
       sby

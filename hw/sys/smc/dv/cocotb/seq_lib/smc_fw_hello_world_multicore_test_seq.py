@@ -37,9 +37,9 @@ class smc_fw_hello_world_multicore_test_seq(smc_fw_image_boot_seq):
     """Boot the four-hart image, then read the hart markers back."""
 
     tag = "MULTICORE"
-    # PASS landed 22 us after release in the reference run, i.e. ~43 polls at a
-    # 5 ns clk_smc_i; 500 leaves >10x headroom for the lock init and the three
-    # atomic check-ins across the cluster boundary.
+    # The image reaches PASS ~22 us after release (~43 polls at a 5 ns
+    # clk_smc_i): the lock init and the three atomic check-ins across the
+    # cluster boundary. 500 leaves >10x headroom.
     poll_iterations = 500
 
     def __init__(self, name: str = "smc_fw_hello_world_multicore_test_seq") -> None:

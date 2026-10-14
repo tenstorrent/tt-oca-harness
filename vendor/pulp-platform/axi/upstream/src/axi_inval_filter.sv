@@ -39,7 +39,7 @@ module axi_inval_filter #(
 
   // Includes
   `include "axi/typedef.svh"
-  `include "common_cells/registers.svh"
+  `include "ocah_registers.svh"
 
   // AW FIFO
   logic     aw_fifo_full, aw_fifo_empty;

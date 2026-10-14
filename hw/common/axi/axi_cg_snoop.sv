@@ -59,14 +59,15 @@ module axi_cg_snoop #(
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   ////////////////////////////////////////////////////////////////////////////////
   // Parameter Validation
   ////////////////////////////////////////////////////////////////////////////////
 
-  `OCAH_OT_ASSERT_INIT(ValidOutstandingTx_A, OUTSTANDING_TX >= 1)
-  `OCAH_OT_ASSERT_INIT(ValidDenyDelay_A, DENY_DELAY >= 1)
-  `OCAH_OT_ASSERT_INIT(ValidHystWidth_A, HYST_WIDTH >= 1 && HYST_WIDTH <= 32)
+  `OCAH_ASSERT_STATIC(ValidOutstandingTx_A, OUTSTANDING_TX >= 1)
+  `OCAH_ASSERT_STATIC(ValidDenyDelay_A, DENY_DELAY >= 1)
+  `OCAH_ASSERT_STATIC(ValidHystWidth_A, HYST_WIDTH >= 1 && HYST_WIDTH <= 32)
 
   ////////////////////////////////////////////////////////////////////////////////
   // Internal Signals

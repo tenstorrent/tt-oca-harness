@@ -15,7 +15,7 @@
 //   * IC_RESET[6:0]: reset_hold plus one {enable, control} pair per
 //     default slice in EXT, SEP, SMC order;
 //   * JTAG_CAPS[59:0] / *_JTAG2AXI_CAPS[13:0]: read-only capability TDRs
-//     compared against the bench's declared DTP configuration (dtp_types);
+//     compared against the bench's DTP configuration (dtp_dv_cfg_pkg);
 //   * pin observables through dtp_tb_if (stop_clks, cla_clock_stop_en,
 //     boot-stall pair, flattened IC_RESET slices) with a bounded poll
 //     (stop_clks is a clk_i register, so clock-stop checks poll until it
@@ -64,19 +64,9 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     super.new(name);
   endfunction
 
-  // --- generic TDR access (one reusable operation each) ---------------------
-  task read_tdr64(input bit [IrWidth-1:0] instr, input int unsigned width,
-                  output bit [63:0] observed, input bit [63:0] shift_value = '0);
-    read_tdr(instr, width, observed, shift_value);
-  endtask
-
-  task write_tdr64(input bit [IrWidth-1:0] instr, input int unsigned width, input bit [63:0] value);
-    write_tdr(instr, width, value);
-  endtask
-
-  // --- TMP_STATUS (read helper lives in the command library) --------------
+  // --- TMP_STATUS (read_tmp_status is in dtp_jtag_base_test_seq) ----------
   task write_tmp_status(bit [1:0] value);
-    write_tdr64(6'(TMP_STATUS_INSTR), TmpStatusLen, 64'(value));
+    write_tdr(6'(TMP_STATUS_INSTR), TmpStatusLen, 64'(value));
   endtask
 
   // Read TMP_STATUS once and record both bits (CHK-TMP-PERSIST,
@@ -109,7 +99,7 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   endfunction
 
   task read_debug_control(output bit [63:0] observed, input bit [63:0] shift_value = '0);
-    read_tdr64(6'(DEBUG_CONTROL_INSTR), DebugControlLen, observed, shift_value);
+    read_tdr(6'(DEBUG_CONTROL_INSTR), DebugControlLen, observed, shift_value);
     `uvm_info(
         get_type_name(),
         $sformatf(
@@ -120,7 +110,7 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   endtask
 
   task write_debug_control(bit [63:0] value);
-    write_tdr64(6'(DEBUG_CONTROL_INSTR), DebugControlLen, value);
+    write_tdr(6'(DEBUG_CONTROL_INSTR), DebugControlLen, value);
   endtask
 
   // Compare one decoded DEBUG_CONTROL bit through the family recorder.
@@ -143,7 +133,7 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   endfunction
 
   task read_ic_reset(output bit [63:0] observed, input bit [63:0] shift_value = '0);
-    read_tdr64(6'(IC_RESET_INSTR), IcResetLen, observed, shift_value);
+    read_tdr(6'(IC_RESET_INSTR), IcResetLen, observed, shift_value);
     `uvm_info(get_type_name(), $sformatf("IC_RESET raw=0b%07b reset_hold=%0d", observed,
                                          observed[0]), UVM_MEDIUM)
   endtask
@@ -151,33 +141,34 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   task write_ic_reset(input bit reset_hold, input bit [IcResetPorts-1:0] reset_enable,
                       input bit [IcResetPorts-1:0] reset_control, output bit [63:0] packed_value);
     packed_value = pack_ic_reset(reset_hold, reset_enable, reset_control);
-    write_tdr64(6'(IC_RESET_INSTR), IcResetLen, packed_value);
+    write_tdr(6'(IC_RESET_INSTR), IcResetLen, packed_value);
   endtask
 
   // --- CAPS TDRs ---------------------------------------------------------------
-  // Expected JTAG_CAPS of the DTP configuration the bench instantiates
-  // (dtp_types bench-configuration constants), packed per the "JTAG
-  // Capabilities" table of the PTAP document: every instruction family
-  // enabled, one IC_RESET slice per port.
+  // Expected JTAG_CAPS of the DTP configuration the bench instantiates (the
+  // dtp_dv_cfg_pkg enables, counts and version tb_top elaborates the DUT
+  // with), packed per the "JTAG Capabilities" table of the PTAP document.
+  // IC_RST_INST_EN is set when any port has an IC_RESET slice.
   static function bit [63:0] expected_jtag_caps();
+    bit ic_reset_en = (DtpNumSmcIcReset + DtpNumSepIcReset + DtpNumExtIcReset) > 0;
     return (64'(DtpXtrigNumIntCt) << 54)  // num_xtrig_int_ct
     | (64'(DtpXtrigNumCtp) << 48)  // num_xtrig_ctp
     | (64'(DtpNumExtraStaps) << 44)  // num_xtra_stap
-    | (64'd1 << 43)  // stap_io_en
-    | (64'd1 << 42)  // sep_dbg_en
-    | (64'd1 << 41)  // smc_dbg_en
+    | (64'(dtp_dv_cfg_pkg::StapIoEnable) << 43)  // stap_io_en
+    | (64'(dtp_dv_cfg_pkg::SepDbgEnable != 0) << 42)  // sep_dbg_en
+    | (64'(dtp_dv_cfg_pkg::SmcDbgEnable) << 41)  // smc_dbg_en
     | (64'(DtpNumSmcIcReset) << 33)  // num_smc_ic_rst
     | (64'(DtpNumSepIcReset) << 25)  // num_sep_ic_rst
     | (64'(DtpNumExtIcReset) << 17)  // num_ext_ic_rst
-    | (64'd1 << 16)  // IC_RST_INST_EN
-    | (64'd1 << 15)  // TMP_INST_EN
-    | (64'd1 << 14)  // RUNBIST_INST_EN
-    | (64'd1 << 13)  // HIGHZ_INST_EN
-    | (64'd1 << 12)  // CLAMP_INST_EN
-    | (64'd1 << 11)  // INTEST_INST_EN
-    | (64'd1 << 10)  // EXTEST_PULSE_EN
-    | (64'd1 << 9)  // EXTEST_TRAIN_EN
-    | (64'd1 << 8)  // BSR_INST_EN
+    | (64'(ic_reset_en) << 16)  // IC_RST_INST_EN
+    | (64'(dtp_dv_cfg_pkg::TmpEnable) << 15)  // TMP_INST_EN
+    | (64'(dtp_dv_cfg_pkg::RunbistEnable) << 14)  // RUNBIST_INST_EN
+    | (64'(dtp_dv_cfg_pkg::HighzEnable) << 13)  // HIGHZ_INST_EN
+    | (64'(dtp_dv_cfg_pkg::ClampEnable) << 12)  // CLAMP_INST_EN
+    | (64'(dtp_dv_cfg_pkg::IntestEnable) << 11)  // INTEST_INST_EN
+    | (64'(dtp_dv_cfg_pkg::ExtestPulseEnable) << 10)  // EXTEST_PULSE_EN
+    | (64'(dtp_dv_cfg_pkg::ExtestTrainEnable) << 9)  // EXTEST_TRAIN_EN
+    | (64'(dtp_dv_cfg_pkg::BsrEnable) << 8)  // BSR_INST_EN
     | 64'(DtpOchVer);  // och_ver
   endfunction
 
@@ -194,7 +185,7 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
 
   task read_caps_tdr(input bit [IrWidth-1:0] instr, input int unsigned width,
                      output bit [63:0] observed);
-    read_tdr64(instr, width, observed);
+    read_tdr(instr, width, observed);
   endtask
 
   // Repeated CAPS reads must return one stable value.
@@ -225,14 +216,9 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     for (int unsigned r = 0; r < random_count; r++)
       patterns.push_back({$urandom, $urandom} & bit_mask(width));
     foreach (patterns[idx]) begin
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: %s write-attempt pattern=0x%0h",
-                idx + 1,
-                patterns.size(),
-                label,
-                patterns[idx]
-                ), UVM_LOW)
-      write_tdr64(instr, width, patterns[idx]);
+      log_iteration(idx + 1, patterns.size(), $sformatf(
+                    "%s write-attempt pattern=0x%0h", label, patterns[idx]));
+      write_tdr(instr, width, patterns[idx]);
       read_caps_tdr(instr, width, observed);
       family_check("CHK-CAPS-RO", {label, " read-only"}, observed, expected, $sformatf(
                    "pattern=0x%0h", patterns[idx]));

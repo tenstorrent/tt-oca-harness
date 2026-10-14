@@ -5,7 +5,8 @@
 == SMC coordination
 
 SEP reaches SMC resources through its outbound AXI path at
-`SEP_SMC_GLOBAL_BASE`, `0x4000_0000`. The offsets and status bits in
+`SEP_SMC_GLOBAL_BASE`, `0x4000_0000`. The offsets in `include/sep_smc_map.h`,
+taken from the generated SMC map, and the status bits in
 `include/sep_smc_interface.h` form the SEP side of the interface contract.
 They are SEP-visible offsets and must not be replaced with SMC-local absolute
 addresses.

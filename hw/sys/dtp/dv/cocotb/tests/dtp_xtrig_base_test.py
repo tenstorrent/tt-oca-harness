@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Base of the cross-trigger tests: CSR readbacks are required, and no JTAG feature."""
 
+from __future__ import annotations
+
 from dtp_base_test import dtp_base_test
 from env.dtp_types import DTP_FEATURE_XTRIG_CSR
 

@@ -1,39 +1,42 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// DTP sanity scenario sequence, carrying the full DTP_VPLAN.adoc section 0.1
-// semantics on the shared ocah_jtag_vip agent:
-//   * deterministic 32-edge TAP FSM closure walk (16 states x tms in {0,1});
-//     the env's dtp_tap_fsm_checker model-checks every TCK cycle, and the
-//     test asserts full closure via check_fsm_closure() once this pass's
-//     sequence completes (CHK-TAP-VISIT-ALL). Randomized TMS walks and
-//     targeted goto_random_state() hops (VIP shortest-path navigation,
-//     landing state checked against the DUT one-hot observable) run IN
-//     ADDITION as stress stimulus, not as the closure mechanism, so
-//     pass/fail is seed-independent;
-//   * BYPASS (6-bit IR 0x00) loaded once and decoded as itself, then its
-//     1-TCK TDI-to-TDO latency over fixed + random patterns (checked here
-//     from the DR_SCAN item responses);
-//   * clean scan-path returns to Run-Test/Idle, final Test-Logic-Reset via
-//     five consecutive TMS=1 cycles;
-//   * named TAP-contract evidence through env.m_jtag_checker:
-//     reset-to-TLR, TLR-selects-IDCODE, IDCODE value/stability/marker, and
-//     reconstructed scan lengths. +DTP_JTAG_TAP_CHECKER_NEGATIVE is the
-//     documented negative-validation hook: it arms a WRONG
-//     expected IDCODE so the run must FAIL, proving the named-evidence path
-//     rejects a bad expectation end to end;
-//   * the goto landings (CHK-TAP-GOTO) and the BYPASS decode (CHK-IR-DECODE)
-//     on the per-pass family checker, whose expectations
-//     +DTP_JTAG_FAMILY_CHECKER_NEGATIVE corrupts.
+// DTP sanity scenario sequence, carrying the DTP_VPLAN.adoc section 0.1
+// procedure on the shared ocah_jtag_vip agent, in the steps the cocotb twin
+// (seq_lib/dtp_sanity_test_seq.py) logs:
+//   1. power-on and system reset, every debug disable held fail-closed (the
+//      random walks shift random TDI into whatever instruction they load),
+//      TAP reset;
+//   2. a deterministic walk over all 32 legal TAP transitions; the env's
+//      dtp_tap_fsm_checker model-checks every TCK cycle, and the test
+//      asserts full closure via check_fsm_closure() once this pass's
+//      sequence completes (CHK-TAP-VISIT-ALL);
+//   3. the reset-and-idle, DR, IR and pause legs in a seeded order, every
+//      raw TMS step judged against the state it must land in
+//      (CHK-TAP-STATE);
+//   4. BYPASS (6-bit IR 0x00) loaded and decoded as itself, then its 1-TCK
+//      TDI-to-TDO latency over fixed and random patterns;
+//   5. Test-Logic-Reset selects IDCODE, and IDCODE reads across IR churn
+//      are stable with the marker bit set (env.m_jtag_checker).
+//      +DTP_JTAG_TAP_CHECKER_NEGATIVE arms a wrong expected IDCODE so the
+//      run must fail;
+//   6. navigation to all sixteen states in a seeded order, then
+//      test_cfg.rand_walks hops to seeded states, each landing judged
+//      (CHK-TAP-GOTO) and followed by a 1..8-step raw TMS walk with random
+//      TDI;
+//   7. Test-Logic-Reset through five TMS-high cycles.
+// The goto landings, the directed steps and the BYPASS decode
+// (CHK-IR-DECODE) land on the per-pass family checker, whose expectations
+// +DTP_JTAG_FAMILY_CHECKER_NEGATIVE corrupts.
 
 class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
   `uvm_object_utils(dtp_sanity_test_seq)
 
-  // Seeded random walks per pass come from test_cfg.rand_walks
-  // (+DTP_RAND_WALKS, default 16: the suite-wide minimum-iteration floor).
-  localparam int unsigned RandWalkSteps = 64;
-  localparam int unsigned GotoHops = 16;
+  // Longest raw TMS walk after a navigation landing.
+  localparam int unsigned MaxWalkSteps = 8;
 
+  // Seeded goto hops per pass, each followed by a raw TMS walk
+  // (+DTP_RAND_WALKS through test_cfg.rand_walks).
   protected function int unsigned rand_walks();
     return test_cfg.rand_walks;
   endfunction
@@ -73,50 +76,111 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     check_state(TEST_LOGIC_RESET, "sanity_fsm_visit_chk", "after deterministic walk");
   endtask
 
-  // Randomized raw-TMS stress walks (reproducible via +ntb_random_seed;
-  // every choice logged, every step model-checked by the env checker).
-  task run_random_walks();
-    int unsigned walks = rand_walks();
-    for (int unsigned w = 0; w < walks; w++) begin
-      bit [RandWalkSteps-1:0] tms_bits, tdi_bits;
-      bit tms[], tdi[];
-      if (!std::randomize(tms_bits, tdi_bits))
-        `uvm_fatal(get_type_name(), "randomize() failed for TMS stress walk")
-      `uvm_info(get_type_name(), $sformatf(
-                "random TMS stress walk %0d/%0d: tms=0x%016h tdi=0x%016h",
-                w + 1,
-                walks,
-                tms_bits,
-                tdi_bits
-                ), UVM_LOW)
-      tms = new[RandWalkSteps];
-      tdi = new[RandWalkSteps];
-      for (int unsigned i = 0; i < RandWalkSteps; i++) begin
-        tms[i] = tms_bits[i];
-        tdi[i] = tdi_bits[i];
-      end
-      raw_walk(tms, tdi);
-      goto_tlr_via_tms();
+  // Directed legs (cocotb check_reset_and_idle, check_dr_path,
+  // check_ir_path, check_pause_paths): every raw TMS step judged against
+  // the state it must land in.
+  task check_reset_and_idle();
+    reset_to_tlr();
+    repeat (3) tms_expect(1'b0, RUN_TEST_IDLE);
+    tms_expect(1'b1, SELECT_DR_SCAN);
+    tms_expect(1'b1, SELECT_IR_SCAN);
+    tms_expect(1'b1, TEST_LOGIC_RESET);
+    tms_expect(1'b0, RUN_TEST_IDLE);
+  endtask
+
+  task check_dr_path();
+    goto_state(OCAH_JTAG_RUN_TEST_IDLE);
+    tms_expect(1'b1, SELECT_DR_SCAN);
+    tms_expect(1'b0, CAPTURE_DR);
+    tms_expect(1'b0, SHIFT_DR);
+    repeat (3) tms_expect(1'b0, SHIFT_DR);
+    tms_expect(1'b1, EXIT1_DR);
+    tms_expect(1'b1, UPDATE_DR);
+    tms_expect(1'b0, RUN_TEST_IDLE);
+  endtask
+
+  task check_ir_path();
+    goto_state(OCAH_JTAG_RUN_TEST_IDLE);
+    tms_expect(1'b1, SELECT_DR_SCAN);
+    tms_expect(1'b1, SELECT_IR_SCAN);
+    tms_expect(1'b0, CAPTURE_IR);
+    tms_expect(1'b0, SHIFT_IR);
+    repeat (3) tms_expect(1'b0, SHIFT_IR);
+    tms_expect(1'b1, EXIT1_IR);
+    tms_expect(1'b1, UPDATE_IR);
+    tms_expect(1'b0, RUN_TEST_IDLE);
+  endtask
+
+  task check_pause_paths();
+    goto_state(OCAH_JTAG_RUN_TEST_IDLE);
+    tms_expect(1'b1, SELECT_DR_SCAN);
+    tms_expect(1'b0, CAPTURE_DR);
+    tms_expect(1'b0, SHIFT_DR);
+    tms_expect(1'b1, EXIT1_DR);
+    tms_expect(1'b0, PAUSE_DR);
+    repeat (2) tms_expect(1'b0, PAUSE_DR);
+    tms_expect(1'b1, EXIT2_DR);
+    tms_expect(1'b0, SHIFT_DR);
+    tms_expect(1'b1, EXIT1_DR);
+    tms_expect(1'b1, UPDATE_DR);
+    tms_expect(1'b0, RUN_TEST_IDLE);
+    goto_state(OCAH_JTAG_RUN_TEST_IDLE);
+    tms_expect(1'b1, SELECT_DR_SCAN);
+    tms_expect(1'b1, SELECT_IR_SCAN);
+    tms_expect(1'b0, CAPTURE_IR);
+    tms_expect(1'b0, SHIFT_IR);
+    tms_expect(1'b1, EXIT1_IR);
+    tms_expect(1'b0, PAUSE_IR);
+    repeat (2) tms_expect(1'b0, PAUSE_IR);
+    tms_expect(1'b1, EXIT2_IR);
+    tms_expect(1'b0, SHIFT_IR);
+    tms_expect(1'b1, EXIT1_IR);
+    tms_expect(1'b1, UPDATE_IR);
+    tms_expect(1'b0, RUN_TEST_IDLE);
+  endtask
+
+  // The four directed legs in a seeded order.
+  task run_directed_legs();
+    int unsigned legs[$] = {0, 1, 2, 3};
+    legs.shuffle();
+    foreach (legs[i]) begin
+      case (legs[i])
+        0: check_reset_and_idle();
+        1: check_dr_path();
+        2: check_ir_path();
+        default: check_pause_paths();
+      endcase
     end
   endtask
 
-  // CHK-TAP-GOTO: targeted navigation through the VIP's shortest-TMS-path
-  // planner. Each hop picks a random target state, navigates there via
-  // goto_random_state(), and compares the DUT's one-hot TAP state
-  // observable against the target (every intermediate TCK step is also
-  // model-checked by the env's dtp_tap_fsm_checker).
-  task run_goto_state_hops();
-    ocah_jtag_tap_state_e reached;
-    for (int unsigned h = 0; h < GotoHops; h++) begin
-      goto_random_state(reached);
-      `uvm_info(get_type_name(), $sformatf(
-                "goto hop %0d/%0d: target=%s", h + 1, GotoHops, reached.name()), UVM_LOW)
-      family_check("CHK-TAP-GOTO", "TAP state after goto", 64'(tb_vif.tap_state),
-                   64'(16'h1 << int'(reached)), $sformatf(
-                   "hop=%0d/%0d target=%s", h + 1, GotoHops, reached.name()));
-      check_state(dtp_tap_state_e'(16'h1 << int'(reached)), "sanity_goto_state_chk", $sformatf(
-                  "after goto hop %0d/%0d", h + 1, GotoHops));
+  // CHK-TAP-GOTO: navigate to `target` through the VIP's shortest-TMS-path
+  // planner and compare the DUT's one-hot TAP state with it, then walk
+  // 1..MaxWalkSteps seeded raw TMS steps with random TDI.
+  task goto_and_walk(ocah_jtag_tap_state_e target, string context_s);
+    int unsigned steps = $urandom_range(MaxWalkSteps, 1);
+    bit tms[] = new[steps];
+    bit tdi[] = new[steps];
+    goto_state(target);
+    family_check("CHK-TAP-GOTO", "TAP state after goto", 64'(tb_vif.tap_state),
+                 64'(16'h1 << int'(target)), $sformatf("target=%s %s", target.name(), context_s));
+    foreach (tms[i]) begin
+      tms[i] = $urandom_range(1);
+      tdi[i] = $urandom_range(1);
     end
+    raw_walk(tms, tdi);
+  endtask
+
+  // Every TAP state once in a seeded order, then rand_walks() hops to
+  // seeded states (cocotb check_random_state_navigation).
+  task run_random_state_navigation();
+    ocah_jtag_tap_state_e states[$];
+    for (int unsigned s = 0; s < 16; s++) states.push_back(ocah_jtag_tap_state_e'(s));
+    states.shuffle();
+    foreach (states[i])
+      goto_and_walk(states[i], $sformatf("shuffled %0d/%0d", i + 1, states.size()));
+    for (int unsigned h = 1; h <= rand_walks(); h++)
+      goto_and_walk(ocah_jtag_tap_state_e'($urandom_range(15)), $sformatf(
+                    "walk %0d/%0d", h, rand_walks()));
   endtask
 
   // TLR must select the device-identification register: a DR scan right
@@ -187,29 +251,28 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     seed_scenario_rng();
     // The raw TMS walks visit Shift-x outside the scans this sequence
     // issues, so the family checker skips the scan-count cross-check.
-    attach_family_checker('{"CHK-TAP-GOTO", "CHK-IR-DECODE"}, 1'b0);
+    attach_family_checker('{"CHK-TAP-GOTO", "CHK-TAP-STATE", "CHK-IR-DECODE"}, 1'b0);
     `uvm_info(get_type_name(),
-              $sformatf({"DTP SV-UVM sanity (VPLAN 0.1): FSM 32-edge closure + BYPASS 1-TCK ",
-                         "latency + IDCODE + scan path; scenario_seed=%0d rand_walks=%0dx%0d steps"
-                          }, scenario_seed, rand_walks(), RandWalkSteps), UVM_LOW)
+              $sformatf("DTP SV-UVM sanity (VPLAN 0.1): scenario_seed=%0d rand_walks=%0d",
+                        scenario_seed, rand_walks()), UVM_LOW)
 
-    // Power-on/system reset sequencing, then TAP reset (VPLAN 0.1 step 1).
+    log_step("1", "Power-on and system reset, fail-closed debug disables, TAP reset");
     sys_reset();
-    // The random TMS/TDI stress loads arbitrary instructions and shifts
-    // arbitrary data registers; with the lifecycle disables cleared a
-    // JTAG2AXI bridge would launch garbage bus requests. This scenario
-    // proves the TAP alone, so it holds every debug disable at the
-    // fail-closed vector (the bridge scenarios enable what they exercise).
-    // The vector settles through the TCK-domain synchronizers during the
-    // TAP reset and the deterministic walk, well before the stress walks.
+    // With the lifecycle disables cleared a JTAG2AXI bridge would launch
+    // the garbage requests the random walks shift in. The vector settles
+    // through the TCK-domain synchronizers during the TAP reset and the
+    // deterministic walk, well before the random walks.
     tb_vif.drive_dbg_disable('1);
     tap_reset();
 
-    // sanity_fsm_visit_chk: deterministic 32-edge closure walk.
+    log_step("2", "Fixed TMS walk over all 32 legal TAP transitions");
     run_deterministic_walk();
 
-    // sanity_bypass_latency_chk: BYPASS via 6-bit IR 0x00, fixed + random patterns.
-    step(1'b0);  // TLR -> RTI
+    log_step("3", "Directed TAP paths: reset and idle, DR, IR, pause legs");
+    run_directed_legs();
+
+    log_step("4", "BYPASS (IR 0x00) one-TCK TDI-to-TDO delay");
+    goto_state(OCAH_JTAG_RUN_TEST_IDLE);
     load_ir(BYPASS_ALT_INSTR);
     expect_decoded_instruction(BYPASS_ALT_INSTR);
     bypass_patterns.push_back(64'hA5A5_5A5A_C3C3_3C3C);
@@ -220,6 +283,8 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     end
     foreach (bypass_patterns[p]) begin
       bit [63:0] observed, expected;
+      log_iteration(p + 1, bypass_patterns.size(), $sformatf(
+                    "BYPASS pattern=0x%016h", bypass_patterns[p]));
       check_bypass_latency(bypass_patterns[p], 64, observed);
       // A scan that returned the 1-TCK-delayed image, where that image
       // differs from a direct passthrough, shows the DUT delayed TDI.
@@ -227,18 +292,15 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
       if ((observed === expected) && (expected !== bypass_patterns[p])) delayed_observations++;
     end
 
-    // CHK-TAP-TLR-IDCODE / CHK-IDCODE-*: identification-register contracts.
+    log_step("5", "Test-Logic-Reset selects IDCODE; IDCODE reads are stable");
     run_idcode_checks();
 
-    // Randomized raw-TMS stress on top of the deterministic closure.
-    run_random_walks();
+    log_step("6", "Randomized TAP state navigation and walks with random TDI");
+    run_random_state_navigation();
 
-    // CHK-TAP-GOTO: targeted shortest-path navigation hops.
-    run_goto_state_hops();
-
-    // sanity_scan_path_chk epilogue: TLR via five TMS=1 cycles. Full
-    // FSM closure of this pass is asserted by the test via
+    // Full FSM closure of this pass is asserted by the test via
     // env.m_fsm_checker after this sequence returns.
+    log_step("7", "Test-Logic-Reset on five TMS-high cycles");
     goto_tlr_via_tms();
 
     if (evidence != null)

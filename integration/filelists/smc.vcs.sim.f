@@ -4,6 +4,7 @@
 +incdir+hw/common/dv/vip/ocah_lib/uvm
 +incdir+hw/common/assert
 +incdir+hw/common/defs
++incdir+hw/common/registers
 +incdir+hw/ip/efuse/rtl/svh
 +incdir+hw/ip/i3ccore_wrap/rtl
 +incdir+hw/sys/smc/rtl/smc_cpu
@@ -248,6 +249,8 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_inv.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_mux2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_en.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_no_rst.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_inv.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
@@ -606,6 +609,7 @@ hw/ip/uart/uart_log_engine_wrap/rtl/uart_log_engine_wrap.sv
 hw/ip/uart/uart_wrap/rtl/uart_wrap.sv
 hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_reg.sv
 hw/ip/zeroer/rtl/zeroer.sv
+hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
 hw/sys/smc/regs/gen/sv/blocks/chip_config_reg.sv
 hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg.sv
 hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg.sv
@@ -916,7 +920,6 @@ hw/sys/smc/rtl/smc_misc/rtl/smc_dfx_ctrl_status_wrap.sv
 hw/sys/smc/rtl/smc_misc/rtl/smc_misc_wrap.sv
 hw/sys/smc/rtl/smc_misc/rtl/smc_version_id_wrap.sv
 hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_wrapper.sv
-hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
 hw/sys/smc/rtl/smc_peripherals/rtl/smc_padring.sv
 hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv
 hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals_cdc.sv

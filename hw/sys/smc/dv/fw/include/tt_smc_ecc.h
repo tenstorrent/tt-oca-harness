@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-// Define constants for initialization and interrupt done values
+// Scratch-register handshake values exchanged with the testbench.
 #define get_seed 0x12345678
 #define sram_start 0xdeadbeef
 #define sram_doublebit 0x56127834
@@ -25,7 +25,6 @@ void beu_interrupt_handler(int id, void *priv_data) {
 
     struct metal_buserror *local_buserrorunit = (struct metal_buserror *)priv_data;
 
-    // Confirm that a load/store error caused this interrupt
     metal_buserror_event_t cause = metal_buserror_get_cause(local_buserrorunit);
     if (cause == METAL_BUSERROR_EVENT_DATA_CORRECTABLE_ECC_ERROR) {
         write_scratch(0, dcache_singlebit_done); // to sync with coco_tb

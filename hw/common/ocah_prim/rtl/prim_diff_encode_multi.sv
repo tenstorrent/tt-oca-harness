@@ -17,7 +17,7 @@ module prim_diff_encode_multi #(
   output logic [2*WIDTH-1:0] data_o  // Packed {diff_n[W-1:0], diff_p[W-1:0]}.
 );
 
-  `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   if (OUTPUT_FLOP) begin : gen_output_flop
     for (genvar i = 0; i < WIDTH; i++) begin : gen_enc
@@ -54,6 +54,6 @@ module prim_diff_encode_multi #(
     assign data_o = {diff_n_buf, diff_p_buf};
   end
 
-  `OCAH_OT_ASSERT_INIT(WidthPositive_A, WIDTH > 0)
+  `OCAH_ASSERT_STATIC(WidthPositive_A, WIDTH > 0)
 
 endmodule : prim_diff_encode_multi

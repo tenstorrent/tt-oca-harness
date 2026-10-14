@@ -1285,7 +1285,7 @@ ifdef::backend-html5[]
 xref:ocah-integrator-guide:ROOT:defines.adoc#sep-defines-km[Key manager defines in the Integrator Guide].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/defines.html#sep-defines-km[Key manager defines in the Integrator Guide].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-integrator-guide/latest/defines.html#sep-defines-km[Key manager defines in the Integrator Guide].
 endif::backend-pdf[]
 
 [[km-rom-stack-budget]]
@@ -1365,7 +1365,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:ip:key_manager/doc/index.adoc#rom-warm-persist-region[ROM warm persist region]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/key_manager/doc/index.html#rom-warm-persist-region[ROM warm persist region]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/key_manager/doc/index.html#rom-warm-persist-region[ROM warm persist region]
 endif::backend-pdf[]
 in the Technical Reference Manual). A warm boot leaves it intact.
 . Initialize the KPV scrambler, enable it, and lock it.
@@ -1403,7 +1403,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:ip:key_manager/doc/index.adoc#kpv-scrambling[KPV scrambling]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/key_manager/doc/index.html#kpv-scrambling[KPV scrambling]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/ip/key_manager/doc/index.html#kpv-scrambling[KPV scrambling]
 endif::backend-pdf[]
 section of the Technical Reference Manual and the SRAM scrambler reference.
 

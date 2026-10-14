@@ -37,6 +37,10 @@ System Management Network (SMN), AXI-over-UCIe bridge (AoU), Debug & Test Ports
 This guide outlines how to get started with OCA Harness, including the use of the repository,
 licensing and guidelines for effective contribution.
 
+Published releases follow semantic versioning.
+A tag is `vMAJOR.MINOR.PATCH`: a patch such as `v0.5.1` stays compatible with `v0.5.0`, a minor release adds functionality, and a major release can break compatibility.
+See xref:contribution.adoc#versioning[Versioning].
+
 == Repository structure
 
 The OCAH repository is organised as below

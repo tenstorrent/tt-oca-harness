@@ -10,6 +10,7 @@
 // first clock edge at which sw_rst_req_ni is high.
 
 `include "ocah_assert.svh"
+`include "ocah_registers.svh"
 
 module sep_isolate_rst_seq (
   input  logic clk_i,                         // System clock.
@@ -59,23 +60,11 @@ module sep_isolate_rst_seq (
   assign isolate_req_o = (state_q != ST_RUN);  // Isolation requested when not in normal operation
   assign gated_rst_d   = (state_d == ST_RESET);  // Domain reset asserted when in reset state
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (~rst_ni) begin
-      state_q <= ST_RESET;
-    end else begin
-      state_q <= state_d;
-    end
-  end
+  `OCAH_FF(state_q, state_d, ST_RESET, clk_i, rst_ni)
 
   // Flopped so the domain reset only makes clean, clock-aligned transitions.
   // Reset value 0 = domain reset asserted while rst_ni is asserted.
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (~rst_ni) begin
-      gated_rst_n_q <= 1'b0;
-    end else begin
-      gated_rst_n_q <= ~gated_rst_d;
-    end
-  end
+  `OCAH_FF(gated_rst_n_q, ~gated_rst_d, 1'b0, clk_i, rst_ni)
 
   assign gated_rst_no = gated_rst_n_q;
 

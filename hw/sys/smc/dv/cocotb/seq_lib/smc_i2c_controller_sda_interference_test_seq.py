@@ -20,17 +20,12 @@ What is asserted, and what is not
 ---------------------------------
 Each injection asserts the two things that are measurable at the point of the
 event: `INTR_STATE.SDA_INTERFERENCE` is raised, and the controller returns to
-idle. Recovery is **not** asserted. After an interference event on this DUT
-the next transaction from the same controller is answered with a NACK
-(`CONTROLLER_EVENTS` reads 1) even when, measured immediately beforehand, the
-controller's own events read 0 and it reports idle, the interrupted
-transaction has been ended with a STOP that the target acknowledges by
-reporting itself idle, the target has been taken through disable and a full
-re-enable, and the bus reads released. The identical transaction succeeds as
-the opening control immediately before the injection, so the difference is the
-event itself. Rather than encode an expectation around behaviour that is not
-understood, both instances are taken through a hard reset between injections
-and no claim is made about the transaction that follows an event.
+idle. After an interference event this DUT answers the next transaction from
+the same controller with a NACK (`CONTROLLER_EVENTS` reads 1), even once the
+controller reads idle with its events cleared, the interrupted transaction has
+ended with a STOP, the target has been through disable and re-enable, and the
+bus reads released. Both instances are therefore hard reset between
+injections, and the transaction after an event carries no claim.
 
 The opening clean transaction of each instance is the positive control: it
 shows the controller and target pair works at all, so an injection that

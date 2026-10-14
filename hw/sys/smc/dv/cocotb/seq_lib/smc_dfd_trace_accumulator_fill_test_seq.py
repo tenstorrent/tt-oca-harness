@@ -79,8 +79,7 @@ _DST_FORMAT_NONE = 0
 # clk_smc_i cycles between a configuration write and the first status read, and
 # the number of reads a configuration gets before it counts as not having
 # accumulated. Both observed registers are hardware-driven and continuously
-# rewritten, so these are bounded polls on DUT-driven state rather than delays
-# standing in for a handshake.
+# rewritten, so each read is a fresh sample and the poll count bounds the wait.
 _SETTLE_CYCLES = 32
 _EMPTY_POLLS = 3
 _HANDOFF_POLLS = 32

@@ -17,32 +17,27 @@
 
 #define SMU_SEP_DV_CLA_ARM_TOKEN 0x02200100u
 
-/* Scratch register allocation. These indices ALIAS; recorded because the
- * aliasing is not obvious from the names and the TB relies on it.
+/* Scratch register allocation. These indices alias, and the testbench relies
+ * on the aliasing.
  *
- *   0  TEST_STATUS_SCRATCH -- the pass/fail verdict. monitor_test() polls it
+ *   0  TEST_STATUS_SCRATCH -- the pass/fail verdict. The testbench polls it
  *      against TEST_PASS / TEST_FAIL / TEST_ROM_PASS, so anything else written
  *      here can decide the run's outcome. Never use it for data.
- *   1  FW status. The TB logs every change as "FW Status:" and, with
- *      +PRINT_POST_CODES, runs it through decode_post_code().
- *   2  ERROR_STATUS_REG *and* the virtual-console byte stream. virt_console()
- *      in smc_utils.py decodes every write here as up to three ASCII
- *      characters, so raising an error corrupts the console transcript and
- *      writing console text overwrites the error status.
+ *   1  FW status. The testbench may read it as a POST code.
+ *   2  ERROR_STATUS_REG *and* the virtual-console byte stream. The testbench
+ *      decodes every write here as up to three ASCII characters, so raising an
+ *      error corrupts the console transcript and writing console text
+ *      overwrites the error status.
  *   3  ERROR_COUNT_REG *and* SEED_REG -- the same index, below.
  *
  * ERROR_COUNT_REG and SEED_REG are both 3, so raise_error()'s count write at
  * the bottom of this file lands on the register the seed was delivered in, and
- * get_seed() reads whatever was written last. The TB owns that register too:
- * smc_api.py programs SCRATCH[3] with the ROM seed and reads it back, and
- * smc_ecc_api.py and st_octs_p2_sync_recovery.py both sample it.
+ * get_seed() reads whatever was written last. The testbench owns that register
+ * too: it delivers the seed in SCRATCH[3] and reads it back.
  *
- * Not repaired here on purpose: every index 0..15 is already written by some
- * firmware test, so moving ERROR_COUNT_REG only relocates the collision, and
- * the seed's index is fixed by the TB contract rather than by this header.
- * Resolving it means either reallocating the whole map or widening it, which
- * is an owner decision across all of dv/fw/tests. Until then, a test that
- * both raises errors and reads the seed cannot trust either value.
+ * A test that both raises errors and reads the seed cannot trust either
+ * value: every index 0..15 is written by some firmware test, and the seed's
+ * index is fixed by the TB contract.
  */
 #define ERROR_STATUS_REG 2
 #define ERROR_COUNT_REG 3

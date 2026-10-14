@@ -31,10 +31,6 @@ def _normalize_token(token: str) -> str:
     tok = str(token).strip()
     if tok.startswith("EVIDENCE:"):
         tok = tok.split(":", 1)[1].strip()
-    if tok.startswith("CHK-") and tok != "CHK-NONVAC":
-        # Allow callers to pass CHK-* ; strip to TOKEN form when it looks like
-        # CHK-<TOKEN> with underscores already.
-        pass
     return tok
 
 
@@ -85,7 +81,6 @@ class SmuScoreboard(uvm_component):
         self.logger.info("EVIDENCE: %s", token)
         # Alias without a space: log consumers also grep EVIDENCE:<TOKEN>
         self.logger.info("EVIDENCE:%s", token)
-        # Also emit CHK-<TOKEN> alias when TOKEN is not already a CHK-* id
         if token != "CHK-NONVAC" and not token.startswith("CHK-"):
             self.logger.info("EVIDENCE:CHK-%s", token)
             self.logger.info("EVIDENCE: CHK-%s", token)

@@ -33,19 +33,10 @@ class smc_efuse_locked_access_interrupt_test(smc_base_test):
         seq = smc_efuse_locked_access_interrupt_test_seq("efuse_lock_irq_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
 
-        # The fail-capable proof lives in the sequence: the interrupt edge counts
-        # are exact, the LOCKS readbacks before and after the write lock are
-        # compared by the scoreboard against expectations stated before each
-        # access, and the read-locked read is held to non-disclosure of the fuse
-        # content rather than to a substituted word. None of that is restated
-        # here.
-        #
-        # What this gate adds is a quantity the sequence does not produce: the
-        # number of exact rdata compares the SCOREBOARD booked on its own
+        # The number of exact rdata compares the scoreboard booked on its own
         # analysis path. The scoreboard increments it only after `got == exp`
-        # passed, so a leg that silently lost its `expected=`, or an analysis
-        # port that came unbound, drops the delta below the floor and fails here
-        # while every sequence-side assert still passes.
+        # passed, so a leg that lost its `expected=`, or an analysis port that
+        # came unbound, drops the delta below the floor.
         _EXPECTED_VALUE_CHECKS = 2  # LOCKS_PRE (asset word) + LOCKS_WR (asset word | write lock)
         measured = sb.sys_axi_value_checks_seen - before
         assert measured >= _EXPECTED_VALUE_CHECKS, (

@@ -37,6 +37,17 @@
 //                skipped on the observed side too, so the pairing cannot
 //                slide out of step.
 //
+//   regblock_wide every catalogued single-beat read or write is paired with
+//                its predicted response, including accesses that return errors.
+//                Reads also compare the complete predicted 64-bit value;
+//                only OKAY writes update the reference model's shadow.
+//
+//   wdt_csr      sequential single-beat writes and aligned 32-bit reads of
+//                watchdog words compare responses without filtering errors.
+//                CTRL (IP masked), KEY and CMP also compare predicted data.
+//                Only OKAY writes update the model; other writers and reset
+//                with outstanding watchdog accesses are outside its contract.
+//
 // Accesses outside those windows carry no data contract here and are skipped
 // on the observed side. The cocotb twin is env/smc_scoreboard.py (its SysAxi
 // expected-value checks).
@@ -51,6 +62,11 @@
 `uvm_analysis_imp_decl(_smc_mutex_expected)
 `uvm_analysis_imp_decl(_smc_spm_observed)
 `uvm_analysis_imp_decl(_smc_spm_expected)
+`uvm_analysis_imp_decl(_smc_regblock_wide_observed)
+`uvm_analysis_imp_decl(_smc_regblock_wide_expected)
+
+`uvm_analysis_imp_decl(_smc_wdt_csr_observed)
+`uvm_analysis_imp_decl(_smc_wdt_csr_expected)
 
 class smc_scoreboard extends ocah_scoreboard;
   `uvm_component_utils(smc_scoreboard)
@@ -69,6 +85,12 @@ class smc_scoreboard extends ocah_scoreboard;
   uvm_analysis_imp_smc_mutex_expected #(ocah_axi_item, smc_scoreboard) mutex_expected_export;
   uvm_analysis_imp_smc_spm_observed #(ocah_axi_item, smc_scoreboard) spm_observed_export;
   uvm_analysis_imp_smc_spm_expected #(ocah_axi_item, smc_scoreboard) spm_expected_export;
+  uvm_analysis_imp_smc_regblock_wide_observed #(ocah_axi_item, smc_scoreboard)
+      regblock_wide_observed_export;
+  uvm_analysis_imp_smc_regblock_wide_expected #(ocah_axi_item, smc_scoreboard)
+      regblock_wide_expected_export;
+  uvm_analysis_imp_smc_wdt_csr_observed #(ocah_axi_item, smc_scoreboard) wdt_csr_observed_export;
+  uvm_analysis_imp_smc_wdt_csr_expected #(ocah_axi_item, smc_scoreboard) wdt_csr_expected_export;
 
   function new(string name = "smc_scoreboard", uvm_component parent = null);
     super.new(name, parent);
@@ -89,11 +111,17 @@ class smc_scoreboard extends ocah_scoreboard;
     mutex_expected_export = new("mutex_expected_export", this);
     spm_observed_export = new("spm_observed_export", this);
     spm_expected_export = new("spm_expected_export", this);
+    regblock_wide_observed_export = new("regblock_wide_observed_export", this);
+    regblock_wide_expected_export = new("regblock_wide_expected_export", this);
+    wdt_csr_observed_export = new("wdt_csr_observed_export", this);
+    wdt_csr_expected_export = new("wdt_csr_expected_export", this);
     add_feature(SmcFeatureScratchCsr);
     add_feature(SmcFeatureDefaultReg);
     add_feature(SmcFeatureLockCsr);
     add_feature(SmcFeatureMutexSema);
     add_feature(SmcFeatureSpmMem);
+    add_feature(SmcFeatureRegblockWide);
+    add_feature(SmcFeatureWdtCsr);
     foreach (cfg.required_features[i]) require_feature(cfg.required_features[i]);
   endfunction
 
@@ -114,10 +142,8 @@ class smc_scoreboard extends ocah_scoreboard;
 
   // default_reg: only the catalogued registers that carry a default
   // contract; a decode-only entry is skipped on both sides. The scratch
-  // registers appear in this catalogue as well as in the scratch windows, so
-  // a read of one is judged independently by both features -- two models
-  // reaching the same expectation from different state, not one claim
-  // counted twice.
+  // registers are in this catalogue as well as in the scratch windows, so a
+  // read of one is judged by both features.
   function void write_smc_default_reg_observed(ocah_axi_item t);
     smc_default_reg_entry_t entry;
     if (t.direction != OCAH_AXI_DIR_READ || !smc_is_default_reg_access(t, entry)) return;
@@ -165,20 +191,83 @@ class smc_scoreboard extends ocah_scoreboard;
     push_expected(SmcFeatureSpmMem, t);
   endfunction
 
-  // One pair: same register, then the CSR lanes of both beats. Both features
-  // are 32-bit CSR reads on the 64-bit bus, so they share the rule and differ
-  // only in how the context names the register.
+  function void write_smc_regblock_wide_observed(ocah_axi_item t);
+    smc_regblock_wide_entry_t entry;
+    int unsigned index;
+    bit enabled = 1'b0;
+    foreach (cfg.required_features[i]) begin
+      if (cfg.required_features[i] == SmcFeatureRegblockWide) enabled = 1'b1;
+    end
+    if (!enabled || !smc_is_regblock_wide_access(t, entry, index)) return;
+    push_observed(SmcFeatureRegblockWide, t);
+  endfunction
+
+  function void write_smc_regblock_wide_expected(ocah_axi_item t);
+    push_expected(SmcFeatureRegblockWide, t);
+  endfunction
+
+  function void write_smc_wdt_csr_observed(ocah_axi_item t);
+    int unsigned core, offset;
+    bit enabled = 1'b0;
+    foreach (cfg.required_features[i]) begin
+      if (cfg.required_features[i] == SmcFeatureWdtCsr) enabled = 1'b1;
+    end
+    if (enabled && smc_is_wdt_csr_access(t, core, offset)) push_observed(SmcFeatureWdtCsr, t);
+  endfunction
+
+  function void write_smc_wdt_csr_expected(ocah_axi_item t);
+    push_expected(SmcFeatureWdtCsr, t);
+  endfunction
+
+  protected function void compare_wdt_csr_pair(ocah_axi_item obs, ocah_axi_item exp);
+    int unsigned core, offset;
+    string direction_label = obs.direction == OCAH_AXI_DIR_READ ? "read" : "write";
+    bit passed = obs.direction == exp.direction &&
+                 smc_csr_word_addr(obs.address) === exp.address &&
+                 obs.resp_list.size() == 1 && exp.resp_list.size() == 1 &&
+                 !obs.timed_out && !obs.any_resp_xz();
+    bit [31:0] mask;
+    void'(smc_is_wdt_csr_access(obs, core, offset));
+    mask = smc_wdt_csr_mask(offset);
+    if (passed) passed = obs.resp_list[0] == exp.resp_list[0];
+    if (passed && obs.direction == OCAH_AXI_DIR_READ && mask != 0)
+      passed = (smc_csr_from_bus(
+          obs.address, obs.first_xz_mask()
+      ) & mask) == 0 && (smc_csr_from_bus(
+          obs.address, obs.first_data()
+      ) & mask) === (smc_csr_from_bus(
+          exp.address, exp.first_data()
+      ) & mask);
+    record_compare(
+        SmcFeatureWdtCsr, passed, $sformatf(
+        "addr=0x%0h data=0x%0h resp=%s", exp.address, exp.first_data(), exp.worst_resp().name()),
+        $sformatf(
+        "addr=0x%0h data=0x%0h resp=%s", obs.address, obs.first_data(), obs.worst_resp().name()),
+        $sformatf("WDT%0d offset=0x%0h %s", core, offset, direction_label));
+  endfunction
+
+  // The CSR features compare 32-bit register lanes within each 64-bit beat.
+  // SPM and wide register-block features compare complete 64-bit beats.
   virtual function void compare_pair(string feature, uvm_object observed, uvm_object expected);
     ocah_axi_item obs, exp;
     bit [63:0] word_addr;
     if (feature != SmcFeatureScratchCsr && feature != SmcFeatureDefaultReg &&
         feature != SmcFeatureLockCsr && feature != SmcFeatureMutexSema &&
-        feature != SmcFeatureSpmMem)
+        feature != SmcFeatureSpmMem && feature != SmcFeatureRegblockWide &&
+        feature != SmcFeatureWdtCsr)
       `uvm_fatal(get_type_name(), $sformatf("no compare for feature `%s`", feature))
     if (!$cast(obs, observed) || !$cast(exp, expected))
       `uvm_fatal(get_type_name(), {feature, " pair is not a pair of ocah_axi_item"})
+    if (feature == SmcFeatureWdtCsr) begin
+      compare_wdt_csr_pair(obs, exp);
+      return;
+    end
     if (feature == SmcFeatureSpmMem) begin
       compare_mem_pair(obs, exp);
+      return;
+    end
+    if (feature == SmcFeatureRegblockWide) begin
+      compare_regblock_wide_pair(obs, exp);
       return;
     end
     word_addr = smc_csr_word_addr(obs.address);
@@ -234,6 +323,24 @@ class smc_scoreboard extends ocah_scoreboard;
       return;
     end
     void'(compare_equal(SmcFeatureSpmMem, obs.first_data(), exp.first_data(), context_s));
+  endfunction
+
+  protected function void compare_regblock_wide_pair(ocah_axi_item obs, ocah_axi_item exp);
+    string access_kind = obs.direction == OCAH_AXI_DIR_READ ? "read" : "write";
+    bit passed = obs.direction == exp.direction && obs.address === exp.address &&
+                 obs.size == exp.size && obs.expected_beats == 1 && exp.expected_beats == 1 &&
+                 obs.data_words.size() == 1 && exp.data_words.size() == 1 &&
+                 obs.resp_list.size() == 1 && exp.resp_list.size() == 1 &&
+                 !obs.timed_out && !obs.any_resp_xz();
+    if (passed && obs.resp_list[0] != exp.resp_list[0]) passed = 1'b0;
+    if (passed && obs.direction == OCAH_AXI_DIR_READ && obs.data_words[0] !== exp.data_words[0])
+      passed = 1'b0;
+    record_compare(
+        SmcFeatureRegblockWide, passed, $sformatf(
+        "addr=0x%0h data=0x%016h resp=%s", exp.address, exp.first_data(), exp.worst_resp().name()),
+        $sformatf(
+        "addr=0x%0h data=0x%016h resp=%s", obs.address, obs.first_data(), obs.worst_resp().name()),
+        {"wide register-block ", access_kind});
   endfunction
 
   // Register identity for the evidence line: the scratch domain, or the

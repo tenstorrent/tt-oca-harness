@@ -438,7 +438,7 @@ class WorkerMainTest(ManifestCase):
             "fingerprint": "c670ed085301",
             "simv": elsewhere / "simv",
             "vcs_cfg": {},
-            "top": "dtp_uvm_top",
+            "top": flow.raw["build"]["top_module"],
             "elab_args": [],
             "coverage_args": [],
         }

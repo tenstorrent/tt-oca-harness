@@ -144,7 +144,7 @@ segment, which falls outside fast mem.)
 
 `simputs()` / `simputshex*()` (`lib/src/virt_console.c`) do not touch a UART.
 They pack ASCII or hex into a 32-bit word and write it to **cpu_ctrl
-`SCRATCH[2]`** (`0xC0039090` = `SMC_SCRATCH_BASE_ADDR 0xC0039080` + `2 * 8`),
+`SCRATCH[2]`** (`0xC0039090` = `SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(2)` in `smc_addr.h`),
 leaving a testbench to decode it. POST codes go the same way to `SCRATCH[1]`
 (`0xC0039088`).
 

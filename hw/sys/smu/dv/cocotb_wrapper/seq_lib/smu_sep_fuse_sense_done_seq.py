@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_sep_fuse_sense_done_test (SMU_109).
+"""Sequence for smu_sep_fuse_sense_done_test.
 
 SMU-FUSE-SENSE.S2 on the SEP=1 wrapper, with the run mode leaving
 +skip_fuse_sense unset so the SEP eFuse bank model supplies the sensed data.

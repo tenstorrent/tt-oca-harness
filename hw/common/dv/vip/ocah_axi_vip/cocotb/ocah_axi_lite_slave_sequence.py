@@ -81,9 +81,11 @@ class OcahAxiLiteSlaveSequence:
             lines.append(f"{addr + off:08x}: " + " ".join(f"{byte:02x}" for byte in chunk))
         return "\n".join(lines)
 
-    def inject_error(self, addr: int, resp: int, *, read: bool = True, write: bool = True) -> None:
-        """Program a one-shot non-OKAY response at ``addr``."""
-        self.driver.inject_error(addr, resp, read=read, write=write)
+    def inject_error(
+        self, addr: int, resp: int, *, read: bool = True, write: bool = True, rdata: int = 0
+    ) -> None:
+        """Program a one-shot non-OKAY response at ``addr``; the errored read beat answers ``rdata``."""
+        self.driver.inject_error(addr, resp, read=read, write=write, rdata=rdata)
 
     def clear_errors(self) -> None:
         """Clear all programmed one-shot response errors."""
@@ -96,6 +98,10 @@ class OcahAxiLiteSlaveSequence:
     def disable_backpressure(self) -> None:
         """Clear all READY stall generators."""
         self.driver.disable_backpressure()
+
+    def arm_w_before_aw(self) -> None:
+        """Arm a one-shot W-before-AW order: the next write's first W beat is accepted while its AW waits."""
+        self.driver.arm_w_before_aw()
 
     def get_statistics(self) -> dict[str, int]:
         """Return wrapper-level static statistics."""

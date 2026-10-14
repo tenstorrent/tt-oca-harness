@@ -8,7 +8,7 @@ controller did not ask for, and `i2c.rdl` gives each its own flag in
 
 * **Arbitration lost.** "A controller has lost arbitration, causing a READ" to
   end: the target releases SDA to send a one and finds it low, so another
-  device is driving the bus. `i2c_core.sv:623` detects it as the target
+  device is driving the bus. `i2c_core.sv` detects it as the target
   transmitting while the line it released reads low with SCL high, and the
   target then refuses the rest of the transaction.
 * **Bus timeout.** The target "has halted due a Bus Timeout terminating a

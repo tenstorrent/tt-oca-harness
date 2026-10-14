@@ -81,6 +81,7 @@ def write_run(
     cov_status: str = "PASS",
     design_db: bool = True,
     fingerprint: str = "fp-cocotb",
+    dirty: str = "false",
 ) -> Path:
     run_dir = root / "runs" / name
     (run_dir / "cov" / "merged.vdb").mkdir(parents=True)
@@ -120,7 +121,7 @@ def write_run(
             "tool_version": "vcs X",
             "status": "PASS",
             "tests": {"completed": completed, "leaves_run": 3, "leaves_planned": 3},
-            "git": {"commit": commit, "branch": "HEAD", "dirty": "false"},
+            "git": {"commit": commit, "branch": "HEAD", "dirty": dirty},
         },
     )
     return run_dir
@@ -184,6 +185,20 @@ class PlanCombine(unittest.TestCase):
                     plan_combine(self.root, self.flow, None, dirs)
         with self.assertRaisesRegex(ConfigError, "does not match the runs' tool"):
             plan_combine(self.root, self.flow, "xcelium", [Path("runs/a"), Path("runs/b")])
+
+    def test_inputs_not_recorded_clean_are_named(self):
+        write_run(self.root, "a", framework="cocotb")
+        write_run(self.root, "b", framework="uvm", dirty="true")
+        write_run(self.root, "c", framework="uvm", dirty="unknown")
+        plan = plan_combine(self.root, self.flow, None, [Path(f"runs/{n}") for n in "abc"])
+        self.assertEqual([run.dirty for run in plan.runs], [False, True, None])
+        self.assertEqual(
+            plan.tree_warnings(self.root),
+            [
+                "runs/b was recorded on a dirty tree",
+                "runs/c did not record whether its tree was clean",
+            ],
+        )
 
 
 class RunsFromAnotherCheckout(unittest.TestCase):

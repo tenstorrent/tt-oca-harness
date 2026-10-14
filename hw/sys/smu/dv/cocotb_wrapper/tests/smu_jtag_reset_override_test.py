@@ -22,14 +22,16 @@ Real checkers:
   - EXT control=1 staged with enable=0 drives ctrl_n=1 while ovrd stays 1
   - SMC cold_reset port override updates hierarchical SMC slice
   - Clearing TDR restores ovrd=0
-  - Every managed-subsystem cold and warm port and every SEP port but the Key
-    Manager's, in the same two-update order: control staged, override applied,
-    control released under the override, then cleared; the Key Manager port's
-    control is staged and released unapplied. After each update the SMC and
-    SEP slices are read whole: each is a packed struct whose .ovrd half sits
-    above its .val half, the first field of each half nearest TDI, and the
-    halves carry the inverse of reset_enable and reset_control
-    (doc/integrator/src/smu.adoc, "IC_RESET TDR Structure"), so every
+  - Every managed-subsystem cold and warm port and every SEP port, including
+    the Key Manager, in the same two-update order: control staged, override
+    applied, control released under the override, then cleared. The leaf loads
+    the Key Manager smoke ROM first; an empty ROM returns X and the look-ahead
+    read takes the ROM request to X once km_jtag_rst_n is released. After each
+    update the SMC and SEP slices are read whole: each is a packed struct whose
+    .ovrd half sits above its .val half, the first field of each half nearest
+    TDI. .ovrd carries the inverse of reset_enable (1 while the override
+    applies) and .val carries reset_control as written, the active-low reset
+    value (doc/integrator/src/smu.adoc, "IC_RESET TDR Structure"), so every
     port's override and value are compared bit by bit.
 """
 
@@ -38,6 +40,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
+from ocah_jtag_vip import OcahJtagState
 from seq_lib.smu_compose_helpers import hier
 from seq_lib.smu_jtag_helpers import (
     SMU_IC_RESET_DEFAULT,
@@ -85,10 +88,12 @@ async def _read_ic_reset(jtag, dut, shift_value: int, where: str, log) -> int:
 
     The JTAG VIP reads an X/Z TDO bit as 0, so the bench's `jtag_tdo` and
     `jtag_tdo_oen` (high during Shift-IR and Shift-DR) are sampled on every TCK
-    rising edge of the scan, and at least one DR length of driven bits must be
-    seen.
+    rising edge of the scan. A bit counts toward the DR length only when the
+    driver's tracked state at that edge is Shift-DR, so the IR bits of the same
+    read do not make up for undriven DR bits.
     """
     driven = [0]
+    dr_driven = [0]
     bad: list[str] = []
 
     async def watch() -> None:
@@ -100,6 +105,8 @@ async def _read_ic_reset(jtag, dut, shift_value: int, where: str, log) -> int:
                 bad.append(f"jtag_tdo_oen={oen}")
             elif int(oen):
                 driven[0] += 1
+                if jtag.get_current_state() is OcahJtagState.SHIFT_DR:
+                    dr_driven[0] += 1
                 if not tdo.is_resolvable:
                     bad.append(f"jtag_tdo={tdo} at driven bit {driven[0] - 1}")
 
@@ -109,12 +116,18 @@ async def _read_ic_reset(jtag, dut, shift_value: int, where: str, log) -> int:
     finally:
         watcher.cancel()
     require_jtag_tdo_resolved(where)
-    log.info("%s: %d driven TDO bits sampled, %d X/Z", where, driven[0], len(bad))
+    log.info(
+        "%s: %d driven TDO bits sampled, %d in Shift-DR, %d X/Z",
+        where,
+        driven[0],
+        dr_driven[0],
+        len(bad),
+    )
     if bad:
         raise AssertionError(f"X/Z on TDO during {where}: {bad[:8]}")
-    if driven[0] < SMU_IC_RESET_LEN:
+    if dr_driven[0] < SMU_IC_RESET_LEN:
         raise AssertionError(
-            f"{where}: {driven[0]} driven TDO bits sampled, fewer than the "
+            f"{where}: {dr_driven[0]} driven TDO bits sampled in Shift-DR, fewer than the "
             f"{SMU_IC_RESET_LEN}-bit IC_RESET DR"
         )
     return int(readback)
@@ -269,16 +282,13 @@ class smu_jtag_reset_override_test(smu_base_test):
     async def _walk_ss_and_sep_ports(self, dut, sb, jtag) -> None:
         """Stage, apply, release and clear every SS and SEP port together.
 
-        The Key Manager reset (km_jtag_rst_n, the SEP port nearest the
-        external slice) is staged and released without being applied: after
-        an applied override is lifted, the Key Manager's ROM request reads X on
-        a four-state simulator (see the VPLAN card).
+        km_jtag_rst_n is included. The testlist loads the Key Manager smoke
+        ROM, so the request stays 0 or 1 when that override releases the CPU.
         """
         ss_ports = [SMU_IC_RESET_SMC_SS_COLD0_PORT + i for i in range(SS_PORTS)] + [
             SMU_IC_RESET_SMC_SS_WARM0_PORT + i for i in range(SS_PORTS)
         ]
         sep_ports = [SMU_IC_RESET_EXT_PORT + 1 + i for i in range(SMU_IC_RESET_NUM_SEP_PORTS)]
-        km_port = SMU_IC_RESET_EXT_PORT + 1
         ports = ss_ports + sep_ports
         smc_all = (1 << SMU_IC_RESET_NUM_SMC_PORTS) - 1
         sep_all = (1 << SMU_IC_RESET_NUM_SEP_PORTS) - 1
@@ -287,11 +297,9 @@ class smu_jtag_reset_override_test(smu_base_test):
             ss_mask |= 1 << (port - SMU_IC_RESET_SMC_FUSE_PORT)
         # Port EXT_PORT + 1 + i is the SEP field i places from TDO, which is
         # bit i of each half.
-        sep_mask = sep_all & ~(1 << (km_port - SMU_IC_RESET_EXT_PORT - 1))
         observed = []
         for enable, control in ((1, 0), (0, 0), (0, 1)):
             port_enable = dict.fromkeys(ports, enable)
-            port_enable[km_port] = 1
             word = pack_ic_reset_ports(
                 reset_hold=1,
                 port_enable=port_enable,
@@ -324,8 +332,8 @@ class smu_jtag_reset_override_test(smu_base_test):
         # (readback, smc ovrd pin, smc ovrd, smc val, sep ovrd, sep val)
         want = [
             (True, 0, 0, smc_all & ~ss_mask, 0, 0),
-            (True, ss_mask, ss_mask, smc_all & ~ss_mask, sep_mask, 0),
-            (True, ss_mask, ss_mask, smc_all, sep_mask, sep_all),
+            (True, ss_mask, ss_mask, smc_all & ~ss_mask, sep_all, 0),
+            (True, ss_mask, ss_mask, smc_all, sep_all, sep_all),
             (True, 0, 0, smc_all, 0, sep_all),
         ]
         self.logger.info(

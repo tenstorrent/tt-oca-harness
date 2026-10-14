@@ -126,7 +126,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-uart-flow-control[UART modem status section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-uart-flow-control[UART modem status section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-uart-flow-control[UART modem status section]
 endif::backend-pdf[]
 of the Programmer's Guide. The ITR
 extension can force interrupt sources for testing. Clear test settings after

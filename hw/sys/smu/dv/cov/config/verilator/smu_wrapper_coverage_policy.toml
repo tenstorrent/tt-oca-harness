@@ -3,13 +3,11 @@
 #
 # SMU wrapper (`--dut smu`) Verilator coverage policy.
 #
-# GENERATED from a measured run: the [[holes]] below are the `user` points the
-# graded run left unhit, each carried with a category, a rationale and an
-# owner. This file carries no `[[holes]]`: every collected `user` point is
-# hit by an enrolled leaf of `all`, and a point this bench cannot legally
-# reach is not collected (see the Phase 2 list in SMU_FCOV.adoc) rather than
-# waived here. `all` is the coverage set, as it is for SEP; `hosted` is its
-# toolchain-free subset and leaves the SEP firmware and lifecycle stimulus out.
+# A `[[holes]]` entry names a `user` point the graded run leaves unhit, with a
+# category, a rationale and an owner. A point this bench cannot legally reach is
+# not collected (the Phase 2 list in SMU_FCOV.adoc) rather than waived here.
+# `all` is the coverage set, as it is for SEP; `hosted` is its toolchain-free
+# subset and leaves the SEP firmware and lifecycle stimulus out.
 #
 # No floor is set on the `user` family; one is set only from a measured
 # weekly `--cov` database, by the SMU DV owner, together with

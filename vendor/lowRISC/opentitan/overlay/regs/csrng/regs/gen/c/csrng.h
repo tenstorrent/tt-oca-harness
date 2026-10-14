@@ -14,27 +14,35 @@ extern "C" {
 #include <assert.h>
 
 // reg - csrng::INTR_STATE
+// Asserted when a command request is completed.
 #define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bm 0x1
 #define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bp 0
 #define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bw 1
 #define CSRNG__INTR_STATE__CS_CMD_REQ_DONE_reset 0x0
+// Asserted when a request for entropy has been made.
 #define CSRNG__INTR_STATE__CS_ENTROPY_REQ_bm 0x2
 #define CSRNG__INTR_STATE__CS_ENTROPY_REQ_bp 1
 #define CSRNG__INTR_STATE__CS_ENTROPY_REQ_bw 1
 #define CSRNG__INTR_STATE__CS_ENTROPY_REQ_reset 0x0
+// Asserted when a hardware-attached CSRNG instance encounters a command exception
 #define CSRNG__INTR_STATE__CS_HW_INST_EXC_bm 0x4
 #define CSRNG__INTR_STATE__CS_HW_INST_EXC_bp 2
 #define CSRNG__INTR_STATE__CS_HW_INST_EXC_bw 1
 #define CSRNG__INTR_STATE__CS_HW_INST_EXC_reset 0x0
+// Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.
 #define CSRNG__INTR_STATE__CS_FATAL_ERR_bm 0x8
 #define CSRNG__INTR_STATE__CS_FATAL_ERR_bp 3
 #define CSRNG__INTR_STATE__CS_FATAL_ERR_bw 1
 #define CSRNG__INTR_STATE__CS_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Asserted when a command request is completed.
         uint32_t CS_CMD_REQ_DONE :1;
+        // Asserted when a request for entropy has been made.
         uint32_t CS_ENTROPY_REQ :1;
+        // Asserted when a hardware-attached CSRNG instance encounters a command exception
         uint32_t CS_HW_INST_EXC :1;
+        // Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.
         uint32_t CS_FATAL_ERR :1;
         uint32_t :28;
     } f;
@@ -42,27 +50,35 @@ typedef union {
 } csrng__INTR_STATE_t;
 
 // reg - csrng::INTR_ENABLE
+// Enable interrupt when !!INTR_STATE.cs_cmd_req_done is set.
 #define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bm 0x1
 #define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bp 0
 #define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bw 1
 #define CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_reset 0x0
+// Enable interrupt when !!INTR_STATE.cs_entropy_req is set.
 #define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_bm 0x2
 #define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_bp 1
 #define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_bw 1
 #define CSRNG__INTR_ENABLE__CS_ENTROPY_REQ_reset 0x0
+// Enable interrupt when !!INTR_STATE.cs_hw_inst_exc is set.
 #define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_bm 0x4
 #define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_bp 2
 #define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_bw 1
 #define CSRNG__INTR_ENABLE__CS_HW_INST_EXC_reset 0x0
+// Enable interrupt when !!INTR_STATE.cs_fatal_err is set.
 #define CSRNG__INTR_ENABLE__CS_FATAL_ERR_bm 0x8
 #define CSRNG__INTR_ENABLE__CS_FATAL_ERR_bp 3
 #define CSRNG__INTR_ENABLE__CS_FATAL_ERR_bw 1
 #define CSRNG__INTR_ENABLE__CS_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable interrupt when !!INTR_STATE.cs_cmd_req_done is set.
         uint32_t CS_CMD_REQ_DONE :1;
+        // Enable interrupt when !!INTR_STATE.cs_entropy_req is set.
         uint32_t CS_ENTROPY_REQ :1;
+        // Enable interrupt when !!INTR_STATE.cs_hw_inst_exc is set.
         uint32_t CS_HW_INST_EXC :1;
+        // Enable interrupt when !!INTR_STATE.cs_fatal_err is set.
         uint32_t CS_FATAL_ERR :1;
         uint32_t :28;
     } f;
@@ -70,27 +86,35 @@ typedef union {
 } csrng__INTR_ENABLE_t;
 
 // reg - csrng::INTR_TEST
+// Write 1 to force !!INTR_STATE.cs_cmd_req_done to 1.
 #define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_bm 0x1
 #define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_bp 0
 #define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_bw 1
 #define CSRNG__INTR_TEST__CS_CMD_REQ_DONE_reset 0x0
+// Write 1 to force !!INTR_STATE.cs_entropy_req to 1.
 #define CSRNG__INTR_TEST__CS_ENTROPY_REQ_bm 0x2
 #define CSRNG__INTR_TEST__CS_ENTROPY_REQ_bp 1
 #define CSRNG__INTR_TEST__CS_ENTROPY_REQ_bw 1
 #define CSRNG__INTR_TEST__CS_ENTROPY_REQ_reset 0x0
+// Write 1 to force !!INTR_STATE.cs_hw_inst_exc to 1.
 #define CSRNG__INTR_TEST__CS_HW_INST_EXC_bm 0x4
 #define CSRNG__INTR_TEST__CS_HW_INST_EXC_bp 2
 #define CSRNG__INTR_TEST__CS_HW_INST_EXC_bw 1
 #define CSRNG__INTR_TEST__CS_HW_INST_EXC_reset 0x0
+// Write 1 to force !!INTR_STATE.cs_fatal_err to 1.
 #define CSRNG__INTR_TEST__CS_FATAL_ERR_bm 0x8
 #define CSRNG__INTR_TEST__CS_FATAL_ERR_bp 3
 #define CSRNG__INTR_TEST__CS_FATAL_ERR_bw 1
 #define CSRNG__INTR_TEST__CS_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to force !!INTR_STATE.cs_cmd_req_done to 1.
         uint32_t CS_CMD_REQ_DONE :1;
+        // Write 1 to force !!INTR_STATE.cs_entropy_req to 1.
         uint32_t CS_ENTROPY_REQ :1;
+        // Write 1 to force !!INTR_STATE.cs_hw_inst_exc to 1.
         uint32_t CS_HW_INST_EXC :1;
+        // Write 1 to force !!INTR_STATE.cs_fatal_err to 1.
         uint32_t CS_FATAL_ERR :1;
         uint32_t :28;
     } f;
@@ -98,17 +122,21 @@ typedef union {
 } csrng__INTR_TEST_t;
 
 // reg - csrng::ALERT_TEST
+// Write 1 to trigger one alert event of this kind.
 #define CSRNG__ALERT_TEST__RECOV_ALERT_bm 0x1
 #define CSRNG__ALERT_TEST__RECOV_ALERT_bp 0
 #define CSRNG__ALERT_TEST__RECOV_ALERT_bw 1
 #define CSRNG__ALERT_TEST__RECOV_ALERT_reset 0x0
+// Write 1 to trigger one alert event of this kind.
 #define CSRNG__ALERT_TEST__FATAL_ALERT_bm 0x2
 #define CSRNG__ALERT_TEST__FATAL_ALERT_bp 1
 #define CSRNG__ALERT_TEST__FATAL_ALERT_bw 1
 #define CSRNG__ALERT_TEST__FATAL_ALERT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to trigger one alert event of this kind.
         uint32_t RECOV_ALERT :1;
+        // Write 1 to trigger one alert event of this kind.
         uint32_t FATAL_ALERT :1;
         uint32_t :30;
     } f;
@@ -116,12 +144,16 @@ typedef union {
 } csrng__ALERT_TEST_t;
 
 // reg - csrng::REGWEN
+// When true, all writeable registers can be modified.
+// When false, they become read-only.
 #define CSRNG__REGWEN__REGWEN_bm 0x1
 #define CSRNG__REGWEN__REGWEN_bp 0
 #define CSRNG__REGWEN__REGWEN_bw 1
 #define CSRNG__REGWEN__REGWEN_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // When true, all writeable registers can be modified.
+        // When false, they become read-only.
         uint32_t REGWEN :1;
         uint32_t :31;
     } f;
@@ -129,27 +161,49 @@ typedef union {
 } csrng__REGWEN_t;
 
 // reg - csrng::CTRL
+// Setting this field to kMultiBitBool4True will enable the CSRNG module. The modules
+// of the entropy complex may only be enabled and disabled in a specific order, see
+// Programmers Guide for details.
 #define CSRNG__CTRL__ENABLE_bm 0xf
 #define CSRNG__CTRL__ENABLE_bp 0
 #define CSRNG__CTRL__ENABLE_bw 4
 #define CSRNG__CTRL__ENABLE_reset 0x9
+// Setting this field to kMultiBitBool4True will enable reading from the !!GENBITS register.
+// This application interface for software (register based) will be enabled
+// only if the otp_en_csrng_sw_app_read input vector is set to the enable encoding.
 #define CSRNG__CTRL__SW_APP_ENABLE_bm 0xf0
 #define CSRNG__CTRL__SW_APP_ENABLE_bp 4
 #define CSRNG__CTRL__SW_APP_ENABLE_bw 4
 #define CSRNG__CTRL__SW_APP_ENABLE_reset 0x9
+// Setting this field to kMultiBitBool4True will enable reading from the !!INT_STATE_VAL register.
+// Reading the internal state of the enable instances will be enabled
+// only if the otp_en_csrng_sw_app_read input vector is set to the enable encoding.
+// Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set to true for this to work.
 #define CSRNG__CTRL__READ_INT_STATE_bm 0xf00
 #define CSRNG__CTRL__READ_INT_STATE_bp 8
 #define CSRNG__CTRL__READ_INT_STATE_bw 4
 #define CSRNG__CTRL__READ_INT_STATE_reset 0x9
+// Setting this field to kMultiBitBool4True enables forcing the FIPS/CC compliance flag to true via the !!FIPS_FORCE register.
 #define CSRNG__CTRL__FIPS_FORCE_ENABLE_bm 0xf000
 #define CSRNG__CTRL__FIPS_FORCE_ENABLE_bp 12
 #define CSRNG__CTRL__FIPS_FORCE_ENABLE_bw 4
 #define CSRNG__CTRL__FIPS_FORCE_ENABLE_reset 0x9
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Setting this field to kMultiBitBool4True will enable the CSRNG module. The modules
+        // of the entropy complex may only be enabled and disabled in a specific order, see
+        // Programmers Guide for details.
         uint32_t ENABLE :4;
+        // Setting this field to kMultiBitBool4True will enable reading from the !!GENBITS register.
+        // This application interface for software (register based) will be enabled
+        // only if the otp_en_csrng_sw_app_read input vector is set to the enable encoding.
         uint32_t SW_APP_ENABLE :4;
+        // Setting this field to kMultiBitBool4True will enable reading from the !!INT_STATE_VAL register.
+        // Reading the internal state of the enable instances will be enabled
+        // only if the otp_en_csrng_sw_app_read input vector is set to the enable encoding.
+        // Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set to true for this to work.
         uint32_t READ_INT_STATE :4;
+        // Setting this field to kMultiBitBool4True enables forcing the FIPS/CC compliance flag to true via the !!FIPS_FORCE register.
         uint32_t FIPS_FORCE_ENABLE :4;
         uint32_t :16;
     } f;
@@ -157,74 +211,119 @@ typedef union {
 } csrng__CTRL_t;
 
 // reg - csrng::CMD_REQ
+// Writing this request with defined CSRNG commands will initiate all
+// possible CSRNG actions. The application interface must wait for the
+// "ack" to return before issuing new commands.
 #define CSRNG__CMD_REQ__CMD_REQ_bm 0xffffffff
 #define CSRNG__CMD_REQ__CMD_REQ_bp 0
 #define CSRNG__CMD_REQ__CMD_REQ_bw 32
 #define CSRNG__CMD_REQ__CMD_REQ_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Writing this request with defined CSRNG commands will initiate all
+        // possible CSRNG actions. The application interface must wait for the
+        // "ack" to return before issuing new commands.
         uint32_t CMD_REQ :32;
     } f;
     uint32_t w;
 } csrng__CMD_REQ_t;
 
 // reg - csrng::RESEED_INTERVAL
+// Setting this field will set the number of generate requests that can be
+// made to CSRNG before a reseed request needs to be made.
+// This register supports a maximum of 2^32 requests between reseeds.
+// This register will be compared to a counter, which counts the number of
+// generate commands between reseed or instantiate commands.
+// If the counter reaches the value of this register, the violating command
+// will be acknowledged with a status error.
+// If the violating command was issued by a HW instance, an interrupt will
+// be triggered.
 #define CSRNG__RESEED_INTERVAL__RESEED_INTERVAL_bm 0xffffffff
 #define CSRNG__RESEED_INTERVAL__RESEED_INTERVAL_bp 0
 #define CSRNG__RESEED_INTERVAL__RESEED_INTERVAL_bw 32
 #define CSRNG__RESEED_INTERVAL__RESEED_INTERVAL_reset 0xffffffff
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Setting this field will set the number of generate requests that can be
+        // made to CSRNG before a reseed request needs to be made.
+        // This register supports a maximum of 2^32 requests between reseeds.
+        // This register will be compared to a counter, which counts the number of
+        // generate commands between reseed or instantiate commands.
+        // If the counter reaches the value of this register, the violating command
+        // will be acknowledged with a status error.
+        // If the violating command was issued by a HW instance, an interrupt will
+        // be triggered.
         uint32_t RESEED_INTERVAL :32;
     } f;
     uint32_t w;
 } csrng__RESEED_INTERVAL_t;
 
 // reg - csrng::RESEED_COUNTER_0
+// Reseed Counter indicating the number of completed Generate requests since the last Instantiate or Reseed command.
 #define CSRNG__RESEED_COUNTER_0__RESEED_COUNTER_0_bm 0xffffffff
 #define CSRNG__RESEED_COUNTER_0__RESEED_COUNTER_0_bp 0
 #define CSRNG__RESEED_COUNTER_0__RESEED_COUNTER_0_bw 32
 #define CSRNG__RESEED_COUNTER_0__RESEED_COUNTER_0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reseed Counter indicating the number of completed Generate requests since the last Instantiate or Reseed command.
         uint32_t RESEED_COUNTER_0 :32;
     } f;
     uint32_t w;
 } csrng__RESEED_COUNTER_0_t;
 
 // reg - csrng::RESEED_COUNTER_1
+// For RESEED_COUNTER1
 #define CSRNG__RESEED_COUNTER_1__RESEED_COUNTER_0_bm 0xffffffff
 #define CSRNG__RESEED_COUNTER_1__RESEED_COUNTER_0_bp 0
 #define CSRNG__RESEED_COUNTER_1__RESEED_COUNTER_0_bw 32
 #define CSRNG__RESEED_COUNTER_1__RESEED_COUNTER_0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // For RESEED_COUNTER1
         uint32_t RESEED_COUNTER_0 :32;
     } f;
     uint32_t w;
 } csrng__RESEED_COUNTER_1_t;
 
 // reg - csrng::RESEED_COUNTER_2
+// For RESEED_COUNTER2
 #define CSRNG__RESEED_COUNTER_2__RESEED_COUNTER_0_bm 0xffffffff
 #define CSRNG__RESEED_COUNTER_2__RESEED_COUNTER_0_bp 0
 #define CSRNG__RESEED_COUNTER_2__RESEED_COUNTER_0_bw 32
 #define CSRNG__RESEED_COUNTER_2__RESEED_COUNTER_0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // For RESEED_COUNTER2
         uint32_t RESEED_COUNTER_0 :32;
     } f;
     uint32_t w;
 } csrng__RESEED_COUNTER_2_t;
 
 // reg - csrng::SW_CMD_STS
+// This bit indicates when the command interface is ready to accept commands.
+// Before starting to write a new command to !!SW_CMD_REQ, this field needs to be polled.
+// 0b0: CSRNG is not ready to accept commands or the last command hasn't been acked yet.
+// 0b1: CSRNG is ready to accept the next command.
 #define CSRNG__SW_CMD_STS__CMD_RDY_bm 0x2
 #define CSRNG__SW_CMD_STS__CMD_RDY_bp 1
 #define CSRNG__SW_CMD_STS__CMD_RDY_bw 1
 #define CSRNG__SW_CMD_STS__CMD_RDY_reset 0x0
+// This one bit field indicates when a SW command has been acknowledged by the CSRNG.
+// It is set to low each time a new command is written to !!CMD_REQ.
+// The field is set to high once a SW command request has been acknowledged by the CSRNG.
+// 0b0: The last SW command has not been acknowledged yet.
+// 0b1: The last SW command has been acknowledged.
+// In case of a generate command the acknowledgement goes high after all of the requested entropy is consumed.
 #define CSRNG__SW_CMD_STS__CMD_ACK_bm 0x4
 #define CSRNG__SW_CMD_STS__CMD_ACK_bp 2
 #define CSRNG__SW_CMD_STS__CMD_ACK_bw 1
 #define CSRNG__SW_CMD_STS__CMD_ACK_reset 0x0
+// This field represents the status code returned with the application command ack.
+// It is updated each time a command ack is asserted on the internal application
+// interface for software use.
+// To check whether a command was successful, wait for !!INTR_STATE.CS_CMD_REQ_DONE or
+// !!SW_CMD_STS.CMD_ACK to be high and then check the value of this field.
 #define CSRNG__SW_CMD_STS__CMD_STS_bm 0x38
 #define CSRNG__SW_CMD_STS__CMD_STS_bp 3
 #define CSRNG__SW_CMD_STS__CMD_STS_bw 3
@@ -232,8 +331,23 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t :1;
+        // This bit indicates when the command interface is ready to accept commands.
+        // Before starting to write a new command to !!SW_CMD_REQ, this field needs to be polled.
+        // 0b0: CSRNG is not ready to accept commands or the last command hasn't been acked yet.
+        // 0b1: CSRNG is ready to accept the next command.
         uint32_t CMD_RDY :1;
+        // This one bit field indicates when a SW command has been acknowledged by the CSRNG.
+        // It is set to low each time a new command is written to !!CMD_REQ.
+        // The field is set to high once a SW command request has been acknowledged by the CSRNG.
+        // 0b0: The last SW command has not been acknowledged yet.
+        // 0b1: The last SW command has been acknowledged.
+        // In case of a generate command the acknowledgement goes high after all of the requested entropy is consumed.
         uint32_t CMD_ACK :1;
+        // This field represents the status code returned with the application command ack.
+        // It is updated each time a command ack is asserted on the internal application
+        // interface for software use.
+        // To check whether a command was successful, wait for !!INTR_STATE.CS_CMD_REQ_DONE or
+        // !!SW_CMD_STS.CMD_ACK to be high and then check the value of this field.
         uint32_t CMD_STS :3;
         uint32_t :26;
     } f;
@@ -241,15 +355,19 @@ typedef union {
 } csrng__SW_CMD_STS_t;
 
 // reg - csrng::GENBITS_VLD
+// This bit is set when genbits are available on this application interface after a generate command has been issued.
 #define CSRNG__GENBITS_VLD__GENBITS_VLD_bm 0x1
 #define CSRNG__GENBITS_VLD__GENBITS_VLD_bp 0
 #define CSRNG__GENBITS_VLD__GENBITS_VLD_bw 1
+// This bit is set when genbits are FIPS/CC compliant.
 #define CSRNG__GENBITS_VLD__GENBITS_FIPS_bm 0x2
 #define CSRNG__GENBITS_VLD__GENBITS_FIPS_bp 1
 #define CSRNG__GENBITS_VLD__GENBITS_FIPS_bw 1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This bit is set when genbits are available on this application interface after a generate command has been issued.
         uint32_t GENBITS_VLD :1;
+        // This bit is set when genbits are FIPS/CC compliant.
         uint32_t GENBITS_FIPS :1;
         uint32_t :30;
     } f;
@@ -257,23 +375,47 @@ typedef union {
 } csrng__GENBITS_VLD_t;
 
 // reg - csrng::GENBITS
+// Reading this register will get the generated bits that were requested with
+// the generate request. This register must be read four times for each request
+// made. For example, an application command generate request with
+// a `clen` value of 4 requires this register to be read 16 times to get all
+// of the data out of the FIFO path.
+// Note that for !!GENBITS to be able to deliver random numbers, also !!CTRL.SW_APP_ENABLE needs to be set to `kMultiBitBool4True`.
+// In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.
+// Otherwise, the register reads as 0.
 #define CSRNG__GENBITS__GENBITS_bm 0xffffffff
 #define CSRNG__GENBITS__GENBITS_bp 0
 #define CSRNG__GENBITS__GENBITS_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reading this register will get the generated bits that were requested with
+        // the generate request. This register must be read four times for each request
+        // made. For example, an application command generate request with
+        // a `clen` value of 4 requires this register to be read 16 times to get all
+        // of the data out of the FIFO path.
+        // Note that for !!GENBITS to be able to deliver random numbers, also !!CTRL.SW_APP_ENABLE needs to be set to `kMultiBitBool4True`.
+        // In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.
+        // Otherwise, the register reads as 0.
         uint32_t GENBITS :32;
     } f;
     uint32_t w;
 } csrng__GENBITS_t;
 
 // reg - csrng::INT_STATE_READ_ENABLE
+// Per-instance internal state read enable.
+// Defines whether the internal state of the corresponding instance is readable via !!INT_STATE_VAL.
+// Note that for !!INT_STATE_VAL to provide read access to the internal state, also !!CTRL.READ_INT_STATE needs to be set to `kMultiBitBool4True`.
+// In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.
 #define CSRNG__INT_STATE_READ_ENABLE__INT_STATE_READ_ENABLE_bm 0x7
 #define CSRNG__INT_STATE_READ_ENABLE__INT_STATE_READ_ENABLE_bp 0
 #define CSRNG__INT_STATE_READ_ENABLE__INT_STATE_READ_ENABLE_bw 3
 #define CSRNG__INT_STATE_READ_ENABLE__INT_STATE_READ_ENABLE_reset 0x7
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Per-instance internal state read enable.
+        // Defines whether the internal state of the corresponding instance is readable via !!INT_STATE_VAL.
+        // Note that for !!INT_STATE_VAL to provide read access to the internal state, also !!CTRL.READ_INT_STATE needs to be set to `kMultiBitBool4True`.
+        // In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.
         uint32_t INT_STATE_READ_ENABLE :3;
         uint32_t :29;
     } f;
@@ -281,12 +423,16 @@ typedef union {
 } csrng__INT_STATE_READ_ENABLE_t;
 
 // reg - csrng::INT_STATE_READ_ENABLE_REGWEN
+// INT_STATE_READ_ENABLE register configuration enable bit.
+// If this is cleared to 0, the INT_STATE_READ_ENABLE register cannot be written anymore.
 #define CSRNG__INT_STATE_READ_ENABLE_REGWEN__INT_STATE_READ_ENABLE_REGWEN_bm 0x1
 #define CSRNG__INT_STATE_READ_ENABLE_REGWEN__INT_STATE_READ_ENABLE_REGWEN_bp 0
 #define CSRNG__INT_STATE_READ_ENABLE_REGWEN__INT_STATE_READ_ENABLE_REGWEN_bw 1
 #define CSRNG__INT_STATE_READ_ENABLE_REGWEN__INT_STATE_READ_ENABLE_REGWEN_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // INT_STATE_READ_ENABLE register configuration enable bit.
+        // If this is cleared to 0, the INT_STATE_READ_ENABLE register cannot be written anymore.
         uint32_t INT_STATE_READ_ENABLE_REGWEN :1;
         uint32_t :31;
     } f;
@@ -294,12 +440,30 @@ typedef union {
 } csrng__INT_STATE_READ_ENABLE_REGWEN_t;
 
 // reg - csrng::INT_STATE_NUM
+// Setting this field will set the number for which internal state can be
+// selected for a read access. Up to 16 internal state values can be chosen
+// from this register. The actual number of valid internal state fields
+// is set by parameter NumHwApps plus 1 software app. For those selections that point
+// to reserved locations (greater than NumHwApps plus 1), the returned value
+// will be zero. Writing this register will also reset the internal read
+// pointer for the !!INT_STATE_VAL register.
+// Note: This register should be read back after being written to ensure
+// that the !!INT_STATE_VAL read back is accurate.
 #define CSRNG__INT_STATE_NUM__INT_STATE_NUM_bm 0xf
 #define CSRNG__INT_STATE_NUM__INT_STATE_NUM_bp 0
 #define CSRNG__INT_STATE_NUM__INT_STATE_NUM_bw 4
 #define CSRNG__INT_STATE_NUM__INT_STATE_NUM_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Setting this field will set the number for which internal state can be
+        // selected for a read access. Up to 16 internal state values can be chosen
+        // from this register. The actual number of valid internal state fields
+        // is set by parameter NumHwApps plus 1 software app. For those selections that point
+        // to reserved locations (greater than NumHwApps plus 1), the returned value
+        // will be zero. Writing this register will also reset the internal read
+        // pointer for the !!INT_STATE_VAL register.
+        // Note: This register should be read back after being written to ensure
+        // that the !!INT_STATE_VAL read back is accurate.
         uint32_t INT_STATE_NUM :4;
         uint32_t :28;
     } f;
@@ -307,23 +471,53 @@ typedef union {
 } csrng__INT_STATE_NUM_t;
 
 // reg - csrng::INT_STATE_VAL
+// Reading this register will dump out the contents of the selected internal state field.
+// Since the internal state field is 448 bits wide, it will require 14 reads from this
+// register to gather the entire field. Once 14 reads have been done, the internal read
+// pointer (selects 32 bits of the 448 bit field) will reset to zero. The !!INT_STATE_NUM
+// can be re-written at this time (internal read pointer is also reset), and then
+// another internal state field can be read.
+// Note that for !!INT_STATE_VAL to provide read access to the internal state, also !!CTRL.READ_INT_STATE needs to be set to `kMultiBitBool4True`.
+// In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.
+// Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set to true for this to work.
+// Otherwise, the register reads as 0.
 #define CSRNG__INT_STATE_VAL__INT_STATE_VAL_bm 0xffffffff
 #define CSRNG__INT_STATE_VAL__INT_STATE_VAL_bp 0
 #define CSRNG__INT_STATE_VAL__INT_STATE_VAL_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reading this register will dump out the contents of the selected internal state field.
+        // Since the internal state field is 448 bits wide, it will require 14 reads from this
+        // register to gather the entire field. Once 14 reads have been done, the internal read
+        // pointer (selects 32 bits of the 448 bit field) will reset to zero. The !!INT_STATE_NUM
+        // can be re-written at this time (internal read pointer is also reset), and then
+        // another internal state field can be read.
+        // Note that for !!INT_STATE_VAL to provide read access to the internal state, also !!CTRL.READ_INT_STATE needs to be set to `kMultiBitBool4True`.
+        // In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.
+        // Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set to true for this to work.
+        // Otherwise, the register reads as 0.
         uint32_t INT_STATE_VAL :32;
     } f;
     uint32_t w;
 } csrng__INT_STATE_VAL_t;
 
 // reg - csrng::FIPS_FORCE
+// Force the FIPS/CC compliance flag of individual instances to true.
+// This allows CSRNG to set the output FIPS/CC compliance flag to true despite running in fully deterministic mode (flag0 being true).
+// This can be useful e.g. for known-answer testing through entropy consumers accepting FIPS/CC compliant entropy only, or when firmware is used to derive FIPS/CC compliant entropy seeds.
+// After setting a particular bit to 1, the FIPS/CC compliance flag of the corresponding instance will be forced to true upon the next Instantiate or Reseed command.
+// Note that for this to work, !!CTRL.FIPS_FORCE_ENABLE needs to be set to kMultiBitBool4True.
 #define CSRNG__FIPS_FORCE__FIPS_FORCE_bm 0x7
 #define CSRNG__FIPS_FORCE__FIPS_FORCE_bp 0
 #define CSRNG__FIPS_FORCE__FIPS_FORCE_bw 3
 #define CSRNG__FIPS_FORCE__FIPS_FORCE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Force the FIPS/CC compliance flag of individual instances to true.
+        // This allows CSRNG to set the output FIPS/CC compliance flag to true despite running in fully deterministic mode (flag0 being true).
+        // This can be useful e.g. for known-answer testing through entropy consumers accepting FIPS/CC compliant entropy only, or when firmware is used to derive FIPS/CC compliant entropy seeds.
+        // After setting a particular bit to 1, the FIPS/CC compliance flag of the corresponding instance will be forced to true upon the next Instantiate or Reseed command.
+        // Note that for this to work, !!CTRL.FIPS_FORCE_ENABLE needs to be set to kMultiBitBool4True.
         uint32_t FIPS_FORCE :3;
         uint32_t :29;
     } f;
@@ -331,12 +525,24 @@ typedef union {
 } csrng__FIPS_FORCE_t;
 
 // reg - csrng::HW_EXC_STS
+// Reading this register indicates whether one of the CSRNG HW instances has
+// encountered an exception.  Each bit corresponds to a particular hardware
+// instance, with bit 0 corresponding to instance HW0, bit 1 corresponding
+// to instance HW1, and so forth. (To monitor the status of requests made
+// to the SW instance, check the !!SW_CMD_STS register). Writing a zero to this register
+// resets the status bits.
 #define CSRNG__HW_EXC_STS__HW_EXC_STS_bm 0xffff
 #define CSRNG__HW_EXC_STS__HW_EXC_STS_bp 0
 #define CSRNG__HW_EXC_STS__HW_EXC_STS_bw 16
 #define CSRNG__HW_EXC_STS__HW_EXC_STS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reading this register indicates whether one of the CSRNG HW instances has
+        // encountered an exception.  Each bit corresponds to a particular hardware
+        // instance, with bit 0 corresponding to instance HW0, bit 1 corresponding
+        // to instance HW1, and so forth. (To monitor the status of requests made
+        // to the SW instance, check the !!SW_CMD_STS register). Writing a zero to this register
+        // resets the status bits.
         uint32_t HW_EXC_STS :16;
         uint32_t :16;
     } f;
@@ -344,53 +550,115 @@ typedef union {
 } csrng__HW_EXC_STS_t;
 
 // reg - csrng::RECOV_ALERT_STS
+// This bit is set when the ENABLE field in the !!CTRL register is set to
+// a value other than kMultiBitBool4True or kMultiBitBool4False.
+// Writing a zero resets this status bit.
 #define CSRNG__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_bm 0x1
 #define CSRNG__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_bp 0
 #define CSRNG__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_bw 1
 #define CSRNG__RECOV_ALERT_STS__ENABLE_FIELD_ALERT_reset 0x0
+// This bit is set when the SW_APP_ENABLE field in the !!CTRL register is set to
+// a value other than kMultiBitBool4True or kMultiBitBool4False.
+// Writing a zero resets this status bit.
 #define CSRNG__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_bm 0x2
 #define CSRNG__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_bp 1
 #define CSRNG__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_bw 1
 #define CSRNG__RECOV_ALERT_STS__SW_APP_ENABLE_FIELD_ALERT_reset 0x0
+// This bit is set when the READ_INT_STATE field in the !!CTRL register is set to
+// a value other than kMultiBitBool4True or kMultiBitBool4False.
+// Writing a zero resets this status bit.
 #define CSRNG__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_bm 0x4
 #define CSRNG__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_bp 2
 #define CSRNG__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_bw 1
 #define CSRNG__RECOV_ALERT_STS__READ_INT_STATE_FIELD_ALERT_reset 0x0
+// This bit is set when the FIPS_FORCE_ENABLE field in the !!CTRL register is set to a value other than kMultiBitBool4True or kMultiBitBool4False.
+// Writing a zero resets this status bit.
 #define CSRNG__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_bm 0x8
 #define CSRNG__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_bp 3
 #define CSRNG__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_bw 1
 #define CSRNG__RECOV_ALERT_STS__FIPS_FORCE_ENABLE_FIELD_ALERT_reset 0x0
+// This bit is set when the FLAG0 field in the Application Command is set to
+// a value other than kMultiBitBool4True or kMultiBitBool4False.
+// Writing a zero resets this status bit.
 #define CSRNG__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_bm 0x10
 #define CSRNG__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_bp 4
 #define CSRNG__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_bw 1
 #define CSRNG__RECOV_ALERT_STS__ACMD_FLAG0_FIELD_ALERT_reset 0x0
+// This bit is set when the software application port genbits bus value is equal
+// to the prior valid value on the bus, indicating a possible attack.
+// Writing a zero resets this status bit.
 #define CSRNG__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_bm 0x1000
 #define CSRNG__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_bp 12
 #define CSRNG__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_bw 1
 #define CSRNG__RECOV_ALERT_STS__CS_BUS_CMP_ALERT_reset 0x0
+// This bit is set when an unsupported/illegal CSRNG command is received by the
+// main state machine.
+// The invalid command is ignored and CSRNG continues to operate.
+// Writing a zero resets this status bit.
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_bm 0x2000
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_bp 13
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_bw 1
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_ACMD_ALERT_reset 0x0
+// This bit is set when an out of order command is received by the main state machine.
+// This happens when an instantiate command is sent for a state that was already
+// instantiated or when any command other than instantiate is sent for a state that
+// wasn't instantiated yet.
+// The invalid command is ignored and CSRNG continues to operate.
+// Writing a zero resets this status bit.
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_bm 0x4000
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_bp 14
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_bw 1
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_INVALID_CMD_SEQ_ALERT_reset 0x0
+// This bit is set when the maximum number of generate requests between reseeds is
+// exceeded.
+// The invalid generate command is ignored and CSRNG continues to operate.
+// Writing a zero resets this status bit.
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_bm 0x8000
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_bp 15
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_bw 1
 #define CSRNG__RECOV_ALERT_STS__CMD_STAGE_RESEED_CNT_ALERT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This bit is set when the ENABLE field in the !!CTRL register is set to
+        // a value other than kMultiBitBool4True or kMultiBitBool4False.
+        // Writing a zero resets this status bit.
         uint32_t ENABLE_FIELD_ALERT :1;
+        // This bit is set when the SW_APP_ENABLE field in the !!CTRL register is set to
+        // a value other than kMultiBitBool4True or kMultiBitBool4False.
+        // Writing a zero resets this status bit.
         uint32_t SW_APP_ENABLE_FIELD_ALERT :1;
+        // This bit is set when the READ_INT_STATE field in the !!CTRL register is set to
+        // a value other than kMultiBitBool4True or kMultiBitBool4False.
+        // Writing a zero resets this status bit.
         uint32_t READ_INT_STATE_FIELD_ALERT :1;
+        // This bit is set when the FIPS_FORCE_ENABLE field in the !!CTRL register is set to a value other than kMultiBitBool4True or kMultiBitBool4False.
+        // Writing a zero resets this status bit.
         uint32_t FIPS_FORCE_ENABLE_FIELD_ALERT :1;
+        // This bit is set when the FLAG0 field in the Application Command is set to
+        // a value other than kMultiBitBool4True or kMultiBitBool4False.
+        // Writing a zero resets this status bit.
         uint32_t ACMD_FLAG0_FIELD_ALERT :1;
         uint32_t :7;
+        // This bit is set when the software application port genbits bus value is equal
+        // to the prior valid value on the bus, indicating a possible attack.
+        // Writing a zero resets this status bit.
         uint32_t CS_BUS_CMP_ALERT :1;
+        // This bit is set when an unsupported/illegal CSRNG command is received by the
+        // main state machine.
+        // The invalid command is ignored and CSRNG continues to operate.
+        // Writing a zero resets this status bit.
         uint32_t CMD_STAGE_INVALID_ACMD_ALERT :1;
+        // This bit is set when an out of order command is received by the main state machine.
+        // This happens when an instantiate command is sent for a state that was already
+        // instantiated or when any command other than instantiate is sent for a state that
+        // wasn't instantiated yet.
+        // The invalid command is ignored and CSRNG continues to operate.
+        // Writing a zero resets this status bit.
         uint32_t CMD_STAGE_INVALID_CMD_SEQ_ALERT :1;
+        // This bit is set when the maximum number of generate requests between reseeds is
+        // exceeded.
+        // The invalid generate command is ignored and CSRNG continues to operate.
+        // Writing a zero resets this status bit.
         uint32_t CMD_STAGE_RESEED_CNT_ALERT :1;
         uint32_t :16;
     } f;
@@ -398,60 +666,138 @@ typedef union {
 } csrng__RECOV_ALERT_STS_t;
 
 // reg - csrng::ERR_CODE
+// This bit will be set to one when an error has been detected for the
+// command stage command FIFO. The type of error is reflected in the type status
+// bits (bits 28 through 30 of this register).
+// This bit will stay set until the next reset.
 #define CSRNG__ERR_CODE__SFIFO_CMD_ERR_bm 0x1
 #define CSRNG__ERR_CODE__SFIFO_CMD_ERR_bp 0
 #define CSRNG__ERR_CODE__SFIFO_CMD_ERR_bw 1
 #define CSRNG__ERR_CODE__SFIFO_CMD_ERR_reset 0x0
+// This bit will be set to one when an error has been detected for the
+// command stage genbits FIFO. The type of error is reflected in the type status
+// bits (bits 28 through 30 of this register).
+// This bit will stay set until the next reset.
 #define CSRNG__ERR_CODE__SFIFO_GENBITS_ERR_bm 0x2
 #define CSRNG__ERR_CODE__SFIFO_GENBITS_ERR_bp 1
 #define CSRNG__ERR_CODE__SFIFO_GENBITS_ERR_bw 1
 #define CSRNG__ERR_CODE__SFIFO_GENBITS_ERR_reset 0x0
+// This bit will be set to one when an illegal state has been detected for the
+// command stage state machine. This error will signal a fatal alert, and also
+// an interrupt if enabled.
+// This bit will stay set until the next reset.
 #define CSRNG__ERR_CODE__CMD_STAGE_SM_ERR_bm 0x100000
 #define CSRNG__ERR_CODE__CMD_STAGE_SM_ERR_bp 20
 #define CSRNG__ERR_CODE__CMD_STAGE_SM_ERR_bw 1
 #define CSRNG__ERR_CODE__CMD_STAGE_SM_ERR_reset 0x0
+// This bit will be set to one when an illegal state has been detected for the
+// main state machine. This error will signal a fatal alert, and also
+// an interrupt if enabled.
+// This bit will stay set until the next reset.
 #define CSRNG__ERR_CODE__MAIN_SM_ERR_bm 0x200000
 #define CSRNG__ERR_CODE__MAIN_SM_ERR_bp 21
 #define CSRNG__ERR_CODE__MAIN_SM_ERR_bw 1
 #define CSRNG__ERR_CODE__MAIN_SM_ERR_reset 0x0
+// This bit will be set to one when an illegal state has been detected for the
+// ctr_drbg state machine. This error will signal a fatal alert, and also
+// an interrupt if enabled.
+// This bit will stay set until the next reset.
 #define CSRNG__ERR_CODE__CTR_DRBG_SM_ERR_bm 0x400000
 #define CSRNG__ERR_CODE__CTR_DRBG_SM_ERR_bp 22
 #define CSRNG__ERR_CODE__CTR_DRBG_SM_ERR_bw 1
 #define CSRNG__ERR_CODE__CTR_DRBG_SM_ERR_reset 0x0
+// This bit will be set to one when an AES fatal error has been detected.
+// This error will signal a fatal alert, and also an interrupt if enabled.
+// This bit will stay set until the next reset.
 #define CSRNG__ERR_CODE__AES_CIPHER_SM_ERR_bm 0x2000000
 #define CSRNG__ERR_CODE__AES_CIPHER_SM_ERR_bp 25
 #define CSRNG__ERR_CODE__AES_CIPHER_SM_ERR_bw 1
 #define CSRNG__ERR_CODE__AES_CIPHER_SM_ERR_reset 0x0
+// This bit will be set to one when a mismatch in any of the hardened counters
+// has been detected.
+// This error will signal a fatal alert, and also an interrupt if enabled.
+// This bit will stay set until the next reset.
 #define CSRNG__ERR_CODE__CTR_ERR_bm 0x4000000
 #define CSRNG__ERR_CODE__CTR_ERR_bp 26
 #define CSRNG__ERR_CODE__CTR_ERR_bw 1
 #define CSRNG__ERR_CODE__CTR_ERR_reset 0x0
+// This bit will be set to one when any of the source bits (bits 0 through 15 of this
+// this register) are asserted as a result of an error pulse generated from
+// any full FIFO that has been received a write pulse.
+// This bit will stay set until the next reset.
 #define CSRNG__ERR_CODE__FIFO_WRITE_ERR_bm 0x10000000
 #define CSRNG__ERR_CODE__FIFO_WRITE_ERR_bp 28
 #define CSRNG__ERR_CODE__FIFO_WRITE_ERR_bw 1
 #define CSRNG__ERR_CODE__FIFO_WRITE_ERR_reset 0x0
+// This bit will be set to one when any of the source bits (bits 0 through 15 of this
+// this register) are asserted as a result of an error pulse generated from
+// any empty FIFO that has received a read pulse.
+// This bit will stay set until the next reset.
 #define CSRNG__ERR_CODE__FIFO_READ_ERR_bm 0x20000000
 #define CSRNG__ERR_CODE__FIFO_READ_ERR_bp 29
 #define CSRNG__ERR_CODE__FIFO_READ_ERR_bw 1
 #define CSRNG__ERR_CODE__FIFO_READ_ERR_reset 0x0
+// This bit will be set to one when any of the source bits (bits 0 through 15 of this
+// this register) are asserted as a result of an error pulse generated from
+// any FIFO where both the empty and full status bits are set.
+// This bit will stay set until the next reset.
 #define CSRNG__ERR_CODE__FIFO_STATE_ERR_bm 0x40000000
 #define CSRNG__ERR_CODE__FIFO_STATE_ERR_bp 30
 #define CSRNG__ERR_CODE__FIFO_STATE_ERR_bw 1
 #define CSRNG__ERR_CODE__FIFO_STATE_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This bit will be set to one when an error has been detected for the
+        // command stage command FIFO. The type of error is reflected in the type status
+        // bits (bits 28 through 30 of this register).
+        // This bit will stay set until the next reset.
         uint32_t SFIFO_CMD_ERR :1;
+        // This bit will be set to one when an error has been detected for the
+        // command stage genbits FIFO. The type of error is reflected in the type status
+        // bits (bits 28 through 30 of this register).
+        // This bit will stay set until the next reset.
         uint32_t SFIFO_GENBITS_ERR :1;
         uint32_t :18;
+        // This bit will be set to one when an illegal state has been detected for the
+        // command stage state machine. This error will signal a fatal alert, and also
+        // an interrupt if enabled.
+        // This bit will stay set until the next reset.
         uint32_t CMD_STAGE_SM_ERR :1;
+        // This bit will be set to one when an illegal state has been detected for the
+        // main state machine. This error will signal a fatal alert, and also
+        // an interrupt if enabled.
+        // This bit will stay set until the next reset.
         uint32_t MAIN_SM_ERR :1;
+        // This bit will be set to one when an illegal state has been detected for the
+        // ctr_drbg state machine. This error will signal a fatal alert, and also
+        // an interrupt if enabled.
+        // This bit will stay set until the next reset.
         uint32_t CTR_DRBG_SM_ERR :1;
         uint32_t :2;
+        // This bit will be set to one when an AES fatal error has been detected.
+        // This error will signal a fatal alert, and also an interrupt if enabled.
+        // This bit will stay set until the next reset.
         uint32_t AES_CIPHER_SM_ERR :1;
+        // This bit will be set to one when a mismatch in any of the hardened counters
+        // has been detected.
+        // This error will signal a fatal alert, and also an interrupt if enabled.
+        // This bit will stay set until the next reset.
         uint32_t CTR_ERR :1;
         uint32_t :1;
+        // This bit will be set to one when any of the source bits (bits 0 through 15 of this
+        // this register) are asserted as a result of an error pulse generated from
+        // any full FIFO that has been received a write pulse.
+        // This bit will stay set until the next reset.
         uint32_t FIFO_WRITE_ERR :1;
+        // This bit will be set to one when any of the source bits (bits 0 through 15 of this
+        // this register) are asserted as a result of an error pulse generated from
+        // any empty FIFO that has received a read pulse.
+        // This bit will stay set until the next reset.
         uint32_t FIFO_READ_ERR :1;
+        // This bit will be set to one when any of the source bits (bits 0 through 15 of this
+        // this register) are asserted as a result of an error pulse generated from
+        // any FIFO where both the empty and full status bits are set.
+        // This bit will stay set until the next reset.
         uint32_t FIFO_STATE_ERR :1;
         uint32_t :1;
     } f;
@@ -459,12 +805,24 @@ typedef union {
 } csrng__ERR_CODE_t;
 
 // reg - csrng::ERR_CODE_TEST
+// Setting this field will set the bit number for which an error
+// will be forced in the hardware. This bit number is that same one
+// found in the !!ERR_CODE register. The action of writing this
+// register will force an error pulse. The sole purpose of this
+// register is to test that any error properly propagates to either
+// an interrupt or an alert.
 #define CSRNG__ERR_CODE_TEST__ERR_CODE_TEST_bm 0x1f
 #define CSRNG__ERR_CODE_TEST__ERR_CODE_TEST_bp 0
 #define CSRNG__ERR_CODE_TEST__ERR_CODE_TEST_bw 5
 #define CSRNG__ERR_CODE_TEST__ERR_CODE_TEST_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Setting this field will set the bit number for which an error
+        // will be forced in the hardware. This bit number is that same one
+        // found in the !!ERR_CODE register. The action of writing this
+        // register will force an error pulse. The sole purpose of this
+        // register is to test that any error properly propagates to either
+        // an interrupt or an alert.
         uint32_t ERR_CODE_TEST :5;
         uint32_t :27;
     } f;
@@ -472,12 +830,16 @@ typedef union {
 } csrng__ERR_CODE_TEST_t;
 
 // reg - csrng::MAIN_SM_STATE
+// This is the state of the CSRNG main state machine.
+// See the RTL file `csrng_main_sm` for the meaning of the values.
 #define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_bm 0x3f
 #define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_bp 0
 #define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_bw 6
 #define CSRNG__MAIN_SM_STATE__MAIN_SM_STATE_reset 0x37
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This is the state of the CSRNG main state machine.
+        // See the RTL file `csrng_main_sm` for the meaning of the values.
         uint32_t MAIN_SM_STATE :6;
         uint32_t :26;
     } f;
@@ -485,6 +847,7 @@ typedef union {
 } csrng__MAIN_SM_STATE_t;
 
 // addrmap - csrng
+// Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software
 typedef struct __attribute__ ((__packed__)) {
     csrng__INTR_STATE_t INTR_STATE;
     csrng__INTR_ENABLE_t INTR_ENABLE;

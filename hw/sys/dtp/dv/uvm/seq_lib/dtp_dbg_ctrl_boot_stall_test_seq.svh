@@ -58,6 +58,7 @@ class dtp_dbg_ctrl_boot_stall_test_seq extends dtp_debug_tdr_base_test_seq;
     seed_scenario_rng();
     attach_family_checker(required);
 
+    log_step("1", "Reset TAP and verify boot-stall reset value");
     reset_to_tlr();
     // The DEBUG_CONTROL reset check includes the live cla_clock_stop
     // status bit, which mirrors the CLA request vector: clear it
@@ -69,30 +70,22 @@ class dtp_dbg_ctrl_boot_stall_test_seq extends dtp_debug_tdr_base_test_seq;
     expect_dbg_signal("jtag_boot_stall", 1'b0, "after reset");
 
     // Exhaustive 2x2 sweep in a seeded per-pass order.
-    for (int unsigned i = 3; i > 0; i--) begin
-      int unsigned j = $urandom_range(i);
-      bit [1:0] tmp = combos[i];
-      combos[i] = combos[j];
-      combos[j] = tmp;
-    end
+    log_step("2", "Loop all boot_stall_ovrd / boot_stall combinations");
+    combos.shuffle();
     foreach (combos[idx]) begin
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/4: boot_stall_ovrd=%0d boot_stall=%0d",
-                idx + 1,
-                combos[idx][1],
-                combos[idx][0]
-                ), UVM_LOW)
+      log_iteration(idx + 1, 4, $sformatf(
+                    "boot_stall_ovrd=%0d boot_stall=%0d", combos[idx][1], combos[idx][0]));
       check_boot_stall_combo(combos[idx][1], combos[idx][0], 1'b0, 1'b0, $sformatf(
                              "combo#%0d", idx + 1));
     end
 
-    // boot_stall toggles while the override stays asserted.
+    log_step("3", "Check boot_stall can toggle while override remains asserted");
     foreach (toggle_seq[idx])
       check_boot_stall_combo(1'b1, toggle_seq[idx], 1'b0, 1'b0, $sformatf("independent#%0d", idx + 1
                              ));
 
-    // Boot-stall fields are independent of every clock-stop combination
-    // ({jtag_clock_stop, cla_clock_stop_en}).
+    // Every clock-stop combination ({jtag_clock_stop, cla_clock_stop_en}).
+    log_step("4", "Check boot-stall fields are independent of the clock-stop bits");
     foreach (combos[idx]) begin
       foreach (stop_cases[s]) begin
         interaction++;
@@ -101,8 +94,9 @@ class dtp_dbg_ctrl_boot_stall_test_seq extends dtp_debug_tdr_base_test_seq;
       end
     end
 
-    // TAP reset over a seeded nonzero DEBUG_CONTROL[3:0]. Capture-DR returns
-    // the reset register, 0x00, not the stale value last shifted in.
+    // Capture-DR returns the reset register, 0x00, not the stale value last
+    // shifted in.
+    log_step("5", "Reset the TAP over a seeded nonzero DEBUG_CONTROL[3:0]");
     stale = 64'($urandom_range(15, 1));
     stale_ctx = $sformatf("stale=0x%0h", stale);
     write_debug_control(stale);
@@ -112,7 +106,7 @@ class dtp_dbg_ctrl_boot_stall_test_seq extends dtp_debug_tdr_base_test_seq;
     read_debug_control(readback);
     family_check("CHK-DBG-TDR", "DEBUG_CONTROL after TAP reset", readback, 64'd0, stale_ctx);
 
-    // Cleanup.
+    log_step("6", "Cleanup DEBUG_CONTROL");
     write_debug_control('0);
     wait_sys_cycles();
     expect_dbg_signal("jtag_boot_stall_ovrd", 1'b0, "cleanup");

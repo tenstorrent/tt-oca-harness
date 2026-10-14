@@ -51,6 +51,26 @@
                 ]
               )
           )
+          # shellcheck-py ships no wheel for some platforms, aarch64-linux among them.
+          # Its sdist downloads the shellcheck binary at build time, which the sandbox
+          # forbids, so install it without the download and link nixpkgs' shellcheck.
+          (final: prev: {
+            shellcheck-py = prev.shellcheck-py.overrideAttrs (old:
+              lib.optionalAttrs (lib.hasSuffix ".tar.gz" old.src.name) {
+                buildInputs = (old.buildInputs or []) ++ final.resolveBuildSystem {setuptools = [];};
+                postPatch =
+                  (old.postPatch or "")
+                  + ''
+                    sed -i '/^setup_requires/,$d' setup.cfg
+                  '';
+                postInstall =
+                  (old.postInstall or "")
+                  + ''
+                    mkdir -p $out/bin
+                    ln -s ${pkgs.shellcheck}/bin/shellcheck $out/bin/shellcheck
+                  '';
+              });
+          })
         ]
       )
   );

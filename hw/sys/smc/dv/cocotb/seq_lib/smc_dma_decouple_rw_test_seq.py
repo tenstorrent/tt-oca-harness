@@ -2,14 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DMA transfers with the read and write channels decoupled, and two queued.
 
-`CONFIG.DECOUPLE_RW` has never been written. Every DMA leaf leaves it at its
-reset, so the backend's legalizer has only ever run its coupled arm, where the
-read and the write machine advance together; the decoupled arm, where either
-may advance alone, has never been entered. Nothing has queued a second
-descriptor while the legalizer was still busy either.
+With `CONFIG.DECOUPLE_RW` at its reset, the backend's legalizer runs its
+coupled arm, where the read and the write machine advance together. This leaf
+sets the field, so the legalizer runs its decoupled arm, where either may
+advance alone, and it queues a second descriptor while the legalizer is busy.
 
-This leaf does both, and takes its golden for the field from the generated
-header rather than the RTL: `dma_ctrl.h` gives
+It takes its golden for the field from the generated header rather than the
+RTL: `dma_ctrl.h` gives
 `DMA_CTRL__CONFIG__DECOUPLE_RW_bm` the value `0x2` and its reset `0x0`, and the
 field is `sw = rw` in `dma_ctrl.rdl`, so it reads back what is written and the
 sequence requires that before running anything through it.

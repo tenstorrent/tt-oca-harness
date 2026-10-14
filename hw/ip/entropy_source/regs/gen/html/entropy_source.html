@@ -98,7 +98,7 @@
 <tr><td>27:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>25:16</td><td>DOWNSAMPLE_RATE</td><td>RW</td><td>0x0</td><td>Selects every (N+1)th decorrelator output while BIW extraction is bypassed. FIPS_LOCK.LOCK prevents software changes.</td></tr>
 <tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>BYPASS_ENTROPY_COMPRESSOR</td><td>RW</td><td>0x0</td><td>Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>8</td><td>BYPASS_ENTROPY_COMPRESSOR</td><td>RW</td><td>0x0</td><td>Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words, word 0 first, with generator 4n+k in bits [8k+7:8k] of word n. FIPS_LOCK.LOCK prevents software changes.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>AUTOTUNE_ENABLE</td><td>RW</td><td>0x0</td><td>Enables per-generator automatic detuning after a lane health-test failure. FIPS_LOCK.LOCK prevents software changes.</td></tr>
 <tr><td>3:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>

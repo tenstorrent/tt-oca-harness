@@ -18,7 +18,8 @@ timeout_sec = 1800
 tags = ["ci", "irq"]
 run_modes = ["smoke"]
 
-# BFM rebuild of FW hang_detector_sanity (irq_test; real stall not claimed).
+# Hang-detector CTRL.irq_test fire/clear on the sys/sep/data detectors and their
+# OR; a real bus-stall timeout is not claimed.
 [[tests]]
 name = "smc_hang_detector_sanity_test"
 module = "smc_hang_detector_sanity_test"
@@ -81,9 +82,7 @@ timeout_sec = 1800
 tags = ["ci", "irq", "pvt"]
 run_modes = ["smoke"]
 
-# The only external-interrupt coverage there is: wrapper ext_interrupts_i[0],
-# both directions. Bits [255:1] are tied to 0 in tb/tb_top.sv, so nothing above
-# bit 0 is reachable without TB work.
+# Wrapper ext_interrupts_i[0] through its synchronizer, rising and falling.
 [[tests]]
 name = "smc_ext_interrupts_pin_test"
 module = "smc_ext_interrupts_pin_test"

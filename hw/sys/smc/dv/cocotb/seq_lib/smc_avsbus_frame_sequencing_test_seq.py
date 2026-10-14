@@ -5,9 +5,8 @@
 `architecture.adoc` "Protocol State Machine" describes a frame as a first
 subframe, as many middle subframes as there are further commands ready, and a
 last one. Which way the machine leaves each of those is therefore a property
-of what is queued when it gets there, and the leaves so far queue their
-commands in one burst up front, so two of the three ways have never been
-taken:
+of what is queued when it gets there, and commands queued in one burst up
+front take only one of the three ways. This leaf takes the other two:
 
 * **A command on its own.** With nothing queued behind it, the first subframe
   is followed straight by the last one rather than by a middle subframe.

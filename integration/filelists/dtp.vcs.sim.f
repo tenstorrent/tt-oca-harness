@@ -2,6 +2,7 @@
 +incdir+hw/common/assert
 +incdir+hw/common/assert
 +incdir+hw/common/defs
++incdir+hw/common/registers
 +incdir+hw/ip/efuse/rtl/svh
 +incdir+vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep
 +incdir+vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/include
@@ -209,6 +210,8 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_inv.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_mux2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_en.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_no_rst.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_inv.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xor2.sv

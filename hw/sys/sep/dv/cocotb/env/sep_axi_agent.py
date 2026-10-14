@@ -106,17 +106,19 @@ class SepAxiItem(uvm_sequence_item):
         # key keeps the VIP default (normal access, cache 0b0011, 0, 0, 0).
         self.attrs: dict[str, int] = {}
         # Filled in by the driver. resp_ok defaults False (fail closed): only a
-        # confirmed OKAY response sets it True. resp_code is the worst (max) AXI
-        # response code observed (OKAY=0, EXOKAY=1, SLVERR=2, DECERR=3), or -1 if
-        # none was returned (e.g. a tolerated timeout). Lets a blocked-access test
+        # confirmed OKAY response sets it True. resp_code is the last non-OKAY AXI
+        # response of the transaction (OKAY=0, EXOKAY=1, SLVERR=2, DECERR=3), or
+        # -1 if none was returned (e.g. a tolerated timeout). One code per
+        # transaction: a per-beat check uses the monitor's start_beat_capture. Lets a blocked-access test
         # require a SPECIFIC error response (DECERR) rather than accept any
         # non-OKAY / a wedge.
         self.rdata: int = 0
         self.resp_ok: bool = False
         self.resp_code: int = -1
-        # Per-beat responses. resp_code is the worst of these, which cannot say
-        # HOW MANY beats carried an error -- a caller crediting a monitor per
-        # beat needs the list.
+        # Responses of the transaction: one code per transaction, the B
+        # response of a write or the collapsed response of a read, not one per
+        # beat. A per-beat RRESP sequence comes from the bus monitor
+        # (start_beat_capture).
         self.resp_list: tuple[int, ...] = ()
         # BID / RID (the last read beat's) as sampled on the bus, or None when
         # the bus carries no ID.
@@ -167,10 +169,9 @@ class SepAxiDriver(uvm_driver):
         # The bus monitor for this prefix owns the read-data X/Z check. The
         # driver needs it only to open the exemption window for a read that
         # sets allow_unknown_rdata, and to drop the AR of a timed-out read.
-        try:
-            self.monitor = ConfigDB().get(self, "", f"sep_axi_monitor_{self.prefix}")
-        except Exception:
-            self.monitor = None
+        # sep_env builds one monitor per agent bus, so a failed lookup is a
+        # testbench error and raises here.
+        self.monitor = ConfigDB().get(self, "", f"sep_axi_monitor_{self.prefix}")
         await self.cfg.reset_done.wait()
         self.logger.info("OcahAxiMasterSequence ready on %s bus", self.prefix)
 

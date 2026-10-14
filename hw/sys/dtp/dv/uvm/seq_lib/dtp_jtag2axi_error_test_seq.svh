@@ -16,19 +16,19 @@
 //     word the errored beat carried and not the preloaded word
 //     (CHK-J2A-ERR-RDATA), and an OKAY recovery access follows every
 //     injection;
-//   * error_series_{no_incr,incr}_{write,read}[_with_status] — a 3-beat
-//     series stream with the fault on the middle beat, armed once the
-//     previous beat's transaction is published, since a fixed-address
-//     stream revisits the fault address on every beat: good beats
-//     commit/return the expected data at the expected addresses, the fault
-//     beat's write is dropped by the responder, the SERIES_CTRL capture
-//     after a plain-mode good beat before the fault reads SUCCESS and the
-//     capture right after the fault beat carries the injected code
-//     (CHK-J2A-FAULT-STATUS), the plain modes' captures and the with-status
-//     write's capture hold the beat address plus one stride
-//     (CHK-J2A-SERIES-ADDR), the with-status modes' captured status bit
-//     must flag the fault beat and no other (CHK-J2A-STATUS-BIT), and an
-//     OKAY recovery access proves no stuck state;
+//   * error_series_{no_incr,incr}_{write,read} and
+//     error_series_incr_{write,read}_with_status — a 3-beat series stream
+//     with the fault on the middle beat, armed once the previous beat's
+//     transaction is published, since a fixed-address stream revisits the
+//     fault address on every beat: good beats commit/return the expected data
+//     at the expected addresses, the fault beat's write is dropped by the
+//     responder, the SERIES_CTRL capture after a plain-mode good beat before
+//     the fault reads SUCCESS and the capture right after the fault beat
+//     carries the injected code (CHK-J2A-FAULT-STATUS), the plain modes'
+//     captures and the with-status write's capture hold the beat address plus
+//     one stride (CHK-J2A-SERIES-ADDR), the with-status modes' captured
+//     status bit must flag the fault beat and no other (CHK-J2A-STATUS-BIT),
+//     and an OKAY recovery access proves no stuck state;
 //   * error_security_gating — two assert/release passes of the target's
 //     lifecycle disable with an injection armed but NOT expected-armed
 //     (arm_expected=0: a gated op must never reach the bus, so no credit
@@ -52,11 +52,6 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
   string target_name = "smc_axi";
   string scenario    = "error_single_write";
 
-  // Scenario verdict: SUCCESS until a bridge status disagrees with the
-  // injected response, then that observed status.
-  dtp_j2a_status_e status = DTP_J2A_SUCCESS;
-  int unsigned operation_count = 0;
-  localparam string FaultStatusCheckId = DtpJ2aFaultStatusCheckId;
   localparam int unsigned SeriesBeats = 3;
   // The middle beat: a committed good beat precedes and follows the fault.
   localparam int unsigned SeriesFaultBeat = 1;
@@ -78,7 +73,11 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     case (target_name)
       "smc_otp": return target_smc_otp();
       "sep_otp": return target_sep_otp();
-      default:   return target_smc_axi();
+      "smc_axi": return target_smc_axi();
+      default: begin
+        `uvm_fatal(get_type_name(), $sformatf("unsupported JTAG2AXI target %s", target_name))
+        return target_smc_axi();
+      end
     endcase
   endfunction
 
@@ -87,66 +86,37 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     return base + idx * spacing;
   endfunction
 
-  protected function bit [63:0] rand_data(dtp_j2a_target_t t);
-    return {$urandom, $urandom} & bit_mask(t.data_width);
-  endfunction
-
   // SLVERR or DECERR from the seeded stream, logged by the caller.
   protected function ocah_axi_resp_e rand_error_resp();
     return ($urandom_range(1) == 0) ? OCAH_AXI_RESP_SLVERR : OCAH_AXI_RESP_DECERR;
   endfunction
 
-  // TAP reset into Run-Test/Idle (scans start from RTI).
-  protected task reset_to_rti();
-    tap_reset();
-    step(1'b0);
-    check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after TLR->RTI step");
-  endtask
-
-  // Judge one bridge status against the injected response and fold it into
-  // the scenario verdict.
+  // Judge one bridge status against the injected response
+  // (CHK-J2A-FAULT-STATUS); the scenario summary reports the last status
+  // that disagreed.
   protected function void check_fault_status(string name, dtp_j2a_status_e observed,
                                              dtp_j2a_status_e expected, string context_s = "");
     if (observed != expected) status = observed;
-    if (axi_evidence != null)
-      void'(axi_evidence.expect_equal(
-          FaultStatusCheckId,
-          64'(observed),
-          64'(expected),
-          $sformatf(
-              "%s target=%s %s", name, target_name, context_s)
-      ));
-    check_status(name, observed, expected);
+    check_status(target(), name, observed, expected, context_s);
   endfunction
 
   // Judge one with-status capture bit (1 = the previous beat failed).
   protected function void check_status_bit(string name, bit observed, bit expected,
                                            string context_s = "");
-    if (axi_evidence != null)
-      void'(axi_evidence.expect_equal(
-          DtpJ2aStatusBitCheckId,
-          64'(observed),
-          64'(expected),
-          $sformatf(
-              "%s target=%s %s", name, target_name, context_s)
-      ));
-    if (observed !== expected)
-      `uvm_error("jtag2axi_status_chk", $sformatf(
-                 "%s: status bit %0d, expected %0d (%s)", name, observed, expected, context_s))
-    else
-      `uvm_info("jtag2axi_status_chk", $sformatf(
-                "%s: status bit %0d as expected (%s)", name, observed, context_s), UVM_MEDIUM)
+    void'(axi_evidence.expect_equal(
+        DtpJ2aStatusBitCheckId,
+        64'(observed),
+        64'(expected),
+        $sformatf(
+            "%s target=%s %s", name, target_name, context_s)
+    ));
   endfunction
 
   // CHK-AXI-NONVAC: operations ran and every armed expectation was
   // consumed by a real bus response (unconsumed intents also fail at the
   // scoreboard's check_phase drain).
   protected function void emit_error_nonvacuity(string label, int unsigned minimum_ops);
-    int unsigned unconsumed = 0;
-    if (axi_cfg != null)
-      unconsumed = axi_cfg.pending_expected_resp()
-                       + axi_cfg.pending_expected_writes()
-                       + axi_cfg.pending_expected_reads();
+    int unsigned unconsumed = pending_expected_credits();
     emit_nonvacuity_evidence(target(), (operation_count >= minimum_ops) && (unconsumed == 0),
                              $sformatf(
                              "scenario=%s target=%s operations=%0d credits_unconsumed=%0d",
@@ -164,24 +134,16 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
   protected task expect_error_write(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data,
                                     ocah_axi_resp_e resp, string context_s);
     dtp_j2a_status_e op_status;
-    bit [63:0] mem_before, mem_after;
-    arm_target_error(t, addr, resp, 1'b0, 1'b1);
+    bit [63:0] mem_before;
+    arm_target_error(t, addr, resp, .for_read(1'b0), .for_write(1'b1));
     mem_before = read_target_mem_int(t, addr, t.default_size);
     single_write(t, addr, data & data_mask(t.default_size), full_wstrb(t.default_size), op_status,
-                 t.default_size, 1'b0, context_s);
+                 t.default_size, .use_default_size(1'b0), .context_s(context_s));
     check_fault_status({context_s, ".status"}, op_status, axi_resp_to_status(resp), $sformatf(
                        "addr=0x%0h", addr));
     // The responder drops an armed write beat, so the error slot keeps its
     // prior value.
-    mem_after = read_target_mem_int(t, addr, t.default_size);
-    if (mem_after !== mem_before)
-      `uvm_error("jtag2axi_mem_chk", $sformatf(
-                 "%s.no_write_side_effect: memory at 0x%0h changed 0x%0h -> 0x%0h",
-                 context_s,
-                 addr,
-                 mem_before,
-                 mem_after
-                 ))
+    check_target_memory(t, addr, mem_before, t.default_size, {context_s, ".no_write_side_effect"});
     verify_target_recovery(t, addr + 64'h400, data ^ 64'h55AA_55AA_55AA_55AA, 1'b0, context_s);
     operation_count++;
   endtask
@@ -194,8 +156,9 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     dtp_j2a_status_e op_status;
     bit [63:0] rdata;
     write_target_mem_int(t, addr, data, t.default_size);
-    arm_target_error(t, addr, resp, 1'b1, 1'b0, 1'b1, errored);
-    single_read(t, addr, op_status, rdata, t.default_size, 1'b0, context_s);
+    arm_target_error(t, addr, resp, .for_read(1'b1), .for_write(1'b0), .err_rdata(errored));
+    single_read(t, addr, op_status, rdata, t.default_size, .use_default_size(1'b0),
+                .context_s(context_s));
     check_fault_status({context_s, ".status"}, op_status, axi_resp_to_status(resp), $sformatf(
                        "addr=0x%0h", addr));
     check_error_rdata(t, addr, rdata, resp, data, errored, t.default_size, context_s);
@@ -211,13 +174,8 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     foreach (responses[i]) begin
       bit [63:0] addr = slot_addr(t, ErrorBase, i + 1);
       bit [63:0] data = rand_data(t);
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/2: write error addr=0x%08h resp=%s data=0x%0h",
-                i + 1,
-                addr,
-                responses[i].name(),
-                data
-                ), UVM_LOW)
+      log_iteration(i + 1, 2, $sformatf(
+                    "write error addr=0x%08h resp=%s data=0x%0h", addr, responses[i].name(), data));
       expect_error_write(t, addr, data, responses[i], $sformatf("single_write_error#%0d", i + 1));
     end
     emit_error_nonvacuity("error_single_write", 2);
@@ -235,14 +193,13 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
       bit [63:0] data = rand_nonzero_data(t);
       bit [63:0] errored = random_distinct_word(t, {data, returned});
       bit [63:0] recovery;
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/2: read error addr=0x%08h resp=%s preload=0x%0h errored=0x%0h",
-                i + 1,
-                addr,
-                responses[i].name(),
-                data,
-                errored
-                ), UVM_LOW)
+      log_iteration(i + 1, 2, $sformatf(
+                    "read error addr=0x%08h resp=%s preload=0x%0h errored=0x%0h",
+                    addr,
+                    responses[i].name(),
+                    data,
+                    errored
+                    ));
       expect_error_read(t, addr, data, responses[i], errored, $sformatf(
                         "single_read_error#%0d", i + 1), recovery);
       returned.push_back(errored);
@@ -282,18 +239,16 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         // A fixed-address stream revisits the fault address on every beat,
         // so the one-shot fault is armed once the previous beat is published.
         fault_before = read_target_mem_int(t, fault_addr, size);
-        arm_target_error(t, fault_addr, resp, 1'b0, 1'b1);
+        arm_target_error(t, fault_addr, resp, .for_read(1'b0), .for_write(1'b1));
       end
       pub0 = port_history(t.name).count(1'b0);
       sample_activity(t, aw0, w0, ar0);
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: series write addr=0x%08h data=0x%0h resp=%s",
-                idx + 1,
-                SeriesBeats,
-                expected_addr,
-                data,
-                (idx == fault_idx) ? resp.name() : "OKAY"
-                ), UVM_LOW)
+      log_iteration(idx + 1, SeriesBeats, $sformatf(
+                    "series write addr=0x%08h data=0x%0h resp=%s",
+                    expected_addr,
+                    data,
+                    (idx == fault_idx) ? resp.name() : "OKAY"
+                    ));
       if (with_status) begin
         bit [63:0] cap_rdata;
         bit cap_status;
@@ -307,30 +262,17 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
       wait_for_target_activity(t, aw0, w0, ar0, 1'b0, $sformatf("series_write_error.axi#%0d", idx));
       wait_port_count(t, 1'b0, pub0, done);
       if (!done)
-        `uvm_error("jtag2axi_activity_chk", $sformatf(
-                   "series_write_error.commit#%0d: %s write did not complete", idx, t.name))
+        record_wait_timeout(t, PortWaitCycles, $sformatf("series_write_error.commit#%0d", idx));
       expect_bus_request(t, 1'b0, expected_addr, size, wdata, dtp_j2a_series_wstrb(
                          t, expected_addr, size), $sformatf("series_write_error#%0d", idx));
-      observed = read_target_mem_int(t, expected_addr, size);
-      if (idx == fault_idx) begin
-        // The responder drops the armed beat, so the slot keeps its prior
-        // value.
-        if (observed !== fault_before)
-          `uvm_error("jtag2axi_data_chk", $sformatf(
-                     "series_write_error.mem_dropped#%0d: memory 0x%0h != prior 0x%0h (addr=0x%0h)",
-                     idx,
-                     observed,
-                     fault_before,
-                     expected_addr
-                     ))
-      end else if (observed !== data)
-        `uvm_error("jtag2axi_data_chk", $sformatf(
-                   "series_write_error.mem#%0d: memory 0x%0h != data 0x%0h (addr=0x%0h)",
-                   idx,
-                   observed,
-                   data,
-                   expected_addr
-                   ))
+      // The responder drops the armed beat, so the slot keeps its prior
+      // value.
+      if (idx == fault_idx)
+        check_target_memory(t, expected_addr, fault_before, size, $sformatf(
+                            "series_write_error.mem_dropped#%0d", idx));
+      else
+        check_target_memory(t, expected_addr, data, size, $sformatf(
+                            "series_write_error.mem#%0d", idx));
       if (idx == fault_idx || (idx < fault_idx && !with_status)) begin
         // The write advances the captured address by one stride, errored or
         // not.
@@ -357,9 +299,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
       series_data_with_status(t, '0, size, 1'b0, cap_rdata, cap_status);
       wait_for_target_activity(t, aw0, w0, ar0, 1'b0, "series_write_error.axi#final");
       wait_port_count(t, 1'b0, pub0, done);
-      if (!done)
-        `uvm_error("jtag2axi_activity_chk", $sformatf(
-                   "series_write_error.commit#final: %s write did not complete", t.name))
+      if (!done) record_wait_timeout(t, PortWaitCycles, "series_write_error.commit#final");
       expect_bus_request(t, 1'b0, expected_addr, size, '0, dtp_j2a_series_wstrb(
                          t, expected_addr, size), "series_write_error#final");
       check_status_bit($sformatf("series_write_error.status_bit#%0d", SeriesBeats), cap_status,
@@ -404,17 +344,15 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         bit done;
         // A fixed-address stream revisits the fault address on every beat,
         // so the one-shot fault is armed once the previous beat is published.
-        if (idx == fault_idx) arm_target_error(t, fault_addr, resp, 1'b1, 1'b0, 1'b1, errored);
+        if (idx == fault_idx)
+          arm_target_error(t, fault_addr, resp, .for_read(1'b1), .for_write(1'b0),
+                           .err_rdata(errored));
         series_ctrl_op(t, DTP_J2A_OP_READ, addr, size);
         pub0 = port_history(t.name).count(1'b1);
         sample_activity(t, aw0, w0, ar0);
-        `uvm_info(get_type_name(), $sformatf(
-                  "Iteration %0d/%0d: series read addr=0x%08h resp=%s",
-                  idx + 1,
-                  SeriesBeats,
-                  addr,
-                  (idx == fault_idx) ? resp.name() : "OKAY"
-                  ), UVM_LOW)
+        log_iteration(
+            idx + 1, SeriesBeats, $sformatf(
+            "series read addr=0x%08h resp=%s", addr, (idx == fault_idx) ? resp.name() : "OKAY"));
         // The first shift launches the read; the bridge drops the second
         // shift's request and returns the first read's data.
         series_plain_read_shift(t, size, increment, rdata);
@@ -423,20 +361,14 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         series_plain_read_shift(t, size, increment, rdata);
         wait_port_count(t, 1'b1, pub0, done);
         if (!done)
-          `uvm_error("jtag2axi_activity_chk", $sformatf(
-                     "series_read_error.r#%0d: %s read did not complete", idx, t.name))
+          record_wait_timeout(t, PortWaitCycles, $sformatf("series_read_error.r#%0d", idx));
         expect_bus_request(t, 1'b1, addr, size, '0, '0, $sformatf("series_read_error#%0d", idx));
         if (idx == fault_idx)
           check_error_rdata(t, addr, rdata, resp, mem_expected, errored, size, $sformatf(
                             "series_read_error.fault#%0d", idx));
-        else if (rdata !== mem_expected)
-          `uvm_error("jtag2axi_data_chk", $sformatf(
-                     "series_read_error.rdata#%0d: read 0x%0h != expected 0x%0h (addr=0x%0h)",
-                     idx,
-                     rdata,
-                     mem_expected,
-                     addr
-                     ))
+        else
+          check_returned_rdata(t, rdata, mem_expected, $sformatf(
+                               "series_read_error.rdata#%0d addr=0x%0h", idx, addr));
         // The launched read advances the captured address by one stride,
         // errored or not; the dropped second request leaves it alone.
         check_series_addr(t, addr + stride, size, $sformatf("series_read_error.addr#%0d", idx),
@@ -482,14 +414,13 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
       int unsigned aw0, w0, ar0, pub0;
       bit done;
       if (launching)
-        `uvm_info(get_type_name(), $sformatf(
-                  "Iteration %0d/%0d: series read addr=0x%08h resp=%s",
-                  shift + 1,
-                  SeriesBeats,
-                  base + shift * stride,
-                  (shift == fault_idx) ? resp.name() : "OKAY"
-                  ), UVM_LOW)
-      if (shift == fault_idx) arm_target_error(t, base + fault_idx * stride, resp, 1'b1, 1'b0);
+        log_iteration(shift + 1, SeriesBeats, $sformatf(
+                      "series read addr=0x%08h resp=%s",
+                      base + shift * stride,
+                      (shift == fault_idx) ? resp.name() : "OKAY"
+                      ));
+      if (shift == fault_idx)
+        arm_target_error(t, base + fault_idx * stride, resp, .for_read(1'b1), .for_write(1'b0));
       pub0 = port_history(t.name).count(1'b1);
       sample_activity(t, aw0, w0, ar0);
       series_data_with_status(t, '0, size, launching, rdata, status_bit);
@@ -497,8 +428,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
                                ));
       wait_port_count(t, 1'b1, pub0, done);
       if (!done)
-        `uvm_error("jtag2axi_activity_chk", $sformatf(
-                   "series_read_error.r#%0d: %s read did not complete", shift, t.name))
+        record_wait_timeout(t, PortWaitCycles, $sformatf("series_read_error.r#%0d", shift));
       expect_bus_request(t, 1'b1, base + shift * stride, size, '0, '0, $sformatf(
                          "series_read_error#%0d", shift));
       if (shift == fault_idx) begin
@@ -510,14 +440,10 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
       check_status_bit($sformatf("series_read_error.status_bit#%0d", shift - 1), status_bit,
                        (shift - 1 == fault_idx), $sformatf("addr=0x%0h", base + (shift - 1) * stride
                        ));
-      if (shift - 1 != fault_idx && rdata !== preload[shift-1])
-        `uvm_error("jtag2axi_data_chk", $sformatf(
-                   "series_read_error.rdata#%0d: read 0x%0h != expected 0x%0h (addr=0x%0h)",
-                   shift - 1,
-                   rdata,
-                   preload[shift-1],
-                   base + (shift - 1) * stride
-                   ))
+      if (shift - 1 != fault_idx)
+        check_returned_rdata(
+            t, rdata, preload[shift-1], $sformatf(
+            "series_read_error.rdata#%0d addr=0x%0h", shift - 1, base + (shift - 1) * stride));
     end
   endtask
 
@@ -546,20 +472,22 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
       int unsigned ga_aw, ga_w, ga_ar;
       int unsigned wr_bursts_gate, rd_bursts_gate;
       bit reference[], gated[], post[];
-      `uvm_info(get_type_name(), $sformatf(
-                "Step %0d: gate %s and attempt error-path write", idx, t.name), UVM_LOW)
+      log_step($sformatf("%0d", idx), $sformatf(
+               "Gate %s and attempt an error-path write (pass %0d)", t.name, idx));
       gate_image_reference(t, addr, reference);
       gate_target(t);
       // arm_expected=0: the gated op must never reach the bus, so no
       // scoreboard credit may be armed for it (an armed credit that is
       // never consumed fails at the check_phase drain).
-      arm_target_error(t, addr, OCAH_AXI_RESP_SLVERR, 1'b0, 1'b1, 1'b0);
+      arm_target_error(t, addr, OCAH_AXI_RESP_SLVERR, .for_read(1'b0), .for_write(1'b1),
+                       .arm_expected(1'b0));
       sample_activity(t, gb_aw, gb_w, gb_ar);
       wr_bursts_gate = write_bursts_now(t);
       rd_bursts_gate = read_bursts_now(t);
       // issue_single suppresses intent arming while the target is
       // gated (target_enabled()==0).
-      issue_single(t, DTP_J2A_OP_WRITE, addr, data, full_wstrb(size), size, 1'b0);
+      issue_single(t, DTP_J2A_OP_WRITE, addr, data, full_wstrb(size), size,
+                   .use_default_size(1'b0));
       last_single_capture(gated);
       wait_sys_cycles(8);
       sample_activity(t, ga_aw, ga_w, ga_ar);
@@ -579,9 +507,9 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
                                   gate_ctx, ".post_reenable"});
       // Restored error path: an ungated armed error must report
       // through the JTAG status and the scoreboard as EXPECTED.
-      arm_target_error(t, addr, ungated[idx-1], 1'b0, 1'b1);
-      single_write(t, addr, (data ^ idx) & data_mask(size), full_wstrb(size), op_status, size, 1'b0,
-                   {gate_ctx, ".ungated_error"});
+      arm_target_error(t, addr, ungated[idx-1], .for_read(1'b0), .for_write(1'b1));
+      single_write(t, addr, (data ^ idx) & data_mask(size), full_wstrb(size), op_status, size,
+                   .use_default_size(1'b0), .context_s({gate_ctx, ".ungated_error"}));
       check_fault_status({gate_ctx, ".ungated_error.status"}, op_status, axi_resp_to_status(
                          ungated[idx-1]), $sformatf("addr=0x%0h", addr));
       verify_target_recovery(t, addr + 64'h400 + idx * t.beat_bytes, data ^ (idx << 4), 1'b0,
@@ -589,28 +517,26 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
       // Exact delta from before the gated attempt: only the ungated error
       // write and the recovery write complete (write bursts +2, reads +0),
       // so a replay of the gated write fails here.
-      if (axi_evidence != null) begin
-        void'(axi_evidence.expect_equal(
-            "CHK-AXI-GATE-EXACT",
-            write_bursts_now(
-                t
-            ),
-            wr_bursts_gate + 2,
-            $sformatf(
-                "%s target=%s source=responder_burst_counts sanctioned=ungated_error_write+recovery_write(+2)",
-                gate_ctx,
-                t.name)
-        ));
-        void'(axi_evidence.expect_equal(
-            "CHK-AXI-GATE-EXACT",
-            read_bursts_now(
-                t
-            ),
-            rd_bursts_gate,
-            $sformatf(
-                "%s target=%s source=responder_burst_counts reads", gate_ctx, t.name)
-        ));
-      end
+      void'(axi_evidence.expect_equal(
+          "CHK-AXI-GATE-EXACT",
+          write_bursts_now(
+              t
+          ),
+          wr_bursts_gate + 2,
+          $sformatf(
+              "%s target=%s source=responder_burst_counts sanctioned=ungated_error_write+recovery_write(+2)",
+              gate_ctx,
+              t.name)
+      ));
+      void'(axi_evidence.expect_equal(
+          "CHK-AXI-GATE-EXACT",
+          read_bursts_now(
+              t
+          ),
+          rd_bursts_gate,
+          $sformatf(
+              "%s target=%s source=responder_burst_counts reads", gate_ctx, t.name)
+      ));
       operation_count++;
     end
     emit_error_nonvacuity("error_security_gating", 2);
@@ -623,6 +549,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
   task body();
     dtp_j2a_target_t t = target();
     seed_scenario_rng();
+    use_target(t);
     enable_all_debug();
     case (scenario)
       "error_single_write":                 run_error_single_write(t);

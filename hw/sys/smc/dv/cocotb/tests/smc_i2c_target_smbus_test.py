@@ -27,9 +27,7 @@ class smc_i2c_target_smbus_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_i2c_target_smbus_test_seq("i2c_target_smbus_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # No rollup assert here. Each of the four legs raises in the sequence at
-        # the point it fails, so a flag can only be read True; restating them
-        # would add a line that cannot print False.
+        # Each of the four legs raises inside the sequence at the point it fails.
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
@@ -38,10 +36,8 @@ class smc_i2c_target_smbus_test(smc_base_test):
             min_csr_accesses=28,
             csr_accesses=seq.accesses,
             proxy=False,
-            # No expected_bytes/observed_bytes: the ARA reply is compared
-            # against _ARA_REPLY in the sequence and raises there, so a golden
-            # on the record would report a compare whose operands were already
-            # forced equal upstream.
+            # The ARA reply is compared against _ARA_REPLY inside the sequence,
+            # which raises on mismatch.
             details=(
                 f"VIP ARA reply 0x{seq.observed_bytes.hex().upper()} accepted and "
                 f"SMBALERT# hw-cleared; external SMBSUS# asserted and released"

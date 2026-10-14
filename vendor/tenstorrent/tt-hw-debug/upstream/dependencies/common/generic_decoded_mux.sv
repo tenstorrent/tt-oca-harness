@@ -14,6 +14,7 @@ module generic_decoded_mux #(
 );
 
 
+`ifndef SYNTHESIS
     always_ff @(posedge clk) begin
         if (rst_n) begin
             en_x_MuxSelectNotOneHot: assert(!$isunknown(en)) else $error("Xs in assertion en");
@@ -23,6 +24,7 @@ module generic_decoded_mux #(
             end
         end
     end
+`endif
 
     always_comb begin
         out = VALUE_WIDTH'('0);

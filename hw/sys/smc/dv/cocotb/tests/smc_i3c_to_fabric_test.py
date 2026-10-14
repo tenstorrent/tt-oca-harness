@@ -41,12 +41,8 @@ class smc_i3c_to_fabric_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_i3c_to_fabric_test_seq("i3c_to_fabric_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # Every unit of the reported access count is measured by an INDEPENDENT
-        # observer -- the scoreboard tallies one `sys_axi_checks_seen` per
-        # completed SEP_IN AXI item from the analysis port, reads and writes
-        # alike -- so no part of the `>= min_csr_accesses` compare is a literal
-        # versus a literal. The sequence's own counters are
-        # only its internal refactor guard.
+        # `sys_axi_checks_seen` is the scoreboard's tally of completed SEP_IN AXI
+        # items from the analysis port, reads and writes alike.
         observed_accesses = self.env.scoreboard.sys_axi_checks_seen
         await self.record_protocol_vip(
             SmcProtocolVipKind.I3C,

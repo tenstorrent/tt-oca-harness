@@ -69,7 +69,7 @@ boot = "primary"
 observation = "complete"
 timeout = 180
 expect_verdict = "PASSED"
-pytest_markers = ["needs_debug"]
+pytest_markers = ["needs_debug", "smoke"]
 # The secret 00..1f of configs/oca_encrypted_boot_test.yaml, as tests/fuse_maps/oca_encrypted.yaml provisions it.
 efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
 expect = [

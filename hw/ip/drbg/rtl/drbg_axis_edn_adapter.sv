@@ -23,8 +23,11 @@
 // synchronously cancels only the corresponding endpoint and does not disturb another client's
 // in-flight response. It must assert before the client's reset asserts and hold until that
 // reset deasserts.
+`include "ocah_registers.svh"
+
 module drbg_axis_edn_adapter
-  import drbg_pkg::*;
+  import drbg_pkg::drbg_axis_req_t;
+  import drbg_pkg::drbg_axis_rsp_t;
 #(
   parameter int unsigned NUM_ENDPOINTS = 4                  // Number of native EDN clients (e.g.
                                                             // AES, KMAC, OTBN RND/URND).
@@ -56,8 +59,9 @@ module drbg_axis_edn_adapter
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
-  localparam int unsigned DataWidth = DrbgAxisDataWidth;
+  localparam int unsigned DataWidth = drbg_pkg::DrbgAxisDataWidth;
   localparam int unsigned StageWidth = DataWidth + 1;  // {tuser, tdata}
   localparam int unsigned StageDepth = 4;
 
@@ -168,13 +172,7 @@ module drbg_axis_edn_adapter
     // edn_ack_sm clears the holding FIFO on the first cycle after a flush ends,
     // so the endpoint rejoins arbitration a cycle later to keep a granted word
     // from being cleared.
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
-        ep_flush_q[i] <= 1'b1;
-      end else begin
-        ep_flush_q[i] <= ep_flush[i];
-      end
-    end
+    `OCAH_FF(ep_flush_q[i], ep_flush[i], 1'b1, clk_i, rst_ni)
 
     // Every use of edn_req_i is gated by ep_live, so a client reset that
     // follows its cancel cannot reach a flop in this rst_ni domain.
@@ -251,6 +249,6 @@ module drbg_axis_edn_adapter
   `OCAH_OT_ASSERT_KNOWN(AxisEdnRspReadyKnown_A, axis_rsp_o.tready)
   `OCAH_OT_ASSERT(AxisEdnNoReadyDuringClear_A, clear_i |-> !axis_rsp_o.tready)
 
-  `OCAH_OT_ASSERT_INIT(AxisEdnEndpointCount_A, NUM_ENDPOINTS > 0)
+  `OCAH_ASSERT_STATIC(AxisEdnEndpointCount_A, NUM_ENDPOINTS > 0)
 
 endmodule : drbg_axis_edn_adapter

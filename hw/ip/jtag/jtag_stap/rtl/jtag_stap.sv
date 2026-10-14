@@ -14,9 +14,7 @@
 // pipeline stage on the client scan input; TDI_LOCKUP and SCAN_OUT_LOCKUP add lockup
 // latches on TDI and scan out.
 
-module jtag_stap
-  import prim_jtag_pkg::*;
-#(
+module jtag_stap #(
   parameter bit  SCAN_IN_PIPE = 0,      // Adds a TCK pipeline stage on the client scan input for
                                         // timing closure.
   parameter bit  TDI_LOCKUP = 0,        // Adds a lockup stage, clocked on the falling edge of TCK,

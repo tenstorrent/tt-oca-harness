@@ -21,7 +21,7 @@ module prim_diff_decode_multi #(
   output logic               sigint_o  // OR of all per-bit integrity errors.
 );
 
-  `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   if (ASYNC_ON) begin : gen_async
     logic [WIDTH-1:0] sigint_per_bit;
@@ -73,6 +73,6 @@ module prim_diff_decode_multi #(
     assign data_o   = diff_p_buf;
   end
 
-  `OCAH_OT_ASSERT_INIT(WidthPositive_A, WIDTH > 0)
+  `OCAH_ASSERT_STATIC(WidthPositive_A, WIDTH > 0)
 
 endmodule : prim_diff_decode_multi

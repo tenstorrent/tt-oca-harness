@@ -51,7 +51,7 @@ ocah-doc-programmer-pdf: ocah-doc-programmer-setup
 	@echo "Building Programmer's Guide PDF documentation (asciidoctor-pdf)"
 	@mkdir -p "$(OCAH_PROGRAMMER_BUILD)/latex"
 	@rm -rf "$(OCAH_PROGRAMMER_SRC)/assets" && ln -s ../assets "$(OCAH_PROGRAMMER_SRC)/assets"
-	@cd "$(OCAH_PROGRAMMER_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
+	@cd "$(OCAH_PROGRAMMER_DIR)" && env $(OCAH_DOC_PDF_LOCALE) "$(OCAH_ASCIIDOCTOR_PDF)" \
 		$(OCAH_ASCIIDOCTOR_PDF_DIAGRAM_ARGS) \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \

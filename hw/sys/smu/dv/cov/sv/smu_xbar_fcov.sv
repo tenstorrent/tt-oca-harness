@@ -3,12 +3,8 @@
 //
 // SMU address-map and inbound-fabric functional coverage: the
 // `xbar_route_cg` filter intent and the `reg_access_cg` outcome intent of
-// smu_fcov.py as native cover-property points.
-//
-// Those two live in smu_fcov.py as a static test-name-to-bin table: running
-// a named test asserts that its listed bins were hit, without observing a
-// signal. The points here are driven by the map outputs and the inbound AXI
-// handshake, so a bin is hit because the DUT did the thing.
+// smu_fcov.py as native cover-property points, driven by the map outputs and
+// the inbound AXI handshake.
 //
 // One passive, signal-driven module. Every port is a signal of the bench
 // top, except axil_external_active_i, which the bench reads from a window

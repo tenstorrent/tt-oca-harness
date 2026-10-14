@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS UART0 DUT TX capture test (U4-1 / P2-13)."""
+"""SMC OSS UART0 DUT TX capture test (U4-1)."""
 
 from __future__ import annotations
 

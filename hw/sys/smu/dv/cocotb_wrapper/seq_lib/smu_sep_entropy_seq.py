@@ -4,7 +4,7 @@
 
 This anchor proves the entropy path that the AES anchors consume. It runs
 hw/sys/sep/dv/fw/tests/sep_smu_entropy_bringup, which programs ESRC -> CSRNG ->
-EDN through the driver the SEP DV tree already ships, in the order that driver
+EDN through the driver the SEP DV tree ships, in the order that driver
 documents, and it drives the raw noise the ring oscillators cannot generate
 under Verilator.
 

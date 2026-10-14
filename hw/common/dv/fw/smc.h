@@ -55,27 +55,11 @@
 #include "debug_module.h"
 #include "smc_cla.h"
 
-/*
- * Per-pad gpio_ctrl addresses.
- *
- * These blocks live in the smc_external adopter window, which this profile
- * reserves as opaque memory (hw/sys/smc/regs/include/smc_external.rdl), so no
- * generated header names them. The layout below is the mandatory-map contract
- * an adopter must honour, and matches the decode in hw/top/smc_ip_integration.sv.
- * The 0x20 stride is load-bearing: the padring demux recovers the pad index as
- * (addr - base) >> 5.
- */
-#define SMC_TOP_GPIO_CTRL_COUNT 65
-#define SMC_TOP_GPIO_CTRL_STRIDE 0x20u
-/* The vendor eFuse shim CSR owns the first 0x1000 of the window, so the
- * mandatory map starts one 4K page up. Must track ExtGpioCtrlBase in
- * hw/top/smc_ip_integration.sv -- addresses below it are unclaimed and the
- * demux answers DECERR, which hangs the firmware. */
-#define SMC_TOP_GPIO_CTRL_WINDOW_OFFSET 0x1100u
+/* Per-pad gpio_ctrl addresses in the smc_external window. */
+#define SMC_TOP_GPIO_CTRL_COUNT SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_NUM
+#define SMC_TOP_GPIO_CTRL_STRIDE SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_STRIDE
 
-#define SMC_TOP_GPIO_CTRL_BASE_ADDR(i) \
-    (SMC_TOP_SMC_EXTERNAL_BASE_ADDR + SMC_TOP_GPIO_CTRL_WINDOW_OFFSET + \
-     (i)*SMC_TOP_GPIO_CTRL_STRIDE)
+#define SMC_TOP_GPIO_CTRL_BASE_ADDR(i) SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(i)
 #define SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(i) \
     (SMC_TOP_GPIO_CTRL_BASE_ADDR(i) + GPIO_CTRL_CONTROL_BASE_ADDR)
 

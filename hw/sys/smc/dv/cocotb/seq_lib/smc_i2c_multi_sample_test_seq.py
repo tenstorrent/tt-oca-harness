@@ -46,11 +46,8 @@ class smc_i2c_multi_sample_test_seq(smc_base_test_seq):
             if i < self.NUM_SAMPLES - 1:
                 await ClockCycles(dut.clk_ref_i, self.GAP_REF_CYCLES)
 
-        # Activity gate on the *analysis path*, not on this body's own list:
-        # `self.samples.append(item)` runs unconditionally inside a
-        # `range(NUM_SAMPLES)` loop, so its length cannot fail on anything the
-        # DUT did. The scoreboard counter is incremented by `_check_i2c` on the
-        # analysis path, so a mis-bound analysis port -- which would leave every
+        # The scoreboard counter is incremented by `_check_i2c` on the analysis
+        # path, so a mis-bound analysis port -- which would leave every
         # scoreboard compare below vacuous -- fails here. Same gate the sibling
         # `smc_i2c_cg_sanity_test_seq` carries
         # ([NO-DUMMY-DEAD-CODE] / [NO-ZERO-ACTIVITY-PASS]).

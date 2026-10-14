@@ -11,6 +11,8 @@
 // pulse_done_o is high while idle and low for the whole sequence; pulse_out_o sits at its
 // asserted level while idle, so use it only while pulse_done_o is low.
 
+`include "ocah_registers.svh"
+
 module prim_pulse_signal #(
   parameter int COUNT_WIDTH = 16,  // Width of the wait counters.
   parameter bit IS_ACTIVE_HIGH = 0  // 1 makes pulse_out_o active-high; 0 makes it active-low.
@@ -69,15 +71,7 @@ module prim_pulse_signal #(
   );
 
   // when a pulse is requested, lock in the prev value
-  always_ff @(posedge clk_i) begin
-    if (~rst_ni) begin
-      pulse_in_initial_val <= 1'b0;
-    end else begin
-      if (pulse_start_i) begin
-        pulse_in_initial_val <= pulse_in_i;
-      end
-    end
-  end
+  `OCAH_FFLSRN(pulse_in_initial_val, pulse_in_i, pulse_start_i, 1'b0, clk_i, rst_ni)
 
   always_comb begin
 
@@ -174,12 +168,6 @@ module prim_pulse_signal #(
   end
 
   // pulse core reset state
-  always_ff @(posedge clk_i) begin
-    if (~rst_ni) begin
-      pulse_state <= IDLE;
-    end else begin
-      pulse_state <= pulse_state_nxt;
-    end
-  end
+  `OCAH_FFSRN(pulse_state, pulse_state_nxt, IDLE, clk_i, rst_ni)
 
 endmodule

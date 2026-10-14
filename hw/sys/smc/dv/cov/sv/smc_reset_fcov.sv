@@ -56,9 +56,8 @@ module smc_reset_fcov #(
   wire not_powered = (powergood_i !== 1'b1);
 
   // ------------------------------------------------------------------
-  // reset_op — each reset source seen asserted. One point per source
-  // rather than one saturating tuple: a source with no stimulus stays a
-  // named, individually reportable hole.
+  // reset_op — each reset source seen asserted, one point per source so a
+  // source with no stimulus stays a named, individually reportable hole.
   // ------------------------------------------------------------------
   wire cold_asserted_e = (rst_cold_ni === 1'b0);
   wire cool_asserted_e = (rst_cool_ni === 1'b0);
@@ -127,12 +126,9 @@ module smc_reset_fcov #(
                    not_powered)
 
   // ------------------------------------------------------------------
-  // reset_state — the post-reset 4-tuple. SMC_FCOV.adoc records the
-  // Python bin saturating at unique<=3 because the DUT releases the bits
-  // synchronously. Splitting the tuple into all-held / partial / all-
-  // released keeps the partially-released window (the mid-glitch state
-  // RAW_SAMPLE observes) as its own point instead of hiding it in a
-  // tuple whose unique count cannot distinguish the cases.
+  // reset_state — the post-reset 4-tuple as all-held / partial /
+  // all-released, so the partially-released window (the mid-glitch state
+  // RAW_SAMPLE observes) is its own point.
   // ------------------------------------------------------------------
   wire [3:0] reset_state_v = {powergood_stable_i, rst_cold_stable_ref_clk_ni,
                               rst_primary_ref_clk_ni, rst_primary_smc_clk_ni};

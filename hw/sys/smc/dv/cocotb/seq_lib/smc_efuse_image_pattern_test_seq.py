@@ -24,10 +24,11 @@ the DUT:
   LOCKS (at ``SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR``) is set-only and carries
   no lock of its own. Every other region follows its LOCKS bits: the RDL LOCKS
   description says a write-locked field "is not programmable" and a read-locked
-  shadow register "is not readable", and ``architecture.adoc`` line 233 gives
-  ``lock[0] = 1`` as read-locked. Neither states the response code or the word a
-  read-locked read returns, so a read-locked read is held to non-disclosure only:
-  its data must differ from both values the word could hold, and its response
+  shadow register "is not readable", and ``architecture.adoc`` (eFuse lock-field
+  encoding table) gives ``lock[0] = 1`` as read-locked. Neither states the
+  response code or the word a read-locked read returns, so a read-locked read
+  is held to non-disclosure only: its data must differ from both values the
+  word could hold, and its response
   code is recorded, not asserted.
 
 **Scenario.** Sense; read all 256 words. Write the complement of every non-LOCKS

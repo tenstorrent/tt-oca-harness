@@ -26,7 +26,7 @@ class dtp_jtag_idcode_test extends dtp_base_test;
   endfunction
 
   virtual function string specific_loops_knob();
-    return "DTP_IDCODE_TEST_LOOPS";
+    return "DTP_JTAG_IDCODE_TEST_LOOPS";
   endfunction
 
 endclass : dtp_jtag_idcode_test

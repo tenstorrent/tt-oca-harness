@@ -41,13 +41,4 @@ class dtp_jtag2axi_smc_axi_series_write_incr_test extends dtp_base_test;
     return "DTP_JTAG2AXI_TEST_LOOPS";
   endfunction
 
-  virtual function void plumb_scenario_seq(ocah_sequence seq);
-    dtp_jtag2axi_smc_axi_wr_test_seq wr;
-    super.plumb_scenario_seq(seq);
-    if (!$cast(wr, seq)) `uvm_fatal(get_type_name(), "scenario sequence type mismatch")
-    wr.axi_cfg       = m_env.m_smc_axi_cfg;
-    wr.axi_evidence  = m_env.m_smc_axi_env.m_checker;
-    wr.axi_ref_model = m_env.m_smc_axi_env.m_ref_model;
-  endfunction
-
 endclass : dtp_jtag2axi_smc_axi_series_write_incr_test

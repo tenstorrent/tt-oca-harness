@@ -1,5 +1,6 @@
 +incdir+hw/common/assert
 +incdir+hw/common/defs
++incdir+hw/common/registers
 +incdir+hw/ip/efuse/rtl/svh
 +incdir+vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep
 +incdir+vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/include
@@ -195,6 +196,7 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_edge_detector.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
 hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
 hw/common/ocah_prim/rtl/prim_jtag_pkg.sv
 hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext_pkg.sv

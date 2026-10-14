@@ -1,0 +1,53 @@
+tnif, trace_axi_master: cast the generic_dff outputs to their enum types
+
+Both modules connect a generic_dff logic vector output straight to an enum
+variable. IEEE 1800 requires an explicit cast for that assignment, so strict
+elaborators such as Slang reject it. Register into a logic vector of the
+enum's width and cast it into the enum.
+
+diff --git a/rtl/trace/tnif.sv b/rtl/trace/tnif.sv
+index f5635218c..5de2300f1 100644
+--- a/rtl/trace/tnif.sv
++++ b/rtl/trace/tnif.sv
+@@ -40,6 +40,7 @@ module tnif import tn_pkg::*; # (
+ 
+     tnifState_e prev_gnt;
+     tnifState_e next_gnt;
++    logic [$bits(tnifState_e)-1:0] prev_gnt_q;
+ 
+     assign dst_pull_out = tr_gnt_in & ~(dst_bp_in & ~dst_flush_in) & dst_req_in & ((ntr_req_in & ~(ntr_bp_in & ~ntr_flush_in))?(prev_gnt == tnifState_e'(DST_GNT)):1'b1);
+     assign ntr_pull_out = tr_gnt_in & ~(ntr_bp_in & ~ntr_flush_in) & ntr_req_in & ((dst_req_in & ~(dst_bp_in & ~dst_flush_in))?(prev_gnt == tnifState_e'(NTR_GNT)):1'b1);
+@@ -54,8 +55,9 @@ module tnif import tn_pkg::*; # (
+         .rst_n (i_reset_n),
+         .en    (tr_gnt_in & (ntr_req_in & dst_req_in)),
+         .in    (next_gnt),
+-        .out   (prev_gnt)
++        .out   (prev_gnt_q)
+     );
++    assign prev_gnt = tnifState_e'(prev_gnt_q);
+ 
+     assign tr_data_out = {(DATA_WIDTH_IN_BYTES*8){1'b1}} & (dst_pull_out?dst_data_in:ntr_data_in);
+     assign tr_valid_out = dst_pull_out | ntr_pull_out;
+diff --git a/rtl/trace/trace_axi_master.sv b/rtl/trace/trace_axi_master.sv
+index 823f23232..d942968f8 100644
+--- a/rtl/trace/trace_axi_master.sv
++++ b/rtl/trace/trace_axi_master.sv
+@@ -90,6 +90,7 @@ module trace_axi_master #(
+     } state_t;
+ 
+     state_t state, next_state;
++    logic [$bits(state_t)-1:0] state_q;
+     logic next_ready_o;
+     axi_req_t next_axi_req_o;
+ 
+@@ -101,8 +102,9 @@ module trace_axi_master #(
+         .rst_n (rst_ni),
+         .en    ('1),
+         .in    (next_state),
+-        .out   (state)
++        .out   (state_q)
+     );
++    assign state = state_t'(state_q);
+     generic_dff #(
+         .WIDTH       ($bits(logic)),
+         .RESET_VALUE ('1)

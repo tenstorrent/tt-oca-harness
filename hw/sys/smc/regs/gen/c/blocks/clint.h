@@ -14,45 +14,54 @@ extern "C" {
 #include <assert.h>
 
 // reg - clint::MSIP
+// MSIP bit for core
 #define CLINT__MSIP__VALUE_bm 0x1
 #define CLINT__MSIP__VALUE_bp 0
 #define CLINT__MSIP__VALUE_bw 1
 #define CLINT__MSIP__VALUE_reset 0x0
+// Reserved
 #define CLINT__MSIP__RSVD0_bm 0xfffffffe
 #define CLINT__MSIP__RSVD0_bp 1
 #define CLINT__MSIP__RSVD0_bw 31
 #define CLINT__MSIP__RSVD0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // MSIP bit for core
         uint32_t value :1;
+        // Reserved
         uint32_t rsvd0 :31;
     } f;
     uint32_t w;
 } clint__MSIP_t;
 
 // reg - clint::MTIMECMP
+// Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.
 #define CLINT__MTIMECMP__COUNT_bm 0xffffffffffffffff
 #define CLINT__MTIMECMP__COUNT_bp 0
 #define CLINT__MTIMECMP__COUNT_bw 64
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.
         uint64_t count :64;
     } f;
     uint64_t w;
 } clint__MTIMECMP_t;
 
 // reg - clint::MTIME
+// Cycle count (time) value
 #define CLINT__MTIME__COUNT_bm 0xffffffffffffffff
 #define CLINT__MTIME__COUNT_bp 0
 #define CLINT__MTIME__COUNT_bw 64
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Cycle count (time) value
         uint64_t count :64;
     } f;
     uint64_t w;
 } clint__MTIME_t;
 
 // addrmap - clint
+// Core-Local Interruptor: software-interrupt, timer-compare, and machine-time registers.
 typedef struct __attribute__ ((__packed__)) {
     clint__MSIP_t MSIP[4];
     uint8_t RESERVED_10_3fff[0x3ff0];

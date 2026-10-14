@@ -9,9 +9,8 @@ this sequence programs or compares against.
 
 ``smc_dfd_cla_mmr_sweep_test`` drives the write side of the ``cla`` sub-block
 of the SMC_CLA aperture. The other three sub-blocks -- ``dst``, ``dst_sink``
-and ``funnel`` -- are only ever written at the handful of addresses the trace
-leaves configure, so most of their write decode is never exercised. This
-sequence writes every register of all three.
+and ``funnel`` -- are written by the trace leaves only at the addresses they
+configure. This sequence writes every register of all three.
 
 The registers fall into two classes the contract distinguishes:
 

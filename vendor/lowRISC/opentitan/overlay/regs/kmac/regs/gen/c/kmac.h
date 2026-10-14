@@ -14,22 +14,40 @@ extern "C" {
 #include <assert.h>
 
 // reg - kmac::INTR_STATE
+// KMAC/SHA3 absorbing has been completed
 #define KMAC__INTR_STATE__KMAC_DONE_bm 0x1
 #define KMAC__INTR_STATE__KMAC_DONE_bp 0
 #define KMAC__INTR_STATE__KMAC_DONE_bw 1
 #define KMAC__INTR_STATE__KMAC_DONE_reset 0x0
+// The message FIFO is empty.
+// This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:
+// i) The KMAC block is not exercised by a hardware application interface.
+// ii) The SHA3 block is in the Absorb state.
+// iii) Software has not yet written the Process command to finish the absorption process.
+// For the interrupt to be raised, the message FIFO must also have been full previously.
+// Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.
 #define KMAC__INTR_STATE__FIFO_EMPTY_bm 0x2
 #define KMAC__INTR_STATE__FIFO_EMPTY_bp 1
 #define KMAC__INTR_STATE__FIFO_EMPTY_bw 1
 #define KMAC__INTR_STATE__FIFO_EMPTY_reset 0x0
+// KMAC/SHA3 error occurred. ERR_CODE register shows the details
 #define KMAC__INTR_STATE__KMAC_ERR_bm 0x4
 #define KMAC__INTR_STATE__KMAC_ERR_bp 2
 #define KMAC__INTR_STATE__KMAC_ERR_bw 1
 #define KMAC__INTR_STATE__KMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // KMAC/SHA3 absorbing has been completed
         uint32_t kmac_done :1;
+        // The message FIFO is empty.
+        // This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:
+        // i) The KMAC block is not exercised by a hardware application interface.
+        // ii) The SHA3 block is in the Absorb state.
+        // iii) Software has not yet written the Process command to finish the absorption process.
+        // For the interrupt to be raised, the message FIFO must also have been full previously.
+        // Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.
         uint32_t fifo_empty :1;
+        // KMAC/SHA3 error occurred. ERR_CODE register shows the details
         uint32_t kmac_err :1;
         uint32_t :29;
     } f;
@@ -37,22 +55,28 @@ typedef union {
 } kmac__INTR_STATE_t;
 
 // reg - kmac::INTR_ENABLE
+// Enable interrupt when !!INTR_STATE.kmac_done is set.
 #define KMAC__INTR_ENABLE__KMAC_DONE_bm 0x1
 #define KMAC__INTR_ENABLE__KMAC_DONE_bp 0
 #define KMAC__INTR_ENABLE__KMAC_DONE_bw 1
 #define KMAC__INTR_ENABLE__KMAC_DONE_reset 0x0
+// Enable interrupt when !!INTR_STATE.fifo_empty is set.
 #define KMAC__INTR_ENABLE__FIFO_EMPTY_bm 0x2
 #define KMAC__INTR_ENABLE__FIFO_EMPTY_bp 1
 #define KMAC__INTR_ENABLE__FIFO_EMPTY_bw 1
 #define KMAC__INTR_ENABLE__FIFO_EMPTY_reset 0x0
+// Enable interrupt when !!INTR_STATE.kmac_err is set.
 #define KMAC__INTR_ENABLE__KMAC_ERR_bm 0x4
 #define KMAC__INTR_ENABLE__KMAC_ERR_bp 2
 #define KMAC__INTR_ENABLE__KMAC_ERR_bw 1
 #define KMAC__INTR_ENABLE__KMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable interrupt when !!INTR_STATE.kmac_done is set.
         uint32_t kmac_done :1;
+        // Enable interrupt when !!INTR_STATE.fifo_empty is set.
         uint32_t fifo_empty :1;
+        // Enable interrupt when !!INTR_STATE.kmac_err is set.
         uint32_t kmac_err :1;
         uint32_t :29;
     } f;
@@ -60,22 +84,28 @@ typedef union {
 } kmac__INTR_ENABLE_t;
 
 // reg - kmac::INTR_TEST
+// Write 1 to force !!INTR_STATE.kmac_done to 1.
 #define KMAC__INTR_TEST__KMAC_DONE_bm 0x1
 #define KMAC__INTR_TEST__KMAC_DONE_bp 0
 #define KMAC__INTR_TEST__KMAC_DONE_bw 1
 #define KMAC__INTR_TEST__KMAC_DONE_reset 0x0
+// Write 1 to force !!INTR_STATE.fifo_empty to 1.
 #define KMAC__INTR_TEST__FIFO_EMPTY_bm 0x2
 #define KMAC__INTR_TEST__FIFO_EMPTY_bp 1
 #define KMAC__INTR_TEST__FIFO_EMPTY_bw 1
 #define KMAC__INTR_TEST__FIFO_EMPTY_reset 0x0
+// Write 1 to force !!INTR_STATE.kmac_err to 1.
 #define KMAC__INTR_TEST__KMAC_ERR_bm 0x4
 #define KMAC__INTR_TEST__KMAC_ERR_bp 2
 #define KMAC__INTR_TEST__KMAC_ERR_bw 1
 #define KMAC__INTR_TEST__KMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to force !!INTR_STATE.kmac_done to 1.
         uint32_t kmac_done :1;
+        // Write 1 to force !!INTR_STATE.fifo_empty to 1.
         uint32_t fifo_empty :1;
+        // Write 1 to force !!INTR_STATE.kmac_err to 1.
         uint32_t kmac_err :1;
         uint32_t :29;
     } f;
@@ -83,17 +113,21 @@ typedef union {
 } kmac__INTR_TEST_t;
 
 // reg - kmac::ALERT_TEST
+// Write 1 to trigger one alert event of this kind.
 #define KMAC__ALERT_TEST__RECOV_OPERATION_ERR_bm 0x1
 #define KMAC__ALERT_TEST__RECOV_OPERATION_ERR_bp 0
 #define KMAC__ALERT_TEST__RECOV_OPERATION_ERR_bw 1
 #define KMAC__ALERT_TEST__RECOV_OPERATION_ERR_reset 0x0
+// Write 1 to trigger one alert event of this kind.
 #define KMAC__ALERT_TEST__FATAL_FAULT_ERR_bm 0x2
 #define KMAC__ALERT_TEST__FATAL_FAULT_ERR_bp 1
 #define KMAC__ALERT_TEST__FATAL_FAULT_ERR_bw 1
 #define KMAC__ALERT_TEST__FATAL_FAULT_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to trigger one alert event of this kind.
         uint32_t recov_operation_err :1;
+        // Write 1 to trigger one alert event of this kind.
         uint32_t fatal_fault_err :1;
         uint32_t :30;
     } f;
@@ -101,12 +135,14 @@ typedef union {
 } kmac__ALERT_TEST_t;
 
 // reg - kmac::CFG_REGWEN
+// Configuration enable.
 #define KMAC__CFG_REGWEN__EN_bm 0x1
 #define KMAC__CFG_REGWEN__EN_bp 0
 #define KMAC__CFG_REGWEN__EN_bw 1
 #define KMAC__CFG_REGWEN__EN_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Configuration enable.
         uint32_t en :1;
         uint32_t :31;
     } f;
@@ -114,68 +150,178 @@ typedef union {
 } kmac__CFG_REGWEN_t;
 
 // reg - kmac::CFG_SHADOWED
+// KMAC datapath enable.
+// If this bit is 1, the KMAC mode is active and the secret key is prepended to the incoming message.
 #define KMAC__CFG_SHADOWED__KMAC_EN_bm 0x1
 #define KMAC__CFG_SHADOWED__KMAC_EN_bp 0
 #define KMAC__CFG_SHADOWED__KMAC_EN_bw 1
 #define KMAC__CFG_SHADOWED__KMAC_EN_reset 0x0
+// Hashing Strength
+// 3 bit field to select the security strength of SHA3 hashing
+// engine. If mode field is set to SHAKE or cSHAKE, only 128 and
+// 256 strength can be selected. Other value will result error
+// when hashing starts.
 #define KMAC__CFG_SHADOWED__KSTRENGTH_bm 0xe
 #define KMAC__CFG_SHADOWED__KSTRENGTH_bp 1
 #define KMAC__CFG_SHADOWED__KSTRENGTH_bw 3
 #define KMAC__CFG_SHADOWED__KSTRENGTH_reset 0x0
+// Keccak hashing mode.
+// This module supports SHA3 main hashing algorithm and the part
+// of its derived functions, SHAKE and cSHAKE with limitations.
+// This field is to select the mode.
 #define KMAC__CFG_SHADOWED__MODE_bm 0x30
 #define KMAC__CFG_SHADOWED__MODE_bp 4
 #define KMAC__CFG_SHADOWED__MODE_bw 2
 #define KMAC__CFG_SHADOWED__MODE_reset 0x0
+// Message Endianness.
+// If 1 then each individual multi-byte value, regardless of its
+// alignment, written to !!MSG_FIFO will be added to the message
+// in big-endian byte order.
+// If 0, each value will be added to the message in little-endian
+// byte order.
+// A message written to !!MSG_FIFO one byte at a time will not be
+// affected by this setting.
+// From a hardware perspective byte swaps are performed on a TL-UL
+// word granularity.
 #define KMAC__CFG_SHADOWED__MSG_ENDIANNESS_bm 0x100
 #define KMAC__CFG_SHADOWED__MSG_ENDIANNESS_bp 8
 #define KMAC__CFG_SHADOWED__MSG_ENDIANNESS_bw 1
 #define KMAC__CFG_SHADOWED__MSG_ENDIANNESS_reset 0x0
+// State Endianness.
+// If 1 then each individual word in the !!STATE output register
+// is converted to big-endian byte order.
+// The order of the words in relation to one another is not
+// changed.
+// This setting does not affect how the state is interpreted
+// during computation.
 #define KMAC__CFG_SHADOWED__STATE_ENDIANNESS_bm 0x200
 #define KMAC__CFG_SHADOWED__STATE_ENDIANNESS_bp 9
 #define KMAC__CFG_SHADOWED__STATE_ENDIANNESS_bw 1
 #define KMAC__CFG_SHADOWED__STATE_ENDIANNESS_reset 0x0
+// Sideloaded Key. Deprecated: defaults to 1 (sideload). Set to 0 for DV testing with SW key path only.
+// If 1, KMAC uses KeyMgr sideloaded key for SW initiated KMAC
+// operation. KMAC uses the sideloaded key regardless of this
+// configuration when KeyMgr initiates the KMAC operation for
+// Key Derivation Function (KDF).
 #define KMAC__CFG_SHADOWED__SIDELOAD_bm 0x1000
 #define KMAC__CFG_SHADOWED__SIDELOAD_bp 12
 #define KMAC__CFG_SHADOWED__SIDELOAD_bw 1
 #define KMAC__CFG_SHADOWED__SIDELOAD_reset 0x1
+// Entropy Mode
+// Using this field, software can configure mode of operation of the internal pseudo-random number generator (PRNG).
+// Note that once software has configured a value different from `idle_mode` after reset, and set the !!CFG_SHADOWED.entropy_ready bit afterwards, the PRNG configuration cannot be changed anymore (unless an EDN request timeout occurs when running in EDN mode).
+// Further writes to this field will change the value received upon reading the register, but they will be ignored by the internal hardware.
 #define KMAC__CFG_SHADOWED__ENTROPY_MODE_bm 0x30000
 #define KMAC__CFG_SHADOWED__ENTROPY_MODE_bp 16
 #define KMAC__CFG_SHADOWED__ENTROPY_MODE_bw 2
 #define KMAC__CFG_SHADOWED__ENTROPY_MODE_reset 0x0
+// Entropy Fast process mode.
+// If 1, entropy logic uses garbage data while not processing the KMAC
+// key block. It will re-use previous entropy value and will not
+// expand the entropy when it is consumed. Only it refreshes the
+// entropy while processing the secret key block. This process should
+// not be used if SCA resistance is required because it may cause side
+// channel leakage.
 #define KMAC__CFG_SHADOWED__ENTROPY_FAST_PROCESS_bm 0x80000
 #define KMAC__CFG_SHADOWED__ENTROPY_FAST_PROCESS_bp 19
 #define KMAC__CFG_SHADOWED__ENTROPY_FAST_PROCESS_bw 1
 #define KMAC__CFG_SHADOWED__ENTROPY_FAST_PROCESS_reset 0x0
+// Message Masking with PRNG.
+// If 1, KMAC applies PRNG to the input messages to the Keccak module
+// when KMAC mode is on.
 #define KMAC__CFG_SHADOWED__MSG_MASK_bm 0x100000
 #define KMAC__CFG_SHADOWED__MSG_MASK_bp 20
 #define KMAC__CFG_SHADOWED__MSG_MASK_bw 1
 #define KMAC__CFG_SHADOWED__MSG_MASK_reset 0x0
+// Entropy Ready status.
+// Software sets this field to allow the entropy generator in KMAC to
+// fetch the entropy and run.
 #define KMAC__CFG_SHADOWED__ENTROPY_READY_bm 0x1000000
 #define KMAC__CFG_SHADOWED__ENTROPY_READY_bp 24
 #define KMAC__CFG_SHADOWED__ENTROPY_READY_bw 1
 #define KMAC__CFG_SHADOWED__ENTROPY_READY_reset 0x0
+// Enable Unsupported Mode and Strength configs.
+// SW may set this field for KMAC to move forward with unsupported
+// Keccak Mode and Strength configurations, such as cSHAKE512.
+// If not set, KMAC won't propagate the SW command (CmdStart) to the
+// rest of the blocks (AppIntf, KMAC Core, SHA3).
 #define KMAC__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_bm 0x4000000
 #define KMAC__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_bp 26
 #define KMAC__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_bw 1
 #define KMAC__CFG_SHADOWED__EN_UNSUPPORTED_MODESTRENGTH_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // KMAC datapath enable.
+        // If this bit is 1, the KMAC mode is active and the secret key is prepended to the incoming message.
         uint32_t kmac_en :1;
+        // Hashing Strength
+        // 3 bit field to select the security strength of SHA3 hashing
+        // engine. If mode field is set to SHAKE or cSHAKE, only 128 and
+        // 256 strength can be selected. Other value will result error
+        // when hashing starts.
         uint32_t kstrength :3;
+        // Keccak hashing mode.
+        // This module supports SHA3 main hashing algorithm and the part
+        // of its derived functions, SHAKE and cSHAKE with limitations.
+        // This field is to select the mode.
         uint32_t mode :2;
         uint32_t :2;
+        // Message Endianness.
+        // If 1 then each individual multi-byte value, regardless of its
+        // alignment, written to !!MSG_FIFO will be added to the message
+        // in big-endian byte order.
+        // If 0, each value will be added to the message in little-endian
+        // byte order.
+        // A message written to !!MSG_FIFO one byte at a time will not be
+        // affected by this setting.
+        // From a hardware perspective byte swaps are performed on a TL-UL
+        // word granularity.
         uint32_t msg_endianness :1;
+        // State Endianness.
+        // If 1 then each individual word in the !!STATE output register
+        // is converted to big-endian byte order.
+        // The order of the words in relation to one another is not
+        // changed.
+        // This setting does not affect how the state is interpreted
+        // during computation.
         uint32_t state_endianness :1;
         uint32_t :2;
+        // Sideloaded Key. Deprecated: defaults to 1 (sideload). Set to 0 for DV testing with SW key path only.
+        // If 1, KMAC uses KeyMgr sideloaded key for SW initiated KMAC
+        // operation. KMAC uses the sideloaded key regardless of this
+        // configuration when KeyMgr initiates the KMAC operation for
+        // Key Derivation Function (KDF).
         uint32_t sideload :1;
         uint32_t :3;
+        // Entropy Mode
+        // Using this field, software can configure mode of operation of the internal pseudo-random number generator (PRNG).
+        // Note that once software has configured a value different from `idle_mode` after reset, and set the !!CFG_SHADOWED.entropy_ready bit afterwards, the PRNG configuration cannot be changed anymore (unless an EDN request timeout occurs when running in EDN mode).
+        // Further writes to this field will change the value received upon reading the register, but they will be ignored by the internal hardware.
         uint32_t entropy_mode :2;
         uint32_t :1;
+        // Entropy Fast process mode.
+        // If 1, entropy logic uses garbage data while not processing the KMAC
+        // key block. It will re-use previous entropy value and will not
+        // expand the entropy when it is consumed. Only it refreshes the
+        // entropy while processing the secret key block. This process should
+        // not be used if SCA resistance is required because it may cause side
+        // channel leakage.
         uint32_t entropy_fast_process :1;
+        // Message Masking with PRNG.
+        // If 1, KMAC applies PRNG to the input messages to the Keccak module
+        // when KMAC mode is on.
         uint32_t msg_mask :1;
         uint32_t :3;
+        // Entropy Ready status.
+        // Software sets this field to allow the entropy generator in KMAC to
+        // fetch the entropy and run.
         uint32_t entropy_ready :1;
         uint32_t :1;
+        // Enable Unsupported Mode and Strength configs.
+        // SW may set this field for KMAC to move forward with unsupported
+        // Keccak Mode and Strength configurations, such as cSHAKE512.
+        // If not set, KMAC won't propagate the SW command (CmdStart) to the
+        // rest of the blocks (AppIntf, KMAC Core, SHA3).
         uint32_t en_unsupported_modestrength :1;
         uint32_t :5;
     } f;
@@ -183,24 +329,44 @@ typedef union {
 } kmac__CFG_SHADOWED_t;
 
 // reg - kmac::CMD
+// Issue a command to the KMAC/SHA3 IP. The command is sparse
+// encoded. To prevent sw from writing multiple commands at once,
+// the field is defined as enum.
 #define KMAC__CMD__CMD_bm 0x3f
 #define KMAC__CMD__CMD_bp 0
 #define KMAC__CMD__CMD_bw 6
+// Software can set this bit to 1 to manually trigger the reseeding of the internal PRNG when running in EDN mode.
+// This will also clear !!ENTROPY_REFRESH_HASH_CNT.
+// Note that the hardware may miss the trigger pulse if the module is not idle, or if the module is currently performing a reseed operation.
 #define KMAC__CMD__ENTROPY_REQ_bm 0x100
 #define KMAC__CMD__ENTROPY_REQ_bp 8
 #define KMAC__CMD__ENTROPY_REQ_bw 1
+// Software can set this bit to 1 to manually clear !!ENTROPY_REFRESH_HASH_CNT.
 #define KMAC__CMD__HASH_CNT_CLR_bm 0x200
 #define KMAC__CMD__HASH_CNT_CLR_bp 9
 #define KMAC__CMD__HASH_CNT_CLR_bw 1
+// When error occurs and one of the state machine stays at
+// Error handling state, SW may process the error based on
+// ERR_CODE, then let FSM back to the reset state
 #define KMAC__CMD__ERR_PROCESSED_bm 0x400
 #define KMAC__CMD__ERR_PROCESSED_bp 10
 #define KMAC__CMD__ERR_PROCESSED_bw 1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Issue a command to the KMAC/SHA3 IP. The command is sparse
+        // encoded. To prevent sw from writing multiple commands at once,
+        // the field is defined as enum.
         uint32_t cmd :6;
         uint32_t :2;
+        // Software can set this bit to 1 to manually trigger the reseeding of the internal PRNG when running in EDN mode.
+        // This will also clear !!ENTROPY_REFRESH_HASH_CNT.
+        // Note that the hardware may miss the trigger pulse if the module is not idle, or if the module is currently performing a reseed operation.
         uint32_t entropy_req :1;
+        // Software can set this bit to 1 to manually clear !!ENTROPY_REFRESH_HASH_CNT.
         uint32_t hash_cnt_clr :1;
+        // When error occurs and one of the state machine stays at
+        // Error handling state, SW may process the error based on
+        // ERR_CODE, then let FSM back to the reset state
         uint32_t err_processed :1;
         uint32_t :21;
     } f;
@@ -208,45 +374,93 @@ typedef union {
 } kmac__CMD_t;
 
 // reg - kmac::STATUS
+// If 1, SHA3 hashing engine is in idle state.
 #define KMAC__STATUS__SHA3_IDLE_bm 0x1
 #define KMAC__STATUS__SHA3_IDLE_bp 0
 #define KMAC__STATUS__SHA3_IDLE_bw 1
 #define KMAC__STATUS__SHA3_IDLE_reset 0x1
+// If 1, SHA3 is receiving message stream and processing it
 #define KMAC__STATUS__SHA3_ABSORB_bm 0x2
 #define KMAC__STATUS__SHA3_ABSORB_bp 1
 #define KMAC__STATUS__SHA3_ABSORB_bw 1
+// If 1, SHA3 completes sponge absorbing stage.
+// In this stage, SW can manually run the hashing engine.
 #define KMAC__STATUS__SHA3_SQUEEZE_bm 0x4
 #define KMAC__STATUS__SHA3_SQUEEZE_bp 2
 #define KMAC__STATUS__SHA3_SQUEEZE_bw 1
+// Count of occupied entries in the message FIFO.
 #define KMAC__STATUS__FIFO_DEPTH_bm 0x1f00
 #define KMAC__STATUS__FIFO_DEPTH_bp 8
 #define KMAC__STATUS__FIFO_DEPTH_bw 5
+// Message FIFO Empty indicator.
+// The FIFO's `Pass` parameter is set to `1'b 1`. So, by default, if
+// the SHA engine is ready, the write data to FIFO just passes
+// through.
+// In this case, `fifo_depth` remains **0**. `fifo_empty`, however,
+// lowers the value to **0** for a cycle, then goes back to the empty
+// state, **1**.
+// See the "Message FIFO" section in the spec for the reason.
 #define KMAC__STATUS__FIFO_EMPTY_bm 0x4000
 #define KMAC__STATUS__FIFO_EMPTY_bp 14
 #define KMAC__STATUS__FIFO_EMPTY_bw 1
 #define KMAC__STATUS__FIFO_EMPTY_reset 0x1
+// Message FIFO Full indicator
 #define KMAC__STATUS__FIFO_FULL_bm 0x8000
 #define KMAC__STATUS__FIFO_FULL_bp 15
 #define KMAC__STATUS__FIFO_FULL_bw 1
+// No fatal fault has occurred inside the KMAC unit (0).
+// A fatal fault has occurred and the KMAC unit needs to be reset (1),
+// Examples for such faults include
+// i) TL-UL bus integrity fault
+// ii) storage errors in the shadow registers
+// iii) errors in the message, round, or key counter
+// iv) any internal FSM entering an invalid state
+// v) an error in the redundant lfsr
 #define KMAC__STATUS__ALERT_FATAL_FAULT_bm 0x10000
 #define KMAC__STATUS__ALERT_FATAL_FAULT_bp 16
 #define KMAC__STATUS__ALERT_FATAL_FAULT_bw 1
 #define KMAC__STATUS__ALERT_FATAL_FAULT_reset 0x0
+// An update error has not occurred (0) or has occurred (1) in the shadowed Control Register.
+// KMAC operation needs to be restarted by re-writing the Control Register.
 #define KMAC__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bm 0x20000
 #define KMAC__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bp 17
 #define KMAC__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bw 1
 #define KMAC__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // If 1, SHA3 hashing engine is in idle state.
         uint32_t sha3_idle :1;
+        // If 1, SHA3 is receiving message stream and processing it
         uint32_t sha3_absorb :1;
+        // If 1, SHA3 completes sponge absorbing stage.
+        // In this stage, SW can manually run the hashing engine.
         uint32_t sha3_squeeze :1;
         uint32_t :5;
+        // Count of occupied entries in the message FIFO.
         uint32_t fifo_depth :5;
         uint32_t :1;
+        // Message FIFO Empty indicator.
+        // The FIFO's `Pass` parameter is set to `1'b 1`. So, by default, if
+        // the SHA engine is ready, the write data to FIFO just passes
+        // through.
+        // In this case, `fifo_depth` remains **0**. `fifo_empty`, however,
+        // lowers the value to **0** for a cycle, then goes back to the empty
+        // state, **1**.
+        // See the "Message FIFO" section in the spec for the reason.
         uint32_t fifo_empty :1;
+        // Message FIFO Full indicator
         uint32_t fifo_full :1;
+        // No fatal fault has occurred inside the KMAC unit (0).
+        // A fatal fault has occurred and the KMAC unit needs to be reset (1),
+        // Examples for such faults include
+        // i) TL-UL bus integrity fault
+        // ii) storage errors in the shadow registers
+        // iii) errors in the message, round, or key counter
+        // iv) any internal FSM entering an invalid state
+        // v) an error in the redundant lfsr
         uint32_t ALERT_FATAL_FAULT :1;
+        // An update error has not occurred (0) or has occurred (1) in the shadowed Control Register.
+        // KMAC operation needs to be restarted by re-writing the Control Register.
         uint32_t ALERT_RECOV_CTRL_UPDATE_ERR :1;
         uint32_t :14;
     } f;
@@ -254,30 +468,52 @@ typedef union {
 } kmac__STATUS_t;
 
 // reg - kmac::ENTROPY_PERIOD
+// EDN Wait timer prescaler.
+// EDN Wait timer has 16 bit value. The timer value is increased when the timer pulse is generated. Timer pulse is raises when the number of the clock cycles hit this prescaler value.
+// The exact period of the timer pulse is unknown as the KMAC input clock may contain jitters.
 #define KMAC__ENTROPY_PERIOD__PRESCALER_bm 0x3ff
 #define KMAC__ENTROPY_PERIOD__PRESCALER_bp 0
 #define KMAC__ENTROPY_PERIOD__PRESCALER_bw 10
 #define KMAC__ENTROPY_PERIOD__PRESCALER_reset 0x0
+// EDN request wait timer.
+// The entropy module in KMAC waits up to this field in the timer pulse
+// after it sends request to EDN module. If the timer expires, the
+// entropy module moves to an error state and notifies to the system.
+// If there is a pending EDN request during wait timer update, then this update is delayed until the EDN request is complete.
+// If 0, the entropy module waits the EDN response always. If EDN does
+// not respond in this configuration, the software shall reset the IP.
 #define KMAC__ENTROPY_PERIOD__WAIT_TIMER_bm 0xffff0000
 #define KMAC__ENTROPY_PERIOD__WAIT_TIMER_bp 16
 #define KMAC__ENTROPY_PERIOD__WAIT_TIMER_bw 16
 #define KMAC__ENTROPY_PERIOD__WAIT_TIMER_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // EDN Wait timer prescaler.
+        // EDN Wait timer has 16 bit value. The timer value is increased when the timer pulse is generated. Timer pulse is raises when the number of the clock cycles hit this prescaler value.
+        // The exact period of the timer pulse is unknown as the KMAC input clock may contain jitters.
         uint32_t prescaler :10;
         uint32_t :6;
+        // EDN request wait timer.
+        // The entropy module in KMAC waits up to this field in the timer pulse
+        // after it sends request to EDN module. If the timer expires, the
+        // entropy module moves to an error state and notifies to the system.
+        // If there is a pending EDN request during wait timer update, then this update is delayed until the EDN request is complete.
+        // If 0, the entropy module waits the EDN response always. If EDN does
+        // not respond in this configuration, the software shall reset the IP.
         uint32_t wait_timer :16;
     } f;
     uint32_t w;
 } kmac__ENTROPY_PERIOD_t;
 
 // reg - kmac::ENTROPY_REFRESH_HASH_CNT
+// Hash (KMAC) counter
 #define KMAC__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_bm 0x3ff
 #define KMAC__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_bp 0
 #define KMAC__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_bw 10
 #define KMAC__ENTROPY_REFRESH_HASH_CNT__HASH_CNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Hash (KMAC) counter
         uint32_t hash_cnt :10;
         uint32_t :22;
     } f;
@@ -285,12 +521,14 @@ typedef union {
 } kmac__ENTROPY_REFRESH_HASH_CNT_t;
 
 // reg - kmac::ENTROPY_REFRESH_THRESHOLD_SHADOWED
+// Hash Threshold
 #define KMAC__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_bm 0x3ff
 #define KMAC__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_bp 0
 #define KMAC__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_bw 10
 #define KMAC__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Hash Threshold
         uint32_t threshold :10;
         uint32_t :22;
     } f;
@@ -298,45 +536,53 @@ typedef union {
 } kmac__ENTROPY_REFRESH_THRESHOLD_SHADOWED_t;
 
 // reg - kmac::ENTROPY_SEED
+// 32-bit chunk of the entropy generator seed
 #define KMAC__ENTROPY_SEED__SEED_bm 0xffffffff
 #define KMAC__ENTROPY_SEED__SEED_bp 0
 #define KMAC__ENTROPY_SEED__SEED_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit chunk of the entropy generator seed
         uint32_t seed :32;
     } f;
     uint32_t w;
 } kmac__ENTROPY_SEED_t;
 
 // reg - kmac::KEY_SHARE0
+// 32-bit chunk of up-to 512-bit Secret Key
 #define KMAC__KEY_SHARE0__KEY_0_bm 0xffffffff
 #define KMAC__KEY_SHARE0__KEY_0_bp 0
 #define KMAC__KEY_SHARE0__KEY_0_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit chunk of up-to 512-bit Secret Key
         uint32_t key_0 :32;
     } f;
     uint32_t w;
 } kmac__KEY_SHARE0_t;
 
 // reg - kmac::KEY_SHARE1
+// 32-bit chunk of up-to 512-bit Secret Key
 #define KMAC__KEY_SHARE1__KEY_0_bm 0xffffffff
 #define KMAC__KEY_SHARE1__KEY_0_bp 0
 #define KMAC__KEY_SHARE1__KEY_0_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit chunk of up-to 512-bit Secret Key
         uint32_t key_0 :32;
     } f;
     uint32_t w;
 } kmac__KEY_SHARE1_t;
 
 // reg - kmac::KEY_LEN
+// Key length choice
 #define KMAC__KEY_LEN__LEN_bm 0x7
 #define KMAC__KEY_LEN__LEN_bp 0
 #define KMAC__KEY_LEN__LEN_bw 3
 #define KMAC__KEY_LEN__LEN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Key length choice
         uint32_t len :3;
         uint32_t :29;
     } f;
@@ -344,24 +590,32 @@ typedef union {
 } kmac__KEY_LEN_t;
 
 // reg - kmac::PREFIX
+// 32-bit chunk of Encoded NS Prefix
 #define KMAC__PREFIX__PREFIX_0_bm 0xffffffff
 #define KMAC__PREFIX__PREFIX_0_bp 0
 #define KMAC__PREFIX__PREFIX_0_bw 32
 #define KMAC__PREFIX__PREFIX_0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit chunk of Encoded NS Prefix
         uint32_t prefix_0 :32;
     } f;
     uint32_t w;
 } kmac__PREFIX_t;
 
 // reg - kmac::ERR_CODE
+// If the `kmac_err` interrupt occurs, this register has information on the error cause.
+// Bits 31:24 contain the error code (please refer to `err_code_e` in `hw/ip/kmac/rtl/kmac_pkg.sv`) for the encoding, and bits 23:0 contain additional debug information.
+// This register does *not* get cleared when the `kmac_err` interrupt state gets cleared.
 #define KMAC__ERR_CODE__ERR_CODE_bm 0xffffffff
 #define KMAC__ERR_CODE__ERR_CODE_bp 0
 #define KMAC__ERR_CODE__ERR_CODE_bw 32
 #define KMAC__ERR_CODE__ERR_CODE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // If the `kmac_err` interrupt occurs, this register has information on the error cause.
+        // Bits 31:24 contain the error code (please refer to `err_code_e` in `hw/ip/kmac/rtl/kmac_pkg.sv`) for the encoding, and bits 23:0 contain additional debug information.
+        // This register does *not* get cleared when the `kmac_err` interrupt state gets cleared.
         uint32_t err_code :32;
     } f;
     uint32_t w;
@@ -378,6 +632,7 @@ typedef struct __attribute__ ((__packed__)) {
 } kmac__MSG_FIFO_t;
 
 // addrmap - kmac
+// Accelerator for Keccak-based keyed hash message authentication code and SHA-3 hash functions; with SCA and FI countermeasures
 typedef struct __attribute__ ((__packed__)) {
     kmac__INTR_STATE_t INTR_STATE;
     kmac__INTR_ENABLE_t INTR_ENABLE;

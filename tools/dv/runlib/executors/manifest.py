@@ -17,7 +17,6 @@ import copy
 import hashlib
 import json
 import os
-import subprocess
 import sys
 from collections.abc import Mapping
 from pathlib import Path
@@ -25,7 +24,7 @@ from typing import Any
 
 from ..models import ConfigError, Flow, StageResult, TestCatalog
 from ..paths import repo_rel
-from ..results import fragment_payload, write_result
+from ..results import fragment_payload, git_info, write_result
 from ..stages import run_stage
 from .base import LEAF_ROLE, LeafTask, ResourceRequest, now_iso
 
@@ -99,29 +98,9 @@ def clear_attempt_outputs(task: LeafTask) -> None:
 
 
 def repo_identity(root: Path) -> tuple[str | None, bool | None]:
-    """(HEAD commit, dirty flag) of the checkout, or Nones when git cannot answer."""
-    try:
-        head = subprocess.run(
-            ["git", "-C", str(root), "rev-parse", "HEAD"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        status = subprocess.run(
-            ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=no"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None, None
-    if head.returncode != 0:
-        return None, None
-    commit = head.stdout.strip() or None
-    dirty = bool(status.stdout.strip()) if status.returncode == 0 else None
-    return commit, dirty
+    """(HEAD commit, dirty flag) of the checkout; each is None when git cannot answer it."""
+    info = git_info(root)
+    return info["commit"] or None, {"true": True, "false": False}.get(info["dirty"])
 
 
 def manifest_digest(payload: Mapping[str, Any]) -> str:

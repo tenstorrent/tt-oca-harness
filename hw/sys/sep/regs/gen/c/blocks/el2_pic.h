@@ -14,12 +14,19 @@ extern "C" {
 #include <assert.h>
 
 // reg - el2_pic::MEIPL
+// External Interrupt Priority Level Register. Sets the priority level for an interrupt source.
+// External interrupt priority level:
+// RISC-V standard order: 0=Never interrupt, 1..15=Priority (1 lowest, 15 highest)
+// Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)
 #define EL2_PIC__MEIPL__INTPRIORITY_bm 0xf
 #define EL2_PIC__MEIPL__INTPRIORITY_bp 0
 #define EL2_PIC__MEIPL__INTPRIORITY_bw 4
 #define EL2_PIC__MEIPL__INTPRIORITY_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // External interrupt priority level:
+        // RISC-V standard order: 0=Never interrupt, 1..15=Priority (1 lowest, 15 highest)
+        // Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)
         uint32_t intpriority :4;
         uint32_t :28;
     } f;
@@ -27,24 +34,38 @@ typedef union {
 } el2_pic__MEIPL_t;
 
 // reg - el2_pic::MEIP
+// External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.
+// External interrupt pending bits. Bit Y indicates pending status for source X*32+Y.
+// 0: Interrupt not pending
+// 1: Interrupt pending
 #define EL2_PIC__MEIP__INTPEND_bm 0xffffffff
 #define EL2_PIC__MEIP__INTPEND_bp 0
 #define EL2_PIC__MEIP__INTPEND_bw 32
 #define EL2_PIC__MEIP__INTPEND_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // External interrupt pending bits. Bit Y indicates pending status for source X*32+Y.
+        // 0: Interrupt not pending
+        // 1: Interrupt pending
         uint32_t intpend :32;
     } f;
     uint32_t w;
 } el2_pic__MEIP_t;
 
 // reg - el2_pic::MEIE
+// External Interrupt Enable Register. Controls interrupt enable for a single source.
+// External interrupt enable:
+// 0: Interrupt disabled
+// 1: Interrupt enabled
 #define EL2_PIC__MEIE__INTEN_bm 0x1
 #define EL2_PIC__MEIE__INTEN_bp 0
 #define EL2_PIC__MEIE__INTEN_bw 1
 #define EL2_PIC__MEIE__INTEN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // External interrupt enable:
+        // 0: Interrupt disabled
+        // 1: Interrupt enabled
         uint32_t inten :1;
         uint32_t :31;
     } f;
@@ -52,12 +73,19 @@ typedef union {
 } el2_pic__MEIE_t;
 
 // reg - el2_pic::MPICCFG
+// PIC Configuration Register. Used to select the operational parameters of the PIC.
+// Priority order:
+// 0: RISC-V standard compliant priority order (0=lowest to 15=highest)
+// 1: Reverse priority order (15=lowest to 0=highest)
 #define EL2_PIC__MPICCFG__PRIORD_bm 0x1
 #define EL2_PIC__MPICCFG__PRIORD_bp 0
 #define EL2_PIC__MPICCFG__PRIORD_bw 1
 #define EL2_PIC__MPICCFG__PRIORD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Priority order:
+        // 0: RISC-V standard compliant priority order (0=lowest to 15=highest)
+        // 1: Reverse priority order (15=lowest to 0=highest)
         uint32_t priord :1;
         uint32_t :31;
     } f;
@@ -65,17 +93,30 @@ typedef union {
 } el2_pic__MPICCFG_t;
 
 // reg - el2_pic::MEIGWCTRL
+// External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.
+// External interrupt polarity:
+// 0: Active-high interrupt
+// 1: Active-low interrupt
 #define EL2_PIC__MEIGWCTRL__POLARITY_bm 0x1
 #define EL2_PIC__MEIGWCTRL__POLARITY_bp 0
 #define EL2_PIC__MEIGWCTRL__POLARITY_bw 1
 #define EL2_PIC__MEIGWCTRL__POLARITY_reset 0x0
+// External interrupt type:
+// 0: Level-triggered interrupt
+// 1: Edge-triggered interrupt
 #define EL2_PIC__MEIGWCTRL__IRQ_TYPE_bm 0x2
 #define EL2_PIC__MEIGWCTRL__IRQ_TYPE_bp 1
 #define EL2_PIC__MEIGWCTRL__IRQ_TYPE_bw 1
 #define EL2_PIC__MEIGWCTRL__IRQ_TYPE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // External interrupt polarity:
+        // 0: Active-high interrupt
+        // 1: Active-low interrupt
         uint32_t polarity :1;
+        // External interrupt type:
+        // 0: Level-triggered interrupt
+        // 1: Edge-triggered interrupt
         uint32_t irq_type :1;
         uint32_t :30;
     } f;
@@ -83,12 +124,18 @@ typedef union {
 } el2_pic__MEIGWCTRL_t;
 
 // reg - el2_pic::MEIGWCLR
+// External Interrupt Gateway Clear Register. Writing any value clears the gateway's
+// interrupt pending (IP) bit for edge-triggered interrupts.
+// Write any value to clear the interrupt pending bit in the gateway.
+// This register is write-only; reads return 0.
 #define EL2_PIC__MEIGWCLR__CLEAR_bm 0x1
 #define EL2_PIC__MEIGWCLR__CLEAR_bp 0
 #define EL2_PIC__MEIGWCLR__CLEAR_bw 1
 #define EL2_PIC__MEIGWCLR__CLEAR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write any value to clear the interrupt pending bit in the gateway.
+        // This register is write-only; reads return 0.
         uint32_t clear :1;
         uint32_t :31;
     } f;
@@ -96,6 +143,8 @@ typedef union {
 } el2_pic__MEIGWCLR_t;
 
 // addrmap - el2_pic
+// VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers.
+// Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.
 typedef struct __attribute__ ((__packed__)) {
     el2_pic__MEIPL_t meipl[256];
     uint8_t RESERVED_400_fff[0xc00];

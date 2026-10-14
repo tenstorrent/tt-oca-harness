@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Default register read smoke over the real SEP_IN AXI ingress port.
 
-This is the OSS-safe slice of the default-reg-read flow: it reads
-side-effect-free internal SMC CSRs through ``sep_axi_in_req_i`` and checks
-that every selected address returns an OKAY AXI response **and** — wherever the
-generated register map defines one — the exact reset value for that register.
+This sequence reads side-effect-free internal SMC CSRs through
+``sep_axi_in_req_i`` and checks that every selected address returns an OKAY AXI
+response **and** — wherever the generated register map defines one — the exact
+reset value for that register.
 
 Access-port identity: the test starts this sequence on ``env.sys_axi_agent``,
 whose driver declares ``bus_prefix = "s_axi"`` / ``bus_name = "SEP_IN AXI"``
@@ -35,7 +35,7 @@ from .smc_base_test_seq import smc_base_test_seq
 from .smc_csr_field_catalog import SmcCsrAccessKind, catalog_entry
 
 # (catalog name, generated address). The expected value is taken from the
-# catalog entry returned by ``catalog_entry`` — no second copy here.
+# catalog entry returned by ``catalog_entry``.
 READABLE_REGS = [
     ("SCRATCH_COLD_0", smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0)),
     ("SCRATCH_COLD_1", smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 1)),
@@ -77,9 +77,8 @@ class smc_default_reg_rd_test_seq(smc_base_test_seq):
         self.value_checks = 0
 
     async def _read(self, name: str, addr: int, expected: int, kind: SmcCsrAccessKind) -> None:
-        # ``expected`` is non-optional: a catalog entry that carries no
-        # expectation is a hard error here, not a silently decode-only read, so
-        # a catalog regression cannot shrink the value-compare count.
+        # A catalog entry with no expectation fails here, so a catalog change
+        # cannot shrink the value-compare count.
         assert expected is not None, (
             f"{name} @ 0x{addr:08x}: smc_csr_field_catalog states no expected "
             f"value, but every register in this sweep must be value-compared "
@@ -98,13 +97,9 @@ class smc_default_reg_rd_test_seq(smc_base_test_seq):
         # having been issued: OKAY first, then the exact value where the
         # generated map defines one.
         #
-        # Defence-in-depth guard, NOT this sequence's timeout contract: these
-        # items leave ``allow_timeout`` False, so the driver already raises
-        # AssertionError on expiry (env/smc_sys_axi_agent.py:148-167) and control
-        # never reaches this line with ``timed_out`` True. [TIMEOUT-MUST-FAIL] is
-        # satisfied one layer up; this only catches a future call site that turns
-        # ``allow_timeout`` on and would otherwise fall through to a value
-        # compare against untransferred data.
+        # The driver raises on expiry while ``allow_timeout`` is False; this
+        # assert covers a call site that turns it on, which would otherwise fall
+        # through to a value compare against untransferred data.
         assert not item.timed_out, f"{name} @ 0x{addr:08x}: SEP_IN AXI read never responded"
         assert item.resp_ok, (
             f"{name} @ 0x{addr:08x}: SEP_IN AXI read returned non-OKAY resp={item.resp_code}"
@@ -131,18 +126,11 @@ class smc_default_reg_rd_test_seq(smc_base_test_seq):
         for name, addr in READABLE_REGS:
             entry = catalog_entry(name, addr, writable=name.startswith("SCRATCH_"))
             await self._read(name, addr, entry.expected, entry.kind)
-        # Read-count refactor guard: `reads` is bumped unconditionally by the
-        # single path through the loop, so this only catches a future early exit.
         assert self.reads == len(READABLE_REGS), "default-reg read sweep did not run"
-        # Value-compare floor. Unlike the line above this is NOT satisfied by
-        # construction: `value_checks` is bumped only after a `got == exp`
-        # compare actually ran, and EXPECTED_VALUE_COMPARES is an independent
-        # literal, so a catalog regression that stopped supplying expectations
-        # fails here instead of shrinking the expectation with it.
-        # Note what min_csr_accesses in tests/smc_default_reg_rd_test.py
-        # does and does not cover: it floors the number of READS, not the number
-        # of value compares -- the compare floor is this assert plus the
-        # scoreboard-sourced floor in that same test.
+        # Value-compare floor: `value_checks` counts only compares that ran, and
+        # EXPECTED_VALUE_COMPARES is an independent literal, so a catalog that
+        # stops supplying expectations fails here. ``min_csr_accesses`` in
+        # tests/smc_default_reg_rd_test.py floors reads, not compares.
         assert self.value_checks == EXPECTED_VALUE_COMPARES, (
             f"default-reg value compares ran {self.value_checks} times, "
             f"expected {EXPECTED_VALUE_COMPARES}: the exact-value compare is "

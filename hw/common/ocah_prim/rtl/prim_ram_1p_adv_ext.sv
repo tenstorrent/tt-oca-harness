@@ -17,11 +17,13 @@
 // read-valid controls. rerror_o bit1 is uncorrectable and bit0 is correctable; parity errors
 // set bit1.
 
-module prim_ram_1p_adv_ext
-  import prim_ram_1p_pkg::*;
+`include "ocah_registers.svh"
 
+module prim_ram_1p_adv_ext
   `include "prim_assert.sv"
-  import prim_ram_1p_adv_ext_pkg::*;
+  `include "ocah_assert.svh"
+  import prim_ram_1p_adv_ext_pkg::prim_ram_1p_adv_ext_req_t;
+  import prim_ram_1p_adv_ext_pkg::prim_ram_1p_adv_ext_rsp_t;
 #(
   parameter  int DEPTH                  = 512,  // Logical memory depth.
   parameter  int INST_DEPTH             = DEPTH,  // Per-tile depth; smaller than DEPTH tiles into
@@ -70,16 +72,13 @@ module prim_ram_1p_adv_ext
 );
 
   import prim_mubi_pkg::mubi4_t;
-  import prim_mubi_pkg::mubi4_and_hi;
-  import prim_mubi_pkg::mubi4_bool_to_mubi;
   import prim_mubi_pkg::mubi4_test_invalid;
   import prim_mubi_pkg::mubi4_test_true_loose;
-  import prim_mubi_pkg::mubi4_test_true_strict;
   import prim_mubi_pkg::MuBi4True;
   import prim_mubi_pkg::MuBi4False;
   import prim_mubi_pkg::MuBi4Width;
 
-  `OCAH_OT_ASSERT_INIT(CannotHaveEccAndParity_A, !(ENABLE_PARITY && ENABLE_ECC))
+  `OCAH_ASSERT_STATIC(CannotHaveEccAndParity_A, !(ENABLE_PARITY && ENABLE_ECC))
 
   // Calculate ECC width
   localparam int ParWidth  = (ENABLE_PARITY) ? WIDTH/8 :
@@ -145,13 +144,7 @@ module prim_ram_1p_adv_ext
 
   // Flop the instance request signal to know to know which
   // tile to select for read data on the next cycle
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      inst_req_q <= '0;
-    end else begin
-      inst_req_q <= inst_req_d;
-    end
-  end
+  `OCAH_FF(inst_req_q, inst_req_d, '0, clk_i, rst_ni)
 
   // Ensure that only one RAM instance gets activated
   `OCAH_OT_ASSERT(OneHotInstReq_A, $onehot0(inst_req_d))
@@ -184,8 +177,8 @@ module prim_ram_1p_adv_ext
     for (int i = 0; i < NumRamInst; i++) begin
       // Determine which RAM tile we accessed based on the floped inst_req signal and we really
       // got an rvalid. This determines if we mux the output data of that particular RAM tile.
-      rvalid_inst[i] = mubi4_test_true_strict(
-        mubi4_and_hi(mubi4_bool_to_mubi(inst_req_q[i]), rvalid_sram_q));
+      rvalid_inst[i] = prim_mubi_pkg::mubi4_test_true_strict(
+        prim_mubi_pkg::mubi4_and_hi(prim_mubi_pkg::mubi4_bool_to_mubi(inst_req_q[i]), rvalid_sram_q));
 
       if(rvalid_inst[i]) begin
         rdata_sram = inst_rdata[i];
@@ -193,18 +186,12 @@ module prim_ram_1p_adv_ext
     end
   end
 
-  assign rvalid_sram_d = mubi4_and_hi(req_q, mubi4_t'(~write_q));
+  assign rvalid_sram_d = prim_mubi_pkg::mubi4_and_hi(req_q, mubi4_t'(~write_q));
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      rvalid_sram_q <= MuBi4False;
-    end else begin
-      rvalid_sram_q <= rvalid_sram_d;
-    end
-  end
+  `OCAH_FF(rvalid_sram_q, rvalid_sram_d, MuBi4False, clk_i, rst_ni)
 
-  assign req_d              = mubi4_bool_to_mubi(req_i);
-  assign write_d            = mubi4_bool_to_mubi(write_i);
+  assign req_d              = prim_mubi_pkg::mubi4_bool_to_mubi(req_i);
+  assign write_d            = prim_mubi_pkg::mubi4_bool_to_mubi(write_i);
   assign addr_d             = addr_i;
   assign rvalid_o           = mubi4_test_true_loose(rvalid_q);
   assign rdata_o            = rdata_q;
@@ -237,7 +224,7 @@ module prim_ram_1p_adv_ext
     assign unused_wmask = ^wmask_i;
 
     // check supported widths
-    `OCAH_OT_ASSERT_INIT(SecDecWidth_A, WIDTH inside {16, 32})
+    `OCAH_ASSERT_STATIC(SecDecWidth_A, WIDTH inside {16, 32})
 
     // the wmask is constantly set to 1 in this case
     `OCAH_OT_ASSERT(OnlyWordWritePossibleWithEccPortA_A, req_i |->
@@ -297,8 +284,8 @@ module prim_ram_1p_adv_ext
 
   end else if (ENABLE_PARITY) begin : gen_byte_parity
 
-    `OCAH_OT_ASSERT_INIT(WidthNeedsToBeByteAligned_A, WIDTH % 8 == 0)
-    `OCAH_OT_ASSERT_INIT(ParityNeedsByteWriteMask_A, DATA_BITS_PER_MASK == 8)
+    `OCAH_ASSERT_STATIC(WidthNeedsToBeByteAligned_A, WIDTH % 8 == 0)
+    `OCAH_ASSERT_STATIC(ParityNeedsByteWriteMask_A, DATA_BITS_PER_MASK == 8)
 
     always_comb begin : p_parity
       rerror_d = '0;
@@ -357,28 +344,13 @@ module prim_ram_1p_adv_ext
         .q_o({req_q})
       );
     end else begin: gen_no_prim_flop
-      always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-          write_q <= MuBi4False;
-          req_q   <= MuBi4False;
-        end else begin
-          write_q <= write_buf_d;
-          req_q   <= req_buf_d;
-        end
-      end
+      `OCAH_FF(write_q, write_buf_d, MuBi4False, clk_i, rst_ni)
+      `OCAH_FF(req_q, req_buf_d, MuBi4False, clk_i, rst_ni)
     end
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
-        addr_q  <= '0;
-        wdata_q <= '0;
-        wmask_q <= '0;
-      end else begin
-        addr_q  <= addr_d;
-        wdata_q <= wdata_d;
-        wmask_q <= wmask_d;
-      end
-    end
+    `OCAH_FF(addr_q, addr_d, '0, clk_i, rst_ni)
+    `OCAH_FF(wdata_q, wdata_d, '0, clk_i, rst_ni)
+    `OCAH_FF(wmask_q, wmask_d, '0, clk_i, rst_ni)
   end else begin : gen_dirconnect_input
     assign req_q   = req_buf_d;
     assign write_q = write_buf_d;
@@ -403,13 +375,7 @@ module prim_ram_1p_adv_ext
         .q_o({rvalid_q})
       );
     end else begin: gen_no_prim_rvalid_flop
-      always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-          rvalid_q <= MuBi4False;
-        end else begin
-          rvalid_q <= rvalid_d;
-        end
-      end
+      `OCAH_FF(rvalid_q, rvalid_d, MuBi4False, clk_i, rst_ni)
     end
 
     always_ff @(posedge clk_i or negedge rst_ni) begin

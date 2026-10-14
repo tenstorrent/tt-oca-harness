@@ -39,6 +39,7 @@ class JsonExporter:
         # Unrolled array instances are flattened into <name>_<n>, so each kind of
         # node needs its own running index.
         self.array_regs = {}
+        self.array_mems = {}
         self.array_addrmaps = {}
         self.array_regfiles = {}
 
@@ -104,16 +105,20 @@ class JsonExporter:
         return out
 
     def mem(self, obj: node.MemNode) -> dict:
-        return {
+        out = {
             "def_file": self.def_file(obj),
             "type": "mem",
-            "inst_name": obj.inst_name,
-            "addr_offset": obj.address_offset,
+            "inst_name": self.indexed_name(obj, self.array_mems),
+            "addr_offset": (obj.raw_address_offset if self.compact_arrays else obj.address_offset),
             "def_type": self.type_name(obj),
             "desc": obj.get_property("desc", default=""),
             "memwidth": obj.get_property("memwidth"),
             "mementries": obj.get_property("mementries"),
         }
+        if self.compact_arrays and obj.is_array:
+            out["array_size"] = self.array_total(obj)
+            out["array_increment"] = obj.array_stride
+        return out
 
     def container(self, obj: Union[node.AddrmapNode, node.RegfileNode]) -> dict:
         if isinstance(obj, node.AddrmapNode):

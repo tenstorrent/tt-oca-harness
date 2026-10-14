@@ -3,12 +3,11 @@
 """I2C0 event and counter fields as registers: what a write must and must not change.
 
 `i2c.rdl` makes the `INTR_STATE` event bits, and the `TARGET_EVENTS` start and
-stop flags, `woclr`: a written one clears them and nothing else does. Leaves
-that raise these events clear them at once, so for most of them the write that
-must *not* clear a set bit had never been made. This leaf makes it, and then
-the one that must:
+stop flags, `woclr`: a written one clears them and nothing else does. This
+leaf makes the write that must *not* clear a set bit, and then the one that
+must:
 
-* **INTR_STATE.** Six event bits no leaf had held across a write are forced
+* **INTR_STATE.** Six event bits are forced
   through `INTR_TEST` (`sw = w`, `singlepulse`: "Writing `1` forces the ...
   interrupt"): `RX_OVERFLOW`, `SDA_UNSTABLE`, `UNEXP_STOP`, `SMBALERT`,
   `CONTROLLER_RX_FIFO_ERROR` and `TARGET_RX_FIFO_ERROR`. Each is written a word

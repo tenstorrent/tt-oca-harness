@@ -1,0 +1,25 @@
+generic_decoded_mux: keep the select assertions out of synthesis
+
+The immediate assertions in the clocked block call $isunknown, which
+synthesis tools such as Vivado reject as a non-constant expression, so
+elaborating any DFD top that uses the mux fails. Simulation keeps them.
+
+diff --git a/dependencies/common/generic_decoded_mux.sv b/dependencies/common/generic_decoded_mux.sv
+--- a/dependencies/common/generic_decoded_mux.sv
++++ b/dependencies/common/generic_decoded_mux.sv
+@@ -14,6 +14,7 @@
+ );
+ 
+ 
++`ifndef SYNTHESIS
+     always_ff @(posedge clk) begin
+         if (rst_n) begin
+             en_x_MuxSelectNotOneHot: assert(!$isunknown(en)) else $error("Xs in assertion en");
+@@ -23,6 +24,7 @@
+             end
+         end
+     end
++`endif
+ 
+     always_comb begin
+         out = VALUE_WIDTH'('0);

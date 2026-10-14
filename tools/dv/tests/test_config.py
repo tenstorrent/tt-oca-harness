@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from runlib.cli import (  # noqa: E402
     expand_items,
+    regression_reseed_count,
     target_plan,
     validate_item_tools,
     validate_target_plan,
@@ -666,6 +667,40 @@ class RuntimeSelectionDefenses(unittest.TestCase):
         with self.assertRaises(ConfigError) as ctx:
             validate_target_plan(sim_cfg, ordered)
         self.assertIn("nope", str(ctx.exception))
+
+
+class RegressionReseedCount(unittest.TestCase):
+    """`--reseed` sets every selected test's seed count; a testlist `reseed` is the default."""
+
+    CATALOG = TestCatalog(
+        None,
+        {
+            "pinned_test": TestEntry(name="pinned_test", module="m", reseed=10),
+            "pinned_once_test": TestEntry(name="pinned_once_test", module="m", reseed=1),
+            "unpinned_test": TestEntry(name="unpinned_test", module="m"),
+        },
+        {},
+    )
+
+    def count(self, item: str, reseed: int | None) -> int:
+        return regression_reseed_count(self.CATALOG, Namespace(reseed=reseed), item)
+
+    def test_testlist_count_applies_without_reseed(self):
+        self.assertEqual(self.count("pinned_test", None), 10)
+        self.assertEqual(self.count("unpinned_test", None), 1)
+
+    def test_reseed_overrides_a_testlist_count_down_and_up(self):
+        self.assertEqual(self.count("pinned_test", 1), 1)
+        self.assertEqual(self.count("pinned_once_test", 3), 3)
+        self.assertEqual(self.count("unpinned_test", 3), 3)
+
+    def test_testlist_count_below_one_names_the_test(self):
+        catalog = TestCatalog(
+            None, {"zero_test": TestEntry(name="zero_test", module="m", reseed=0)}, {}
+        )
+        with self.assertRaises(ConfigError) as ctx:
+            regression_reseed_count(catalog, Namespace(reseed=None), "zero_test")
+        self.assertIn("zero_test", str(ctx.exception))
 
 
 class TargetFlagsTokens(unittest.TestCase):

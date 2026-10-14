@@ -13,18 +13,17 @@ Two surfaces the other DFD leaves leave alone:
 
 * **The debug-bus mux modes.** ``DEBUG_BUS_MUX.Dbmmode`` is two bits and its
   RDL description names four modes: the mux off, normal debug, an identifier
-  output mode and a toggle mode. Every leaf so far programs only normal debug,
-  so a mux never leaves that mode. This one walks all four across every value
-  of the identifier field, because a mux takes a mode only while the
-  programmed identifier is its own.
+  output mode and a toggle mode. The other DFD leaves program only normal
+  debug. This one walks all four across every value of the identifier field,
+  because a mux takes a mode only while the programmed identifier is its own.
 
 * **The CLA lock.** ``CDbgClaCtrlStatus.ClaLock`` is described as locking the
-  CLA so the enable latches and stays latched. Nothing tests that, and the
-  MMR write sweep excludes the register precisely because the bit cannot be
-  undone. Here it is the deliberate last act of the run: the lock is set, read
-  back, and then a further write that would clear it in the written word has
-  to leave it set. Each leaf is its own simulation and the run ends
-  immediately afterwards, so nothing downstream inherits a locked CLA.
+  CLA so the enable latches and stays latched. No later write undoes it, so
+  the MMR write sweep excludes the register and this leaf sets it as its last
+  act: the lock is set, read back, and then a further write that would clear
+  it in the written word has to leave it set. Each leaf is its own simulation
+  and the run ends immediately afterwards, so nothing downstream inherits a
+  locked CLA.
 """
 
 from __future__ import annotations
@@ -174,8 +173,8 @@ class smc_dfd_dbm_mode_lock_test_seq(SmcCsrSeq):
         await self.wait_fuse_sense_done()
 
         await self._sweep_modes()
-        # Restore the mux array and the DFD clock control before the lock, because
-        # the lock is deliberately not undone.
+        # Restore the mux array and the DFD clock control before the lock, which
+        # no later write can clear.
         for reg in (
             dfd_register("dfx_ctrl/DEBUG_BUS_MUX"),
             dfd_register("dfx_ctrl/DEBUG_CTRL"),

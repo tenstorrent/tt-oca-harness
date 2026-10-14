@@ -11,10 +11,9 @@
 // test_en_i freezes the retained digest for DFT; digest_vld_sticky_o marks validity.
 
 `include "prim_assert.sv"
+`include "ocah_registers.svh"
 
-module efuse_token_digest_sha256
-  import prim_sha2_pkg::*;
-(
+module efuse_token_digest_sha256 (
   input logic clk_i,                    // System clock.
   input logic rst_ni,                   // Active-low asynchronous reset of the feeder and the SHA
                                         // engine; the digest and valid latches are not reset.
@@ -51,9 +50,9 @@ module efuse_token_digest_sha256
   logic                hash_done;
   logic                hash_done_q;
   logic                idle;
-  sha_fifo32_t         fifo_rdata;
+  prim_sha2_pkg::sha_fifo32_t         fifo_rdata;
 
-  sha_word64_t [7:0] sha_digest;
+  prim_sha2_pkg::sha_word64_t [7:0] sha_digest;
   logic        [255:0] sha_digest_formatted;
   logic                digest_vld_sticky_n0_scan;
   logic        [255:0] sha_digest_sticky_n0_scan;
@@ -113,15 +112,8 @@ module efuse_token_digest_sha256
     endcase
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      state_q    <= ST_IDLE;
-      word_idx_q <= 3'd0;
-    end else begin
-      state_q    <= state_d;
-      word_idx_q <= word_idx_d;
-    end
-  end
+  `OCAH_FF(state_q, state_d, ST_IDLE, clk_i, rst_ni)
+  `OCAH_FF(word_idx_q, word_idx_d, 3'd0, clk_i, rst_ni)
 
   prim_sha2_32 #(
     .MultimodeEn(0)
@@ -137,7 +129,7 @@ module efuse_token_digest_sha256
     .hash_start_i    (hash_start),
     .hash_stop_i     (1'b0),
     .hash_continue_i (1'b0),
-    .digest_mode_i   (SHA2_None),     // unused in MultimodeEn = 0
+    .digest_mode_i   (prim_sha2_pkg::SHA2_None),     // unused in MultimodeEn = 0
     .hash_process_i  (hash_process),
     .hash_done_o     (hash_done),
     .message_length_i(64'd256),       // single 256-bit block
@@ -157,13 +149,7 @@ module efuse_token_digest_sha256
 
   // The prim_sha2 engine pulses hash_done_o one cycle before it writes the
   // final digest_o, so the updated digest_o is only visible the following cycle.
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      hash_done_q <= 1'b0;
-    end else begin
-      hash_done_q <= hash_done;
-    end
-  end
+  `OCAH_FF(hash_done_q, hash_done, 1'b0, clk_i, rst_ni)
 
   // Ungated latch controls. The digest is captured when hash_done_q marks digest_o valid.
   // The sticky valid opens on either event, with start_i taking priority so that launching a

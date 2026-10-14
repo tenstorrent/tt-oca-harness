@@ -40,6 +40,10 @@ set_reset_groups \
     -name POWERGOOD_RESET_GROUP \
     -group {POWERGOOD_RESET_N POWERGOOD_STABLE_N}
 
+# Pad cold reset after the 32-cycle REFCLK deglitch. Through the rstbypass mux it is the
+# async reset of the cold-reset extend counter and gates stable_cold_rst_no.
+create_reset -name COLD_RESET_DEGLITCH_N [cdc_inst "${reset_unit_hier}/u_smc_reset_ctrl/cold_rst_deglitch_to_rstbypass/Q"] -async -type reset -value low -disable_assertions_db
+
 # COLD RESET GROUP
 create_reset -name COLD_RESET_N [cdc_inst "${reset_unit_hier}/u_smc_reset_ctrl/stable_cold_rst_no"] -async -type reset -value low -disable_assertions_db
 create_reset -name COLD_RESET_N_REF_CLK [cdc_inst "${reset_unit_hier}/rst_cold_ref_n"] -both -type reset -value low -disable_assertions_db
@@ -176,6 +180,12 @@ set_rdc_define_assertion_sequence \
 # the system, so cold reset is guaranteed to also be asserted.
 set_rdc_define_assertion_sequence \
     -from_reset {POWERGOOD_RESET_N POWERGOOD_STABLE_N} \
+    -to_reset {COLD_RESET_DEGLITCH_N COLD_RESET_N COLD_RESET_N_REF_CLK COLD_RESET_N_SMC_CLK}
+
+# COLD_DEGLITCH => COLD: outside scan mode, the deglitched reset asserting forces
+# stable_cold_rst_no low at once; the extend counter only delays release.
+set_rdc_define_assertion_sequence \
+    -from_reset {COLD_RESET_DEGLITCH_N} \
     -to_reset {COLD_RESET_N COLD_RESET_N_REF_CLK COLD_RESET_N_SMC_CLK}
 
 # COLD/COOL_FLR => PRIMARY: when cold or cool-from-FLR asserts, primary asserts
@@ -250,6 +260,13 @@ set_app_var rdc_new_asyncrst_commands true
 # so system is in reset
 asyncrst_assert_sequence \
     -from_reset {WARM_RESET_N WARM_RESET_N_SMC_CLK FUSE_RESET_N} \
+    -to_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK}
+
+# TELEMETRY => PRIMARY: the other direction of the telemetry reset pairing above, which
+# set_rdc_define_assertion_sequence cannot declare. rst_telemetry_ni never asserts without
+# PRIMARY, so the telemetry receivers are in reset whenever their ATB FIFO is.
+asyncrst_assert_sequence \
+    -from_reset {TELEMETRY_RESET_N} \
     -to_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK}
 
 # AVS_APB_CLK_RESET_N => PRIMARY: AVS_APB is the prim_sync_reset tail of primary_periph,

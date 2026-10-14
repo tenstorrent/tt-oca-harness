@@ -1,11 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS zeroer datapath payload test.
-
-Provenance: this test is enrolled against ``smc_zeroer_dma_timeout_test`` in
-``hw/sys/smc/dv/docs/SMC_VPLAN.adoc`` (row "Zeroer / DMA / utility", P1-16
-``zeroer_dma_utility``).
-"""
+"""SMC OSS zeroer datapath payload test."""
 
 from __future__ import annotations
 

@@ -5,7 +5,7 @@
 // survive a seeded-width system-reset (rst_n_i) pulse and a TMS-driven
 // Test-Logic-Reset while the TAP stays accessible, with chrst_n released
 // there while persistence is on and asserted once it is off (looped runner
-// with per-pass family evidence, 16-pass floor). The rst_n_i pulse each
+// with per-pass family evidence). The rst_n_i pulse each
 // pass drives records CHK-RESET-COUNT on the env recorder.
 
 class dtp_jtag_tmp_status_chrst_n_in_persistence_test extends dtp_base_test;

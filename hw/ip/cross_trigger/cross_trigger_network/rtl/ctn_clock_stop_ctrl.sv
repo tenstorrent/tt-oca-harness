@@ -9,6 +9,8 @@
 // passes the OR of those and the JTAG request through a two-flop synchronizer and an output
 // register in clk_i, so it follows the requests after three clk_i cycles.
 
+`include "ocah_registers.svh"
+
 module ctn_clock_stop_ctrl #(
   parameter int unsigned NUM_CLK_STOP_REQ = 1  // Number of clock stop request inputs.
 ) (
@@ -62,12 +64,6 @@ module ctn_clock_stop_ctrl #(
 
   // Register the synchronized request with an explicit reset so stop_clks_o
   // defaults to 0 at power-up before the synchronizer flops settle.
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      stop_clks_o <= 1'b0;
-    end else begin
-      stop_clks_o <= clk_stop_req_synced;
-    end
-  end
+  `OCAH_FF(stop_clks_o, clk_stop_req_synced, 1'b0, clk_i, rst_ni)
 
 endmodule : ctn_clock_stop_ctrl

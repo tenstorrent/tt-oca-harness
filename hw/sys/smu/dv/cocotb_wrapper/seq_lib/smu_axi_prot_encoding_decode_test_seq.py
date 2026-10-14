@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: inbound AxPROT[1] decode via allow_ns=0 (FAB_SMC_029 S9 subset).
 
-SEP=1 honest scope: JTAG2AXI filter program + s_axi stimulus only.
-S1–S8 (GPIO AXI-Lite exact-match) need sep_in_master and are not covered.
+Scope on the SEP=1 wrapper: JTAG2AXI filter programming and s_axi stimulus only.
+S1–S8 (GPIO AXI-Lite exact-match) need sep_in_master.
 """
 
 from __future__ import annotations

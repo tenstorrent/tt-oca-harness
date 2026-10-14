@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_ctm_rand_p2p_only_test — seeded random point-to-point route mix
-// (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass floor).
+// (looped runner with per-pass CHK-XTRIG-* evidence).
 
 class dtp_ctm_rand_p2p_only_test extends dtp_xtrig_base_test;
   `uvm_component_utils(dtp_ctm_rand_p2p_only_test)

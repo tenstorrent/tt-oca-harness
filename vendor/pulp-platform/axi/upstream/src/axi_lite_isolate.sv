@@ -5,7 +5,7 @@
 // Licensed under the Solderpad Hardware License, Version 0.51.
 
 `include "axi/typedef.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// AXI4-Lite variant of `axi_isolate`: isolates the master port from the slave port.  When the
 /// isolation is not active, the two ports are directly connected.
@@ -196,9 +196,9 @@ module axi_lite_isolate #(
       end
     end
 
-    `FFARN(aw_wait_q, aw_wait_d, 1'b0, clk_i, rst_ni)
-    `FFARN(w_wait_q, w_wait_d, 1'b0, clk_i, rst_ni)
-    `FFARN(ar_wait_q, ar_wait_d, 1'b0, clk_i, rst_ni)
+    `OCAH_FF(aw_wait_q, aw_wait_d, 1'b0, clk_i, rst_ni)
+    `OCAH_FF(w_wait_q, w_wait_d, 1'b0, clk_i, rst_ni)
+    `OCAH_FF(ar_wait_q, ar_wait_d, 1'b0, clk_i, rst_ni)
   end else begin : g_passthrough
     assign demux_req[0] = slv_req_i;
     assign slv_resp_o   = demux_rsp[0];
@@ -207,11 +207,11 @@ module axi_lite_isolate #(
     assign demux_rsp[1] = '0;
   end
 
-  `FFLARN(pending_aw_q, pending_aw_d, update_aw_cnt, '0, clk_i, rst_ni)
-  `FFLARN(pending_w_q, pending_w_d, update_w_cnt, '0, clk_i, rst_ni)
-  `FFLARN(pending_ar_q, pending_ar_d, update_ar_cnt, '0, clk_i, rst_ni)
-  `FFLARN(state_aw_q, state_aw_d, update_aw_state, Isolate, clk_i, rst_ni)
-  `FFLARN(state_ar_q, state_ar_d, update_ar_state, Isolate, clk_i, rst_ni)
+  `OCAH_FFL(pending_aw_q, pending_aw_d, update_aw_cnt, '0, clk_i, rst_ni)
+  `OCAH_FFL(pending_w_q, pending_w_d, update_w_cnt, '0, clk_i, rst_ni)
+  `OCAH_FFL(pending_ar_q, pending_ar_d, update_ar_cnt, '0, clk_i, rst_ni)
+  `OCAH_FFL(state_aw_q, state_aw_d, update_aw_state, Isolate, clk_i, rst_ni)
+  `OCAH_FFL(state_ar_q, state_ar_d, update_ar_state, Isolate, clk_i, rst_ni)
 
   // Update counters
   always_comb begin

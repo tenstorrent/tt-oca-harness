@@ -2,6 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Each inbound-filter entry admits only the traffic its rule allows; all other traffic is DECERR.
 
+OCAH provenance: ``sep_inbound_filter_blockbydefault_test`` checks default
+denial, ``sep_inbound_filter_programming_ownership_test`` checks programming
+ownership, and ``sep_inbound_id_remap_test`` checks source-ID remapping.
+
 With the SEP inbound filter active (feat_ctrl.sep_debug=0, real PROD fuse), the
 CPU-LSU master programs inbound FILTER_CONFIG allow-entries and the external SMN
 master (m_axi, the only path through u_inbound_filter) proves per-entry rule

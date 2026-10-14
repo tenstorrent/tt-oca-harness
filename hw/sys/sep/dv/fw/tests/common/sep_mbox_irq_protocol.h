@@ -45,8 +45,8 @@
  * The SEP fw includes sep.h BEFORE this header, so it sources these DIRECTLY from the
  * generated SEP_TOP_AXIL_MAILBOX_* macros (no hardcoded literals). The SMC fw CANNOT include
  * sep.h -- that generated SEP header defines EFUSE_INTERFACE_CTRL/etc. reg types that
- * COLLIDE with the SMC's own smc_top_regs.h ("conflicting types"), so the SMC toolchain uses the
- * literal mirror below. sep_mbox_golden.py
+ * COLLIDE with the SMC's own generated register headers ("conflicting types"), so the SMC
+ * toolchain uses the literal mirror below. sep_mbox_golden.py
  * derives the same offsets and masks from PeakRDL, so an SMC literal that
  * drifts from RDL lands at an address the golden does not expect and the
  * test fails. outbound[ch]=OUTBOUND_0+stride*ch, inbound[ch]=INBOUND_0+stride*ch;
@@ -128,8 +128,8 @@
 #define SMU015_READY 0x51EAD001   /* SEP -> scratch12 : SEP aperture/filters up          */
 
 /* SMC-local scratch absolute addresses (CPU_CTRL scratch array, 8-byte stride). Used only by the
- * SMC fw, which has the generated SMC_CPU_CTRL_SCRATCH_0 macro (smc_top_regs.h via smc_defines.h)
- * -> source from it (no literal). The SEP fw (no smc_top_regs.h) never uses the LOCAL forms; it
+ * SMC fw, which has the SMC_CPU_CTRL_SCRATCH_0 macro (smc_cpu_ctrl.h via smc_defines.h)
+ * -> source from it (no literal). The SEP fw (no smc_cpu_ctrl.h) never uses the LOCAL forms; it
  * uses the SEP-view ALIASes below. */
 #ifdef SMC_CPU_CTRL_SCRATCH_0__REG_ADDR
 #define SMU015_SMC_SCRATCH2_LOCAL (SMC_CPU_CTRL_SCRATCH_0__REG_ADDR + 2 * 8) /* SMC_UP */

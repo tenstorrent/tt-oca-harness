@@ -2,14 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The I2C configuration registers, cycled on every instance.
 
-`smc_i2c_intr_reg_sweep_test` drives the interrupt and event registers, and the
-protocol leaves drive the bus. Between them nothing writes the block's
-configuration: the control register, the timing set, the FIFO thresholds, the
-three timeout controls, the target identity, the bus override and the SMBus
-control have never been written on any instance, so their write enables and the
-read mux behind them have never been exercised.
-
-This leaf drives every one of them through the half-register cycle, on all
+This leaf drives the block's configuration -- the control register, the timing
+set, the FIFO thresholds, the three timeout controls, the target identity, the
+bus override and the SMBus control -- through the half-register cycle, on all
 three instances, and restores the RDL reset.
 
 **The block stays idle throughout.** `CTRL.ENABLEHOST` and `CTRL.ENABLETARGET`
@@ -31,14 +26,12 @@ override, and the zero pattern clears `TXOVRDEN` in the same write that clears
 the values. The sequence checks that for every word it is about to write, and
 fails rather than drive a line low under an override.
 
-**No zero the sweep writes is a value the reset does not already hold.**
-`i2c.rdl` says of `TIMING0.THIGH` and `TIMING0.TLOW` that each "Must be `>= 2`",
-and the all-zeros leg of the cycle would otherwise look like a violation of
-that. It is not: every register in the set resets to zero over the fields the
-cycle drives, so the zero leg only ever restores what reset already put there,
-and the sequence asserts that relation for each register before it starts. The
-constraint is a programming rule for a running controller in any case, and this
-leaf never enables one.
+**The all-zeros leg restores the reset.** `i2c.rdl` says of `TIMING0.THIGH`
+and `TIMING0.TLOW` that each "Must be `>= 2`", a programming rule for a running
+controller; this leaf never enables one. Every register in the set resets to
+zero over the fields the cycle drives, so the zero leg writes only what reset
+already holds, and the sequence asserts that relation for each register before
+it starts.
 
 `FIFO_CTRL` is not in the set. The generated contract gives it no
 software-writable field with a pinned readback at all -- `RXRST`, `FMTRST`,

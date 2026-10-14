@@ -14,12 +14,23 @@ extern "C" {
 #include <assert.h>
 
 // reg - log_engine::CTRL
+// Control Register
+// Log Engine Enable. When set, enables the Log Engine. When cleared, the engine
+// stops fetching and writing, discards buffered log data and resets transfer
+// progress. Configuration and pending LOG_LEN values are retained, so a pending
+// entry restarts from the start of its slot when the engine is enabled again.
+// Clearing does not wait for outstanding bus responses.
 #define LOG_ENGINE__CTRL__EN_bm 0x1
 #define LOG_ENGINE__CTRL__EN_bp 0
 #define LOG_ENGINE__CTRL__EN_bw 1
 #define LOG_ENGINE__CTRL__EN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Log Engine Enable. When set, enables the Log Engine. When cleared, the engine
+        // stops fetching and writing, discards buffered log data and resets transfer
+        // progress. Configuration and pending LOG_LEN values are retained, so a pending
+        // entry restarts from the start of its slot when the engine is enabled again.
+        // Clearing does not wait for outstanding bus responses.
         uint32_t EN :1;
         uint32_t :31;
     } f;
@@ -27,12 +38,25 @@ typedef union {
 } log_engine__CTRL_t;
 
 // reg - log_engine::LOG_REGION_SIZE
+// Log Region Size Register
+// Log region size in bytes. Supported values are at most 512 KiB and aligned
+// to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a
+// larger value, RTL clamps the effective region to 512 KiB. For a value that is
+// not 128-byte aligned, RTL divides the effective region among the 16 slots and
+// rounds each slot's transferable capacity down to complete 8-byte fetch beats.
+// A requested LOG_LEN above that capacity is clamped to the capacity.
 #define LOG_ENGINE__LOG_REGION_SIZE__LOG_REGION_SIZE_bm 0xfffff
 #define LOG_ENGINE__LOG_REGION_SIZE__LOG_REGION_SIZE_bp 0
 #define LOG_ENGINE__LOG_REGION_SIZE__LOG_REGION_SIZE_bw 20
 #define LOG_ENGINE__LOG_REGION_SIZE__LOG_REGION_SIZE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Log region size in bytes. Supported values are at most 512 KiB and aligned
+        // to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a
+        // larger value, RTL clamps the effective region to 512 KiB. For a value that is
+        // not 128-byte aligned, RTL divides the effective region among the 16 slots and
+        // rounds each slot's transferable capacity down to complete 8-byte fetch beats.
+        // A requested LOG_LEN above that capacity is clamped to the capacity.
         uint32_t LOG_REGION_SIZE :20;
         uint32_t :12;
     } f;
@@ -40,52 +64,71 @@ typedef union {
 } log_engine__LOG_REGION_SIZE_t;
 
 // reg - log_engine::LOG_REGION_ADDR
+// Log Region Address Register
+// Log Region Start Address Low.
 #define LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_LO_bm 0xffffffff
 #define LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_LO_bp 0
 #define LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_LO_bw 32
 #define LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_LO_reset 0x0
+// Log Region Start Address High. Contains fabric address bits [55:32].
 #define LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bm 0xffffff00000000
 #define LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bp 32
 #define LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bw 24
 #define LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_reset 0x0
+// Reserved. Reads as zero; writes are ignored.
 #define LOG_ENGINE__LOG_REGION_ADDR__RESERVED_bm 0xff00000000000000
 #define LOG_ENGINE__LOG_REGION_ADDR__RESERVED_bp 56
 #define LOG_ENGINE__LOG_REGION_ADDR__RESERVED_bw 8
 #define LOG_ENGINE__LOG_REGION_ADDR__RESERVED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Log Region Start Address Low.
         uint64_t LOG_REGION_ADDR_LO :32;
+        // Log Region Start Address High. Contains fabric address bits [55:32].
         uint64_t LOG_REGION_ADDR_HI :24;
+        // Reserved. Reads as zero; writes are ignored.
         uint64_t RESERVED :8;
     } f;
     uint64_t w;
 } log_engine__LOG_REGION_ADDR_t;
 
 // reg - log_engine::LOG_WRITE_ADDR
+// Log Write Address Register
+// Log Write Address. This is the address where the log data is written to.
 #define LOG_ENGINE__LOG_WRITE_ADDR__LOG_WRITE_ADDR_bm 0xffffffff
 #define LOG_ENGINE__LOG_WRITE_ADDR__LOG_WRITE_ADDR_bp 0
 #define LOG_ENGINE__LOG_WRITE_ADDR__LOG_WRITE_ADDR_bw 32
 #define LOG_ENGINE__LOG_WRITE_ADDR__LOG_WRITE_ADDR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Log Write Address. This is the address where the log data is written to.
         uint32_t LOG_WRITE_ADDR :32;
     } f;
     uint32_t w;
 } log_engine__LOG_WRITE_ADDR_t;
 
 // reg - log_engine::INTR_STATUS
+// Interrupt Status Register
+// Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns
+// an error.
 #define LOG_ENGINE__INTR_STATUS__LOG_FETCH_ERR_bm 0x1
 #define LOG_ENGINE__INTR_STATUS__LOG_FETCH_ERR_bp 0
 #define LOG_ENGINE__INTR_STATUS__LOG_FETCH_ERR_bw 1
 #define LOG_ENGINE__INTR_STATUS__LOG_FETCH_ERR_reset 0x0
+// Log Write Error Interrupt. Asserted when the bus for writing log data returns
+// an error.
 #define LOG_ENGINE__INTR_STATUS__LOG_WRITE_ERR_bm 0x10
 #define LOG_ENGINE__INTR_STATUS__LOG_WRITE_ERR_bp 4
 #define LOG_ENGINE__INTR_STATUS__LOG_WRITE_ERR_bw 1
 #define LOG_ENGINE__INTR_STATUS__LOG_WRITE_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns
+        // an error.
         uint32_t LOG_FETCH_ERR :1;
         uint32_t :3;
+        // Log Write Error Interrupt. Asserted when the bus for writing log data returns
+        // an error.
         uint32_t LOG_WRITE_ERR :1;
         uint32_t :27;
     } f;
@@ -93,18 +136,23 @@ typedef union {
 } log_engine__INTR_STATUS_t;
 
 // reg - log_engine::INTR_ENABLE
+// Interrupt Enable Register
+// Log Fetch Error Interrupt Enable.
 #define LOG_ENGINE__INTR_ENABLE__LOG_FETCH_ERR_bm 0x1
 #define LOG_ENGINE__INTR_ENABLE__LOG_FETCH_ERR_bp 0
 #define LOG_ENGINE__INTR_ENABLE__LOG_FETCH_ERR_bw 1
 #define LOG_ENGINE__INTR_ENABLE__LOG_FETCH_ERR_reset 0x0
+// Log Write Error Interrupt Enable.
 #define LOG_ENGINE__INTR_ENABLE__LOG_WRITE_ERR_bm 0x10
 #define LOG_ENGINE__INTR_ENABLE__LOG_WRITE_ERR_bp 4
 #define LOG_ENGINE__INTR_ENABLE__LOG_WRITE_ERR_bw 1
 #define LOG_ENGINE__INTR_ENABLE__LOG_WRITE_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Log Fetch Error Interrupt Enable.
         uint32_t LOG_FETCH_ERR :1;
         uint32_t :3;
+        // Log Write Error Interrupt Enable.
         uint32_t LOG_WRITE_ERR :1;
         uint32_t :27;
     } f;
@@ -112,18 +160,23 @@ typedef union {
 } log_engine__INTR_ENABLE_t;
 
 // reg - log_engine::INTR_TEST
+// Interrupt Test Register
+// Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.
 #define LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bm 0x1
 #define LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bp 0
 #define LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bw 1
 #define LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_reset 0x0
+// Log Write Error Interrupt Test. Writing `1` forces the interrupt.
 #define LOG_ENGINE__INTR_TEST__LOG_WRITE_ERR_bm 0x10
 #define LOG_ENGINE__INTR_TEST__LOG_WRITE_ERR_bp 4
 #define LOG_ENGINE__INTR_TEST__LOG_WRITE_ERR_bw 1
 #define LOG_ENGINE__INTR_TEST__LOG_WRITE_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.
         uint32_t LOG_FETCH_ERR :1;
         uint32_t :3;
+        // Log Write Error Interrupt Test. Writing `1` forces the interrupt.
         uint32_t LOG_WRITE_ERR :1;
         uint32_t :27;
     } f;
@@ -131,12 +184,23 @@ typedef union {
 } log_engine__INTR_TEST_t;
 
 // reg - log_engine::LOG_CTRL
+// Log Control Register
+// Log Length. Writing a nonzero value representing the log length in bytes to this field
+// starts the log transfer process. The field holds the requested length until the
+// transfer completes, when hardware clears it to zero; it is not a remaining-byte
+// counter. There are 16 copies of this register, each representing
+// a log entry. The log entries go through round robin arbitration.
 #define LOG_ENGINE__LOG_CTRL__LOG_LEN_bm 0xffff
 #define LOG_ENGINE__LOG_CTRL__LOG_LEN_bp 0
 #define LOG_ENGINE__LOG_CTRL__LOG_LEN_bw 16
 #define LOG_ENGINE__LOG_CTRL__LOG_LEN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Log Length. Writing a nonzero value representing the log length in bytes to this field
+        // starts the log transfer process. The field holds the requested length until the
+        // transfer completes, when hardware clears it to zero; it is not a remaining-byte
+        // counter. There are 16 copies of this register, each representing
+        // a log entry. The log entries go through round robin arbitration.
         uint32_t LOG_LEN :16;
         uint32_t :16;
     } f;
@@ -144,6 +208,7 @@ typedef union {
 } log_engine__LOG_CTRL_t;
 
 // addrmap - log_engine
+// Configuration and status registers for the UART log engine, including the log region and write pointers.
 typedef struct __attribute__ ((__packed__)) {
     log_engine__CTRL_t CTRL;
     log_engine__LOG_REGION_SIZE_t LOG_REGION_SIZE;

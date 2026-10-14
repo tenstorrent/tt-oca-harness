@@ -18,7 +18,9 @@
 // off for two cycles after reset release.
 
 module km_rom_interface
-  import km_intf_pkg::*;
+  import km_intf_pkg::KM_ROM_MEM_ADDR_WIDTH;
+  import km_intf_pkg::km_rom_mem_req_t;
+  import km_intf_pkg::km_rom_mem_rsp_t;
 #(
   parameter int unsigned ROM_ADDR_WIDTH = KM_ROM_MEM_ADDR_WIDTH  // Word-address width for the ROM.
 ) (

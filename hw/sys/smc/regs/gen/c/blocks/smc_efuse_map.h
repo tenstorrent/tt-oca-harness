@@ -14,318 +14,409 @@ extern "C" {
 #include <assert.h>
 
 // reg - smc_efuse_map::LOCKS
+// Lock controls for each fuse field. When write locked, the corresponding field is not
+// programmable. When read locked, the shadow register is not readable.
+// JTAG public identity write lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not writable.
 #define SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_WRITE_LOCK_bm 0x1
 #define SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_WRITE_LOCK_bp 0
 #define SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_WRITE_LOCK_reset 0x0
+// JTAG public identity read lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not readable.
 #define SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_READ_LOCK_bm 0x2
 #define SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_READ_LOCK_bp 1
 #define SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_READ_LOCK_reset 0x0
+// I2C/I3C ID write lock (slot 1). When set, no I2C_I3C_ID element is writable.
 #define SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_WRITE_LOCK_bm 0x4
 #define SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_WRITE_LOCK_bp 2
 #define SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_WRITE_LOCK_reset 0x0
+// I2C/I3C ID read lock (slot 1). When set, no I2C_I3C_ID element is readable.
 #define SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_READ_LOCK_bm 0x8
 #define SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_READ_LOCK_bp 3
 #define SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_READ_LOCK_reset 0x0
+// SMC config write lock (slot 2). When set, SMC_CONFIG is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SMC_CONFIG_WRITE_LOCK_bm 0x10
 #define SMC_EFUSE_MAP__LOCKS__SMC_CONFIG_WRITE_LOCK_bp 4
 #define SMC_EFUSE_MAP__LOCKS__SMC_CONFIG_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SMC_CONFIG_WRITE_LOCK_reset 0x0
+// SMC config read lock (slot 2). When set, SMC_CONFIG is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SMC_CONFIG_READ_LOCK_bm 0x20
 #define SMC_EFUSE_MAP__LOCKS__SMC_CONFIG_READ_LOCK_bp 5
 #define SMC_EFUSE_MAP__LOCKS__SMC_CONFIG_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SMC_CONFIG_READ_LOCK_reset 0x0
+// OCCP transport timeout write lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not writable.
 #define SMC_EFUSE_MAP__LOCKS__OCCP_TRANSPORT_TIMEOUT_WRITE_LOCK_bm 0x40
 #define SMC_EFUSE_MAP__LOCKS__OCCP_TRANSPORT_TIMEOUT_WRITE_LOCK_bp 6
 #define SMC_EFUSE_MAP__LOCKS__OCCP_TRANSPORT_TIMEOUT_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__OCCP_TRANSPORT_TIMEOUT_WRITE_LOCK_reset 0x0
+// OCCP transport timeout read lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not readable.
 #define SMC_EFUSE_MAP__LOCKS__OCCP_TRANSPORT_TIMEOUT_READ_LOCK_bm 0x80
 #define SMC_EFUSE_MAP__LOCKS__OCCP_TRANSPORT_TIMEOUT_READ_LOCK_bp 7
 #define SMC_EFUSE_MAP__LOCKS__OCCP_TRANSPORT_TIMEOUT_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__OCCP_TRANSPORT_TIMEOUT_READ_LOCK_reset 0x0
+// Spare 0 write lock (slot 4). When set, SPARE[0] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE0_WRITE_LOCK_bm 0x100
 #define SMC_EFUSE_MAP__LOCKS__SPARE0_WRITE_LOCK_bp 8
 #define SMC_EFUSE_MAP__LOCKS__SPARE0_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE0_WRITE_LOCK_reset 0x0
+// Spare 0 read lock (slot 4). When set, SPARE[0] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE0_READ_LOCK_bm 0x200
 #define SMC_EFUSE_MAP__LOCKS__SPARE0_READ_LOCK_bp 9
 #define SMC_EFUSE_MAP__LOCKS__SPARE0_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE0_READ_LOCK_reset 0x0
+// Spare 1 write lock (slot 5). When set, SPARE[1] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE1_WRITE_LOCK_bm 0x400
 #define SMC_EFUSE_MAP__LOCKS__SPARE1_WRITE_LOCK_bp 10
 #define SMC_EFUSE_MAP__LOCKS__SPARE1_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE1_WRITE_LOCK_reset 0x0
+// Spare 1 read lock (slot 5). When set, SPARE[1] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE1_READ_LOCK_bm 0x800
 #define SMC_EFUSE_MAP__LOCKS__SPARE1_READ_LOCK_bp 11
 #define SMC_EFUSE_MAP__LOCKS__SPARE1_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE1_READ_LOCK_reset 0x0
+// Spare 2 write lock (slot 6). When set, SPARE[2] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE2_WRITE_LOCK_bm 0x1000
 #define SMC_EFUSE_MAP__LOCKS__SPARE2_WRITE_LOCK_bp 12
 #define SMC_EFUSE_MAP__LOCKS__SPARE2_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE2_WRITE_LOCK_reset 0x0
+// Spare 2 read lock (slot 6). When set, SPARE[2] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE2_READ_LOCK_bm 0x2000
 #define SMC_EFUSE_MAP__LOCKS__SPARE2_READ_LOCK_bp 13
 #define SMC_EFUSE_MAP__LOCKS__SPARE2_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE2_READ_LOCK_reset 0x0
+// Spare 3 write lock (slot 7). When set, SPARE[3] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE3_WRITE_LOCK_bm 0x4000
 #define SMC_EFUSE_MAP__LOCKS__SPARE3_WRITE_LOCK_bp 14
 #define SMC_EFUSE_MAP__LOCKS__SPARE3_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE3_WRITE_LOCK_reset 0x0
+// Spare 3 read lock (slot 7). When set, SPARE[3] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE3_READ_LOCK_bm 0x8000
 #define SMC_EFUSE_MAP__LOCKS__SPARE3_READ_LOCK_bp 15
 #define SMC_EFUSE_MAP__LOCKS__SPARE3_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE3_READ_LOCK_reset 0x0
+// Spare 4 write lock (slot 8). When set, SPARE[4] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE4_WRITE_LOCK_bm 0x10000
 #define SMC_EFUSE_MAP__LOCKS__SPARE4_WRITE_LOCK_bp 16
 #define SMC_EFUSE_MAP__LOCKS__SPARE4_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE4_WRITE_LOCK_reset 0x0
+// Spare 4 read lock (slot 8). When set, SPARE[4] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE4_READ_LOCK_bm 0x20000
 #define SMC_EFUSE_MAP__LOCKS__SPARE4_READ_LOCK_bp 17
 #define SMC_EFUSE_MAP__LOCKS__SPARE4_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE4_READ_LOCK_reset 0x0
+// Spare 5 write lock (slot 9). When set, SPARE[5] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE5_WRITE_LOCK_bm 0x40000
 #define SMC_EFUSE_MAP__LOCKS__SPARE5_WRITE_LOCK_bp 18
 #define SMC_EFUSE_MAP__LOCKS__SPARE5_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE5_WRITE_LOCK_reset 0x0
+// Spare 5 read lock (slot 9). When set, SPARE[5] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE5_READ_LOCK_bm 0x80000
 #define SMC_EFUSE_MAP__LOCKS__SPARE5_READ_LOCK_bp 19
 #define SMC_EFUSE_MAP__LOCKS__SPARE5_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE5_READ_LOCK_reset 0x0
+// Spare 6 write lock (slot 10). When set, SPARE[6] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE6_WRITE_LOCK_bm 0x100000
 #define SMC_EFUSE_MAP__LOCKS__SPARE6_WRITE_LOCK_bp 20
 #define SMC_EFUSE_MAP__LOCKS__SPARE6_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE6_WRITE_LOCK_reset 0x0
+// Spare 6 read lock (slot 10). When set, SPARE[6] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE6_READ_LOCK_bm 0x200000
 #define SMC_EFUSE_MAP__LOCKS__SPARE6_READ_LOCK_bp 21
 #define SMC_EFUSE_MAP__LOCKS__SPARE6_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE6_READ_LOCK_reset 0x0
+// Spare 7 write lock (slot 11). When set, SPARE[7] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE7_WRITE_LOCK_bm 0x400000
 #define SMC_EFUSE_MAP__LOCKS__SPARE7_WRITE_LOCK_bp 22
 #define SMC_EFUSE_MAP__LOCKS__SPARE7_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE7_WRITE_LOCK_reset 0x0
+// Spare 7 read lock (slot 11). When set, SPARE[7] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE7_READ_LOCK_bm 0x800000
 #define SMC_EFUSE_MAP__LOCKS__SPARE7_READ_LOCK_bp 23
 #define SMC_EFUSE_MAP__LOCKS__SPARE7_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE7_READ_LOCK_reset 0x0
+// Spare 8 write lock (slot 12). When set, SPARE[8] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE8_WRITE_LOCK_bm 0x1000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE8_WRITE_LOCK_bp 24
 #define SMC_EFUSE_MAP__LOCKS__SPARE8_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE8_WRITE_LOCK_reset 0x0
+// Spare 8 read lock (slot 12). When set, SPARE[8] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE8_READ_LOCK_bm 0x2000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE8_READ_LOCK_bp 25
 #define SMC_EFUSE_MAP__LOCKS__SPARE8_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE8_READ_LOCK_reset 0x0
+// Spare 9 write lock (slot 13). When set, SPARE[9] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE9_WRITE_LOCK_bm 0x4000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE9_WRITE_LOCK_bp 26
 #define SMC_EFUSE_MAP__LOCKS__SPARE9_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE9_WRITE_LOCK_reset 0x0
+// Spare 9 read lock (slot 13). When set, SPARE[9] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE9_READ_LOCK_bm 0x8000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE9_READ_LOCK_bp 27
 #define SMC_EFUSE_MAP__LOCKS__SPARE9_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE9_READ_LOCK_reset 0x0
+// Spare 10 write lock (slot 14). When set, SPARE[10] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE10_WRITE_LOCK_bm 0x10000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE10_WRITE_LOCK_bp 28
 #define SMC_EFUSE_MAP__LOCKS__SPARE10_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE10_WRITE_LOCK_reset 0x0
+// Spare 10 read lock (slot 14). When set, SPARE[10] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE10_READ_LOCK_bm 0x20000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE10_READ_LOCK_bp 29
 #define SMC_EFUSE_MAP__LOCKS__SPARE10_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE10_READ_LOCK_reset 0x0
+// Spare 11 write lock (slot 15). When set, SPARE[11] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE11_WRITE_LOCK_bm 0x40000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE11_WRITE_LOCK_bp 30
 #define SMC_EFUSE_MAP__LOCKS__SPARE11_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE11_WRITE_LOCK_reset 0x0
+// Spare 11 read lock (slot 15). When set, SPARE[11] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE11_READ_LOCK_bm 0x80000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE11_READ_LOCK_bp 31
 #define SMC_EFUSE_MAP__LOCKS__SPARE11_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE11_READ_LOCK_reset 0x0
+// Spare 12 write lock (slot 16). When set, SPARE[12] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE12_WRITE_LOCK_bm 0x100000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE12_WRITE_LOCK_bp 32
 #define SMC_EFUSE_MAP__LOCKS__SPARE12_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE12_WRITE_LOCK_reset 0x0
+// Spare 12 read lock (slot 16). When set, SPARE[12] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE12_READ_LOCK_bm 0x200000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE12_READ_LOCK_bp 33
 #define SMC_EFUSE_MAP__LOCKS__SPARE12_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE12_READ_LOCK_reset 0x0
+// Spare 13 write lock (slot 17). When set, SPARE[13] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE13_WRITE_LOCK_bm 0x400000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE13_WRITE_LOCK_bp 34
 #define SMC_EFUSE_MAP__LOCKS__SPARE13_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE13_WRITE_LOCK_reset 0x0
+// Spare 13 read lock (slot 17). When set, SPARE[13] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE13_READ_LOCK_bm 0x800000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE13_READ_LOCK_bp 35
 #define SMC_EFUSE_MAP__LOCKS__SPARE13_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE13_READ_LOCK_reset 0x0
+// Spare 14 write lock (slot 18). When set, SPARE[14] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE14_WRITE_LOCK_bm 0x1000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE14_WRITE_LOCK_bp 36
 #define SMC_EFUSE_MAP__LOCKS__SPARE14_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE14_WRITE_LOCK_reset 0x0
+// Spare 14 read lock (slot 18). When set, SPARE[14] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE14_READ_LOCK_bm 0x2000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE14_READ_LOCK_bp 37
 #define SMC_EFUSE_MAP__LOCKS__SPARE14_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE14_READ_LOCK_reset 0x0
+// Spare 15 write lock (slot 19). When set, SPARE[15] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE15_WRITE_LOCK_bm 0x4000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE15_WRITE_LOCK_bp 38
 #define SMC_EFUSE_MAP__LOCKS__SPARE15_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE15_WRITE_LOCK_reset 0x0
+// Spare 15 read lock (slot 19). When set, SPARE[15] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE15_READ_LOCK_bm 0x8000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE15_READ_LOCK_bp 39
 #define SMC_EFUSE_MAP__LOCKS__SPARE15_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE15_READ_LOCK_reset 0x0
+// Spare 16 write lock (slot 20). When set, SPARE[16] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE16_WRITE_LOCK_bm 0x10000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE16_WRITE_LOCK_bp 40
 #define SMC_EFUSE_MAP__LOCKS__SPARE16_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE16_WRITE_LOCK_reset 0x0
+// Spare 16 read lock (slot 20). When set, SPARE[16] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE16_READ_LOCK_bm 0x20000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE16_READ_LOCK_bp 41
 #define SMC_EFUSE_MAP__LOCKS__SPARE16_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE16_READ_LOCK_reset 0x0
+// Spare 17 write lock (slot 21). When set, SPARE[17] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE17_WRITE_LOCK_bm 0x40000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE17_WRITE_LOCK_bp 42
 #define SMC_EFUSE_MAP__LOCKS__SPARE17_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE17_WRITE_LOCK_reset 0x0
+// Spare 17 read lock (slot 21). When set, SPARE[17] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE17_READ_LOCK_bm 0x80000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE17_READ_LOCK_bp 43
 #define SMC_EFUSE_MAP__LOCKS__SPARE17_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE17_READ_LOCK_reset 0x0
+// Spare 18 write lock (slot 22). When set, SPARE[18] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE18_WRITE_LOCK_bm 0x100000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE18_WRITE_LOCK_bp 44
 #define SMC_EFUSE_MAP__LOCKS__SPARE18_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE18_WRITE_LOCK_reset 0x0
+// Spare 18 read lock (slot 22). When set, SPARE[18] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE18_READ_LOCK_bm 0x200000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE18_READ_LOCK_bp 45
 #define SMC_EFUSE_MAP__LOCKS__SPARE18_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE18_READ_LOCK_reset 0x0
+// Spare 19 write lock (slot 23). When set, SPARE[19] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE19_WRITE_LOCK_bm 0x400000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE19_WRITE_LOCK_bp 46
 #define SMC_EFUSE_MAP__LOCKS__SPARE19_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE19_WRITE_LOCK_reset 0x0
+// Spare 19 read lock (slot 23). When set, SPARE[19] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE19_READ_LOCK_bm 0x800000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE19_READ_LOCK_bp 47
 #define SMC_EFUSE_MAP__LOCKS__SPARE19_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE19_READ_LOCK_reset 0x0
+// Spare 20 write lock (slot 24). When set, SPARE[20] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE20_WRITE_LOCK_bm 0x1000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE20_WRITE_LOCK_bp 48
 #define SMC_EFUSE_MAP__LOCKS__SPARE20_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE20_WRITE_LOCK_reset 0x0
+// Spare 20 read lock (slot 24). When set, SPARE[20] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE20_READ_LOCK_bm 0x2000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE20_READ_LOCK_bp 49
 #define SMC_EFUSE_MAP__LOCKS__SPARE20_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE20_READ_LOCK_reset 0x0
+// Spare 21 write lock (slot 25). When set, SPARE[21] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE21_WRITE_LOCK_bm 0x4000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE21_WRITE_LOCK_bp 50
 #define SMC_EFUSE_MAP__LOCKS__SPARE21_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE21_WRITE_LOCK_reset 0x0
+// Spare 21 read lock (slot 25). When set, SPARE[21] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE21_READ_LOCK_bm 0x8000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE21_READ_LOCK_bp 51
 #define SMC_EFUSE_MAP__LOCKS__SPARE21_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE21_READ_LOCK_reset 0x0
+// Spare 22 write lock (slot 26). When set, SPARE[22] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE22_WRITE_LOCK_bm 0x10000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE22_WRITE_LOCK_bp 52
 #define SMC_EFUSE_MAP__LOCKS__SPARE22_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE22_WRITE_LOCK_reset 0x0
+// Spare 22 read lock (slot 26). When set, SPARE[22] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE22_READ_LOCK_bm 0x20000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE22_READ_LOCK_bp 53
 #define SMC_EFUSE_MAP__LOCKS__SPARE22_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE22_READ_LOCK_reset 0x0
+// Spare 23 write lock (slot 27). When set, SPARE[23] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE23_WRITE_LOCK_bm 0x40000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE23_WRITE_LOCK_bp 54
 #define SMC_EFUSE_MAP__LOCKS__SPARE23_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE23_WRITE_LOCK_reset 0x0
+// Spare 23 read lock (slot 27). When set, SPARE[23] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE23_READ_LOCK_bm 0x80000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE23_READ_LOCK_bp 55
 #define SMC_EFUSE_MAP__LOCKS__SPARE23_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE23_READ_LOCK_reset 0x0
+// Spare 24 write lock (slot 28). When set, SPARE[24] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE24_WRITE_LOCK_bm 0x100000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE24_WRITE_LOCK_bp 56
 #define SMC_EFUSE_MAP__LOCKS__SPARE24_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE24_WRITE_LOCK_reset 0x0
+// Spare 24 read lock (slot 28). When set, SPARE[24] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE24_READ_LOCK_bm 0x200000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE24_READ_LOCK_bp 57
 #define SMC_EFUSE_MAP__LOCKS__SPARE24_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE24_READ_LOCK_reset 0x0
+// Spare 25 write lock (slot 29). When set, SPARE[25] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE25_WRITE_LOCK_bm 0x400000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE25_WRITE_LOCK_bp 58
 #define SMC_EFUSE_MAP__LOCKS__SPARE25_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE25_WRITE_LOCK_reset 0x0
+// Spare 25 read lock (slot 29). When set, SPARE[25] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE25_READ_LOCK_bm 0x800000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE25_READ_LOCK_bp 59
 #define SMC_EFUSE_MAP__LOCKS__SPARE25_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE25_READ_LOCK_reset 0x0
+// Spare 26 write lock (slot 30). When set, SPARE[26] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE26_WRITE_LOCK_bm 0x1000000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE26_WRITE_LOCK_bp 60
 #define SMC_EFUSE_MAP__LOCKS__SPARE26_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE26_WRITE_LOCK_reset 0x0
+// Spare 26 read lock (slot 30). When set, SPARE[26] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE26_READ_LOCK_bm 0x2000000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE26_READ_LOCK_bp 61
 #define SMC_EFUSE_MAP__LOCKS__SPARE26_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE26_READ_LOCK_reset 0x0
+// Spare 27 write lock (slot 31). When set, SPARE[27] is not writable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE27_WRITE_LOCK_bm 0x4000000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE27_WRITE_LOCK_bp 62
 #define SMC_EFUSE_MAP__LOCKS__SPARE27_WRITE_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE27_WRITE_LOCK_reset 0x0
+// Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.
 #define SMC_EFUSE_MAP__LOCKS__SPARE27_READ_LOCK_bm 0x8000000000000000
 #define SMC_EFUSE_MAP__LOCKS__SPARE27_READ_LOCK_bp 63
 #define SMC_EFUSE_MAP__LOCKS__SPARE27_READ_LOCK_bw 1
 #define SMC_EFUSE_MAP__LOCKS__SPARE27_READ_LOCK_reset 0x0
 
 // reg - smc_efuse_map::JTAG_PUBLIC_IDENTITY
+// JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range
+// are admitted while JTAG access to every other fuse field is blocked. Encoding
+// is adopter-defined; the harness does not interpret or consume the value. The
+// slot-0 read lock still hides the bits when set.
+// Opaque payload. Encoding is adopter-defined; the harness does not interpret
+// it.
 #define SMC_EFUSE_MAP__JTAG_PUBLIC_IDENTITY__VALUE_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SMC_EFUSE_MAP__JTAG_PUBLIC_IDENTITY__VALUE_bp 0
 #define SMC_EFUSE_MAP__JTAG_PUBLIC_IDENTITY__VALUE_bw 256
 #define SMC_EFUSE_MAP__JTAG_PUBLIC_IDENTITY__VALUE_reset 0x0
 
 // reg - smc_efuse_map::I2C_I3C_ID
+// I2C/I3C interface ID
+// I2C or I3C ID configuration:
+// * Static ID mode: [6:0] contains ID, [63:7] reserved
+// * Provisional ID mode: [63:0] full ID
 #define SMC_EFUSE_MAP__I2C_I3C_ID__INTERFACE_ID_bm 0xffffffffffffffff
 #define SMC_EFUSE_MAP__I2C_I3C_ID__INTERFACE_ID_bp 0
 #define SMC_EFUSE_MAP__I2C_I3C_ID__INTERFACE_ID_bw 64
 #define SMC_EFUSE_MAP__I2C_I3C_ID__INTERFACE_ID_reset 0x0
 
 // reg - smc_efuse_map::SMC_CONFIG
+// SMC boot and configuration controls sourced from fuse. Only the low word carries
+// assigned bits, so firmware reads it as a single 32-bit access.
+// When set, the ROM interface swaps byte order on instruction fetch.
 #define SMC_EFUSE_MAP__SMC_CONFIG__ROM_FLIP_ENDIANNESS_bm 0x1
 #define SMC_EFUSE_MAP__SMC_CONFIG__ROM_FLIP_ENDIANNESS_bp 0
 #define SMC_EFUSE_MAP__SMC_CONFIG__ROM_FLIP_ENDIANNESS_bw 1
 #define SMC_EFUSE_MAP__SMC_CONFIG__ROM_FLIP_ENDIANNESS_reset 0x0
+// Reserved for future configuration bits.
 #define SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_LOW_bm 0x7e
 #define SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_LOW_bp 1
 #define SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_LOW_bw 6
 #define SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_LOW_reset 0x0
+// When set, boot skips the SRAM auto-zero initialisation pass.
 #define SMC_EFUSE_MAP__SMC_CONFIG__SRAM_AUTO_ZERO_DISABLE_bm 0x80
 #define SMC_EFUSE_MAP__SMC_CONFIG__SRAM_AUTO_ZERO_DISABLE_bp 7
 #define SMC_EFUSE_MAP__SMC_CONFIG__SRAM_AUTO_ZERO_DISABLE_bw 1
 #define SMC_EFUSE_MAP__SMC_CONFIG__SRAM_AUTO_ZERO_DISABLE_reset 0x0
+// Reserved for future configuration bits.
 #define SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_MID_bm 0x7f00
 #define SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_MID_bp 8
 #define SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_MID_bw 7
 #define SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_MID_reset 0x0
+// When set, boot continues despite a reported memory repair or MBIST failure.
 #define SMC_EFUSE_MAP__SMC_CONFIG__DFT_IGNORE_ERROR_bm 0x8000
 #define SMC_EFUSE_MAP__SMC_CONFIG__DFT_IGNORE_ERROR_bp 15
 #define SMC_EFUSE_MAP__SMC_CONFIG__DFT_IGNORE_ERROR_bw 1
 #define SMC_EFUSE_MAP__SMC_CONFIG__DFT_IGNORE_ERROR_reset 0x0
+// Reserved for future configuration bits.
 #define SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_HIGH_bm 0xffffffffffff0000
 #define SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_HIGH_bp 16
 #define SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_HIGH_bw 48
 #define SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_HIGH_reset 0x0
 
 // reg - smc_efuse_map::OCCP_TRANSPORT_TIMEOUT
+// OCCP transport timeout in the low word; upper word reserved.
+// Transport timeout value consumed by the boot ROM OCCP driver.
 #define SMC_EFUSE_MAP__OCCP_TRANSPORT_TIMEOUT__TIMEOUT_bm 0xffffffff
 #define SMC_EFUSE_MAP__OCCP_TRANSPORT_TIMEOUT__TIMEOUT_bp 0
 #define SMC_EFUSE_MAP__OCCP_TRANSPORT_TIMEOUT__TIMEOUT_bw 32
 #define SMC_EFUSE_MAP__OCCP_TRANSPORT_TIMEOUT__TIMEOUT_reset 0x0
+// Reserved for extension of the timeout encoding.
 #define SMC_EFUSE_MAP__OCCP_TRANSPORT_TIMEOUT__TIMEOUT_RSVD_bm 0xffffffff00000000
 #define SMC_EFUSE_MAP__OCCP_TRANSPORT_TIMEOUT__TIMEOUT_RSVD_bp 32
 #define SMC_EFUSE_MAP__OCCP_TRANSPORT_TIMEOUT__TIMEOUT_RSVD_bw 32
 #define SMC_EFUSE_MAP__OCCP_TRANSPORT_TIMEOUT__TIMEOUT_RSVD_reset 0x0
 
 // reg - smc_efuse_map::SPARE_256_BITS
+// Individually lockable 256-bit spare region, reserved for fields assigned after the
+// RTL is frozen. Each element has its own write/read lock pair in LOCKS.
+// Spare fuse bits for future use.
 #define SMC_EFUSE_MAP__SPARE_256_BITS__RSVD_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define SMC_EFUSE_MAP__SPARE_256_BITS__RSVD_bp 0
 #define SMC_EFUSE_MAP__SPARE_256_BITS__RSVD_bw 256
 #define SMC_EFUSE_MAP__SPARE_256_BITS__RSVD_reset 0x0
 
 // addrmap - smc_efuse_map
+// Address map for efuse shadow registers providing access to various chip configuration and ID fields
 typedef struct __attribute__ ((__packed__)) {
     uint64_t LOCKS;
     uint32_t JTAG_PUBLIC_IDENTITY[8];

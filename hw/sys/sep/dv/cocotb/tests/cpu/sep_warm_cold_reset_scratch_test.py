@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A warm reset clears only SCRATCH_WARM, and a cold reset clears both scratch banks.
 
+OCAH provenance: ``sep_clock_uvm_warm_reset_vs_cold_reset_test`` checks the
+warm- and cold-reset scratch-bank partition.
+
 The test proves the SEP System-block dual scratch banks honor their reset domains:
 
   * SCRATCH_WARM (0x1080_2080) is in the WARM domain: a warm reset (``wdt_rst_ni_i`` low)

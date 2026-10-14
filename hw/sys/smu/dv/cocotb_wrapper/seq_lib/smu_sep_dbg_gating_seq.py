@@ -57,9 +57,7 @@ from seq_lib.wrapper_jtag import (
 
 # SMC CPU_CTRL scratch0, SMC-local. A benign, always-mapped read target: the
 # point is whether the transaction is launched, not what it returns.
-J2A_READ_ADDR = smc_indexed_addr(
-    "SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0
-)  # SMC CPU_CTRL scratch0
+J2A_READ_ADDR = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0)
 
 SETTLE_CYCLES = 4000
 

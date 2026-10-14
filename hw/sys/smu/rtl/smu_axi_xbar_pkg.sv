@@ -12,7 +12,6 @@ package smu_axi_xbar_pkg;
 
   `include "axi/typedef.svh"
 
-  import axi_pkg::*;
 
   // =========================================================================
   // Fabric Parameters

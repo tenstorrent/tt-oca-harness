@@ -13,6 +13,7 @@ endif::release[]
 * Starting as a contributor
 ** xref:licensing.adoc[Licensing]
 ** xref:contribution.adoc[Contributions]
+*** xref:contribution.adoc#versioning[Versioning]
 ** xref:defects.adoc[Defect Reporting]
 ** xref:documentation.adoc[Documentation]
 ** xref:code_of_conduct.adoc[Code of Conduct]

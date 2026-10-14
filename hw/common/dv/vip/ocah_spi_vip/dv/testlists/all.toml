@@ -43,6 +43,14 @@ timeout_sec = 600
 tags = ["smoke", "ci", "spi_unsupported"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "ocah_spi_partial_byte_test"
+module = "ocah_spi_partial_byte_test"
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "spi_program"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "smoke"
 tests = [
@@ -51,6 +59,7 @@ tests = [
     "ocah_spi_erase_test",
     "ocah_spi_ordering_test",
     "ocah_spi_unsupported_test",
+    "ocah_spi_partial_byte_test",
 ]
 
 [[groups]]
@@ -61,4 +70,5 @@ tests = [
     "ocah_spi_erase_test",
     "ocah_spi_ordering_test",
     "ocah_spi_unsupported_test",
+    "ocah_spi_partial_byte_test",
 ]

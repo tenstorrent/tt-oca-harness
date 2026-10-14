@@ -23,8 +23,9 @@ there it drops any stub whose basename the Bender graph supplies, so the
 product cell elaborates on VCS. On Verilator and Xcelium it keeps both files
 and emits the stub ahead of the Bender filelist, so the stub and the product
 cell are in the same compile; Verilator's `-Wno-MODDUP` first-definition-wins picks
-the stub, and no Xcelium build of this bench is recorded. The SMU bench
-enrols the same file in the `[build].stubs` of
+the stub, and on Xcelium nothing in this flow chooses between the two
+definitions, so the pick is `xrun`'s own duplicate-module handling. The SMU
+bench enrols the same file in the `[build].stubs` of
 `hw/sys/smu/dv/smu_sim_cfg.toml` (`--dut smu`).
 
 Nothing under this directory may replace an SMC module (`smc_*`). PeakRDL

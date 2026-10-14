@@ -28,10 +28,11 @@ from pathlib import Path
 import cocotb
 
 from .smc_addr_map import (
+    _REPO,
     DFX_STATUS_IDLE,
     gpio_intf_u32,
+    reg_field_encode,
     smc_addr,
-    smc_bootrom_addr,
     smc_indexed_addr,
 )
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
@@ -41,7 +42,11 @@ from .smc_i3c_to_fabric_test_seq import (
     I3C_HCI_VERSION_RESET,
     _i3c_multifield_reg_from_rdl,
 )
-from .smc_output_fabric_vip_utils import reg_field_pack
+
+_I2C_H = _REPO / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c.h"
+_TELEMETRY_RECEIVER_H = (
+    _REPO / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
+)
 
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -141,7 +146,7 @@ RESET_UNIT_SS_WARM = smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR"
 MISC_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 CLA_DST_SINK_SCRATCHLO = smc_addr("SMC_TOP_SMC_CLA_DST_SINK_SCRATCHLO_BASE_ADDR")
 CLA_FUNNEL_SCRATCHLO = smc_addr("SMC_TOP_SMC_CLA_FUNNEL_SCRATCHLO_BASE_ADDR")
-PVT_WRAP_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PVT_WRAP_BASE_ADDR")
+PVT_WRAP_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_BASE_ADDR")
 # The bench PVT model (hw/sys/smc/dv/models/pvt_wrap.sv) answers every access
 # OKAY with all-zero data; the decode proof is the external-port activity.
 PVT_MODEL_RDATA = 0
@@ -334,7 +339,7 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
                 (
                     f"I2C{idx}_TARGET_ID",
                     smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", idx),
-                    reg_field_pack("I2C_TARGET_ID_reg_t", address0=0x21 + idx, mask0=0x7F),
+                    reg_field_encode(_I2C_H, "I2C", "TARGET_ID", address0=0x21 + idx, mask0=0x7F),
                     _I2C_TARGET_ID_RESET,
                 )
                 for idx in range(I2C_NUM)
@@ -394,7 +399,7 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
         # INTR_ENABLE has two rw bits (MISSING_LAST, BUFFER_THRESHOLD); the three
         # non-zero combinations give one distinct pattern per receiver.
         telemetry_patterns = [
-            reg_field_pack("TELEMETRY_RECEIVER_INTR_ENABLE_reg_t", **fields)
+            reg_field_encode(_TELEMETRY_RECEIVER_H, "TELEMETRY_RECEIVER", "INTR_ENABLE", **fields)
             for fields in (
                 {"missing_last": 1},
                 {"buffer_threshold": 1},

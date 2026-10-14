@@ -14,11 +14,17 @@ extern "C" {
 #include <assert.h>
 
 // reg - plic::PRIORITY
+// Priority of interrupt. The higher the set value, the higher the priority.
+// For interrupts with the same priority, the tie is broken by interrupt ID; interrupts with the lowest ID has highest effective priority.
+// Interrupts start counting at 1.
 #define PLIC__PRIORITY__VALUE_bm 0x7
 #define PLIC__PRIORITY__VALUE_bp 0
 #define PLIC__PRIORITY__VALUE_bw 3
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Priority of interrupt. The higher the set value, the higher the priority.
+        // For interrupts with the same priority, the tie is broken by interrupt ID; interrupts with the lowest ID has highest effective priority.
+        // Interrupts start counting at 1.
         uint32_t value :3;
         uint32_t :29;
     } f;
@@ -26,34 +32,48 @@ typedef union {
 } plic__PRIORITY_t;
 
 // reg - plic::PENDING
+// Set to 1 if interrupt source 1 is pending, regardless of its enable or priority setting.
+// Interrupts start counting at 1.
 #define PLIC__PENDING__VALUE_bm 0xffffffff
 #define PLIC__PENDING__VALUE_bp 0
 #define PLIC__PENDING__VALUE_bw 32
 #define PLIC__PENDING__VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Set to 1 if interrupt source 1 is pending, regardless of its enable or priority setting.
+        // Interrupts start counting at 1.
         uint32_t value :32;
     } f;
     uint32_t w;
 } plic__PENDING_t;
 
 // reg - plic::ENABLE
+// Set bits to 1 if interrupt should be enabled.
+// Interrupts start counting at 1.
 #define PLIC__ENABLE__VALUE_bm 0xffffffff
 #define PLIC__ENABLE__VALUE_bp 0
 #define PLIC__ENABLE__VALUE_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Set bits to 1 if interrupt should be enabled.
+        // Interrupts start counting at 1.
         uint32_t value :32;
     } f;
     uint32_t w;
 } plic__ENABLE_t;
 
 // reg - plic::THRESHOLD
+// Interrupt notification threshold. Maximum value is 7.
+// The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+// The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.
 #define PLIC__THRESHOLD__VALUE_bm 0x7
 #define PLIC__THRESHOLD__VALUE_bp 0
 #define PLIC__THRESHOLD__VALUE_bw 3
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Interrupt notification threshold. Maximum value is 7.
+        // The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+        // The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.
         uint32_t value :3;
         uint32_t :29;
     } f;
@@ -61,17 +81,24 @@ typedef union {
 } plic__THRESHOLD_t;
 
 // reg - plic::CLAIM_COMPLETE
+// Claim/Complete register.
+// Reading this register returns the claimed interrupt number and makes it no longer pending.
+// Writing the interrupt number back completes the interrupt.
 #define PLIC__CLAIM_COMPLETE__VALUE_bm 0xffffffff
 #define PLIC__CLAIM_COMPLETE__VALUE_bp 0
 #define PLIC__CLAIM_COMPLETE__VALUE_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Claim/Complete register.
+        // Reading this register returns the claimed interrupt number and makes it no longer pending.
+        // Writing the interrupt number back completes the interrupt.
         uint32_t value :32;
     } f;
     uint32_t w;
 } plic__CLAIM_COMPLETE_t;
 
 // addrmap - plic
+// Platform-Level Interrupt Controller register interface.
 typedef struct __attribute__ ((__packed__)) {
     plic__PRIORITY_t PRIORITY[337];
     uint8_t RESERVED_544_fff[0xabc];

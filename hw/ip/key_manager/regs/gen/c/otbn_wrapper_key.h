@@ -14,34 +14,48 @@ extern "C" {
 #include <assert.h>
 
 // reg - otbn_wrapper_key::key_word_reg
+// One 32-bit word of key data. Write-only; reads return 0.
+// No reset; powers up with undefined value.
+// 32-bit key data word. Write-only for security.
 #define OTBN_WRAPPER_KEY__KEY_WORD_REG__DATA_bm 0xffffffff
 #define OTBN_WRAPPER_KEY__KEY_WORD_REG__DATA_bp 0
 #define OTBN_WRAPPER_KEY__KEY_WORD_REG__DATA_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit key data word. Write-only for security.
         uint32_t data :32;
     } f;
     uint32_t w;
 } otbn_wrapper_key__key_word_reg_t;
 
 // reg - otbn_wrapper_key::key_ctrl_reg
+// Key control register. Writing KEY_VALID=1 asserts the sideload
+// valid signal to the OTBN core.
+// When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+// Write 0 to invalidate the current key.
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bm 0x1
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bp 0
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_bw 1
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__KEY_VALID_reset 0x0
+// Reserved
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bm 0xfffffffe
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bp 1
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__RSVD_bw 31
 #define OTBN_WRAPPER_KEY__KEY_CTRL_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+        // Write 0 to invalidate the current key.
         uint32_t key_valid :1;
+        // Reserved
         uint32_t rsvd :31;
     } f;
     uint32_t w;
 } otbn_wrapper_key__key_ctrl_reg_t;
 
 // addrmap - otbn_wrapper_key
+// Key storage registers for the OTBN sideload interface.
+// Written by Key Manager CPU, drives keymgr_key_i on the OT OTBN core.
 typedef struct __attribute__ ((__packed__)) {
     otbn_wrapper_key__key_word_reg_t KEY_SHARE0[12];
     otbn_wrapper_key__key_word_reg_t KEY_SHARE1[12];

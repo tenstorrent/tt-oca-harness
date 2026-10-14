@@ -16,8 +16,8 @@ from __future__ import annotations
 import random
 
 from env.dtp_tap_device import DTP_DEFAULT_IDCODE, DTP_IC_RESET_LEN
-from env.dtp_types import DtpJtagInstr, DtpTapState
-from ocah_jtag_vip import OcahJtagChecker
+from env.dtp_types import DtpJtagInstr
+from ocah_jtag_vip import OcahJtagChecker, OcahJtagState
 from ocah_lib import OcahKnobs
 
 from .dtp_debug_tdr_base_test_seq import DEBUG_OUTPUT_DEFAULTS, dtp_debug_tdr_base_test_seq
@@ -89,13 +89,14 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
 
     async def walk_to_tlr(
         self,
-        state: DtpTapState,
+        state: OcahJtagState,
         rng: random.Random,
         checker: OcahJtagChecker,
         *,
         negative: bool,
     ) -> tuple[int, bool]:
         """From ``state`` with BYPASS loaded, walk TMS high into TLR and judge the reset."""
+        self.log_step(1, "Program the debug TDRs, load BYPASS, park in %s", state.name)
         await self.reset_to_tlr()
         await self.program_debug_tdrs()
         await self.load_ir(DtpJtagInstr.BYPASS_3F)
@@ -111,15 +112,17 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
                 "TEST_LOGIC_RESET before the TMS-high walk from %s",
                 state.name,
             )
-            checker.sync_state(DtpTapState.TEST_LOGIC_RESET)
+            checker.sync_state(OcahJtagState.TEST_LOGIC_RESET)
 
         ones = rng.randint(5, 8)
+        self.log_step(2, "Walk %d TMS-high cycles into Test-Logic-Reset", ones)
         for _ in range(ones):
             await self.tms_expect(1)
         item = await self.sample_observables()
         checker.check_tms_ones_to_tlr(ones, item.result, context=f"from={state.name}")
 
         context = f"from={state.name} tms_ones={ones}"
+        self.log_step(3, "A DR scan with no IR load reads IDCODE")
         idcode = await self.shift_dr(0, 32)
         self.family_check(
             "CHK-TAP-TLR-IDCODE",
@@ -128,7 +131,9 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
             DTP_DEFAULT_IDCODE,
             context=context,
         )
+        self.log_step(4, "Debug-TDR pin outputs and readbacks are back at their defaults")
         await self.check_tdr_defaults(context=f"after TLR {context}")
+        self.log_step(5, "IDCODE loaded by an IR scan reads back")
         await self.load_ir(DtpJtagInstr.IDCODE)
         resumed = await self.shift_dr(0, 32)
         self.family_check(
@@ -152,22 +157,19 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
                 RESUME_CHECK_ID,
                 "CHK-NONVAC",
             },
-            # The navigation into the Pause states and the TMS-high walk out of
-            # the Shift states leave Shift-x without a scan the sequence
-            # issued.
+            # The TMS-high walk out of the Shift states leaves Shift-x without
+            # a scan the sequence issued.
             use_monitor=False,
         )
-        # DTP_JTAG_TAP_CHECKER_NEGATIVE=1 is the documented negative-validation
-        # hook: it desyncs the TAP reference model so the next
-        # state check must FAIL, proving the checker rejects a bad prediction
-        # end to end.
+        # DTP_JTAG_TAP_CHECKER_NEGATIVE=1 desyncs the TAP reference model, so
+        # the next state check must fail.
         negative = OcahKnobs.is_set("DTP_JTAG_TAP_CHECKER_NEGATIVE")
 
         states = [
-            DtpTapState.RUN_TEST_IDLE,
-            DtpTapState.SHIFT_IR,
-            DtpTapState.SHIFT_DR,
-            rng.choice([DtpTapState.PAUSE_IR, DtpTapState.PAUSE_DR]),
+            OcahJtagState.RUN_TEST_IDLE,
+            OcahJtagState.SHIFT_IR,
+            OcahJtagState.SHIFT_DR,
+            rng.choice([OcahJtagState.PAUSE_IR, OcahJtagState.PAUSE_DR]),
         ]
 
         ones_counts: list[int] = []

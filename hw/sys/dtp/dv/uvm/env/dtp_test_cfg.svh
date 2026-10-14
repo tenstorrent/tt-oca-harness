@@ -30,7 +30,7 @@ class dtp_test_cfg extends ocah_test_cfg;
   }
 
   // --- knob-derived controls (cocotb env knob names) ---------------------
-  // +DTP_IDCODE_READS_PER_LOOP: IDCODE reads per pass (minimum 2).
+  // +DTP_IDCODE_READS_PER_LOOP: IDCODE reads per pass (minimum 1).
   int unsigned idcode_reads_per_loop = 4;
   // +DTP_RAND_WALKS: random TMS walks per sanity pass.
   int unsigned rand_walks = 16;
@@ -44,14 +44,17 @@ class dtp_test_cfg extends ocah_test_cfg;
   bit tap_checker_negative;      // +DTP_JTAG_TAP_CHECKER_NEGATIVE
   bit axi_scoreboard_negative;   // +DTP_AXI_SCOREBOARD_NEGATIVE
   bit xtrig_checker_negative;    // +DTP_XTRIG_CHECKER_NEGATIVE
-  // +DTP_XTRIG_NEGATIVE_CHECK=<n>: index of the CHK-XTRIG-* ID whose
-  // observed values are corrupted (dtp_xtrig_base_test_seq table); 0 = off.
+  // +DTP_XTRIG_NEGATIVE_CHECK=<n>: index of the cross-trigger evidence ID
+  // whose observed values are corrupted (dtp_xtrig_base_test_seq table);
+  // 0 = off.
   int unsigned xtrig_negative_check;
   bit j2a_geometry_negative;     // +DTP_J2A_GEOMETRY_NEGATIVE
   bit j2a_status_bit_negative;   // +DTP_J2A_STATUS_BIT_NEGATIVE
   bit j2a_bus_req_negative;      // +DTP_J2A_BUS_REQ_NEGATIVE
   bit j2a_orphan_negative;       // +DTP_J2A_ORPHAN_NEGATIVE
   bit jtag2axi_ref_model_negative;  // +DTP_J2A_REF_MODEL_NEGATIVE
+  bit xtrig_csr_ref_model_negative;  // +DTP_XTRIG_CSR_REF_MODEL_NEGATIVE
+  bit xtrig_decode_ref_model_negative;  // +DTP_XTRIG_DECODE_REF_MODEL_NEGATIVE
 
   // --- bench topology -------------------------------------------------------
   // Bit i splices the shared JTAG slave device behind STAP host port i
@@ -77,7 +80,7 @@ class dtp_test_cfg extends ocah_test_cfg;
 
   // Fill the knob-derived controls through the one knob accessor.
   function void read_knobs();
-    idcode_reads_per_loop = ocah_knobs::get_int_min("DTP_IDCODE_READS_PER_LOOP", 4, 2);
+    idcode_reads_per_loop = ocah_knobs::get_int_min("DTP_IDCODE_READS_PER_LOOP", 4, 1);
     rand_walks            = ocah_knobs::get_int_min("DTP_RAND_WALKS", 16, 1);
     scan_matrix_multi_hot_rows =
             ocah_knobs::get_int_min("DTP_DBG_DISABLE_MULTI_HOT_ROWS", 6, 1);
@@ -93,6 +96,8 @@ class dtp_test_cfg extends ocah_test_cfg;
     j2a_bus_req_negative    = ocah_knobs::is_set("DTP_J2A_BUS_REQ_NEGATIVE");
     j2a_orphan_negative     = ocah_knobs::is_set("DTP_J2A_ORPHAN_NEGATIVE");
     jtag2axi_ref_model_negative = ocah_knobs::is_set("DTP_J2A_REF_MODEL_NEGATIVE");
+    xtrig_csr_ref_model_negative = ocah_knobs::is_set("DTP_XTRIG_CSR_REF_MODEL_NEGATIVE");
+    xtrig_decode_ref_model_negative = ocah_knobs::is_set("DTP_XTRIG_DECODE_REF_MODEL_NEGATIVE");
   endfunction
 
   // Arm the aggregate JTAG recorder: zero checks or a missing ID fails.

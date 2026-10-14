@@ -9,6 +9,8 @@
 // ports are tied off, and the SMC connects to the external AXI ports through ID-width
 // converters instead of the crossbar.
 
+`include "ocah_assert.svh"
+
 module smu #(
   parameter int unsigned CFG_IDX = 0,  // Selects the smu_pkg::SmuConfigs preset that CFG
                                        // defaults to, 0 for DefaultCfg and 1 for NoSepCfg; a
@@ -58,8 +60,7 @@ module smu #(
   localparam int unsigned  DtpXtrigNumIntCt = smu_pkg::dtp_xtrig_num_int_ct(CFG),  // Internal CT count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_INT_CT.
   localparam int unsigned  DtpXtrigNumClkStopReq = smu_pkg::dtp_xtrig_num_clk_stop_req(CFG),  // Clock-stop count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_CLK_STOP_REQ.
   localparam int unsigned  JtagNumExtraStapPorts = smu_pkg::jtag_num_extra_stap_ports(CFG),  // Extra STAP port count; at least one for tie-off.
-  localparam logic [DtpXtrigNumIntCt-1:0]  DtpXtrigIntCtMode =  // Per-lane CTM mode vector with SMC lanes forced to 0, forwarded to the DTP XTRIG_INT_CT_MODE.
-      smu_pkg::dtp_xtrig_int_ct_mode(CFG)[DtpXtrigNumIntCt-1:0]
+  localparam smu_pkg::dtp_ct_mode_t  DtpXtrigIntCtMode = smu_pkg::dtp_xtrig_int_ct_mode(CFG) // Per-lane CTM mode vector with SMC lanes forced to 0; its low DtpXtrigNumIntCt bits are forwarded to the DTP XTRIG_INT_CT_MODE.
 ) (
   input  logic  clk_smu_i,                      // SMU clock; clocks the SMC core, the SEP, the DTP
                                                 // and the SMU AXI crossbar.
@@ -509,6 +510,10 @@ module smu #(
   // =========================================================================
   // SMU AXI Crossbar signals
   // =========================================================================
+  // External inbound AXI, after the SMU boundary cut
+  smu_axi_xbar_pkg::axi_56_64_req_t   smu_axi_in_cut_req;
+  smu_axi_xbar_pkg::axi_56_64_resp_t  smu_axi_in_cut_resp;
+
   // SEP outbound AXI (manager into xbar)
   sep_pkg::sep_system_peripherals_outbound_axi_req_t   sep_smn_outbound_axi_req;
   sep_pkg::sep_system_peripherals_outbound_axi_resp_t  sep_smn_outbound_axi_resp;
@@ -577,7 +582,7 @@ module smu #(
     .XTRIG_NUM_CTP             (CFG.XTRIG_NUM_CTP),
     .XTRIG_NUM_INT_CT          (DtpXtrigNumIntCt),
     .XTRIG_NUM_CLK_STOP_REQ    (DtpXtrigNumClkStopReq),
-    .XTRIG_INT_CT_MODE         (DtpXtrigIntCtMode),
+    .XTRIG_INT_CT_MODE         (DtpXtrigIntCtMode[DtpXtrigNumIntCt-1:0]),
     .jtag_tap_ctrl_t           (prim_jtag_pkg::jtag_tap_ctrl_t),
     .jtag_scan_ctrl_t          (prim_jtag_pkg::jtag_scan_ctrl_t),
     .ic_reset_smc_t            (smc_pkg::jtag_smc_reset_ctrl_t),
@@ -854,6 +859,28 @@ module smu #(
   );
 
   //--------------------------------------------------------------------------
+  // External inbound AXI boundary cut
+  //--------------------------------------------------------------------------
+
+  axi_cut #(
+    .Bypass     (1'b0),
+    .aw_chan_t  (smu_axi_xbar_pkg::axi_56_64_aw_chan_t),
+    .w_chan_t   (smu_axi_xbar_pkg::axi_56_64_w_chan_t),
+    .b_chan_t   (smu_axi_xbar_pkg::axi_56_64_b_chan_t),
+    .ar_chan_t  (smu_axi_xbar_pkg::axi_56_64_ar_chan_t),
+    .r_chan_t   (smu_axi_xbar_pkg::axi_56_64_r_chan_t),
+    .axi_req_t  (smu_axi_xbar_pkg::axi_56_64_req_t),
+    .axi_resp_t (smu_axi_xbar_pkg::axi_56_64_resp_t)
+  ) u_smu_axi_in_cut (
+    .clk_i      (clk_smu_i),
+    .rst_ni     (rst_primary_smc_clk_no),
+    .slv_req_i  (smu_axi_in_req_i),
+    .slv_resp_o (smu_axi_in_resp_o),
+    .mst_req_o  (smu_axi_in_cut_req),
+    .mst_resp_i (smu_axi_in_cut_resp)
+  );
+
+  //--------------------------------------------------------------------------
   // SEP-dependent logic (if/else based on CFG.SEP)
   //--------------------------------------------------------------------------
 
@@ -1037,8 +1064,8 @@ module smu #(
       .sep_out_resp_o         (sep_out_xbar_resp),
       .smc_out_req_i          (smc_out_xbar_req),
       .smc_out_resp_o         (smc_out_xbar_resp),
-      .ext_in_req_i           (smu_axi_in_req_i),
-      .ext_in_resp_o          (smu_axi_in_resp_o),
+      .ext_in_req_i           (smu_axi_in_cut_req),
+      .ext_in_resp_o          (smu_axi_in_cut_resp),
       // Target ports
       .sep_in_req_o           (xbar_to_sep_req),
       .sep_in_resp_i          (xbar_to_sep_resp),
@@ -1247,8 +1274,8 @@ module smu #(
     ) u_iw_conv_smc_in (
       .clk_i      (clk_smu_i),
       .rst_ni     (rst_primary_smc_clk_no),
-      .slv_req_i  (smu_axi_in_req_i),
-      .slv_resp_o (smu_axi_in_resp_o),
+      .slv_req_i  (smu_axi_in_cut_req),
+      .slv_resp_o (smu_axi_in_cut_resp),
       .mst_req_o  (smc_sys_axi_in_req),
       .mst_resp_i (smc_sys_axi_in_resp)
     );
@@ -1349,50 +1376,48 @@ module smu #(
   // Configuration Checks
   //--------------------------------------------------------------------------
 
-  if (CFG_IDX >= smu_pkg::NumSmuConfigs) begin : gen_cfg_idx_check
-    $error("smu: CFG_IDX must be less than smu_pkg::NumSmuConfigs");
-  end
+  // verilog_format: off
+  `OCAH_ASSERT_STATIC(CfgIdx_A, CFG_IDX < smu_pkg::NumSmuConfigs,
+                      "CFG_IDX must be less than smu_pkg::NumSmuConfigs")
 
-  if (CFG.NUM_INT_TO_SMC < 1 || CFG.NUM_INT_TO_SMC > NumExtInterrupts) begin : gen_num_int_to_smc_check
-    $error("smu: CFG.NUM_INT_TO_SMC must be 1 to NumExtInterrupts");
-  end
+  `OCAH_ASSERT_STATIC(NumIntToSmc_A,
+                      CFG.NUM_INT_TO_SMC >= 1 && CFG.NUM_INT_TO_SMC <= NumExtInterrupts,
+                      "CFG.NUM_INT_TO_SMC must be 1 to NumExtInterrupts")
 
-  if (CFG.XTRIG_NUM_INT_CT < 1 || CFG.XTRIG_NUM_INT_CT > smu_pkg::XtrigIntCtModeWidth)
-  begin : gen_xtrig_num_int_ct_check
-    $error("smu: CFG.XTRIG_NUM_INT_CT must be 1 to XtrigIntCtModeWidth");
-  end
+  `OCAH_ASSERT_STATIC(
+      XtrigNumIntCt_A,
+      CFG.XTRIG_NUM_INT_CT >= 1 && CFG.XTRIG_NUM_INT_CT <= smu_pkg::XtrigIntCtModeWidth,
+      "CFG.XTRIG_NUM_INT_CT must be 1 to XtrigIntCtModeWidth")
 
-  if (CFG.JTAG_NUM_EXTRA_STAPS > 15) begin : gen_jtag_num_extra_staps_check
-    $error("smu: CFG.JTAG_NUM_EXTRA_STAPS must be at most 15");
-  end
+  `OCAH_ASSERT_STATIC(JtagNumExtraStaps_A, CFG.JTAG_NUM_EXTRA_STAPS <= 15,
+                      "CFG.JTAG_NUM_EXTRA_STAPS must be at most 15")
 
-  if (!CFG.JTAG_BSR_ENABLE &&
-      (CFG.JTAG_EXTEST_TRAIN_ENABLE || CFG.JTAG_EXTEST_PULSE_ENABLE || CFG.JTAG_INTEST_ENABLE))
-  begin : gen_jtag_bsr_check
-    $error("smu: CFG.JTAG_EXTEST_TRAIN/EXTEST_PULSE/INTEST_ENABLE need CFG.JTAG_BSR_ENABLE");
-  end
+  `OCAH_ASSERT_STATIC(
+      JtagBsr_A,
+      CFG.JTAG_BSR_ENABLE ||
+      !(CFG.JTAG_EXTEST_TRAIN_ENABLE || CFG.JTAG_EXTEST_PULSE_ENABLE || CFG.JTAG_INTEST_ENABLE),
+      "CFG.JTAG_EXTEST_TRAIN/EXTEST_PULSE/INTEST_ENABLE need CFG.JTAG_BSR_ENABLE")
 
-  if (CFG.EXT_TRNG_NUM_AXIS != sep_crypto_pkg::SepCryptoEdnEndpointCount)
-  begin : gen_ext_trng_num_axis_check
-    $error("smu: CFG.EXT_TRNG_NUM_AXIS must equal SepCryptoEdnEndpointCount");
-  end
+  `OCAH_ASSERT_STATIC(ExtTrngNumAxis_A,
+                      CFG.EXT_TRNG_NUM_AXIS == sep_crypto_pkg::SepCryptoEdnEndpointCount,
+                      "CFG.EXT_TRNG_NUM_AXIS must equal SepCryptoEdnEndpointCount")
 
-  if (CFG.SMC_EFUSE_SHIM_SIZE == 0 ||
-      CFG.SMC_EFUSE_SHIM_SIZE >= smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE)
-  begin : gen_smc_efuse_shim_size_check
-    $error("smu: CFG.SMC_EFUSE_SHIM_SIZE must be non-zero and smaller than smc_external");
-  end
+  `OCAH_ASSERT_STATIC(
+      SmcEfuseShimSize_A,
+      CFG.SMC_EFUSE_SHIM_SIZE != 0 &&
+      CFG.SMC_EFUSE_SHIM_SIZE < smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE,
+      "CFG.SMC_EFUSE_SHIM_SIZE must be non-zero and smaller than smc_external")
 
-  if (CFG.SEP && (CFG.SEP_EFUSE_SHIM_SIZE == 0 ||
-      CFG.SEP_EFUSE_SHIM_SIZE >
-          sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR -
-          sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR))
-  begin : gen_sep_efuse_shim_size_check
-    $error("smu: CFG.SEP_EFUSE_SHIM_SIZE must be non-zero and end below the XIP window");
-  end
+  `OCAH_ASSERT_STATIC(
+      SepEfuseShimSize_A,
+      !CFG.SEP || (CFG.SEP_EFUSE_SHIM_SIZE != 0 &&
+                   CFG.SEP_EFUSE_SHIM_SIZE <=
+                       sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR -
+                       sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR),
+      "CFG.SEP_EFUSE_SHIM_SIZE must be non-zero and end below the XIP window")
 
-  if (CFG.SEP && CFG.SEP_ABR_SRAM_LATENCY < 1) begin : gen_sep_abr_sram_latency_check
-    $error("smu: CFG.SEP_ABR_SRAM_LATENCY must be at least 1");
-  end
+  `OCAH_ASSERT_STATIC(SepAbrSramLatency_A, !CFG.SEP || CFG.SEP_ABR_SRAM_LATENCY >= 1,
+                      "CFG.SEP_ABR_SRAM_LATENCY must be at least 1")
+  // verilog_format: on
 
 endmodule

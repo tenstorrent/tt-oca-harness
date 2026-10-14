@@ -34,7 +34,7 @@ timeout_sec = 1800
 tags = ["ci", "reset", "canonical"]
 run_modes = ["smoke"]
 
-# BFM rebuild of GPIO boot-stall (pad 57 sticky). Needs hold from t=0.
+# GPIO boot-stall (pad 57 sticky); needs the hold from t=0.
 [[tests]]
 name = "smc_gpio_boot_stall_test"
 module = "smc_gpio_boot_stall_test"
@@ -44,7 +44,7 @@ tags = ["ci", "reset", "boot_stall"]
 run_modes = ["smoke"]
 args = ["+smc_hold_cpu_boot"]
 
-# BFM rebuild of JTAG boot-stall override. Unique vs pad-only sibling.
+# JTAG boot-stall override, distinct from the pad-only sibling.
 [[tests]]
 name = "smc_jtag_boot_stall_sanity_test"
 module = "smc_jtag_boot_stall_sanity_test"
@@ -54,7 +54,7 @@ tags = ["ci", "reset", "boot_stall"]
 run_modes = ["smoke"]
 args = ["+smc_hold_cpu_boot"]
 
-# BFM rebuild of mixed GPIO+JTAG boot-stall (fuse_reset + ovrd val=1 lockout).
+# Mixed GPIO+JTAG boot-stall (fuse_reset + ovrd val=1 lockout).
 [[tests]]
 name = "smc_mixed_boot_stall_test"
 module = "smc_mixed_boot_stall_test"
@@ -64,7 +64,7 @@ tags = ["ci", "reset", "boot_stall"]
 run_modes = ["smoke"]
 args = ["+smc_hold_cpu_boot"]
 
-# BFM rebuild of reset_unit COLD vs COLD_WARM across SEP WDT pin.
+# reset_unit COLD vs COLD_WARM across the SEP WDT pin.
 [[tests]]
 name = "smc_reset_unit_sanity_test"
 module = "smc_reset_unit_sanity_test"
@@ -145,12 +145,10 @@ tags = ["ci", "reset", "flr"]
 run_modes = ["smoke"]
 
 [[tests]]
-# reset_unit.rdl:87-95 and :18-26 declare both as sw=rw with onwrite=woset, so a
+# reset_unit.rdl declares both lock registers sw=rw with onwrite=woset, so a
 # taken lock cannot be released, and smc_subsystem_resets.sv gates each target's
-# writes with the inverted lock. Both properties, on both pairs, are asserted
-# here and nowhere else. One testcase rather than two: the registers have the
-# same declaration and the same gate, so a second would differ only in two
-# addresses.
+# writes with the inverted lock; this testcase asserts both properties on both
+# pairs.
 name = "smc_reset_unit_lock_test"
 # One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
 module = { cocotb = "smc_reset_unit_lock_test", uvm = "smc_reset_unit_lock_test" }

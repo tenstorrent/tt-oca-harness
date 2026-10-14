@@ -9,15 +9,15 @@ the post-reset idle state -- never from the RTL.
 
 AVS_DEBUG_READBACK non-destructiveness
 ---------------------------------------------------------
-``avsbus_controller.rdl:149-151`` declares AVS_DEBUG_READBACK a mirror of
-AVS_READBACK whose read "does NOT affect the AVS readback fifo pointer", and
-``hw/ip/avsbus_controller/doc/memmap.adoc:33`` calls it a "Non-destructive read
-of FIFO contents". Comparing two AVS_DEBUG_READBACK reads to each other proves
+``avsbus_controller.rdl`` declares AVS_DEBUG_READBACK a mirror of AVS_READBACK
+whose read "does NOT affect the AVS readback fifo pointer", and
+``hw/ip/avsbus_controller/doc/memmap.adoc`` says it "returns the same data
+without popping". Comparing two AVS_DEBUG_READBACK reads to each other proves
 nothing on its own -- with the readback FIFO empty the two words are the same
 constant whatever the pointer does. The observable that *does* discriminate is
-``AVS_INTERRUPT.READBACK_UNDERFLOW_INT``, which
-``avsbus_controller.rdl:299-303`` defines as "an APB read on the AVS_READBACK
-reg occurred when the readback fifo was empty". So with the FIFO empty:
+``AVS_INTERRUPT.READBACK_UNDERFLOW_INT``, which ``avsbus_controller.rdl``
+defines as "an APB read on the AVS_READBACK reg occurred when the readback fifo
+was empty". So with the FIFO empty:
 
 * a read that touches the readback pointer raises that flag, and
 * a read that does not, leaves it clear.
@@ -25,7 +25,7 @@ reg occurred when the readback fifo was empty". So with the FIFO empty:
 This sequence therefore asserts the property against its contrast:
 ``AVS_INTERRUPT == 0`` before and after the AVS_DEBUG_READBACK pair (nothing
 touched the pointer), then the AVS_READBACK read -- the register the RDL
-documents as pointer-advancing (``rdl:82-84``) -- must raise exactly
+documents as pointer-advancing -- must raise exactly
 READBACK_UNDERFLOW_INT. That second leg is the positive control: it shows the
 flag can reach 1 on this DUT over this path, so the two ``== 0`` compares are
 live measurements rather than a stuck-at-0 pass. The AVS_DEBUG_READBACK data
@@ -61,20 +61,20 @@ AVS_SLAVE_STATUS = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_SLAVE_STATUS_BASE
 AVS_FIFOS_STATUS = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_FIFOS_STATUS_BASE_ADDR")
 AVS_INTERRUPT = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_BASE_ADDR")
 AVS_INTERRUPT_MASK = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_MASK_BASE_ADDR")
-# avsbus_controller.rdl:352-409 -- nine rw fields, all masked at reset.
+# avsbus_controller.rdl AVS_INTERRUPT_MASK -- nine rw fields, all masked at reset.
 AVS_INTERRUPT_MASK_RESET = 0x1FF
 AVS_INTERRUPT_CLEAR = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_CLEAR_BASE_ADDR")
 
 # --- Readback-pointer witness (see module docstring) ---
-# ``AVS_INTERRUPT`` reset word: hw/ip/avsbus_controller/doc/memmap.adoc:107
-# ("AVS_INTERRUPT |0x00000000 |No pending interrupts"), which matches every
-# interrupt field's RDL reset of 0.
+# ``AVS_INTERRUPT`` reset word: every interrupt field's RDL reset is 0, so the
+# whole register reads 0x00000000 with nothing pending.
 AVS_INTERRUPT_NONE_PENDING = 0x00000000
 # The single flag the readback pointer raises when it is advanced on an empty
-# FIFO (avsbus_controller.rdl:299-303). Mask by symbol from the generated header.
+# FIFO (avsbus_controller.rdl AVS_INTERRUPT.READBACK_UNDERFLOW_INT). Mask by
+# symbol from the generated header.
 AVS_READBACK_UNDERFLOW = _avs("AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_UNDERFLOW_INT_bm")
-# Write-1 clear for the same flag (rdl:422-426, memmap.adoc:54 "Clear interrupt
-# bits"); leaves the block back at "no pending interrupts".
+# Write-1 clear for the same flag (AVS_INTERRUPT_CLEAR.CLEAR_READBACK_UNDERFLOW_INT
+# in avsbus_controller.rdl); leaves the block back at "no pending interrupts".
 AVS_CLEAR_READBACK_UNDERFLOW = _avs(
     "AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_UNDERFLOW_INT_bm"
 )
@@ -170,7 +170,7 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
         )
         # Exact expectation: still nothing pending. A DUT whose debug read did
         # advance/pop the readback pointer would have raised
-        # READBACK_UNDERFLOW_INT here (rdl:299-303), because the readback FIFO is
+        # READBACK_UNDERFLOW_INT here, because the readback FIFO is
         # empty in this scenario (no AVS_CMD was ever written -- AVS_FIFOS_STATUS
         # below value-compares that). The contrast leg further down proves this
         # flag can reach 1 over this same path, so this is not a stuck-at-0 pass.
@@ -208,16 +208,17 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
             )
 
         for name, addr in SIDEBAND_ERR_READS:
-            # AVS_READBACK is the register the RDL documents as pointer-advancing
-            # ("Reading this register causes the AVS response readback fifo
-            # pointer to advance", rdl:82-84). Read on an empty FIFO it returns
-            # rdata == 0 -- that half IS document-cited
-            # (memmap.adoc:95, "AVS_READBACK |0x00000000 |Empty FIFO, no response
-            # data") -- together with an AXI error response. The error response
-            # is an integration behaviour of the SEP_IN path on an empty-readback
-            # read, not a documented register property; it is pinned so the leg
-            # cannot degrade into an OKAY or a wedge. csr_read_decerr_zero
-            # asserts both halves.
+            # AVS_READBACK is the register the RDL documents as
+            # pointer-advancing ("Reading this register causes the AVS response
+            # readback fifo pointer to advance"). Read on an empty FIFO it
+            # returns rdata == 0 -- that half IS document-cited (memmap.adoc,
+            # Address Alignment and Access Requirements: "a read of
+            # `AVS_READBACK` while the readback FIFO is empty returns 0 without
+            # popping") -- together with an AXI error response. The error
+            # response is an integration behaviour of the SEP_IN path on an
+            # empty-readback read, not a documented register property; it is
+            # pinned so the leg cannot degrade into an OKAY or a wedge.
+            # csr_read_decerr_zero asserts both halves.
             await self.csr_read_decerr_zero(name, addr)
             cocotb.log.info(
                 "CHK-AVS-READBACK-EMPTY-FIFO-READ: 0x%08x resp=SLVERR/DECERR and "
@@ -227,11 +228,11 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
                 addr,
             )
 
-        # Contrast / positive-control leg for the non-destructive property above:
-        # the pointer-advancing read just issued must have raised exactly
-        # READBACK_UNDERFLOW_INT (rdl:299-303 -- "an APB read on the AVS_READBACK
-        # reg occurred when the readback fifo was empty"). Exact word, so a DUT
-        # that raised nothing, or raised something else too, fails.
+        # Contrast / positive-control leg for the non-destructive property
+        # above: the pointer-advancing read just issued must have raised exactly
+        # READBACK_UNDERFLOW_INT ("an APB read on the AVS_READBACK reg occurred
+        # when the readback fifo was empty"). Exact word, so a DUT that raised
+        # nothing, or raised something else too, fails.
         await self.csr_read(
             "AVS_INTERRUPT_AFTER_READBACK",
             AVS_INTERRUPT,
@@ -248,9 +249,9 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
             AVS_INTERRUPT_NONE_PENDING,
         )
 
-        # Documented write-1 clear (rdl:422-426), and the register must return to
-        # "no pending interrupts" -- which also restores the entry state for any
-        # later scenario sharing this block.
+        # Documented write-1 clear (AVS_INTERRUPT_CLEAR), and the register must
+        # return to "no pending interrupts" -- which also restores the entry
+        # state for any later scenario sharing this block.
         await self.csr_write(
             "AVS_INTERRUPT_CLEAR_UNDERFLOW",
             AVS_INTERRUPT_CLEAR,
@@ -278,7 +279,7 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
         # `check_sideband_observability` measures avs_irq=0 and the FSM in
         # IDLE), so the un-masked window is dead time.
         #
-        # `avsbus_controller.rdl:352-409` gives this register nine rw fields
+        # `avsbus_controller.rdl` gives AVS_INTERRUPT_MASK nine rw fields
         # with reset 0x1FF (all masked). The probe clears alternate bits so a
         # stuck-at-1 register cannot read it back, then 0x1FF is restored and
         # re-read.

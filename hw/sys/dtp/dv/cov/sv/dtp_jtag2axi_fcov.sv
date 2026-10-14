@@ -8,10 +8,9 @@
 //
 // One instance in the shared tb_top serves both flows. The TCK-domain points
 // come straight from each bridge's own bookkeeping, connected by tb_top
-// through hierarchical references (the cocotb Verilator build compiles with
-// --public-flat-rw and VCS resolves them natively): the single-op status,
-// pending and launched-operation registers; the transaction the AXI state
-// machine completes and the series status it completes against; the bridge's
+// through hierarchical references: the single-op status, pending and
+// launched-operation registers; the transaction the AXI state machine
+// completes and the series status it completes against; the bridge's
 // SINGLE_OP Update-DR, scanned op field and synchronized disable; its CDC's
 // TCK-side clear. The bus-timing points sample the flattened per-bridge AXI
 // handshake pins in the system-clock domain.
@@ -29,7 +28,7 @@
 
 module dtp_jtag2axi_fcov (
   input wire        tck_i,
-  input wire        trst_ni,
+  input wire        tap_rst_ni,
   input wire        clk_i,
   input wire        rst_ni,
   input wire [15:0] tap_state_i,
@@ -161,7 +160,8 @@ module dtp_jtag2axi_fcov (
   localparam logic [2:0] SmcAxiBeatSize = 3'($clog2(dtp_dv_cfg_pkg::SmcAxiDataWidth / 8));
   localparam logic [2:0] OtpBeatSize = 3'($clog2(dtp_dv_cfg_pkg::OtpAxilDataWidth / 8));
 
-  // TB memory window per target (tb_top RAM responders).
+  // Responder memory window per target: each JTAG2AXI responder, the env's
+  // slave agent or the cocotb RAM, wraps its address at this size.
   localparam int unsigned MemBytes = 'h10000;
 
   localparam logic [1:0] TgtSmcAxi = 2'd0;
@@ -224,9 +224,10 @@ module dtp_jtag2axi_fcov (
   localparam logic [1:0] MaskAllSet = 2'd3;
 
   // ------------------------------------------------------------------
-  // Common TCK-domain scan decode (same shape as dtp_fcov).
+  // Common TCK-domain scan decode. The TAP reset is TRST AND power-on reset,
+  // as the PTAP combines them.
   // ------------------------------------------------------------------
-  wire in_reset = (trst_ni !== 1'b1);
+  wire in_reset = (tap_rst_ni !== 1'b1);
   wire cap_dr = (tap_state_i == jtag_tap_pkg::CAPTURE_DR) && !in_reset;
 
   // Debug-disable mask class over the three bridge fields, and the count of

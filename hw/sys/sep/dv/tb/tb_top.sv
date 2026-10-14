@@ -120,12 +120,48 @@ module sep_uvm_top
     // to the DUT's smn_inbound_axi_req_i port (idles unless a test drives m_axi_*).
     sep_pkg::sep_system_peripherals_internal_axi_req_t  smn_inbound_req_drive;
     sep_pkg::sep_system_peripherals_internal_axi_resp_t smn_inbound_resp_w;
-    sep_pkg::sep_system_peripherals_internal_axi_resp_t ext_to_smc_resp_idle   = '0;
-    // SEP->SMC external AXI. Tied idle by default; with SEP_SMC_MEM_MODEL the
-    // shared AXI slave agent responds (real R/W to SMC scratch + SRAM) so the
-    // Boot ROM can run its SMC scratch round-trip + non-SPI manifest fetch.
+    // SEP->SMC external AXI. With SEP_SMC_MEM_MODEL the shared AXI slave agent
+    // responds (real R/W to SMC scratch + SRAM) so the Boot ROM can run its SMC
+    // scratch round-trip + non-SPI manifest fetch. Every other build answers
+    // through the BH-SMC responder, which is idle unless the hook is enabled.
     sep_pkg::sep_system_peripherals_internal_axi_req_t  ext_to_smc_req_w;
     sep_pkg::sep_system_peripherals_internal_axi_resp_t ext_to_smc_resp_w;
+    // BH-SMC (docs/SEP_TB_ARCH.adoc, HDL Top port table): the SMC aperture
+    // inputs and the SMC responder for builds without SEP_SMC_MEM_MODEL. A leaf
+    // sets bh_smc_en_i, bh_smc_base_i and bh_smc_size_i before it releases
+    // reset, or a run passes +sep_smc_aperture_base=<hex> and
+    // +sep_smc_aperture_size=<hex>. The port drive wins over the plusargs. With
+    // neither, both aperture inputs are 0 and the responder stays idle, as in
+    // a build with no SMC.
+    logic        bh_smc_en;
+    logic [55:0] bh_smc_base;
+    logic [55:0] bh_smc_size;
+    logic        bh_smc_pa_en = 1'b0;
+    logic [55:0] bh_smc_pa_base = '0;
+    logic [55:0] bh_smc_pa_size = '0;
+    initial begin
+        if ($value$plusargs("sep_smc_aperture_base=%h", bh_smc_pa_base) &&
+            $value$plusargs("sep_smc_aperture_size=%h", bh_smc_pa_size)) begin
+            bh_smc_pa_en = 1'b1;
+            $display("[tb] BH-SMC aperture from plusargs: base=0x%0h size=0x%0h",
+                     bh_smc_pa_base, bh_smc_pa_size);
+        end
+    end
+    always_comb begin
+        if (bh_smc_en_i === 1'b1) begin
+            bh_smc_en   = 1'b1;
+            bh_smc_base = bh_smc_base_i;
+            bh_smc_size = bh_smc_size_i;
+        end else if (bh_smc_pa_en) begin
+            bh_smc_en   = 1'b1;
+            bh_smc_base = bh_smc_pa_base;
+            bh_smc_size = bh_smc_pa_size;
+        end else begin
+            bh_smc_en   = 1'b0;
+            bh_smc_base = '0;
+            bh_smc_size = '0;
+        end
+    end
     // SEP-OTP JTAG AXI-Lite: assembled from the flat j_axi_* master inputs (below).
     sep_efuse_pkg::efuse_axil_req_t   j_axil_req_drive;
     sep_efuse_pkg::efuse_axil_resp_t  j_axil_resp_w;
@@ -506,6 +542,10 @@ module sep_uvm_top
     // (the vendored VeeR tap has no reset-vector TDR).
     // ------------------------------------------------------------------
     sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_w;
+    // The irq field of the SPI request, selected by name, so a leaf that
+    // samples it does not depend on the struct layout.
+    logic sep_io_spi_irq_w;
+    assign sep_io_spi_irq_w = sep_io_spi_req_w.irq;
     // EXT_TRNG_NUM_AXIS must equal sep_crypto_pkg::SepCryptoEdnEndpointCount (3):
     // sep_crypto.u_sep_trng binds u_drbg_s3c_scan.edn_axis_o/i to drbg_int_axis_req/rsp as a
     // DIRECT packed-array connection, one mux leg per DRBG EDN endpoint
@@ -622,10 +662,12 @@ module sep_uvm_top
         .rst_vec                      (rst_vec_i),
         .jtag_id                      ('0),
 
-        // Interrupts (idle)
+        // Interrupts. timer_int and soft_int are tied to 0. The boundary PIC
+        // input is the top-port drive sep_ext_interrupts_i (0 unless a leaf
+        // drives it).
         .timer_int                    (1'b0),
         .soft_int                     (1'b0),
-        .sep_ext_interrupts_i         ('0),
+        .sep_ext_interrupts_i         (sep_ext_interrupts_i),
 
         // SMN external AXI (outbound captured by the mailbox responder; inbound
         // driven by the flat m_axi_* master when live).
@@ -675,15 +717,15 @@ module sep_uvm_top
 
         // SMC address configuration tied to 0 (identity remap).
 `ifdef SEP_SMC_MEM_MODEL
-        // Route the SMC region (scratch 0x4003_9080+, straps 0x4040_5800, SMC SRAM
+        // Route the SMC region (scratch 0x4003_9080+, straps 0x4040_3000, SMC SRAM
         // 0x4006_0000+ manifest) out the sep_ext_to_smc AXI to the TB's SMC
         // responder. The ROM boots secondary (non-SPI) and DMAs the manifest+BL1
         // from SMC SRAM.
         .smc_global_base_addr_i       (56'h4000_0000),
         .smc_region_size_i            (56'h0100_0000),
 `else
-        .smc_global_base_addr_i       ('0),
-        .smc_region_size_i            ('0),
+        .smc_global_base_addr_i       (bh_smc_base),
+        .smc_region_size_i            (bh_smc_size),
 `endif
         .sep_global_base_addr_o       (),
         .sep_region_size_o            (),
@@ -742,7 +784,9 @@ module sep_uvm_top
     // existing window.
     localparam logic [63:0] SmcLocalBase = 64'hC000_0000;
     localparam logic [63:0] SmcSepViewBase = 64'h4000_0000;
-    localparam logic [55:0] SmcStrapsLoAddr = 56'h4040_5800;
+    localparam logic [55:0] SmcStrapsLoAddr = 56'(
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_BASE_ADDR - SmcLocalBase +
+        SmcSepViewBase);
     localparam logic [55:0] SmcStrapsHiAddr = SmcStrapsLoAddr + 4;
     localparam int unsigned SmcNumWindows = 7;
     // {base, size} pairs, SEP-side addresses.
@@ -768,7 +812,7 @@ module sep_uvm_top
         56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE),
         56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE),
         56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE),
-        56'h0000_0008
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_SIZE)
     };
 
     // Counted as well as reported: a cocotb test can require this to be 0, so the
@@ -812,7 +856,20 @@ module sep_uvm_top
     end
 
 `else
-    assign ext_to_smc_resp_w = ext_to_smc_resp_idle;
+    // BH-SMC responder. Idle while the hook is off, so the port reads as the
+    // tied-off SMC of the default bench. The SMC decode check above belongs to
+    // the real-ROM boot target and is not compiled here, so the BH-SMC
+    // aperture needs no window of its own.
+    sep_smc_route_mem #(
+        .axi_req_t  (sep_pkg::sep_system_peripherals_internal_axi_req_t),
+        .axi_resp_t (sep_pkg::sep_system_peripherals_internal_axi_resp_t)
+    ) u_smc_route_mem (
+        .clk_i  (clk_i),
+        .rst_ni (rst_n_int),
+        .en_i   (bh_smc_en),
+        .req_i  (ext_to_smc_req_w),
+        .resp_o (ext_to_smc_resp_w)
+    );
     // No SMC model, so no SEP->SMC traffic to decode. 0 rather than X: a test
     // asserting "no address violations" must not pass on an undriven port, and
     // must not fail on a build that never had an SMC to address.
@@ -1260,6 +1317,82 @@ module sep_uvm_top
     assign dma_busy_probe_o =
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.status.busy.q;
 
+    // Secure DMA master taps (read-only XMR, no force). dma_axi_req is the
+    // request after u_dma_local_alias_remap; the layout is in the signal list.
+    assign dma_axi_req_probe_o = {
+        `SEP_CORE.dma_axi_resp.b.resp,
+        `SEP_CORE.dma_axi_req.b_ready,
+        `SEP_CORE.dma_axi_resp.b_valid,
+        `SEP_CORE.dma_axi_req.w.last,
+        `SEP_CORE.dma_axi_req.w.strb,
+        `SEP_CORE.dma_axi_resp.w_ready,
+        `SEP_CORE.dma_axi_req.w_valid,
+        `SEP_CORE.dma_axi_req.aw.size,
+        `SEP_CORE.dma_axi_req.aw.len,
+        `SEP_CORE.dma_axi_req.aw.addr[31:0],
+        `SEP_CORE.dma_axi_resp.aw_ready,
+        `SEP_CORE.dma_axi_req.aw_valid,
+        `SEP_CORE.dma_axi_req.ar.size,
+        `SEP_CORE.dma_axi_req.ar.len,
+        `SEP_CORE.dma_axi_req.ar.addr[31:0],
+        `SEP_CORE.dma_axi_resp.ar_ready,
+        `SEP_CORE.dma_axi_req.ar_valid
+    };
+    assign dma_status_probe_o = {
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_chunk_done_qs,
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_sha2_digest_valid_qs,
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_error_qs,
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_aborted_qs,
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_done_qs,
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_busy_qs
+    };
+
+    // Mailbox, IRQ and PIC observation taps (docs/SEP_TB_ARCH.adoc). Read-only
+    // copies of DUT nets; no force.
+    assign crypto_alert_pulse_probe_o = `SEP_CORE.u_sep_crypto.crypto_alert_pulse;
+`ifndef SEP_CPU_STUB
+`define SEP_PIC_CTRL `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst
+    assign pic_rd_data_probe_o = {
+        `SEP_PIC_CTRL.picm_rden_ff,
+        `SEP_PIC_CTRL.picm_raddr_ff[14:0],
+        `SEP_PIC_CTRL.picm_rd_data
+    };
+`undef SEP_PIC_CTRL
+`else
+    assign pic_rd_data_probe_o = '0;
+`endif
+    // Set term and clear pulse of each bridge-fault latch. The register bridges
+    // (axi_lite_to_tlul) set on a TL-UL error response; the DMA master bridge
+    // (tlul_to_axi_lite) sets on a non-OKAY AXI response or an integrity error.
+`define SEP_BRIDGE_ERR_SET(b) (b.tl_i.d_valid & b.tl_i.d_error)
+`define SEP_CRYPTO `SEP_CORE.u_sep_crypto
+    assign sep_cpu_ctrl_err_pulse_probe_o = {
+        `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.err_clr_i,
+        `SEP_CORE.u_sep_dma_wrap.u_axi_lite_to_tlul_reg.err_clr_i,
+        `SEP_CORE.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul.err_clr_i,
+        `SEP_DRBG.u_edn_axi_lite_to_tlul.err_clr_i,
+        `SEP_DRBG.u_csrng_axi_lite_to_tlul.err_clr_i,
+        `SEP_CRYPTO.u_sep_crypto_otbn_wrapper_s3c_scan.u_axi_lite_to_tlul.err_clr_i,
+        `SEP_CRYPTO.u_kmac_wrapper_s3c_scan.u_kmac_axi_lite_to_tlul.err_clr_i,
+        `SEP_CRYPTO.u_hmac_wrapper_s3c_scan.u_hmac_axi_lite_to_tlul.err_clr_i,
+        `SEP_CRYPTO.u_aes_wrapper_s3c_scan.u_aes_axi_lite_to_tlul.err_clr_i,
+        (`SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.axi_lite_rsp_i.b_valid &
+         (`SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.axi_lite_rsp_i.b.resp != 2'b00)) |
+        (`SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.axi_lite_rsp_i.r_valid &
+         (`SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.axi_lite_rsp_i.r.resp != 2'b00)) |
+        `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.intg_err,
+        `SEP_BRIDGE_ERR_SET(`SEP_CORE.u_sep_dma_wrap.u_axi_lite_to_tlul_reg),
+        `SEP_BRIDGE_ERR_SET(`SEP_CORE.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_DRBG.u_edn_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_DRBG.u_csrng_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_CRYPTO.u_sep_crypto_otbn_wrapper_s3c_scan.u_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_CRYPTO.u_kmac_wrapper_s3c_scan.u_kmac_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_CRYPTO.u_hmac_wrapper_s3c_scan.u_hmac_axi_lite_to_tlul),
+        `SEP_BRIDGE_ERR_SET(`SEP_CRYPTO.u_aes_wrapper_s3c_scan.u_aes_axi_lite_to_tlul)
+    };
+`undef SEP_CRYPTO
+`undef SEP_BRIDGE_ERR_SET
+
     // Fabric-slot W channel, sampled at the AXI-Lite port of each of the 96
     // remap/filter slot register blocks in sep_system_csr (the block that
     // applies WSTRB). A beat counts as fill when a byte lane whose WSTRB bit is
@@ -1516,6 +1649,189 @@ module sep_uvm_top
     assign xbar_ext_in_awvalid_o = `SEP_CORE.smn_inbound_to_sep_axi_req.aw_valid;
     assign xbar_ext_in_awready_o = `SEP_CORE.smn_inbound_to_sep_axi_resp.aw_ready;
     assign xbar_ext_in_awaddr_o  = `SEP_CORE.smn_inbound_to_sep_axi_req.aw.addr[31:0];
+
+    // Fabric observation taps. See the port comments in sep_tb_signal_list.svh.
+    // PR-OUT: smn_outbound_axi_req_o (the net smn_outbound_req_w).
+    assign pr_out_awvalid_o = smn_outbound_req_w.aw_valid;
+    assign pr_out_awready_o = smn_outbound_resp_w.aw_ready;
+    assign pr_out_awaddr_o  = smn_outbound_req_w.aw.addr[55:0];
+    assign pr_out_awid_o = smn_outbound_req_w.aw.id;
+    assign pr_out_awuser_o = smn_outbound_req_w.aw.user;
+    assign pr_out_awcache_o = smn_outbound_req_w.aw.cache;
+    assign pr_out_awprot_o = smn_outbound_req_w.aw.prot;
+    assign pr_out_awlen_o = smn_outbound_req_w.aw.len;
+    assign pr_out_awsize_o = smn_outbound_req_w.aw.size;
+    assign pr_out_awburst_o = smn_outbound_req_w.aw.burst;
+    assign pr_out_arvalid_o = smn_outbound_req_w.ar_valid;
+    assign pr_out_arready_o = smn_outbound_resp_w.ar_ready;
+    assign pr_out_araddr_o  = smn_outbound_req_w.ar.addr[55:0];
+    assign pr_out_arid_o = smn_outbound_req_w.ar.id;
+    assign pr_out_aruser_o = smn_outbound_req_w.ar.user;
+    assign pr_out_arcache_o = smn_outbound_req_w.ar.cache;
+    assign pr_out_arprot_o = smn_outbound_req_w.ar.prot;
+    assign pr_out_arlen_o = smn_outbound_req_w.ar.len;
+    assign pr_out_arsize_o = smn_outbound_req_w.ar.size;
+    assign pr_out_arburst_o = smn_outbound_req_w.ar.burst;
+    assign pr_out_wvalid_o = smn_outbound_req_w.w_valid;
+    assign pr_out_wready_o = smn_outbound_resp_w.w_ready;
+    assign pr_out_wdata_o  = smn_outbound_req_w.w.data;
+    assign pr_out_wstrb_o  = smn_outbound_req_w.w.strb;
+    assign pr_out_wlast_o  = smn_outbound_req_w.w.last;
+    // PR-OUT-RSP: the responses on smn_outbound_axi_resp_i.
+    assign pr_out_bvalid_o = smn_outbound_resp_w.b_valid;
+    assign pr_out_bready_o = smn_outbound_req_w.b_ready;
+    assign pr_out_bresp_o  = smn_outbound_resp_w.b.resp;
+    assign pr_out_bid_o    = smn_outbound_resp_w.b.id;
+    assign pr_out_rvalid_o = smn_outbound_resp_w.r_valid;
+    assign pr_out_rready_o = smn_outbound_req_w.r_ready;
+    assign pr_out_rresp_o  = smn_outbound_resp_w.r.resp;
+    assign pr_out_rid_o    = smn_outbound_resp_w.r.id;
+    assign pr_out_rlast_o  = smn_outbound_resp_w.r.last;
+    // PR-SMC: sep_ext_to_smc_axi_req_o (the net ext_to_smc_req_w).
+    assign pr_smc_awvalid_o = ext_to_smc_req_w.aw_valid;
+    assign pr_smc_awready_o = ext_to_smc_resp_w.aw_ready;
+    assign pr_smc_awaddr_o  = ext_to_smc_req_w.aw.addr[55:0];
+    assign pr_smc_awid_o = ext_to_smc_req_w.aw.id;
+    assign pr_smc_awuser_o = ext_to_smc_req_w.aw.user;
+    assign pr_smc_awcache_o = ext_to_smc_req_w.aw.cache;
+    assign pr_smc_awprot_o = ext_to_smc_req_w.aw.prot;
+    assign pr_smc_awlen_o = ext_to_smc_req_w.aw.len;
+    assign pr_smc_awsize_o = ext_to_smc_req_w.aw.size;
+    assign pr_smc_awburst_o = ext_to_smc_req_w.aw.burst;
+    assign pr_smc_arvalid_o = ext_to_smc_req_w.ar_valid;
+    assign pr_smc_arready_o = ext_to_smc_resp_w.ar_ready;
+    assign pr_smc_araddr_o  = ext_to_smc_req_w.ar.addr[55:0];
+    assign pr_smc_arid_o = ext_to_smc_req_w.ar.id;
+    assign pr_smc_aruser_o = ext_to_smc_req_w.ar.user;
+    assign pr_smc_arcache_o = ext_to_smc_req_w.ar.cache;
+    assign pr_smc_arprot_o = ext_to_smc_req_w.ar.prot;
+    assign pr_smc_arlen_o = ext_to_smc_req_w.ar.len;
+    assign pr_smc_arsize_o = ext_to_smc_req_w.ar.size;
+    assign pr_smc_arburst_o = ext_to_smc_req_w.ar.burst;
+    assign pr_smc_wvalid_o = ext_to_smc_req_w.w_valid;
+    assign pr_smc_wready_o = ext_to_smc_resp_w.w_ready;
+    assign pr_smc_wdata_o  = ext_to_smc_req_w.w.data;
+    assign pr_smc_wstrb_o  = ext_to_smc_req_w.w.strb;
+    assign pr_smc_wlast_o  = ext_to_smc_req_w.w.last;
+    // PR-EXT: the AXI Extension port, wrapper net u_dut.axi_extension_axi_req.
+    assign pr_ext_awvalid_o = u_dut.axi_extension_axi_req.aw_valid;
+    assign pr_ext_awready_o = u_dut.axi_extension_axi_resp.aw_ready;
+    assign pr_ext_awaddr_o  = u_dut.axi_extension_axi_req.aw.addr[31:0];
+    assign pr_ext_awid_o = u_dut.axi_extension_axi_req.aw.id;
+    assign pr_ext_awuser_o = u_dut.axi_extension_axi_req.aw.user;
+    assign pr_ext_awcache_o = u_dut.axi_extension_axi_req.aw.cache;
+    assign pr_ext_awprot_o = u_dut.axi_extension_axi_req.aw.prot;
+    assign pr_ext_awlen_o = u_dut.axi_extension_axi_req.aw.len;
+    assign pr_ext_awsize_o = u_dut.axi_extension_axi_req.aw.size;
+    assign pr_ext_awburst_o = u_dut.axi_extension_axi_req.aw.burst;
+    assign pr_ext_arvalid_o = u_dut.axi_extension_axi_req.ar_valid;
+    assign pr_ext_arready_o = u_dut.axi_extension_axi_resp.ar_ready;
+    assign pr_ext_araddr_o  = u_dut.axi_extension_axi_req.ar.addr[31:0];
+    assign pr_ext_arid_o = u_dut.axi_extension_axi_req.ar.id;
+    assign pr_ext_aruser_o = u_dut.axi_extension_axi_req.ar.user;
+    assign pr_ext_arcache_o = u_dut.axi_extension_axi_req.ar.cache;
+    assign pr_ext_arprot_o = u_dut.axi_extension_axi_req.ar.prot;
+    assign pr_ext_arlen_o = u_dut.axi_extension_axi_req.ar.len;
+    assign pr_ext_arsize_o = u_dut.axi_extension_axi_req.ar.size;
+    assign pr_ext_arburst_o = u_dut.axi_extension_axi_req.ar.burst;
+    assign pr_ext_wvalid_o = u_dut.axi_extension_axi_req.w_valid;
+    assign pr_ext_wready_o = u_dut.axi_extension_axi_resp.w_ready;
+    assign pr_ext_wdata_o  = u_dut.axi_extension_axi_req.w.data;
+    assign pr_ext_wstrb_o  = u_dut.axi_extension_axi_req.w.strb;
+    assign pr_ext_wlast_o  = u_dut.axi_extension_axi_req.w.last;
+    // PR-EXT reply: the B and R channels of the AXI Extension port.
+    assign pr_ext_bvalid_o = u_dut.axi_extension_axi_resp.b_valid;
+    assign pr_ext_bready_o = u_dut.axi_extension_axi_req.b_ready;
+    assign pr_ext_bresp_o  = u_dut.axi_extension_axi_resp.b.resp;
+    assign pr_ext_bid_o    = u_dut.axi_extension_axi_resp.b.id;
+    assign pr_ext_rvalid_o = u_dut.axi_extension_axi_resp.r_valid;
+    assign pr_ext_rready_o = u_dut.axi_extension_axi_req.r_ready;
+    assign pr_ext_rresp_o  = u_dut.axi_extension_axi_resp.r.resp;
+    assign pr_ext_rid_o    = u_dut.axi_extension_axi_resp.r.id;
+    assign pr_ext_rlast_o  = u_dut.axi_extension_axi_resp.r.last;
+    // PR-DMACSR: the request at the DMA CSR target port (sep.sv dma_csr_req).
+    assign pr_dmacsr_awvalid_o = `SEP_CORE.dma_csr_req.aw_valid;
+    assign pr_dmacsr_awready_o = `SEP_CORE.dma_csr_rsp.aw_ready;
+    assign pr_dmacsr_awaddr_o  = `SEP_CORE.dma_csr_req.aw.addr[31:0];
+    assign pr_dmacsr_arvalid_o = `SEP_CORE.dma_csr_req.ar_valid;
+    assign pr_dmacsr_arready_o = `SEP_CORE.dma_csr_rsp.ar_ready;
+    assign pr_dmacsr_araddr_o  = `SEP_CORE.dma_csr_req.ar.addr[31:0];
+    // PR-INFLT: the request out of u_inbound_filter, before the global-to-local remap.
+    assign pr_inflt_awvalid_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.aw_valid;
+    assign pr_inflt_awready_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_resp.aw_ready;
+    assign pr_inflt_awaddr_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.aw.addr[55:0];
+    assign pr_inflt_arvalid_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar_valid;
+    assign pr_inflt_arready_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_resp.ar_ready;
+    assign pr_inflt_araddr_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.addr[55:0];
+    // PR-CPU: AxPROT of the raw CPU LSU and IFU requests, before any remap.
+`ifndef SEP_CPU_STUB
+    assign pr_cpu_lsu_awvalid_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw_valid;
+    assign pr_cpu_lsu_awready_o = `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw.aw_ready;
+    assign pr_cpu_lsu_awprot_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw.prot;
+    assign pr_cpu_lsu_arvalid_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar_valid;
+    assign pr_cpu_lsu_arready_o = `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw.ar_ready;
+    assign pr_cpu_lsu_arprot_o  = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.ar.prot;
+    assign pr_cpu_ifu_arvalid_o = `SEP_CORE.u_sep_cpu.ifu_axi_req_raw.ar_valid;
+    assign pr_cpu_ifu_arready_o = `SEP_CORE.u_sep_cpu.ifu_axi_resp_raw.ar_ready;
+    assign pr_cpu_ifu_arprot_o  = `SEP_CORE.u_sep_cpu.ifu_axi_req_raw.ar.prot;
+`else
+    assign pr_cpu_lsu_awvalid_o = 1'b0;
+    assign pr_cpu_lsu_awready_o = 1'b0;
+    assign pr_cpu_lsu_awprot_o  = '0;
+    assign pr_cpu_lsu_arvalid_o = 1'b0;
+    assign pr_cpu_lsu_arready_o = 1'b0;
+    assign pr_cpu_lsu_arprot_o  = '0;
+    assign pr_cpu_ifu_arvalid_o = 1'b0;
+    assign pr_cpu_ifu_arready_o = 1'b0;
+    assign pr_cpu_ifu_arprot_o  = '0;
+`endif
+    // PR-DMA-RAW: AxPROT of the raw secure DMA master request.
+    assign pr_dma_raw_awvalid_o = `SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw.aw_valid;
+    assign pr_dma_raw_awready_o = `SEP_CORE.u_sep_dma_wrap.dma_axi_resp_raw.aw_ready;
+    assign pr_dma_raw_awprot_o  = `SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw.aw.prot;
+    assign pr_dma_raw_arvalid_o = `SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw.ar_valid;
+    assign pr_dma_raw_arready_o = `SEP_CORE.u_sep_dma_wrap.dma_axi_resp_raw.ar_ready;
+    assign pr_dma_raw_arprot_o  = `SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw.ar.prot;
+    // PR-ALIAS input: the request into u_local_master_remap_wrap.
+    assign pr_alias_in_awvalid_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_req.aw_valid;
+    assign pr_alias_in_awready_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_resp.aw_ready;
+    assign pr_alias_in_awaddr_o  = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_req.aw.addr[55:0];
+    assign pr_alias_in_awcache_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_req.aw.cache;
+    assign pr_alias_in_awprot_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_req.aw.prot;
+    assign pr_alias_in_arvalid_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_req.ar_valid;
+    assign pr_alias_in_arready_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_resp.ar_ready;
+    assign pr_alias_in_araddr_o  = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_req.ar.addr[55:0];
+    assign pr_alias_in_arcache_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_req.ar.cache;
+    assign pr_alias_in_arprot_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_req.ar.prot;
+    // PR-ALIAS output: the request out of u_local_master_remap_wrap.
+    assign pr_alias_out_awvalid_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.aw_valid;
+    assign pr_alias_out_awready_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_resp.aw_ready;
+    assign pr_alias_out_awaddr_o  = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.aw.addr[55:0];
+    assign pr_alias_out_awcache_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.aw.cache;
+    assign pr_alias_out_awprot_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.aw.prot;
+    assign pr_alias_out_arvalid_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.ar_valid;
+    assign pr_alias_out_arready_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_resp.ar_ready;
+    assign pr_alias_out_araddr_o  = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.ar.addr[55:0];
+    assign pr_alias_out_arcache_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.ar.cache;
+    assign pr_alias_out_arprot_o = `SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req.ar.prot;
+    // PR-SRAM: the SRAM macro request (wrapper net u_dut.sep_sram_req) and response.
+    assign pr_sram_req_o = u_dut.sep_sram_req.req;
+    assign pr_sram_gnt_o = u_dut.sep_sram_rsp.gnt;
+    assign pr_sram_addr_o = u_dut.sep_sram_req.addr;
+    assign pr_sram_we_o = u_dut.sep_sram_req.wenable;
+    assign pr_sram_wdata_o = u_dut.sep_sram_req.wdata;
+    assign pr_sram_strb_o = u_dut.sep_sram_req.strb;
+    assign pr_sram_rvalid_o = u_dut.sep_sram_rsp.rvalid;
+    assign pr_sram_rdata_o = u_dut.sep_sram_rsp.rdata;
+    // PR-ROM: the boot ROM macro request (wrapper net u_dut.sep_boot_rom_req) and response.
+    assign pr_rom_req_o = u_dut.sep_boot_rom_req.req;
+    assign pr_rom_gnt_o = u_dut.sep_boot_rom_rsp.gnt;
+    assign pr_rom_addr_o = u_dut.sep_boot_rom_req.addr;
+    assign pr_rom_we_o = u_dut.sep_boot_rom_req.wenable;
+    assign pr_rom_wdata_o = u_dut.sep_boot_rom_req.wdata;
+    assign pr_rom_strb_o = u_dut.sep_boot_rom_req.strb;
+    assign pr_rom_rvalid_o = u_dut.sep_boot_rom_rsp.rvalid;
+    assign pr_rom_rdata_o = u_dut.sep_boot_rom_rsp.rdata;
 
     // Read-only XMRs observe the manifest at SRAM word 0 and the decrypted
     // payload at byte offset 0x1000. Firmware owns the SRAM AXI frontdoor during
@@ -1801,6 +2117,28 @@ module sep_uvm_top
         end
     end
 `undef HMAC_FIFO_RREADY
+
+    // ------------------------------------------------------------------
+    // KMAC message-FIFO drain stall.
+    // ------------------------------------------------------------------
+    // kmac_fifo_drain_stall_i=1 holds the read side of the message FIFO idle:
+    // the FIFO read-ready and the FIFO valid toward the KMAC core are both 0, so
+    // the engine takes no word and the FIFO fills until STATUS.fifo_full reads 1.
+    // msgfifo_ready and msgfifo_valid are the kmac-local nets between u_msgfifo
+    // and u_kmac_core. After the release the FIFO drains and the message can
+    // complete. Re-issued every clock for Verilator, released when the port
+    // drops.
+`define KMAC_FIFO_RD `SEP_CORE.u_sep_crypto.u_kmac_wrapper_s3c_scan.u_tt_kmac
+    always @(posedge clk_i) begin
+        if (kmac_fifo_drain_stall_i === 1'b1) begin
+            force `KMAC_FIFO_RD.msgfifo_ready = 1'b0;
+            force `KMAC_FIFO_RD.msgfifo_valid = 1'b0;
+        end else begin
+            release `KMAC_FIFO_RD.msgfifo_ready;
+            release `KMAC_FIFO_RD.msgfifo_valid;
+        end
+    end
+`undef KMAC_FIFO_RD
 
     // ------------------------------------------------------------------
     // DMA host-port stall.
@@ -2285,12 +2623,16 @@ module sep_uvm_top
     assign km_mbox_sep_wr_err_count_o = km_mbox_sep_wr_err_cnt_q;
     assign km_mbox_sep_wr_err_addr_o  = km_mbox_sep_wr_err_addr_q;
 
-    // Outbound mailbox responder + firmware-console/PASS-magic monitor.
+    // Outbound mailbox responder + firmware-console/PASS-magic monitor. The
+    // response control (hold, read SLVERR) is an error inject on
+    // smn_outbound_axi_resp_i; both inputs are 0 unless a leaf drives them.
     sep_outbound_mbx u_mbx (
         .clk_i           (clk_i),
         .rst_ni          (rst_n_int),
         .req_i           (smn_outbound_req_w),
         .resp_o          (smn_outbound_resp_w),
+        .resp_hold_i     (smn_outbound_resp_hold_i),
+        .rd_slverr_i     (smn_outbound_rd_slverr_i),
         .fw_done_o       (fw_done_o),
         .fw_pass_o       (fw_pass_o),
         .fw_char_o       (fw_char_o),
@@ -2759,6 +3101,10 @@ module sep_uvm_top
     assign token_digest_test_en_inject_i = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
+    assign kmac_fifo_drain_stall_i  = 1'b0;
+    assign sep_ext_interrupts_i     = '0;
+    assign smn_outbound_resp_hold_i = 1'b0;
+    assign smn_outbound_rd_slverr_i = 1'b0;
     assign rst_vec_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
     assign tcm_load_i               = 1'b0;
@@ -2795,6 +3141,674 @@ module sep_uvm_top
     // and no new hierarchy depth.
     // ------------------------------------------------------------------
 `ifndef VERILATOR
+    // Fabric sampler taps (docs/SEP_FCOV.adoc, fabric and remap groups, Sampler
+    // taps): read-only copies of the filter, alias and output remap register
+    // fields, one explicit assign per index.
+    logic [15:0]       fcov_in_f_en, fcov_in_f_rd, fcov_in_f_wr, fcov_in_f_ns, fcov_in_f_burst;
+    logic [15:0][3:0]  fcov_in_f_src;
+    logic [15:0][55:0] fcov_in_f_start, fcov_in_f_end;
+    logic [31:0]       fcov_out_f_en, fcov_out_f_rd, fcov_out_f_wr, fcov_out_f_ns, fcov_out_f_burst;
+    logic [31:0][3:0]  fcov_out_f_src;
+    logic [31:0][55:0] fcov_out_f_start, fcov_out_f_end;
+    logic [15:0]       fcov_al_valid, fcov_ap_valid, fcov_stee_valid;
+    logic [15:0][3:0]  fcov_al_cache;
+    logic [15:0][43:0] fcov_al_start, fcov_al_end, fcov_al_offset;
+    assign fcov_in_f_en[0]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[0].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[0]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[0].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[0]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[0].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[0]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[0].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[0] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[0].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[0]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[0].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[0] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[0].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[0]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[0].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[1]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[1].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[1]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[1].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[1]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[1].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[1]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[1].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[1] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[1].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[1]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[1].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[1] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[1].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[1]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[1].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[2]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[2].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[2]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[2].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[2]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[2].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[2]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[2].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[2] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[2].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[2]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[2].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[2] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[2].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[2]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[2].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[3]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[3].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[3]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[3].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[3]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[3].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[3]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[3].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[3] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[3].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[3]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[3].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[3] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[3].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[3]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[3].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[4]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[4].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[4]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[4].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[4]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[4].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[4]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[4].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[4] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[4].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[4]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[4].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[4] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[4].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[4]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[4].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[5]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[5].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[5]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[5].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[5]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[5].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[5]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[5].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[5] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[5].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[5]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[5].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[5] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[5].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[5]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[5].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[6]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[6].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[6]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[6].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[6]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[6].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[6]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[6].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[6] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[6].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[6]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[6].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[6] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[6].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[6]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[6].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[7]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[7].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[7]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[7].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[7]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[7].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[7]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[7].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[7] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[7].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[7]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[7].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[7] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[7].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[7]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[7].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[8]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[8].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[8]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[8].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[8]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[8].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[8]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[8].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[8] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[8].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[8]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[8].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[8] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[8].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[8]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[8].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[9]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[9].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[9]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[9].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[9]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[9].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[9]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[9].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[9] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[9].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[9]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[9].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[9] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[9].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[9]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[9].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[10]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[10].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[10]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[10].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[10]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[10].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[10]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[10].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[10] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[10].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[10]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[10].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[10] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[10].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[10]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[10].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[11]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[11].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[11]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[11].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[11]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[11].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[11]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[11].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[11] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[11].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[11]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[11].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[11] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[11].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[11]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[11].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[12]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[12].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[12]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[12].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[12]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[12].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[12]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[12].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[12] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[12].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[12]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[12].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[12] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[12].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[12]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[12].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[13]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[13].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[13]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[13].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[13]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[13].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[13]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[13].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[13] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[13].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[13]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[13].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[13] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[13].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[13]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[13].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[14]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[14].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[14]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[14].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[14]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[14].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[14]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[14].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[14] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[14].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[14]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[14].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[14] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[14].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[14]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[14].END_ADDR.end_addr.value;
+    assign fcov_in_f_en[15]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[15].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_in_f_rd[15]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[15].FILTER_CONFIG.read_allowed.value;
+    assign fcov_in_f_wr[15]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[15].FILTER_CONFIG.write_allowed.value;
+    assign fcov_in_f_ns[15]    = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[15].FILTER_CONFIG.allow_ns.value;
+    assign fcov_in_f_burst[15] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[15].FILTER_CONFIG.allow_burst.value;
+    assign fcov_in_f_src[15]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[15].FILTER_CONFIG.src_id.value;
+    assign fcov_in_f_start[15] = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[15].START_ADDR.start_addr.value;
+    assign fcov_in_f_end[15]   = `SEP_CORE.u_sep_system_peripherals.inbound_filter_ctrl[15].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[0]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[0].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[0]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[0].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[0]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[0].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[0]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[0].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[0] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[0].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[0]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[0].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[0] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[0].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[0]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[0].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[1]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[1].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[1]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[1].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[1]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[1].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[1]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[1].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[1] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[1].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[1]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[1].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[1] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[1].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[1]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[1].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[2]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[2].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[2]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[2].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[2]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[2].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[2]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[2].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[2] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[2].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[2]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[2].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[2] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[2].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[2]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[2].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[3]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[3].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[3]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[3].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[3]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[3].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[3]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[3].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[3] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[3].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[3]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[3].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[3] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[3].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[3]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[3].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[4]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[4].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[4]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[4].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[4]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[4].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[4]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[4].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[4] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[4].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[4]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[4].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[4] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[4].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[4]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[4].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[5]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[5].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[5]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[5].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[5]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[5].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[5]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[5].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[5] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[5].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[5]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[5].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[5] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[5].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[5]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[5].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[6]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[6].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[6]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[6].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[6]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[6].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[6]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[6].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[6] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[6].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[6]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[6].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[6] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[6].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[6]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[6].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[7]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[7].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[7]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[7].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[7]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[7].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[7]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[7].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[7] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[7].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[7]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[7].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[7] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[7].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[7]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[7].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[8]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[8].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[8]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[8].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[8]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[8].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[8]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[8].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[8] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[8].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[8]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[8].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[8] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[8].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[8]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[8].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[9]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[9].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[9]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[9].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[9]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[9].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[9]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[9].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[9] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[9].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[9]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[9].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[9] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[9].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[9]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[9].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[10]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[10].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[10]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[10].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[10]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[10].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[10]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[10].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[10] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[10].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[10]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[10].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[10] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[10].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[10]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[10].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[11]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[11].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[11]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[11].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[11]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[11].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[11]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[11].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[11] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[11].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[11]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[11].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[11] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[11].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[11]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[11].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[12]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[12].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[12]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[12].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[12]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[12].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[12]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[12].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[12] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[12].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[12]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[12].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[12] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[12].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[12]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[12].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[13]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[13].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[13]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[13].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[13]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[13].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[13]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[13].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[13] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[13].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[13]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[13].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[13] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[13].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[13]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[13].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[14]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[14].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[14]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[14].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[14]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[14].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[14]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[14].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[14] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[14].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[14]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[14].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[14] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[14].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[14]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[14].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[15]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[15].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[15]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[15].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[15]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[15].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[15]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[15].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[15] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[15].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[15]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[15].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[15] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[15].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[15]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[15].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[16]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[16].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[16]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[16].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[16]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[16].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[16]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[16].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[16] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[16].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[16]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[16].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[16] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[16].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[16]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[16].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[17]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[17].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[17]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[17].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[17]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[17].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[17]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[17].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[17] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[17].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[17]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[17].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[17] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[17].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[17]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[17].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[18]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[18].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[18]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[18].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[18]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[18].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[18]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[18].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[18] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[18].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[18]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[18].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[18] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[18].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[18]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[18].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[19]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[19].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[19]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[19].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[19]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[19].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[19]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[19].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[19] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[19].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[19]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[19].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[19] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[19].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[19]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[19].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[20]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[20].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[20]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[20].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[20]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[20].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[20]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[20].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[20] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[20].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[20]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[20].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[20] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[20].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[20]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[20].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[21]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[21].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[21]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[21].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[21]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[21].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[21]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[21].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[21] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[21].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[21]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[21].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[21] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[21].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[21]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[21].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[22]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[22].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[22]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[22].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[22]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[22].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[22]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[22].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[22] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[22].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[22]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[22].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[22] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[22].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[22]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[22].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[23]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[23].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[23]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[23].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[23]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[23].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[23]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[23].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[23] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[23].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[23]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[23].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[23] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[23].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[23]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[23].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[24]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[24].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[24]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[24].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[24]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[24].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[24]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[24].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[24] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[24].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[24]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[24].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[24] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[24].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[24]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[24].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[25]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[25].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[25]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[25].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[25]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[25].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[25]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[25].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[25] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[25].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[25]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[25].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[25] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[25].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[25]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[25].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[26]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[26].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[26]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[26].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[26]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[26].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[26]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[26].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[26] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[26].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[26]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[26].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[26] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[26].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[26]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[26].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[27]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[27].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[27]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[27].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[27]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[27].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[27]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[27].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[27] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[27].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[27]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[27].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[27] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[27].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[27]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[27].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[28]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[28].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[28]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[28].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[28]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[28].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[28]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[28].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[28] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[28].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[28]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[28].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[28] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[28].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[28]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[28].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[29]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[29].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[29]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[29].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[29]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[29].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[29]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[29].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[29] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[29].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[29]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[29].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[29] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[29].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[29]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[29].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[30]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[30].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[30]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[30].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[30]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[30].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[30]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[30].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[30] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[30].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[30]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[30].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[30] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[30].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[30]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[30].END_ADDR.end_addr.value;
+    assign fcov_out_f_en[31]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[31].FILTER_CONFIG.entry_enabled.value;
+    assign fcov_out_f_rd[31]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[31].FILTER_CONFIG.read_allowed.value;
+    assign fcov_out_f_wr[31]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[31].FILTER_CONFIG.write_allowed.value;
+    assign fcov_out_f_ns[31]    = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[31].FILTER_CONFIG.allow_ns.value;
+    assign fcov_out_f_burst[31] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[31].FILTER_CONFIG.allow_burst.value;
+    assign fcov_out_f_src[31]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[31].FILTER_CONFIG.src_id.value;
+    assign fcov_out_f_start[31] = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[31].START_ADDR.start_addr.value;
+    assign fcov_out_f_end[31]   = `SEP_CORE.u_sep_system_peripherals.outbound_filter_ctrl[31].END_ADDR.end_addr.value;
+    assign fcov_al_valid[0]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[0].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[0]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[0].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[0]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[0].REGION.region_start.start_addr.value;
+    assign fcov_al_end[0]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[0].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[0] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[0].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[0]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[0].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[0] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[0].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[1]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[1].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[1]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[1].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[1]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[1].REGION.region_start.start_addr.value;
+    assign fcov_al_end[1]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[1].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[1] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[1].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[1]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[1].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[1] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[1].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[2]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[2].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[2]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[2].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[2]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[2].REGION.region_start.start_addr.value;
+    assign fcov_al_end[2]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[2].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[2] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[2].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[2]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[2].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[2] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[2].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[3]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[3].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[3]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[3].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[3]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[3].REGION.region_start.start_addr.value;
+    assign fcov_al_end[3]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[3].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[3] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[3].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[3]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[3].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[3] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[3].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[4]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[4].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[4]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[4].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[4]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[4].REGION.region_start.start_addr.value;
+    assign fcov_al_end[4]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[4].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[4] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[4].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[4]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[4].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[4] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[4].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[5]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[5].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[5]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[5].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[5]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[5].REGION.region_start.start_addr.value;
+    assign fcov_al_end[5]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[5].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[5] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[5].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[5]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[5].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[5] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[5].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[6]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[6].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[6]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[6].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[6]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[6].REGION.region_start.start_addr.value;
+    assign fcov_al_end[6]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[6].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[6] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[6].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[6]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[6].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[6] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[6].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[7]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[7].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[7]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[7].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[7]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[7].REGION.region_start.start_addr.value;
+    assign fcov_al_end[7]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[7].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[7] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[7].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[7]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[7].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[7] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[7].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[8]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[8].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[8]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[8].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[8]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[8].REGION.region_start.start_addr.value;
+    assign fcov_al_end[8]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[8].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[8] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[8].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[8]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[8].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[8] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[8].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[9]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[9].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[9]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[9].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[9]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[9].REGION.region_start.start_addr.value;
+    assign fcov_al_end[9]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[9].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[9] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[9].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[9]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[9].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[9] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[9].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[10]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[10].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[10]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[10].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[10]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[10].REGION.region_start.start_addr.value;
+    assign fcov_al_end[10]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[10].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[10] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[10].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[10]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[10].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[10] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[10].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[11]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[11].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[11]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[11].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[11]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[11].REGION.region_start.start_addr.value;
+    assign fcov_al_end[11]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[11].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[11] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[11].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[11]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[11].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[11] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[11].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[12]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[12].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[12]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[12].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[12]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[12].REGION.region_start.start_addr.value;
+    assign fcov_al_end[12]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[12].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[12] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[12].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[12]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[12].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[12] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[12].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[13]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[13].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[13]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[13].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[13]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[13].REGION.region_start.start_addr.value;
+    assign fcov_al_end[13]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[13].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[13] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[13].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[13]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[13].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[13] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[13].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[14]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[14].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[14]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[14].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[14]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[14].REGION.region_start.start_addr.value;
+    assign fcov_al_end[14]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[14].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[14] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[14].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[14]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[14].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[14] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[14].REGION.region_attrs.valid.value;
+    assign fcov_al_valid[15]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[15].REGION.region_attrs.valid.value;
+    assign fcov_al_cache[15]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[15].REGION.region_attrs.cacheable.value;
+    assign fcov_al_start[15]  = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[15].REGION.region_start.start_addr.value;
+    assign fcov_al_end[15]    = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[15].REGION.region_end.end_addr.value;
+    assign fcov_al_offset[15] = `SEP_CORE.u_sep_system_peripherals.local_masters_alias_remap_reg_ctrl[15].REGION.region_attrs.offset.value;
+    assign fcov_ap_valid[15]   = `SEP_CORE.u_sep_system_peripherals.ap_output_remap_reg_ctrl[15].REGION.region_attrs.valid.value;
+    assign fcov_stee_valid[15] = `SEP_CORE.u_sep_system_peripherals.stee_output_remap_reg_ctrl[15].REGION.region_attrs.valid.value;
+`ifdef SEP_CPU_STUB
+    // The stub has no pre-alias LSU net; the twin cells need the real CPU.
+    sep_pkg::sep_32_64_3_12_axi_req_t fcov_lsu_raw_req = '0;
+    wire                              fcov_lsu_raw_live = 1'b0;
+`else
+    sep_pkg::sep_32_64_3_12_axi_req_t fcov_lsu_raw_req;
+    wire                              fcov_lsu_raw_live = 1'b1;
+    assign fcov_lsu_raw_req = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw;
+`endif
+
+    // Mailbox, IRQ and PIC sampler taps (docs/SEP_FCOV.adoc, mailbox, IRQ and
+    // PIC groups, Signal aliases): read-only hierarchical references into the
+    // CPU (PIC, CLAIM, TLU), the mailbox unit (MB[m]) and the inbound filter
+    // (FILT). No force. The PIC, CLAIM and TLU exist only with the full core;
+    // the stub build ties them to 0.
+`ifndef SEP_CPU_STUB
+`define SEP_FCOV_PIC `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst
+`define SEP_FCOV_TLU `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.dec.tlu
+`define SEP_FCOV_LSU `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.lsu
+    wire [255:0][3:0] fcov_pic_prio     = `SEP_FCOV_PIC.intpriority_reg;
+    wire [255:0]      fcov_pic_en       = `SEP_FCOV_PIC.intenable_reg;
+    wire [255:0][1:0] fcov_pic_gw_cfg   = `SEP_FCOV_PIC.gw_config_reg;
+    wire              fcov_pic_cfg      = `SEP_FCOV_PIC.config_reg;
+    wire [255:0]      fcov_pic_gw_clr   = `SEP_FCOV_PIC.gw_clear_reg_we;
+    wire [255:0]      fcov_pic_req      = `SEP_FCOV_PIC.extintsrc_req;
+    wire [255:0]      fcov_pic_req_gw   = `SEP_FCOV_PIC.extintsrc_req_gw;
+    wire              fcov_pic_wren     = `SEP_FCOV_PIC.picm_wren_ff;
+    wire [14:0]       fcov_pic_waddr    = `SEP_FCOV_PIC.picm_waddr_ff[14:0];
+    // Data of a PIC write as the instruction stores it. The LSU ANDs a CPU
+    // store to the PIC with the field mask of the target register (the
+    // picm_mken read), so picm_wr_data is 0 for a hole, for entry 0 and for
+    // meigwclr. The copy takes the M-stage store data before that mask, moves
+    // it to the R stage, and to the picm_wren_ff clock on picm_wren, as the
+    // core moves picm_wr_data. A DMA write to the PIC has no mask and uses
+    // picm_wr_data.
+    wire [31:0] fcov_pic_st_m = `SEP_FCOV_LSU.lsu_lsc_ctl.lsu_pkt_m.store_data_bypass_m ?
+        `SEP_FCOV_LSU.lsu_lsc_ctl.lsu_result_m : `SEP_FCOV_LSU.lsu_lsc_ctl.store_data_pre_m;
+    logic [31:0] fcov_pic_st_r, fcov_pic_st_ff;
+    always_ff @(posedge clk_i) begin
+        if ((`SEP_FCOV_LSU.lsu_lsc_ctl.lsu_pkt_m.valid === 1'b1) &&
+            (`SEP_FCOV_LSU.lsu_lsc_ctl.lsu_pkt_m.store === 1'b1) &&
+            (`SEP_FCOV_LSU.lsu_lsc_ctl.addr_in_pic_m === 1'b1))
+            fcov_pic_st_r <= fcov_pic_st_m;
+        if (`SEP_FCOV_PIC.picm_wren === 1'b1)
+            fcov_pic_st_ff <= (`SEP_FCOV_LSU.dma_pic_wen === 1'b1) ? `SEP_FCOV_PIC.picm_wr_data :
+                fcov_pic_st_r;
+    end
+    wire [31:0]       fcov_pic_wdata    = fcov_pic_st_ff;
+    wire [7:0]        fcov_pic_claim    = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.pic_claimid;
+    wire              fcov_tlu_mstatus  = `SEP_FCOV_TLU.mstatus[0];
+    wire [5:0]        fcov_tlu_mie      = `SEP_FCOV_TLU.mie;
+    wire [5:0]        fcov_tlu_mip      = `SEP_FCOV_TLU.mip;
+    wire              fcov_tlu_take_ext = `SEP_FCOV_TLU.take_ext_int;
+    wire              fcov_tlu_take_nmi = `SEP_FCOV_TLU.take_nmi;
+    wire              fcov_tlu_take_tmr = `SEP_FCOV_TLU.take_timer_int;
+    wire              fcov_tlu_take_sw  = `SEP_FCOV_TLU.take_soft_int;
+`undef SEP_FCOV_PIC
+`undef SEP_FCOV_TLU
+`undef SEP_FCOV_LSU
+`else
+    wire [255:0][3:0] fcov_pic_prio     = '0;
+    wire [255:0]      fcov_pic_en       = '0;
+    wire [255:0][1:0] fcov_pic_gw_cfg   = '0;
+    wire              fcov_pic_cfg      = 1'b0;
+    wire [255:0]      fcov_pic_gw_clr   = '0;
+    wire [255:0]      fcov_pic_req      = '0;
+    wire [255:0]      fcov_pic_req_gw   = '0;
+    wire              fcov_pic_wren     = 1'b0;
+    wire [14:0]       fcov_pic_waddr    = '0;
+    wire [31:0]       fcov_pic_wdata    = '0;
+    wire [7:0]        fcov_pic_claim    = '0;
+    wire              fcov_tlu_mstatus  = 1'b0;
+    wire [5:0]        fcov_tlu_mie      = '0;
+    wire [5:0]        fcov_tlu_mip      = '0;
+    wire              fcov_tlu_take_ext = 1'b0;
+    wire              fcov_tlu_take_nmi = 1'b0;
+    wire              fcov_tlu_take_tmr = 1'b0;
+    wire              fcov_tlu_take_sw  = 1'b0;
+`endif
+    // One explicit set of assigns per mailbox index.
+    logic [7:0][1:0][3:0] fcov_mb_status;
+    logic [7:0][1:0][2:0] fcov_mb_irqs;
+    logic [7:0][1:0][2:0] fcov_mb_irqen;
+    logic [7:0][1:0][1:0] fcov_mb_error;
+    logic [7:0][1:0][7:0] fcov_mb_wirqt;
+    logic [7:0][1:0][7:0] fcov_mb_rirqt;
+    logic [7:0][1:0]      fcov_mb_irq;
+    logic [7:0][1:0][2:0] fcov_mf_usage;
+    logic [7:0][1:0]      fcov_mf_full;
+    logic [7:0][1:0]      fcov_mf_push;
+    logic [7:0][1:0]      fcov_mf_pop;
+    logic [7:0][1:0]      fcov_mf_flush;
+`define SEP_FCOV_MB(m) `SEP_CORE.u_sep_system_peripherals.u_sep_axil_mailbox.gen_mailbox[m].u_axi_lite_mailbox
+`define SEP_FCOV_MB_PORT(m, p) \
+    assign fcov_mb_status[m][p] = `SEP_FCOV_MB(m).i_slv_port_``p.status_q; \
+    assign fcov_mb_irqs[m][p]   = `SEP_FCOV_MB(m).i_slv_port_``p.irqs_q; \
+    assign fcov_mb_irqen[m][p]  = `SEP_FCOV_MB(m).i_slv_port_``p.irqen_q; \
+    assign fcov_mb_error[m][p]  = `SEP_FCOV_MB(m).i_slv_port_``p.error_q; \
+    assign fcov_mb_wirqt[m][p]  = `SEP_FCOV_MB(m).i_slv_port_``p.wirqt_q[7:0]; \
+    assign fcov_mb_rirqt[m][p]  = `SEP_FCOV_MB(m).i_slv_port_``p.rirqt_q[7:0]; \
+    assign fcov_mb_irq[m][p]    = `SEP_FCOV_MB(m).i_slv_port_``p.irq_o;
+`define SEP_FCOV_MB_FIFO(m, f, inst) \
+    assign fcov_mf_usage[m][f] = `SEP_FCOV_MB(m).inst.usage_o; \
+    assign fcov_mf_full[m][f]  = `SEP_FCOV_MB(m).inst.full_o; \
+    assign fcov_mf_push[m][f]  = `SEP_FCOV_MB(m).inst.push_i; \
+    assign fcov_mf_pop[m][f]   = `SEP_FCOV_MB(m).inst.pop_i; \
+    assign fcov_mf_flush[m][f] = `SEP_FCOV_MB(m).inst.flush_i;
+    `SEP_FCOV_MB_PORT(0, 0)
+    `SEP_FCOV_MB_PORT(0, 1)
+    `SEP_FCOV_MB_FIFO(0, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(0, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(1, 0)
+    `SEP_FCOV_MB_PORT(1, 1)
+    `SEP_FCOV_MB_FIFO(1, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(1, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(2, 0)
+    `SEP_FCOV_MB_PORT(2, 1)
+    `SEP_FCOV_MB_FIFO(2, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(2, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(3, 0)
+    `SEP_FCOV_MB_PORT(3, 1)
+    `SEP_FCOV_MB_FIFO(3, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(3, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(4, 0)
+    `SEP_FCOV_MB_PORT(4, 1)
+    `SEP_FCOV_MB_FIFO(4, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(4, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(5, 0)
+    `SEP_FCOV_MB_PORT(5, 1)
+    `SEP_FCOV_MB_FIFO(5, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(5, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(6, 0)
+    `SEP_FCOV_MB_PORT(6, 1)
+    `SEP_FCOV_MB_FIFO(6, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(6, 1, i_mbox_1_to_0)
+    `SEP_FCOV_MB_PORT(7, 0)
+    `SEP_FCOV_MB_PORT(7, 1)
+    `SEP_FCOV_MB_FIFO(7, 0, i_mbox_0_to_1)
+    `SEP_FCOV_MB_FIFO(7, 1, i_mbox_1_to_0)
+`undef SEP_FCOV_MB_FIFO
+`undef SEP_FCOV_MB_PORT
+`undef SEP_FCOV_MB
+    logic [15:0] fcov_filt_locked;
+    assign fcov_filt_locked[0] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[0].locked;
+    assign fcov_filt_locked[1] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[1].locked;
+    assign fcov_filt_locked[2] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[2].locked;
+    assign fcov_filt_locked[3] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[3].locked;
+    assign fcov_filt_locked[4] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[4].locked;
+    assign fcov_filt_locked[5] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[5].locked;
+    assign fcov_filt_locked[6] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[6].locked;
+    assign fcov_filt_locked[7] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[7].locked;
+    assign fcov_filt_locked[8] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[8].locked;
+    assign fcov_filt_locked[9] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[9].locked;
+    assign fcov_filt_locked[10] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[10].locked;
+    assign fcov_filt_locked[11] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[11].locked;
+    assign fcov_filt_locked[12] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[12].locked;
+    assign fcov_filt_locked[13] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[13].locked;
+    assign fcov_filt_locked[14] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[14].locked;
+    assign fcov_filt_locked[15] = `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.filters[15].locked;
+
     sep_fcov u_sep_fcov (
         .clk_i                 (clk_i),
         .rst_ni                (rst_n_int),
@@ -2809,6 +3823,7 @@ module sep_uvm_top
         .lsu_b_resp_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.b.resp),
         .lsu_b_valid_i         (`SEP_CORE.u_sep_cpu.lsu_axi_resp.b_valid),
         .lsu_b_ready_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.b_ready),
+        .lsu_aw_size_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.aw.size),
         .lsu_ar_addr_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar.addr),
         .lsu_ar_valid_i        (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar_valid),
         .lsu_ar_ready_i        (`SEP_CORE.u_sep_cpu.lsu_axi_resp.ar_ready),
@@ -2887,7 +3902,162 @@ module sep_uvm_top
         .spi_mosi_i            (spi_mosi_o),
         // Values SEP receives, after the pin-or-TDR mux.
         .jtag_sep_reset_n_ovrd_i (jtag_sep_reset_ctrl_drive.ovrd.sep_reset_n_ovrd),
-        .jtag_sep_reset_n_val_i  (jtag_sep_reset_ctrl_drive.val.sep_reset_n_val)
+        .jtag_sep_reset_n_val_i  (jtag_sep_reset_ctrl_drive.val.sep_reset_n_val),
+
+        .in_req_i          (smn_inbound_req_drive),
+        .in_resp_i         (smn_inbound_resp_w),
+        .xbar_req_i        (`SEP_CORE.smn_inbound_to_sep_axi_req),
+        .xbar_resp_i       (`SEP_CORE.smn_inbound_to_sep_axi_resp),
+        .sys_csr_arvalid_i (sys_csr_axil_arvalid_o),
+        .sys_csr_arready_i (sys_csr_axil_arready_o),
+        .sys_csr_awvalid_i (sys_csr_axil_awvalid_o),
+        .sys_csr_awready_i (sys_csr_axil_awready_o),
+        .lsu_req_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req),
+        .lsu_resp_i        (`SEP_CORE.u_sep_cpu.lsu_axi_resp),
+        .lsu_raw_req_i     (fcov_lsu_raw_req),
+        .lsu_raw_live_i    (fcov_lsu_raw_live),
+        .alias_in_req_i    (`SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_req),
+        .alias_in_resp_i   (`SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_axi_resp),
+        .alias_out_req_i   (`SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_precut_axi_req),
+        .route_req_i       (`SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_axi_req),
+        .route_resp_i      (`SEP_CORE.u_sep_system_peripherals.sep_system_peripheral_56_remapped_axi_resp),
+        .route_sel_aw_i    (3'(`SEP_CORE.u_sep_system_peripherals.address_remap_demux_select_aw)),
+        .route_sel_ar_i    (3'(`SEP_CORE.u_sep_system_peripherals.address_remap_demux_select_ar)),
+        .pre_out_req_i     (`SEP_CORE.u_sep_system_peripherals.pre_outbound_filter_axi_req),
+        .pre_out_resp_i    (`SEP_CORE.u_sep_system_peripherals.pre_outbound_filter_axi_resp),
+        .out_req_i         (smn_outbound_req_w),
+        .out_resp_i        (smn_outbound_resp_w),
+        .smc_req_i         (ext_to_smc_req_w),
+        .smc_resp_i        (ext_to_smc_resp_w),
+        .ext_req_i         (u_dut.axi_extension_axi_req),
+        .ext_resp_i        (u_dut.axi_extension_axi_resp),
+        .dma_req_i         (`SEP_CORE.dma_axi_req),
+        .dma_resp_i        (`SEP_CORE.dma_axi_resp),
+        .dma_raw_req_i     (`SEP_CORE.u_sep_dma_wrap.dma_axi_req_raw),
+        .dma_csr_req_i     (`SEP_CORE.dma_csr_req),
+        .dma_csr_resp_i    (`SEP_CORE.dma_csr_rsp),
+        .irq_dma_error_i   (sep_internal_interrupts_probe_o[10]),
+        .rom_req_i         (u_dut.sep_boot_rom_req),
+        .rom_rsp_i         (u_dut.sep_boot_rom_rsp),
+        .iccm_clken_i      (|u_dut.sep_cpu_tcm_req.iccm_clken),
+        .iccm_wren_i       (|u_dut.sep_cpu_tcm_req.iccm_wren_bank),
+        .dccm_clken_i      (|u_dut.sep_cpu_tcm_req.dccm_clken),
+        .dccm_wren_i       (|u_dut.sep_cpu_tcm_req.dccm_wren_bank),
+        .in_f_en_i         (fcov_in_f_en),
+        .in_f_rd_i         (fcov_in_f_rd),
+        .in_f_wr_i         (fcov_in_f_wr),
+        .in_f_ns_i         (fcov_in_f_ns),
+        .in_f_burst_i      (fcov_in_f_burst),
+        .in_f_src_i        (fcov_in_f_src),
+        .in_f_start_i      (fcov_in_f_start),
+        .in_f_end_i        (fcov_in_f_end),
+        .out_f_en_i        (fcov_out_f_en),
+        .out_f_rd_i        (fcov_out_f_rd),
+        .out_f_wr_i        (fcov_out_f_wr),
+        .out_f_ns_i        (fcov_out_f_ns),
+        .out_f_burst_i     (fcov_out_f_burst),
+        .out_f_src_i       (fcov_out_f_src),
+        .out_f_start_i     (fcov_out_f_start),
+        .out_f_end_i       (fcov_out_f_end),
+        .al_valid_i        (fcov_al_valid),
+        .al_cache_i        (fcov_al_cache),
+        .al_start_i        (fcov_al_start),
+        .al_end_i          (fcov_al_end),
+        .al_offset_i       (fcov_al_offset),
+        .ap_valid_i        (fcov_ap_valid),
+        .stee_valid_i      (fcov_stee_valid),
+        .sep_base_i        (`SEP_CORE.u_sep_system_peripherals.sep_global_base_addr),
+        .sep_size_i        (`SEP_CORE.u_sep_system_peripherals.sep_region_size),
+        .smu_base_i        (`SEP_CORE.u_sep_system_peripherals.smu_global_base_addr),
+        .smu_size_i        (`SEP_CORE.u_sep_system_peripherals.smu_region_size),
+        .local_base_i      (`SEP_CORE.sep_local_base_addr),
+        .smc_base_i        (u_dut.smc_global_base_addr_i),
+        .smc_size_i        (u_dut.smc_region_size_i),
+        .smc_fuse_done_i   (u_dut.smc_fuse_sense_done_i),
+        .sep_debug_i       (`SEP_CORE.feat_ctrl.sep_debug),
+
+        // Phase 2 SPI and DMA taps (docs/SEP_FCOV.adoc, SPI and DMA groups,
+        // Sampled signals): read-only, no force.
+        .spi_active_i      (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.active),
+        .spi_tx_stall_i    (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.tx_stall),
+        .spi_rx_stall_i    (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.rx_stall),
+        .spi_tx_qd_i       (spi_tx_qd_probe_o),
+        .spi_rx_qd_i       (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.rx_qd),
+        .spi_cmd_qd_i      (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.cmd_qd),
+        .spi_tx_wm_i       (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.tx_wm),
+        .spi_tx_empty_i    (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.tx_empty),
+        .spi_tx_full_i     (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.tx_full),
+        .spi_rx_wm_i       (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.rx_wm),
+        .spi_rx_empty_i    (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.rx_empty),
+        .spi_rx_full_i     (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.rx_full),
+        .spi_cmd_busy_i    (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.command_busy),
+        .spi_reg2hw_i      (`SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.reg2hw),
+        .dma_reg2hw_i      (`SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw),
+        .dma_aborted_i     (`SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_aborted_qs),
+        .dma_err_code_i    ({
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_asid_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_range_valid_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_base_limit_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_bus_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_size_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_opcode_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_dst_addr_error_qs,
+            `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.error_code_src_addr_error_qs}),
+        .dma_busy_i        (dma_busy_probe_o),
+        .irq_dma_chunk_i   (sep_internal_interrupts_probe_o[9]),
+        .irq_spi_i         (sep_internal_interrupts_probe_o[13]),
+
+        // Mailbox, IRQ and PIC taps (docs/SEP_FCOV.adoc, mailbox, IRQ and
+        // PIC groups, Signal aliases): read-only, no force.
+        .vec_i             (sep_internal_interrupts_probe_o),
+        .smc_irq_i         (smc_mailbox_interrupt_o),
+        .pic_prio_i        (fcov_pic_prio),
+        .pic_en_i          (fcov_pic_en),
+        .pic_gw_cfg_i      (fcov_pic_gw_cfg),
+        .pic_cfg_i         (fcov_pic_cfg),
+        .pic_gw_clr_i      (fcov_pic_gw_clr),
+        .pic_req_i         (fcov_pic_req),
+        .pic_req_gw_i      (fcov_pic_req_gw),
+        .pic_wren_i        (fcov_pic_wren),
+        .pic_waddr_i       (fcov_pic_waddr),
+        .pic_wdata_i       (fcov_pic_wdata),
+        .pic_rd_i          (pic_rd_data_probe_o),
+        .pic_claim_i       (fcov_pic_claim),
+        .tlu_mstatus_mie_i (fcov_tlu_mstatus),
+        .tlu_mie_i         (fcov_tlu_mie),
+        .tlu_mip_i         (fcov_tlu_mip),
+        .tlu_take_ext_i    (fcov_tlu_take_ext),
+        .tlu_take_nmi_i    (fcov_tlu_take_nmi),
+        .tlu_take_timer_i  (fcov_tlu_take_tmr),
+        .tlu_take_soft_i   (fcov_tlu_take_sw),
+        .mb_status_i       (fcov_mb_status),
+        .mb_irqs_i         (fcov_mb_irqs),
+        .mb_irqen_i        (fcov_mb_irqen),
+        .mb_error_i        (fcov_mb_error),
+        .mb_wirqt_i        (fcov_mb_wirqt),
+        .mb_rirqt_i        (fcov_mb_rirqt),
+        .mb_irq_i          (fcov_mb_irq),
+        .mf_usage_i        (fcov_mf_usage),
+        .mf_full_i         (fcov_mf_full),
+        .mf_push_i         (fcov_mf_push),
+        .mf_pop_i          (fcov_mf_pop),
+        .mf_flush_i        (fcov_mf_flush),
+        .mbx_req_i         (`SEP_CORE.u_sep_system_peripherals.mailbox_axil_req),
+        .mbx_resp_i        (`SEP_CORE.u_sep_system_peripherals.mailbox_axil_resp),
+        .filt_iso_w_i      (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.isolate_write),
+        .filt_iso_r_i      (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.isolate_read),
+        .filt_nwm_i        (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.no_write_filter_matches),
+        .filt_nrm_i        (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.no_read_filter_matches),
+        .filt_hit_i        (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.write_filter_hit_idx),
+        .filt_awvalid_i    (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.axi_in_req_i.aw_valid),
+        .filt_arvalid_i    (`SEP_CORE.u_sep_system_peripherals.u_inbound_filter.axi_in_req_i.ar_valid),
+        .filt_locked_i     (fcov_filt_locked),
+        .alert_pulse_i     (crypto_alert_pulse_probe_o),
+        .err_pulse_i       (sep_cpu_ctrl_err_pulse_probe_o),
+        .ext_irq_i         (sep_ext_interrupts_i),
+        .out_resp_hold_i   (smn_outbound_resp_hold_i),
+        .out_rd_slverr_i   (smn_outbound_rd_slverr_i),
+        .spi_irq_field_i   (sep_io_spi_req_w.irq)
     );
 `endif
 

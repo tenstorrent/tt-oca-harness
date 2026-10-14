@@ -24,6 +24,7 @@ def _cfg(name, elf, image, **kw):
     )
 
 
+@pytest.mark.smoke
 def test_unsigned_boots_to_bl1(vp, bootcode_elf, oca_images):
     """An unsigned OCA manifest boots: framing, manifest hash, TOC and payload hashes.
 

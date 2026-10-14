@@ -112,7 +112,8 @@ trDstRamImpl:
     FIELDS_RANGE: '27:24'
     RESET_VALUE: '1'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: Frame length in 64-byte units. Only 1, 2, 4 and 8 (64, 128, 256 and
+      512 bytes) are supported, and the value must match the DST's trDstVendorFrameLength.
     SW_WRITE: W
     SW_READ: R
     SW_TYPE: ''
@@ -282,7 +283,9 @@ trDstRamRPLow:
     FIELDS_RANGE: '31:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: Read pointer, in 32-bit words; bits [31:2] of the byte address of
+      the word the next trDstRamData read returns. Each trDstRamData read that returns
+      unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.
     HW_WRITE: DST_SINK
     SW_WRITE: W
     SW_READ: R
@@ -333,7 +336,9 @@ trDstRamData:
     FIELDS_RANGE: '31:0'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: Reading launches a trace-RAM read at trDstRamRPLow. When the RAM
+      holds unread data, the read returns that 32-bit word and advances trDstRamRPLow;
+      otherwise the pointer does not move.
     SW_READ: R
     SW_TYPE: ''
 scratch_lo:

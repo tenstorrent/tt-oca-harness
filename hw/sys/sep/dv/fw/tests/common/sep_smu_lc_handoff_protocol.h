@@ -10,8 +10,8 @@
  * The PVT consumer pad is BP_PVT_CLK_OBS.
  * Fallback hw2_ovrd on the dedicated obs GPIO_CTRL is forced inactive.
  *
- * SEP cannot frontdoor-program SMC PVT (0x4040_3000 traps on the SEP->SMC
- * alias). Dedicated SMC firmware programs the CSRs at 0xC040_3xxx and
+ * SEP cannot frontdoor-program SMC PVT (0x4040_5C00 traps on the SEP->SMC
+ * alias). Dedicated SMC firmware programs the CSRs at 0xC040_5Cxx and
  * publishes PVT_EN on scratch2. SEP only does LCC demote + scratch tokens.
  */
 #ifndef SEP_SMU_LC_HANDOFF_PROTOCOL_H
@@ -33,11 +33,11 @@
 #define LC_HANDOFF_SMC_SCRATCH9 0xC00390C8u
 #define LC_HANDOFF_SMC_SCRATCH10 0xC00390D0u
 
-#define LC_HANDOFF_PVT_PROCESS_CTRL 0xC0403000u
-#define LC_HANDOFF_PVT_CLK_OBS_CTRL 0xC0403004u
-#define LC_HANDOFF_PVT_CLK_CNT_CTRL 0xC0403060u
-#define LC_HANDOFF_PVT_REFCLK_LO 0xC0403064u
-#define LC_HANDOFF_PVT_GPIO_CTRL 0xC040101Cu
+#define LC_HANDOFF_PVT_PROCESS_CTRL 0xC0405C00u
+#define LC_HANDOFF_PVT_CLK_OBS_CTRL 0xC0405C04u
+#define LC_HANDOFF_PVT_CLK_CNT_CTRL 0xC0405C60u
+#define LC_HANDOFF_PVT_REFCLK_LO 0xC0405C64u
+#define LC_HANDOFF_PVT_GPIO_CTRL 0xC040581Cu
 #define LC_HANDOFF_PVT_OBS_DEFAULT 0x00001500u
 #define LC_HANDOFF_PVT_OBS_UPDATE (1u << 16)
 #define LC_HANDOFF_PVT_OBS_ENABLE 0x1u

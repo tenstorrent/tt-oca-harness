@@ -14,24 +14,70 @@ extern "C" {
 #include <assert.h>
 
 // reg - straps::STRAPS_LO
+// Configuration straps 0 - 31.
+// Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned; no strap function
+// consumes them.
+// Strap assignments in this range:
+// * bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap
+// * bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap
+// * bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process
+// * bit 14: TEST_EN - Enable DFT test mode
+// * bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap
+// * bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0
+// * bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel
+// * bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted
+// * bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default
+// * bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field
+// * bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap
+// * bit 25: PRIMARY_CHIPLET - Identifies the primary chiplet, the boot master
+// * bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted
 #define STRAPS__STRAPS_LO__STRAPS_bm 0xffffffff
 #define STRAPS__STRAPS_LO__STRAPS_bp 0
 #define STRAPS__STRAPS_LO__STRAPS_bw 32
 #define STRAPS__STRAPS_LO__STRAPS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Configuration straps 0 - 31.
+        // Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned; no strap function
+        // consumes them.
+        // Strap assignments in this range:
+        // * bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap
+        // * bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap
+        // * bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process
+        // * bit 14: TEST_EN - Enable DFT test mode
+        // * bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap
+        // * bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0
+        // * bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel
+        // * bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted
+        // * bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default
+        // * bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field
+        // * bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap
+        // * bit 25: PRIMARY_CHIPLET - Identifies the primary chiplet, the boot master
+        // * bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted
         uint32_t straps :32;
     } f;
     uint32_t w;
 } straps__STRAPS_LO_t;
 
 // reg - straps::STRAPS_HI
+// Configuration straps 32 - 60.
+// All bits other than those listed below have no strap assigned; no strap
+// function consumes them.
+// Strap assignments in this range:
+// * bit 22: MBIST_BYPASS - Ignore results of Power-On MBIST for boot
+// * bit 26: ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM
 #define STRAPS__STRAPS_HI__STRAPS_bm 0x1fffffff
 #define STRAPS__STRAPS_HI__STRAPS_bp 0
 #define STRAPS__STRAPS_HI__STRAPS_bw 29
 #define STRAPS__STRAPS_HI__STRAPS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Configuration straps 32 - 60.
+        // All bits other than those listed below have no strap assigned; no strap
+        // function consumes them.
+        // Strap assignments in this range:
+        // * bit 22: MBIST_BYPASS - Ignore results of Power-On MBIST for boot
+        // * bit 26: ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM
         uint32_t straps :29;
         uint32_t :3;
     } f;
@@ -39,6 +85,7 @@ typedef union {
 } straps__STRAPS_HI_t;
 
 // addrmap - straps
+// Configuration strap values. How they are captured is adopter-defined.
 typedef struct __attribute__ ((__packed__)) {
     straps__STRAPS_LO_t STRAPS_LO;
     straps__STRAPS_HI_t STRAPS_HI;

@@ -65,10 +65,6 @@ class smc_cold_reset_test_seq(SmcResetSeqBase):
     # so claiming them here would put a by-construction term into the fence.
     NONVAC_STEPS = ("S3", "S4", "S5", "S6", "S7", "S8")
 
-    # `_send` (with its `expect_*` keyword guard), `_wait_state` and `_hold_raw`
-    # come from SmcResetSeqBase so the guard is defined once for the whole reset
-    # family ([REUSE-AND-LAYERING]).
-
     def __init__(self, name: str = "smc_cold_reset_test_seq") -> None:
         super().__init__(name)
         self.sample = None
@@ -342,16 +338,12 @@ class smc_cold_reset_test_seq(SmcResetSeqBase):
 
         # S9 TIMEOUT bookkeeping + NONVAC fence
         self._mark_step("S9", "TIMEOUT path bookkeeping")
-        # Non-vacuity: every scenario step must have contributed at least one
-        # fail-capable reset check **that the step itself owns**, measured on the
-        # scoreboard's own counters at the step boundaries. The shared
-        # `_recover_sample()` tail every step ends with books >=2 checks of its
-        # own, so the raw boundary delta would be >=2 for S4..S8 no matter what
-        # the step's assert leg did -- deleting S4's COLD_ASSERT_PRIMARY wait
-        # would still leave `S4:+2 > 0`. Subtracting the tail's contribution
-        # makes the delta the step's own, so a step that stopped carrying
-        # expectations (or never reached the DUT) contributes 0 and fails here
-        # ([NO-DUMMY-DEAD-CODE] / [NO-ALWAYS-PASS-CHECKER]).
+        # Non-vacuity: every step in NONVAC_STEPS must contribute at least one
+        # fail-capable reset check of its own, measured on the scoreboard
+        # counters at the step boundaries. The shared `_recover_sample()` tail
+        # books checks of its own at the end of every step, so its contribution
+        # is subtracted; a step that carries no expectations, or never reaches
+        # the DUT, then contributes 0 and fails here.
         deltas: list[str] = []
         for (sid, before, rec_before), (_nxt, after, rec_after) in zip(
             self._step_marks, self._step_marks[1:]

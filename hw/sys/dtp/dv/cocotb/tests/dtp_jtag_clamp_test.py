@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP CLAMP instruction test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_jtag_clamp_test_seq import dtp_jtag_clamp_test_seq
@@ -9,7 +11,7 @@ from seq_lib.dtp_jtag_clamp_test_seq import dtp_jtag_clamp_test_seq
 
 @pyuvm.test()
 class dtp_jtag_clamp_test(dtp_base_test):
-    """Run the DTP VPLAN CLAMP scenario."""
+    """CLAMP deselects the chain behind a one-bit bypass."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

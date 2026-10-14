@@ -87,12 +87,11 @@ timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
 
-# No GPIO-strap or external-interrupt testcase is enrolled here. smc_wrapper
-# declares no captured_straps_i, so the strap feature has no testcase
-# (docs/SMC_VPLAN.adoc, Known Limitations); external interrupts are
-# covered by smc_ext_interrupts_pin_test (irq.toml). ext_interrupts_i[255:1] is
-# tied to 0 in tb/tb_top.sv, so an external-interrupt testcase beyond bit 0
-# needs TB work before it can exist.
+# No GPIO-strap testcase is enrolled: smc_wrapper declares no captured_straps_i,
+# so the strap feature has no testcase (docs/SMC_VPLAN.adoc, Known Limitations).
+# External interrupts are covered from irq.toml (smc_ext_interrupts_pin_test,
+# bit 0) and by smc_fw_plic_claim_test in fw.toml, which drives bits 16:2
+# through tb_ext_interrupts_hi_i.
 
 [[tests]]
 # The default asset programs only LOCKS word 0, so every other content row of
@@ -121,9 +120,8 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
-# The read-lock precondition of this scenario is supplied by this asset (word 0
-# sets JTAG_PUBLIC_IDENTITY_READ_LOCK), so it is named here rather than inherited
-# silently from the bench-wide default in smc_sim_cfg.toml.
+# The scenario needs the read lock: word 0 of this asset sets
+# JTAG_PUBLIC_IDENTITY_READ_LOCK.
 args = [
     "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
 ]

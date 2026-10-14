@@ -82,7 +82,6 @@ from .smc_addr_map import (
     gpio_intf_u32,
     reset_unit_u32,
     smc_addr,
-    smc_bootrom_addr,
     smc_indexed_addr,
 )
 from .smc_base_test_seq import smc_base_test_seq
@@ -138,10 +137,8 @@ ITR_TTBEI = _field_mask(_UART_H, "UART_16550_MAIN__ITR__TTBEI_bm")
 # that behavioural responder: `u_smc.smc_external_req_o.ar_valid` asserted, i.e.
 # `tb_axil_external_active` is alive. `pll_wrap` is a declared behavioural stub
 # (``[BEHAVIORAL-STUB-DECLARED]``); no claim is made here about PLL behaviour.
-EXTERNAL_PLL_CGM0_STATUS = smc_bootrom_addr(
-    "SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_PLL_CNTL_CGM_0_STATUS_BASE_ADDR"
-)
-EXTERNAL_PLL_CGM0_STATUS_EXPECTED = 0
+EXTERNAL_PLL_WRAP = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_BASE_ADDR")
+EXTERNAL_PLL_WRAP_EXPECTED = 0
 
 GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 # DATA_CTRL field bits by symbol from generated hw/ip/gpio/regs/gen/c/gpio_intf.h.
@@ -257,10 +254,10 @@ def _assert_idle_precondition(dut, probe: str, control: str) -> None:
 async def prove_sync_irq_probe(seq: SmcCsrSeq) -> None:
     """Positive control for ``tb_sync_irq`` (0 -> 1 -> 0, both legs bounded).
 
-    ``tb_top.sv:1355`` assigns ``tb_sync_irq = sync_irq``, the ``smc_wrapper``
-    boundary output driven by ``smc_reset_unit.sv:275``
+    ``tb_top.sv`` assigns ``tb_sync_irq = sync_irq``, the ``smc_wrapper``
+    boundary output ``smc_reset_unit.sv`` drives as
     ``sync_irq_o = hwif_out.SYNC_REG.sync.value``. SYNC_REG.sync is a plain
-    ``sw=rw; hw=r`` CSR field (``reset_unit.rdl:106-112``, reset 0x0), so
+    ``sw=rw; hw=r`` CSR field (``reset_unit.rdl``, reset 0x0), so
     writing it over the SEP_IN AXI frontdoor is the real producer of the
     aggregate -- no force, no deposit.
 
@@ -297,7 +294,7 @@ async def prove_sync_irq_probe(seq: SmcCsrSeq) -> None:
 async def prove_uart_irq_any_probe(seq: SmcCsrSeq) -> None:
     """Positive control for ``tb_uart_irq_any`` (0 -> 1 -> 0, both bounded).
 
-    ``tb_top.sv:1362`` assigns ``tb_uart_irq_any = |uart_interrupt``. This
+    ``tb_top.sv`` assigns ``tb_uart_irq_any = |uart_interrupt``. This
     ungates the UART clock, enables UART0, unmasks the THRE source in IER and
     raises it through the 16550 ITR (interrupt test register) -- the same
     IER/ITR programming ``smc_uart_irq_sources_priority_test_seq`` uses for its
@@ -342,7 +339,7 @@ async def prove_uart_irq_any_probe(seq: SmcCsrSeq) -> None:
 async def prove_i2c_cg_en_probe(seq: SmcCsrSeq) -> None:
     """Positive control for ``tb_i2c_cg_en`` (0 -> 1 -> 0, both bounded).
 
-    ``tb_top.sv:1330`` assigns ``tb_i2c_cg_en = u_dut.u_smc.cg_ctrl_i2c_cg_en``,
+    ``tb_top.sv`` assigns ``tb_i2c_cg_en = u_dut.u_smc.cg_ctrl_i2c_cg_en``,
     which the base-config register block drives from
     ``CLOCK_GATE_CONTROL.i2c_cg_en``. Programming that field over the SEP_IN AXI
     frontdoor is the real producer. The whole CLOCK_GATE_CONTROL word is saved
@@ -382,11 +379,11 @@ async def prove_i2c_cg_en_probe(seq: SmcCsrSeq) -> None:
 async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
     """Positive control for ``tb_axil_external_active`` (pulse at 1, then idle).
 
-    ``tb_top.sv:1388-1390`` ORs ``u_smc.smc_external_req_o.{aw,w,ar}_valid``.
+    ``tb_top.sv`` ORs ``u_smc.smc_external_req_o.{aw,w,ar}_valid``.
     The port is absorbed by ``smc_ip_integration`` inside ``smc_wrapper``, whose
     external-window demux gives the adopter PLL/PVT/GPIO-ctrl window a real
     responder, so a frontdoor CSR read into that window makes the master valid
-    and completes. ``smc_periph_axi_lite_xbar.sv:145-149`` routes
+    and completes. ``smc_periph_axi_lite_xbar.sv`` routes
     ``SMC_TOP_SMC_EXTERNAL_BASE_ADDR + EFUSE_SHIM_SIZE .. SMC_TOP_SMC_EXTERNAL_BASE_ADDR +
     SMC_TOP_SMC_EXTERNAL_SIZE`` to the external port, and
     ``smc_ip_integration.sv`` maps window offset 0x2000 to ``pll_wrap``, which
@@ -405,9 +402,9 @@ async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
     sampler = cocotb.start_soon(_count_probe_high(dut, "axil_external_active", hits))
     try:
         rdata = await seq.csr_read(
-            "EXTERNAL_PLL_CGM0_STATUS",
-            EXTERNAL_PLL_CGM0_STATUS,
-            expected=EXTERNAL_PLL_CGM0_STATUS_EXPECTED,
+            "EXTERNAL_PLL_WRAP",
+            EXTERNAL_PLL_WRAP,
+            expected=EXTERNAL_PLL_WRAP_EXPECTED,
         )
         await ClockCycles(dut.clk_smc_i, _PULSE_DRAIN_CYCLES)
     finally:
@@ -415,7 +412,7 @@ async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
 
     assert hits[0] > 0, (
         "tb_axil_external_active never sampled 1 while a real SEP_IN AXI read "
-        f"of the adopter external window @ 0x{EXTERNAL_PLL_CGM0_STATUS:08x} was "
+        f"of the adopter external window @ 0x{EXTERNAL_PLL_WRAP:08x} was "
         "in flight: the activity probe is stuck at 0 / undriven / mis-tied, so "
         "any idle == 0 assertion on it is vacuous"
     )
@@ -423,8 +420,7 @@ async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
 
     credit_probe(
         "axil_external_active",
-        f"{hits[0]} clk_smc_i cycle(s) high during a SEP_IN AXI read @ "
-        f"0x{EXTERNAL_PLL_CGM0_STATUS:08x}",
+        f"{hits[0]} clk_smc_i cycle(s) high during a SEP_IN AXI read @ 0x{EXTERNAL_PLL_WRAP:08x}",
     )
     cocotb.log.info(
         "CHK-PROBE-AXIL-EXTERNAL-ALIVE: tb_axil_external_active observed 1 for "
@@ -433,9 +429,9 @@ async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
         "%d cycle(s); the probe reads both levels, so an idle "
         "tb_axil_external_active==0 compare is fail-capable",
         hits[0],
-        EXTERNAL_PLL_CGM0_STATUS,
+        EXTERNAL_PLL_WRAP,
         rdata,
-        EXTERNAL_PLL_CGM0_STATUS_EXPECTED,
+        EXTERNAL_PLL_WRAP_EXPECTED,
         idle_cycles,
     )
 
@@ -499,7 +495,7 @@ async def prove_axil_efuse_bank_probe(seq: SmcCsrSeq) -> None:
 async def prove_gpio_irq_any_probe(seq: SmcCsrSeq) -> None:
     """Positive control for ``tb_gpio_irq_any`` (0 -> 1 -> 0, both bounded).
 
-    ``tb_top.sv:1356`` assigns ``tb_gpio_irq_any = |gpio_interrupt``. GPIO0 is
+    ``tb_top.sv`` assigns ``tb_gpio_irq_any = |gpio_interrupt``. GPIO0 is
     programmed RX + interrupt_enable + active-low level over the SEP_IN AXI
     frontdoor, then the pad is driven from the top-level ``tb_gpio_ext_drive_*``
     pins (external pin drive, not an internal force). GPIO0's DATA_CTRL is saved
@@ -598,7 +594,7 @@ async def prove_gpio_pad_bus_probe(seq: SmcCsrSeq) -> None:
     net tied to constant 1 is indistinguishable from the real aggregate. They
     are declared in ``env.smc_probe_liveness.UNBACKABLE_PROBES``.
 
-    The raw vectors ``tb_core2pad_o`` / ``tb_core2pad_en_o`` (tb_top.sv:1378-1379,
+    The raw vectors ``tb_core2pad_o`` / ``tb_core2pad_en_o`` (``tb_top.sv``
     mirrors of the same ``u_dut.u_smc.core2pad*_o`` nets the aggregates reduce)
     *do* move, so they can carry the proof. This control programs GPIO wrap 0 as a
     register-driven TX output over the SEP_IN AXI frontdoor -- the mechanism
@@ -828,7 +824,7 @@ class SmcGpioAggregateStabilitySeq(smc_base_test_seq):
 
     Only the output-*enable* vector carries the persistence claim: the pad *value*
     vector also carries free-running DUT outputs (the AVSBus clock is
-    ``core2pad_o[49]``, tb_top.sv:818), so it moves with no GPIO stimulus and an
+    ``core2pad_o[49]`` in ``tb_top.sv``), so it moves with no GPIO stimulus and an
     exact cross-sample expectation on it would be flaky rather than proof -- see
     ``GPIO_STABLE_VECTOR_FIELDS``. Its value is reported as a diagnostic.
 

@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Technology prim cells replace the generic modules one-for-one, so their
+# parameter names must match the generic interfaces that callers bind by name.
+waive --rule=parameter-name-style --location=".*flows/synth/pdk/[^/]+/prim/prim_[a-z0-9_]+\.sv$"

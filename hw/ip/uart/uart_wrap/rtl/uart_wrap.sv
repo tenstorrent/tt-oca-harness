@@ -88,6 +88,7 @@ module uart_wrap #(
 
   `include "axi/assign.svh"
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   /////////////////////////
   // Signal Declarations //
@@ -272,8 +273,8 @@ module uart_wrap #(
   // Assertions //
   ////////////////
 
-  `OCAH_OT_ASSERT_INIT(paramCheckNumUarts_A,
-                       NUM_UARTS > 0 && NUM_UARTS <= uart_wrap_pkg::MaxNumUarts)
+  `OCAH_ASSERT_STATIC(paramCheckNumUarts_A,
+                      NUM_UARTS > 0 && NUM_UARTS <= uart_wrap_pkg::MaxNumUarts)
 
   `OCAH_OT_ASSERT_KNOWN(CsrAxilRespKnownO_A, csr_axil_resp_o)
   `OCAH_OT_ASSERT_KNOWN(LogFetchAxilReqKnownO_A, log_fetch_axil_req_o)

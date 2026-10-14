@@ -40,6 +40,7 @@ module tnif import tn_pkg::*; # (
 
     tnifState_e prev_gnt;
     tnifState_e next_gnt;
+    logic [$bits(tnifState_e)-1:0] prev_gnt_q;
 
     assign dst_pull_out = tr_gnt_in & ~(dst_bp_in & ~dst_flush_in) & dst_req_in & ((ntr_req_in & ~(ntr_bp_in & ~ntr_flush_in))?(prev_gnt == tnifState_e'(DST_GNT)):1'b1);
     assign ntr_pull_out = tr_gnt_in & ~(ntr_bp_in & ~ntr_flush_in) & ntr_req_in & ((dst_req_in & ~(dst_bp_in & ~dst_flush_in))?(prev_gnt == tnifState_e'(NTR_GNT)):1'b1);
@@ -54,8 +55,9 @@ module tnif import tn_pkg::*; # (
         .rst_n (i_reset_n),
         .en    (tr_gnt_in & (ntr_req_in & dst_req_in)),
         .in    (next_gnt),
-        .out   (prev_gnt)
+        .out   (prev_gnt_q)
     );
+    assign prev_gnt = tnifState_e'(prev_gnt_q);
 
     assign tr_data_out = {(DATA_WIDTH_IN_BYTES*8){1'b1}} & (dst_pull_out?dst_data_in:ntr_data_in);
     assign tr_valid_out = dst_pull_out | ntr_pull_out;

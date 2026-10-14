@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The OT SPI host drives the exact flash command sequence, and program, erase and read land.
 
+OCAH provenance: ``spi_ot_flash_write_read_test`` checks flash program and
+read, and ``spi_ot_flash_sector_erase_test`` checks sector erase.
+
 A cpu-firmware test, randomized ([RAND-REP]). It boots the VeeR EL2 core and runs the
 spi_ot_flash_cmd firmware, which drives the OT SPI host (@ 0x10B0_0000) against the
 OcahSpiFlash BFM:
@@ -51,7 +54,8 @@ Checks:
       primary program/read, FAST_READ, neighbour program/read, erase, primary read,
       neighbour read, post-erase RDSR, the ignored WEL-clear PP and its read,
       WREN, RDSR2, WRDI, recovery JEDEC);
-    - the PAGE PROGRAM (0x02) landed at the random addr with the random data;
+    - the PAGE PROGRAM (0x02) landed at the random addr with the random data,
+      and the device accepted it (``ok``): its frame ended on a byte boundary;
     - the SECTOR ERASE wiped the page (BFM memory == 0xFF at addr afterwards)
       and left the neighbour 4 KiB sector intact;
     - CHK-WP-PP/BFM: the controller delivered the third PAGE PROGRAM to the
@@ -77,6 +81,7 @@ import cocotb
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_log_error_counter import attach_error_counter
 from env.sep_seeded_rng import SepSeededRng
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
@@ -198,6 +203,8 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
     """The BFM sees exactly EXPECTED_OPS, and the program, erase and protect results match."""
 
     build_env = False
+    # The leaf's own graded records; the base-class records do not count.
+    required_evidence = ("CHK-READ", "CHK-RAND-REP")
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -241,6 +248,9 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             verbose=True,
         )
         # BFM memory inits to 0xFF (erased); the firmware programs + verifies.
+        # The BFM logs and drops a frame whose handler raised; such an error
+        # fails the leaf.
+        bfm_errors = attach_error_counter(flash.log)
         await flash.start()
         dtcm_hex, cfg = self._stage_dtcm()
         try:
@@ -255,6 +265,10 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 progress_every=_PROGRESS_EVERY,
             )
             self._golden_check(flash, cfg)
+            assert not bfm_errors.records, (
+                f"SPI-BFM FAIL: the flash model logged {len(bfm_errors.records)} error(s): "
+                f"{bfm_errors.records[:3]}"
+            )
         finally:
             await flash.stop()
 
@@ -285,9 +299,16 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
 
         pp = txns[6]
         exp_bytes = cfg.pp_bytes()
-        if pp.get("addr") != cfg.addr or bytes(pp.get("data_in") or b"") != exp_bytes:
+        if (
+            pp.get("addr") != cfg.addr
+            or bytes(pp.get("data_in") or b"") != exp_bytes
+            or not pp.get("ok")
+        ):
             self.logger.error(
-                "SPI flash command breadth GOLDEN FAIL: PP addr=0x%06x data_in=%s vs exp addr=0x%06x data=%s",
+                "SPI flash command breadth GOLDEN FAIL: PP ok=%s reason=%s addr=0x%06x data_in=%s "
+                "vs exp ok=True addr=0x%06x data=%s",
+                pp.get("ok"),
+                pp.get("reason"),
                 pp.get("addr", 0),
                 bytes(pp.get("data_in") or b"").hex(),
                 cfg.addr,
@@ -302,9 +323,13 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         if (
             neigh_pp.get("addr") != cfg.neigh_addr
             or bytes(neigh_pp.get("data_in") or b"") != neigh_bytes
+            or not neigh_pp.get("ok")
         ):
             self.logger.error(
-                "SPI flash command breadth GOLDEN FAIL: neighbour PP addr=0x%06x data_in=%s vs exp addr=0x%06x data=%s",
+                "SPI flash command breadth GOLDEN FAIL: neighbour PP ok=%s reason=%s addr=0x%06x "
+                "data_in=%s vs exp ok=True addr=0x%06x data=%s",
+                neigh_pp.get("ok"),
+                neigh_pp.get("reason"),
                 neigh_pp.get("addr", 0),
                 bytes(neigh_pp.get("data_in") or b"").hex(),
                 cfg.neigh_addr,

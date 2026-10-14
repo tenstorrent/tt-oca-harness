@@ -15,7 +15,6 @@
 
 package smc_local_xbar_pkg;
 
-  import axi_pkg::*;
 
   // ===========================================================================
   // Fabric Parameters

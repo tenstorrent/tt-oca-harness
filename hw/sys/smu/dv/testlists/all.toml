@@ -1167,6 +1167,31 @@ args = [
 ]
 
 [[tests]]
+# One iDMA copy behind a JTAG2AXI bring-up; the responder delays every
+# response by up to 48 cycles, so the copy spans a few thousand clk_smu cycles.
+name = "smu_axi_out_outstanding_test"
+module = "smu_axi_out_outstanding_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 2400
+tags = ["depth", "fabric", "no_sep"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  "+pll_sys_period_ns=10",
+]
+
+[[tests]]
 name = "smu_cla_action_test"
 module = "smu_cla_action_test"
 target = "compile_smu_chiplet"
@@ -1296,6 +1321,7 @@ tests = [
   "smu_axi_in_attribute_sweep_test",
   "smu_aperture_map_walk_test",
   "smu_axi_out_addr_len_size_test",
+  "smu_axi_out_outstanding_test",
   "smu_axi_in_sep_aperture_test",
   "smu_smc_inbound_window_sweep_test",
 ]
@@ -2287,6 +2313,18 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # The JTAG sep_reset_n override this leaf drives resets the crypto engines
+  # without isolation, so an ungranted EDN request can drop with no endpoint
+  # cancel. tb_wrapper_top turns the crypto EDN request-hold checks off for
+  # it; the pool instance keeps its checks.
+  "+sep_edn_jtag_reset_waive",
+  # Releasing km_jtag_rst_n takes the Key Manager out of its software reset.
+  # An empty ROM returns X and the look-ahead read takes u_km_rom.req_i to X.
+  # The image is the SEP Key Manager smoke ROM, which no stage of this leaf
+  # rebuilds; `make -C hw/sys/sep/dv/cocotb/tests/km_fw verify ROMS=km_rom`
+  # compares it with km_rom.S, and the SEP leaves that boot it run that check
+  # in c_compile (firmware mode km_rom_blob, hw/sys/sep/dv/testlists/km.toml).
+  "+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom.parhex",
 ]
 
 # sep_lifecycle_ctrl.sv hardwires dbg_disable.smc_otp_jtag2axi and
@@ -2367,6 +2405,32 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod.preload",
+]
+
+# The LC_STATE pair the SEP exports, broken by the bench's fault inject
+# (+lc_sigint_inject, tb_wrapper_top.sv): no eFuse image produces a broken pair.
+[[tests]]
+name = "smu_lc_sigint_fail_closed_test"
+module = "smu_lc_sigint_fail_closed_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "jtag2axi", "otp", "sep", "real_rtl", "lifecycle", "security"]
+run_modes = ["sep_rtl"]
+args = [
+  "+lc_sigint_inject",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared
+  # stimulus, the legal TEST_DEV pair the fault is applied to.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
 ]
 
 [[tests]]
@@ -2697,6 +2761,7 @@ tests = [
   "smu_dtp_ptap_ir_walk_test",
   "smu_otp_bridges_under_dbg_disable_test",
   "smu_otp_prod_error_resp_test",
+  "smu_lc_sigint_fail_closed_test",
   "smu_otp_vs_fabric_map_race_test",
   "smu_smc_dtp_jtag2axi_smoke_test",
   "smu_xtrig_ctm_illegal_phase_test",
@@ -2772,6 +2837,7 @@ tests = [
   "smu_dtp_ptap_ir_walk_test",
   "smu_otp_bridges_under_dbg_disable_test",
   "smu_otp_prod_error_resp_test",
+  "smu_lc_sigint_fail_closed_test",
   "smu_otp_vs_fabric_map_race_test",
   "smu_smc_dtp_jtag2axi_smoke_test",
   "smu_smc_mailbox_int_test",
@@ -2809,8 +2875,9 @@ tests = [
   "smu_axi_in_attribute_sweep_test",
   "smu_aperture_map_walk_test",
   "smu_axi_out_addr_len_size_test",
+  "smu_axi_out_outstanding_test",
 ]
-expected_count = 84
+expected_count = 86
 
 # `--items all`: every test in this file, so this group is the whole SMU
 # regression. Anything added to this file belongs here too, so that
@@ -2898,6 +2965,7 @@ tests = [
   "smu_dtp_ptap_ir_walk_test",
   "smu_otp_bridges_under_dbg_disable_test",
   "smu_otp_prod_error_resp_test",
+  "smu_lc_sigint_fail_closed_test",
   "smu_otp_vs_fabric_map_race_test",
   "smu_smc_dtp_jtag2axi_smoke_test",
   "smu_smc_mailbox_int_test",
@@ -2940,8 +3008,9 @@ tests = [
   "smu_axi_in_attribute_sweep_test",
   "smu_aperture_map_walk_test",
   "smu_axi_out_addr_len_size_test",
+  "smu_axi_out_outstanding_test",
 ]
-expected_count = 120
+expected_count = 122
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -3107,7 +3176,7 @@ module = "smu_smc_ss_reset_ctrl_sweep_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
-timeout_sec = 7200
+timeout_sec = 14400
 tags = ["smc", "sep", "p0", "real_rtl"]
 run_modes = ["sep_rtl"]
 args = [
@@ -3132,7 +3201,7 @@ module = "smu_smc_boundary_lane_sweep_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
-timeout_sec = 11100
+timeout_sec = 22200
 tags = ["smc", "sep", "p0", "real_rtl"]
 run_modes = ["sep_rtl"]
 args = [

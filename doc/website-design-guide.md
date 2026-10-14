@@ -72,6 +72,9 @@ The navbar contains:
   - **Guides** links to each book's home page — Getting Started, TRM, Integrator Guide, Programmer's Guide, Application Notes, in that order 
   - **Downloads** PDF downloads for every book that has one — all five except Home
   - **Datasheets** per-subsystem datasheet PDFs, kept as a separate menu from Downloads for clarity, since combining them read as cluttered. Entries end in `(PDF)`, as Downloads entries do.
+- GitHub and Discussions icons linking to the tt-oca-harness repository and its GitHub Discussions page, set off from the menus by a thin divider. 
+They are monochrome, in the navbar text color, so they read as utility links rather than competing with the OCA and Tenstorrent logos; each carries a `title` tooltip and an `aria-label`. 
+The glyphs are GitHub's MIT-licensed Octicons, vendored with their license under `doc/ui-supplemental/img/vendor/octicons/` and drawn as CSS masks so they take `currentColor`.
 - A Tenstorrent logo linking to tenstorrent.com.
 
 The Guides/Downloads/Datasheets menus are static, hand-written link lists rather than dynamically generated from Antora's component catalog. 
@@ -98,8 +101,10 @@ Getting Started's `nav.adoc` groups its eight sub-pages into two labeled section
 The matching PDF structure achieves the same visual grouping via two `== ` group headings with `leveloffset=+1` applied to the includes underneath each, so the included 
 pages nest correctly one level below the group heading rather than becoming siblings of it.
 
-Home's `nav.adoc` has two top-level entries, `Home` and `Guides`, and both collapse and expand the same way. `Guides` is an unlinked entry whose children link to each book's start page, in the same order as the navbar's Guides menu.
-Below the theme's 1024px breakpoint the sidebar starts hidden, so Home's `index.adoc` also carries a `[.home-guides]` list under the intro paragraph; `extra.css` shows it as a card only at those widths and sets it to `display: none` above them.
+Home's `nav.adoc` has three top-level entries, `Home`, `Guides` and `Verification`, and all collapse and expand the same way. `Guides` is an unlinked entry whose children link to each book's start page, in the same order as the navbar's Guides menu.
+`Verification` is likewise unlinked; its `Dashboard` child is the verification dashboard, whose pages (`doc/home/src/dashboard*.adoc`) belong to Home rather than to any book, since the dashboard covers every block.
+Each dashboard page declares a `page-aliases` entry for its former `ocah-docs` location, so old links redirect.
+Below the theme's 1024px breakpoint the sidebar starts hidden, so Home's `index.adoc` also carries `[.home-guides]` Guides and Verification lists under the intro paragraph; `extra.css` shows them as cards only at those widths and sets them to `display: none` above them.
 All three are hand-written lists, so a new book needs a line in each. The nav entries are `xref:` links, so a renamed or removed book fails the combined build rather than leaving a dead link.
 
 Book titles in each `antora.yml` omit the "Open Chiplet Atlas (OCA) Harness" prefix, which Home's title already carries; the title heads the book's sidebar and its switcher entry.
@@ -107,8 +112,8 @@ Each book's document title does the same on the website: the `= ` heading in its
 
 ### Breadcrumbs
 
-`doc/ui-supplemental/partials/breadcrumbs.hbs` overrides the stock partial so every trail starts at one of the Home sidebar's two groups, without the component title in front.
-Home pages read `Home / Feature Overview`; book pages read `Guides / Starting with OCAH / Starting as a user / Environment Setup`.
+`doc/ui-supplemental/partials/breadcrumbs.hbs` overrides the stock partial so every trail starts at one of the Home sidebar's groups, without the component title in front.
+Home pages read `Home / Feature Overview` or `Verification / Dashboard`; book pages read `Guides / Starting with OCAH / Starting as a user / Environment Setup`.
 A book's first two crumbs are the Home sidebar's `Guides` entry and its child that links to the book's start page, which stands in for the book's own start-page crumb; a book must therefore be listed in Home's `nav.adoc` for its trail to name it.
 
 Below the navigation tree sits a collapsible panel (`.nav-panel-explore`, toggled via the `.context-bar` strip) — Antora's native book/version switcher. 
@@ -201,7 +206,7 @@ Targeted fixes sit on top of the stock behavior, all in `extra.css`:
 - The hamburger icon itself is recolored to the site's dark text color, since the theme's default icon color has poor contrast against the cream navbar background.
 - The expanded mobile menu panel is explicitly set to the cream background color — the theme's `.navbar-menu` element has its own background property, separate from the main navbar's, 
 which the general navbar recoloring doesn't reach on its own.
-- The Tenstorrent logo link is given a top border and centered alignment specifically at mobile widths, so it reads as a separate element from the Guides/Downloads/Datasheets list above it rather than blending into it.
+- The GitHub and Discussions links and the Tenstorrent logo are centered below one top border at mobile widths, so they read as separate from the Guides/Downloads/Datasheets list above rather than blending into it. The GitHub and Discussions icons gain their text labels there, since the menu has room for them.
 - The `.nav-item-toggle` minimum touch-target size is a mobile/touch usability fix as much as an accessibility one, though it applies at all viewport widths, not only narrow ones.
 
 No changes have been made to the right-hand contents panel or left sidebar's mobile behavior — both use the theme's stock responsive handling.

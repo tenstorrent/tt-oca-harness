@@ -98,7 +98,8 @@ and are re-verified against them at each revision:
   source: the ROM compiles against it, the SEP virtual platform's status decoder is
   configured to read the same header (`STATUS_VALUES_PATH`), and <<sec:status_registry>> is
   generated from it by `hw/sys/sep/doc/gen_status_table.py`.
-* SEP↔SMC interface contract: `hw/sys/sep/bootrom/prod/include/sep_smc_interface.h` and the
+* SEP↔SMC interface contract: `hw/sys/sep/bootrom/prod/include/sep_smc_map.h`,
+  `hw/sys/sep/bootrom/prod/include/sep_smc_interface.h` and the
   SMC Boot ROM chapter (`hw/sys/smc/doc/rom.adoc`).
 
 [[sec:terminology]]
@@ -261,9 +262,8 @@ only when `SRAM_SCRUB_BYTES` is nonzero (default 0); the manifest loader zeroes 
 slot attempts (<<sec:retry>>). The top 8 bytes are reserved: `sep_dma_zero()` fills from a source word
 the engine re-reads for every beat, and the CPU rewrites that word immediately before each
 fill, so the manifest body, the payload and BL1's permitted load span all stop short of it
-(`SEP_SRAM_USABLE_SIZE`). SEP has no zeroing engine and the secure DMA has no fill opcode, so
-a fill needs a real source address; ROM `.rodata` cannot serve as one, because the engine
-cannot read the ROM aperture.
+(`SEP_SRAM_USABLE_SIZE`). The ROM fills through a copy, so a fill needs a real source
+address; ROM `.rodata` cannot serve as one, because the engine cannot read the ROM aperture.
 |Boot ROM |`0x10040000` |64 KiB |BL0 code, `.rodata`, ROM metadata (version + self-hash), and
 the load image (LMA) of `.data`. Execute/read only.
 |Secure DMA |`0x10800000` |4 KiB |DMA engine registers.
@@ -308,8 +308,8 @@ base (`0x40000000 + 0x60000` on the SEP side).
 
 === SMC Window Layout
 
-Offsets below are relative to `SEP_SMC_GLOBAL_BASE` (`0x40000000`) and form part of the
-SEP↔SMC interface contract (`sep_smc_interface.h`).
+Offsets below are relative to `SEP_SMC_GLOBAL_BASE` (`0x40000000`). `sep_smc_map.h` computes
+them from the generated SMC map; the values shown are those of the open map.
 
 [[tbl:smc_window]]
 .SMC resources accessed by the SEP ROM
@@ -318,7 +318,7 @@ SEP↔SMC interface contract (`sep_smc_interface.h`).
 [frame=ends]
 |===
 |*Resource* |*Offset* |*ROM usage*
-|Captured straps `STRAPS_LO` / `STRAPS_HI` |`0x40_5800` / `0x40_5804` |Latched hardware straps
+|Captured straps `STRAPS_LO` / `STRAPS_HI` |`0x40_3000` / `0x40_3004` |Latched hardware straps
 (<<sec:straps>>).
 |`CHIP_CONFIG_CHIP_ID` |`0x2908` |Chip identification, diagnostic only ([S12]).
 |`CHIP_CONFIG_LC_STATE` |`0x290C` |SMC-side lifecycle mirror (low 4 bits); informational.
@@ -738,9 +738,12 @@ outbound path to the SMC responds before the boot flow depends on it. Mismatch i
 and ahead of every fuse consumer in the flow.
 |[S09] clocks |`pll_init()`: if the `bl0_pll_clk` strap is clear, stay on the 100 MHz
 reference clock. If set: read the target sysclk frequency from the `SYSCLK_FREQ_MHZ` fuse
-field (blank fuses fall back to refclk with a warning), poll PLL lock detect, then switch the
-clock mux to the PLL. The resulting sysclk frequency parameterizes the SPI clock divider
-(<<sec:spi>>). The PLL and the mux are SMC-owned; SEP has none of its own.
+field (blank fuses fall back to refclk with a warning), then call
+`sep_pll_lock_and_select()` to wait for lock, switch the clock mux to the PLL and return the
+resulting sysclk frequency, which parameterizes the SPI clock divider (<<sec:spi>>). The PLL and
+the mux are SMC-owned adopter IP, so the open ROM links a weak `sep_pll_lock_and_select()` that
+touches no hardware, reports `REF_CLK_SELECTED` and returns the 100 MHz reference clock; a build
+with a PLL driver overrides it through `OCAH_FW_OVERLAY_SOURCES_sep`.
 |[S10] `bl0_state` |Hand-off block initialized at the top of DCCM (<<sec:handoff>>).
 |[S11] lifecycle |LC_STATE read + policy (<<sec:fuses>>).
 |[S12] chip ID |`CHIP_CONFIG_CHIP_ID` read and reported.
@@ -1314,8 +1317,8 @@ over I3C by the platform, per the SMC ROM specification):
 
 An OCAH chiplet is either *primary* or *secondary*, selected by a hardware strap. Straps are
 latched at cold reset and exposed in the supplementary region of the SMC adopter external
-window; the SEP reads them over the SMC window (`STRAPS_LO` @ `0x40_5800`, `STRAPS_HI` @
-`0x40_5804`). The strap bit positions are part of
+window; the SEP reads them over the SMC window (`STRAPS_LO` @ `0x40_3000`, `STRAPS_HI` @
+`0x40_3004`). The strap bit positions are part of
 the SEP↔SMC interface contract.
 
 [[tbl:straps]]
@@ -3139,8 +3142,9 @@ denotes a following 16-bit payload word.
 |[S07] status init |`STATUS_REPORTING_ENABLED` / `_DISABLED` (DEBUG), `STATUS_REPORTING_READY`
 (DEBUG) |`STATUS_REPORTING_INVALID`
 |[S08] fuse sense |`FUSE_SENSE_WAIT` (DEBUG) |— (unbounded poll; hang is the failure mode)
-|[S09] clocks |`PLL_CLK_INIT`; then `WAIT_FOR_PLL_LOCK` before the lock poll, or
-`PLL_FUSES_BLANK` and `REF_CLK_SELECTED`; then `INFO_EXT` (MHz) |`PLL_FUSES_BLANK` (WARN); — for
+|[S09] clocks |`PLL_CLK_INIT`; then `WAIT_FOR_PLL_LOCK` before the lock poll (followed by
+`REF_CLK_SELECTED` when no PLL driver is linked), or `PLL_FUSES_BLANK` and `REF_CLK_SELECTED`;
+then `INFO_EXT` (MHz) |`PLL_FUSES_BLANK` (WARN); — for
 the lock poll (unbounded; hang is the failure mode)
 |[S11] lifecycle |`FUSE_LC_STATE` → `INFO_EXT` (state); `LIFECYCLE_VALID`
 |`LIFECYCLE_INVALID` (ERROR) + `ROM_ERR_LIFECYCLE_INVALID`

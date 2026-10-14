@@ -2,8 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_reset_release_sync_test - reset deassertion synchronization.
 
-Measured against `hw/sys/smu/doc/port_table.adoc`, the only SMU specification
-in this tree: the `rst_cold_ni` row states "Asynchronous assertion, synchronous
+Measured against `hw/sys/smu/doc/port_table.adoc`: the `rst_cold_ni` row states "Asynchronous assertion, synchronous
 deassertion", and the `rst_cold_stable_ref_clk_no` / `rst_primary_ref_clk_no` /
 `rst_primary_smc_clk_no` rows name the domain each output is synchronized to.
 Those two statements are what the checks below require,

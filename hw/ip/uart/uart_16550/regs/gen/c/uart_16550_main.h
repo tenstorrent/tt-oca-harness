@@ -14,12 +14,19 @@ extern "C" {
 #include <assert.h>
 
 // reg - uart_16550_main::RBR
+// Receiver Buffer Register
+// Received Data. Contains a received character. If FIFOs are enabled, this field
+// points to the bottom of the RX FIFO. Otherwise, this field points to a single-
+// byte Receiver Buffer Register.
 #define UART_16550_MAIN__RBR__DATA_bm 0xff
 #define UART_16550_MAIN__RBR__DATA_bp 0
 #define UART_16550_MAIN__RBR__DATA_bw 8
 #define UART_16550_MAIN__RBR__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Received Data. Contains a received character. If FIFOs are enabled, this field
+        // points to the bottom of the RX FIFO. Otherwise, this field points to a single-
+        // byte Receiver Buffer Register.
         uint32_t DATA :8;
         uint32_t :24;
     } f;
@@ -27,32 +34,45 @@ typedef union {
 } uart_16550_main__RBR_t;
 
 // reg - uart_16550_main::IER
+// Interrupt Enable Register
+// Enable Receiver Buffer Full (Received Data Ready) Interrupt.
 #define UART_16550_MAIN__IER__ERBFI_bm 0x1
 #define UART_16550_MAIN__IER__ERBFI_bp 0
 #define UART_16550_MAIN__IER__ERBFI_bw 1
 #define UART_16550_MAIN__IER__ERBFI_reset 0x0
+// Enable Transmitter Buffer Empty (Transmitter Holding Register Empty)
+// Interrupt.
 #define UART_16550_MAIN__IER__ETBEI_bm 0x2
 #define UART_16550_MAIN__IER__ETBEI_bp 1
 #define UART_16550_MAIN__IER__ETBEI_bw 1
 #define UART_16550_MAIN__IER__ETBEI_reset 0x0
+// Enable (Receiver) Line Status Interrupt.
 #define UART_16550_MAIN__IER__ELSI_bm 0x4
 #define UART_16550_MAIN__IER__ELSI_bp 2
 #define UART_16550_MAIN__IER__ELSI_bw 1
 #define UART_16550_MAIN__IER__ELSI_reset 0x0
+// Enable (Delta Status of) Modem Status Interrupt.
 #define UART_16550_MAIN__IER__EDSSI_bm 0x8
 #define UART_16550_MAIN__IER__EDSSI_bp 3
 #define UART_16550_MAIN__IER__EDSSI_bw 1
 #define UART_16550_MAIN__IER__EDSSI_reset 0x0
+// Enable FIFO Error Interrupt.
 #define UART_16550_MAIN__IER__EFEI_bm 0x10
 #define UART_16550_MAIN__IER__EFEI_bp 4
 #define UART_16550_MAIN__IER__EFEI_bw 1
 #define UART_16550_MAIN__IER__EFEI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable Receiver Buffer Full (Received Data Ready) Interrupt.
         uint32_t ERBFI :1;
+        // Enable Transmitter Buffer Empty (Transmitter Holding Register Empty)
+        // Interrupt.
         uint32_t ETBEI :1;
+        // Enable (Receiver) Line Status Interrupt.
         uint32_t ELSI :1;
+        // Enable (Delta Status of) Modem Status Interrupt.
         uint32_t EDSSI :1;
+        // Enable FIFO Error Interrupt.
         uint32_t EFEI :1;
         uint32_t :27;
     } f;
@@ -60,23 +80,46 @@ typedef union {
 } uart_16550_main__IER_t;
 
 // reg - uart_16550_main::IIR
+// Interrupt Identification Register
+// Interrupt Pending. Active-low.
 #define UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm 0x1
 #define UART_16550_MAIN__IIR__INTERRUPT_PENDING_bp 0
 #define UART_16550_MAIN__IIR__INTERRUPT_PENDING_bw 1
 #define UART_16550_MAIN__IIR__INTERRUPT_PENDING_reset 0x1
+// Interrupt ID:
+// * `0x7` - FIFO Error Interrupt                         (priority 0)
+// * `0x3` - Receiver Line Status Interrupt               (priority 1)
+// * `0x6` - Reception Timeout Interrupt                  (priority 2)
+// * `0x2` - Received Data Ready Interrupt                (priority 3)
+// * `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)
+// * `0x0` - Modem Status Interrupt                       (priority 5)
 #define UART_16550_MAIN__IIR__INTERRUPT_ID_bm 0xe
 #define UART_16550_MAIN__IIR__INTERRUPT_ID_bp 1
 #define UART_16550_MAIN__IIR__INTERRUPT_ID_bw 3
 #define UART_16550_MAIN__IIR__INTERRUPT_ID_reset 0x0
+// FIFOs Enabled:
+// * `0x0` - FIFOs are disabled
+// * `0x3` - FIFOs are enabled
 #define UART_16550_MAIN__IIR__FIFOS_ENABLED_bm 0xc0
 #define UART_16550_MAIN__IIR__FIFOS_ENABLED_bp 6
 #define UART_16550_MAIN__IIR__FIFOS_ENABLED_bw 2
 #define UART_16550_MAIN__IIR__FIFOS_ENABLED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Interrupt Pending. Active-low.
         uint32_t INTERRUPT_PENDING :1;
+        // Interrupt ID:
+        // * `0x7` - FIFO Error Interrupt                         (priority 0)
+        // * `0x3` - Receiver Line Status Interrupt               (priority 1)
+        // * `0x6` - Reception Timeout Interrupt                  (priority 2)
+        // * `0x2` - Received Data Ready Interrupt                (priority 3)
+        // * `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)
+        // * `0x0` - Modem Status Interrupt                       (priority 5)
         uint32_t INTERRUPT_ID :3;
         uint32_t :2;
+        // FIFOs Enabled:
+        // * `0x0` - FIFOs are disabled
+        // * `0x3` - FIFOs are enabled
         uint32_t FIFOS_ENABLED :2;
         uint32_t :24;
     } f;
@@ -84,42 +127,81 @@ typedef union {
 } uart_16550_main__IIR_t;
 
 // reg - uart_16550_main::LCR
+// Line Control Register
+// Word Length Select:
+// * `0x0` - 5 bits per character
+// * `0x1` - 6 bits per character
+// * `0x2` - 7 bits per character
+// * `0x3` - 8 bits per character
 #define UART_16550_MAIN__LCR__WLS_bm 0x3
 #define UART_16550_MAIN__LCR__WLS_bp 0
 #define UART_16550_MAIN__LCR__WLS_bw 2
 #define UART_16550_MAIN__LCR__WLS_reset 0x0
+// Stop Bits:
+// * `0` - 1 stop bit.
+// * `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)
 #define UART_16550_MAIN__LCR__STB_bm 0x4
 #define UART_16550_MAIN__LCR__STB_bp 2
 #define UART_16550_MAIN__LCR__STB_bw 1
 #define UART_16550_MAIN__LCR__STB_reset 0x0
+// Parity Enable.
 #define UART_16550_MAIN__LCR__PEN_bm 0x8
 #define UART_16550_MAIN__LCR__PEN_bp 3
 #define UART_16550_MAIN__LCR__PEN_bw 1
 #define UART_16550_MAIN__LCR__PEN_reset 0x0
+// Even Parity Select:
+// * `1` - even parity
+// * `0` - odd parity
 #define UART_16550_MAIN__LCR__EPS_bm 0x10
 #define UART_16550_MAIN__LCR__EPS_bp 4
 #define UART_16550_MAIN__LCR__EPS_bw 1
 #define UART_16550_MAIN__LCR__EPS_reset 0x0
+// Stick Parity. If set, forces the transmit and received parity bits to be `0` if
+// even parity is selected and `1` if odd parity is selected.
 #define UART_16550_MAIN__LCR__STICK_PARITY_bm 0x20
 #define UART_16550_MAIN__LCR__STICK_PARITY_bp 5
 #define UART_16550_MAIN__LCR__STICK_PARITY_bw 1
 #define UART_16550_MAIN__LCR__STICK_PARITY_reset 0x0
+// Set Break. If set, forces the `tx_o` output to `0` to cause a break condition
+// on the receiving UART.
 #define UART_16550_MAIN__LCR__SET_BREAK_bm 0x40
 #define UART_16550_MAIN__LCR__SET_BREAK_bp 6
 #define UART_16550_MAIN__LCR__SET_BREAK_bw 1
 #define UART_16550_MAIN__LCR__SET_BREAK_reset 0x0
+// Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers
+// when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access
+// to the `THR`, `RBR`, and `IIR` registers.
 #define UART_16550_MAIN__LCR__DLAB_bm 0x80
 #define UART_16550_MAIN__LCR__DLAB_bp 7
 #define UART_16550_MAIN__LCR__DLAB_bw 1
 #define UART_16550_MAIN__LCR__DLAB_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Word Length Select:
+        // * `0x0` - 5 bits per character
+        // * `0x1` - 6 bits per character
+        // * `0x2` - 7 bits per character
+        // * `0x3` - 8 bits per character
         uint32_t WLS :2;
+        // Stop Bits:
+        // * `0` - 1 stop bit.
+        // * `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)
         uint32_t STB :1;
+        // Parity Enable.
         uint32_t PEN :1;
+        // Even Parity Select:
+        // * `1` - even parity
+        // * `0` - odd parity
         uint32_t EPS :1;
+        // Stick Parity. If set, forces the transmit and received parity bits to be `0` if
+        // even parity is selected and `1` if odd parity is selected.
         uint32_t STICK_PARITY :1;
+        // Set Break. If set, forces the `tx_o` output to `0` to cause a break condition
+        // on the receiving UART.
         uint32_t SET_BREAK :1;
+        // Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers
+        // when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access
+        // to the `THR`, `RBR`, and `IIR` registers.
         uint32_t DLAB :1;
         uint32_t :24;
     } f;
@@ -127,37 +209,62 @@ typedef union {
 } uart_16550_main__LCR_t;
 
 // reg - uart_16550_main::MCR
+// Modem Control Register
+// Data Terminal Ready. Writing to this bit drives the `dtr_no` output in the
+// opposite polarity.
 #define UART_16550_MAIN__MCR__DTR_bm 0x1
 #define UART_16550_MAIN__MCR__DTR_bp 0
 #define UART_16550_MAIN__MCR__DTR_bw 1
 #define UART_16550_MAIN__MCR__DTR_reset 0x0
+// Request to Send. Writing to this bit drives the `rts_no` output in the opposite
+// polarity.
 #define UART_16550_MAIN__MCR__RTS_bm 0x2
 #define UART_16550_MAIN__MCR__RTS_bp 1
 #define UART_16550_MAIN__MCR__RTS_bw 1
 #define UART_16550_MAIN__MCR__RTS_reset 0x0
+// User Output 1. Writing to this bit drives the `out1_no` in the opposite
+// polarity.
 #define UART_16550_MAIN__MCR__OUT1_bm 0x4
 #define UART_16550_MAIN__MCR__OUT1_bp 2
 #define UART_16550_MAIN__MCR__OUT1_bw 1
 #define UART_16550_MAIN__MCR__OUT1_reset 0x0
+// User Output 2. Writing to this bit drives the `out2_no` in the opposite
+// polarity.
 #define UART_16550_MAIN__MCR__OUT2_bm 0x8
 #define UART_16550_MAIN__MCR__OUT2_bp 3
 #define UART_16550_MAIN__MCR__OUT2_bw 1
 #define UART_16550_MAIN__MCR__OUT2_reset 0x0
+// System Loopback. If set, the transmitter is internally connected to the
+// receiver. The `tx_o` output is set to `1`.
 #define UART_16550_MAIN__MCR__LOOP_bm 0x10
 #define UART_16550_MAIN__MCR__LOOP_bp 4
 #define UART_16550_MAIN__MCR__LOOP_bw 1
 #define UART_16550_MAIN__MCR__LOOP_reset 0x0
+// Line Loopback. If set, the `rx_i` input is internally connected to the
+// `tx_o` output.
 #define UART_16550_MAIN__MCR__LINE_LOOPBACK_bm 0x20
 #define UART_16550_MAIN__MCR__LINE_LOOPBACK_bp 5
 #define UART_16550_MAIN__MCR__LINE_LOOPBACK_bw 1
 #define UART_16550_MAIN__MCR__LINE_LOOPBACK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Data Terminal Ready. Writing to this bit drives the `dtr_no` output in the
+        // opposite polarity.
         uint32_t DTR :1;
+        // Request to Send. Writing to this bit drives the `rts_no` output in the opposite
+        // polarity.
         uint32_t RTS :1;
+        // User Output 1. Writing to this bit drives the `out1_no` in the opposite
+        // polarity.
         uint32_t OUT1 :1;
+        // User Output 2. Writing to this bit drives the `out2_no` in the opposite
+        // polarity.
         uint32_t OUT2 :1;
+        // System Loopback. If set, the transmitter is internally connected to the
+        // receiver. The `tx_o` output is set to `1`.
         uint32_t LOOP :1;
+        // Line Loopback. If set, the `rx_i` input is internally connected to the
+        // `tx_o` output.
         uint32_t LINE_LOOPBACK :1;
         uint32_t :26;
     } f;
@@ -165,47 +272,100 @@ typedef union {
 } uart_16550_main__MCR_t;
 
 // reg - uart_16550_main::LSR
+// Line Status Register
+// Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO
+// mode) contains data.
 #define UART_16550_MAIN__LSR__DR_bm 0x1
 #define UART_16550_MAIN__LSR__DR_bp 0
 #define UART_16550_MAIN__LSR__DR_bw 1
 #define UART_16550_MAIN__LSR__DR_reset 0x0
+// Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
+// Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character
+// is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.
+// This bit triggers the Receiver Line Status Interrupt.
 #define UART_16550_MAIN__LSR__OE_bm 0x2
 #define UART_16550_MAIN__LSR__OE_bp 1
 #define UART_16550_MAIN__LSR__OE_bw 1
 #define UART_16550_MAIN__LSR__OE_reset 0x0
+// Parity Error. When set, indicates that the character at the top of the receiver
+// FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the
+// Receiver Line Status Interrupt.
 #define UART_16550_MAIN__LSR__PE_bm 0x4
 #define UART_16550_MAIN__LSR__PE_bp 2
 #define UART_16550_MAIN__LSR__PE_bw 1
 #define UART_16550_MAIN__LSR__PE_reset 0x0
+// Framing Error. When set, indicates that the received character is missing a
+// stop bit. In FIFO mode, this bit is set when the character reaches the top of
+// the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.
+// This bit triggers the Receiver Line Status Interrupt.
 #define UART_16550_MAIN__LSR__FE_bm 0x8
 #define UART_16550_MAIN__LSR__FE_bp 3
 #define UART_16550_MAIN__LSR__FE_bw 1
 #define UART_16550_MAIN__LSR__FE_reset 0x0
+// Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire
+// frame's time (start + data + parity + stop bits). In FIFO mode, this bit set
+// when the character reaches the top of the receiver FIFO. In non-FIFO mode, this
+// bit is set when the character enters the RBR. This bit triggers the Receiver
+// Line Status Interrupt.
 #define UART_16550_MAIN__LSR__BI_bm 0x10
 #define UART_16550_MAIN__LSR__BI_bp 4
 #define UART_16550_MAIN__LSR__BI_bw 1
 #define UART_16550_MAIN__LSR__BI_reset 0x0
+// Transmitter Holding Register Empty. When set, indicates that the TX FIFO (or
+// THR in non-FIFO mode) is empty. Clearing the Transmitter Holding Register Empty
+// Interrupt does NOT clear this bit.
 #define UART_16550_MAIN__LSR__THRE_bm 0x20
 #define UART_16550_MAIN__LSR__THRE_bp 5
 #define UART_16550_MAIN__LSR__THRE_bw 1
 #define UART_16550_MAIN__LSR__THRE_reset 0x1
+// Transmitter Empty. When set, indicates that the transmitter shift register and
+// the transmitter FIFO (or THR in non-FIFO mode) are empty.
 #define UART_16550_MAIN__LSR__TEMT_bm 0x40
 #define UART_16550_MAIN__LSR__TEMT_bp 6
 #define UART_16550_MAIN__LSR__TEMT_bw 1
 #define UART_16550_MAIN__LSR__TEMT_reset 0x1
+// Error in Receiver FIFO. When set, indicates that the receiver FIFO or (RBR in
+// non-FIFO mode) has the parity, framing, or break error. In other words, at
+// least one of the PE, FE, and BI bits is set.
 #define UART_16550_MAIN__LSR__ERROR_IN_RCVR_FIFO_bm 0x80
 #define UART_16550_MAIN__LSR__ERROR_IN_RCVR_FIFO_bp 7
 #define UART_16550_MAIN__LSR__ERROR_IN_RCVR_FIFO_bw 1
 #define UART_16550_MAIN__LSR__ERROR_IN_RCVR_FIFO_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO
+        // mode) contains data.
         uint32_t DR :1;
+        // Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
+        // Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character
+        // is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.
+        // This bit triggers the Receiver Line Status Interrupt.
         uint32_t OE :1;
+        // Parity Error. When set, indicates that the character at the top of the receiver
+        // FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the
+        // Receiver Line Status Interrupt.
         uint32_t PE :1;
+        // Framing Error. When set, indicates that the received character is missing a
+        // stop bit. In FIFO mode, this bit is set when the character reaches the top of
+        // the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.
+        // This bit triggers the Receiver Line Status Interrupt.
         uint32_t FE :1;
+        // Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire
+        // frame's time (start + data + parity + stop bits). In FIFO mode, this bit set
+        // when the character reaches the top of the receiver FIFO. In non-FIFO mode, this
+        // bit is set when the character enters the RBR. This bit triggers the Receiver
+        // Line Status Interrupt.
         uint32_t BI :1;
+        // Transmitter Holding Register Empty. When set, indicates that the TX FIFO (or
+        // THR in non-FIFO mode) is empty. Clearing the Transmitter Holding Register Empty
+        // Interrupt does NOT clear this bit.
         uint32_t THRE :1;
+        // Transmitter Empty. When set, indicates that the transmitter shift register and
+        // the transmitter FIFO (or THR in non-FIFO mode) are empty.
         uint32_t TEMT :1;
+        // Error in Receiver FIFO. When set, indicates that the receiver FIFO or (RBR in
+        // non-FIFO mode) has the parity, framing, or break error. In other words, at
+        // least one of the PE, FE, and BI bits is set.
         uint32_t ERROR_IN_RCVR_FIFO :1;
         uint32_t :24;
     } f;
@@ -213,47 +373,86 @@ typedef union {
 } uart_16550_main__LSR_t;
 
 // reg - uart_16550_main::MSR
+// Modem Status Register
+// Delta Clear to Send. When set, indicates that the `CTS` bit has changed since
+// the last time this register was read. This bit triggers the Modem Status
+// Interrupt.
 #define UART_16550_MAIN__MSR__DCTS_bm 0x1
 #define UART_16550_MAIN__MSR__DCTS_bp 0
 #define UART_16550_MAIN__MSR__DCTS_bw 1
 #define UART_16550_MAIN__MSR__DCTS_reset 0x0
+// Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since
+// the last time this register was read. This bit triggers the Modem Status
+// Interrupt.
 #define UART_16550_MAIN__MSR__DDSR_bm 0x2
 #define UART_16550_MAIN__MSR__DDSR_bp 1
 #define UART_16550_MAIN__MSR__DDSR_bw 1
 #define UART_16550_MAIN__MSR__DDSR_reset 0x0
+// Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed
+// from a `1` to a `0`. This bit triggers the Modem Status Interrupt.
 #define UART_16550_MAIN__MSR__TERI_bm 0x4
 #define UART_16550_MAIN__MSR__TERI_bp 2
 #define UART_16550_MAIN__MSR__TERI_bw 1
 #define UART_16550_MAIN__MSR__TERI_reset 0x0
+// Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed
+// since the last time this register was read. This bit triggers the Modem Status
+// Interrupt.
 #define UART_16550_MAIN__MSR__DDCD_bm 0x8
 #define UART_16550_MAIN__MSR__DDCD_bp 3
 #define UART_16550_MAIN__MSR__DDCD_bw 1
 #define UART_16550_MAIN__MSR__DDCD_reset 0x0
+// Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so
+// it reads `1` while the remote device is ready to receive data.
 #define UART_16550_MAIN__MSR__CTS_bm 0x10
 #define UART_16550_MAIN__MSR__CTS_bp 4
 #define UART_16550_MAIN__MSR__CTS_bw 1
 #define UART_16550_MAIN__MSR__CTS_reset 0x0
+// Data Set Ready. This bit reflects the `dsr_ni` input in the opposite polarity,
+// so it reads `1` while the remote modem is connected and ready.
 #define UART_16550_MAIN__MSR__DSR_bm 0x20
 #define UART_16550_MAIN__MSR__DSR_bp 5
 #define UART_16550_MAIN__MSR__DSR_bw 1
 #define UART_16550_MAIN__MSR__DSR_reset 0x0
+// Ring Indicator. This bit reflects the `ri_ni` input in the opposite polarity, so
+// it reads `1` while the remote modem signals an incoming call.
 #define UART_16550_MAIN__MSR__RI_bm 0x40
 #define UART_16550_MAIN__MSR__RI_bp 6
 #define UART_16550_MAIN__MSR__RI_bw 1
 #define UART_16550_MAIN__MSR__RI_reset 0x0
+// Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite
+// polarity, so it reads `1` while a carrier is detected.
 #define UART_16550_MAIN__MSR__DCD_bm 0x80
 #define UART_16550_MAIN__MSR__DCD_bp 7
 #define UART_16550_MAIN__MSR__DCD_bw 1
 #define UART_16550_MAIN__MSR__DCD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Delta Clear to Send. When set, indicates that the `CTS` bit has changed since
+        // the last time this register was read. This bit triggers the Modem Status
+        // Interrupt.
         uint32_t DCTS :1;
+        // Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since
+        // the last time this register was read. This bit triggers the Modem Status
+        // Interrupt.
         uint32_t DDSR :1;
+        // Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed
+        // from a `1` to a `0`. This bit triggers the Modem Status Interrupt.
         uint32_t TERI :1;
+        // Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed
+        // since the last time this register was read. This bit triggers the Modem Status
+        // Interrupt.
         uint32_t DDCD :1;
+        // Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so
+        // it reads `1` while the remote device is ready to receive data.
         uint32_t CTS :1;
+        // Data Set Ready. This bit reflects the `dsr_ni` input in the opposite polarity,
+        // so it reads `1` while the remote modem is connected and ready.
         uint32_t DSR :1;
+        // Ring Indicator. This bit reflects the `ri_ni` input in the opposite polarity, so
+        // it reads `1` while the remote modem signals an incoming call.
         uint32_t RI :1;
+        // Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite
+        // polarity, so it reads `1` while a carrier is detected.
         uint32_t DCD :1;
         uint32_t :24;
     } f;
@@ -261,12 +460,15 @@ typedef union {
 } uart_16550_main__MSR_t;
 
 // reg - uart_16550_main::SCR
+// Scratch Register
+// Scratch. Holds user data.
 #define UART_16550_MAIN__SCR__SCR_bm 0xff
 #define UART_16550_MAIN__SCR__SCR_bp 0
 #define UART_16550_MAIN__SCR__SCR_bw 8
 #define UART_16550_MAIN__SCR__SCR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Scratch. Holds user data.
         uint32_t SCR :8;
         uint32_t :24;
     } f;
@@ -274,12 +476,43 @@ typedef union {
 } uart_16550_main__SCR_t;
 
 // reg - uart_16550_main::ECR
+// Extended Control Register
+// Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least
+// significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The
+// configurations for the trigger levels are:
+// * `0x0` -    1 character
+// * `0x1` -    4 characters
+// * `0x2` -    8 characters
+// * `0x3` -   14 characters
+// * `0x4` -   32 characters
+// * `0x5` -   64 characters
+// * `0x6` -  128 characters
+// * `0x7` -  256 characters
+// * `0x8` -  512 characters
+// * `0x9` - 1024 characters
+// * `0xA` - 2048 characters
+// * `0xB` - 4096 characters
 #define UART_16550_MAIN__ECR__RCVR_TRIGGER_MS2B_bm 0x3
 #define UART_16550_MAIN__ECR__RCVR_TRIGGER_MS2B_bp 0
 #define UART_16550_MAIN__ECR__RCVR_TRIGGER_MS2B_bw 2
 #define UART_16550_MAIN__ECR__RCVR_TRIGGER_MS2B_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least
+        // significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The
+        // configurations for the trigger levels are:
+        // * `0x0` -    1 character
+        // * `0x1` -    4 characters
+        // * `0x2` -    8 characters
+        // * `0x3` -   14 characters
+        // * `0x4` -   32 characters
+        // * `0x5` -   64 characters
+        // * `0x6` -  128 characters
+        // * `0x7` -  256 characters
+        // * `0x8` -  512 characters
+        // * `0x9` - 1024 characters
+        // * `0xA` - 2048 characters
+        // * `0xB` - 4096 characters
         uint32_t RCVR_TRIGGER_MS2B :2;
         uint32_t :30;
     } f;
@@ -287,37 +520,62 @@ typedef union {
 } uart_16550_main__ECR_t;
 
 // reg - uart_16550_main::ITR
+// Interrupt Test Register
+// Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces
+// the interrupt and writing `0` releases it.
 #define UART_16550_MAIN__ITR__TRBFI_bm 0x1
 #define UART_16550_MAIN__ITR__TRBFI_bp 0
 #define UART_16550_MAIN__ITR__TRBFI_bw 1
 #define UART_16550_MAIN__ITR__TRBFI_reset 0x0
+// Test Transmitter Buffer Empty (Transmitter Holding Register Empty) Interrupt.
+// Writing `1` forces the interrupt and writing `0` releases it.
 #define UART_16550_MAIN__ITR__TTBEI_bm 0x2
 #define UART_16550_MAIN__ITR__TTBEI_bp 1
 #define UART_16550_MAIN__ITR__TTBEI_bw 1
 #define UART_16550_MAIN__ITR__TTBEI_reset 0x0
+// Test (Receiver) Line Status Interrupt. Writing `1` forces the interrupt and
+// writing `0` releases it.
 #define UART_16550_MAIN__ITR__TLSI_bm 0x4
 #define UART_16550_MAIN__ITR__TLSI_bp 2
 #define UART_16550_MAIN__ITR__TLSI_bw 1
 #define UART_16550_MAIN__ITR__TLSI_reset 0x0
+// Test (Delta Status of) Modem Status Interrupt. Writing `1` forces the
+// interrupt and writing `0` releases it.
 #define UART_16550_MAIN__ITR__TDSSI_bm 0x8
 #define UART_16550_MAIN__ITR__TDSSI_bp 3
 #define UART_16550_MAIN__ITR__TDSSI_bw 1
 #define UART_16550_MAIN__ITR__TDSSI_reset 0x0
+// Test FIFO Error Interrupt. Writing `1` forces the interrupt and writing `0`
+// releases it.
 #define UART_16550_MAIN__ITR__TFEI_bm 0x10
 #define UART_16550_MAIN__ITR__TFEI_bp 4
 #define UART_16550_MAIN__ITR__TFEI_bw 1
 #define UART_16550_MAIN__ITR__TFEI_reset 0x0
+// Test Reception Timeout Interrupt. Writing a `1` forces the interrupt and
+// writing `0` releases it.
 #define UART_16550_MAIN__ITR__TRTI_bm 0x20
 #define UART_16550_MAIN__ITR__TRTI_bp 5
 #define UART_16550_MAIN__ITR__TRTI_bw 1
 #define UART_16550_MAIN__ITR__TRTI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces
+        // the interrupt and writing `0` releases it.
         uint32_t TRBFI :1;
+        // Test Transmitter Buffer Empty (Transmitter Holding Register Empty) Interrupt.
+        // Writing `1` forces the interrupt and writing `0` releases it.
         uint32_t TTBEI :1;
+        // Test (Receiver) Line Status Interrupt. Writing `1` forces the interrupt and
+        // writing `0` releases it.
         uint32_t TLSI :1;
+        // Test (Delta Status of) Modem Status Interrupt. Writing `1` forces the
+        // interrupt and writing `0` releases it.
         uint32_t TDSSI :1;
+        // Test FIFO Error Interrupt. Writing `1` forces the interrupt and writing `0`
+        // releases it.
         uint32_t TFEI :1;
+        // Test Reception Timeout Interrupt. Writing a `1` forces the interrupt and
+        // writing `0` releases it.
         uint32_t TRTI :1;
         uint32_t :26;
     } f;
@@ -325,6 +583,8 @@ typedef union {
 } uart_16550_main__ITR_t;
 
 // addrmap - uart_16550_main
+// Contains the mode-independent registers and the read-only registers accessible only
+// when `DLAB = 0`.
 typedef struct __attribute__ ((__packed__)) {
     uart_16550_main__RBR_t RBR;
     uart_16550_main__IER_t IER;

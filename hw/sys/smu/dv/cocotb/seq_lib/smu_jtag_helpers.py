@@ -966,7 +966,7 @@ async def sep_otp_jtag2axi_single_read(
     size: int = SMC_OTP_AXSIZE_4B,
     poll_limit: int = 32,
 ) -> tuple[int, int]:
-    """Issue SEP OTP SINGLE_OP read (SEP=0: bridge absent; for idle contrast)."""
+    """Issue a SEP OTP SINGLE_OP read and poll its status."""
     raw = pack_otp_single_op(J2A_OP_READ, addr, 0, wstrb=0, size=size)
     await jtag.write("SEP_OTP_AXI_SINGLE_OP", raw)
     await ClockCycles(cocotb.top.clk_smu_i, 32)

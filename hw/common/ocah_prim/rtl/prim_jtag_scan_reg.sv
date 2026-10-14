@@ -11,9 +11,7 @@
 // scan_out_o is the serial LSB of the shift flops.
 
 module prim_jtag_scan_reg
-    import prim_jtag_pkg::*;
-
-    `include "prim_assert.sv"
+    `include "ocah_assert.svh"
 #(
     parameter bit                LOCKUP = 0,  // Adds a falling-edge TCK lockup flop on scan_out_o.
                                  USE_CHRST = 0,  // Resets from chrst_n for TMP-controlled reset instead of rst_n.
@@ -31,7 +29,7 @@ module prim_jtag_scan_reg
     output logic [WIDTH-1:0]  data_out_o  // Parallel update data, held in the update register.
 );
 
-    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(WidthGtZero_A, WIDTH > 0)
+    `OCAH_ASSERT_STATIC(WidthGtZero_A, WIDTH > 0)
 
     logic              capture_selected, shift_selected, update_selected;
     logic              scan_rst_n;

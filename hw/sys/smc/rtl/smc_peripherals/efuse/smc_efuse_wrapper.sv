@@ -10,10 +10,7 @@
 // lifecycle state is PROD or RMA_SiP or fails its integrity check, except reads of
 // JTAG_PUBLIC_IDENTITY outside an integrity error.
 
-module smc_efuse_wrapper
-  import smc_pkg::*;
-  import smc_efuse_pkg::*;
-(
+module smc_efuse_wrapper (
   input  logic                                       clk_i,  // SMC core clock for the
                                                              // eFuse controller and JTAG
                                                              // access filter.

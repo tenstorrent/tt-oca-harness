@@ -60,45 +60,23 @@ extern "C" {
 #define I2C_DEFAULT_TX_THRESH 5
 #define I2C_DEFAULT_ACQ_THRESH 29
 
-// Timeout values (in system clock cycles)
-/* Default poll bound for driver waits, in loop iterations.
- *
- * Finite by design: a bound that cannot expire inside a simulation lets every
- * driver wait -- controller read, controller write completion, wait_idle --
- * end only when the harness kills the run, which makes the NACK /
- * arbitration-lost / bus-timeout diagnostics behind those waits, and the
- * callers' failure branches, unreachable.
- *
- * Derived, not guessed: a poll iteration costs ~1.15 us of simulation (measured
- * over the instruction trace), and the longest legitimate single I2C operation
- * observed in this testbench is the 62-byte standard-mode fill in
- * i2c_acq_fifo_stretch_reset at 5.58 ms. 20000 iterations is ~23 ms, roughly
- * 4x that worst case, and finite.
- */
-/* SMC I2C FIFO depths. The FMT, RX and TX depths are the OpenTitan I2C
- * FifoDepth default of 64, which the IP documentation adopts without
- * restating; the ACQ depth is the SMC integration override in
- * hw/sys/smc/doc/periphs.adoc (I2cTargetRxFifoDepth: IP default 268, SMC
- * value 64). No generated C export carries them, so keep this table in step
- * with that override table; the IP default of 268 must not be assumed at the
- * SMC level. */
+/* SMC I2C FIFO depths. The IP defaults are the parameters of hw/ip/i2c/rtl/i2c_core.sv
+ * (CONTROLLER_TX_FIFO_DEPTH, CONTROLLER_RX_FIFO_DEPTH and TARGET_TX_FIFO_DEPTH 64,
+ * TARGET_RX_FIFO_DEPTH 268); the SMC integration overrides the target RX depth to 64
+ * (hw/sys/smc/doc/periphs.adoc, smc_config_pkg::I2cTargetRxFifoDepth). No generated C export
+ * carries them, so keep this table in step with those two sources; the IP default of 268 must
+ * not be assumed at the SMC level. */
 #define I2C_CONTROLLER_TX_FIFO_DEPTH 64u
 #define I2C_CONTROLLER_RX_FIFO_DEPTH 64u
 #define I2C_TARGET_TX_FIFO_DEPTH 64u
 #define I2C_TARGET_RX_FIFO_DEPTH 64u
 
-/* Sized against the worst legitimate wait, which is not a plain transfer.
- * Several tests here deliberately provoke clock stretching, where the target
- * holds SCL for as long as software leaves its ACQ FIFO full, so the bound must
- * clear a stretched transaction rather than just a 62-byte standard-mode fill
- * (5.58 ms in i2c_acq_fifo_stretch_reset). A first attempt at 20000 iterations
- * (~23 ms) measured too tight: it failed i2c_p0_stretch, i2c_rw, i2c_p1_dma and
- * i2c_acq_fifo_stretch_reset, each mid-fill.
- *
- * 200000 is ~90-230 ms of simulation at the 0.44-1.15 us/iteration measured
- * across these tests -- ~20x the longest legitimate operation seen, and ~200x
- * smaller than the 0xFFFFFFFF it replaces (~38.6 s, which no run reaches).
- * Finite and reachable is the property that matters; the multiple is margin. */
+// Timeout values (in poll iterations)
+/* Poll bound for driver waits, in loop iterations, not clock cycles. It must be finite, so a
+ * stalled wait fails inside the run and the NACK, arbitration-lost and bus-timeout branches
+ * behind it stay reachable, and it must outlast a clock-stretched transaction, where the target
+ * holds SCL for as long as software leaves its ACQ FIFO full; that wait, not a plain FIFO fill,
+ * is the longest legitimate one. */
 #define I2C_TIMEOUT_DEFAULT 200000u
 #define I2C_TIMEOUT_INFINITE 0xFFFFFFFF
 
@@ -240,10 +218,9 @@ typedef struct {
      * is_start/is_stop alone do not describe an ACQ entry. The classifier maps
      * NACK (4) and NACK_START (5) onto its default leg, which leaves BOTH of
      * them false -- so the common filter `if (e.is_start || e.is_stop) continue;`
-     * accepts a byte the target NACKed as ordinary payload and feeds it into a
-     * comparison buffer. Found while fixing i2c_p1_dma, where exactly that
-     * happened. Check this flag, or switch on `signal`, before treating an entry
-     * as data. NACK_STOP additionally sets is_stop, as it always did. */
+     * accepts a byte the target NACKed as ordinary payload. Check this flag, or
+     * switch on `signal`, before treating an entry as data. NACK_STOP also sets
+     * is_stop. */
     bool is_nack;
 } i2c_acq_entry_t;
 
@@ -346,10 +323,8 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt, bool reset_tx,
  * top of every call, so read it immediately after the reset under test to tell a
  * working ACQRST from one the helper papered over. */
 extern uint32_t g_i2c_acq_reset_needed_drain;
-/* Both drain loops are bounded. These carry the last level the loop actually
- * read, so an expired bound is reported as a failure naming the level it gave
- * up at, rather than as an unbounded spin that can only end in a simulator
- * timeout with no cause attached. */
+/* Both drain loops are bounded; these carry the last level read, so an expired
+ * bound reports the level it stopped at. */
 extern uint32_t g_i2c_acq_reset_residual; /* ACQLVL left when the drain gave up */
 /* Entries the drain removed: near the pre-reset level means ACQRST did nothing,
  * a small count means it worked and a live controller refilled the FIFO. */
@@ -1156,7 +1131,6 @@ void i2c_dump_registers(uint32_t idx);
  * @brief Reset Controller FIFOs (Easy version)
  *
  * Simple FIFO reset that resets all FIFOs at once.
- * Based on i2c_controller_driver.c implementation.
  *
  * @param idx I2C instance index
  */
@@ -1166,7 +1140,6 @@ void i2c_reset_fifos_easy(uint32_t idx);
  * @brief Configure FIFO thresholds (Easy version)
  *
  * Simple threshold configuration for FMT and RX FIFOs.
- * Based on i2c_controller_driver.c implementation.
  *
  * @param idx I2C instance index
  * @param fmt_thresh FMT FIFO threshold
@@ -1178,7 +1151,6 @@ void i2c_configure_threshold_easy(uint32_t idx, uint16_t fmt_thresh, uint16_t rx
  * @brief Wait for controller to become idle (Easy version)
  *
  * Simple polling loop waiting for hostidle status.
- * Based on i2c_controller_driver.c implementation.
  *
  * @param idx I2C instance index
  * @param timeout Timeout value (0 = use default 10000)
@@ -1194,7 +1166,6 @@ int i2c_controller_wait_idle_easy(uint32_t idx, uint32_t timeout);
  * - Verify fmtlvl < FIFO_DEPTH
  *
  * Includes periodic debug output every 4096 iterations.
- * Based on i2c_controller_driver.c implementation.
  *
  * @param idx I2C instance index
  * @param timeout Timeout value (0 = use default 10000)
@@ -1207,7 +1178,6 @@ int i2c_controller_wait_fmt_fifo_space_easy(uint32_t idx, uint32_t timeout);
  *
  * Simple polling loop waiting for RX FIFO to reach desired level.
  * Includes periodic debug output every 4096 iterations.
- * Based on i2c_controller_driver.c implementation.
  *
  * @param idx I2C instance index
  * @param level Required RX FIFO level

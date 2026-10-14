@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_dtp_otp_smc_map_rw_test — SMC OTP J2A MAP SPARE[0] R/W (SEP=1, no Force)."""
+"""smu_dtp_otp_smc_map_rw_test — SMC OTP J2A MAP SPARE[0] R/W (SEP=1)."""
 
 from __future__ import annotations
 

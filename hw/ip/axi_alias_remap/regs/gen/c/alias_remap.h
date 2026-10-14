@@ -14,6 +14,7 @@ extern "C" {
 #include <assert.h>
 
 // reg - alias_remap::remap_region::REGION_START
+// Start of remap region
 #define ALIAS_REMAP__REMAP_REGION__REGION_START__START_ADDR_bm 0xfffffffffff000
 #define ALIAS_REMAP__REMAP_REGION__REGION_START__START_ADDR_bp 12
 #define ALIAS_REMAP__REMAP_REGION__REGION_START__START_ADDR_bw 44
@@ -21,6 +22,7 @@ extern "C" {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t :12;
+        // Start of remap region
         uint64_t start_addr :44;
         uint64_t :8;
     } f;
@@ -28,6 +30,7 @@ typedef union {
 } alias_remap__remap_region__REGION_START_t;
 
 // reg - alias_remap::remap_region::REGION_END
+// End of remap region (non-inclusive).
 #define ALIAS_REMAP__REMAP_REGION__REGION_END__END_ADDR_bm 0xfffffffffff000
 #define ALIAS_REMAP__REMAP_REGION__REGION_END__END_ADDR_bp 12
 #define ALIAS_REMAP__REMAP_REGION__REGION_END__END_ADDR_bw 44
@@ -35,6 +38,7 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t :12;
+        // End of remap region (non-inclusive).
         uint64_t end_addr :44;
         uint64_t :8;
     } f;
@@ -42,14 +46,17 @@ typedef union {
 } alias_remap__remap_region__REGION_END_t;
 
 // reg - alias_remap::remap_region::REGION_ATTRS
+// The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The lower 12 bits of the address are preserved unchanged.
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bm 0xfffffffffff000
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bp 12
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bw 44
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_reset 0x0
+// Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bm 0xf00000000000000
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bp 56
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bw 4
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_reset 0x0
+// If set, this remap will be active
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__VALID_bm 0x8000000000000000
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__VALID_bp 63
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__VALID_bw 1
@@ -57,9 +64,12 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t :12;
+        // The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The lower 12 bits of the address are preserved unchanged.
         uint64_t offset :44;
+        // Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.
         uint64_t cacheable :4;
         uint64_t :3;
+        // If set, this remap will be active
         uint64_t valid :1;
     } f;
     uint64_t w;
@@ -73,6 +83,7 @@ typedef struct __attribute__ ((__packed__)) {
 } alias_remap__remap_region_t;
 
 // addrmap - alias_remap
+// TLB Registers for address remapping and attribute tagging
 typedef struct __attribute__ ((__packed__)) {
     alias_remap__remap_region_t REGION;
 } alias_remap_t;

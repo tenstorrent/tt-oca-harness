@@ -31,12 +31,7 @@
 // substitute with their own vendor IP/macros.
 //-----------------------------------------------------------------------------
 
-module smu_wrapper
-  import sep_pkg::*;
-  import sep_crypto_pkg::*;
-  import sep_io_pkg::*;
-  import km_intf_pkg::*;
-#(
+module smu_wrapper #(
   parameter int unsigned CFG_IDX = 0,
   parameter smu_pkg::smu_cfg_t CFG = smu_pkg::SmuConfigs[CFG_IDX],
   parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
@@ -340,8 +335,8 @@ module smu_wrapper
   sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req;
   sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp;
 
-  ext_trng_axis_req_t ext_trng_axis_req [CFG.EXT_TRNG_NUM_AXIS-1:0];
-  ext_trng_axis_rsp_t ext_trng_axis_rsp [CFG.EXT_TRNG_NUM_AXIS-1:0];
+  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req [CFG.EXT_TRNG_NUM_AXIS-1:0];
+  sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp [CFG.EXT_TRNG_NUM_AXIS-1:0];
 
   logic ext_trng_irq;
 

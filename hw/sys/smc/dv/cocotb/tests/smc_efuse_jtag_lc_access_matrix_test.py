@@ -1,24 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC P2-15 — lifecycle-gated eFuse JTAG access-control matrix.
+"""Lifecycle-gated eFuse JTAG access-control matrix.
 
-Exercises the SMC-OTP JTAG access-control policy using product ports only (no
-Force / no TB encode helper):
+Exercises the SMC-OTP JTAG access-control policy through product ports:
 
   * ``tb_lc_state`` drives ``lc_state_i`` = {diff_n, diff_p} directly, and
   * the ``ej_axi`` AXI-Lite master drives ``axil_smc_otp_jtag_req_i``.
 
-**What is claimed: routing/blocking only.** For each lifecycle state the test
-asserts whether a JTAG-side eFuse access is routed to the access-control error
-slave (DECERR) or reaches the eFuse controller and completes there (OKAY). It
-does **not** claim what an allowed read returns: the map content behind the
-window is ``smc_efuse_map_read_test``'s claim, and the ``details=`` record says
-exactly that. Every access waits for fuse sense first, because until sense
-completes the shadow window answers SLVERR / 0xBADCAB1E to allowed and blocked
-requests alike and no allow verdict taken then is the DUT's decision.
+For each lifecycle state the test checks whether a JTAG-side eFuse access is
+routed to the access-control error slave (DECERR) or reaches the eFuse
+controller and completes there (OKAY); the map content behind an allowed read
+is ``smc_efuse_map_read_test``'s claim. Every access waits for fuse sense first,
+because until sense completes the shadow window answers SLVERR / 0xBADCAB1E to
+allowed and blocked requests alike.
 
-**Where the expected matrix comes from — SPEC, not RTL.**
-``hw/ip/efuse/doc/architecture.adoc`` §"Lifecycle State (LC_STATE) Effects":
+The expected matrix follows ``hw/ip/efuse/doc/architecture.adoc``
+§"Lifecycle State (LC_STATE) Effects":
 
   * lifecycle encodings, :265-282 --
     ``TEST_DEV 0x0 | PROD 0x1 | RMA_SOP 0x2, 0x3 | RMA_CHIPLET 0x6-0x7 |
@@ -38,9 +35,8 @@ The differential encoding of the input is SPEC'd at
 encoded", "tie to 8'hf0 if unused (encoded TEST_DEV)" -- i.e. ``{~raw, raw}``,
 which for ``raw = 0x0`` is exactly ``8'hf0``. Equal halves are therefore not a
 legal encoding of any state; that is the differential-integrity (sigint) case,
-which ``architecture.adoc:281`` classes as ``INVALID ... (error fallback)``, and
-the fail-safe fallback of an access-control gate is to block. That derivation,
-not the wrapper's decode expression, is what the SIGINT row below asserts.
+which ``architecture.adoc:281`` classes as ``INVALID ... (error fallback)``; the
+SIGINT row expects the access-control gate to block on that fallback.
 """
 
 from __future__ import annotations
@@ -121,8 +117,8 @@ def expect_write_blocked(raw: int, sigint: bool) -> bool:
     return raw in LC_JTAG_RESTRICTED
 
 
-# (raw, sigint, label) -- the block/allow expectations are computed from the
-# SPEC rules above, not tabulated by hand.
+# (raw, sigint, label) rows; expect_read_blocked / expect_write_blocked give
+# each row's expectation.
 LC_MATRIX = [
     (LC_TEST_DEV, False, "TEST_DEV"),
     (LC_PROD, False, "PROD"),
@@ -140,8 +136,7 @@ READ_CLASSES = (
 # Hierarchical decode probe. `hw/sys/smc/dv/tb/smc_public_scope.vlt` publishes
 # `lc_state_smc_raw` / `lc_sigint_err` / `is_prod_or_rma_sip` READ-ONLY
 # (`public_flat_rd -module "smc_efuse_wrapper"`), which is what makes this path
-# resolvable under Verilator. Read-only: this test only samples them,
-# so cocotb cannot write internal state even by accident.
+# resolvable under Verilator.
 _LC_PROBE_PATH = ("u_dut", "u_smc", "u_smc_peripherals", "u_smc_efuse_wrapper")
 _LC_PROBE_VARS = ("lc_state_smc_raw", "lc_sigint_err", "is_prod_or_rma_sip")
 
@@ -174,12 +169,10 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         self._read_outcomes: dict[int, set[bool]] = {}
         self._write_outcomes: set[bool] = set()
 
-        # Resolve the white-box decode probe ONCE, up front. Failing to resolve
-        # it is a testcase FAILURE, not a skipped leg: the three wrapper signals
-        # are published read-only by `hw/sys/smc/dv/tb/smc_public_scope.vlt`, so
-        # an unresolvable handle means that publication or the wrapper hierarchy
-        # changed, and the decode cross-check below would then silently stop
-        # running while the docstring still claims it ([NO-DISABLED-CHECKER]).
+        # The wrapper decode probe must resolve before the first lifecycle step:
+        # `hw/sys/smc/dv/tb/smc_public_scope.vlt` publishes the three signals
+        # read-only, and an unresolvable handle means that publication or the
+        # wrapper hierarchy changed.
         self._lc_probe = self._resolve_lc_probe()
 
         # Idle the JTAG-side eFuse master control and start at TEST_DEV.
@@ -261,13 +254,11 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             type(self).__name__,
             # Directed stimulus floor: the six LC_MATRIX rows, each two reads
             # (READ_CLASSES) and one write, is 18 lc_state-driven JTAG eFuse
-            # access-control checks. Literal here, not read from `self.checks`.
+            # access-control checks; a floor taken from `self.checks` would
+            # shrink with a run that issued fewer.
             min_csr_accesses=18,
             csr_accesses=self.checks,
             proxy=False,
-            # ROUTING/BLOCKING ONLY. The claim below is the one the AXI
-            # response codes support; what an allowed read returns is
-            # smc_efuse_map_read_test's claim.
             details=(
                 "lc_state_i-driven JTAG eFuse access-control ROUTING matrix "
                 "(PROD/RMA_SOP block + JTAG_PUBLIC_IDENTITY exception + "
@@ -309,10 +300,8 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         # Settle the diff decode + the access-control demux spill registers.
         await ClockCycles(dut.clk_smc_i, 20)
 
-        # SPEC-derived expectation for the wrapper's decoded lifecycle state.
-        # Not a transcription of the wrapper's decode expression: the raw value
-        # is what this test drove, the sigint flag is how it drove it, and the
-        # restricted set is architecture.adoc:286 / LC_JTAG_RESTRICTED.
+        # Expected decode: sigint forces raw 0 and prod 0; otherwise prod is set
+        # for the architecture.adoc:286 restricted set (LC_JTAG_RESTRICTED).
         exp_sigint = 1 if sigint else 0
         exp_prod = 0 if sigint else (1 if raw in LC_JTAG_RESTRICTED else 0)
         exp_raw = 0 if sigint else raw
@@ -382,11 +371,9 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         self.checks += 1
         rdata, code = await self._read(addr)
 
-        # TIMEOUT IS A FAILURE. `blocked = code == RESP_DECERR` evaluates False
-        # for `code is None`, and `not blocked` is exactly the pass condition of
-        # every ALLOW leg -- so without this an `ej_axi` master that never
-        # handshakes at all would satisfy the whole allow half of the matrix
-        # ([TIMEOUT-MUST-FAIL]).
+        # A timed-out access (code None) must fail before the `blocked` compare:
+        # `code == RESP_DECERR` is False for None, which is the ALLOW pass
+        # condition.
         if code is None:
             self.errors.append(
                 f"[{label}] {cls} read @0x{addr:08x} got NO AXI response within "

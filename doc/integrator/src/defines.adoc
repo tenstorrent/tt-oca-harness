@@ -231,8 +231,8 @@ Do not set these. Headers define them from the view and tool names above.
 |Define |Defined when
 
 |`OCAH_DEBUG_LIVE`
-|First-party elaboration checks and debug messages. `ocah_assert.svh` defines
-it when `EMULATION` is set or `SYNTHESIS` is absent.
+|First-party debug checks and messages. `ocah_assert.svh` defines it when
+`EMULATION` is set or `SYNTHESIS` is absent.
 
 |`OCAH_INC_ASSERT`
 |First-party concurrent SVA. `ocah_assert.svh` defines it when
@@ -251,6 +251,10 @@ assertion gates give `EMULATION` the same precedence over `SYNTHESIS`.
 |`NO_OCAH_ASSERT`
 |Optional escape: drops first-party SVA only. No OCAH flow sets it.
 |===
+
+No define gates the first-party parameter and width checks. `OCAH_ASSERT_STATIC`
+evaluates them at elaboration in every view and tool, Verilator and synthesis
+included, so a configuration that fails one does not elaborate.
 
 [[vendor-define-map]]
 == Vendor aliases
@@ -333,11 +337,8 @@ CPU cluster macros, and the i3c-core configuration.
 
 The `SIMULATION` plusargs for the CPU ROM and the eFuse shadow registers are
 listed under <<simulation-define>>. The SMC RTL also reads these view names:
-
-* `smc_4core_cpu` prints scratch RAM initialization progress when neither
-  `SYNTHESIS` nor `EMULATION` is set.
-* `smc_local_fabric` checks its AXI parameter widths at elaboration when
-  `OCAH_DEBUG_LIVE` is defined.
+`smc_4core_cpu` prints scratch RAM initialization progress when neither
+`SYNTHESIS` nor `EMULATION` is set.
 
 The `prim_flop_2sync`, `prim_sync3` and `prim_sync4` synchronizers instantiate
 `prim_cdc_rand_delay` in the simulation view, but no `smc` Bender target lists
@@ -516,10 +517,6 @@ configuration and a trace of BTB events. No OCAH flow sets either.
 [[sep-defines-checks]]
 ==== First-party view checks
 
-* `sep_crypto` checks the key manager and eFuse AXI-Lite widths at elaboration
-  when `OCAH_DEBUG_LIVE` is defined.
-* `sep_local_axi_xbar_wrapper` and `sep_system_peripherals_xbar_wrapper` check
-  their AXI parameter widths at elaboration when `OCAH_DEBUG_LIVE` is defined.
 * `tlul_rsp_intg_gen` asserts that incoming response integrity and user bits
   are zero, where its parameters declare them zero, when `OCAH_DEBUG_LIVE` is
   defined.

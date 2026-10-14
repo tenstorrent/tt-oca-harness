@@ -14,79 +14,117 @@ extern "C" {
 #include <assert.h>
 
 // reg - gpio_intf::DATA_CTRL
+// Register-driven data to send to the pad.
 #define GPIO_INTF__DATA_CTRL__CORE2PAD_bm 0x1
 #define GPIO_INTF__DATA_CTRL__CORE2PAD_bp 0
 #define GPIO_INTF__DATA_CTRL__CORE2PAD_bw 1
 #define GPIO_INTF__DATA_CTRL__CORE2PAD_reset 0x0
+// Direction control. 2'b00: Neither RX nor TX enabled. 2'b01: TX enabled. 2'b10: RX enabled. 2'b11: Both enabled
 #define GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bm 0x30
 #define GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bp 4
 #define GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bw 2
 #define GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_reset 0x0
+// Register Interface Enable. Setting this chooses register values to drive the PAD. This includes core2pad, enable_rx_tx, and pad2core
 #define GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm 0x10000
 #define GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bp 16
 #define GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bw 1
 #define GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_reset 0x0
+// Force the LSIO interface to be used from software, when no hardware LSIO request is
+// present on this pad. interface_enable has higher priority over this bit. This ranking
+// applies to this software force bit only: the hardware lsio_interface_select_i input
+// outranks interface_enable. Use lsio_disable to gate both.
 #define GPIO_INTF__DATA_CTRL__LSIO_SELECT_bm 0x20000
 #define GPIO_INTF__DATA_CTRL__LSIO_SELECT_bp 17
 #define GPIO_INTF__DATA_CTRL__LSIO_SELECT_bw 1
 #define GPIO_INTF__DATA_CTRL__LSIO_SELECT_reset 0x0
+// Interrupt Enable.
 #define GPIO_INTF__DATA_CTRL__INTERRUPT_ENABLE_bm 0x40000
 #define GPIO_INTF__DATA_CTRL__INTERRUPT_ENABLE_bp 18
 #define GPIO_INTF__DATA_CTRL__INTERRUPT_ENABLE_bw 1
 #define GPIO_INTF__DATA_CTRL__INTERRUPT_ENABLE_reset 0x0
+// When set, LSIO accesses will be blocked from the GPIO interface
 #define GPIO_INTF__DATA_CTRL__LSIO_DISABLE_bm 0x80000
 #define GPIO_INTF__DATA_CTRL__LSIO_DISABLE_bp 19
 #define GPIO_INTF__DATA_CTRL__LSIO_DISABLE_bw 1
 #define GPIO_INTF__DATA_CTRL__LSIO_DISABLE_reset 0x0
+// Interrupt type - 0: active-high level, 1: active-low level, 2: rising edge, 3: falling edge
 #define GPIO_INTF__DATA_CTRL__INTERRUPT_TYPE_bm 0x300000
 #define GPIO_INTF__DATA_CTRL__INTERRUPT_TYPE_bp 20
 #define GPIO_INTF__DATA_CTRL__INTERRUPT_TYPE_bw 2
 #define GPIO_INTF__DATA_CTRL__INTERRUPT_TYPE_reset 0x0
+// LSIO hardware request status. Set while lsio_interface_select_i is asserted and
+// lsio_disable is clear. Because the hardware LSIO request outranks interface_enable,
+// a set value also means the LSIO plane is driving this pad's data and direction.
+// This field does not reflect a software-forced selection via lsio_select, which ranks
+// below the register interface - it reads 0 in that case even when LSIO drives the pad.
 #define GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm 0x2000000
 #define GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bp 25
 #define GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bw 1
 #define GPIO_INTF__DATA_CTRL__LSIO_ENABLE_reset 0x0
+// PAD2SOC Value
 #define GPIO_INTF__DATA_CTRL__PAD2CORE_bm 0x80000000
 #define GPIO_INTF__DATA_CTRL__PAD2CORE_bp 31
 #define GPIO_INTF__DATA_CTRL__PAD2CORE_bw 1
 #define GPIO_INTF__DATA_CTRL__PAD2CORE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Register-driven data to send to the pad.
         uint32_t core2pad :1;
         uint32_t :3;
+        // Direction control. 2'b00: Neither RX nor TX enabled. 2'b01: TX enabled. 2'b10: RX enabled. 2'b11: Both enabled
         uint32_t enable_rx_tx :2;
         uint32_t :10;
+        // Register Interface Enable. Setting this chooses register values to drive the PAD. This includes core2pad, enable_rx_tx, and pad2core
         uint32_t interface_enable :1;
+        // Force the LSIO interface to be used from software, when no hardware LSIO request is
+        // present on this pad. interface_enable has higher priority over this bit. This ranking
+        // applies to this software force bit only: the hardware lsio_interface_select_i input
+        // outranks interface_enable. Use lsio_disable to gate both.
         uint32_t lsio_select :1;
+        // Interrupt Enable.
         uint32_t interrupt_enable :1;
+        // When set, LSIO accesses will be blocked from the GPIO interface
         uint32_t lsio_disable :1;
+        // Interrupt type - 0: active-high level, 1: active-low level, 2: rising edge, 3: falling edge
         uint32_t interrupt_type :2;
         uint32_t :3;
+        // LSIO hardware request status. Set while lsio_interface_select_i is asserted and
+        // lsio_disable is clear. Because the hardware LSIO request outranks interface_enable,
+        // a set value also means the LSIO plane is driving this pad's data and direction.
+        // This field does not reflect a software-forced selection via lsio_select, which ranks
+        // below the register interface - it reads 0 in that case even when LSIO drives the pad.
         uint32_t lsio_enable :1;
         uint32_t :5;
+        // PAD2SOC Value
         uint32_t pad2core :1;
     } f;
     uint32_t w;
 } gpio_intf__DATA_CTRL_t;
 
 // reg - gpio_intf::DATA_CTRL_ENABLE
+// Per-field register override. When set, core2pad is register-driven. OR'd with interface_enable.
 #define GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_CORE2PAD_bm 0x1
 #define GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_CORE2PAD_bp 0
 #define GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_CORE2PAD_bw 1
 #define GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_CORE2PAD_reset 0x0
+// Per-field register override. When set, the TX direction (output enable) is taken from enable_rx_tx[0]. OR'd with interface_enable.
 #define GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_TX_bm 0x10
 #define GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_TX_bp 4
 #define GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_TX_bw 1
 #define GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_TX_reset 0x0
+// Per-field register override. When set, the RX direction (input enable) is taken from enable_rx_tx[1]. OR'd with interface_enable.
 #define GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_RX_bm 0x20
 #define GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_RX_bp 5
 #define GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_RX_bw 1
 #define GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_RX_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Per-field register override. When set, core2pad is register-driven. OR'd with interface_enable.
         uint32_t use_reg_core2pad :1;
         uint32_t :3;
+        // Per-field register override. When set, the TX direction (output enable) is taken from enable_rx_tx[0]. OR'd with interface_enable.
         uint32_t use_reg_tx :1;
+        // Per-field register override. When set, the RX direction (input enable) is taken from enable_rx_tx[1]. OR'd with interface_enable.
         uint32_t use_reg_rx :1;
         uint32_t :26;
     } f;
@@ -94,29 +132,55 @@ typedef union {
 } gpio_intf__DATA_CTRL_ENABLE_t;
 
 // reg - gpio_intf::ACCESS_FILTER
+// GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+// the filter may not update before your next transaction, causing unexpected behavior.
+// Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.
+// WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+// the filter may not update before your next transaction, causing unexpected behavior.
 #define GPIO_INTF__ACCESS_FILTER__WRITE_FILTER_ENABLE_bm 0x1
 #define GPIO_INTF__ACCESS_FILTER__WRITE_FILTER_ENABLE_bp 0
 #define GPIO_INTF__ACCESS_FILTER__WRITE_FILTER_ENABLE_bw 1
 #define GPIO_INTF__ACCESS_FILTER__WRITE_FILTER_ENABLE_reset 0x0
+// Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.
+// WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+// the filter may not update before your next transaction, causing unexpected behavior.
 #define GPIO_INTF__ACCESS_FILTER__READ_FILTER_ENABLE_bm 0x2
 #define GPIO_INTF__ACCESS_FILTER__READ_FILTER_ENABLE_bp 1
 #define GPIO_INTF__ACCESS_FILTER__READ_FILTER_ENABLE_bw 1
 #define GPIO_INTF__ACCESS_FILTER__READ_FILTER_ENABLE_reset 0x0
+// When write_filter_enable is set, only allow write accesses with this prot value
+// WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+// the filter may not update before your next transaction, causing unexpected behavior.
 #define GPIO_INTF__ACCESS_FILTER__AWPROT_REQUIREMENT_bm 0x700
 #define GPIO_INTF__ACCESS_FILTER__AWPROT_REQUIREMENT_bp 8
 #define GPIO_INTF__ACCESS_FILTER__AWPROT_REQUIREMENT_bw 3
 #define GPIO_INTF__ACCESS_FILTER__AWPROT_REQUIREMENT_reset 0x1
+// When read_filter_enable is set, only allow read accesses with this prot value
+// WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+// the filter may not update before your next transaction, causing unexpected behavior.
 #define GPIO_INTF__ACCESS_FILTER__ARPROT_REQUIREMENT_bm 0x70000
 #define GPIO_INTF__ACCESS_FILTER__ARPROT_REQUIREMENT_bp 16
 #define GPIO_INTF__ACCESS_FILTER__ARPROT_REQUIREMENT_bw 3
 #define GPIO_INTF__ACCESS_FILTER__ARPROT_REQUIREMENT_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.
+        // WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+        // the filter may not update before your next transaction, causing unexpected behavior.
         uint32_t write_filter_enable :1;
+        // Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.
+        // WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+        // the filter may not update before your next transaction, causing unexpected behavior.
         uint32_t read_filter_enable :1;
         uint32_t :6;
+        // When write_filter_enable is set, only allow write accesses with this prot value
+        // WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+        // the filter may not update before your next transaction, causing unexpected behavior.
         uint32_t awprot_requirement :3;
         uint32_t :5;
+        // When read_filter_enable is set, only allow read accesses with this prot value
+        // WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+        // the filter may not update before your next transaction, causing unexpected behavior.
         uint32_t arprot_requirement :3;
         uint32_t :13;
     } f;
@@ -124,6 +188,7 @@ typedef union {
 } gpio_intf__ACCESS_FILTER_t;
 
 // addrmap - gpio_intf
+// GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.
 typedef struct __attribute__ ((__packed__)) {
     gpio_intf__DATA_CTRL_t DATA_CTRL;
     gpio_intf__DATA_CTRL_ENABLE_t DATA_CTRL_ENABLE;
@@ -131,51 +196,67 @@ typedef struct __attribute__ ((__packed__)) {
 } gpio_intf_t;
 
 // reg - gpio_ctrl::CONTROL
+// Register-driven drive-strength.
 #define GPIO_CTRL__CONTROL__DRIVE_STRENGTH_bm 0x7
 #define GPIO_CTRL__CONTROL__DRIVE_STRENGTH_bp 0
 #define GPIO_CTRL__CONTROL__DRIVE_STRENGTH_bw 3
 #define GPIO_CTRL__CONTROL__DRIVE_STRENGTH_reset 0x2
+// Register-driven pull enable. Default is disabled
 #define GPIO_CTRL__CONTROL__PULL_ENABLE_N0_SCAN_bm 0x100
 #define GPIO_CTRL__CONTROL__PULL_ENABLE_N0_SCAN_bp 8
 #define GPIO_CTRL__CONTROL__PULL_ENABLE_N0_SCAN_bw 1
 #define GPIO_CTRL__CONTROL__PULL_ENABLE_N0_SCAN_reset 0x0
+// Register-driven pull select - by default we pull down
 #define GPIO_CTRL__CONTROL__PULL_SELECT_bm 0x200
 #define GPIO_CTRL__CONTROL__PULL_SELECT_bp 9
 #define GPIO_CTRL__CONTROL__PULL_SELECT_bw 1
 #define GPIO_CTRL__CONTROL__PULL_SELECT_reset 0x0
+// Register-driven schmitt select.
 #define GPIO_CTRL__CONTROL__SCHMITT_SELECT_bm 0x400
 #define GPIO_CTRL__CONTROL__SCHMITT_SELECT_bp 10
 #define GPIO_CTRL__CONTROL__SCHMITT_SELECT_bw 1
 #define GPIO_CTRL__CONTROL__SCHMITT_SELECT_reset 0x0
+// Setting this choosing the register values for PAD settings. This includes pull_enable, pull_select, and schmitt_select
 #define GPIO_CTRL__CONTROL__CONFIG_ENABLE_bm 0x10000
 #define GPIO_CTRL__CONTROL__CONFIG_ENABLE_bp 16
 #define GPIO_CTRL__CONTROL__CONFIG_ENABLE_bw 1
 #define GPIO_CTRL__CONTROL__CONFIG_ENABLE_reset 0x0
+// When set, this bit indicates that the strap value is valid. This field is not set if the GPIO is not an input by default
 #define GPIO_CTRL__CONTROL__STRAP_VALID_bm 0x100000
 #define GPIO_CTRL__CONTROL__STRAP_VALID_bp 20
 #define GPIO_CTRL__CONTROL__STRAP_VALID_bw 1
 #define GPIO_CTRL__CONTROL__STRAP_VALID_reset 0x1
+// This register holds the captured value that was applied to the pad when reset was de-asserted.
 #define GPIO_CTRL__CONTROL__STRAP_VALUE_bm 0x200000
 #define GPIO_CTRL__CONTROL__STRAP_VALUE_bp 21
 #define GPIO_CTRL__CONTROL__STRAP_VALUE_bw 1
 #define GPIO_CTRL__CONTROL__STRAP_VALUE_reset 0x0
+// Setting this register will enable the secondary HW function to override the GPIO enable and data lines.
 #define GPIO_CTRL__CONTROL__HW2_OVRD_bm 0x1000000
 #define GPIO_CTRL__CONTROL__HW2_OVRD_bp 24
 #define GPIO_CTRL__CONTROL__HW2_OVRD_bw 1
 #define GPIO_CTRL__CONTROL__HW2_OVRD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Register-driven drive-strength.
         uint32_t drive_strength :3;
         uint32_t :5;
+        // Register-driven pull enable. Default is disabled
         uint32_t pull_enable_n0_scan :1;
+        // Register-driven pull select - by default we pull down
         uint32_t pull_select :1;
+        // Register-driven schmitt select.
         uint32_t schmitt_select :1;
         uint32_t :5;
+        // Setting this choosing the register values for PAD settings. This includes pull_enable, pull_select, and schmitt_select
         uint32_t config_enable :1;
         uint32_t :3;
+        // When set, this bit indicates that the strap value is valid. This field is not set if the GPIO is not an input by default
         uint32_t strap_valid :1;
+        // This register holds the captured value that was applied to the pad when reset was de-asserted.
         uint32_t strap_value :1;
         uint32_t :2;
+        // Setting this register will enable the secondary HW function to override the GPIO enable and data lines.
         uint32_t hw2_ovrd :1;
         uint32_t :7;
     } f;
@@ -183,11 +264,13 @@ typedef union {
 } gpio_ctrl__CONTROL_t;
 
 // addrmap - gpio_ctrl
+// Per-pin GPIO pad control registers: drive strength, pull configuration, and strap capture.
 typedef struct __attribute__ ((__packed__)) {
     gpio_ctrl__CONTROL_t CONTROL;
 } gpio_ctrl_t;
 
 // addrmap - gpio_wrap
+// Top-level GPIO address map composing the interface and control register blocks.
 typedef struct __attribute__ ((__packed__)) {
     gpio_intf_t gpio_intf;
     uint8_t RESERVED_c_f[0x4];

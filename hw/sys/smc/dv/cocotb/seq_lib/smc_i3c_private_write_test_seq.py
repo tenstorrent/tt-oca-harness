@@ -2,15 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A private write queued on I3C0 and I3C1 with no target to answer it.
 
-The other single-build I3C leaves read the CSR window and set
-`HC_CONTROL.BUS_ENABLE`, but none queues a command, so the I3C0 and I3C1
-controllers never drive their buses. This leaf brings each up as the active
-controller the way the OCCP controller firmware does -- bus enabled in PIO
-mode, `STBY_CR_CONTROL.STBY_CR_ENABLE_INIT` at the active-controller value,
-open-drain bus timing, queue thresholds and the PIO queues enabled -- with
-`T_IDLE` shortened so the bus is available within the leg, programs DAT entry
-0 with address 0x50 (`DAT_structure.rdl`: `STATIC_ADDRESS`, `DYNAMIC_ADDRESS`)
-and queues one Immediate Data Transfer of one byte to that entry.
+An I3C controller with `HC_CONTROL.BUS_ENABLE` set but no command queued never
+drives its bus. This leaf brings I3C0 and I3C1 up as the active controller the
+way the OCCP controller firmware does -- bus enabled in PIO mode,
+`STBY_CR_CONTROL.STBY_CR_ENABLE_INIT` at the active-controller value, open-drain
+bus timing, queue thresholds and the PIO queues enabled -- with `T_IDLE`
+shortened so the bus is available within the leg, programs DAT entry 0 with
+address 0x50 (`DAT_structure.rdl`: `STATIC_ADDRESS`, `DYNAMIC_ADDRESS`) and
+queues one Immediate Data Transfer of one byte to that entry.
 
 The command descriptor the PIO `COMMAND_PORT` takes is the HCI one, carried
 here as the sequence's own field table (`CMD_ATTR`, `TID`, `DEV_INDEX`,

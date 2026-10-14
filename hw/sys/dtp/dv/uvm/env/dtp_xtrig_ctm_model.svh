@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// CTM routing model (the cocotb DtpCtmRefModel twin) from the register
+// CTM routing model (the cocotb DtpXtrigCtmModel twin) from the register
 // contract: CT_SRC[k].CONFIG_0.CT_DST_SELECT (cross_trigger_matrix.rdl) holds
 // one bit per CT_Dst input port, and the pulses of the selected inputs are
 // OR'd onto CT_Src output k. route() returns the output vector a set of input

@@ -227,7 +227,7 @@ target = "lsu_stub_all_live"
 # deposit that survives reset, so each sensed start state is its own leaf:
 # +lc_start must agree with the image dv_sim_prestage.py stages for that leaf
 # name, and the test fails if the sensed nibble disagrees. RANDCFG: tokens and
-# LC_STATE[31:8] only; the cells within a leaf are fixed.
+# LC_STATE[31:8] only; the cells within a leaf are fixed, so no entry takes a reseed.
 # The seven sep_lcc_lc_state_w1s_* entries are plusarg-selected variants of
 # sep_lcc_lc_state_transition_matrix_test. See Naming Rules in docs/SEP_VPLAN.adoc.
 #
@@ -236,7 +236,6 @@ target = "lsu_stub_all_live"
 name = "sep_lcc_lc_state_w1s_prod_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-reseed = 3
 timeout_sec = 1800
 tags = ["lcc", "efuse", "rma", "subsystem"]
 run_modes = ["no_cpu"]
@@ -250,7 +249,6 @@ args = ["+lc_start=1"]
 name = "sep_lcc_lc_state_w1s_prod_demote_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-reseed = 3
 timeout_sec = 1800
 tags = ["lcc", "efuse", "rma", "demote", "subsystem"]
 run_modes = ["no_cpu"]
@@ -264,7 +262,6 @@ args = ["+lc_start=1", "+lc_demote"]
 name = "sep_lcc_lc_state_w1s_rma_sip_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-reseed = 3
 timeout_sec = 1800
 tags = ["lcc", "efuse", "rma", "subsystem"]
 run_modes = ["no_cpu"]
@@ -276,7 +273,6 @@ args = ["+lc_start=2"]
 name = "sep_lcc_lc_state_w1s_rma_chiplet_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-reseed = 3
 timeout_sec = 1800
 tags = ["lcc", "efuse", "rma", "subsystem"]
 run_modes = ["no_cpu"]
@@ -291,7 +287,6 @@ args = ["+lc_start=6"]
 name = "sep_lcc_lc_state_w1s_prod_end_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-reseed = 3
 timeout_sec = 1800
 tags = ["lcc", "efuse", "subsystem"]
 run_modes = ["no_cpu"]
@@ -304,7 +299,6 @@ args = ["+lc_start=8", "+lc_prod_end_exit=bit0"]
 name = "sep_lcc_lc_state_w1s_prod_end_rma_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-reseed = 3
 timeout_sec = 1800
 tags = ["lcc", "efuse", "subsystem"]
 run_modes = ["no_cpu"]
@@ -317,7 +311,6 @@ args = ["+lc_start=8", "+lc_prod_end_exit=rma_sip"]
 name = "sep_lcc_lc_state_w1s_transient_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
-reseed = 3
 timeout_sec = 1800
 tags = ["lcc", "efuse", "rma", "subsystem"]
 run_modes = ["no_cpu"]

@@ -14,12 +14,14 @@ extern "C" {
 #include <assert.h>
 
 // reg - sep_scratch::SCRATCH
+// Scratch register for the CPU
 #define SEP_SCRATCH__SCRATCH__DATA_bm 0xffffffff
 #define SEP_SCRATCH__SCRATCH__DATA_bp 0
 #define SEP_SCRATCH__SCRATCH__DATA_bw 32
 #define SEP_SCRATCH__SCRATCH__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Scratch register for the CPU
         uint64_t data :32;
         uint64_t :32;
     } f;
@@ -27,6 +29,7 @@ typedef union {
 } sep_scratch__SCRATCH_t;
 
 // addrmap - sep_scratch
+// General-purpose SEP scratch register bank.
 typedef struct __attribute__ ((__packed__)) {
     sep_scratch__SCRATCH_t SCRATCH[8];
 } sep_scratch_t;

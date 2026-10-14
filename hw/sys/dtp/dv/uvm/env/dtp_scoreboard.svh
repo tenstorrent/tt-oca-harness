@@ -318,8 +318,7 @@ class dtp_scoreboard extends ocah_scoreboard;
     if (!exp.compare) return;
     t        = dtp_j2a_target_by_name(exp.target);
     status_o = dtp_bits_field(obs.tdo_bits, 0, 2);
-    if (status_o !== 64'(exp.status) && !(exp.alt_valid && status_o === 64'(exp.alt_status)))
-      diff = {diff, " status"};
+    if (status_o !== 64'(exp.status)) diff = {diff, " status"};
     if (exp.compare_rdata) begin
       int unsigned data_off = 2 + t.size_bits + t.wstrb_bits;
       rdata_o = dtp_bits_field(obs.tdo_bits, data_off, t.data_width) & exp.rdata_mask;
@@ -355,14 +354,12 @@ class dtp_scoreboard extends ocah_scoreboard;
   // bridge idle and disabled, which drops the requests queued behind it, so
   // the predictions waiting on its port are withdrawn.
   protected function void drop_queued_predictions(string source);
-    string key = pair_key(DtpFeatureJtag2axiReq, source);
     dtp_j2a_target_t target;
     int unsigned dropped;
-    if (!m_target_by_source.exists(source) || !m_expected_q.exists(key)) return;
+    if (!m_target_by_source.exists(source)) return;
     target = dtp_j2a_target_by_name(m_target_by_source[source]);
     if (!dtp_dbg_path_disabled(tb_vif.dbg_disable, target.dbg_path)) return;
-    dropped = m_expected_q[key].size();
-    m_expected_q[key].delete();
+    dropped = flush_expected(DtpFeatureJtag2axiReq, source);
     if (dropped != 0)
       `uvm_info(get_type_name(), $sformatf(
                 "%s: the disable dropped %0d queued bridge request(s)", source, dropped),

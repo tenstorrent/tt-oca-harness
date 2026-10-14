@@ -3,11 +3,11 @@
 """Byte writes that leave a set field alone, and writes that must not clear or fire.
 
 Each PeakRDL field updates as `(value & ~biten) | (data & biten)`, and a W1C
-field clears as `value & ~(data & biten)`. The half of each term that keeps a
-set field -- a one held while a write strobes other lanes, a W1C one held
-across a write that carries a zero on it -- had never been driven in these
-blocks, and neither had a write of zero into a `singlepulse` trigger. Every
-field and mask here comes from the block's generated header.
+field clears as `value & ~(data & biten)`. This sequence drives the half of
+each term that keeps a set field -- a one held while a write strobes other
+lanes, a W1C one held across a write that carries a zero on it -- and a write
+of zero into a `singlepulse` trigger. Every field and mask here comes from the
+block's generated header.
 
 * **Held across a byte write on another lane.** `I2C_CTRL.SMBUS_EN` on all
   three instances (set by a byte write to its own lane, then held across a byte

@@ -14,18 +14,26 @@ extern "C" {
 #include <assert.h>
 
 // reg - output_remap::output_remap_region::REGION_ATTRS
+// Address translation for remap region. RTL will use the number of bits appropriate for region granulaity.
+// e.g. SMC: 8 * 1MB regions --> 20 bits of address space per region, 36 MSBs from this register used
+// SEP: 16 * 512KB regions --> 19 bits of address space per region, 37 MSBs from this register used
 #define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__OFFSET_bm 0xffffffffffffff
 #define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__OFFSET_bp 0
 #define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__OFFSET_bw 56
 #define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__OFFSET_reset 0x0
+// If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged
 #define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bm 0x8000000000000000
 #define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bp 63
 #define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bw 1
 #define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Address translation for remap region. RTL will use the number of bits appropriate for region granulaity.
+        // e.g. SMC: 8 * 1MB regions --> 20 bits of address space per region, 36 MSBs from this register used
+        // SEP: 16 * 512KB regions --> 19 bits of address space per region, 37 MSBs from this register used
         uint64_t offset :56;
         uint64_t :7;
+        // If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged
         uint64_t valid :1;
     } f;
     uint64_t w;
@@ -37,6 +45,7 @@ typedef struct __attribute__ ((__packed__)) {
 } output_remap__output_remap_region_t;
 
 // addrmap - output_remap
+// Address-translation registers that remap outbound transactions and tag their attributes.
 typedef struct __attribute__ ((__packed__)) {
     output_remap__output_remap_region_t REGION;
 } output_remap_t;

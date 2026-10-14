@@ -187,8 +187,10 @@ Before parsing the command, the launcher:
   `sys.path` and `PYTHONPATH`.
 
 The supported Python range is 3.11 through 3.13. Install
-https://docs.astral.sh/uv/[`uv`] before the first run. The locked `dv`
-dependency group provides cocotb and the shared Python DV packages.
+https://docs.astral.sh/uv/[`uv`] before the first run, and check out the
+`tt-oca-manifest` submodule, which the root `uv` workspace lists as a member
+(<<runner-host-environments>>). The locked `dv` dependency group provides
+cocotb and the shared Python DV packages.
 <<runner-environment-matrix>> lists every other component a run needs, the
 file that pins it, and the check behind it.
 
@@ -311,6 +313,7 @@ two.
 fails when its DUT's command finds no usable toolchain.
 |===
 
+[[runner-host-environments]]
 ==== Hosted CI and a developer host
 
 Hosted CI is the qualified environment and the most constrained one. The
@@ -331,11 +334,22 @@ the image, run `make -f ocah.mk ocah-dv-fw-clean TARGET=<block>` before the
 next simulation.
 
 The `sep` tree carries the `tt-oca-manifest` submodule, under
-`hw/sys/sep/bootrom/prod/tools/`, and some of its test modules import it.
-The hosted `sep` jobs check it out before the run; a clone that has not run
-`git submodule update --init` lacks it, so those modules fail to import there. An
-unscoped `--doctor --dut sep` imports every testlist module and exits `2` on
-that account. Scope the doctor to the selection you will run:
+`hw/sys/sep/bootrom/prod/tools/`. The root `uv` workspace lists it as a
+member, so on a clone that has not checked it out the launcher's `uv run`
+cannot resolve the project and every command stops before any stage runs,
+whatever the DUT. The hosted jobs check it out before the run; on a developer
+host, check it out once after cloning:
+
+[source,bash]
+----
+git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+----
+
+Some `sep` test modules also import it. In an environment that skips the
+`uv` re-execution (`OCAH_DV_SKIP_UV=1`) and lacks the submodule, those
+modules fail to import, and an unscoped `--doctor --dut sep` imports every
+testlist module and exits `2` on that account. Scope the doctor to the
+selection you will run:
 
 [source,bash]
 ----
@@ -497,10 +511,10 @@ The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
 maintainer flow whose tool allowlist is VCS only; it carries
 `license = "required-commercial"`, so `--list` marks it `(licensed)` and the
 launcher says so when the simulator is absent. The UVM library comes from the
-simulator via `-ntb_opts uvm`, tests are selected with
-`+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses the `uvm-log` parse
-policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium and Questa are not
-in the allowlist. The reference consumer is the
+simulator via `-ntb_opts uvm-1.2` (`[build.vcs].uvm_lib` selects another),
+tests are selected with `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses
+the `uvm-log` parse policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium
+and Questa are not in the allowlist. The reference consumer is the
 DTP SV-UVM smoke flow, `--dut dtp --framework uvm`. The framework's adopter
 guide — conventions plus the bring-up walkthrough for adding a UVM view to a
 cocotb-only DUT — is the SystemVerilog UVM Framework section of
@@ -725,8 +739,8 @@ Some domains have more specific rules:
   replaces an earlier one with the same key, so a test entry overrides its
   run mode, and each dropped argument is printed as `PLUSARG: dropping ...`.
   Bare flags and `+uvm_set_*` arguments are never collapsed.
-* Regression multiplicity: a test's `reseed` value overrides `--reseed` for
-  that test.
+* Regression seed count, per test: `--reseed` > test `reseed` > `1`
+  (<<runner-seed-count>>).
 * A positive `[build.options].build_jobs` value overrides CLI-derived
   build concurrency; otherwise `--build-jobs`, then `--sim-jobs`, supplies it.
 
@@ -1935,6 +1949,14 @@ Stage-control precedence is explicit `--stage`, then `--build-only`, then
 DUT whose clean paths include the complete `<dut-dv-root>/build` tree loses
 its cached models and all prior runs. Inspect the `REMOVE` plan with
 `--stage clean --dry-run` before executing it.
+
+Before it removes anything the stage checks every path, and a path that
+renders empty, lies outside both the checkout and the run directory, or is
+the checkout, its `.git`, the home directory or a directory above any of them
+fails the stage with a configuration error, as does a path whose symbolic
+links resolve to one of those. A path that is itself a symbolic link is
+removed as the link. `--validate-configs` rejects an empty path and one that
+uses `{item}`, since the clean stage runs without an item.
 ====
 
 [[runner-build-reuse]]
@@ -2103,7 +2125,8 @@ python3 tools/dv/run_dv.py \
 
 Non-dry-run coverage-only replay requires an existing `result.json`. The runner
 recovers the original tool, rejects a mismatched `--tool`, preserves
-non-coverage stage history, and replaces the replayed coverage records. A dry
+non-coverage stage history and the run's `git` record and diff archive, and
+replaces the replayed coverage records. A dry
 run can render a placeholder plan without that file, but cannot restore the
 original tool or history. A run that did not finish (`tests.completed` is
 `false`, or the record carries an `interruption`) is refused with exit code
@@ -2159,7 +2182,8 @@ carry a coverage record whose merge and report completed and whose merged
 database exists; its own grade does not matter, since the combined run is
 graded on its own. Every run must use one tool, and all must record one
 commit, since one figure describes one revision of the design. A run
-recorded on a dirty tree is accepted with a warning. The runs may sit in
+recorded on a dirty tree, or one that did not record whether its tree was
+clean, is accepted with a warning. The runs may sit in
 another checkout or in a retained copy: their artifact paths resolve against
 the tree that produced them, and a design database that the copy left out is
 skipped, since the merged database its own merge loaded already holds the
@@ -2406,6 +2430,76 @@ python3 tools/dv/run_dv.py \
 `--retry N` retries a non-passing leaf up to `N` times. Earlier failures remain
 in `regression.json`; the final effective attempt determines the leaf result.
 A leaf that passes after a failed attempt is recorded as flaky.
+
+[[runner-seed-count]]
+=== Seeds per test
+
+In scheduler mode each selected test becomes one leaf per seed. The number of
+seeds a test gets is `--reseed N` when the command line gives one, otherwise
+its testlist entry's `reseed`, otherwise `1`. An entry sets its own count
+like this:
+
+[source,toml]
+----
+[[tests]]
+name = "sep_dma_basic_test"
+module = "cpu.sep_dma_basic_test"
+firmware = "dma_basic_test"
+seed = 1
+reseed = 3
+----
+
+The entry's count is the test's default. A run without `--reseed` gives the
+entry above three seeds and every test without a `reseed` one, so a full
+regression spends its extra seeds on the tests whose entries ask for them.
+`--reseed` replaces every selected test's count for that run, in both
+directions: `--reseed 1` runs the entry above once, and `--reseed 10` runs
+every selected test ten times, an entry with `reseed = 1` included.
+
+[source,bash]
+----
+# One leaf with a fresh random seed, whatever the entry's reseed says.
+python3 tools/dv/run_dv.py --dut sep --items sep_dma_basic_test --reseed 1
+----
+
+A job that should run the testlist's counts passes no `--reseed`, and a job
+with a fixed budget, such as a quick pass over every test, passes
+`--reseed 1`. Give an entry a `reseed` when its stimulus is random enough
+that more seeds find more, and leave it out of a directed test, which drives
+the same stimulus on every seed.
+
+`reseed` belongs to the test entry alone. A group carries no seed count, and
+a test's `[tests.overrides.<framework>]` table cannot set one, so a test runs
+the same number of seeds in every framework view it is bound to. The value
+is an integer of at least 1; a lower count stops a regression with a
+configuration error.
+
+The count applies where seeds are drawn: the `sim` and `regress` stages of a
+scheduler-mode run, which a group, `--regress`, `--stage regress`,
+`--reseed`, `--retry`, `--max-failures`, or more than one selected test
+starts. A flat run of a single test ignores `reseed` and simulates once with
+the single-test seed (`--seed`, then the test's `seed`, then
+`[defaults].seed`, then `1`), and a `formal` item runs once.
+
+Each scheduler leaf draws its seed at random from 1 to 2147483647, and no two
+leaves of one run share a seed. A test's `seed` and `[defaults].seed` do not
+apply there. Seeds differ from run to run, so a seed to replay comes from the
+run's own record: the console's `regression done` line, the leaf directory
+name, or `regression.json`.
+
+Seeds and retries are separate knobs. `reseed` and `--reseed` add leaves,
+each with new stimulus. `--retry` adds attempts to a failing leaf
+and reruns it with the same seed, which separates a deterministic failure
+from an intermittent one but explores nothing new. A test with three seeds
+under `--retry 1` is three leaves, each retried at most once.
+
+Each leaf runs in `<test>/seed_<seed>/attempt_<n>/`. The `regression start`
+console line reports `seeds=<N>` when every selected test has the same count
+and `seeds=mixed` otherwise. The `summary` line counts leaves, while the
+`result` line's `tests=` counts tests. A nested run also writes a
+`<test>/result.json` rollup that lists the final attempt of each of the
+test's seeds and takes the worst of their statuses (`ERROR`, then `TIMEOUT`,
+`FAIL`, `UNKNOWN`, `PASS`), so one failing seed fails the test.
 
 [[runner-regression-record]]
 === The regression record
@@ -2806,7 +2900,9 @@ Nested regressions also write `<test>/result.json` rollups. Most subprocess
 stages emit replayable shell scripts; in-process cocotb HDL builds and `clean`
 are exceptions. Environment snapshots redact values when variable names
 indicate licenses, tokens, secrets, passwords, credentials, API keys, private
-keys, or authentication data.
+keys, authentication data, or personal access tokens. `PAT` counts only as a
+whole underscore-separated word of the name, as in `GITHUB_PAT`, so `PATH` and
+`*_PATTERN` keep their values.
 
 `result.json` uses schema version `1` and records the resolved flow, tool,
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
@@ -2818,6 +2914,16 @@ failure buckets, the `metadata` named above for a regression job, the job
 log of a cluster run under `artifacts.executor_log`, and `result_json`, the
 path of the leaf record that holds its artifacts, parser evidence, and build,
 coverage, and provenance metadata.
+
+The `git` object records the checkout's `commit`, `branch` and `dirty` flag,
+which is `true`, `false`, or `unknown` when git cannot answer. On a dirty tree
+the run also archives the `git status` and `git diff HEAD` output as
+`provenance/worktree.status` and `provenance/worktree.diff` in its run
+directory; `diff_archive` names the diff and `dirty_files` counts the modified
+files, so the commit and the diff together identify the sources the run
+compiled. An empty `diff_archive` records a diff git could not produce. A
+dry run writes no archive, and a coverage replay keeps the archive of the run
+it replays, whatever the tree holds at replay time.
 
 The `tests` summary counts the recorded leaves (`total`, `passing`,
 `failing`, `skipped`) and records whether the run finished: `leaves_planned`
@@ -2845,7 +2951,9 @@ Every sim leaf ends its per-test log with one `PROVENANCE` line
 naming the commit, branch, dirty flag, build fingerprint and, where the flow
 has one, the filelist and its digest. The same facts are recorded under
 `metadata.provenance` in the leaf's `result.json`, so a log and its result
-record name the same build.
+record name the same build. The dirty flag is `true`, `false`, or `unknown`
+when git is missing, fails, or does not answer `git status` within 60
+seconds.
 
 Every `+key=value` simulator argument whose value is an existing regular file
 (firmware, ROM, eFuse and shadow-register images such as `+rom_hex`,
@@ -3431,7 +3539,8 @@ coverage utilities, or every firmware toolchain.
 An unscoped `--doctor --dut <dut>` imports every module in the DUT's
 testlist, including modules whose dependencies a run of your selection never
 touches; the `sep` modules that import the `tt-oca-manifest` submodule are
-the case a clone without submodules meets (<<runner-environment-matrix>>). Add the selection to the
+the case an `OCAH_DV_SKIP_UV=1` environment without that submodule meets
+(<<runner-environment-matrix>>). Add the selection to the
 doctor:
 
 [source,bash]

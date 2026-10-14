@@ -121,7 +121,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-bus-error-units[Bus Error Unit service sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-bus-error-units[Bus Error Unit service sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-bus-error-units[Bus Error Unit service sequence]
 endif::backend-pdf[]
 is in the Programmer's Guide.
 
@@ -379,24 +379,26 @@ locked_field_access_interrupt`, sourced from the eFuse controller path.
 
 |`284`
 |GPIO interrupt OR, lower half
-|OR-reduction across the lower half of bonded GPIO interrupt sources
+|OR-reduction across GPIO interrupt sources 0-31
 |`smc_peripherals.sv` drives `peripheral_interrupts_o[28] =
-\|gpio_interrupt[smc_pkg::NumBondedGpio/2-1:0]`.
+\|gpio_interrupt[smc_pkg::NumGpioWraps/2-1:0]`.
 
 |`285`
 |GPIO interrupt OR, upper half
-|OR-reduction across the upper half of bonded GPIO interrupt sources
+|OR-reduction across GPIO interrupt sources 32-64
 |`smc_peripherals.sv` drives `peripheral_interrupts_o[29] =
-\|gpio_interrupt[smc_pkg::NumBondedGpio-1:smc_pkg::NumBondedGpio/2]`.
+\|gpio_interrupt[smc_pkg::NumGpioWraps-1:smc_pkg::NumGpioWraps/2]`.
 
 |`286`
 |AXI hang detector OR
 |OR of the three AXI hang detectors (sys_axi, sep_axi, data_accel). Asserts
-while any detector's `irq_o` is high, so software must read
-`SMC_BASE_CONFIG.HANG_DET_{SYS_AXI,SEP_AXI,DATA_ACCEL}_CTRL` to identify the
-stalled master. There is no status latch to clear: the level drops when that
-master's bus makes progress, or when the detector's `enable` or `irq_en` is
-cleared. The CPU AXI master is not covered here; it is covered by the watchdog.
+while any detector's `irq_o` is high, either from a timeout or from its
+`irq_test` bit, so software must read
+`SMC_BASE_CONFIG.HANG_DET_{SYS_AXI,SEP_AXI,DATA_ACCEL}_CTRL.irq` to identify the
+stalled master. There is no status latch to clear: a timeout drops when that
+master's bus makes progress, a test assertion drops when `irq_test` is cleared,
+and either drops when the detector's `enable` or `irq_en` is cleared. The CPU
+AXI master is not covered here; it is covered by the watchdog.
 |`smc_base.sv` OR-reduces `hang_irq_sys_axi \| hang_irq_sep_axi \|
 hang_irq_data_accel` onto `axi_hang_irq_o`; `smc.sv` routes that back into
 `u_smc_peripherals`, and `smc_peripherals.sv` drives
@@ -500,7 +502,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-interrupt-control[Interrupt Control section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-interrupt-control[Interrupt Control section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-interrupt-control[Interrupt Control section]
 endif::backend-pdf[]
 of the Programmer's Guide gives the PLIC initialization and claim/complete
 sequence, CLINT timer and software interrupt service, and Bus Error Unit

@@ -4,9 +4,9 @@
 // DTP scan-domain TB interface, shared by the cocotb and SV-UVM flows: the
 // boundary-scan, iJTAG SIB, and extended STAP host scan-chain controls, the
 // forwarded STAP TAP pins with their TMS mismatch flags and TRST assertion
-// counters, and the downstream-TAP and host-segment attach enables. The scan window monitors
-// sample the controls once per TCK cycle; the scan scenarios judge them
-// against the SIB and 3DCR models.
+// counters, and the downstream-TAP and host-segment attach enables. The
+// scan window monitors sample the controls once per TCK cycle; the scan
+// scenarios judge them against the SIB and 3DCR models.
 
 interface dtp_scan_if;
 

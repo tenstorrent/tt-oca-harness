@@ -14,17 +14,25 @@ extern "C" {
 #include <assert.h>
 
 // reg - spi_controller::INTR_STATE
+// Error-related interrupts, see !!ERROR_ENABLE register for more
+// information.
 #define SPI_CONTROLLER__INTR_STATE__ERROR_bm 0x1
 #define SPI_CONTROLLER__INTR_STATE__ERROR_bp 0
 #define SPI_CONTROLLER__INTR_STATE__ERROR_bw 1
 #define SPI_CONTROLLER__INTR_STATE__ERROR_reset 0x0
+// Event-related interrupts, see !!EVENT_ENABLE register for more
+// information.
 #define SPI_CONTROLLER__INTR_STATE__SPI_EVENT_bm 0x2
 #define SPI_CONTROLLER__INTR_STATE__SPI_EVENT_bp 1
 #define SPI_CONTROLLER__INTR_STATE__SPI_EVENT_bw 1
 #define SPI_CONTROLLER__INTR_STATE__SPI_EVENT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Error-related interrupts, see !!ERROR_ENABLE register for more
+        // information.
         uint32_t ERROR :1;
+        // Event-related interrupts, see !!EVENT_ENABLE register for more
+        // information.
         uint32_t SPI_EVENT :1;
         uint32_t :30;
     } f;
@@ -32,17 +40,21 @@ typedef union {
 } spi_controller__INTR_STATE_t;
 
 // reg - spi_controller::INTR_ENABLE
+// Enable interrupt when !!INTR_STATE.error is set.
 #define SPI_CONTROLLER__INTR_ENABLE__ERROR_bm 0x1
 #define SPI_CONTROLLER__INTR_ENABLE__ERROR_bp 0
 #define SPI_CONTROLLER__INTR_ENABLE__ERROR_bw 1
 #define SPI_CONTROLLER__INTR_ENABLE__ERROR_reset 0x0
+// Enable interrupt when !!INTR_STATE.spi_event is set.
 #define SPI_CONTROLLER__INTR_ENABLE__SPI_EVENT_bm 0x2
 #define SPI_CONTROLLER__INTR_ENABLE__SPI_EVENT_bp 1
 #define SPI_CONTROLLER__INTR_ENABLE__SPI_EVENT_bw 1
 #define SPI_CONTROLLER__INTR_ENABLE__SPI_EVENT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable interrupt when !!INTR_STATE.error is set.
         uint32_t ERROR :1;
+        // Enable interrupt when !!INTR_STATE.spi_event is set.
         uint32_t SPI_EVENT :1;
         uint32_t :30;
     } f;
@@ -50,17 +62,21 @@ typedef union {
 } spi_controller__INTR_ENABLE_t;
 
 // reg - spi_controller::INTR_TEST
+// Write 1 to force !!INTR_STATE.error to 1.
 #define SPI_CONTROLLER__INTR_TEST__ERROR_bm 0x1
 #define SPI_CONTROLLER__INTR_TEST__ERROR_bp 0
 #define SPI_CONTROLLER__INTR_TEST__ERROR_bw 1
 #define SPI_CONTROLLER__INTR_TEST__ERROR_reset 0x0
+// Write 1 to force !!INTR_STATE.spi_event to 1.
 #define SPI_CONTROLLER__INTR_TEST__SPI_EVENT_bm 0x2
 #define SPI_CONTROLLER__INTR_TEST__SPI_EVENT_bp 1
 #define SPI_CONTROLLER__INTR_TEST__SPI_EVENT_bw 1
 #define SPI_CONTROLLER__INTR_TEST__SPI_EVENT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to force !!INTR_STATE.error to 1.
         uint32_t ERROR :1;
+        // Write 1 to force !!INTR_STATE.spi_event to 1.
         uint32_t SPI_EVENT :1;
         uint32_t :30;
     } f;
@@ -68,12 +84,14 @@ typedef union {
 } spi_controller__INTR_TEST_t;
 
 // reg - spi_controller::ALERT_TEST
+// Write 1 to trigger one alert event of this kind.
 #define SPI_CONTROLLER__ALERT_TEST__FATAL_FAULT_bm 0x1
 #define SPI_CONTROLLER__ALERT_TEST__FATAL_FAULT_bp 0
 #define SPI_CONTROLLER__ALERT_TEST__FATAL_FAULT_bw 1
 #define SPI_CONTROLLER__ALERT_TEST__FATAL_FAULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to trigger one alert event of this kind.
         uint32_t FATAL_FAULT :1;
         uint32_t :31;
     } f;
@@ -81,193 +99,405 @@ typedef union {
 } spi_controller__ALERT_TEST_t;
 
 // reg - spi_controller::CONTROL
+// If !!EVENT_ENABLE.RXWM is set, the IP will send
+// an interrupt when the depth of the RX FIFO reaches
+// RX_WATERMARK words (32b each).
 #define SPI_CONTROLLER__CONTROL__RX_WATERMARK_bm 0xff
 #define SPI_CONTROLLER__CONTROL__RX_WATERMARK_bp 0
 #define SPI_CONTROLLER__CONTROL__RX_WATERMARK_bw 8
 #define SPI_CONTROLLER__CONTROL__RX_WATERMARK_reset 0x7f
+// If !!EVENT_ENABLE.TXWM is set, the IP will send
+// an interrupt when the depth of the TX FIFO drops below
+// TX_WATERMARK words (32b each).
 #define SPI_CONTROLLER__CONTROL__TX_WATERMARK_bm 0xff00
 #define SPI_CONTROLLER__CONTROL__TX_WATERMARK_bp 8
 #define SPI_CONTROLLER__CONTROL__TX_WATERMARK_bw 8
 #define SPI_CONTROLLER__CONTROL__TX_WATERMARK_reset 0x0
+// Enable the SPI host output buffers for the sck, csb, and sd lines.  This allows
+// the SPI_HOST IP to connect to the same bus as other SPI controllers without
+// interference.
 #define SPI_CONTROLLER__CONTROL__OUTPUT_EN_bm 0x20000000
 #define SPI_CONTROLLER__CONTROL__OUTPUT_EN_bp 29
 #define SPI_CONTROLLER__CONTROL__OUTPUT_EN_bw 1
 #define SPI_CONTROLLER__CONTROL__OUTPUT_EN_reset 0x0
+// Clears the internal state (not registers) to the reset state when set to 1,
+// including the FIFOs, the CDC's, the core state machine and the shift register.
+// In the current implementation, the CDC FIFOs are drained not reset.
+// Therefore software must confirm that both FIFO's empty before releasing
+// the IP from reset.
 #define SPI_CONTROLLER__CONTROL__SW_RST_bm 0x40000000
 #define SPI_CONTROLLER__CONTROL__SW_RST_bp 30
 #define SPI_CONTROLLER__CONTROL__SW_RST_bw 1
 #define SPI_CONTROLLER__CONTROL__SW_RST_reset 0x0
+// Enables the SPI host.  On reset, this field is 0, meaning
+// that no transactions can proceed.
 #define SPI_CONTROLLER__CONTROL__SPIEN_bm 0x80000000
 #define SPI_CONTROLLER__CONTROL__SPIEN_bp 31
 #define SPI_CONTROLLER__CONTROL__SPIEN_bw 1
 #define SPI_CONTROLLER__CONTROL__SPIEN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // If !!EVENT_ENABLE.RXWM is set, the IP will send
+        // an interrupt when the depth of the RX FIFO reaches
+        // RX_WATERMARK words (32b each).
         uint32_t RX_WATERMARK :8;
+        // If !!EVENT_ENABLE.TXWM is set, the IP will send
+        // an interrupt when the depth of the TX FIFO drops below
+        // TX_WATERMARK words (32b each).
         uint32_t TX_WATERMARK :8;
         uint32_t :13;
+        // Enable the SPI host output buffers for the sck, csb, and sd lines.  This allows
+        // the SPI_HOST IP to connect to the same bus as other SPI controllers without
+        // interference.
         uint32_t OUTPUT_EN :1;
+        // Clears the internal state (not registers) to the reset state when set to 1,
+        // including the FIFOs, the CDC's, the core state machine and the shift register.
+        // In the current implementation, the CDC FIFOs are drained not reset.
+        // Therefore software must confirm that both FIFO's empty before releasing
+        // the IP from reset.
         uint32_t SW_RST :1;
+        // Enables the SPI host.  On reset, this field is 0, meaning
+        // that no transactions can proceed.
         uint32_t SPIEN :1;
     } f;
     uint32_t w;
 } spi_controller__CONTROL_t;
 
 // reg - spi_controller::STATUS
+// Transmit queue depth.
+// Indicates how many unsent 32-bit words are currently in the TX FIFO.
+// When active, this result may be an overestimate due to synchronization delays.
 #define SPI_CONTROLLER__STATUS__TXQD_bm 0xff
 #define SPI_CONTROLLER__STATUS__TXQD_bp 0
 #define SPI_CONTROLLER__STATUS__TXQD_bw 8
 #define SPI_CONTROLLER__STATUS__TXQD_reset 0x0
+// Receive queue depth. Indicates how many unread 32-bit words are
+// currently in the RX FIFO.  When active, this result may an
+// underestimate due to synchronization delays.
 #define SPI_CONTROLLER__STATUS__RXQD_bm 0xff00
 #define SPI_CONTROLLER__STATUS__RXQD_bp 8
 #define SPI_CONTROLLER__STATUS__RXQD_bw 8
 #define SPI_CONTROLLER__STATUS__RXQD_reset 0x0
+// Command queue depth. Indicates how many unread 32-bit words are
+// currently in the command segment queue.
 #define SPI_CONTROLLER__STATUS__CMDQD_bm 0xf0000
 #define SPI_CONTROLLER__STATUS__CMDQD_bp 16
 #define SPI_CONTROLLER__STATUS__CMDQD_bw 4
 #define SPI_CONTROLLER__STATUS__CMDQD_reset 0x0
+// If high, the number of 32-bits in the RX FIFO now exceeds the
+// !!CONTROL.RX_WATERMARK entries (32b each).
 #define SPI_CONTROLLER__STATUS__RXWM_bm 0x100000
 #define SPI_CONTROLLER__STATUS__RXWM_bp 20
 #define SPI_CONTROLLER__STATUS__RXWM_bw 1
 #define SPI_CONTROLLER__STATUS__RXWM_reset 0x0
+// The value of the ByteOrder parameter, provided so that firmware
+// can confirm proper IP configuration.
 #define SPI_CONTROLLER__STATUS__BYTEORDER_bm 0x400000
 #define SPI_CONTROLLER__STATUS__BYTEORDER_bp 22
 #define SPI_CONTROLLER__STATUS__BYTEORDER_bw 1
 #define SPI_CONTROLLER__STATUS__BYTEORDER_reset 0x0
+// If high, signifies that an ongoing transaction has stalled
+// due to lack of available space in the RX FIFO
 #define SPI_CONTROLLER__STATUS__RXSTALL_bm 0x800000
 #define SPI_CONTROLLER__STATUS__RXSTALL_bp 23
 #define SPI_CONTROLLER__STATUS__RXSTALL_bw 1
 #define SPI_CONTROLLER__STATUS__RXSTALL_reset 0x0
+// When high, indicates that the receive fifo is empty.
+// Any reads from RX FIFO will cause an error interrupt.
 #define SPI_CONTROLLER__STATUS__RXEMPTY_bm 0x1000000
 #define SPI_CONTROLLER__STATUS__RXEMPTY_bp 24
 #define SPI_CONTROLLER__STATUS__RXEMPTY_bw 1
 #define SPI_CONTROLLER__STATUS__RXEMPTY_reset 0x0
+// When high, indicates that the receive fifo is full.  Any
+// ongoing transactions will stall until firmware reads some
+// data from !!RXDATA.
 #define SPI_CONTROLLER__STATUS__RXFULL_bm 0x2000000
 #define SPI_CONTROLLER__STATUS__RXFULL_bp 25
 #define SPI_CONTROLLER__STATUS__RXFULL_bw 1
 #define SPI_CONTROLLER__STATUS__RXFULL_reset 0x0
+// If high, the amount of data in the TX FIFO has fallen below the
+// level of !!CONTROL.TX_WATERMARK words (32b each).
 #define SPI_CONTROLLER__STATUS__TXWM_bm 0x4000000
 #define SPI_CONTROLLER__STATUS__TXWM_bp 26
 #define SPI_CONTROLLER__STATUS__TXWM_bw 1
 #define SPI_CONTROLLER__STATUS__TXWM_reset 0x0
+// If high, signifies that an ongoing transaction has stalled
+// due to lack of data in the TX FIFO
 #define SPI_CONTROLLER__STATUS__TXSTALL_bm 0x8000000
 #define SPI_CONTROLLER__STATUS__TXSTALL_bp 27
 #define SPI_CONTROLLER__STATUS__TXSTALL_bw 1
 #define SPI_CONTROLLER__STATUS__TXSTALL_reset 0x0
+// When high, indicates that the transmit data fifo is empty.
 #define SPI_CONTROLLER__STATUS__TXEMPTY_bm 0x10000000
 #define SPI_CONTROLLER__STATUS__TXEMPTY_bp 28
 #define SPI_CONTROLLER__STATUS__TXEMPTY_bw 1
 #define SPI_CONTROLLER__STATUS__TXEMPTY_reset 0x0
+// When high, indicates that the transmit data fifo is full.
+// Any further writes to !!TXDATA will create an error interrupt.
 #define SPI_CONTROLLER__STATUS__TXFULL_bm 0x20000000
 #define SPI_CONTROLLER__STATUS__TXFULL_bp 29
 #define SPI_CONTROLLER__STATUS__TXFULL_bw 1
 #define SPI_CONTROLLER__STATUS__TXFULL_reset 0x0
+// When high, indicates the SPI host is processing a previously
+// issued command.
 #define SPI_CONTROLLER__STATUS__ACTIVE_bm 0x40000000
 #define SPI_CONTROLLER__STATUS__ACTIVE_bp 30
 #define SPI_CONTROLLER__STATUS__ACTIVE_bw 1
 #define SPI_CONTROLLER__STATUS__ACTIVE_reset 0x0
+// When high, indicates the SPI host is ready to receive
+// commands. Writing to COMMAND when READY is low is
+// an error, and will trigger an interrupt.
 #define SPI_CONTROLLER__STATUS__READY_bm 0x80000000
 #define SPI_CONTROLLER__STATUS__READY_bp 31
 #define SPI_CONTROLLER__STATUS__READY_bw 1
 #define SPI_CONTROLLER__STATUS__READY_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Transmit queue depth.
+        // Indicates how many unsent 32-bit words are currently in the TX FIFO.
+        // When active, this result may be an overestimate due to synchronization delays.
         uint32_t TXQD :8;
+        // Receive queue depth. Indicates how many unread 32-bit words are
+        // currently in the RX FIFO.  When active, this result may an
+        // underestimate due to synchronization delays.
         uint32_t RXQD :8;
+        // Command queue depth. Indicates how many unread 32-bit words are
+        // currently in the command segment queue.
         uint32_t CMDQD :4;
+        // If high, the number of 32-bits in the RX FIFO now exceeds the
+        // !!CONTROL.RX_WATERMARK entries (32b each).
         uint32_t RXWM :1;
         uint32_t :1;
+        // The value of the ByteOrder parameter, provided so that firmware
+        // can confirm proper IP configuration.
         uint32_t BYTEORDER :1;
+        // If high, signifies that an ongoing transaction has stalled
+        // due to lack of available space in the RX FIFO
         uint32_t RXSTALL :1;
+        // When high, indicates that the receive fifo is empty.
+        // Any reads from RX FIFO will cause an error interrupt.
         uint32_t RXEMPTY :1;
+        // When high, indicates that the receive fifo is full.  Any
+        // ongoing transactions will stall until firmware reads some
+        // data from !!RXDATA.
         uint32_t RXFULL :1;
+        // If high, the amount of data in the TX FIFO has fallen below the
+        // level of !!CONTROL.TX_WATERMARK words (32b each).
         uint32_t TXWM :1;
+        // If high, signifies that an ongoing transaction has stalled
+        // due to lack of data in the TX FIFO
         uint32_t TXSTALL :1;
+        // When high, indicates that the transmit data fifo is empty.
         uint32_t TXEMPTY :1;
+        // When high, indicates that the transmit data fifo is full.
+        // Any further writes to !!TXDATA will create an error interrupt.
         uint32_t TXFULL :1;
+        // When high, indicates the SPI host is processing a previously
+        // issued command.
         uint32_t ACTIVE :1;
+        // When high, indicates the SPI host is ready to receive
+        // commands. Writing to COMMAND when READY is low is
+        // an error, and will trigger an interrupt.
         uint32_t READY :1;
     } f;
     uint32_t w;
 } spi_controller__STATUS_t;
 
 // reg - spi_controller::CONFIGOPTS
+// Core clock divider.  Slows down subsequent SPI transactions by a
+// factor of (CLKDIV+1) relative to the core clock frequency.  The
+// period of sck, T(sck) then becomes `2*(CLK_DIV+1)*T(core)`
 #define SPI_CONTROLLER__CONFIGOPTS__CLKDIV_bm 0xffff
 #define SPI_CONTROLLER__CONFIGOPTS__CLKDIV_bp 0
 #define SPI_CONTROLLER__CONFIGOPTS__CLKDIV_bw 16
 #define SPI_CONTROLLER__CONFIGOPTS__CLKDIV_reset 0x0
+// Minimum idle time between commands. Indicates the minimum
+// number of sck half-cycles to hold cs_n high between commands.
+// Setting this register to zero creates a minimally-wide CS_N-high
+// pulse of one-half sck cycle.
 #define SPI_CONTROLLER__CONFIGOPTS__CSNIDLE_bm 0xf0000
 #define SPI_CONTROLLER__CONFIGOPTS__CSNIDLE_bp 16
 #define SPI_CONTROLLER__CONFIGOPTS__CSNIDLE_bw 4
 #define SPI_CONTROLLER__CONFIGOPTS__CSNIDLE_reset 0x0
+// CS_N Trailing Time.  Indicates the number of half sck cycles,
+// CSNTRAIL+1, to leave between last edge of sck and the rising
+// edge of cs_n. Setting this register to zero corresponds
+// to the minimum delay of one-half sck cycle.
 #define SPI_CONTROLLER__CONFIGOPTS__CSNTRAIL_bm 0xf00000
 #define SPI_CONTROLLER__CONFIGOPTS__CSNTRAIL_bp 20
 #define SPI_CONTROLLER__CONFIGOPTS__CSNTRAIL_bw 4
 #define SPI_CONTROLLER__CONFIGOPTS__CSNTRAIL_reset 0x0
+// CS_N Leading Time.  Indicates the number of half sck cycles,
+// CSNLEAD+1, to leave between the falling edge of cs_n and
+// the first edge of sck.  Setting this register to zero
+// corresponds to the minimum delay of one-half sck cycle
 #define SPI_CONTROLLER__CONFIGOPTS__CSNLEAD_bm 0xf000000
 #define SPI_CONTROLLER__CONFIGOPTS__CSNLEAD_bp 24
 #define SPI_CONTROLLER__CONFIGOPTS__CSNLEAD_bw 4
 #define SPI_CONTROLLER__CONFIGOPTS__CSNLEAD_reset 0x0
+// Full cycle.  Modifies the CPHA sampling behaviour to allow
+// for longer device logic setup times.  Rather than sampling the SD
+// bus a half cycle after shifting out data, the data is sampled
+// a full cycle after shifting data out.  This means that if
+// CPHA = 0, data is shifted out on the trailing edge, and
+// sampled a full cycle later.  If CPHA = 1, data is shifted and
+// sampled with the trailing edge, also separated by a
+// full cycle.
 #define SPI_CONTROLLER__CONFIGOPTS__FULLCYC_bm 0x20000000
 #define SPI_CONTROLLER__CONFIGOPTS__FULLCYC_bp 29
 #define SPI_CONTROLLER__CONFIGOPTS__FULLCYC_bw 1
 #define SPI_CONTROLLER__CONFIGOPTS__FULLCYC_reset 0x0
+// The phase of the sck clock signal relative to the data. When
+// CPHA = 0, the data changes on the trailing edge of sck
+// and is typically sampled on the leading edge.  Conversely
+// if CPHA = 1 high, data lines change on the leading edge of
+// sck and are typically sampled on the trailing edge.
+// CPHA should be chosen to match the phase of the selected
+// device.  The sampling behavior is modified by the
+// !!CONFIGOPTS.FULLCYC bit.
 #define SPI_CONTROLLER__CONFIGOPTS__CPHA_bm 0x40000000
 #define SPI_CONTROLLER__CONFIGOPTS__CPHA_bp 30
 #define SPI_CONTROLLER__CONFIGOPTS__CPHA_bw 1
 #define SPI_CONTROLLER__CONFIGOPTS__CPHA_reset 0x0
+// The polarity of the sck clock signal.  When CPOL is 0,
+// sck is low when idle, and emits high pulses.   When CPOL
+// is 1, sck is high when idle, and emits a series of low
+// pulses.
 #define SPI_CONTROLLER__CONFIGOPTS__CPOL_bm 0x80000000
 #define SPI_CONTROLLER__CONFIGOPTS__CPOL_bp 31
 #define SPI_CONTROLLER__CONFIGOPTS__CPOL_bw 1
 #define SPI_CONTROLLER__CONFIGOPTS__CPOL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Core clock divider.  Slows down subsequent SPI transactions by a
+        // factor of (CLKDIV+1) relative to the core clock frequency.  The
+        // period of sck, T(sck) then becomes `2*(CLK_DIV+1)*T(core)`
         uint32_t CLKDIV :16;
+        // Minimum idle time between commands. Indicates the minimum
+        // number of sck half-cycles to hold cs_n high between commands.
+        // Setting this register to zero creates a minimally-wide CS_N-high
+        // pulse of one-half sck cycle.
         uint32_t CSNIDLE :4;
+        // CS_N Trailing Time.  Indicates the number of half sck cycles,
+        // CSNTRAIL+1, to leave between last edge of sck and the rising
+        // edge of cs_n. Setting this register to zero corresponds
+        // to the minimum delay of one-half sck cycle.
         uint32_t CSNTRAIL :4;
+        // CS_N Leading Time.  Indicates the number of half sck cycles,
+        // CSNLEAD+1, to leave between the falling edge of cs_n and
+        // the first edge of sck.  Setting this register to zero
+        // corresponds to the minimum delay of one-half sck cycle
         uint32_t CSNLEAD :4;
         uint32_t :1;
+        // Full cycle.  Modifies the CPHA sampling behaviour to allow
+        // for longer device logic setup times.  Rather than sampling the SD
+        // bus a half cycle after shifting out data, the data is sampled
+        // a full cycle after shifting data out.  This means that if
+        // CPHA = 0, data is shifted out on the trailing edge, and
+        // sampled a full cycle later.  If CPHA = 1, data is shifted and
+        // sampled with the trailing edge, also separated by a
+        // full cycle.
         uint32_t FULLCYC :1;
+        // The phase of the sck clock signal relative to the data. When
+        // CPHA = 0, the data changes on the trailing edge of sck
+        // and is typically sampled on the leading edge.  Conversely
+        // if CPHA = 1 high, data lines change on the leading edge of
+        // sck and are typically sampled on the trailing edge.
+        // CPHA should be chosen to match the phase of the selected
+        // device.  The sampling behavior is modified by the
+        // !!CONFIGOPTS.FULLCYC bit.
         uint32_t CPHA :1;
+        // The polarity of the sck clock signal.  When CPOL is 0,
+        // sck is low when idle, and emits high pulses.   When CPOL
+        // is 1, sck is high when idle, and emits a series of low
+        // pulses.
         uint32_t CPOL :1;
     } f;
     uint32_t w;
 } spi_controller__CONFIGOPTS_t;
 
 // reg - spi_controller::CSID
+// Chip Select ID
 #define SPI_CONTROLLER__CSID__CSID_bm 0xffffffff
 #define SPI_CONTROLLER__CSID__CSID_bp 0
 #define SPI_CONTROLLER__CSID__CSID_bw 32
 #define SPI_CONTROLLER__CSID__CSID_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Chip Select ID
         uint32_t CSID :32;
     } f;
     uint32_t w;
 } spi_controller__CSID_t;
 
 // reg - spi_controller::COMMAND
+// **C**hip **S**elect **A**ctive **A**fter **T**ransaction.
+// If !!COMMAND.CSAAT = 0, the chip select line is raised immediately
+// at the end of the command segment.
+// If !!COMMAND.CSAAT = 1, the chip select line is left low at the
+// end of the current transaction segment.
+// This allows the creation of longer, more complete SPI transactions,
+// consisting of several separate segments for issuing instructions,
+// pausing for dummy cycles, and transmitting or receiving data from
+// the device.
 #define SPI_CONTROLLER__COMMAND__CSAAT_bm 0x1
 #define SPI_CONTROLLER__COMMAND__CSAAT_bp 0
 #define SPI_CONTROLLER__COMMAND__CSAAT_bw 1
 #define SPI_CONTROLLER__COMMAND__CSAAT_reset 0x0
+// The speed for this command segment: "0" = Standard SPI. "1" = Dual SPI.
+// "2"=Quad SPI,  "3": RESERVED.
 #define SPI_CONTROLLER__COMMAND__SPEED_bm 0x6
 #define SPI_CONTROLLER__COMMAND__SPEED_bp 1
 #define SPI_CONTROLLER__COMMAND__SPEED_bw 2
 #define SPI_CONTROLLER__COMMAND__SPEED_reset 0x0
+// The direction for the following command: "0" = Dummy cycles
+// (no TX/RX). "1" = Rx only, "2" = Tx only, "3" = Bidirectional
+// Tx/Rx (Standard SPI mode only).
 #define SPI_CONTROLLER__COMMAND__DIRECTION_bm 0x18
 #define SPI_CONTROLLER__COMMAND__DIRECTION_bp 3
 #define SPI_CONTROLLER__COMMAND__DIRECTION_bw 2
 #define SPI_CONTROLLER__COMMAND__DIRECTION_reset 0x0
+// Segment Length.
+// For read or write segments, this field controls the
+// number of 1-byte bursts to transmit and or receive in
+// this command segment.  The number of cycles required
+// to send or received a byte will depend on !!COMMAND.SPEED.
+// For dummy segments, (!!COMMAND.DIRECTION == 0), this register
+// controls the number of dummy cycles to issue.
+// The number of bytes (or dummy cycles) in the segment will be
+// equal to !!COMMAND.LEN + 1.
 #define SPI_CONTROLLER__COMMAND__LEN_bm 0x1ffffe0
 #define SPI_CONTROLLER__COMMAND__LEN_bp 5
 #define SPI_CONTROLLER__COMMAND__LEN_bw 20
 #define SPI_CONTROLLER__COMMAND__LEN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // **C**hip **S**elect **A**ctive **A**fter **T**ransaction.
+        // If !!COMMAND.CSAAT = 0, the chip select line is raised immediately
+        // at the end of the command segment.
+        // If !!COMMAND.CSAAT = 1, the chip select line is left low at the
+        // end of the current transaction segment.
+        // This allows the creation of longer, more complete SPI transactions,
+        // consisting of several separate segments for issuing instructions,
+        // pausing for dummy cycles, and transmitting or receiving data from
+        // the device.
         uint32_t CSAAT :1;
+        // The speed for this command segment: "0" = Standard SPI. "1" = Dual SPI.
+        // "2"=Quad SPI,  "3": RESERVED.
         uint32_t SPEED :2;
+        // The direction for the following command: "0" = Dummy cycles
+        // (no TX/RX). "1" = Rx only, "2" = Tx only, "3" = Bidirectional
+        // Tx/Rx (Standard SPI mode only).
         uint32_t DIRECTION :2;
+        // Segment Length.
+        // For read or write segments, this field controls the
+        // number of 1-byte bursts to transmit and or receive in
+        // this command segment.  The number of cycles required
+        // to send or received a byte will depend on !!COMMAND.SPEED.
+        // For dummy segments, (!!COMMAND.DIRECTION == 0), this register
+        // controls the number of dummy cycles to issue.
+        // The number of bytes (or dummy cycles) in the segment will be
+        // equal to !!COMMAND.LEN + 1.
         uint32_t LEN :20;
         uint32_t :7;
     } f;
@@ -285,32 +515,58 @@ typedef struct __attribute__ ((__packed__)) {
 } spi_controller__TXDATA_t;
 
 // reg - spi_controller::ERROR_ENABLE
+// Command Error: If this bit is set, the block sends an error
+// interrupt whenever a command is issued while busy (i.e. a 1 is
+// when !!STATUS.READY is not asserted.)
 #define SPI_CONTROLLER__ERROR_ENABLE__CMDBUSY_bm 0x1
 #define SPI_CONTROLLER__ERROR_ENABLE__CMDBUSY_bp 0
 #define SPI_CONTROLLER__ERROR_ENABLE__CMDBUSY_bw 1
 #define SPI_CONTROLLER__ERROR_ENABLE__CMDBUSY_reset 0x1
+// Overflow Errors: If this bit is set, the block sends an
+// error interrupt whenever the TX FIFO overflows.
 #define SPI_CONTROLLER__ERROR_ENABLE__OVERFLOW_bm 0x2
 #define SPI_CONTROLLER__ERROR_ENABLE__OVERFLOW_bp 1
 #define SPI_CONTROLLER__ERROR_ENABLE__OVERFLOW_bw 1
 #define SPI_CONTROLLER__ERROR_ENABLE__OVERFLOW_reset 0x1
+// Underflow Errors: If this bit is set, the block sends an
+// error interrupt whenever there is a read from !!RXDATA
+// but the RX FIFO is empty.
 #define SPI_CONTROLLER__ERROR_ENABLE__UNDERFLOW_bm 0x4
 #define SPI_CONTROLLER__ERROR_ENABLE__UNDERFLOW_bp 2
 #define SPI_CONTROLLER__ERROR_ENABLE__UNDERFLOW_bw 1
 #define SPI_CONTROLLER__ERROR_ENABLE__UNDERFLOW_reset 0x1
+// Invalid Command Errors: If this bit is set, the block sends an
+// error interrupt whenever a command is sent with invalid values for
+// !!COMMAND.SPEED or !!COMMAND.DIRECTION.
 #define SPI_CONTROLLER__ERROR_ENABLE__CMDINVAL_bm 0x8
 #define SPI_CONTROLLER__ERROR_ENABLE__CMDINVAL_bp 3
 #define SPI_CONTROLLER__ERROR_ENABLE__CMDINVAL_bw 1
 #define SPI_CONTROLLER__ERROR_ENABLE__CMDINVAL_reset 0x1
+// Invalid CSID: If this bit is set, the block sends an error interrupt whenever
+// a command is submitted, but CSID exceeds NumCS.
 #define SPI_CONTROLLER__ERROR_ENABLE__CSIDINVAL_bm 0x10
 #define SPI_CONTROLLER__ERROR_ENABLE__CSIDINVAL_bp 4
 #define SPI_CONTROLLER__ERROR_ENABLE__CSIDINVAL_bw 1
 #define SPI_CONTROLLER__ERROR_ENABLE__CSIDINVAL_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Command Error: If this bit is set, the block sends an error
+        // interrupt whenever a command is issued while busy (i.e. a 1 is
+        // when !!STATUS.READY is not asserted.)
         uint32_t CMDBUSY :1;
+        // Overflow Errors: If this bit is set, the block sends an
+        // error interrupt whenever the TX FIFO overflows.
         uint32_t OVERFLOW :1;
+        // Underflow Errors: If this bit is set, the block sends an
+        // error interrupt whenever there is a read from !!RXDATA
+        // but the RX FIFO is empty.
         uint32_t UNDERFLOW :1;
+        // Invalid Command Errors: If this bit is set, the block sends an
+        // error interrupt whenever a command is sent with invalid values for
+        // !!COMMAND.SPEED or !!COMMAND.DIRECTION.
         uint32_t CMDINVAL :1;
+        // Invalid CSID: If this bit is set, the block sends an error interrupt whenever
+        // a command is submitted, but CSID exceeds NumCS.
         uint32_t CSIDINVAL :1;
         uint32_t :27;
     } f;
@@ -318,37 +574,57 @@ typedef union {
 } spi_controller__ERROR_ENABLE_t;
 
 // reg - spi_controller::ERROR_STATUS
+// Indicates a write to !!COMMAND when !!STATUS.READY = 0.
 #define SPI_CONTROLLER__ERROR_STATUS__CMDBUSY_bm 0x1
 #define SPI_CONTROLLER__ERROR_STATUS__CMDBUSY_bp 0
 #define SPI_CONTROLLER__ERROR_STATUS__CMDBUSY_bw 1
 #define SPI_CONTROLLER__ERROR_STATUS__CMDBUSY_reset 0x0
+// Indicates that firmware has overflowed the TX FIFO
 #define SPI_CONTROLLER__ERROR_STATUS__OVERFLOW_bm 0x2
 #define SPI_CONTROLLER__ERROR_STATUS__OVERFLOW_bp 1
 #define SPI_CONTROLLER__ERROR_STATUS__OVERFLOW_bw 1
 #define SPI_CONTROLLER__ERROR_STATUS__OVERFLOW_reset 0x0
+// Indicates that firmware has attempted to read from
+// !!RXDATA when the RX FIFO is empty.
 #define SPI_CONTROLLER__ERROR_STATUS__UNDERFLOW_bm 0x4
 #define SPI_CONTROLLER__ERROR_STATUS__UNDERFLOW_bp 2
 #define SPI_CONTROLLER__ERROR_STATUS__UNDERFLOW_bw 1
 #define SPI_CONTROLLER__ERROR_STATUS__UNDERFLOW_reset 0x0
+// Indicates an invalid command segment, meaning either an invalid value of
+// !!COMMAND.SPEED or a request for bidirectional data transfer at dual or quad
+// speed
 #define SPI_CONTROLLER__ERROR_STATUS__CMDINVAL_bm 0x8
 #define SPI_CONTROLLER__ERROR_STATUS__CMDINVAL_bp 3
 #define SPI_CONTROLLER__ERROR_STATUS__CMDINVAL_bw 1
 #define SPI_CONTROLLER__ERROR_STATUS__CMDINVAL_reset 0x0
+// Indicates a command was attempted with an invalid value for !!CSID.
 #define SPI_CONTROLLER__ERROR_STATUS__CSIDINVAL_bm 0x10
 #define SPI_CONTROLLER__ERROR_STATUS__CSIDINVAL_bp 4
 #define SPI_CONTROLLER__ERROR_STATUS__CSIDINVAL_bw 1
 #define SPI_CONTROLLER__ERROR_STATUS__CSIDINVAL_reset 0x0
+// Indicates that TLUL attempted to write to TXDATA with no bytes enabled. Such
+// 'zero byte' writes are not supported.
 #define SPI_CONTROLLER__ERROR_STATUS__ACCESSINVAL_bm 0x20
 #define SPI_CONTROLLER__ERROR_STATUS__ACCESSINVAL_bp 5
 #define SPI_CONTROLLER__ERROR_STATUS__ACCESSINVAL_bw 1
 #define SPI_CONTROLLER__ERROR_STATUS__ACCESSINVAL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Indicates a write to !!COMMAND when !!STATUS.READY = 0.
         uint32_t CMDBUSY :1;
+        // Indicates that firmware has overflowed the TX FIFO
         uint32_t OVERFLOW :1;
+        // Indicates that firmware has attempted to read from
+        // !!RXDATA when the RX FIFO is empty.
         uint32_t UNDERFLOW :1;
+        // Indicates an invalid command segment, meaning either an invalid value of
+        // !!COMMAND.SPEED or a request for bidirectional data transfer at dual or quad
+        // speed
         uint32_t CMDINVAL :1;
+        // Indicates a command was attempted with an invalid value for !!CSID.
         uint32_t CSIDINVAL :1;
+        // Indicates that TLUL attempted to write to TXDATA with no bytes enabled. Such
+        // 'zero byte' writes are not supported.
         uint32_t ACCESSINVAL :1;
         uint32_t :26;
     } f;
@@ -356,37 +632,69 @@ typedef union {
 } spi_controller__ERROR_STATUS_t;
 
 // reg - spi_controller::EVENT_ENABLE
+// Assert to send a spi_event interrupt whenever !!STATUS.RXFULL
+// goes high
 #define SPI_CONTROLLER__EVENT_ENABLE__RXFULL_bm 0x1
 #define SPI_CONTROLLER__EVENT_ENABLE__RXFULL_bp 0
 #define SPI_CONTROLLER__EVENT_ENABLE__RXFULL_bw 1
 #define SPI_CONTROLLER__EVENT_ENABLE__RXFULL_reset 0x0
+// Assert to send a spi_event interrupt whenever !!STATUS.TXEMPTY
+// goes high
 #define SPI_CONTROLLER__EVENT_ENABLE__TXEMPTY_bm 0x2
 #define SPI_CONTROLLER__EVENT_ENABLE__TXEMPTY_bp 1
 #define SPI_CONTROLLER__EVENT_ENABLE__TXEMPTY_bw 1
 #define SPI_CONTROLLER__EVENT_ENABLE__TXEMPTY_reset 0x0
+// Assert to send a spi_event interrupt whenever the number of 32-bit words in
+// the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the
+// reassertion of this interrupt, read more data from the RX FIFO, or
+// increase !!CONTROL.RX_WATERMARK.
 #define SPI_CONTROLLER__EVENT_ENABLE__RXWM_bm 0x4
 #define SPI_CONTROLLER__EVENT_ENABLE__RXWM_bp 2
 #define SPI_CONTROLLER__EVENT_ENABLE__RXWM_bw 1
 #define SPI_CONTROLLER__EVENT_ENABLE__RXWM_reset 0x0
+// Assert to send a spi_event interrupt whenever the number of 32-bit words in
+// the TX FIFO is less than !!CONTROL.TX_WATERMARK.  To prevent the
+// reassertion of this interrupt add more data to the TX FIFO, or
+// reduce !!CONTROL.TX_WATERMARK.
 #define SPI_CONTROLLER__EVENT_ENABLE__TXWM_bm 0x8
 #define SPI_CONTROLLER__EVENT_ENABLE__TXWM_bp 3
 #define SPI_CONTROLLER__EVENT_ENABLE__TXWM_bw 1
 #define SPI_CONTROLLER__EVENT_ENABLE__TXWM_reset 0x0
+// Assert to send a spi_event interrupt whenever !!STATUS.READY
+// goes high
 #define SPI_CONTROLLER__EVENT_ENABLE__READY_bm 0x10
 #define SPI_CONTROLLER__EVENT_ENABLE__READY_bp 4
 #define SPI_CONTROLLER__EVENT_ENABLE__READY_bw 1
 #define SPI_CONTROLLER__EVENT_ENABLE__READY_reset 0x0
+// Assert to send a spi_event interrupt whenever !!STATUS.ACTIVE
+// goes low
 #define SPI_CONTROLLER__EVENT_ENABLE__IDLE_bm 0x20
 #define SPI_CONTROLLER__EVENT_ENABLE__IDLE_bp 5
 #define SPI_CONTROLLER__EVENT_ENABLE__IDLE_bw 1
 #define SPI_CONTROLLER__EVENT_ENABLE__IDLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Assert to send a spi_event interrupt whenever !!STATUS.RXFULL
+        // goes high
         uint32_t RXFULL :1;
+        // Assert to send a spi_event interrupt whenever !!STATUS.TXEMPTY
+        // goes high
         uint32_t TXEMPTY :1;
+        // Assert to send a spi_event interrupt whenever the number of 32-bit words in
+        // the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the
+        // reassertion of this interrupt, read more data from the RX FIFO, or
+        // increase !!CONTROL.RX_WATERMARK.
         uint32_t RXWM :1;
+        // Assert to send a spi_event interrupt whenever the number of 32-bit words in
+        // the TX FIFO is less than !!CONTROL.TX_WATERMARK.  To prevent the
+        // reassertion of this interrupt add more data to the TX FIFO, or
+        // reduce !!CONTROL.TX_WATERMARK.
         uint32_t TXWM :1;
+        // Assert to send a spi_event interrupt whenever !!STATUS.READY
+        // goes high
         uint32_t READY :1;
+        // Assert to send a spi_event interrupt whenever !!STATUS.ACTIVE
+        // goes low
         uint32_t IDLE :1;
         uint32_t :26;
     } f;
@@ -394,6 +702,7 @@ typedef union {
 } spi_controller__EVENT_ENABLE_t;
 
 // addrmap - spi_controller
+// Serial peripheral interface for host mode, suitable for interfacing external serial NOR flash devices
 typedef struct __attribute__ ((__packed__)) {
     spi_controller__INTR_STATE_t INTR_STATE;
     spi_controller__INTR_ENABLE_t INTR_ENABLE;

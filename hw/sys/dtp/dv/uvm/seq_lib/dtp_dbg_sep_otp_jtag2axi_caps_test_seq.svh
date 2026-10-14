@@ -17,7 +17,9 @@ class dtp_dbg_sep_otp_jtag2axi_caps_test_seq extends dtp_debug_tdr_base_test_seq
     string required[$] = {"CHK-TAP-RESET-TLR", "CHK-CAPS", "CHK-CAPS-RO"};
     seed_scenario_rng();
     attach_family_checker(required);
+    log_step("1", "Reset TAP before reading SEP_OTP_JTAG2AXI_CAPS");
     reset_to_tlr();
+    log_step("2", "Run common JTAG2AXI_CAPS checks");
     check_jtag2axi_caps(dtp_j2a_target_sep_otp(), "SEP_OTP_JTAG2AXI_CAPS");
     finalize_family_checker();
   endtask

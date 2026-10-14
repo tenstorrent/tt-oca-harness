@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_clock_domain_composition_test (SMU_105).
+"""Sequence for smu_clock_domain_composition_test.
 
 Each secondary domain is checked at its consumer: clock identity with the
 wrapper clock pin at both edges, toggle rate over a window that is a whole

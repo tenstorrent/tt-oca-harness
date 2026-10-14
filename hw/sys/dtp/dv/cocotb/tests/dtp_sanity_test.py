@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DTP open-source TAP FSM smoke test.
+"""DTP TAP FSM smoke test.
 
 Exercises IEEE 1149.1 primary TAP state transitions via the shared ocah_jtag_vip BFM.
 """
+
+from __future__ import annotations
 
 import pyuvm
 from dtp_base_test import dtp_base_test

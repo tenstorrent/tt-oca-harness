@@ -175,7 +175,7 @@ struct I3C_Driver {
                                          bool expect_excess_bytes, bool is_flush);
 
     // Set the expected payload length on the hardware before a fifo_write (platform-specific).
-    // Default stub is a no-op; platform drivers program SLV_CTRL.pr_pl.
+    // Default stub is a no-op.
     void (*set_payload_length)(I3C_Driver *drv, uint16_t length);
 
     // HW context

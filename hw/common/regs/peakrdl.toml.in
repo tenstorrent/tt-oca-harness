@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Local c-header exporter: peakrdl-cheader 1.1.0 emits no RDL `desc` text, and
+# unlike peakrdl-rawheader it has no --template hook, so the description comments
+# live in a peakrdl exporter plugin (tools/regs/cheader.py) registered here.
+# rules.mk passes this file with --peakrdl-cfg. Drop it once the descriptions
+# land upstream.
+
+[peakrdl]
+# Absolute: the register flow runs peakrdl from the block directory, not the
+# repository root, so a relative search path would not resolve. The path is a
+# placeholder; rules.mk writes the real file with the checkout's path in it.
+python_search_paths = ["@OCAH_ROOT@/tools/regs"]
+
+[peakrdl.plugins.exporters]
+c-header-desc = "cheader:Exporter"

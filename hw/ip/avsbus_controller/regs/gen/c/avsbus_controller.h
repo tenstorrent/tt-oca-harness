@@ -14,22 +14,59 @@ extern "C" {
 #include <assert.h>
 
 // reg - avsbus_controller::AVS_CMD
+// The command+data to be transferred to the AVS bus
+// Write Cmd Data. Formats: [list]
+// [*]Voltage (cmd_code 0x0): 16-bit unsigned int, 1LSB=1mV
+// [*]Transition Rate (cmd_code 0x1): [list]
+// [*]MSByte: Rise Rate, 8-bit unsigned int, 1LSB=1mV/us
+// [*]LSByte: Fall Rate, 8-bit unsigned int, 1LSB=1mV/us [/list]
+// [*]Reset Voltage (cmd_code 0x4): 16-bits, all zeroes
+// [*]Power Mode (cmd_code 0x5): 3-bits, LSB aligned: [list]
+// [*]0x0 - Maximum Efficiency
+// [*]0x3 - Maximum Power
+// [*]0x4-0x7 - Manufacturer-specific  [/list]
+// [*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec
+// [*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned
+// [*]For read cmd_code's, this is 0xffff
+// [/list]
 #define AVSBUS_CONTROLLER__AVS_CMD__CMD_DATA_bm 0x7fff8
 #define AVSBUS_CONTROLLER__AVS_CMD__CMD_DATA_bp 3
 #define AVSBUS_CONTROLLER__AVS_CMD__CMD_DATA_bw 16
 #define AVSBUS_CONTROLLER__AVS_CMD__CMD_DATA_reset 0x0
+// Rail Select:
+// 0x0 - Rail 0
+// 0x1 - Rail 1
+// 0xf - Broadcast
 #define AVSBUS_CONTROLLER__AVS_CMD__RAIL_SEL_bm 0x780000
 #define AVSBUS_CONTROLLER__AVS_CMD__RAIL_SEL_bp 19
 #define AVSBUS_CONTROLLER__AVS_CMD__RAIL_SEL_bw 4
 #define AVSBUS_CONTROLLER__AVS_CMD__RAIL_SEL_reset 0x0
+// Command Code (For cmd_group=0. For cmd_group=1, this is manufacturer-specific): [list]
+// [*]0x0 - Target Rail Voltage Read/Write
+// [*]0x1 - Vout Transition Rate Read/Write
+// [*]0x2 - Rail Current Read
+// [*]0x3 - Temperature Read
+// [*]0x4 - Force Voltage Reset (Requires wr_cmd_data=0x0)
+// [*]0x5 - Power Mode Read/Write
+// [*]0xe - AVSBus Status Read/Write
+// [*]0xf - AVSBus Version Read
+// [/list]
 #define AVSBUS_CONTROLLER__AVS_CMD__CMD_CODE_bm 0x7800000
 #define AVSBUS_CONTROLLER__AVS_CMD__CMD_CODE_bp 23
 #define AVSBUS_CONTROLLER__AVS_CMD__CMD_CODE_bw 4
 #define AVSBUS_CONTROLLER__AVS_CMD__CMD_CODE_reset 0x0
+// Command group:
+// Set to 1 for manufacturer-specific Command Code (cmd_code), otherwise 0
 #define AVSBUS_CONTROLLER__AVS_CMD__CMD_GRP_bm 0x8000000
 #define AVSBUS_CONTROLLER__AVS_CMD__CMD_GRP_bp 27
 #define AVSBUS_CONTROLLER__AVS_CMD__CMD_GRP_bw 1
 #define AVSBUS_CONTROLLER__AVS_CMD__CMD_GRP_reset 0x0
+// Read or write type: [list]
+// [*]0x0 - Commit Write
+// [*]0x1 - Hold Write
+// [*]0x2 - Reserved
+// [*]0x3 - Read
+// [/list]
 #define AVSBUS_CONTROLLER__AVS_CMD__R_OR_W_bm 0x30000000
 #define AVSBUS_CONTROLLER__AVS_CMD__R_OR_W_bp 28
 #define AVSBUS_CONTROLLER__AVS_CMD__R_OR_W_bw 2
@@ -37,10 +74,46 @@ extern "C" {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t :3;
+        // Write Cmd Data. Formats: [list]
+        // [*]Voltage (cmd_code 0x0): 16-bit unsigned int, 1LSB=1mV
+        // [*]Transition Rate (cmd_code 0x1): [list]
+        // [*]MSByte: Rise Rate, 8-bit unsigned int, 1LSB=1mV/us
+        // [*]LSByte: Fall Rate, 8-bit unsigned int, 1LSB=1mV/us [/list]
+        // [*]Reset Voltage (cmd_code 0x4): 16-bits, all zeroes
+        // [*]Power Mode (cmd_code 0x5): 3-bits, LSB aligned: [list]
+        // [*]0x0 - Maximum Efficiency
+        // [*]0x3 - Maximum Power
+        // [*]0x4-0x7 - Manufacturer-specific  [/list]
+        // [*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec
+        // [*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned
+        // [*]For read cmd_code's, this is 0xffff
+        // [/list]
         uint32_t CMD_DATA :16;
+        // Rail Select:
+        // 0x0 - Rail 0
+        // 0x1 - Rail 1
+        // 0xf - Broadcast
         uint32_t RAIL_SEL :4;
+        // Command Code (For cmd_group=0. For cmd_group=1, this is manufacturer-specific): [list]
+        // [*]0x0 - Target Rail Voltage Read/Write
+        // [*]0x1 - Vout Transition Rate Read/Write
+        // [*]0x2 - Rail Current Read
+        // [*]0x3 - Temperature Read
+        // [*]0x4 - Force Voltage Reset (Requires wr_cmd_data=0x0)
+        // [*]0x5 - Power Mode Read/Write
+        // [*]0xe - AVSBus Status Read/Write
+        // [*]0xf - AVSBus Version Read
+        // [/list]
         uint32_t CMD_CODE :4;
+        // Command group:
+        // Set to 1 for manufacturer-specific Command Code (cmd_code), otherwise 0
         uint32_t CMD_GRP :1;
+        // Read or write type: [list]
+        // [*]0x0 - Commit Write
+        // [*]0x1 - Hold Write
+        // [*]0x2 - Reserved
+        // [*]0x3 - Read
+        // [/list]
         uint32_t R_OR_W :2;
         uint32_t :2;
     } f;
@@ -48,104 +121,198 @@ typedef union {
 } avsbus_controller__AVS_CMD_t;
 
 // reg - avsbus_controller::AVS_READBACK
+// Response data from AVS slave device (updated in response to both AVS read and write commands). Reading
+// this register causes the AVS response readback fifo pointer to advance.
+// The CRC-3 code received from slave
 #define AVSBUS_CONTROLLER__AVS_READBACK__CRC_bm 0x7
 #define AVSBUS_CONTROLLER__AVS_READBACK__CRC_bp 0
 #define AVSBUS_CONTROLLER__AVS_READBACK__CRC_bw 3
 #define AVSBUS_CONTROLLER__AVS_READBACK__CRC_reset 0x0
+// Read Cmd Data. Format depends on cmd_code in previous master subframe:[list]
+// [*]Voltage (cmd_code 0x0): 16-bit unsigned int, 1LSB=1mV
+// [*]Transition Rate (cmd_code 0x1): [list]
+// [*]MSByte: Rise Rate, 8-bit unsigned int, 1LSB=1mV/us
+// [*]LSByte: Fall Rate, 8-bit unsigned int, 1LSB=1mV/us [/list]
+// [*]Current (cmd_mode 0x2): 16-bit unsigned, 1LSB=10mA
+// [*]Temperature (cmd_code 0x3): 16-bit signed, 1LSB=0.1degC
+// [*]Power Mode (cmd_code 0x5): 3-bits, LSB aligned: [list]
+// [*]0x0 - Maximum Efficiency
+// [*]0x3 - Maximum Power
+// [*]0x4-0x7 - Manufacturer-specific  [/list]
+// [*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec
+// [*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned
+// [*]If master issued a write (rw!=0x3) in previous master subframe, this field is 0xffff
+// [/list]
 #define AVSBUS_CONTROLLER__AVS_READBACK__CMD_DATA_bm 0xffff00
 #define AVSBUS_CONTROLLER__AVS_READBACK__CMD_DATA_bp 8
 #define AVSBUS_CONTROLLER__AVS_READBACK__CMD_DATA_bw 16
 #define AVSBUS_CONTROLLER__AVS_READBACK__CMD_DATA_reset 0x0
+// 5-bit field indicating general condition of the slave, per AVS spec StatusReponse field: [list]
+// [*]bit 4: VDone - AND of all VDone bits of active rails
+// [*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details
+// [*]bit 2: AVS_Control - 1 if ABSBus is controlling at least 1 device output, 0 otherwise.
+// [*]bit 1: MfrSpcfc_Stts1 - Manufacturer-specific
+// [*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific
+// [/list]
 #define AVSBUS_CONTROLLER__AVS_READBACK__STATUS_RESPONSE_bm 0x1f000000
 #define AVSBUS_CONTROLLER__AVS_READBACK__STATUS_RESPONSE_bp 24
 #define AVSBUS_CONTROLLER__AVS_READBACK__STATUS_RESPONSE_bw 5
 #define AVSBUS_CONTROLLER__AVS_READBACK__STATUS_RESPONSE_reset 0x0
+// Always 0
 #define AVSBUS_CONTROLLER__AVS_READBACK__CONST0_bm 0x20000000
 #define AVSBUS_CONTROLLER__AVS_READBACK__CONST0_bp 29
 #define AVSBUS_CONTROLLER__AVS_READBACK__CONST0_bw 1
 #define AVSBUS_CONTROLLER__AVS_READBACK__CONST0_reset 0x0
+// Indicates whether command executed or not - codes 0x1 and 0x2 trigger automatic retries by hardware:  [list]
+// [*]0x0: Action Performed
+// [*]0x1: Good CRC received but resource unavailable - hardware will retry
+// [*]0x2: Bad CRC received - hardware will retry
+// [*]0x3: Good CRC received but bad data, data type or selector - no hardware retry
+// [/list]
 #define AVSBUS_CONTROLLER__AVS_READBACK__SLAVE_ACK_bm 0xc0000000
 #define AVSBUS_CONTROLLER__AVS_READBACK__SLAVE_ACK_bp 30
 #define AVSBUS_CONTROLLER__AVS_READBACK__SLAVE_ACK_bw 2
 #define AVSBUS_CONTROLLER__AVS_READBACK__SLAVE_ACK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // The CRC-3 code received from slave
         uint32_t CRC :3;
         uint32_t :5;
+        // Read Cmd Data. Format depends on cmd_code in previous master subframe:[list]
+        // [*]Voltage (cmd_code 0x0): 16-bit unsigned int, 1LSB=1mV
+        // [*]Transition Rate (cmd_code 0x1): [list]
+        // [*]MSByte: Rise Rate, 8-bit unsigned int, 1LSB=1mV/us
+        // [*]LSByte: Fall Rate, 8-bit unsigned int, 1LSB=1mV/us [/list]
+        // [*]Current (cmd_mode 0x2): 16-bit unsigned, 1LSB=10mA
+        // [*]Temperature (cmd_code 0x3): 16-bit signed, 1LSB=0.1degC
+        // [*]Power Mode (cmd_code 0x5): 3-bits, LSB aligned: [list]
+        // [*]0x0 - Maximum Efficiency
+        // [*]0x3 - Maximum Power
+        // [*]0x4-0x7 - Manufacturer-specific  [/list]
+        // [*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec
+        // [*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned
+        // [*]If master issued a write (rw!=0x3) in previous master subframe, this field is 0xffff
+        // [/list]
         uint32_t CMD_DATA :16;
+        // 5-bit field indicating general condition of the slave, per AVS spec StatusReponse field: [list]
+        // [*]bit 4: VDone - AND of all VDone bits of active rails
+        // [*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details
+        // [*]bit 2: AVS_Control - 1 if ABSBus is controlling at least 1 device output, 0 otherwise.
+        // [*]bit 1: MfrSpcfc_Stts1 - Manufacturer-specific
+        // [*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific
+        // [/list]
         uint32_t STATUS_RESPONSE :5;
+        // Always 0
         uint32_t CONST0 :1;
+        // Indicates whether command executed or not - codes 0x1 and 0x2 trigger automatic retries by hardware:  [list]
+        // [*]0x0: Action Performed
+        // [*]0x1: Good CRC received but resource unavailable - hardware will retry
+        // [*]0x2: Bad CRC received - hardware will retry
+        // [*]0x3: Good CRC received but bad data, data type or selector - no hardware retry
+        // [/list]
         uint32_t SLAVE_ACK :2;
     } f;
     uint32_t w;
 } avsbus_controller__AVS_READBACK_t;
 
 // reg - avsbus_controller::AVS_DEBUG_READBACK
+// This register mirrors the AVS_READBACK register, but reading it does NOT affect the
+// AVS readback fifo pointer. Provided for debug purposes.
+// The current top-of-fifo AVS slave response sub-frame in the readback fifo
 #define AVSBUS_CONTROLLER__AVS_DEBUG_READBACK__AVS_SLAVE_SUBFRAME_bm 0xffffffff
 #define AVSBUS_CONTROLLER__AVS_DEBUG_READBACK__AVS_SLAVE_SUBFRAME_bp 0
 #define AVSBUS_CONTROLLER__AVS_DEBUG_READBACK__AVS_SLAVE_SUBFRAME_bw 32
 #define AVSBUS_CONTROLLER__AVS_DEBUG_READBACK__AVS_SLAVE_SUBFRAME_reset 0xffffffff
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // The current top-of-fifo AVS slave response sub-frame in the readback fifo
         uint32_t AVS_SLAVE_SUBFRAME :32;
     } f;
     uint32_t w;
 } avsbus_controller__AVS_DEBUG_READBACK_t;
 
 // reg - avsbus_controller::AVS_LATEST_SLAVE_SUBFRAME
+// This register contains the most recently received subframe from the AVS slave, bypassing the
+// AVS readback fifo. It is provided so that APB can see the current slave StatusResponse and SlaveAck
+// settings in a timely fashion, since the status data from the next entry in the readback fifo might
+// have considerable latency relative to when it was initially received from the AVS Slave.
+// The most recently received AVS slave response sub-frame
 #define AVSBUS_CONTROLLER__AVS_LATEST_SLAVE_SUBFRAME__AVS_SLAVE_SUBFRAME_bm 0xffffffff
 #define AVSBUS_CONTROLLER__AVS_LATEST_SLAVE_SUBFRAME__AVS_SLAVE_SUBFRAME_bp 0
 #define AVSBUS_CONTROLLER__AVS_LATEST_SLAVE_SUBFRAME__AVS_SLAVE_SUBFRAME_bw 32
 #define AVSBUS_CONTROLLER__AVS_LATEST_SLAVE_SUBFRAME__AVS_SLAVE_SUBFRAME_reset 0xffff
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // The most recently received AVS slave response sub-frame
         uint32_t AVS_SLAVE_SUBFRAME :32;
     } f;
     uint32_t w;
 } avsbus_controller__AVS_LATEST_SLAVE_SUBFRAME_t;
 
 // reg - avsbus_controller::AVS_NORMAL_STATUS
+// Various Status bits indicating normal operating conditions for APB2AVS bridge block.
+// These all have corresponding maskable bits in the AVS_INTERRUPT register
+// Total number of retries attempted by the AVS Master
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__TOTAL_RETRIES_bm 0xffff
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__TOTAL_RETRIES_bp 0
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__TOTAL_RETRIES_bw 16
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__TOTAL_RETRIES_reset 0x0
+// Master is currently in the middle of retrying a failed command
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_MASTER_IS_RETRYING_bm 0x10000
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_MASTER_IS_RETRYING_bp 16
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_MASTER_IS_RETRYING_bw 1
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_MASTER_IS_RETRYING_reset 0x0
+// Indicates AVS_CMD fifo is empty
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__CMD_FIFO_EMPTY_bm 0x20000
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__CMD_FIFO_EMPTY_bp 17
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__CMD_FIFO_EMPTY_bw 1
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__CMD_FIFO_EMPTY_reset 0x0
+// Indicates AVS_CMD fifo is full - any additional APB writes to AVS_CMD will be dropped until
+// the AVS bus can accept the next command, thus freeing space in the cmd fifo
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__CMD_FIFO_FULL_bm 0x40000
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__CMD_FIFO_FULL_bp 18
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__CMD_FIFO_FULL_bw 1
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__CMD_FIFO_FULL_reset 0x0
+// Indicates read-back fifo is full - no new AVS commands will be launched until
+// space is freed by an AVS_READBACK access
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__READBACK_FIFO_FULL_bm 0x80000
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__READBACK_FIFO_FULL_bp 19
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__READBACK_FIFO_FULL_bw 1
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__READBACK_FIFO_FULL_reset 0x0
+// Indicates AVS_READBACK register has data ready to read on APB
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__READBACK_HAS_DATA_bm 0x100000
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__READBACK_HAS_DATA_bp 20
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__READBACK_HAS_DATA_bw 1
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__READBACK_HAS_DATA_reset 0x0
+// Indicates that neither AVS master nor slave is currently driving a transaction on the AVS bus
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_BUS_IS_IDLE_bm 0x200000
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_BUS_IS_IDLE_bp 21
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_BUS_IS_IDLE_bw 1
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_BUS_IS_IDLE_reset 0x0
+// Indicates that the AVS master is issuing a slave resync operation (35 AVS clock cycles of holding mdata high)
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_SLAVE_IS_IN_RESYNC_bm 0x400000
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_SLAVE_IS_IN_RESYNC_bp 22
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_SLAVE_IS_IN_RESYNC_bw 1
 #define AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_SLAVE_IS_IN_RESYNC_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Total number of retries attempted by the AVS Master
         uint32_t TOTAL_RETRIES :16;
+        // Master is currently in the middle of retrying a failed command
         uint32_t AVS_MASTER_IS_RETRYING :1;
+        // Indicates AVS_CMD fifo is empty
         uint32_t CMD_FIFO_EMPTY :1;
+        // Indicates AVS_CMD fifo is full - any additional APB writes to AVS_CMD will be dropped until
+        // the AVS bus can accept the next command, thus freeing space in the cmd fifo
         uint32_t CMD_FIFO_FULL :1;
+        // Indicates read-back fifo is full - no new AVS commands will be launched until
+        // space is freed by an AVS_READBACK access
         uint32_t READBACK_FIFO_FULL :1;
+        // Indicates AVS_READBACK register has data ready to read on APB
         uint32_t READBACK_HAS_DATA :1;
+        // Indicates that neither AVS master nor slave is currently driving a transaction on the AVS bus
         uint32_t AVS_BUS_IS_IDLE :1;
+        // Indicates that the AVS master is issuing a slave resync operation (35 AVS clock cycles of holding mdata high)
         uint32_t AVS_SLAVE_IS_IN_RESYNC :1;
         uint32_t :9;
     } f;
@@ -153,18 +320,47 @@ typedef union {
 } avsbus_controller__AVS_NORMAL_STATUS_t;
 
 // reg - avsbus_controller::AVS_SLAVE_STATUS
+// Contains the most recent status feedback from the AVS slave device
+// The 5-bit Slave StatusResponse of the most recent slave subframe received, indicating the
+// general condition of the slave, per AVS spec StatusReponse field: [list]
+// [*]bit 4: VDone - AND of all VDone bits of active rails
+// [*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details
+// [*]bit 2: AVS_Control - 1 if ABSBus is controlling at least 1 device output, 0 otherwise.
+// [*]bit 1: MfrSpcfc_Stts1 - Manufacturer-specific
+// [*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific
+// [/list]
 #define AVSBUS_CONTROLLER__AVS_SLAVE_STATUS__AVS_SLAVE_STATUS_RESPONSE_bm 0x1f
 #define AVSBUS_CONTROLLER__AVS_SLAVE_STATUS__AVS_SLAVE_STATUS_RESPONSE_bp 0
 #define AVSBUS_CONTROLLER__AVS_SLAVE_STATUS__AVS_SLAVE_STATUS_RESPONSE_bw 5
 #define AVSBUS_CONTROLLER__AVS_SLAVE_STATUS__AVS_SLAVE_STATUS_RESPONSE_reset 0x0
+// The SlaveAck bits of the most recent slave subframe received: [list]
+// [*]00: Action Performed
+// [*]01:Good CRC received by resource unavailable. No action performed (triggers retry)
+// [*]10: Bad CRC received (triggers retry)
+// [*]11: Good CRC received bit bad data, data type, or selector. No action performed
+// [/list]
 #define AVSBUS_CONTROLLER__AVS_SLAVE_STATUS__AVS_SLAVE_ACK_bm 0x30000
 #define AVSBUS_CONTROLLER__AVS_SLAVE_STATUS__AVS_SLAVE_ACK_bp 16
 #define AVSBUS_CONTROLLER__AVS_SLAVE_STATUS__AVS_SLAVE_ACK_bw 2
 #define AVSBUS_CONTROLLER__AVS_SLAVE_STATUS__AVS_SLAVE_ACK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // The 5-bit Slave StatusResponse of the most recent slave subframe received, indicating the
+        // general condition of the slave, per AVS spec StatusReponse field: [list]
+        // [*]bit 4: VDone - AND of all VDone bits of active rails
+        // [*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details
+        // [*]bit 2: AVS_Control - 1 if ABSBus is controlling at least 1 device output, 0 otherwise.
+        // [*]bit 1: MfrSpcfc_Stts1 - Manufacturer-specific
+        // [*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific
+        // [/list]
         uint32_t AVS_SLAVE_STATUS_RESPONSE :5;
         uint32_t :11;
+        // The SlaveAck bits of the most recent slave subframe received: [list]
+        // [*]00: Action Performed
+        // [*]01:Good CRC received by resource unavailable. No action performed (triggers retry)
+        // [*]10: Bad CRC received (triggers retry)
+        // [*]11: Good CRC received bit bad data, data type, or selector. No action performed
+        // [/list]
         uint32_t AVS_SLAVE_ACK :2;
         uint32_t :14;
     } f;
@@ -172,30 +368,39 @@ typedef union {
 } avsbus_controller__AVS_SLAVE_STATUS_t;
 
 // reg - avsbus_controller::AVS_FIFOS_STATUS
+// Contains the number of occupied and vacant slots in the AVS master's command and readback FIFOs
+// Number of occupied slots in the command FIFO
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_OCCUPIED_SLOTS_bm 0xf
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_OCCUPIED_SLOTS_bp 0
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_OCCUPIED_SLOTS_bw 4
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_OCCUPIED_SLOTS_reset 0x0
+// Number of vacant slots in the command FIFO
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_VACANT_SLOTS_bm 0xf00
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_VACANT_SLOTS_bp 8
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_VACANT_SLOTS_bw 4
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_VACANT_SLOTS_reset 0x8
+// Number of occupied slots in the readback FIFO
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_OCCUPIED_SLOTS_bm 0xf0000
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_OCCUPIED_SLOTS_bp 16
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_OCCUPIED_SLOTS_bw 4
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_OCCUPIED_SLOTS_reset 0x0
+// Number of vacant slots in the readback FIFO
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_VACANT_SLOTS_bm 0xf000000
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_VACANT_SLOTS_bp 24
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_VACANT_SLOTS_bw 4
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_VACANT_SLOTS_reset 0x8
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of occupied slots in the command FIFO
         uint32_t CMD_FIFO_OCCUPIED_SLOTS :4;
         uint32_t :4;
+        // Number of vacant slots in the command FIFO
         uint32_t CMD_FIFO_VACANT_SLOTS :4;
         uint32_t :4;
+        // Number of occupied slots in the readback FIFO
         uint32_t READBACK_FIFO_OCCUPIED_SLOTS :4;
         uint32_t :4;
+        // Number of vacant slots in the readback FIFO
         uint32_t READBACK_FIFO_VACANT_SLOTS :4;
         uint32_t :4;
     } f;
@@ -203,52 +408,82 @@ typedef union {
 } avsbus_controller__AVS_FIFOS_STATUS_t;
 
 // reg - avsbus_controller::AVS_INTERRUPT
+// Interrupt register - A '1' indicates an interrupt has occurred for that bit. To clear the
+// interrupt bit, write to the corresponding field in the AVS_INTERRUPT_CLEAR register.
+// Indicates the AVS slave has signaled an interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__AVS_SLAVE_ISSUED_INTERRUPT_bm 0x1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__AVS_SLAVE_ISSUED_INTERRUPT_bp 0
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__AVS_SLAVE_ISSUED_INTERRUPT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__AVS_SLAVE_ISSUED_INTERRUPT_reset 0x0
+// Indicates AVS_CMD fifo is full - any additional APB writes to AVS_CMD will be dropped until
+// the AVS bus can accept the next command, thus freeing space in the cmd fifo
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__CMD_FIFO_FULL_INT_bm 0x2
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__CMD_FIFO_FULL_INT_bp 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__CMD_FIFO_FULL_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__CMD_FIFO_FULL_INT_reset 0x0
+// Indicates read-back fifo is full - no new AVS commands will be launched until
+// space is freed by an AVS_READBACK access
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_FIFO_FULL_INT_bm 0x4
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_FIFO_FULL_INT_bp 2
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_FIFO_FULL_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_FIFO_FULL_INT_reset 0x0
+// Indicates AVS_READBACK register has data ready to read on APB
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_HAS_DATA_INT_bm 0x8
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_HAS_DATA_INT_bp 3
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_HAS_DATA_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_HAS_DATA_INT_reset 0x0
+// Indicates the AVS Slave device is not responding to command subframes from the Master
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__SLAVE_UNRESPONSIVE_INT_bm 0x10
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__SLAVE_UNRESPONSIVE_INT_bp 4
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__SLAVE_UNRESPONSIVE_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__SLAVE_UNRESPONSIVE_INT_reset 0x0
+// Indicates that the AVS Master failed to receive a non-failure acknowledgement from the Slave after a command was retried the maximum allowable number of times (as determined by AVS_CFG_0:max_retries)
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__MAX_RETRIES_ATTEMPTED_INT_bm 0x20
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__MAX_RETRIES_ATTEMPTED_INT_bp 5
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__MAX_RETRIES_ATTEMPTED_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__MAX_RETRIES_ATTEMPTED_INT_reset 0x0
+// Indicates that an APB write to AVS_CMD was attempted when the the command fifo was already
+// full - the command is dropped
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__CMD_FIFO_OVERFLOW_INT_bm 0x40
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__CMD_FIFO_OVERFLOW_INT_bp 6
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__CMD_FIFO_OVERFLOW_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__CMD_FIFO_OVERFLOW_INT_reset 0x0
+// Indicates that an APB read on the AVS_READBACK reg occurred when the readback fifo
+// was empty (AVS_NORMAL_STATUS:readback_has_data=0)
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_UNDERFLOW_INT_bm 0x80
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_UNDERFLOW_INT_bp 7
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_UNDERFLOW_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_UNDERFLOW_INT_reset 0x0
+// Indicates that the response from AVS slave could not be written to readback FIFO due to it being
+// full => response was dropped
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_OVERFLOW_INT_bm 0x100
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_OVERFLOW_INT_bp 8
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_OVERFLOW_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_OVERFLOW_INT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Indicates the AVS slave has signaled an interrupt
         uint32_t AVS_SLAVE_ISSUED_INTERRUPT :1;
+        // Indicates AVS_CMD fifo is full - any additional APB writes to AVS_CMD will be dropped until
+        // the AVS bus can accept the next command, thus freeing space in the cmd fifo
         uint32_t CMD_FIFO_FULL_INT :1;
+        // Indicates read-back fifo is full - no new AVS commands will be launched until
+        // space is freed by an AVS_READBACK access
         uint32_t READBACK_FIFO_FULL_INT :1;
+        // Indicates AVS_READBACK register has data ready to read on APB
         uint32_t READBACK_HAS_DATA_INT :1;
+        // Indicates the AVS Slave device is not responding to command subframes from the Master
         uint32_t SLAVE_UNRESPONSIVE_INT :1;
+        // Indicates that the AVS Master failed to receive a non-failure acknowledgement from the Slave after a command was retried the maximum allowable number of times (as determined by AVS_CFG_0:max_retries)
         uint32_t MAX_RETRIES_ATTEMPTED_INT :1;
+        // Indicates that an APB write to AVS_CMD was attempted when the the command fifo was already
+        // full - the command is dropped
         uint32_t CMD_FIFO_OVERFLOW_INT :1;
+        // Indicates that an APB read on the AVS_READBACK reg occurred when the readback fifo
+        // was empty (AVS_NORMAL_STATUS:readback_has_data=0)
         uint32_t READBACK_UNDERFLOW_INT :1;
+        // Indicates that the response from AVS slave could not be written to readback FIFO due to it being
+        // full => response was dropped
         uint32_t READBACK_OVERFLOW_INT :1;
         uint32_t :23;
     } f;
@@ -256,52 +491,71 @@ typedef union {
 } avsbus_controller__AVS_INTERRUPT_t;
 
 // reg - avsbus_controller::AVS_INTERRUPT_MASK
+// Interrupt mask register - Determines which AVS_INTERRUPT bits can trigger an interrupt
+// Disable notification of AVS slave interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_AVS_SLAVE_ISSUED_INTERRUPT_bm 0x1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_AVS_SLAVE_ISSUED_INTERRUPT_bp 0
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_AVS_SLAVE_ISSUED_INTERRUPT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_AVS_SLAVE_ISSUED_INTERRUPT_reset 0x1
+// Disable cmd_fifo_full interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_FULL_INT_bm 0x2
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_FULL_INT_bp 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_FULL_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_FULL_INT_reset 0x1
+// Disable readback_fifo_full interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_FIFO_FULL_INT_bm 0x4
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_FIFO_FULL_INT_bp 2
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_FIFO_FULL_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_FIFO_FULL_INT_reset 0x1
+// Disable readback_has_data interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_HAS_DATA_INT_bm 0x8
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_HAS_DATA_INT_bp 3
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_HAS_DATA_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_HAS_DATA_INT_reset 0x1
+// Disable slave_unresponsive interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_SLAVE_UNRESPONSIVE_INT_bm 0x10
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_SLAVE_UNRESPONSIVE_INT_bp 4
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_SLAVE_UNRESPONSIVE_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_SLAVE_UNRESPONSIVE_INT_reset 0x1
+// Disable max_retries_attempted interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_MAX_RETRIES_ATTEMPTED_INT_bm 0x20
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_MAX_RETRIES_ATTEMPTED_INT_bp 5
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_MAX_RETRIES_ATTEMPTED_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_MAX_RETRIES_ATTEMPTED_INT_reset 0x1
+// Disable cmd_fifo_overflow interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_OVERFLOW_INT_bm 0x40
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_OVERFLOW_INT_bp 6
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_OVERFLOW_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_OVERFLOW_INT_reset 0x1
+// Disable readback_underflow interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_UNDERFLOW_INT_bm 0x80
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_UNDERFLOW_INT_bp 7
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_UNDERFLOW_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_UNDERFLOW_INT_reset 0x1
+// Disable readback_overflow interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_OVERFLOW_INT_bm 0x100
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_OVERFLOW_INT_bp 8
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_OVERFLOW_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_OVERFLOW_INT_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Disable notification of AVS slave interrupt
         uint32_t DISABLE_AVS_SLAVE_ISSUED_INTERRUPT :1;
+        // Disable cmd_fifo_full interrupt
         uint32_t DISABLE_CMD_FIFO_FULL_INT :1;
+        // Disable readback_fifo_full interrupt
         uint32_t DISABLE_READBACK_FIFO_FULL_INT :1;
+        // Disable readback_has_data interrupt
         uint32_t DISABLE_READBACK_HAS_DATA_INT :1;
+        // Disable slave_unresponsive interrupt
         uint32_t DISABLE_SLAVE_UNRESPONSIVE_INT :1;
+        // Disable max_retries_attempted interrupt
         uint32_t DISABLE_MAX_RETRIES_ATTEMPTED_INT :1;
+        // Disable cmd_fifo_overflow interrupt
         uint32_t DISABLE_CMD_FIFO_OVERFLOW_INT :1;
+        // Disable readback_underflow interrupt
         uint32_t DISABLE_READBACK_UNDERFLOW_INT :1;
+        // Disable readback_overflow interrupt
         uint32_t DISABLE_READBACK_OVERFLOW_INT :1;
         uint32_t :23;
     } f;
@@ -309,52 +563,71 @@ typedef union {
 } avsbus_controller__AVS_INTERRUPT_MASK_t;
 
 // reg - avsbus_controller::AVS_INTERRUPT_CLEAR
+// Write 1 to clear corresponding interrupt bit
+// Clear avs_slave_issued_interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_AVS_SLAVE_ISSUED_INTERRUPT_bm 0x1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_AVS_SLAVE_ISSUED_INTERRUPT_bp 0
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_AVS_SLAVE_ISSUED_INTERRUPT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_AVS_SLAVE_ISSUED_INTERRUPT_reset 0x0
+// Clear cmd_fifo_full interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_CMD_FIFO_FULL_INT_bm 0x2
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_CMD_FIFO_FULL_INT_bp 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_CMD_FIFO_FULL_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_CMD_FIFO_FULL_INT_reset 0x0
+// Clear readback_fifo_full interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_FIFO_FULL_INT_bm 0x4
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_FIFO_FULL_INT_bp 2
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_FIFO_FULL_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_FIFO_FULL_INT_reset 0x0
+// Clear readback_has_data interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_HAS_DATA_INT_bm 0x8
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_HAS_DATA_INT_bp 3
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_HAS_DATA_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_HAS_DATA_INT_reset 0x0
+// Clear slave_unresponsive interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_SLAVE_UNRESPONSIVE_INT_bm 0x10
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_SLAVE_UNRESPONSIVE_INT_bp 4
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_SLAVE_UNRESPONSIVE_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_SLAVE_UNRESPONSIVE_INT_reset 0x0
+// Clear max_retries_attempted interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_MAX_RETRIES_ATTEMPTED_INT_bm 0x20
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_MAX_RETRIES_ATTEMPTED_INT_bp 5
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_MAX_RETRIES_ATTEMPTED_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_MAX_RETRIES_ATTEMPTED_INT_reset 0x0
+// Clear cmd_fifo_overflow interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_CMD_FIFO_OVERFLOW_INT_bm 0x40
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_CMD_FIFO_OVERFLOW_INT_bp 6
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_CMD_FIFO_OVERFLOW_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_CMD_FIFO_OVERFLOW_INT_reset 0x0
+// Clear readback_underflow interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_UNDERFLOW_INT_bm 0x80
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_UNDERFLOW_INT_bp 7
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_UNDERFLOW_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_UNDERFLOW_INT_reset 0x0
+// Clear readback_overflow interrupt
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_OVERFLOW_INT_bm 0x100
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_OVERFLOW_INT_bp 8
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_OVERFLOW_INT_bw 1
 #define AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_OVERFLOW_INT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Clear avs_slave_issued_interrupt
         uint32_t CLEAR_AVS_SLAVE_ISSUED_INTERRUPT :1;
+        // Clear cmd_fifo_full interrupt
         uint32_t CLEAR_CMD_FIFO_FULL_INT :1;
+        // Clear readback_fifo_full interrupt
         uint32_t CLEAR_READBACK_FIFO_FULL_INT :1;
+        // Clear readback_has_data interrupt
         uint32_t CLEAR_READBACK_HAS_DATA_INT :1;
+        // Clear slave_unresponsive interrupt
         uint32_t CLEAR_SLAVE_UNRESPONSIVE_INT :1;
+        // Clear max_retries_attempted interrupt
         uint32_t CLEAR_MAX_RETRIES_ATTEMPTED_INT :1;
+        // Clear cmd_fifo_overflow interrupt
         uint32_t CLEAR_CMD_FIFO_OVERFLOW_INT :1;
+        // Clear readback_underflow interrupt
         uint32_t CLEAR_READBACK_UNDERFLOW_INT :1;
+        // Clear readback_overflow interrupt
         uint32_t CLEAR_READBACK_OVERFLOW_INT :1;
         uint32_t :23;
     } f;
@@ -362,17 +635,26 @@ typedef union {
 } avsbus_controller__AVS_INTERRUPT_CLEAR_t;
 
 // reg - avsbus_controller::AVS_CFG_0
+// Configuration register for APB2AVS bridge block
+// Interval between periodic slave resync operations on the AVS bus, in APB clock cycles counted from the end of the previous resync. The resulting request then crosses a 3-stage AVS clock synchronizer, and the resync starts once any frame in flight has completed.
 #define AVSBUS_CONTROLLER__AVS_CFG_0__RESYNC_INTERVAL_bm 0xffff
 #define AVSBUS_CONTROLLER__AVS_CFG_0__RESYNC_INTERVAL_bp 0
 #define AVSBUS_CONTROLLER__AVS_CFG_0__RESYNC_INTERVAL_bw 16
 #define AVSBUS_CONTROLLER__AVS_CFG_0__RESYNC_INTERVAL_reset 0x1000
+// Maximum number of retries, after the original attempt, if an AVS command returns a fail
+// status (either due to targeted resource being busy or CRC failure). A value of 0 disables
+// retries and MAX_RETRIES_ATTEMPTED_INT.
 #define AVSBUS_CONTROLLER__AVS_CFG_0__MAX_RETRIES_bm 0xff0000
 #define AVSBUS_CONTROLLER__AVS_CFG_0__MAX_RETRIES_bp 16
 #define AVSBUS_CONTROLLER__AVS_CFG_0__MAX_RETRIES_bw 8
 #define AVSBUS_CONTROLLER__AVS_CFG_0__MAX_RETRIES_reset 0x5
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Interval between periodic slave resync operations on the AVS bus, in APB clock cycles counted from the end of the previous resync. The resulting request then crosses a 3-stage AVS clock synchronizer, and the resync starts once any frame in flight has completed.
         uint32_t RESYNC_INTERVAL :16;
+        // Maximum number of retries, after the original attempt, if an AVS command returns a fail
+        // status (either due to targeted resource being busy or CRC failure). A value of 0 disables
+        // retries and MAX_RETRIES_ATTEMPTED_INT.
         uint32_t MAX_RETRIES :8;
         uint32_t :8;
     } f;
@@ -380,51 +662,99 @@ typedef union {
 } avsbus_controller__AVS_CFG_0_t;
 
 // reg - avsbus_controller::AVS_CFG_1
+// Configuration register for APB2AVS bridge block
+// Selects which clock to use for AVS Clock: [list]
+// [*] 00: Use the APB clock directly as the AVS clock
+// [*] 01: Use a divided version of APB clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator
+// [*] 10: Use the refclk clock directly as the AVS clock
+// [*] 11: Use a divided version of refclk clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator
+// [/list]
 #define AVSBUS_CONTROLLER__AVS_CFG_1__AVS_CLOCK_SELECT_bm 0x3
 #define AVSBUS_CONTROLLER__AVS_CFG_1__AVS_CLOCK_SELECT_bp 0
 #define AVSBUS_CONTROLLER__AVS_CFG_1__AVS_CLOCK_SELECT_bw 2
 #define AVSBUS_CONTROLLER__AVS_CFG_1__AVS_CLOCK_SELECT_reset 0x3
+// When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.
+// The master always issues a slave resync first when the clock restarts.
 #define AVSBUS_CONTROLLER__AVS_CFG_1__STOP_AVS_CLOCK_ON_IDLE_bm 0x100
 #define AVSBUS_CONTROLLER__AVS_CFG_1__STOP_AVS_CLOCK_ON_IDLE_bp 8
 #define AVSBUS_CONTROLLER__AVS_CFG_1__STOP_AVS_CLOCK_ON_IDLE_bw 1
 #define AVSBUS_CONTROLLER__AVS_CFG_1__STOP_AVS_CLOCK_ON_IDLE_reset 0x0
+// Force master to issue a slave resync (35 AVS clock cycles of holding the mdata signal high) at the next possible opportunity. The request crosses a 3-stage AVS clock synchronizer before the master sees it.
 #define AVSBUS_CONTROLLER__AVS_CFG_1__FORCE_SLAVE_RESYNC_OPERATION_bm 0x200
 #define AVSBUS_CONTROLLER__AVS_CFG_1__FORCE_SLAVE_RESYNC_OPERATION_bp 9
 #define AVSBUS_CONTROLLER__AVS_CFG_1__FORCE_SLAVE_RESYNC_OPERATION_bw 1
 #define AVSBUS_CONTROLLER__AVS_CFG_1__FORCE_SLAVE_RESYNC_OPERATION_reset 0x0
+// Gate off all clocks entering the AVS clock mux - do this before changing the mux selection or changing the clock divider settings, then turn back on afterwards
 #define AVSBUS_CONTROLLER__AVS_CFG_1__TURN_OFF_ALL_PREMUX_CLOCKS_bm 0x400
 #define AVSBUS_CONTROLLER__AVS_CFG_1__TURN_OFF_ALL_PREMUX_CLOCKS_bp 10
 #define AVSBUS_CONTROLLER__AVS_CFG_1__TURN_OFF_ALL_PREMUX_CLOCKS_bw 1
 #define AVSBUS_CONTROLLER__AVS_CFG_1__TURN_OFF_ALL_PREMUX_CLOCKS_reset 0x0
+// Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).
+// The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%
+// duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of
+// 2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings
+// (divider=0x4) by matching the FF default in the resynced version of the signal.
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_VALUE_bm 0xff0000
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_VALUE_bp 16
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_VALUE_bw 8
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_VALUE_reset 0x0
+// Determines the desired duty cycle of the divided clock (when avs_clock_select is set to select the divided APB clock or refclk clock).
+// This value will be divided by 256 to determine the high-pulse percentage of the divided clock period. Depending on the clk_divider_value,
+// it may not be possible to precisely achieve the desired duty cycle - in that case, the closest possible fit is used. If this is set to 0,
+// a value of 1 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings (numerator=0x80)
+// by matching the FF default in the resynced version of the signal.
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_DUTY_CYCLE_NUMERATOR_bm 0xff000000
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_DUTY_CYCLE_NUMERATOR_bp 24
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_DUTY_CYCLE_NUMERATOR_bw 8
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_DUTY_CYCLE_NUMERATOR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Selects which clock to use for AVS Clock: [list]
+        // [*] 00: Use the APB clock directly as the AVS clock
+        // [*] 01: Use a divided version of APB clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator
+        // [*] 10: Use the refclk clock directly as the AVS clock
+        // [*] 11: Use a divided version of refclk clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator
+        // [/list]
         uint32_t AVS_CLOCK_SELECT :2;
         uint32_t :6;
+        // When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.
+        // The master always issues a slave resync first when the clock restarts.
         uint32_t STOP_AVS_CLOCK_ON_IDLE :1;
+        // Force master to issue a slave resync (35 AVS clock cycles of holding the mdata signal high) at the next possible opportunity. The request crosses a 3-stage AVS clock synchronizer before the master sees it.
         uint32_t FORCE_SLAVE_RESYNC_OPERATION :1;
+        // Gate off all clocks entering the AVS clock mux - do this before changing the mux selection or changing the clock divider settings, then turn back on afterwards
         uint32_t TURN_OFF_ALL_PREMUX_CLOCKS :1;
         uint32_t :5;
+        // Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).
+        // The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%
+        // duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of
+        // 2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings
+        // (divider=0x4) by matching the FF default in the resynced version of the signal.
         uint32_t CLK_DIVIDER_VALUE :8;
+        // Determines the desired duty cycle of the divided clock (when avs_clock_select is set to select the divided APB clock or refclk clock).
+        // This value will be divided by 256 to determine the high-pulse percentage of the divided clock period. Depending on the clk_divider_value,
+        // it may not be possible to precisely achieve the desired duty cycle - in that case, the closest possible fit is used. If this is set to 0,
+        // a value of 1 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings (numerator=0x80)
+        // by matching the FF default in the resynced version of the signal.
         uint32_t CLK_DIVIDER_DUTY_CYCLE_NUMERATOR :8;
     } f;
     uint32_t w;
 } avsbus_controller__AVS_CFG_1_t;
 
 // reg - avsbus_controller::AVS_CONFIG
+// AVS Configuration Register
+// Enable AVSBus connection to GPIOs. The effective sets OE of the GPIOs dedicated to
+// avs_clock and avs_cdata to 1, sets IE of GPIO dedicated to avs_tdata to 1. By default,
+// this is enabled as the AVSBus state machine immediately starts after reset deassertion.
 #define AVSBUS_CONTROLLER__AVS_CONFIG__AVS_GPIO_ENABLE_bm 0x1
 #define AVSBUS_CONTROLLER__AVS_CONFIG__AVS_GPIO_ENABLE_bp 0
 #define AVSBUS_CONTROLLER__AVS_CONFIG__AVS_GPIO_ENABLE_bw 1
 #define AVSBUS_CONTROLLER__AVS_CONFIG__AVS_GPIO_ENABLE_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable AVSBus connection to GPIOs. The effective sets OE of the GPIOs dedicated to
+        // avs_clock and avs_cdata to 1, sets IE of GPIO dedicated to avs_tdata to 1. By default,
+        // this is enabled as the AVSBus state machine immediately starts after reset deassertion.
         uint32_t AVS_GPIO_ENABLE :1;
         uint32_t :31;
     } f;
@@ -432,6 +762,7 @@ typedef union {
 } avsbus_controller__AVS_CONFIG_t;
 
 // addrmap - avsbus_controller
+// Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.
 typedef struct __attribute__ ((__packed__)) {
     avsbus_controller__AVS_CMD_t AVS_CMD;
     avsbus_controller__AVS_READBACK_t AVS_READBACK;

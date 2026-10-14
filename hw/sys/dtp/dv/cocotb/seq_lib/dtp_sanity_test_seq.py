@@ -21,8 +21,8 @@ import random
 
 from env.dtp_dbg_disable import DBG_DISABLE_FIELDS
 from env.dtp_tap_device import DTP_DEFAULT_IDCODE
-from env.dtp_types import DtpJtagInstr, DtpTapState
-from ocah_jtag_vip import TLR_TMS_ONES, OcahJtagChecker
+from env.dtp_types import DtpJtagInstr
+from ocah_jtag_vip import TLR_TMS_ONES, OcahJtagChecker, OcahJtagState
 from ocah_lib import OcahKnobs
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
@@ -51,7 +51,7 @@ REQUIRED_CHECK_IDS: frozenset[str] = frozenset(
     }
 )
 # Every IEEE 1149.1 state has one transition for each TMS value.
-TAP_ARC_COUNT = 2 * len(DtpTapState)
+TAP_ARC_COUNT = 2 * len(OcahJtagState)
 # From Test-Logic-Reset this walk takes all 32 legal transitions, visits all
 # sixteen states, and returns to Test-Logic-Reset through five TMS-high
 # cycles; the SV-UVM twin drives the same bits.
@@ -100,14 +100,14 @@ class dtp_sanity_test_seq(dtp_jtag_base_test_seq):
 
     def check_all_tap_states_visited(self, checker: OcahJtagChecker) -> None:
         """Record that this pass observed every IEEE 1149.1 TAP state and legal transition."""
-        missing = sorted(state.name for state in set(DtpTapState) - self.visited_tap_states)
+        missing = sorted(state.name for state in set(OcahJtagState) - self.visited_tap_states)
         checker.expect_equal(
             VISIT_ALL_CHECK_ID,
             len(self.visited_tap_states),
-            len(DtpTapState),
+            len(OcahJtagState),
             context="IEEE 1149.1 TAP states visited missing=" + (",".join(missing) or "none"),
         )
-        all_arcs = {(state, tms) for state in DtpTapState for tms in (0, 1)}
+        all_arcs = {(state, tms) for state in OcahJtagState for tms in (0, 1)}
         missing_arcs = sorted(all_arcs - self.visited_tap_arcs)
         checker.expect_equal(
             VISIT_ALL_CHECK_ID,
@@ -117,7 +117,7 @@ class dtp_sanity_test_seq(dtp_jtag_base_test_seq):
             + (",".join(f"{state.name}/tms={tms}" for state, tms in missing_arcs) or "none"),
         )
 
-    async def record_goto_state(self, target: DtpTapState, context: str) -> None:
+    async def record_goto_state(self, target: OcahJtagState, context: str) -> None:
         """Record the DUT's exported TAP state against the navigation target."""
         item = await self.sample_observables()
         self.family_check(
@@ -131,7 +131,12 @@ class dtp_sanity_test_seq(dtp_jtag_base_test_seq):
     async def reset_ladder(self) -> None:
         """Pulse power-on and system reset, hold every debug disable fail-closed, reset the TAP."""
         item = await self.pulse_por(cycles=POR_PULSE_TCK_PERIODS)
-        self.record_tap_state(item.result, DtpTapState.TEST_LOGIC_RESET)
+        self.check_tap_state(
+            "CHK-TAP-POR-TLR",
+            item.result,
+            OcahJtagState.TEST_LOGIC_RESET,
+            context=f"during POR cycles={POR_PULSE_TCK_PERIODS}",
+        )
         await self.pulse_system_reset(cycles=SYS_RESET_PULSE_CYCLES)
         await self.set_dbg_disable_vector({name: 1 for name in DBG_DISABLE_FIELDS})
         await self.reset_to_tlr()
@@ -142,99 +147,99 @@ class dtp_sanity_test_seq(dtp_jtag_base_test_seq):
             "Deterministic FSM walk: %d TMS steps for 32-transition closure",
             len(DETERMINISTIC_WALK_TMS),
         )
-        assert self.current_tap_state is DtpTapState.TEST_LOGIC_RESET
+        assert self.current_tap_state is OcahJtagState.TEST_LOGIC_RESET
         for tms in DETERMINISTIC_WALK_TMS:
             await self.tms_expect(tms)
-        assert self.current_tap_state is DtpTapState.TEST_LOGIC_RESET
+        assert self.current_tap_state is OcahJtagState.TEST_LOGIC_RESET
 
     async def check_reset_and_idle(self) -> None:
         """Verify reset, Run-Test/Idle hold, and reset path from Select-IR."""
         self.log.info("Checking TEST_LOGIC_RESET and RUN_TEST_IDLE")
         await self.reset_to_tlr()
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
 
         for _ in range(3):
-            await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+            await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
 
-        await self.tms_expect(1, DtpTapState.SELECT_DR_SCAN)
-        await self.tms_expect(1, DtpTapState.SELECT_IR_SCAN)
-        await self.tms_expect(1, DtpTapState.TEST_LOGIC_RESET)
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        await self.tms_expect(1, OcahJtagState.SELECT_DR_SCAN)
+        await self.tms_expect(1, OcahJtagState.SELECT_IR_SCAN)
+        await self.tms_expect(1, OcahJtagState.TEST_LOGIC_RESET)
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
 
     async def check_dr_path(self) -> None:
         """Visit the DR scan path states and check expected transitions."""
         self.log.info("Checking DR scan path")
         await self.goto_run_test_idle()
-        await self.tms_expect(1, DtpTapState.SELECT_DR_SCAN)
-        await self.tms_expect(0, DtpTapState.CAPTURE_DR)
-        await self.tms_expect(0, DtpTapState.SHIFT_DR)
+        await self.tms_expect(1, OcahJtagState.SELECT_DR_SCAN)
+        await self.tms_expect(0, OcahJtagState.CAPTURE_DR)
+        await self.tms_expect(0, OcahJtagState.SHIFT_DR)
 
         for _ in range(3):
-            await self.tms_expect(0, DtpTapState.SHIFT_DR)
+            await self.tms_expect(0, OcahJtagState.SHIFT_DR)
 
-        await self.tms_expect(1, DtpTapState.EXIT1_DR)
-        await self.tms_expect(1, DtpTapState.UPDATE_DR)
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        await self.tms_expect(1, OcahJtagState.EXIT1_DR)
+        await self.tms_expect(1, OcahJtagState.UPDATE_DR)
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
 
     async def check_ir_path(self) -> None:
         """Visit the IR scan path states and check expected transitions."""
         self.log.info("Checking IR scan path")
         await self.goto_run_test_idle()
-        await self.tms_expect(1, DtpTapState.SELECT_DR_SCAN)
-        await self.tms_expect(1, DtpTapState.SELECT_IR_SCAN)
-        await self.tms_expect(0, DtpTapState.CAPTURE_IR)
-        await self.tms_expect(0, DtpTapState.SHIFT_IR)
+        await self.tms_expect(1, OcahJtagState.SELECT_DR_SCAN)
+        await self.tms_expect(1, OcahJtagState.SELECT_IR_SCAN)
+        await self.tms_expect(0, OcahJtagState.CAPTURE_IR)
+        await self.tms_expect(0, OcahJtagState.SHIFT_IR)
 
         for _ in range(3):
-            await self.tms_expect(0, DtpTapState.SHIFT_IR)
+            await self.tms_expect(0, OcahJtagState.SHIFT_IR)
 
-        await self.tms_expect(1, DtpTapState.EXIT1_IR)
-        await self.tms_expect(1, DtpTapState.UPDATE_IR)
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        await self.tms_expect(1, OcahJtagState.EXIT1_IR)
+        await self.tms_expect(1, OcahJtagState.UPDATE_IR)
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
 
     async def check_pause_paths(self) -> None:
         """Visit DR/IR Pause and Exit2 states and check resume transitions."""
         self.log.info("Checking DR pause and EXIT2 path")
         await self.goto_run_test_idle()
-        await self.tms_expect(1, DtpTapState.SELECT_DR_SCAN)
-        await self.tms_expect(0, DtpTapState.CAPTURE_DR)
-        await self.tms_expect(0, DtpTapState.SHIFT_DR)
-        await self.tms_expect(1, DtpTapState.EXIT1_DR)
-        await self.tms_expect(0, DtpTapState.PAUSE_DR)
+        await self.tms_expect(1, OcahJtagState.SELECT_DR_SCAN)
+        await self.tms_expect(0, OcahJtagState.CAPTURE_DR)
+        await self.tms_expect(0, OcahJtagState.SHIFT_DR)
+        await self.tms_expect(1, OcahJtagState.EXIT1_DR)
+        await self.tms_expect(0, OcahJtagState.PAUSE_DR)
 
         for _ in range(2):
-            await self.tms_expect(0, DtpTapState.PAUSE_DR)
+            await self.tms_expect(0, OcahJtagState.PAUSE_DR)
 
-        await self.tms_expect(1, DtpTapState.EXIT2_DR)
-        await self.tms_expect(0, DtpTapState.SHIFT_DR)
-        await self.tms_expect(1, DtpTapState.EXIT1_DR)
-        await self.tms_expect(1, DtpTapState.UPDATE_DR)
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        await self.tms_expect(1, OcahJtagState.EXIT2_DR)
+        await self.tms_expect(0, OcahJtagState.SHIFT_DR)
+        await self.tms_expect(1, OcahJtagState.EXIT1_DR)
+        await self.tms_expect(1, OcahJtagState.UPDATE_DR)
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
 
         self.log.info("Checking IR pause and EXIT2 path")
         await self.goto_run_test_idle()
-        await self.tms_expect(1, DtpTapState.SELECT_DR_SCAN)
-        await self.tms_expect(1, DtpTapState.SELECT_IR_SCAN)
-        await self.tms_expect(0, DtpTapState.CAPTURE_IR)
-        await self.tms_expect(0, DtpTapState.SHIFT_IR)
-        await self.tms_expect(1, DtpTapState.EXIT1_IR)
-        await self.tms_expect(0, DtpTapState.PAUSE_IR)
+        await self.tms_expect(1, OcahJtagState.SELECT_DR_SCAN)
+        await self.tms_expect(1, OcahJtagState.SELECT_IR_SCAN)
+        await self.tms_expect(0, OcahJtagState.CAPTURE_IR)
+        await self.tms_expect(0, OcahJtagState.SHIFT_IR)
+        await self.tms_expect(1, OcahJtagState.EXIT1_IR)
+        await self.tms_expect(0, OcahJtagState.PAUSE_IR)
 
         for _ in range(2):
-            await self.tms_expect(0, DtpTapState.PAUSE_IR)
+            await self.tms_expect(0, OcahJtagState.PAUSE_IR)
 
-        await self.tms_expect(1, DtpTapState.EXIT2_IR)
-        await self.tms_expect(0, DtpTapState.SHIFT_IR)
-        await self.tms_expect(1, DtpTapState.EXIT1_IR)
-        await self.tms_expect(1, DtpTapState.UPDATE_IR)
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        await self.tms_expect(1, OcahJtagState.EXIT2_IR)
+        await self.tms_expect(0, OcahJtagState.SHIFT_IR)
+        await self.tms_expect(1, OcahJtagState.EXIT1_IR)
+        await self.tms_expect(1, OcahJtagState.UPDATE_IR)
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
 
     async def check_random_state_navigation(self, rng: random.Random) -> None:
         """Visit TAP states from randomized, non-specific current states.
 
         The random walks between the targeted hops also shift random TDI.
         """
-        states = list(DtpTapState)
+        states = list(OcahJtagState)
         rng.shuffle(states)
 
         self.log.info("Checking randomized TAP state navigation")
@@ -291,9 +296,9 @@ class dtp_sanity_test_seq(dtp_jtag_base_test_seq):
                 "TEST_LOGIC_RESET before the TMS-high walk from %s",
                 self.current_tap_state,
             )
-            checker.sync_state(DtpTapState.TEST_LOGIC_RESET)
+            checker.sync_state(OcahJtagState.TEST_LOGIC_RESET)
         await self.force_tlr_via_tms(checker)
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
         item = await self.shift_dr(0, IDCODE_WIDTH)
         checker.expect_equal(
             "CHK-TAP-TLR-IDCODE",
@@ -342,9 +347,7 @@ class dtp_sanity_test_seq(dtp_jtag_base_test_seq):
             use_monitor=False,
             op_scan_len=True,
         )
-        seed = self.scenario_seed
-        self.log.info("Using TAP FSM random seed %d", seed)
-        rng = random.Random(seed)
+        rng = self.rng("sanity")
 
         self.log_step(1, "Power-on and system reset, fail-closed debug disables, TAP reset")
         await self.reset_ladder()

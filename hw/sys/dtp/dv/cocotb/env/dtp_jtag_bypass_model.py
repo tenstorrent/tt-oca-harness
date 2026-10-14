@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Frozen BYPASS scenarios and a pure one-bit-delay reference model."""
+"""Frozen BYPASS cases and their pure one-bit-delay prediction.
+
+``DtpBypassSuiteCfg`` draws the seeded cases of ``dtp_jtag_bypass_test`` once
+per pass and ``DtpJtagBypassModel`` predicts each case's TDO, so stimulus and
+prediction share one immutable case. The scoreboard's ``bypass`` feature is
+``DtpBypassRefModel``.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +17,7 @@ from ocah_lib import OcahRng
 
 from .dtp_types import DtpJtagInstr
 
-__all__ = ["DtpBypassCaseCfg", "DtpBypassRefModel", "DtpBypassSuiteCfg"]
+__all__ = ["DtpBypassCaseCfg", "DtpBypassSuiteCfg", "DtpJtagBypassModel"]
 
 BYPASS_00 = int(DtpJtagInstr.BYPASS_00)
 BYPASS_3F = int(DtpJtagInstr.BYPASS_3F)
@@ -71,6 +77,7 @@ class DtpBypassSuiteCfg:
         width: int = 64,
         random_count: int = 5,
     ) -> DtpBypassSuiteCfg:
+        """Per BYPASS opcode: directed and seeded ``width``-bit patterns plus an 8-bit case."""
         if random_count < 0:
             raise ValueError(f"random_count must be non-negative, got {random_count}")
 
@@ -101,7 +108,7 @@ class DtpBypassSuiteCfg:
         return cls(seed=seed, cases=tuple(cases))
 
 
-class DtpBypassRefModel:
+class DtpJtagBypassModel:
     """Pure IEEE 1149.1 one-bit BYPASS prediction."""
 
     @staticmethod

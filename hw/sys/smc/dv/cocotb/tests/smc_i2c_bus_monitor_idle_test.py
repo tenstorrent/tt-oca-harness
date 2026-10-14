@@ -38,8 +38,9 @@ class smc_i2c_bus_monitor_idle_test(smc_base_test):
             # Directed stimulus floor: the LSIO arming for three instances, the
             # bring-up and HOST_TIMEOUT_CTRL programming with readback per
             # instance, and the interrupt clears, drains and clean writes
-            # around each of the three legs. Literal here, not read from
-            # `seq.accesses`.
+            # around each of the three legs; the floor is independent of
+            # `seq.accesses`, so a sequence that stops issuing accesses cannot
+            # lower it.
             min_csr_accesses=150,
             csr_accesses=seq.accesses,
             proxy=False,

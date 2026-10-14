@@ -13,10 +13,9 @@ Two producers share one toolchain decision:
 
 Toolchain contract: the caller's ``RISCV_TOOLCHAIN`` (and ``RISCV_PREFIX``)
 wins when that gcc has picolibc. Otherwise the whole invocation re-runs inside
-the OCAH toolchain container through ``scripts/docker-run.sh run-here``. There
-is no site, PATH or home-directory probe on the host; ``--toolchain host``
-(what the container path passes to itself) is the only mode that takes the
-tools from PATH.
+the OCAH toolchain container through ``scripts/docker-run.sh run-here``.
+``--toolchain host`` (what the container path passes to itself) is the only
+mode that takes the tools from PATH.
 """
 
 from __future__ import annotations

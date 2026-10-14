@@ -8,7 +8,9 @@
 // caller hands in the state it tracks (entry_state) and reads
 // current_state() back after start(); body() re-syncs the model and runs
 // do_op(). No randomness, no evidence, no TB-interface access: those belong
-// to the scenario layer. The cocotb twin is seq_lib/dtp_jtag_op_seq.py.
+// to the scenario layer. In the cocotb realization each operation is a
+// method of seq_lib/dtp_base_test_seq.py or seq_lib/dtp_jtag_base_test_seq.py
+// that runs one DtpJtagItem op through DtpJtagDriver.
 
 class dtp_jtag_op_seq extends ocah_jtag_master_sequence;
   `uvm_object_utils(dtp_jtag_op_seq)

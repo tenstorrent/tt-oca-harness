@@ -14,22 +14,38 @@ extern "C" {
 #include <assert.h>
 
 // reg - hmac::INTR_STATE
+// HMAC/SHA-2 has completed.
 #define HMAC__INTR_STATE__HMAC_DONE_bm 0x1
 #define HMAC__INTR_STATE__HMAC_DONE_bp 0
 #define HMAC__INTR_STATE__HMAC_DONE_bw 1
 #define HMAC__INTR_STATE__HMAC_DONE_reset 0x0
+// The message FIFO is empty.
+// This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:
+// i) The HMAC block is not running in HMAC mode and performing the second round of computing the final hash of the outer key as well as the result of the first round using the inner key.
+// ii) Software has not yet written the Process or Stop command to finish the hashing operation.
+// For the interrupt to be raised, the message FIFO must also have been full previously.
+// Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.
 #define HMAC__INTR_STATE__FIFO_EMPTY_bm 0x2
 #define HMAC__INTR_STATE__FIFO_EMPTY_bp 1
 #define HMAC__INTR_STATE__FIFO_EMPTY_bw 1
 #define HMAC__INTR_STATE__FIFO_EMPTY_reset 0x0
+// HMAC error has occurred. ERR_CODE register shows which error occurred.
 #define HMAC__INTR_STATE__HMAC_ERR_bm 0x4
 #define HMAC__INTR_STATE__HMAC_ERR_bp 2
 #define HMAC__INTR_STATE__HMAC_ERR_bw 1
 #define HMAC__INTR_STATE__HMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // HMAC/SHA-2 has completed.
         uint32_t hmac_done :1;
+        // The message FIFO is empty.
+        // This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:
+        // i) The HMAC block is not running in HMAC mode and performing the second round of computing the final hash of the outer key as well as the result of the first round using the inner key.
+        // ii) Software has not yet written the Process or Stop command to finish the hashing operation.
+        // For the interrupt to be raised, the message FIFO must also have been full previously.
+        // Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.
         uint32_t fifo_empty :1;
+        // HMAC error has occurred. ERR_CODE register shows which error occurred.
         uint32_t hmac_err :1;
         uint32_t :29;
     } f;
@@ -37,22 +53,28 @@ typedef union {
 } hmac__INTR_STATE_t;
 
 // reg - hmac::INTR_ENABLE
+// Enable interrupt when !!INTR_STATE.hmac_done is set.
 #define HMAC__INTR_ENABLE__HMAC_DONE_bm 0x1
 #define HMAC__INTR_ENABLE__HMAC_DONE_bp 0
 #define HMAC__INTR_ENABLE__HMAC_DONE_bw 1
 #define HMAC__INTR_ENABLE__HMAC_DONE_reset 0x0
+// Enable interrupt when !!INTR_STATE.fifo_empty is set.
 #define HMAC__INTR_ENABLE__FIFO_EMPTY_bm 0x2
 #define HMAC__INTR_ENABLE__FIFO_EMPTY_bp 1
 #define HMAC__INTR_ENABLE__FIFO_EMPTY_bw 1
 #define HMAC__INTR_ENABLE__FIFO_EMPTY_reset 0x0
+// Enable interrupt when !!INTR_STATE.hmac_err is set.
 #define HMAC__INTR_ENABLE__HMAC_ERR_bm 0x4
 #define HMAC__INTR_ENABLE__HMAC_ERR_bp 2
 #define HMAC__INTR_ENABLE__HMAC_ERR_bw 1
 #define HMAC__INTR_ENABLE__HMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enable interrupt when !!INTR_STATE.hmac_done is set.
         uint32_t hmac_done :1;
+        // Enable interrupt when !!INTR_STATE.fifo_empty is set.
         uint32_t fifo_empty :1;
+        // Enable interrupt when !!INTR_STATE.hmac_err is set.
         uint32_t hmac_err :1;
         uint32_t :29;
     } f;
@@ -60,22 +82,28 @@ typedef union {
 } hmac__INTR_ENABLE_t;
 
 // reg - hmac::INTR_TEST
+// Write 1 to force !!INTR_STATE.hmac_done to 1.
 #define HMAC__INTR_TEST__HMAC_DONE_bm 0x1
 #define HMAC__INTR_TEST__HMAC_DONE_bp 0
 #define HMAC__INTR_TEST__HMAC_DONE_bw 1
 #define HMAC__INTR_TEST__HMAC_DONE_reset 0x0
+// Write 1 to force !!INTR_STATE.fifo_empty to 1.
 #define HMAC__INTR_TEST__FIFO_EMPTY_bm 0x2
 #define HMAC__INTR_TEST__FIFO_EMPTY_bp 1
 #define HMAC__INTR_TEST__FIFO_EMPTY_bw 1
 #define HMAC__INTR_TEST__FIFO_EMPTY_reset 0x0
+// Write 1 to force !!INTR_STATE.hmac_err to 1.
 #define HMAC__INTR_TEST__HMAC_ERR_bm 0x4
 #define HMAC__INTR_TEST__HMAC_ERR_bp 2
 #define HMAC__INTR_TEST__HMAC_ERR_bw 1
 #define HMAC__INTR_TEST__HMAC_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to force !!INTR_STATE.hmac_done to 1.
         uint32_t hmac_done :1;
+        // Write 1 to force !!INTR_STATE.fifo_empty to 1.
         uint32_t fifo_empty :1;
+        // Write 1 to force !!INTR_STATE.hmac_err to 1.
         uint32_t hmac_err :1;
         uint32_t :29;
     } f;
@@ -83,12 +111,14 @@ typedef union {
 } hmac__INTR_TEST_t;
 
 // reg - hmac::ALERT_TEST
+// Write 1 to trigger one alert event of this kind.
 #define HMAC__ALERT_TEST__FATAL_FAULT_bm 0x1
 #define HMAC__ALERT_TEST__FATAL_FAULT_bp 0
 #define HMAC__ALERT_TEST__FATAL_FAULT_bw 1
 #define HMAC__ALERT_TEST__FATAL_FAULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Write 1 to trigger one alert event of this kind.
         uint32_t fatal_fault :1;
         uint32_t :31;
     } f;
@@ -96,40 +126,96 @@ typedef union {
 } hmac__ALERT_TEST_t;
 
 // reg - hmac::CFG
+// HMAC datapath enable.
+// If this bit is 1, HMAC operates when `hash_start` toggles.
 #define HMAC__CFG__HMAC_EN_bm 0x1
 #define HMAC__CFG__HMAC_EN_bp 0
 #define HMAC__CFG__HMAC_EN_bw 1
+// SHA-2 enable.
+// If 0, the SHA engine will not initiate compression, this is used to stop operation of the SHA-2 engine until configuration has been done.
+// When the SHA-2 engine is disabled the digest is cleared.
 #define HMAC__CFG__SHA_EN_bm 0x2
 #define HMAC__CFG__SHA_EN_bp 1
 #define HMAC__CFG__SHA_EN_bw 1
+// Endian swap.
+// If 0, each value will be added to the message in little-endian byte order.
+// The value is written to MSG_FIFO same to the SW writes.
+// If 1, then each individual multi-byte value, regardless of its alignment, written to !!MSG_FIFO will be added to the message in big-endian byte order.
+// A message written to !!MSG_FIFO one byte at a time will not be affected by this setting.
+// From a hardware perspective byte swaps are performed on a TL-UL word granularity.
 #define HMAC__CFG__ENDIAN_SWAP_bm 0x4
 #define HMAC__CFG__ENDIAN_SWAP_bp 2
 #define HMAC__CFG__ENDIAN_SWAP_bw 1
 #define HMAC__CFG__ENDIAN_SWAP_reset 0x0
+// Digest register byte swap.
+// If 1 the value in each digest output register is converted to big-endian byte order.
+// This setting does not affect the order of the digest output registers, !!DIGEST_0 still contains the first 4 bytes of the digest.
 #define HMAC__CFG__DIGEST_SWAP_bm 0x8
 #define HMAC__CFG__DIGEST_SWAP_bp 3
 #define HMAC__CFG__DIGEST_SWAP_bw 1
 #define HMAC__CFG__DIGEST_SWAP_reset 0x0
+// Key register byte swap (deprecated: KEY path is for DV only; production uses key manager sideload).
+// If 1 the endianness of each KEY_* register is swapped. Default value (value 0) is big endian representation of the KEY_* CSRs.
 #define HMAC__CFG__KEY_SWAP_bm 0x10
 #define HMAC__CFG__KEY_SWAP_bp 4
 #define HMAC__CFG__KEY_SWAP_bw 1
 #define HMAC__CFG__KEY_SWAP_reset 0x0
+// Digest size configuration.
+// This is a 4-bit one-hot encoded field to select digest size for either HMAC or SHA-2.
+// Invalid/unsupported values, i.e., values that don't correspond to SHA2_256, SHA2_384, or SHA2_512, are mapped to SHA2_None.
 #define HMAC__CFG__DIGEST_SIZE_bm 0x1e0
 #define HMAC__CFG__DIGEST_SIZE_bp 5
 #define HMAC__CFG__DIGEST_SIZE_bw 4
 #define HMAC__CFG__DIGEST_SIZE_reset 0x8
+// Key length configuration.
+// This is a 6-bit one-hot encoded field to configure the key length for HMAC.
+// The HMAC can be programmed with the following key lengths: 128-bit, 256-bit, 384-bit, 512-bit and 1024-bit.
+// But the HMAC supports any arbitrary key length: the software should configure the HMAC with the next largest supported key length and concatenate zeros to reach the programmed key length.
+// The position of these zeros depends on the endianness, thus on the programmed [`CFG.key_swap`](registers.md#cfg--key_swap).
+// For example, for an 80-bit key, HMAC should be configured with an 128-bit key length, fed with the 80-bit key and with 48 zero-bits.
+// Note that the key length cannot be greater than the block size: up to 1024-bit for SHA-2 384/512 and up to 512-bit for SHA-2 256.
+// The value of this register is irrelevant when only SHA-2 (not keyed HMAC) is configured.
+// However, for HMAC mode (`hmac_en == 1`), when HMAC is triggered to start while !!KEY_LENGTH holds `Key_None` or !!KEY_LENGTH holds `Key_1024` for !!DIGEST_SIZE = `SHA2_256`, starting is blocked and an error is signalled to SW.
 #define HMAC__CFG__KEY_LENGTH_bm 0x7e00
 #define HMAC__CFG__KEY_LENGTH_bp 9
 #define HMAC__CFG__KEY_LENGTH_bw 6
 #define HMAC__CFG__KEY_LENGTH_reset 0x20
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // HMAC datapath enable.
+        // If this bit is 1, HMAC operates when `hash_start` toggles.
         uint32_t hmac_en :1;
+        // SHA-2 enable.
+        // If 0, the SHA engine will not initiate compression, this is used to stop operation of the SHA-2 engine until configuration has been done.
+        // When the SHA-2 engine is disabled the digest is cleared.
         uint32_t sha_en :1;
+        // Endian swap.
+        // If 0, each value will be added to the message in little-endian byte order.
+        // The value is written to MSG_FIFO same to the SW writes.
+        // If 1, then each individual multi-byte value, regardless of its alignment, written to !!MSG_FIFO will be added to the message in big-endian byte order.
+        // A message written to !!MSG_FIFO one byte at a time will not be affected by this setting.
+        // From a hardware perspective byte swaps are performed on a TL-UL word granularity.
         uint32_t endian_swap :1;
+        // Digest register byte swap.
+        // If 1 the value in each digest output register is converted to big-endian byte order.
+        // This setting does not affect the order of the digest output registers, !!DIGEST_0 still contains the first 4 bytes of the digest.
         uint32_t digest_swap :1;
+        // Key register byte swap (deprecated: KEY path is for DV only; production uses key manager sideload).
+        // If 1 the endianness of each KEY_* register is swapped. Default value (value 0) is big endian representation of the KEY_* CSRs.
         uint32_t key_swap :1;
+        // Digest size configuration.
+        // This is a 4-bit one-hot encoded field to select digest size for either HMAC or SHA-2.
+        // Invalid/unsupported values, i.e., values that don't correspond to SHA2_256, SHA2_384, or SHA2_512, are mapped to SHA2_None.
         uint32_t digest_size :4;
+        // Key length configuration.
+        // This is a 6-bit one-hot encoded field to configure the key length for HMAC.
+        // The HMAC can be programmed with the following key lengths: 128-bit, 256-bit, 384-bit, 512-bit and 1024-bit.
+        // But the HMAC supports any arbitrary key length: the software should configure the HMAC with the next largest supported key length and concatenate zeros to reach the programmed key length.
+        // The position of these zeros depends on the endianness, thus on the programmed [`CFG.key_swap`](registers.md#cfg--key_swap).
+        // For example, for an 80-bit key, HMAC should be configured with an 128-bit key length, fed with the 80-bit key and with 48 zero-bits.
+        // Note that the key length cannot be greater than the block size: up to 1024-bit for SHA-2 384/512 and up to 512-bit for SHA-2 256.
+        // The value of this register is irrelevant when only SHA-2 (not keyed HMAC) is configured.
+        // However, for HMAC mode (`hmac_en == 1`), when HMAC is triggered to start while !!KEY_LENGTH holds `Key_None` or !!KEY_LENGTH holds `Key_1024` for !!DIGEST_SIZE = `SHA2_256`, starting is blocked and an error is signalled to SW.
         uint32_t key_length :6;
         uint32_t :17;
     } f;
@@ -137,23 +223,37 @@ typedef union {
 } hmac__CFG_t;
 
 // reg - hmac::CMD
+// If 1 is written into this field, SHA-2 or HMAC begins its operation.
+// CPU must configure relative information first, such as the digest size, secret key and the key length.
 #define HMAC__CMD__HASH_START_bm 0x1
 #define HMAC__CMD__HASH_START_bp 0
 #define HMAC__CMD__HASH_START_bw 1
+// If 1 is written to this field, SHA-2 or HMAC calculates the digest or signing based on currently received message.
 #define HMAC__CMD__HASH_PROCESS_bm 0x2
 #define HMAC__CMD__HASH_PROCESS_bp 1
 #define HMAC__CMD__HASH_PROCESS_bw 1
+// When 1 is written to this field, SHA-2 or HMAC will afterwards set the `hmac_done` interrupt as soon as the current block has been hashed.
+// The hash can then be read from the registers !!DIGEST_0 to !!DIGEST_15.
+// Together with the message length in !!MSG_LENGTH_LOWER and !!MSG_LENGTH_UPPER, this forms the information that has to be saved before switching context.
 #define HMAC__CMD__HASH_STOP_bm 0x4
 #define HMAC__CMD__HASH_STOP_bp 2
 #define HMAC__CMD__HASH_STOP_bw 1
+// When 1 is written to this field, SHA-2 or HMAC will continue hashing based on the current hash in the digest registers and the message length, which both have to be restored to switch context.
 #define HMAC__CMD__HASH_CONTINUE_bm 0x8
 #define HMAC__CMD__HASH_CONTINUE_bp 3
 #define HMAC__CMD__HASH_CONTINUE_bw 1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // If 1 is written into this field, SHA-2 or HMAC begins its operation.
+        // CPU must configure relative information first, such as the digest size, secret key and the key length.
         uint32_t hash_start :1;
+        // If 1 is written to this field, SHA-2 or HMAC calculates the digest or signing based on currently received message.
         uint32_t hash_process :1;
+        // When 1 is written to this field, SHA-2 or HMAC will afterwards set the `hmac_done` interrupt as soon as the current block has been hashed.
+        // The hash can then be read from the registers !!DIGEST_0 to !!DIGEST_15.
+        // Together with the message length in !!MSG_LENGTH_LOWER and !!MSG_LENGTH_UPPER, this forms the information that has to be saved before switching context.
         uint32_t hash_stop :1;
+        // When 1 is written to this field, SHA-2 or HMAC will continue hashing based on the current hash in the digest registers and the message length, which both have to be restored to switch context.
         uint32_t hash_continue :1;
         uint32_t :28;
     } f;
@@ -161,26 +261,36 @@ typedef union {
 } hmac__CMD_t;
 
 // reg - hmac::STATUS
+// HMAC idle status.
+// When IDLE, the `DIGEST` and the `MSG_LENGTH_LOWER`/`MSG_LENGTH_UPPER` can be written to from SW which enables restoring context (to support context switching).
 #define HMAC__STATUS__HMAC_IDLE_bm 0x1
 #define HMAC__STATUS__HMAC_IDLE_bp 0
 #define HMAC__STATUS__HMAC_IDLE_bw 1
 #define HMAC__STATUS__HMAC_IDLE_reset 0x1
+// FIFO empty
 #define HMAC__STATUS__FIFO_EMPTY_bm 0x2
 #define HMAC__STATUS__FIFO_EMPTY_bp 1
 #define HMAC__STATUS__FIFO_EMPTY_bw 1
 #define HMAC__STATUS__FIFO_EMPTY_reset 0x1
+// FIFO full. Data written to the FIFO whilst it is full will cause back-pressure on the interconnect
 #define HMAC__STATUS__FIFO_FULL_bm 0x4
 #define HMAC__STATUS__FIFO_FULL_bp 2
 #define HMAC__STATUS__FIFO_FULL_bw 1
+// FIFO entry count.
 #define HMAC__STATUS__FIFO_DEPTH_bm 0x3f0
 #define HMAC__STATUS__FIFO_DEPTH_bp 4
 #define HMAC__STATUS__FIFO_DEPTH_bw 6
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // HMAC idle status.
+        // When IDLE, the `DIGEST` and the `MSG_LENGTH_LOWER`/`MSG_LENGTH_UPPER` can be written to from SW which enables restoring context (to support context switching).
         uint32_t hmac_idle :1;
+        // FIFO empty
         uint32_t fifo_empty :1;
+        // FIFO full. Data written to the FIFO whilst it is full will cause back-pressure on the interconnect
         uint32_t fifo_full :1;
         uint32_t :1;
+        // FIFO entry count.
         uint32_t fifo_depth :6;
         uint32_t :22;
     } f;
@@ -188,67 +298,81 @@ typedef union {
 } hmac__STATUS_t;
 
 // reg - hmac::ERR_CODE
+// If an error interrupt occurs, this register has information of error cause.
+// Please take a look at `hw/ip/prim/rtl/prim_sha2_pkg.sv:err_code_e enum type.
 #define HMAC__ERR_CODE__ERR_CODE_bm 0xffffffff
 #define HMAC__ERR_CODE__ERR_CODE_bp 0
 #define HMAC__ERR_CODE__ERR_CODE_bw 32
 #define HMAC__ERR_CODE__ERR_CODE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // If an error interrupt occurs, this register has information of error cause.
+        // Please take a look at `hw/ip/prim/rtl/prim_sha2_pkg.sv:err_code_e enum type.
         uint32_t err_code :32;
     } f;
     uint32_t w;
 } hmac__ERR_CODE_t;
 
 // reg - hmac::WIPE_SECRET
+// Secret value
 #define HMAC__WIPE_SECRET__SECRET_bm 0xffffffff
 #define HMAC__WIPE_SECRET__SECRET_bp 0
 #define HMAC__WIPE_SECRET__SECRET_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Secret value
         uint32_t secret :32;
     } f;
     uint32_t w;
 } hmac__WIPE_SECRET_t;
 
 // reg - hmac::KEY
+// 32-bit chunk of 1024-bit secret key
 #define HMAC__KEY__KEY_0_bm 0xffffffff
 #define HMAC__KEY__KEY_0_bp 0
 #define HMAC__KEY__KEY_0_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit chunk of 1024-bit secret key
         uint32_t key_0 :32;
     } f;
     uint32_t w;
 } hmac__KEY_t;
 
 // reg - hmac::DIGEST
+// 32-bit chunk of 512-bit digest
 #define HMAC__DIGEST__DIGEST_0_bm 0xffffffff
 #define HMAC__DIGEST__DIGEST_0_bp 0
 #define HMAC__DIGEST__DIGEST_0_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // 32-bit chunk of 512-bit digest
         uint32_t digest_0 :32;
     } f;
     uint32_t w;
 } hmac__DIGEST_t;
 
 // reg - hmac::MSG_LENGTH_LOWER
+// Message Length [31:0]
 #define HMAC__MSG_LENGTH_LOWER__V_bm 0xffffffff
 #define HMAC__MSG_LENGTH_LOWER__V_bp 0
 #define HMAC__MSG_LENGTH_LOWER__V_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Message Length [31:0]
         uint32_t v :32;
     } f;
     uint32_t w;
 } hmac__MSG_LENGTH_LOWER_t;
 
 // reg - hmac::MSG_LENGTH_UPPER
+// Message Length [63:32]
 #define HMAC__MSG_LENGTH_UPPER__V_bm 0xffffffff
 #define HMAC__MSG_LENGTH_UPPER__V_bp 0
 #define HMAC__MSG_LENGTH_UPPER__V_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Message Length [63:32]
         uint32_t v :32;
     } f;
     uint32_t w;
@@ -260,6 +384,7 @@ typedef struct __attribute__ ((__packed__)) {
 } hmac__MSG_FIFO_t;
 
 // addrmap - hmac
+// Accelerator for SHA-2 256/384/512-based keyed HMAC and the hash function
 typedef struct __attribute__ ((__packed__)) {
     hmac__INTR_STATE_t INTR_STATE;
     hmac__INTR_ENABLE_t INTR_ENABLE;

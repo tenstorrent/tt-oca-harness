@@ -42,8 +42,8 @@ class smc_fw_octs_p0_primary_test_seq(smc_fw_image_boot_seq):
     """Boot the OCTS preset image, then watch the timer keep running."""
 
     tag = "OCTS-PRIMARY"
-    # PASS landed 122 us after release in the reference run, i.e. ~245 polls at
-    # a 5 ns clk_smc_i; 2500 is ~10x that.
+    # The image reaches PASS ~122 us after release, ~245 polls at a 5 ns
+    # clk_smc_i; 2500 is ~10x that.
     poll_iterations = 2500
 
     def __init__(self, name: str = "smc_fw_octs_p0_primary_test_seq") -> None:

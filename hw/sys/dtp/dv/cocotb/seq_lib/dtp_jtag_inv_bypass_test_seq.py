@@ -26,8 +26,11 @@ class dtp_jtag_inv_bypass_test_seq(dtp_jtag_base_test_seq):
                 "CHK-NONVAC",
             },
         )
+        self.log_step(1, "Reset TAP")
         await self.reset_to_tlr()
+        self.log_step(2, "INV_BYPASS: capture 1, then the inverted pattern one TCK late")
         await self.check_inverted_bypass_patterns(width=64)
+        self.log_step(3, "IDCODE reads its identification after the inverted-bypass scans")
         # A sequence-level IR and DR scan, so the scan cross-check counts them.
         await self.load_ir(DtpJtagInstr.IDCODE)
         item = await self.shift_dr(0, 32)
@@ -38,5 +41,6 @@ class dtp_jtag_inv_bypass_test_seq(dtp_jtag_base_test_seq):
             DTP_DEFAULT_IDCODE,
             context="no TDR side effect",
         )
+        self.log_step(4, "BYPASS reference point: the plain bypass delays without inverting")
         await self.check_bypass_delay(0x3F, 0x0123_4567_89AB_CDEF)
         await self.finalize_family_checker()

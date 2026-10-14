@@ -11,7 +11,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_jtag_chain_enhanced_test(smu_base_test):
-    """PTAP IDCODE + BYPASS after VIP TCK period reprogram; no Force."""
+    """PTAP IDCODE + BYPASS after VIP TCK period reprogram."""
 
     use_shared_env = True
 

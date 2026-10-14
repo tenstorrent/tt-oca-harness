@@ -54,10 +54,9 @@ class SmcI2cDriver(uvm_driver):
 class SmcI2cAgent(uvm_agent):
     """SMC OSS I2C agent: sequencer + observation driver + analysis port.
 
-    Note: the driver's ``ap`` is forwarded to the agent in ``connect_phase``,
-    not ``build_phase``. Under pyuvm 4 the child driver's ``build_phase`` (which
-    creates the ``ap``) runs only after the parent agent's ``build_phase``
-    returns, so the assignment is moved one phase later.
+    The driver's ``ap`` is forwarded to the agent in ``connect_phase``: under
+    pyuvm 4 the child driver's ``build_phase`` (which creates the ``ap``) runs
+    only after the parent agent's ``build_phase`` returns.
     """
 
     def build_phase(self) -> None:

@@ -41,9 +41,8 @@ class smc_smbus_alert_suspend_test(smc_base_test):
             # poll; anything above this bound is poll iterations that vary with
             # timing.
             #
-            # No expected_bytes/observed_bytes: `_host_ara_read`'s result is
-            # compared against `_ARA_REPLY` and raises in the sequence, so a
-            # golden here would restate a compare already forced equal.
+            # The sequence raises when `_host_ara_read`'s result differs from
+            # `_ARA_REPLY`, so the record carries no byte golden.
             min_csr_accesses=42,
             csr_accesses=seq.accesses,
             proxy=False,

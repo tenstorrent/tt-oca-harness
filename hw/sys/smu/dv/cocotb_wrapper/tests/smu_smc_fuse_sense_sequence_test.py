@@ -4,9 +4,8 @@
 
 Measured against the `smc_fuse_sense_done_o` ("SMC fuse sense completion
 output") and `smc_fuse_reset_n_delayed_o` ("Delayed fuse reset output") rows of
-`hw/sys/smu/doc/port_table.adoc`, the only SMU specification in this tree; it
-names the two ports but not their relative order, so the ordering leg below is
-a check on the elaborated design with no document behind it. On the `--dut smu`
+`hw/sys/smu/doc/port_table.adoc`; the rows name the two ports, and the ordering
+leg checks their relative order on the elaborated design. On the `--dut smu`
 production wrapper built with
 compile_smu_chiplet and run under the sep_rtl_fuse_sense run mode, which
 leaves +skip_fuse_sense unset so the SMC eFuse bank model answers the sense:

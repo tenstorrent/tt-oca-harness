@@ -48,7 +48,7 @@
 ///
 /* verilator lint_off DECLFILENAME */
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 
 module cdc_2phase_clearable #(
@@ -240,7 +240,7 @@ module cdc_2phase_src_clearable #(
     end
   end
 
-  `FFNR(data_src_q, data_src_d, clk_i)
+  `OCAH_FFNR(data_src_q, data_src_d, clk_i)
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -317,7 +317,7 @@ module cdc_2phase_dst_clearable #(
     end
   end
 
-  `FFNR(data_dst_q, data_dst_d, clk_i)
+  `OCAH_FFNR(data_dst_q, data_dst_d, clk_i)
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin

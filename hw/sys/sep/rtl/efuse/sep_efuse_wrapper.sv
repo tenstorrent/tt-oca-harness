@@ -15,6 +15,7 @@
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
+`include "ocah_registers.svh"
 
 module sep_efuse_wrapper #(
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
@@ -201,10 +202,7 @@ module sep_efuse_wrapper #(
   /////////////////////////////////////////////////////////////
 
   // Positive edge detection of fuse_sense_done
-  always_ff @(posedge clk_i) begin
-    if (!rst_ni) fuse_sense_done_1dly <= 1'b0;
-    else fuse_sense_done_1dly <= fuse_sense_done;
-  end
+  `OCAH_FFSRN(fuse_sense_done_1dly, fuse_sense_done, 1'b0, clk_i, rst_ni)
   assign fuse_sense_done_posedge = fuse_sense_done && !fuse_sense_done_1dly;
 
   // Reset cycle counter, measured from cold-reset (rst_ni) release. Saturates at 2.

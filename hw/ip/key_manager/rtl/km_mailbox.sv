@@ -22,14 +22,7 @@
 // write-space-available (level) plus sticky overflow / underflow / flushed-by-peer events,
 // each masked by that side's IRQ_ENABLE.
 
-module km_mailbox
-  import km_intf_pkg::*;
-  import axi_pkg::*;
-  import km_mailbox_sep_reg_pkg::*;
-  import km_mailbox_km_reg_pkg::*;
-  import km_mailbox_sep_addrmap_pkg::*;
-  import km_mailbox_km_addrmap_pkg::*;
-#(
+module km_mailbox #(
   parameter int unsigned MAILBOX_DEPTH = 16,  // Words per FIFO direction.
 
   parameter type km_axil_req_t  = km_intf_pkg::km_axil_req_t,   // KM-side AXI-Lite request type;
@@ -67,6 +60,7 @@ module km_mailbox
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   //=========================================================================
   // Local Parameters
@@ -157,14 +151,14 @@ module km_mailbox
   assign sep_aw_addr = sep_axil_req_i.aw.addr[11:0];
   assign sep_ar_addr = sep_axil_req_i.ar.addr[11:0];
 
-  assign sep_aw_is_write_data = (sep_aw_addr == KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR);
-  assign sep_ar_is_read_data = (sep_ar_addr == KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR);
+  assign sep_aw_is_write_data = (sep_aw_addr == km_mailbox_sep_addrmap_pkg::KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR);
+  assign sep_ar_is_read_data = (sep_ar_addr == km_mailbox_sep_addrmap_pkg::KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR);
   assign sep_aw_is_reg_block = !sep_aw_is_write_data;
   assign sep_ar_is_reg_block = !sep_ar_is_read_data;
 
   // SEP register block (for STATUS, IRQ_STATUS, IRQ_ENABLE)
-  km_mailbox_sep__in_t  sep_hwif_in;
-  km_mailbox_sep__out_t sep_hwif_out;
+  km_mailbox_sep_reg_pkg::km_mailbox_sep__in_t  sep_hwif_in;
+  km_mailbox_sep_reg_pkg::km_mailbox_sep__out_t sep_hwif_out;
 
   // SEP-side CTRL register bits (for overflow/underflow response configuration)
   // Declared early so they can be used in SEP write/read state machines
@@ -370,8 +364,8 @@ module km_mailbox
   assign km_aw_addr = km_axil_req_i.aw.addr[KmRegAddrW-1:0];
   assign km_ar_addr = km_axil_req_i.ar.addr[KmRegAddrW-1:0];
 
-  assign km_aw_is_write_data = (km_aw_addr == KM_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR);
-  assign km_ar_is_read_data = (km_ar_addr == KM_MAILBOX_KM_KM_READ_DATA_BASE_ADDR);
+  assign km_aw_is_write_data = (km_aw_addr == km_mailbox_km_addrmap_pkg::KM_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR);
+  assign km_ar_is_read_data = (km_ar_addr == km_mailbox_km_addrmap_pkg::KM_MAILBOX_KM_KM_READ_DATA_BASE_ADDR);
   assign km_aw_is_reg_block = !km_aw_is_write_data;
   assign km_ar_is_reg_block = !km_ar_is_read_data;
 
@@ -379,8 +373,8 @@ module km_mailbox
   logic inbound_separator_q, outbound_separator_q;
 
   // KM register block (for STATUS, IRQ_STATUS, IRQ_ENABLE)
-  km_mailbox_km__in_t  km_hwif_in;
-  km_mailbox_km__out_t km_hwif_out;
+  km_mailbox_km_reg_pkg::km_mailbox_km__in_t  km_hwif_in;
+  km_mailbox_km_reg_pkg::km_mailbox_km__out_t km_hwif_out;
 
   // KM-side CTRL register bits
   logic outbound_overflow_resp_okay;   // KM-side CTRL: outbound overflow response (0=SLVERR, 1=OKAY)
@@ -733,8 +727,8 @@ module km_mailbox
   // Assertions
   //=========================================================================
 
-  `OCAH_OT_ASSERT_INIT(MAILBOX_DEPTH_GT_0, MAILBOX_DEPTH > 0)
-  `OCAH_OT_ASSERT_INIT(MAILBOX_DEPTH_LE_256, MAILBOX_DEPTH <= 256)
+  `OCAH_ASSERT_STATIC(MAILBOX_DEPTH_GT_0, MAILBOX_DEPTH > 0)
+  `OCAH_ASSERT_STATIC(MAILBOX_DEPTH_LE_256, MAILBOX_DEPTH <= 256)
 
   // Accepted KM FIFO AR implies an R beat the next cycle.
   `OCAH_OT_ASSERT(KmFifoReadCompletesAfterAccept_A, km_fifo_ar_handshake |=> km_fifo_r_valid_q,

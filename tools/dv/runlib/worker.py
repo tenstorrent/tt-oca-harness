@@ -64,7 +64,9 @@ def verify_checkout(data: dict[str, Any]) -> Path:
     expected = data.get("repo_commit")
     if expected:
         actual, _dirty = repo_identity(root)
-        if actual is not None and actual != expected:
+        if actual is None:
+            _say(f"git cannot read the checkout's commit; not checked against {expected[:12]}")
+        elif actual != expected:
             raise WorkerError(
                 f"checkout is at {actual[:12]}, manifest was planned at {expected[:12]}"
             )

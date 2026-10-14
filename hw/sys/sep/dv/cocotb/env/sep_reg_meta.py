@@ -165,8 +165,38 @@ class RegBlock:
     def addr(self, name: str) -> int:
         return int(self._sym(name, "REG_ADDR", alias_ok=False))
 
-    def reset(self, name: str) -> int:
+    def reset_raw(self, name: str) -> int:
+        """The generated ``_REG_DEFAULT``, which holds 0 for every bit of a field
+        with no RDL reset. Pair it with ``unreset_mask``; it is not a reset value
+        for those bits."""
         return int(self._sym(name, "REG_DEFAULT", alias_ok=True))
+
+    def unreset_mask(self, name: str) -> int:
+        """Bits of the register held by fields with no RDL reset (all its words)."""
+        addr = self.addr(name)
+        nwords = max(1, (self.mask_all(name).bit_length() + 31) // 32)
+        bits = 0
+        for k in range(nwords):
+            bits |= word_unreset_mask(addr + 4 * k) << (32 * k)
+        return bits
+
+    def reset(self, name: str) -> int:
+        """The reset value. Raises when a field of the register has no RDL reset:
+        the generated 0 there is a placeholder (``reset_raw``, ``field_reset``)."""
+        unreset = self.unreset_mask(name)
+        if unreset:
+            raise ValueError(
+                f"{self.block}.{name} has bits with no RDL reset (mask 0x{unreset:x}); "
+                "use field_reset() for a reset field or reset_raw() with unreset_mask()"
+            )
+        return self.reset_raw(name)
+
+    def field_reset(self, name: str, field_name: str) -> int:
+        """Reset value of one field. Raises when the field has no RDL reset."""
+        fmask = self.field_mask(name, field_name)
+        if self.unreset_mask(name) & fmask:
+            raise ValueError(f"{self.block}.{name}.{field_name} has no RDL reset")
+        return (self.reset_raw(name) & fmask) >> self.field_lsb(name, field_name)
 
     def mask(self, name: str) -> int:
         """Union of the register's IMPLEMENTED field bits.
@@ -245,8 +275,15 @@ class RegBlock:
         return self.mask_all(name) & 0xFFFF_FFFF
 
     def reset32(self, name: str) -> int:
-        """Reset value truncated to the low 32 bits (the DV access width)."""
-        return self.reset(name) & 0xFFFF_FFFF
+        """Reset value truncated to the low 32 bits (the DV access width).
+
+        Raises when a field bit of the low word has no RDL reset."""
+        unreset = self.unreset_mask(name) & 0xFFFF_FFFF
+        if unreset:
+            raise ValueError(
+                f"{self.block}.{name} low word has bits with no RDL reset (mask 0x{unreset:x})"
+            )
+        return self.reset_raw(name) & 0xFFFF_FFFF
 
     def mask32(self, name: str) -> int:
         """Implemented-field mask truncated to the low 32 bits."""
@@ -313,23 +350,37 @@ class CHeaderRegBlock:
         return sum(meta.get("bm", 0) for meta in self.fields(reg).values())
 
     def reset(self, reg: str) -> int:
-        """Register reset value assembled from its per-field resets."""
+        """Register reset value assembled from its per-field resets.
+
+        Raises when a field has no ``_reset`` define: it has no RDL reset, so
+        there is no reset value to state for it."""
+        known = self.fields(reg)
+        unreset = sorted(name for name, meta in known.items() if "reset" not in meta)
+        if unreset:
+            raise ValueError(f"{self.block}.{reg} field(s) {unreset} have no RDL reset")
         total = 0
-        for meta in self.fields(reg).values():
-            total |= (meta.get("reset", 0) << meta.get("bp", 0)) & meta.get("bm", 0)
+        for meta in known.values():
+            total |= (meta["reset"] << meta.get("bp", 0)) & meta.get("bm", 0)
         return total
 
     def value(self, reg: str, **overrides: int) -> int:
-        """Build a register value: named fields as given, the rest at their reset."""
+        """Build a register value: named fields as given, the rest at their reset.
+
+        A field with no RDL reset has no default here, so the caller names it."""
         known = self.fields(reg)
         unknown = set(overrides) - set(known)
         if unknown:
             raise KeyError(
                 f"unknown field(s) {sorted(unknown)} for {self.block}.{reg}; known: {sorted(known)}"
             )
+        unnamed = sorted(n for n, m in known.items() if "reset" not in m and n not in overrides)
+        if unnamed:
+            raise ValueError(
+                f"{self.block}.{reg} field(s) {unnamed} have no RDL reset; name a value for each"
+            )
         total = 0
         for name, meta in known.items():
-            raw = overrides.get(name, meta.get("reset", 0))
+            raw = overrides.get(name, meta.get("reset"))
             total |= (raw << meta.get("bp", 0)) & meta.get("bm", 0)
         return total
 
@@ -385,7 +436,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[6]
 _IPXACT_NS = "{*}"
 
 
-def _ipxact_num(text: str | None) -> int | None:
+def ipxact_num(text: str | None) -> int | None:
     """One IP-XACT numeric literal: ``'h1094_0000``, ``0x…``, or decimal."""
     if text is None:
         return None
@@ -419,7 +470,7 @@ class RegAccess:
         return self.access == frozenset({"read-only"}) and not self.declared_reset
 
 
-def _iter_ipxact_registers():
+def iter_ipxact_registers():
     """Yield ``(address, width_bits, field_nodes)`` for every register element.
 
     An array (``dim``) yields one tuple per element, at its absolute address.
@@ -433,18 +484,18 @@ def _iter_ipxact_registers():
         for child in node:
             kind = child.tag.split("}")[-1]
             if kind == "registerFile":
-                offset = _ipxact_num(text(child, "addressOffset")) or 0
-                stride = _ipxact_num(text(child, "range")) or 0
-                for index in range(_ipxact_num(text(child, "dim")) or 1):
+                offset = ipxact_num(text(child, "addressOffset")) or 0
+                stride = ipxact_num(text(child, "range")) or 0
+                for index in range(ipxact_num(text(child, "dim")) or 1):
                     yield from walk(child, base + offset + index * stride)
             elif kind == "register":
-                offset = _ipxact_num(text(child, "addressOffset")) or 0
-                width = _ipxact_num(text(child, "size")) or 32
+                offset = ipxact_num(text(child, "addressOffset")) or 0
+                width = ipxact_num(text(child, "size")) or 32
                 fields = child.findall(_IPXACT_NS + "field")
-                for index in range(_ipxact_num(text(child, "dim")) or 1):
+                for index in range(ipxact_num(text(child, "dim")) or 1):
                     yield base + offset + index * (width // 8), width, fields
             elif kind == "addressBlock":
-                yield from walk(child, base + (_ipxact_num(text(child, "baseAddress")) or 0))
+                yield from walk(child, base + (ipxact_num(text(child, "baseAddress")) or 0))
             else:
                 yield from walk(child, base)
 
@@ -460,7 +511,7 @@ def _ipxact_access() -> dict[int, RegAccess]:
     on, so the join cannot be broken by a naming convention change.
     """
     out: dict[int, RegAccess] = {}
-    for addr, _width, fields in _iter_ipxact_registers():
+    for addr, _width, fields in iter_ipxact_registers():
         out[addr] = RegAccess(
             frozenset((one.findtext(_IPXACT_NS + "access") or "read-write") for one in fields),
             any(one.find(_IPXACT_NS + "resets") is not None for one in fields),
@@ -482,13 +533,13 @@ def _ipxact_unreset_words() -> dict[int, int]:
     none (``tools/regs/common/regcollect.py``), so it cannot answer this.
     """
     out: dict[int, int] = {}
-    for addr, width, fields in _iter_ipxact_registers():
+    for addr, width, fields in iter_ipxact_registers():
         bits = 0
         for one in fields:
             if one.find(_IPXACT_NS + "resets") is not None:
                 continue
-            lsb = _ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
-            width_f = _ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
+            lsb = ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
+            width_f = ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
             bits |= ((1 << width_f) - 1) << lsb
         for word in range(max(width // 32, 1)):
             out[addr + 4 * word] = (bits >> (32 * word)) & 0xFFFF_FFFF
@@ -543,17 +594,17 @@ class FieldMeta:
 @lru_cache(maxsize=1)
 def _ipxact_fields() -> dict[int, tuple[int, tuple[FieldMeta, ...]]]:
     out: dict[int, tuple[int, tuple[FieldMeta, ...]]] = {}
-    for addr, width, fields in _iter_ipxact_registers():
+    for addr, width, fields in iter_ipxact_registers():
         metas = []
         for one in fields:
             reset = one.find(f"{_IPXACT_NS}resets/{_IPXACT_NS}reset/{_IPXACT_NS}value")
             metas.append(
                 FieldMeta(
                     name=one.findtext(_IPXACT_NS + "name") or "",
-                    lsb=_ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0,
-                    width=_ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1,
+                    lsb=ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0,
+                    width=ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1,
                     access=one.findtext(_IPXACT_NS + "access") or "read-write",
-                    reset=None if reset is None else _ipxact_num(reset.text),
+                    reset=None if reset is None else ipxact_num(reset.text),
                     one_to_set=(one.findtext(_IPXACT_NS + "modifiedWriteValue") == "oneToSet"),
                 )
             )
@@ -572,14 +623,14 @@ def _ipxact_reset_words() -> dict[int, int]:
     ``resets`` element contributes 0; ``word_reset`` refuses such a word.
     """
     out: dict[int, int] = {}
-    for addr, width, fields in _iter_ipxact_registers():
+    for addr, width, fields in iter_ipxact_registers():
         value = 0
         for one in fields:
-            lsb = _ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
-            width_f = _ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
+            lsb = ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
+            width_f = ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
             node = one.find(f"{_IPXACT_NS}resets/{_IPXACT_NS}reset/{_IPXACT_NS}value")
             if node is not None:
-                value |= (_ipxact_num(node.text) & ((1 << width_f) - 1)) << lsb
+                value |= (ipxact_num(node.text) & ((1 << width_f) - 1)) << lsb
         for word in range(max(width // 32, 1)):
             out[addr + 4 * word] = (value >> (32 * word)) & 0xFFFF_FFFF
     if not out:
@@ -888,7 +939,8 @@ def iter_register_walk() -> RegisterWalk:
         view = RegBlock(block)
         try:
             addr = view.addr(reg)
-            reset = view.reset32(reg)
+            # The raw default, with its unreset mask stored beside it in RegInfo.
+            reset = view.reset_raw(reg) & 0xFFFF_FFFF
             mask = view.mask32(reg)
             mask_all = view.mask32_all(reg)
         except KeyError:

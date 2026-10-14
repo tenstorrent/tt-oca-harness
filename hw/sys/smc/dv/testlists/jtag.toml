@@ -42,6 +42,3 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
-
-# Discriminator for the Xcelium SYS_OUT write hang (AW handshake, no W).
-# Run with --items smc_dbs_idle_test.

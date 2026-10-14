@@ -97,6 +97,7 @@ class dtp_jtag_tlr_reset_test_seq extends dtp_debug_tdr_base_test_seq;
     ones = $urandom_range(8, 5);
     `uvm_info(get_type_name(), $sformatf("TLR walk: start=%s tms_ones=%0d", state.name(), ones),
               UVM_LOW)
+    log_step("1", $sformatf("Program the debug TDRs, load BYPASS, park in %s", state.name()));
     reset_to_tlr();
     program_debug_tdrs();
     load_ir(BYPASS_INSTR);
@@ -104,6 +105,7 @@ class dtp_jtag_tlr_reset_test_seq extends dtp_debug_tdr_base_test_seq;
     check_state(dtp_tap_state_e'(16'h1 << int'(state)), "jtag_tlr_chk", $sformatf(
                 "start state %s before TMS-high walk", state.name()));
 
+    log_step("2", $sformatf("Walk %0d TMS-high cycles into Test-Logic-Reset", ones));
     repeat (ones) step(1'b1);
     ctx = $sformatf("from=%s tms_ones=%0d", state.name(), ones);
     if (m_family != null) void'(m_family.check_tms_ones_to_tlr(ones, tb_vif.tap_state, ctx));
@@ -111,13 +113,16 @@ class dtp_jtag_tlr_reset_test_seq extends dtp_debug_tdr_base_test_seq;
 
     // TLR must re-select the device-identification register over the
     // loaded BYPASS: DR scan with no IR load reads IDCODE.
+    log_step("3", "A DR scan with no IR load reads IDCODE");
     step(1'b0);  // TLR -> RTI: scan legs start from Run-Test/Idle
     shift_dr(64'h0, 32, observed);
     family_check("CHK-TAP-TLR-IDCODE", "DR scan after TLR, no IR load", observed[31:0],
                  m_expected_idcode, ctx);
     restored = (observed[31:0] == DtpDefaultIdcode);
 
+    log_step("4", "Debug-TDR pin outputs and readbacks are back at their defaults");
     check_tdr_defaults({"after TLR ", ctx});
+    log_step("5", "IDCODE loaded by an IR scan reads back");
     load_ir(IDCODE_INSTR);
     shift_dr(64'h0, 32, observed);
     family_check(ResumeCheckId, "IDCODE by IR scan after TLR", observed[31:0], DtpDefaultIdcode,

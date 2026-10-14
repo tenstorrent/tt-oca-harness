@@ -79,12 +79,12 @@ localparam longint unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_BASE_ADDR = 64'h174;
 localparam longint unsigned ENTROPY_SOURCE_NOISE_OBS_RDATA_BASE_ADDR = 64'h178;
 
 
-typedef enum logic [2:0] {
-    REPCNT_HI = 3'd0,
-    APT_HI = 3'd1,
-    APT_LO = 3'd2,
-    MARKOV_HI = 3'd3,
-    MARKOV_LO = 3'd4
+typedef enum logic [3:0] {
+    REPCNT_HI = 4'd0,
+    APT_HI = 4'd1,
+    APT_LO = 4'd2,
+    MARKOV_HI = 4'd3,
+    MARKOV_LO = 4'd4
 } WATERMARK_TEST_e;
 
 endpackage

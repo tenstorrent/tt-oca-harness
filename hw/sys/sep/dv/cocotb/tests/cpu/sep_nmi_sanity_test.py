@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A WDT bark fires the NMI into the handler at SEP_NMI_VEC, and SEP_NMI_VEC locks sticky.
 
+OCAH provenance: ``sep_nmi_sanity_test`` checks the NMI vector, lock and
+watchdog-bark delivery.
+
 The nmi_sanity firmware checks the NMI mechanism on bare ``sep``: trampoline alignment,
 SEP_NMI_VEC reset default / writeback / sticky lock, and that a WDT bark fires the NMI into the
 registered handler (hw/sys/sep/rtl/sep.sv connects ``nmi_int_i`` to ``intr_wdog_timer_bark``
@@ -41,6 +44,9 @@ class sep_nmi_sanity_test(sep_base_test):
     """The NMI vector CSR and the WDT bark -> NMI path pass their firmware checks."""
 
     build_env = False
+    # The firmware runs every graded check and reports the result as its
+    # completion verdict, so that verdict is this leaf's own evidence.
+    required_evidence = ("CHK-FW-CONSOLE",)
 
     def build_phase(self) -> None:
         super().build_phase()

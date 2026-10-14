@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU_CTRL REFERENCE_COUNTER is a refclk CDC counter, not the OCTS timer.
 
-EXPECT-SOURCE (SPEC, not RTL): ``doc/trm/src/architecture.adoc:256-265`` --
+EXPECT-SOURCE (SPEC, not RTL): ``doc/trm/src/clock_domains.adoc`` (Reference Counter) --
 the ``REFERENCE_COUNTER`` CSR is a free-running 64-bit counter "clocked by the
 always-on reference clock (``clk_ref_i``)", advancing "continuously from reset,
 independent of the system clock (``clk_smu_i``) frequency or PLL state",

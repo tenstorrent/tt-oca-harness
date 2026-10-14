@@ -122,12 +122,6 @@ typedef enum logic [15:0] {
   UPDATE_IR        = 16'h8000
 } dtp_tap_state_e;
 
-// A legal exported TAP state is exactly one of the sixteen one-hot codes.
-function automatic bit dtp_tap_state_is_valid(logic [15:0] state);
-  if ($isunknown(state)) return 1'b0;
-  return $countones(state) == 1;
-endfunction
-
 // The DUT is in a Shift state: one data bit moves through the selected register
 // on every TCK cycle the exported state spends here.
 function automatic bit dtp_tap_state_is_shift(logic [15:0] state, bit is_ir);
@@ -193,8 +187,6 @@ typedef enum int unsigned {
   DTP_DBG_PATH_SMC_OTP_JTAG2AXI = 9,
   DTP_DBG_PATH_SEP_OTP_JTAG2AXI = 10
 } dtp_dbg_path_e;
-
-localparam int unsigned DtpDbgPathCount = 11;
 
 function automatic bit dtp_dbg_path_disabled(sep_lifecycle_ctrl_pkg::dbg_disable_t d,
                                              dtp_dbg_path_e p);
@@ -296,9 +288,8 @@ localparam int unsigned DtpJ2aSeriesLaunchCycles = 5;
 // (three synchronizer stages on the gray pointer, then the FIFO pop), the
 // bridge steps from its response wait through its status update into the
 // status register, and the first crossing edge adds up to one TCK of phase;
-// measured from
-// the scan's start. A status capture whose scan starts inside this window
-// after a completion is not checkable.
+// measured from the scan's start. A status capture whose scan starts inside
+// this window after a completion is not checkable.
 localparam int unsigned DtpJ2aStatusSettleTck = 8;
 // *_JTAG2AXI_CAPS[13:0] (PTAP document, "*_JTAG2AXI_CAPS" table).
 localparam int unsigned DtpJtag2AxiCapsLen = 14;
@@ -446,12 +437,17 @@ function automatic dtp_j2a_target_t dtp_j2a_target_smc_axi();
   return t;
 endfunction
 
-// Target by name ("smc_otp", "sep_otp", "smc_axi").
+// Target by name ("smc_otp", "sep_otp", "smc_axi"); any other name is a
+// configuration defect.
 function automatic dtp_j2a_target_t dtp_j2a_target_by_name(string name);
   case (name)
     "smc_axi": return dtp_j2a_target_smc_axi();
     "sep_otp": return dtp_j2a_target_sep_otp();
-    default:   return dtp_j2a_target_smc_otp();
+    "smc_otp": return dtp_j2a_target_smc_otp();
+    default: begin
+      `uvm_fatal("dtp_types", {"unknown JTAG2AXI bridge ", name})
+      return dtp_j2a_target_smc_otp();
+    end
   endcase
 endfunction
 
@@ -659,6 +655,18 @@ function automatic bit [63:0] dtp_bits_field(ref bit bits[$], input int unsigned
   return value;
 endfunction
 
+// Hex image of an LSB-first shift image, without leading zeros.
+function automatic string dtp_bits_hex(bit bits[]);
+  string s = "";
+  for (int d = (int'(bits.size()) + 3) / 4 - 1; d >= 0; d--) begin
+    int unsigned nibble = 0;
+    for (int unsigned b = 0; b < 4; b++)
+    if (4 * d + b < bits.size() && bits[4*d+b]) nibble |= 1 << b;
+    if (s.len() > 0 || nibble != 0) s = {s, $sformatf("%0h", nibble)};
+  end
+  return (s.len() > 0) ? s : "0";
+endfunction
+
 // Decode the TDI image of a SINGLE_OP scan (inverse of dtp_j2a_pack_single_op).
 function automatic void dtp_j2a_decode_single_op(dtp_j2a_target_t t, ref bit tdi[$],
                                                  output dtp_j2a_request_t r);
@@ -786,7 +794,6 @@ localparam int unsigned DtpIjtagSibCount = 3;
 // Instrument stub widths behind each SIB (tb_top), dtp_ijtag_sib_e order:
 // every subset of open SIBs sums to a distinct chain length.
 localparam int unsigned DtpIjtagInstrumentWidths[DtpIjtagSibCount] = '{4, 5, 6};
-localparam int unsigned DtpIjtagChainLenMax = DtpIjtagSibCount + 4 + 5 + 6;
 // A latency-measuring scan shifts a marker word ahead of the chain's
 // maintain image; the marker's MSB is set, so the stream's highest set bit
 // lands at chain_len + DtpScanMarkerWidth - 1.
@@ -835,6 +842,20 @@ typedef struct {
   bit stap_sel;
   bit tms_hold;
 } dtp_stap_3dcr_state_t;
+
+// End state one composed STAP chain scan writes. A negative int field and an
+// absent associative entry keep the stored value; a spliced downstream TAP
+// takes its ds_values entry as its selected register (IR scans: its
+// instruction).
+typedef struct {
+  int                   ptap_select = -1;
+  int                   ptap_config_hold = -1;
+  bit [63:0]            ptap_instr;  // IR scans
+  int                   sib_en[int];
+  dtp_stap_3dcr_state_t payloads[int];
+  bit [63:0]            ds_values[int];
+  int                   host_segment = -1;
+} dtp_stap_scan_update_t;
 
 // Downstream STAP TAP device map, the parity contract with the cocotb
 // env/dtp_stap_ds_agent.py: IR width 5, IDCODE at opcode 0x1, one writable
@@ -1077,6 +1098,34 @@ typedef struct {
   int unsigned        data_width;
   int unsigned        id_width;
 } dtp_axi_port_t;
+
+// tb_top drives the XTRIG CSR port axil_xtrig_req_i with a
+// dtp_pkg::dtp_axil_32_32_req_t: 32-bit address and data.
+localparam int unsigned DtpXtrigCsrAddrWidth = 32;
+localparam int unsigned DtpXtrigCsrDataWidth = 32;
+
+// Descriptor of the port of JTAG2AXI bridge `target`, its geometry taken
+// from the bridge target: the passive observer of the port, or with
+// `responder` set the memory-backed responder behind it.
+function automatic dtp_axi_port_t dtp_j2a_port(string target, bit responder);
+  dtp_j2a_target_t t = dtp_j2a_target_by_name(target);
+  bit fabric = (target == "smc_axi");
+  dtp_axi_port_t p;
+  if (responder) begin
+    p.name     = {"m_", target, "_slave"};
+    p.vif_key  = {target, "_slave_vif"};
+    p.name_tag = {"dtp_", target, "_slave"};
+  end else begin
+    p.name     = {"m_", target, fabric ? "" : "_axi"};
+    p.vif_key  = fabric ? "m_axi_vif" : {target, "_axil_vif"};
+    p.name_tag = {"dtp_", target, fabric ? "" : "_axil"};
+  end
+  p.protocol   = t.protocol;
+  p.addr_width = t.addr_width;
+  p.data_width = t.data_width;
+  p.id_width   = fabric ? dtp_dv_cfg_pkg::SmcAxiIdWidth : 0;
+  return p;
+endfunction
 
 // ---------------------------------------------------------------------------
 // Evidence policy carried from the test cfg to the env cfg.

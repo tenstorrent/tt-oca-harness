@@ -49,7 +49,7 @@ sources = [
 ]
 
 [targets.default]
-description = "dtp as the formal top with one block's property module bound in"
+description = "One block's property module bound into its formal top"
 build_dir = "hw/sys/dtp/dv/formal/build"
 
 # One app per described block: `<block>_fpv` runs that block's bmc, cover and prove task triple of
@@ -86,8 +86,8 @@ args = ["dbgctl_bmc", "dbgctl_cover", "dbgctl_prove"]
 
 # The bridge control and the cross-trigger blocks run on their own tops, jtag2axi and
 # cross_trigger_network, from task files beside dtp.sby that read the same filelist. The bridge's
-# three tasks each unroll the bridge and its CDC forty steps, so they run in sequence to fit the
-# memory of one host.
+# bmc and cover tasks each unroll the bridge and its CDC forty steps and its prove task holds the
+# CDC in the property-directed engine, so the three run in sequence to fit the memory of one host.
 [formal.apps.j2a_ctrl_fpv.sby]
 cwd = "hw/sys/dtp/dv/formal/fpv/sby"
 script = "dtp_jtag2axi.sby"

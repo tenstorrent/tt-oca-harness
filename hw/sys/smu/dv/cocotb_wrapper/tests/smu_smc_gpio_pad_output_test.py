@@ -4,7 +4,7 @@
 
 The GPIO interface CSRs are written and read over the inbound SMN port, with
 the SMC aperture routed to its local alias and SYS_IN entry 0 opened over the
-GPIO_INTF block, so the 65-pad walk costs AXI transfers rather than JTAG scans.
+GPIO_INTF block.
 
 With the bench's pad drivers off, each pad's DATA_CTRL takes the pad from its
 LSIO owner (INTERFACE_ENABLE, LSIO_DISABLE) with INTERRUPT_ENABLE at its reset

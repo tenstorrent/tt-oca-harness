@@ -68,67 +68,68 @@ module memory_interface #(
   ////////////////
 
   // AXI4 Memory Interface Parameter Validation
-  `OCAH_ASSERT_INIT(MemAddrWidthCheck_A, MEM_ADDR_WIDTH <= 64)
-  `OCAH_ASSERT_INIT(MemDataWidthCheck_A, MEM_DATA_WIDTH inside {32, 64, 128, 256, 512, 1024})
-  initial begin
-    assert ($bits(mem_axi_req_i.aw.addr) == MEM_ADDR_WIDTH)
-    else $error("mem_axi_req_i.aw.addr is not the correct width");
-    assert ($bits(mem_axi_req_i.w.data) == MEM_DATA_WIDTH)
-    else $error("mem_axi_req_i.w.data is not the correct width");
-    assert ($bits(mem_axi_req_i.w.strb) == MEM_DATA_WIDTH / 8)
-    else $error("mem_axi_req_i.w.strb is not the correct width");
-    assert ($bits(mem_axi_req_i.aw.id) == MEM_ID_WIDTH)
-    else $error("mem_axi_req_i.aw.id is not the correct width");
-    assert ($bits(mem_axi_req_i.ar.id) == MEM_ID_WIDTH)
-    else $error("mem_axi_req_i.ar.id is not the correct width");
-    assert ($bits(mem_axi_req_i.ar.addr) == MEM_ADDR_WIDTH)
-    else $error("mem_axi_req_i.ar.addr is not the correct width");
-    assert ($bits(mem_axi_resp_o.b.id) == MEM_ID_WIDTH)
-    else $error("mem_axi_resp_o.b.id is not the correct width");
-    assert ($bits(mem_axi_resp_o.r.id) == MEM_ID_WIDTH)
-    else $error("mem_axi_resp_o.r.id is not the correct width");
-    assert ($bits(mem_axi_resp_o.r.data) == MEM_DATA_WIDTH)
-    else $error("mem_axi_resp_o.r.data is not the correct width");
-  end
+  `OCAH_ASSERT_STATIC(MemAddrWidthCheck_A, MEM_ADDR_WIDTH <= 64,
+                      "MEM_ADDR_WIDTH must be at most 64")
+  `OCAH_ASSERT_STATIC(MemDataWidthCheck_A, MEM_DATA_WIDTH inside {32, 64, 128, 256, 512, 1024},
+                      "MEM_DATA_WIDTH must be a power of two from 32 to 1024")
+  `OCAH_ASSERT_STATIC(MemAxiReqIAwAddrWidth_A, $bits(mem_axi_req_i.aw.addr) == MEM_ADDR_WIDTH,
+                      "mem_axi_req_i.aw.addr is not the correct width")
+  `OCAH_ASSERT_STATIC(MemAxiReqIWDataWidth_A, $bits(mem_axi_req_i.w.data) == MEM_DATA_WIDTH,
+                      "mem_axi_req_i.w.data is not the correct width")
+  `OCAH_ASSERT_STATIC(MemAxiReqIWStrbWidth_A, $bits(mem_axi_req_i.w.strb) == MEM_DATA_WIDTH / 8,
+                      "mem_axi_req_i.w.strb is not the correct width")
+  `OCAH_ASSERT_STATIC(MemAxiReqIAwIdWidth_A, $bits(mem_axi_req_i.aw.id) == MEM_ID_WIDTH,
+                      "mem_axi_req_i.aw.id is not the correct width")
+  `OCAH_ASSERT_STATIC(MemAxiReqIArIdWidth_A, $bits(mem_axi_req_i.ar.id) == MEM_ID_WIDTH,
+                      "mem_axi_req_i.ar.id is not the correct width")
+  `OCAH_ASSERT_STATIC(MemAxiReqIArAddrWidth_A, $bits(mem_axi_req_i.ar.addr) == MEM_ADDR_WIDTH,
+                      "mem_axi_req_i.ar.addr is not the correct width")
+  `OCAH_ASSERT_STATIC(MemAxiRespOBIdWidth_A, $bits(mem_axi_resp_o.b.id) == MEM_ID_WIDTH,
+                      "mem_axi_resp_o.b.id is not the correct width")
+  `OCAH_ASSERT_STATIC(MemAxiRespORIdWidth_A, $bits(mem_axi_resp_o.r.id) == MEM_ID_WIDTH,
+                      "mem_axi_resp_o.r.id is not the correct width")
+  `OCAH_ASSERT_STATIC(MemAxiRespORDataWidth_A, $bits(mem_axi_resp_o.r.data) == MEM_DATA_WIDTH,
+                      "mem_axi_resp_o.r.data is not the correct width")
 
 
   // AXI4-Lite CSR Interface Parameter Validation
-  `OCAH_ASSERT_INIT(CsrAddrWidthCheck_A, CSR_ADDR_WIDTH <= 64)
-  `OCAH_ASSERT_INIT(CsrDataWidthCheck_A, CSR_DATA_WIDTH inside {32, 64})
-  initial begin
-    assert ($bits(csr_in_axil_req_i.aw.addr) == CSR_ADDR_WIDTH)
-    else $error("csr_in_axil_req_i.aw.addr is not the correct width");
-    assert ($bits(csr_in_axil_req_i.w.data) == CSR_DATA_WIDTH)
-    else $error("csr_in_axil_req_i.w.data is not the correct width");
-    assert ($bits(csr_in_axil_req_i.w.strb) == CSR_DATA_WIDTH / 8)
-    else $error("csr_in_axil_req_i.w.strb is not the correct width");
-    assert ($bits(csr_in_axil_req_i.ar.addr) == CSR_ADDR_WIDTH)
-    else $error("csr_in_axil_req_i.ar.addr is not the correct width");
-    assert ($bits(csr_in_axil_resp_o.r.data) == CSR_DATA_WIDTH)
-    else $error("csr_in_axil_resp_o.r.data is not the correct width");
-    assert ($bits(csr_out_axil_resp_i.b.resp) == 2)
-    else $error("csr_out_axil_resp_i.b.resp is not the correct width");
-    assert ($bits(csr_out_axil_resp_i.r.resp) == 2)
-    else $error("csr_out_axil_resp_i.r.resp is not the correct width");
-    assert ($bits(csr_out_axil_resp_i.r.data) == CSR_DATA_WIDTH)
-    else $error("csr_out_axil_resp_i.r.data is not the correct width");
-    assert ($bits(csr_out_axil_req_o.aw.addr) == CSR_ADDR_WIDTH)
-    else $error("csr_out_axil_req_o.aw.addr is not the correct width");
-    assert ($bits(csr_out_axil_req_o.w.data) == CSR_DATA_WIDTH)
-    else $error("csr_out_axil_req_o.w.data is not the correct width");
-    assert ($bits(csr_out_axil_req_o.w.strb) == CSR_DATA_WIDTH / 8)
-    else $error("csr_out_axil_req_o.w.strb is not the correct width");
-    assert ($bits(csr_out_axil_req_o.ar.addr) == CSR_ADDR_WIDTH)
-    else $error("csr_out_axil_req_o.ar.addr is not the correct width");
-  end
+  `OCAH_ASSERT_STATIC(CsrAddrWidthCheck_A, CSR_ADDR_WIDTH <= 64,
+                      "CSR_ADDR_WIDTH must be at most 64")
+  `OCAH_ASSERT_STATIC(CsrDataWidthCheck_A, CSR_DATA_WIDTH inside {32, 64},
+                      "CSR_DATA_WIDTH must be 32 or 64")
+  `OCAH_ASSERT_STATIC(CsrInAxilReqIAwAddrWidth_A, $bits(csr_in_axil_req_i.aw.addr)
+                      == CSR_ADDR_WIDTH, "csr_in_axil_req_i.aw.addr is not the correct width")
+  `OCAH_ASSERT_STATIC(CsrInAxilReqIWDataWidth_A, $bits(csr_in_axil_req_i.w.data) == CSR_DATA_WIDTH,
+                      "csr_in_axil_req_i.w.data is not the correct width")
+  `OCAH_ASSERT_STATIC(CsrInAxilReqIWStrbWidth_A, $bits(csr_in_axil_req_i.w.strb)
+                      == CSR_DATA_WIDTH / 8, "csr_in_axil_req_i.w.strb is not the correct width")
+  `OCAH_ASSERT_STATIC(CsrInAxilReqIArAddrWidth_A, $bits(csr_in_axil_req_i.ar.addr)
+                      == CSR_ADDR_WIDTH, "csr_in_axil_req_i.ar.addr is not the correct width")
+  `OCAH_ASSERT_STATIC(CsrInAxilRespORDataWidth_A, $bits(csr_in_axil_resp_o.r.data)
+                      == CSR_DATA_WIDTH, "csr_in_axil_resp_o.r.data is not the correct width")
+  `OCAH_ASSERT_STATIC(CsrOutAxilRespIBRespWidth_A, $bits(csr_out_axil_resp_i.b.resp) == 2,
+                      "csr_out_axil_resp_i.b.resp is not the correct width")
+  `OCAH_ASSERT_STATIC(CsrOutAxilRespIRRespWidth_A, $bits(csr_out_axil_resp_i.r.resp) == 2,
+                      "csr_out_axil_resp_i.r.resp is not the correct width")
+  `OCAH_ASSERT_STATIC(CsrOutAxilRespIRDataWidth_A, $bits(csr_out_axil_resp_i.r.data)
+                      == CSR_DATA_WIDTH, "csr_out_axil_resp_i.r.data is not the correct width")
+  `OCAH_ASSERT_STATIC(CsrOutAxilReqOAwAddrWidth_A, $bits(csr_out_axil_req_o.aw.addr)
+                      == CSR_ADDR_WIDTH, "csr_out_axil_req_o.aw.addr is not the correct width")
+  `OCAH_ASSERT_STATIC(CsrOutAxilReqOWDataWidth_A, $bits(csr_out_axil_req_o.w.data)
+                      == CSR_DATA_WIDTH, "csr_out_axil_req_o.w.data is not the correct width")
+  `OCAH_ASSERT_STATIC(CsrOutAxilReqOWStrbWidth_A, $bits(csr_out_axil_req_o.w.strb)
+                      == CSR_DATA_WIDTH / 8, "csr_out_axil_req_o.w.strb is not the correct width")
+  `OCAH_ASSERT_STATIC(CsrOutAxilReqOArAddrWidth_A, $bits(csr_out_axil_req_o.ar.addr)
+                      == CSR_ADDR_WIDTH, "csr_out_axil_req_o.ar.addr is not the correct width")
 
 
   // General Parameter Validation
-  `OCAH_ASSERT_INIT(NumBanksCheck_A, NUM_BANKS >= 1 && NUM_BANKS <= 16)
-  `OCAH_ASSERT_INIT(BaseAddrAlignCheck_A, (MEM_BASE_ADDR & ((1 << $clog2(MEM_DATA_WIDTH / 8)
-                    ) - 1)) == 0)
-  `OCAH_ASSERT_INIT(CsrBaseAddrAlignCheck_A, (CSR_BASE_ADDR & ((1 << $clog2(CSR_DATA_WIDTH / 8)
-                    ) - 1)) == 0)
+  `OCAH_ASSERT_STATIC(NumBanksCheck_A, NUM_BANKS >= 1 && NUM_BANKS <= 16,
+                      "NUM_BANKS must be 1 to 16")
+  `OCAH_ASSERT_STATIC(BaseAddrAlignCheck_A, (MEM_BASE_ADDR & ((1 << $clog2(MEM_DATA_WIDTH / 8)
+                      ) - 1)) == 0, "MEM_BASE_ADDR must be aligned to the MEM_DATA_WIDTH bus width")
+  `OCAH_ASSERT_STATIC(CsrBaseAddrAlignCheck_A, (CSR_BASE_ADDR & ((1 << $clog2(CSR_DATA_WIDTH / 8)
+                      ) - 1)) == 0, "CSR_BASE_ADDR must be aligned to the CSR_DATA_WIDTH bus width")
 
   //////////////////////////////
   // AXI4 to Memory Interface //

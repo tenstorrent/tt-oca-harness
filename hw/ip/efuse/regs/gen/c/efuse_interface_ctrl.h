@@ -14,43 +14,58 @@ extern "C" {
 #include <assert.h>
 
 // reg - efuse_interface_ctrl::EFUSE_INTERFACE_CTRL_STATUS
+// eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.
+// Indicates if the eFuse state machine has completed
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm 0x1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bw 1
+// Indicates that the eFuse was blocked because of either read or a program lock.  The error must be cleared by writing 1 to efuse_req_error_clear to this register
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bm 0x10
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bp 4
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_reset 0x0
+// Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bm 0x20
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bp 5
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_reset 0x0
+// Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_bm 0x40
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_bp 6
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_reset 0x0
+// Clears the blocked request error bit in efuse_ctrl_status
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bm 0x100
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bp 8
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_reset 0x0
+// Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bm 0x200
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bp 9
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_reset 0x0
+// Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bm 0x400
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bp 10
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Indicates if the eFuse state machine has completed
         uint32_t efuse_sense_done :1;
         uint32_t :3;
+        // Indicates that the eFuse was blocked because of either read or a program lock.  The error must be cleared by writing 1 to efuse_req_error_clear to this register
         uint32_t efuse_req_error :1;
+        // Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.
         uint32_t efuse_program_addr_error :1;
+        // Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.
         uint32_t efuse_read_addr_error :1;
         uint32_t :1;
+        // Clears the blocked request error bit in efuse_ctrl_status
         uint32_t efuse_req_error_clear :1;
+        // Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status
         uint32_t efuse_program_addr_error_clear :1;
+        // Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status
         uint32_t efuse_read_addr_error_clear :1;
         uint32_t :21;
     } f;
@@ -58,48 +73,65 @@ typedef union {
 } efuse_interface_ctrl__EFUSE_INTERFACE_CTRL_STATUS_t;
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_CTRL
+// eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.
+// Bit address to program
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bm 0xffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bw 16
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_reset 0x0
+// Data to program to eFuse.  If this bit is 0, the program request will be ignored
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm 0x10000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bp 16
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_reset 0x0
+// When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm 0x20000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bp 17
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_reset 0x0
+// When set, trigger a read back after a program
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm 0x40000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bp 18
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_reset 0x0
+// When set, the program is in progress
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bm 0x1000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bp 24
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_reset 0x0
+// When set, the program has completed, the status of which is in program_status
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm 0x2000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bp 25
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_reset 0x0
+// 0: No Error.  1: Error
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm 0x4000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bp 26
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_reset 0x0
+// When set, enables the program request
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm 0x8000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bp 27
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Bit address to program
         uint32_t efuse_addr :16;
+        // Data to program to eFuse.  If this bit is 0, the program request will be ignored
         uint32_t efuse_data :1;
+        // When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
         uint32_t efuse_program_go :1;
+        // When set, trigger a read back after a program
         uint32_t efuse_program_read_back :1;
         uint32_t :5;
+        // When set, the program is in progress
         uint32_t program_busy :1;
+        // When set, the program has completed, the status of which is in program_status
         uint32_t program_done :1;
+        // 0: No Error.  1: Error
         uint32_t program_status :1;
+        // When set, enables the program request
         uint32_t program_enable :1;
         uint32_t :4;
     } f;
@@ -107,39 +139,52 @@ typedef union {
 } efuse_interface_ctrl__EFUSE_PROGRAM_CTRL_t;
 
 // reg - efuse_interface_ctrl::EFUSE_READ_CTRL
+// eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.
+// Bit address to read
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bm 0xffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bw 16
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_reset 0x0
+// When set, triggers a read to efuse.
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bm 0x10000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bp 16
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_reset 0x0
+// When set, the read is in progress
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bm 0x1000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bp 24
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_reset 0x0
+// When set, the read has completed, the status of which is in read_status
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bm 0x2000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bp 25
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_reset 0x0
+// 0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bm 0x4000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bp 26
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_reset 0x0
+// When set, enables the read request
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bm 0x10000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bp 28
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Bit address to read
         uint32_t efuse_addr :16;
+        // When set, triggers a read to efuse.
         uint32_t efuse_read_go :1;
         uint32_t :7;
+        // When set, the read is in progress
         uint32_t read_busy :1;
+        // When set, the read has completed, the status of which is in read_status
         uint32_t read_done :1;
+        // 0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.
         uint32_t read_status :1;
         uint32_t :1;
+        // When set, enables the read request
         uint32_t read_enable :1;
         uint32_t :3;
     } f;
@@ -147,41 +192,52 @@ typedef union {
 } efuse_interface_ctrl__EFUSE_READ_CTRL_t;
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_INTERFACE_READ_DATA
+// Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.
+// Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bm 0xffffffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bw 32
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only
         uint32_t dout :32;
     } f;
     uint32_t w;
 } efuse_interface_ctrl__EFUSE_PROGRAM_INTERFACE_READ_DATA_t;
 
 // reg - efuse_interface_ctrl::EFUSE_READ_INTERFACE_READ_DATA
+// Read data returned through the eFuse read interface.
+// Read Data from eFuse through READ interface.
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_bm 0xffffffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_bw 32
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Read Data from eFuse through READ interface.
         uint32_t dout :32;
     } f;
     uint32_t w;
 } efuse_interface_ctrl__EFUSE_READ_INTERFACE_READ_DATA_t;
 
 // reg - efuse_interface_ctrl::EFUSE_READ_REQ_TIMEOUT
+// Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.
+// Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_bm 0xfffffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_bw 28
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_reset 0x800000
+// Enable timeout on read interface
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bm 0x10000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bp 28
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
         uint32_t read_req_timeout_cycles :28;
+        // Enable timeout on read interface
         uint32_t read_req_timout_enable :1;
         uint32_t :3;
     } f;
@@ -189,17 +245,22 @@ typedef union {
 } efuse_interface_ctrl__EFUSE_READ_REQ_TIMEOUT_t;
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_REQ_TIMEOUT
+// Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.
+// Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_bm 0xfffffff
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_bp 0
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_bw 28
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_reset 0x800000
+// Enable timeout on program interface.
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bm 0x10000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bp 28
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
         uint32_t program_req_timeout_cycles :28;
+        // Enable timeout on program interface.
         uint32_t program_req_timeout_enable :1;
         uint32_t :3;
     } f;
@@ -207,6 +268,7 @@ typedef union {
 } efuse_interface_ctrl__EFUSE_PROGRAM_REQ_TIMEOUT_t;
 
 // addrmap - efuse_interface_ctrl
+// Program and read command, address, data, status, and timeout registers for the eFuse interface.
 typedef struct __attribute__ ((__packed__)) {
     efuse_interface_ctrl__EFUSE_INTERFACE_CTRL_STATUS_t EFUSE_INTERFACE_CTRL_STATUS;
     efuse_interface_ctrl__EFUSE_PROGRAM_CTRL_t EFUSE_PROGRAM_CTRL;

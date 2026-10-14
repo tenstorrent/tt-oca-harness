@@ -5,8 +5,7 @@
 `smc_i2c_config_regblock_sweep_test` cycles the I2C configuration registers but
 cannot express `FIFO_CTRL`: `i2c.rdl` makes all four of its fields `sw = w` with
 `singlepulse`, so the generated contract pins no written value to read back and
-the half-register cycle has nothing to drive. Nothing else writes the register
-either, so none of the four resets has ever been pulsed on any instance.
+the half-register cycle has nothing to drive.
 
 This leaf pulses each one and checks it against the DUT rather than a readback,
 on all three instances, with the block idle -- `CTRL.ENABLEHOST` and
@@ -23,17 +22,15 @@ gone to empty. The two fills are deliberately different depths, so a status
 register that reported the other FIFO's level would fail the compare before any
 reset was pulsed.
 
-**The other two cannot, and carry a weaker claim that is still a real compare.**
-`RXRST` resets the Controller RX FIFO and `ACQRST` the Target RX FIFO, and both
-of those are filled only by traffic on the wire: the controller receiving from a
-remote target, or a remote controller writing to this block as a target. Neither
-is reachable from the CSR port alone, and the leaves that drive the bus are a
-different shape that owns the protocol agent. So what this leaf claims for those
-two is narrower: each is pulsed while the two software-fillable FIFOs hold known,
-different levels, and **neither level may move**. That fails if the reset decode
-is not one-hot -- if `RXRST` or `ACQRST` reached the format or the target
-transmit FIFO, the compare after the pulse would catch it -- but it does not
-show that either reset empties the FIFO it names. The card says so.
+**The other two FIFOs are filled only by traffic on the wire.** `RXRST` resets
+the Controller RX FIFO and `ACQRST` the Target RX FIFO: the controller receiving
+from a remote target, or a remote controller writing to this block as a target.
+Neither is reachable from the CSR port alone, and the leaves that drive the bus
+own the protocol agent. Each is pulsed while the two software-fillable FIFOs
+hold known, different levels, and **neither level may move**: a reset decode
+that is not one-hot reaches the format or the target transmit FIFO and fails
+the compare after the pulse. Whether either reset empties the FIFO it names is
+not shown here; the SMC_VPLAN card for this test states the same limit.
 
 The same one-hot check runs on the two resets that do carry the strong claim:
 `FMTRST` must leave the target transmit level untouched, and `TXRST` is pulsed

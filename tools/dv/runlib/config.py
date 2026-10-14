@@ -1006,6 +1006,16 @@ def validate_stage_table(stage_name: str, stage: dict[str, Any], where: str) -> 
         validate_resource_table(
             stage["resources"], f"{where} [native.stages.{stage_name}].resources"
         )
+    if kind == "clean":
+        label = f"{where} [native.stages.{stage_name}].paths"
+        for idx, value in enumerate(as_str_list(stage.get("paths"), label)):
+            if not value.strip():
+                raise ConfigError(f"{label}[{idx}] must be a non-empty path")
+            if "{item}" in value:
+                raise ConfigError(
+                    f"{label}[{idx}]: the clean stage runs without an item, "
+                    "so `{item}` renders empty"
+                )
     validate_placeholders_in_value(stage, f"{where} [native.stages.{stage_name}]")
 
 

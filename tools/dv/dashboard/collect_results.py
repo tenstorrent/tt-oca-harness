@@ -23,6 +23,7 @@ from runlib.paths import dut_runs_root, dv_root, repo_path, repo_root
 from runlib.results import ITEM_STAGES
 from runlib.site import load_site_layer
 
+from dashboard.sanitize import Scrubber, checkout_scrubber
 from dashboard.schema import STATUS_FAIL, STATUS_PASS, STATUS_UNKNOWN, make_result, write_json
 
 
@@ -881,30 +882,43 @@ _STAGED_REPORT_FILES = (
 )
 
 
-def stage_coverage_artifacts(
+def _sanitized(source: Path, scrubber: Scrubber) -> str:
+    text = source.read_text(encoding="utf-8")
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return scrubber.text(text)
+    return json.dumps(scrubber.value(data), indent=2, sort_keys=True) + "\n"
+
+
+def _coverage_files(
     repo_root_path: Path,
     result: dict[str, Any],
     output: Path,
-) -> None:
+    scrubber: Scrubber,
+) -> tuple[Path | None, dict[Path, str]]:
+    """Point `result` at its staged coverage files and return them unwritten.
+
+    Returns the report directory that replaces the staged one, if any, and the sanitized text of
+    each staged file by path.
+    """
     coverage = result.get("coverage")
     if not isinstance(coverage, dict):
-        return
+        return None, {}
     flow = str(result.get("flow") or "unknown")
     destination = output.parent / "artifacts" / flow / "coverage"
-    destination.mkdir(parents=True, exist_ok=True)
     artifacts = result.setdefault("artifacts", {})
     if not isinstance(artifacts, dict):
         artifacts = {}
         result["artifacts"] = artifacts
+    report_destination = None
+    files: dict[Path, str] = {}
 
     report_value = coverage.get("report")
     if isinstance(report_value, str) and report_value:
         source = repo_path(repo_root_path, report_value)
         if source.is_dir():
             report_destination = destination / "report"
-            if report_destination.exists():
-                shutil.rmtree(report_destination)
-            report_destination.mkdir(parents=True)
             staged_report = str(report_destination.relative_to(output.parent))
             coverage["source_report"] = report_value
             coverage["report"] = staged_report
@@ -914,7 +928,7 @@ def stage_coverage_artifacts(
                 if not staged_source.is_file():
                     continue
                 staged = report_destination / filename
-                shutil.copy2(staged_source, staged)
+                files[staged] = _sanitized(staged_source, scrubber)
                 coverage[f"source_{key}"] = coverage.get(key)
                 coverage[key] = str(staged.relative_to(output.parent))
                 artifacts[f"coverage_{key}"] = coverage[key]
@@ -924,10 +938,43 @@ def stage_coverage_artifacts(
         source = repo_path(repo_root_path, manifest_value)
         if source.is_file():
             staged = destination / "coverage.json"
-            shutil.copy2(source, staged)
+            files[staged] = _sanitized(source, scrubber)
             coverage["source_manifest"] = manifest_value
             coverage["manifest"] = str(staged.relative_to(output.parent))
             artifacts["coverage_manifest"] = coverage["manifest"]
+    return report_destination, files
+
+
+def _write_staged(report_destination: Path | None, files: dict[Path, str]) -> None:
+    if report_destination is not None:
+        if report_destination.exists():
+            shutil.rmtree(report_destination)
+        report_destination.mkdir(parents=True)
+    for path, text in files.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+
+def stage_coverage_artifacts(repo_root_path: Path, result: dict[str, Any], output: Path) -> None:
+    """Copy the coverage summary, policy application and manifest beside `output`, sanitized."""
+    scrubber = checkout_scrubber(repo_root_path)
+    _write_staged(*_coverage_files(repo_root_path, result, output, scrubber))
+
+
+def write_result(repo_root_path: Path, result: dict[str, Any], output: Path) -> None:
+    """Stage the coverage files beside `output` and write `result` there, both sanitized.
+
+    Every file is sanitized before any is written, so a rewrite that fails leaves the files
+    already beside `output` as they were.
+    """
+    scrubber = checkout_scrubber(repo_root_path)
+    try:
+        staged = _coverage_files(repo_root_path, result, output, scrubber)
+        record = scrubber.value(result)
+    except ValueError as exc:
+        raise ConfigError(f"{output}: {exc}") from exc
+    _write_staged(*staged)
+    write_json(record, output)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -975,8 +1022,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.output
             else dv_root(repo_root_path) / "reports" / "latest" / f"{flow.name}.result.json"
         )
-        stage_coverage_artifacts(repo_root_path, result, output)
-        write_json(result, output)
+        write_result(repo_root_path, result, output)
         print(f"Wrote result: {output}")
         return 0
     except (ConfigError, OSError) as exc:

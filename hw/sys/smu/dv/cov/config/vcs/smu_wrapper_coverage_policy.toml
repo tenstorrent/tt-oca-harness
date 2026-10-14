@@ -16,11 +16,7 @@
 # (hw/sys/dtp/dv/cov/config/vcs/coverage_policy.toml) and SEP's
 # (hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml) set none: the runner
 # reports the family figures, a run's status comes from its tests, and
-# SMU_COVERAGE_POLICY.adoc states the targets the figures are read against. A
-# floor on `toggle` or on urg's ASSERT column would fail a run without saying
-# anything true -- a number moving is not a defect, and SMU has no formal
-# unreachability analysis to prove that what is left in the toggle denominator
-# is reachable at all.
+# SMU_COVERAGE_POLICY.adoc states the targets the figures are read against.
 #
 # `toggle` is still collected and still reported: every bit of every net of the
 # units smu_wrapper_cov_scope.hier keeps -- smu_wrapper, smu, smu_axi_xbar and
@@ -42,9 +38,8 @@ population = "effective"
 minimum_percent = 100.0
 
 # Fields urg leaves out of the wrapper's port toggle, each class with its
-# reason in the file's ANNOTATION lines. Regenerated from urg's exclusion
-# template by the companion's gen_smu_wrapper_toggle_exclusions.py; README.md
-# lists the classes.
+# reason in the file's ANNOTATION lines. Generated from urg's exclusion
+# template; README.md lists the classes.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -52,11 +47,10 @@ path = "smu_wrapper_toggle_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 
-# Toggle points of smu, smu_wrapper and smu_axi_xbar, and
-# the condition rows and branch arms two classes name, each class with its
-# fact in the file's ANNOTATION lines. Regenerated from urg's exclusion
-# templates and the raw report of an `all` run by
-# the companion's gen_smu_cov_toggle_exclusions.py; README.md lists the classes.
+# Toggle points of smu, smu_wrapper and smu_axi_xbar, and the condition rows
+# and branch arms two classes name, each class with its fact in the file's
+# ANNOTATION lines. Generated from urg's exclusion templates and the raw
+# report of an `all` run; README.md lists the classes.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -67,9 +61,7 @@ args = ["-elfile", "{path}"]
 # Covergroups declared inside the RTL the wrapper instantiates. `-cm_hier` does
 # not reach covergroups, so the vendored I3C controllers' groups would otherwise
 # sit in urg's GROUP score beside the wrapper's own cov/sv covergroups.
-# Regenerated from urg's group exclusion template by
-# the companion's gen_smu_wrapper_group_exclusions.py; README.md lists the
-# classes.
+# Generated from urg's group exclusion template; README.md lists the classes.
 [[native_files]]
 tool = "vcs"
 role = "exclude"

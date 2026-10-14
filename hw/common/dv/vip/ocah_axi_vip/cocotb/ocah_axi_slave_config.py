@@ -23,6 +23,9 @@ class OcahAxiSlaveConfig:
     size: int = 2**20
     reset_active_level: bool = False
     mem: object | None = None
+    # Transactions each direction holds between the address handshake and the
+    # B or RLAST handshake; None serves one request at a time.
+    max_outstanding: int | None = None
     # Extra keyword arguments forwarded verbatim to the cocotbext backend.
     backend_kwargs: dict = field(default_factory=dict)
 
@@ -33,5 +36,6 @@ class OcahAxiSlaveConfig:
             "size": self.size,
             "reset_active_level": self.reset_active_level,
             "mem": self.mem,
+            "max_outstanding": self.max_outstanding,
             **dict(self.backend_kwargs),
         }

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_xbar_connectivity_matrix_test (SMU_103).
+"""Sequence for smu_xbar_connectivity_matrix_test.
 
 The ext_in initiator has no route to the ext_out target: an ext_in access to an
 address outside both programmed apertures has no default master port, so the

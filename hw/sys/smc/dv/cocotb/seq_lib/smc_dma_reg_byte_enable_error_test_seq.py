@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The DMA register block refusing a sub-word write, at every writable register.
 
-`smc_periph_regblock_sweep_test` found that this block answers a sub-word write
-with an error response, which is why its configuration takes the full-width
-cycle there rather than the half-register one. The generated block says why:
+This block answers a sub-word write with an error response, so
+`smc_periph_regblock_sweep_test` configures it with full-width writes. The
+generated block says why:
 `reg_error = (devmode_i & addrmiss) | wr_err`, and
 `wr_err = reg_we & (addr_hit[N] & |(PERMIT[N] & ~reg_be))` -- a write errors
 when it leaves out a byte lane that register's `PERMIT` mask requires, not
@@ -17,9 +17,8 @@ low half, so a two-byte write at the register's own address can leave `PERMIT`
 satisfied and be accepted. The write therefore goes to the upper half, which
 omits the low lanes of all thirteen.
 
-That refusal has never been exercised. This leaf takes each of the thirteen
-writable registers -- the configuration word and the twelve transfer-descriptor
-registers -- through four accesses:
+This leaf takes each of the thirteen writable registers -- the configuration
+word and the twelve transfer-descriptor registers -- through four accesses:
 
 1. a full-width read, which records what the register holds;
 2. a full-width write of that same value, which has to be accepted. This is the

@@ -8,6 +8,8 @@
 // Generates the CLA time tick from clk_ref_i edges, masks the CLA cross-trigger and
 // halt-clock outputs, and leaves the trace sink RAMs outside the block.
 
+`include "ocah_registers.svh"
+
 module smc_dfd_wrap #(
   parameter logic [22:0] BASE_ADDR       = 0,  // Base address of the CLA and DST registers, passed
                                                // to the DFD IP as its MMR base address.
@@ -333,15 +335,8 @@ module smc_dfd_wrap #(
     .sync_rst_no (rst_ref_n)
   );
 
-  always_ff @(posedge clk_ref_i) begin
-    if (!rst_ref_n) begin
-      ref_cnt        <= '0;
-      ref_cnt_gray_q <= '0;
-    end else begin
-      ref_cnt        <= REF_CNT_W'(ref_cnt + 1'b1);
-      ref_cnt_gray_q <= ref_cnt_gray;
-    end
-  end
+  `OCAH_FFSRN(ref_cnt, REF_CNT_W'(ref_cnt + 1'b1), '0, clk_ref_i, rst_ref_n)
+  `OCAH_FFSRN(ref_cnt_gray_q, ref_cnt_gray, '0, clk_ref_i, rst_ref_n)
 
   prim_bin2gray #(
     .N(REF_CNT_W)

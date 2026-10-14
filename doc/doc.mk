@@ -16,6 +16,7 @@ OCAH_DOC_DIR ?= $(OCAH_ROOT)/doc
 # is the Antora 3-compatible release and renders inline diagrams during builds.
 OCAH_ANTORA ?= npx -y -p @antora/cli@3.1 -p @antora/site-generator@3.1 -p @antora/lunr-extension@1.0.0-alpha.13 -p asciidoctor-kroki@0.18.1 antora
 OCAH_ASCIIDOCTOR_PDF ?= asciidoctor-pdf
+OCAH_DOC_PDF_LOCALE ?= LC_ALL=C.UTF-8
 # asciidoctor-diagram renders PlantUML locally with the bundled jar: no
 # network call, so PDF builds never depend on kroki.io being reachable.
 # (The Antora HTML builds still go through asciidoctor-kroki -- see
@@ -51,7 +52,7 @@ endif
 
 ## Verification dashboard data.
 #
-# doc/trm/src/dashboard.adoc fetches this JSON in the browser at page load.
+# doc/home/src/dashboard.adoc fetches this JSON in the browser at page load.
 OCAH_DASHBOARD_DATA_DIR ?= $(OCAH_DOC_DIR)/_build/dashboard-data
 OCAH_DASHBOARD_DATA_REF ?= origin/dv-dashboard-data
 OCAH_DASHBOARD_PUBLISHERS ?= vcs

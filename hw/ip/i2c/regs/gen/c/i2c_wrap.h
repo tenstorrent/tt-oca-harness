@@ -14,107 +14,198 @@ extern "C" {
 #include <assert.h>
 
 // reg - i2c::INTR_STATE
+// Interrupt Status Register
+// Controller Mode interrupt: remains asserted while the Controller TX FIFO level
+// is less than `HOST_FIFO_CONFIG.FMT_THRESH`.
 #define I2C__INTR_STATE__FMT_THRESHOLD_bm 0x1
 #define I2C__INTR_STATE__FMT_THRESHOLD_bp 0
 #define I2C__INTR_STATE__FMT_THRESHOLD_bw 1
 #define I2C__INTR_STATE__FMT_THRESHOLD_reset 0x0
+// Controller Mode interrupt: remains asserted while the Controller RX FIFO level
+// is greater than `HOST_FIFO_CONFIG.RX_THRESH`.
 #define I2C__INTR_STATE__RX_THRESHOLD_bm 0x2
 #define I2C__INTR_STATE__RX_THRESHOLD_bp 1
 #define I2C__INTR_STATE__RX_THRESHOLD_bw 1
 #define I2C__INTR_STATE__RX_THRESHOLD_reset 0x0
+// Target Mode interrupt: remains asserted while the Target RX FIFO level is
+// greater than `TARGET_FIFO_CONFIG.ACQ_THRESH`.
 #define I2C__INTR_STATE__ACQ_THRESHOLD_bm 0x4
 #define I2C__INTR_STATE__ACQ_THRESHOLD_bp 2
 #define I2C__INTR_STATE__ACQ_THRESHOLD_bw 1
 #define I2C__INTR_STATE__ACQ_THRESHOLD_reset 0x0
+// Controller Mode interrupt: asserted when the Controller RX FIFO overflows.
+// Write `1` to clear.
 #define I2C__INTR_STATE__RX_OVERFLOW_bm 0x8
 #define I2C__INTR_STATE__RX_OVERFLOW_bp 3
 #define I2C__INTR_STATE__RX_OVERFLOW_bw 1
 #define I2C__INTR_STATE__RX_OVERFLOW_reset 0x0
+// Controller Mode interrupt: remains asserted while this controller halts. The
+// flags in the `CONTROLLER_EVENTS` register explain the reason(s) for the
+// halting. Clearing the `CONTROLLER_EVENTS` flags clears this interrupt.
 #define I2C__INTR_STATE__CONTROLLER_HALT_bm 0x10
 #define I2C__INTR_STATE__CONTROLLER_HALT_bp 4
 #define I2C__INTR_STATE__CONTROLLER_HALT_bw 1
 #define I2C__INTR_STATE__CONTROLLER_HALT_reset 0x0
+// Controller Mode interrupt: asserted when SCL is unexpectedly pulled LOW by
+// another controller. Write `1` to clear.
 #define I2C__INTR_STATE__SCL_INTERFERENCE_bm 0x20
 #define I2C__INTR_STATE__SCL_INTERFERENCE_bp 5
 #define I2C__INTR_STATE__SCL_INTERFERENCE_bw 1
 #define I2C__INTR_STATE__SCL_INTERFERENCE_reset 0x0
+// Controller Mode interrupt: asserted when SDA is unexpectedly pulled LOW by
+// another controller. Write `1` to clear.
 #define I2C__INTR_STATE__SDA_INTERFERENCE_bm 0x40
 #define I2C__INTR_STATE__SDA_INTERFERENCE_bp 6
 #define I2C__INTR_STATE__SDA_INTERFERENCE_bw 1
 #define I2C__INTR_STATE__SDA_INTERFERENCE_reset 0x0
+// Controller Mode interrupt: asserted when the target stretches the clock longer
+// than `TIMEOUT_CTRL.VAL` (valid only when `TIMEOUT_CTRL.MODE = 0`). Write `1` to
+// clear.
 #define I2C__INTR_STATE__STRETCH_TIMEOUT_bm 0x80
 #define I2C__INTR_STATE__STRETCH_TIMEOUT_bp 7
 #define I2C__INTR_STATE__STRETCH_TIMEOUT_bw 1
 #define I2C__INTR_STATE__STRETCH_TIMEOUT_reset 0x0
+// Controller Mode interrupt: asserted when the target fails to keep SDA stable
+// during a transmission. Write `1` to clear.
 #define I2C__INTR_STATE__SDA_UNSTABLE_bm 0x100
 #define I2C__INTR_STATE__SDA_UNSTABLE_bp 8
 #define I2C__INTR_STATE__SDA_UNSTABLE_bw 1
 #define I2C__INTR_STATE__SDA_UNSTABLE_reset 0x0
+// Controller/Target Mode interrupt: asserted when this/the controller finishes
+// generating a STOP or repeated START. Write `1` to clear.
 #define I2C__INTR_STATE__CMD_COMPLETE_bm 0x200
 #define I2C__INTR_STATE__CMD_COMPLETE_bp 9
 #define I2C__INTR_STATE__CMD_COMPLETE_bw 1
 #define I2C__INTR_STATE__CMD_COMPLETE_reset 0x0
+// Target Mode interrupt: remains asserted while this target is stretching the
+// clock or has halted. The flags in the `TARGET_EVENTS` register explain the
+// reason(s) for clock stretching/halting. Clearing the `TARGET_EVENTS` flags
+// clears this interrupt.
 #define I2C__INTR_STATE__TX_STRETCH_bm 0x400
 #define I2C__INTR_STATE__TX_STRETCH_bp 10
 #define I2C__INTR_STATE__TX_STRETCH_bw 1
 #define I2C__INTR_STATE__TX_STRETCH_reset 0x0
+// Target Mode interrupt: remains asserted while the Target TX FIFO level is less
+// than `TARGET_FIFO_CONFIG.TX_THRESH`.
 #define I2C__INTR_STATE__TX_THRESHOLD_bm 0x800
 #define I2C__INTR_STATE__TX_THRESHOLD_bp 11
 #define I2C__INTR_STATE__TX_THRESHOLD_bw 1
 #define I2C__INTR_STATE__TX_THRESHOLD_reset 0x0
+// Target Mode interrupt: remains asserted while the target is stretching the clock
+// because 1) the Target RX FIFO is full or 2) the `TARGET_ACK_CTRL.NBYTES` count
+// has reached `0` (only if `CTRL.ACK_CTRL_EN = 1`).
 #define I2C__INTR_STATE__ACQ_STRETCH_bm 0x1000
 #define I2C__INTR_STATE__ACQ_STRETCH_bp 12
 #define I2C__INTR_STATE__ACQ_STRETCH_bw 1
 #define I2C__INTR_STATE__ACQ_STRETCH_reset 0x0
+// Target Mode interrupt: asserted when the controller sends this target a STOP
+// before this target NACKs. Write `1` to clear.
 #define I2C__INTR_STATE__UNEXP_STOP_bm 0x2000
 #define I2C__INTR_STATE__UNEXP_STOP_bp 13
 #define I2C__INTR_STATE__UNEXP_STOP_bw 1
 #define I2C__INTR_STATE__UNEXP_STOP_reset 0x0
+// Target Mode interrupt: asserted when the controller stops generating the clock
+// longer than `HOST_TIMEOUT_CTRL.VAL`. Write `1` to clear.
 #define I2C__INTR_STATE__HOST_TIMEOUT_bm 0x4000
 #define I2C__INTR_STATE__HOST_TIMEOUT_bp 14
 #define I2C__INTR_STATE__HOST_TIMEOUT_bw 1
 #define I2C__INTR_STATE__HOST_TIMEOUT_reset 0x0
+// Controller Mode interrupt: asserted when `smbalert_ni` is asserted. Write `1`
+// to clear.
 #define I2C__INTR_STATE__SMBALERT_bm 0x8000
 #define I2C__INTR_STATE__SMBALERT_bp 15
 #define I2C__INTR_STATE__SMBALERT_bw 1
 #define I2C__INTR_STATE__SMBALERT_reset 0x0
+// Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
+// error. Write `1` to clear.
 #define I2C__INTR_STATE__CONTROLLER_TX_FIFO_ERROR_bm 0x10000
 #define I2C__INTR_STATE__CONTROLLER_TX_FIFO_ERROR_bp 16
 #define I2C__INTR_STATE__CONTROLLER_TX_FIFO_ERROR_bw 1
 #define I2C__INTR_STATE__CONTROLLER_TX_FIFO_ERROR_reset 0x0
+// Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
+// error. Write `1` to clear.
 #define I2C__INTR_STATE__CONTROLLER_RX_FIFO_ERROR_bm 0x20000
 #define I2C__INTR_STATE__CONTROLLER_RX_FIFO_ERROR_bp 17
 #define I2C__INTR_STATE__CONTROLLER_RX_FIFO_ERROR_bw 1
 #define I2C__INTR_STATE__CONTROLLER_RX_FIFO_ERROR_reset 0x0
+// Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
+// Write `1` to clear.
 #define I2C__INTR_STATE__TARGET_TX_FIFO_ERROR_bm 0x40000
 #define I2C__INTR_STATE__TARGET_TX_FIFO_ERROR_bp 18
 #define I2C__INTR_STATE__TARGET_TX_FIFO_ERROR_bw 1
 #define I2C__INTR_STATE__TARGET_TX_FIFO_ERROR_reset 0x0
+// Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
+// Write `1` to clear.
 #define I2C__INTR_STATE__TARGET_RX_FIFO_ERROR_bm 0x80000
 #define I2C__INTR_STATE__TARGET_RX_FIFO_ERROR_bp 19
 #define I2C__INTR_STATE__TARGET_RX_FIFO_ERROR_bw 1
 #define I2C__INTR_STATE__TARGET_RX_FIFO_ERROR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Controller Mode interrupt: remains asserted while the Controller TX FIFO level
+        // is less than `HOST_FIFO_CONFIG.FMT_THRESH`.
         uint32_t FMT_THRESHOLD :1;
+        // Controller Mode interrupt: remains asserted while the Controller RX FIFO level
+        // is greater than `HOST_FIFO_CONFIG.RX_THRESH`.
         uint32_t RX_THRESHOLD :1;
+        // Target Mode interrupt: remains asserted while the Target RX FIFO level is
+        // greater than `TARGET_FIFO_CONFIG.ACQ_THRESH`.
         uint32_t ACQ_THRESHOLD :1;
+        // Controller Mode interrupt: asserted when the Controller RX FIFO overflows.
+        // Write `1` to clear.
         uint32_t RX_OVERFLOW :1;
+        // Controller Mode interrupt: remains asserted while this controller halts. The
+        // flags in the `CONTROLLER_EVENTS` register explain the reason(s) for the
+        // halting. Clearing the `CONTROLLER_EVENTS` flags clears this interrupt.
         uint32_t CONTROLLER_HALT :1;
+        // Controller Mode interrupt: asserted when SCL is unexpectedly pulled LOW by
+        // another controller. Write `1` to clear.
         uint32_t SCL_INTERFERENCE :1;
+        // Controller Mode interrupt: asserted when SDA is unexpectedly pulled LOW by
+        // another controller. Write `1` to clear.
         uint32_t SDA_INTERFERENCE :1;
+        // Controller Mode interrupt: asserted when the target stretches the clock longer
+        // than `TIMEOUT_CTRL.VAL` (valid only when `TIMEOUT_CTRL.MODE = 0`). Write `1` to
+        // clear.
         uint32_t STRETCH_TIMEOUT :1;
+        // Controller Mode interrupt: asserted when the target fails to keep SDA stable
+        // during a transmission. Write `1` to clear.
         uint32_t SDA_UNSTABLE :1;
+        // Controller/Target Mode interrupt: asserted when this/the controller finishes
+        // generating a STOP or repeated START. Write `1` to clear.
         uint32_t CMD_COMPLETE :1;
+        // Target Mode interrupt: remains asserted while this target is stretching the
+        // clock or has halted. The flags in the `TARGET_EVENTS` register explain the
+        // reason(s) for clock stretching/halting. Clearing the `TARGET_EVENTS` flags
+        // clears this interrupt.
         uint32_t TX_STRETCH :1;
+        // Target Mode interrupt: remains asserted while the Target TX FIFO level is less
+        // than `TARGET_FIFO_CONFIG.TX_THRESH`.
         uint32_t TX_THRESHOLD :1;
+        // Target Mode interrupt: remains asserted while the target is stretching the clock
+        // because 1) the Target RX FIFO is full or 2) the `TARGET_ACK_CTRL.NBYTES` count
+        // has reached `0` (only if `CTRL.ACK_CTRL_EN = 1`).
         uint32_t ACQ_STRETCH :1;
+        // Target Mode interrupt: asserted when the controller sends this target a STOP
+        // before this target NACKs. Write `1` to clear.
         uint32_t UNEXP_STOP :1;
+        // Target Mode interrupt: asserted when the controller stops generating the clock
+        // longer than `HOST_TIMEOUT_CTRL.VAL`. Write `1` to clear.
         uint32_t HOST_TIMEOUT :1;
+        // Controller Mode interrupt: asserted when `smbalert_ni` is asserted. Write `1`
+        // to clear.
         uint32_t SMBALERT :1;
+        // Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
+        // error. Write `1` to clear.
         uint32_t CONTROLLER_TX_FIFO_ERROR :1;
+        // Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
+        // error. Write `1` to clear.
         uint32_t CONTROLLER_RX_FIFO_ERROR :1;
+        // Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
+        // Write `1` to clear.
         uint32_t TARGET_TX_FIFO_ERROR :1;
+        // Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
+        // Write `1` to clear.
         uint32_t TARGET_RX_FIFO_ERROR :1;
         uint32_t :12;
     } f;
@@ -122,107 +213,148 @@ typedef union {
 } i2c__INTR_STATE_t;
 
 // reg - i2c::INTR_ENABLE
+// Interrupt Enable Register
+// Enables the `FMT_THRESHOLD` interrupt.
 #define I2C__INTR_ENABLE__FMT_THRESHOLD_bm 0x1
 #define I2C__INTR_ENABLE__FMT_THRESHOLD_bp 0
 #define I2C__INTR_ENABLE__FMT_THRESHOLD_bw 1
 #define I2C__INTR_ENABLE__FMT_THRESHOLD_reset 0x0
+// Enables the `RX_THRESHOLD` interrupt.
 #define I2C__INTR_ENABLE__RX_THRESHOLD_bm 0x2
 #define I2C__INTR_ENABLE__RX_THRESHOLD_bp 1
 #define I2C__INTR_ENABLE__RX_THRESHOLD_bw 1
 #define I2C__INTR_ENABLE__RX_THRESHOLD_reset 0x0
+// Enables the `ACQ_THRESHOLD` interrupt.
 #define I2C__INTR_ENABLE__ACQ_THRESHOLD_bm 0x4
 #define I2C__INTR_ENABLE__ACQ_THRESHOLD_bp 2
 #define I2C__INTR_ENABLE__ACQ_THRESHOLD_bw 1
 #define I2C__INTR_ENABLE__ACQ_THRESHOLD_reset 0x0
+// Enables the `RX_OVERFLOW` interrupt.
 #define I2C__INTR_ENABLE__RX_OVERFLOW_bm 0x8
 #define I2C__INTR_ENABLE__RX_OVERFLOW_bp 3
 #define I2C__INTR_ENABLE__RX_OVERFLOW_bw 1
 #define I2C__INTR_ENABLE__RX_OVERFLOW_reset 0x0
+// Enables the `CONTROLLER_HALT` interrupt.
 #define I2C__INTR_ENABLE__CONTROLLER_HALT_bm 0x10
 #define I2C__INTR_ENABLE__CONTROLLER_HALT_bp 4
 #define I2C__INTR_ENABLE__CONTROLLER_HALT_bw 1
 #define I2C__INTR_ENABLE__CONTROLLER_HALT_reset 0x0
+// Enables the `SCL_INTERFERENCE` interrupt.
 #define I2C__INTR_ENABLE__SCL_INTERFERENCE_bm 0x20
 #define I2C__INTR_ENABLE__SCL_INTERFERENCE_bp 5
 #define I2C__INTR_ENABLE__SCL_INTERFERENCE_bw 1
 #define I2C__INTR_ENABLE__SCL_INTERFERENCE_reset 0x0
+// Enables the `SDA_INTERFERENCE` interrupt.
 #define I2C__INTR_ENABLE__SDA_INTERFERENCE_bm 0x40
 #define I2C__INTR_ENABLE__SDA_INTERFERENCE_bp 6
 #define I2C__INTR_ENABLE__SDA_INTERFERENCE_bw 1
 #define I2C__INTR_ENABLE__SDA_INTERFERENCE_reset 0x0
+// Enables the `STRETCH_TIMEOUT` interrupt.
 #define I2C__INTR_ENABLE__STRETCH_TIMEOUT_bm 0x80
 #define I2C__INTR_ENABLE__STRETCH_TIMEOUT_bp 7
 #define I2C__INTR_ENABLE__STRETCH_TIMEOUT_bw 1
 #define I2C__INTR_ENABLE__STRETCH_TIMEOUT_reset 0x0
+// Enables the `SDA_UNSTABLE` interrupt.
 #define I2C__INTR_ENABLE__SDA_UNSTABLE_bm 0x100
 #define I2C__INTR_ENABLE__SDA_UNSTABLE_bp 8
 #define I2C__INTR_ENABLE__SDA_UNSTABLE_bw 1
 #define I2C__INTR_ENABLE__SDA_UNSTABLE_reset 0x0
+// Enables the `CMD_COMPLETE` interrupt.
 #define I2C__INTR_ENABLE__CMD_COMPLETE_bm 0x200
 #define I2C__INTR_ENABLE__CMD_COMPLETE_bp 9
 #define I2C__INTR_ENABLE__CMD_COMPLETE_bw 1
 #define I2C__INTR_ENABLE__CMD_COMPLETE_reset 0x0
+// Enables the `TX_STRETCH` interrupt.
 #define I2C__INTR_ENABLE__TX_STRETCH_bm 0x400
 #define I2C__INTR_ENABLE__TX_STRETCH_bp 10
 #define I2C__INTR_ENABLE__TX_STRETCH_bw 1
 #define I2C__INTR_ENABLE__TX_STRETCH_reset 0x0
+// Enables the `TX_THRESHOLD` interrupt.
 #define I2C__INTR_ENABLE__TX_THRESHOLD_bm 0x800
 #define I2C__INTR_ENABLE__TX_THRESHOLD_bp 11
 #define I2C__INTR_ENABLE__TX_THRESHOLD_bw 1
 #define I2C__INTR_ENABLE__TX_THRESHOLD_reset 0x0
+// Enables the `ACQ_STRETCH` interrupt.
 #define I2C__INTR_ENABLE__ACQ_STRETCH_bm 0x1000
 #define I2C__INTR_ENABLE__ACQ_STRETCH_bp 12
 #define I2C__INTR_ENABLE__ACQ_STRETCH_bw 1
 #define I2C__INTR_ENABLE__ACQ_STRETCH_reset 0x0
+// Enables the `UNEXP_STOP` interrupt.
 #define I2C__INTR_ENABLE__UNEXP_STOP_bm 0x2000
 #define I2C__INTR_ENABLE__UNEXP_STOP_bp 13
 #define I2C__INTR_ENABLE__UNEXP_STOP_bw 1
 #define I2C__INTR_ENABLE__UNEXP_STOP_reset 0x0
+// Enables the `HOST_TIMEOUT` interrupt.
 #define I2C__INTR_ENABLE__HOST_TIMEOUT_bm 0x4000
 #define I2C__INTR_ENABLE__HOST_TIMEOUT_bp 14
 #define I2C__INTR_ENABLE__HOST_TIMEOUT_bw 1
 #define I2C__INTR_ENABLE__HOST_TIMEOUT_reset 0x0
+// Enables the `SMBALERT` interrupt.
 #define I2C__INTR_ENABLE__SMBALERT_bm 0x8000
 #define I2C__INTR_ENABLE__SMBALERT_bp 15
 #define I2C__INTR_ENABLE__SMBALERT_bw 1
 #define I2C__INTR_ENABLE__SMBALERT_reset 0x0
+// Enables the `CONTROLLER_TX_FIFO_ERROR` interrupt.
 #define I2C__INTR_ENABLE__CONTROLLER_TX_FIFO_ERROR_bm 0x10000
 #define I2C__INTR_ENABLE__CONTROLLER_TX_FIFO_ERROR_bp 16
 #define I2C__INTR_ENABLE__CONTROLLER_TX_FIFO_ERROR_bw 1
 #define I2C__INTR_ENABLE__CONTROLLER_TX_FIFO_ERROR_reset 0x0
+// Enables the `CONTROLLER_RX_FIFO_ERROR` interrupt.
 #define I2C__INTR_ENABLE__CONTROLLER_RX_FIFO_ERROR_bm 0x20000
 #define I2C__INTR_ENABLE__CONTROLLER_RX_FIFO_ERROR_bp 17
 #define I2C__INTR_ENABLE__CONTROLLER_RX_FIFO_ERROR_bw 1
 #define I2C__INTR_ENABLE__CONTROLLER_RX_FIFO_ERROR_reset 0x0
+// Enables the `TARGET_TX_FIFO_ERROR` interrupt.
 #define I2C__INTR_ENABLE__TARGET_TX_FIFO_ERROR_bm 0x40000
 #define I2C__INTR_ENABLE__TARGET_TX_FIFO_ERROR_bp 18
 #define I2C__INTR_ENABLE__TARGET_TX_FIFO_ERROR_bw 1
 #define I2C__INTR_ENABLE__TARGET_TX_FIFO_ERROR_reset 0x0
+// Enables the `TARGET_RX_FIFO_ERROR` interrupt.
 #define I2C__INTR_ENABLE__TARGET_RX_FIFO_ERROR_bm 0x80000
 #define I2C__INTR_ENABLE__TARGET_RX_FIFO_ERROR_bp 19
 #define I2C__INTR_ENABLE__TARGET_RX_FIFO_ERROR_bw 1
 #define I2C__INTR_ENABLE__TARGET_RX_FIFO_ERROR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Enables the `FMT_THRESHOLD` interrupt.
         uint32_t FMT_THRESHOLD :1;
+        // Enables the `RX_THRESHOLD` interrupt.
         uint32_t RX_THRESHOLD :1;
+        // Enables the `ACQ_THRESHOLD` interrupt.
         uint32_t ACQ_THRESHOLD :1;
+        // Enables the `RX_OVERFLOW` interrupt.
         uint32_t RX_OVERFLOW :1;
+        // Enables the `CONTROLLER_HALT` interrupt.
         uint32_t CONTROLLER_HALT :1;
+        // Enables the `SCL_INTERFERENCE` interrupt.
         uint32_t SCL_INTERFERENCE :1;
+        // Enables the `SDA_INTERFERENCE` interrupt.
         uint32_t SDA_INTERFERENCE :1;
+        // Enables the `STRETCH_TIMEOUT` interrupt.
         uint32_t STRETCH_TIMEOUT :1;
+        // Enables the `SDA_UNSTABLE` interrupt.
         uint32_t SDA_UNSTABLE :1;
+        // Enables the `CMD_COMPLETE` interrupt.
         uint32_t CMD_COMPLETE :1;
+        // Enables the `TX_STRETCH` interrupt.
         uint32_t TX_STRETCH :1;
+        // Enables the `TX_THRESHOLD` interrupt.
         uint32_t TX_THRESHOLD :1;
+        // Enables the `ACQ_STRETCH` interrupt.
         uint32_t ACQ_STRETCH :1;
+        // Enables the `UNEXP_STOP` interrupt.
         uint32_t UNEXP_STOP :1;
+        // Enables the `HOST_TIMEOUT` interrupt.
         uint32_t HOST_TIMEOUT :1;
+        // Enables the `SMBALERT` interrupt.
         uint32_t SMBALERT :1;
+        // Enables the `CONTROLLER_TX_FIFO_ERROR` interrupt.
         uint32_t CONTROLLER_TX_FIFO_ERROR :1;
+        // Enables the `CONTROLLER_RX_FIFO_ERROR` interrupt.
         uint32_t CONTROLLER_RX_FIFO_ERROR :1;
+        // Enables the `TARGET_TX_FIFO_ERROR` interrupt.
         uint32_t TARGET_TX_FIFO_ERROR :1;
+        // Enables the `TARGET_RX_FIFO_ERROR` interrupt.
         uint32_t TARGET_RX_FIFO_ERROR :1;
         uint32_t :12;
     } f;
@@ -230,107 +362,148 @@ typedef union {
 } i2c__INTR_ENABLE_t;
 
 // reg - i2c::INTR_TEST
+// Interrupt Test Register
+// Writing `1` forces the `FMT_THRESHOLD` interrupt. Writing `0` releases it.
 #define I2C__INTR_TEST__FMT_THRESHOLD_bm 0x1
 #define I2C__INTR_TEST__FMT_THRESHOLD_bp 0
 #define I2C__INTR_TEST__FMT_THRESHOLD_bw 1
 #define I2C__INTR_TEST__FMT_THRESHOLD_reset 0x0
+// Writing `1` forces the `RX_THRESHOLD` interrupt. Writing `0` releases it.
 #define I2C__INTR_TEST__RX_THRESHOLD_bm 0x2
 #define I2C__INTR_TEST__RX_THRESHOLD_bp 1
 #define I2C__INTR_TEST__RX_THRESHOLD_bw 1
 #define I2C__INTR_TEST__RX_THRESHOLD_reset 0x0
+// Writing `1` forces the `ACQ_THRESHOLD` interrupt. Writing `0` releases it.
 #define I2C__INTR_TEST__ACQ_THRESHOLD_bm 0x4
 #define I2C__INTR_TEST__ACQ_THRESHOLD_bp 2
 #define I2C__INTR_TEST__ACQ_THRESHOLD_bw 1
 #define I2C__INTR_TEST__ACQ_THRESHOLD_reset 0x0
+// Writing `1` forces the `RX_OVERFLOW` interrupt.
 #define I2C__INTR_TEST__RX_OVERFLOW_bm 0x8
 #define I2C__INTR_TEST__RX_OVERFLOW_bp 3
 #define I2C__INTR_TEST__RX_OVERFLOW_bw 1
 #define I2C__INTR_TEST__RX_OVERFLOW_reset 0x0
+// Writing `1` forces the `CONTROLLER_HALT` interrupt. Writing `0` releases it.
 #define I2C__INTR_TEST__CONTROLLER_HALT_bm 0x10
 #define I2C__INTR_TEST__CONTROLLER_HALT_bp 4
 #define I2C__INTR_TEST__CONTROLLER_HALT_bw 1
 #define I2C__INTR_TEST__CONTROLLER_HALT_reset 0x0
+// Writing `1` forces the `SCL_INTERFERENCE` interrupt.
 #define I2C__INTR_TEST__SCL_INTERFERENCE_bm 0x20
 #define I2C__INTR_TEST__SCL_INTERFERENCE_bp 5
 #define I2C__INTR_TEST__SCL_INTERFERENCE_bw 1
 #define I2C__INTR_TEST__SCL_INTERFERENCE_reset 0x0
+// Writing `1` forces the `SDA_INTERFERENCE` interrupt.
 #define I2C__INTR_TEST__SDA_INTERFERENCE_bm 0x40
 #define I2C__INTR_TEST__SDA_INTERFERENCE_bp 6
 #define I2C__INTR_TEST__SDA_INTERFERENCE_bw 1
 #define I2C__INTR_TEST__SDA_INTERFERENCE_reset 0x0
+// Writing `1` forces the `STRETCH_TIMEOUT` interrupt.
 #define I2C__INTR_TEST__STRETCH_TIMEOUT_bm 0x80
 #define I2C__INTR_TEST__STRETCH_TIMEOUT_bp 7
 #define I2C__INTR_TEST__STRETCH_TIMEOUT_bw 1
 #define I2C__INTR_TEST__STRETCH_TIMEOUT_reset 0x0
+// Writing `1` forces the `SDA_UNSTABLE` interrupt.
 #define I2C__INTR_TEST__SDA_UNSTABLE_bm 0x100
 #define I2C__INTR_TEST__SDA_UNSTABLE_bp 8
 #define I2C__INTR_TEST__SDA_UNSTABLE_bw 1
 #define I2C__INTR_TEST__SDA_UNSTABLE_reset 0x0
+// Writing `1` forces the `CMD_COMPLETE` interrupt.
 #define I2C__INTR_TEST__CMD_COMPLETE_bm 0x200
 #define I2C__INTR_TEST__CMD_COMPLETE_bp 9
 #define I2C__INTR_TEST__CMD_COMPLETE_bw 1
 #define I2C__INTR_TEST__CMD_COMPLETE_reset 0x0
+// Writing `1` forces the `TX_STRETCH` interrupt. Writing a `0` releases it.
 #define I2C__INTR_TEST__TX_STRETCH_bm 0x400
 #define I2C__INTR_TEST__TX_STRETCH_bp 10
 #define I2C__INTR_TEST__TX_STRETCH_bw 1
 #define I2C__INTR_TEST__TX_STRETCH_reset 0x0
+// Writing `1` forces the `TX_THRESHOLD` interrupt. Writing `0` releases it.
 #define I2C__INTR_TEST__TX_THRESHOLD_bm 0x800
 #define I2C__INTR_TEST__TX_THRESHOLD_bp 11
 #define I2C__INTR_TEST__TX_THRESHOLD_bw 1
 #define I2C__INTR_TEST__TX_THRESHOLD_reset 0x0
+// Writing `1` forces the `ACQ_STRETCH` interrupt. Writing `0` releases it.
 #define I2C__INTR_TEST__ACQ_STRETCH_bm 0x1000
 #define I2C__INTR_TEST__ACQ_STRETCH_bp 12
 #define I2C__INTR_TEST__ACQ_STRETCH_bw 1
 #define I2C__INTR_TEST__ACQ_STRETCH_reset 0x0
+// Writing `1` forces the `UNEXP_STOP` interrupt.
 #define I2C__INTR_TEST__UNEXP_STOP_bm 0x2000
 #define I2C__INTR_TEST__UNEXP_STOP_bp 13
 #define I2C__INTR_TEST__UNEXP_STOP_bw 1
 #define I2C__INTR_TEST__UNEXP_STOP_reset 0x0
+// Writing `1` forces the `HOST_TIMEOUT` interrupt.
 #define I2C__INTR_TEST__HOST_TIMEOUT_bm 0x4000
 #define I2C__INTR_TEST__HOST_TIMEOUT_bp 14
 #define I2C__INTR_TEST__HOST_TIMEOUT_bw 1
 #define I2C__INTR_TEST__HOST_TIMEOUT_reset 0x0
+// Writing `1` forces the `SMBALERT` interrupt.
 #define I2C__INTR_TEST__SMBALERT_bm 0x8000
 #define I2C__INTR_TEST__SMBALERT_bp 15
 #define I2C__INTR_TEST__SMBALERT_bw 1
 #define I2C__INTR_TEST__SMBALERT_reset 0x0
+// Writing `1` forces the `CONTROLLER_TX_FIFO_ERROR` interrupt.
 #define I2C__INTR_TEST__CONTROLLER_TX_FIFO_ERROR_bm 0x10000
 #define I2C__INTR_TEST__CONTROLLER_TX_FIFO_ERROR_bp 16
 #define I2C__INTR_TEST__CONTROLLER_TX_FIFO_ERROR_bw 1
 #define I2C__INTR_TEST__CONTROLLER_TX_FIFO_ERROR_reset 0x0
+// Writing `1` forces the `CONTROLLER_RX_FIFO_ERROR` interrupt.
 #define I2C__INTR_TEST__CONTROLLER_RX_FIFO_ERROR_bm 0x20000
 #define I2C__INTR_TEST__CONTROLLER_RX_FIFO_ERROR_bp 17
 #define I2C__INTR_TEST__CONTROLLER_RX_FIFO_ERROR_bw 1
 #define I2C__INTR_TEST__CONTROLLER_RX_FIFO_ERROR_reset 0x0
+// Writing `1` forces the `TARGET_TX_FIFO_ERROR` interrupt.
 #define I2C__INTR_TEST__TARGET_TX_FIFO_ERROR_bm 0x40000
 #define I2C__INTR_TEST__TARGET_TX_FIFO_ERROR_bp 18
 #define I2C__INTR_TEST__TARGET_TX_FIFO_ERROR_bw 1
 #define I2C__INTR_TEST__TARGET_TX_FIFO_ERROR_reset 0x0
+// Writing `1` forces the `TARGET_RX_FIFO_ERROR` interrupt.
 #define I2C__INTR_TEST__TARGET_RX_FIFO_ERROR_bm 0x80000
 #define I2C__INTR_TEST__TARGET_RX_FIFO_ERROR_bp 19
 #define I2C__INTR_TEST__TARGET_RX_FIFO_ERROR_bw 1
 #define I2C__INTR_TEST__TARGET_RX_FIFO_ERROR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Writing `1` forces the `FMT_THRESHOLD` interrupt. Writing `0` releases it.
         uint32_t FMT_THRESHOLD :1;
+        // Writing `1` forces the `RX_THRESHOLD` interrupt. Writing `0` releases it.
         uint32_t RX_THRESHOLD :1;
+        // Writing `1` forces the `ACQ_THRESHOLD` interrupt. Writing `0` releases it.
         uint32_t ACQ_THRESHOLD :1;
+        // Writing `1` forces the `RX_OVERFLOW` interrupt.
         uint32_t RX_OVERFLOW :1;
+        // Writing `1` forces the `CONTROLLER_HALT` interrupt. Writing `0` releases it.
         uint32_t CONTROLLER_HALT :1;
+        // Writing `1` forces the `SCL_INTERFERENCE` interrupt.
         uint32_t SCL_INTERFERENCE :1;
+        // Writing `1` forces the `SDA_INTERFERENCE` interrupt.
         uint32_t SDA_INTERFERENCE :1;
+        // Writing `1` forces the `STRETCH_TIMEOUT` interrupt.
         uint32_t STRETCH_TIMEOUT :1;
+        // Writing `1` forces the `SDA_UNSTABLE` interrupt.
         uint32_t SDA_UNSTABLE :1;
+        // Writing `1` forces the `CMD_COMPLETE` interrupt.
         uint32_t CMD_COMPLETE :1;
+        // Writing `1` forces the `TX_STRETCH` interrupt. Writing a `0` releases it.
         uint32_t TX_STRETCH :1;
+        // Writing `1` forces the `TX_THRESHOLD` interrupt. Writing `0` releases it.
         uint32_t TX_THRESHOLD :1;
+        // Writing `1` forces the `ACQ_STRETCH` interrupt. Writing `0` releases it.
         uint32_t ACQ_STRETCH :1;
+        // Writing `1` forces the `UNEXP_STOP` interrupt.
         uint32_t UNEXP_STOP :1;
+        // Writing `1` forces the `HOST_TIMEOUT` interrupt.
         uint32_t HOST_TIMEOUT :1;
+        // Writing `1` forces the `SMBALERT` interrupt.
         uint32_t SMBALERT :1;
+        // Writing `1` forces the `CONTROLLER_TX_FIFO_ERROR` interrupt.
         uint32_t CONTROLLER_TX_FIFO_ERROR :1;
+        // Writing `1` forces the `CONTROLLER_RX_FIFO_ERROR` interrupt.
         uint32_t CONTROLLER_RX_FIFO_ERROR :1;
+        // Writing `1` forces the `TARGET_TX_FIFO_ERROR` interrupt.
         uint32_t TARGET_TX_FIFO_ERROR :1;
+        // Writing `1` forces the `TARGET_RX_FIFO_ERROR` interrupt.
         uint32_t TARGET_RX_FIFO_ERROR :1;
         uint32_t :12;
     } f;
@@ -338,18 +511,25 @@ typedef union {
 } i2c__INTR_TEST_t;
 
 // reg - i2c::SMBUS_CTRL
+// SMBus Control Register
+// Controller Mode control: asserts the `smbsus_no` output.
 #define I2C__SMBUS_CTRL__SMBSUS_bm 0x1
 #define I2C__SMBUS_CTRL__SMBSUS_bp 0
 #define I2C__SMBUS_CTRL__SMBSUS_bw 1
 #define I2C__SMBUS_CTRL__SMBSUS_reset 0x0
+// Target Mode control: asserts the `smbalert_no` output. This bit clears itself
+// when the controller addresses this target.
 #define I2C__SMBUS_CTRL__SMBALERT_bm 0x10
 #define I2C__SMBUS_CTRL__SMBALERT_bp 4
 #define I2C__SMBUS_CTRL__SMBALERT_bw 1
 #define I2C__SMBUS_CTRL__SMBALERT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Controller Mode control: asserts the `smbsus_no` output.
         uint32_t SMBSUS :1;
         uint32_t :3;
+        // Target Mode control: asserts the `smbalert_no` output. This bit clears itself
+        // when the controller addresses this target.
         uint32_t SMBALERT :1;
         uint32_t :27;
     } f;
@@ -357,47 +537,186 @@ typedef union {
 } i2c__SMBUS_CTRL_t;
 
 // reg - i2c::CTRL
+// Control Register
+// Global control: configures this device's operating mode.
+// * `ENABLEHOST = 1` and `ENABLETARGET = 0` — Controller Mode
+// * `ENABLEHOST = 0` and `ENABLETARGET = 1` — Target Mode
+// * `ENABLEHOST = 1` and `ENABLETARGET = 1` — Hybrid Mode
+// * `ENABLEHOST = 0` and `ENABLETARGET = 0` — Monitor Mode
 #define I2C__CTRL__ENABLEHOST_bm 0x1
 #define I2C__CTRL__ENABLEHOST_bp 0
 #define I2C__CTRL__ENABLEHOST_bw 1
 #define I2C__CTRL__ENABLEHOST_reset 0x0
+// Global control: configures this device's operating mode.
+// * `ENABLEHOST = 1` and `ENABLETARGET = 0` — Controller Mode
+// * `ENABLEHOST = 0` and `ENABLETARGET = 1` — Target Mode
+// * `ENABLEHOST = 1` and `ENABLETARGET = 1` — Hybrid Mode
+// * `ENABLEHOST = 0` and `ENABLETARGET = 0` — Monitor Mode
 #define I2C__CTRL__ENABLETARGET_bm 0x2
 #define I2C__CTRL__ENABLETARGET_bp 1
 #define I2C__CTRL__ENABLETARGET_bw 1
 #define I2C__CTRL__ENABLETARGET_reset 0x0
+// Global control: enables line loop-back. In Controller Mode, the internal logic
+// sees the `smbalert_ni` input as deasserted. In Target Mode, this target sends
+// all received SDA data back out, and the internal logic sees received data as
+// all 1's.
 #define I2C__CTRL__LLPBK_bm 0x4
 #define I2C__CTRL__LLPBK_bp 2
 #define I2C__CTRL__LLPBK_bw 1
 #define I2C__CTRL__LLPBK_reset 0x0
+// Target Mode control: NACK address after timeout. If this bit is:
+// * `0` - This target ACKs the address byte even if a Stretch Timeout occurs
+// (useful for SMBus).
+// * `1` - This target NACKs the address byte when a Stretch Timeout occurs.
 #define I2C__CTRL__NACK_ADDR_AFTER_TIMEOUT_bm 0x8
 #define I2C__CTRL__NACK_ADDR_AFTER_TIMEOUT_bp 3
 #define I2C__CTRL__NACK_ADDR_AFTER_TIMEOUT_bw 1
 #define I2C__CTRL__NACK_ADDR_AFTER_TIMEOUT_reset 0x0
+// Target Mode control: enables the Software ACK Control Mechanism. If this bit is:
+// * `0` - This target ACKs a data byte whenever the ACQ FIFO has space.
+// * `1` - This target ACKs the first `TARGET_ACK_CTRL.NBYTES` bytes. If another
+// byte arrives, this target stretches the clock and awaits software
+// intervention (and asserts `STATUS.ACK_CTRL_STRETCH`). The software can
+// 1. accept the new byte(s) by reloading the `TARGET_ACK_CTRL.NBYTES`
+// counter; or
+// 2. reject the new byte(s) by writing `1` to `TARGET_ACK_CTRL.NACK`
+// (useful for SMBus).
 #define I2C__CTRL__ACK_CTRL_EN_bm 0x10
 #define I2C__CTRL__ACK_CTRL_EN_bp 4
 #define I2C__CTRL__ACK_CTRL_EN_bw 1
 #define I2C__CTRL__ACK_CTRL_EN_reset 0x0
+// Global control: enables the Bus Monitor. Set this bit to `1`
+// only in a multi-controller environment.
+// If a `0`->`1` transition happens while `ENABLEHOST` and `ENABLETARGET` are both
+// `0`, the Bus Monitor will enable and begin in the 'Bus Busy' state. To
+// transition to a 'Bus Free' state, `HOST_TIMEOUT_CTRL` must be nonzero so the
+// Bus Monitor may count out idle cycles to confirm the freedom to transmit. In
+// addition, the Bus Monitor will track whether the bus is free based on the
+// enabled timeouts and detected STOP symbols. For Multi-Controller Mode, ensure
+// `MULTI_CONTROLLER_MONITOR_EN` becomes `1` no later than `ENABLEHOST` or
+// `ENABLETARGET`. This bit can be set at the same time as either or both of the
+// other two, though.
+// Note that if `MULTI_CONTROLLER_MONITOR_EN` is set after `ENABLEHOST` or
+// `ENABLETARGET`, the Bus Monitor will begin in the 'Bus Free' state instead.
+// This would violate the proper protocol for a controller to join a multi-controller
+// environment. However, if this controller is known to be the first to join, this
+// ordering will enable skipping the idle wait.
+// When `0`, the bus monitor will report that the bus is always free, so the
+// Controller FSM is never blocked from transmitting.
 #define I2C__CTRL__MULTI_CONTROLLER_MONITOR_EN_bm 0x20
 #define I2C__CTRL__MULTI_CONTROLLER_MONITOR_EN_bp 5
 #define I2C__CTRL__MULTI_CONTROLLER_MONITOR_EN_bw 1
 #define I2C__CTRL__MULTI_CONTROLLER_MONITOR_EN_reset 0x0
+// Target mode control: enables the Software TX Stretch Control Mechanism. If this
+// bit is:
+// * `0` - Automatic TX Stretch: When this target receives a READ address
+// byte, it only stretches the clock if the TX FIFO is empty; otherwise,
+// it pops the FIFO and transmits the data byte. The target never sets
+// the `TARGET_EVENTS` register flags in this mode.
+// * `1` - Software TX Stretch Mode: When this target receives a READ address,
+// it always stretches the clock and sets the `TARGET_EVENTS.TX_PENDING`
+// flag. The software can:
+// 1. confirm the release and transmission of the TX FIFO data by
+// writing a 1 to clear the `TARGET_EVENTS.TX_PENDING` flag; or
+// 2. reset the TX FIFO by writing 1 to `FIFO_CTRL.TXRST` and load in
+// new data via the `TXDATA` register--useful whenthe READ address
+// is targeting a different function of the target.
+// In this mode, the target always sets the `TARGET_EVENTS` register
+// flags.
 #define I2C__CTRL__TX_STRETCH_CTRL_EN_bm 0x40
 #define I2C__CTRL__TX_STRETCH_CTRL_EN_bp 6
 #define I2C__CTRL__TX_STRETCH_CTRL_EN_bw 1
 #define I2C__CTRL__TX_STRETCH_CTRL_EN_reset 0x0
+// ACQ FIFO Start/Stop Enable (Target Mode only):
+// * `0` - Start/Stop symbols are NOT written into the ACQ FIFO. The firmware
+// should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`
+// flags to detect Start/Stop events.
+// * `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).
+// When a START (or repeated START) is detected, an `ACQ_START` or `ACQ_RESTART`
+// entry is written. When a STOP is detected, an `ACQ_STOP` or `ACQ_NACK_STOP`
+// entry is written.
 #define I2C__CTRL__ACQ_START_STOP_EN_bm 0x80
 #define I2C__CTRL__ACQ_START_STOP_EN_bp 7
 #define I2C__CTRL__ACQ_START_STOP_EN_bw 1
 #define I2C__CTRL__ACQ_START_STOP_EN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Global control: configures this device's operating mode.
+        // * `ENABLEHOST = 1` and `ENABLETARGET = 0` — Controller Mode
+        // * `ENABLEHOST = 0` and `ENABLETARGET = 1` — Target Mode
+        // * `ENABLEHOST = 1` and `ENABLETARGET = 1` — Hybrid Mode
+        // * `ENABLEHOST = 0` and `ENABLETARGET = 0` — Monitor Mode
         uint32_t ENABLEHOST :1;
+        // Global control: configures this device's operating mode.
+        // * `ENABLEHOST = 1` and `ENABLETARGET = 0` — Controller Mode
+        // * `ENABLEHOST = 0` and `ENABLETARGET = 1` — Target Mode
+        // * `ENABLEHOST = 1` and `ENABLETARGET = 1` — Hybrid Mode
+        // * `ENABLEHOST = 0` and `ENABLETARGET = 0` — Monitor Mode
         uint32_t ENABLETARGET :1;
+        // Global control: enables line loop-back. In Controller Mode, the internal logic
+        // sees the `smbalert_ni` input as deasserted. In Target Mode, this target sends
+        // all received SDA data back out, and the internal logic sees received data as
+        // all 1's.
         uint32_t LLPBK :1;
+        // Target Mode control: NACK address after timeout. If this bit is:
+        // * `0` - This target ACKs the address byte even if a Stretch Timeout occurs
+        // (useful for SMBus).
+        // * `1` - This target NACKs the address byte when a Stretch Timeout occurs.
         uint32_t NACK_ADDR_AFTER_TIMEOUT :1;
+        // Target Mode control: enables the Software ACK Control Mechanism. If this bit is:
+        // * `0` - This target ACKs a data byte whenever the ACQ FIFO has space.
+        // * `1` - This target ACKs the first `TARGET_ACK_CTRL.NBYTES` bytes. If another
+        // byte arrives, this target stretches the clock and awaits software
+        // intervention (and asserts `STATUS.ACK_CTRL_STRETCH`). The software can
+        // 1. accept the new byte(s) by reloading the `TARGET_ACK_CTRL.NBYTES`
+        // counter; or
+        // 2. reject the new byte(s) by writing `1` to `TARGET_ACK_CTRL.NACK`
+        // (useful for SMBus).
         uint32_t ACK_CTRL_EN :1;
+        // Global control: enables the Bus Monitor. Set this bit to `1`
+        // only in a multi-controller environment.
+        // If a `0`->`1` transition happens while `ENABLEHOST` and `ENABLETARGET` are both
+        // `0`, the Bus Monitor will enable and begin in the 'Bus Busy' state. To
+        // transition to a 'Bus Free' state, `HOST_TIMEOUT_CTRL` must be nonzero so the
+        // Bus Monitor may count out idle cycles to confirm the freedom to transmit. In
+        // addition, the Bus Monitor will track whether the bus is free based on the
+        // enabled timeouts and detected STOP symbols. For Multi-Controller Mode, ensure
+        // `MULTI_CONTROLLER_MONITOR_EN` becomes `1` no later than `ENABLEHOST` or
+        // `ENABLETARGET`. This bit can be set at the same time as either or both of the
+        // other two, though.
+        // Note that if `MULTI_CONTROLLER_MONITOR_EN` is set after `ENABLEHOST` or
+        // `ENABLETARGET`, the Bus Monitor will begin in the 'Bus Free' state instead.
+        // This would violate the proper protocol for a controller to join a multi-controller
+        // environment. However, if this controller is known to be the first to join, this
+        // ordering will enable skipping the idle wait.
+        // When `0`, the bus monitor will report that the bus is always free, so the
+        // Controller FSM is never blocked from transmitting.
         uint32_t MULTI_CONTROLLER_MONITOR_EN :1;
+        // Target mode control: enables the Software TX Stretch Control Mechanism. If this
+        // bit is:
+        // * `0` - Automatic TX Stretch: When this target receives a READ address
+        // byte, it only stretches the clock if the TX FIFO is empty; otherwise,
+        // it pops the FIFO and transmits the data byte. The target never sets
+        // the `TARGET_EVENTS` register flags in this mode.
+        // * `1` - Software TX Stretch Mode: When this target receives a READ address,
+        // it always stretches the clock and sets the `TARGET_EVENTS.TX_PENDING`
+        // flag. The software can:
+        // 1. confirm the release and transmission of the TX FIFO data by
+        // writing a 1 to clear the `TARGET_EVENTS.TX_PENDING` flag; or
+        // 2. reset the TX FIFO by writing 1 to `FIFO_CTRL.TXRST` and load in
+        // new data via the `TXDATA` register--useful whenthe READ address
+        // is targeting a different function of the target.
+        // In this mode, the target always sets the `TARGET_EVENTS` register
+        // flags.
         uint32_t TX_STRETCH_CTRL_EN :1;
+        // ACQ FIFO Start/Stop Enable (Target Mode only):
+        // * `0` - Start/Stop symbols are NOT written into the ACQ FIFO. The firmware
+        // should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`
+        // flags to detect Start/Stop events.
+        // * `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).
+        // When a START (or repeated START) is detected, an `ACQ_START` or `ACQ_RESTART`
+        // entry is written. When a STOP is detected, an `ACQ_STOP` or `ACQ_NACK_STOP`
+        // entry is written.
         uint32_t ACQ_START_STOP_EN :1;
         uint32_t :24;
     } f;
@@ -405,62 +724,87 @@ typedef union {
 } i2c__CTRL_t;
 
 // reg - i2c::STATUS
+// Status Register
+// Controller Mode status: Controller TX FIFO Full.
 #define I2C__STATUS__FMTFULL_bm 0x1
 #define I2C__STATUS__FMTFULL_bp 0
 #define I2C__STATUS__FMTFULL_bw 1
 #define I2C__STATUS__FMTFULL_reset 0x0
+// Controller Mode status: Controller RX FIFO Full.
 #define I2C__STATUS__RXFULL_bm 0x2
 #define I2C__STATUS__RXFULL_bp 1
 #define I2C__STATUS__RXFULL_bw 1
 #define I2C__STATUS__RXFULL_reset 0x0
+// Controller Mode status: Controller TX FIFO Empty.
 #define I2C__STATUS__FMTEMPTY_bm 0x4
 #define I2C__STATUS__FMTEMPTY_bp 2
 #define I2C__STATUS__FMTEMPTY_bw 1
 #define I2C__STATUS__FMTEMPTY_reset 0x1
+// Controller Mode status: Controller FSM idle.
 #define I2C__STATUS__HOSTIDLE_bm 0x8
 #define I2C__STATUS__HOSTIDLE_bp 3
 #define I2C__STATUS__HOSTIDLE_bw 1
 #define I2C__STATUS__HOSTIDLE_reset 0x1
+// Target Mode status: Target FSM idle.
 #define I2C__STATUS__TARGETIDLE_bm 0x10
 #define I2C__STATUS__TARGETIDLE_bp 4
 #define I2C__STATUS__TARGETIDLE_bw 1
 #define I2C__STATUS__TARGETIDLE_reset 0x1
+// Controller Mode status: Controller RX FIFO empty.
 #define I2C__STATUS__RXEMPTY_bm 0x20
 #define I2C__STATUS__RXEMPTY_bp 5
 #define I2C__STATUS__RXEMPTY_bw 1
 #define I2C__STATUS__RXEMPTY_reset 0x1
+// Target Mode status: Target TX FIFO full.
 #define I2C__STATUS__TXFULL_bm 0x40
 #define I2C__STATUS__TXFULL_bp 6
 #define I2C__STATUS__TXFULL_bw 1
 #define I2C__STATUS__TXFULL_reset 0x0
+// Target Mode status: Target RX FIFO full.
 #define I2C__STATUS__ACQFULL_bm 0x80
 #define I2C__STATUS__ACQFULL_bp 7
 #define I2C__STATUS__ACQFULL_bw 1
 #define I2C__STATUS__ACQFULL_reset 0x0
+// Target Mode status: Target TX FIFO empty.
 #define I2C__STATUS__TXEMPTY_bm 0x100
 #define I2C__STATUS__TXEMPTY_bp 8
 #define I2C__STATUS__TXEMPTY_bw 1
 #define I2C__STATUS__TXEMPTY_reset 0x1
+// Target Mode status: Target RX FIFO empty.
 #define I2C__STATUS__ACQEMPTY_bm 0x200
 #define I2C__STATUS__ACQEMPTY_bp 9
 #define I2C__STATUS__ACQEMPTY_bw 1
 #define I2C__STATUS__ACQEMPTY_reset 0x1
+// Target Mode status: indicates that this target is stretching the clock due to
+// the Software ACK Control Mechanism. See `CTRL.ACK_CTRL_EN` for details.
 #define I2C__STATUS__ACK_CTRL_STRETCH_bm 0x400
 #define I2C__STATUS__ACK_CTRL_STRETCH_bp 10
 #define I2C__STATUS__ACK_CTRL_STRETCH_bw 1
 #define I2C__STATUS__ACK_CTRL_STRETCH_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Controller Mode status: Controller TX FIFO Full.
         uint32_t FMTFULL :1;
+        // Controller Mode status: Controller RX FIFO Full.
         uint32_t RXFULL :1;
+        // Controller Mode status: Controller TX FIFO Empty.
         uint32_t FMTEMPTY :1;
+        // Controller Mode status: Controller FSM idle.
         uint32_t HOSTIDLE :1;
+        // Target Mode status: Target FSM idle.
         uint32_t TARGETIDLE :1;
+        // Controller Mode status: Controller RX FIFO empty.
         uint32_t RXEMPTY :1;
+        // Target Mode status: Target TX FIFO full.
         uint32_t TXFULL :1;
+        // Target Mode status: Target RX FIFO full.
         uint32_t ACQFULL :1;
+        // Target Mode status: Target TX FIFO empty.
         uint32_t TXEMPTY :1;
+        // Target Mode status: Target RX FIFO empty.
         uint32_t ACQEMPTY :1;
+        // Target Mode status: indicates that this target is stretching the clock due to
+        // the Software ACK Control Mechanism. See `CTRL.ACK_CTRL_EN` for details.
         uint32_t ACK_CTRL_STRETCH :1;
         uint32_t :21;
     } f;
@@ -468,12 +812,15 @@ typedef union {
 } i2c__STATUS_t;
 
 // reg - i2c::RDATA
+// Controller RX FIFO Access Register (Controller Mode only)
+// Reading this register pops the Controller RX FIFO.
 #define I2C__RDATA__DATA_bm 0xff
 #define I2C__RDATA__DATA_bp 0
 #define I2C__RDATA__DATA_bw 8
 #define I2C__RDATA__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reading this register pops the Controller RX FIFO.
         uint32_t DATA :8;
         uint32_t :24;
     } f;
@@ -481,37 +828,76 @@ typedef union {
 } i2c__RDATA_t;
 
 // reg - i2c::FDATA
+// Controller TX FIFO Access Register (Controller Mode only)
+// Writing to this register pushes an entry into the Controller TX FIFO. The
+// meaning of this field depends on the value of the `READB` field:
+// * `READB = 0` - This field is the WRITE data byte.
+// * `READB = 1` - This field specifies the number of bytes to read from the
+// target. Setting this field to 0 reads 256 bytes.
 #define I2C__FDATA__FBYTE_bm 0xff
 #define I2C__FDATA__FBYTE_bp 0
 #define I2C__FDATA__FBYTE_bw 8
 #define I2C__FDATA__FBYTE_reset 0x0
+// Generate a START condition on the bus before sending the byte.
 #define I2C__FDATA__START_bm 0x100
 #define I2C__FDATA__START_bp 8
 #define I2C__FDATA__START_bw 1
 #define I2C__FDATA__START_reset 0x0
+// Generate a STOP condition on the bus after sending the byte.
 #define I2C__FDATA__STOP_bm 0x200
 #define I2C__FDATA__STOP_bp 9
 #define I2C__FDATA__STOP_bw 1
 #define I2C__FDATA__STOP_reset 0x0
+// Read/write:
+// * `0` - Issue WRITE transaction
+// * `1` - Issue READ transaction
 #define I2C__FDATA__READB_bm 0x400
 #define I2C__FDATA__READB_bp 10
 #define I2C__FDATA__READB_bw 1
 #define I2C__FDATA__READB_reset 0x0
+// Read continue/stop:
+// * `0` — Read Stop: The controller NACKs the last data byte. Use this if this
+// is the last READ in a sequence.
+// * `1` — Read Continue: The controller ACKs the last data byte. Use this if
+// this is an intermediate READ in a sequence.
 #define I2C__FDATA__RCONT_bm 0x800
 #define I2C__FDATA__RCONT_bp 11
 #define I2C__FDATA__RCONT_bw 1
 #define I2C__FDATA__RCONT_reset 0x0
+// NACK OK. When set, this controller will not care if this byte is NACKed. It
+// will not halt, set the `CONTROLLER_EVENTS.NACK` flag, or assert the
+// `CONTROLLER_HALT` Interrupt. This behavior is useful for protocols like Serial
+// Camera Control Bus (SCCB).
 #define I2C__FDATA__NAKOK_bm 0x1000
 #define I2C__FDATA__NAKOK_bp 12
 #define I2C__FDATA__NAKOK_bw 1
 #define I2C__FDATA__NAKOK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Writing to this register pushes an entry into the Controller TX FIFO. The
+        // meaning of this field depends on the value of the `READB` field:
+        // * `READB = 0` - This field is the WRITE data byte.
+        // * `READB = 1` - This field specifies the number of bytes to read from the
+        // target. Setting this field to 0 reads 256 bytes.
         uint32_t FBYTE :8;
+        // Generate a START condition on the bus before sending the byte.
         uint32_t START :1;
+        // Generate a STOP condition on the bus after sending the byte.
         uint32_t STOP :1;
+        // Read/write:
+        // * `0` - Issue WRITE transaction
+        // * `1` - Issue READ transaction
         uint32_t READB :1;
+        // Read continue/stop:
+        // * `0` — Read Stop: The controller NACKs the last data byte. Use this if this
+        // is the last READ in a sequence.
+        // * `1` — Read Continue: The controller ACKs the last data byte. Use this if
+        // this is an intermediate READ in a sequence.
         uint32_t RCONT :1;
+        // NACK OK. When set, this controller will not care if this byte is NACKed. It
+        // will not halt, set the `CONTROLLER_EVENTS.NACK` flag, or assert the
+        // `CONTROLLER_HALT` Interrupt. This behavior is useful for protocols like Serial
+        // Camera Control Bus (SCCB).
         uint32_t NAKOK :1;
         uint32_t :19;
     } f;
@@ -519,28 +905,37 @@ typedef union {
 } i2c__FDATA_t;
 
 // reg - i2c::FIFO_CTRL
+// FIFO Control Register
+// Controller Mode control: writing `1` resets the Controller RX FIFO.
 #define I2C__FIFO_CTRL__RXRST_bm 0x1
 #define I2C__FIFO_CTRL__RXRST_bp 0
 #define I2C__FIFO_CTRL__RXRST_bw 1
 #define I2C__FIFO_CTRL__RXRST_reset 0x0
+// Controller Mode control: writing `1` resets the Controller TX FIFO.
 #define I2C__FIFO_CTRL__FMTRST_bm 0x2
 #define I2C__FIFO_CTRL__FMTRST_bp 1
 #define I2C__FIFO_CTRL__FMTRST_bw 1
 #define I2C__FIFO_CTRL__FMTRST_reset 0x0
+// Target Mode control: writing `1` resets the Target RX FIFO.
 #define I2C__FIFO_CTRL__ACQRST_bm 0x80
 #define I2C__FIFO_CTRL__ACQRST_bp 7
 #define I2C__FIFO_CTRL__ACQRST_bw 1
 #define I2C__FIFO_CTRL__ACQRST_reset 0x0
+// Target Mode control: writing `1` resets the Target TX FIFO.
 #define I2C__FIFO_CTRL__TXRST_bm 0x100
 #define I2C__FIFO_CTRL__TXRST_bp 8
 #define I2C__FIFO_CTRL__TXRST_bw 1
 #define I2C__FIFO_CTRL__TXRST_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Controller Mode control: writing `1` resets the Controller RX FIFO.
         uint32_t RXRST :1;
+        // Controller Mode control: writing `1` resets the Controller TX FIFO.
         uint32_t FMTRST :1;
         uint32_t :5;
+        // Target Mode control: writing `1` resets the Target RX FIFO.
         uint32_t ACQRST :1;
+        // Target Mode control: writing `1` resets the Target TX FIFO.
         uint32_t TXRST :1;
         uint32_t :23;
     } f;
@@ -548,18 +943,27 @@ typedef union {
 } i2c__FIFO_CTRL_t;
 
 // reg - i2c::HOST_FIFO_CONFIG
+// Controller FIFO Configuration Register (Controller Mode only)
+// The `RX_THRESH` interrupt remains asserted while the Controller RX FIFO level
+// is greater than this setting.
 #define I2C__HOST_FIFO_CONFIG__RX_THRESH_bm 0xfff
 #define I2C__HOST_FIFO_CONFIG__RX_THRESH_bp 0
 #define I2C__HOST_FIFO_CONFIG__RX_THRESH_bw 12
 #define I2C__HOST_FIFO_CONFIG__RX_THRESH_reset 0x0
+// The `FMT_THRESH` interrupt remains asserted while the Controller TX FIFO level
+// is less than this setting.
 #define I2C__HOST_FIFO_CONFIG__FMT_THRESH_bm 0xfff0000
 #define I2C__HOST_FIFO_CONFIG__FMT_THRESH_bp 16
 #define I2C__HOST_FIFO_CONFIG__FMT_THRESH_bw 12
 #define I2C__HOST_FIFO_CONFIG__FMT_THRESH_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // The `RX_THRESH` interrupt remains asserted while the Controller RX FIFO level
+        // is greater than this setting.
         uint32_t RX_THRESH :12;
         uint32_t :4;
+        // The `FMT_THRESH` interrupt remains asserted while the Controller TX FIFO level
+        // is less than this setting.
         uint32_t FMT_THRESH :12;
         uint32_t :4;
     } f;
@@ -567,18 +971,27 @@ typedef union {
 } i2c__HOST_FIFO_CONFIG_t;
 
 // reg - i2c::TARGET_FIFO_CONFIG
+// Target FIFOs Configuration Register (Target Mode only)
+// The `TX_THRESH` interrupt remains asserted while the Target TX FIFO level is
+// less than this setting.
 #define I2C__TARGET_FIFO_CONFIG__TX_THRESH_bm 0xfff
 #define I2C__TARGET_FIFO_CONFIG__TX_THRESH_bp 0
 #define I2C__TARGET_FIFO_CONFIG__TX_THRESH_bw 12
 #define I2C__TARGET_FIFO_CONFIG__TX_THRESH_reset 0x0
+// The `ACQ_THRESH` interrupt remains asserted while the Target RX FIFO level is
+// greater than this setting.
 #define I2C__TARGET_FIFO_CONFIG__ACQ_THRESH_bm 0xfff0000
 #define I2C__TARGET_FIFO_CONFIG__ACQ_THRESH_bp 16
 #define I2C__TARGET_FIFO_CONFIG__ACQ_THRESH_bw 12
 #define I2C__TARGET_FIFO_CONFIG__ACQ_THRESH_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // The `TX_THRESH` interrupt remains asserted while the Target TX FIFO level is
+        // less than this setting.
         uint32_t TX_THRESH :12;
         uint32_t :4;
+        // The `ACQ_THRESH` interrupt remains asserted while the Target RX FIFO level is
+        // greater than this setting.
         uint32_t ACQ_THRESH :12;
         uint32_t :4;
     } f;
@@ -586,16 +999,21 @@ typedef union {
 } i2c__TARGET_FIFO_CONFIG_t;
 
 // reg - i2c::HOST_FIFO_STATUS
+// Controller FIFOs Status Register (Controller Mode only)
+// Controller TX FIFO fill level.
 #define I2C__HOST_FIFO_STATUS__FMTLVL_bm 0xfff
 #define I2C__HOST_FIFO_STATUS__FMTLVL_bp 0
 #define I2C__HOST_FIFO_STATUS__FMTLVL_bw 12
+// Controller RX FIFO fill level.
 #define I2C__HOST_FIFO_STATUS__RXLVL_bm 0xfff0000
 #define I2C__HOST_FIFO_STATUS__RXLVL_bp 16
 #define I2C__HOST_FIFO_STATUS__RXLVL_bw 12
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Controller TX FIFO fill level.
         uint32_t FMTLVL :12;
         uint32_t :4;
+        // Controller RX FIFO fill level.
         uint32_t RXLVL :12;
         uint32_t :4;
     } f;
@@ -603,18 +1021,23 @@ typedef union {
 } i2c__HOST_FIFO_STATUS_t;
 
 // reg - i2c::TARGET_FIFO_STATUS
+// Target FIFOs Status Register (Target Mode only)
+// Target TX FIFO fill level.
 #define I2C__TARGET_FIFO_STATUS__TXLVL_bm 0xfff
 #define I2C__TARGET_FIFO_STATUS__TXLVL_bp 0
 #define I2C__TARGET_FIFO_STATUS__TXLVL_bw 12
 #define I2C__TARGET_FIFO_STATUS__TXLVL_reset 0x0
+// Target RX FIFO fill level.
 #define I2C__TARGET_FIFO_STATUS__ACQLVL_bm 0xfff0000
 #define I2C__TARGET_FIFO_STATUS__ACQLVL_bp 16
 #define I2C__TARGET_FIFO_STATUS__ACQLVL_bw 12
 #define I2C__TARGET_FIFO_STATUS__ACQLVL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Target TX FIFO fill level.
         uint32_t TXLVL :12;
         uint32_t :4;
+        // Target RX FIFO fill level.
         uint32_t ACQLVL :12;
         uint32_t :4;
     } f;
@@ -622,22 +1045,39 @@ typedef union {
 } i2c__TARGET_FIFO_STATUS_t;
 
 // reg - i2c::OVRD
+// Override Control Register
+// Global control: enables control of the SDA and SCL lines through the `SDA_VAL`
+// and `SCL_VAL` fields, respectively.
 #define I2C__OVRD__TXOVRDEN_bm 0x1
 #define I2C__OVRD__TXOVRDEN_bp 0
 #define I2C__OVRD__TXOVRDEN_bw 1
 #define I2C__OVRD__TXOVRDEN_reset 0x0
+// Global control: SCL override value:
+// * `0` - Pull the SCL line low
+// * `1` - Release the SCL line
 #define I2C__OVRD__SCLVAL_bm 0x2
 #define I2C__OVRD__SCLVAL_bp 1
 #define I2C__OVRD__SCLVAL_bw 1
 #define I2C__OVRD__SCLVAL_reset 0x0
+// Global control: SDA override value:
+// * `0` - Pull the SDA line low
+// * `1` - Release the SDA line
 #define I2C__OVRD__SDAVAL_bm 0x4
 #define I2C__OVRD__SDAVAL_bp 2
 #define I2C__OVRD__SDAVAL_bw 1
 #define I2C__OVRD__SDAVAL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Global control: enables control of the SDA and SCL lines through the `SDA_VAL`
+        // and `SCL_VAL` fields, respectively.
         uint32_t TXOVRDEN :1;
+        // Global control: SCL override value:
+        // * `0` - Pull the SCL line low
+        // * `1` - Release the SCL line
         uint32_t SCLVAL :1;
+        // Global control: SDA override value:
+        // * `0` - Pull the SDA line low
+        // * `1` - Release the SDA line
         uint32_t SDAVAL :1;
         uint32_t :29;
     } f;
@@ -645,35 +1085,61 @@ typedef union {
 } i2c__OVRD_t;
 
 // reg - i2c::VAL
+// Bus Oversampled Values Register
+// Global status: contains the last 16 SCL over-sampled values. LSB is most
+// recent.
 #define I2C__VAL__SCL_RX_bm 0xffff
 #define I2C__VAL__SCL_RX_bp 0
 #define I2C__VAL__SCL_RX_bw 16
 #define I2C__VAL__SCL_RX_reset 0x0
+// Global status: contains the last 16 SDA over-sampled values. LSB is most
+// recent.
 #define I2C__VAL__SDA_RX_bm 0xffff0000
 #define I2C__VAL__SDA_RX_bp 16
 #define I2C__VAL__SDA_RX_bw 16
 #define I2C__VAL__SDA_RX_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Global status: contains the last 16 SCL over-sampled values. LSB is most
+        // recent.
         uint32_t SCL_RX :16;
+        // Global status: contains the last 16 SDA over-sampled values. LSB is most
+        // recent.
         uint32_t SDA_RX :16;
     } f;
     uint32_t w;
 } i2c__VAL_t;
 
 // reg - i2c::TIMING0
+// SCL LOW and HIGH Periods Register
+// Global control: specifies the HIGH period of SCL (`t_HIGH`) in system clock
+// cycles. Must be `≥ 2`. See Table 11 in the I²C Specification for details. This
+// field is sized to meet the I2C Standard-mode (100 kHz)'s minimum
+// `t_HIGH = 4.0 μs` requirement, assuming a 1 GHz system clock.
 #define I2C__TIMING0__THIGH_bm 0x1fff
 #define I2C__TIMING0__THIGH_bp 0
 #define I2C__TIMING0__THIGH_bw 13
 #define I2C__TIMING0__THIGH_reset 0x0
+// Global control: specifies the LOW period of SCL (`t_LOW`) in system clock
+// cycles. Must be `≥ 2`. See Table 11 in the I2C Specification for more details.
+// This field is sized to meet the I2C Standard-mode (100 kHz) minimum
+// `t_LOW = 4.7 μs` requirement, assuming a 1 GHz system clock.
 #define I2C__TIMING0__TLOW_bm 0x1fff0000
 #define I2C__TIMING0__TLOW_bp 16
 #define I2C__TIMING0__TLOW_bw 13
 #define I2C__TIMING0__TLOW_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Global control: specifies the HIGH period of SCL (`t_HIGH`) in system clock
+        // cycles. Must be `≥ 2`. See Table 11 in the I²C Specification for details. This
+        // field is sized to meet the I2C Standard-mode (100 kHz)'s minimum
+        // `t_HIGH = 4.0 μs` requirement, assuming a 1 GHz system clock.
         uint32_t THIGH :13;
         uint32_t :3;
+        // Global control: specifies the LOW period of SCL (`t_LOW`) in system clock
+        // cycles. Must be `≥ 2`. See Table 11 in the I2C Specification for more details.
+        // This field is sized to meet the I2C Standard-mode (100 kHz) minimum
+        // `t_LOW = 4.7 μs` requirement, assuming a 1 GHz system clock.
         uint32_t TLOW :13;
         uint32_t :3;
     } f;
@@ -681,18 +1147,39 @@ typedef union {
 } i2c__TIMING0_t;
 
 // reg - i2c::TIMING1
+// Bus Rise and Fall Times Register
+// Global control: specifies the rise time of SDA and SCL (`t_r`) in system clock
+// cycles. The rise time is measured from 30% to 70% of the signal swing. See
+// Table 11 in the I2C Specification for more details. This field is sized to meet
+// I2C Standard-mode (100 kHz)'s maximum `t_r = 1000 ns` requirement, assuming a 1
+// GHz system clock.
 #define I2C__TIMING1__T_R_bm 0x3ff
 #define I2C__TIMING1__T_R_bp 0
 #define I2C__TIMING1__T_R_bw 10
 #define I2C__TIMING1__T_R_reset 0x0
+// Global control: specifies the fall time of SDA and SCL (`t_f`) in system clock
+// cycles. The fall time is measured from 70% to 30% of the signal swing. See
+// Table 11 in the I2C Specification for more details. This field is sized to meet
+// I2C Standard-mode (100 kHz)'s maximum `t_f = 300 ns` requirement, assuming a 1
+// GHz system clock.
 #define I2C__TIMING1__T_F_bm 0x1ff0000
 #define I2C__TIMING1__T_F_bp 16
 #define I2C__TIMING1__T_F_bw 9
 #define I2C__TIMING1__T_F_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Global control: specifies the rise time of SDA and SCL (`t_r`) in system clock
+        // cycles. The rise time is measured from 30% to 70% of the signal swing. See
+        // Table 11 in the I2C Specification for more details. This field is sized to meet
+        // I2C Standard-mode (100 kHz)'s maximum `t_r = 1000 ns` requirement, assuming a 1
+        // GHz system clock.
         uint32_t T_R :10;
         uint32_t :6;
+        // Global control: specifies the fall time of SDA and SCL (`t_f`) in system clock
+        // cycles. The fall time is measured from 70% to 30% of the signal swing. See
+        // Table 11 in the I2C Specification for more details. This field is sized to meet
+        // I2C Standard-mode (100 kHz)'s maximum `t_f = 300 ns` requirement, assuming a 1
+        // GHz system clock.
         uint32_t T_F :9;
         uint32_t :7;
     } f;
@@ -700,18 +1187,35 @@ typedef union {
 } i2c__TIMING1_t;
 
 // reg - i2c::TIMING2
+// START Condition Setup and Hold Times Register
+// Global control: specifies the setup time for a repeated START condition
+// (`t_SU;STA`) in system clock cycles. See Table 11 in the I2C Specification for
+// details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
+// `t_SU;STA = 4.7 μs` requirement, assuming a 1 GHz system clock.
 #define I2C__TIMING2__TSU_STA_bm 0x1fff
 #define I2C__TIMING2__TSU_STA_bp 0
 #define I2C__TIMING2__TSU_STA_bw 13
 #define I2C__TIMING2__TSU_STA_reset 0x0
+// Global control: specifies the setup time for a (repeated) START condition
+// (`t_HD;STA`) in system clock cycles. See Table 11 in the I2C Specification for
+// details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
+// `t_HD;STA = 4.0 μs` requirement, assuming a 1 GHz system clock.
 #define I2C__TIMING2__THD_STA_bm 0x1fff0000
 #define I2C__TIMING2__THD_STA_bp 16
 #define I2C__TIMING2__THD_STA_bw 13
 #define I2C__TIMING2__THD_STA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Global control: specifies the setup time for a repeated START condition
+        // (`t_SU;STA`) in system clock cycles. See Table 11 in the I2C Specification for
+        // details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
+        // `t_SU;STA = 4.7 μs` requirement, assuming a 1 GHz system clock.
         uint32_t TSU_STA :13;
         uint32_t :3;
+        // Global control: specifies the setup time for a (repeated) START condition
+        // (`t_HD;STA`) in system clock cycles. See Table 11 in the I2C Specification for
+        // details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
+        // `t_HD;STA = 4.0 μs` requirement, assuming a 1 GHz system clock.
         uint32_t THD_STA :13;
         uint32_t :3;
     } f;
@@ -719,18 +1223,35 @@ typedef union {
 } i2c__TIMING2_t;
 
 // reg - i2c::TIMING3
+// Data Setup and Hold Times Register
+// Global control: specifies the data setup time (`t_SU;DAT`) in system clock
+// cycles. See Table 11 in the I2C Specification for details. This field is sized
+// to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
+// requirement, assuming a 1 GHz system clock.
 #define I2C__TIMING3__TSU_DAT_bm 0x1ff
 #define I2C__TIMING3__TSU_DAT_bp 0
 #define I2C__TIMING3__TSU_DAT_bw 9
 #define I2C__TIMING3__TSU_DAT_reset 0x0
+// Global control: specifies the data and (N)ACK bits hold time (`t_HD;DAT`) in
+// system clock cycles. See Table 11 in the I2C Specification for details. This
+// field is sized to meet the I2C Standard-mode (100 kHz)'s `t_HD;DAT = 5.0 μs`
+// minimum requirement, assuming a 1 GHz system clock.
 #define I2C__TIMING3__THD_DAT_bm 0x1fff0000
 #define I2C__TIMING3__THD_DAT_bp 16
 #define I2C__TIMING3__THD_DAT_bw 13
 #define I2C__TIMING3__THD_DAT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Global control: specifies the data setup time (`t_SU;DAT`) in system clock
+        // cycles. See Table 11 in the I2C Specification for details. This field is sized
+        // to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
+        // requirement, assuming a 1 GHz system clock.
         uint32_t TSU_DAT :9;
         uint32_t :7;
+        // Global control: specifies the data and (N)ACK bits hold time (`t_HD;DAT`) in
+        // system clock cycles. See Table 11 in the I2C Specification for details. This
+        // field is sized to meet the I2C Standard-mode (100 kHz)'s `t_HD;DAT = 5.0 μs`
+        // minimum requirement, assuming a 1 GHz system clock.
         uint32_t THD_DAT :13;
         uint32_t :3;
     } f;
@@ -738,18 +1259,35 @@ typedef union {
 } i2c__TIMING3_t;
 
 // reg - i2c::TIMING4
+// STOP Condition Setup Time and Bus Free Time Register
+// Global control: specifies the setup time for a STOP condition (`t_SU;STO`) in
+// system clock cycles. See Table 11 in the I²C Specification for details. This
+// field is sized to meet I2C Standard-mode (100 kHz)'s `t_SU;STO = 4.0 μs`
+// minimum requirement, assuming a 1 GHz system clock.
 #define I2C__TIMING4__TSU_STO_bm 0x1fff
 #define I2C__TIMING4__TSU_STO_bp 0
 #define I2C__TIMING4__TSU_STO_bw 13
 #define I2C__TIMING4__TSU_STO_reset 0x0
+// Global control: specifies the time between a STOP and START condition (`t_BUF`)
+// in system clock cycles. See Table 11 in the I²C Specification for details. This
+// field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
+// requirement, assuming a 1 GHz system clock.
 #define I2C__TIMING4__T_BUF_bm 0x1fff0000
 #define I2C__TIMING4__T_BUF_bp 16
 #define I2C__TIMING4__T_BUF_bw 13
 #define I2C__TIMING4__T_BUF_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Global control: specifies the setup time for a STOP condition (`t_SU;STO`) in
+        // system clock cycles. See Table 11 in the I²C Specification for details. This
+        // field is sized to meet I2C Standard-mode (100 kHz)'s `t_SU;STO = 4.0 μs`
+        // minimum requirement, assuming a 1 GHz system clock.
         uint32_t TSU_STO :13;
         uint32_t :3;
+        // Global control: specifies the time between a STOP and START condition (`t_BUF`)
+        // in system clock cycles. See Table 11 in the I²C Specification for details. This
+        // field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
+        // requirement, assuming a 1 GHz system clock.
         uint32_t T_BUF :13;
         uint32_t :3;
     } f;
@@ -757,49 +1295,87 @@ typedef union {
 } i2c__TIMING4_t;
 
 // reg - i2c::TIMEOUT_CTRL
+// Timeout Control Register
+// Global control: Specifies the timeout value in system clock cycles. The meaning
+// of this field depends on `MODE`.
 #define I2C__TIMEOUT_CTRL__VAL_bm 0x3fffffff
 #define I2C__TIMEOUT_CTRL__VAL_bp 0
 #define I2C__TIMEOUT_CTRL__VAL_bw 30
 #define I2C__TIMEOUT_CTRL__VAL_reset 0x0
+// Global control: timeout mode.
+// * `0` - Stretch Timeout (Controller Mode only). If the target stretches the
+// clock for more time than `TIMEOUT_CTRL.VAL`, the `STRETCH_TIMEOUT`
+// interrupt will be asserted.
+// * `1` - Bus Timeout. If SCL is LOW for more time than `TIMEOUT_CTRL.VAL`:
+// * In Controller Mode, the `CONTROLLER_EVENTS.BUS_TIMEOUT` flag will
+// be asserted, triggering the `CONTROLLER_HALT` interrupt.
+// * In Target Mode, the `TARGET_EVENTS.BUS_TIMEOUT` flag will be set,
+// triggering the `TX_STRETCH` interrupt.
 #define I2C__TIMEOUT_CTRL__MODE_bm 0x40000000
 #define I2C__TIMEOUT_CTRL__MODE_bp 30
 #define I2C__TIMEOUT_CTRL__MODE_bw 1
 #define I2C__TIMEOUT_CTRL__MODE_reset 0x0
+// Timeout Enable.
 #define I2C__TIMEOUT_CTRL__EN_bm 0x80000000
 #define I2C__TIMEOUT_CTRL__EN_bp 31
 #define I2C__TIMEOUT_CTRL__EN_bw 1
 #define I2C__TIMEOUT_CTRL__EN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Global control: Specifies the timeout value in system clock cycles. The meaning
+        // of this field depends on `MODE`.
         uint32_t VAL :30;
+        // Global control: timeout mode.
+        // * `0` - Stretch Timeout (Controller Mode only). If the target stretches the
+        // clock for more time than `TIMEOUT_CTRL.VAL`, the `STRETCH_TIMEOUT`
+        // interrupt will be asserted.
+        // * `1` - Bus Timeout. If SCL is LOW for more time than `TIMEOUT_CTRL.VAL`:
+        // * In Controller Mode, the `CONTROLLER_EVENTS.BUS_TIMEOUT` flag will
+        // be asserted, triggering the `CONTROLLER_HALT` interrupt.
+        // * In Target Mode, the `TARGET_EVENTS.BUS_TIMEOUT` flag will be set,
+        // triggering the `TX_STRETCH` interrupt.
         uint32_t MODE :1;
+        // Timeout Enable.
         uint32_t EN :1;
     } f;
     uint32_t w;
 } i2c__TIMEOUT_CTRL_t;
 
 // reg - i2c::TARGET_ID
+// Target ID Register (Target Mode only)
+// Target Address 0. This target responds if the 7-bit address matches
+// `ADDRESS0 & MASK0`. `MASK0 = 0x0` disables this address.
 #define I2C__TARGET_ID__ADDRESS0_bm 0x7f
 #define I2C__TARGET_ID__ADDRESS0_bp 0
 #define I2C__TARGET_ID__ADDRESS0_bw 7
 #define I2C__TARGET_ID__ADDRESS0_reset 0x0
+// ADDRESS0 mask.
 #define I2C__TARGET_ID__MASK0_bm 0x3f80
 #define I2C__TARGET_ID__MASK0_bp 7
 #define I2C__TARGET_ID__MASK0_bw 7
 #define I2C__TARGET_ID__MASK0_reset 0x0
+// Target Address 1. This target responds if the 7-bit address matches
+// `ADDRESS1 & MASK1`. `MASK1 = 0x0` disables this address.
 #define I2C__TARGET_ID__ADDRESS1_bm 0x1fc000
 #define I2C__TARGET_ID__ADDRESS1_bp 14
 #define I2C__TARGET_ID__ADDRESS1_bw 7
 #define I2C__TARGET_ID__ADDRESS1_reset 0x0
+// ADDRESS1 mask.
 #define I2C__TARGET_ID__MASK1_bm 0xfe00000
 #define I2C__TARGET_ID__MASK1_bp 21
 #define I2C__TARGET_ID__MASK1_bw 7
 #define I2C__TARGET_ID__MASK1_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Target Address 0. This target responds if the 7-bit address matches
+        // `ADDRESS0 & MASK0`. `MASK0 = 0x0` disables this address.
         uint32_t ADDRESS0 :7;
+        // ADDRESS0 mask.
         uint32_t MASK0 :7;
+        // Target Address 1. This target responds if the 7-bit address matches
+        // `ADDRESS1 & MASK1`. `MASK1 = 0x0` disables this address.
         uint32_t ADDRESS1 :7;
+        // ADDRESS1 mask.
         uint32_t MASK1 :7;
         uint32_t :4;
     } f;
@@ -807,17 +1383,58 @@ typedef union {
 } i2c__TARGET_ID_t;
 
 // reg - i2c::ACQDATA
+// Target RX FIFO Access Register (Target Mode only)
+// Reading this register pops the ACQ FIFO. The meaning of this field depends on
+// `SIGNAL`:
+// * `SIGNAL = 0x0`, `0x1`, `0x3`, `0x4`, or `0x5` - This field contains an
+// address or data byte sent by the controller.
+// * `SIGNAL = 0x2`, `0x6` - This field is meaningless.
 #define I2C__ACQDATA__ABYTE_bm 0xff
 #define I2C__ACQDATA__ABYTE_bp 0
 #define I2C__ACQDATA__ABYTE_bw 8
 #define I2C__ACQDATA__ABYTE_reset 0x0
+// This field indicates if this FIFO entry represents/is associated with control
+// signal(s):
+// * `0x0` - The entry is an ordinary data byte that has been ACKed.
+// * `0x1` - The entry is an address byte preceded by a START.
+// * `0x2` - The entry is a STOP condition following ACKed data bytes.
+// * `0x3` - The entry is an address byte preceded by a repeated START.
+// * `0x4` - The entry is a NACKed data byte.
+// * `0x5` - The entry is an address byte preceded by a (repeated) START.
+// However, the data bytes that followed this address byte were
+// NACKed.
+// * `0x6` - Error. A transaction preceding ended abnormally, for example, due to
+// an unexpected STOP condition, a Bus or Stretch Timeout, a software
+// NACK, or a lost arbitration.
+// If the FIFO does not have enough space to record a complete transaction, an
+// Error (`0x6`) entry may appear alone.
 #define I2C__ACQDATA__SIGNAL_bm 0x700
 #define I2C__ACQDATA__SIGNAL_bp 8
 #define I2C__ACQDATA__SIGNAL_bw 3
 #define I2C__ACQDATA__SIGNAL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reading this register pops the ACQ FIFO. The meaning of this field depends on
+        // `SIGNAL`:
+        // * `SIGNAL = 0x0`, `0x1`, `0x3`, `0x4`, or `0x5` - This field contains an
+        // address or data byte sent by the controller.
+        // * `SIGNAL = 0x2`, `0x6` - This field is meaningless.
         uint32_t ABYTE :8;
+        // This field indicates if this FIFO entry represents/is associated with control
+        // signal(s):
+        // * `0x0` - The entry is an ordinary data byte that has been ACKed.
+        // * `0x1` - The entry is an address byte preceded by a START.
+        // * `0x2` - The entry is a STOP condition following ACKed data bytes.
+        // * `0x3` - The entry is an address byte preceded by a repeated START.
+        // * `0x4` - The entry is a NACKed data byte.
+        // * `0x5` - The entry is an address byte preceded by a (repeated) START.
+        // However, the data bytes that followed this address byte were
+        // NACKed.
+        // * `0x6` - Error. A transaction preceding ended abnormally, for example, due to
+        // an unexpected STOP condition, a Bus or Stretch Timeout, a software
+        // NACK, or a lost arbitration.
+        // If the FIFO does not have enough space to record a complete transaction, an
+        // Error (`0x6`) entry may appear alone.
         uint32_t SIGNAL :3;
         uint32_t :21;
     } f;
@@ -825,12 +1442,17 @@ typedef union {
 } i2c__ACQDATA_t;
 
 // reg - i2c::TXDATA
+// Target TX FIFO Access Register (Target Mode only).
+// Writing to this register pushes data into the Target TX FIFO. The controller
+// reads data from this FIFO during a READ transaction.
 #define I2C__TXDATA__DATA_bm 0xff
 #define I2C__TXDATA__DATA_bp 0
 #define I2C__TXDATA__DATA_bw 8
 #define I2C__TXDATA__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Writing to this register pushes data into the Target TX FIFO. The controller
+        // reads data from this FIFO during a READ transaction.
         uint32_t DATA :8;
         uint32_t :24;
     } f;
@@ -838,12 +1460,27 @@ typedef union {
 } i2c__TXDATA_t;
 
 // reg - i2c::HOST_TIMEOUT_CTRL
+// Controller Timeout Control Register
+// Target/Monitor Mode control: controller clock generation timeout value
+// specified in system clock cycles.
+// * Target Mode - If the controller stops generating the clock for more time
+// than this setting, this target asserts the Controller Timeout Interrupt.
+// * Monitor Mode - this field is required to be nonzero for the Bus Monitor to
+// transition out of the initial Busy state. Set this field to `0x0` to disable
+// this behavior.
 #define I2C__HOST_TIMEOUT_CTRL__VAL_bm 0x7fffffff
 #define I2C__HOST_TIMEOUT_CTRL__VAL_bp 0
 #define I2C__HOST_TIMEOUT_CTRL__VAL_bw 31
 #define I2C__HOST_TIMEOUT_CTRL__VAL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Target/Monitor Mode control: controller clock generation timeout value
+        // specified in system clock cycles.
+        // * Target Mode - If the controller stops generating the clock for more time
+        // than this setting, this target asserts the Controller Timeout Interrupt.
+        // * Monitor Mode - this field is required to be nonzero for the Bus Monitor to
+        // transition out of the initial Busy state. Set this field to `0x0` to disable
+        // this behavior.
         uint32_t VAL :31;
         uint32_t :1;
     } f;
@@ -851,29 +1488,51 @@ typedef union {
 } i2c__HOST_TIMEOUT_CTRL_t;
 
 // reg - i2c::TARGET_TIMEOUT_CTRL
+// Target Timeout Control Register (Target Mode only)
+// When this target has stretched the clock for more time than this setting, this
+// target will NACK incoming data bytes or release the SDA line for outgoing data
+// bytes. The count is cumulative over an entire transaction. In other words, this
+// is SMBus's cumulative target clock extension time.
+// The behavior for the address byte is configurable via
+// `CTRL.NACK_ADDR_AFTER_TIMEOUT`.
 #define I2C__TARGET_TIMEOUT_CTRL__VAL_bm 0x7fffffff
 #define I2C__TARGET_TIMEOUT_CTRL__VAL_bp 0
 #define I2C__TARGET_TIMEOUT_CTRL__VAL_bw 31
 #define I2C__TARGET_TIMEOUT_CTRL__VAL_reset 0x0
+// Enable Target Timeout.
 #define I2C__TARGET_TIMEOUT_CTRL__EN_bm 0x80000000
 #define I2C__TARGET_TIMEOUT_CTRL__EN_bp 31
 #define I2C__TARGET_TIMEOUT_CTRL__EN_bw 1
 #define I2C__TARGET_TIMEOUT_CTRL__EN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // When this target has stretched the clock for more time than this setting, this
+        // target will NACK incoming data bytes or release the SDA line for outgoing data
+        // bytes. The count is cumulative over an entire transaction. In other words, this
+        // is SMBus's cumulative target clock extension time.
+        // The behavior for the address byte is configurable via
+        // `CTRL.NACK_ADDR_AFTER_TIMEOUT`.
         uint32_t VAL :31;
+        // Enable Target Timeout.
         uint32_t EN :1;
     } f;
     uint32_t w;
 } i2c__TARGET_TIMEOUT_CTRL_t;
 
 // reg - i2c::TARGET_NACK_COUNT
+// Target NACK Count Register (Target Mode only)
+// Indicates the number of transactions NACKed by this target since the last read
+// of this register, saturating at 255. This field can be used to track how many
+// transactions were missed when the Target RX FIFO is full.
 #define I2C__TARGET_NACK_COUNT__TARGET_NACK_COUNT_bm 0xff
 #define I2C__TARGET_NACK_COUNT__TARGET_NACK_COUNT_bp 0
 #define I2C__TARGET_NACK_COUNT__TARGET_NACK_COUNT_bw 8
 #define I2C__TARGET_NACK_COUNT__TARGET_NACK_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Indicates the number of transactions NACKed by this target since the last read
+        // of this register, saturating at 255. This field can be used to track how many
+        // transactions were missed when the Target RX FIFO is full.
         uint32_t TARGET_NACK_COUNT :8;
         uint32_t :24;
     } f;
@@ -881,30 +1540,52 @@ typedef union {
 } i2c__TARGET_NACK_COUNT_t;
 
 // reg - i2c::TARGET_ACK_CTRL
+// Target ACK Control Register (Target Mode only)
+// When `STATUS.ACK_CTRL_STRETCH = 1`, writing to this register specifies the
+// number of bytes this target should ACK. The count decrements per byte ACKed.
+// Effective only when `CTRL.ACK_CTRL_EN = 1`. See `CTRL.ACK_CTRL_EN` for details.
+// This control field is used to implement SMBus's mid-transfer (N)ACK responses.
 #define I2C__TARGET_ACK_CTRL__NBYTES_bm 0x1ff
 #define I2C__TARGET_ACK_CTRL__NBYTES_bp 0
 #define I2C__TARGET_ACK_CTRL__NBYTES_bw 9
 #define I2C__TARGET_ACK_CTRL__NBYTES_reset 0x0
+// When `STATUS.ACK_CTRL_STRETCH = 1`, writing `1` to this field causes this
+// target to NACK all bytes of the transaction. Effective only when
+// `CTRL.ACK_CTRL_EN = 1`.
 #define I2C__TARGET_ACK_CTRL__NACK_bm 0x80000000
 #define I2C__TARGET_ACK_CTRL__NACK_bp 31
 #define I2C__TARGET_ACK_CTRL__NACK_bw 1
 #define I2C__TARGET_ACK_CTRL__NACK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // When `STATUS.ACK_CTRL_STRETCH = 1`, writing to this register specifies the
+        // number of bytes this target should ACK. The count decrements per byte ACKed.
+        // Effective only when `CTRL.ACK_CTRL_EN = 1`. See `CTRL.ACK_CTRL_EN` for details.
+        // This control field is used to implement SMBus's mid-transfer (N)ACK responses.
         uint32_t NBYTES :9;
         uint32_t :22;
+        // When `STATUS.ACK_CTRL_STRETCH = 1`, writing `1` to this field causes this
+        // target to NACK all bytes of the transaction. Effective only when
+        // `CTRL.ACK_CTRL_EN = 1`.
         uint32_t NACK :1;
     } f;
     uint32_t w;
 } i2c__TARGET_ACK_CTRL_t;
 
 // reg - i2c::ACQ_FIFO_NEXT_DATA
+// Target RX FIFO Next Byte Register (Target Mode only)
+// This field contains the next byte to be pushed into the Target RX FIFO,
+// allowing software to decide whether to accept or reject it. Valid only when
+// `STATUS.ACK_CTRL_STRETCH = 1`. See `CTRL.ACK_CTRL_EN` for details.
 #define I2C__ACQ_FIFO_NEXT_DATA__DATA_bm 0xff
 #define I2C__ACQ_FIFO_NEXT_DATA__DATA_bp 0
 #define I2C__ACQ_FIFO_NEXT_DATA__DATA_bw 8
 #define I2C__ACQ_FIFO_NEXT_DATA__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // This field contains the next byte to be pushed into the Target RX FIFO,
+        // allowing software to decide whether to accept or reject it. Valid only when
+        // `STATUS.ACK_CTRL_STRETCH = 1`. See `CTRL.ACK_CTRL_EN` for details.
         uint32_t DATA :8;
         uint32_t :24;
     } f;
@@ -912,44 +1593,76 @@ typedef union {
 } i2c__ACQ_FIFO_NEXT_DATA_t;
 
 // reg - i2c::HOST_NACK_HANDLER_TIMEOUT
+// Controller NACK Timeout Register (Controller Mode only)
+// Timeout value (specified in system clock cycles) for this controller Mode to
+// automatically STOP a transaction when `CONTROLLER_EVENTS.NACK` is set.
 #define I2C__HOST_NACK_HANDLER_TIMEOUT__VAL_bm 0x7fffffff
 #define I2C__HOST_NACK_HANDLER_TIMEOUT__VAL_bp 0
 #define I2C__HOST_NACK_HANDLER_TIMEOUT__VAL_bw 31
 #define I2C__HOST_NACK_HANDLER_TIMEOUT__VAL_reset 0x0
+// Enables Controller NACK Timeout.
 #define I2C__HOST_NACK_HANDLER_TIMEOUT__EN_bm 0x80000000
 #define I2C__HOST_NACK_HANDLER_TIMEOUT__EN_bp 31
 #define I2C__HOST_NACK_HANDLER_TIMEOUT__EN_bw 1
 #define I2C__HOST_NACK_HANDLER_TIMEOUT__EN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Timeout value (specified in system clock cycles) for this controller Mode to
+        // automatically STOP a transaction when `CONTROLLER_EVENTS.NACK` is set.
         uint32_t VAL :31;
+        // Enables Controller NACK Timeout.
         uint32_t EN :1;
     } f;
     uint32_t w;
 } i2c__HOST_NACK_HANDLER_TIMEOUT_t;
 
 // reg - i2c::CONTROLLER_EVENTS
+// Controller Events Register (Controller Mode only)
+// Indicates that this controller has halted due to an unexpected NACK sent by
+// the target. This behavior can be disabled by writing `1` to `FDATA.NAKOK`. This
+// bit triggers the `CONTROLLER_HALT` interrupt. Writing `1` clears this bit.
 #define I2C__CONTROLLER_EVENTS__NACK_bm 0x1
 #define I2C__CONTROLLER_EVENTS__NACK_bp 0
 #define I2C__CONTROLLER_EVENTS__NACK_bw 1
 #define I2C__CONTROLLER_EVENTS__NACK_reset 0x0
+// Indicates that this controller has halted due to a Controller NACK Timeout. See
+// `HOST_NACK_HANDLER_TIMEOUT` for details. This bit triggers the
+// `CONTROLLER_HALT` interrupt. Writing `1` clears this bit.
 #define I2C__CONTROLLER_EVENTS__UNHANDLED_NACK_TIMEOUT_bm 0x2
 #define I2C__CONTROLLER_EVENTS__UNHANDLED_NACK_TIMEOUT_bp 1
 #define I2C__CONTROLLER_EVENTS__UNHANDLED_NACK_TIMEOUT_bw 1
 #define I2C__CONTROLLER_EVENTS__UNHANDLED_NACK_TIMEOUT_reset 0x0
+// Indicates that this controller has halted due to a Bus Timeout. See
+// `TIMEOUT_CTRL` for details. This bit triggers the `CONTROLLER_HALT` interrupt.
+// Writing `1` clears this bit.
 #define I2C__CONTROLLER_EVENTS__BUS_TIMEOUT_bm 0x4
 #define I2C__CONTROLLER_EVENTS__BUS_TIMEOUT_bp 2
 #define I2C__CONTROLLER_EVENTS__BUS_TIMEOUT_bw 1
 #define I2C__CONTROLLER_EVENTS__BUS_TIMEOUT_reset 0x0
+// Indicates that the controller has halted due to it losing an arbitration
+// against another controller. This bit triggers the `CONTROLLER_HALT` interrupt.
+// Writing `1` clears this bit.
 #define I2C__CONTROLLER_EVENTS__ARBITRATION_LOST_bm 0x8
 #define I2C__CONTROLLER_EVENTS__ARBITRATION_LOST_bp 3
 #define I2C__CONTROLLER_EVENTS__ARBITRATION_LOST_bw 1
 #define I2C__CONTROLLER_EVENTS__ARBITRATION_LOST_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Indicates that this controller has halted due to an unexpected NACK sent by
+        // the target. This behavior can be disabled by writing `1` to `FDATA.NAKOK`. This
+        // bit triggers the `CONTROLLER_HALT` interrupt. Writing `1` clears this bit.
         uint32_t NACK :1;
+        // Indicates that this controller has halted due to a Controller NACK Timeout. See
+        // `HOST_NACK_HANDLER_TIMEOUT` for details. This bit triggers the
+        // `CONTROLLER_HALT` interrupt. Writing `1` clears this bit.
         uint32_t UNHANDLED_NACK_TIMEOUT :1;
+        // Indicates that this controller has halted due to a Bus Timeout. See
+        // `TIMEOUT_CTRL` for details. This bit triggers the `CONTROLLER_HALT` interrupt.
+        // Writing `1` clears this bit.
         uint32_t BUS_TIMEOUT :1;
+        // Indicates that the controller has halted due to it losing an arbitration
+        // against another controller. This bit triggers the `CONTROLLER_HALT` interrupt.
+        // Writing `1` clears this bit.
         uint32_t ARBITRATION_LOST :1;
         uint32_t :28;
     } f;
@@ -957,32 +1670,65 @@ typedef union {
 } i2c__CONTROLLER_EVENTS_t;
 
 // reg - i2c::TARGET_EVENTS
+// Target Events Register (Target Mode)
+// Indicates that the target is stretching the clock due to receiving a READ
+// address byte and waiting for software to confirm the release of the Target
+// TX FIFO data. Valid only if `CTRL.TX_STRETCH_CTRL_EN = 1`. See
+// `CTRL.TX_STRETCH_CTRL_EN` for details. This bit triggers the `TX_STRETCH`
+// interrupt. Writing `1` clears this bit.
 #define I2C__TARGET_EVENTS__TX_PENDING_bm 0x1
 #define I2C__TARGET_EVENTS__TX_PENDING_bp 0
 #define I2C__TARGET_EVENTS__TX_PENDING_bw 1
 #define I2C__TARGET_EVENTS__TX_PENDING_reset 0x0
+// Indicates that this target has halted due a Bus Timeout terminating a READ
+// transaction. See `TIMEOUT_CTRL` for details. This bit triggers the `TX_STRETCH`
+// interrupt. Writing `1` clears this bit.
 #define I2C__TARGET_EVENTS__BUS_TIMEOUT_bm 0x2
 #define I2C__TARGET_EVENTS__BUS_TIMEOUT_bp 1
 #define I2C__TARGET_EVENTS__BUS_TIMEOUT_bw 1
 #define I2C__TARGET_EVENTS__BUS_TIMEOUT_reset 0x0
+// Indicates that a controller has lost arbitration, causing a READ
+// transaction to end. This bit triggers the `TX_STRETCH` interrupt. Writing `1`
+// clears this bit.
 #define I2C__TARGET_EVENTS__ARBITRATION_LOST_bm 0x4
 #define I2C__TARGET_EVENTS__ARBITRATION_LOST_bp 2
 #define I2C__TARGET_EVENTS__ARBITRATION_LOST_bw 1
 #define I2C__TARGET_EVENTS__ARBITRATION_LOST_reset 0x0
+// Start Detect Flag (Target Mode only). Set to 1 by hardware when a START
+// (or repeated START) is detected while `CTRL.ENABLETARGET = 1`. Cleared when
+// software writes 1.
 #define I2C__TARGET_EVENTS__START_DETECT_bm 0x8
 #define I2C__TARGET_EVENTS__START_DETECT_bp 3
 #define I2C__TARGET_EVENTS__START_DETECT_bw 1
 #define I2C__TARGET_EVENTS__START_DETECT_reset 0x0
+// Stop Detect Flag (Target Mode only). Set to 1 by hardware when a STOP is
+// detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.
 #define I2C__TARGET_EVENTS__STOP_DETECT_bm 0x10
 #define I2C__TARGET_EVENTS__STOP_DETECT_bp 4
 #define I2C__TARGET_EVENTS__STOP_DETECT_bw 1
 #define I2C__TARGET_EVENTS__STOP_DETECT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Indicates that the target is stretching the clock due to receiving a READ
+        // address byte and waiting for software to confirm the release of the Target
+        // TX FIFO data. Valid only if `CTRL.TX_STRETCH_CTRL_EN = 1`. See
+        // `CTRL.TX_STRETCH_CTRL_EN` for details. This bit triggers the `TX_STRETCH`
+        // interrupt. Writing `1` clears this bit.
         uint32_t TX_PENDING :1;
+        // Indicates that this target has halted due a Bus Timeout terminating a READ
+        // transaction. See `TIMEOUT_CTRL` for details. This bit triggers the `TX_STRETCH`
+        // interrupt. Writing `1` clears this bit.
         uint32_t BUS_TIMEOUT :1;
+        // Indicates that a controller has lost arbitration, causing a READ
+        // transaction to end. This bit triggers the `TX_STRETCH` interrupt. Writing `1`
+        // clears this bit.
         uint32_t ARBITRATION_LOST :1;
+        // Start Detect Flag (Target Mode only). Set to 1 by hardware when a START
+        // (or repeated START) is detected while `CTRL.ENABLETARGET = 1`. Cleared when
+        // software writes 1.
         uint32_t START_DETECT :1;
+        // Stop Detect Flag (Target Mode only). Set to 1 by hardware when a STOP is
+        // detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.
         uint32_t STOP_DETECT :1;
         uint32_t :27;
     } f;
@@ -990,18 +1736,23 @@ typedef union {
 } i2c__TARGET_EVENTS_t;
 
 // reg - i2c::SMBUS_STATUS
+// SMBus Status Register
+// Target Mode status: indicates that the `smbsus_ni` input is asserted.
 #define I2C__SMBUS_STATUS__SMBSUS_bm 0x1
 #define I2C__SMBUS_STATUS__SMBSUS_bp 0
 #define I2C__SMBUS_STATUS__SMBSUS_bw 1
 #define I2C__SMBUS_STATUS__SMBSUS_reset 0x0
+// Controller Mode status: indicates that the `smbalert_ni` input is asserted.
 #define I2C__SMBUS_STATUS__SMBALERT_bm 0x10
 #define I2C__SMBUS_STATUS__SMBALERT_bp 4
 #define I2C__SMBUS_STATUS__SMBALERT_bw 1
 #define I2C__SMBUS_STATUS__SMBALERT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Target Mode status: indicates that the `smbsus_ni` input is asserted.
         uint32_t SMBSUS :1;
         uint32_t :3;
+        // Controller Mode status: indicates that the `smbalert_ni` input is asserted.
         uint32_t SMBALERT :1;
         uint32_t :27;
     } f;
@@ -1009,6 +1760,7 @@ typedef union {
 } i2c__SMBUS_STATUS_t;
 
 // addrmap - i2c
+// Interrupt status, enable, and test registers for a single I2C controller and target.
 typedef struct __attribute__ ((__packed__)) {
     i2c__INTR_STATE_t INTR_STATE;
     i2c__INTR_ENABLE_t INTR_ENABLE;
@@ -1047,24 +1799,31 @@ typedef struct __attribute__ ((__packed__)) {
 } i2c__stride200_t;
 
 // reg - i2c_ctrl::I2C_CTRL
+// Control Register
+// I2C Pad Function Select. When set, the integration routes this instance's SCL, SDA, SMBus alert and SMBus suspend signals to their pads. Does not enable the I2C core; CTRL.ENABLEHOST and CTRL.ENABLETARGET select the core's operating mode.
 #define I2C_CTRL__I2C_CTRL__I2C_EN_bm 0x1
 #define I2C_CTRL__I2C_CTRL__I2C_EN_bp 0
 #define I2C_CTRL__I2C_CTRL__I2C_EN_bw 1
 #define I2C_CTRL__I2C_CTRL__I2C_EN_reset 0x0
+// SMBus Pad Direction. When set, the SMBus alert pad is an input and the SMBus suspend pad is an output, as for an SMBus host. When clear, the alert pad is an output and the suspend pad is an input, as for an SMBus target. SCL and SDA are unaffected. Program it to agree with the core's CTRL.ENABLEHOST and CTRL.ENABLETARGET setting.
 #define I2C_CTRL__I2C_CTRL__I2C_CONTROLLER_MODE_EN_bm 0x10
 #define I2C_CTRL__I2C_CTRL__I2C_CONTROLLER_MODE_EN_bp 4
 #define I2C_CTRL__I2C_CTRL__I2C_CONTROLLER_MODE_EN_bw 1
 #define I2C_CTRL__I2C_CTRL__I2C_CONTROLLER_MODE_EN_reset 0x0
+// SMBus Enable. Gates the SMBus Alert signal.
 #define I2C_CTRL__I2C_CTRL__SMBUS_EN_bm 0x100
 #define I2C_CTRL__I2C_CTRL__SMBUS_EN_bp 8
 #define I2C_CTRL__I2C_CTRL__SMBUS_EN_bw 1
 #define I2C_CTRL__I2C_CTRL__SMBUS_EN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // I2C Pad Function Select. When set, the integration routes this instance's SCL, SDA, SMBus alert and SMBus suspend signals to their pads. Does not enable the I2C core; CTRL.ENABLEHOST and CTRL.ENABLETARGET select the core's operating mode.
         uint32_t I2C_EN :1;
         uint32_t :3;
+        // SMBus Pad Direction. When set, the SMBus alert pad is an input and the SMBus suspend pad is an output, as for an SMBus host. When clear, the alert pad is an output and the suspend pad is an input, as for an SMBus target. SCL and SDA are unaffected. Program it to agree with the core's CTRL.ENABLEHOST and CTRL.ENABLETARGET setting.
         uint32_t I2C_CONTROLLER_MODE_EN :1;
         uint32_t :3;
+        // SMBus Enable. Gates the SMBus Alert signal.
         uint32_t SMBUS_EN :1;
         uint32_t :23;
     } f;
@@ -1072,11 +1831,13 @@ typedef union {
 } i2c_ctrl__I2C_CTRL_t;
 
 // addrmap - i2c_ctrl
+// Per-instance pad-function select, SMBus pad direction, and SMBus alert enable.
 typedef struct __attribute__ ((__packed__)) {
     i2c_ctrl__I2C_CTRL_t I2C_CTRL[3];
 } i2c_ctrl_t;
 
 // addrmap - i2c_wrap
+// Wrapper address map instantiating the per-controller I2C register blocks and shared control.
 typedef struct __attribute__ ((__packed__)) {
     i2c__stride200_t i2c[3];
     uint8_t RESERVED_600_dff[0x800];

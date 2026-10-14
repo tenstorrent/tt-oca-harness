@@ -194,8 +194,8 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
         # GPIO: a *pair* of SAMPLEs per sweep, and the compare is on the raw
         # pad-bus vectors -- not on the three tb_gpio_*_any aggregates.
         #
-        # The aggregates are OR-reductions over the WHOLE pad bus (tb_top.sv
-        # :1375-1377), which also carries idle-high LSIO pads (UART TX): they read
+        # The aggregates are OR-reductions over the WHOLE pad bus (tb_top.sv),
+        # which also carries idle-high LSIO pads (UART TX): they read
         # 1 from reset onward and no frontdoor stimulus can drive them to 0, so
         # they are declared in `env.smc_probe_liveness.UNBACKABLE_PROBES` and
         # `SmcScoreboard._check_gpio` REFUSES a stated `expect_` on them. With no
@@ -352,13 +352,11 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
         unbackable = ", ".join(
             f"tb_axil_{f} ({UNBACKABLE_PROBES['axil_' + f]})" for f in AXIL_UNBACKABLE_FIELDS
         )
-        # Which agents contributed a *compared expectation*, not merely a booked
-        # item: reset (five post-release observables exact-compared by the
-        # scoreboard), i2c / irq / axil (idle legs exact-compared because this
-        # run holds the liveness credits asserted above), gpio (the per-sweep
-        # cross-sample `expect_*` pair added here) and clk (COUNT_EDGES window
-        # legs). Reported explicitly so the summary line states the strength of
-        # the sweep instead of only its item count ([EXACT-EXPECTATION]).
+        # Agents that contributed a compared expectation: reset (five
+        # post-release observables exact-compared by the scoreboard), i2c / irq /
+        # axil (idle legs exact-compared because this run holds the liveness
+        # credits asserted above), gpio (the per-sweep cross-sample `expect_*`
+        # pair) and clk (COUNT_EDGES window legs).
         compared_agents = ("reset", "i2c", "irq", "gpio", "axil", "clk")
         cocotb.log.info(
             "CHK-CANONICAL-SMOKE: %d sweeps in which all %d agents (%s) "

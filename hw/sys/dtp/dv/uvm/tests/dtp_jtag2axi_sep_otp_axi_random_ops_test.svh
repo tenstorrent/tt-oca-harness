@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_jtag2axi_sep_otp_axi_random_ops_test — the `random_ops` SEP OTP AXI-Lite
-// JTAG2AXI scenario: seeded random single writes across sizes, addresses,
-// payloads, and strobes, every write intent-armed for the shared AXI
-// scoreboard.
+// JTAG2AXI scenario: seeded random single writes at the bus width across
+// addresses, payloads, and strobes, every write intent-armed for the shared
+// AXI scoreboard.
 
 class dtp_jtag2axi_sep_otp_axi_random_ops_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_sep_otp_axi_random_ops_test)
@@ -44,16 +44,6 @@ class dtp_jtag2axi_sep_otp_axi_random_ops_test extends dtp_base_test;
 
   virtual function string group_loops_knob();
     return "DTP_JTAG2AXI_TEST_LOOPS";
-  endfunction
-
-  virtual function void plumb_scenario_seq(ocah_sequence seq);
-    dtp_jtag2axi_otp_axi_test_seq t_seq;
-    super.plumb_scenario_seq(seq);
-    if (!$cast(t_seq, seq))
-      `uvm_fatal(get_type_name(), "scenario sequence is not a dtp_jtag2axi_otp_axi_test_seq")
-    t_seq.axi_cfg       = m_env.m_sep_otp_axi_cfg;
-    t_seq.axi_evidence  = m_env.m_sep_otp_axi_env.m_checker;
-    t_seq.axi_ref_model = m_env.m_sep_otp_axi_env.m_ref_model;
   endfunction
 
 endclass : dtp_jtag2axi_sep_otp_axi_random_ops_test

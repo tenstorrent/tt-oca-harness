@@ -2,16 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Writes to ISOLATE_REQ_SMC_REG that must leave the FLR-latched request set.
 
-`reset_unit.rdl` (lines 130-135) makes `isolate_req_smc_reg` a single `sw = rw`
+`reset_unit.rdl` makes `isolate_req_smc_reg` a single `sw = rw`
 field at bit 0: hardware sets it when `cfg_flr_pf_active` rises and software
 de-asserts it. A write that does not select the field's byte lane cannot
 change it, and a write of 1 to it keeps it at 1.
 
-`smc_cool_reset_wrap.sv` (lines 272-276) clears the request on any write whose
+`smc_cool_reset_wrap.sv` clears the request on any write whose
 byte enables are non-zero anywhere in the register, whatever the data. So a
 one-byte write of 0 at byte 1 clears it, and so does a write of 1 at byte 0.
-This leaf holds the RTL to the RDL contract and is expected to fail until the
-clear is qualified by bit 0's enable and a written 0.
+This leaf holds the RTL to the RDL contract: the request clears only on a write
+that selects bit 0's byte lane and carries a 0.
 
 The request is raised through FLR with the FLR counters at their reset value
 of 0, which latches it without starting the cool-reset sequence.

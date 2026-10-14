@@ -10,8 +10,9 @@
 // off, and a memory is built only when DCCM_ENABLE or ICCM_ENABLE is set.
 
 module sep_tcm_wrapper
-    import el2_pkg::*;
-    import sep_pkg::*;
+    import el2_pkg::el2_param_t;
+    import sep_pkg::sep_cpu_tcm_req_t;
+    import sep_pkg::sep_cpu_tcm_rsp_t;
 #(
 `include "el2_param.vh"
 )

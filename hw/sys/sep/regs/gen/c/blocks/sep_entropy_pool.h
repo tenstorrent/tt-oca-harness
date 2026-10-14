@@ -14,23 +14,31 @@ extern "C" {
 #include <assert.h>
 
 // reg - sep_entropy_pool::STATUS
+// Current number of available 64-bit entropy words
 #define SEP_ENTROPY_POOL__STATUS__FIFO_LEVEL_bm 0x3f
 #define SEP_ENTROPY_POOL__STATUS__FIFO_LEVEL_bp 0
 #define SEP_ENTROPY_POOL__STATUS__FIFO_LEVEL_bw 6
+// The pool occupancy is below the configured low watermark
 #define SEP_ENTROPY_POOL__STATUS__POOL_LOW_bm 0x40
 #define SEP_ENTROPY_POOL__STATUS__POOL_LOW_bp 6
 #define SEP_ENTROPY_POOL__STATUS__POOL_LOW_bw 1
+// The EDN fill request exceeded the configured stall threshold
 #define SEP_ENTROPY_POOL__STATUS__FILL_STALL_bm 0x80
 #define SEP_ENTROPY_POOL__STATUS__FILL_STALL_bp 7
 #define SEP_ENTROPY_POOL__STATUS__FILL_STALL_bw 1
+// The pool detected a FIFO integrity error
 #define SEP_ENTROPY_POOL__STATUS__POOL_ERROR_bm 0x100
 #define SEP_ENTROPY_POOL__STATUS__POOL_ERROR_bp 8
 #define SEP_ENTROPY_POOL__STATUS__POOL_ERROR_bw 1
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Current number of available 64-bit entropy words
         uint64_t fifo_level :6;
+        // The pool occupancy is below the configured low watermark
         uint64_t pool_low :1;
+        // The EDN fill request exceeded the configured stall threshold
         uint64_t fill_stall :1;
+        // The pool detected a FIFO integrity error
         uint64_t pool_error :1;
         uint64_t :55;
     } f;
@@ -58,17 +66,20 @@ typedef union {
 } sep_entropy_pool__IRQ_CAUSE_t;
 
 // reg - sep_entropy_pool::DATA
+// Pops one conditioned entropy word; an empty pool returns SLVERR
 #define SEP_ENTROPY_POOL__DATA__ENTROPY_bm 0xffffffffffffffff
 #define SEP_ENTROPY_POOL__DATA__ENTROPY_bp 0
 #define SEP_ENTROPY_POOL__DATA__ENTROPY_bw 64
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Pops one conditioned entropy word; an empty pool returns SLVERR
         uint64_t entropy :64;
     } f;
     uint64_t w;
 } sep_entropy_pool__DATA_t;
 
 // addrmap - sep_entropy_pool
+// Read-only entropy pool FIFO; DATA reads drain conditioned entropy supplied by the native EDN, and writes return SLVERR.
 typedef struct __attribute__ ((__packed__)) {
     sep_entropy_pool__STATUS_t STATUS;
     sep_entropy_pool__IRQ_CAUSE_t IRQ_CAUSE;
