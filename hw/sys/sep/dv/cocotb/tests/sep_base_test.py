@@ -596,7 +596,17 @@ class sep_base_test(uvm_test):
         await self.assert_cold_reset(dut)
         self._jtag_sw_rst_hold(park, True)
         self.start_clocks(dut)
-        await ClockCycles(dut.clk_i, 20)
+        # Power-on debug reset: dbg_rstb_i falls and rises while rst_ni is low.
+        # On the full-CPU build it resets the core debug module, whose dmcontrol
+        # bits gate the core reset (el2_veer.sv core_rst_l); without the edge
+        # they stay X on a four-state simulator. The stub build has no load.
+        self._set_if_exists(dut, "dbg_rstb_i", 0)
+        await ClockCycles(dut.clk_i, 10)
+        self._set_if_exists(dut, "dbg_rstb_i", 1)
+        self.logger.info(
+            "Power-on debug reset: dbg_rstb_i pulsed low for 10 clocks with rst_ni low"
+        )
+        await ClockCycles(dut.clk_i, 10)
         self.logger.info("Releasing rst_ni")
         dut.rst_ni.value = 1
         await ClockCycles(dut.clk_i, 2)

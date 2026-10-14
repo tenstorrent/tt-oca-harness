@@ -30,15 +30,15 @@ tests = ["sep_axi_smoke_test"]
 
 [[groups]]
 # Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
-# (full-CPU target) are disjoint and together hold every member except the four
+# (full-CPU target) are disjoint and together hold every member except the five
 # no_cpu entries on the full-CPU target (sep_cpu_reset_retention_test_dbg,
 # sep_timer_clock_contract_test_dbg, sep_secure_tm_strap_sampling_test_dbg,
-# sep_debug_master_target_matrix_test_sba), which are in `all` and
+# sep_debug_master_target_matrix_test_sba and sep_tcm_dma_aperture_ecc_test), which are in `all` and
 # `phase3_memory_boot_reset` only; `expected_count` pins
 # the size. `rom_fw` is not a member: it runs a third RTL target and states
 # firmware rather than hardware contracts. `all` is the coverage set.
 #
-# Ten members are pinned to one simulator, so a single-simulator run of `all`
+# Eleven members are pinned to one simulator, so a single-simulator run of `all`
 # logs the members pinned to the other simulator as skipped_wrong_tool:
 # - sep_km_ic_reset_release_test, VCS only (km.toml). Its contract is the
 #   prim_rom noXOnCsI assertion. Verilator is two-state and prim_assert.sv
@@ -58,8 +58,11 @@ tests = ["sep_axi_smoke_test"]
 # - sep_debug_master_target_matrix_test (cpu.toml) and
 #   sep_debug_master_target_matrix_test_sba (memory.toml, no_cpu on the full-CPU
 #   `default` target), VCS only. They need the VeeR debug module.
+# - sep_tcm_dma_aperture_ecc_test, VCS only on the full-CPU `default` target
+#   (memory.toml), as its run mode states. It needs the TCM controller of the
+#   full CPU, which the CPU stub does not have.
 name = "all"
-expected_count = 178
+expected_count = 180
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -239,6 +242,8 @@ tests = [
     "sep_secure_tm_strap_sampling_test_dbg",
     "sep_debug_master_target_matrix_test",
     "sep_debug_master_target_matrix_test_sba",
+    "sep_sram_axi_shape_matrix_test",
+    "sep_tcm_dma_aperture_ecc_test",
 ]
 
 [[groups]]
@@ -426,6 +431,7 @@ tests = [
     "sep_secure_tm_strap_sampling_test",
     "sep_cpu_ctrl_reg_shape_test",
     "sep_timer_clock_contract_test",
+    "sep_sram_axi_shape_matrix_test",
 ]
 
 [[groups]]
@@ -707,8 +713,10 @@ tests = [
 # It is not a VPLAN group: `all` holds the same tests, and `cpu_stub` and `cpu`
 # hold all of them except the `_dbg` entries and
 # sep_debug_master_target_matrix_test_sba.
+# hold all of them except the no_cpu entries on the full-CPU target (the `_dbg`
+# entries and sep_tcm_dma_aperture_ecc_test).
 name = "phase3_memory_boot_reset"
-expected_count = 16
+expected_count = 18
 tests = [
     "sep_boot_release_terms_test",
     "sep_boot_release_terms_test_smc_hold",
@@ -726,4 +734,6 @@ tests = [
     "sep_secure_tm_strap_sampling_test_dbg",
     "sep_debug_master_target_matrix_test",
     "sep_debug_master_target_matrix_test_sba",
+    "sep_sram_axi_shape_matrix_test",
+    "sep_tcm_dma_aperture_ecc_test",
 ]

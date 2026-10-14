@@ -447,12 +447,18 @@ module sep_uvm_top
     assign dbg_disable_all_o                = dbg_disable_w;
 
     // TB-owned JTAG pins. In +cpu_boot mode the TB shifts a reset-vector TDR
-    // sequence that the vendored VeeR TAP ignores (see init_reset_vector_tdr).
-    // They remain at the idle TAP-reset values for no-CPU tests.
+    // sequence (see init_reset_vector_tdr). They remain at the idle TAP-reset
+    // values for no-CPU tests. TRST starts high and falls at 1 ps, so the TAP
+    // and its reset-vector TDR see a reset edge on a four-state simulator;
+    // otherwise the TDR, and the core reset PC it drives, stay X.
     logic jtag_tck   = 1'b0;
     logic jtag_tms   = 1'b0;
     logic jtag_tdi   = 1'b0;
-    logic jtag_trst_n = 1'b0;
+    logic jtag_trst_n = 1'b1;
+    initial begin : init_tap_trst
+        #1ps;
+        jtag_trst_n = 1'b0;
+    end
 
     localparam logic [4:0] ResetVectorTdrIr = 5'h18;
 
@@ -2998,6 +3004,18 @@ module sep_uvm_top
     // a further suppression window drives a TB signal here, never drops the
     // instance.
     // ------------------------------------------------------------------
+    // Single-beat WRAP inject (+sep_axi_wrap_len1_inject; error inject,
+    // docs/SEP_TB_ARCH.adoc). A WRAP burst with AxLEN = 0 is not a legal AXI4
+    // length, so the WRAP-length rule of the checker fires on it. With the
+    // plusarg, the checker of a master sees AxBURST = INCR on an AW or AR with
+    // AxBURST = WRAP and AxLEN = 0, so it tracks that request as a single-beat
+    // burst and checks every other rule on it; the DUT gets the WRAP burst. The
+    // owner leaf drives that burst as error injection.
+    bit axi_wrap_len1_inject = $test$plusargs("sep_axi_wrap_len1_inject");
+    function automatic logic [1:0] sva_burst(input logic [1:0] burst, input logic [7:0] len);
+        return (axi_wrap_len1_inject && burst == 2'b10 && len == 8'd0) ? 2'b01 : burst;
+    endfunction
+
     ocah_axi_sva #(
         .IS_LITE    (1'b0),
         .ADDR_WIDTH (56),
@@ -3011,7 +3029,7 @@ module sep_uvm_top
         .awaddr  (m_axi_awaddr),
         .awlen   (m_axi_awlen),
         .awsize  (m_axi_awsize),
-        .awburst (m_axi_awburst),
+        .awburst (sva_burst(m_axi_awburst, m_axi_awlen)),
         .awlock  (m_axi_awlock),
         .awprot  (m_axi_awprot),
         .awvalid (m_axi_awvalid),
@@ -3029,7 +3047,7 @@ module sep_uvm_top
         .araddr  (m_axi_araddr),
         .arlen   (m_axi_arlen),
         .arsize  (m_axi_arsize),
-        .arburst (m_axi_arburst),
+        .arburst (sva_burst(m_axi_arburst, m_axi_arlen)),
         .arlock  (m_axi_arlock),
         .arprot  (m_axi_arprot),
         .arvalid (m_axi_arvalid),
@@ -3068,7 +3086,7 @@ module sep_uvm_top
         .awaddr  (s_axi_awaddr),
         .awlen   (s_axi_awlen),
         .awsize  (s_axi_awsize),
-        .awburst (s_axi_awburst),
+        .awburst (sva_burst(s_axi_awburst, s_axi_awlen)),
         .awlock  (s_axi_awlock),
         .awprot  (s_axi_awprot),
         .awvalid (s_axi_awvalid),
@@ -3086,7 +3104,7 @@ module sep_uvm_top
         .araddr  (s_axi_araddr),
         .arlen   (s_axi_arlen),
         .arsize  (s_axi_arsize),
-        .arburst (s_axi_arburst),
+        .arburst (sva_burst(s_axi_arburst, s_axi_arlen)),
         .arlock  (s_axi_arlock),
         .arprot  (s_axi_arprot),
         .arvalid (s_axi_arvalid),
