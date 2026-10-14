@@ -519,11 +519,12 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 await self._latch_faults(f"{cls} sequence")
                 await self._sequence(cls)
                 await self._retention_reads(cls)
-            await self._overlap_leg()
-            # Every DMA run, the DBG runs too, comes before the in-flight leg.
+            # Every DMA run, the DBG runs too, comes before the overlap leg: a
+            # "between" overlap run can stop the leaf on the in-flight write defect.
             for cls in self.classes:
                 for mode in self.plan.dma_modes:
                     await self._dma_leg(cls, mode)
+            await self._overlap_leg()
             r1 = await self._cold_leg()
             await self._after_cold(r1)
             await self._close()
