@@ -45,9 +45,12 @@ Checks:
                        the DCCM patterns read back exact; a difference fails the
                        leaf as a failed precondition.
 
-A CPU store to some secure DMA registers ends in a store bus-error NMI while
-the register takes the value; the NMI handler logs each one
-(``OBS-EXT-READ``), and the readbacks, not the bus response, decide the set-up.
+The routine first sets ``mrac`` as the SEP firmware start-up does
+(``fw/startup/crt0.s``): every 256 MiB region side-effect except region 12
+(ICCM, DCCM, PIC). The core then issues each store at its own size, so a 32-bit
+register write reaches a register block with its own strobe and no zero-strobe
+neighbour beat. ``OBS-DMA-CSR-WRITE`` logs the shape and BRESP of every LSU
+write to the secure DMA registers; ``OBS-EXT-READ`` logs every NMI.
 
 The core reaction to an unmapped fetch and the response to an ICCM data access
 are not scored; their records are logged (``OBS-``). Every expected value comes
@@ -189,6 +192,12 @@ SRAM_R = SRAM_BASE + 0x208  # DMA destination of the ICCM readback (step 10)
 SRAM_S = SRAM_BASE + 0x210  # DMA source of the ICCM write control (step 10)
 SRAM_LD_LO = SRAM_BASE + 0x1000
 
+# VeeR EL2 mrac (region access control): two bits per 256 MiB region, bit 2r
+# cacheable, bit 2r+1 side-effect. The SEP firmware value of fw/startup/crt0.s:
+# every region side-effect except region 12.
+CSR_MRAC = 0x7C0
+MRAC_SEP = 0xA8AA_AAAA
+
 # Environment choices (logged).
 DMA_POLL = 4_000  # STATUS reads per DMA copy
 NMI_WAIT = 200  # spin iterations after the extension-port read
@@ -311,6 +320,7 @@ def build_marker(p: _Plan) -> Asm:
 
 def build_main(p: _Plan) -> Asm:
     a = Asm(ICCM_BASE)
+    a.li(T0, MRAC_SEP).op(csrw(CSR_MRAC, T0))
     a.li(GP, MBX).op(addi(S11, ZERO, 0))
     _store_const(a, NMI_VEC_ADDR, ROM_NMI)
     # Step 3: the outbound filter entry and the DMA range, each read back.
@@ -650,6 +660,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
 
     # ---------------------------------------------------------------- grading
     def _grade_all(self) -> None:
+        self._log_dma_csr_writes()
         for step in (
             self._grade_ifu,
             self._grade_route,
@@ -761,6 +772,30 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             len(rows),
             " ".join(rows) or "-",
         )
+
+    def _log_dma_csr_writes(self) -> None:
+        """OBS: each LSU write to the secure DMA registers, with its shape and BRESP."""
+        lo = SECURE_DMA.addr("STATUS") & ~0xFFF
+        beats = self.taps["PR-LSU-XBAR"].beats
+        aws = [b for b in beats if b.ch == "aw"]
+        ws = [b for b in beats if b.ch == "w"]
+        bs = [b for b in beats if b.ch == "b"]
+        used: set[int] = set()
+        rows = []
+        for k, aw in enumerate(aws):
+            if aw.addr is None or not lo <= aw.addr < lo + 0x1000:
+                continue
+            w = ws[k] if k < len(ws) else None
+            b = next(
+                (x for x in bs if x.seq not in used and x.id == aw.id and x.seq > aw.seq), None
+            )
+            if b is not None:
+                used.add(b.seq)
+            rows.append(
+                f"0x{aw.addr:08x}/sz{aw.size}/strb=0x{(w.strb if w else 0):02x}"
+                f"/resp={'X' if b is None else b.resp}"
+            )
+        self.logger.info("OBS-DMA-CSR-WRITE LOG writes=%d %s", len(rows), " ".join(rows))
 
     def _grade_route(self) -> None:
         p = self.plan
