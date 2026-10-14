@@ -21,10 +21,11 @@
 // not in the image: the host places it in the ICCM image outside the image
 // bytes.
 //
-// Records: CHK-NMI-NOPIC (the bark moves no meip bit, masked by the excluded
-// idle bits; the pending source delivers once after its gate opens); the NMI
-// entry, run count and vector reads print as CTL lines for the host, which
-// grades CHK-NMI-TAKEN and CHK-BARK-VEC with the CPU trace.
+// Records: CHK-NMI-NOPIC (the bark moves no bit of any of the eight meip
+// words, masked by the excluded idle bits; the pending source delivers once
+// after its gate opens); the NMI entry, run count and vector reads print as
+// CTL lines for the host, which grades CHK-NMI-TAKEN and CHK-BARK-VEC with the
+// CPU trace.
 
 #include <stdint.h>
 
@@ -118,7 +119,8 @@ static volatile uint32_t g_nmi_runs;
 static volatile uint32_t g_nmi_entry;
 static volatile uint32_t g_nmi_copy;
 static volatile uint32_t g_nmi_mpie;
-static volatile uint32_t g_nmi_meip0;
+#define N_MEIP 8u
+static volatile uint32_t g_nmi_meip[N_MEIP];
 static volatile uint32_t g_ext_runs;
 static volatile uint32_t g_ext_id;
 static int g_err;
@@ -205,7 +207,9 @@ void nmivb_stub_c(void) {
 void nmivb_common_c(uint32_t entry, uint32_t copy) {
     uint32_t mst;
     __asm__ volatile("csrr %0, mstatus" : "=r"(mst));
-    g_nmi_meip0 = pic_read_meip(0);
+    for (uint32_t w = 0; w < N_MEIP; w++) {
+        g_nmi_meip[w] = pic_read_meip(w);
+    }
     g_nmi_entry = entry;
     g_nmi_copy = copy;
     g_nmi_mpie = (mst >> 7) & 1u;
@@ -290,18 +294,37 @@ static int bark_nmi(uint32_t n, uint32_t thold, uint32_t mie_at_bark) {
     return left != 0u && g_nmi_runs - r0 == 1u;
 }
 
-static void nopic_line(const char *cs, uint32_t before, uint32_t after, int bark_ok,
-                       uint32_t delivery, int deliver_ok, int extra_ok) {
-    uint32_t idle0 = g_prm[P_IDLE + 0];
-    int same = (before & ~idle0) == (after & ~idle0);
-    int pass = bark_ok && same && deliver_ok && extra_ok;
+static void meip_snap(uint32_t *out) {
+    for (uint32_t w = 0; w < N_MEIP; w++) {
+        out[w] = pic_read_meip(w);
+    }
+}
+
+// Compares all eight meip words read before the bark with the words the NMI
+// handler read, each masked by its excluded idle bits. diff_words has bit w
+// set when word w differs.
+static void nopic_line(const char *cs, const uint32_t *before, int bark_ok, uint32_t delivery,
+                       int deliver_ok, int extra_ok) {
+    uint32_t diff = 0u;
+    for (uint32_t w = 0; w < N_MEIP; w++) {
+        uint32_t idle = g_prm[P_IDLE + w];
+        if ((before[w] & ~idle) != (g_nmi_meip[w] & ~idle)) {
+            diff |= 1u << w;
+        }
+    }
+    int pass = bark_ok && diff == 0u && deliver_ok && extra_ok;
     rec_chk("NMI-NOPIC", pass);
     rec_str("case", cs);
-    rec_hex("meip0_before", before);
-    rec_hex("meip0_after", after);
-    rec_hex("idle_mask", idle0);
-    rec_num("bit13", (after >> 13) & 1u);
-    rec_num("bit15", (after >> 15) & 1u);
+    rec_num("words", N_MEIP);
+    rec_hex("diff_words", diff);
+    rec_hex("meip0_before", before[0]);
+    rec_hex("meip0_after", g_nmi_meip[0]);
+    rec_hex("meip1_before", before[1]);
+    rec_hex("meip1_after", g_nmi_meip[1]);
+    rec_hex("idle_mask0", g_prm[P_IDLE + 0]);
+    rec_hex("idle_mask1", g_prm[P_IDLE + 1]);
+    rec_num("bit13", (g_nmi_meip[0] >> 13) & 1u);
+    rec_num("bit15", (g_nmi_meip[0] >> 15) & 1u);
     if (delivery == 0xFFu) {
         rec_str("delivery", "none");
     } else {
@@ -371,11 +394,11 @@ static int boot1(void) {
     wr32(o->test, o->bit);
     for (uint32_t i = 0; i < g_prm[P_WAIT] && meip_bit(s) == 0u; i++) {
     }
-    uint32_t before = pic_read_meip(0);
+    uint32_t before[N_MEIP];
+    meip_snap(before);
     uint32_t e0 = g_ext_runs;
     int ok1 = bark_nmi(1u, g_prm[P_BARK + 1], 0u);
-    uint32_t after = g_nmi_meip0;
-    int pre = ((before >> s) & 1u) == 1u && g_ext_runs == e0 && g_nmi_mpie == 0u;
+    int pre = ((before[s >> 5] >> (s & 31u)) & 1u) == 1u && g_ext_runs == e0 && g_nmi_mpie == 0u;
     mstatus_mie(1);
     uint32_t dlv = wait_ext(e0);
     int clr = 0;
@@ -385,7 +408,7 @@ static int boot1(void) {
             break;
         }
     }
-    nopic_line("a", before, after, ok1, dlv, dlv == 1u && g_ext_id == s, pre && clr);
+    nopic_line("a", before, ok1, dlv, dlv == 1u && g_ext_id == s, pre && clr);
 
     // Second bark, drawn case, MIE 1.
     uint32_t cs = g_prm[P_CASE];
@@ -408,9 +431,8 @@ static int boot1(void) {
     }
     hold();
     e0 = g_ext_runs;
-    before = pic_read_meip(0);
+    meip_snap(before);
     int ok2 = bark_nmi(2u, g_prm[P_BARK + 2], 1u);
-    after = g_nmi_meip0;
     pre = prep && g_ext_runs == e0 && g_nmi_mpie == 1u;
     if (cs == CASE_B) {
         pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 1u);
@@ -419,10 +441,9 @@ static int boot1(void) {
     }
     dlv = wait_ext(e0);
     if (cs == CASE_D) {
-        nopic_line("d", before, after, ok2, 0xFFu, dlv == 0u, pre);
+        nopic_line("d", before, ok2, 0xFFu, dlv == 0u, pre);
     } else {
-        nopic_line(cs == CASE_B ? "b" : "c", before, after, ok2, dlv, dlv == 1u && g_ext_id == s,
-                   pre);
+        nopic_line(cs == CASE_B ? "b" : "c", before, ok2, dlv, dlv == 1u && g_ext_id == s, pre);
     }
 
     rec_mark(0, "boot1_end");

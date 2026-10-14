@@ -22,10 +22,12 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    and the tap equals the firmware word at the map-pass reads.
 * CHK-VECTOR       the ``meip`` words of each map pass equal the OR vector of
                    the driven sources with IP enable 1; sources 12 and 33 show
-                   a high vector clock; the single-source reads of 24 and 33.
+                   a high vector clock; each map source except 19 and 22,
+                   driven alone, sets only its own bit of ``meip[0..1]``.
 * CHK-FIFO-EMPTY   sources 19 and 22 pending (``meip`` and vector) after the
                    fill under the drain stall and the drain with the enable at
-                   1, and 0 after the enable clear. A fill that does not read
+                   1, and 0 after the enable clear, which changes no other bit
+                   of ``meip[0..1]``. A fill that does not read
                    ``STATUS.fifo_full`` = 1 fails the check.
 * CHK-SPI          vector bit 13 equals the SPI ``irq`` field, raised and after
                    the write-one-to-clear.
@@ -36,20 +38,23 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    write, or for a native error.
 * CHK-SRC17, CHK-IDLE-BAND  source 17 and the band above 43 stay 0 with
                    ``meie`` and ``meipl`` armed; live source 24 reads 1.
-* CHK-SLOTLESS     an OTP read and a life-cycle controller read move no vector
-                   bit; the AES status reads done after the encryption (the
-                   AES vector bits are the control).
+* CHK-SLOTLESS     an AES encryption, an OTP read and a life-cycle controller
+                   read move no vector bit; the AES status reads done after
+                   the encryption.
 * CHK-GW-CELL, CHK-EDGE-HOLD, CHK-HOLD, CHK-CLR-IDLE, CHK-GWCLR-VALUE,
-  CHK-GW-NONVAC    the gateway cells LH, LL and EH, the edge hold with its level
-                   twin, the level hold, the idle clear and the clear values.
+  CHK-GW-NONVAC    the gateway cells LH, LL, EH and EL (EL: the hold after the
+                   deassertion and the reassertion, and the clear), the edge
+                   hold with its level twin, the level hold, the idle clear
+                   and the clear values.
 * CHK-EXT-IN       one (two) asserted boundary bits show as one (two) pending
                    sources above 43, the assigned sources stay at their
                    baseline, and the band drops at the release.
 
 Logged, not graded: ``OBS-IDLE-UNSTATED`` (sources 13, 15, 16, 37, 38, 39,
-masked in every compare), ``OBS-GW-EL``, ``OBS-MASKED-VISIBLE``, ``OBS-SRC34``,
-the source 12 latency and shape, the boundary source index, and the controls
-``CTL-VECTOR``, ``CTL-FIFO-EMPTY`` and ``CTL-SLOTLESS``.
+masked in every compare), ``OBS-GW-EL`` (the EL idle and asserted reads,
+whose values depend on the unstated edge direction), ``OBS-MASKED-VISIBLE``,
+``OBS-SRC34``, the source 12 latency and shape, the boundary source index, and
+the controls ``CTL-VECTOR`` and ``CTL-FIFO-EMPTY``.
 
 The firmware brings the entropy stack up before the engine runs (AES masking
 and the OTBN URND draw from EDN); this test drives the raw noise of the ring
@@ -128,6 +133,10 @@ MASK_IPS = {
     "spi": (SRC_SPI,),
 }
 DRAWN = tuple(s for v in MASK_IPS.values() for s in v)
+FIFO_EMPTY = (SRC_HMAC_FIFO_EMPTY, SRC_KMAC_FIFO_EMPTY)
+# The single-source walk drives each map source alone, except the FIFO-empty
+# sources, whose enable-clear cell isolates their bit instead.
+SINGLE_SRCS = tuple(s for s in MAP if s not in FIFO_EMPTY)
 PULSE = (SRC_DMA_ALERT, SRC_CRYPTO_ALERT)
 ALWAYS = (*SRC_MAILBOX, *PULSE)
 # Alert kinds: (block, kind, receiver index range) (crypto.adoc alert table).
@@ -509,18 +518,24 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 lvl_mask,
                 xm,
             )
-        # Single-source reads.
-        for src, word in ((SRC_CTRL, 0), (SRC_CRYPTO_ALERT, 1)):
-            hits = [kv for _, kv in self._lines("SINGLE") if int(kv["src"]) == src]
-            assert len(hits) == 1, f"expected one SINGLE src={src} line"
-            got = hits[0][f"meip{word}"]
-            exp = meip_words([src])[word]
-            gm = got & ~meip_idle_mask_words()[word] & 0xFFFF_FFFF
+        # Single-source reads: each source alone sets its own bit and no other
+        # bit of meip[0] and meip[1], so a swap or an extra mapping fails.
+        singles = [kv for _, kv in self._lines("SINGLE")]
+        order = [int(kv["src"]) for kv in singles]
+        want_order = [MAP[i] for i in self.wc.ord1 if MAP[i] in SINGLE_SRCS]
+        assert order == want_order, f"single-source walk ran {order}, drawn {want_order}"
+        idle = meip_idle_mask_words()
+        for kv in singles:
+            src = int(kv["src"])
+            got = (kv["meip0"], kv["meip1"])
+            exp = meip_words([src])[:2]
+            gm = tuple(g & ~m & 0xFFFF_FFFF for g, m in zip(got, idle[:2], strict=True))
             self._check(
-                gm == exp,
+                gm == tuple(exp),
                 "CHK-VECTOR",
-                f"cell=single src={src} meip{word}=0x{got:08x} exp{word}=0x{exp:08x} "
-                f"rsvd_idle=0x{got & meip_idle_mask_words()[word]:08x}",
+                f"cell=single src={src} meip0=0x{got[0]:08x} meip1=0x{got[1]:08x} "
+                f"exp0=0x{exp[0]:08x} exp1=0x{exp[1]:08x} "
+                f"rsvd_idle=0x{got[0] & idle[0]:08x},0x{got[1] & idle[1]:08x}",
             )
 
     def _high_between(self, tag: str, bit: str) -> int:
@@ -601,6 +616,19 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             if ip == "kmac":
                 ok = ok and bool(f["intr_state"] & KMAC_FE_STATE)
                 text += f" intr_state=0x{f['intr_state']:08x}"
+            # The other map sources stay asserted across the enable clear, so
+            # meip[0] and meip[1] change only in the bit of this source.
+            idle = meip_idle_mask_words()
+            diff = [
+                (fe[f"w{k}_before"] ^ fe[f"w{k}_after"]) & ~idle[k] & 0xFFFF_FFFF for k in (0, 1)
+            ]
+            own = meip_words([src])[:2]
+            ok = ok and diff == own
+            text += (
+                f" w0_before=0x{fe['w0_before']:08x} w0_after=0x{fe['w0_after']:08x} "
+                f"w1_before=0x{fe['w1_before']:08x} w1_after=0x{fe['w1_after']:08x} "
+                f"diff=0x{diff[0]:08x},0x{diff[1]:08x} exp_diff=0x{own[0]:08x},0x{own[1]:08x}"
+            )
             self._check(ok, "CHK-FIFO-EMPTY", text)
 
     def _chk_spi(self) -> None:
@@ -763,24 +791,21 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 f"op={op} ctrl_src24_high_clk={ctrl_high} window_clk={clks} "
                 f"other_bits_changed_clk={other} ip_enables_cleared={cleared}"
             )
+            ok = (
+                other == 0 and ctrl_high == clks and clks > 0 and cleared == 1
+                and changes[ctrl_bit] == 0
+            )  # fmt: skip
             if op == "aes":
+                # The encryption must also complete, so the window is not idle.
                 st = [kv for _, kv in self._lines("CTL-AES-STATUS")]
                 assert len(st) == 1, f"expected one CTL-AES-STATUS record, got {len(st)}"
                 status, cfg_ok = st[0]["status"], int(st[0]["cfg_ok"])
-                self.logger.info("CTL-SLOTLESS LOG %s aes_status=0x%08x", text, status)
-                self._check(
-                    cfg_ok == 1 and status & AES_DONE_MASK == AES_DONE_WANT,
-                    "CHK-SLOTLESS",
-                    f"op=aes aes_status=0x{status:08x} field_mask=0x{AES_DONE_MASK:02x} "
-                    f"want=0x{AES_DONE_WANT:02x} cfg_ok={cfg_ok}",
+                ok = ok and cfg_ok == 1 and status & AES_DONE_MASK == AES_DONE_WANT
+                text += (
+                    f" aes_status=0x{status:08x} field_mask=0x{AES_DONE_MASK:02x} "
+                    f"want=0x{AES_DONE_WANT:02x} cfg_ok={cfg_ok}"
                 )
-                continue
-            self._check(
-                other == 0 and ctrl_high == clks and clks > 0 and cleared == 1
-                and changes[ctrl_bit] == 0,
-                "CHK-SLOTLESS",
-                text,
-            )  # fmt: skip
+            self._check(ok, "CHK-SLOTLESS", text)
 
     def _chk_gateway(self) -> None:
         gws = {int(kv["src"]): kv for _, kv in self._lines("GW")}
@@ -793,11 +818,22 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             cls = "event" if src in GW_EVENT else "mailbox"
             vals = (int(kv["idle"]), int(kv["asserted"]), int(kv["deasserted"]))
             if cell == "EL":
+                # The edge direction of an active-low edge source is not stated,
+                # so the idle and asserted reads are logged. One assertion and
+                # one deassertion pass both edges, so an edge source of either
+                # direction holds the bit after the deassertion and after the
+                # reassertion, and drops it at meigwclr.
                 self.logger.info(
-                    "OBS-GW-EL LOG src=%d cfg=0x%x idle=%d asserted=%d deasserted=%d reasserted=%d "
-                    "after_clr=%d clr_val=0x%08x",
-                    src, kv["cfg"], *vals, int(kv["reasserted"]), int(kv["after_clr2"]), kv["clr_val"],
-                )  # fmt: skip
+                    "OBS-GW-EL LOG src=%d cfg=0x%x idle=%d asserted=%d", src, kv["cfg"], *vals[:2]
+                )
+                el = (vals[2], int(kv["reasserted"]), int(kv["after_clr2"]))
+                self._check(
+                    el == (1, 1, 0) and kv["clr_val"] == self.wc.clr_x,
+                    "CHK-GW-CELL",
+                    f"src={src} class={cls} type=edge pol=low cfg=0x{kv['cfg']:x} "
+                    f"after_deassert={el[0]} reasserted={el[1]} after_clr={el[2]} "
+                    f"clr_val=0x{kv['clr_val']:08x}",
+                )
                 continue
             exp = CELL_MODEL[cell]
             ok = vals == exp
@@ -1009,10 +1045,9 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             _hexw(mc),
         )
         n_eh = sum(1 for s in GW_SRCS if c.cell(s) == "EH")
-        n_el = sum(1 for s in GW_SRCS if c.cell(s) == "EL")
         want = {
             "CHK-BASE": 4,
-            "CHK-VECTOR": 4,
+            "CHK-VECTOR": 2 + len(SINGLE_SRCS),
             "CHK-FIFO-EMPTY": 2,
             "CHK-SPI": 1,
             "CHK-ALERT12": 1,
@@ -1024,7 +1059,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             "CHK-SRC17": 1,
             "CHK-IDLE-BAND": 1,
             "CHK-SLOTLESS": 3,
-            "CHK-GW-CELL": len(GW_SRCS) - n_el,
+            "CHK-GW-CELL": len(GW_SRCS),
             "CHK-EDGE-HOLD": n_eh,
             "CHK-HOLD": 1,
             "CHK-CLR-IDLE": 1,

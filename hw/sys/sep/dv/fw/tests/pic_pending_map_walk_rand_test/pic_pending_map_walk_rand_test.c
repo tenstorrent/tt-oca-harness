@@ -20,7 +20,8 @@
 //   MEIP t=<tag> w0=.. w7=..  the eight meip words of one read
 //   FILL ip=.. full=.. ...    the FIFO-empty set-up of one IP
 //   FE ip=.. ...              the FIFO-empty enable-clear cell of one IP
-//   SINGLE src=.. meipN=..    a single-source read
+//   SINGLE src=.. meip0=.. meip1=..  a single-source read (each map source
+//                             except 19 and 22, alone, in the pass 1 order)
 //   ALERT k=.. meip1=..       the meip[1] read after one alert kind
 //   IDLE-STATUS when=.. ...   the engine statuses of the idle window
 //   GW src=.. cell=.. ...     one gateway cell
@@ -552,19 +553,29 @@ static void map_release(int pass) {
 }
 
 // The enable-clear cell of one FIFO-empty source, then the message completes.
+// meip[0] and meip[1] are printed before and after the clear: the other map
+// sources stay asserted, so the words differ only in the bit of this source.
 static void fe_cell(const char *ip, uint32_t src, uint32_t en, uint32_t bit) {
     req_tag("vec", ip[0] == 'h' ? "feh0" : "fek0");
+    uint32_t w0b = pic_read_meip(0);
+    uint32_t w1b = pic_read_meip(1);
     uint32_t before = meip_bit(src);
     ctl_fifo_empty(ip);
     wr(en, rd(en) & ~bit);
     wait_clk(g_p[P_SETTLE]);
     req_tag("vec", ip[0] == 'h' ? "feh1" : "fek1");
     uint32_t after = meip_bit(src);
+    uint32_t w0a = pic_read_meip(0);
+    uint32_t w1a = pic_read_meip(1);
     sep_mbx_puts("FE");
     rec_str("ip", ip);
     rec_num("src", src);
     rec_num("meip_before", before);
     rec_num("meip_after", after);
+    rec_hex("w0_before", w0b);
+    rec_hex("w1_before", w1b);
+    rec_hex("w0_after", w0a);
+    rec_hex("w1_after", w1a);
     rec_end();
 }
 
@@ -785,6 +796,39 @@ static void ctrl_off(void) {
     release_src(ctrl_src());
 }
 
+// Each map source except the FIFO-empty sources 19 and 22, alone, in the pass
+// 1 order: the only IP enable bit of its IP is its own, it is asserted, read
+// after the settle window, released and settled before the next source. The
+// IP enable register is restored after the read.
+static void single_walk(void) {
+    uint32_t ks = (g_p[P_AKIND] >> 8) & 0xFu;
+    for (uint32_t i = 0; i < N_MAP; i++) {
+        const struct src *s = &k_map[field(P_ORD1, i, 5u)];
+        if (s->kind == K_FE) {
+            continue;
+        }
+        uint32_t en0 = 0u;
+        if (s->kind == K_EVT) {
+            en0 = rd(s->en);
+            wr(s->en, s->bit);
+        }
+        assert_src(s, ks);
+        wait_clk(g_p[P_SETTLE]);
+        uint32_t m0 = pic_read_meip(0);
+        uint32_t m1 = pic_read_meip(1);
+        release_src(s);
+        if (s->kind == K_EVT) {
+            wr(s->en, en0);
+        }
+        wait_clk(g_p[P_SETTLE]);
+        sep_mbx_puts("SINGLE");
+        rec_num("src", s->id);
+        rec_hex("meip0", m0);
+        rec_hex("meip1", m1);
+        rec_end();
+    }
+}
+
 static uint32_t wait_band(uint32_t want_min, uint32_t want_zero) {
     uint32_t t = WAIT_ITERS / 16u;
     uint32_t n = band_count();
@@ -948,23 +992,8 @@ int main(void) {
 
     // Single-source reads.
     rec_mark(1, "single");
+    single_walk();
     wr(CS(ENABLE), CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bm);
-    ctrl_on();
-    wait_clk(g_p[P_SETTLE]);
-    sep_mbx_puts("SINGLE");
-    rec_num("src", 24u);
-    rec_hex("meip0", pic_read_meip(0));
-    rec_end();
-    ctrl_off();
-    wait_clk(g_p[P_SETTLE]);
-    uint32_t ks = (g_p[P_AKIND] >> 8) & 0xFu;
-    wr(k_alert_reg[ks], k_alert_bit[ks]);
-    wait_clk(g_p[P_SETTLE]);
-    sep_mbx_puts("SINGLE");
-    rec_num("src", 33u);
-    rec_hex("meip1", pic_read_meip(1));
-    rec_end();
-    pic_write_meigwclr(33u, 0u);
 
     // Alert kinds, the no-write window and the pair trial.
     rec_mark(1, "alerts");

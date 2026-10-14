@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""An external access through the inbound port to any PIC address answers DECERR and changes no PIC register.
+"""An external access through the inbound port to each sampled PIC address answers DECERR and changes no PIC register.
 
 Firmware ``pic_external_access_refuse_test`` arms distinct non-zero values in
 the PIC (``mpiccfg.priord`` 1; ``meipl`` 7, 9, 11, ``meie`` 1 and
@@ -29,8 +29,8 @@ Checks:
                   bit 0 (``lcc_feat_ctrl_probe_o``, ``SEP_DBG``) is 0.
 * CHK-CPU-READ    (control, firmware) every armed register reads non-zero and
                   ``meip[0]`` bit 1 reads 1 before the external accesses.
-* CHK-DECERR      every external read and write to a PIC address answers
-                  DECERR in both regimes; in regime B the ``PIC-WINDOW``
+* CHK-DECERR      every external read and write to a sampled PIC target
+                  answers DECERR in both regimes; in regime B the ``PIC-WINDOW``
                   read-back of both window entries equals the programmed
                   START_ADDR, END_ADDR and FILTER_CONFIG field bits.
 * CHK-NO-LEAK     an external read of an armed register does not return the
@@ -261,7 +261,7 @@ class Access:
 
 @pyuvm.test()
 class sep_pic_external_access_refuse_test(sep_base_test):
-    """External reads and writes to every PIC target answer DECERR and land nowhere."""
+    """External reads and writes to each sampled PIC target answer DECERR and land nowhere."""
 
     required_evidence = (
         "CHK-DBG-OFF",

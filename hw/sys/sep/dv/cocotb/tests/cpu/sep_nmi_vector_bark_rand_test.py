@@ -17,8 +17,9 @@ boot, follows the console live (``env/sep_fw_console``: graded window on
   on ``cpu_trace_addr_o``, equal the programmed vector. Bark 1 runs with
   mstatus.MIE 0, bark 2 with mstatus.MIE 1. ``wdt_timer_rst_req_o`` at the
   handler entry is logged (``OBS-BITE-REQ``).
-* CHK-NMI-NOPIC (firmware) meip[0] read in the NMI handler equals meip[0]
-  before the bark, with the six excluded idle bits masked; the pending source
+* CHK-NMI-NOPIC (firmware) each of the eight meip words read in the NMI
+  handler equals the same word read before the bark, with the six excluded
+  idle bits masked; the pending source
   delivers once after its gate opens (case a and the drawn case).
 * CHK-BARK-VEC (host) with SEP_NMI_VEC at its RDL reset value the first retired
   PC after the loop is 0xC000_0100 and the stub prints ``M0`` (control leg);

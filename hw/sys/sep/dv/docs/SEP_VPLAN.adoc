@@ -1135,7 +1135,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu with external SMN master, real PROD fuse sense
 |ocah_axi_vip, CPU FW
-|Proves that an external read or write to any PIC address answers DECERR and changes no PIC register, in both the default-block and the open-window filter regime. The default-block control holds with the sensed LC state PROD and `SEP_DBG` off, read from the DUT.
+|Proves that an external read or write to each sampled PIC address answers DECERR and changes no PIC register, in both the default-block and the open-window filter regime. The sampled addresses are the first, a drawn interior and the last register of each PIC group, a drawn hole and a drawn past-extent address; the drawn addresses change with the seed. The default-block control holds with the sensed LC state PROD and `SEP_DBG` off, read from the DUT.
 |<<sep_pic_priority_gate_rand_test,`sep_pic_priority_gate_rand_test`>>
 |3
 |cpu, +skip_fuse_sense
