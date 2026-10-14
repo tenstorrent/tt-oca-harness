@@ -60,7 +60,7 @@ from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_win
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spi_pad_sampler import SepSpiPadSampler
-from ocah_spi_vip import OcahSpiFlash, OcahSpiFlashError
+from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
 from seq_lib.sep_spi_host_csr_seq import (
     COMMAND,
@@ -149,20 +149,6 @@ class Seg:
 
     def fmt(self) -> str:
         return f"s{self.speed}d{self.direction}L{self.len_field}c{self.csaat}"
-
-
-class _RxResponder(OcahSpiFlash):
-    """``OcahSpiFlash`` that streams its memory on every frame that starts with READ.
-
-    A frame shorter than the opcode byte (a short dummy segment, a quad segment
-    of one byte) ends quietly: it is recorded as a short frame.
-    """
-
-    async def _handle_transaction(self) -> None:
-        try:
-            await super()._handle_transaction()
-        except OcahSpiFlashError:
-            self._log_transaction(0, 0, b"", b"", ok=False, reason="short_frame")
 
 
 async def _absorb(opcode, addr, payload):
@@ -645,7 +631,9 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         close_graded_window()
 
         dut = cocotb.top
-        flash = _RxResponder(
+        # Streams its memory on every frame that starts with READ; a frame
+        # shorter than the opcode byte is recorded as refused.
+        flash = OcahSpiFlash(
             dut.spi_cs_n_o,
             dut.spi_sck_o,
             mosi=dut.spi_mosi_o,

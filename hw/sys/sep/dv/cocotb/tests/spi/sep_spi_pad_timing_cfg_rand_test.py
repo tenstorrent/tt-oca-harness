@@ -20,7 +20,11 @@ is active, CSNIDLE=0) that gives the natural chip-select gap g0, raises CSNIDLE
 until its minimum is above g0, runs the graded pair, then a ratio leg of two
 4-byte Tx segments at CLKDIV a and b. A test-side sampler
 (``env/sep_spi_pad_sampler.py``) reads ``spi_sck_o``, ``spi_cs_n_o`` and
-``spi_mosi_o`` on each core clock. No responder is attached.
+``spi_mosi_o`` on each core clock. No responder is attached. The shared SPI
+monitor (``env/sep_spi_wire_monitor.py``) grades the same pads in the mode of
+each cell: SCK at CPOL at every chip-select edge and while chip select is high,
+MOSI never changing on a sample edge or between a sample edge and the next
+shift edge, and no X/Z (``CHK-SPI-WIRE``, both cells' modes with graded frames).
 
 Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
 
@@ -50,11 +54,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import cocotb
 import pyuvm
 from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spi_pad_sampler import CsWindow, SepSpiPadSampler
+from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from sep_base_test import sep_base_test
 from seq_lib.sep_spi_host_csr_seq import (
     COMMAND,
@@ -230,6 +236,8 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         seed = self.seed
         pads = self.pads
         half = c.a + 1
+        # Every CONFIGOPTS write of the cell carries this CPOL and CPHA.
+        self.wire.set_mode(c.cpol, c.cpha)
 
         # Control pair: CSNIDLE=0, window closed.
         close_graded_window(self.logger)
@@ -423,6 +431,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         try:
             await self.bring_up_no_cpu()
             self.suppress_host_axi_transaction_info()
+            self.wire = await SepSpiWireMonitor(cocotb.top).start()
             self.pads = SepSpiPadSampler()
             self.pads.start()
             self.ops = SepSpiHostOps(self, clock=self.pads.now)
@@ -445,6 +454,9 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             for c in cells:
                 await self._mode_cell(c)
             await self.pads.stop()
+            await self.wire.finish(
+                self.logger, seed=self.seed, modes=[(c.cpol, c.cpha) for c in cells]
+            )
         finally:
             close_graded_window()
 

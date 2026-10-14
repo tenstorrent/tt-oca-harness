@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
+from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
 from seq_lib.sep_spi_flash_jedec_seq import (
@@ -33,6 +34,7 @@ class sep_spi_flash_jedec_smoke_test(sep_base_test):
             jedec_id=SPI_JEDEC_ID,
             name="sep_spi_flash",
         )
+        wire = await SepSpiWireMonitor(dut).start()
         await flash.start()
         try:
             await self.bring_up_no_cpu()
@@ -48,3 +50,4 @@ class sep_spi_flash_jedec_smoke_test(sep_base_test):
             self.logger.info("CHK-JEDEC PASS: opcode=0x9F rxdata=0x%08x", seq.rxdata)
         finally:
             await flash.stop()
+        await wire.finish(self.logger, seed=self.random_seed(), flash=flash)

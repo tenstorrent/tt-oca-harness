@@ -83,6 +83,7 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_log_error_counter import attach_error_counter
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
@@ -248,9 +249,12 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             verbose=True,
         )
         # BFM memory inits to 0xFF (erased); the firmware programs + verifies.
-        # The BFM logs and drops a frame whose handler raised; such an error
-        # fails the leaf.
+        # An error inside the BFM fails the leaf through the error counter and
+        # flash.stop(); a frame the BFM refused for its shape, a wire-check
+        # violation, or a frame missing from the BFM records fails it through
+        # the wire monitor.
         bfm_errors = attach_error_counter(flash.log)
+        wire = await SepSpiWireMonitor(dut).start()
         await flash.start()
         dtcm_hex, cfg = self._stage_dtcm()
         try:
@@ -271,6 +275,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             )
         finally:
             await flash.stop()
+        await wire.finish(self.logger, seed=self.random_seed(), flash=flash)
 
     def _golden_check(self, flash, cfg) -> None:
         """Independent BFM-side golden: confirm the random program/erase actually
