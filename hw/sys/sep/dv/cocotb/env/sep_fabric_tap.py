@@ -47,6 +47,9 @@ PR-XBAR-   ``pr_xbar_tcm``  as PR-LSU-ROM, 6-bit ID (crossbar cpu_tcm target,
 TCM                         net cpu_tcm_axi_req; contract name xbar_tcm_req)
 PR-DBG-SB  ``pr_dbg_sb``    as PR-LSU-ROM plus w data and r data (debug-module
                             system-bus master after its alias remap)
+PR-DBG-IN  ``pr_dbg_in``    aw, ar: addr (debug-module system-bus master before
+                            its local alias remap; 0 on the CPU-stub build)
+PR-DBG-OUT ``pr_dbg_out``   aw, ar: addr (the same master after the remap)
 ========== ================ ==================================================
 
 Bank fields of PR-TCM are packed with bank 0 in the low bits (port comments
@@ -135,6 +138,8 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
         {**_AXI_PORT, "w": ("data", "strb", "last"), "r": ("data", "resp", "id", "last")},
         "axi",
     ),
+    "PR-DBG-IN": ("pr_dbg_in", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
+    "PR-DBG-OUT": ("pr_dbg_out", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
 }
 
 

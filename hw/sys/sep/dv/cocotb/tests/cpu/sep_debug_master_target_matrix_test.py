@@ -89,7 +89,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
-from env.sep_fabric_tap import SepFabricTap
+from env.sep_fabric_tap import SepFabricTap, TapMark
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_jtag_dmi import (
@@ -263,7 +263,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
 
     # ---------------------------------------------------------------- sampler
     async def _sampler(self) -> None:
-        """Per clk_i: reset taps, trace port, DMI uncore outputs, PR-DBG-IN/OUT."""
+        """Per clk_i: reset taps, trace port, DMI uncore outputs."""
         dut = cocotb.top
         prev_cpu = None
         while not self._stop:
@@ -296,22 +296,14 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     self.uncore_ctl["en"] += en and not self.prev_en
                     self.uncore_ctl["wr"] += wr and not self.prev_wr
                 self.prev_en, self.prev_wr = en, wr
-            if self.pair_armed:
-                for ch in ("aw", "ar"):
-                    iv = self.rd(getattr(dut, f"pr_dbg_in_{ch}valid_o"))
-                    ir = self.rd(getattr(dut, f"pr_dbg_in_{ch}ready_o"))
-                    ov = self.rd(getattr(dut, f"pr_dbg_out_{ch}valid_o"))
-                    orr = self.rd(getattr(dut, f"pr_dbg_out_{ch}ready_o"))
-                    if iv and ir:
-                        self.pair_in.append((ch, self.rd(getattr(dut, f"pr_dbg_in_{ch}addr_o"))))
-                    if ov and orr:
-                        self.pair_out.append((ch, self.rd(getattr(dut, f"pr_dbg_out_{ch}addr_o"))))
 
-    def _pair_mark(self) -> tuple[int, int]:
-        return len(self.pair_in), len(self.pair_out)
+    def _pair_mark(self) -> tuple[TapMark, TapMark]:
+        return self.din_tap.mark(), self.dout_tap.mark()
 
-    def _pair_since(self, mark: tuple[int, int]) -> tuple[list, list]:
-        return self.pair_in[mark[0] :], self.pair_out[mark[1] :]
+    def _pair_since(self, mark: tuple[TapMark, TapMark]) -> tuple[list, list]:
+        pin = [(b.ch, b.addr) for b in self.din_tap.since(mark[0])]
+        pout = [(b.ch, b.addr) for b in self.dout_tap.since(mark[1])]
+        return pin, pout
 
     # ---------------------------------------------------------------- grading
     def _grade(self, chk: str, ok: bool, text: str) -> None:
@@ -532,7 +524,8 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         # Step 5.
         self.sb_tap = SepFabricTap("PR-DBG-SB").start()
         self.lx_tap = SepFabricTap("PR-LSU-XBAR").start()
-        self.pair_armed = True
+        self.din_tap = SepFabricTap("PR-DBG-IN").start()
+        self.dout_tap = SepFabricTap("PR-DBG-OUT").start()
         open_graded_window(TEST, self.logger)
         accs: list[_Access] = []
         addrs = dict(SRAM_TARGETS)
@@ -612,6 +605,8 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             )
         close_graded_window(self.logger)
         await self.sb_tap.stop()
+        await self.din_tap.stop()
+        await self.dout_tap.stop()
 
         for acc in moved:
             v_ok, v_text = self._value_ok(acc)
@@ -794,9 +789,6 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         self.uncore_ctl = None
         self.never_cycles = self.never_en = self.never_wr = 0
         self.prev_en = self.prev_wr = 0
-        self.pair_armed = False
-        self.pair_in: list = []
-        self.pair_out: list = []
         self.failures: list[str] = []
         self.n_checks = 0
         if self.entry_c:
