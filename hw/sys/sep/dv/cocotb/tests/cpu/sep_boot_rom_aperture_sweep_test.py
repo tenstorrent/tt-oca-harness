@@ -36,8 +36,9 @@ Checks:
                      read exact. Control: one ``ecall`` raises the trap count by
                      one (rom.adoc Hardware Configuration and Integrity).
   CHK-ROM-OTF      : ``rst_ni`` falls after the PR-ROM handshake of the stub
-                     fetch at word address 1 and before its response beat;
-                     after ``sep_cpu_reset_n_o`` rises, the first PR-ROM
+                     fetch at word address 1 and before its response beat,
+                     and PR-ROM-MACRO shows that fetch at the macro before the
+                     fall; after ``sep_cpu_reset_n_o`` rises, the first PR-ROM
                      request is word 0, no response beat precedes it and the
                      first response carries image word 0 (reset_controller.adoc
                      SEP Reset Controller). The response window W comes from the
@@ -939,7 +940,14 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         period = self._period_ps()
         beats = self.rom.beats
         early_rsp = [b for b in beats if b.ch == "rsp" and t_hs < b.t_ps <= t_fall]
-        midflight = int(t_fall < t_hs + self.W * period and not early_rsp)
+        # The word-1 fetch counts as in flight only when it reached the ROM macro
+        # (PR-ROM-MACRO request at word 1) at or after the anchor and before the fall.
+        macro_w1 = sum(
+            1
+            for b in self.macro.beats
+            if b.ch == "req" and t_hs <= b.t_ps <= t_fall and b.addr == 1
+        )
+        midflight = int(t_fall < t_hs + self.W * period and not early_rsp and macro_w1 >= 1)
         t_first = first.t_ps if first is not None else None
         replay = (
             -1
@@ -978,7 +986,8 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         self._grade(
             "CHK-ROM-OTF",
             ok,
-            f"offset={self.o}/{self.W} midflight={midflight} first_req_word={first_word} "
+            f"offset={self.o}/{self.W} midflight={midflight} macro_req_word1={macro_w1} "
+            f"first_req_word={first_word} "
             f"replay_word1={replay} beats_before_req={before} "
             f"first_rsp=0x{(rsp.rdata if rsp is not None and rsp.rdata is not None else 0):016x} "
             f"image_word0=0x{img.word(0):016x} control_cal_word1="

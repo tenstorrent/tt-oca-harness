@@ -359,6 +359,14 @@ static uint32_t dccm_access(uint32_t k, uint32_t tag, struct samp *s) {
     return v;
 }
 
+// The value a corrected DCCM load returned; the host compares it with the stored word.
+static void put_data(uint32_t k, uint32_t v) {
+    sep_mbx_puts("DATA");
+    rec_hex("k", k);
+    rec_hex("v", v);
+    rec_end();
+}
+
 static void dccm_leg(void) {
     struct samp s;
     uint32_t t = g_prm[P_T];
@@ -388,10 +396,7 @@ static void dccm_leg(void) {
     while (k < n && cnt < goal) {
         uint32_t v = dccm_access(k, TAG_DCCM_SILENT, &s);
         put_samp("dccm", "silent", k, &s);
-        sep_mbx_puts("DATA");
-        rec_hex("k", k);
-        rec_hex("v", v);
-        rec_end();
+        put_data(k, v);
         cnt = s.dc & CNT_MASK;
         k++;
     }
@@ -417,13 +422,14 @@ static void dccm_leg(void) {
         put_arm("dccm", "miss", n0, &s);
         put_samp("dccm", "armed", k, &s);
         n0 = g_ntrap;
-        (void)dccm_access(k, TAG_DCCM_CROSS, &s);
+        uint32_t v = dccm_access(k, TAG_DCCM_CROSS, &s);
         wait_trap(n0);
         CSR_CLEAR(mstatus, MSTATUS_MIE);
         CSR_CLEAR(mie, MIE_MCEIE);
         take(&s);
         put_samp("dccm", "cross", k, &s);
         put_arm("dccm", "cross", n0, &s);
+        put_data(k, v);
         k++;
     } else {
         mark("B", "dccm_reach_arm", 0u);
@@ -433,8 +439,9 @@ static void dccm_leg(void) {
         put_arm("dccm", "reach", n0, &s);
     }
     while (k < n) {
-        (void)dccm_access(k, TAG_DCCM_POST, &s);
+        uint32_t v = dccm_access(k, TAG_DCCM_POST, &s);
         put_samp("dccm", "post", k, &s);
+        put_data(k, v);
         k++;
     }
     put_traps();

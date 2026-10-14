@@ -832,6 +832,9 @@ class sep_cpu_reset_entry_test(sep_base_test):
         if via == "TRST":
             await self.dmi.trst_pulse(tck_cycles=self.trst_tck)
         else:
+            # Leave Test-Logic-Reset first (a TRST leaves the TAP there), so the
+            # five TMS-high clocks make a real Test-Logic-Reset entry.
+            await self.dmi.tap.step_tms(0)
             await self.dmi.tlr()
 
     async def _program(self, vector: int) -> None:
@@ -839,13 +842,63 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self.logger.info("TDR shift IR=0x18 vector=0x%08x (capture 0x%08x not graded)", vector, cap)
 
     async def _tap_then_cpu_reset(self, via: str, tdr: str) -> None:
-        """Step 7: a TAP reset, then a CPU reset; the core starts at the ROM base."""
+        """Step 7: a TAP reset, then a CPU reset; the core starts at the ROM base.
+
+        Test-Logic-Reset leg: the instruction is 0x18 before the TAP reset, and a
+        32-bit DR shift of A1 follows it. Test-Logic-Reset restores the default
+        instruction, so that shift does not reach the TDR and the core starts at
+        the ROM base. A TAP that keeps 0x18 loads A1 and the core starts at A1.
+        """
+        from env.sep_jtag_dmi import IR_RSTVEC, IR_WIDTH, RSTVEC_BITS
+
         await self._quiet_point()
+        extra = ""
+        during = None
+        if via == "TLR":
+            await self.dmi.tap.step_tms(0)
+            await self.dmi.tap.shift_ir(IR_RSTVEC, IR_WIDTH, back_to_rti=True)
         await self._tap_reset(via)
-        ep, mark = await self._cpu_reset()
+        if via == "TLR":
+            await self.dmi.tap.shift_dr(self.a1, RSTVEC_BITS, back_to_rti=True)
+            extra = f"ir_before=0x{IR_RSTVEC:02x} dr_after=0x{self.a1:08x} "
+
+            async def _stage() -> None:
+                self._stage_sram()
+
+            during = _stage
+        ep, mark = await self._cpu_reset(during)
         pc, marker, _ = await self._entry(ep, mark, f"step7 {via}")
         self._grade_vector(
-            "CHK-RSTVEC-TAPRST", f"via={via} tdr={tdr} ", pc, marker, DEFAULT_RESET_PC, "M_ROM"
+            "CHK-RSTVEC-TAPRST",
+            f"via={via} tdr={tdr} {extra}",
+            pc,
+            marker,
+            DEFAULT_RESET_PC,
+            "M_ROM",
+        )
+
+    async def _program_wide(self, vector: int) -> None:
+        """A 64-bit shift through IR 0x18: TDI bits 0..31 come back on TDO.
+
+        The low word is the complement of ``vector``, so every returned bit differs
+        from the vector bit at that position. The TDR keeps the last 32 bits, the
+        vector, which the following CPU reset grades.
+        """
+        from env.sep_jtag_dmi import IR_RSTVEC, IR_WIDTH, RSTVEC_BITS
+
+        head = ~vector & 0xFFFF_FFFF
+        await self.dmi.tap.shift_ir(IR_RSTVEC, IR_WIDTH, back_to_rti=False)
+        cap = int(
+            await self.dmi.tap.shift_dr(
+                (vector << RSTVEC_BITS) | head, 2 * RSTVEC_BITS, back_to_rti=True
+            )
+        )
+        tail = cap >> RSTVEC_BITS
+        self._grade(
+            "CHK-RSTVEC-SHIFT",
+            tail == head,
+            f"IR=0x{IR_RSTVEC:02x} bits={2 * RSTVEC_BITS} tdi_head=0x{head:08x} "
+            f"tdo_tail=0x{tail:08x} vector=0x{vector:08x}",
         )
 
     async def _scope_leg(self, via: str, tdr: str, cur_mark: int) -> int:
@@ -1022,10 +1075,13 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self._grade_vector("CHK-RSTVEC-PERSIST", "after wdt reset ", pc, marker, self.a1, "M1")
 
         # Step 10: rewrite to A2.
+        async def _arm_a2_wide() -> None:
+            await self._program_wide(self.a2)
+
         async def _arm_a2() -> None:
             await self._program(self.a2)
 
-        ep, mark = await self._cpu_reset(_arm_a2)
+        ep, mark = await self._cpu_reset(_arm_a2_wide)
         pc, marker, _ = await self._entry(ep, mark, "rewrite")
         self._grade_vector(
             "CHK-RSTVEC", f"leg=rewrite vector=0x{self.a2:08x} ", pc, marker, self.a2, "M2"
@@ -1169,13 +1225,16 @@ class sep_cpu_reset_entry_test(sep_base_test):
         for row in self.st_rows:
             aw, w, b = row["aw"], row["w"], row["b"]
             resp = None if b is None else b.resp
+            # A 32-bit store drives the byte lanes of its word in the 64-bit beat.
+            lane = 0x0F if row["addr"] % 8 == 0 else 0xF0
             ok = (
                 aw is not None
                 and w is not None
+                and aw.addr == row["addr"]
                 and resp == 0
                 and row["rd"] == row["exp"]
                 and (row["kind"] != "a" or (aw.size == 3 and w.strb == 0xFF))
-                and (row["kind"] == "a" or aw.size == 2)
+                and (row["kind"] == "a" or (aw.size == 2 and w.strb == lane))
                 and (row["sberr"] is None or row["sberr"] == (0, 0))
             )
             width = 16 if row["kind"] == "a" else 8

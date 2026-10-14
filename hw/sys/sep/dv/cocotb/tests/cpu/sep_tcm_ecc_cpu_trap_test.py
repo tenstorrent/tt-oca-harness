@@ -536,6 +536,19 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             prev_cnt = cnt
         if accesses != cfg.n:
             bad.append(f"{accesses} flipped DCCM loads, expected {cfg.n}")
+        # Corrected data: each flipped load returns the stored (uncorrupted) word.
+        data = {int(r.kv["k"]): int(r.kv["v"]) for r in self._recs("DATA")}
+        data_ok = 0
+        for k, idx in enumerate(cfg.singles):
+            exp = cfg.data[idx]
+            got = data.get(k)
+            if got != exp:
+                got_s = "none" if got is None else f"0x{got:08x}"
+                bad.append(f"load k={k} data={got_s} exp=0x{exp:08x}")
+            else:
+                data_ok += 1
+        if len(data) != cfg.n:
+            bad.append(f"{len(data)} DATA records, expected {cfg.n}")
         if bad or last_below is None or first_at is None:
             raise AssertionError(
                 f"CHK-TCM-CE FAIL: mem=DCCM order={order} t={cfg.t}: {bad} "
@@ -544,20 +557,26 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         dtrap = self._traps("dccm_cross" if realized == "miss_first" else "dccm_reach")
         dmc = ",".join(f"0x{int(kv['mcause']):08x}" for kv in dtrap) or "none"
         self.logger.info(
-            "CHK-TCM-CE PASS: mem=DCCM order=%s t=%d counter=%d mceip=%d mcause=none",
+            "CHK-TCM-CE PASS: mem=DCCM order=%s t=%d counter=%d mceip=%d mcause=none "
+            "data_corrected=%d/%d",
             order,
             cfg.t,
             last_below[0],
             last_below[1],
+            data_ok,
+            cfg.n,
         )
         self.logger.info(
-            "CHK-TCM-CE PASS: mem=DCCM order=%s t=%d counter=%d mceip=%d mcause=%s sample=%s",
+            "CHK-TCM-CE PASS: mem=DCCM order=%s t=%d counter=%d mceip=%d mcause=%s sample=%s "
+            "data_corrected=%d/%d",
             order,
             cfg.t,
             first_at[0],
             first_at[1],
             dmc if first_at[2] == "cross" else "none",
             first_at[2],
+            data_ok,
+            cfg.n,
         )
         n += 2
         # One line for each arming of the DCCM leg.
