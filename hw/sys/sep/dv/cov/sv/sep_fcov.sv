@@ -11793,6 +11793,111 @@ module sep_fcov (
     end
   end
 
+  // SW_RESET_N writes paired by AXI ID. A stimulus that keeps several
+  // SW_RESET_N writes in flight is never single-outstanding, so wr_ev never
+  // sees those writes. AXI keeps the W bursts in AW order and returns the B
+  // beats of one ID in AW order. So the k-th outstanding AW owns the k-th W
+  // burst, and a B beat completes the oldest outstanding AW with its ID.
+  // mr_swb_ev is the B beat of an OKAY single-beat write to SW_RESET_N with
+  // the low lane fully strobed, and mr_swb_d is bits 6:0 of that write. An
+  // overflow or a B beat with no AW stops the events until the counters
+  // restart, which is a missed hit, never a false one.
+  localparam int MrSwqN = 8;
+  sep_pkg::sep_32_64_3_12_axi_id_t mr_swq_id[MrSwqN] = '{default: '0};
+  logic [MrSwqN-1:0] mr_swq_sw = '0;  // the AW addresses SW_RESET_N
+  logic [MrSwqN-1:0] mr_swq_wok = '0;  // the W burst is one beat, strb[3:0] = 4'hF
+  logic [6:0] mr_swq_wd[MrSwqN] = '{default: '0};
+  int mr_swq_na = 0;  // outstanding AWs
+  int mr_swq_nw = 0;  // W bursts of the outstanding AWs, or ahead of their AW
+  logic mr_swq_mid = 1'b0;  // a W burst has started and not ended
+  logic mr_swq_bad = 1'b0;
+  int mr_swb_i;
+  logic mr_swb_ev;
+  logic [6:0] mr_swb_d;
+  always_comb begin
+    mr_swb_i = -1;
+    for (int i = MrSwqN - 1; i >= 0; i--) begin
+      if ((i < mr_swq_na) && (mr_swq_id[i] == lsu_resp_i.b.id)) mr_swb_i = i;
+    end
+    mr_swb_ev = 1'b0;
+    mr_swb_d  = '0;
+    if (lq_b_hs && !mr_swq_bad && (mr_swb_i >= 0) && (mr_swb_i < mr_swq_nw)) begin
+      mr_swb_ev = mr_swq_sw[mr_swb_i] && mr_swq_wok[mr_swb_i] &&
+          (lsu_resp_i.b.resp == AxiOkay);
+      mr_swb_d = mr_swq_wd[mr_swb_i];
+    end
+  end
+  always @(posedge clk_i) begin
+    if (lsu_clear) begin
+      mr_swq_na  <= 0;
+      mr_swq_nw  <= 0;
+      mr_swq_mid <= 1'b0;
+      mr_swq_bad <= 1'b0;
+    end else begin
+      sep_pkg::sep_32_64_3_12_axi_id_t id[MrSwqN];
+      logic [MrSwqN-1:0] sw;
+      logic [MrSwqN-1:0] wok;
+      logic [6:0] wd[MrSwqN];
+      int na;
+      int nw;
+      logic bad;
+      id  = mr_swq_id;
+      sw  = mr_swq_sw;
+      wok = mr_swq_wok;
+      wd  = mr_swq_wd;
+      na  = mr_swq_na;
+      nw  = mr_swq_nw;
+      bad = mr_swq_bad;
+      if (lq_b_hs) begin
+        if ((mr_swb_i >= 0) && (mr_swb_i < nw)) begin
+          for (int i = 0; i < MrSwqN - 1; i++) begin
+            if (i >= mr_swb_i) begin
+              id[i]  = id[i+1];
+              sw[i]  = sw[i+1];
+              wok[i] = wok[i+1];
+              wd[i]  = wd[i+1];
+            end
+          end
+          na = na - 1;
+          nw = nw - 1;
+        end else bad = 1'b1;
+      end
+      if (lq_aw_hs) begin
+        if (na == MrSwqN) bad = 1'b1;
+        else begin
+          id[na] = lsu_req_i.aw.id;
+          sw[na] = (lsu_req_i.aw.addr == MrSwRst);
+          na     = na + 1;
+        end
+      end
+      if (lq_w_hs) begin
+        if (nw == MrSwqN) bad = 1'b1;
+        else begin
+          if (!mr_swq_mid) begin
+            wok[nw] = (lsu_req_i.w.strb[3:0] == 4'hF) && (lsu_req_i.w.last === 1'b1);
+            wd[nw]  = lsu_req_i.w.data[6:0];
+          end else wok[nw] = 1'b0;
+          if (lsu_req_i.w.last === 1'b1) nw = nw + 1;
+        end
+        mr_swq_mid <= (lsu_req_i.w.last !== 1'b1);
+      end
+      mr_swq_id  <= id;
+      mr_swq_sw  <= sw;
+      mr_swq_wok <= wok;
+      mr_swq_wd  <= wd;
+      mr_swq_na  <= na;
+      mr_swq_nw  <= nw;
+      mr_swq_bad <= bad;
+    end
+  end
+  // SW_RESET_N fields as the paired writes and the reads leave them.
+  logic [6:0] mr_swb_v = MrSwRstDef;
+  always @(posedge clk_i) begin
+    if (!mr_srn) mr_swb_v <= MrSwRstDef;
+    else if (mr_swb_ev) mr_swb_v <= mr_swb_d;
+    else if (mr_rd_lo && (ar_addr_q == MrSwRst)) mr_swb_v <= lsu_r_data_i[6:0];
+  end
+
   // ---------------------------------------------------------------------
   // sep_reset_source_cg (clocked points), cp_reset_class and the TAP reset
   // events of the clock domain.
@@ -13414,7 +13519,8 @@ module sep_fcov (
     // (one write or one write per domain), its release, then a victim read
     // that returns the value armed before the step. A step starts with the
     // first assert write after a release write. A victim written after the
-    // step started is not evidence.
+    // step started is not evidence. The SW_RESET_N writes come from the
+    // ID-paired tap (mr_swb_ev), so writes that overlap still count.
     g = mr_engine(aw_addr_q);
     if (mr_wl32 && (g >= 1)) begin
       logic hit;
@@ -13433,13 +13539,13 @@ module sep_fcov (
         mr_eg_wp[g]                <= mr_eg_wp[g] + 2'd1;
       end
     end
-    if (mr_wlo && (aw_addr_q == MrSwRst)) begin
+    if (mr_swb_ev) begin
       logic [6:0] a;
       logic [6:0] r;
       logic [5:0] un;
       logic fresh;
-      a     = mr_swv & ~w_data_q[6:0];
-      r     = ~mr_swv & w_data_q[6:0];
+      a     = mr_swb_v & ~mr_swb_d;
+      r     = ~mr_swb_v & mr_swb_d;
       fresh = mr_ip_post || mr_ip_rel || (mr_ip_acc == 0);
       if (a[6:1] != 0) begin
         un = fresh ? a[6:1] : (mr_ip_acc | a[6:1]);
@@ -13448,7 +13554,7 @@ module sep_fcov (
         mr_ip_rel  <= 1'b0;
         mr_ip_post <= 1'b0;
         if (fresh) mr_ip_wr <= '0;
-      end else if ((mr_ip_s != 0) && ((w_data_q[6:1] & mr_ip_s) == mr_ip_s)) begin
+      end else if ((mr_ip_s != 0) && ((mr_swb_d[6:1] & mr_ip_s) == mr_ip_s)) begin
         mr_ip_rel  <= 1'b1;
         mr_ip_post <= 1'b1;
         mr_ip_done <= '0;

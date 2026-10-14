@@ -1969,6 +1969,10 @@ class sep_base_test(uvm_test):
         self.raise_objection()
         self._log_run_identity()
         await self.run_scenario()
+        # The last bus beat of a scenario can land on the clk_i edge where it
+        # returns. Leave that time step before the run ends, so that the HDL
+        # processes of the edge (the FCOV sampler among them) run.
+        await Timer(1, units="ns")
         self._finalize_evidence()
         self._evidence_passed = True
         self.drop_objection()
