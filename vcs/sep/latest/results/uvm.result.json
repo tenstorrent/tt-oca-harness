@@ -4,21 +4,21 @@
     "coverage_policy_application": "artifacts/sep/coverage/report/policy-application.json",
     "coverage_report": "artifacts/sep/coverage/report",
     "coverage_summary": "artifacts/sep/coverage/report/summary.json",
-    "log": "vcs/sep/runs/uvm/sep_axi_smoke_test/seed_862512917/attempt_0/logs/sep_axi_smoke_test.log",
+    "log": "vcs/sep/runs/uvm/sep_axi_smoke_test/seed_878031266/attempt_0/logs/sep_axi_smoke_test.log",
     "regression_json": "vcs/sep/runs/uvm/stages/regress/regression.json",
     "result_json": "vcs/sep/runs/uvm/result.json",
     "run_dir": "vcs/sep/runs/uvm"
   },
   "coverage": {
-    "comparison_key": "COVCMP-8950706178d214fe",
+    "comparison_key": "COVCMP-a6da3e9064d7fa42",
     "details_available": true,
     "effective_metrics": {
-      "branch": 54.49,
-      "condition": 25.15,
-      "fsm_state": 37.09,
-      "functional": 10.27,
-      "line": 67.9,
-      "toggle": 15.73
+      "branch": 54.04,
+      "condition": 25.17,
+      "fsm_state": 32.69,
+      "functional": 4.29,
+      "line": 67.64,
+      "toggle": 15.66
     },
     "holes_summary": {
       "accepted": 0,
@@ -37,12 +37,12 @@
     "policy_application": "artifacts/sep/coverage/report/policy-application.json",
     "policy_thresholds": [],
     "raw_metrics": {
-      "branch": 52.16,
-      "condition": 24.28,
-      "fsm_state": 36.04,
-      "functional": 10.27,
-      "line": 67.36,
-      "toggle": 15.01
+      "branch": 51.76,
+      "condition": 24.31,
+      "fsm_state": 31.88,
+      "functional": 4.29,
+      "line": 67.11,
+      "toggle": 14.95
     },
     "report": "artifacts/sep/coverage/report",
     "source_manifest": "vcs/sep/runs/uvm/cov/coverage.json",
@@ -54,16 +54,16 @@
     "target": "default",
     "threshold": 0.0,
     "threshold_met": true,
-    "total_percent": 35.11
+    "total_percent": 33.25
   },
   "failure_buckets": [],
   "flow": "sep",
   "framework": "uvm",
-  "generated_at": "2026-10-11T11:59:18+00:00",
+  "generated_at": "2026-10-14T17:40:42+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "b7bdfc400a0d044b1025f69621cff6804b1dae43",
-    "short_sha": "b7bdfc4"
+    "sha": "56d3474836711922655de7b0acc2530a31e9dab6",
+    "short_sha": "56d3474"
   },
   "junit_xml": {
     "missing": 0,
@@ -76,10 +76,10 @@
   },
   "run_metadata": {
     "executor": "lsf",
-    "generated_at": "2026-10-11T10:40:47.455589+00:00",
+    "generated_at": "2026-10-14T15:06:03.945834+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "b7bdfc400a0d044b1025f69621cff6804b1dae43",
+      "commit": "56d3474836711922655de7b0acc2530a31e9dab6",
       "dirty": "false"
     },
     "label": "all",
@@ -106,98 +106,98 @@
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 7.564,
+      "duration_sec": 7.501,
       "name": "sep_axi_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 862512917,
+      "seed": 878031266,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 13.435,
+      "duration_sec": 14.084,
       "name": "sep_address_map_test",
       "reason": "positive pass evidence matched",
-      "seed": 42948871,
+      "seed": 1172648032,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 4.589,
+      "duration_sec": 4.999,
       "name": "sep_sram_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 2049765755,
+      "seed": 1260241657,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 4.583,
+      "duration_sec": 4.914,
       "name": "sep_km_mem_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 1062337744,
+      "seed": 29614689,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 5.182,
+      "duration_sec": 5.562,
       "name": "sep_otbn_mem_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 663792088,
+      "seed": 78527573,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 4.275,
+      "duration_sec": 4.639,
       "name": "sep_efuse_sense_test",
       "reason": "positive pass evidence matched",
-      "seed": 1682618241,
+      "seed": 1192865209,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 4.139,
+      "duration_sec": 4.646,
       "name": "sep_clock_uvm_wdt_rst_input_reset_path_test",
       "reason": "positive pass evidence matched",
-      "seed": 1975179905,
+      "seed": 1743142720,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 11.646,
+      "duration_sec": 11.452,
       "name": "sep_irq_ip_to_aggregator_test",
       "reason": "positive pass evidence matched",
-      "seed": 663619106,
+      "seed": 1347188206,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 4.757,
+      "duration_sec": 5.669,
       "name": "sep_periph_bus_err_misaligned_test",
       "reason": "positive pass evidence matched",
-      "seed": 1784725216,
+      "seed": 171487024,
       "stage": "sim",
       "status": "PASS"
     }
   ],
   "timing": {
-    "duration_sec": 211.439,
-    "end_time": "2026-10-11T10:40:47.268550+00:00",
-    "start_time": "2026-10-11T10:36:56.913443+00:00"
+    "duration_sec": 209.571,
+    "end_time": "2026-10-14T15:06:03.857316+00:00",
+    "start_time": "2026-10-14T15:02:00.901854+00:00"
   },
   "tool": "vcs"
 }
