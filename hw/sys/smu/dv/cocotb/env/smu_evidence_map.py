@@ -822,6 +822,20 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "system-bus accesses on each probe path complete before and after the probe runs",
         ),
     ],
+    "smu_sep_mailbox_sba_readback_test": [
+        (
+            "CHK-COMP-SEP-WIRQT-READBACK",
+            "COMP_SEP_WIRQT_READBACK",
+            "WIRQT of all sixteen SEP mailbox ports reads 0, then reads back a value below the "
+            "FIFO depth written over the debug system bus, with sberror 0",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded system-bus and pin waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<PASS"),
+    ],
     "smu_sep_sba_fabric_sweep_test": [
         (
             "CHK-SEP-DMI-DMSTATUS",
@@ -1802,6 +1816,40 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_dtp_jtag2axi_smoke_test": [
         ("CHK-JTAG2AXI-SMOKE-SCRATCH", "CHK-JTAG2AXI-SMOKE-SCRATCH", "J2A scratch write/readback"),
     ],
+    "smu_smc_mailbox_aperture_layout_test": [
+        (
+            "CHK-MBX-OFFSET-MAP",
+            "MBX_OFFSET_MAP",
+            "ten offsets of outbound mailbox 0 answer as distinct registers, WIRQT and IRQEN read back",
+        ),
+        (
+            "CHK-MBX-STRIDE-WIRQT",
+            "MBX_STRIDE_WIRQT",
+            "WIRQT of mailbox 0, 1 and 31 at the 0x1000 stride is independent",
+        ),
+        (
+            "CHK-MBX-IRQEN-INDEP",
+            "MBX_IRQEN_INDEP",
+            "IRQEN of mailbox 0, 1 and 31 is independent",
+        ),
+        (
+            "CHK-MBX-INBOUND-INDEP",
+            "MBX_INBOUND_INDEP",
+            "inbound aperture of pair 0 at +0x800 is independent of the outbound aperture",
+        ),
+        (
+            "CHK-MBX-SMC-ATTRIBUTES",
+            "MBX_SMC_ATTRIBUTES",
+            "SMC_ATTRIBUTES reports 32 mailboxes of depth 2",
+        ),
+        (
+            "CHK-MBX-APERTURE-HOLE-LOG",
+            "MBX_APERTURE_HOLE_LOG",
+            "accesses above the registers resolve non-BUSY, status and data logged",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<S8<PASS"),
+    ],
     "smu_smc_mailbox_int_test": [
         (
             "CHK-SMC-MBX-IRQ-EXT-S2",
@@ -2732,6 +2780,20 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<PASS"),
+    ],
+    "smu_xtrig_ctn_reset_values_test": [
+        (
+            "CHK-CTN-CTSRC-RESET",
+            "CHK-CTN-CTSRC-RESET",
+            "all 26 CT_SRC CONFIG_0 reads succeed and return 0",
+        ),
+        (
+            "CHK-CTN-CTP-RESET",
+            "CHK-CTN-CTP-RESET",
+            "CONFIG, STATUS and STRETCH_MULT of all 16 CTPs read 0",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_xtrig_ctp_status_reset_test": [
         (
