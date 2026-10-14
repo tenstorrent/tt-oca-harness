@@ -44,6 +44,8 @@ Checks:
                      same fetch of the calibration boot, whose beat carries
                      image word 1.
 
+The routine first sets ``mrac`` as the SEP firmware start-up does
+(``fw/startup/crt0.s``), so each register store leaves the core at its own size.
 The core can serve two pending loads of one doubleword with one bus read, and
 it can merge two pending stores to one address. The 16 loads of a block are
 therefore in 16 different words, the two loads of each store-leg readback have
@@ -193,6 +195,12 @@ SIZES = (1, 2, 4)
 BLOCK_REGS = tuple(range(5, 21))  # x5..x20
 TAG_REG = 21
 
+# VeeR EL2 mrac (region access control): two bits per 256 MiB region, bit 2r
+# cacheable, bit 2r+1 side-effect. The SEP firmware value of fw/startup/crt0.s:
+# every region side-effect except region 12 (ICCM, DCCM, PIC).
+CSR_MRAC = 0x7C0
+MRAC_SEP = 0xA8AA_AAAA
+
 # Environment choices (logged).
 RST_HOLD = 20  # clk_i cycles of each rst_ni pulse
 ROMCTL_BOUND = 200_000  # clk_i cycles from the boot to the ROM_CTL record
@@ -311,6 +319,7 @@ def _fail(a: Asm, code: int) -> None:
 def build_code(p: _Plan) -> Asm:
     """The SRAM routine of steps 4 to 13."""
     a = Asm(FW_BASE)
+    a.li(T0, MRAC_SEP).op(csrw(CSR_MRAC, T0))
     a.li(GP, MBX)
     for reg, val in (
         ("START_ADDR", MBX),
