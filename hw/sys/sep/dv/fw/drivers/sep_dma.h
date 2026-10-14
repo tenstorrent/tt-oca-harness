@@ -21,13 +21,14 @@
 // CONTROL.OPCODE encodings. PeakRDL carries only the field, so the legal set
 // is transcribed here from the IP register specification:
 // vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson enumerates
-// opcode as COPY 0x0, SHA256 0x1, SHA384 0x2, SHA512 0x3. 0x4..0xF are
-// reserved; the RDL describes OPCODE_ERROR as "Opcode is invalid."
+// opcode as COPY 0x0, SHA256 0x1, SHA384 0x2, SHA512 0x3, ZERO 0x4. 0x5..0xF
+// are reserved; the RDL describes OPCODE_ERROR as "Opcode is invalid."
 #define SEP_DMA_OPCODE_COPY 0x0u
 #define SEP_DMA_OPCODE_SHA256 0x1u
 #define SEP_DMA_OPCODE_SHA384 0x2u
 #define SEP_DMA_OPCODE_SHA512 0x3u
-// OPCODE[3:0] valid range is 0x0..0x3; 0x4..0xF are reserved -> opcode_error.
+#define SEP_DMA_OPCODE_ZERO 0x4u
+// OPCODE[3:0] valid range is 0x0..0x4; 0x5..0xF are reserved -> opcode_error.
 #define SEP_DMA_OPCODE_INVALID 0xFu
 
 // TRANSFER_WIDTH encodings (not named in PeakRDL). 0x3 is invalid -> size_error.

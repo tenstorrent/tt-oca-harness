@@ -44,7 +44,7 @@ HIGHLIGHTS
   hardware
 * OTP/eFuse-backed lifecycle controller with debug- and security-control outputs
 * Filtered and remapped inbound and outbound system-fabric paths
-* Secure DMA with inline hashing, quad-SPI host, watchdog, and mailboxes
+* Secure DMA with inline hashing and zero fill, quad-SPI host, watchdog, and mailboxes
 * Open RTL, generated register collateral, firmware, and PyUVM verification
 
 // datasheet-section: system-role
@@ -126,8 +126,8 @@ CAPABILITIES
 * VeeR EL2 CPU with instruction/data tightly coupled memories, programmable
   interrupt controller, timers, physical memory protection, and JTAG debug
 * One secure-DMA instance supporting memory transfers; inline SHA2-256,
-  SHA2-384, and SHA2-512 hashing;
-  and the instantiated peripheral low-speed-I/O trigger path
+  SHA2-384, and SHA2-512 hashing; zero fill of memory inside a lockable
+  erase window; and the instantiated peripheral low-speed-I/O trigger path
 * One single/quad-SPI host with one chip select; watchdog timer; and separate
   warm- and cold-reset scratch-register banks
 
