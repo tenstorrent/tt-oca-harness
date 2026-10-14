@@ -241,3 +241,17 @@ timeout_sec = 3600
 tags = ["cpu", "fabric", "decode", "memory", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# A single-bit CPU TCM error is corrected and counted and raises MCEIP at the threshold.
+# An uncorrectable DCCM error traps with the stated cause. The errors come from the time-0
+# flip list.
+name = "sep_tcm_ecc_cpu_trap_test"
+module = "cpu.sep_tcm_ecc_cpu_trap_test"
+firmware = "tcm_ecc_cpu_trap_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["tcm", "ecc", "cpu", "trap", "memory", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense", "+sep_tcm_flip_list=sep_tcm_ecc_flips.txt"]
