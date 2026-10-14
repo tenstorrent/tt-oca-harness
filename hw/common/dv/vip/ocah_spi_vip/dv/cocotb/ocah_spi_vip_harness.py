@@ -58,6 +58,7 @@ __all__ = [
     "STATUS_REG2",
     "SpiHarness",
     "base_seed",
+    "build_lane_stack",
     "build_stack",
     "negative_armed",
     "random_page_span",
@@ -130,6 +131,65 @@ async def build_stack(
     bfm.init_signals()
     monitor = OcahSpiMonitor(
         dut.spi_cs_n, dut.spi_sclk, mosi=dut.spi_mosi, miso=dut.spi_miso, name="harness_monitor"
+    )
+    checker = OcahSpiFlashChecker(
+        name="ocah_spi_harness", flash=flash, required_ids=required_ids, logger=log
+    )
+    await flash.start()
+    await monitor.start()
+    await Timer(HALF_PERIOD_NS, "ns")
+    return SpiHarness(
+        host=OcahSpiMasterSequence(bfm, checker), flash=flash, monitor=monitor, checker=checker
+    )
+
+
+async def build_lane_stack(
+    dut: Any,
+    *,
+    required_ids: Iterable[str],
+    log: logging.Logger,
+) -> SpiHarness:
+    """Attach the controller, the four-lane device, the monitor and the checker to ``spi4_*``.
+
+    The device runs ``mode="quad_io"``; the monitor taps every lane and output
+    enable, so the output-enable checks run.
+    """
+    cocotb.start_soon(Clock(dut.clk, CLK_PERIOD_NS, "ns").start())
+    flash = OcahSpiFlash(
+        dut.spi4_cs_n,
+        dut.spi4_sclk,
+        dq_out=dut.spi4_sd_out,
+        dq_in=dut.spi4_sd_in,
+        name="harness_lane_flash",
+        mode="quad_io",
+        jedec_id=JEDEC_ID,
+        flash_size=FLASH_SIZE,
+        status_reg2=STATUS_REG2,
+    )
+    flash.init_signals()
+    bfm = OcahSpiMasterBfm(
+        dut.spi4_cs_n,
+        dut.spi4_sclk,
+        None,
+        None,
+        name="harness_lane_host",
+        half_period_ns=HALF_PERIOD_NS,
+        sd_out=dut.spi4_sd_out,
+        sd_oe=dut.spi4_sd_oe,
+        sd_in=dut.spi4_sd_in,
+        cs_oe=dut.spi4_cs_oe,
+        sck_oe=dut.spi4_sck_oe,
+    )
+    bfm.init_signals()
+    monitor = OcahSpiMonitor(
+        dut.spi4_cs_n,
+        dut.spi4_sclk,
+        sd_out=dut.spi4_sd_out,
+        sd_oe=dut.spi4_sd_oe,
+        sd_in=dut.spi4_sd_in,
+        cs_oe=dut.spi4_cs_oe,
+        sck_oe=dut.spi4_sck_oe,
+        name="harness_lane_monitor",
     )
     checker = OcahSpiFlashChecker(
         name="ocah_spi_harness", flash=flash, required_ids=required_ids, logger=log

@@ -77,12 +77,16 @@ from .ocah_spi_monitor import OcahSpiMonitor, OcahSpiMonitorError
 from .ocah_spi_types import (
     FRAME_SHAPE_REASONS,
     IN_SCOPE_OPCODES,
+    LANE_OPCODES,
     PAGE_SIZE,
     SECTOR_SIZE,
     SR1_BUSY,
     SR1_WEL,
+    OcahSpiCommandFormat,
     OcahSpiOpcode,
     SpiMode,
+    command_format,
+    lanes_to_bytes,
     opcode_name,
 )
 
@@ -106,6 +110,10 @@ __all__ = [
     # Types and constants
     "FRAME_SHAPE_REASONS",
     "IN_SCOPE_OPCODES",
+    "LANE_OPCODES",
+    "OcahSpiCommandFormat",
+    "command_format",
+    "lanes_to_bytes",
     "PAGE_SIZE",
     "SECTOR_SIZE",
     "SR1_BUSY",

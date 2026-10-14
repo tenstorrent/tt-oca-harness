@@ -27,8 +27,9 @@ emits one ``CHK-SPI-*`` record per rule through ``ocah_checker.OcahChecker``:
                              with the latch set, and complete command, address and dummy
                              phases for a read
 ``CHK-SPI-LEDGER``           the device recorded every frame the monitor saw, in order,
-                             with the same command byte and input bit count
-``CHK-SPI-READ-DATA``        READ and FAST READ streamed the model's bytes at that address
+                             with the same command byte and input clock count
+``CHK-SPI-READ-DATA``        a read (single, dual or quad) streamed the model's bytes at
+                             that address
 ``CHK-SPI-HOST-*``           what the controller received equals what the device sent
 ``CHK-SPI-CMD-ORDER``        the in-scope opcode sequence equals the expected one
 ``CHK-SPI-MEM-GOLDEN``       the device array equals the model over every touched byte
@@ -40,11 +41,14 @@ emits one ``CHK-SPI-*`` record per rule through ``ocah_checker.OcahChecker``:
                              and the device gave none of them a response or a payload
 ===========================  ==============================================================
 
-An opcode outside the baseline scope is counted under ``unsupported`` and
-never credited. A frame with no complete command byte (``opcode`` -1) is not an
-opcode: it fails ``CHK-SPI-FRAME-SHAPE``. For an accepted frame that carries
-``input_bits``, the shape rules also compare that count with the command's
-length, so a device that accepts a frame with extra bits fails them. ``finalize()`` prints the opcode tally and fails on any failed
+An opcode outside the baseline scope, or one the device refused as
+``unknown_opcode`` (a dual or quad command on a single-lane binding), is
+counted under ``unsupported`` and never credited. A frame with no complete
+command byte (``opcode`` -1) is not an opcode: it fails
+``CHK-SPI-FRAME-SHAPE``. For an accepted frame that carries ``input_clocks``,
+the shape rules also compare that count with the command's length at its lane
+widths, so a device that accepts a frame with extra clocks fails them.
+``finalize()`` prints the opcode tally and fails on any failed
 or missing record. The checker has no SV-UVM twin: the package ships the
 cocotb realization only.
 """
@@ -64,14 +68,35 @@ from .ocah_spi_types import (
     SECTOR_SIZE,
     SR1_WEL,
     OcahSpiOpcode,
+    command_format,
     opcode_name,
 )
+
+
+def _clocks_per_byte(opcode: int) -> int:
+    """Clocks of one payload byte of a program command."""
+    fmt = command_format(opcode)
+    return 8 // (fmt.data_lanes if fmt else 1)
+
 
 __all__ = ["OcahSpiFlashChecker", "OcahSpiFlashRecord", "OcahSpiFlashRefModel"]
 
 ERASED_BYTE = 0xFF
 _ADDR_MASK_24 = 0xFFFFFF
-_READ_OPCODES = frozenset((int(OcahSpiOpcode.READ), int(OcahSpiOpcode.FAST_READ)))
+_READ_OPCODES = frozenset(
+    int(op)
+    for op in (
+        OcahSpiOpcode.READ,
+        OcahSpiOpcode.FAST_READ,
+        OcahSpiOpcode.DUAL_OUTPUT_READ,
+        OcahSpiOpcode.QUAD_OUTPUT_READ,
+        OcahSpiOpcode.DUAL_IO_READ,
+        OcahSpiOpcode.QUAD_IO_READ,
+    )
+)
+_PROGRAM_OPCODES = frozenset(
+    (int(OcahSpiOpcode.PAGE_PROGRAM), int(OcahSpiOpcode.QUAD_PAGE_PROGRAM))
+)
 # Refusal reasons that grade a latch-set PAGE PROGRAM's shape.
 _PROGRAM_SHAPE_REASONS = frozenset(("partial_byte", "partial_address", "no_payload"))
 _HOST_CHECK_IDS = {
@@ -95,12 +120,14 @@ class OcahSpiFlashRecord:
     reason: str
     input_bits: int | None = None
     tail_bits: int = 0
+    input_clocks: int | None = None
 
     @classmethod
     def from_mapping(cls, record: Mapping[str, Any]) -> OcahSpiFlashRecord:
         """Normalize a ``OcahSpiFlash.get_transactions()`` entry; ``opcode`` -1 stays -1."""
         opcode = int(record["opcode"])
         bits = record.get("input_bits")
+        clocks = record.get("input_clocks", bits)
         return cls(
             opcode=opcode if opcode < 0 else opcode & 0xFF,
             addr=int(record.get("addr", 0)),
@@ -110,6 +137,7 @@ class OcahSpiFlashRecord:
             reason=str(record.get("reason", "")),
             input_bits=None if bits is None else int(bits),
             tail_bits=int(record.get("tail_bits", 0)),
+            input_clocks=None if clocks is None else int(clocks),
         )
 
 
@@ -293,7 +321,7 @@ class OcahSpiFlashChecker:
                 context=f"frame ended {rec.tail_bits} bit(s) into the command byte reason={rec.reason}",
             )
             return
-        if opcode not in IN_SCOPE_OPCODES:
+        if opcode not in IN_SCOPE_OPCODES or rec.reason == "unknown_opcode":
             self.unsupported.append(rec)
             self.log.warning(
                 "%s: %s is outside the baseline scope and earns no credit (ok=%s out=%d B in=%d B)",
@@ -323,13 +351,13 @@ class OcahSpiFlashChecker:
                 "CHK-SPI-STATUS-SR2", rec.data_out[:1], bytes([self.ref_model.status_reg2])
             )
         elif opcode in (OcahSpiOpcode.WRITE_ENABLE, OcahSpiOpcode.WRITE_DISABLE):
-            if not self._check_shape(rec, 1):
+            if not self._check_shape(rec, 8):
                 return
             if opcode == OcahSpiOpcode.WRITE_ENABLE:
                 self.ref_model.write_enable()
             else:
                 self.ref_model.write_disable()
-        elif opcode == OcahSpiOpcode.PAGE_PROGRAM:
+        elif opcode in _PROGRAM_OPCODES:
             self._check_program(rec)
         elif opcode == OcahSpiOpcode.SECTOR_ERASE:
             self._check_erase(rec)
@@ -393,11 +421,14 @@ class OcahSpiFlashChecker:
                 )
             records = self.flash.get_transactions()
         device = [
-            (int(rec["opcode"]) if int(rec["opcode"]) >= 0 else -1, rec.get("input_bits"))
+            (
+                int(rec["opcode"]) if int(rec["opcode"]) >= 0 else -1,
+                rec.get("input_clocks", rec.get("input_bits")),
+            )
             for rec in records
         ]
         wire = [
-            (int(txn["opcode"]) if txn["opcode_complete"] else -1, txn["input_bits"])
+            (int(txn["opcode"]) if txn["opcode_complete"] else -1, txn["input_clocks"])
             for txn in monitor_records
         ]
         first = next(
@@ -576,18 +607,19 @@ class OcahSpiFlashChecker:
             ),
         )
 
-    def _expected_bits(self, rec: OcahSpiFlashRecord, phase_bytes: int) -> bool:
-        """True when the record carries no bit count or the count is ``phase_bytes`` bytes."""
-        return rec.input_bits is None or rec.input_bits == 8 * phase_bytes
+    @staticmethod
+    def _expected_clocks(rec: OcahSpiFlashRecord, clocks: int) -> bool:
+        """True when the record carries no clock count or the count is ``clocks``."""
+        return rec.input_clocks is None or rec.input_clocks == clocks
 
-    def _check_shape(self, rec: OcahSpiFlashRecord, phase_bytes: int) -> bool:
-        """``CHK-SPI-FRAME-SHAPE``: accepted, with ``phase_bytes`` input bytes and no more."""
+    def _check_shape(self, rec: OcahSpiFlashRecord, clocks: int) -> bool:
+        """``CHK-SPI-FRAME-SHAPE``: accepted, with ``clocks`` input clocks and no more."""
         return self.expect_true(
             "CHK-SPI-FRAME-SHAPE",
-            rec.ok and self._expected_bits(rec, phase_bytes),
+            rec.ok and self._expected_clocks(rec, clocks),
             context=(
                 f"{opcode_name(rec.opcode)} ok={rec.ok} reason={rec.reason} "
-                f"input_bits={rec.input_bits} expected_bits={8 * phase_bytes}"
+                f"input_clocks={rec.input_clocks} expected_clocks={clocks}"
             ),
         )
 
@@ -597,11 +629,15 @@ class OcahSpiFlashChecker:
                 "CHK-SPI-FRAME-BYTES",
                 rec.reason not in _PROGRAM_SHAPE_REASONS
                 and (
-                    not rec.ok or self._expected_bits(rec, 1 + self.addr_bytes + len(rec.data_in))
+                    not rec.ok
+                    or self._expected_clocks(
+                        rec,
+                        8 * (1 + self.addr_bytes) + _clocks_per_byte(rec.opcode) * len(rec.data_in),
+                    )
                 ),
                 context=(
                     f"PAGE PROGRAM addr=0x{rec.addr:06x} complete_bytes={len(rec.data_in)} "
-                    f"reason={rec.reason} input_bits={rec.input_bits}"
+                    f"reason={rec.reason} input_clocks={rec.input_clocks}"
                 ),
             ):
                 return
@@ -613,7 +649,7 @@ class OcahSpiFlashChecker:
         self._program_changed += self.ref_model.page_program(rec.addr, rec.data_in)
 
     def _check_erase(self, rec: OcahSpiFlashRecord) -> None:
-        if self.ref_model.write_enabled and not self._check_shape(rec, 1 + self.addr_bytes):
+        if self.ref_model.write_enabled and not self._check_shape(rec, 8 * (1 + self.addr_bytes)):
             return
         self._check_write_gate(rec, "SECTOR ERASE")
         if not rec.ok:
@@ -623,8 +659,9 @@ class OcahSpiFlashChecker:
         self._erase_flipped += self.ref_model.sector_erase(rec.addr)
 
     def _check_read(self, rec: OcahSpiFlashRecord) -> None:
-        dummy = 1 if rec.opcode == OcahSpiOpcode.FAST_READ else 0
-        if not self._check_shape(rec, 1 + self.addr_bytes + dummy):
+        fmt = command_format(rec.opcode)
+        assert fmt is not None
+        if not self._check_shape(rec, fmt.input_clocks(self.addr_bytes)):
             return
         if not rec.data_out:
             self.log.warning(

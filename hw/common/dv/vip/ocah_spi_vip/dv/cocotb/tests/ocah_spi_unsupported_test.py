@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared SPI VIP selftest: out-of-scope opcodes earn no credit.
 
-After a page is programmed and read back, the controller issues dual-output
-read, quad-output read, block erase, chip erase, and enter-4-byte-address
+After a page is programmed and read back, the controller issues SFDP
+read, unique-ID read, block erase, chip erase, and enter-4-byte-address
 frames. The device drains each without a response or a payload, the erase
 attempts leave the page intact, the monitor decodes them as unknown with empty
 data fields, and the checker counts them as unsupported: the in-scope opcode
@@ -33,12 +33,12 @@ REQUIRED_IDS = (
     "CHK-SPI-UNSUPPORTED",
     "CHK-SPI-MON-UNKNOWN",
 )
-DUAL_OUTPUT_READ = 0x3B
-QUAD_OUTPUT_READ = 0x6B
+READ_SFDP = 0x5A
+READ_UNIQUE_ID = 0x4B
 BLOCK_ERASE_64K = 0xD8
 CHIP_ERASE = 0xC7
 ENTER_4BYTE_ADDR = 0xB7
-OUT_OF_SCOPE = (DUAL_OUTPUT_READ, QUAD_OUTPUT_READ, BLOCK_ERASE_64K, CHIP_ERASE, ENTER_4BYTE_ADDR)
+OUT_OF_SCOPE = (READ_SFDP, READ_UNIQUE_ID, BLOCK_ERASE_64K, CHIP_ERASE, ENTER_4BYTE_ADDR)
 
 
 @cocotb.test()
@@ -58,8 +58,8 @@ async def ocah_spi_unsupported_test(dut) -> None:
     await host.write_enable()
     await host.page_program(addr, data)
     await host.read(addr, length)
-    await host.raw_command(DUAL_OUTPUT_READ, addr=addr, dummy_bytes=1, rx_len=4)
-    await host.raw_command(QUAD_OUTPUT_READ, addr=addr, dummy_bytes=1, rx_len=4)
+    await host.raw_command(READ_SFDP, addr=addr, dummy_bytes=1, rx_len=4)
+    await host.raw_command(READ_UNIQUE_ID, addr=addr, dummy_bytes=1, rx_len=4)
     await host.write_enable()
     await host.raw_command(BLOCK_ERASE_64K, addr=addr)
     await host.write_enable()

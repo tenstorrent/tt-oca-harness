@@ -9,6 +9,9 @@
 //           (OcahSpiMasterBfm behind OcahSpiMasterSequence) drives cs_n,
 //           sclk, and mosi and samples miso; the device (OcahSpiFlash)
 //           samples cs_n, sclk, and mosi and drives miso.
+//   spi4_* — a four-lane connection: the controller engine drives cs_n,
+//           sclk, the four data lanes and every output enable; the device
+//           (OcahSpiFlash in quad_io) drives the four lanes back.
 //
 // clk is a free-running reference clock the cocotb harness drives so the
 // simulator always holds a timed event while the controller bit-bangs sclk.
@@ -27,6 +30,15 @@ module ocah_spi_vip_tb_top;
   logic spi_sclk;
   logic spi_mosi;
   logic spi_miso;
+  // Four-lane link: the controller engine drives lanes, their output enables
+  // and the chip-select/clock enables; the flash device drives spi4_sd_in.
+  logic       spi4_cs_n;
+  logic       spi4_sclk;
+  logic [3:0] spi4_sd_out;
+  logic [3:0] spi4_sd_oe;
+  logic [3:0] spi4_sd_in;
+  logic       spi4_cs_oe;
+  logic       spi4_sck_oe;
   /* verilator lint_on UNUSEDSIGNAL */
   /* verilator lint_on UNDRIVEN */
 

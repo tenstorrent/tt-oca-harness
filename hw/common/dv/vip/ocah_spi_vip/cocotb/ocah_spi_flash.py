@@ -106,7 +106,15 @@ from typing import Any, Callable, Dict, List, Optional
 import cocotb
 from cocotb.triggers import FallingEdge, First, RisingEdge
 
-from .ocah_spi_types import PAGE_SIZE, SECTOR_SIZE, SR1_WEL, OcahSpiOpcode, SpiMode
+from .ocah_spi_types import (
+    LANE_OPCODES,
+    PAGE_SIZE,
+    SECTOR_SIZE,
+    SR1_WEL,
+    OcahSpiOpcode,
+    SpiMode,
+    command_format,
+)
 
 __all__ = ["OcahSpiFlash", "OcahSpiFlashError", "SpiMode"]
 
@@ -238,7 +246,9 @@ class OcahSpiFlash:
         self._mode = SpiMode(mode)
         if self._mode == SpiMode.SINGLE and (mosi is None or miso is None):
             raise OcahSpiFlashError(f"{name}: mode='single' requires mosi and miso handles")
-        if self._mode in (SpiMode.QUAD, SpiMode.OCTAL) and (dq_out is None or dq_in is None):
+        if self._mode in (SpiMode.QUAD, SpiMode.OCTAL, SpiMode.QUAD_IO) and (
+            dq_out is None or dq_in is None
+        ):
             raise OcahSpiFlashError(f"{name}: mode='{mode}' requires dq_out and dq_in handles")
 
         self._jedec_id = jedec_id & _ADDR_MASK_24
@@ -263,6 +273,7 @@ class OcahSpiFlash:
         self._transactions: List[Dict[str, Any]] = []
         self._engine_error: Optional[BaseException] = None
         self._input_bits = 0
+        self._input_clocks = 0
 
         self._apply_plusargs()
 
@@ -505,6 +516,7 @@ class OcahSpiFlash:
     async def _handle_transaction(self) -> None:
         """Handle a single SPI transaction (CS low to CS high)."""
         self._input_bits = 0
+        self._input_clocks = 0
         try:
             opcode = await self._recv_byte_single()
         except _CsDeasserted as exc:
@@ -619,6 +631,10 @@ class OcahSpiFlash:
             self._do_sector_erase(addr)
             self._wel = False
 
+        # --- Dual and quad commands (four-lane binding only) ---
+        elif opcode in LANE_OPCODES and self._mode == SpiMode.QUAD_IO:
+            addr, tx_data, rx_data = await self._lane_command(opcode)
+
         else:
             self.log.warning(
                 "%s: unknown opcode 0x%02X — draining to CS deassert", self.name, opcode
@@ -632,8 +648,44 @@ class OcahSpiFlash:
     # Flash operation helpers
     # ------------------------------------------------------------------
 
-    async def _do_read(self, addr: int) -> bytes:
-        """Stream memory to MISO until CS deasserts; return the complete bytes sent.
+    async def _lane_command(self, opcode: int) -> tuple[int, bytes, bytes]:
+        """Run a dual or quad command; return (address, bytes sent, payload taken).
+
+        The address phase runs at the format's address width, then the dummy
+        clocks, then the data phase at its width. The same refusal rules as
+        the single-lane commands apply phase by phase.
+        """
+        fmt = command_format(opcode)
+        assert fmt is not None
+        if not fmt.response:
+            # QUAD PAGE PROGRAM: the write-enable gate first, then the shape rules.
+            if not self._wel:
+                await self._recv_remaining()
+                raise _Refused("wel_clear")
+            addr = await self._recv_read_addr()
+            payload, tail_bits = await self._recv_remaining(fmt.data_lanes)
+            if tail_bits:
+                raise _Refused("partial_byte", addr=addr, data_in=bytes(payload))
+            if not payload:
+                raise _Refused("no_payload", addr=addr)
+            self._do_page_program(addr, bytes(payload))
+            self._wel = False
+            return addr, b"", bytes(payload)
+        try:
+            addr = 0
+            for _ in range(self._addr_bytes):
+                addr = (addr << 8) | await self._recv_byte_lanes(fmt.addr_lanes)
+        except _CsDeasserted:
+            raise _Refused("partial_address") from None
+        for _ in range(fmt.dummy_clocks):
+            await First(RisingEdge(self._sclk), RisingEdge(self._cs_n))
+            if int(self._cs_n.value) != 0:
+                raise _Refused("partial_dummy", addr=addr)
+            self._input_clocks += 1
+        return addr, await self._do_read(addr, fmt.data_lanes), b""
+
+    async def _do_read(self, addr: int, lanes: int = 1) -> bytes:
+        """Stream memory to the controller until CS deasserts; return the complete bytes sent.
 
         The byte in flight when chip-select rises is not part of the record:
         the controller clocked none or only some of its bits.
@@ -644,7 +696,11 @@ class OcahSpiFlash:
                 byte_val = 0xFF
             else:
                 byte_val = self._mem[addr]
-            if not await self._send_byte_single(byte_val):
+            if lanes == 1:
+                sent = await self._send_byte_single(byte_val)
+            else:
+                sent = await self._send_byte_lanes(byte_val, lanes)
+            if not sent:
                 break
             out.append(byte_val)
             addr = (addr + 1) & _ADDR_MASK_24
@@ -692,6 +748,24 @@ class OcahSpiFlash:
             bit = int(mosi_sig.value) & 0x1
             byte_val = (byte_val << 1) | bit
             self._input_bits += 1
+            self._input_clocks += 1
+        return byte_val
+
+    async def _recv_byte_lanes(self, lanes: int) -> int:
+        """Receive one byte on ``lanes`` lanes of ``dq_out``, most significant bits first."""
+        if lanes == 1:
+            return await self._recv_byte_single()
+        byte_val = 0
+        mask = (1 << lanes) - 1
+        for clocks in range(8 // lanes):
+            await First(RisingEdge(self._sclk), RisingEdge(self._cs_n))
+            if int(self._cs_n.value) != 0:
+                raise _CsDeasserted(
+                    f"{self.name}: CS deasserted during byte receive", clocks * lanes
+                )
+            byte_val = (byte_val << lanes) | (int(self._dq_out.value) & mask)
+            self._input_bits += lanes
+            self._input_clocks += 1
         return byte_val
 
     async def _send_byte_single(self, byte_val: int) -> bool:
@@ -708,8 +782,27 @@ class OcahSpiFlash:
             if int(self._cs_n.value) != 0:
                 return False
             bit = (byte_val >> bit_idx) & 0x1
-            miso_sig = self._miso if self._mode == SpiMode.SINGLE else self._dq_in
-            miso_sig.value = bit
+            if self._mode == SpiMode.SINGLE:
+                self._miso.value = bit
+            elif self._mode == SpiMode.QUAD_IO:
+                self._dq_in.value = bit << 1  # standard mode: lane 1 to the controller
+            else:
+                self._dq_in.value = bit
+        return await self._last_bit_sampled()
+
+    async def _send_byte_lanes(self, byte_val: int, lanes: int) -> bool:
+        """Send one byte on ``lanes`` lanes of ``dq_in``, most significant bits first.
+
+        Each falling SCK edge drives the next ``lanes`` bits, the least
+        significant of them on lane 0. Returns True when the controller
+        sampled the last group.
+        """
+        mask = (1 << lanes) - 1
+        for shift in range(8 - lanes, -1, -lanes):
+            await First(FallingEdge(self._sclk), RisingEdge(self._cs_n))
+            if int(self._cs_n.value) != 0:
+                return False
+            self._dq_in.value = (byte_val >> shift) & mask
         return await self._last_bit_sampled()
 
     async def _last_bit_sampled(self) -> bool:
@@ -765,8 +858,8 @@ class OcahSpiFlash:
         addr = int.from_bytes(rest[: self._addr_bytes], "big")
         return addr, bytes(rest[self._addr_bytes :]), tail_bits
 
-    async def _recv_remaining(self) -> tuple[bytearray, int]:
-        """Receive bytes until CS deasserts.
+    async def _recv_remaining(self, lanes: int = 1) -> tuple[bytearray, int]:
+        """Receive bytes on ``lanes`` lanes until CS deasserts.
 
         Returns the complete bytes and the count of bits (0 to 7) sampled in
         the byte that chip-select ended.
@@ -774,7 +867,7 @@ class OcahSpiFlash:
         buf: bytearray = bytearray()
         while int(self._cs_n.value) == 0:
             try:
-                byte_val = await self._recv_byte_single()
+                byte_val = await self._recv_byte_lanes(lanes)
                 buf.append(byte_val)
             except _CsDeasserted as exc:
                 return buf, exc.bits
@@ -790,8 +883,10 @@ class OcahSpiFlash:
     # ------------------------------------------------------------------
     # mode="quad" and mode="octal" bind the DQ bus but run the single-bit
     # engine: the command byte, the address bytes, and the data phase all use
-    # DQ0 (bit 0 of dq_out / dq_in), one bit per SCK. Multi-bit data lanes
-    # and the bidirectional bus turnaround are not modeled.
+    # DQ0 (bit 0 of dq_out / dq_in), one bit per SCK.
+    # mode="quad_io" binds four lanes: single-lane phases take lane 0 of
+    # dq_out and drive lane 1 of dq_in; the dual and quad commands of
+    # LANE_OPCODES run their phases on two or four lanes.
 
     # ------------------------------------------------------------------
     # Internal bookkeeping
@@ -816,6 +911,7 @@ class OcahSpiFlash:
             "ok": ok,
             "reason": reason,
             "input_bits": self._input_bits,
+            "input_clocks": self._input_clocks,
             "tail_bits": self._input_bits % 8,
         }
         self._transactions.append(rec)

@@ -67,6 +67,14 @@ timeout_sec = 600
 tags = ["smoke", "ci", "spi_wire"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "ocah_spi_lanes_test"
+module = "ocah_spi_lanes_test"
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "spi_lanes"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "smoke"
 tests = [
@@ -78,6 +86,7 @@ tests = [
     "ocah_spi_partial_byte_test",
     "ocah_spi_frame_shape_test",
     "ocah_spi_wire_check_test",
+    "ocah_spi_lanes_test",
 ]
 
 [[groups]]
@@ -91,4 +100,5 @@ tests = [
     "ocah_spi_partial_byte_test",
     "ocah_spi_frame_shape_test",
     "ocah_spi_wire_check_test",
+    "ocah_spi_lanes_test",
 ]
