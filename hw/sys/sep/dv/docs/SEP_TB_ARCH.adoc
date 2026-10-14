@@ -46,7 +46,7 @@ xref:SEP_VPLAN.adoc#sep-dv-verification-plan[SEP_VPLAN].
 |SEP Interface |Preferred VIP |Modeling Approach |Notes
 |CPU-LSU AXI (no_cpu) |`ocah_axi_vip` via `SepAxiAgent` (`s_axi`) |Unified OCAH BFM |Primary stimulus; no inbound filter on this path
 |SMN-inbound AXI |Second `SepAxiAgent` (`m_axi`) |Unified OCAH BFM |Real DUT inbound port; traverses inbound filter (block-by-default)
-|SPI flash pads |`ocah_spi_vip` `OcahSpiFlash` |Unified OCAH BFM |Pads are scalar ports on `tb_top`
+|SPI flash pads |`ocah_spi_vip` `OcahSpiFlash`, `OcahSpiMonitor` |Unified OCAH BFM |Pads are scalar and four-lane vector ports on `tb_top`
 |JTAG (eFuse mux path) |`ocah_axi_vip` AXI-Lite master on the OTP JTAG2AXIL port (`j_axi_*`) |Unified OCAH BFM |eFuse JTAG–AXI-Lite coexistence tests
 |Entropy raw noise |`esrc_noise_ext_i` + Python goldens |DUT-local |Deterministic noise shared with the decorrelator golden
 |eFuse / OTP |Generic OSS eFuse bank model |Shared OSS model |No foundry OTP macros; staged via `+sep_efuse_hex`
@@ -133,7 +133,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Boundary PIC input |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `sep_ext_interrupts_i` (`extintsrc_req_i` of `sep`, the PIC sources above 43) from the TB input of the same name, which is 0 unless a leaf drives it. Owner: `sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN).
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
-|SPI host pads |Scalar MISO/MOSI/SCK/CS ports for `OcahSpiFlash` and `OcahSpiMonitor`
+|SPI host pads |Scalar ports for `OcahSpiFlash` and `OcahSpiMonitor`: `spi_cs_n_o`, `spi_sck_o`, `spi_mosi_o` (`sep_io_spi_req_o.sd[0]`) and `spi_miso_i` (`sep_io_spi_rsp_i.sd[1]`). Monitor-only taps of the DUT output struct `sep_io_spi_req_o`: `spi_sd_o[3:0]` (`sd`), `spi_sd_oe_o[3:0]` (`sd_oe`), `spi_cs_oe_o` (`cs_oe`) and `spi_sck_oe_o` (`sck_oe`); `env/sep_spi_wire_monitor.py` attaches them to `OcahSpiMonitor`, which grades the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment"). SEP top-port drive: `spi_sd_i[3:0]` drives response lanes 0, 2 and 3 of `sep_io_spi_rsp_i.sd` only in a run with `+sep_spi_four_lane`; otherwise those lanes are 0. Lane 1 is always `spi_miso_i`, and `spi_sd_i[1]` is not used. `sep_base_test` holds `spi_sd_i` at 0.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
@@ -644,7 +644,11 @@ with `+sep_efuse_prog_fail_count`, `+sep_efuse_prog_fail_percent`, and
 ==== OpenTitan SPI host
 
 Internal to the wrapper; its pads come out as scalar cocotb ports in `tb_top.sv`
-so tests can attach the Apache-2.0 `OcahSpiFlash` Python BFM.
+so tests can attach the Apache-2.0 `OcahSpiFlash` Python BFM. The four data
+lanes, their output enables and the chip-select and clock output enables come
+out as monitor-only taps; see the SPI host pads row in <<sep-hdl-top>>.
+`env/sep_spi_scoreboard.py` compares the bytes a leaf expects with the
+monitor's wire decode and the flash records.
 
 ==== TB shims
 

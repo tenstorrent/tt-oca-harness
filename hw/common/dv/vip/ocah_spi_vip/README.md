@@ -32,12 +32,19 @@ the SEP octal-SPI path) need a single, versioned flash device model so that:
 | single  | Standard 1-bit SPI (MOSI/MISO), Mode 0 (CPOL=0/CPHA=0) | 1-bit on MOSI/MISO |
 | quad    | 4-bit data bus (QSPI); command/address 1-bit         | 1-bit on DQ0 (see note below) |
 | octal   | 8-bit data bus (octal SPI); SDR only                 | 1-bit on DQ0 (see note below) |
+| quad_io | Four data lanes: `dq_out[3:0]` from the controller, `dq_in[3:0]` to it | 1-bit (lane 0 out, lane 1 in), 2-bit or 4-bit per command (see below) |
 
 **Quad/Octal note:** Command and address bytes are always received in 1-bit
 mode, and the data phase uses the same 1-bit engine on DQ0, so the quad and
 octal personalities differ from single only in pin binding. JEDEC ID, page
-program, and read work on QSPI/OSPI paths under that model; multi-bit data
-lanes and the bidirectional turnaround are not modeled.
+program, and read work on QSPI/OSPI paths under that model.
+
+**quad_io note:** The command byte and every single-lane phase take lane 0 of
+`dq_out` and drive lane 1 of `dq_in` (standard SPI on the four-lane pins). The
+dual and quad commands below run their address, dummy and data phases at the
+widths of their command format. On a dual or quad phase the most significant
+bits go first, and the least significant bit of each pair or nibble is on
+lane 0 (the order of the SPI host).
 
 DDR (Double Data Rate) octal mode is out of scope.
 
@@ -56,14 +63,38 @@ DDR (Double Data Rate) octal mode is out of scope.
 | 0x04   | WRITE DISABLE        | In scope |
 | 0x02   | PAGE PROGRAM         | In scope |
 | 0x20   | SECTOR ERASE (4 KB)  | In scope |
+| 0x3B   | DUAL OUTPUT READ     | In scope, `quad_io` only |
+| 0x6B   | QUAD OUTPUT READ     | In scope, `quad_io` only |
+| 0xBB   | DUAL I/O READ        | In scope, `quad_io` only |
+| 0xEB   | QUAD I/O READ        | In scope, `quad_io` only |
+| 0x32   | QUAD PAGE PROGRAM    | In scope, `quad_io` only |
 
-`OcahSpiOpcode` names these nine opcodes and `IN_SCOPE_OPCODES` is their set.
-An opcode outside the set is drained by the device to the end of the frame
-and recorded with `ok=False`, decoded by the monitor as `UNKNOWN(0xNN)` with
-empty data fields, and counted by the checker under `unsupported`, never
-credited.  Out of scope: dual/quad-output reads (0x3B, 0x6B), block and chip
-erase (0xD8, 0xC7), 4-byte address mode entry (0xB7), suspend/resume,
-OTP/security registers, ECC, SFDP, and all silicon-specific commands.
+`command_format(opcode)` (`ocah_spi_types.OcahSpiCommandFormat`) gives the
+phases after the single-lane command byte of each command with a response or
+a payload.  The five lane commands (`LANE_OPCODES`):
+
+| Opcode | Address lanes | Dummy clocks | Data lanes | Data direction |
+|--------|---------------|--------------|------------|----------------|
+| 0x3B   | 1             | 8            | 2          | Device to controller |
+| 0x6B   | 1             | 8            | 4          | Device to controller |
+| 0xBB   | 2             | 4            | 2          | Device to controller |
+| 0xEB   | 4             | 6            | 4          | Device to controller |
+| 0x32   | 1             | 0            | 4          | Controller to device |
+
+The dummy clocks carry no data.  QUAD PAGE PROGRAM
+follows the PAGE PROGRAM rules (latch gate, complete address, at least one
+complete payload byte).  `lanes_to_bytes(values, lanes)` packs per-clock lane
+samples into bytes in the same bit order.  The lane commands need
+`mode="quad_io"`: on the other bindings the device refuses them as
+`unknown_opcode` and the checker counts them under `unsupported`.
+
+`OcahSpiOpcode` names these fourteen opcodes and `IN_SCOPE_OPCODES` is their
+set.  An opcode outside the set is drained by the device to the end of the
+frame and recorded with `ok=False`, decoded by the monitor as `UNKNOWN(0xNN)`
+with empty data fields, and counted by the checker under `unsupported`, never
+credited.  Out of scope: block and chip erase (0xD8, 0xC7), 4-byte address
+mode entry (0xB7), suspend/resume, OTP/security registers, ECC, SFDP, and all
+silicon-specific commands.
 
 ---
 
@@ -72,7 +103,7 @@ OTP/security registers, ECC, SFDP, and all silicon-specific commands.
 ```
 ocah_spi_vip/
   __init__.py                           — re-exports the cocotb public API
-  cocotb/ocah_spi_types.py              — OcahSpiOpcode, SpiMode, page/sector geometry, SR1 bits
+  cocotb/ocah_spi_types.py              — OcahSpiOpcode, SpiMode, command formats, lanes_to_bytes, page/sector geometry, SR1 bits
   cocotb/ocah_spi_flash.py              — OcahSpiFlash (generic SPI/QSPI/OSPI device)
   cocotb/ocah_sep_spi_flash.py          — OcahSepSpiFlash (SEP octal-SPI pin set)
   cocotb/ocah_spi_master_bfm.py         — OcahSpiMasterBfm (controller engine, all four SPI modes)
@@ -111,7 +142,7 @@ flash = OcahSpiFlash(
     # dq_out = dut.spi_dq_out,  # DQ bus driven by DUT
     # dq_in  = dut.spi_dq_in,   # DQ bus driven by flash BFM
     name     = "flash0",
-    mode     = "single",        # "single" | "quad" | "octal"
+    mode     = "single",        # "single" | "quad" | "octal" | "quad_io"
     jedec_id = 0x20BA18,        # 3-byte JEDEC ID
     flash_size = 16*1024*1024,  # bytes
     addr_bytes = 3,             # 24-bit addressing
@@ -137,10 +168,13 @@ flash = OcahSpiFlash(
 Frame record keys: `opcode` (the command byte; -1 when no complete byte
 arrived), `addr`, `data_out` (complete bytes the controller sampled from the
 device), `data_in` (complete payload bytes the device received), `ok` (the
-device accepted the frame), `reason`, `input_bits` (controller-output bits
-the device sampled as input: the whole frame for a command without a response
+device accepted the frame), `reason`, `input_clocks` (SCK clocks the device
+sampled as controller input: the whole frame for a command without a response
 phase, the command, address and dummy phases for one with a response phase),
-and `tail_bits` (input bits after the last complete input byte).  Every
+`input_bits` (the bits those clocks carried; the dummy clocks of a dual or
+quad read carry none, and on a single-lane frame the count equals
+`input_clocks`), and `tail_bits` (input bits after the last complete input
+byte).  Every
 chip-select frame gives one record, malformed frames included.
 
 The device takes the whole controller-output frame before it changes the
@@ -151,12 +185,12 @@ write-enable latch or memory; a refused frame changes neither:
 | `""` | Accepted |
 | `"partial_opcode"` | Ended 1 to 7 bits into the command byte |
 | `"partial_address"` | Ended before the last address bit |
-| `"partial_dummy"` | FAST READ ended before the last dummy bit |
-| `"wel_clear"` | PAGE PROGRAM or SECTOR ERASE with the latch clear |
-| `"partial_byte"` | PAGE PROGRAM or a callback frame ended 1 to 7 bits into a payload byte |
-| `"no_payload"` | PAGE PROGRAM carried no payload byte |
+| `"partial_dummy"` | A read with dummy clocks ended before the last one |
+| `"wel_clear"` | A program or SECTOR ERASE with the latch clear |
+| `"partial_byte"` | A program or a callback frame ended inside a payload byte |
+| `"no_payload"` | A program carried no payload byte |
 | `"unexpected_payload"` | WRITE ENABLE, WRITE DISABLE or SECTOR ERASE carried a bit after its last command or address bit |
-| `"unknown_opcode"` | Command outside the supported set |
+| `"unknown_opcode"` | Command outside the supported set, or a lane command on a binding other than `quad_io` |
 
 WRITE ENABLE and WRITE DISABLE are exactly one command byte; SECTOR ERASE is
 one command byte and exactly `addr_bytes` address bytes; PAGE PROGRAM is one
@@ -167,7 +201,7 @@ payload is taken, and the frame is not graded for its shape.  A registered
 callback runs only on a frame with a complete command byte, complete address
 and a payload that ends on a byte boundary; PAGE PROGRAM handled by a
 callback keeps the latch gate and needs a payload byte.  A read (READ, FAST
-READ, JEDEC ID, status) is graded for its command, address and dummy phases
+READ, the dual and quad reads, JEDEC ID, status) is graded for its command, address and dummy phases
 only: once the device drives its response, chip-select may rise at any bit,
 and the frame is accepted with the complete bytes sent.
 `FRAME_SHAPE_REASONS` names the reasons a frame is refused for its shape.
@@ -225,6 +259,11 @@ engine (`from_prefix(dut, "spi")` binds `spi_cs_n`, `spi_sclk`, `spi_mosi`,
 `spi_miso`), in Mode 0 unless `cpol`/`cpha` or `set_mode` select another;
 `OcahSpiMasterSequence` is the surface tests call.  `bfm.drive(cs_n=, sclk=,
 mosi=)` sets pins directly for wire-level stimulus.
+With the four-lane handles (`sd_out`, `sd_oe`, `sd_in`, `cs_oe`, `sck_oe`)
+the engine drives single-lane frames on lane 0 with output enable 0b0001,
+samples lane 1, and holds the chip-select and clock output enables on;
+`bfm.lane_frame(segments)` drives one frame of segments on one, two or four
+lanes.
 A bench whose DUT is an SPI host drives that host and attaches only the
 device and the checker.
 
@@ -251,6 +290,7 @@ seq.check_host_responses()        # CHK-SPI-HOST-*: the controller received what
 | `read(addr, n)`, `fast_read(addr, n)` | `bytes` | 0x03 / 0x0B (one dummy byte), address, `n` response bytes |
 | `raw_command(opcode, *, addr, dummy_bytes, tx, rx_len, tail_bits)` | `bytes` | Any opcode, for out-of-scope probes; `tail_bits` (0 to 7) ends the frame that many bits into a further byte |
 | `raw_frame(bits)` | `list[int]` | One frame of exactly these MOSI bits; it may end in any phase. Returns the MISO bits |
+| `bfm.lane_frame(segments)` | `list[bytes]` | Four-lane handles only. One frame of `(lanes, kind, arg)` segments: `lanes` 1, 2 or 4; `kind` `"tx"` (bytes to send), `"rx"` (byte count to receive) or `"dummy"` (clock count). A single-lane segment keeps lane 0 driven; a dual or quad receive or dummy segment drives no lane. Bytes go most significant bits first, the least significant bit of each pair or nibble on lane 0. Returns the bytes of each receive segment |
 | `responses(opcode)` | `list[bytes]` | Every response the controller received for that opcode |
 
 ---
@@ -269,6 +309,12 @@ mon = OcahSpiMonitor(
     addr_bytes = 3,
     cpol = 0,                    # the SPI mode the controller is programmed to
     cpha = 0,
+    # optional four-lane taps:
+    # sd_out = dut.spi_sd_o,     # data lanes from the controller
+    # sd_oe  = dut.spi_sd_oe_o,  # their output enables (bit n enables lane n)
+    # sd_in  = dut.spi_sd_i,     # data lanes to the controller
+    # cs_oe  = dut.spi_cs_oe_o,  # chip-select output enable
+    # sck_oe = dut.spi_sck_oe_o, # clock output enable
 )
 
 mon.add_transaction_callback(lambda txn: print(txn))
@@ -284,10 +330,17 @@ mon.clear_history()
 Transaction record keys: `opcode`, `addr`, `has_addr`, `data_mosi` (payload
 bytes after the address, PAGE PROGRAM only), `data_miso` (response bytes
 after the command, address, and dummy phases), `bit_count`, `input_bits`
-(command, address and dummy bits of a command with a response phase;
+(command, address and dummy bits of a single-lane command with a response
+phase; `bit_count` otherwise), `input_clocks` (clocks of the command, address
+and dummy phases of a command with a response phase at its lane widths;
 `bit_count` otherwise), `opcode_complete`, `cpol`, `cpha`, `wire_errors`,
-`start_ns`, `end_ns`.  A command without a response or payload phase carries
-empty data.
+`beats`, `start_ns`, `end_ns`.  A command without a response or payload
+phase carries empty data.  `data_mosi` and `data_miso` are the single-lane
+decode (lane 0 out, lane 1 in).  With `sd_out`, `beats` holds one
+`(lanes out, output enables, lanes in)` tuple per sample edge (`None` for
+X/Z), and `lanes_to_bytes` decodes a dual or quad phase from it; with
+`sd_out` and no `mosi`/`miso`, the single-lane decode reads lane 0 out and
+lane 1 in.
 
 The monitor samples on the sample edge of its mode (the rising SCK edge when
 CPOL equals CPHA, the falling edge otherwise) and grades the controller's
@@ -299,7 +352,13 @@ pins:
 | `idle_at_cs_rise` | SCK is at the CPOL level when chip-select rises |
 | `mosi_edge` | While chip-select is low, MOSI does not change on a sample edge, nor after a sample edge and before the next shift edge of the running clock (within 1.5 half periods of the sample edge) |
 | `sck_while_idle` | While chip-select is high, SCK moves only to the CPOL level |
-| `xz` | Chip-select resolves to 0 or 1 at its edges; SCK and MOSI resolve to 0 or 1 while chip-select is low |
+| `xz` | Chip-select resolves to 0 or 1 at its edges; SCK and MOSI (with `sd_out`, every driven lane) resolve to 0 or 1 while chip-select is low |
+| `oe_idle` | With `sd_oe`: no data lane output enable rises, or is on at an SCK edge, while chip-select is high |
+| `oe_lanes` | With `sd_oe`: at each sample edge the data lane output enables are none, lane 0, lanes 1:0 or lanes 3:0 |
+| `oe_ctrl` | With `cs_oe`/`sck_oe`: both are on at each sample edge |
+
+With `sd_out`, `mosi_edge` applies to every lane whose output enable is on
+before and after a change.
 
 `get_wire_errors()` lists every violation.  `stop()` raises
 `OcahSpiMonitorError` after a violation, after a callback raised
@@ -338,10 +397,10 @@ rules and their identifiers:
 | `CHK-SPI-STATUS-WEL` | READ STATUS REGISTER 1 reported the latch the model predicts (set after WRITE ENABLE, clear after WRITE DISABLE, consumed by a program or erase) |
 | `CHK-SPI-STATUS-SR2` | READ STATUS REGISTER 2 reported the configured register |
 | `CHK-SPI-WREN-ORDER` | A program or erase was accepted only with the latch set, and refused (no payload taken) only with it clear |
-| `CHK-SPI-FRAME-BYTES` | A PAGE PROGRAM sent with the latch set carried a complete address and at least one payload byte and ended on a payload byte boundary |
-| `CHK-SPI-FRAME-SHAPE` | Every other frame had a complete command byte and the exact length of its command: one byte for WRITE ENABLE and WRITE DISABLE, the command and address bytes for SECTOR ERASE with the latch set, complete command, address and dummy phases for a read; an accepted frame's `input_bits` equals that length |
-| `CHK-SPI-LEDGER` | `check_ledger(monitor_frames)`: the device recorded every frame the monitor saw, in order, with the same command byte and input bit count |
-| `CHK-SPI-READ-DATA` | READ and FAST READ streamed the model's bytes at that address |
+| `CHK-SPI-FRAME-BYTES` | A PAGE PROGRAM or QUAD PAGE PROGRAM sent with the latch set carried a complete address and at least one payload byte and ended on a payload byte boundary |
+| `CHK-SPI-FRAME-SHAPE` | Every other frame had a complete command byte and the exact length of its command: one byte for WRITE ENABLE and WRITE DISABLE, the command and address bytes for SECTOR ERASE with the latch set, complete command, address and dummy phases for a read at its lane widths; an accepted frame's `input_clocks` equals that length in clocks |
+| `CHK-SPI-LEDGER` | `check_ledger(monitor_frames)`: the device recorded every frame the monitor saw, in order, with the same command byte and input clock count |
+| `CHK-SPI-READ-DATA` | A read (READ, FAST READ, or a dual or quad read) streamed the model's bytes at that address |
 | `CHK-SPI-HOST-JEDEC`, `-STATUS`, `-READBACK` | The controller received, frame by frame, what the device sent |
 | `CHK-SPI-CMD-ORDER` | The in-scope opcode sequence equals the expected one |
 | `CHK-SPI-MEM-GOLDEN` | The device array equals the model over every programmed or erased byte |
@@ -418,9 +477,9 @@ the same way.
 
 | Limitation | Note |
 |-----|------|
-| Quad/octal multi-bit data phase | Single-bit data timing on DQ0 for all modes; no lane turnaround |
+| Multi-bit data phase | Dual and quad phases only with `mode="quad_io"`; `quad` and `octal` run single-bit data timing on DQ0; no octal lanes |
+| Lane turnaround | Not modeled: the device drives `dq_in` and the controller drives `dq_out` on separate buses; the monitor grades the output-enable patterns |
 | DDR (double data rate) octal | Out of scope |
-| Dual/quad-output read opcodes (0x3B, 0x6B) | Out of scope; drained, recorded refused, never credited |
 | Block and chip erase, 4-byte address mode entry | Out of scope; drained, recorded refused, never credited |
 | 4-byte (32-bit) address mode | Default is 3-byte; set `addr_bytes=4` in the constructor |
 | SPI Mode 1/2/3 (CPOL/CPHA variants) | The flash device answers Mode 0 only; the monitor and the controller engine run all four modes |
@@ -449,11 +508,15 @@ python3 tools/dv/run_dv.py --dut smc --items smc_spi_pad_bfm_test --tool verilat
 The harness selftests (`ocah_spi_jedec_test`, `ocah_spi_program_readback_test`,
 `ocah_spi_erase_test`, `ocah_spi_ordering_test`, `ocah_spi_unsupported_test`,
 `ocah_spi_partial_byte_test`, `ocah_spi_frame_shape_test`,
-`ocah_spi_wire_check_test`)
+`ocah_spi_wire_check_test`, `ocah_spi_lanes_test`)
 prove the device, the controller engine, the monitor, and the checker against
 each other; each carries an in-band probe that hands a fail-fast checker a
 wrong identifier, pattern, order, vacuous erase, or unprotected program and
 records that it was rejected (`CHK-SPI-NEG-*`).
+`ocah_spi_lanes_test` programs and reads a page through every lane command on
+the four-lane link, compares the controller, the device record and the
+monitor's lane decode, refuses lane phases cut short, and drives each
+output-enable violation once.
 `sep_spi_flash_jedec_smoke_test` is the gating SEP regression and needs no
 firmware. `sep_spi_ot_flash_cmd_rand_test` runs in the `cpu` mode with its
 firmware image, so it needs the RISC-V toolchain described in

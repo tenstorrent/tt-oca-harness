@@ -16,6 +16,16 @@ Supported commands
   0x04 — WRITE DISABLE
   0x02 — PAGE PROGRAM
   0x20 — SECTOR ERASE (4 KB)
+  0x3B — DUAL OUTPUT READ         (1-1-2, 8 dummy clocks)       mode "quad_io" only
+  0x6B — QUAD OUTPUT READ         (1-1-4, 8 dummy clocks)       mode "quad_io" only
+  0xBB — DUAL I/O READ            (1-2-2, 4 dummy clocks)       mode "quad_io" only
+  0xEB — QUAD I/O READ            (1-4-4, 6 dummy clocks)       mode "quad_io" only
+  0x32 — QUAD PAGE PROGRAM        (1-1-4)                       mode "quad_io" only
+
+The lane widths and dummy clocks come from ``command_format()``
+(``ocah_spi_types``). On a dual or quad phase the most significant bits go
+first, and the least significant bit of each pair or nibble is on lane 0. On
+the other bindings the five lane commands are refused as ``unknown_opcode``.
 
 Out of scope
 ------------
@@ -29,6 +39,8 @@ Mode mapping
   "single" — CS_N, SCK, MOSI (DQ0 out), MISO (DQ1 in)
   "quad"   — CS_N, SCK, DQ[3:0] bidirectional
   "octal"  — CS_N, SCK, DQ[7:0] bidirectional  (single-bit data timing; see below)
+  "quad_io" — CS_N, SCK, dq_out[3:0] and dq_in[3:0]; single-lane phases use
+             lane 0 from the controller and lane 1 to the controller
 
 The model is deterministic by default.  All memory is initialised to 0xFF
 (erased state).  The device is instant-ready: the BUSY bit of status register
@@ -48,12 +60,15 @@ frames included::
         "ok":         bool,   # True when the command was in scope and accepted
         "reason":     str,    # see below; "" when accepted
         "input_bits": int,    # controller-output bits sampled as input
+        "input_clocks": int,  # SCK clocks sampled as input (any lane width)
         "tail_bits":  int,    # input bits after the last complete input byte
     }
 
-``input_bits`` counts every clock the device sampled as controller input: the
-whole frame for a command without a response phase, and the command, address
-and dummy phases for one with a response phase.
+``input_clocks`` counts every clock the device sampled as controller input:
+the whole frame for a command without a response phase, and the command,
+address and dummy phases for one with a response phase. ``input_bits`` counts
+the bits those clocks carried; the dummy clocks of a dual or quad read carry
+none. On a single-lane frame the two counts are equal.
 
 Frame acceptance
 ----------------
@@ -65,11 +80,11 @@ write-enable latch or memory. A refused frame changes neither.
 =========================  ===================================================
 ``"partial_opcode"``       ended 1 to 7 bits into the command byte
 ``"partial_address"``      ended before the last address bit
-``"partial_dummy"``        FAST READ ended before the last dummy bit
-``"wel_clear"``            PAGE PROGRAM or SECTOR ERASE with the latch clear
-``"partial_byte"``         PAGE PROGRAM or a callback frame ended 1 to 7 bits
-                           into a payload byte
-``"no_payload"``           PAGE PROGRAM carried no payload byte
+``"partial_dummy"``        a read with dummy clocks ended before the last one
+``"wel_clear"``            a program or SECTOR ERASE with the latch clear
+``"partial_byte"``         a program or a callback frame ended inside a
+                           payload byte
+``"no_payload"``           a program carried no payload byte
 ``"unexpected_payload"``   WRITE ENABLE, WRITE DISABLE or SECTOR ERASE carried
                            a bit after its last command or address bit
 ``"unknown_opcode"``       command outside the supported set
@@ -87,7 +102,9 @@ A registered callback runs only on a frame with a complete command byte,
 boundary. PAGE PROGRAM handled by a callback also keeps the write-enable gate
 and needs at least one payload byte.
 
-A read (READ, FAST READ, JEDEC ID, status) is graded for its command, address
+QUAD PAGE PROGRAM follows the PAGE PROGRAM rules with a four-lane payload.
+
+A read (READ, FAST READ, the dual and quad reads, JEDEC ID, status) is graded for its command, address
 and dummy phases only. Once the device drives its response, chip-select may
 rise at any bit: ``data_out`` holds the complete bytes sent and the frame is
 accepted.
