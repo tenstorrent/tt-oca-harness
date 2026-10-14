@@ -591,7 +591,7 @@ class smu_sep_inbound_burst_extension_test_seq(smu_dtp_sep_dm_sba_test_seq):
         await self._restore(jtag, sb)
         self._stamp("S5", "TIMEOUT site records")
         self._timeout_proof(sb)
-        await RisingEdge(self.dut.clk_smu_i)
+        await ClockCycles(self.dut.clk_smu_i, 2)
         final_region = sample(self.dut.sep_region_size_o, "sep_region_size_o")
         self.step_ns["PASS"] = float(get_sim_time("ns"))
         self._fence_proof(sb, final_region)

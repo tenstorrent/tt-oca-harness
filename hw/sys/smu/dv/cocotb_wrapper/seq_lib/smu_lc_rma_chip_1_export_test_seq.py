@@ -18,7 +18,7 @@ S3, timeout: every bounded wait reports its bound and last observed state.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 
 #: hw/sys/sep/doc/lifecycle_controller.adoc:98-148, RMA_CHIPLET raw 4'b0111 -> {~raw, raw}.
@@ -151,7 +151,7 @@ class smu_lc_rma_chip_1_export_test_seq:
             evidence="CHK-TIMEOUT-PATHS",
         )
 
-        await RisingEdge(clk)
+        await ClockCycles(clk, 2)
         self.step_ts["PASS"] = get_sim_time("ns")
         order = ["S1", "S2", "S3", "PASS"]
         deltas = [self.step_ts[b] - self.step_ts[a] for a, b in zip(order, order[1:])]

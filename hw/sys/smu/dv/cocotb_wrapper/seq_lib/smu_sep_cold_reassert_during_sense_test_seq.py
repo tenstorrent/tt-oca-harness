@@ -445,7 +445,7 @@ class smu_sep_cold_reassert_during_sense_test_seq:
             all(kind in kinds for kind in EXPECTED_WAIT_KINDS),
         )
 
-        await RisingEdge(dut.clk_smu_i)
+        await ClockCycles(dut.clk_smu_i, 2)
         self.stamps["PASS"] = get_sim_time("ns")
         order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "PASS"]
         deltas = [self.stamps[b] - self.stamps[a] for a, b in zip(order, order[1:])]

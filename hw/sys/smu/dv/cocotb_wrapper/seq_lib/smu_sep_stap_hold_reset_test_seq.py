@@ -480,7 +480,7 @@ class smu_sep_stap_hold_reset_test_seq:
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
         sb.expect_eq("bounded wait kinds named by the test steps", kinds, EXPECTED_SITE_KINDS)
 
-        await RisingEdge(self.dut.clk_ref_i)
+        await ClockCycles(self.dut.clk_ref_i, 2)
         self._log(f"OBS final {SEP_STAP_TMS}={self._tms_level()} after the Test-Logic-Reset legs")
         self.step_ns["PASS"] = self._now()
         order = [*STEPS, "PASS"]
