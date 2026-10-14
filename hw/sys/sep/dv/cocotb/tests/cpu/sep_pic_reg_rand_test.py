@@ -9,7 +9,8 @@ group order from the run seed, patches them into the firmware parameter block,
 follows the console live (``env/sep_fw_console``: graded window on ``M G`` /
 ``M C``) and grades:
 
-* CHK-RESET    (firmware) every PIC field reads 0 before the first PIC write;
+* CHK-RESET    (firmware) every PIC field reads its RDL reset value before the
+               first PIC write;
                ``meip`` with the six excluded idle bits masked
                (``OBS-IDLE-UNSTATED``).
 * CHK-RESET-X  (host, VCS) no reset read returns X: ``pic_rd_data_probe_o``

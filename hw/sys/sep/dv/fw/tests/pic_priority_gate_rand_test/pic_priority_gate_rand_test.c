@@ -86,6 +86,8 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define GATE_MEIE0 0u
 #define GATE_NEVER 1u
 #define CSR_MEIHAP 0xFC8
+// Highest meipl level; meipt and meicurpl take the same encoding.
+#define PRI_MAX (EL2_PIC__MEIPL__INTPRIORITY_bm >> EL2_PIC__MEIPL__INTPRIORITY_bp)
 #define MIE_MTIE (1u << 7)
 #define MIE_MSIE (1u << 3)
 #define MIP_MTIP (1u << 7)
@@ -201,17 +203,15 @@ static inline uint32_t read_mip(void) {
 }
 
 static inline uint32_t never_val(uint32_t p) {
-    return p ? 15u : 0u;
+    return p ? PRI_MAX : 0u;
 }
 
 // priord with the threshold CSRs at the pass-all value of that order.
 static void set_order(uint32_t p) {
     pic_write_priord(p);
-    if (p) {
-        __asm__ volatile("csrwi 0xBC9, 15\n csrwi 0xBCC, 15");
-    } else {
-        __asm__ volatile("csrwi 0xBC9, 0\n csrwi 0xBCC, 0");
-    }
+    uint32_t t = p ? PRI_MAX : 0u;
+    __asm__ volatile("csrw %0, %1" ::"i"(CSR_MEIPT), "r"(t));
+    __asm__ volatile("csrw %0, %1" ::"i"(CSR_MEICURPL), "r"(t));
 }
 
 static const struct ot_src *ot_of(uint32_t s) {
@@ -321,10 +321,14 @@ static void src_handler(uint32_t id) {
     rec_spin(8u);
 }
 
+// meihap points at the meivt table entry of the claimed source (crt0 sets
+// meivt to INTVEC_BASE), so the entry index is the claim id. An index outside
+// the PIC source range returns the reserved source 0.
 static inline uint32_t claim_id(void) {
     uint32_t meihap;
     __asm__ volatile("csrr %0, %1" : "=r"(meihap) : "i"(CSR_MEIHAP));
-    return (meihap >> 2) & 0xFFu;
+    uint32_t idx = (meihap - (uint32_t)(uintptr_t)INTVEC_BASE) / sizeof(uint32_t);
+    return idx < SEP_TOP_PIC_MEIE_NUM ? idx : 0u;
 }
 
 void __attribute__((interrupt("machine"))) ext_dispatch(void) {
@@ -574,7 +578,7 @@ static void run_round(uint32_t r) {
     set_order(p ^ 1u);
     for (uint32_t i = 0; i < n; i++) {
         uint32_t s = rprm(r, R_SRC + i);
-        pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), 15u - rprm(r, R_RAW + i));
+        pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), PRI_MAX - rprm(r, R_RAW + i));
         pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), EL2_PIC__MEIE__INTEN_bm);
     }
     clear_log();

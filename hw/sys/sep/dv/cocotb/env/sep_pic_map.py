@@ -12,7 +12,9 @@ Written from the specification, never from the RTL or a DUT read:
 * ``hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc`` (``meip``, ``meipl``,
   ``mpiccfg``): ``meip`` word ``w`` bit ``b`` is source ``32 * w + b``; the
   priority order ``priord`` 0 is standard (higher ``meipl`` wins, 0 never
-  delivers) and 1 is reverse (lower wins, 15 never delivers).
+  delivers) and 1 is reverse (lower wins, 15 never delivers). The number of
+  priority levels is ``2 ** EL2_PIC__MEIPL__INTPRIORITY_bw`` from the generated
+  C header ``hw/sys/sep/regs/gen/c/blocks/el2_pic.h``.
 
 The six sources whose idle level the specification does not state (13, 15, 16,
 37, 38 and 39) are masked in every compare that expects 0 or an exact word,
@@ -29,13 +31,19 @@ Usage::
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from sep_reg_meta import CHeaderRegBlock
 from sep_spec_tables import pic
 
 NUM_VEC = 43
 NUM_SOURCES = 256
 MEIP_WORDS = NUM_SOURCES // 32
 FIRST_BOUNDARY_SOURCE = NUM_VEC + 1
-NUM_LEVELS = 16
+EL2_PIC = CHeaderRegBlock(
+    "EL2_PIC", Path(__file__).resolve().parents[3] / "regs" / "gen" / "c" / "blocks" / "el2_pic.h"
+)
+NUM_LEVELS = 1 << EL2_PIC.fields("MEIPL")["INTPRIORITY"]["bw"]
 
 EXCLUDED_IDLE_SOURCES: tuple[int, ...] = (
     pic("WDT alert"),
