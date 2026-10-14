@@ -556,7 +556,7 @@ static void run_round(uint32_t r) {
     (void)hold();
     uint32_t nruns = g_runs[sn] - own0;
     meip_obs(sn);
-    uint32_t eff1 = p ? 14u : 1u;
+    uint32_t eff1 = p ? PRI_MAX - 1u : 1u; // one level past the never value
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sn), eff1);
     (void)wait_runs(sn, own0 + nruns + 1u);
     (void)hold();
