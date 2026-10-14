@@ -20,6 +20,14 @@ sensitive operations
 e.g. cryptographic keys
 * Anti-replay facilities e.g. non-volatile counterj in OTP
 * Obfuscate data stored in SRAM and OTP memories
+* Hardware zero fill of memory by the secure DMA, with no software-prepared
+source buffer and an erase window that the engine checks on every write
+ifdef::backend-html5[]
+(xref:sep:dma.adoc#sep-dma-zero-fill[Zero Fill])
+endif::backend-html5[]
+ifdef::backend-pdf[]
+(<<sep-dma-zero-fill,Zero Fill>>)
+endif::backend-pdf[]
 
 [[debug-and-dft-security-considerations]]
 == Debug and DFT Security Considerations

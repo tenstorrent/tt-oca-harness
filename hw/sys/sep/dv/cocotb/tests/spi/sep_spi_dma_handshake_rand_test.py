@@ -36,7 +36,11 @@ Checkers:
   CHK-HS-STOP     after the GO clear the words after the moved chunks keep their
                   sentinel while the trigger probe is high, and the moved chunks
                   keep the words read before the clear.
-  CHK-HS-NOCHUNK  STATUS.CHUNK_DONE reads 0 at every poll of the handshake run.
+  CHK-HS-NOCHUNK  STATUS.CHUNK_DONE reads 0 at every poll of the handshake run,
+                  and with INTR_ENABLE.DMA_CHUNK_DONE=1 PIC source 10 (bit 9 of
+                  ``sep_internal_interrupts_probe_o``) stays low at every clock
+                  from before GO to the end of the t_fill wait, so a CHUNK_DONE
+                  pulse between two polls also fails.
   CHK-HS-DATA     blocked: the specification does not name the pad line that
                   carries the Rx bit in standard mode. The leaf logs
                   ``OBS-HS-DATA LOG`` only; it grades nothing and is not counted.
@@ -447,6 +451,8 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         rx_bytes = cfg.n * cfg.chunk + cfg.extra_bytes
         bound = cfg.seg_clks(rx_bytes)
+        await self.dma.wr(INTR_ENABLE, INTR_EN_CHUNK)
+        m_hs_irq = self.irq.mark()
         t_go, _ = await self._hs_start(
             mask=cfg.mask_on, total=cfg.n * cfg.chunk, dst_words=nw, rx_bytes=rx_bytes
         )
@@ -489,15 +495,20 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         while self.tw.clk - t1 < t_fill:
             hs_polls.append(await self.dma.read_status())
         go2 = field_compare(await self.dma.rd(DMA_CONTROL), 0, GO_MASK)
+        hs_irq_rises = self.irq.rises_since(m_hs_irq, "chunk")
+        hs_irq_high = self.irq.high_clocks_since(m_hs_irq, "chunk")
         self._probe_log("handshake")
         for i, st in enumerate(hs_polls):
             self.logger.debug("HS-POLL %d %s", i, st.fmt())
         hs_chunk_polls = sum(st.chunk_done for st in hs_polls)
         self.logger.info(
-            "HS-POLL LOG seed=%d polls=%d polls_with_chunk_done=%d last=%s",
+            "HS-POLL LOG seed=%d polls=%d polls_with_chunk_done=%d chunk_irq_rises=%d "
+            "chunk_irq_high_clks=%d last=%s",
             cfg.seed,
             len(hs_polls),
             hs_chunk_polls,
+            hs_irq_rises,
+            hs_irq_high,
             hs_polls[-1].fmt(),
         )
         close_graded_window(self.logger)
@@ -643,12 +654,13 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         # CHK-HS-NOCHUNK.
         line = (
             f"polls_with_chunk_done={hs_chunk_polls} polls={len(hs_polls)} "
+            f"chunk_irq_rises={hs_irq_rises} chunk_irq_high_clks={hs_irq_high} "
             f"control_normal_polls={len(statuses)} control_chunk_irq_rises={irq_rises} "
             f"control_normal_polls_with_chunk_done={nm_chunk_polls}"
         )
         if nm_chunk_polls < 1 and irq_rises < 1:
             self._ctrl_missing("CHK-HS-NOCHUNK", line)
-        if hs_chunk_polls:
+        if hs_chunk_polls or hs_irq_rises or hs_irq_high:
             self._fail("CHK-HS-NOCHUNK", line)
         self._pass("CHK-HS-NOCHUNK", line)
 

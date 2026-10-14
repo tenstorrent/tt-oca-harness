@@ -7,6 +7,11 @@ bytes in chunks of ``chunk`` bytes at a transfer width of ``w`` bytes, the
 address of each transaction, the destination image the transfer leaves, and
 the write-strobe byte lanes of each write beat on the 64-bit DMA master.
 
+``DmaZeroFill`` models a zero fill (CONTROL.OPCODE 4, ``dma.hjson``): no read,
+and each write beat clears the bytes it covers. Its final beat can be narrower
+than the width; the enabled memory range stops the fill at the first beat that
+leaves it, before that beat is written.
+
 Transaction k runs from 0 to total/w - 1. Its chunk is j = floor(k*w/C) and
 its position in the chunk is p = k - j*C/w. The address of transaction k at a
 side with base address ``base`` is:
@@ -146,6 +151,86 @@ class DmaXfer:
         return img
 
 
+@dataclass(frozen=True)
+class ZeroBeat:
+    """One write beat of a zero fill: its first byte address and its byte count."""
+
+    addr: int
+    nbytes: int
+
+    @property
+    def wstrb(self) -> int:
+        """WSTRB byte lanes on the 64-bit DMA master."""
+        return wstrb_lanes(self.addr, self.nbytes)
+
+
+@dataclass(frozen=True)
+class DmaZeroFill:
+    """One zero fill (OPCODE 4) as software programs it.
+
+    A transfer of more than one chunk has a ``chunk`` that is a multiple of
+    the width, so only the last beat of the transfer can be narrower than the
+    width. A destination that does not increment is limited to one chunk: at a
+    chunk end with INCREMENT=0 and WRAP=0 the engine advances DST_ADDR by
+    CHUNK_DATA_SIZE.
+    """
+
+    dst_base: int
+    total: int
+    chunk: int
+    width_enc: int = 2
+    dst_inc: bool = True
+    dst_wrap: bool = False
+
+    def __post_init__(self) -> None:
+        w = width_bytes(self.width_enc)
+        if self.total <= 0 or self.chunk <= 0:
+            raise ValueError("total and chunk are positive")
+        if self.chunk % w and self.chunk < self.total:
+            raise ValueError(f"chunk {self.chunk} of a multi-chunk transfer is a multiple of {w}")
+        if self.dst_base % w:
+            raise ValueError(f"dst base 0x{self.dst_base:x} is not aligned to {w}")
+        if not self.dst_inc and self.chunk < self.total:
+            raise ValueError("a fixed destination is limited to one chunk")
+
+    @property
+    def w(self) -> int:
+        return width_bytes(self.width_enc)
+
+    @property
+    def n_chunks(self) -> int:
+        return -(-self.total // self.chunk)
+
+    def beats(self) -> list[ZeroBeat]:
+        """Every write beat, in order: the address and the bytes it clears."""
+        out = []
+        for k in range(-(-self.total // self.w)):
+            addr = txn_addr(self.dst_base, k, self.w, self.chunk, self.dst_inc, self.dst_wrap)
+            out.append(ZeroBeat(addr, min(self.w, self.total - k * self.w)))
+        return out
+
+    def beats_in_range(self, base: int, limit: int) -> list[ZeroBeat]:
+        """The beats written under an enabled memory range [base, limit].
+
+        The engine checks each beat before it writes it and stops at the first
+        beat whose bytes leave the range.
+        """
+        out = []
+        for beat in self.beats():
+            if beat.addr < base or beat.addr + beat.nbytes - 1 > limit:
+                break
+            out.append(beat)
+        return out
+
+    def dst_image(self, dst_init: Mapping[int, int], beats: Iterable[ZeroBeat]) -> dict[int, int]:
+        """``dst_init`` with every byte of ``beats`` cleared."""
+        img = dict(dst_init)
+        for beat in beats:
+            for b in range(beat.nbytes):
+                img[beat.addr + b] = 0
+        return img
+
+
 def words_to_bytes(base: int, words: Iterable[int]) -> dict[int, int]:
     """Little-endian byte map of 32-bit ``words`` stored from ``base``."""
     out: dict[int, int] = {}
@@ -218,10 +303,33 @@ def _selftest() -> int:
     ws = draw_source_words(rng, 64, 0x5A)
     assert len(set(ws)) == 64
     assert all(((w >> (8 * i)) & 0xFF) != 0x5A for w in ws for i in range(4))
+    # Zero fill, width 4, total 10 in one chunk: two full beats and a 2-byte beat.
+    z4 = DmaZeroFill(0x1000_0004, total=10, chunk=12)
+    assert [(b.addr, b.nbytes) for b in z4.beats()] == [
+        (0x1000_0004, 4),
+        (0x1000_0008, 4),
+        (0x1000_000C, 2),
+    ]
+    assert [b.wstrb for b in z4.beats()] == [0xF0, 0x0F, 0x30]
+    # One chunk of a total that is not a multiple of the width.
+    z1 = DmaZeroFill(0x100, total=6, chunk=6)
+    assert [(b.addr, b.nbytes) for b in z1.beats()] == [(0x100, 4), (0x104, 2)]
+    # Width 2 wrapping at the destination: chunk 4 replays the first two halves.
+    zw = DmaZeroFill(0x2000, total=8, chunk=4, width_enc=1, dst_wrap=True)
+    assert [b.addr for b in zw.beats()] == [0x2000, 0x2002, 0x2000, 0x2002]
+    # The range stops the fill at the first beat that leaves it.
+    assert z4.beats_in_range(0x1000_0004, 0x1000_000B) == z4.beats()[:2]
+    assert z4.beats_in_range(0x1000_0004, 0x1000_000D) == z4.beats()
+    assert z4.beats_in_range(0x1000_0008, 0x1000_FFFF) == []
+    img = z4.dst_image({0x1000_0003 + i: 0xA5 for i in range(14)}, z4.beats())
+    assert [img[0x1000_0003 + i] for i in range(14)] == [0xA5] + [0] * 10 + [0xA5] * 3
     for bad in (
         lambda: DmaXfer(0x2, 0x0, total=8, chunk=8),
         lambda: DmaXfer(0x0, 0x0, total=6, chunk=8),
         lambda: width_bytes(3),
+        lambda: DmaZeroFill(0x0, total=8, chunk=6),
+        lambda: DmaZeroFill(0x0, total=12, chunk=10),
+        lambda: DmaZeroFill(0x0, total=16, chunk=8, dst_inc=False),
     ):
         try:
             bad()

@@ -419,6 +419,7 @@ they leave out; the checker table of each linked entry is the full set.
 |DMA copy + inline SHA-256 + LSIO |<<sep_dma_hash_test,`sep_dma_hash_test`>>, <<sep_dma_cpu_contention_test,`sep_dma_cpu_contention_test`>>, <<sep_spi_ot_dma_rx_test,`sep_spi_ot_dma_rx_test`>>, <<sep_spi_ot_dma_tx_test,`sep_spi_ot_dma_tx_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_spi_flash_cg`, `sep_spi_host_rand_cg`, `sep_dma_rand_cg` |The checker table of each entry named. |YES
 |DMA address modes × width |<<sep_dma_basic_test,`sep_dma_basic_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_dma_rand_cg` |The checker table of each entry named. |YES
 |DMA host-path command integrity |<<sep_dma_basic_test,`sep_dma_basic_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_dma_rand_cg` |A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 41; a DMA transfer whose destination sits past the DMA CSR window raises the same bit with the pin low (fabric DECERR). `DMA_BUS_ERR_CLEAR` returns both status bits and the aggregator bit to 0; a legal copy then matches the source. |YES
+|DMA zero fill |<<sep_dma_zero_fill_rand_test,`sep_dma_zero_fill_rand_test`>>, <<sep_dma_zero_fill_continuation_test,`sep_dma_zero_fill_continuation_test`>>, <<sep_dma_zero_test,`sep_dma_zero_test`>> |all, cpu_stub, cpu |`sep_dma_zero_cg` |The checker table of each entry named. |YES
 |SRAM datapath |<<sep_sram_smoke_test,`sep_sram_smoke_test`>>, <<sep_sram_datapath_breadth_test,`sep_sram_datapath_breadth_test`>>, <<sep_sram_burst_type_test,`sep_sram_burst_type_test`>>, <<sep_sram_inbound_burst_attr_test,`sep_sram_inbound_burst_attr_test`>> |all, cpu_stub |`sep_sram_access_cg` |`sep_sram_smoke_test`, `sep_sram_datapath_breadth_test` (`CHK-ADDR-LINES` reaches the upper 192 KiB), `sep_sram_burst_type_test` (FIXED / WRAP), `sep_sram_inbound_burst_attr_test` (inbound INCR bursts, seeded request attributes) |YES
 |AES mode × key-size |<<sep_aes_mode_keysize_rand_test,`sep_aes_mode_keysize_rand_test`>> |all, cpu_stub |`sep_aes_mode_cg` |`sep_aes_mode_keysize_rand_test` (9-cell). CTR x DECRYPT is not claimed: CTR is a stream mode and the engine runs the forward cipher whichever way `OPERATION` is programmed, so the cell has no DUT-observable cipher contract and a test there would pass with the field disconnected. `OPERATION`'s shadowed-register behaviour is mode-independent and belongs on a CSR vehicle. |YES for the claimed part; the evidence cell names the rest
 |HMAC SHA variants |<<sep_hmac_sha_variant_rand_test,`sep_hmac_sha_variant_rand_test`>> |all, cpu_stub |`sep_hmac_mode_cg` |The checker table of each entry named. |YES
@@ -1230,14 +1231,29 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |Proves that all 16 source and destination address-mode cells, each at a drawn width, give the stated destination image, that sizes up to 16 KB complete with DONE and GO auto-clear, that a transfer exactly on the range edges completes, and that SHA-256, SHA-384 and SHA-512 digests, SHA2_DIGEST_VALID and DIGEST_SWAP follow the register text. It also proves single-beat DMA transactions, the beat addresses, the CHUNK_DONE rises and their hardware clear, and the DONE rise after the last B response.
 |<<sep_dma_irq_error_lock_rand_test,`sep_dma_irq_error_lock_rand_test`>>
 |3
-|no_cpu, real fuse sense (one leg VCS only)
+|no_cpu, real fuse sense
 |ocah_axi_vip, `sep_internal_interrupts_probe_o` and `dbg_sep_reset_n_o` (approved)
-|Proves the enable gate on PIC sources 9, 10 and 11, STATUS.ERROR, SIZE_ERROR and INTR_STATE.DMA_ERROR for a zero size and for hashing at width 1 or 2, and that the engine takes a legal copy after a size error with no reset. It also proves that a copy with a non-zero SRC_ADDR_HI or DST_ADDR_HI and legal LO addresses moves no data to the 32-bit destination; ERROR_CODE for that copy is logged only. The range lock check is Blocked: the specification does not name the write that applies the lock.
+|Proves the enable gate on PIC sources 9, 10 and 11, STATUS.ERROR, SIZE_ERROR and INTR_STATE.DMA_ERROR for a zero size and for hashing at width 1 or 2, and that the engine takes a legal copy after a size error with no reset. It also proves that after a write of MuBi4 False (0x9) to RANGE_REGWEN, from idle and after a size error, RANGE_REGWEN reads 0x9 and no write of 0x6, 0xF, 0x9 or 0x0 re-opens it, and that writes to ENABLED_MEMORY_RANGE_BASE, ENABLED_MEMORY_RANGE_LIMIT and RANGE_VALID do not change their read-back, and that a copy with a non-zero SRC_ADDR_HI or DST_ADDR_HI and legal LO addresses moves no data to the 32-bit destination; ERROR_CODE for that copy is logged only.
 |<<sep_dma_abort_recovery_rand_test,`sep_dma_abort_recovery_rand_test`>>
 |3
 |no_cpu, real fuse sense
 |ocah_axi_vip, `dma_busy_probe_o` (approved); `dma_axi_req_probe_o`, `dma_status_probe_o` (observation taps)
-|Proves that CONTROL.ABORT during a transfer sets ABORTED, that no beat follows the ABORTED rise before the recovery GO write, and that the engine copies correctly after the abort with no reset.
+|Proves that CONTROL.ABORT during a transfer sets ABORTED, that no AR, AW, W or B beat follows the ABORTED rise before the recovery GO write, and that the engine copies correctly after the abort with no reset.
+|<<sep_dma_zero_fill_rand_test,`sep_dma_zero_fill_rand_test`>>
+|3
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip, `dma_busy_probe_o`, `sep_internal_interrupts_probe_o` and `spi_lsio_trigger_probe_o` (approved); `dma_axi_req_probe_o`, `dma_status_probe_o` (observation taps)
+|Proves that the zero fill (OPCODE 4) writes zeros and reads no source in every destination mode and width, with narrow last writes and no word of an earlier copy; that it writes only inside the enabled memory range, checked before every write and across chunks, also with the range locked; that it ends in OPCODE_ERROR in hardware handshake mode; and that it aborts and recovers.
+|<<sep_dma_zero_fill_continuation_test,`sep_dma_zero_fill_continuation_test`>>
+|3
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip, `spi_lsio_trigger_probe_o` (approved); `dma_axi_req_probe_o`, `dma_status_probe_o` (observation taps)
+|Proves that a zero fill continued by GO=1 with INITIAL_TRANSFER=0 writes no byte past LIMIT after a fill that ends at LIMIT, at each width; that it stays inside a range narrowed and locked between chunks and ends in DST_ADDR_ERROR; and that it ends in OPCODE_ERROR when HARDWARE_HANDSHAKE_ENABLE is set between chunks.
+|<<sep_dma_zero_test,`sep_dma_zero_test`>>
+|3
+|cpu, +skip_fuse_sense
+|ocah_axi_vip, CPU FW
+|Zero fills into SEP SRAM, a DCCM buffer and ICCM through the core's DMA port, checked by the CPU or through a copy back, and a 2-byte-wide ICCM fill that ends in BUS_ERROR with the host-path fault.
 |<<sep_spi_dma_handshake_rand_test,`sep_spi_dma_handshake_rand_test`>>
 |3
 |no_cpu, real fuse sense
@@ -1916,7 +1932,7 @@ another test.
 |Mailbox lines, FIFOs, errors, filter types and reset; PIC registers, priority, gateway cells, source map and external inputs; bridge fault latches and the fault-versus-clear race; timeout registers; NMI vector; timer and software interrupt tie-offs.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |4.7 to 4.15
-|SPI pad, FIFO, interrupt, error, strobe and reset contracts (one entry extends an open SPI test); DMA address modes, geometry, interrupt gate, abort, inline hash and SPI handshake. The DMA range-lock checks are blocked legs: they need a value that the specification does not state (<<sep-vplan-phase3-blocked-legs,Blocked legs>>).
+|SPI pad, FIFO, interrupt, error, strobe and reset contracts (one entry extends an open SPI test); DMA address modes, geometry, interrupt gate, range lock, abort, inline hash and SPI handshake.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset, WDT, clock>>
 |5.13 to 5.29
 |Reset release, cold and CPU-only reset, software reset and isolation, JTAG and scan overrides, reset vector and run request, `SECURE_TM`, scratch and CPU control registers, watchdog, wakeup timer and reference counter, memory apertures and ECC, CPU demux, debug master, ISA and PMP.
@@ -3345,10 +3361,6 @@ feature, and the note says how the test treats the blocked leg.
 |SPI RX watermark meaning
 |Does RXWM mean "reaches" or "exceeds" the threshold (`spi_controller.adoc`, CONTROL, STATUS, EVENT_ENABLE)?
 |Effect: Equality is never driven (`sep_spi_fifo_stall_watermark_rand_test`, `sep_spi_ot_host_csr_irq_rand_test`). `sep_spi_dma_handshake_rand_test` keeps C/4 at or below RX_WATERMARK
-|<<sep-vplan-phase3-spi-dma,SPI and DMA>>
-|DMA RANGE_REGWEN false value
-|Which write gives the RANGE_REGWEN false value, given RW0C (`secure_dma.adoc`, RANGE_REGWEN)? A write-zero-to-clear from the reset value 0x6 cannot give the False encoding 0x9.
-|Effect: CHK-DMA-LOCK of `sep_dma_irq_error_lock_rand_test` is blocked. The leaf writes 0x9, logs the read-backs as `OBS-DMA-LOCK` and grades nothing. `sep_cpu_reset_retention_test` writes 0, grades only the stored value 0x0 across a CPU-only reset and its return to 0x6 at a cold reset, and claims no lock effect
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |Partial strobe merge
 |What is the merge rule for a partial strobe inside a half (`spi.adoc`, Features)?

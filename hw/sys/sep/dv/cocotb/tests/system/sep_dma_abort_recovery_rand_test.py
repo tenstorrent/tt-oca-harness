@@ -4,7 +4,8 @@
 
 The DMA abort contract (``secure_dma.adoc``, CONTROL.ABORT, STATUS.ABORTED):
 a write of CONTROL.ABORT during a transfer sets STATUS.ABORTED once the
-aborted operation drains, and no DMA request beat follows the ABORTED rise.
+aborted operation drains, so no DMA beat (AR, AW, W or B handshake) follows the
+ABORTED rise.
 ABORTED clears by write-one-to-clear. A copy after the abort, with no reset,
 completes with the right data (``sep-programming.adoc``, DMA).
 
@@ -47,10 +48,11 @@ Checkers:
                        equals the image read again t_clean clocks later.
                        Seed control: one graded run left both a written and a
                        sentinel destination word (``CTRL-MISSING`` otherwise).
-  CHK-DMA-ABORT-BEATS  no AR or AW handshake on ``dma_axi_req_probe_o`` from
-                       the ABORTED rise on ``dma_status_probe_o`` to the GO
-                       write of the recovery copy; beats appear before the
-                       ABORT write and after the recovery GO write.
+  CHK-DMA-ABORT-BEATS  no AR, AW, W or B handshake on ``dma_axi_req_probe_o``
+                       from the ABORTED rise on ``dma_status_probe_o`` to the
+                       GO write of the recovery copy; beats appear before the
+                       ABORT write and after the recovery GO write. The probe
+                       carries no R channel, so R beats are not graded.
   CHK-DMA-ABORT-CLR    a write of 1 to STATUS.ABORTED clears it.
   CHK-DMA-RECOVER      the recovery copy sets DONE, leaves ERROR and
                        ERROR_CODE clear, copies the data and leaves the guards
@@ -86,6 +88,7 @@ from seq_lib.sep_dma_ops import (
     ST_CHUNK_DONE,
     SepDmaOps,
     SepMemWords,
+    asid_word,
     control_word,
 )
 
@@ -95,7 +98,7 @@ TEST = "sep_dma_abort_recovery_rand_test"
 SRAM_BASE = 0x1000_0000
 SRAM_LIMIT = 0x1003_FFFF
 SRAM_SIZE = SRAM_LIMIT - SRAM_BASE + 1
-ASID_SEP = 0x77
+ASID_SEP = asid_word(7, 7)
 
 MAX_REDRAW = 8
 MAX_LANDING = 8
@@ -540,7 +543,10 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
                 f"phase={plan.cls} no ABORTED rise on dma_status_probe_o after the ABORT write",
             )
         t_rise = rises[0]
-        after = [b for b in ev_go.ar + ev_go.aw if t_rise <= b.clk < m_tap_rec.clk]
+        after = sorted(
+            (b for b in ev_go.ar + ev_go.aw + ev_go.w + ev_go.b if t_rise <= b.clk < m_tap_rec.clk),
+            key=lambda b: b.clk,
+        )
         n_rec_beats = len(ev_rec.ar) + len(ev_rec.aw)
         last_drain = max(
             [b.clk for b in ev_go.ar + ev_go.aw + ev_go.w + ev_go.b if b.clk < t_rise],
@@ -550,8 +556,9 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
             f"phase={plan.cls} beats_before_abort={len(before)} beats_after_aborted={len(after)} "
             f"beats_recovery={n_rec_beats} aborted_rise_clk={t_rise} abort_write_clk="
             f"{rec['m_tap_ab'].clk} last_beat_before_rise={last_drain} "
-            f"w_after={sum(1 for b in ev_go.w if t_rise <= b.clk < m_tap_rec.clk)} "
-            f"b_after={sum(1 for b in ev_go.b if t_rise <= b.clk < m_tap_rec.clk)}"
+            + " ".join(
+                f"{ch}_after={sum(1 for b in after if b.ch == ch)}" for ch in ("ar", "aw", "w", "b")
+            )
         )
         if not before or n_rec_beats == 0:
             self._ctrl_missing(f"CHK-DMA-ABORT-BEATS control: {beats_line}")
@@ -559,7 +566,9 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
             b0 = after[0]
             self._fail(
                 "CHK-DMA-ABORT-BEATS",
-                beats_line + f" first_after={b0.ch}@{b0.clk} addr=0x{b0.addr or 0:08x}",
+                beats_line
+                + f" first_after={b0.ch}@{b0.clk}"
+                + (f" addr=0x{b0.addr:08x}" if b0.addr is not None else ""),
             )
         self._pass("CHK-DMA-ABORT-BEATS", beats_line)
         # CHK-DMA-RECOVER.

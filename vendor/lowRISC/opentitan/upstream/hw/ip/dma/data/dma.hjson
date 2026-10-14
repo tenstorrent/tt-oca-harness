@@ -479,6 +479,10 @@
               name: "SHA512"
               desc: "Perform inline hashing using SHA512."
             }
+            { value: "4",
+              name: "ZERO"
+              desc: "Zero fill. Write zeros to the destination; the source is not read."
+            }
           ]
         }
         { bits: "4"

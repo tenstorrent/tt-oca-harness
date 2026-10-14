@@ -227,7 +227,7 @@ uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
 }
 
 uint32_t sep_dma_zero(uint32_t dest, size_t len) {
-    // The engine needs a source address even for a fill, so one word of SEP SRAM
+    // A fill through a copy needs a source address, so one word of SEP SRAM
     // is zeroed by the CPU and then read back for every beat.  SRAM is chosen
     // because it is CPU-writable and already an allowed DMA source; a word in
     // ROM .rodata would need no write at all, but the engine cannot read the ROM
