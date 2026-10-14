@@ -803,7 +803,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master, noise inject `esrc_noise_ext_i`, `esrc_decor_bytes_o`, `esrc_decor_valid_o`, `esrc_compress_vld_o`; SHA-256 status tap (observation tap)
-|Proves the conditioning options: the decorrelator byte mask, the compressor bypass, `DOWNSAMPLE_RATE`, and the SHA-256 whitener count or pass-through.
+|Proves the conditioning options: the decorrelator byte mask; the compressor-bypass word order and all twelve generator-to-byte positions; `DOWNSAMPLE_RATE`; and the SHA-256 whitener count or pass-through.
 
 |<<sep_esrc_fifo_flow_rand_test,`sep_esrc_fifo_flow_rand_test`>>
 |3

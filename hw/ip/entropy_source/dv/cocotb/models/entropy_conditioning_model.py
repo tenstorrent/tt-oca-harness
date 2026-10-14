@@ -85,6 +85,26 @@ class EntropyBiwModel:
         lanes = [(packed_96 >> (i * 8)) & 0xFF for i in range(N_LANES)]
         return EntropyBiwModel.compress_from_lanes(lanes)
 
+    @staticmethod
+    def bypass_words_from_lanes(lanes):
+        """Three FIFO words for compressor bypass, in FIFO write order.
+
+        ``architecture.adoc`` (Decorrelation and BIW Mixing, bypass-packing
+        paragraph) specifies that word ``n`` carries generators ``4n`` through
+        ``4n+3``, with generator ``4n`` in bits [7:0].
+        """
+        if len(lanes) != N_LANES:
+            raise ValueError(
+                "BIW bypass requires exactly %d lane bytes, got %d" % (N_LANES, len(lanes))
+            )
+        return [sum((lanes[4 * n + k] & 0xFF) << (8 * k) for k in range(4)) for n in range(3)]
+
+    @staticmethod
+    def bypass_words_from_packed(packed_96):
+        """Unpack lane ``i`` from bits ``[8i +: 8]`` and return bypass FIFO words."""
+        lanes = [(packed_96 >> (i * 8)) & 0xFF for i in range(N_LANES)]
+        return EntropyBiwModel.bypass_words_from_lanes(lanes)
+
 
 class EntropySha256Model:
     """SHA-256 entropy conditioner / whitener.
@@ -388,6 +408,16 @@ def _selftest():
     assert EntropyBiwModel.compress_from_packed(packed) == EntropyBiwModel.compress_from_lanes(
         lanes
     ), "packed unpack mismatch"
+    bypass_lanes = list(range(0x10, 0x10 + N_LANES))
+    bypass_packed = sum(value << (8 * lane) for lane, value in enumerate(bypass_lanes))
+    assert EntropyBiwModel.bypass_words_from_lanes(bypass_lanes) == [
+        0x13121110,
+        0x17161514,
+        0x1B1A1918,
+    ], "bypass lane packing mismatch"
+    assert EntropyBiwModel.bypass_words_from_packed(
+        bypass_packed
+    ) == EntropyBiwModel.bypass_words_from_lanes(bypass_lanes), "packed bypass unpack mismatch"
 
     # ---------------------------------------------------------------------
     # (3) SHA-256 conditioner: feed a known 16-word block and assert the

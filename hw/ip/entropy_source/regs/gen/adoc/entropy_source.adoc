@@ -105,7 +105,7 @@ Entropy-source configuration, status, and data registers.
 | 27:26 | `Reserved` | - | - a| Reserved
 | 25:16 | `DOWNSAMPLE_RATE` | RW | 0x0 a| Selects every (N+1)th decorrelator output while BIW extraction is bypassed. FIPS_LOCK.LOCK prevents software changes.
 | 15:9 | `Reserved` | - | - a| Reserved
-| 8 | `BYPASS_ENTROPY_COMPRESSOR` | RW | 0x0 a| Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words. FIPS_LOCK.LOCK prevents software changes.
+| 8 | `BYPASS_ENTROPY_COMPRESSOR` | RW | 0x0 a| Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words, word 0 first, with generator 4n+k in bits [8k+7:8k] of word n. FIPS_LOCK.LOCK prevents software changes.
 | 7:5 | `Reserved` | - | - a| Reserved
 | 4 | `AUTOTUNE_ENABLE` | RW | 0x0 a| Enables per-generator automatic detuning after a lane health-test failure. FIPS_LOCK.LOCK prevents software changes.
 | 3:2 | `Reserved` | - | - a| Reserved
