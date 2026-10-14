@@ -15,6 +15,13 @@ PR-OUT tap (outbound write address and data). One sampler reads the CPU trace
 port, the ``rom_req`` and ``ifu_req`` taps and the ``sep_cpu_reset_n`` and
 ``sep_reset_n`` taps on every ``clk_i`` rising edge for the whole leaf.
 
+In every vector check below, the first ``ifu_req`` read request after the
+``sep_cpu_reset_n`` rise covers the expected vector (its address range
+[addr, addr + (len + 1) * 2**size) holds it); the first retired PC and the
+marker then confirm that the code at that vector ran. A test-side sampler and
+each fabric tap count ``clk_i`` edges together, and a tap whose count falls
+behind fails the leaf before its record is read.
+
 Checks:
   CHK-RSTVEC-DEFAULT : after each cold reset with run request 1 and the
                        default TDR, the first retired PC is 0x1004_0000 and the
@@ -464,6 +471,9 @@ class _Epoch:
     early_fetch: list = field(default_factory=list)
     first_rom_fetch_clk: int | None = None
     first_ifu_fetch_clk: int | None = None
+    # The first PR-IFU AR request after the tap rise: (clk, addr, len, size);
+    # a field that is not fully known is None.
+    first_ifu_ar: tuple | None = None
 
 
 @dataclass
@@ -632,10 +642,48 @@ class sep_cpu_reset_entry_test(sep_base_test):
                     ep.first_rom_fetch_clk = self.clk
                 if ifu_req and ep.first_ifu_fetch_clk is None:
                     ep.first_ifu_fetch_clk = self.clk
+                    ep.first_ifu_ar = (
+                        self.clk,
+                        self._rd_or_none(dut.pr_ifu_araddr_o),
+                        self._rd_or_none(dut.pr_ifu_arlen_o),
+                        self._rd_or_none(dut.pr_ifu_arsize_o),
+                    )
+
+    def _rd_or_none(self, sig) -> int | None:
+        try:
+            return self.rd(sig)
+        except AssertionError:
+            return None
+
+    # ---------------------------------------------------------------- tap health
+    def _tap_started(self, tap: SepFabricTap) -> SepFabricTap:
+        """Start ``tap`` and record its sample count against the sampler's."""
+        tap.start()
+        self.tap_base[tap.name] = (self.clk, tap.clk)
+        return tap
+
+    def _tap_live(self, tap: SepFabricTap) -> None:
+        """Raise unless ``tap`` took one sample per sampler clock since it started.
+
+        The tap and the sampler both count ``clk_i`` rising edges, so a tap task
+        that ended, was cancelled or raised stops counting while the sampler goes
+        on; its record then holds only part of the window that is graded.
+        """
+        if self._stop:
+            # The sampler has stopped; the last check before the stop covers the window.
+            return
+        base_clk, base_tap = self.tap_base[tap.name]
+        drift = (self.clk - base_clk) - (tap.clk - base_tap)
+        if abs(drift) > 1:
+            raise AssertionError(
+                f"TAP FAIL: {tap.name} stopped sampling: sampler_clk={self.clk - base_clk} "
+                f"tap_clk={tap.clk - base_tap}"
+            )
 
     # ---------------------------------------------------------------- mailbox
     def _mbx(self) -> list[_Rec]:
         """Outbound word stores (PR-OUT AW paired in order with its single W beat)."""
+        self._tap_live(self.out_tap)
         aws = [b for b in self.out_tap.beats if b.ch == "aw"]
         ws = [b for b in self.out_tap.beats if b.ch == "w"]
         while len(self.recs) < min(len(aws), len(ws)):
@@ -665,6 +713,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
 
     async def _wait_b_drain(self) -> None:
         for _ in range(B_BOUND):
+            self._tap_live(self.out_tap)
+            self._tap_live(self.rsp_tap)
             n_aw = sum(1 for b in self.out_tap.beats if b.ch == "aw")
             n_b = sum(1 for b in self.rsp_tap.beats if b.ch == "b")
             if n_b >= n_aw:
@@ -773,11 +823,37 @@ class sep_cpu_reset_entry_test(sep_base_test):
             self.logger.error("%s FAIL: %s", chk, text)
             self.failures.append(f"{chk}: {text}")
 
-    def _grade_vector(self, chk: str, prefix: str, pc, marker, exp_pc: int, exp_marker: str):
-        ok = pc == exp_pc and marker == exp_marker
-        text = f"{prefix}first_pc=0x{pc:08x} marker={marker}"
+    @staticmethod
+    def _fetch_text(ep: _Epoch) -> str:
+        if ep.first_ifu_ar is None:
+            return "first_fetch=none"
+        _c, addr, alen, asize = ep.first_ifu_ar
+        h = "X" if addr is None else f"0x{addr:08x}"
+        return (
+            f"first_fetch={h} len={'X' if alen is None else alen} "
+            f"size={'X' if asize is None else asize}"
+        )
+
+    @staticmethod
+    def _fetch_covers(ep: _Epoch, vector: int) -> bool:
+        """True when the first PR-IFU AR request after the tap rise reads ``vector``.
+
+        The request covers the bytes [addr, addr + (len + 1) * 2**size); the
+        instruction at ``vector`` is in that range.
+        """
+        if ep.first_ifu_ar is None or None in ep.first_ifu_ar:
+            return False
+        _c, addr, alen, asize = ep.first_ifu_ar
+        return addr <= vector < addr + (alen + 1) * (1 << asize)
+
+    def _grade_vector(
+        self, chk: str, prefix: str, ep: _Epoch, pc, marker, exp_pc: int, exp_marker: str
+    ):
+        """The first fetch request reads the vector; the first retirement and marker confirm it."""
+        ok = self._fetch_covers(ep, exp_pc) and pc == exp_pc and marker == exp_marker
+        text = f"{prefix}{self._fetch_text(ep)} first_pc=0x{pc:08x} marker={marker}"
         if not ok:
-            text += f" expected first_pc=0x{exp_pc:08x} marker={exp_marker}"
+            text += f" expected first_fetch covering 0x{exp_pc:08x} first_pc=0x{exp_pc:08x} marker={exp_marker}"
         self._grade(chk, ok, text)
 
     # ---------------------------------------------------------------- legs
@@ -802,8 +878,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self._stage_sram()
         self.start_clocks(dut)
         cocotb.start_soon(self._sampler())
-        self.out_tap.start()
-        self.rsp_tap.start()
+        self._tap_started(self.out_tap)
+        self._tap_started(self.rsp_tap)
         ep = await self._new_epoch(0)
         open_graded_window(TEST, self.logger)
         await ClockCycles(dut.clk_i, RST_HOLD)
@@ -825,7 +901,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             W_OBS,
         )
         self._grade_vector(
-            "CHK-RSTVEC-DEFAULT", f"reset={label} ", pc, marker, DEFAULT_RESET_PC, "M_ROM"
+            "CHK-RSTVEC-DEFAULT", f"reset={label} ", ep, pc, marker, DEFAULT_RESET_PC, "M_ROM"
         )
 
     async def _tap_reset(self, via: str) -> None:
@@ -871,6 +947,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self._grade_vector(
             "CHK-RSTVEC-TAPRST",
             f"via={via} tdr={tdr} {extra}",
+            ep,
             pc,
             marker,
             DEFAULT_RESET_PC,
@@ -928,7 +1005,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         ep, mark = await self._cpu_reset()
         pc, marker, entry = await self._entry(ep, mark, f"scope {via}")
         self._grade_vector(
-            "CHK-RSTVEC-TAPRST", f"via={via} tdr={tdr} ", pc, marker, DEFAULT_RESET_PC, "M_ROM"
+            "CHK-RSTVEC-TAPRST", f"via={via} tdr={tdr} ", ep, pc, marker, DEFAULT_RESET_PC, "M_ROM"
         )
         warm_cleared = int(entry[1] == WARM_RESET and entry[0] == V_COLD and ep.tap_low > 0)
         ok = (
@@ -965,6 +1042,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self.last_pass = None
         self.out_tap = SepFabricTap("PR-OUT")
         self.rsp_tap = SepFabricTap("PR-OUT-RSP")
+        self.tap_base: dict[str, tuple[int, int]] = {}
         self._draw()
         self.required_evidence = (
             "CHK-RSTVEC-DEFAULT",
@@ -998,7 +1076,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         ep, mark = await self._cold_pulse()
         pc, marker, _ = await self._entry(ep, mark, "cold3")
         self._grade_vector(
-            "CHK-RSTVEC-DEFAULT", "reset=cold3 ", pc, marker, DEFAULT_RESET_PC, "M_ROM"
+            "CHK-RSTVEC-DEFAULT", "reset=cold3 ", ep, pc, marker, DEFAULT_RESET_PC, "M_ROM"
         )
 
         await self._jtag_legs()
@@ -1012,6 +1090,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 # Graded at the end with the other store results, so the other
                 # checks of the leaf still run.
                 self.st_errors.append(f"{leg.__name__}: {exc}")
+        self._tap_live(self.out_tap)
+        self._tap_live(self.rsp_tap)
         self._stop = True
         await ClockCycles(dut.clk_i, 2)
         close_graded_window(self.logger)
@@ -1066,13 +1146,13 @@ class sep_cpu_reset_entry_test(sep_base_test):
         ep, mark = await self._cpu_reset(_arm_a1)
         pc, marker, _ = await self._entry(ep, mark, "redirect")
         self._grade_vector(
-            "CHK-RSTVEC", f"leg=redirect vector=0x{self.a1:08x} ", pc, marker, self.a1, "M1"
+            "CHK-RSTVEC", f"leg=redirect vector=0x{self.a1:08x} ", ep, pc, marker, self.a1, "M1"
         )
 
         # Step 9: persistence across a CPU reset.
         ep, mark = await self._cpu_reset()
         pc, marker, _ = await self._entry(ep, mark, "persist")
-        self._grade_vector("CHK-RSTVEC-PERSIST", "after wdt reset ", pc, marker, self.a1, "M1")
+        self._grade_vector("CHK-RSTVEC-PERSIST", "after wdt reset ", ep, pc, marker, self.a1, "M1")
 
         # Step 10: rewrite to A2.
         async def _arm_a2_wide() -> None:
@@ -1084,7 +1164,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         ep, mark = await self._cpu_reset(_arm_a2_wide)
         pc, marker, _ = await self._entry(ep, mark, "rewrite")
         self._grade_vector(
-            "CHK-RSTVEC", f"leg=rewrite vector=0x{self.a2:08x} ", pc, marker, self.a2, "M2"
+            "CHK-RSTVEC", f"leg=rewrite vector=0x{self.a2:08x} ", ep, pc, marker, self.a2, "M2"
         )
 
         # Step 11: TAP reset scope, four sub-legs in the contract order.
@@ -1094,9 +1174,9 @@ class sep_cpu_reset_entry_test(sep_base_test):
         ep, mark = await self._cpu_reset(_arm_a2)
         pc, marker, _ = await self._entry(ep, mark, "re-arm A2")
         # Precondition of the last sub-leg: the TDR holds A2 before its TAP reset.
-        if (pc, marker) != (self.a2, "M2"):
+        if (pc, marker) != (self.a2, "M2") or not self._fetch_covers(ep, self.a2):
             self.failures.append(
-                f"re-arm precondition: first_pc=0x{pc:08x} marker={marker}, "
+                f"re-arm precondition: {self._fetch_text(ep)} first_pc=0x{pc:08x} marker={marker}, "
                 f"expected 0x{self.a2:08x} M2"
             )
         self.logger.info(
@@ -1126,7 +1206,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
     async def _cpu_store_leg(self) -> None:
         """(b) and (c): the store routine, started by the SRAM flag at a quiet point."""
         dut = cocotb.top
-        tap = SepFabricTap("PR-LSU-XBAR").start()
+        tap = self._tap_started(SepFabricTap("PR-LSU-XBAR"))
         await RisingEdge(dut.clk_i)
         mark = len(self._mbx())
         mem = self._mem("sram")
@@ -1135,6 +1215,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         await self._wait_rec(mark, OFF_ST_DONE, PASS_BOUND, "store routine end")
         await self._wait_b_drain()
         await ClockCycles(dut.clk_i, ST_SETTLE)
+        self._tap_live(tap)
         await tap.stop()
         recs = self._mbx()[mark:]
         rds = [r.val for r in recs if r.off == OFF_ST_RD]
@@ -1178,7 +1259,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
 
         dut = cocotb.top
         dut.dmi_core_enable_i.value = 1
-        tap = SepFabricTap("PR-DBG-SB").start()
+        tap = self._tap_started(SepFabricTap("PR-DBG-SB"))
         await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE)
         res = []
         for reg, val in SBA_ACCESSES:
@@ -1187,6 +1268,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             rd, rerr = await self.dmi.sba_read(addr, size=8)
             res.append((reg, addr, val, werr, rd, rerr))
         await ClockCycles(dut.clk_i, QUIET)
+        self._tap_live(tap)
         await tap.stop()
         dut.dmi_core_enable_i.value = 0
         wdt = [

@@ -4386,7 +4386,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`ifu_req` and `ifu_rsp`
 |Read-only tap
 |The post-demux IFU port: fetch targets and DECERR answer.
-|`sep_cpu_reset_entry_test` (CHK-NO-EARLY-FETCH), `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-DECERR, CHK-IFU-NEVER)
+|`sep_cpu_reset_entry_test` (CHK-NO-EARLY-FETCH, and the first fetch address of CHK-RSTVEC-DEFAULT, CHK-RSTVEC, CHK-RSTVEC-PERSIST and CHK-RSTVEC-TAPRST), `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-DECERR, CHK-IFU-NEVER)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`lsu_rom_req`, `lsu_xbar_req` and `lsu_xbar_rsp`
 |Read-only tap
