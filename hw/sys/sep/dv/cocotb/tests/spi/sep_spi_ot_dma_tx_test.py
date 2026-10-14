@@ -75,6 +75,7 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_log_error_counter import attach_error_counter
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spi_scoreboard import SepSpiScoreboard
 from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
@@ -233,6 +234,7 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
         # the wire monitor.
         bfm_errors = attach_error_counter(flash.log)
         wire = await SepSpiWireMonitor(dut).start()
+        sb = SepSpiScoreboard(wire, flash, self.logger, seed=self.random_seed())
         await flash.start()
         windows: list[_DmaTxWindow] = []
         cocotb.start_soon(self._watch_dma_pacing(dut, windows))
@@ -249,6 +251,11 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
                 progress_every=_PROGRESS_EVERY,
             )
             self._golden_check(flash, cfg, cases)
+            for case in cases:
+                # The SPI host sends the least significant byte of each TXDATA word
+                # first (ByteOrder 1, the OpenTitan default the wrapper keeps).
+                source = b"".join(w.to_bytes(4, "little") for w in case.data)
+                sb.expect_tx(case.addr, source, label=f"case[{case.idx}]")
             self._pacing_check(windows, cases)
             assert not bfm_errors.records, (
                 f"SPI-BFM FAIL: the flash model logged {len(bfm_errors.records)} error(s): "
@@ -257,6 +264,7 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
         finally:
             await flash.stop()
         await wire.finish(self.logger, seed=self.random_seed(), flash=flash)
+        sb.finish()
 
     @staticmethod
     async def _watch_dma_pacing(dut, windows: list[_DmaTxWindow]) -> None:

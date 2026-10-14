@@ -876,3 +876,15 @@
 `SEP_TB_OUT(logic, spi_sck_o)
 `SEP_TB_OUT(logic, spi_mosi_o)
 `SEP_TB_IN(logic, spi_miso_i)
+// All four SPI data lanes and every output enable of sep_io_spi_req_o
+// (doc/integrator/src/smu-sep.adoc, "SEP SPI Host Pin Assignment": lane n
+// drives sd[n] with output enable sd_oe[n]; cs_oe and sck_oe). Monitor-only
+// taps of the DUT output struct.
+`SEP_TB_OUT(logic [3:0], spi_sd_o)
+`SEP_TB_OUT(logic [3:0], spi_sd_oe_o)
+`SEP_TB_OUT(logic, spi_cs_oe_o)
+`SEP_TB_OUT(logic, spi_sck_oe_o)
+// Pad inputs of data lanes 0, 2 and 3 (sep_io_spi_rsp_i.sd); lane 1 is always
+// spi_miso_i. They reach the DUT only with +sep_spi_four_lane; otherwise those
+// lanes read 0. spi_sd_i[1] is not used.
+`SEP_TB_IN(logic [3:0], spi_sd_i)

@@ -321,6 +321,7 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "rst_vec_i", rst_vec)
         self._set_if_exists(dut, "esrc_noise_ext_i", 0)
         self._set_if_exists(dut, "spi_miso_i", 1)
+        self._set_if_exists(dut, "spi_sd_i", 0)
         # TEST_EN strap / LC sigint inject default off. Tests that need either
         # polarity raise the port themselves after bring-up (or before sense).
         self._set_if_exists(dut, "test_en_strap_i", 0)
