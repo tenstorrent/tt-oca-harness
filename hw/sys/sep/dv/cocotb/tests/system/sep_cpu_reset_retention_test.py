@@ -851,11 +851,12 @@ class sep_cpu_reset_retention_test(sep_base_test):
             t_pin = t_issue + self.lat_aw + target - 1
             legal_note = ""
             if run.cls == "WDT" and run.band == "before" and -target <= run.width:
-                # The CPU-LSU master stands in for the CPU, whose load-store port is
-                # in the sep_cpu_reset_n domain (hw/sys/sep/rtl/sep.sv, u_sep_cpu rst_ni). A request
-                # issued while wdt_rst_ni holds that reset has no defined outcome,
-                # so the write issues on the falling edge after the pulse ends; the
-                # assertion edge stays before the write handshake.
+                # The CPU-LSU master stands in for the CPU. wdt_rst_ni drops
+                # sep_cpu_reset_n, which resets the EL2 core (hw/sys/sep/doc/clk_rst.adoc,
+                # Reset Architecture, CPU reset row; hw/sys/sep/doc/reset_controller.adoc,
+                # sep_cpu_reset_no). A core held in reset issues no load or store, so the
+                # write issues on the falling edge after the pulse ends; the assertion
+                # edge stays before the write handshake.
                 t_pin = 0
                 t_issue = run.width + 1
                 legal_note = (

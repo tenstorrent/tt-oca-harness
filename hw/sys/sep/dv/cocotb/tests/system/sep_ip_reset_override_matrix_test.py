@@ -476,35 +476,29 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
         for d in DOMS:
             m = self.taps.mark()
             await self._sw_write(self.sw & ~(1 << IPRST[d]))
-            rise = -1
             try:
                 await self._wait_host_iso(d, f"control sw assert {d}")
-                rises = [
-                    self.taps.iso_ack.rise_clks_since(m["iso_ack"], iso_name(x))
-                    for x in HOST_ISO[d]
-                ]
-                if all(rises):
-                    rise = max(r[0] for r in rises) - m["iso_ack"].clk
             except AssertionError as exc:
-                self.logger.info("OBS-OVR-SKIP-ISO: dom=%s control not met (%s)", d, exc)
+                self._ctl("CTL-SW-ASSERT", False, f"dom={d} host_iso_ack_rise=none ({exc})")
+            rises = [
+                self.taps.iso_ack.rise_clks_since(m["iso_ack"], iso_name(x)) for x in HOST_ISO[d]
+            ]
+            rise = max(r[0] for r in rises) - m["iso_ack"].clk if all(rises) else -1
+            self._ctl(
+                "CTL-SW-ASSERT",
+                rise >= 0,
+                f"dom={d} host_iso_ack_rise_cycle={rise} (from the write issue)",
+            )
             await self._wait_tap(d, 0, f"control sw assert {d}")
             await self._sw_write(self.sw | (1 << IPRST[d]))
             await self._wait_tap(d, 1, f"control sw release {d}")
             await self._arm(d)
             cycles[d] = rise
-            self.logger.info(
-                "CTL-SW-ASSERT: dom=%s host_iso_ack_rise_cycle=%d (from the write issue)",
-                d,
-                rise,
-            )
         return cycles
 
     def _grade_skip_iso(self, skip: dict[str, list[int]], ctl: dict[str, int]) -> None:
         for d in DOMS:
             n, hi = skip[d]
-            if ctl[d] < 0:
-                self.logger.info("OBS-OVR-SKIP-ISO: dom=%s control not met", d)
-                continue
             self._chk(
                 "CHK-OVR-SKIP-ISO",
                 hi == 0 and n > 0,
