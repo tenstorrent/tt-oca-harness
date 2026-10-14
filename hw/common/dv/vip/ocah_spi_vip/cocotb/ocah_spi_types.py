@@ -13,6 +13,7 @@ from __future__ import annotations
 import enum
 
 __all__ = [
+    "FRAME_SHAPE_REASONS",
     "IN_SCOPE_OPCODES",
     "PAGE_SIZE",
     "SECTOR_SIZE",
@@ -53,9 +54,24 @@ class OcahSpiOpcode(enum.IntEnum):
 
 IN_SCOPE_OPCODES = frozenset(int(op) for op in OcahSpiOpcode)
 
+# Flash record reasons for a frame refused for its shape: the controller ended
+# a phase early or sent bits after the command's last one.
+FRAME_SHAPE_REASONS = frozenset(
+    (
+        "partial_opcode",
+        "partial_address",
+        "partial_dummy",
+        "partial_byte",
+        "no_payload",
+        "unexpected_payload",
+    )
+)
+
 
 def opcode_name(opcode: int) -> str:
-    """Symbolic name of an in-scope opcode, ``UNKNOWN(0xNN)`` otherwise."""
+    """Symbolic name of an in-scope opcode, ``PARTIAL_OPCODE`` for -1, ``UNKNOWN(0xNN)`` otherwise."""
+    if opcode < 0:
+        return "PARTIAL_OPCODE"
     try:
         return OcahSpiOpcode(opcode & 0xFF).name
     except ValueError:

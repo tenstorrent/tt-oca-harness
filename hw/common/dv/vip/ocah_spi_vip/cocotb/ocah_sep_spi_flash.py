@@ -226,8 +226,8 @@ class OcahSepSpiFlash(OcahSpiFlash):
         This prevents bus contention during the turnaround phase.
 
         If ``dq_oe_n`` is not connected, DQ is driven unconditionally
-        (same as base class behaviour).  Returns True when all eight bit
-        slots passed, False when chip-select rose first.
+        (same as base class behaviour).  Returns True when the controller
+        sampled all eight bit slots, False when chip-select rose first.
         """
         sclk = self._sclk
         cs_n = self._cs_n
@@ -248,4 +248,4 @@ class OcahSepSpiFlash(OcahSpiFlash):
             dq_in = self._dq_in if self._dq_in is not None else self._miso
             if dq_in is not None:
                 dq_in.value = bit
-        return True
+        return await self._last_bit_sampled()

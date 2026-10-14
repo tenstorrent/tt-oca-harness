@@ -14,6 +14,8 @@ The sequence has no SV-UVM twin: the package ships the cocotb realization only.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from .ocah_spi_flash_checker import OcahSpiFlashChecker
 from .ocah_spi_master_bfm import OcahSpiMasterBfm
 from .ocah_spi_types import OcahSpiOpcode
@@ -88,6 +90,13 @@ class OcahSpiMasterSequence:
         if rx_len:
             self._record(int(opcode), data)
         return data
+
+    async def raw_frame(self, bits: Sequence[int]) -> list[int]:
+        """One chip-select frame of exactly ``bits`` on MOSI; returns the MISO bits.
+
+        The frame is not recorded as a response: it may end in any phase.
+        """
+        return await self.bfm.raw_frame(bits)
 
     # ------------------------------------------------------------------
     # Host-side observations
