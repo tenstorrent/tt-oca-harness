@@ -2125,6 +2125,35 @@ module sep_uvm_top
     assign pr_dbg_sb_rresp_o = `SEP_CORE.dbg_axi_resp.r.resp;
     assign pr_dbg_sb_rid_o = `SEP_CORE.dbg_axi_resp.r.id;
     assign pr_dbg_sb_rlast_o = `SEP_CORE.dbg_axi_resp.r.last;
+    // PR-DBG-IN / PR-DBG-OUT: the debug-module system-bus request at the input
+    // and output of u_dbg_local_alias_remap. The CPU stub has no debug module.
+`ifndef SEP_CPU_STUB
+    assign pr_dbg_in_awvalid_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.aw_valid;
+    assign pr_dbg_in_awready_o = `SEP_CORE.u_sep_cpu.dbg_axi_resp_raw.aw_ready;
+    assign pr_dbg_in_awaddr_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.aw.addr;
+    assign pr_dbg_in_arvalid_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.ar_valid;
+    assign pr_dbg_in_arready_o = `SEP_CORE.u_sep_cpu.dbg_axi_resp_raw.ar_ready;
+    assign pr_dbg_in_araddr_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_raw.ar.addr;
+    assign pr_dbg_out_awvalid_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_o.aw_valid;
+    assign pr_dbg_out_awready_o = `SEP_CORE.u_sep_cpu.dbg_axi_resp_i.aw_ready;
+    assign pr_dbg_out_awaddr_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_o.aw.addr;
+    assign pr_dbg_out_arvalid_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_o.ar_valid;
+    assign pr_dbg_out_arready_o = `SEP_CORE.u_sep_cpu.dbg_axi_resp_i.ar_ready;
+    assign pr_dbg_out_araddr_o = `SEP_CORE.u_sep_cpu.dbg_axi_req_o.ar.addr;
+`else
+    assign pr_dbg_in_awvalid_o = 1'b0;
+    assign pr_dbg_in_awready_o = 1'b0;
+    assign pr_dbg_in_awaddr_o = '0;
+    assign pr_dbg_in_arvalid_o = 1'b0;
+    assign pr_dbg_in_arready_o = 1'b0;
+    assign pr_dbg_in_araddr_o = '0;
+    assign pr_dbg_out_awvalid_o = 1'b0;
+    assign pr_dbg_out_awready_o = 1'b0;
+    assign pr_dbg_out_awaddr_o = '0;
+    assign pr_dbg_out_arvalid_o = 1'b0;
+    assign pr_dbg_out_arready_o = 1'b0;
+    assign pr_dbg_out_araddr_o = '0;
+`endif
 
     // Read-only XMRs observe the manifest at SRAM word 0 and the decrypted
     // payload at byte offset 0x1000. Firmware owns the SRAM AXI frontdoor during

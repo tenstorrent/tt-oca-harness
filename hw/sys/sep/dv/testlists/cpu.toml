@@ -237,3 +237,16 @@ tags = ["boot", "reset", "cpu", "jtag", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
+[[tests]]
+# dmi_core_enable_i gates the debug-module core accesses, dmi_uncore_enable_i gates the
+# uncore outputs, and dbg_rstb_i resets the debug module only. The core runs a ROM spin
+# loop.
+name = "sep_debug_master_target_matrix_test"
+module = "cpu.sep_debug_master_target_matrix_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["debug", "jtag", "dmi", "cpu", "subsystem"]
+tools = ["vcs"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]

@@ -169,3 +169,18 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+sep_edn_jtag_reset_waive", "+sep_efuse_preload"]
 
+[[tests]]
+# Same module as sep_debug_master_target_matrix_test with the core held (no_cpu) on the
+# full-CPU model. The debug-module system bus reaches the SEP fabric with 64-bit beats and
+# a zero-extended 1-bit ID, and passes the local alias remap at the reset and at a moved
+# window base. The leaf fails without the full CPU.
+name = "sep_debug_master_target_matrix_test_sba"
+module = "cpu.sep_debug_master_target_matrix_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["debug", "jtag", "dmi", "sba", "memory", "subsystem"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "default"
+args = ["+skip_fuse_sense"]
