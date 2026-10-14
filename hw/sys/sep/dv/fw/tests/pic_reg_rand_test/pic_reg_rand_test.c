@@ -84,7 +84,6 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define MBOX0_OUT_READ_DATA SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR
 #define MBOX0_OUT_STATUS SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR
 #define SRC_CTRL 1u
-#define CSR_MEIHAP 0xFC8
 
 static const char *const k_grp[3] = {"meipl", "meie", "meigwctrl"};
 

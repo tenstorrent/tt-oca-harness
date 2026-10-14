@@ -85,7 +85,6 @@ volatile uint32_t g_prm[P_WORDS] = {
 
 #define GATE_MEIE0 0u
 #define GATE_NEVER 1u
-#define CSR_MEIHAP 0xFC8
 // Highest meipl level; meipt and meicurpl take the same encoding.
 #define PRI_MAX (EL2_PIC__MEIPL__INTPRIORITY_bm >> EL2_PIC__MEIPL__INTPRIORITY_bp)
 #define MIE_MTIE (1u << 7)
