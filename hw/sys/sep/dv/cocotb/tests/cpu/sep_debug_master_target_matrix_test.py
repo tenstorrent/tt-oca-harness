@@ -119,6 +119,7 @@ TEST = "sep_debug_master_target_matrix_test"
 
 _CPU_CTRL = RegBlock("SEP_CPU_CTRL")
 _WDT = RegBlock("WDT_TIMER")
+WDT_BARK = _WDT.addr("WDOG_BARK_THOLD")
 _HMAC = RegBlock("HMAC")
 _COLD = RegBlock("SEP_SCRATCH_COLD")
 _DMA = RegBlock("SECURE_DMA")
@@ -170,6 +171,9 @@ SETTLE = 8  # clk_i cycles after a system-bus access before a tap is read
 # the clk_wdt_i domain (5 us period on this bench), so its access waits for the
 # register CDC; 1024 reads of about 0.5 us each bound it with margin.
 SB_BUSY_READS = 1024
+# Bench-LSU timeout for a watchdog register access, in clk_wdt_i periods: the access
+# waits for the register CDC of the previous write (about 11 to 17 periods here).
+WDT_CDC_CLKS = 50
 UNCORE_ADDRS = (0x50, 0x7F)  # lowest and highest 7-bit DMI address at or above 0x50
 SPIN_LOOP = 0x0000_006F  # jal x0, 0
 
@@ -427,7 +431,15 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             allow_unverified_write_resp=op is SepAxiOp.WRITE,
             allow_ungraded_read_resp=op is SepAxiOp.READ,
         )
-        await self.start_seq(seq)
+        # A watchdog register access waits for the clk_wdt_i register CDC of the
+        # previous write, which is longer than the default bus timeout.
+        saved = self.cfg.axi_timeout_ns
+        if addr == WDT_BARK:
+            self.cfg.axi_timeout_ns = max(saved, WDT_CDC_CLKS * self.cfg.wdt_clk_period_ns)
+        try:
+            await self.start_seq(seq)
+        finally:
+            self.cfg.axi_timeout_ns = saved
         if seq.timed_out:
             raise AssertionError(f"LSU {op.value} @0x{addr:08x} got no response")
         if seq.resp_code != 0:
