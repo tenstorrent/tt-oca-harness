@@ -352,7 +352,7 @@ pins:
 | `idle_at_cs_rise` | SCK is at the CPOL level when chip-select rises |
 | `mosi_edge` | While chip-select is low, MOSI does not change on a sample edge, nor after a sample edge and before the next shift edge of the running clock (within 1.5 half periods of the sample edge) |
 | `sck_while_idle` | While chip-select is high, SCK moves only to the CPOL level |
-| `xz` | Chip-select resolves to 0 or 1 at its edges; SCK and MOSI (with `sd_out`, every driven lane) resolve to 0 or 1 while chip-select is low |
+| `xz` | While chip-select is low, chip-select, SCK and MOSI (with `sd_out`, every driven lane) resolve to 0 or 1; while chip-select is not low (reset included) an X/Z is not graded |
 | `oe_idle` | With `sd_oe`: no data lane output enable rises, or is on at an SCK edge, while chip-select is high |
 | `oe_lanes` | With `sd_oe`: at each sample edge the data lane output enables are none, lane 0, lanes 1:0 or lanes 3:0 |
 | `oe_ctrl` | With `cs_oe`/`sck_oe`: both are on at each sample edge |

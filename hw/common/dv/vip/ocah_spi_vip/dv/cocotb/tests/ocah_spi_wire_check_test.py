@@ -26,8 +26,8 @@ violation, and no other:
   cannot hold X, so the leg runs on a 4-state simulator only.
 
 ``CHK-SPI-WIRE-STOP``: ``stop()`` raises ``OcahSpiMonitorError`` after the
-violations. The flash model answers Mode 0 only; its records are not graded
-here.
+violations. The flash model is stopped before any frame: it answers Mode 0
+only and is not graded here.
 """
 
 from __future__ import annotations
@@ -59,6 +59,7 @@ MODES = ((0, 0), (0, 1), (1, 0), (1, 1))
 async def ocah_spi_wire_check_test(dut) -> None:
     rng = scenario_rng("wire_check")
     harness = await build_stack(dut, required_ids=REQUIRED_IDS, log=log)
+    await harness.flash.stop()
     bfm, monitor, checker = harness.host.bfm, harness.monitor, harness.checker
     log.info("start: four_state=%s", FOUR_STATE)
 
@@ -224,5 +225,4 @@ async def ocah_spi_wire_check_test(dut) -> None:
         stop_error is not None and str(stop_error) == expected_stop,
         context=f"violations={total} stop() raised {stop_error!r}",
     )
-    await harness.flash.stop()
     checker.finalize()

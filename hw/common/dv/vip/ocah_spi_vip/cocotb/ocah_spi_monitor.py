@@ -62,9 +62,9 @@ other SCK edge is the shift edge.  It grades the controller's pins:
                       the first SCK edge, or after the last edge is legal
 ``sck_while_idle``    while chip-select is high, SCK moves only to the CPOL
                       level
-``xz``                chip-select resolves to 0 or 1 at its edges, and SCK
-                      and MOSI (every driven lane with the four-lane taps)
-                      resolve to 0 or 1 while chip-select is low
+``xz``                while chip-select is low, chip-select, SCK and MOSI
+                      (every driven lane with the four-lane taps) resolve to
+                      0 or 1
 ``oe_idle``           with ``sd_oe``: no data lane output enable rises, or is
                       on at an SCK edge, while chip-select is high
 ``oe_lanes``          with ``sd_oe``: at each sample edge the data lane output
@@ -77,6 +77,11 @@ With the four-lane taps the MOSI checks apply to every lane whose output
 enable is on before and after a change. ``beats`` keeps the raw lanes of each
 sample edge; ``lanes_to_bytes`` (``ocah_spi_types``) decodes a dual or quad
 phase from it.
+
+The monitor grades a time step once all of its changes have settled, so the
+order in which a simulator applies changes of one time step does not matter.
+While chip-select is not low (reset included), an X/Z on chip-select, SCK or
+an output enable is not graded.
 
 Each violation is logged and kept in the frame's ``wire_errors`` and in
 ``get_wire_errors()``.  ``stop()`` raises ``OcahSpiMonitorError`` when a wire
@@ -109,7 +114,7 @@ import logging
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import cocotb
-from cocotb.triggers import Edge, First, RisingEdge
+from cocotb.triggers import Edge, First, ReadOnly, RisingEdge
 
 from .ocah_spi_types import OcahSpiOpcode, command_format, opcode_name
 
@@ -360,15 +365,17 @@ class OcahSpiMonitor:
         self._sck_idle_seen = _level(self._sclk)
         while True:
             await First(*triggers)
+            # Grade the time step once every change of it has settled.
+            await ReadOnly()
             cs = _level(self._cs_n)
             if cs == 0:
                 return
             if cs is None:
-                self._violate([], "xz", f"chip-select is X/Z at {_sim_time_ns()} ns")
+                # Before chip select resolves (reset) nothing is graded.
                 continue
             if self._sd_oe is not None:
                 oe = _vector(self._sd_oe)
-                if oe is None or (oe & ~(oe_prev or 0)):
+                if oe is not None and oe_prev is not None and oe & ~oe_prev:
                     self._violate(
                         [],
                         "oe_idle",
@@ -377,7 +384,14 @@ class OcahSpiMonitor:
                     )
                 oe_prev = oe
             sck = _level(self._sclk)
-            if self._sd_oe is not None and sck != self._sck_idle_seen and (oe_prev or 0):
+            if sck is None:
+                continue
+            if (
+                self._sd_oe is not None
+                and self._sck_idle_seen is not None
+                and sck != self._sck_idle_seen
+                and (oe_prev or 0)
+            ):
                 self._violate(
                     [],
                     "oe_idle",
@@ -426,6 +440,7 @@ class OcahSpiMonitor:
 
         while True:
             await First(*triggers)
+            await ReadOnly()
             now = _sim_time_ns() or 0.0
             cs = _level(self._cs_n)
             if cs != 0:
