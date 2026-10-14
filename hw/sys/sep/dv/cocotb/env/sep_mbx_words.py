@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""32-bit word records that test-generated code stores to the outbound mailbox.
+
+Generated code (``env/sep_rv32_asm``) logs values with 32-bit stores to
+offsets of the outbound mailbox base (``tb/sep_outbound_mbx.sv``). The stores
+leave SEP on the outbound port, where the PR-OUT tap (``env/sep_fabric_tap``)
+records the AW and W handshakes. :class:`SepMbxWords` pairs each AW with its
+single W beat in order and decodes one record per store: the byte offset from
+the mailbox base and the 32-bit value of the lane that the strobe selects.
+
+A write that is not one beat, or a strobe that is not one full 32-bit lane,
+fails the leaf: the record shape is part of the generated code, so another
+shape shows a broken path and is never dropped.
+
+Usage::
+
+    out = SepFabricTap("PR-OUT").start()
+    mbx = SepMbxWords(out, MBX)
+    rec = await mbx.wait(OFF_DONE, bound=100_000)
+    vals = [r.val for r in mbx.since(mark, OFF_VAL)]
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import cocotb
+from cocotb.triggers import RisingEdge
+
+
+@dataclass(frozen=True)
+class MbxRec:
+    seq: int
+    off: int
+    val: int
+    t_ps: int
+
+
+class SepMbxWords:
+    """Decoded word records of one PR-OUT tap."""
+
+    def __init__(self, out_tap, base: int) -> None:
+        self.tap = out_tap
+        self.base = base
+        self._recs: list[MbxRec] = []
+        self._scan = 0
+        self._aws: list = []
+        self._ws: list = []
+
+    def records(self) -> list[MbxRec]:
+        beats = self.tap.beats
+        for b in beats[self._scan :]:
+            if b.ch == "aw":
+                self._aws.append(b)
+            elif b.ch == "w":
+                self._ws.append(b)
+        self._scan = len(beats)
+        while len(self._recs) < min(len(self._aws), len(self._ws)):
+            i = len(self._recs)
+            aw, w = self._aws[i], self._ws[i]
+            if aw.addr is None or w.data is None or w.strb is None:
+                raise AssertionError(f"MBX FAIL: outbound write {i} has an unknown field")
+            if aw.len != 0 or not w.last:
+                raise AssertionError(f"MBX FAIL: outbound write {i} is not one beat: {aw.fmt()}")
+            if w.strb not in (0x0F, 0xF0):
+                raise AssertionError(f"MBX FAIL: outbound write {i} strobe 0x{w.strb:x}")
+            lane = 1 if w.strb == 0xF0 else 0
+            off = (aw.addr & ~7) + 4 * lane - self.base
+            val = (w.data >> (32 * lane)) & 0xFFFF_FFFF
+            self._recs.append(MbxRec(i, off, val, w.t_ps))
+        return self._recs
+
+    def mark(self) -> int:
+        return len(self.records())
+
+    def since(self, after: int = 0, off: int | None = None) -> list[MbxRec]:
+        return [r for r in self.records()[after:] if off is None or r.off == off]
+
+    def find(self, off: int, *, after: int = 0, val: int | None = None) -> MbxRec | None:
+        for r in self.records()[after:]:
+            if r.off == off and (val is None or r.val == val):
+                return r
+        return None
+
+    async def wait(
+        self, off: int, bound: int, *, after: int = 0, val: int | None = None, what: str = ""
+    ) -> MbxRec:
+        """The first record at ``off`` (and ``val``) after ``after``, within ``bound`` clocks."""
+        clk = cocotb.top.clk_i
+        pos = after
+        for _ in range(bound):
+            recs = self.records()
+            for r in recs[pos:]:
+                if r.off == off and (val is None or r.val == val):
+                    return r
+            pos = max(pos, len(recs))
+            await RisingEdge(clk)
+        raise AssertionError(
+            f"{what or 'MBX'}: no mailbox store at +0x{off:x}"
+            + ("" if val is None else f" value 0x{val:08x}")
+            + f" within {bound} clk_i cycles"
+        )

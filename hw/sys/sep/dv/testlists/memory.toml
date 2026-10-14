@@ -169,3 +169,31 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+sep_edn_jtag_reset_waive", "+sep_efuse_preload"]
 
+
+[[tests]]
+# Every boot ROM word reads the loaded image for 1, 2 and 4-byte reads, a store does not
+# reach the macro, a stored-bit flip returns OKAY, and a cold reset during an access
+# leaves the interface usable. Real fuse sense of a PROD image whose ROM_CTL is 0.
+name = "sep_boot_rom_aperture_sweep_test"
+module = "cpu.sep_boot_rom_aperture_sweep_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["boot", "rom", "cpu", "memory", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+]
+
+[[tests]]
+# The IFU demux sends ROM and SRAM fetches to their ports and every other fetch to a
+# DECERR responder. The LSU demux routes ROM and crossbar targets, and the LSU cannot
+# write the ICCM.
+name = "sep_cpu_demux_unmapped_fetch_test"
+module = "cpu.sep_cpu_demux_unmapped_fetch_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["cpu", "fabric", "decode", "memory", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
