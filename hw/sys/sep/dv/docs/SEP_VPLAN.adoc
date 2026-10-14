@@ -1207,7 +1207,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |<<sep_spi_pad_timing_cfg_rand_test,`sep_spi_pad_timing_cfg_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
-|ocah_axi_vip, SPI pad ports (approved)
+|ocah_axi_vip, ocah_spi_vip, SPI pad ports (approved)
 |Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. The FULLCYC sampling point is not graded.
 |<<sep_spi_fifo_stall_watermark_rand_test,`sep_spi_fifo_stall_watermark_rand_test`>>
 |3
@@ -5278,7 +5278,7 @@ defect. Behaviour that this plan does not claim at all is in
 |`sec_dis` is not forced. No entry forces `sec_dis`.
 |The LC→`feat_ctrl` stitch stays an end-to-end path. A forced override is not an acceptable substitute for it.
 
-|Checkers sharing one pass line. The following firmware tests evaluate several conditions and print a single pass line: `sep_spi_ot_dma_rx_test` (3 of 3 checkers), `sep_dma_cpu_contention_test` (5 of 5) and `sep_mailbox_plic_test` (4 of 4).
+|Checkers sharing one pass line. The following firmware tests evaluate several conditions and print a single pass line: `sep_spi_ot_dma_rx_test` (3 of 6 checkers), `sep_dma_cpu_contention_test` (5 of 5) and `sep_mailbox_plic_test` (4 of 4).
 |Their checker rows do not fail independently of each other. Firmware counters still gate the verdict.
 
 |Lifecycle codes with no owner. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`). The `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set.
