@@ -60,7 +60,7 @@ typedef union {
 #define ENTROPY_SOURCE__CTRL__AUTOTUNE_ENABLE_bp 4
 #define ENTROPY_SOURCE__CTRL__AUTOTUNE_ENABLE_bw 1
 #define ENTROPY_SOURCE__CTRL__AUTOTUNE_ENABLE_reset 0x0
-// Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words. FIPS_LOCK.LOCK prevents software changes.
+// Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words, word 0 first, with generator 4n+k in bits [8k+7:8k] of word n. FIPS_LOCK.LOCK prevents software changes.
 #define ENTROPY_SOURCE__CTRL__BYPASS_ENTROPY_COMPRESSOR_bm 0x100
 #define ENTROPY_SOURCE__CTRL__BYPASS_ENTROPY_COMPRESSOR_bp 8
 #define ENTROPY_SOURCE__CTRL__BYPASS_ENTROPY_COMPRESSOR_bw 1
@@ -85,7 +85,7 @@ typedef union {
         // Enables per-generator automatic detuning after a lane health-test failure. FIPS_LOCK.LOCK prevents software changes.
         uint32_t AUTOTUNE_ENABLE :1;
         uint32_t :3;
-        // Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words. FIPS_LOCK.LOCK prevents software changes.
+        // Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words, word 0 first, with generator 4n+k in bits [8k+7:8k] of word n. FIPS_LOCK.LOCK prevents software changes.
         uint32_t BYPASS_ENTROPY_COMPRESSOR :1;
         uint32_t :7;
         // Selects every (N+1)th decorrelator output while BIW extraction is bypassed. FIPS_LOCK.LOCK prevents software changes.

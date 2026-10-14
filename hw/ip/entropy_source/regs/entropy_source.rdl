@@ -54,7 +54,7 @@ addrmap entropy_source {
             sw = rw;
             hw = r;
             swwel = true;  // Locked by FIPS_LOCK: certified path is compressor-enabled (default 0); raw bypass blocked under lock.
-            desc = "Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words. FIPS_LOCK.LOCK prevents software changes.";
+            desc = "Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words, word 0 first, with generator 4n+k in bits [8k+7:8k] of word n. FIPS_LOCK.LOCK prevents software changes.";
         } BYPASS_ENTROPY_COMPRESSOR[8:8] = 0x0;
         field {
             sw = rw;

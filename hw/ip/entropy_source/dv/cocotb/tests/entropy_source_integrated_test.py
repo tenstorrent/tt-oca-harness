@@ -28,7 +28,10 @@ async def _drive_entropy_model(tb: EntropySourceTb) -> None:
     lane_bytes = [0] * 12
     while True:
         await FallingEdge(tb.dut.clk)
-        if tb._entropy_constant is None:
+        if tb._entropy_packed is not None:
+            packed = tb._entropy_packed
+            word = EntropyBiwModel.compress_from_packed(packed)
+        elif tb._entropy_constant is None:
             samples = noise.step_all()
             for lane in range(12):
                 lane_bytes[lane] = ((lane_bytes[lane] << 1) | ((samples >> lane) & 1)) & 0xFF
@@ -39,7 +42,7 @@ async def _drive_entropy_model(tb: EntropySourceTb) -> None:
             packed = sum(((word >> ((lane % 4) * 8)) & 0xFF) << (lane * 8) for lane in range(12))
         tb.dut.dut_entropy_inject_data.value = word
         tb.dut.dut_entropy_inject_uncompressed.value = packed
-        tb.dut.dut_entropy_inject_valid.value = 1
+        tb.dut.dut_entropy_inject_valid.value = int(tb._entropy_valid)
 
 
 async def _configure_fast_integrated_path(
@@ -52,10 +55,14 @@ async def _configure_fast_integrated_path(
     repetition_limit: int = 25,
     autotune: bool = False,
     entropy_constant: int | None = None,
+    entropy_packed: int | None = None,
+    entropy_valid: bool = True,
     generator_fault: bool = False,
 ) -> None:
     """Configure the production DUT for a short, deterministic simulation cadence."""
     tb._entropy_constant = entropy_constant
+    tb._entropy_packed = entropy_packed
+    tb._entropy_valid = entropy_valid
     if not hasattr(tb, "_entropy_driver"):
         tb._entropy_driver = cocotb.start_soon(_drive_entropy_model(tb))
     tb.dut.dut_entropy_inject_enable.value = 0
@@ -157,6 +164,40 @@ async def test_integrated_entropy_stream_and_fifo_csr(dut):
     assert _fifo_rptr(status) == (rptr_before + 4) % 64
     assert len(set(words)) > 1
     assert any(words)
+
+
+@cocotb.test()
+async def test_integrated_bypass_fifo_byte_order(dut):
+    tb = EntropySourceTb(dut, "integrated_bypass_fifo_byte_order")
+    await tb.start(disable_dut=False)
+    lanes = list(range(0x10, 0x1C))
+    packed = sum(value << (8 * lane) for lane, value in enumerate(lanes))
+    expected = EntropyBiwModel.bypass_words_from_lanes(lanes)
+
+    await _configure_fast_integrated_path(
+        tb, fifo_enable=False, entropy_packed=packed, entropy_valid=False
+    )
+    # Valid low returns the three-word packer to word 0. Drain any word captured
+    # during register setup, enable the FIFO, then start the known packed input.
+    await ClockCycles(dut.clk, 4)
+    while _fifo_level(await tb.seq.read(reg.FIFO_STATUS_REG_ADDR)):
+        await tb.seq.read(reg.FIFO_RDATA_REG_ADDR)
+    await tb.seq.write(reg.FIFO_CTRL_REG_ADDR, 1)
+    tb._entropy_valid = True
+    await _wait_fifo_level(tb, 6)
+    await tb.seq.write(reg.FIFO_CTRL_REG_ADDR, 0)
+    observed = [await tb.seq.read(reg.FIFO_RDATA_REG_ADDR) for _ in range(6)]
+
+    assert observed == expected * 2, (
+        f"bypass FIFO packing mismatch: observed={[hex(word) for word in observed]} "
+        f"expected={[hex(word) for word in expected * 2]}"
+    )
+    cocotb.log.info(
+        "CHK-BYPASS-PACK PASS lanes=%s expected=%s observed=%s",
+        [hex(value) for value in lanes],
+        [hex(word) for word in expected],
+        [hex(word) for word in observed],
+    )
 
 
 @cocotb.test()
