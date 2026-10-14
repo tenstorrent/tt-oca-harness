@@ -75,9 +75,9 @@ ocah_spi_vip/
   cocotb/ocah_spi_types.py              — OcahSpiOpcode, SpiMode, page/sector geometry, SR1 bits
   cocotb/ocah_spi_flash.py              — OcahSpiFlash (generic SPI/QSPI/OSPI device)
   cocotb/ocah_sep_spi_flash.py          — OcahSepSpiFlash (SEP octal-SPI pin set)
-  cocotb/ocah_spi_master_bfm.py         — OcahSpiMasterBfm (Mode-0 controller engine)
+  cocotb/ocah_spi_master_bfm.py         — OcahSpiMasterBfm (controller engine, all four SPI modes)
   cocotb/ocah_spi_master_sequence.py    — OcahSpiMasterSequence (test-facing controller operations)
-  cocotb/ocah_spi_monitor.py            — OcahSpiMonitor (passive bus observer)
+  cocotb/ocah_spi_monitor.py            — OcahSpiMonitor (passive bus observer and wire checker)
   cocotb/ocah_spi_flash_checker.py      — OcahSpiFlashChecker + OcahSpiFlashRefModel
   cocotb/examples/
     example_jedec_id.py                 — device, controller, monitor, and checker on one link
@@ -125,7 +125,7 @@ flash = OcahSpiFlash(
 | `flash.preload(source)`             | `None`  | Load raw bytes from file path or bytes-like object |
 | `flash.set_jedec_id(id)`            | `None`  | Override JEDEC ID at runtime |
 | `await flash.start()`               | `None`  | Start background protocol engine |
-| `await flash.stop()`                | `None`  | Stop; the transaction history survives |
+| `await flash.stop()`                | `None`  | Stop; the transaction history survives. Raises `OcahSpiFlashError` when the protocol engine raised while it ran |
 | `flash.get_transactions()`          | `list`  | Completed frame records (below) |
 | `flash.clear_transactions()`        | `None`  | Discard history |
 | `flash.read_memory(addr, length)`   | `bytes` | Direct memory read (no SPI) |
@@ -134,18 +134,43 @@ flash = OcahSpiFlash(
 | `flash.unregister_command_callback(opcode)` | `None` | Restore the built-in handling |
 | `flash.jedec_id`, `.flash_size`, `.addr_bytes`, `.status_reg1`, `.status_reg2`, `.write_enabled` | read-only | The configuration and state a checker predicts against |
 
-Frame record keys: `opcode`, `addr`, `data_out` (complete bytes the device
-sent), `data_in` (complete payload bytes the device received), `ok` (the
-device accepted the frame), `reason`
-(`""`, `"wel_clear"`, `"partial_byte"`, or `"unknown_opcode"`).  A PAGE
-PROGRAM or SECTOR ERASE issued with the write-enable latch clear is refused:
-the address is decoded, no payload is taken, memory is unchanged, and the
-record carries `ok=False`.  A PAGE PROGRAM whose chip-select rises 1 to 7 bits
-into a payload byte, sent with the latch set, is refused with
-`reason="partial_byte"`, also when a registered callback handles PAGE
-PROGRAM: the callback is not called, memory and the latch are unchanged, and
-`data_in` holds the complete payload bytes.  A frame refused for a clear latch
-is not graded for its byte boundary.
+Frame record keys: `opcode` (the command byte; -1 when no complete byte
+arrived), `addr`, `data_out` (complete bytes the controller sampled from the
+device), `data_in` (complete payload bytes the device received), `ok` (the
+device accepted the frame), `reason`, `input_bits` (controller-output bits
+the device sampled as input: the whole frame for a command without a response
+phase, the command, address and dummy phases for one with a response phase),
+and `tail_bits` (input bits after the last complete input byte).  Every
+chip-select frame gives one record, malformed frames included.
+
+The device takes the whole controller-output frame before it changes the
+write-enable latch or memory; a refused frame changes neither:
+
+| `reason` | The frame |
+|----------|-----------|
+| `""` | Accepted |
+| `"partial_opcode"` | Ended 1 to 7 bits into the command byte |
+| `"partial_address"` | Ended before the last address bit |
+| `"partial_dummy"` | FAST READ ended before the last dummy bit |
+| `"wel_clear"` | PAGE PROGRAM or SECTOR ERASE with the latch clear |
+| `"partial_byte"` | PAGE PROGRAM or a callback frame ended 1 to 7 bits into a payload byte |
+| `"no_payload"` | PAGE PROGRAM carried no payload byte |
+| `"unexpected_payload"` | WRITE ENABLE, WRITE DISABLE or SECTOR ERASE carried a bit after its last command or address bit |
+| `"unknown_opcode"` | Command outside the supported set |
+
+WRITE ENABLE and WRITE DISABLE are exactly one command byte; SECTOR ERASE is
+one command byte and exactly `addr_bytes` address bytes; PAGE PROGRAM is one
+command byte, `addr_bytes` address bytes and at least one complete payload
+byte.  A PAGE PROGRAM or SECTOR ERASE with the latch clear is refused as
+`wel_clear` whatever its length: the address is decoded when complete, no
+payload is taken, and the frame is not graded for its shape.  A registered
+callback runs only on a frame with a complete command byte, complete address
+and a payload that ends on a byte boundary; PAGE PROGRAM handled by a
+callback keeps the latch gate and needs a payload byte.  A read (READ, FAST
+READ, JEDEC ID, status) is graded for its command, address and dummy phases
+only: once the device drives its response, chip-select may rise at any bit,
+and the frame is accepted with the complete bytes sent.
+`FRAME_SHAPE_REASONS` names the reasons a frame is refused for its shape.
 The device is instant-ready: the BUSY bit never sets and a program or erase
 completes when chip-select rises.
 
@@ -195,9 +220,11 @@ Inherits all `OcahSpiFlash` methods, plus:
 ### OcahSpiMasterBfm and OcahSpiMasterSequence — controller side
 
 For a bench whose DUT is the flash side, or a harness with no SPI host IP,
-the package drives the link itself.  `OcahSpiMasterBfm` is the Mode-0
-bit-banging engine (`from_prefix(dut, "spi")` binds `spi_cs_n`, `spi_sclk`,
-`spi_mosi`, `spi_miso`); `OcahSpiMasterSequence` is the surface tests call.
+the package drives the link itself.  `OcahSpiMasterBfm` is the bit-banging
+engine (`from_prefix(dut, "spi")` binds `spi_cs_n`, `spi_sclk`, `spi_mosi`,
+`spi_miso`), in Mode 0 unless `cpol`/`cpha` or `set_mode` select another;
+`OcahSpiMasterSequence` is the surface tests call.  `bfm.drive(cs_n=, sclk=,
+mosi=)` sets pins directly for wire-level stimulus.
 A bench whose DUT is an SPI host drives that host and attaches only the
 device and the checker.
 
@@ -223,11 +250,12 @@ seq.check_host_responses()        # CHK-SPI-HOST-*: the controller received what
 | `sector_erase(addr)` | `None` | 0x20, address |
 | `read(addr, n)`, `fast_read(addr, n)` | `bytes` | 0x03 / 0x0B (one dummy byte), address, `n` response bytes |
 | `raw_command(opcode, *, addr, dummy_bytes, tx, rx_len, tail_bits)` | `bytes` | Any opcode, for out-of-scope probes; `tail_bits` (0 to 7) ends the frame that many bits into a further byte |
+| `raw_frame(bits)` | `list[int]` | One frame of exactly these MOSI bits; it may end in any phase. Returns the MISO bits |
 | `responses(opcode)` | `list[bytes]` | Every response the controller received for that opcode |
 
 ---
 
-### OcahSpiMonitor — passive bus observer
+### OcahSpiMonitor — passive bus observer and wire checker
 
 ```python
 from ocah_spi_vip import OcahSpiMonitor
@@ -239,12 +267,14 @@ mon = OcahSpiMonitor(
     miso = dut.spi_miso,
     name = "spi_mon",
     addr_bytes = 3,
+    cpol = 0,                    # the SPI mode the controller is programmed to
+    cpha = 0,
 )
 
 mon.add_transaction_callback(lambda txn: print(txn))
 await mon.start()
-# ... run traffic ...
-await mon.stop()
+# ... run traffic; mon.set_mode(cpol, cpha) before the controller changes mode ...
+await mon.stop()                 # raises OcahSpiMonitorError on a wire-check violation
 
 txns  = mon.get_transactions()   # list of plain-int/bytes dicts
 stats = mon.get_statistics()
@@ -253,8 +283,28 @@ mon.clear_history()
 
 Transaction record keys: `opcode`, `addr`, `has_addr`, `data_mosi` (payload
 bytes after the address, PAGE PROGRAM only), `data_miso` (response bytes
-after the command, address, and dummy phases), `bit_count`, `start_ns`,
-`end_ns`.  A command without a response or payload phase carries empty data.
+after the command, address, and dummy phases), `bit_count`, `input_bits`
+(command, address and dummy bits of a command with a response phase;
+`bit_count` otherwise), `opcode_complete`, `cpol`, `cpha`, `wire_errors`,
+`start_ns`, `end_ns`.  A command without a response or payload phase carries
+empty data.
+
+The monitor samples on the sample edge of its mode (the rising SCK edge when
+CPOL equals CPHA, the falling edge otherwise) and grades the controller's
+pins:
+
+| Check | Contract |
+|-------|----------|
+| `idle_at_cs_fall` | SCK is at the CPOL level when chip-select falls |
+| `idle_at_cs_rise` | SCK is at the CPOL level when chip-select rises |
+| `mosi_edge` | While chip-select is low, MOSI does not change on a sample edge, nor after a sample edge and before the next shift edge of the running clock (within 1.5 half periods of the sample edge) |
+| `sck_while_idle` | While chip-select is high, SCK moves only to the CPOL level |
+| `xz` | Chip-select resolves to 0 or 1 at its edges; SCK and MOSI resolve to 0 or 1 while chip-select is low |
+
+`get_wire_errors()` lists every violation.  `stop()` raises
+`OcahSpiMonitorError` after a violation, after a callback raised
+`AssertionError`, or after the monitor itself raised; other callback
+exceptions are counted in `get_statistics()["callback_errors"]`.
 
 ---
 
@@ -288,7 +338,9 @@ rules and their identifiers:
 | `CHK-SPI-STATUS-WEL` | READ STATUS REGISTER 1 reported the latch the model predicts (set after WRITE ENABLE, clear after WRITE DISABLE, consumed by a program or erase) |
 | `CHK-SPI-STATUS-SR2` | READ STATUS REGISTER 2 reported the configured register |
 | `CHK-SPI-WREN-ORDER` | A program or erase was accepted only with the latch set, and refused (no payload taken) only with it clear |
-| `CHK-SPI-FRAME-BYTES` | A PAGE PROGRAM sent with the latch set ended on a payload byte boundary |
+| `CHK-SPI-FRAME-BYTES` | A PAGE PROGRAM sent with the latch set carried a complete address and at least one payload byte and ended on a payload byte boundary |
+| `CHK-SPI-FRAME-SHAPE` | Every other frame had a complete command byte and the exact length of its command: one byte for WRITE ENABLE and WRITE DISABLE, the command and address bytes for SECTOR ERASE with the latch set, complete command, address and dummy phases for a read; an accepted frame's `input_bits` equals that length |
+| `CHK-SPI-LEDGER` | `check_ledger(monitor_frames)`: the device recorded every frame the monitor saw, in order, with the same command byte and input bit count |
 | `CHK-SPI-READ-DATA` | READ and FAST READ streamed the model's bytes at that address |
 | `CHK-SPI-HOST-JEDEC`, `-STATUS`, `-READBACK` | The controller received, frame by frame, what the device sent |
 | `CHK-SPI-CMD-ORDER` | The in-scope opcode sequence equals the expected one |
@@ -355,7 +407,10 @@ except OcahSpiFlashError as exc:
 
 `OcahSepSpiFlashError` is a subclass of `OcahSpiFlashError`; catching either
 works for both flash types.  A failed checker record raises
-`ocah_checker.OcahCheckerError`.
+`ocah_checker.OcahCheckerError`.  An exception inside the flash protocol
+engine is logged and kept, and `flash.stop()` raises it as the cause of an
+`OcahSpiFlashError`; `OcahSpiMonitor.stop()` raises `OcahSpiMonitorError` in
+the same way.
 
 ---
 
@@ -368,7 +423,8 @@ works for both flash types.  A failed checker record raises
 | Dual/quad-output read opcodes (0x3B, 0x6B) | Out of scope; drained, recorded refused, never credited |
 | Block and chip erase, 4-byte address mode entry | Out of scope; drained, recorded refused, never credited |
 | 4-byte (32-bit) address mode | Default is 3-byte; set `addr_bytes=4` in the constructor |
-| SPI Mode 1/2/3 (CPOL/CPHA variants) | Only Mode 0 (CPOL=0 CPHA=0) |
+| SPI Mode 1/2/3 (CPOL/CPHA variants) | The flash device answers Mode 0 only; the monitor and the controller engine run all four modes |
+| Wire timing | The monitor grades edge order, not setup, hold or clock-period values |
 | Program and erase timing | Instant-ready: the BUSY bit never sets; no device-specific timing |
 | Device-specific commands and registers | None; status register 2 is a constant the bench configures |
 | Addresses at or beyond `flash_size` | Read as 0xFF and take no program; a read address wraps at 24 bits, not at the device size |
@@ -392,7 +448,8 @@ python3 tools/dv/run_dv.py --dut smc --items smc_spi_pad_bfm_test --tool verilat
 
 The harness selftests (`ocah_spi_jedec_test`, `ocah_spi_program_readback_test`,
 `ocah_spi_erase_test`, `ocah_spi_ordering_test`, `ocah_spi_unsupported_test`,
-`ocah_spi_partial_byte_test`)
+`ocah_spi_partial_byte_test`, `ocah_spi_frame_shape_test`,
+`ocah_spi_wire_check_test`)
 prove the device, the controller engine, the monitor, and the checker against
 each other; each carries an in-band probe that hands a fail-fast checker a
 wrong identifier, pattern, order, vacuous erase, or unprotected program and
