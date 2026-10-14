@@ -337,7 +337,6 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         for half, wm, fill in self.scfg.tx_wm_reps:
             await self._chk_watermark(half, wm, fill)
         await self._chk_enable()
-        self.logger.info("SPI host CSR/IRQ breadth ALL CHECKS PASS")
         await self._extension_legs()
 
     # ---- helpers ----------------------------------------------------------
