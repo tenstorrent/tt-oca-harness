@@ -34,9 +34,11 @@ Checkers:
   CHK-STM-RETAIN   in legs B, C and D ``secure_tm_o`` keeps its value on every
                    sample through every event and after every strap change.
                    Control: leg A shows ``secure_tm_o`` = 1. The leg-B
-                   ``wdt_rst_ni`` pulse reads ``sep_cpu_reset_n_o`` low and the
-                   override pulse reads ``dbg_sep_reset_n_o`` low inside the
-                   pulse window, so both events reach the DUT. In both leg-D
+                   ``wdt_rst_ni`` pulse reads ``sep_cpu_reset_n_o`` low, the
+                   override pulse reads ``dbg_sep_reset_n_o`` low and, on the
+                   full-CPU build, the ``dbg_rstb_i`` pulse reads
+                   ``mpc_run_sync_probe_o`` low inside the pulse window, so
+                   each graded event reaches the DUT. In both leg-D
                    boots ``lcc_security_disable_probe_o`` reads 1 on every
                    sample from the release to the end of the hold, so the
                    match is shown present (a lost match runs a sense that
@@ -60,8 +62,11 @@ reaches the token block.
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense,
 ``+sep_edn_jtag_reset_waive`` for the ``sep_reset_n`` override pulse of leg B.
-Verilator and VCS; the ``dbg_rstb_i`` event of leg B runs on VCS only, and no
-approved probe of the CPU stub build shows its reach (``OBS-STM-DBG-REACH``). RAND-REP:
+Verilator and VCS; the ``dbg_rstb_i`` event of leg B runs on VCS only. On the
+CPU stub build no approved probe shows its reach, so it runs ungraded
+(``OBS-STM-DBG-REACH``). The full-CPU entry (``--target default``,
+``+sep_require_full_cpu``) grades it: with ``mpc_reset_run_req`` at 1 the
+``mpc_run_sync_probe_o`` tap reads 0 inside the pulse. RAND-REP:
 the seed draws ``c`` (8 to 200) and the order of the leg B events.
 """
 
@@ -98,6 +103,7 @@ _OVRD_CYCLES = 32
 _SENSE_BOUND = 20_000
 _STM_BOUND = 16
 _TAP_BOUND = 256
+_SYNC_BOUND = 16
 _HMAC_BOUND = 4_096
 _TOKEN_POLLS = 200
 
@@ -137,6 +143,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
                     "done": _bit(dut.sep_fuse_sense_done_o),
                     "sep": _bit(dut.dbg_sep_reset_n_o),
                     "cpu": _bit(dut.sep_cpu_reset_n_o),
+                    "mpc": _bit(dut.mpc_run_sync_probe_o),
                     "secdis": _bit(dut.lcc_security_disable_probe_o),
                 }
             )
@@ -232,14 +239,49 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
 
     async def _ev_dbg(self) -> None:
         dut = cocotb.top
+        if not self.full_cpu:
+            await self._edge()
+            dut.dbg_rstb_i.value = 0
+            await self._until(self._now() + _PULSE)
+            dut.dbg_rstb_i.value = 1
+            self.logger.info(
+                "OBS-STM-DBG-REACH: dbg_rstb_i low for %d cycles; reach not shown (the CPU "
+                "stub build has no debug module or run-request synchronizer for a probe to read)",
+                _PULSE,
+            )
+            return
+        # Full-CPU build: dbg_rstb_i resets the run-request synchronizer. With
+        # mpc_reset_run_req at 1 its output reads 1, so a 0 inside the pulse
+        # shows that the pulse reached the debug reset domain. The core samples
+        # mpc_reset_run_req only right after its own reset, which this event
+        # does not assert; the request returns to 0 before the next event.
+        await self._edge()
+        dut.mpc_reset_run_req.value = 1
+        r0 = await self._wait_sample("mpc", 1, _SYNC_BOUND, "control: mpc_run_sync rise")
         await self._edge()
         dut.dbg_rstb_i.value = 0
-        await self._until(self._now() + _PULSE)
+        d0 = self._now()
+        await self._until(d0 + _PULSE)
         dut.dbg_rstb_i.value = 1
+        d1 = self._now()
+        f1 = await self._wait_sample(
+            "mpc", 1, _SYNC_BOUND, "mpc_run_sync after the dbg_rstb_i pulse"
+        )
+        dut.mpc_reset_run_req.value = 0
+        await self._wait_sample("mpc", 0, _SYNC_BOUND, "mpc_run_sync after the request drop")
+        low = sum(1 for i in range(d0, d1) if self.rec[i]["mpc"] == 0)
+        assert low > 0, (
+            f"CHK-STM-RETAIN FAIL: leg=B event=dbg_rstb_i: mpc_run_sync_probe_o never read 0 "
+            f"in the pulse window (samples {d0}..{d1 - 1}), so the event did not happen"
+        )
         self.logger.info(
-            "OBS-STM-DBG-REACH: dbg_rstb_i low for %d cycles; reach not shown (the CPU stub "
-            "build has no debug module or run-request synchronizer for a probe to read)",
-            _PULSE,
+            "LEG-B dbg_rstb_i pulse reached the debug reset domain: mpc_run_sync low on %d of "
+            "samples %d..%d control_high_at=%d high_again_at=%d",
+            low,
+            d0,
+            d1 - 1,
+            r0,
+            f1,
         )
 
     async def _ev_swrst(self) -> None:
@@ -329,15 +371,26 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         rng.shuffle(order)
         self.logger.info("DRAW event_order=%s", ",".join(order))
         vcs = "vcs" in str(getattr(cocotb, "SIM_NAME", "") or "").lower()
+        self.full_cpu = self.full_cpu_build()
+        # The full-CPU testlist entry passes +sep_require_full_cpu: there the
+        # dbg_rstb_i event is graded, so a stub build fails the leaf.
+        if "sep_require_full_cpu" in cocotb.plusargs and not self.full_cpu:
+            raise AssertionError(
+                "CTL-FULL-CPU FAIL: +sep_require_full_cpu and the build has the CPU stub"
+            )
         events = [e for e in order if vcs or e != "dbg_rstb_i"]
+        graded = [e for e in events if self.full_cpu or e != "dbg_rstb_i"]
+        ungraded = "" if graded == events else " ungraded=dbg_rstb_i(stub: no load)"
         self.logger.info(
-            "CFG H=%d rst_low=%d pulse=%d ovrd=%d events_run=%s%s",
+            "CFG H=%d rst_low=%d pulse=%d ovrd=%d full_cpu=%d events_run=%s%s%s",
             _HOLD,
             _RST_LOW,
             _PULSE,
             _OVRD_CYCLES,
+            int(self.full_cpu),
             ",".join(events),
             "" if vcs else " (dbg_rstb_i runs on VCS only)",
+            ungraded,
         )
         close_graded_window()
         image = self.select_efuse_image(
@@ -402,6 +455,24 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             "sep_reset_n_ovrd": self._ev_ovrd,
         }
         for ev in events:
+            if ev not in graded:
+                # Stub build: dbg_rstb_i has no load, so the event is run with
+                # the graded window closed and logged only.
+                close_graded_window(self.logger)
+                e0 = await self._edge()
+                await run[ev]()
+                e1 = await self._hold()
+                vals = self._window(e0, e1 - 1)
+                self.logger.info(
+                    "OBS-STM-UNGRADED: event=%s samples=%d..%d secure_tm_o_ones=%d/%d",
+                    ev,
+                    e0,
+                    e1 - 1,
+                    sum(1 for v in vals if v == 1),
+                    len(vals),
+                )
+                open_graded_window(TEST, self.logger)
+                continue
             e0 = await self._edge()
             await run[ev]()
             e1 = await self._hold()
@@ -414,7 +485,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         b1 = self._now() - 1
         strap_b = self._window(b0, b1, "strap")
         assert all(s == 1 for s in strap_b), "leg B: the strap moved"
-        retain.append(f"leg=B events={','.join(events)} value=1 cycles={b1 - b0 + 1}")
+        retain.append(f"leg=B events={','.join(graded)}{ungraded} value=1 cycles={b1 - b0 + 1}")
         close_graded_window(self.logger)
 
         # Leg C, strap 1 -> 0.
