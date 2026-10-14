@@ -719,10 +719,9 @@ tests = [
 [[groups]]
 # Convenience group of the memory, boot, reset, WDT and clock tests.
 # It is not a VPLAN group: `all` holds the same tests, and `cpu_stub` and `cpu`
-# hold all of them except the `_dbg` entries and
-# sep_debug_master_target_matrix_test_sba.
 # hold all of them except the no_cpu entries on the full-CPU target (the `_dbg`
-# entries and sep_tcm_dma_aperture_ecc_test).
+# entries, sep_tcm_dma_aperture_ecc_test and
+# sep_debug_master_target_matrix_test_sba).
 name = "phase3_memory_boot_reset"
 expected_count = 22
 tests = [
