@@ -75,7 +75,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-ISO-REL       the isolate-complete bits of D fall within the allowance of
                     the ``ip_rst_n[D]`` rise; the probe reads its RDL default.
   CHK-ISO-NEVER     the drawn never-isolated port answers as in the memory map
-                    in the isolated window.
+                    in the isolated window. The TRNG pass also reads the
+                    external TRNG window on every seed, graded the same way.
   CHK-ISO-PAIR      in each pair pass each victim isolates before its tap falls,
                     and its tap rises only after its own write of 1.
   CHK-ISO-ORDER     OTBN, AES, Key Manager: the tap falls at or after the cycle
@@ -1278,12 +1279,21 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 RESP_NAME[seq.resp_code],
                 int(seq.rdata) & 0xFFFF_FFFF,
             )
-        # A sibling outside the victims, and the drawn never-isolated port.
+        # A sibling outside the victims, and the drawn never-isolated port. The
+        # TRNG pass also reads the external TRNG window on every seed.
         sib = next(s for s in DOMS if s not in pd.victims and s != "trng")
         ok, desc = await self._expect(PROBE[sib], self.armed[PROBE[sib].name])
         self._ctl("CTL-ISO-SIBLING", ok, f"pass={pd.name} sibling={sib} {desc}")
         res["sibling_ok"] = ok
-        addr, need_okay = NEVER[pd.never]
+        ports = [pd.never]
+        if pd.victims[0] == "trng" and pd.never != "ext_trng":
+            ports.append("ext_trng")
+        res["never"] = [await self._never_read(port) for port in ports]
+        res["still_low"] = all(self._ip(IPRST[v]) == 0 for v in pd.victims)
+        return res
+
+    async def _never_read(self, port: str) -> tuple[str, int, int, bool]:
+        addr, need_okay = NEVER[port]
         # The external TRNG window is adopter-defined; with no TRNG fitted the
         # reference integration answers DECERR (memory_map.adoc, note 2).
         mon = self.env.axi_monitor
@@ -1292,9 +1302,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         seq = await self._acc(SepAxiOp.READ, addr, 4)
         if not need_okay and seq.resp_code != 3:
             mon.release_expected_decerr(1)
-        res["never"] = (pd.never, seq.resp_code, int(seq.rdata) & 0xFFFF_FFFF, need_okay)
-        res["still_low"] = all(self._ip(IPRST[v]) == 0 for v in pd.victims)
-        return res
+        return (port, seq.resp_code, int(seq.rdata) & 0xFFFF_FFFF, need_okay)
 
     async def _grade_pass(
         self, pd, view: PassView, host_evs, fall, rel_marks, win, baseline
@@ -1484,15 +1492,15 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             f"other_size_data=[{';'.join(win['other'])}] control_okay={int(written_absent)} "
             f"written_absent={int(written_absent)} in_window={int(win['still_low'])}",
         )
-        port, resp, data, need_okay = win["never"]
-        isolated_answer = resp == RESP_SLVERR and data == ISO_DATA
-        ok = (resp == RESP_OKAY) if need_okay else not isolated_answer
-        self._chk(
-            "CHK-ISO-NEVER",
-            ok and not isolated_answer and win["still_low"],
-            f"dom={d} port={port} resp={RESP_NAME[resp]} rdata=0x{data:08x} "
-            f"not_isolated_answer={int(not isolated_answer)}",
-        )
+        for port, resp, data, need_okay in win["never"]:
+            isolated_answer = resp == RESP_SLVERR and data == ISO_DATA
+            ok = (resp == RESP_OKAY) if need_okay else not isolated_answer
+            self._chk(
+                "CHK-ISO-NEVER",
+                ok and not isolated_answer and win["still_low"],
+                f"dom={d} port={port} resp={RESP_NAME[resp]} rdata=0x{data:08x} "
+                f"not_isolated_answer={int(not isolated_answer)}",
+            )
         if len(pd.victims) == 1:
             kept = 0
             others = [s for s in DOMS if s != d]

@@ -12156,6 +12156,10 @@ module sep_fcov (
   logic [6:0] mr_mw_r = '0;
   longint unsigned mr_mw_t = 0;
   logic mr_pu_arm = 1'b0;
+  // dma_busy_i at the previous clk_i edge. rst_ni asserts between two edges
+  // and clears the copy asynchronously, so the live value at the edge that
+  // sees the fall is already 0.
+  logic mr_busy_q = 1'b0;
   logic mr_rf_pend = 1'b0;
   logic [1:0] mr_rf_reg = '0;
   logic [1:0] mr_rf_shape = '0;
@@ -12210,8 +12214,10 @@ module sep_fcov (
       end
     end
     // cp_power_up_value: a cold reset with the hmac field at 0 and a copy
-    // running, then the first SW_RESET_N read after the release.
-    if (mr_rst_fall) mr_pu_arm <= mr_own_ret && !mr_swv[3] && (dma_busy_i === 1'b1);
+    // running at the clk_i edge before the fall, then the first SW_RESET_N
+    // read after the release.
+    mr_busy_q <= (dma_busy_i === 1'b1);
+    if (mr_rst_fall) mr_pu_arm <= mr_own_ret && !mr_swv[3] && mr_busy_q;
     else if (mr_pu_arm && mr_rd_lo && (ar_addr_q == MrSwRst)) begin
       if (mr_own_ret) begin
         mr_swc_t e;
@@ -12502,14 +12508,17 @@ module sep_fcov (
   logic mr_rw = 1'b1;
   logic mr_rw_ok = 1'b0;
   logic mr_lk_sticky = 1'b0;
+  // 1 from a gate-open rst_ni rise to the first landed WDOG_BARK_THOLD write,
+  // unless a WDOG_REGWEN write of 0 or a WDOG_REGWEN read of 0 comes first.
   logic mr_lk_cold = 1'b0;
-  logic mr_lk_rw1 = 1'b0;
   logic mr_bt_pend = 1'b0;
   logic [31:0] mr_bt_w = '0;
   logic [31:0] mr_bt_prev = '0;
   logic mr_bt_prev_ok = 1'b0;
   logic [1:0] mr_bt_rw = '0;  // {known, regwen}
   logic mr_bt_cold = 1'b0;
+  logic mr_bt_own = 1'b0;  // graded window open at the pending bark write
+  logic mr_own_tmr_q = 1'b0;  // mr_own_tmr at the previous clk_i edge
   logic [31:0] mr_to_prev = '0;
   logic mr_to_prev_ok = 1'b0;
   logic mr_to_near = 1'b0;
@@ -12556,14 +12565,23 @@ module sep_fcov (
             mr_bt_prev    <= mr_wd_bark;
             mr_bt_prev_ok <= mr_wd_bark_ok;
             mr_bt_rw      <= {mr_rw_ok, mr_rw};
-            mr_bt_cold    <= mr_lk_rw1;
+            mr_bt_cold    <= mr_lk_cold;
+            mr_bt_own     <= mr_own_tmr;
+            mr_lk_cold    <= 1'b0;
             mr_wd_pair    <= 1'b0;
+            // A write lands unless regwen is known 0. regwen resets to 1 with
+            // rst_ni, so an unknown regwen after a reset is 1.
+            if (!mr_rw_ok || mr_rw) begin
+              mr_wd_bark    <= wr_data;
+              mr_wd_bark_ok <= 1'b1;
+            end
           end
           MrWdBite: mr_wd_bite <= wr_data;
           MrWdRegwen: begin
             if (!wr_data[0]) begin
-              mr_rw    <= 1'b0;
-              mr_rw_ok <= 1'b1;
+              mr_rw      <= 1'b0;
+              mr_rw_ok   <= 1'b1;
+              mr_lk_cold <= 1'b0;
             end else if (mr_rw_ok && !mr_rw) mr_lk_sticky <= 1'b1;
           end
           MrWdIntrTest: begin
@@ -12624,7 +12642,8 @@ module sep_fcov (
           MrWdBark: begin
             mr_wd_bark    <= rd_data;
             mr_wd_bark_ok <= 1'b1;
-            if (mr_bt_pend && mr_bt_prev_ok && (mr_bt_w != mr_bt_prev) && mr_own_tmr) begin
+            if (mr_bt_pend && mr_bt_prev_ok && (mr_bt_w != mr_bt_prev) && mr_bt_own &&
+                (mr_own_tmr || mr_own_tmr_q)) begin
               mr_wdt_t e;
               e    = '0;
               e.lk = 2'd0;
@@ -12643,7 +12662,6 @@ module sep_fcov (
               if (e.lk_v) u_sep_wdt_config_bark_cg.sample(e);
             end
             mr_bt_pend <= 1'b0;
-            if (mr_bt_cold) mr_lk_rw1 <= 1'b0;
           end
           MrWdBite: mr_wd_bite <= rd_data;
           MrWdRegwen: begin
@@ -12657,10 +12675,7 @@ module sep_fcov (
             mr_lk_sticky <= 1'b0;
             mr_rw        <= rd_data[0];
             mr_rw_ok     <= 1'b1;
-            if (mr_lk_cold) begin
-              mr_lk_rw1  <= rd_data[0];
-              mr_lk_cold <= 1'b0;
-            end
+            if (!rd_data[0]) mr_lk_cold <= 1'b0;
           end
           MrWdCount: begin
             logic chg;
@@ -12744,8 +12759,10 @@ module sep_fcov (
       e.bs_v = 1'b1;
       u_sep_wdt_config_bark_cg.sample(e);
     end
-    // cp_thold_order
-    if (!mr_own_tmr) mr_to_prev_ok <= 1'b0;
+    // cp_thold_order. A gate-closed recovery reset between two graded runs
+    // keeps the previous bark; another owner's window drops it.
+    mr_own_tmr_q <= mr_own_tmr;
+    if ((graded_owner != FcovOwnNone) && !mr_own_tmr) mr_to_prev_ok <= 1'b0;
     if (!mr_bark_q && mr_bark && mr_own_tmr) begin
       mr_wdt_t e;
       e      = '0;
@@ -13010,6 +13027,9 @@ module sep_fcov (
   logic [3:0] mr_op_state[4] = '{default: '0};  // {phase, first 0 sw 1 override, 0}
   longint unsigned mr_op_t[4] = '{default: 0};
   logic [5:0] mr_ip_s = '0;  // independence step set, ip_rst_n[6:1]
+  logic [5:0] mr_ip_acc = '0;  // fields asserted by the writes of the step
+  logic mr_ip_rel = 1'b0;  // the step has a release write
+  logic [5:0] mr_ip_wr = '0;  // engines written since the step started
   logic mr_ip_post = 1'b0;
   logic [5:0] mr_ip_done = '0;
   logic [31:0] mr_eg_addr[6][4] = '{default: '{default: '0}};
@@ -13390,12 +13410,16 @@ module sep_fcov (
       if (!mr_own_ovr || (mr_ovrd[i] && mr_oval[i])) mr_op_state[j] <= '0;
     end
 
-    // cp_independence_pair: a step that asserts two or more domains, its
-    // release, then a victim read that returns an armed value.
+    // cp_independence_pair: a step whose writes assert two or more domains
+    // (one write or one write per domain), its release, then a victim read
+    // that returns the value armed before the step. A step starts with the
+    // first assert write after a release write. A victim written after the
+    // step started is not evidence.
     g = mr_engine(aw_addr_q);
     if (mr_wl32 && (g >= 1)) begin
       logic hit;
       hit = 1'b0;
+      mr_ip_wr[g-1] <= 1'b1;
       for (int j = 0; j < 4; j++) begin
         if (mr_eg_v[g][j] && (mr_eg_addr[g][j] == aw_addr_q)) begin
           mr_eg_data[g][j] <= wr_data;
@@ -13411,17 +13435,28 @@ module sep_fcov (
     end
     if (mr_wlo && (aw_addr_q == MrSwRst)) begin
       logic [6:0] a;
-      a = mr_swv & ~w_data_q[6:0];
+      logic [6:0] r;
+      logic [5:0] un;
+      logic fresh;
+      a     = mr_swv & ~w_data_q[6:0];
+      r     = ~mr_swv & w_data_q[6:0];
+      fresh = mr_ip_post || mr_ip_rel || (mr_ip_acc == 0);
       if (a[6:1] != 0) begin
-        mr_ip_s    <= ($countones(a[6:1]) >= 2) ? a[6:1] : 6'd0;
+        un = fresh ? a[6:1] : (mr_ip_acc | a[6:1]);
+        mr_ip_acc  <= un;
+        mr_ip_s    <= ($countones(un) >= 2) ? un : 6'd0;
+        mr_ip_rel  <= 1'b0;
         mr_ip_post <= 1'b0;
+        if (fresh) mr_ip_wr <= '0;
       end else if ((mr_ip_s != 0) && ((w_data_q[6:1] & mr_ip_s) == mr_ip_s)) begin
+        mr_ip_rel  <= 1'b1;
         mr_ip_post <= 1'b1;
         mr_ip_done <= '0;
-      end
+      end else if ((r[6:1] & mr_ip_acc) != 0) mr_ip_rel <= 1'b1;
     end
     g = mr_engine(ar_addr_q);
-    if (rd_ev && (g >= 1) && mr_ip_post && !mr_ip_s[g-1] && !mr_ip_done[g-1] && mr_own_swiso) begin
+    if (rd_ev && (g >= 1) && mr_ip_post && !mr_ip_s[g-1] && !mr_ip_done[g-1] && !mr_ip_wr[g-1] &&
+        mr_own_swiso) begin
       for (int j = 0; j < 4; j++) begin
         if (mr_eg_v[g][j] && (mr_eg_addr[g][j] == ar_addr_q) && (rd_data == mr_eg_data[g][j])) begin
           mr_ip_done[g-1] <= 1'b1;
@@ -13439,6 +13474,8 @@ module sep_fcov (
     end
     if (!mr_own_swiso) begin
       mr_ip_s    <= '0;
+      mr_ip_acc  <= '0;
+      mr_ip_rel  <= 1'b0;
       mr_ip_post <= 1'b0;
     end
   end
