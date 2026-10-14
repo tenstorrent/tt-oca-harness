@@ -66,6 +66,7 @@ from seq_lib.sep_fabric_csr_bank_seq import F_SRC_ID_LSB, FILTER_CFG_LO_FIELDS
 from seq_lib.sep_fabric_filter_bank_seq import SRC_ID_MASK, SepFilterBank, config_word
 from seq_lib.sep_inbound_filter_rule_seq import SepInboundFilter
 from seq_lib.sep_mailbox_iface_seq import SepMbox
+from seq_lib.sep_mailbox_walk_seq import inbound_last
 from seq_lib.sep_mbox_port_ops import (
     MAILBOX_COUNT,
     RESP_DECERR,
@@ -106,7 +107,7 @@ class _Mbx:
 
     @property
     def end(self) -> int:
-        return port_base(self.m, "in") + 0x7FF
+        return inbound_last(self.m)
 
     def summary(self) -> str:
         rej = ",".join(f"{w}:u{u}/p{p}" for w, u, p in self.rejects) or "-"

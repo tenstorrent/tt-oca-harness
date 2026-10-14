@@ -44,6 +44,16 @@ every mailbox), the two-threshold alias on FIFO A, one flush kind, the
 Then the outbound-set leg raises all eight outbound lines and a subset of
 inbound lines and releases them one at a time.
 
+Every threshold-run pop grades its data against the model (CHK-ENTRY). On the
+first mailbox the threshold-7 run of each FIFO pushes eight 64-bit words with
+both halves non-zero, and the threshold-8 run after it uses fixed widths: each
+32-bit push is read back at 64 bits and at its other half (that half reads 0,
+so a half kept from an earlier entry or a copy of the written half fails), a
+64-bit push is read at each half, and each 32-bit push at its own half. A seed
+that does not grade all of these cells on both FIFOs fails with
+``CTRL-MISSING``. The VIP drives the unstrobed lanes to zero, so the zero fill
+of unstrobed lanes that carry non-zero data is not claimed.
+
 Checks: CHK-ENTRY, CHK-STATUS, CHK-CLAMP, CHK-FLUSH, CHK-CTRL0, CHK-ALIAS,
 CHK-LINE-IN, CHK-LINE-OUT, CHK-LINE-ISO, CHK-GATE, CHK-W1C, CHK-WIDTH,
 CHK-GLITCH, CHK-NONVAC. The outbound mailbox 0 cells that open tests grade
@@ -96,7 +106,7 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import AXIL_MAILBOX_OUTBOUND_0 as MBX_REGS
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_mailbox_iface_seq import SepMbox
-from seq_lib.sep_mailbox_walk_seq import inbound_base
+from seq_lib.sep_mailbox_walk_seq import inbound_base, inbound_last
 from seq_lib.sep_mbox_port_ops import RESP_OKAY, ports, resp_name
 
 TEST = "sep_mailbox_fifo_model_rand_test"
@@ -112,6 +122,15 @@ EMPTY_FULL = ST_EMPTY | ST_FULL
 BOUNDARY = (7, 0, 8, 255)
 MB0_CHK_THRESH = (0, 7, 8, 9, 255)
 CAUSE_BIT = {"wtirq": IRQ_WTIRQ, "rtirq": IRQ_RTIRQ}
+# Width cells of the threshold-8 run of each FIFO on the first mailbox: entry k
+# is pushed at HALF_PUSHES[k] and popped at HALF_POPS[k] (None is 64 bits).
+# Together they read each 32-bit push at full width and at its other half, a
+# 64-bit push at each half, and each 32-bit push at its own half. The
+# threshold-7 run before it pushes eight 64-bit words with both halves non-zero.
+FULL_RUN, CELL_RUN = BOUNDARY.index(7), BOUNDARY.index(8)
+HALF_PUSHES = (0, 1, 0, 1, None, None, 0, 1)
+HALF_POPS = (None, None, 1, 0, 0, 1, 0, 1)
+HALF_CELLS = {(f, p, r) for f in ("A", "B") for p, r in zip(HALF_PUSHES, HALF_POPS)}
 
 
 def _wab(st: int) -> int:
@@ -430,9 +449,11 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
         return popcount(cc.smc) - others
 
     # ------------------------------------------------------------------ draws
-    def _payload(self, used: set, bits: int = 64) -> int:
+    def _payload(self, used: set, bits: int = 64, both_halves: bool = False) -> int:
         while True:
             v = self.rng.getrandbits(bits)
+            if both_halves and not (v & M32 and v >> 32):
+                continue
             if v and v not in used:
                 used.add(v)
                 return v
@@ -468,14 +489,22 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                 values[f] = (list(BOUNDARY) if i == 0 else []) + drawn
             # Each value runs on FIFO A then FIFO B; boundary values first.
             for f in ("A", "B"):
-                for v in values[f]:
+                for j, v in enumerate(values[f]):
                     n = self._fill(v)
+                    fixed = i == 0 and j == CELL_RUN
+                    full = i == 0 and j == FULL_RUN
+                    if (fixed or full) and n != MAILBOX_DEPTH:
+                        raise AssertionError(f"test error: width-cell run fill={n} value={v}")
                     used: set = set()
                     pushes = []
-                    for _ in range(n):
-                        h = self._width()
-                        pushes.append((self._payload(used, 64 if h is None else 32), h))
-                    pops = [self._width() for _ in range(n)]
+                    for k in range(n):
+                        if fixed:
+                            h = HALF_PUSHES[k]
+                        else:
+                            h = None if full else self._width()
+                        bits = 64 if h is None else 32
+                        pushes.append((self._payload(used, bits, both_halves=full), h))
+                    pops = list(HALF_POPS) if fixed else [self._width() for _ in range(n)]
                     runs.append(
                         {
                             "fifo": f,
@@ -585,8 +614,21 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                     _rab(cc.r[(m, rp)]["STATUS"]),
                 )
                 seen[occ] = bits
-            for half in run["pops"]:
-                await self._pop(m, rp, half)
+            ctl = self.ctx.out_is_ctl(m)
+            for k, half in enumerate(run["pops"]):
+                got, exp, occ = await self._pop(m, rp, half)
+                ph = run["pushes"][k][1]
+                ok = exp is not None and got == exp
+                self._grade(
+                    "CHK-ENTRY",
+                    ok,
+                    f"mbox={m} fifo={f} leg=thresh value={v} push={'64' if ph is None else f'32h{ph}'} "
+                    f"read={'64' if half is None else f'32h{half}'} got=0x{got:x} "
+                    f"exp=0x{exp if exp is not None else 0:x} occ_before={occ}",
+                    ctl=ctl,
+                )
+                if not ctl:
+                    self.half_cells.add((f, ph, half))
                 await self._check([m], f"pop_to={mb.occ(f)}")
             await self._wr(m, "out", "IRQS", IRQ_ALL)
             await self._wr(m, "in", "IRQS", IRQ_ALL)
@@ -899,12 +941,11 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
         self.mbx = MboxSystem()
         bank = SepFilterBank(self, "in")
         for m in range(8):
-            base = inbound_base(m)
             await bank.program(
                 m,
                 FilterEntry(
-                    start=base,
-                    end=base + 0x7FF,
+                    start=inbound_base(m),
+                    end=inbound_last(m),
                     enabled=True,
                     read_allowed=True,
                     write_allowed=True,
@@ -930,6 +971,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
         self.prev_probe = 0
         self.last_km = None
         self.ctx = Ctx("start", -1)
+        self.half_cells: set = set()
 
         # Steps 4 to 10 per mailbox, then 11 to 14.
         self._gate(True)
@@ -952,6 +994,9 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
             self._ctrl_missing(
                 f"CHK-LINE-OUT two_high={int(self.seen_two)} all_eight={int(self.seen_all_one)}"
             )
+        missing = sorted(HALF_CELLS - self.half_cells, key=str)
+        if missing:
+            self._ctrl_missing(f"CHK-ENTRY width_cells_missing={missing}")
         if not self.windows_high or not self.iso_moves:
             self._ctrl_missing(
                 f"CHK-GLITCH windows_line_high={self.windows_high} iso_moves={self.iso_moves}"

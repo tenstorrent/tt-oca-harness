@@ -13,7 +13,10 @@ Mailbox Wrapper row; ``hw/ip/axi_lite_mailbox_unit/regs/gen/adoc/axil_mailbox.ad
 * K2: a ``WRITE_DATA`` write to a full FIFO answers SLVERR, discards the word
   and sets ``ERROR_FLAGS.write_error`` and ``IRQS.eirq``.
 * K3: a write to ``READ_DATA``, ``STATUS``, ``ERROR_FLAGS`` or ``IRQP``
-  answers SLVERR and changes nothing.
+  answers SLVERR and changes nothing: ``WIRQT``, ``RIRQT``, ``IRQEN``,
+  ``IRQS``, ``STATUS`` and ``ERROR_FLAGS`` of both ports keep their values
+  (the live registers hold non-zero values that the written word would change)
+  and the queued word pops unchanged.
 * K4 and K5: a 32-bit access inside an aperture from offset 0x50 up, or past
   the wrapper extent (0x10A0_7850 to 0x10A0_7FFF), answers SLVERR with data
   0x0 and changes no live register and no FIFO.
@@ -35,7 +38,9 @@ over each whole 4 KiB pair (``allow_ns`` 0 and 1, ``src_id`` 0). The K4, K5,
 K6 and ``WRITE_DATA`` read accesses go on the external master to either
 aperture. The inbound line of mailbox ``m`` is bit ``m`` of
 ``sep_internal_interrupts_probe_o``; the outbound lines are graded as the
-count of high bits of ``smc_mailbox_interrupt_o``.
+count of high bits of ``smc_mailbox_interrupt_o`` and as one port bit that
+rises, holds and drops while no other bit moves. Which port bit belongs to
+which mailbox is not graded: no text states the map.
 
 Checks: CHK-ERR-RD, CHK-ERR-WR, CHK-RO, CHK-HOLE, CHK-EXTENT,
 CHK-FLAGS-CLEAR, CHK-FLAGS-BOTH, CHK-ERR-LINE, CHK-WO-READ, CHK-TWIN.
@@ -44,9 +49,10 @@ Log only: the high 32 bits of the empty-read and ``WRITE_DATA`` read data,
 and ``ERROR_FLAGS``/``IRQS`` after a hole access (``OBS-HOLE-FLAGS``).
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``, RAND-REP:
-every draw comes from ``SepSeededRng`` and the run seed. The base set (K1 to
-K3 on both ports, K4 at 0x50, an interior word and 0x7F8 on both ports, K5
-read and write, K6) runs on every seed; the seed draws the order, the extra
+every draw comes from ``SepSeededRng`` and the run seed. The base set (K1 and
+K2 on both ports, K3 on each of the four read-only registers on both ports, K4
+at 0x50, an interior word and 0x7F8 on both ports, K5 read and write, K6) runs
+on every seed; the seed draws the order, the extra
 injections, mailboxes, offsets, halves, words and live values.
 """
 
@@ -264,6 +270,19 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
             if w and (w & 0xFF) not in bad8 and (w & 0x7) not in bad3:
                 return w
 
+    def _ro_value(self, live: dict) -> int:
+        """A K3 word that would change every live register if a write reached it:
+        its threshold field (clamped to 7) and its IRQEN field differ from the live
+        values of both ports."""
+        thr = {v for (_, k), v in live.items() if k in ("WIRQT", "RIRQT")}
+        en = {v for (_, k), v in live.items() if k == "IRQEN"}
+        while True:
+            w = self.rng.getrandbits(32) | 1
+            tw = min(w & FIELD["WIRQT"], MAILBOX_DEPTH - 1)
+            tr = min(w & FIELD["RIRQT"], MAILBOX_DEPTH - 1)
+            if tw not in thr and tr not in thr and (w & FIELD["IRQEN"]) not in en:
+                return w
+
     def _hole_off(self) -> int:
         return 8 * self.rng.randrange(HOLE_FIRST // 8, HOLE_LAST // 8 + 1)
 
@@ -281,8 +300,9 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
             m = r.randrange(0, 8)
         inj = Inj(kind, m, port, extra=extra, prot1=r.randrange(0, 2))
         if kind == "K3":
-            inj.reg = r.choice(list(RO_TARGETS))
-            inj.value = r.getrandbits(32) | 1
+            inj.reg = kw.get("reg") or r.choice(list(RO_TARGETS))
+            inj.live, _ = self._draw_live()
+            inj.value = self._ro_value(inj.live)
         if kind in ("K4", "K5", "K6"):
             inj.op = kw.get("op") or r.choice(["rd", "wr"])
             inj.half = r.randrange(0, 2)
@@ -300,9 +320,12 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
     def _draw(self) -> None:
         r = self.rng
         base = []
-        for k in ("K1", "K2", "K3"):
+        for k in ("K1", "K2"):
             for p in ("out", "in"):
                 base.append(self._mk(k, port=p))
+        for reg in RO_TARGETS:
+            for p in ("out", "in"):
+                base.append(self._mk("K3", port=p, reg=reg))
         interior = 8 * r.randrange(HOLE_FIRST // 8 + 1, HOLE_LAST // 8)
         for off in (HOLE_FIRST, interior, HOLE_LAST):
             for p in ("out", "in"):
@@ -452,11 +475,36 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
             got == exp,
         )
 
+    async def _k3_state(self, m: int, skip: tuple = ()) -> tuple[dict, dict]:
+        """(read, model) of the mutable state of both ports of mailbox ``m`` that a
+        register write could reach: the live registers, IRQS, STATUS and
+        ERROR_FLAGS. ``skip`` names a (port, register) that is not read."""
+        mb = self.mbx[m]
+        got, exp = {}, {}
+        for p in ("out", "in"):
+            for reg in ("WIRQT", "RIRQT", "IRQEN", "IRQS", "STATUS", "ERROR_FLAGS"):
+                if (p, reg) in skip:
+                    continue
+                if reg == "STATUS":
+                    exp[(p, reg)] = mb.status(p)
+                elif reg == "ERROR_FLAGS":
+                    exp[(p, reg)] = mb.error_flags(p)
+                else:
+                    exp[(p, reg)] = mb.reg(p, reg)
+                got[(p, reg)] = await self._rd(m, p, reg)
+        return got, exp
+
     async def _k3(self, inj: Inj) -> None:
         m, p = inj.m, inj.port
         mb = self.mbx[m]
         assert mb.read_occ(p) == 0, "test error: K3 arms with an empty read FIFO"
         await self._flags_pre("CHK-RO", m, p)
+        for (q, reg), v in sorted(inj.live.items()):
+            await self._wr(m, q, reg, v)
+        for (q, reg), v in sorted(inj.live.items()):
+            got = await self._rd(m, q, reg)
+            if got != v:
+                self._ctrl_missing(f"CHK-RO live mbox={m} {q}.{reg}=0x{got:x} wrote 0x{v:x}")
         aresp, _ = await self.ops[m].pop(p)
         mb.pop(p)
         if aresp != RESP_SLVERR:
@@ -464,29 +512,45 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         w = self._word64()
         await self._setup_push(m, PEER[p], w)
         armed_irqs = await self._rd(m, p, "IRQS")
-        st0 = await self._rd(m, p, "STATUS")
+        # ERROR_FLAGS clears on read, so the armed read_error of this port is not
+        # read before the write: it stands in the snapshot as the model value and
+        # its first read comes after the write.
+        before, model = await self._k3_state(m, skip=((p, "ERROR_FLAGS"),))
+        before[(p, "ERROR_FLAGS")] = model[(p, "ERROR_FLAGS")] = mb.error_flags(p)
+        for k, v in before.items():
+            if v != model[k]:
+                self._ctrl_missing(
+                    f"CHK-RO snapshot mbox={m} {k[0]}.{k[1]}=0x{v:x} model=0x{model[k]:x}"
+                )
+        if before[(p, "ERROR_FLAGS")] != ERR_READ:
+            raise AssertionError("test error: K3 model flags are not the armed read_error")
         resp = await self.ops[m].wr(p, inj.reg, inj.value)
         mresp = mb.write_reg(p, inj.reg, inj.value)
-        flags = await self._rd(m, p, "ERROR_FLAGS")
-        irqs = await self._rd(m, p, "IRQS")
-        st1 = await self._rd(m, p, "STATUS")
+        after, _ = await self._k3_state(m)
         presp, got, exp = await self._pop_cmp(m, p)
         st2 = await self._rd(m, p, "STATUS")
-        exp_armed = ERR_READ
+        diff = [
+            f"{q}.{reg}:0x{before[(q, reg)]:x}->0x{after[(q, reg)]:x}"
+            for (q, reg) in before
+            if before[(q, reg)] != after[(q, reg)]
+        ]
+        st0, st1 = before[(p, "STATUS")], after[(p, "STATUS")]
         txt = (
             f"mbox={m} port={p} reg={inj.reg} value=0x{inj.value:08x} resp={resp_name(resp)} "
-            f"armed_flags=0x{exp_armed:x} flags_after=0x{flags:x} armed_irqs=0x{armed_irqs:x} "
-            f"irqs_after=0x{irqs:x} occ_before={0 if st0 & ST_EMPTY else 1} occ_after={0 if st1 & ST_EMPTY else 1} "
+            f"armed_flags=0x{ERR_READ:x} flags_after=0x{after[(p, 'ERROR_FLAGS')]:x} "
+            f"armed_irqs=0x{armed_irqs:x} irqs_after=0x{after[(p, 'IRQS')]:x} "
+            f"wirqt=0x{before[('out', 'WIRQT')]:x}/0x{before[('in', 'WIRQT')]:x} "
+            f"rirqt=0x{before[('out', 'RIRQT')]:x}/0x{before[('in', 'RIRQT')]:x} "
+            f"irqen=0x{before[('out', 'IRQEN')]:x}/0x{before[('in', 'IRQEN')]:x} "
+            f"state_regs={len(before)} diff={';'.join(diff) or '-'} "
             f"status_before=0x{st0:x} status_after=0x{st1:x} pop=0x{got:016x} exp=0x{exp:016x} "
             f"empty_after_pop={int(bool(st2 & ST_EMPTY))}"
         )
         ok = (
             resp == RESP_SLVERR
             and mresp == "SLVERR"
-            and flags == exp_armed
-            and irqs == armed_irqs
+            and not diff
             and armed_irqs & IRQ_EIRQ
-            and st1 == st0
             and not st0 & ST_EMPTY
             and presp == RESP_OKAY
             and got == exp
@@ -680,20 +744,20 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                         f"smc=0x{smc:02x} count={popcount(smc)} exp_count={exp_cnt}",
                     )
                 if p == "in":
-                    return (probe >> m) & 1, f"probe=0x{probe:02x}"
-                return popcount(smc), f"smc=0x{smc:02x}"
+                    return (probe >> m) & 1, f"probe=0x{probe:02x}", smc
+                return popcount(smc), f"smc=0x{smc:02x}", smc
 
             k_before = self.mbx.out_count()
             resp, data = await self.ops[m].pop(p)
             mb.pop(p)
-            l0, s0 = await line_obs("before_enable")
+            l0, s0, v0 = await line_obs("before_enable")
             irqs = await self._rd(m, p, "IRQS")
             await self._wr(m, p, "IRQEN", IRQ_EIRQ)
-            l1, s1 = await line_obs("after_enable")
+            l1, s1, v1 = await line_obs("after_enable")
             flags = await self._rd(m, p, "ERROR_FLAGS")
-            l2, s2 = await line_obs("after_flags_read")
+            l2, s2, v2 = await line_obs("after_flags_read")
             await self._wr(m, p, "IRQS", IRQ_EIRQ)
-            l3, s3 = await line_obs("after_w1c")
+            l3, s3, v3 = await line_obs("after_w1c")
             await self._wr(m, p, "IRQEN", 0)
             if p == "in":
                 txt = (
@@ -703,17 +767,20 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                 )
                 ok = (l0, l1, l2, l3) == (0, 1, 1, 0)
             else:
+                # One port bit rises, no other bit moves, and the same bit holds and drops.
+                rose = v1 ^ v0
                 txt = (
                     f"mbox={m} port=out resp={resp_name(resp)} irqs_bit2={(irqs >> 2) & 1} k={k_before} "
                     f"smc_count_before_enable={l0} smc_count_after_enable={l1} smc_count_after_read={l2} "
-                    f"error_flags=0x{flags:x} smc_count_after_w1c={l3} {s0} {s1} {s2} {s3}"
+                    f"error_flags=0x{flags:x} smc_count_after_w1c={l3} rose=0x{rose:02x} "
+                    f"{s0} {s1} {s2} {s3}"
                 )
                 ok = (l0, l1, l2, l3) == (
                     k_before,
                     k_before + 1,
                     k_before + 1,
                     k_before,
-                )
+                ) and (popcount(rose) == 1 and v1 & rose and v2 == v1 and v3 == v0)
             ok = ok and resp == RESP_SLVERR and irqs & IRQ_EIRQ and flags == ERR_READ
             if not ok:
                 self._fail("CHK-ERR-LINE", txt)

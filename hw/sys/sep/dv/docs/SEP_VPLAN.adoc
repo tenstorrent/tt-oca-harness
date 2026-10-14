@@ -2760,7 +2760,7 @@ the test does.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Zero fill of unstrobed lanes with non-zero data
 |The specification states that unstrobed bytes are pushed as zero (`hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc`, "Paired FIFOs"). A check can fail only if a master drives non-zero data on the unstrobed lanes, and the open AXI VIP drives them to zero. Which master drives them?
-|`sep_mailbox_fifo_model_rand_test` pushes partial strobes and does not grade zero fill
+|`sep_mailbox_fifo_model_rand_test` pushes partial strobes and grades the popped data, but not the zero fill of unstrobed lanes that carry non-zero data
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Running priority, claim and complete, nesting
 |Does the PIC have a running-priority threshold, a claim and complete register, or a nesting rule? (`hw/sys/sep/doc/interrupts.adoc`, "Software Handling" says "and related registers"; `el2_pic.adoc` lists none.)
