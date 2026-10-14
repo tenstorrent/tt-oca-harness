@@ -391,8 +391,13 @@ async def ocah_spi_frame_shape_test(dut) -> None:
     checker.check_nonvacuous()
     checker.expect_true(
         "CHK-SPI-NEG-SHAPE",
-        rejects("shape", flash, lambda probe: probe.replay(records[: refused[0] + 1])),
-        context=f"a probe checker handed refused record {refused[0]} must fail",
+        rejects(
+            "shape",
+            flash,
+            lambda probe: probe.replay(records[: refused[0] + 1]),
+            check_id="CHK-SPI-FRAME-SHAPE",
+        ),
+        context=f"a probe checker handed refused record {refused[0]} must fail CHK-SPI-FRAME-SHAPE",
     )
     log.info(
         "FRAME_SHAPE_SUMMARY records=%d refused=%d monitor_frames=%d",
