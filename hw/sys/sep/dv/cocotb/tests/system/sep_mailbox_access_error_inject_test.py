@@ -273,11 +273,12 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
     def _ro_value(self, live: dict) -> int:
         """A K3 word that would change every live register if a write reached it:
         its threshold field (clamped to 7) and its IRQEN field differ from the live
-        values of both ports."""
+        values of both ports. Bit 2 (``IRQS.eirq``) is set, so a write that acts as a
+        write-one-to-clear on ``IRQS`` clears the armed ``eirq``."""
         thr = {v for (_, k), v in live.items() if k in ("WIRQT", "RIRQT")}
         en = {v for (_, k), v in live.items() if k == "IRQEN"}
         while True:
-            w = self.rng.getrandbits(32) | 1
+            w = self.rng.getrandbits(32) | IRQ_EIRQ
             tw = min(w & FIELD["WIRQT"], MAILBOX_DEPTH - 1)
             tr = min(w & FIELD["RIRQT"], MAILBOX_DEPTH - 1)
             if tw not in thr and tr not in thr and (w & FIELD["IRQEN"]) not in en:

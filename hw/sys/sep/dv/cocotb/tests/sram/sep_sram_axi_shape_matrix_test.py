@@ -871,11 +871,14 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
 
     # ---- step 9: reset in flight -------------------------------------------------
     async def _wait_level(self, sig, level: int, bound: int, what: str) -> int:
+        """Clocks until ``sig`` reads ``level``. A wait for 0 raises on X/Z, so an
+        unknown sample never counts as low; a wait for 1 resolves X/Z to 0 and
+        keeps waiting."""
         top = cocotb.top
         for cyc in range(1, bound + 1):
             await RisingEdge(top.clk_i)
             await ReadOnly()
-            if self.rd(sig, allow_unknown=True) == level:
+            if self.rd(sig, allow_unknown=level != 0) == level:
                 return cyc
         raise AssertionError(f"{what}: {sig._name} did not read {level} within {bound} clocks")
 

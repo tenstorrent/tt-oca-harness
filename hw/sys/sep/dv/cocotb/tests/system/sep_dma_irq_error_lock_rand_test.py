@@ -574,6 +574,10 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         await ops.wr(STATUS, ST_ERROR)
         await ops.clean_state()
         await ops.wr(CONTROL, control_word())
+        # Second footprint read, after the recovery writes and before the
+        # sentinel refill: a write beat that lands after the first read is seen.
+        late = await self.mem.read(c.dst - c.guard, len(foot))
+        moved_late = sum(1 for w in late if w != sent)
         await self._sentinel_dst()
         rst, rended, _, rec = await self._hi_copy(0, 0)
         mism, guard_bad = self._hi_image_ok(rec)
@@ -581,10 +585,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         line = (
             f"side={side} addr_hi=0x{hi:08x} lo_dst=0x{c.dst:08x} size={c.hi_size} "
             f"ended={int(ended)} done={st.done} footprint_words={len(foot)} "
-            f"footprint_changed={moved} recovery_done={int(rec_ok)} @@CTRL@@ "
+            f"footprint_changed={moved} footprint_changed_late={moved_late} "
+            f"recovery_done={int(rec_ok)} @@CTRL@@ "
             f"recovery_mismatch={mism} recovery_guard_bad={guard_bad}"
         )
-        return line, ended and moved == 0 and rec_ok
+        return line, ended and moved == 0 and moved_late == 0 and rec_ok
 
     async def _leg_l4(self) -> None:
         results = [await self._l4_side(s) for s in HI_SIDES]

@@ -66,7 +66,7 @@ from env.sep_axi_monitor import SepAxiMonitor
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_decode_resp import sep_map_row
 from env.sep_dtcm_param_patch import patch_param_block
-from env.sep_efuse_image import LC_WORD_IDX
+from env.sep_efuse_image import LC_FIELD_MASK, LC_RAW_WIDTH, LC_WORD_IDX, lc_encode
 from env.sep_fw_console import SepFwConsole, parse_kv
 from env.sep_lcc_golden import LC_PROD, lc_state_name
 from env.sep_pic_map import EXCLUDED_IDLE_SOURCES, meip_idle_mask_words, meip_words
@@ -358,16 +358,25 @@ class sep_pic_external_access_refuse_test(sep_base_test):
     def _check_dbg_off(self) -> None:
         """CHK-DBG-OFF: the DUT holds PROD with SEP_DBG off before the regime A accesses."""
         dut = self.dut
-        lc_mask = 0xF << (32 * LC_WORD_IDX)
-        lc = self.rd_known(dut.efuse_shadow_probe_o, lc_mask) >> (32 * LC_WORD_IDX)
+        # The whole differential LC_STATE field ({~raw, raw}), from the generated
+        # field mask: a wrong upper half is not PROD.
+        lc_lsb = (LC_FIELD_MASK & -LC_FIELD_MASK).bit_length() - 1
+        lc_shift = 32 * LC_WORD_IDX + lc_lsb
+        lc_field_mask = LC_FIELD_MASK >> lc_lsb
+        lc_field = (
+            self.rd_known(dut.efuse_shadow_probe_o, lc_field_mask << lc_shift) >> lc_shift
+        ) & lc_field_mask
+        lc = lc_field & ((1 << LC_RAW_WIDTH) - 1)
+        lc_prod = lc_encode(LC_PROD)
         sec_dis = self.rd_known(dut.lcc_security_disable_probe_o) & 0x1
         feat = self.rd_known(dut.lcc_feat_ctrl_probe_o)
         sep_dbg = feat & 0x1
         line = (
-            f"seed={self.rc.seed} lc={lc_state_name(lc)} lc_raw=0x{lc:x} sec_dis={sec_dis} "
+            f"seed={self.rc.seed} lc={lc_state_name(lc)} lc_raw=0x{lc:x} "
+            f"lc_field=0x{lc_field:x}/0x{lc_prod:x} sec_dis={sec_dis} "
             f"feat_ctrl=0x{feat:016x} sep_debug={sep_dbg} clk={self.con.clk}"
         )
-        assert lc == LC_PROD and sec_dis == 0 and sep_dbg == 0, f"CHK-DBG-OFF FAIL {line}"
+        assert lc_field == lc_prod and sec_dis == 0 and sep_dbg == 0, f"CHK-DBG-OFF FAIL {line}"
         self.logger.info("CHK-DBG-OFF PASS %s", line)
         self.dbg_off_checked = True
 

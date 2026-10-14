@@ -221,6 +221,14 @@ _CTRL_TX_WM_LSB = _R.field_lsb("CONTROL", "tx_watermark")
 _CTRL_RX_WM_LSB = _R.field_lsb("CONTROL", "rx_watermark")
 _CTRL_RX_WM_RESET = (CTRL_RESET & _R.field_mask("CONTROL", "rx_watermark")) >> _CTRL_RX_WM_LSB
 _ERR_EN_ALL = _R.reset32("ERROR_ENABLE")
+_ST_TXQD_LSB = _R.field_lsb("STATUS", "txqd")
+
+
+def _txqd(st: int) -> int:
+    """STATUS.TXQD as a word count."""
+    return (st & ST_TXQD) >> _ST_TXQD_LSB
+
+
 _CFG_BASE = configopts_word(clkdiv=1)
 _SPEED_RESERVED = 3
 _CMD_DUMMY = command_word(0, direction=DIR_DUMMY)
@@ -645,7 +653,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         ctrl = CTRL_RESET | (wm << CTRL_TX_WM_LSB)
         await self.spi.wr(CONTROL, ctrl)
         st_empty = await self.spi.rd(STATUS)
-        assert (st_empty & ST_TXQD) == 0, f"CHK-WATERMARK FIFO not empty: 0x{st_empty:08x}"
+        assert _txqd(st_empty) == 0, f"CHK-WATERMARK FIFO not empty: 0x{st_empty:08x}"
         # STATUS.TXWM: high while the amount of data in the TX FIFO has fallen
         # below CONTROL.TX_WATERMARK words -- so an empty FIFO sets it. The
         # polarity is the whole of this facet, so it is taken from the register
@@ -656,27 +664,26 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         for _ in range(wm - 1):
             await self.spi.wr(TXDATA, 0xA5A5_A5A5)
         st_below = await self.spi.rd(STATUS)
-        assert (st_below & ST_TXQD) == wm - 1, (
-            f"CHK-WATERMARK TXQD={st_below & ST_TXQD} != {wm - 1} below wm={wm} (0x{st_below:08x})"
+        assert _txqd(st_below) == wm - 1, (
+            f"CHK-WATERMARK TXQD={_txqd(st_below)} != {wm - 1} below wm={wm} (0x{st_below:08x})"
         )
         assert st_below & ST_TXWM, (
-            f"CHK-WATERMARK STATUS.TXWM clear at TXQD={st_below & ST_TXQD} < wm={wm} "
+            f"CHK-WATERMARK STATUS.TXWM clear at TXQD={_txqd(st_below)} < wm={wm} "
             f"(0x{st_below:08x})"
         )
         await self.spi.wr(TXDATA, 0xA5A5_A5A5)  # the word that reaches the threshold
         st_at = await self.spi.rd(STATUS)
-        assert (st_at & ST_TXQD) == wm, (
-            f"CHK-WATERMARK TXQD={st_at & ST_TXQD} != {wm} at wm={wm} (0x{st_at:08x})"
+        assert _txqd(st_at) == wm, (
+            f"CHK-WATERMARK TXQD={_txqd(st_at)} != {wm} at wm={wm} (0x{st_at:08x})"
         )
         assert not (st_at & ST_TXWM), (
-            f"CHK-WATERMARK STATUS.TXWM still set at TXQD={st_at & ST_TXQD} == wm={wm} "
-            f"(0x{st_at:08x})"
+            f"CHK-WATERMARK STATUS.TXWM still set at TXQD={_txqd(st_at)} == wm={wm} (0x{st_at:08x})"
         )
         extra = fill - wm
         for _ in range(extra):
             await self.spi.wr(TXDATA, 0xA5A5_A5A5)
         st_full = await self.spi.rd(STATUS)
-        txqd = st_full & ST_TXQD
+        txqd = _txqd(st_full)
         assert txqd == fill, f"CHK-WATERMARK TXQD 0x{txqd:x} != filled {fill} (wm={wm})"
         assert not (st_full & ST_TXWM), (
             f"CHK-WATERMARK STATUS.TXWM set after filling past wm={wm} (0x{st_full:08x})"
@@ -686,11 +693,11 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             "-> %d/%d (tx_wm = qd < wm)",
             half,
             wm,
-            st_empty & ST_TXQD,
+            _txqd(st_empty),
             int(bool(st_empty & ST_TXWM)),
-            st_below & ST_TXQD,
+            _txqd(st_below),
             int(bool(st_below & ST_TXWM)),
-            st_at & ST_TXQD,
+            _txqd(st_at),
             int(bool(st_at & ST_TXWM)),
             txqd,
             int(bool(st_full & ST_TXWM)),
@@ -703,7 +710,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._sw_rst_pulse()
         await self.spi.wr(TXDATA, 0xDEAD_BEEF)
         st = await self.spi.rd(STATUS)
-        assert (st & ST_TXQD) == 1, f"one TXDATA write left TXQD={st & ST_TXQD} (0x{st:08x})"
+        assert _txqd(st) == 1, f"one TXDATA write left TXQD={_txqd(st)} (0x{st:08x})"
         await self.spi.wr(COMMAND, CMD_DIR_TX)
 
     async def _poll_drain(self, budget: int) -> int:
@@ -749,8 +756,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"polls, at least {_NEG_WINDOW_MARGIN}x the {calib}-poll enabled drain)"
         )
         st_held = await self.spi.rd(STATUS)
-        assert (st_held & ST_TXQD) == 1, (
-            f"CHK-ENABLE: TXQD={st_held & ST_TXQD} after the SPIEN=0 window -- the "
+        assert _txqd(st_held) == 1, (
+            f"CHK-ENABLE: TXQD={_txqd(st_held)} after the SPIEN=0 window -- the "
             f"queued command consumed the FIFO without STATUS.TXEMPTY (0x{st_held:08x})"
         )
         assert not (st_held & ST_TXEMPTY), (
@@ -1034,7 +1041,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         expect_ev = int(any(levels[s] for s in selected))
         ist = await self.ops.rd(INTR_STATE)
         pic = await self._pic14()
-        await self.ops.wr(INTR_ENABLE, 3)
+        await self.ops.wr(INTR_ENABLE, _IE_EVENT | _IE_ERROR)
         ist_twin = await self.ops.rd(INTR_STATE)
         twin = await self._pic14()
         await self.ops.wr(INTR_ENABLE, self.intr_en)
@@ -1062,7 +1069,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._set_ev(pass_ev)
         await self.ops.clean_state()
         await self._set_ev(pass_ev)
-        await self.ops.wr(CONTROL, _CTRL_BASE & ~CTRL_RX_WM | (tx_wm << _CTRL_TX_WM_LSB) | rx_wm)
+        await self.ops.wr(
+            CONTROL,
+            _CTRL_BASE & ~CTRL_RX_WM | (tx_wm << _CTRL_TX_WM_LSB) | (rx_wm << _CTRL_RX_WM_LSB),
+        )
         for w in range(words):
             await self.ops.push_tx(0x1100_0000 | w)
         if rx_bytes:
