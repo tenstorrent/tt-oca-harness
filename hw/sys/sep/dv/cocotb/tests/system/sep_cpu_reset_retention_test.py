@@ -86,8 +86,9 @@ covers the drawn offset moves the write to the falling edge after the pulse,
 and the realized offset is logged.
 
 Run mode: no_cpu with ``+skip_fuse_sense`` and ``ext_boot_seq_done_i`` at 1.
-Testlist target ``lsu_stub_all_live``; the full-CPU legs run with
-``--target default``. Four seeds.
+Testlist target ``lsu_stub_all_live``; the full-CPU legs run in the
+``sep_cpu_reset_retention_test_dbg`` entry (VCS, target ``default``,
+``+sep_require_full_cpu``). Four seeds.
 """
 
 from __future__ import annotations

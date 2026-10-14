@@ -2708,7 +2708,7 @@ the test does.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Local address below `0x1_0000_0000` outside the SMC, SMU, AP and STEE windows
 |Where does an address such as `0x0000_0000` to `0x0FFF_FFFF` go? Local requests in that class are logged and not graded. No address separates a moved SMU aperture from a fixed one, so no leaf writes `SMU_GLOBAL_BASE_ADDR` or `SMU_REGION_SIZE`.
-|`sep_fabric_smc_route_test` (CHK-SMC-STATIC-ROW) grades the word above the SMC aperture top in configuration A (`0x4100_0000`): the output fabric returns an address outside every outbound window to the peripheral crossbar (`fabric.adoc`, output fabric), which answers DECERR at or above `0x4000_0000`, so the request answers DECERR with PR-OUT and PR-SMC silent.
+|`sep_fabric_smc_route_test` (CHK-SMC-STATIC-ROW) grades the word above the SMC aperture top in configuration A (`0x4100_0000`): the output fabric returns an address outside every outbound window to the peripheral crossbar (`fabric.adoc`, output fabric), which answers DECERR at or above `0x4000_0000`, so the request answers DECERR with PR-OUT and PR-SMC silent. `sep_debug_master_target_matrix_test` logs the debug-master response at the reset alias and at B - 8 after a move of `SEP_LOCAL_BASE_ADDR` as `OBS-ALIAS-OUTSIDE`.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Burst to a register region outside the crypto region
 |What does a burst to a register region outside the crypto region return? Bursts to register regions are not driven, so the burst-to-single conversion beyond two beats stays ungraded.
@@ -3031,12 +3031,8 @@ the test does.
 |`sep_debug_master_target_matrix_test` does not grade it
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`test_en_i` consumers
-|Which clock-gater test ports and AXI cell test inputs must `test_en_i` reach? The design ties some of them to 0. (`hw/sys/sep/doc/port_table.adoc` gives `test_en_i` only.)
+|Which clock-gater test ports and AXI cell test inputs must `test_en_i` reach? The design ties some of them to 0. (`hw/sys/sep/doc/port_table.adoc` states only that `test_en_i` drives clock-gater test ports and AXI cell test inputs, and names none of them.)
 |`sep_scan_reset_override_test` logs the hierarchy walk as `OBS-TEST-EN-PINS` and does not grade it
-|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
-|Debug-master access outside the moved local alias window
-|What response does a debug-master access get at the old alias or just below the window after `SEP_LOCAL_BASE_ADDR` moves? (`hw/sys/sep/doc/memory_map.adoc` gives the alias rule only.)
-|`sep_debug_master_target_matrix_test` grades the address pass-through of the remap and logs the response as `OBS-ALIAS-OUTSIDE`
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`pmpaddr` implementation
 |What is the implemented `pmpaddr` width and granularity? (`hw/sys/sep/doc/cpu.adoc`, Processor Core, states only 16 entries with Smepmp.)

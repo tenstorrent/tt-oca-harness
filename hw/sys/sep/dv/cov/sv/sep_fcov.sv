@@ -10965,6 +10965,7 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_static_tieoff_cg";
     cp_test_en_consumer: coverpoint s.tc iff (s.tc_v) {
+      option.weight = 0;
       bins te0_clock_gater = {2'b00};
       bins te0_axi_cell = {2'b01};
       bins te1_clock_gater = {2'b10};
