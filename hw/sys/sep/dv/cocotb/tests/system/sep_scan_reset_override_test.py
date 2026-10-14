@@ -19,10 +19,8 @@ Controller; ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture;
   ``km_cond_rst[1:0]``. ``sep_reset_n`` and ``aon_rst_n`` rise before the next
   edge of their own clock after the ``scan_rst_ni`` rise (the synchronizer is
   not in the path). With ``test_en_i`` low, ``scan_rst_ni`` has no effect.
-* ``test_en_i`` drives every clock-gater test port and every AXI cell test
-  input that a read-only hierarchy walk finds.
 * ``test_en_i`` and ``secure_tm_req_i`` are separate ports: ``secure_tm_o``
-  does not follow ``test_en_i``, and no test pin follows the strap.
+  does not follow ``test_en_i``.
 
 ``clk_wdt_i`` runs at 8 ``clk_i`` periods with a fixed phase of 5 percent of a
 ``clk_i`` period after a ``clk_i`` rising edge, so a ``clk_wdt_i`` edge never
@@ -36,15 +34,16 @@ Checkers:
                     before the release and high with scan_rst_ni=1;
                     sep_reset_n and aon_rst_n rise before the next clk_i and
                     clk_wdt_i edge. Other rise offsets: OBS-SCAN-OFFSET.
-  CHK-STRAP-INDEP   secure_tm_o does not move across the test_en_i toggles, and
-                    no pin moves across the strap toggles.
+  CHK-STRAP-INDEP   secure_tm_o does not move across the test_en_i toggles, at
+                    strap 1 and at strap 0.
 
-Blocked (open specification question): the contract that every test pin the
-walk finds equals ``test_en_i`` is not graded. The design ties some clock-gater
-and AXI cell test inputs to 0, and the specification does not say which test
-inputs ``test_en_i`` must reach. The leaf keeps the walk and logs
-``OBS-TEST-EN-PINS`` with the walk totals, the count of pins that follow
-``test_en_i`` and the hierarchy path of every pin that does not.
+Blocked (open specification question): the specification does not name the
+test inputs that ``test_en_i`` must reach, and the design ties some clock-gater
+and AXI cell test inputs to 0. No test pin is graded. A read-only hierarchy walk
+collects a pin population from the DUT itself, so it is not a golden set. The
+leaf logs ``OBS-TEST-EN-PINS`` (the walk totals, the count of pins that follow
+``test_en_i`` and the path of every pin that does not) and ``OBS-STRAP-PINS``
+(the walked pins that move across the strap toggles).
 
 The graded window (owner code of this test) is open from the first test_en_i
 toggle to the end of leg B, and closed for the rst_ni pulse of the strap-0 boot
@@ -187,8 +186,8 @@ class sep_scan_reset_override_test(sep_base_test):
         return [(p, self.rd(sig)) for pins in self.walk.values() for p, sig in pins]
 
     async def _set_test_en(self, v: int) -> None:
-        """Drive test_en_i, wait up to PIN_BOUND cycles for every pin to equal it,
-        and record the pins that do not (logged in OBS-TEST-EN-PINS, not graded)."""
+        """Drive test_en_i, wait up to PIN_BOUND cycles for every walked pin to
+        equal it, and record the pins that do not (OBS-TEST-EN-PINS)."""
         dut = cocotb.top
         await RisingEdge(dut.clk_i)
         dut.test_en_i.value = v
@@ -346,13 +345,8 @@ class sep_scan_reset_override_test(sep_base_test):
         await self._toggle_test_en(strap=1)
 
         # Step 5: strap toggles with test_en_i = 0. Every walked pin is compared with
-        # its own value before the toggles; control: at least one pin followed
-        # test_en_i in step 4, so a pin can move.
+        # its own value before the toggles (OBS-STRAP-PINS).
         following = [p for p, _x in self._pins() if p not in self.pin_stuck]
-        assert following, (
-            "CHK-STRAP-INDEP FAIL: no walked pin followed test_en_i, so a strap toggle "
-            "could not show a moved pin"
-        )
         await ReadOnly()
         before = dict(self._pins())
         await RisingEdge(dut.clk_i)
@@ -365,15 +359,15 @@ class sep_scan_reset_override_test(sep_base_test):
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
                 moved += [(p, x) for p, x in self._pins() if x != before[p]]
-        assert not moved, (
-            f"CHK-STRAP-INDEP FAIL: pin(s) moved across the strap toggles: {moved[:6]}"
-        )
         await RisingEdge(dut.clk_i)
+        for p in sorted({p for p, _x in moved}):
+            self.logger.info("OBS-STRAP-PINS: moved=%s", p)
         self.logger.info(
-            "STRAP-INDEP LOG: strap toggles 1,0,1 with test_en_i=0: %d pins compared, all "
-            "unchanged (%d of them follow test_en_i)",
+            "OBS-STRAP-PINS: strap toggles 1,0,1 with test_en_i=0: pins=%d follow_test_en_i=%d "
+            "moved=%d",
             len(before),
             len(following),
+            len({p for p, _x in moved}),
         )
 
         # Step 6: strap at 0, rst_ni pulse (not graded), toggles again.
@@ -406,13 +400,9 @@ class sep_scan_reset_override_test(sep_base_test):
         )
         self.logger.info(
             "CHK-STRAP-INDEP PASS: secure_tm_o=1 unchanged across %d test_en_i toggles at strap=1 "
-            "and secure_tm_o=0 unchanged across %d at strap=0; pins_compared=%d (%d follow "
-            "test_en_i) unchanged across %d strap toggles",
+            "and secure_tm_o=0 unchanged across %d at strap=0",
             3,
             3,
-            len(before),
-            len(following),
-            self.strap_toggles,
         )
 
         # Step 7: release the Key Manager (set-up, window closed).

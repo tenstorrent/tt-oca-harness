@@ -12,16 +12,21 @@ this order, over the CPU-LSU master on ``s_axi``:
   and without a carry into the high word; a cold reset restarts it
   (``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc``, ``REFERENCE_COUNTER``;
   ``hw/sys/sep/doc/clk_rst.adoc``, Clock Distribution).
-* Leg T. The bark status and the bite request follow the count reads that
-  reach the bark and bite thresholds, a larger bark threshold barks later in
+* Leg T. The bark status and then the bite request follow the count reads that
+  reach the bark and bite thresholds, neither earlier than threshold - A nor
+  later than threshold + A + D_pass in count (D_pass: the most the count
+  advances over one poll pass), a larger bark threshold barks later in
   count, thresholds near 2^32 do not wrap, and ``INTR_TEST`` forces the bark
   status without a bite (``hw/sys/sep/doc/watchdog.adoc``, Bark Interrupt and
   Bite Reset; ``aon_timer.adoc``).
 * Leg W. The wakeup expiry follows the 64-bit threshold across the 32-bit
   boundary at prescaler 0, 1 and a drawn value of 2 to 15, with both half
-  orders, and a larger threshold expires later in count.
-* Leg S. The watchdog registers answer 32-bit accesses on either lane with the
-  value their access type gives; ``WDOG_COUNT`` reads never fall while counting.
+  orders, within the same early and late count bounds, and a larger threshold
+  expires later in count.
+* Leg S. Eleven watchdog registers, each at its own offset and so on the lane
+  that its offset selects (both lanes together), answer 32-bit accesses of four
+  patterns with the value their access type gives; ``WDOG_COUNT`` reads never
+  fall while counting.
 * Leg L. ``WDOG_REGWEN`` stays 0 after a write of 1, and ``regwen`` and the four
   thresholds keep their values over ``wdt_rst_ni``, ``dbg_rstb_i`` (VCS, full-CPU build only), a
   software engine reset and a ``sep_reset_n`` override; only the cold reset
@@ -129,7 +134,6 @@ WALK_REGS = (
     "WDOG_BITE_THOLD",
 )
 THOLD_REGS = ("WDOG_BARK_THOLD", "WDOG_BITE_THOLD", "WKUP_THOLD_HI", "WKUP_THOLD_LO")
-SHAPE_GRADED = ("WKUP_CTRL", "WKUP_COUNT_HI", "WKUP_COUNT_LO")
 
 # Environment choices (logged; the specification gives no tolerance).
 RATIOS = (2, 3, 5, 8, 13)
@@ -137,7 +141,6 @@ P_W = 8  # clk_wdt_i period in clk_i periods
 EDGE_ALLOW = 2  # a: clk_ref_i edges
 COUNT_ALLOW = 4  # A: clk_wdt_i counts
 RATE_WAIT_REF = 400  # clk_ref_i periods between the two rate reads
-BARK_PASSES = 4  # passes after a count read at or above the bark threshold
 POLL_GAP = 2  # clk_i cycles between poll reads of a register write
 POLL_READS = 200  # bound on the poll reads of one register write
 REFCNT_ARM_REF = 200  # clk_ref_i cycles bound of the 2^40 arm poll
@@ -560,9 +563,9 @@ class sep_timer_clock_contract_test(sep_base_test):
     def _grade_order(self, run: dict, bx: int, dx: int, c0: int, chk: str, tag: str) -> dict:
         passes = run["passes"]
         a = COUNT_ALLOW
+        late = a + run["d_pass"]
         prev = c0
         bark_pass = bite_pass = None
-        first_ge = None
         for i, p in enumerate(passes):
             c = p["count"]
             assert c >= prev, f"{chk} FAIL: run={tag} count fell 0x{prev:x} -> 0x{c:x} pass={i}"
@@ -579,20 +582,31 @@ class sep_timer_clock_contract_test(sep_base_test):
                     f"{chk} FAIL: run={tag} bite high at pass {i} with count 0x{c:x} < dx - A "
                     f"(dx=0x{dx:x} A={a})"
                 )
-            if first_ge is None and c >= bx:
-                first_ge = i
             if bark_pass is None and p["bark"]:
                 bark_pass = i
             if bite_pass is None and p["bite"]:
                 bite_pass = i
         assert bark_pass is not None and bite_pass is not None
-        assert first_ge is not None and bark_pass <= first_ge + BARK_PASSES, (
-            f"{chk} FAIL: run={tag} bark set at pass {bark_pass}, more than {BARK_PASSES} "
-            f"passes after the count first read >= bx at pass {first_ge}"
+        # Late bound in count space: the count read of the last pass before the
+        # status read that shows the event is below threshold + A + D_pass (A: the
+        # count copy lag; D_pass: the most the count advances over one pass).
+        for ev, at, thr in (("bark", bark_pass, bx), ("bite", bite_pass, dx)):
+            before = passes[at - 1]["count"] if at else c0
+            assert before < thr + late, (
+                f"{chk} FAIL: run={tag} {ev} late: first seen at pass {at}, the count read of "
+                f"the pass before was 0x{before:x} >= threshold 0x{thr:x} + A {a} + D_pass "
+                f"{run['d_pass']}"
+            )
+        assert bark_pass < bite_pass, (
+            f"{chk} FAIL: run={tag} bark first seen at pass {bark_pass}, not before the bite "
+            f"at pass {bite_pass} (bx=0x{bx:x} dx=0x{dx:x})"
         )
         return {
             "count_at_bark": passes[bark_pass]["count"],
             "count_at_bite": passes[bite_pass]["count"],
+            "bark_pass": bark_pass,
+            "bite_pass": bite_pass,
+            "late": late,
             "t_bark": passes[bark_pass]["t"],
         }
 
@@ -619,13 +633,17 @@ class sep_timer_clock_contract_test(sep_base_test):
         rb = self._grade_order(base, b, d, 0, "CHK-WDT-ORDER", "base")
         self.logger.info(
             "CHK-WDT-ORDER PASS: run=base bark=%d bite=%d allowance=%d count_at_bark=%d "
-            "bark_early=0 bite_with_bark_clear=0 bite_early=0 count_at_bite=%d passes=%d",
+            "bark_early=0 bite_with_bark_clear=0 bite_early=0 count_at_bite=%d passes=%d "
+            "bark_pass=%d bite_pass=%d late_bound=%d",
             b,
             d,
             COUNT_ALLOW,
             rb["count_at_bark"],
             rb["count_at_bite"],
             len(base["passes"]),
+            rb["bark_pass"],
+            rb["bite_pass"],
+            rb["late"],
         )
         ps = base["passes"]
         self.logger.info(
@@ -640,13 +658,17 @@ class sep_timer_clock_contract_test(sep_base_test):
         rl = self._grade_order(larger, b2, d2, 0, "CHK-WDT-ORDER", "larger")
         self.logger.info(
             "CHK-WDT-ORDER PASS: run=larger bark=%d bite=%d allowance=%d count_at_bark=%d "
-            "bark_early=0 bite_with_bark_clear=0 bite_early=0 count_at_bite=%d passes=%d",
+            "bark_early=0 bite_with_bark_clear=0 bite_early=0 count_at_bite=%d passes=%d "
+            "bark_pass=%d bite_pass=%d late_bound=%d",
             b2,
             d2,
             COUNT_ALLOW,
             rl["count_at_bark"],
             rl["count_at_bite"],
             len(larger["passes"]),
+            rl["bark_pass"],
+            rl["bite_pass"],
+            rl["late"],
         )
         c1, c2 = rb["count_at_bark"], rl["count_at_bark"]
         line = (
@@ -825,13 +847,26 @@ class sep_timer_clock_contract_test(sep_base_test):
             "t": passes[-1]["t"],
         }
 
-    def _grade_wide(self, run: dict, thr: int, tag: str) -> None:
-        for i, x in enumerate(run["passes"]):
+    def _grade_wide(self, run: dict, thr: int, pre: int, tag: str) -> int:
+        """Early and late bounds of the expiry in count space. Returns the late bound."""
+        passes = run["passes"]
+        for i, x in enumerate(passes):
             if x["st"] and x["count"] < thr - COUNT_ALLOW:
                 raise AssertionError(
                     f"CHK-WKUP-WIDE FAIL: run={tag} status set at pass {i} with count "
                     f"0x{x['count']:x} < thr - A (thr=0x{thr:x} A={COUNT_ALLOW})"
                 )
+        # The run stops at the first pass that reads the status set. The count read
+        # of the pass before it is below thr + A + D_pass (A: the count copy lag;
+        # D_pass: the most the count advances over one pass).
+        late = COUNT_ALLOW + run["d_pass"]
+        before = passes[-2]["count"] if len(passes) > 1 else pre
+        assert before < thr + late, (
+            f"CHK-WKUP-WIDE FAIL: run={tag} expiry late: the count read of the pass before the "
+            f"status set was 0x{before:x} >= thr 0x{thr:x} + A {COUNT_ALLOW} + D_pass "
+            f"{run['d_pass']}"
+        )
+        return late
 
     async def _wkup_stop(self) -> None:
         await self._wr(WKUP_CTRL, 0)
@@ -863,11 +898,12 @@ class sep_timer_clock_contract_test(sep_base_test):
             for k, thr in ((1, thr1), (2, thr2)):
                 run = await self._wkup_run(p, order, thr, pre, f"run{k}")
                 self._precondition(run, min_gap, f"wkup p={p} run{k}")
-                self._grade_wide(run, thr, f"p={p} run{k}")
+                late = self._grade_wide(run, thr, pre, f"p={p} run{k}")
                 assert run["status_before"] == 0
                 self.logger.info(
                     "CHK-WKUP-WIDE PASS: p=%d run=%d class=CROSS32 thr=0x%x_%08x preload=0x%x_%08x "
-                    "allowance=%d status_before=0 count_at_expiry=0x%x passes=%d half_order=%s",
+                    "allowance=%d status_before=0 count_at_expiry=0x%x passes=%d half_order=%s "
+                    "late_bound=%d",
                     p,
                     k,
                     thr >> 32,
@@ -878,6 +914,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                     run["n"],
                     len(run["passes"]),
                     order,
+                    late,
                 )
                 runs.append(run)
                 await self._wkup_stop()
@@ -910,7 +947,7 @@ class sep_timer_clock_contract_test(sep_base_test):
 
         n_checks = 0
         lanes = set()
-        differs = {name: False for name in SHAPE_GRADED}
+        differs = {name: False for name in WALK_REGS}
         for pi in range(4):
             for name in cfg.walk_order:
                 addr, mask, reset = AON[name]
@@ -920,20 +957,10 @@ class sep_timer_clock_contract_test(sep_base_test):
                 got = await self._poll_eq(name, addr, wv, mask, "CHK-WDT-SHAPE")
                 lane = "hi" if addr & 0x4 else "lo"
                 fc = field_compare(got, wv, mask)
-                if name in SHAPE_GRADED:
-                    lanes.add(lane)
-                    n_checks += 1
-                    differs[name] |= (got & mask) != (reset & mask)
-                    self.logger.info("WDT-SHAPE LOG: reg=%s lane=%s %s", name, lane, fc.fields())
-                else:
-                    self.logger.info(
-                        "CTL-WDT-THOLD: reg=%s lane=%s pattern=0x%08x readback=0x%08x "
-                        "timer=disabled",
-                        name,
-                        lane,
-                        wv,
-                        got,
-                    )
+                lanes.add(lane)
+                n_checks += 1
+                differs[name] |= (got & mask) != (reset & mask)
+                self.logger.info("WDT-SHAPE LOG: reg=%s lane=%s %s", name, lane, fc.fields())
             # WKUP_CAUSE (RW0C): a write cannot set it.
             pat = cfg.patterns("WKUP_CAUSE")[pi]
             await self._wr(WKUP_CAUSE, pat)
@@ -993,7 +1020,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         assert lanes == {"lo", "hi"}, f"CHK-WDT-SHAPE FAIL: lanes {lanes}"
         self.logger.info(
             "CHK-WDT-SHAPE PASS: regs=%d lanes=2 patterns=4 exact types=RW|RW1C|W|RW0C checks=%d",
-            len(SHAPE_GRADED) + 4,
+            len(WALK_REGS) + 4,
             n_checks,
         )
 
@@ -1303,13 +1330,12 @@ class sep_timer_clock_contract_test(sep_base_test):
             cfg.cold_bark,
         )
         self.logger.info(
-            "TIMER env: a=%d A=%d P_w=%d rate_wait_ref=%d bark_passes=%d poll_reads=%d "
+            "TIMER env: a=%d A=%d P_w=%d rate_wait_ref=%d poll_reads=%d "
             "arm_bound_ref=%d ref_settle=%d wdt_wait=%d reset_bound=%d ovrd_cycles=%d dbg_event=%s",
             EDGE_ALLOW,
             COUNT_ALLOW,
             P_W,
             RATE_WAIT_REF,
-            BARK_PASSES,
             POLL_READS,
             REFCNT_ARM_REF,
             REF_SETTLE,
