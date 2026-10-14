@@ -404,12 +404,24 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             ).start()
             return
         w = self.slot_watch[op]
-        await w.stop()
-        self.slot_rec[op] = (
+        ctrl = f"v{vec_bit(SRC_CTRL)}"
+        close = w.mark()
+        rec = (
             w.clk,
             {i: len(w.bits[f"v{i}"].rises) + len(w.bits[f"v{i}"].falls) for i in range(NUM_VEC)},
-            w.bits[f"v{vec_bit(SRC_CTRL)}"].high_clocks,
+            w.bits[ctrl].high_clocks,
         )
+        # The watcher starts once per window, so a sample after the close mark
+        # shows that it sampled every clock from the open to the close.
+        await RisingEdge(self.dut.clk_i)
+        await RisingEdge(self.dut.clk_i)
+        try:
+            w.high_clocks_since(close, ctrl)
+            live = "live"
+        except AssertionError as exc:
+            live = f"{exc}"
+        await w.stop()
+        self.slot_rec[op] = (*rec, live)
 
     async def _rd_tap(self) -> None:
         """Copies of the PIC read data at every PIC read (pic_rd_data_probe_o)."""
@@ -457,8 +469,21 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         assert tag in self.marks, f"no host mark '{tag}' (firmware REQ missing)"
         return self.marks[tag]
 
-    def _high(self, t0: str, t1: str, bit: str, watch: int = 0) -> int:
+    def _live(self, watch: int, t0: str, t1: str, bit: str):
+        """The marks of ``t0`` and ``t1`` on one watcher, with its record live between them.
+
+        Each watcher starts once, so a sample after the closing mark shows that it
+        sampled every clock from ``t0`` to ``t1``; the query raises otherwise.
+        """
+        w = (self.w, self.wa)[watch]
         m0, m1 = self._mark(t0)[watch], self._mark(t1)[watch]
+        assert m0.clk <= m1.clk, f"marks {t0}/{t1} out of order on {w.name}"
+        w.high_clocks_since(m0, bit)
+        w.high_clocks_since(m1, bit)
+        return m0, m1
+
+    def _high(self, t0: str, t1: str, bit: str, watch: int = 0) -> int:
+        m0, m1 = self._live(watch, t0, t1, bit)
         return m1.high[bit] - m0.high[bit]
 
     def _vec(self, tag: str) -> tuple[int, int, int, int]:
@@ -645,7 +670,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         )
 
     def _alert_idx(self, t0: str, t1: str) -> set[int]:
-        m0, m1 = self._mark(t0)[1], self._mark(t1)[1]
+        m0, m1 = self._live(1, t0, t1, "a0")
         return {
             i
             for i in range(N_ALERT_IDX)
@@ -781,7 +806,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         ctrl_bit = vec_bit(SRC_CTRL)
         for op in ("aes", "otp", "lcc"):
             assert op in self.slot_rec, f"no slotless window for {op}"
-            clks, changes, ctrl_high = self.slot_rec[op]
+            clks, changes, ctrl_high, live = self.slot_rec[op]
+            assert live == "live", f"CHK-SLOTLESS FAIL op={op} watcher not live at close: {live}"
             masked = set(idle_bits)
             if op == "otp":
                 masked.add(src34)

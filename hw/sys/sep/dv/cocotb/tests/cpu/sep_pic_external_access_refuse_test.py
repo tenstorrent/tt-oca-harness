@@ -36,7 +36,12 @@ Checks:
 * CHK-NO-LEAK     an external read of an armed register does not return the
                   armed value.
 * CHK-LANDED      (firmware) after the last access every armed register reads
-                  its armed value and ``meip[0]`` bit 1 still reads 1.
+                  its armed value, ``meip[0]`` bit 1 still reads 1, and every
+                  PIC register (``mpiccfg``, every ``meipl``, ``meie``,
+                  ``meigwctrl`` and ``meigwclr`` entry and every ``meip`` word,
+                  the excluded idle bits masked) reads the value the firmware
+                  read before the first external access. A write that a bad
+                  decode or a hole alias lands in any PIC register fails it.
 * CHK-WINDOW-LIVE (control) the completion word to the open mailbox 7 window
                   answers OKAY in both regimes.
 * CHK-WINDOW      the completion of the last PIC access, then the second
@@ -104,6 +109,8 @@ MEIGWCLR0 = sym("PIC_MEIGWCLR_0__REG_ADDR")
 N_ENTRY = sep_addr_define("SEP_TOP_PIC_MEIPL_NUM")
 N_MEIP = sep_addr_define("SEP_TOP_PIC_MEIP_NUM")
 WORD = sym("PIC_MEIPL_1__REG_ADDR") - MEIPL0
+# The parameter block carries one idle mask word per meip word (firmware P_IDLE).
+assert len(meip_idle_mask_words()) == N_MEIP
 for _arr in ("MEIE", "MEIGWCTRL", "MEIGWCLR"):
     assert sep_addr_define(f"SEP_TOP_PIC_{_arr}_NUM") == N_ENTRY, _arr
 for _arr in ("MEIP", "MEIE", "MEIGWCTRL", "MEIGWCLR"):
@@ -242,7 +249,7 @@ class RefuseCfg:
             self.past,
             *packed,
             self.rw_first,
-            meip_idle_mask_words()[0],
+            *meip_idle_mask_words(),
             CW["A"],
             CW["B"],
             PIC_END,
