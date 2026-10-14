@@ -5,8 +5,9 @@
 Proves that an ``rst_ni`` pulse returns INTR_STATE, INTR_ENABLE, CONTROL,
 CONFIGOPTS, CSID, ERROR_ENABLE, ERROR_STATUS and EVENT_ENABLE of the OpenTitan
 SPI host to the reset values of
-``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc``,
-with the host idle and with ``rst_ni`` asserted inside a Tx segment
+``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc``
+with the host idle, and returns the six of them other than CSID and
+ERROR_STATUS from armed values with ``rst_ni`` asserted inside a Tx segment
 (``hw/sys/sep/doc/reset_controller.adoc``, SEP Reset Controller). The reset
 values are 0 for INTR_STATE, INTR_ENABLE, CONFIGOPTS, CSID, ERROR_STATUS and
 EVENT_ENABLE, 0x7F for CONTROL (RX_WATERMARK) and 0x1F for ERROR_ENABLE; every

@@ -1208,7 +1208,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, SPI pad ports (approved)
-|Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. The FULLCYC sampling point is not graded.
+|Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. The Tx data edge is not graded in the cell CPHA=1 with FULLCYC=1, because `spi_controller.adoc` (CONFIGOPTS) gives that cell a shift edge that differs from the general CPHA text; the CPHA=1 edge closes on a merge of regressions. The FULLCYC sampling point is not graded.
 |<<sep_spi_fifo_stall_watermark_rand_test,`sep_spi_fifo_stall_watermark_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
@@ -1223,7 +1223,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real fuse sense (VCS only)
 |ocah_axi_vip, `spi_cs_n_o` and `dbg_sep_reset_n_o` (approved)
-|Proves that rst_ni returns every readable SPI register except STATUS to its reset value from armed non-reset values, also in the middle of a segment.
+|Proves that rst_ni returns every readable SPI register except STATUS to its reset value from armed non-reset values with the host idle, and returns the six armed registers other than CSID and ERROR_STATUS to their reset values in the middle of a segment.
 |<<sep_dma_transfer_matrix_rand_test,`sep_dma_transfer_matrix_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense

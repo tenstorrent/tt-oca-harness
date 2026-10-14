@@ -29,7 +29,8 @@ handshake run keeps GO set:
 
 Checkers:
   CHK-HS-MASKED   mask bit 0 clear: the destination keeps its sentinel while the
-                  trigger probe is high.
+                  trigger probe is high, and CONTROL.GO reads 1 at the end of
+                  the window.
   CHK-HS-GO       GO stays 1 between chunks below TOTAL_DATA_SIZE (stop run,
                   before the firmware clear) and reads 0 with STATUS.DONE=1 once
                   the transfer reaches TOTAL_DATA_SIZE (handshake run).
@@ -541,13 +542,14 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         close_graded_window(self.logger)
         line = (
             f"dest_sentinel_kept={int(masked_written == 0 and end_written == 0)} "
+            f"go={int(go_masked.ok)} {go_masked.fields()} "
             f"control_mask1_filled={mask1_filled} trigger_high_clk={trig_high} "
             f"window_clks={t_fill} dest_polls={polls} words_written_end={end_written} "
             f"mask=0x{cfg.mask_off:03x}"
         )
         if trig_high < 1:
             self._ctrl_missing("CHK-HS-MASKED", line)
-        if masked_written or end_written:
+        if masked_written or end_written or not go_masked.ok:
             self._fail("CHK-HS-MASKED", line)
         self._pass("CHK-HS-MASKED", line)
 
