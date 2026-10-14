@@ -233,7 +233,7 @@ async def ocah_spi_lanes_test(dut) -> None:
 
     records = flash.get_transactions()
     frames = monitor.get_transactions()
-    checker.check_ledger(frames[: len(records)], records)
+    checker.check_ledger(frames, records)
     checker.replay([r for r in records if r["reason"] not in FRAME_SHAPE_REASONS])
     checker.check_memory(context="quad page program")
     log.info("LANES_SUMMARY records=%d frames=%d", len(records), len(frames))
