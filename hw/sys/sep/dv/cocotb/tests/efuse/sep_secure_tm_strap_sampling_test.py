@@ -13,7 +13,8 @@ Contract (``hw/sys/sep/doc/test_mode.adoc``, Entry and Exit;
   held until the next sampling event.
 
 Legs, in this order: A (cold clear), B (four non-sampling events with
-``secure_tm_o`` = 1), C (a strap change 1 to 0 and 0 to 1 after a capture), D0
+``secure_tm_o`` = 1 and the strap driven to 0 before the first event, so a
+resample at an event reads 0), C (a strap change 1 to 0 and 0 to 1 after a capture), D0
 (early-capture control, no match), E (late ``SEC_DIS``: the token arrives after
 sensing with no later cold reset) and D (early capture with the match present,
 strap 1, then strap 0). The ``SEC_DIS`` token is presented over the JTAG
@@ -32,7 +33,9 @@ Checkers:
                    ``secure_tm_o`` reads 0 at the same cycle and follows the
                    strap only at sense completion.
   CHK-STM-RETAIN   in legs B, C and D ``secure_tm_o`` keeps its value on every
-                   sample through every event and after every strap change.
+                   sample through every event and after every strap change. In
+                   leg B the strap reads 0 and ``secure_tm_o`` holds 1 through
+                   all four events, so a resample at an event changes it.
                    Control: leg A shows ``secure_tm_o`` = 1. The leg-B
                    ``wdt_rst_ni`` pulse reads ``sep_cpu_reset_n_o`` low, the
                    override pulse reads ``dbg_sep_reset_n_o`` low and, on the
@@ -446,7 +449,11 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         await self._wait_sample("sep", 1, _TAP_BOUND, "leg A sep_reset_n")
         self._check_efuse_shadow_after_sense()
 
-        # Leg B: non-sampling events with secure_tm_o = 1.
+        # Leg B: non-sampling events with secure_tm_o = 1 and the strap at 0, so a
+        # resample of the strap at any event reads 0.
+        fl = await self._edge()
+        dut.test_en_strap_i.value = 0
+        await self._edge()
         b0 = await self._edge()
         run = {
             "wdt_rst_ni": self._ev_wdt,
@@ -478,14 +485,21 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             e1 = await self._hold()
             vals = self._window(e0, e1 - 1)
             assert all(v == 1 for v in vals), (
-                f"CHK-STM-RETAIN FAIL: leg=B event={ev} secure_tm_o left 1 at samples "
+                f"CHK-STM-RETAIN FAIL: leg=B event={ev} strap=0 secure_tm_o left 1 at samples "
                 f"{[e0 + i for i, v in enumerate(vals) if v != 1][:8]}"
             )
-            self.logger.info("LEG-B event=%s samples=%d..%d secure_tm_o=1", ev, e0, e1 - 1)
+            self.logger.info("LEG-B event=%s strap=0 samples=%d..%d secure_tm_o=1", ev, e0, e1 - 1)
         b1 = self._now() - 1
         strap_b = self._window(b0, b1, "strap")
-        assert all(s == 1 for s in strap_b), "leg B: the strap moved"
-        retain.append(f"leg=B events={','.join(graded)}{ungraded} value=1 cycles={b1 - b0 + 1}")
+        assert all(s == 0 for s in strap_b), "leg B: the strap did not stay at 0"
+        whole = self._window(fl, b1)
+        assert all(v == 1 for v in whole), (
+            f"CHK-STM-RETAIN FAIL: leg=B strap=0 secure_tm_o left 1 at samples "
+            f"{[fl + i for i, v in enumerate(whole) if v != 1][:8]}"
+        )
+        retain.append(
+            f"leg=B events={','.join(graded)}{ungraded} strap=0 value=1 cycles={b1 - fl + 1}"
+        )
         close_graded_window(self.logger)
 
         # Leg C, strap 1 -> 0.

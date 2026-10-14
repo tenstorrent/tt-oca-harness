@@ -40,8 +40,12 @@ Checks:
                   from the write, so a read whose data never arrives fails.
                   ``sberror`` reads 0 after the write and after the read. On
                   PR-DBG-SB each access shows one write and one read record
-                  with ID bits [2:1] = 0, and a 64-bit access one data beat in
-                  each (``hw/sys/sep/doc/cpu.adoc``, chapter introduction).
+                  with ID bits [2:1] = 0, AWSIZE = ARSIZE = log2 of the access
+                  bytes, AWLEN = ARLEN = 0, one W beat whose strobes are the byte
+                  lanes of the access and one R beat (``hw/sys/sep/doc/cpu.adoc``,
+                  chapter introduction: AXI4, 64-bit data). A 32-bit SRAM access
+                  leaves the upper half of SRAM word 0 at its value before the
+                  access at every independent read.
   CHK-DMI-UNCORE: (entry C) with ``dmi_uncore_enable_i`` = 0,
                   ``dmi_uncore_en_o`` and ``dmi_uncore_wr_en_o`` are 0 on every
                   ``clk_i`` cycle from step 1 to the end of step 9, which holds
@@ -193,6 +197,9 @@ class _Access:
     after: int | None = None
     sberr: tuple[int, int] = (0, 0)
     sb: tuple = ()
+    # Whole SRAM word 0 (64 bits) at each independent read of an SRAM target, in
+    # the order before, cpu_path, new_rb, cpu_path_end. Empty for a register.
+    words: tuple = ()
     pair: tuple = ()
 
 
@@ -456,6 +463,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
 
     async def _independent(self, acc: _Access) -> int:
         if self._is_sram(acc):
+            acc.words = (*acc.words, self._probe(8))
             return self._probe(acc.size)
         return await self._lsu(SepAxiOp.READ, acc.addr)
 
@@ -527,14 +535,39 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         id_hi = 0
         for i in ids:
             id_hi |= 0b11 if i is None else (i >> 1) & 0b11
-        ok = len(aw) == 1 and len(ar) == 1 and bool(ids) and id_hi == 0
-        if acc.size == 8:
-            ok = ok and len(w) == 1 and len(r) == 1
+        # AXI4 single transfer on the 64-bit debug master (hw/sys/sep/doc/cpu.adoc,
+        # chapter introduction): AxSIZE = log2 of the access bytes, AxLEN = 0, one
+        # W beat whose strobes are the byte lanes of the access, one R beat.
+        exp_size = acc.size.bit_length() - 1
+        exp_strb = ((1 << acc.size) - 1) << (acc.addr & (8 - acc.size))
+        aw_size = aw[0].size if len(aw) == 1 else None
+        ar_size = ar[0].size if len(ar) == 1 else None
+        aw_len = aw[0].len if len(aw) == 1 else None
+        ar_len = ar[0].len if len(ar) == 1 else None
+        strb = w[0].strb if len(w) == 1 else None
+        ok = (
+            len(aw) == 1
+            and len(ar) == 1
+            and bool(ids)
+            and id_hi == 0
+            and len(w) == 1
+            and len(r) == 1
+            and aw_size == exp_size
+            and ar_size == exp_size
+            and aw_len == 0
+            and ar_len == 0
+            and strb == exp_strb
+        )
+
+        def h(v: int | None) -> str:
+            return "X" if v is None else f"0x{v:x}"
+
         text = (
             f"id_hi=0b{id_hi:02b} beats=w{len(w)}/r{len(r)} records=aw{len(aw)}/ar{len(ar)} "
             f"bus_aw=0x{(aw[0].addr or 0) if aw else 0:08x} "
             f"bus_ar=0x{(ar[0].addr or 0) if ar else 0:08x} "
-            f"axsize={aw[0].size if aw else 'X'}"
+            f"awsize={h(aw_size)} arsize={h(ar_size)} exp_axsize={exp_size} "
+            f"awlen={h(aw_len)} arlen={h(ar_len)} wstrb={h(strb)} exp_wstrb=0x{exp_strb:02x}"
         )
         return ok, text
 
@@ -581,6 +614,14 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             rsvd.append(f"rsvd_{name}=0x{c.rsvd:x}")
         if self._is_sram(acc):
             cmp = f"mask=0x{mask:x}"
+            if acc.size == 4:
+                # A 32-bit SRAM access leaves the upper half of the 64-bit word as
+                # it was before the access; a write issued at a wider size changes it.
+                ups = [wd >> 32 for wd in acc.words]
+                up_ok = len(ups) == 4 and all(u == ups[0] for u in ups)
+                ok = ok and up_ok
+                cmp += " upper=" + "/".join(f"0x{u:08x}" for u in ups)
+                cmp += f" upper_kept={int(up_ok)}"
         else:
             cmp = f"field_mask=0x{mask:x} " + " ".join(rsvd)
         ok = ok and acc.before != acc.wr and acc.sberr == (0, 0)

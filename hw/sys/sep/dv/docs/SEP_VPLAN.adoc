@@ -4400,7 +4400,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`dbg_sb_req` and `dbg_sb_rsp`
 |Read-only tap
-|The system-bus master port of the debug module: ID bits and beat shape.
+|The system-bus master port of the debug module: ID bits, AxSIZE, AxLEN, W strobes and beat shape.
 |`sep_debug_master_target_matrix_test` (CHK-DBG-SBA), `sep_cpu_reset_entry_test` (CHK-WDT-STORE-RESP)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |PR-DBG-IN and PR-DBG-OUT
