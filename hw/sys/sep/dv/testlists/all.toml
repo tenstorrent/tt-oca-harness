@@ -62,7 +62,7 @@ tests = ["sep_axi_smoke_test"]
 #   (memory.toml), as its run mode states. It needs the TCM controller of the
 #   full CPU, which the CPU stub does not have.
 name = "all"
-expected_count = 184
+expected_count = 187
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -130,6 +130,7 @@ tests = [
     "sep_pic_irq_source_map_delivery_test",
     "sep_efuse_token_match_fault_pic_test",
     "sep_dma_basic_test",
+    "sep_dma_zero_test",
     "sep_cpu_dbg_reset_independence_test",
     "sep_hmac_sha_variant_rand_test",
     "sep_aes_mode_keysize_rand_test",
@@ -213,6 +214,8 @@ tests = [
     "sep_dma_transfer_matrix_rand_test",
     "sep_dma_irq_error_lock_rand_test",
     "sep_dma_abort_recovery_rand_test",
+    "sep_dma_zero_fill_rand_test",
+    "sep_dma_zero_fill_continuation_test",
     "sep_spi_dma_handshake_rand_test",
     "sep_mailbox_fifo_model_rand_test",
     "sep_mailbox_access_error_inject_test",
@@ -268,6 +271,7 @@ tests = [
     "sep_pic_irq_source_map_delivery_test",
     "sep_efuse_token_match_fault_pic_test",
     "sep_dma_basic_test",
+    "sep_dma_zero_test",
     "sep_reset_wdt_sanity_test",
     "sep_efuse_jtag_axil_el2_cpu_mux_test",
     "sep_cpu_ifu_lsu_alias_remap_matrix_test",
@@ -421,6 +425,8 @@ tests = [
     "sep_dma_transfer_matrix_rand_test",
     "sep_dma_irq_error_lock_rand_test",
     "sep_dma_abort_recovery_rand_test",
+    "sep_dma_zero_fill_rand_test",
+    "sep_dma_zero_fill_continuation_test",
     "sep_spi_dma_handshake_rand_test",
     "sep_mailbox_fifo_model_rand_test",
     "sep_mailbox_access_error_inject_test",
@@ -683,7 +689,7 @@ tests = [
 # Convenience group of the SPI and DMA Phase 3 tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_spi_dma"
-expected_count = 9
+expected_count = 11
 tests = [
     "sep_spi_pad_speed_dir_matrix_test",
     "sep_spi_pad_timing_cfg_rand_test",
@@ -694,6 +700,8 @@ tests = [
     "sep_dma_irq_error_lock_rand_test",
     "sep_dma_abort_recovery_rand_test",
     "sep_spi_dma_handshake_rand_test",
+    "sep_dma_zero_fill_rand_test",
+    "sep_dma_zero_fill_continuation_test",
 ]
 
 [[groups]]

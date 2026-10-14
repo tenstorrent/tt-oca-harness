@@ -495,10 +495,13 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         task = cocotb.start_soon(self._run(seq, False))
         req = 0
         for _ in range(REQ_BOUND):
+            await RisingEdge(dut.clk_i)
+            # The tap samples on the same edge; query once it has sampled past the mark.
+            if self.out.clk <= m_req.clk:
+                continue
             req = self.out.count(m_req, "aw" if write else "ar")
             if req:
                 break
-            await RisingEdge(dut.clk_i)
         if not req:
             dut.smn_outbound_resp_hold_i.value = 0
             self._fail("CHK-STALL-REAL", f"block={block} dir={d} req_at_port=0")
@@ -546,10 +549,13 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         await self.dma.go()
         req = 0
         for _ in range(REQ_BOUND):
+            await RisingEdge(dut.clk_i)
+            # The tap samples on the same edge; query once it has sampled past the mark.
+            if self.out.clk <= m_req.clk:
+                continue
             req = self.out.count(m_req, "ar")
             if req:
                 break
-            await RisingEdge(dut.clk_i)
         if not req:
             dut.smn_outbound_resp_hold_i.value = 0
             self._fail("CHK-STALL-REAL", "block=dma dir=read req_at_port=0")

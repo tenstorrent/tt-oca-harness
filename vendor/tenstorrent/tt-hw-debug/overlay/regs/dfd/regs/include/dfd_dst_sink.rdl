@@ -61,6 +61,7 @@ addrmap dfd_dst_sink {
         field {
             sw = rw;
             hw = r;
+            desc = "Frame length in 64-byte units. Only 1, 2, 4 and 8 (64, 128, 256 and 512 bytes) are supported, and the value must match the DST's trDstVendorFrameLength.";
         } Trdstramvendorframelength[27:24] = 0x1;
     } Trdstramimpl @ 0x4;
     reg {
@@ -133,6 +134,7 @@ addrmap dfd_dst_sink {
         field {
             sw = rw;
             hw = rw;
+            desc = "Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Each trDstRamData read that returns unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.";
         } Trdstramrplow[31:2] = 0x0;
     } Trdstramrplow @ 0x28;
     reg {
@@ -149,6 +151,7 @@ addrmap dfd_dst_sink {
         field {
             sw = r;
             hw = w;
+            desc = "Reading launches a trace-RAM read at trDstRamRPLow. When the RAM holds unread data, the read returns that 32-bit word and advances trDstRamRPLow; otherwise the pointer does not move.";
         } Trdstramdata[31:0] = 0x0;
     } Trdstramdata @ 0x40;
     reg {

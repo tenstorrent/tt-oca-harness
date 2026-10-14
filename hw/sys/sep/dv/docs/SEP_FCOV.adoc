@@ -482,7 +482,7 @@ bin records it. A bin needs a leaf that resets ABR with the KM released.
 |Coverpoint |Bins
 |`cp_copy` |`CONTROL.GO` with opcode COPY
 |`cp_hash` |`CONTROL.GO` with opcode SHA256
-|`cp_hash_opcode` |Which inline-hash opcode was commanded on a `CONTROL.GO`: `sha256`, `sha384`. `cp_hash` above is SHA-256 only, so it does not distinguish a SHA-384 transfer. SHA-512 is a legal opcode (`OpcSha512`) that no leaf commands, so it has no bin rather than a permanent hole.
+|`cp_hash_opcode` |Which inline-hash opcode was commanded on a `CONTROL.GO`: `sha256`, `sha384`, `sha512`. `cp_hash` above is SHA-256 only, so it does not distinguish a SHA-384 or SHA-512 transfer. The `sha512` bin samples only in the window of its owner, `sep_dma_transfer_matrix_rand_test`.
 |`cp_copy_done` |Completion after a COPY GO
 |`cp_hash_done` |Completion after a SHA256 GO
 |`cp_chunk` |`STATUS.chunk_done` observed while a GO'd transfer is outstanding
@@ -504,7 +504,10 @@ both routes: `dma_basic_test` polls `STATUS`, while `dma_hash_test` enables
 software reads it -- so on that path no `STATUS` read with the DONE bit ever
 reaches the bus. A `STATUS`-only bin therefore cannot fill `cp_hash_done`.
 The GO'd opcode still labels the cell, so an interrupt cannot score the
-wrong one.
+wrong one: every `CONTROL.GO` sets the label from its own opcode, and a rise
+of `STATUS.ERROR` or `STATUS.ABORTED` clears it. A COPY or SHA-256 that fails
+therefore does not label the completion of a later ZERO, SHA-384 or SHA-512
+transfer.
 
 The destination-matches-source and digest-matches-golden claims stay in the
 DMA firmware. These cells are driven only by the firmware tests
@@ -1044,7 +1047,7 @@ human. Other members may fill a group in passing.
 |`sep_km_wipe_cg` |`sep_km_wipe_reset_test`
 |`sep_km_sw_reset_cg` |`sep_km_wipe_reset_test`, `sep_km_handover_test`
 |`sep_crypto_isolate_cg` |`sep_km_isolate_termination_test` (the three HMAC/KM bins: it parks HMAC with the KM released, so the KM path isolates under the HMAC request, and then reopens it). `sep_km_command_set_rand_test` also parks HMAC at bring-up with the KM released and fills `cp_km_iso` / `cp_rst_ordered`. `cp_abr_rst_ordered` `sep_crypto_per_ip_reset_isolation_test` (`CHK-ABR-DRAIN-ORDER`, the host term); `sep_reset_wdt_sanity_test` (its firmware pulses each crypto `SW_RESET_N` bit) and `sep_abr_mlkem_kat_test` also fill it. Those leaves hold the KM in reset, so their KM path bits are high from time 0 and cannot fill the three HMAC/KM bins.
-|`sep_dma_copy_hash_cg` |`sep_dma_basic_test` (copy), `sep_dma_hash_test` (hash; both `cp_hash_opcode` bins -- it is the only leaf that commands an inline hash, and it walks SHA-256 then SHA-384)
+|`sep_dma_copy_hash_cg` |`sep_dma_basic_test` (copy), `sep_dma_hash_test` (hash; `cp_hash_opcode` bins `sha256` and `sha384`: it walks SHA-256 then SHA-384), `sep_dma_transfer_matrix_rand_test` (`cp_hash_opcode` bin `sha512`)
 |`sep_spi_flash_cg` |`sep_spi_flash_jedec_smoke_test`, `sep_spi_ot_host_csr_irq_rand_test`; DMA handshake `sep_spi_ot_dma_rx_test` / `sep_spi_ot_dma_tx_test`; `cp_opcode` `sep_spi_ot_flash_cmd_rand_test` (every opcode is in its fixed BFM sequence)
 |`sep_inbound_filter_allow_cg` |`sep_fabric_inbound_filter_rule_matrix_test`
 |`sep_efuse_sense_cg` |`sep_efuse_sense_test`, `sep_efuse_image_test` (any leaf passing `+skip_fuse_sense` cannot fill it)
@@ -1696,7 +1699,7 @@ does not use the `in_reset` gate of Phase 1. The graded window still applies.
 |<<sep-fcov-p2-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |`sep_pic_reg_map_cg`, `sep_pic_source_map_cg`, `sep_pic_enable_priority_cg`, `sep_pic_gateway_cg`, `sep_pic_delivery_cg`, `sep_pic_no_delivery_cg`, `sep_pic_fabric_isolation_cg`, `sep_cpu_nonpic_irq_cg`, `sep_nmi_vector_cfg_cg`, `sep_nmi_concurrency_cg`, `sep_fault_source_report_cg`, `sep_fault_source_ack_cg`, `sep_mbox_transfer_cg`, `sep_mbox_qualification_cg`, `sep_cpu_ctrl_timeout_inert_cg`, `sep_mbox_irq_line_cg`, `sep_mbox_fifo_model_cg`, `sep_mbox_reset_cg`, `sep_pic_alert_cg`, `sep_dma_host_fault_cg`
 |<<sep-fcov-p2-spi-dma,SPI and DMA>>
-|`sep_spi_command_segment_cg`, `sep_spi_seg_rand_cg`, `sep_spi_illegal_access_cg`, `sep_spi_pad_interface_cg`, `sep_spi_pad_rand_cg`, `sep_spi_fifo_status_cg`, `sep_spi_fifo_rand_cg`, `sep_spi_interrupt_cg`, `sep_spi_misc_rand_cg`, `sep_spi_error_status_cg`, `sep_periph_reset_state_cg`, `sep_spi_dma_use_case_cg`, `sep_dma_transfer_cg`, `sep_dma_xfer_rand_cg`, `sep_dma_endpoint_cg`, `sep_dma_completion_cg`, `sep_dma_range_config_cg`, `sep_dma_hash_cg`, `sep_dma_config_fault_cg`, `sep_dma_error_terminal_cg`, `sep_dma_containment_cg`
+|`sep_spi_command_segment_cg`, `sep_spi_seg_rand_cg`, `sep_spi_illegal_access_cg`, `sep_spi_pad_interface_cg`, `sep_spi_pad_rand_cg`, `sep_spi_fifo_status_cg`, `sep_spi_fifo_rand_cg`, `sep_spi_interrupt_cg`, `sep_spi_misc_rand_cg`, `sep_spi_error_status_cg`, `sep_periph_reset_state_cg`, `sep_spi_dma_use_case_cg`, `sep_dma_transfer_cg`, `sep_dma_xfer_rand_cg`, `sep_dma_endpoint_cg`, `sep_dma_completion_cg`, `sep_dma_range_config_cg`, `sep_dma_hash_cg`, `sep_dma_config_fault_cg`, `sep_dma_error_terminal_cg`, `sep_dma_zero_cg`, `sep_dma_containment_cg`
 |<<sep-fcov-p2-mem-boot-reset,Memory, boot, reset>>
 |`sep_reset_source_cg`, `sep_clk_domain_cg`, `sep_boot_milestone_cg`, `sep_static_tieoff_cg`, `sep_mem_aperture_cg`, `sep_reset_sw_ctrl_cg`, `sep_aperture_reserved_access_cg`, `sep_wdt_config_bark_cg`, `sep_wdt_wakeup_timer_cg`, `sep_wdt_escalation_fault_cg`, `sep_cpu_ctrl_reg_cg`, `sep_scratch_reg_access_cg`, `sep_reset_scope_retention_cg`, `sep_crypto_reset_cg`, `sep_debug_trace_cg`, `sep_documented_absence_cg`, `sep_cpu_ecc_irq_cg`, `sep_fabric_dedicated_port_cg`, `sep_periph_reset_state_cg`, `sep_dma_containment_cg`, `sep_fault_source_ack_cg`, `sep_cpu_ctrl_timeout_inert_cg`
 |<<sep-fcov-p2-efuse-lifecycle,eFuse, lifecycle>>
@@ -3496,8 +3499,7 @@ Verilator compiles no covergroup, so only a VCS run scores them. Feature
 checkers stay in the tests: a bin is an interface event and not a golden
 comparison.
 
-`sep_dma_containment_cg` is executable only through `cp_dma_lock_recovery` of
-the memory, boot and reset section (<<sep-fcov-parked>>). A coverpoint whose status ends in
+A coverpoint whose status ends in
 `seed-dependent` is graded on a merge of regressions (<<sep-fcov-rand>>). The
 cells that the specification leaves open are in
 <<sep-fcov-spi-dma-not-graded>>, and the holes are in <<sep-fcov-spi-dma-holes>>.
@@ -3879,7 +3881,7 @@ they add or reuse.
 
 ====== `sep_dma_range_config_cg`
 
-*Class*: executable in part (<<sep-fcov-parked>>).
+*Class*: executable (<<sep-fcov-parked>>).
 
 *Tool*: VCS. *Crosses*: `cp_inrange_pos_x_side`. *Illegal bins*: none.
 
@@ -3889,7 +3891,7 @@ they add or reuse.
 |`cp_range_valid_at_go` |`valid1` |Latched `RANGE_VALID`, `dma_go`. At GO |`sep_dma_transfer_matrix_rand_test`, `sep_dma_irq_error_lock_rand_test`, `sep_dma_abort_recovery_rand_test` |executable |`secure_dma.adoc`, `RANGE_VALID`
 |`cp_base_limit_rel` |`limit_gt_base` |Latched `ENABLED_MEMORY_RANGE_BASE` and `ENABLED_MEMORY_RANGE_LIMIT`, `dma_go`. At GO |`sep_dma_transfer_matrix_rand_test` |executable |`secure_dma.adoc`, `ENABLED_MEMORY_RANGE_BASE`, `ENABLED_MEMORY_RANGE_LIMIT`
 |`cp_inrange_pos_x_side` |`src_at_base`, `src_interior`, `dst_at_limit`, `dst_interior`, `src_at_limit`, `dst_at_base`. The owning test draws the region order of each edge cell, so the bins depend on the seed |Latched `SRC_ADDR_LO`, `DST_ADDR_LO`, `TOTAL_DATA_SIZE`, `ENABLED_MEMORY_RANGE_BASE`, `ENABLED_MEMORY_RANGE_LIMIT`, `dma_core.u_secure_dma_reg.error_code_*_error_qs`, `dma_core.reg2hw.status.done.q`. At GO. Scores only if the transfer ends with `DONE` and no error |`sep_dma_transfer_matrix_rand_test` |executable, seed-dependent |`secure_dma.adoc`, `ENABLED_MEMORY_RANGE_BASE`, `ENABLED_MEMORY_RANGE_LIMIT`
-|`cp_regwen_value` |`not_0x6`. The bin needs the lock write, which the register description does not name, so it is blocked. `true_0x6` is not a bin: the owner reaches 0x6 only as the release after the blocked lock write and grades no read of it, and `cp_dma_lock_recovery` of `sep_cpu_reset_retention_test` scores the return to 0x6 after `rst_ni` |`dma_core.reg2hw.range_regwen.q`. On each change of `RANGE_REGWEN` |`sep_dma_irq_error_lock_rand_test` |parked: needs the lock write, which the register description does not name |`secure_dma.adoc`, `RANGE_REGWEN`
+|`cp_regwen_value` |`false_0x9` (MuBi4 False). `true_0x6` is not a bin: the owner reaches 0x6 only at a cold reset, before the graded window opens, and `cp_dma_lock_recovery` of `sep_cpu_reset_retention_test` scores the return to 0x6 after `rst_ni` |`dma_core.reg2hw.range_regwen.q`. On each change of `RANGE_REGWEN` |`sep_dma_irq_error_lock_rand_test` |executable |`secure_dma.adoc`, `RANGE_REGWEN`; `sep-programming.adoc`, zero fill procedure
 |`cp_unlocked_write` |`base`, `limit`, `valid` (each written while `RANGE_REGWEN` is 0x6 and the register value changes) |`wr_ev`, `dma_core.reg2hw.{enabled_memory_range_base,enabled_memory_range_limit,range_valid,range_regwen}.q`. At the register write |`sep_dma_transfer_matrix_rand_test`, `sep_dma_irq_error_lock_rand_test` |executable |`secure_dma.adoc`, `ENABLED_MEMORY_RANGE_BASE`, `ENABLED_MEMORY_RANGE_LIMIT`, `RANGE_VALID`
 |===
 
@@ -3935,19 +3937,34 @@ they add or reuse.
 |`cp_abort_quiet` |`no_beat_after_aborted`. Control: a beat between `GO` and the `ABORT` write |`dma_core.u_secure_dma_reg.status_aborted_qs`, `u_dut.u_sep.dma_axi_req`. Sample at the fall of `STATUS.ABORTED` (the write-one-to-clear before the recovery copy): no AR or AW handshake since the `ABORTED` rise |`sep_dma_abort_recovery_rand_test` |executable |`secure_dma.adoc`, `CONTROL.ABORT`, `STATUS.ABORTED`
 |===
 
-====== `sep_dma_containment_cg`
+====== `sep_dma_zero_cg`
 
-*Class*: executable in part (<<sep-fcov-parked>>).
+*Class*: executable.
 
-*Tool*: VCS. *Crosses*: none. *Illegal bins*: the cells are refused accesses. A cell scores only when the DUT refuses. The four coverpoints of `sep_dma_irq_error_lock_rand_test` below also need the write that applies the range lock, which the register description does not name (`secure_dma.adoc`, `RANGE_REGWEN`: RW0C from 0x6 cannot give the False value 0x9). The check of that test is blocked, so these coverpoints are parked: the register description does not name the lock write.
+*Tool*: VCS. *Crosses*: `x_mode_width`. *Illegal bins*: none.
 
 [cols="2,4,4,3,1,2",options="header"]
 |===
 |Coverpoint |Bins |Sampled DUT signal and gate |Owning tests |Status |Specification
-|`cp_locked_write_refused` |`base`, `limit`, `valid`, `regwen_true` (a write while `RANGE_REGWEN` != 0x6; the register value is unchanged) |`wr_ev`, `wr_data`, `dma_core.reg2hw.{enabled_memory_range_base,enabled_memory_range_limit,range_valid,range_regwen}.q`. At the register write |`sep_dma_irq_error_lock_rand_test` |parked: needs the lock write, which the register description does not name |`secure_dma.adoc`, `RANGE_REGWEN`; `dma.hjson`, `RANGE_VALID`
-|`cp_regwen_invalid_value` |A write of a value other than 0x6 while locked |`wr_ev`, `wr_data`, `dma_core.reg2hw.range_regwen.q`. At the `RANGE_REGWEN` write |`sep_dma_irq_error_lock_rand_test` |parked: needs the lock write, which the register description does not name |`secure_dma.adoc`, `RANGE_REGWEN`
-|`cp_lock_recovery` |`held_across_unlock_attempts` |`dma_core.reg2hw.range_regwen.q`. `RANGE_REGWEN` stays not 0x6 across the unlock attempts. The return to 0x6 after a reset is scored by `cp_dma_lock_recovery` of `sep_cpu_reset_retention_test` |`sep_dma_irq_error_lock_rand_test` |parked: needs the lock write, which the register description does not name |`secure_dma.adoc`, `RANGE_REGWEN`
-|`cp_lock_ctx` |A locked write attempt while idle, after an error |`wr_ev`, `dma_core.reg2hw.range_regwen.q`, `dma_core.reg2hw.status.error.q`. At the register write |`sep_dma_irq_error_lock_rand_test` |parked: needs the lock write, which the register description does not name |`secure_dma.adoc`, `RANGE_REGWEN`, `STATUS.ERROR`
+|`cp_dst_mode` |`increment`, `wrap`, `fixed` |Latched `DST_CONFIG.INCREMENT` and `DST_CONFIG.WRAP`. At a `GO` write with `OPCODE` 4 and `INITIAL_TRANSFER` 1 |`sep_dma_zero_fill_rand_test` |executable |`dma.adoc`, Zero Fill; `secure_dma.adoc`, `DST_CONFIG`
+|`cp_width` |`w1`, `w2`, `w4` |Latched `TRANSFER_WIDTH`. Same sample point |`sep_dma_zero_fill_rand_test` |executable |`dma.adoc`, Zero Fill; `secure_dma.adoc`, `TRANSFER_WIDTH`
+|`x_mode_width` |`cp_dst_mode` x `cp_width`; 9 cells |Same sample point |`sep_dma_zero_fill_rand_test` |executable |`dma.adoc`, Zero Fill
+|`cp_outcome` |`done`, `window_error` (`DST_ADDR_ERROR`), `opcode_error` (handshake mode), `aborted` |`dma_core.reg2hw.status.done.q`, `dma_core.reg2hw.status.error.q`, `dma_err_code_i`, `dma_aborted_i`. The first rise of `DONE`, `ERROR` or `ABORTED` after a `GO` write with `OPCODE` 4 and `INITIAL_TRANSFER` 1 |`sep_dma_zero_fill_rand_test` |executable |`dma.adoc`, Zero Fill; `secure_dma.adoc`, `STATUS`, `ERROR_CODE`
+|===
+
+====== `sep_dma_containment_cg`
+
+*Class*: executable (<<sep-fcov-parked>>).
+
+*Tool*: VCS. *Crosses*: none. *Illegal bins*: none. Every cell is a write that the DUT refuses: `RANGE_REGWEN` reads MuBi4 False (0x9) at the issue of the write and at its response (`dl_locked`), and the cell scores only when the register value is unchanged. The owner writes 0x9 to `RANGE_REGWEN`, which fixes the enabled memory range until reset (`sep-programming.adoc`, zero fill procedure; `dma.adoc`, Zero Fill). These rules apply to the range-lock coverpoints. `cp_dma_lock_recovery` of the memory, boot and reset section is a coverpoint of this group, sampled by its own owner with the range-lock valid inputs at 0.
+
+[cols="2,4,4,3,1,2",options="header"]
+|===
+|Coverpoint |Bins |Sampled DUT signal and gate |Owning tests |Status |Specification
+|`cp_locked_write_refused` |`base`, `limit`, `valid` (a write of a value other than the stored one), `regwen_true` (a write of 0x6 to `RANGE_REGWEN`); the register value is unchanged |`wr_ev`, `wr_data`, `dma_core.reg2hw.{enabled_memory_range_base,enabled_memory_range_limit,range_valid,range_regwen}.q`. At the register write |`sep_dma_irq_error_lock_rand_test` |executable |`secure_dma.adoc`, `RANGE_REGWEN`; `dma.hjson`, `RANGE_VALID`; `sep-programming.adoc`, zero fill procedure
+|`cp_regwen_invalid_value` |`invalid_0xf`, `false_0x9`, `zero_0x0`: a write of that value to `RANGE_REGWEN` while locked; it still reads 0x9 |`wr_ev`, `wr_data`, `dma_core.reg2hw.range_regwen.q`. At the `RANGE_REGWEN` write |`sep_dma_irq_error_lock_rand_test` |executable |`secure_dma.adoc`, `RANGE_REGWEN`
+|`cp_lock_recovery` |`held_across_unlock_attempts`: `RANGE_REGWEN` reads 0x9 at every clock from the lock until each of 0x6, 0xF, 0x9 and 0x0 has been written to it. The return to 0x6 after a reset is scored by `cp_dma_lock_recovery` of `sep_cpu_reset_retention_test` |`dma_core.reg2hw.range_regwen.q`, `wr_ev`, `wr_data`. At the `RANGE_REGWEN` write that completes the set |`sep_dma_irq_error_lock_rand_test` |executable |`secure_dma.adoc`, `RANGE_REGWEN`; `sep-programming.adoc`, zero fill procedure
+|`cp_lock_ctx` |`idle` (`STATUS.ERROR` clear and `STATUS.BUSY` clear), `after_error` (`STATUS.ERROR` set). A refused write of the coverpoints above |`wr_ev`, `dma_core.reg2hw.range_regwen.q`, `dma_core.reg2hw.status.error.q`, `dma_busy_i`. At the register write |`sep_dma_irq_error_lock_rand_test` |executable |`secure_dma.adoc`, `RANGE_REGWEN`, `STATUS.ERROR`
 |===
 
 ===== Randomized-value groups
@@ -4030,8 +4047,8 @@ Each group of this section has at least one coverpoint with an owning test: `sep
 `sep_spi_misc_rand_cg`, `sep_spi_error_status_cg`, `sep_periph_reset_state_cg`,
 `sep_spi_dma_use_case_cg`, `sep_dma_transfer_cg`, `sep_dma_xfer_rand_cg`,
 `sep_dma_endpoint_cg`, `sep_dma_completion_cg`, `sep_dma_range_config_cg`,
-`sep_dma_hash_cg`, `sep_dma_config_fault_cg`, `sep_dma_error_terminal_cg` and
-`sep_dma_containment_cg`.
+`sep_dma_hash_cg`, `sep_dma_config_fault_cg`, `sep_dma_error_terminal_cg`,
+`sep_dma_zero_cg` and `sep_dma_containment_cg`.
 
 The bins and cells below belong to those groups and are not in the plan,
 because no owning test hits them.
@@ -4547,7 +4564,7 @@ in the SPI and DMA and the mailbox, IRQ and PIC groups. Tool: VCS.
 |`cp_dma_reset_value` |`sep_periph_reset_state_cg` |one bin per DMA register that the owning test reads at a value other than its reset value before the cold reset, read after the `rst_ni` release and before any DMA configuration write: `SRC_ADDR_LO`, `DST_ADDR_LO`, `ENABLED_MEMORY_RANGE_BASE`, `ENABLED_MEMORY_RANGE_LIMIT`, `RANGE_VALID`, `RANGE_REGWEN`, `TOTAL_DATA_SIZE`, `CHUNK_DATA_SIZE` and `HANDSHAKE_INTR_ENABLE` = 9 bins. The other readable locations keep their reset value before the reset and are not bins (<<sep-fcov-p2-mem-boot-reset-unowned>>). Spec: `secure_dma.adoc`, register list |None |LSU read data |`sep_cpu_reset_retention_test` |executable
 |`cp_dma_nonzero_reset` |`sep_periph_reset_state_cg` |`RANGE_REGWEN` (0x6, from the cleared value 0x0) and `HANDSHAKE_INTR_ENABLE` (0x7FF, from the written 0) = 2 bins. `ADDR_SPACE_ID`, `CFG_REGWEN` and `TRANSFER_WIDTH` are not bins: the owner does not move them before the reset. Spec: `secure_dma.adoc`, reset column of `RANGE_REGWEN` and `HANDSHAKE_INTR_ENABLE` |None |LSU read data |`sep_cpu_reset_retention_test` |executable
 |`cp_dma_failsecure` |`sep_periph_reset_state_cg` |`RANGE_VALID` = 0, `RANGE_REGWEN` = 0x6, handshake mask open = 3 bins, each from a value that the owner reads before the reset. `CONTROL.GO` = 0 is not a bin: the owner never reads `GO` at 1 before the reset. Spec: `secure_dma.adoc`, reset column of `RANGE_VALID`, `RANGE_REGWEN` and `HANDSHAKE_INTR_ENABLE` |None |LSU read data |`sep_cpu_reset_retention_test` |executable
-|`cp_dma_lock_recovery` |`sep_dma_containment_cg` |`RANGE_REGWEN` cleared value 0x0 (a write of 0 to the RW0C field from 0x6): unchanged across `wdt_rst_ni` and `dbg_rstb_i` pulses (1 bin); restored to 0x6 after `rst_ni` (1 bin) = 2 bins. The bins grade the stored value only. The specification does not state that 0x0 applies the lock, so no bin claims a lock effect (VPLAN Blocked legs, DMA RANGE_REGWEN false value). Spec: `secure_dma.adoc`, `RANGE_REGWEN` (RW0C, reset 0x6); `regs/blocks/sep_cpu_ctrl.adoc`, `DMA_BUS_ERR_STATUS` (a CPU-only reset does not reset the DMA) |None |LSU read data, `wdt_rst_ni`, `dbg_rstb_i`, `rst_ni` |`sep_cpu_reset_retention_test` |executable. The test clears `RANGE_REGWEN` to 0x0 before the pulses
+|`cp_dma_lock_recovery` |`sep_dma_containment_cg` |`RANGE_REGWEN` cleared value 0x0 (a write of 0 to the RW0C field from 0x6): unchanged across `wdt_rst_ni` and `dbg_rstb_i` pulses (1 bin); restored to 0x6 after `rst_ni` (1 bin) = 2 bins. The bins grade the stored value only. The specification names 0x9 as the lock write (`sep-programming.adoc`, zero fill procedure), so no bin claims a lock effect of 0x0. Spec: `secure_dma.adoc`, `RANGE_REGWEN` (RW0C, reset 0x6); `regs/blocks/sep_cpu_ctrl.adoc`, `DMA_BUS_ERR_STATUS` (a CPU-only reset does not reset the DMA) |None |LSU read data, `wdt_rst_ni`, `dbg_rstb_i`, `rst_ni` |`sep_cpu_reset_retention_test` |executable. The test clears `RANGE_REGWEN` to 0x0 before the pulses
 |`cp_latch_x_reset_kind` |`sep_fault_source_ack_cg` |latch {`DMA_BUS_ERR_STATUS.reg_path_err`, the `PERIPH_BUS_ERR_STATUS` bit of the drawn block L (`kmac` or `otbn`)} x reset kind {CPU-only (`wdt_rst_ni`), full SEP (`rst_ni`)} = 4 cells: a CPU-only reset keeps the latch and a full reset clears it. Spec: `regs/blocks/sep_cpu_ctrl.adoc`, `DMA_BUS_ERR_STATUS` and `PERIPH_BUS_ERR_STATUS` |None |LSU read data, `wdt_rst_ni`, `rst_ni`, `sep_internal_interrupts_probe_o` |`sep_cpu_reset_retention_test` |executable
 |`cp_boot_consequence` |`sep_fault_source_ack_cg` |source 41 or source 43 pending right after a CPU-only reset with no new fault = 2 cells (aggregator bits 40 and 42). Spec: `doc/interrupts.adoc`, SEP CPU Interrupt Vector Map |None |`sep_internal_interrupts_probe_o`, `wdt_rst_ni` |`sep_cpu_reset_retention_test` |executable
 |===

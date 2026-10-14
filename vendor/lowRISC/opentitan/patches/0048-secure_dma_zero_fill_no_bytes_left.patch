@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# A zero fill writes no byte past TOTAL_DATA_SIZE. A start with no bytes left, such as GO with
+# INITIAL_TRANSFER clear after the last chunk, ends in SIZE_ERROR without a write.
+
+diff --git a/hw/ip/dma/rtl/secure_dma.sv b/hw/ip/dma/rtl/secure_dma.sv
+index b43058c819..1eadac2d99 100644
+--- a/hw/ip/dma/rtl/secure_dma.sv
++++ b/hw/ip/dma/rtl/secure_dma.sv
+@@ -914,6 +914,12 @@ module secure_dma
+             next_error[DmaSrcAddrErr] = 1'b1;
+           end
+ 
++          // A zero fill writes no byte past TOTAL_DATA_SIZE: a start with no bytes left fails
++          // without a write
++          if (zero_fill && (transfer_byte_q >= reg2hw.total_data_size.q)) begin
++            next_error[DmaSizeErr] = 1'b1;
++          end
++
+           // A zero fill writes only inside the enabled memory range, whatever the address spaces.
+           // Each beat is checked, so the bound holds across chunks and in every addressing mode.
+           zero_fill_beat_end = dst_addr_d - SYS_ADDR_WIDTH'(1) +

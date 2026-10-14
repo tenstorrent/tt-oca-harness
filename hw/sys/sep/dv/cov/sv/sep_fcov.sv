@@ -566,6 +566,7 @@ module sep_fcov (
   localparam logic [3:0] DmaOpSha256 = 4'h1;
   localparam logic [3:0] DmaOpSha384 = 4'h2;
   localparam logic [3:0] DmaOpSha512 = 4'h3;  // dma.hjson CONTROL.OPCODE
+  localparam logic [3:0] DmaOpZero = 4'h4;
 
   // aon_timer INTR_STATE: wkup_timer_expired[0], wdog_timer_bark[1]. The
   // vendored block exports no field symbol into sep_reg.svh; the position is
@@ -1160,7 +1161,7 @@ module sep_fcov (
   // coverpoint can say WHICH hash the suite walked. dma_hash_go above
   // stays SHA-256-only because the completion pairing below is written
   // against that leaf.
-  wire dma_hash_any_go = dma_go && (dma_opcode_w != DmaOpCopy);
+  wire dma_hash_any_go = dma_go && (dma_opcode_w inside {DmaOpSha256, DmaOpSha384, DmaOpSha512});
   wire dma_hs_go   = dma_go &&
       ((wr_data & SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK) != 32'h0);
   logic dma_copy_q, dma_hash_q, dma_hs_q;
@@ -1188,7 +1189,17 @@ module sep_fcov (
   wire  dma_complete = dma_status_done || dma_irq_done;
 
   // Which opcode was GO'd still labels the cell, so an interrupt cannot score
-  // the wrong one.
+  // the wrong one. Every GO sets the label from its own opcode, and a rise of
+  // STATUS.ERROR or STATUS.ABORTED clears it, so a failed COPY or SHA-256
+  // does not label a later transfer of another opcode.
+  logic dma_err_q, dma_abt_q;
+  always_ff @(posedge clk_i) begin
+    dma_err_q <= (dma_reg2hw_i.status.error.q === 1'b1);
+    dma_abt_q <= (dma_aborted_i === 1'b1);
+  end
+  wire  dma_fail_rise = !in_reset &&
+      (((dma_reg2hw_i.status.error.q === 1'b1) && !dma_err_q) ||
+       ((dma_aborted_i === 1'b1) && !dma_abt_q));
   wire  dma_copy_done = dma_complete && dma_copy_q;
   wire  dma_hash_done = dma_complete && dma_hash_q;
 
@@ -1255,6 +1266,7 @@ module sep_fcov (
   wire own_dma_matrix = (graded_owner == FcovOwnSepDmaTransferMatrixRandTest);
   wire own_dma_irq = (graded_owner == FcovOwnSepDmaIrqErrorLockRandTest);
   wire own_dma_abort = (graded_owner == FcovOwnSepDmaAbortRecoveryRandTest);
+  wire own_dma_zero = (graded_owner == FcovOwnSepDmaZeroFillRandTest);
   wire own_spi_dma_hs = (graded_owner == FcovOwnSepSpiDmaHandshakeRandTest);
 
   // --- Register access helpers ------------------------------------------
@@ -1888,6 +1900,10 @@ module sep_fcov (
   localparam logic [31:0] DmaBase = SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_REG_ADDR;
   localparam logic [31:0] DmaLimit = SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_REG_ADDR;
   localparam logic [31:0] DmaRangeValid = SECURE_DMA_RANGE_VALID_REG_ADDR;
+  localparam logic [31:0] DmaRegwen = SECURE_DMA_RANGE_REGWEN_REG_ADDR;
+  // RANGE_REGWEN MuBi4 values (secure_dma.rdl): True 0x6, False 0x9.
+  localparam logic [3:0] RegwenTrue = 4'(SECURE_DMA_RANGE_REGWEN_REG_DEFAULT);
+  localparam logic [3:0] RegwenFalse = ~RegwenTrue;
   localparam logic [31:0] DmaTotal = SECURE_DMA_TOTAL_DATA_SIZE_REG_ADDR;
   localparam logic [31:0] DmaChunk = SECURE_DMA_CHUNK_DATA_SIZE_REG_ADDR;
   localparam logic [31:0] DmaWidth = SECURE_DMA_TRANSFER_WIDTH_REG_ADDR;
@@ -1935,6 +1951,8 @@ module sep_fcov (
   wire        di_go = di_ctrl && ((di_ctrl_d & SECURE_DMA_CONTROL_GO_MASK) != 32'h0);
   wire [3:0]  di_op = 4'(fld(di_ctrl_d, SECURE_DMA_CONTROL_OPCODE_MASK,
                              SECURE_DMA_CONTROL_OPCODE_SHIFT));
+  // A SHA2 opcode: the GO starts a hash (copy and zero fill do not).
+  wire        di_hash = di_op inside {DmaOpSha256, DmaOpSha384, DmaOpSha512};
   wire        di_init = (di_ctrl_d & SECURE_DMA_CONTROL_INITIAL_TRANSFER_MASK) != 32'h0;
   wire        di_status = wr_issue && hit4(wi_addr, wi_strb, DmaStatus);
   wire [31:0] di_status_d = word4(wi_data, DmaStatus);
@@ -1992,6 +2010,34 @@ module sep_fcov (
   logic [3:0]  rv_old_q;   // RANGE_REGWEN at the issue of a range write
   logic [31:0] rb_old_q, rl_old_q;
   logic rvv_old_q;
+  logic [3:0]  rw_q;       // RANGE_REGWEN one clock earlier
+  // Unlock values written to RANGE_REGWEN since it became False, one bit
+  // each: 0 True, 1 0xF, 2 False, 3 0x0. Cleared whenever it is not False.
+  logic [3:0]  lk_try_q;
+
+  function automatic logic [3:0] lk_try_bit(input logic [3:0] v);
+    case (v)
+      RegwenTrue:  return 4'b0001;
+      4'hF:        return 4'b0010;
+      RegwenFalse: return 4'b0100;
+      4'h0:        return 4'b1000;
+      default:     return 4'b0000;
+    endcase
+  endfunction
+  // A write that the DUT refuses because of the lock: RANGE_REGWEN is False
+  // at the issue of the write and at its response.
+  wire dl_locked = wr_ev && (rv_old_q == RegwenFalse) && (d_regwen == RegwenFalse);
+  wire dl_regwen_wr = dl_locked && hit4(aw_addr_q, w_strb_q, DmaRegwen);
+  wire [3:0] dl_wd = wr_data[3:0];
+  wire dl_valid_wd = wr_data[SECURE_DMA_RANGE_VALID_RANGE_VALID_SHIFT];
+  // A refused write of a value other than the stored one to BASE, LIMIT or
+  // RANGE_VALID; the register value is unchanged.
+  wire dl_base = dl_locked && hit4(aw_addr_q, w_strb_q, DmaBase) &&
+      (wr_data != rb_old_q) && (d_base_now == rb_old_q);
+  wire dl_limit = dl_locked && hit4(aw_addr_q, w_strb_q, DmaLimit) &&
+      (wr_data != rl_old_q) && (d_limit_now == rl_old_q);
+  wire dl_valid = dl_locked && hit4(aw_addr_q, w_strb_q, DmaRangeValid) &&
+      (dl_valid_wd != rvv_old_q) && (d_valid_now == rvv_old_q);
 
   // Position of a region against the range: 0 at BASE, 1 interior,
   // 2 at LIMIT (last byte at LIMIT), 3 other.
@@ -2083,6 +2129,9 @@ module sep_fcov (
       rl_old_q  <= d_limit_now;
       rvv_old_q <= d_valid_now;
     end
+    rw_q <= d_regwen;
+    if (in_reset || (d_regwen !== RegwenFalse)) lk_try_q <= 4'h0;
+    else if (dl_regwen_wr) lk_try_q <= lk_try_q | lk_try_bit(dl_wd);
     if (!spi_on) begin
       d_src_q    <= 32'(SECURE_DMA_SRC_ADDR_LO_REG_DEFAULT);
       d_dst_q    <= 32'(SECURE_DMA_DST_ADDR_LO_REG_DEFAULT);
@@ -2249,19 +2298,19 @@ module sep_fcov (
       end
 
       // Digest valid lifecycle.
-      if (di_go && di_init && (di_op != DmaOpCopy)) dv_arm_q <= 1'b1;
+      if (di_go && di_init && di_hash) dv_arm_q <= 1'b1;
       else if ((dvalid_q && !d_dvalid) ||
                (dr_status && ((dr_status_d & SECURE_DMA_STATUS_BUSY_MASK) != 0) &&
                 ((dr_status_d & SECURE_DMA_STATUS_SHA2_DIGEST_VALID_MASK) == 0)))
         dv_arm_q <= 1'b0;
-      if (di_go && (di_op != DmaOpCopy)) dv_hash_q <= 1'b1;
+      if (di_go && di_hash) dv_hash_q <= 1'b1;
       else if (d_dvalid && !dvalid_q) dv_hash_q <= 1'b0;
 
       // Configuration faults: the GO kind waits for the SIZE_ERROR rise.
       if (di_go) begin
         szk_v_q <= (d_total_q == 32'h0) || (d_chunk_q == 32'h0);
         szk_q   <= (d_total_q == 32'h0) ? ((d_chunk_q == 32'h0) ? 2'd2 : 2'd0) : 2'd1;
-        hwf_v_q <= (di_op != DmaOpCopy) && (d_width_q <= 2'd1);
+        hwf_v_q <= di_hash && (d_width_q <= 2'd1);
         hwf_q   <= d_width_q[0];
       end else if (d_size_err && !size_err_q) begin
         szk_v_q <= 1'b0;
@@ -2979,19 +3028,14 @@ module sep_fcov (
         if (km_rsp_idx_q == 9'd3) km_rsp_rc_q <= rd_data[7:0];
       end
 
-      if (dma_copy_go) begin
-        dma_copy_q <= 1'b1;
-        dma_hash_q <= 1'b0;
-      end
-      if (dma_hash_go) begin
-        dma_hash_q <= 1'b1;
-        dma_copy_q <= 1'b0;
-      end
-      if (dma_go)
-        dma_hs_q <= (wr_data & SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK) != 32'h0;
-      if (dma_complete) begin
+      if (dma_complete || dma_fail_rise) begin
         dma_copy_q <= 1'b0;
         dma_hash_q <= 1'b0;
+      end
+      if (dma_go) begin
+        dma_copy_q <= dma_copy_go;
+        dma_hash_q <= dma_hash_go;
+        dma_hs_q   <= (wr_data & SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK) != 32'h0;
       end
 
       if (filt_start_wr && filt_lo_lane) begin
@@ -6652,11 +6696,15 @@ module sep_fcov (
     }
   endgroup
 
-  // RANGE_REGWEN value bin (cp_regwen_value) is parked: it needs the write
-  // that applies the range lock, which the register description does not
-  // name. It is not in the group.
   covergroup sep_dma_range_config_cg with function sample (
-      logic rv_v, logic bl_v, logic [2:0] ip, logic ip_v, logic [1:0] uw, logic uw_v
+      logic rv_v,
+      logic bl_v,
+      logic [2:0] ip,
+      logic ip_v,
+      logic [1:0] uw,
+      logic uw_v,
+      logic [3:0] rw,
+      logic rw_v
   );
     option.per_instance = 1;
     option.name = "sep_dma_range_config_cg";
@@ -6674,6 +6722,10 @@ module sep_fcov (
     }
     cp_unlocked_write: coverpoint uw iff (uw_v) {
       bins base = {2'd0}; bins limit = {2'd1}; bins valid = {2'd2};
+    }
+    // RANGE_REGWEN at each change of its value.
+    cp_regwen_value: coverpoint rw iff (rw_v) {
+      bins false_0x9 = {RegwenFalse};
     }
   endgroup
 
@@ -6738,12 +6790,76 @@ module sep_fcov (
     cp_abort_quiet: coverpoint aq_v {bins no_beat_after_aborted = {1'b1};}
   endgroup
 
-  // sep_dma_containment_cg is defined with the memory, boot and reset groups,
-  // with its one executable coverpoint, cp_dma_lock_recovery. Its four
-  // range-lock coverpoints (cp_locked_write_refused, cp_regwen_invalid_value,
-  // cp_lock_recovery, cp_lock_ctx) are parked: each needs the write that
-  // applies the range lock, which the register description does not name
-  // (secure_dma.adoc, RANGE_REGWEN).
+  // --- Secure DMA: zero fill ---------------------------------------------
+  // A STATUS change belongs to a zero fill when the last initial GO carried
+  // OPCODE ZERO. Its outcome is the first rise of DONE, ERROR or ABORTED after
+  // that GO; ERROR is split by ERROR_CODE.
+  logic dz_on_q, dz_err_q;
+  always_ff @(posedge clk_i) begin
+    dz_err_q <= d_err;
+    if (in_reset) dz_on_q <= 1'b0;
+    else if (d_go && dg_init) dz_on_q <= (dg_op == DmaOpZero);
+  end
+  wire dz_done = dz_on_q && d_done && !done_q;
+  wire dz_err = dz_on_q && d_err && !dz_err_q;
+  wire dz_aborted = dz_on_q && d_aborted && !aborted_q;
+  wire dz_dst_err = (dma_err_code_i[SECURE_DMA_ERROR_CODE_DST_ADDR_ERROR_SHIFT] === 1'b1);
+  wire dz_opc_err = (dma_err_code_i[SECURE_DMA_ERROR_CODE_OPCODE_ERROR_SHIFT] === 1'b1);
+
+  covergroup sep_dma_zero_cg with function sample (
+      logic [1:0] dst_mode, logic [1:0] width, logic go_v, logic [1:0] outcome, logic out_v
+  );
+    option.per_instance = 1;
+    option.name = "sep_dma_zero_cg";
+    // {DST_CONFIG.INCREMENT, DST_CONFIG.WRAP} and TRANSFER_WIDTH at a zero-fill GO.
+    cp_dst_mode: coverpoint dst_mode iff (go_v) {
+      bins increment = {2'b10}; bins wrap = {2'b11}; bins fixed = {2'b00};
+    }
+    cp_width: coverpoint width iff (go_v) {bins w1 = {2'd0}; bins w2 = {2'd1}; bins w4 = {2'd2};}
+    x_mode_width: cross cp_dst_mode, cp_width;
+    cp_outcome: coverpoint outcome iff (out_v) {
+      bins done = {2'd0};
+      bins window_error = {2'd1};
+      bins opcode_error = {2'd2};
+      bins aborted = {2'd3};
+    }
+  endgroup
+
+  // Range lock (sep-programming.adoc, zero fill procedure; dma.adoc, Zero
+  // Fill). Every bin of the range-lock coverpoints is a write that the DUT
+  // refuses while RANGE_REGWEN is False (dl_locked). cp_dma_lock_recovery is
+  // sampled by the memory, boot and reset owner.
+  covergroup sep_dma_containment_cg with function sample (
+      logic [1:0] lw, logic lw_v, logic [1:0] iv, logic iv_v, logic lr_v, logic lc, logic lc_v,
+      logic dlr, logic dlr_v
+  );
+    option.per_instance = 1;
+    option.name = "sep_dma_containment_cg";
+    // The register of a refused write; regwen_true is a write of True to
+    // RANGE_REGWEN. The register value is unchanged.
+    cp_locked_write_refused: coverpoint lw iff (lw_v) {
+      bins base = {2'd0}; bins limit = {2'd1}; bins valid = {2'd2}; bins regwen_true = {2'd3};
+    }
+    // A refused RANGE_REGWEN write of a value other than True.
+    cp_regwen_invalid_value: coverpoint iv iff (iv_v) {
+      bins invalid_0xf = {2'd0}; bins false_0x9 = {2'd1}; bins zero_0x0 = {2'd2};
+    }
+    // RANGE_REGWEN stays False from the lock until each of True, 0xF, False
+    // and 0x0 has been written to it.
+    cp_lock_recovery: coverpoint lr_v {
+      bins held_across_unlock_attempts = {1'b1};
+    }
+    // State of the engine at a refused write: idle (no BUSY, no ERROR) or
+    // after an error (STATUS.ERROR set).
+    cp_lock_ctx: coverpoint lc iff (lc_v) {
+      bins idle = {1'b0}; bins after_error = {1'b1};
+    }
+    // RANGE_REGWEN cleared to 0x0: kept across a CPU-only reset pulse (0),
+    // restored to 0x6 after rst_ni (1).
+    cp_dma_lock_recovery: coverpoint dlr iff (dlr_v) {
+      bins kept_across_cpu_only_pulse = {1'b0}; bins restored_after_rst_ni = {1'b1};
+    }
+  endgroup
 
   sep_spi_command_segment_cg u_sep_spi_command_segment_cg = new();
   sep_spi_seg_rand_cg        u_sep_spi_seg_rand_cg        = new();
@@ -6764,6 +6880,8 @@ module sep_fcov (
   sep_dma_hash_cg            u_sep_dma_hash_cg            = new();
   sep_dma_config_fault_cg    u_sep_dma_config_fault_cg    = new();
   sep_dma_error_terminal_cg  u_sep_dma_error_terminal_cg  = new();
+  sep_dma_zero_cg            u_sep_dma_zero_cg            = new();
+  sep_dma_containment_cg     u_sep_dma_containment_cg     = new();
 
   // --- SPI and DMA sampling ----------------------------------------------
   // LEN class of a segment: 0 len0, 1 sub_word, 2 max, 3 word_multiple,
@@ -7040,7 +7158,7 @@ module sep_fcov (
                                      own_dma_matrix && !dg_hs && (d_single || d_multi_exact));
       u_sep_dma_range_config_cg.sample(
           d_rvalid_q && (own_dma_matrix || own_dma_irq || own_dma_abort),
-          own_dma_matrix && (d_limit_q > d_base_q), 3'd0, 1'b0, 2'd0, 1'b0);
+          own_dma_matrix && (d_limit_q > d_base_q), 3'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0);
       u_sep_dma_hash_cg.sample(
           dg_init,
           own_dma_matrix && !dg_hs && (dg_op inside {DmaOpSha256, DmaOpSha384, DmaOpSha512}), 1'b0,
@@ -7115,9 +7233,11 @@ module sep_fcov (
       // ---- DMA range ----
       if (d_done && !done_q && ir_v_q && d_no_err && !d_err) begin
         u_sep_dma_range_config_cg.sample(1'b0, 1'b0, {1'b0, ir_src_q},
-                                         own_dma_matrix && (ir_src_q != 2'd3), 2'd0, 1'b0);
+                                         own_dma_matrix && (ir_src_q != 2'd3), 2'd0, 1'b0, 4'd0,
+                                         1'b0);
         u_sep_dma_range_config_cg.sample(1'b0, 1'b0, {1'b1, ir_dst_q},
-                                         own_dma_matrix && (ir_dst_q != 2'd3), 2'd0, 1'b0);
+                                         own_dma_matrix && (ir_dst_q != 2'd3), 2'd0, 1'b0, 4'd0,
+                                         1'b0);
       end
 
       // ---- DMA hash ----
@@ -7150,6 +7270,12 @@ module sep_fcov (
       if (d_aborted && !aborted_q) u_sep_dma_error_terminal_cg.sample(1'b0, own_dma_abort, 1'b0);
       if (ab_on_q && aborted_q && !d_aborted && !ab_after_q && !dm_ar && !dm_aw)
         u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, own_dma_abort);
+      if (d_go && dg_init && (dg_op == DmaOpZero))
+        u_sep_dma_zero_cg.sample({d_dinc_q, d_dwrap_q}, d_width_q, own_dma_zero, 2'd0, 1'b0);
+      if (dz_done || dz_aborted || (dz_err && (dz_dst_err || dz_opc_err)))
+        u_sep_dma_zero_cg.sample(2'd0, 2'd0, 1'b0,
+                                 dz_aborted ? 2'd3 : (dz_done ? 2'd0 : (dz_opc_err ? 2'd2 : 2'd1)),
+                                 own_dma_zero);
       // An ABORT while the DMA is busy; one before the start or after the end is not a phase.
       if (d_abort && !abort_q && d_busy)
         u_sep_dma_xfer_rand_cg.sample(6'd0, 1'b0, 5'd0, 1'b0, 2'd0, 1'b0, abort_cls(
@@ -7161,13 +7287,29 @@ module sep_fcov (
     if (wr_ev && (rv_old_q == 4'h6)) begin
       if (hit4(aw_addr_q, w_strb_q, DmaBase) && (d_base_now != rb_old_q))
         u_sep_dma_range_config_cg.sample(1'b0, 1'b0, 3'd0, 1'b0, 2'd0,
-                                         own_dma_matrix || own_dma_irq);
+                                         own_dma_matrix || own_dma_irq, 4'd0, 1'b0);
       if (hit4(aw_addr_q, w_strb_q, DmaLimit) && (d_limit_now != rl_old_q))
         u_sep_dma_range_config_cg.sample(1'b0, 1'b0, 3'd0, 1'b0, 2'd1,
-                                         own_dma_matrix || own_dma_irq);
+                                         own_dma_matrix || own_dma_irq, 4'd0, 1'b0);
       if (hit4(aw_addr_q, w_strb_q, DmaRangeValid) && (d_valid_now != rvv_old_q))
         u_sep_dma_range_config_cg.sample(1'b0, 1'b0, 3'd0, 1'b0, 2'd2,
-                                         own_dma_matrix || own_dma_irq);
+                                         own_dma_matrix || own_dma_irq, 4'd0, 1'b0);
+    end
+    if (!in_reset && (d_regwen != rw_q))
+      u_sep_dma_range_config_cg.sample(1'b0, 1'b0, 3'd0, 1'b0, 2'd0, 1'b0, d_regwen, own_dma_irq);
+    // Refused writes while RANGE_REGWEN is False.
+    if (dl_locked) begin
+      if (dl_base || dl_limit || dl_valid)
+        u_sep_dma_containment_cg.sample(dl_base ? 2'd0 : (dl_limit ? 2'd1 : 2'd2), own_dma_irq,
+                                        2'd0, 1'b0, 1'b0, d_err, own_dma_irq && (d_err || !d_busy), 1'b0, 1'b0);
+      if (dl_regwen_wr) begin
+        u_sep_dma_containment_cg.sample(
+            2'd3, own_dma_irq && (dl_wd == RegwenTrue),
+            (dl_wd == 4'hF) ? 2'd0 : ((dl_wd == RegwenFalse) ? 2'd1 : 2'd2),
+            own_dma_irq && (dl_wd inside {4'hF, RegwenFalse, 4'h0}),
+            own_dma_irq && ((lk_try_q | lk_try_bit(dl_wd)) == 4'hF) && (lk_try_q != 4'hF), d_err,
+            own_dma_irq && (d_err || !d_busy), 1'b0, 1'b0);
+      end
     end
   end
 
@@ -11259,19 +11401,6 @@ module sep_fcov (
     }
   endgroup
 
-  typedef struct packed {
-    logic lr;
-    logic lr_v;
-  } mr_dmac_t;  // 0 kept on pulse, 1 restored
-
-  covergroup sep_dma_containment_cg with function sample (mr_dmac_t s);
-    option.per_instance = 1;
-    option.name = "sep_dma_containment_cg";
-    cp_dma_lock_recovery: coverpoint s.lr iff (s.lr_v) {
-      bins kept_across_cpu_only_pulse = {1'b0}; bins restored_after_rst_ni = {1'b1};
-    }
-  endgroup
-
   sep_reset_source_cg          u_sep_reset_source_cg          = new();
   sep_clk_domain_cg            u_sep_clk_domain_cg            = new();
   sep_boot_milestone_cg        u_sep_boot_milestone_cg        = new();
@@ -11286,7 +11415,6 @@ module sep_fcov (
   sep_crypto_reset_cg          u_sep_crypto_reset_cg          = new();
   sep_debug_trace_cg           u_sep_debug_trace_cg           = new();
   sep_documented_absence_cg    u_sep_documented_absence_cg    = new();
-  sep_dma_containment_cg       u_sep_dma_containment_cg       = new();
 
   // One-point sample helpers.
   task automatic mr_se(input logic [2:0] src, input logic rel);
@@ -12822,18 +12950,10 @@ module sep_fcov (
     // or a cold reset, then the next read.
     if (rd_ev && (di == MrDmaRegwen)) begin
       if (mr_rg_pulse && (rd_data[3:0] == 4'h0) && mr_own_ret) begin
-        mr_dmac_t e;
-        e      = '0;
-        e.lr   = 1'b0;
-        e.lr_v = 1'b1;
-        u_sep_dma_containment_cg.sample(e);
+        u_sep_dma_containment_cg.sample(2'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1);
       end
       if (mr_rg_cold && (rd_data[3:0] == 4'h6) && mr_own_ret) begin
-        mr_dmac_t e;
-        e      = '0;
-        e.lr   = 1'b1;
-        e.lr_v = 1'b1;
-        u_sep_dma_containment_cg.sample(e);
+        u_sep_dma_containment_cg.sample(2'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1);
       end
       mr_rg_pulse   <= 1'b0;
       mr_rg_cold    <= 1'b0;

@@ -71,12 +71,12 @@ jobs:
         include:
           - arch: amd64
             system: x86_64-linux
-            runner: ${{ vars.OCAH_CONTAINER_AMD64_RUNNER || 'ubuntu-latest' }}
+            runner: ${{ vars.OCAH_CONTAINER_AMD64_RUNNER || 'ubuntu-latest-16-cores' }}
           - arch: arm64
             system: aarch64-linux
-            runner: ubuntu-24.04-arm
+            runner: ${{ vars.OCAH_CONTAINER_ARM64_RUNNER || 'ubuntu-latest-16-core-ARM' }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: ${{ matrix.runner == 'ubuntu-latest-16-cores' && 240 || 360 }}
+    timeout-minutes: ${{ contains(matrix.runner, '16-core') && 240 || 360 }}
     outputs:
       image_hash: ${{ steps.build.outputs.image_hash }}
     steps:
@@ -100,7 +100,7 @@ jobs:
       # concurrent derivation. Reclaim the preinstalled toolchains, add swap,
       # and cap parallelism when installing Nix.
       - name: Free disk space and add swap
-        if: matrix.runner != 'ubuntu-latest-16-cores'
+        if: ${{ !contains(matrix.runner, '16-core') }}
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
             /usr/local/.ghcup /opt/hostedtoolcache /usr/local/share/boost
@@ -123,8 +123,8 @@ jobs:
         uses: cachix/install-nix-action@v31.11.1
         with:
           extra_nix_config: |
-            max-jobs = ${{ matrix.runner == 'ubuntu-latest-16-cores' && 'auto' || 2 }}
-            cores = ${{ matrix.runner == 'ubuntu-latest-16-cores' && '0' || 2 }}
+            max-jobs = ${{ contains(matrix.runner, '16-core') && 'auto' || 2 }}
+            cores = ${{ contains(matrix.runner, '16-core') && '0' || 2 }}
             ${{ matrix.arch != 'amd64' && 'extra-platforms = x86_64-linux' || '' }}
 
       - name: Ensure skopeo
@@ -252,7 +252,7 @@ jobs:
         include:
           - arch: amd64
             machine: x86_64
-            runner: ${{ vars.OCAH_CONTAINER_AMD64_RUNNER || 'ubuntu-latest' }}
+            runner: ubuntu-latest
           - arch: arm64
             machine: aarch64
             runner: ubuntu-24.04-arm
@@ -311,6 +311,49 @@ jobs:
             verilator --version
             bender --version
           '
+
+  # Run the vendored AoU top through the structural synthesis readiness driver
+  # in the published image, so a pin update that breaks bender, ciel, slang or
+  # yosys fails before it merges.
+  synth-sanity:
+    name: Synthesis sanity (aou)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: publish-index
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Both: the uv workspace names tt-oca-manifest as a member, and
+      # nix/packages/whisper.nix reads the pinned revision out of the model's
+      # own CI workflow, so the flake cannot evaluate without either one.
+      - name: Check out the submodules
+        run: |
+          git submodule update --init --recursive \
+              hw/sys/sep/bootrom/prod/tools/tt-oca-manifest \
+              virtual_platform/tt-oca-harness-model
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check AoU synthesis readiness
+        env:
+          OCAH_IMAGE_WITH_UV: "true"
+          OCAH_CONTAINER_REGISTRY_IMAGE: ${{ env.REGISTRY_IMAGE }}
+        run: |
+          ./scripts/docker-run.sh run-here make synth-yosys-all BLOCK=aou \
+            OCAH_YOSYS_SYNTH_TCL="$PWD/flows/synth/yosys/scripts/readiness.tcl"
 
   # Move the consumed :main tag onto the verified index only on main. This is a
   # registry-side copy pinned to the exact digest publish-index pushed, so it

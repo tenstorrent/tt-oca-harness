@@ -585,7 +585,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Secure DMA interrupts and configuration errors from a cold reset. Real PROD fuse sense: the leaf pulses rst_ni.
+# Secure DMA interrupts, configuration errors and a non-zero ADDR_HI from a cold reset. Real PROD fuse sense: the leaf pulses rst_ni.
 name = "sep_dma_irq_error_lock_rand_test"
 module = "system.sep_dma_irq_error_lock_rand_test"
 seed = 1
@@ -605,6 +605,29 @@ timeout_sec = 7200
 tags = ["dma", "abort", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+
+[[tests]]
+# Secure DMA zero fill (OPCODE 4): the image and beats per destination mode and width, the erase window on every beat, the opcode and handshake errors, and abort. The seed draws the transfers.
+name = "sep_dma_zero_fill_rand_test"
+module = "system.sep_dma_zero_fill_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["dma", "zero", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Secure DMA zero fill continued by GO=1 with INITIAL_TRANSFER=0: the range bound at LIMIT, the locked range and the handshake rule hold for the continuation. Directed.
+name = "sep_dma_zero_fill_continuation_test"
+module = "system.sep_dma_zero_fill_continuation_test"
+seed = 1
+timeout_sec = 3600
+tags = ["dma", "zero", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
 
 # Mailbox, IRQ and PIC (docs/SEP_VPLAN.adoc, docs/test_contracts/mailbox_irq_pic.adoc).
 

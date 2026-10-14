@@ -65,12 +65,20 @@ def remapped_addr(offset: int, addr: int) -> int:
 class SepLocalAliasCfg:
     """Single source of truth: region, source page, and intra-page beat from the seed."""
 
-    def __init__(self, seed: int) -> None:
+    def __init__(self, seed: int, *, sibling_of: SepLocalAliasCfg | None = None) -> None:
         self.seed = seed
         rng = SepSeededRng(seed)
         upper_half = N_REGIONS // 2
         self.region = upper_half + rng.randrange(N_REGIONS - upper_half)
         self.src_page = rng.choice(SRC_PAGES)
+        if sibling_of is not None:
+            # A second window on the other source page, in another upper-half
+            # region, with the same destination.
+            span = N_REGIONS - upper_half
+            self.region = (
+                upper_half + (sibling_of.region - upper_half + 1 + rng.randrange(span - 1)) % span
+            )
+            self.src_page = next(p for p in SRC_PAGES if p != sibling_of.src_page)
         self.intra = DEST_ADDR & (PAGE - 1)
         self.access_addr = self.src_page + self.intra
         self.expect_addr = DEST_ADDR
@@ -88,6 +96,10 @@ class SepLocalAliasCfg:
             raise RuntimeError("local-alias target equals identity -- vacuous")
         if self.src_page == (DEST_ADDR & ~(PAGE - 1)):
             raise RuntimeError("source page collides with CLOCK_GATE_CTRL")
+        if sibling_of is not None and (
+            self.region == sibling_of.region or self.src_page == sibling_of.src_page
+        ):
+            raise RuntimeError("sibling window shares a region or a source page")
 
     def summary(self) -> str:
         return (
@@ -144,6 +156,9 @@ def _selftest() -> None:
     assert remapped_addr(0x1_0000, 0x10A2_0008) == 0x10A3_0008
     cfg = SepLocalAliasCfg(1)
     assert remapped_addr(cfg.offset, cfg.access_addr) == DEST_ADDR
+    sib = SepLocalAliasCfg(1, sibling_of=cfg)
+    assert remapped_addr(sib.offset, sib.access_addr) == DEST_ADDR
+    assert sib.region != cfg.region and sib.src_page != cfg.src_page
     _ = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 
 

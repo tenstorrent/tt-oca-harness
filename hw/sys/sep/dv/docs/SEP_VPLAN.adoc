@@ -419,6 +419,7 @@ they leave out; the checker table of each linked entry is the full set.
 |DMA copy + inline SHA-256 + LSIO |<<sep_dma_hash_test,`sep_dma_hash_test`>>, <<sep_dma_cpu_contention_test,`sep_dma_cpu_contention_test`>>, <<sep_spi_ot_dma_rx_test,`sep_spi_ot_dma_rx_test`>>, <<sep_spi_ot_dma_tx_test,`sep_spi_ot_dma_tx_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_spi_flash_cg`, `sep_spi_host_rand_cg`, `sep_dma_rand_cg` |The checker table of each entry named. |YES
 |DMA address modes × width |<<sep_dma_basic_test,`sep_dma_basic_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_dma_rand_cg` |The checker table of each entry named. |YES
 |DMA host-path command integrity |<<sep_dma_basic_test,`sep_dma_basic_test`>> |all, cpu |`sep_dma_copy_hash_cg`, `sep_dma_completion_route_cg`, `sep_dma_rand_cg` |A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 41; a DMA transfer whose destination sits past the DMA CSR window raises the same bit with the pin low (fabric DECERR). `DMA_BUS_ERR_CLEAR` returns both status bits and the aggregator bit to 0; a legal copy then matches the source. |YES
+|DMA zero fill |<<sep_dma_zero_fill_rand_test,`sep_dma_zero_fill_rand_test`>>, <<sep_dma_zero_fill_continuation_test,`sep_dma_zero_fill_continuation_test`>>, <<sep_dma_zero_test,`sep_dma_zero_test`>> |all, cpu_stub, cpu |`sep_dma_zero_cg` |The checker table of each entry named. |YES
 |SRAM datapath |<<sep_sram_smoke_test,`sep_sram_smoke_test`>>, <<sep_sram_datapath_breadth_test,`sep_sram_datapath_breadth_test`>>, <<sep_sram_burst_type_test,`sep_sram_burst_type_test`>>, <<sep_sram_inbound_burst_attr_test,`sep_sram_inbound_burst_attr_test`>> |all, cpu_stub |`sep_sram_access_cg` |`sep_sram_smoke_test`, `sep_sram_datapath_breadth_test` (`CHK-ADDR-LINES` reaches the upper 192 KiB), `sep_sram_burst_type_test` (FIXED / WRAP), `sep_sram_inbound_burst_attr_test` (inbound INCR bursts, seeded request attributes) |YES
 |AES mode × key-size |<<sep_aes_mode_keysize_rand_test,`sep_aes_mode_keysize_rand_test`>> |all, cpu_stub |`sep_aes_mode_cg` |`sep_aes_mode_keysize_rand_test` (9-cell). CTR x DECRYPT is not claimed: CTR is a stream mode and the engine runs the forward cipher whichever way `OPERATION` is programmed, so the cell has no DUT-observable cipher contract and a test there would pass with the field disconnected. `OPERATION`'s shadowed-register behaviour is mode-independent and belongs on a CSR vehicle. |YES for the claimed part; the evidence cell names the rest
 |HMAC SHA variants |<<sep_hmac_sha_variant_rand_test,`sep_hmac_sha_variant_rand_test`>> |all, cpu_stub |`sep_hmac_mode_cg` |The checker table of each entry named. |YES
@@ -457,6 +458,7 @@ they leave out; the checker table of each linked entry is the full set.
 |Token comparator fault latch cleared by reset |<<sep_efuse_rma_token_rand_test,`sep_efuse_rma_token_rand_test`>> |all, cpu_stub |None |`sep_efuse_rma_token_rand_test` (`CHK-FAULT-RESET`). The set-only phases prove the fault bits survive a valid retry; only this one separates that from a latch that never clears. After the two zeros it re-arms once, so the phase ends on a zero-to-one transition rather than on a wedged detector that stays at 0. |YES
 |Debug-disable gating ladder (`dbg_disable`) |<<sep_lcc_demote_feat_ctrl_matrix_test,`sep_lcc_demote_feat_ctrl_matrix_test`>> |all, cpu_stub |`sep_lc_demote_cg` |`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`, `CHK-FUSE-DFT-DIS`). All eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` is Case 3 and `dfd` is Case 1. The DFT-inserted fuse-path ports are separate DUT outputs, not members of `dbg_disable`: `sep_fuse_dft_disable` is Case 3 AND `sep_fuse_dbg`, inverted; `smc_fuse_dft_disable` is Case 2 AND `smc_fuse_dbg`, inverted. The compose cell closes those two bits while Case 2 and Case 3 stay open. |YES
 |Local-master alias remap datapath |<<sep_fabric_local_alias_datapath_test,`sep_fabric_local_alias_datapath_test`>>, <<sep_fabric_local_alias_offset_walk_test,`sep_fabric_local_alias_offset_walk_test`>> |all, cpu_stub |None |`sep_fabric_local_alias_datapath_test`, `sep_fabric_local_alias_offset_walk_test` (every region, full 56-bit bounds and offset) |YES
+|Local-master alias remap hit debug lane |<<sep_fabric_local_alias_datapath_test,`sep_fabric_local_alias_datapath_test`>> |all, cpu_stub |None |`sep_fabric_local_alias_datapath_test` (CHK-DBG-AR: the read hit index on `ext_debug_bus_o[207:192]` follows the read region; field positions not graded) |YES
 |CSR reset / RW / RO / reserved |<<sep_reg_bit_bash_rand_test,`sep_reg_bit_bash_rand_test`>> |all, cpu_stub |None |The checker table of each entry named. |YES
 |AXI AW/W channel ordering, write landing and neighbour displacement |<<sep_axi_order_sweep_test,`sep_axi_order_sweep_test`>>, <<sep_axi_order_sweep_m_axi_test,`sep_axi_order_sweep_m_axi_test`>> |all, cpu_stub |`sep_axi_decode_cg` |`sep_axi_order_sweep_test` (s_axi, 321 cells over 27 blocks, 107 per ordering) and `sep_axi_order_sweep_m_axi_test` (m_axi, 225 over 11, 75 per ordering), all three orderings presented and asserted by `CHK-ORDER-STIM`. `m_axi` grants a true W-first handshake; `s_axi` holds `wready` until AW, so its W-first presentation completes same-cycle at the slave, which is the slave's contract and not a stimulus failure. |YES
 |AXI narrow-write strobe and memory windows |<<sep_axi_strobe_window_test,`sep_axi_strobe_window_test`>> |all, cpu_stub |`sep_axi_decode_cg` |The checker table of each entry named. |YES
@@ -912,7 +914,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Scope is the sixteen programmable local-master regions ahead of the system-peripherals routing demux (`hw/sys/sep/doc/fabric.adoc`, "Address Remapping").
+|Scope is the sixteen programmable local-master regions ahead of the system-peripherals routing demux (`hw/sys/sep/doc/fabric.adoc`, "Address Remapping"), and the read hit index of the remap-hit debug lane.
 |<<sep_fabric_local_alias_offset_walk_test,`sep_fabric_local_alias_offset_walk_test`>>
 |2
 |no_cpu, +skip_fuse_sense
@@ -994,7 +996,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real PROD fuse sense, then DEMOTE_1
 |LSU and System Interface masters, outbound responder, filter reference model
-|Proves that the route demux sends the SMU aperture and the AP and STEE regions to the outbound port and that the AP and STEE remaps force the source ID to OTHERS while the LSU drives another value. Proves that local scratch and `SEP_SW_DEBUG` accesses stay off that port and that the outbound filter has no bypass. Extends the open outbound remap tests and the open lifecycle tests with the write cells and the no-bypass pair only.
+|Proves that the route demux sends the SMU aperture and the AP and STEE regions to the outbound port and that the AP and STEE remaps force the source ID to OTHERS while the LSU drives another value, and that AxPROT passes unchanged whether the remap offset sets address bit 55 (AP) or clears it (STEE). Proves that local scratch and `SEP_SW_DEBUG` accesses stay off that port and that the outbound filter has no bypass. Extends the open outbound remap tests and the open lifecycle tests with the write cells and the no-bypass pair only.
 
 |<<sep_fabric_alias_remap_attr_rand_test,`sep_fabric_alias_remap_attr_rand_test`>>
 |3
@@ -1024,7 +1026,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, `+skip_fuse_sense`
 |CPU LSU firmware master, direct-address twin model
-|Proves that an address in the 768 MiB local alias window answers as its direct twin on the scratch, AES, system CSR, SPI host, entropy source and SRAM targets, and that every LSU read and write carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`). Extends the open alias matrix test with the unit classes and the window edges only.
+|Proves that an address in the 768 MiB local alias window answers as its direct twin on the scratch, AES, system CSR, SPI host, entropy source and SRAM targets, that with `SEP_LOCAL_BASE_ADDR` moved to a drawn base the moved alias of the scratch word and the SPI host `CSID` answers as its direct twin for a read and a write, and that every LSU read and write carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`). Extends the open alias matrix test with the unit classes, the window edges and a moved window base.
 
 |<<sep_fabric_dma_endpoint_matrix_test,`sep_fabric_dma_endpoint_matrix_test`>>
 |3
@@ -1131,9 +1133,9 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |Proves the PIC register map: reset to 0, read-back, entry 0 and holes read 0 and discard writes, and source 0 never takes an interrupt. The reset X check samples `pic_rd_data_probe_o`, an observation tap the test adds to the SEP_TB_ARCH observation-probe list.
 |<<sep_pic_external_access_refuse_test,`sep_pic_external_access_refuse_test`>>
 |3
-|cpu with external SMN master, +skip_fuse_sense
+|cpu with external SMN master, real PROD fuse sense
 |ocah_axi_vip, CPU FW
-|Proves that an external read or write to any PIC address answers DECERR and changes no PIC register, in both the default-block and the open-window filter regime.
+|Proves that an external read or write to any PIC address answers DECERR and changes no PIC register, in both the default-block and the open-window filter regime. The default-block control holds with the sensed LC state PROD and `SEP_DBG` off, read from the DUT.
 |<<sep_pic_priority_gate_rand_test,`sep_pic_priority_gate_rand_test`>>
 |3
 |cpu, +skip_fuse_sense
@@ -1229,14 +1231,29 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |Proves that all 16 source and destination address-mode cells, each at a drawn width, give the stated destination image, that sizes up to 16 KB complete with DONE and GO auto-clear, that a transfer exactly on the range edges completes, and that SHA-256, SHA-384 and SHA-512 digests, SHA2_DIGEST_VALID and DIGEST_SWAP follow the register text. It also proves single-beat DMA transactions, the beat addresses, the CHUNK_DONE rises and their hardware clear, and the DONE rise after the last B response.
 |<<sep_dma_irq_error_lock_rand_test,`sep_dma_irq_error_lock_rand_test`>>
 |3
-|no_cpu, real fuse sense (one leg VCS only)
+|no_cpu, real fuse sense
 |ocah_axi_vip, `sep_internal_interrupts_probe_o` and `dbg_sep_reset_n_o` (approved)
-|Proves the enable gate on PIC sources 9, 10 and 11, STATUS.ERROR, SIZE_ERROR and INTR_STATE.DMA_ERROR for a zero size and for hashing at width 1 or 2, and that the engine takes a legal copy after a size error with no reset. The range lock check is Blocked: the specification does not name the write that applies the lock.
+|Proves the enable gate on PIC sources 9, 10 and 11, STATUS.ERROR, SIZE_ERROR and INTR_STATE.DMA_ERROR for a zero size and for hashing at width 1 or 2, and that the engine takes a legal copy after a size error with no reset. It also proves that after a write of MuBi4 False (0x9) to RANGE_REGWEN, from idle and after a size error, RANGE_REGWEN reads 0x9 and no write of 0x6, 0xF, 0x9 or 0x0 re-opens it, and that writes to ENABLED_MEMORY_RANGE_BASE, ENABLED_MEMORY_RANGE_LIMIT and RANGE_VALID do not change their read-back, and that a copy with a non-zero SRC_ADDR_HI or DST_ADDR_HI and legal LO addresses moves no data to the 32-bit destination; ERROR_CODE for that copy is logged only.
 |<<sep_dma_abort_recovery_rand_test,`sep_dma_abort_recovery_rand_test`>>
 |3
 |no_cpu, real fuse sense
 |ocah_axi_vip, `dma_busy_probe_o` (approved); `dma_axi_req_probe_o`, `dma_status_probe_o` (observation taps)
-|Proves that CONTROL.ABORT during a transfer sets ABORTED, that no beat follows the ABORTED rise before the recovery GO write, and that the engine copies correctly after the abort with no reset.
+|Proves that CONTROL.ABORT during a transfer sets ABORTED, that no AR, AW, W or B beat follows the ABORTED rise before the recovery GO write, and that the engine copies correctly after the abort with no reset.
+|<<sep_dma_zero_fill_rand_test,`sep_dma_zero_fill_rand_test`>>
+|3
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip, `dma_busy_probe_o`, `sep_internal_interrupts_probe_o` and `spi_lsio_trigger_probe_o` (approved); `dma_axi_req_probe_o`, `dma_status_probe_o` (observation taps)
+|Proves that the zero fill (OPCODE 4) writes zeros and reads no source in every destination mode and width, with narrow last writes and no word of an earlier copy; that it writes only inside the enabled memory range, checked before every write and across chunks, also with the range locked; that it ends in OPCODE_ERROR in hardware handshake mode; and that it aborts and recovers.
+|<<sep_dma_zero_fill_continuation_test,`sep_dma_zero_fill_continuation_test`>>
+|3
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip, `spi_lsio_trigger_probe_o` (approved); `dma_axi_req_probe_o`, `dma_status_probe_o` (observation taps)
+|Proves that a zero fill continued by GO=1 with INITIAL_TRANSFER=0 writes no byte past LIMIT after a fill that ends at LIMIT, at each width; that it stays inside a range narrowed and locked between chunks and ends in DST_ADDR_ERROR; and that it ends in OPCODE_ERROR when HARDWARE_HANDSHAKE_ENABLE is set between chunks.
+|<<sep_dma_zero_test,`sep_dma_zero_test`>>
+|3
+|cpu, +skip_fuse_sense
+|ocah_axi_vip, CPU FW
+|Zero fills into SEP SRAM, a DCCM buffer and ICCM through the core's DMA port, checked by the CPU or through a copy back, and a 2-byte-wide ICCM fill that ends in BUS_ERROR with the host-path fault.
 |<<sep_spi_dma_handshake_rand_test,`sep_spi_dma_handshake_rand_test`>>
 |3
 |no_cpu, real fuse sense
@@ -1915,7 +1932,7 @@ another test.
 |Mailbox lines, FIFOs, errors, filter types and reset; PIC registers, priority, gateway cells, source map and external inputs; bridge fault latches and the fault-versus-clear race; timeout registers; NMI vector; timer and software interrupt tie-offs.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |4.7 to 4.15
-|SPI pad, FIFO, interrupt, error, strobe and reset contracts (one entry extends an open SPI test); DMA address modes, geometry, interrupt gate, abort, inline hash and SPI handshake. The DMA range-lock checks are blocked legs: they need a value that the specification does not state (<<sep-vplan-phase3-blocked-legs,Blocked legs>>).
+|SPI pad, FIFO, interrupt, error, strobe and reset contracts (one entry extends an open SPI test); DMA address modes, geometry, interrupt gate, range lock, abort, inline hash and SPI handshake.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset, WDT, clock>>
 |5.13 to 5.29
 |Reset release, cold and CPU-only reset, software reset and isolation, JTAG and scan overrides, reset vector and run request, `SECURE_TM`, scratch and CPU control registers, watchdog, wakeup timer and reference counter, memory apertures and ECC, CPU demux, debug master, ISA and PMP.
@@ -2649,6 +2666,10 @@ the test does.
 |What are the legal values of `SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE` (alignment, power of two, size 0, upper bound)? The legal values of the SMU aperture registers are also unstated. `sep_fabric_inbound_rebase_test` uses fixed values only for the stated rule, and no leaf writes the SMU aperture registers.
 |-
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
+|`SEP_LOCAL_BASE_ADDR` legal values
+|What are the legal values of `SEP_LOCAL_BASE_ADDR` (alignment, lower and upper bound)? `fabric.adoc` ("Address Remapping") rewrites the window at `SEP_LOCAL_BASE_ADDR`, and `memory_map.adoc` names the alias span as `0xD000_0000` to `0xFFFF_FFFF`.
+|`sep_cpu_lsu_alias_window_twin_test` (CHK-TWIN-MOVED) draws the base 16 MiB aligned in [`0xD100_0000`, `0xEF00_0000`], a range the test chooses, and grades the twin through the moved window
+|<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Effect time of a routing or filter CSR write
 |Does a routing or filter CSR write take effect before the next transaction of the same initiator, and which setting applies to a transaction in flight? Every test puts a read-back between the write and the first dependent transaction.
 |-
@@ -2826,8 +2847,8 @@ the test does.
 |Graded leg: None. `sep_spi_ot_host_csr_irq_rand_test` avoids the cells
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA ADDR_HI
-|What does a non-zero ADDR_HI do in a 32-bit SEP (`secure_dma.adoc`, SRC_ADDR_HI, DST_ADDR_HI)?
-|Graded leg: None
+|What does a non-zero ADDR_HI do in a 32-bit SEP (`secure_dma.adoc`, SRC_ADDR_HI, DST_ADDR_HI)? `dma.adoc` gives the DMA master 32-bit addresses and ASID 0x7 as the only route, and no document states the STATUS or ERROR_CODE response.
+|Graded leg: No data at the 32-bit DST_ADDR_LO (`sep_dma_irq_error_lock_rand_test`, CHK-DMA-HI-ADDR). STATUS.ERROR and ERROR_CODE are logged (`OBS-DMA-HI-ADDR`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA maximum size
 |What is the maximum TOTAL_DATA_SIZE and what happens to a tail (`secure_dma.adoc`, TOTAL_DATA_SIZE)?
@@ -3356,10 +3377,6 @@ feature, and the note says how the test treats the blocked leg.
 |Does RXWM mean "reaches" or "exceeds" the threshold (`spi_controller.adoc`, CONTROL, STATUS, EVENT_ENABLE)?
 |Effect: Equality is never driven (`sep_spi_fifo_stall_watermark_rand_test`, `sep_spi_ot_host_csr_irq_rand_test`). `sep_spi_dma_handshake_rand_test` keeps C/4 at or below RX_WATERMARK
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
-|DMA RANGE_REGWEN false value
-|Which write gives the RANGE_REGWEN false value, given RW0C (`secure_dma.adoc`, RANGE_REGWEN)? A write-zero-to-clear from the reset value 0x6 cannot give the False encoding 0x9.
-|Effect: CHK-DMA-LOCK of `sep_dma_irq_error_lock_rand_test` is blocked. The leaf writes 0x9, logs the read-backs as `OBS-DMA-LOCK` and grades nothing. `sep_cpu_reset_retention_test` writes 0, grades only the stored value 0x0 across a CPU-only reset and its return to 0x6 at a cold reset, and claims no lock effect
-|<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |Partial strobe merge
 |What is the merge rule for a partial strobe inside a half (`spi.adoc`, Features)?
 |Effect: Partial strobes are not driven (`sep_spi_ot_host_csr_irq_rand_test`)
@@ -3665,7 +3682,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Outbound request fields at `smn_outbound_axi_req_o`
 |AW and AR fields (address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxBURST) and the W beats of `smn_outbound_axi_req_o`. The net `smn_outbound_req_w` exists and no port exports it.
 |ACCEPT-PROBE
-|PR-OUT is an observation tap. The always-ready outbound responder answers OKAY and shows nothing of the request. Checks that use it: CHK-OUT-ROUTE, CHK-OUT-CAPTURE and CHK-OUT-NOEXTRA of `sep_fabric_outbound_route_attr_test`, the supplement of `sep_fabric_filter_match_priority_rand_test`, CHK-DMA-USER and CHK-DMA-PAIR of `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`, and CHK-IFU-NEVER of `sep_cpu_demux_unmapped_fetch_test`.
+|PR-OUT is an observation tap. The always-ready outbound responder answers OKAY and shows nothing of the request. Checks that use it: CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-HIBIT and CHK-OUT-NOEXTRA of `sep_fabric_outbound_route_attr_test`, the supplement of `sep_fabric_filter_match_priority_rand_test`, CHK-DMA-USER and CHK-DMA-PAIR of `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`, and CHK-IFU-NEVER of `sep_cpu_demux_unmapped_fetch_test`.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Extension port request at `axi_extension_axi_req_o`
 |Address, AxSIZE, AxLEN, strobe and data of the extension port request
@@ -4263,7 +4280,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |PR-OUT
 |Read-only probe
 |AW and AR fields (address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxBURST) and W beats of `smn_outbound_axi_req_o`. The net `smn_outbound_req_w` exists and no port exports it.
-|`sep_fabric_outbound_route_attr_test` (CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-NOEXTRA), `sep_fabric_filter_match_priority_rand_test` (supplement), `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER, CHK-DMA-PAIR), `sep_fabric_smc_route_test`, `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-NEVER)
+|`sep_fabric_outbound_route_attr_test` (CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-HIBIT, CHK-OUT-NOEXTRA), `sep_fabric_filter_match_priority_rand_test` (supplement), `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER, CHK-DMA-PAIR), `sep_fabric_smc_route_test`, `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-NEVER)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-EXT
 |Read-only probe
@@ -4883,7 +4900,7 @@ test that owns the feature, or states why no pass or fail value exists.
 |An open unmapped-policy test grades them.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |`SEP_LOCAL_BASE_ADDR` legal values
-|An open alias test grades the live base. Legal base values are unstated, so no leaf draws them.
+|An open alias test grades the live base. `sep_cpu_lsu_alias_window_twin_test` draws a base from a range the test chooses. Legal base values are unstated (an open specification question).
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |SMC request hang during SMC fuse sense
 |The hang is a property of the SMC fabric. The testbench SMC responder is the only SMC, and a hang that the responder models cannot fail the SEP RTL. `sep_fabric_smc_route_test` grades the route.

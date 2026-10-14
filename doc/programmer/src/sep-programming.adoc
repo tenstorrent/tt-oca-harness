@@ -740,6 +740,31 @@ For hashing, select opcode 1, 2 or 3 for SHA-256, SHA-384 or SHA-512 and use
 and read the digest only when `STATUS.SHA2_DIGEST_VALID` is set. `DIGEST_SWAP`
 controls byte order within each digest register, not register order.
 
+For a transfer in several chunks without hardware handshake, wait for
+`STATUS.CHUNK_DONE` after each chunk and start the next one by writing
+`CONTROL` with `GO=1` and `INITIAL_TRANSFER=0`. The opcode and `DIGEST_SWAP`
+of the first start hold for the whole transfer. Every start takes
+`HARDWARE_HANDSHAKE_ENABLE` and the enabled memory range again.
+
+[[sep-dma-zero-fill-procedure]]
+To zero a memory region, program the transfer as for a copy with these
+differences, then write `CONTROL` with `OPCODE=4` (`ZERO`),
+`HARDWARE_HANDSHAKE_ENABLE=0`, `INITIAL_TRANSFER=1` and `GO=1`:
+
+. Set `ENABLED_MEMORY_RANGE_BASE` and `ENABLED_MEMORY_RANGE_LIMIT` to cover the
+  region, or a wider erase window, and set `RANGE_VALID`. The fill writes only
+  inside that range. To fix the window until reset, write MuBi4 False (`0x9`)
+  to `RANGE_REGWEN` after setting it.
+. Write 0 to `SRC_ADDR_LO` and `SRC_ADDR_HI` and keep `0x77` in
+  `ADDR_SPACE_ID`; the source is not read but is validated.
+. For ICCM or DCCM, use 4-byte transfers, a 4-byte-aligned destination and a
+  size that is a multiple of 4.
+. Wait for `STATUS.DONE` with a bounded wait, checking `STATUS.ERROR` and
+  `ERROR_CODE`. `DST_ADDR_ERROR` means the fill reached the end of the window;
+  the bytes before that point are already zero. A start with no bytes left,
+  such as `GO=1` alone after the last chunk, ends in `SIZE_ERROR` without a
+  write.
+
 Only handshake input 0 is connected, to the SPI host's LSIO trigger. For SPI
 handshake operation, select trigger 0 in `HANDSHAKE_INTR_ENABLE`, configure the
 peripheral FIFO and chunk size, and enable hardware handshake. Each service

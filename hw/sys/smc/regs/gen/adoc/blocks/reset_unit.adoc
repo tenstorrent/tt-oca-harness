@@ -116,7 +116,7 @@ subsystem specific registers are preserved
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `reset_complete` | R | 0x0 a| Response signal from subsystem to indicate reset (or some other critical step) has completed.
-Bitwise write 1 to clear
+Each bit reads the synchronized live value of its subsystem's signal; it is not latched.
 |===
 
 [#reg-{regmap-instance}-reset_unit-SS_COLD_RESET_LOCK]

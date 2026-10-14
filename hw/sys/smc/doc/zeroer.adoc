@@ -8,7 +8,8 @@
 
 The SMC Memory Zeroer efficiently initializes large memory regions to
 zero without CPU intervention. The unit uses a state machine-based
-architecture with dual clock domains.
+architecture in a single clock domain, with separately gated clocks for the
+clear engine and the register interface.
 
 <<smc-memory-zeroer-integration-table>> summarises the zeroer control aperture and
 fabric integration.
@@ -128,48 +129,29 @@ https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.h
 endif::backend-pdf[]
 in the Programmer's Guide covers validating a request and verifying a clear.
 
-=== Dual Clock Domain Architecture
-
-The zeroer implements dual clock domain operation for power management
-and interface isolation.
-
-=== Clock Domains
-
-<<smc-zeroer-clock-domain-characteristics-table>> identifies the AXI and APB clock
-domains and their roles.
-
-[[smc-zeroer-clock-domain-characteristics-table]]
-.SMC zeroer Clock Domain Characteristics
-[width="100%",cols="25%,75%",options="header",]
-|=======================================================================
-|Clock Domain |Description
-|AXI Clock (axi_clk) |Dedicated clock for AXI master operations, enabled
-only during active zeroing
-
-|Register Clock (reg_clk) |Separate clock for register interface,
-independent of AXI activity
-|=======================================================================
-
 === Clock Gating
 
-<<smc-zeroer-clock-gating-control-table>> gives the gating conditions for each clock
-domain.
+The zeroer has one input clock, `clk_i`, and gates two branches of it: the
+clear state machine and AXI master clock (`axi_clk`), and the register
+interface clock (`reg_clk`). Both are in the `clk_i` domain.
+<<smc-zeroer-clock-gating-control-table>> gives the condition under which each
+branch runs.
 
 [[smc-zeroer-clock-gating-control-table]]
 .SMC zeroer Clock Gating Control
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================
-|Domain |Gating Logic
-|AXI Clock |axi_clk_enable = disable_cg \| zeroer_busy_o \| ~rst_ni
+|Branch |Runs while
+|Clear state machine and AXI master (`axi_clk`) |`cg_enable_i` is low, the
+zeroer is busy (`zeroer_busy_o`), or `rst_ni` is asserted. A
+`prim_clock_gating` cell gates it.
 
-|Register Clock
-|reg_clk_enable = disable_cg \| register_activity \| ~rst_ni
+|Register interface (`reg_clk`)
+|`cg_enable_i` is low, or the control bus has a transaction in flight and for
+`cg_hysteresis_i` idle cycles after it. A bus-aware gate (`axi_cg_snoop`)
+gates it.
 
-|Implementation |prim_clock_gating for glitch-free operation
-
-|Test Support |Test enable override for manufacturing test
-
-|Reset Override |Ensures proper reset domain operation
+|Test Support |Test mode overrides both gates.
 |=======================================================================
 
 === Control and Status
