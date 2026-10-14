@@ -186,8 +186,12 @@ class _AliasReg(SepAxiRegDriver):
 class _VecWatch:
     """Samples the masked vector on every clock of a held interval.
 
-    ``stop`` returns the sample count and the first sample that differs from the
-    baseline (or reads X/Z), so a pulse between end-point snapshots fails.
+    Each sample is taken in the ReadOnly phase of a ``clk_i`` rising edge.
+    ``stop`` takes one last sample at the next rising edge, with the hold still
+    in place, and returns after that time step, so the caller can drive the
+    release. It returns the sample count and the first sample that differs
+    from the baseline (or reads X/Z), so a pulse between end-point snapshots
+    fails.
     """
 
     def __init__(self, base: int) -> None:
@@ -199,24 +203,27 @@ class _VecWatch:
 
     async def _loop(self) -> None:
         sig = cocotb.top.sep_internal_interrupts_probe_o
-        while self._on:
+        while True:
             await RisingEdge(cocotb.top.clk_i)
             await ReadOnly()
-            if not self._on:
-                break
             self.samples += 1
             try:
                 v = sep_base_test.rd_known(sig, VEC_GRADED) & VEC_GRADED
             except Exception as exc:  # noqa: BLE001 - an X/Z sample is a deviation
                 if self.first_bad is None:
                     self.first_bad = (self.samples, f"unknown:{exc}")
-                continue
+                v = self.base
             if v != self.base and self.first_bad is None:
                 self.first_bad = (self.samples, f"0x{v:011x}")
+            if not self._on:
+                return
 
     async def stop(self) -> tuple[int, tuple[int, str] | None]:
         self._on = False
         await self._task
+        # The last sample leaves this coroutine in ReadOnly; a write is legal
+        # again from the next time step.
+        await NextTimeStep()
         return self.samples, self.first_bad
 
 

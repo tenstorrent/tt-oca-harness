@@ -49,8 +49,8 @@ The routine first sets ``mrac`` as the SEP firmware start-up does
 (``fw/startup/crt0.s``), so each register store leaves the core at its own size.
 The CSR number and the value are parsed from the first ``li t0`` and
 ``csrw <csr>, t0`` pair of ``_start`` in that file, and the routine reads the
-CSR back into a mailbox record; a read-back that differs fails the leaf
-(``CTL-ROM-MRAC``).
+CSR back into a mailbox record once the outbound filter entry for the mailbox
+is open; a read-back that differs fails the leaf (``CTL-ROM-MRAC``).
 The core can serve two pending loads of one doubleword with one bus read, and
 it can merge two pending stores to one address. The 16 loads of a block are
 therefore in 16 different words, the two loads of each store-leg readback have
@@ -346,7 +346,6 @@ def build_code(p: _Plan) -> Asm:
     a = Asm(FW_BASE)
     a.li(T0, MRAC_SEP).op(csrw(CSR_MRAC, T0))
     a.li(GP, MBX)
-    a.op(csrr(T0, CSR_MRAC), sw(T0, GP, OFF_MRAC), FENCE)
     for reg, val in (
         ("START_ADDR", MBX),
         ("END_ADDR", MBX + 0xFF),
@@ -356,6 +355,8 @@ def build_code(p: _Plan) -> Asm:
         a.li(T2, val >> 32).op(sw(T2, T1, 4))
     a.li(T1, NMI_VEC_ADDR).la(T2, "nmi").op(sw(T2, T1, 0))
     a.la(T0, "trap").op(csrw(CSR_MTVEC, T0), addi(S11, ZERO, 0), FENCE)
+    # The mailbox store comes after the outbound filter entry that admits it.
+    a.op(csrr(T0, CSR_MRAC), sw(T0, GP, OFF_MRAC), FENCE)
     # Step 4: ROM_CTL; any field bit set stops the routine.
     a.li(T0, ROM_CTL_ADDR).op(lw(A0, T0, 0), sw(A0, GP, OFF_ROMCTL), FENCE)
     a.op(andi(A1, A0, ROM_CTL_MASK)).br("beq", A1, ZERO, "ctl_ok")
