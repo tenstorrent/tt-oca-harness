@@ -1120,7 +1120,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|Proves that the mailbox has no qualification of its own: writes that PROD blocks are accepted and interrupt on all eight mailboxes after `SEP_DBG` bypasses the inbound filter. The PROD block and the demote pair are controls.
+|Proves that the mailbox has no qualification of its own: writes that PROD blocks are accepted and interrupt on all eight mailboxes after `SEP_DBG` bypasses the inbound filter, with `FEAT_CTRL` read back as `SEP_DBG` set before the accepted writes are graded. The PROD block and the demote pair are controls.
 |<<sep_mailbox_reset_clear_test,`sep_mailbox_reset_clear_test`>>
 |3
 |no_cpu, +skip_fuse_sense
