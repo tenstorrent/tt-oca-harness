@@ -32,7 +32,9 @@ beats come from ``env/sep_dma_model.DmaZeroFill``.
 Probes: register and SRAM frontdoor over ``s_axi``; ``dma_axi_req_probe_o`` and
 ``dma_status_probe_o`` through ``env/sep_dma_tap.py``; ``dma_busy_probe_o``;
 bits 8 and 10 of ``sep_internal_interrupts_probe_o`` (PIC sources 9 and 11);
-``spi_lsio_trigger_probe_o``. No inject.
+``spi_lsio_trigger_probe_o``. No inject. Each fill or copy window fails
+(``DMA-TAP-WINDOW FAIL``) unless the tap sampled every clock from GO to
+BUSY=0, so an empty AR or AW list is proof of no traffic.
 
 Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
   CHK-DMA-ZERO-IMAGE     per Leg Z cell: every word of the destination span
@@ -91,7 +93,7 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_bit_watch import SepBitWatch
 from env.sep_dma_model import DmaZeroFill, ZeroBeat, bytes_to_words, words_to_bytes
 from env.sep_dma_tap import DmaTapEvents, SepDmaTap
@@ -338,6 +340,22 @@ class Plan:
         )
 
 
+class _EdgeCount:
+    """Counts clock edges, so a tap window can prove it sampled every clock."""
+
+    def __init__(self, clk) -> None:
+        self.n = 0
+        self._task = cocotb.start_soon(self._run(clk))
+
+    async def _run(self, clk) -> None:
+        while True:
+            await RisingEdge(clk)
+            self.n += 1
+
+    async def stop(self) -> None:
+        self._task.cancel()
+
+
 @dataclass
 class FillRun:
     """What one fill or copy showed: the last STATUS, ERROR_CODE and the tap window GO..BUSY=0."""
@@ -394,6 +412,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         self.suppress_host_axi_transaction_info()
         dut = cocotb.top
         self.tap = SepDmaTap(dut).start()
+        self.edges = _EdgeCount(dut.clk_i)
         self.busy = SepBitWatch(dut.dma_busy_probe_o, name="dma_busy_probe_o").start()
         self.irq = SepBitWatch(
             dut.sep_internal_interrupts_probe_o,
@@ -413,7 +432,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             await self._leg_l(plan)
         finally:
             close_graded_window(self.logger)
-            for watch in (self.tap, self.busy, self.irq, self.trigger):
+            for watch in (self.tap, self.busy, self.irq, self.trigger, self.edges):
                 await watch.stop()
         self.result_pass(TEST, self.seed, self.k)
 
@@ -471,6 +490,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             dst_wrap=dst_wrap,
         )
         mark = self.tap.mark()
+        e0 = self.edges.n
         await ops.go(opcode=opcode, hs=hs)
         stop = (lambda s: bool(s.error or s.aborted)) if stop_on_error else (lambda s: False)
         res = await ops.run_to_done(2 * total, busy=self.busy, stop_on=stop)
@@ -479,7 +499,22 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             await self._idle()
         elif res.status.busy:
             await ops.poll_status(lambda s: not s.busy, ERR_POLL_BOUND, "BUSY=0 after DONE")
+        self._tap_window_sampled(mark.clk, e0)
         return FillRun(res.status, ec, self.tap.since(mark), res.go_writes)
+
+    def _tap_window_sampled(self, tap0: int, e0: int) -> None:
+        """Fails unless the tap sampled every clock of the window.
+
+        An empty AR or AW list is proof of no traffic only when the tap ran
+        through the whole window; one clock of slack covers the edge on which
+        the window opens or closes.
+        """
+        sampled = self.tap.clk - tap0
+        edges = self.edges.n - e0
+        if sampled == 0 or sampled + 1 < edges:
+            line = f"DMA-TAP-WINDOW FAIL seed={self.seed} tap_samples={sampled} clocks={edges}"
+            self.logger.error(line)
+            raise AssertionError(line)
 
     def _irq_levels(self) -> tuple[int | None, int | None]:
         """PIC source 9 and 11 levels at the last sample."""
