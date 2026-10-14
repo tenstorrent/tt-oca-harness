@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SYS_AXI hang detector below, beyond and at the timeout threshold.
 
-Contract SMC_IRQ_020, anchor smc_hang_sys_timeout_window_test.
-Allocated scenarios: IRQ-HANG-TIMEOUT.S1.
 Spec sources: HANG_DET_CTRL and HANG_DET_TIMEOUT_THRESHOLD in smc_base_config.rdl.
 """
 
@@ -351,7 +349,7 @@ class smc_hang_sys_timeout_window_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-SYSWIN-AT-LOG",
             f"stall of exactly 0x{THRESHOLD:x} rises: first_sys_irq_rise={first}; "
-            f"{text}; cleared after {cleared_at} rises (observe-and-log, SF-009)",
+            f"{text}; cleared after {cleared_at} rises (observe-and-log, owner value pending)",
         )
 
         self._hold(0, "cleanup")

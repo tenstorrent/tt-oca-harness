@@ -2,16 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C `INTR_TEST` into `INTR_STATE`: status force and release, event latch, partial clears.
 
-Contract SMC_I2C_CSR_IRQ_012, anchor smc_i2c_intr_test_state_test.
-Scenarios: I2C-INTR-STATUS-TYPE.S1-S4, I2C-INTR-EVENT-TYPE.S2-S4, I2C-INSTANCE-ISOLATION.S3.
-Sources: hw/ip/i2c/regs/i2c.rdl INTR_TEST / INTR_STATE, hw/ip/i2c/regs/i2c_wrap.rdl, SF-010.
+Sources: hw/ip/i2c/regs/i2c.rdl INTR_TEST / INTR_STATE, hw/ip/i2c/regs/i2c_wrap.rdl.
 
 `INTR_TEST` is `rw` on the seven status bits ("Writing 1 forces the interrupt",
 "Writing 0 releases it") and `sw = w` `singlepulse` on the 13 event bits;
 `INTR_STATE` is `sw = r` on the status bits and `woclr` on the event bits. Every
 `INTR_ENABLE` word stays at reset, so only register reads observe the result.
 The `INTR_TEST` read-back and the combination of a live condition with
-`INTR_TEST` (SF-010) are logged and never compared.
+`INTR_TEST` (owner value pending) are logged and never compared.
 """
 
 from __future__ import annotations
@@ -175,7 +173,7 @@ class smc_i2c_intr_test_state_test_seq(SmcCsrSeq):
         self._emit(
             "CHK-I2C-STATUS-FORCE",
             f"measured {self.measured} read 1 in INTR_STATE after INTR_TEST force "
-            f"({', '.join(forced)}); INTR_TEST read-back (SF-010, logged only) "
+            f"({', '.join(forced)}); INTR_TEST read-back (owner value pending, logged only) "
             f"{ {k: f'0x{v:08x}' for k, v in readbacks.items()} }; "
             f"UNMEASURED {self.unmeasured}",
         )
@@ -234,7 +232,8 @@ class smc_i2c_intr_test_state_test_seq(SmcCsrSeq):
             self._emit(
                 "CHK-I2C-STATUS-LIVE-OBS",
                 f"no status bit was live (INTR_STATE=0x{idle:08x} INTR_TEST=0x{idle_test:08x}); "
-                f"the cell condition-and-INTR_TEST combination (SF-010) is not measured",
+                f"the cell condition-and-INTR_TEST combination (owner value pending) "
+                f"is not measured",
             )
         else:
             words = []
@@ -246,7 +245,8 @@ class smc_i2c_intr_test_state_test_seq(SmcCsrSeq):
                 words.append(f"{name}: after_test1=0x{one:08x} after_test0=0x{zero:08x}")
             self._emit(
                 "CHK-I2C-STATUS-LIVE-OBS",
-                f"live status bits observed, SF-010 open, no value compared: {'; '.join(words)}",
+                f"live status bits observed, owner value pending, no value compared: "
+                f"{'; '.join(words)}",
             )
         self._mark("S5")
 

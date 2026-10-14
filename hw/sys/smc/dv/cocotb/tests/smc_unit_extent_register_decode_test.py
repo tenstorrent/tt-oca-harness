@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Base and last register decode of the mailbox, eFuse, timer, CLA, DMA and zeroer apertures.
 
-Contract XBAR_027, anchor smc_unit_extent_register_decode_test.
-Allocated scenarios: XBAR-DEC-MAILBOX.S1/S2, XBAR-DEC-EFUSE.S1/S2, XBAR-DEC-TIMER.S1/S2,
-XBAR-DEC-CLA.S1, XBAR-DEC-MEMORIES.S1/S2, XBAR-DEC-SPARE.S2, XBAR-DEC-DMA-ZEROER.S2.
 Spec sources: smc.rdl unit placements and past-extent, memmap.adoc Address Space Organization,
 fabric.adoc Fabric Topology.
 """

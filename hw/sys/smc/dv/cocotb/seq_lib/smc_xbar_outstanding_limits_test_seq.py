@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Outstanding access groups at, above and across subordinates of the two crossbars.
 
-Contract SMC_XBAR_OUTSTANDING_LIMITS_TEST, anchor smc_xbar_outstanding_limits_test.
-Allocated scenarios: AXI-LITE-XBAR-LIMIT.S1-S4, AXI-LOCAL-XBAR-LIMIT.S1-S4.
 Spec sources: fabric.adoc Configuration Parameters, scratch.rdl SCRATCH, chip_config.rdl.
 """
 
@@ -203,7 +201,7 @@ class smc_xbar_outstanding_limits_test_seq(SmcCsrSeq):
             "CHK-XLIM-LITE-OVER",
             f"5-read and 8-read SCRATCH_COLD groups completed OKAY, each read its own word; "
             f"limit 4 not asserted, stall cycles 5-group {stall5}, 8-group {stall8} "
-            f"(observed, SF-015)",
+            f"(observed, owner value pending)",
         )
 
     async def _step_lite_multi(self) -> None:
@@ -274,7 +272,8 @@ class smc_xbar_outstanding_limits_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-XLIM-LOCAL-OVER",
             f"9-read and 16-read SPM groups completed OKAY, each read SPMW(i); limit 8 not "
-            f"asserted, stall cycles 9-group {stall9}, 16-group {stall16} (observed, SF-015)",
+            f"asserted, stall cycles 9-group {stall9}, 16-group {stall16} "
+            f"(observed, owner value pending)",
         )
 
     async def _step_local_multi(self) -> None:

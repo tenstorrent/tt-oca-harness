@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """sync_irq_o isolation from the raw interrupt vector and from asserted interrupt sources.
 
-Contract SMC_IRQ_014, anchor smc_sync_irq_isolation_test.
-Allocated scenarios: IRQ-SYNC-IRQ.S1, IRQ-SYNC-IRQ.S2.
 Spec sources: port_table.adoc sync_irq_o, reset_unit.rdl SYNC_REG, smu-smc.adoc interrupts.
 """
 

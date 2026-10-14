@@ -30,4 +30,4 @@ class smc_filter_lock_scope_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_filter_lock_scope_test_seq("smc_filter_lock_scope_test_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        assert seq.accesses + seq.jtag_accesses >= 79, "fewer accesses than the contract floor"
+        assert seq.accesses + seq.jtag_accesses >= 79, "fewer accesses than the required floor"

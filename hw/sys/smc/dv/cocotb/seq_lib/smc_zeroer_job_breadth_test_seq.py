@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Zeroer jobs: aligned beat structure, restart, 56-bit destination and a random mix.
 
-Contract SMC_POWER_DMA_ZEROER_022, anchor smc_zeroer_job_breadth_test.
-Scenarios ZEROER-JOB.S1, .S4, .S6 and .S7.
 Sources hw/sys/smc/doc/zeroer.adoc, hw/ip/zeroer/regs/zeroer_ctrl.rdl.
 
 Every region is pre-filled with a non-zero pattern and flanked by an 8-byte guard on each
@@ -304,7 +302,7 @@ class smc_zeroer_job_breadth_test_seq(output_fabric_pass_all_cfg_seq):
             "S4",
             "CHK-ZEROER-JOB-HIGH-ADDR",
             "programmed 0x%x, AW addresses %s, %d bytes cleared at that address, guards intact; "
-            "DEST_ADDR reads back 0x%x and SIZE 0x%x (SF-014 width not asserted)",
+            "DEST_ADDR reads back 0x%x and SIZE 0x%x (width not asserted, owner value pending)",
             _HIGH_DEST,
             ",".join(f"0x{a:x}" for a, _n in wire.aw),
             _HIGH_BYTES,

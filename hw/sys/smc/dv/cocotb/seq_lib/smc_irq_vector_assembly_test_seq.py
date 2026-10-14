@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Raw interrupt vector assembly across regions, reserved bits and region edges.
 
-Contract SMC_IRQ_012, anchor smc_irq_vector_assembly_test.
-Allocated scenarios: IRQ-VEC-ASSEMBLY.S1, S2, S4, IRQ-PERIPH-RSVD.S2, IRQ-RSVD-TAIL.S2.
 Spec sources: interrupts.adoc SMC indexed interrupt map table, CPU interrupt vector map.
 """
 
@@ -355,8 +353,8 @@ class smc_irq_vector_assembly_test_seq(output_fabric_pass_all_cfg_seq):
         )
         self._log_chk(
             "CHK-VECASM-INBOUND-LOG",
-            f"SF-006 observe-and-log: expected raw 288 (mailbox 0) and raw 319 (mailbox "
-            f"31); after the mailbox 0 push raw 288={mbx0_raw[288]} raw 319="
+            f"observe-and-log (owner value pending): expected raw 288 (mailbox 0) and "
+            f"raw 319 (mailbox 31); after the mailbox 0 push raw 288={mbx0_raw[288]} raw 319="
             f"{mbx0_raw[319]}; after the mailbox 31 push raw 288={mbx31_raw[288]} "
             f"raw 319={mbx31_raw[319]}; rises high over the run raw 288="
             f"{self.inbound[288]} raw 319={self.inbound[319]} of {self.samples}",

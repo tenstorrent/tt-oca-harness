@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """dfx_ctrl register addresses, past-extent DECERR and the gap at offset 0xC.
 
-Contract SMC_JTAG_DM_022, anchor smc_dfx_aperture_extent_test.
-Scenarios JDM-DFX-APERTURE.S1 .. JDM-DFX-APERTURE.S5.
 Spec: smc.rdl dfx_ctrl placement, dfx_ctrl_status.rdl address map, memmap.adoc address space.
 """
 
@@ -92,7 +90,7 @@ class smc_dfx_aperture_extent_test_seq(SmcCsrSeq):
             "CHK-APERTURE-PAST-READ",
             "S3",
             f"{'; '.join(past_reads)}; signature 0x{self.ERR_SLAVE_SIGNATURE:08x} matched "
-            "(extent answer pending SF-032)",
+            "(DECERR is the asserted answer past the extent)",
         )
 
         past_writes = []
@@ -133,7 +131,7 @@ class smc_dfx_aperture_extent_test_seq(SmcCsrSeq):
             "CHK-APERTURE-HOLE",
             "S6",
             f"read @0x{HOLE_ADDR:x} (offset 0xc) resp={_RESP_NAMES.get(hole.resp_code)} "
-            f"data=0x{hole.rdata:x} (observation only, defined response pending SF-032)",
+            f"data=0x{hole.rdata:x} (observation only, defined response pending an owner decision)",
         )
 
         await RisingEdge(cocotb.top.clk_smc_i)

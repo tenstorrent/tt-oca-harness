@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Zeroer job breadth: aligned beats, restart, 56-bit destination and a random job mix.
 
-Contract SMC_POWER_DMA_ZEROER_022, anchor smc_zeroer_job_breadth_test.
-Scenarios ZEROER-JOB.S1, .S4, .S6 and .S7.
 Sources hw/sys/smc/doc/zeroer.adoc, hw/ip/zeroer/regs/zeroer_ctrl.rdl.
 """
 

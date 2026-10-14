@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DEBUG_CTRL no-effect fields, bit 31, DFD observables and register access around cg_en.
 
-Contract SMC_JTAG_DM_021, anchor smc_dfx_debug_ctrl_noeffect_gate_test.
-Scenarios JDM-DFX-DEBUGCTRL-NOEFFECT.S1 .. S4, JDM-DFX-CLKGATE.S5 and S7.
 Spec: dfx_ctrl_status.rdl DEBUG_CTRL, dfd.adoc Design-for-Debug,
 memmap.adoc Base Config and DFX Status.
 """

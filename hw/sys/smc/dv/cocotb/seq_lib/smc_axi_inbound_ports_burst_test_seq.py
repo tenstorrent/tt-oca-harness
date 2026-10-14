@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Full-width and INCR burst traffic on the three inbound AXI ports.
 
-Contract SMC_AXI_INBOUND_PORTS_BURST_TEST, anchor smc_axi_inbound_ports_burst_test.
-Allocated scenarios: AXI-INBOUND-WIDTHS.S1-S3, AXI-INCR-MEMORY.S1-S3, AXI-INCR-REGISTERS.S2-S3,
-AXI-LITE-BURST-REJECT.S1, AXI-LITE-BURST-REJECT.S3.
 Spec sources: fabric.adoc Interfaces / AXI Interface Widths and Topology, scratch.rdl SCRATCH.
 """
 

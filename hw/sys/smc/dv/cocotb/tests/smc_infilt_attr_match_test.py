@@ -33,4 +33,4 @@ class smc_infilt_attr_match_test(smc_base_test):
         seq = smc_infilt_attr_match_test_seq("smc_infilt_attr_match_test_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         total = seq.accesses + seq.sys_accesses
-        assert total >= 83, f"{total} accesses, fewer than the contract floor of 83"
+        assert total >= 83, f"{total} accesses, fewer than the required floor of 83"

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """External input bits 1 and 0 on tb_temp_interrupt_i and tb_ext_interrupt_0_i.
 
-Contract SMC_IRQ_007, anchor smc_ext_irq_low_bits_test.
-Allocated scenarios: IRQ-EXT-LOW2.S1, IRQ-EXT-LOW2.S2, IRQ-EXT-LOW2.S3.
 Spec sources: interrupts.adoc SMC indexed interrupt map table, SMC interrupts and PLIC.
 """
 

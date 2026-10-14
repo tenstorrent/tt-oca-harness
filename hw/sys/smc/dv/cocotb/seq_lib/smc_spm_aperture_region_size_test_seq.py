@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Scratchpad window reach by aperture alias and REGION_SIZE over SEP_IN AXI.
 
-Contract SMC_CPU_MEM_ECC_005, anchor smc_spm_aperture_region_size_test.
-Scenarios MEMECC-SPM-APERTURE.S1 to S5 (alias, reach, limit, back to back, in flight).
 Specs memmap.adoc (Memory Map), fabric.adoc (Local and Remote Resource Access).
 
 The window word is the last 64-bit word of the scratchpad window, at offset 0x15_FFF8 from
@@ -35,7 +33,7 @@ AXI_RESP_DECERR = 3
 REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 GLOBAL_BASE_ADDR = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 
-# Contract values: the generated resets and the sizes around the window end.
+# Spec values: the generated resets and the sizes around the window end.
 CONTRACT_REGION_SIZE_RESET = 0x100_0000
 CONTRACT_GLOBAL_BASE_RESET = 0x4000_0000
 REGION_SIZE_2M = 0x20_0000
@@ -279,9 +277,9 @@ class smc_spm_aperture_region_size_test_seq(SmcCsrSeq):
         self._stamp("RESTORED_POSITIVE_CONTROL")
         self._chk(
             "CHK-SPM-REGION-DECERR",
-            "at REGION_SIZE 0x%x read and write of 0x%x answered DECERR (SF-018: DECERR read data "
-            "0x%x printed, not compared); after restore the word read 0x%x, not the refused "
-            "0x%x, and the fresh 0x%x read back 0x%x",
+            "at REGION_SIZE 0x%x read and write of 0x%x answered DECERR (owner value pending: "
+            "DECERR read data 0x%x printed, not compared); after restore the word read 0x%x, "
+            "not the refused 0x%x, and the fresh 0x%x read back 0x%x",
             REGION_SIZE_1M,
             WINDOW_LOCAL,
             rdata,
@@ -397,7 +395,7 @@ class smc_spm_aperture_region_size_test_seq(SmcCsrSeq):
             step_idx = self.events.index(("step", term))
             chk_idx = self.events.index(("chk", chk_id))
             assert chk_idx > step_idx, f"{chk_id} printed before its step {term}"
-            assert chk_idx > last_index, f"{chk_id} printed out of contract order"
+            assert chk_idx > last_index, f"{chk_id} printed out of CHK order"
             last_index = chk_idx
 
     async def body(self) -> None:

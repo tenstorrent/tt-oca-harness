@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Stalled R, W and B handshakes on UART SCR and SCRATCH at ref / smc / periph 10 / 1.25 / 5 ns.
 
-Contract SMC_CLOCK_RATIO_012, anchor smc_clk_ratio_handshake_stall_test.
-Allocated scenarios: RATIO-HANDSHAKE-STALL.S1, RATIO-HANDSHAKE-STALL.S2, RATIO-HANDSHAKE-STALL.S3.
 Spec sources: hw/sys/smc/doc/fabric.adoc, hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/clk_rst.adoc.
 """
 

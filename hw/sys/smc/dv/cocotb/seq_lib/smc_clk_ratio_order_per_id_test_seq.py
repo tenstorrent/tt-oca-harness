@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Per-ID response order of outstanding SEP_IN groups over the scratch and UART SCR paths.
 
-Contract SMC_CLOCK_RATIO_010, anchor smc_clk_ratio_order_per_id_test.
-Allocated scenarios: RATIO-ORDER-PER-ID.S1, RATIO-ORDER-PER-ID.S2, RATIO-ORDER-PER-ID.S3.
 Spec sources: hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/fabric.adoc.
 """
 
@@ -279,7 +277,7 @@ class smc_clk_ratio_order_per_id_test_seq(SmcCsrSeq):
         names = lambda seq: [RESP_NAME[r] for r in seq]  # noqa: E731
         self._emit_chk(
             "CHK-ORDER-WRITES-SAME-ID",
-            f"{n_members} writes under id=0x{SAME_ID:x} (8 contract writes alternating domains, "
+            f"{n_members} writes under id=0x{SAME_ID:x} (8 listed writes alternating domains, "
             f"8 gap witnesses): issued response pattern {names(issued)}, observed BRESP in "
             f"arrival order {names(seen_resp)}, order_match={order_match}, "
             f"BID={[hex(b[0]) for b in bbeats]}, multiset equal, "
@@ -339,7 +337,7 @@ class smc_clk_ratio_order_per_id_test_seq(SmcCsrSeq):
 
     def _assert_fence(self) -> None:
         ids = tuple(s for s, _ in self._steps)
-        assert ids == STEP_ORDER, f"step ids {ids} != contract order {STEP_ORDER}"
+        assert ids == STEP_ORDER, f"step ids {ids} != expected order {STEP_ORDER}"
         stamps = [t for _, t in self._steps]
         assert all(b > a for a, b in zip(stamps, stamps[1:])), f"stamps not increasing: {stamps}"
         chk_ids = tuple(c for c, _ in self._chk_lines)

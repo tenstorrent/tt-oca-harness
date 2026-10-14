@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sense of the default asset and of five generated images after a deliberate cold reset.
 
-Contract SMC_EFUSE_MAP_009, anchor smc_efuse_map_sense_image_test.
-Scenarios EMAP-SENSE-IMAGE.S1-S3, EMAP-SENSE-DONE.S1/S2, EMAP-SHADOW-OUT.S1.
 Sources: smu-smc.adoc (eFuse Interface), port_table.adoc (smc_fuse_sense_done_o, shadow_regs_o).
 
 One module, six testlist entries. Without ``+smc_efuse_image`` the bench default asset is sensed;

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Inbound filter attribute match: AxPROT[1] equality, fall-through, src_id and group_id.
 
-Contract SMC_FILTER_21, anchor smc_infilt_attr_match_test.
-Allocated scenarios: INFILT-NS-MATCH.S1-S5, INFILT-SRCID-MATCH.S1, S3, S4.
 Spec sources: fabric.adoc Non-Secure Bit Filtering, axi_filter index.adoc Match Then Permit,
 filter_ctrl.rdl FILTER_CONFIG.
 
@@ -29,7 +27,7 @@ _RESET_CFG = reg_reset_word(_FILTER_H, "FILTER_CTRL", "FILTER_CONFIG")
 _RESET_START = reg_reset_word(_FILTER_H, "FILTER_CTRL", "START_ADDR")
 _RESET_END = reg_reset_word(_FILTER_H, "FILTER_CTRL", "END_ADDR")
 
-# Contract words; the read-back adds data_bus_width 3.
+# Register words; the read-back adds data_bus_width 3.
 _PERMIT_NS0 = 0x0000_0000_0100_0013
 _PERMIT_NS1 = 0x0000_0000_0100_0113
 _DENY_NS0 = 0x0000_0000_0100_0010
@@ -315,7 +313,7 @@ class smc_infilt_attr_match_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-INB-SRCID-WILDCARD-ZERO",
             f"src_id 0 entry matches AxUSER 0 (OKAY, hit bit 2): {s6}; the any-ID half is "
-            "unreachable at this bench (SF-024) and is not claimed",
+            "unreachable at this bench (owner value pending) and is not claimed",
         )
 
         # S7: a non-zero src_id does not match AxUSER 0.

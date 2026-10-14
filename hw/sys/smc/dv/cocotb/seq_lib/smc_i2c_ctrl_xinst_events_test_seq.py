@@ -2,15 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C instance-to-instance read, target-side STOP interrupt and per-instance interrupt lines.
 
-Contract SMC_I2C_CTRL_004, anchor smc_i2c_ctrl_xinst_events_test.
-Scenarios: I2CC-XINST-XFER.S2, I2CC-XINST-XFER.S5, I2CC-UNEXP-STOP.S1, I2CC-UNEXP-STOP.S2,
-I2CC-UNEXP-STOP.S3, I2CC-CMD-COMPLETE.S4, I2CC-HALT-RECOVERY.S4.
 Sources: hw/ip/i2c/regs/i2c.rdl (FDATA.READB, RDATA.DATA, CONTROLLER_EVENTS.NACK,
 INTR_STATE.UNEXP_STOP, INTR_ENABLE), hw/sys/smc/doc/interrupts.adoc (I2C interrupts 0-2).
 
 Three instances share one open-drain bus (+smc_i2c_shared_bus) and one is the controller
-at a time. The unconfigured-address NACK (SF-021) and every UNEXP_STOP leg (SF-008) are
-logged and not compared. Each interrupt-line leg checks the line low while the enable is
+at a time. The unconfigured-address NACK and every UNEXP_STOP leg are owner value pending:
+they are logged and not compared. Each interrupt-line leg checks the line low while the enable is
 clear, then 1 << k after the enable, then low after the clear.
 """
 
@@ -378,7 +375,7 @@ class smc_i2c_ctrl_xinst_events_test_seq(SmcCsrSeq):
             f"{frame.addr_acked}); instance 0 CONTROLLER_EVENTS=0x{events[0]:08x} "
             f"NACK={int(bool(events[0] & EV_NACK))}; INTR_STATE=0x{intr:08x} CONTROLLER_HALT="
             f"{int(bool(intr & INTR_CONTROLLER_HALT))}; recovery readback events="
-            f"0x{ev_after:08x} halt={halt_after}; no compare (SF-021)",
+            f"0x{ev_after:08x} halt={halt_after}; no compare (owner value pending)",
         )
 
     async def _unexp_window(self, label: str) -> list[tuple[int, int]]:
@@ -419,7 +416,7 @@ class smc_i2c_ctrl_xinst_events_test_seq(SmcCsrSeq):
             f"instance 1 target 0x{STOP_TARGET_ADDR:02x}, controller STOP straight after the "
             f"address, wire frame {frame}, {done}; INTR_STATE.UNEXP_STOP per poll "
             f"({len(rows)} polls over {UNEXP_WINDOW_CYCLES} cycles): {self._rows(rows)}; "
-            f"final={rows[-1][1]}; no compare (SF-008)",
+            f"final={rows[-1][1]}; no compare (owner value pending)",
         )
 
     async def _s5_unexp_clear(self) -> None:
@@ -431,7 +428,7 @@ class smc_i2c_ctrl_xinst_events_test_seq(SmcCsrSeq):
             "CHK-UNEXP-CLEAR-OBS",
             f"instance 1 INTR_STATE before the written 1: 0x{before:08x} UNEXP_STOP="
             f"{int(bool(before & INTR_UNEXP_STOP))}; after: 0x{after:08x} UNEXP_STOP="
-            f"{int(bool(after & INTR_UNEXP_STOP))}; no compare (SF-008)",
+            f"{int(bool(after & INTR_UNEXP_STOP))}; no compare (owner value pending)",
         )
 
     async def _s6_unexp_normal(self) -> None:
@@ -458,7 +455,7 @@ class smc_i2c_ctrl_xinst_events_test_seq(SmcCsrSeq):
             f"instance 1 target 0x{STOP_TARGET_ADDR:02x}, normal write 0xA5 0x5A then STOP, "
             f"wire frame {frame}, {done}; INTR_STATE before the write 0x{pre:08x}; "
             f"UNEXP_STOP per poll ({len(rows)} polls over {UNEXP_WINDOW_CYCLES} cycles): "
-            f"{self._rows(rows)}; final={rows[-1][1]}; no compare (SF-008)",
+            f"{self._rows(rows)}; final={rows[-1][1]}; no compare (owner value pending)",
         )
 
     async def _irq_leg_setup(self, k: int, label: str) -> None:

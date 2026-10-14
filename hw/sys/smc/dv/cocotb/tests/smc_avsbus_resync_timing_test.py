@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AVSBus slave resync after a cold reset: length, interval, status flags and the FSM probe.
 
-Contract SMC_POWER_AVS_010, anchor smc_avsbus_resync_timing_test.
-Scenarios: AVS-RESYNC.S1-S5, AVS-RESYNC.S10, AVS-RESYNC.S11, AVS-FSM-DEBUG.S1, S2 and S6.
 Sources: hw/ip/avsbus_controller/doc/{architecture,interface}.adoc, regs/avsbus_controller.rdl.
 """
 

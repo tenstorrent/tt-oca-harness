@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_reset_pin_deglitch_test.
 
-Contract SMC_RESET_029, anchor smc_reset_pin_deglitch_test.
-Scenarios: RST-COLD-RESET.S1, RST-COOL-PIN.S1.
 Spec: clk_rst.adoc (Power-Good and Cold Reset), port_table.adoc (SMC Port Declaration).
 
 ``rst_cold_ni`` and ``rst_cool_ni`` each pass a 32-sample de-glitcher on ``clk_ref_i``. A pulse

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DMA effective field widths: discarded upper register bits and the 56-bit address width.
 
-Contract SMC_POWER_DMA_ZEROER_015, anchor smc_dma_field_widths_test.
-Scenarios DMA-FIELD-WIDTHS.S1 to S5 (address top byte, length, stride, repetitions, bits 55:32).
 Specs hw/sys/smc/doc/dma.adoc, vendor idma overlay dma_ctrl.rdl.
 
 Sources and destinations sit in the SYS_OUT responder memory and are preloaded and read back

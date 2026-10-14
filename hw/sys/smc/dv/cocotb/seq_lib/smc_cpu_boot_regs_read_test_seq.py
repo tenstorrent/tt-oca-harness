@@ -2,10 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Boot-time register reads over SEP_IN after bring-up.
 
-Contract SMC_CPU_WEDGE_BOOT_006, anchor smc_cpu_boot_regs_read_test.
-Scenarios: CPU-BOOT-RESET-VECTOR-SELECT.S1, CPU-BOOT-SCRATCH-HANDSHAKE.S2,
-CPU-BOOT-STRAP-WORD-READ.S1, CPU-BOOT-CHIPCFG-READ.S1, CPU-BOOT-APERTURE-PREREQ.S1/.S2,
-CPU-BOOT-DUMMY-ROM-STUB.S1/.S2, CPU-ISO-DEBUG-RESET-CTRL.S1.
 Sources: cpu.adoc, memmap.adoc, regs/blocks/{cpu_ctrl,straps,chip_config,smc_base_config}.
 """
 
@@ -71,7 +67,7 @@ CHK_ORDER = (
 
 
 class smc_cpu_boot_regs_read_test_seq(SmcCsrSeq):
-    """Read the boot-time registers over SEP_IN and compare them with the contract values."""
+    """Read the boot-time registers over SEP_IN and compare them with the documented values."""
 
     def __init__(self, name: str = "smc_cpu_boot_regs_read_test_seq") -> None:
         super().__init__(name)
@@ -176,7 +172,7 @@ class smc_cpu_boot_regs_read_test_seq(SmcCsrSeq):
             "CHK-BOOT-LOCALBASE-RO",
             "S7",
             f"write of 0x{LOCAL_BASE_WRITE:016x} to LOCAL_BASE answered resp={wr.resp_code} "
-            f"(printed, not asserted, SF-029); LOCAL_BASE reads 0x{local_after:016x} "
+            f"(printed, not asserted, owner value pending); LOCAL_BASE reads 0x{local_after:016x} "
             f"== 0x{LOCAL_BASE_RESET:016x}",
         )
 
@@ -227,7 +223,7 @@ class smc_cpu_boot_regs_read_test_seq(SmcCsrSeq):
             "CHK-BOOT-DUMMY-BURST",
             "S9",
             f"{BURST_BEATS}-beat burst read at DUMMY_ROM_0 0x{DUMMY_ROM[0]:08x} answered "
-            f"resp={burst.resp_code} (SF-032); beats "
+            f"resp={burst.resp_code} (owner value pending); beats "
             + " ".join(f"0x{b:x}" for b in beats)
             + (
                 "; equal to the stub then null words in address order"
@@ -252,7 +248,7 @@ class smc_cpu_boot_regs_read_test_seq(SmcCsrSeq):
 
     def _fence(self) -> None:
         steps = [s for s, _ in self._stamps]
-        assert steps == list(STEP_IDS), f"step stamps out of contract order: {steps}"
+        assert steps == list(STEP_IDS), f"step stamps out of order: {steps}"
         times = [t for _, t in self._stamps]
         assert all(b > a for a, b in zip(times, times[1:])), f"stamps not increasing: {times}"
         assert [c for c, _ in self._chk_log] == [c for c, _ in CHK_ORDER], (

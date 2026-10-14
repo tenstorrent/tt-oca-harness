@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Outstanding groups at the fabric limits and simultaneous reads from the three inbound ports.
 
-Contract XBAR_029, anchor smc_inbound_concurrency_limits_test.
-Allocated scenarios: XBAR-LIMITS.S1-S4, XBAR-SYS-DEMUX.S4, XBAR-SEP-DEMUX.S3,
-XBAR-CONCURRENT.S1-S3 and S5.
 Spec sources: fabric.adoc Fabric Transaction Limits and Fabric Topology, memmap.adoc Address Space.
 """
 

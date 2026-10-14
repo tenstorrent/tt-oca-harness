@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """UART0 transmitter-empty interrupt lifecycle and IIR service ordering.
 
-Contract SMC_UART_CORE_021, anchor smc_uart_irq_thre_identify_test.
-Allocated scenarios: UART-INT-THRE.S1-S6, UART-LINE-STATUS.S4, UART-INT-IDENTIFY.S3-S5.
 Spec sources: hw/ip/uart/uart_16550/doc/architecture.adoc (Interrupt Priority and Service),
 hw/ip/uart/uart_16550/regs/uart_16550_main.rdl (IER, IIR, LSR, MCR, ITR).
 """
@@ -440,7 +438,7 @@ class smc_uart_irq_thre_identify_test_seq(SmcCsrSeq):
             "CHK-UART-THRE-ETBEI-EMPTY",
             "S7",
             "with ETBEI set on an already empty buffer and LSR=0x%x read before and 0x%x after: "
-            "%s, the next IIR read 0x%x; owner answers SF-015",
+            "%s, the next IIR read 0x%x; owner answer pending",
             lsr_pre,
             lsr,
             shown,

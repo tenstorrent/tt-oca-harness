@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Watchdog 0 SCALED_COUNT shift relation and the wdogzerocmp count clear.
 
-Contract SMC_POWER_TIMER_WDT_011, anchor smc_wdt_scale_zerocmp_test.
-Scenarios WDT-SCALE.S1-S4 and WDT-ZEROCMP.S1-S5.
 Sources wdt.rdl, smc-programming.adoc#watchdog.
 """
 

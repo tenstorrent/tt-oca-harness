@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cold-boot release of the CPU resets and the boundary self-isolation.
 
-Contract SMC_CPU_WEDGE_BOOT_008, anchor smc_cpu_boot_release_sequence_test.
-Scenarios CPU-BOOT-FUSE-SENSE-RELEASE.S1-S4, CPU-BOOT-SRAM-INIT.S2, CPU-ISO-COLD-SELF-ISOLATE.S1-S2.
 Sources: cpu.adoc (Reset and Boot, Memory Repair, CPU AXI Isolation), clk_rst.adoc.
 """
 

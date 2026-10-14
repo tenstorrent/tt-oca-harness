@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SHIM control window forwarding and efuse_bank_ctrl per-channel handshake counts.
 
-Contract SMC_EFUSE_CTRL_010, anchor smc_efuse_bank_ctrl_window_test.
-Scenarios EFC-SHIM-WINDOW.S1/S2/S5, EFC-BANKCTRL-ACTIVITY.S1-S4.
 Sources: smu-smc.adoc (eFuse Interface), efuse_shim_ctrl.rdl, efuse_interface_ctrl.rdl.
 """
 

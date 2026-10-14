@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP watchdog reset input into raw tb_cpu_interrupts bit 282 and tb_sep_wdt_irq_sync.
 
-Contract SMC_IRQ_009, anchor smc_sep_wdt_irq_level_test.
-Allocated scenarios: IRQ-SEPWDT.S1, IRQ-SEPWDT.S2.
 Spec sources: interrupts.adoc SMC indexed interrupt map table; port_table.adoc
 sep_wdt_reset_n_i.
 """
@@ -22,7 +20,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 WDT_BIT = 282
 WINDOW_RISES = 64
-# Contract ceilings in clk_smc_i rises; not latency claims.
+# Ceilings in clk_smc_i rises; not latency claims.
 ASSERT_CEILING_RISES = 64
 WARM_RELEASE_CEILING_RISES = 200000
 _STEPS = ("S1", "S2", "S3", "S4", "S5")
@@ -240,7 +238,7 @@ class smc_sep_wdt_irq_level_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-SEPWDT-LATENCY-LOG",
             f"fall_to_first_raw282_high_rises={raw_at} "
-            f"release_to_first_raw282_low_rises={first_low} (observe-and-log, SF-004)",
+            f"release_to_first_raw282_low_rises={first_low} (observe-and-log, owner value pending)",
         )
 
         self._nonvac_fence()

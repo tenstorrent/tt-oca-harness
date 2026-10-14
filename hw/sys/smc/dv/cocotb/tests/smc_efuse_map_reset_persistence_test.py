@@ -2,9 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Reset behaviour of shadow words and locks of SMC_EFUSE_MAP.
 
-Contract SMC_EFUSE_MAP_019, anchor smc_efuse_map_reset_persistence_test.
-Scenarios EMAP-RESET-WARM.S1-S4, EMAP-RESET-COLD.S2/S6; the warm reset is driven through
-the JTAG reset-control override (gate map019-warm-reset-source; contract rev 2 pending).
+The warm reset is driven through the JTAG reset-control override.
 Sources: smu-smc.adoc (eFuse Interface), clk_rst.adoc (rst_warm_n), smc-programming.adoc (LOCKS).
 
 The image is written into the run directory during ``build_phase``: every field and LOCKS

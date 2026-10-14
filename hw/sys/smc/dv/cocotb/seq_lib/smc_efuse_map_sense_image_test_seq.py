@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sense fidelity and sense-done timing of one SMC_EFUSE_MAP image after a cold reset.
 
-Contract SMC_EFUSE_MAP_009, anchor smc_efuse_map_sense_image_test.
-Scenarios EMAP-SENSE-IMAGE.S1-S3, EMAP-SENSE-DONE.S1/S2, EMAP-SHADOW-OUT.S1.
 Sources: smu-smc.adoc (eFuse Interface), port_table.adoc (smc_fuse_sense_done_o, shadow_regs_o).
 
 A sampler records (rst_primary, sense_done) on every clk_smc_i rising edge and captures
@@ -357,7 +355,7 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._chk(
             "CHK-EMAP-SHADOW-OUT-SENSED",
             "shadow_regs read as one %d-bit integer, word n at bits [32n+31:32n], image %s with "
-            "LOCKS 0x%x: %s (port semantics SF-018 open)",
+            "LOCKS 0x%x: %s (port semantics owner value pending)",
             32 * EFUSE_MAP_WORDS,
             image.path.name,
             image.locks,

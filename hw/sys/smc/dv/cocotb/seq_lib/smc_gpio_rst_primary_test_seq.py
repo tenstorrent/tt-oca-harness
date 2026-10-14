@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO primary-reset effect on interrupt state and on an in-flight access.
 
-Contract SMC_GPIO_PAD_IRQ_024 revision 3, anchor smc_gpio_rst_primary_test.
-Allocated scenarios: PADIRQ-RST-PRIMARY.S2, PADIRQ-RST-PRIMARY.S3, PADIRQ-RST-PRIMARY.S4.
 Spec sources: hw/ip/gpio/doc/architecture.adoc (Interrupts, Reset and Strap Capture),
 hw/ip/gpio/regs/gpio_intf.rdl, hw/sys/smc/doc/clk_rst.adoc.
 """
@@ -219,7 +217,7 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
             f"tb_gpio_interrupt[{WRAP}] read 1 before the reset (last pre-reset sample "
             f"{irq[before[-1]]}) and 0 at all {in_rst} samples with rst_primary_smc_clk_no=0 "
             f"and all {post} samples after its release, pad still high and DATA_CTRL not "
-            f"re-programmed; the reset source is rst_cold_ni (SF-020: cold-only is not "
+            f"re-programmed; the reset source is rst_cold_ni (cold-only is not "
             f"separable from primary at the SMC boundary); L={latency} clk_smc_i cycles from the "
             f"rst_cold_ni assert to the fall of rst_primary_smc_clk_no, {rise} cycles from the "
             f"rst_cold_ni release to its rise"
@@ -281,8 +279,8 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
             f"rst_cold_ni assert, L={latency}); tb_gpio_interrupt[{WRAP}] high samples: "
             f"{pre_reset_pulses} before the fall, {in_window} from the fall to the rise, "
             f"{sum(after)} of the {len(after)} after the rise ({rise} cycles after the "
-            f"rst_cold_ni release), measured only (SF-021: edge detector state at release with "
-            f"the pad at the active level; SF-020: cold-only reset not separable)"
+            f"rst_cold_ni release), measured only (edge detector state at release with "
+            f"the pad at the active level; cold-only reset not separable)"
         )
 
     async def _step_access(self, dut, sampler: _Sampler) -> str:
@@ -339,7 +337,7 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
         )
         if item.reset_aborted:
             assert fall <= done_at, f"reset abort reported before the fall ({state})"
-            kind = "bench master reset flush (BENCH-41)"
+            kind = "bench master reset flush"
         else:
             assert item.resp_code is not None, f"completion without response or abort ({state})"
             kind = f"DUT's own response resp={item.resp_code}"
@@ -361,7 +359,7 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
             f"bound {driver_bound_ns} ns); effective reset rose {rise} cycles after the "
             f"release; after it DATA_CTRL read 0x{ctrl:08x} and DATA_CTRL_ENABLE "
             f"0x{enable:08x}, zero under mask 0x{_RESET_READ_MASK:08x}; DUT handling measured "
-            f"only (BENCH-41; SF-020: cold-only reset not separable)"
+            f"only (cold-only reset not separable)"
         )
 
     def _nonvac(self) -> None:

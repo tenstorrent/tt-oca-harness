@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AVS_CFG_0 round trip through the AVSBus CDC bridge at three peripheral clock periods.
 
-Contract SMC_CLOCK_SRC_005, anchor smc_periph_floor_roundtrip_test.
-Scenarios: CSRC-PERIPH-FLOOR.S1, CSRC-PERIPH-FLOOR.S2, CSRC-PERIPH-FLOOR.S3.
 Spec: clk_rst.adoc (Peripheral Timing Requirements), avsbus_controller memmap.adoc (AVS_CFG_0).
 
 The ``+smc_cell`` run argument selects the peripheral period (periph10, periph5 or periph3); the

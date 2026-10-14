@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_025 / smc_plic_register_test: PLIC register map behaviour over SEP_IN.
+"""smc_plic_register_test: PLIC register map behaviour over SEP_IN.
 
-Scenarios: CPUCTRL-PLICREG.S1 (PRIORITY), S2 (PENDING), S3 (ENABLE), S4 (THRESHOLD), S5 (CLAIM).
 Sources: hw/sys/smc/regs/blocks/plic/plic.rdl, hw/sys/smc/doc/interrupts.adoc,
 hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/fabric.adoc (REGION_SIZE).
 """
@@ -187,7 +186,7 @@ class smc_plic_register_test_seq(SmcCsrSeq):
             f"PRIORITY[k] for k={list(PRIORITY_SOURCES)} read back every value 0..7, "
             f"tb_plic_priority_low bit (k-1) = PRIORITY[k] bit 0 agreed for "
             f"k={list(PRIORITY_PROBED)} "
-            f"({len(probe_notes)} samples); reset values open (SF-021) saved="
+            f"({len(probe_notes)} samples); reset values open (owner value pending) saved="
             f"{ {k: hex(v) for k, v in saved_prio.items()} }",
         )
 
@@ -213,7 +212,7 @@ class smc_plic_register_test_seq(SmcCsrSeq):
             f"0x{before[10]:x} after 0x{after[10]:x} unchanged by a write of 0x{ALL_ONES_32:x}; "
             f"tb_plic_pending_low=0x{probe:x} ({width} bits, bit n = source n + 1) equals "
             "(PENDING[0] >> 1) low bits; "
-            "reset and live content open (SF-021)",
+            "reset and live content open (owner value pending)",
         )
 
         # S5
@@ -277,7 +276,7 @@ class smc_plic_register_test_seq(SmcCsrSeq):
             "CHK-PLICREG-THRESHOLD",
             f"THRESHOLD of contexts {list(ENABLE_CONTEXTS)} read back each value 0..7 with the "
             f"other three unchanged, tb_plic_threshold0 agreed for context 0 ({th_samples} "
-            f"samples); reset values open (SF-021) saved="
+            f"samples); reset values open (owner value pending) saved="
             f"{ {c: hex(v) for c, v in saved_th.items()} }",
         )
 

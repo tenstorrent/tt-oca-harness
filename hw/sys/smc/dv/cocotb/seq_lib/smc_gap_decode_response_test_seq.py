@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Gap, SLVERR-window and debug-module aperture responses on sep, sys and jtag at both bases.
 
-Contract XBAR_024, anchor smc_gap_decode_response_test.
-Allocated scenarios: XBAR-GAP-DECERR.S1-S4, XBAR-GAP-SLVERR-WINDOW.S1-S5, XBAR-DEC-DEBUG.S1/S2.
 Spec sources: memmap.adoc Address Space Organization, smc.rdl ocah_gap_resp / ocah_hole_resp /
 ocah_past_extent_resp placements, smc_mailbox placement.
 """
@@ -300,7 +298,7 @@ class smc_gap_decode_response_test_seq(SmcCsrSeq):
             self._log_chk(
                 chk,
                 f"write@0x{local + off:08X} bresp_declared=SLVERR bresp_observed="
-                f"{_rname(wr[where])} (observe-only, SF-001)",
+                f"{_rname(wr[where])} (observe-only, owner value pending)",
             )
         self._log_chk(
             "CHK-SLVERR-WINDOW-READ",
@@ -327,7 +325,7 @@ class smc_gap_decode_response_test_seq(SmcCsrSeq):
                 f"{p}@{b} first={_rname(w['FIRST'])} last={_rname(w['LAST'])}"
                 for (p, b), (w, _) in win.items()
             )
-            + "; equal across ports and bases (value observe-only, SF-001)",
+            + "; equal across ports and bases (value observe-only, owner value pending)",
         )
 
         first, last = generated_window("debug_module")
@@ -343,7 +341,7 @@ class smc_gap_decode_response_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-DEBUG-APERTURE-DECERR",
             f"debug_module generated window 0x{LOCAL_BASE_RESET + first:08X}.."
-            f"0x{LOCAL_BASE_RESET + last:08X} (SF-014); " + "; ".join(texts),
+            f"0x{LOCAL_BASE_RESET + last:08X} (owner value pending); " + "; ".join(texts),
         )
 
         await self._restore()

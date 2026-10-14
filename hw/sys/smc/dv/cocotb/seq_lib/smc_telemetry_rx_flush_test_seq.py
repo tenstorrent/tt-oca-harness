@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_POWER_TELEMETRY_014 / smc_telemetry_rx_flush_test: receiver flush on receiver 0.
+"""Telemetry receiver flush on receiver 0.
 
-Scenarios: TLM-RX-FLUSH.S1, S2, S3, S4, S6, INT-RXFLUSH-MISSINGLAST.
 Sources: hw/ip/telemetry_receiver/doc/architecture.adoc (Reset and Flush, Interrupts),
 hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl, doc/programmer/src/smc-programming.adoc.
 
@@ -340,7 +339,8 @@ class smc_telemetry_rx_flush_test_seq(SmcCsrSeq):
             "S3",
             "CHK-TELEMETRY-RX-FLUSH-ONE-SHOT",
             "CTRL bit 4 read 0 after the flush and after two further flushes (CTRL reads %s, "
-            "SF-012 pulse readback); each empty flush left BUFFER_EMPTY 1, the head registers 0 "
+            "owner value pending for the pulse readback); each empty flush left BUFFER_EMPTY 1, "
+            "the head registers 0 "
             "and no interrupt source",
             [hex(word) for word in ctrl_reads],
         )
@@ -377,7 +377,7 @@ class smc_telemetry_rx_flush_test_seq(SmcCsrSeq):
             "CHK-TELEMETRY-RX-FLUSH-MID-MESSAGE",
             "%d of %d beats of an unfinished packet and one flush (no second flush): the next "
             "complete message read PROBE_ID 0x%02x in %d poll(s) and one pop emptied the queue "
-            "(exactly one message; SF-005 probe latch rule open)",
+            "(exactly one message; probe latch rule pending)",
             PARTIAL_BEATS,
             _BEATS_PER_PACKET,
             probe,
@@ -421,7 +421,7 @@ class smc_telemetry_rx_flush_test_seq(SmcCsrSeq):
             "S6",
             "CHK-TELEMETRY-RX-FLUSH-BEATS-AROUND",
             "%d beats accepted before the flush write and %d when it returned, %d accepted in "
-            "total of %d presented with %d stalled cycle(s) (SF-015 not compared); STATUS after "
+            "total of %d presented with %d stalled cycle(s) (not compared); STATUS after "
             "%d quiet cycles 0x%08x with PROBE_ID 0x%02x; after one quiet flush the next message "
             "read PROBE_ID 0x%02x in %d poll(s) as exactly one message",
             in_flight,

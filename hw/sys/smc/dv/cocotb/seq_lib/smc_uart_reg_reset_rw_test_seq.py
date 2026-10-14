@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """UART register reset values, field read/write and instance isolation over SEP_IN.
 
-Contract SMC_UART_CORE_013, anchor smc_uart_reg_reset_rw_test.
-Allocated scenarios: UART-RESET-STATE.S1-S3, UART-REG-RW.S1-S3, S5-S7.
 Spec sources: hw/ip/uart/uart_16550/regs/{uart_16550_main,uart_16550_dl}.rdl,
 hw/ip/uart/uart_wrap/regs/uart_wrap.rdl, hw/sys/smc/doc/periphs.adoc.
 """
@@ -203,7 +201,7 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
             "CHK-UART-RESET-MSR",
             "S2",
             "DCD/RI/DSR read 0 on first read; second read deltas 0 with same level bits; "
-            "first-read CTS and deltas measured %s (SF-011, RTL-60)",
+            "first-read CTS and deltas measured %s (measured, not compared)",
             " ".join(msr_text),
         )
 
@@ -248,7 +246,8 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-UART-RW-IER",
             "S4",
-            "IER bits 4:0 read back for 5 single-bit writes and all five set; %s (SF-008)",
+            "IER bits 4:0 read back for 5 single-bit writes and all five set; %s "
+            "(owner value pending)",
             " ".join(upper),
         )
 

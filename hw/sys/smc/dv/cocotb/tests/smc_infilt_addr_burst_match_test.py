@@ -32,4 +32,4 @@ class smc_infilt_addr_burst_match_test(smc_base_test):
         seq = smc_infilt_addr_burst_match_test_seq("smc_infilt_addr_burst_match_test_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         total = seq.accesses + seq.sys_accesses
-        assert total >= 96, f"{total} accesses, fewer than the contract floor of 96"
+        assert total >= 96, f"{total} accesses, fewer than the required floor of 96"

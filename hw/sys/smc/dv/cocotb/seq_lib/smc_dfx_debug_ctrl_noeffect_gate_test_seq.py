@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DEBUG_CTRL no-effect fields, bit 31, DFD observables and register access around cg_en.
 
-Contract SMC_JTAG_DM_021, anchor smc_dfx_debug_ctrl_noeffect_gate_test.
-Scenarios JDM-DFX-DEBUGCTRL-NOEFFECT.S1 .. S4, JDM-DFX-CLKGATE.S5 and S7.
 Spec: dfx_ctrl_status.rdl DEBUG_CTRL, dfd.adoc Design-for-Debug,
 memmap.adoc Base Config and DFX Status.
 """
@@ -282,8 +280,8 @@ class smc_dfx_debug_ctrl_noeffect_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._chk(
             "CHK-DEBUGCTRL-RESET-BIT31",
             f"DEBUG_CTRL=0x{after_reset:08x} after a cold reset; write 0x{ALL_ONES_WORD:08x} read "
-            f"back 0x{ones_back:08x} with bit 31 = 0; restored to 0 (which reset restores the "
-            "field is SF-030)",
+            f"back 0x{ones_back:08x} with bit 31 = 0; restored to 0 (bit 31 is asserted 0 "
+            "here; the document does not state its value, and the storage leaf only prints it)",
         )
 
         # S5
@@ -306,7 +304,7 @@ class smc_dfx_debug_ctrl_noeffect_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-DEBUGCTRL-NO-OBSERVABLE",
             f"tb_cla_clock_stop and tb_cla_halt_clock_global stayed 0 for {OBSERVE_CYCLES} "
             f"clk_smc cycles with DEBUG_CTRL=0x{ALL_NOEFFECT:08x}; xtrigger_ss_o lanes are not "
-            "exported (SF-038)",
+            "exported by the bench, so no lane is observable",
         )
 
         # S6
@@ -348,7 +346,7 @@ class smc_dfx_debug_ctrl_noeffect_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"DEBUG_BUS_MUX 8-byte read resp={RESP_NAMES.get(rd.resp_code)} "
             f"rdata=0x{rd.rdata:x} and DEBUG_CTRL cg_en write resp={RESP_NAMES.get(wr.resp_code)} "
             f"both completed within {axi_bound}ns, overlapped {overlap} clk_smc cycles "
-            f"({watch.state()}); clock effect is SF-033; cg_en restored to 0",
+            f"({watch.state()}); clock effect is pending an owner decision; cg_en restored to 0",
         )
 
         # S7

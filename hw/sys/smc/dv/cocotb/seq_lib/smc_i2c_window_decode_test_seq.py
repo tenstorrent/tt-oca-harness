@@ -2,18 +2,15 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C window decode: instance blocks, I2C_CTRL, reset state, the unclaimed gap, aligned access.
 
-Contract SMC_I2C_CSR_IRQ_014, anchor smc_i2c_window_decode_test.
-Scenarios: I2C-WRAP-DECODE.S1-S3, I2C-GAP-RESP.S1, S4, I2C-ACCESS-WIDTH.S1, I2C-CTRL-REGS.S1,
-I2C-REG-RESET.S1-S3.
 Sources: hw/ip/i2c/regs/i2c.rdl, hw/ip/i2c/regs/i2c_wrap.rdl, hw/ip/i2c/regs/i2c_ctrl.rdl,
 hw/ip/i2c/doc/memmap.adoc, hw/ip/i2c/doc/index.adoc.
 
 Every access is a 32-bit aligned SEP_IN frontdoor access straight after bring-up. The reset
 reads run before any write to an I2C register; the GPIO pad-select writes of the I2C pad groups
-come first so that SMBUS_STATUS senses the idle SMBus pads. Offsets of I2C_CTRL (SF-004),
-reserved bits (SF-009), registers without a reset literal and the FIFO read ports (SF-008), the
-access latency (SF-028) and VAL (SF-021) are logged without a compare, as are the responses of
-the four gap writes.
+come first so that SMBUS_STATUS senses the idle SMBus pads. Offsets of I2C_CTRL,
+reserved bits, registers without a reset literal and the FIFO read ports, the access
+latency and VAL are owner value pending: they are logged without a compare, as are the
+responses of the four gap writes.
 """
 
 from __future__ import annotations
@@ -285,7 +282,7 @@ class smc_i2c_window_decode_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-I2C-RESERVED-OBS",
             "reserved-bit residue (value & ~declared_mask) of %d register reads, nonzero: %s; "
-            "%s (observation, SF-009)",
+            "%s (observation, owner value pending)",
             len(INSTANCES) * (len(RESET_REGISTERS) + 2),
             " ".join(residues) or "none",
             " ".join(ctrl),
@@ -304,7 +301,7 @@ class smc_i2c_window_decode_test_seq(SmcCsrSeq):
         self._mark("S4")
         self._chk(
             "CHK-I2C-RESET-SIDE-OBS",
-            "%s; STATUS re-read 0x%03x on all instances (observation, SF-008, SF-021)",
+            "%s; STATUS re-read 0x%03x on all instances (observation, owner value pending)",
             " ".join(seen),
             STATUS_RESET,
         )
@@ -323,7 +320,7 @@ class smc_i2c_window_decode_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-I2C-CTRL-RESET",
             "I2C_CTRL[0..2] at 0x%08x,0x%08x,0x%08x read OKAY with %s; element spacing %s "
-            "(SF-004); reset-value-only proof",
+            "(owner value pending); reset-value-only proof",
             _wrap_ctrl(0),
             _wrap_ctrl(1),
             _wrap_ctrl(2),
@@ -336,7 +333,7 @@ class smc_i2c_window_decode_test_seq(SmcCsrSeq):
         if expect and (resp != AXI_DECERR or rdata != ERR_SIGNATURE):
             self.deferred.append(
                 f"gap read {label} @ 0x{addr:08x} gave resp={resp} rdata=0x{rdata:08x}, "
-                f"the contract states DECERR ({AXI_DECERR}) with 0x{ERR_SIGNATURE:08x}"
+                f"the expected response is DECERR ({AXI_DECERR}) with 0x{ERR_SIGNATURE:08x}"
             )
         return f"{label}@0x{addr:08x}:resp={resp},rdata=0x{rdata:08x}"
 
@@ -450,7 +447,7 @@ class smc_i2c_window_decode_test_seq(SmcCsrSeq):
             "CHK-I2C-DECODE-ALTERNATE",
             "%d alternating reads (instance 0/1 and instance 2/I2C_CTRL[0]) returned the pattern "
             "of the addressed block; max access time %.0f ns = %.1f clk_smc_i cycles of %.2f ns "
-            "(measured, SF-028)",
+            "(measured, owner value pending)",
             2 * ALTERNATIONS,
             worst_ns,
             worst_ns / period,
@@ -498,7 +495,8 @@ class smc_i2c_window_decode_test_seq(SmcCsrSeq):
         self._mark("S9")
         self._chk(
             "CHK-I2C-GAP-NO-SIDE-EFFECT",
-            "%d gap reads and %d gap writes (write resp codes %s, logged, SF-001) interleaved "
+            "%d gap reads and %d gap writes (write resp codes %s, logged, owner value pending) "
+            "interleaved "
             "with OKAY accesses left all %d snapshot words equal; tb_i2c_irq 0b000 on %d samples",
             len(gap_reads),
             len(gap_writes),

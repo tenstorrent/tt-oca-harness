@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Register sweep of the base, PIO and standby controller blocks of all six I3C instances.
 
-Contract SMC_I3C_SPI_007, anchor smc_i3c_csr_sweep_core_test.
-Scenarios I3CSPI-CSR-BASE.S1-S5, I3CSPI-CSR-PIO.S1-S5, I3CSPI-CSR-STBY.S1-S5.
 Sources: the pinned i3c-core RDL, the generated I3C wrapper map and smc_addr.h.
 """
 

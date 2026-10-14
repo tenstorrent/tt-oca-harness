@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_MEM_ECC_015 / smc_ext_window_aperture_test: external window pass-through and aperture.
+"""smc_ext_window_aperture_test: external window pass-through and aperture.
 
-Scenarios: MEMECC-EXT-WINDOW.S1, MEMECC-EXT-WINDOW.S2, MEMECC-EXT-WINDOW.S3,
-MEMECC-EXT-WINDOW.S4, MEMECC-EXT-WINDOW.S5.
 Sources: hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/fabric.adoc.
 """
 
@@ -245,9 +243,9 @@ class smc_ext_window_aperture_test_seq(SmcCsrSeq):
             "CHK-EXT-READ-REQ",
             f"read @0x{WINDOW:08x} (BASE+0x{WINDOW_OFFSET:x}) produced {ars} external AR rising "
             f"edge, completed resp={RESP_NAMES.get(resp, resp)} rdata=0x{rdata:x}; "
-            f"AR address printed 0x{ar_addr:x} against SF-015 (window offset "
+            f"AR address printed 0x{ar_addr:x} against the expected window offset (window offset "
             f"0x{WINDOW_OFFSET:x}, full address 0x{WINDOW:x}); response and data are the "
-            f"reference terminator's (SF-031)",
+            f"reference terminator's (owner value pending)",
         )
         return ar_addr
 
@@ -277,7 +275,7 @@ class smc_ext_window_aperture_test_seq(SmcCsrSeq):
             f"two writes @0x{WINDOW:08x} each produced one external AW rising edge with the AR "
             f"address of the read leg 0x{ar_addr:x}: "
             + "; ".join(rows)
-            + "; write data and strobes are not exported (SF-031)",
+            + "; write data and strobes are not exported (owner value pending)",
         )
 
     async def _shim_leg(self) -> None:

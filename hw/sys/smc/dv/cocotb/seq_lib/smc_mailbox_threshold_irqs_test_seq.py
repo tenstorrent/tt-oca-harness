@@ -2,9 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Mailbox threshold programming, IRQS latching and IRQEN gating into IRQP on pair 6.
 
-Contract SMC_MAILBOX_013, anchor smc_mailbox_threshold_irqs_test.
-Scenarios: MBX-THRESH-PROGRAM S1-S7, MBX-IRQS-LATCH S1-S7, MBX-IRQP-ENABLE S2-S5.
-Sources: axi_lite_mailbox_unit architecture.adoc, axil_mailbox.rdl; open SF-009/021/022/024.
+Sources: axi_lite_mailbox_unit architecture.adoc, axil_mailbox.rdl.
 """
 
 from __future__ import annotations
@@ -226,7 +224,7 @@ class smc_mailbox_threshold_irqs_test_seq(SmcCsrSeq):
             "CHK-THRESHOLD-CLAMP-BEHAVIOUR",
             "STATUS above-threshold bit (one word, two words, readback) "
             f"{clamp}; bit 0 at one word and 1 at two words for every value; readback logged "
-            "as measured (SF-009)",
+            "as measured (owner value pending)",
         )
 
         wide = {}
@@ -242,7 +240,7 @@ class smc_mailbox_threshold_irqs_test_seq(SmcCsrSeq):
         self._mark_step("S4")
         self._log_chk(
             "CHK-THRESHOLD-WIDE-VALUE-OBSERVED",
-            f"measured (STATUS[2] with one word, WIRQT readback) {wide}; no compare (SF-009 open)",
+            f"measured (STATUS[2] with one word, WIRQT readback) {wide}; no compare",
         )
 
         await self._ack("ZERO")
@@ -377,7 +375,7 @@ class smc_mailbox_threshold_irqs_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-IRQS-OVERLAPPING-SOURCES",
             f"group write resp={cross.resp_code} and full write resp={full.resp_code}; "
-            f"IRQS[2:0]=0x{overlap:x}; no same-cycle alignment claimed (SF-024)",
+            f"IRQS[2:0]=0x{overlap:x}; no same-cycle alignment claimed (owner value pending)",
         )
 
         await self._ack("Q")
@@ -453,7 +451,7 @@ class smc_mailbox_threshold_irqs_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-IRQP-FOLLOWS-LIVE-ENABLE-CHANGE",
             f"after each group IRQP[2:0] equalled IRQS AND IRQEN: {rows}; reads made after the "
-            "group completed; no same-cycle claim (SF-024)",
+            "group completed; no same-cycle claim (owner value pending)",
         )
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, cg)

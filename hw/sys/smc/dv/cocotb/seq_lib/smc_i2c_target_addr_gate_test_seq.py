@@ -2,15 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C0 target address gate: ENABLETARGET, TARGET_ID match, non-match and role select.
 
-Contract SMC_I2C_TARGET_015, anchor smc_i2c_target_addr_gate_test.
-Scenarios: TGT-ROLE-SELECT.S1, S2, S4, S5, S6, TGT-ADDR-MATCH.S1, S2, S4, S5, S6,
-TGT-ACQ-REPSTART.S3, TGT-ACQ-WRITE.S3.
 Sources: hw/ip/i2c/regs/i2c.rdl (CTRL, TARGET_ID, ACQDATA, STATUS, FIFO_CTRL).
 
 The bench controller on the I2C0 pads sends START and a 7-bit address to the target; the ACK bit
 it reads and the ACQ FIFO entries software pops are the evidence. Every compare uses mask 0x7F
-or 0x00. The STOP entry sequence after an address ACK (SF-021, SF-029) and ENABLETARGET cleared
-or ACQRST written mid-transfer (SF-027) are measured and logged, not compared.
+or 0x00. The STOP entry sequence after an address ACK (owner value pending) and ENABLETARGET cleared
+or ACQRST written mid-transfer (owner value pending) are measured and logged, not compared.
 """
 
 from __future__ import annotations
@@ -502,7 +499,7 @@ class smc_i2c_target_addr_gate_test_seq(SmcCsrSeq):
             "CHK-I2C-TGT-ADDR-ONLY",
             f"address-only write ACK bit {a_acks[0]}; first entry {_fmt(a_entries[:1])} compared; "
             f"all entries {_fmt(a_entries)} logged; INTR_STATE=0x{a_intr:08x} "
-            f"UNEXP_STOP={int(bool(a_intr & INTR_UNEXP_STOP))} logged (SF-029, SF-021)",
+            f"UNEXP_STOP={int(bool(a_intr & INTR_UNEXP_STOP))} logged (owner value pending)",
         )
         self._chk(
             "CHK-I2C-TGT-RESTART-ADDRESS",
@@ -565,7 +562,7 @@ class smc_i2c_target_addr_gate_test_seq(SmcCsrSeq):
         self._stamp("S10")
         self._chk(
             "CHK-I2C-TGT-ROLE-MIDTRANSFER-LOG",
-            "; ".join(rows) + "; no compare (SF-027)",
+            "; ".join(rows) + "; no compare (owner value pending)",
         )
 
         await self._fifo_reset("S10_RECOVER")

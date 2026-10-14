@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Watchdog 0 byte-enable handling of every register write over SEP_IN.
 
-Contract SMC_POWER_TIMER_WDT_009, anchor smc_wdt_write_width_test.
-Scenarios WDT-WRITE-WIDTH.S1-S9.
 Sources wdt.rdl, watchdog.adoc#Register Access.
 """
 

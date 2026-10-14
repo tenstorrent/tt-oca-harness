@@ -2,15 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AVSBus slave resync after a cold reset: length, interval, status flags and the FSM probe.
 
-Contract SMC_POWER_AVS_010, anchor smc_avsbus_resync_timing_test.
-Scenarios: AVS-RESYNC.S1-S5, AVS-RESYNC.S10, AVS-RESYNC.S11, AVS-FSM-DEBUG.S1, S2 and S6.
 Sources: hw/ip/avsbus_controller/doc/{architecture,interface}.adoc, regs/avsbus_controller.rdl.
 
 No AVS_CMD traffic runs except the one command that proves the bus returned to service after
 RESYNC_INTERVAL 0. The FSM probe is sampled on every clk_periph_i edge; a state counts once it
 holds over two consecutive samples. The interval after a RESYNC_INTERVAL write is measured from
 the second resync on, so the value in force is the written one whenever the register domain
-picks it up (SF-014). Open findings SF-013, SF-014, SF-015 and SF-030 are measured and printed.
+picks it up (owner value pending). Open owner answers (second-request outcome, interval rule,
+edge mapping, AVS_RESET restart) are measured and printed.
 """
 
 from __future__ import annotations
@@ -308,7 +307,8 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             if not order or order[-1] != name:
                 order.append(name)
         assert any(n == RESET for _, n in probes.events[base_e:]), (
-            f"AVS_RESET never seen after the cold reset (SF-030: whether it restarts the AVS "
+            f"AVS_RESET never seen after the cold reset (open question: whether it restarts the "
+            f"AVS "
             f"FSM); sequence {'>'.join(order)}"
         )
         assert order[0] == RESET and order[1] == RESYNC, (
@@ -344,7 +344,7 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-AVS-FSM-RESET-SEQUENCE",
             f"probe order after rst_cold_ni low and release: {seq_text}; AVS_RESET first, then "
             f"AVS_SLAVE_RESYNC, then AVS_IDLE with nothing queued (cold reset reached the AVS "
-            f"FSM, SF-030 observed as AVS_RESET seen)",
+            f"FSM, restart observed as AVS_RESET seen)",
         )
 
         # S3: resync shape
@@ -389,7 +389,7 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-AVS-RESYNC-LEN35",
             f"first resync after the cold reset: avs_mdata 1 at all {in_span} probe samples "
             f"inside the span; span {span_ns:.1f} ns = {periods:.2f} avs_clock_o periods "
-            f"({self.t_avs_ns:.2f} ns each), 35 expected within 1 (SF-015)",
+            f"({self.t_avs_ns:.2f} ns each), 35 expected within 1 (owner value pending)",
         )
         self._chk(
             "S3",
@@ -484,7 +484,8 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-AVS-RESYNC-FLAG",
             f"AVS_SLAVE_IS_IN_RESYNC read 1 at every poll deep inside the bit-1 span and 0 at "
             f"every poll deep in AVS_IDLE ({counts}; lag window 3 avs_clock_o periods = "
-            f"{margin_ps / 1000:.0f} ns, SF-015); polls near an edge, offset from the probe "
+            f"{margin_ps / 1000:.0f} ns, owner value pending); polls near an edge, offset from the "
+            f"probe "
             f"entry: {edges_text}",
         )
         cocotb.log.info(
@@ -509,7 +510,8 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "S4",
             "CHK-AVS-FSM-IDLE-FLAG",
             f"AVS_BUS_IS_IDLE read 1 at every poll deep in AVS_IDLE with nothing in flight and "
-            f"0 at every poll deep inside the resync span ({counts}); edge mapping (SF-015): "
+            f"0 at every poll deep inside the resync span ({counts}); edge mapping (owner value "
+            f"pending): "
             f"{edges_text}",
         )
 
@@ -525,7 +527,7 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"{probes.samples} probe samples (one per clk_periph_i cycle, S1 to S4), all "
             f"resolvable; {out_of_reset} out-of-reset samples with exactly one of 17 bits set, "
             f"{probes.reset_zero_samples} all-zero samples in the in-reset run ending in "
-            f"AVS_RESET (counted, DOC-13), 0 violations out of reset",
+            f"AVS_RESET (counted), 0 violations out of reset",
         )
 
         # S6: interval for the default, a small and a mid value
@@ -561,7 +563,7 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"L = period - (interval + 1) - 3 * {t_avs_reg:.1f} clk_reg_i cycles, all >= 0, "
             f"period grows with the interval; L across intervals {residuals[0]:.2f} / "
             f"{residuals[1]:.2f} / {residuals[2]:.2f} clk_reg_i cycles, constancy is "
-            f"SF-013 / DOC-12 (printed, not asserted; 1 avs_clock_o period = "
+            f"owner value pending (printed, not asserted; 1 avs_clock_o period = "
             f"{self.t_avs_ns:.1f} ns)",
         )
 
@@ -580,7 +582,7 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"RESYNC_INTERVAL 0: measured period from the end of one resync to the start of the "
             f"next {period_zero / 1000:.1f} ns ({period_zero / 1000 / self.t_reg_ns:.1f} clk_reg_i "
             f"cycles); a command queued afterwards was answered ({occupied} reply, {drained} "
-            f"read back within {probes.samples - base_sf} probe samples); owner answer SF-013 "
+            f"read back within {probes.samples - base_sf} probe samples); owner answer "
             f"pending, value printed only",
         )
 
@@ -619,7 +621,7 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"{period_small / 1000:.1f} ns); since_end {since_end / 1000:.1f} ns, since_write "
             f"{since_write / 1000:.1f} ns, following {following / 1000:.1f} ns, period_default "
             f"{period_default / 1000:.1f} ns, period_small {period_small / 1000:.1f} ns; rule per "
-            "SF-014, crossing term per SF-013, measured only",
+            "owner value pending, crossing term likewise, measured only",
         )
 
         # S9: timeouts and fence

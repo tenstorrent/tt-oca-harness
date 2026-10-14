@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Inbound filter lowest-hit priority, per-channel permission and the denial responses.
 
-Contract SMC_FILTER_22, anchor smc_infilt_priority_deny_test.
-Allocated scenarios: INFILT-PRIORITY-PERM.S1-S5, INFILT-DENY-RESPONSE.S1-S3.
 Spec sources: axi_filter index.adoc Match Then Permit and Blocked Transactions, fabric.adoc
 Inbound Filtering, filter_ctrl.rdl FILTER_CONFIG.
 
@@ -32,7 +30,7 @@ _RESET_CFG = reg_reset_word(_FILTER_H, "FILTER_CTRL", "FILTER_CONFIG")
 _RESET_START = reg_reset_word(_FILTER_H, "FILTER_CTRL", "START_ADDR")
 _RESET_END = reg_reset_word(_FILTER_H, "FILTER_CTRL", "END_ADDR")
 
-# Contract words; the read-back adds data_bus_width 3.
+# Register words; the read-back adds data_bus_width 3.
 _DENY_B1 = 0x0000_0000_0100_0010
 _PERMIT_B1 = 0x0000_0000_0100_0013
 _RDONLY_B1 = 0x0000_0000_0100_0011

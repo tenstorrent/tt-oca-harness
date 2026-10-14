@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OCTS register map, reset values and access rules over SEP_IN.
 
-Contract SMC_POWER_TIMER_WDT_017, anchor smc_octs_csr_access_test.
-Scenarios OCTS-REG-ACCESS.S1-S4, OCTS-CTRL-REG.S1-S3, OCTS-PRESET-REG.S1-S2, OCTS-COUNT-REG.S1,
-OCTS-GPIO-ENABLE.S1, OCTS-STATUS-RUNNING.S1, OCTS-COUNT-PORT.S1.
 Specs hw/ip/system_timer_octs/regs/system_timer_octs.rdl, hw/ip/system_timer_octs/doc/memmap.adoc.
 """
 
@@ -228,7 +225,8 @@ class smc_octs_csr_access_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-OCTS-READONLY-START",
             "TIMER_START read %d after a write of 1; writes of 0xFFFFFFFF to STATUS COUNT_LO "
-            "COUNT_HI returned resp %s %s %s (SF-028); STATUS 0x%08x MODE 0 RUNNING 1; COUNT_HI "
+            "COUNT_HI returned resp %s %s %s (owner value pending); STATUS 0x%08x MODE 0 RUNNING "
+            "1; COUNT_HI "
             "0x%x; COUNT_LO 0x%08x within 0x%x of previous 0x%08x",
             start_rb,
             _RESP_NAME.get(resp_status, resp_status),
@@ -249,7 +247,7 @@ class smc_octs_csr_access_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-OCTS-APERTURE-PAST",
             "read 0x24 resp %s data 0x%08x; read 0x28 resp %s data 0x%08x; write 0x24 resp %s "
-            "(SF-012, SF-028)",
+            "(owner value pending)",
             _RESP_NAME.get(r1, r1),
             past1,
             _RESP_NAME.get(r2, r2),

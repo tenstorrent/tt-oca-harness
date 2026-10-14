@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DMA linear copy breadth: offsets, 2 KiB bursts, large sizes, 56-bit addresses, overlap, random."""
+"""DMA linear copy breadth: offsets, 2 KiB bursts, large sizes, 56-bit addresses, overlap, mix."""
 
 from __future__ import annotations
 

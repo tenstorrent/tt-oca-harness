@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DMA linear copy breadth through the SYS_OUT responder.
 
-Contract SMC_POWER_DMA_ZEROER_013, anchor smc_dma_linear_copy_test.
-Scenarios DMA-LINEAR-COPY.S2, S4, S5, S6, S8, S9 (offsets, 2 KiB bursts, large, 56-bit, overlap,
-random mix).
 Specs hw/sys/smc/doc/dma.adoc, vendor idma overlay dma_ctrl.rdl.
 
 Sources and destinations sit in the SYS_OUT responder memory and are preloaded and read back
@@ -401,7 +398,7 @@ class smc_dma_linear_copy_test_seq(SmcCsrSeq):
         self._mark("S6")
         return (
             f"each overlapping copy retired with DONE_0 equal to its ID and tb_dma_busy low "
-            f"(SF-020 open, measured and printed): {'; '.join(results)}"
+            f"(owner value pending, measured and printed): {'; '.join(results)}"
         )
 
     def _draw_offset(self, bucket: int) -> int:

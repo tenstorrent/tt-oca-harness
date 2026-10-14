@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Watchdog 0 CTRL.wdogip0 set, hold and clear sequence over SEP_IN.
 
-Contract SMC_POWER_TIMER_WDT_012, anchor smc_wdt_ip0_clear_test.
-Scenarios WDT-INTR-PENDING.S1-S5, WDT-INTR-CLEAR.S1-S6 and WDT-FEED.S3.
 Sources wdt.rdl, watchdog.adoc#Operation, smc-programming.adoc#watchdog.
 """
 
@@ -129,7 +127,7 @@ class smc_wdt_ip0_clear_test_seq(SmcCsrSeq):
             f"after a keyed CTRL write of bit 28 = 0 above CMP, 0 after CMP "
             f"0x{WDT_CMP_HIGH:x} and the clear sequence, and 1 at read {latency} of "
             f"{WDT_POLL_LIMIT} after CMP dropped to "
-            f"0x{WDT_CMP_LOW:x} (first-read latency is SF-007)",
+            f"0x{WDT_CMP_LOW:x} (first-read latency is an open owner question)",
         )
 
         # S6
@@ -213,7 +211,7 @@ class smc_wdt_ip0_clear_test_seq(SmcCsrSeq):
             "CHK-WDT-IP0-WRITE-ONE",
             f"scaled count below CMP 0x{WDT_CMP_MID:x}: after KEY and CTRL write of "
             f"0x{ctrl_a | WDT_IP0_MASK:08x} CTRL read 0x{ctrl11:08x}, bit 28 = "
-            f"{(ctrl11 >> WDT_IP0_BIT) & 1} (value is SF-008 and is not asserted)",
+            f"{(ctrl11 >> WDT_IP0_BIT) & 1} (value is an open owner question and is not asserted)",
         )
 
         self._nonvac_fence()

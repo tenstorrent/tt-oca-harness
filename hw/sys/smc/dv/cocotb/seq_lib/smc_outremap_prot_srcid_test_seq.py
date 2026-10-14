@@ -2,11 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AxPROT through the output remaps and the AxUSER source ID of each outbound path.
 
-Contract SMC_FILTER_26, anchor smc_outremap_prot_srcid_test.
-Allocated scenarios: OUTREMAP-PROT-INDEPENDENT.S1-S3, OUTFILT-PROT-PASSTHROUGH.S1-S2,
-OUTREMAP-VALID.S4, OUTROUTE-SRCID.S1-S3.
 Spec sources: fabric.adoc Privilege-Controlled Remapping, Protection Bit Pass-Through and
-Outbound Traffic Flow, output_remap.rdl, alias_remap.rdl; SF-001 and SF-008 (source IDs unpinned).
+Outbound Traffic Flow, output_remap.rdl, alias_remap.rdl; source IDs are not pinned.
 
 JTAG accesses carry each AxPROT value 0..7. The output interface is sampled passively at every
 AW and AR handshake; the AxPROT must equal the driven value and the address must be the remapped
@@ -47,7 +44,7 @@ def _alias_reg(reg: str) -> int:
     return smc_indexed_addr(f"SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_{reg}_BASE_ADDR", 6)
 
 
-# Contract words (output_remap.rdl REGION_ATTRS offset[55:0], valid[63]; alias region 6).
+# Register words (output_remap.rdl REGION_ATTRS offset[55:0], valid[63]; alias region 6).
 _M1_ATTRS = 0x8000_0000_0250_0000
 _M4_ATTRS = 0x0000_0000_02B0_0000
 _X1_ATTRS = 0x8000_0000_02A0_0000
@@ -225,7 +222,7 @@ class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
         )
         sampler_task = cocotb.start_soon(self._sampler.run())
 
-        # S1: the regions start at their reset words, then take the contract words.
+        # S1: the regions start at their reset words, then take the programmed words.
         for label, addr, _program, reset in (_PROGRAM[0], _PROGRAM[1], _PROGRAM[2], _PROGRAM[5]):
             await self.csr_read(f"{label}_RESET", addr, expected=reset, length=8)
         await self._program(_PROGRAM, final=False)
@@ -238,14 +235,14 @@ class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-PROT-MMODE",
             f"8 writes at 0x{_MMODE_WIN + 0x40:x}+8p landed at 0x{_MMODE_LAND + 0x40:x}+8p with "
-            f"awprot {mmode} == p; contract source fabric.adoc Privilege-Controlled Remapping",
+            f"awprot {mmode} == p; spec source fabric.adoc Privilege-Controlled Remapping",
         )
         xvisor = await self._sweep(_XVISOR_WIN, _XVISOR_LAND, 3)
         self._mark_step("S3")
         self._log_chk(
             "CHK-PROT-XVISOR",
             f"8 writes at 0x{_XVISOR_WIN + 0x40:x}+8p landed at 0x{_XVISOR_LAND + 0x40:x}+8p "
-            f"with awprot {xvisor} == p; contract source fabric.adoc Privilege-Controlled "
+            f"with awprot {xvisor} == p; spec source fabric.adoc Privilege-Controlled "
             "Remapping",
         )
 
@@ -282,7 +279,7 @@ class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
             f"for all eight values (M-mode {mmode}, Xvisor {xvisor})",
         )
 
-        # S6: source ID per path, observe-only (SF-001).
+        # S6: source ID per path, observe-only (owner value pending).
         direct = self._stable("direct", await self._path(_DIRECT, _DIRECT, 6))
         mmode_user = self._stable("mmode", await self._path(_MMODE_WIN, _MMODE_LAND, 7))
         xvisor_user = self._stable("xvisor", await self._path(_XVISOR_WIN, _XVISOR_LAND, 8))
@@ -294,19 +291,19 @@ class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
         ):
             self._log_chk(
                 chk,
-                f"observe-only SF-001 {path} path at 0x{win + 0x100:x}: awuser=0x{aw:x} "
+                f"observe-only {path} path at 0x{win + 0x100:x}: awuser=0x{aw:x} "
                 f"aruser=0x{ar:x} stable over 3 writes and 3 reads; no expected source ID; "
                 "fallback: only resolvability and stability are asserted",
             )
 
-        # S7: valid-clear region, observe-only (SF-008).
+        # S7: valid-clear region, observe-only (owner value pending).
         word = 0xF000_0000_0000_0004
         _, aw = await self._write_leg(_M4_ADDR, 0, _M4_ADDR, word, window=False)
         _, ar = await self._read_leg(_M4_ADDR, 0, _M4_ADDR, word)
         self._mark_step("S7")
         self._log_chk(
             "CHK-VALID0-SRCID-OBSERVE",
-            f"observe-only SF-008 M-mode region 4 (valid clear) at 0x{_M4_ADDR:x} landed at its "
+            f"observe-only M-mode region 4 (valid clear) at 0x{_M4_ADDR:x} landed at its "
             f"own address: awuser=0x{aw:x} aruser=0x{ar:x} next to direct awuser=0x{direct[0]:x} "
             f"aruser=0x{direct[1]:x} and M-mode awuser=0x{mmode_user[0]:x} "
             f"aruser=0x{mmode_user[1]:x}",

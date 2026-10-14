@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DST field storage, scratch registers and same-offset block independence.
 
-Contract SMC_DFD_TRACE_013, anchor smc_dfd_csr_field_access_test.
-Scenarios DST-CSR-ACCESS.S1/S3/S4, DST-INST-FIELDS.S1, DFD-SCRATCH-RW.S1/S2, DFD-APERTURE-MAP.S2.
 Sources: dfd_dst.rdl, dfd_dst_sink.rdl, dfd_funnel.rdl, hw/ip/dfd/regs/smc_cla.rdl.
 """
 

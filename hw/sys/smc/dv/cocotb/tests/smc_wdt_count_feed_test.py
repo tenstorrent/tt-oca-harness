@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Watchdog COUNT enable conditions, COUNT write semantics, COUNT_HI read and FEED write.
 
-Contract SMC_POWER_TIMER_WDT_010, anchor smc_wdt_count_feed_test.
-Scenarios WDT-COUNT-WRITE.S1-S4, WDT-COUNT-ENABLE.S1-S5 and WDT-FEED.S1, S2, S4.
 Sources wdt.rdl, smc-programming.adoc#watchdog, watchdog.adoc.
 """
 

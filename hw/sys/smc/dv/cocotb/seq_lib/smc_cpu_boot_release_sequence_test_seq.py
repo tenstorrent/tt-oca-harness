@@ -2,13 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cold-boot release of the CPU resets and the boundary self-isolation.
 
-Contract SMC_CPU_WEDGE_BOOT_008, anchor smc_cpu_boot_release_sequence_test.
-Scenarios CPU-BOOT-FUSE-SENSE-RELEASE.S1-S4, CPU-BOOT-SRAM-INIT.S2, CPU-ISO-COLD-SELF-ISOLATE.S1-S2.
 Sources: cpu.adoc (Reset and Boot, Memory Repair, CPU AXI Isolation), clk_rst.adoc.
 
-A sampler records the probes of the contract on every clk_smc_i rising edge; every check is
+A sampler records the probes of this test on every clk_smc_i rising edge; every check is
 made over that record, and every wait is a bounded count of edges. Requires +smc_hold_ext_boot.
-The checker lines print in contract order after the last step, each after its own compare.
+The checker lines print in step order after the last step, each after its own compare.
 """
 
 from __future__ import annotations
@@ -264,7 +262,7 @@ class smc_cpu_boot_release_sequence_test_seq(SmcResetSeqBase):
             "CHK-FUSE-RELEASE-BOTH-TERMS",
             "all core reset outputs and the uncore reset output first read 1 at edge %d, %d edges "
             "after the ext_boot rise (edge %d) and %d edges after the sense-done rise (edge %d); "
-            "latency per SF-022 is measured, not compared",
+            "latency is owner value pending, measured, not compared",
             release,
             release - boot,
             boot,
@@ -288,7 +286,7 @@ class smc_cpu_boot_release_sequence_test_seq(SmcResetSeqBase):
             "CHK-INIT-MEM-DONE-BYPASS",
             "smc_init_mem_done_o read 1 on all %d recorded edges with a CPU reset output at 1 "
             "(first %d, last %d); first read 1 at edge %d (cold reset asserted at edge %d, "
-            "smc_disable_sram_auto_init_i held 1 by the bench, strap mapping per SF-024)",
+            "smc_disable_sram_auto_init_i held 1 by the bench, strap mapping owner value pending)",
             len(up),
             up[0],
             up[-1],
@@ -328,7 +326,8 @@ class smc_cpu_boot_release_sequence_test_seq(SmcResetSeqBase):
             "CHK-COLD-SELF-ISOLATE-RELEASE",
             "tb_cpu_cluster_isolate fell at edge %d, %d clk_smc_i rises after the latest of "
             "init-done (edge %d), core release (edge %d) and uncore release (edge %d); the spec "
-            "gives four cycles, clock and counting rule per SF-018 (measured, not compared)",
+            "gives four cycles, clock and counting rule owner value pending (measured, "
+            "not compared)",
             fall,
             fall - latest,
             init_first,
@@ -367,8 +366,8 @@ class smc_cpu_boot_release_sequence_test_seq(SmcResetSeqBase):
             "CHK-FUSE-EXT-BOOT-MID-SENSE",
             "tb_hold_ext_boot driven 0 at edge %d with tb_fuse_sense_done 0 (cold reset release "
             "edge %d); no CPU reset output 1 before sense done at edge %d; all CPU resets "
-            "released at edge %d, %d edges after sense done (latency per SF-022 measured, "
-            "not compared)",
+            "released at edge %d, %d edges after sense done (latency owner value pending, "
+            "measured, not compared)",
             drive,
             rel2,
             sense2,

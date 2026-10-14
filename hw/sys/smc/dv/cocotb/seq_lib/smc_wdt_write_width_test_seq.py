@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Watchdog 0 byte-enable handling of every register write over SEP_IN.
 
-Contract SMC_POWER_TIMER_WDT_009, anchor smc_wdt_write_width_test.
-Scenarios WDT-WRITE-WIDTH.S1-S9.
 Sources wdt.rdl, watchdog.adoc#Register Access.
 """
 
@@ -35,7 +33,7 @@ _CHECKER_STEP = dict(zip(_CHECKERS, ("S4", "S6", "S8", "S9", "S10")))
 
 
 class smc_wdt_write_width_test_seq(SmcCsrSeq):
-    """Drive watchdog 0 with every byte-enable mask the contract names."""
+    """Drive watchdog 0 with every byte-enable mask the test lists."""
 
     def __init__(self, name: str = "smc_wdt_write_width_test_seq") -> None:
         super().__init__(name)
@@ -131,7 +129,8 @@ class smc_wdt_write_width_test_seq(SmcCsrSeq):
             f"KEY=0x{WDT_MAGIC_KEY:06x} with masks 0b0011 and 0b0111 left KEY 0 and the CMP write "
             f"0x3333 after each dropped (CMP 0x{WDT_CMP_RESET:x}); FEED=0x{WDT_FEED_MAGIC:08x} "
             f"mask 0b0011 while unlocked: OKAY, COUNT 0x{before:x} -> 0x{after:x} within "
-            f"A=0x{self._hold:x}, KEY 1; FEED/KEY read values are SF-010 and are not asserted",
+            f"A=0x{self._hold:x}, KEY 1; FEED/KEY read values are open owner questions and are not "
+            f"asserted",
         )
 
         # S5
@@ -161,7 +160,7 @@ class smc_wdt_write_width_test_seq(SmcCsrSeq):
             f"CMP masks {' '.join(cmp_rows)} left CMP 0x{WDT_CMP_RESET:x} with KEY 1; mask 0b0011 "
             "read back 0xa5a5 with KEY 0; SCALED_COUNT mask 0b0001 left KEY 1 and mask 0b0011 "
             "locked it (KEY 0); COUNT_HI=0xffffffff mask 0b0011 answered OKAY with KEY 1; "
-            "SCALED_COUNT and COUNT_HI read values are SF-010 and are not asserted",
+            "SCALED_COUNT and COUNT_HI read values are open owner questions and are not asserted",
         )
 
         # S7
@@ -242,7 +241,8 @@ class smc_wdt_write_width_test_seq(SmcCsrSeq):
             f"narrow COUNT writes (masks {' '.join(count_rows)}) answered OKAY with COUNT within "
             f"A=0x{self._hold:x} of 0x{WDT_COUNT_BASE:x} and KEY 1; a byte-0 write of 0x7f left "
             f"the unlock in place, the 32-bit write was accepted (COUNT 0x{count9:x} within A of "
-            "0x40) and KEY read 0; counting with neither enable is SF-014 and is not asserted",
+            "0x40) and KEY read 0; counting with neither enable is an open owner question and is "
+            "not asserted",
         )
 
         # S10

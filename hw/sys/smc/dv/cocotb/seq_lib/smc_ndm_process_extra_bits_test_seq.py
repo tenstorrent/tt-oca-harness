@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """NDMRESET_PROCESS bits at and above the cluster count: stored, not driven.
 
-Contract SMC_RESET_052, anchor smc_ndm_process_extra_bits_test.
-Allocated scenario: RST-NDM.S4.
 Spec sources: ndm_reset.rdl NDMRESET_PROCESS, smc-programming.adoc External CPU Cluster NDM Reset.
 """
 

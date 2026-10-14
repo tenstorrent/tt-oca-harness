@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Outside-window DECERR of the input-fabric region demux on sys_axi_in and sep_axi_in.
 
-Contract XBAR_026, anchor smc_inbound_outside_window_decerr_test.
-Allocated scenarios: XBAR-SYS-DEMUX.S2/S3, XBAR-SEP-DEMUX.S2, XBAR-REGION-SIZE.S1/S2/S3,
-XBAR-REMAP-REGION-DECERR.S2/S3.
 Spec sources: memmap.adoc Memory Map, fabric.adoc Fabric Topology, smc_base_config.rdl REGION_SIZE.
 """
 
@@ -325,7 +322,7 @@ class smc_inbound_outside_window_decerr_test_seq(SmcCsrSeq):
         self._mark_step("S6")
         self._log_chk(
             "CHK-OUTSIDE-WINDOW-DECERR",
-            f"DECERR on read and write: {outside}; read data observe-only (SF-007)",
+            f"DECERR on read and write: {outside}; read data observe-only (owner value pending)",
         )
 
         # S7: positive control after the DECERR accesses shows the probes are live.

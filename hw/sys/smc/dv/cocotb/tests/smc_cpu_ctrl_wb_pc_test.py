@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_011 / smc_cpu_ctrl_wb_pc_test: CPU_CTRL WB_PC read decode and idle values."""
+"""smc_cpu_ctrl_wb_pc_test: CPU_CTRL WB_PC read decode and idle values."""
 
 from __future__ import annotations
 

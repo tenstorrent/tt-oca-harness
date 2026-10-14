@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_025 / smc_plic_register_test: PLIC PRIORITY, PENDING, ENABLE, THRESHOLD, CLAIM."""
+"""smc_plic_register_test: PLIC PRIORITY, PENDING, ENABLE, THRESHOLD, CLAIM."""
 
 from __future__ import annotations
 

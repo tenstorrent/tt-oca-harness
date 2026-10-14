@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Reset-pin 32-sample de-glitch threshold.
 
-Contract SMC_RESET_029, anchor smc_reset_pin_deglitch_test.
-Scenarios: RST-COLD-RESET.S1, RST-COOL-PIN.S1.
 Spec: clk_rst.adoc (Power-Good and Cold Reset), port_table.adoc (SMC Port Declaration).
 
 A 31-sample low pulse on ``rst_cold_ni`` or ``rst_cool_ni`` leaves the stable cold reset and

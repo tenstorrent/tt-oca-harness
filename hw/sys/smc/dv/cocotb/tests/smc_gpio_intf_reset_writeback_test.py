@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO_INTF reset-word write-back on all 65 instances.
 
-Contract SMC_GPIO_CSR_011, anchor smc_gpio_intf_reset_writeback_test.
-Allocated scenarios: GPIO-CSR-RESET.S5.
 Spec sources: hw/ip/gpio/regs/gpio_intf.rdl, hw/sys/smc/regs/gen/c/smc_addr.h.
 """
 

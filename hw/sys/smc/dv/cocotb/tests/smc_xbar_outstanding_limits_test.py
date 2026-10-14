@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Outstanding access groups at, above and across subordinates of the two crossbars.
 
-Contract SMC_XBAR_OUTSTANDING_LIMITS_TEST, anchor smc_xbar_outstanding_limits_test.
-Allocated scenarios: AXI-LITE-XBAR-LIMIT.S1-S4, AXI-LOCAL-XBAR-LIMIT.S1-S4.
 Spec sources: fabric.adoc Configuration Parameters, scratch.rdl SCRATCH, chip_config.rdl.
 """
 

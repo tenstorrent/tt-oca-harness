@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """NDM reset request bits into raw tb_cpu_interrupts bit 267 through the OR.
 
-Contract SMC_IRQ_010, anchor smc_ndm_irq_or_test.
-Allocated scenarios: IRQ-NDM.S1, IRQ-NDM.S2, IRQ-NDM.S3.
 Spec sources: interrupts.adoc SMC indexed interrupt map table; port_table.adoc
 smc_ndmreset_request_i.
 """

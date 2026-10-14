@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Zeroer jobs whose write responses carry SLVERR, DECERR or a mix.
 
-Contract SMC_POWER_DMA_ZEROER_024, anchor smc_zeroer_resp_unchecked_test.
-Scenarios ZEROER-RESP-UNCHECKED.S1, .S2 and .S3.
 Sources hw/sys/smc/doc/zeroer.adoc (Outstanding Transaction Management, Status Features).
 """
 

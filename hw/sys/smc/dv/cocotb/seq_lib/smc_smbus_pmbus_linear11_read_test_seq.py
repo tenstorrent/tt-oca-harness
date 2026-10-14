@@ -2,14 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C0 controller read-word transfers with SMBus field variations.
 
-Contract SMC_I2C_SMBUS_010, anchor smc_smbus_pmbus_linear11_read_test.
-Scenarios: PMBUS-LINEAR11-READ.S1, PMBUS-LINEAR11-READ.S2, PMBUS-LINEAR11-READ.S3,
-SMBSUS-HOST-DRIVE.S2, SMBUS-PAD-DIRECTION.S3.
 Sources: hw/ip/i2c/regs/i2c.rdl (FDATA, RDATA, SMBUS_CTRL.SMBSUS), hw/ip/i2c/regs/i2c_ctrl.rdl
 (I2C_CONTROLLER_MODE_EN), hw/ip/i2c/doc/memmap.adoc (Endianness).
 
 The word is a data pattern: the two RDATA bytes are compared in the order the bench target
-sent them, and the Linear11 decode is logged and not compared (SF-014).
+sent them, and the Linear11 decode is logged and not compared (owner value pending).
 """
 
 from __future__ import annotations
@@ -235,7 +232,7 @@ class smc_smbus_pmbus_linear11_read_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-PMBUS-DECODE-LOG",
             f"command 0x{POS_CMD:02x} {self.pos_decode}; command 0x{NEG_CMD:02x} "
-            f"{_linear11(got)}; logged, no value compared (SF-014)",
+            f"{_linear11(got)}; logged, no value compared (owner value pending)",
         )
 
     def _sus_low(self) -> int:

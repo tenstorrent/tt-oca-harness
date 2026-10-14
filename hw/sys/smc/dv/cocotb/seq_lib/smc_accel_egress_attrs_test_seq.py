@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DMA and zeroer request attributes sampled at the SYS_OUT boundary.
 
-Contract SMC_POWER_DMA_ZEROER_029, anchor smc_accel_egress_attrs_test.
-Scenarios: ACCEL-EGRESS-ATTRS.S1, ACCEL-EGRESS-ATTRS.S2, ACCEL-EGRESS-ATTRS.S6.
 Sources: smc dma.adoc, zeroer.adoc, fabric.adoc (alias remapping, source ID by traffic path).
 
 The SYS_OUT request is read from the packed ``output_axi_req`` of tb_top. Its field offsets
@@ -47,7 +45,7 @@ _W_OFF = _B_READY_OFF + 2
 _AW_VALID_OFF = _W_OFF + _W_W
 _AW_OFF = _AW_VALID_OFF + 1
 _REQ_W = _AW_OFF + _AW_W
-# (offset within the channel, width) for the members the contract names.
+# (offset within the channel, width) for the members the checks cover.
 _AR_FIELDS = {"user": (0, 12), "prot": (20, 3), "cache": (23, 4), "burst": (28, 2)}
 _AW_FIELDS = {"user": (0, 12), "prot": (26, 3), "cache": (29, 4), "burst": (34, 2)}
 _AR_ADDR_OFF = _AR_BELOW_ADDR
@@ -258,7 +256,7 @@ class smc_accel_egress_attrs_test_seq(output_fabric_pass_all_cfg_seq):
             "CHK-ACCEL-EGRESS-CACHE",
             "S3",
             "bit 1 set on all %d DMA AR and %d DMA AW; ARCACHE values %s, AWCACHE values %s "
-            "(alias remap at reset; encoding is the SF-016 answer, SF-018 not driven)",
+            "(alias remap at reset; encoding pending owner value, alias remap values not driven)",
             len(kept["dma_ar"]),
             len(kept["dma_aw"]),
             [f"0x{v:x}" for v in encodings["dma_ar"]],
@@ -279,7 +277,7 @@ class smc_accel_egress_attrs_test_seq(output_fabric_pass_all_cfg_seq):
         self._chk(
             "CHK-ACCEL-EGRESS-PROT-USER",
             "S4",
-            "each member is constant over the run (values are the SF-016 answers): %s",
+            "each member is constant over the run (values pending owner value): %s",
             " ".join(summary),
         )
         self._fence()

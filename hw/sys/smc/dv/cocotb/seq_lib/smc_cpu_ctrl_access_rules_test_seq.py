@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_017 / smc_cpu_ctrl_access_rules_test: CPU_CTRL access rules.
+"""smc_cpu_ctrl_access_rules_test: CPU_CTRL access rules.
 
-Scenarios: CPUCTRL-ACCESS.S4, CPUCTRL-ACCESS.S5, CPUCTRL-ACCESS.S6, CPUCTRL-ACCESS.S9.
 Sources: hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl, hw/sys/smc/doc/memmap.adoc.
 """
 
@@ -203,7 +202,7 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-ACCR-RO-RESP",
             "each read-only register read its pre-write word after the write "
-            "(write responses printed, SF-003 open): " + " ".join(rows),
+            "(write responses printed, owner value pending): " + " ".join(rows),
         )
 
         # S4
@@ -251,7 +250,7 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-ACCR-RESERVED",
             "named fields held after ones over undeclared bits; reserved bits as read "
-            "(SF-002 open): " + " ".join(rows),
+            "(owner value pending): " + " ".join(rows),
         )
 
         # S5
@@ -274,7 +273,8 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
         self._stamp("S5")
         self._chk(
             "CHK-ACCR-PROT",
-            "secure and non-secure SCRATCH[1] accesses completed (SF-027 open): " + " ".join(rows),
+            "secure and non-secure SCRATCH[1] accesses completed (owner value pending): "
+            + " ".join(rows),
         )
 
         cocotb.log.info(

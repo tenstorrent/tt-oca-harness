@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cold-reset conditioning counted in clk_ref_i cycles.
 
-Contract SMC_CLOCK_SRC_016, anchor smc_ref_reset_cycles_test.
-Scenarios: CSRC-REF-RESET.S1, CSRC-REF-RESET.S2.
 Spec: clk_rst.adoc (Power-Good and Cold Reset), port_table.adoc (SMC Port Declaration).
 
 The ``+smc_cell`` run argument selects the reference period (ref10 or ref4); the SMC clock is

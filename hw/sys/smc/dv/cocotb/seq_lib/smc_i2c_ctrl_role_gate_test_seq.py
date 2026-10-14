@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C0 controller role gate, queue occupancy and pad-control readback.
 
-Contract SMC_I2C_CTRL_001, anchor smc_i2c_ctrl_role_gate_test.
-Scenarios: I2CC-ROLE-ENABLE.S1, I2CC-ROLE-ENABLE.S3, I2CC-PAD-PATH.S3, I2CC-PAD-PATH.S5,
-I2CC-STATUS-FLAGS.S3.
 Sources: hw/ip/i2c/regs/i2c.rdl (CTRL.ENABLEHOST, FDATA, STATUS.FMTEMPTY, VAL),
 hw/ip/i2c/regs/i2c_ctrl.rdl (I2C_CTRL.I2C_EN).
 
@@ -13,7 +10,7 @@ bench EEPROM sees no START. Setting `CTRL.ENABLEHOST` then runs the queued strea
 the EEPROM frames as one START, one STOP and one data byte. Clearing `I2C_CTRL.I2C_EN`
 leaves the core role enables where they were. `VAL` is read with the lines released and
 pulled low and the words are logged without a compare while the oversampling rate is open
-(SF-018).
+(owner value pending).
 """
 
 from __future__ import annotations

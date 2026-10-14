@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Boundary sweep of the 24 SMC register islands that declare a past-extent response.
 
-Contract SMC_REG_ISLAND_BOUNDARY_001, anchor smc_reg_island_boundary_sweep_test.
-Scenarios ISL-PASTEXT-DECERR.S1-S9, ISL-PASTEXT-SLVERR.S1-S15.
 Sources: smc.rdl (ocah_past_extent_resp), regs/gen/adoc/memory_map.adoc, regs/gen/py memory map.
 """
 

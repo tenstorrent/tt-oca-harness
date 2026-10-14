@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DMA shared configuration registers: storage, field independence, retention, aliases.
 
-Contract SMC_POWER_DMA_ZEROER_011, anchor smc_dma_csr_config_test.
-Scenarios DMA-CSR-CONFIG.S1 to S5 (own value, HI full 32 bits, CONFIG fields, retention, alias).
 Specs hw/sys/smc/doc/dma.adoc, hw/sys/smc/doc/memmap.adoc, vendor idma overlay dma_ctrl.rdl.
 
 The destination bytes of both copies are read through the SYS_OUT responder's backdoor.
@@ -192,7 +190,7 @@ class smc_dma_csr_config_test_seq(SmcCsrSeq):
         return (
             f"{writes} CONFIG writes (bits 0..10 alone, SRC_MAX_LLEN 0..7, DST_MAX_LLEN 0..7) "
             f"read back exactly in bits [10:0]; reserved bits [31:11] never written, read "
-            f"back with OR 0x{reserved_or:08x} (SF-021 open: measured, not asserted)"
+            f"back with OR 0x{reserved_or:08x} (owner value pending: measured, not asserted)"
         )
 
     def _seed(self, src: int, dst: int, rows: int, src_stride: int, dst_stride: int) -> bytes:

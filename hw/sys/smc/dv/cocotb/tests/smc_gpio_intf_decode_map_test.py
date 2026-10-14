@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO_INTF instance decode and aliasing.
 
-Contract SMC_GPIO_CSR_007, anchor smc_gpio_intf_decode_map_test.
-Allocated scenarios: GPIO-CSR-DECODE.S1 to S4.
 Spec sources: hw/ip/gpio/regs/gpio_intf.rdl, doc/programmer/src/smc-programming.adoc.
 """
 

@@ -2,9 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AVSBus pad enables follow AVS_CONFIG.AVS_GPIO_ENABLE and the enabled pads carry a frame.
 
-Contract SMC_POWER_AVS_015, anchor smc_avsbus_pad_enable_test.
-Scenarios: AVS-PAD-ENABLE.S1, AVS-PAD-ENABLE.S2.
-Sources: hw/ip/avsbus_controller/doc/interface.adoc, hw/sys/smc/doc/port_table.adoc.
+Sources: hw/ip/avsbus_controller/doc/interface.adoc, hw/sys/smc/doc/clk_rst.adoc.
 """
 
 from __future__ import annotations

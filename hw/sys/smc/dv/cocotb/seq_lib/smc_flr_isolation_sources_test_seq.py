@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Isolation request sources, the FLR latch and skip_mem_repair_o.
 
-Contract SMC_CPU_WEDGE_BOOT_020, anchor smc_flr_isolation_sources_test.
-Scenarios CPU-FLR-ISOLATE-REQ-OR.S1-S3 and CPU-FLR-LATCH-SKIP-REPAIR.S1-S3.
 Sources: smc/doc/clk_rst.adoc (Function Level Reset and Isolation), smc/doc/cpu.adoc.
 
 isolate_req_o bit 3 is ISOLATE_REQ_REG[3] OR (PINEN[3] AND pin) OR (SMCEN[3] AND latch). The
@@ -31,7 +29,7 @@ _PAD_TABLE = _REPO / "doc" / "integrator" / "meta" / "ocah_gpio_table.csv"
 
 #: Ceiling in clk_smc_i cycles for an output to follow its inputs; expiry fails.
 _BOUND = 128
-#: Consecutive rises that must agree where the contract asks for a held level.
+#: Consecutive rises that must agree where the spec asks for a held level.
 _HOLD = 32
 _NO_SKIP_RISES = 64
 #: Largest delay, in clk_smc_i cycles, between the write launch and the FLR raise.
@@ -57,7 +55,7 @@ def _isolate_req_pad() -> int:
 
 
 class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
-    """Walk steps S1-S7 of the contract and print one evidence line per checker."""
+    """Walk steps S1-S7 and print one evidence line per checker."""
 
     def __init__(self, name: str) -> None:
         super().__init__(name)

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO interrupt OR halves to PLIC sources 284 and 285.
 
-Contract SMC_GPIO_PAD_IRQ_022, anchor smc_gpio_irq_or_test.
-Scenarios PADIRQ-IRQ-OR.S1 .. PADIRQ-IRQ-OR.S5.
 Spec sources: hw/sys/smc/doc/interrupts.adoc, hw/ip/gpio/doc/architecture.adoc.
 """
 

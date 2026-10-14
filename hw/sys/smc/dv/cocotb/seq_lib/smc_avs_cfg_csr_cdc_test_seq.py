@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AVS_CFG_0, AVS_CFG_1 and AVS_CONFIG behaviour across the AVSBus CDC bridge.
 
-Contract SMC_CLOCK_SRC_015, anchor smc_avs_cfg_csr_cdc_test.
-Scenarios CSRC-AVS-CSR.S1..S5 and CSRC-CDC-AVS.S1..S3 at the default clock triple.
 Sources: hw/ip/avsbus_controller/regs/avsbus_controller.rdl, hw/sys/smc/doc/clk_rst.adoc.
 
 Every AVS_CFG_1 clock-configuration change follows the programmer's order: set
@@ -315,7 +313,7 @@ class smc_avs_cfg_csr_cdc_test_seq(SmcCsrSeq):
             "CHK-AVS-CSR-UNALLOCATED",
             f"unallocated mask 0x{UNALLOCATED_BM:08x}: read before 0x{before & UNALLOCATED_BM:08x}"
             f", after writing ones 0x{after & UNALLOCATED_BM:08x}, after writing zeros "
-            f"0x{cleared & UNALLOCATED_BM:08x} (SF-028 open); defined fields unchanged "
+            f"0x{cleared & UNALLOCATED_BM:08x} (owner value pending); defined fields unchanged "
             f"0x{before & DEFINED_BM:08x}; AVS clock span {MEASURE_PERIODS} periods "
             f"{period_before} ps before, {period_after} ps after",
         )

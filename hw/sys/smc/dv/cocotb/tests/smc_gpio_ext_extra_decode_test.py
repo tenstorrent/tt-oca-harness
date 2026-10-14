@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Supplementary GPIO blocks of the external window and the eFuse SHIM boundary.
 
-Contract SMC_GPIO_CSR_023, anchor smc_gpio_ext_extra_decode_test.
-Scenarios GPIO-CSR-EXT-EXTRA.S1, .S2, .S3 and .S4.
 Spec sources: hw/sys/smc/doc/memmap.adoc (AXI-Lite External Window).
 
 Run:

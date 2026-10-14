@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Software lock enforcement per field of SMC_EFUSE_MAP.
 
-Contract SMC_EFUSE_MAP_014, anchor smc_efuse_map_lock_field_enforce_test.
-Scenarios EMAP-WR-LOCKED.S2/S4, EMAP-LOCK-PAIR.S2/S3, EMAP-LOCK-WHOLE-FIELD.S1-S4,
-EMAP-SHADOW-OUT.S3.
 Sources: smc_efuse_map.rdl (LOCKS), architecture.adoc (Hardware vs. Software Locks),
 smc-programming.adoc (whole-field locks), port_table.adoc (shadow_regs_o).
 

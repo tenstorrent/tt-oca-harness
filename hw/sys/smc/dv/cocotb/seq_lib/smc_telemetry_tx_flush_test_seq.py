@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_POWER_TELEMETRY_015 / smc_telemetry_tx_flush_test: transmitter flush on receiver 0.
+"""Telemetry transmitter flush on receiver 0.
 
-Scenarios: TLM-TX-FLUSH.S3, S4, S5, S6, S7.
 Sources: hw/ip/telemetry_receiver/doc/architecture.adoc (Reset and Flush), doc/interface.adoc,
 hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl, doc/programmer/src/smc-programming.adoc.
 
@@ -376,7 +375,7 @@ class smc_telemetry_tx_flush_test_seq(SmcCsrSeq):
             "CHK-TELEMETRY-TX-FLUSH-REWRITE",
             "second write while pending (CTRL read 0x%08x): completion %d cycle(s) after afready_i "
             "high (bound %d) with afvalid_o 0 and CTRL 0x%08x; afvalid_o rising edges counted "
-            "from the first write to completion: %d (SF-012: not compared)",
+            "from the first write to completion: %d (not compared)",
             pending,
             rewrite_fall,
             HANDSHAKE_BOUND,

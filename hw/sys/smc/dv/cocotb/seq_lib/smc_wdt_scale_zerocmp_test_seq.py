@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Watchdog 0 SCALED_COUNT shift relation and the wdogzerocmp count clear.
 
-Contract SMC_POWER_TIMER_WDT_011, anchor smc_wdt_scale_zerocmp_test.
-Scenarios WDT-SCALE.S1-S4 and WDT-ZEROCMP.S1-S5.
 Sources wdt.rdl, smc-programming.adoc#watchdog.
 """
 
@@ -114,7 +112,7 @@ class smc_wdt_scale_zerocmp_test_seq(SmcCsrSeq):
                 f"COUNT=0x{c:08x} scale {s}: SCALED_COUNT=0x{sc:x} COUNT>>s=0x{c >> s:x}"
                 for c, s, sc in wide
             )
-            + "; the width limit is SF-013 and is not asserted",
+            + "; the width limit is an open owner question and is not asserted",
         )
 
         # S4
@@ -179,7 +177,8 @@ class smc_wdt_scale_zerocmp_test_seq(SmcCsrSeq):
             "CHK-WDT-ZEROCMP-CMP0",
             f"CMP=0xFFFF cleared: wdogip0={ip7_pre}; CMP=0 with wdogzerocmp set: "
             f"wdogip0={ip7}; 8 COUNT reads "
-            f"{','.join(f'0x{r:x}' for r in reads7)} (count after each clear is SF-007)",
+            f"{','.join(f'0x{r:x}' for r in reads7)} (count after each clear is an open owner "
+            f"question)",
         )
 
         # S8
@@ -215,7 +214,7 @@ class smc_wdt_scale_zerocmp_test_seq(SmcCsrSeq):
             f"vs CMP<<0=0x40; scale 3 CMP 4: 16 reads contain a drop, wdogip0={ip8}, "
             f"max 0x{max(reads8):x} vs CMP<<3=0x20; zerocmp set at COUNT 0x{last:x} after "
             f"{poll + 1} polls: 8 reads {','.join(f'0x{r:x}' for r in reads9)} contain a drop "
-            f"(latency is SF-007)",
+            f"(latency is an open owner question)",
         )
 
         self._nonvac_fence()

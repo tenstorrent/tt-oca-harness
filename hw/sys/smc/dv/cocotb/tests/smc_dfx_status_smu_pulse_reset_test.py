@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """STATUS_SMU independence, reserved bits, pulses, resets and read-only writes.
 
-Contract SMC_JTAG_DM_020, anchor smc_dfx_status_smu_pulse_reset_test.
-Scenarios JDM-DFX-STATUS-STICKY.S6, S9 .. S13 and JDM-DFX-STATUS-RO.S1 .. S4.
 Spec: dfx_ctrl_status.rdl STATUS, memmap.adoc DFX Status, clk_rst.adoc.
 """
 

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU_CTRL SEMA[0..3] signed accumulate, independence, wrap and pipelined writes.
 
-Contract SMC_CPU_CTRL_014, anchor smc_cpu_ctrl_sema_test.
-Scenarios: CPUCTRL-SEMA.S1 through CPUCTRL-SEMA.S6.
 Sources: hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl (SEMA, SEMA[4]), generated cpu_ctrl.h.
 """
 
@@ -49,7 +47,7 @@ def _neg(value: int) -> int:
 
 
 class smc_cpu_ctrl_sema_test_seq(SmcCsrSeq):
-    """SEMA signed accumulate; SF-009 values are measured and printed."""
+    """SEMA signed accumulate; values owner-pending, measured and printed."""
 
     def __init__(self, name: str = "smc_cpu_ctrl_sema_test_seq") -> None:
         super().__init__(name)
@@ -148,7 +146,7 @@ class smc_cpu_ctrl_sema_test_seq(SmcCsrSeq):
             "S4",
             "CHK-SEMA-NEG",
             "SEMA[0] after -1 from 0 reads 0x%x twice; restore by writing 0x%x, final read "
-            "0x%x (SF-009: result not asserted)",
+            "0x%x (owner value pending: result not asserted)",
             neg_a,
             _neg(neg_a),
             neg_final,
@@ -172,7 +170,7 @@ class smc_cpu_ctrl_sema_test_seq(SmcCsrSeq):
             "S5",
             "CHK-SEMA-WRAP",
             "SEMA[0] after +32767 reads 0x%x; after one more +1 reads 0x%x; restore read 0x%x; "
-            "after -32768 and -1 reads 0x%x; final read 0x%x (SF-009: not asserted)",
+            "after -32768 and -1 reads 0x%x; final read 0x%x (owner value pending: not asserted)",
             at_max,
             over,
             mid,
@@ -190,7 +188,7 @@ class smc_cpu_ctrl_sema_test_seq(SmcCsrSeq):
             "S6",
             "CHK-SEMA-UPPER",
             "SEMA[0] after write 0x00010005 reads 0x%x twice; restore by writing 0x%x, final read "
-            "0x%x (SF-009: not asserted)",
+            "0x%x (owner value pending: not asserted)",
             upper,
             _neg(upper),
             upper_final,

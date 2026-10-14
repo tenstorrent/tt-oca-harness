@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Hang detector register field access, isolation and SMC_ATTRIBUTES interrupt counts.
 
-Contract SMC_IRQ_015, anchor smc_irq_csr_readback_test.
-Allocated scenarios: IRQ-HANG-REGS.S2, IRQ-HANG-REGS.S3, IRQ-HANG-REGS.S4, IRQ-ATTR.S1.
 Spec sources: smc_base_config.rdl HANG_DET_CTRL and TIMEOUT_THRESHOLD, cpu_ctrl.rdl SMC_ATTRIBUTES.
 """
 

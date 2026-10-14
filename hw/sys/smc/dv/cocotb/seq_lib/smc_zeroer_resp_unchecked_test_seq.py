@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Zeroer jobs whose write responses carry SLVERR, DECERR or a mix.
 
-Contract SMC_POWER_DMA_ZEROER_024, anchor smc_zeroer_resp_unchecked_test.
-Scenarios ZEROER-RESP-UNCHECKED.S1, .S2 and .S3.
 Sources hw/sys/smc/doc/zeroer.adoc (Outstanding Transaction Management, Status Features).
 
 A 6 KiB region is poisoned and zeroed by an uninjected job that records the
@@ -382,7 +380,7 @@ class smc_zeroer_resp_unchecked_test_seq(output_fabric_pass_all_cfg_seq):
 
     def _nonvac(self) -> None:
         steps = [s for s, _t in self._stamps]
-        assert steps == ["S1", "S2", "S3", "S4"], f"step stamps {steps} not in contract order"
+        assert steps == ["S1", "S2", "S3", "S4"], f"step stamps {steps} not in the expected order"
         times = [t for _s, t in self._stamps]
         assert all(b > a for a, b in zip(times, times[1:], strict=False)), (
             f"step stamps {times} are not strictly increasing"

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Scratch bank reset value and independent read/write of the sixteen scratch registers.
 
-Contract SMC_RESET_048, anchor smc_scratch_banks_test.
-Allocated scenarios: RST-SCRATCH.S1, RST-SCRATCH.S2.
 Spec sources: hw/sys/smc/regs/blocks/scratch/scratch.rdl,
 hw/sys/smc/regs/blocks/misc_wrap/misc_wrap.rdl.
 """
@@ -119,13 +117,13 @@ class smc_scratch_banks_test_seq(SmcCsrSeq):
 
     def _assert_fence(self) -> None:
         ids = tuple(s for s, _ in self._steps)
-        assert ids == STEP_ORDER, f"step ids {ids} != contract order {STEP_ORDER}"
+        assert ids == STEP_ORDER, f"step ids {ids} != expected order {STEP_ORDER}"
         stamps = [t for _, t in self._steps]
         assert all(b > a for a, b in zip(stamps, stamps[1:])), (
             f"step stamps not increasing: {stamps}"
         )
         chk_ids = tuple(c for c, _ in self._chk_lines)
-        assert chk_ids == CHK_ORDER, f"checker lines {chk_ids} != contract order {CHK_ORDER}"
+        assert chk_ids == CHK_ORDER, f"checker lines {chk_ids} != expected order {CHK_ORDER}"
         step_stamp = dict(self._steps)
         for chk_id, t in self._chk_lines:
             stamp = step_stamp[CHK_STEP[chk_id]]

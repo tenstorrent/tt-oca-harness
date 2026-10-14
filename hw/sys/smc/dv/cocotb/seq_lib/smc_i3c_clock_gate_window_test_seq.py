@@ -2,15 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I3C window response across the peripheral clock gate (register access only).
 
-Contract SMC_I3C_SPI_011, anchor smc_i3c_clock_gate_window_test.
-Scenarios I3CSPI-GATE-RESPONSE.S1-S5, I3CSPI-GATE-RESTORE.S1-S4, I3CSPI-GATE-INFLIGHT.S1-S4.
 Sources: smc_base_config.rdl CLOCK_GATE_CONTROL.i3c_cg_en, clk_rst.adoc access gates, memmap.adoc.
 
 While CLOCK_GATE_CONTROL.i3c_cg_en is set every access to an I3C window answers SLVERR with
 read data 0xBADCAB1E; the GPIO interface and UART windows keep answering OKAY, and each I3C
 window answers OKAY with its HCI_VERSION reset again after the enable is cleared. The
-retention of a DAT word written while gated (SF-026) and the response of accesses queued
-around the gate write (SF-025) are measured and printed, not asserted.
+retention of a DAT word written while gated (owner value pending) and the response of
+accesses queued around the gate write (owner value pending) are measured and printed, not asserted.
 """
 
 from __future__ import annotations
@@ -69,7 +67,7 @@ UART_PROBE = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR", 0
 )
 
-# Fence terms in contract order: (term, step, checker printed after the term).
+# Fence terms in table order: (term, step, checker printed after the term).
 FENCE = (
     ("GATE_CLEAR_CONTROL", "S1", None),
     ("GATED_SLVERR", "S2", "CHK-I3C-GATED-SLVERR"),
@@ -204,7 +202,7 @@ class smc_i3c_clock_gate_window_test_seq(SmcCsrSeq):
             if chk is not None:
                 expected.append(("chk", chk))
         got = [(kind, label) for kind, label, _t in self.events]
-        assert got == expected, f"fence events {got} differ from contract order {expected}"
+        assert got == expected, f"fence events {got} differ from expected order {expected}"
         stamps = [t for kind, _l, t in self.events if kind == "term"]
         assert all(b > a for a, b in zip(stamps, stamps[1:])), (
             f"fence stamps not strictly increasing: {stamps}"
@@ -274,7 +272,7 @@ class smc_i3c_clock_gate_window_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-I3C-GATED-WRITE-RETAINED",
             "%d gated DAT slot %d word 0 writes of 0x%08X answered SLVERR; after the clear every "
-            "slot read answered OKAY: %s (SF-026: retention not asserted)",
+            "slot read answered OKAY: %s (retention not asserted)",
             NUM_I3C,
             DAT_SLOT,
             ALL_ONES,
@@ -435,7 +433,7 @@ class smc_i3c_clock_gate_window_test_seq(SmcCsrSeq):
 
         def outcome(item) -> str:
             if item.timed_out:
-                return f"no completion in {GROUP_BOUND_NS} ns (LINKED-ISSUE RTL-101)"
+                return f"no completion in {GROUP_BOUND_NS} ns (LINKED-ISSUE, reported separately)"
             return f"resp{item.resp_code}/0x{item.rdata & ALL_ONES:08x}"
 
         read_a = tolerant_read("GA_HCI_I0_TOLERANT")
@@ -460,7 +458,7 @@ class smc_i3c_clock_gate_window_test_seq(SmcCsrSeq):
         self._mark("INFLIGHT_GROUPS")
         self._chk(
             "CHK-I3C-GATE-INFLIGHT-GROUPS",
-            "group b: all %d members completed inside %d ns with OKAY or SLVERR (SF-025, printed "
+            "group b: all %d members completed inside %d ns with OKAY or SLVERR (printed "
             "not asserted): %s; after the clear HCI_VERSION answered OKAY 0x%08x; group a (read "
             "issued with the set write, read first): set write OKAY, in-flight read %s after "
             "%.1f ns (a beat arriving after the bound is discarded by the driver and not "
@@ -479,7 +477,7 @@ class smc_i3c_clock_gate_window_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-TIMEOUT-PATHS: %d bounded waits: %s; expiry raises AssertionError "
             "naming the outstanding member, except the two tolerant S8 group (a) reads whose "
-            "expiry is printed LINKED-ISSUE RTL-101",
+            "expiry is printed LINKED-ISSUE, reported separately",
             len(self.waits),
             " ".join(f"{n}={b}ns last={s}" for n, b, s in self.waits),
         )

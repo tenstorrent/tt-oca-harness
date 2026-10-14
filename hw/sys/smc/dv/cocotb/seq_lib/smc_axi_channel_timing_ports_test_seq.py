@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Manager-side channel skew and ready timing on SEP_IN, SYS_IN and JTAG.
 
-Contract SMC_AXI_CHANNEL_TIMING_PORTS_TEST, anchor smc_axi_channel_timing_ports_test.
-Allocated scenarios: AXI-W-BEFORE-AW.S1/S2/S3, AXI-AW-BEFORE-W.S1/S2/S3, AXI-BREADY-HOLD.S3,
-AXI-RREADY-HOLD.S2, AXI-BACKPRESSURE.S1.
 Spec sources: fabric.adoc Topology and Configuration Parameters, scratch.rdl SCRATCH sw=rw.
 
 Every port takes the same traffic shapes against SCRATCH_COLD and the SPM, each read back

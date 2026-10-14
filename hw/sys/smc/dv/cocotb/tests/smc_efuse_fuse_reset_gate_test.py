@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Delayed fuse reset gating on fuse sense done and ext_boot_seq_done_i.
 
-Contract SMC_EFUSE_CTRL_009, anchor smc_efuse_fuse_reset_gate_test.
-Scenarios EFC-FRST-HELD-LOW, EFC-FRST-16-STAGE, EFC-FRST-EARLY-BOOT, EFC-FRST-BOOT-DROP.
 Sources: port_table.adoc, clk_rst.adoc, smu-smc.adoc (eFuse Interface).
 """
 

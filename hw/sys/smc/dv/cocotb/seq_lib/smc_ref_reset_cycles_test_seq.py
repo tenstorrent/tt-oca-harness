@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_ref_reset_cycles_test.
 
-Contract SMC_CLOCK_SRC_016, anchor smc_ref_reset_cycles_test.
-Scenarios: CSRC-REF-RESET.S1, CSRC-REF-RESET.S2.
 Spec: clk_rst.adoc (Power-Good and Cold Reset), port_table.adoc (SMC Port Declaration).
 
 ``rst_cold_ni`` is conditioned in the ``clk_ref_i`` domain: assertion needs 32 consecutive low
@@ -161,7 +159,7 @@ class smc_ref_reset_cycles_test_seq(SmcResetSeqBase):
             "CHK-REF-RESET-RELEASE-CYCLES",
             f"N_rel={n_rel} clk_ref_i cycles from the rst_cold_ni release to "
             f"rst_primary_ref_clk_no=1 at ref {self.cfg.ref_clk_period_ns} ns "
-            f"(minimum {RELEASE_MIN_CYCLES}; owner value open under SF-031); "
+            f"(minimum {RELEASE_MIN_CYCLES}; owner value pending); "
             f"rst_primary_ref_clk_no reads {still} after the chain release",
         )
 
@@ -223,7 +221,7 @@ class smc_ref_reset_cycles_test_seq(SmcResetSeqBase):
             f"a {GLITCH_SAMPLES}-cycle low pulse left rst_primary_ref_clk_no high at all "
             f"{glitch_samples} samples; a {ASSERT_SAMPLES}-cycle low pulse drove it to 0 "
             f"{n_assert} clk_ref_i cycles after the first low sample "
-            f"at ref {self.cfg.ref_clk_period_ns} ns (owner value open under SF-031)",
+            f"at ref {self.cfg.ref_clk_period_ns} ns (owner value pending)",
         )
         await self._chain_released("chain_release_after_32")
         self._stamp("CHAIN_RELEASED")

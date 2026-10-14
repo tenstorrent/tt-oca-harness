@@ -2,11 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Mailbox IRQS acknowledge, IRQP OR and the 32 inbound and 32 outbound interrupt outputs.
 
-Contract SMC_MAILBOX_014, anchor smc_mailbox_irq_ack_output_test.
-Scenarios: MBX-IRQS-ACK S1-S7, MBX-IRQ-OR S1-S3, MBX-IRQ-INBOUND-OUT S1-S4,
-MBX-IRQ-OUTBOUND-OUT S1-S4, MBX-CG-ENABLED-ACCESS S4.
-Sources: axi_lite_mailbox_unit architecture.adoc, interface.adoc; smc interrupts.adoc;
-open SF-016/024/025.
+Sources: axi_lite_mailbox_unit architecture.adoc, interface.adoc; smc interrupts.adoc.
 """
 
 from __future__ import annotations
@@ -268,7 +264,8 @@ class smc_mailbox_irq_ack_output_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ACK-REASSERTS-OBSERVED",
             f"set: occupancy above both thresholds; observed: IRQS[1:0]=0b{got:02b} again "
-            f"after write 0x3 and {reads} reads (timing not compared, SF-016); cleared: write 0x3; "
+            f"after write 0x3 and {reads} reads "
+            "(timing not compared, owner value pending); cleared: write 0x3; "
             f"checked_cleared: IRQS[1:0] read 0b{got:02b} within {ACK_READS} reads",
         )
 
@@ -323,8 +320,9 @@ class smc_mailbox_irq_ack_output_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ACK-VS-EVENT-OBSERVED",
             f"IRQS[0]={bit0} after the group {{IRQS write 0x1, WRITE_DATA write}}; responses "
-            f"ack={ack.resp_code} write={push.resp_code}; no compare (SF-016), no same-cycle "
-            "alignment claimed (SF-024)",
+            f"ack={ack.resp_code} write={push.resp_code}; "
+            "no compare (owner value pending), no same-cycle "
+            "alignment claimed (owner value pending)",
         )
 
         X, Y = B, A
@@ -534,7 +532,7 @@ class smc_mailbox_irq_ack_output_test_seq(SmcCsrSeq):
             f"set: inbound IRQP non-zero on pair 7; observed: tb_mailbox_interrupts==0x00000080 "
             f"on {IDLE_CYCLES} consecutive idle cycles after rising at cycle {n}; cleared: "
             "condition ended and IRQS acknowledged; checked_cleared: output 0; the gate idle "
-            "state is not observed (SF-025)",
+            "state is not observed (owner value pending)",
         )
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, cg)

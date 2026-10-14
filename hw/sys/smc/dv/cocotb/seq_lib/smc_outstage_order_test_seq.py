@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Outbound stage order: alias remap, output remap, outbound filter, output_axi.
 
-Contract SMC_FILTER_27, anchor smc_outstage_order_test.
-Allocated scenarios: OUTSTAGE-ORDER.S1, S3, S4, S6, S7, S8; INT-OUTREMAP-OUTFILT.
 Spec sources: fabric.adoc Outbound Filtering and Fabric Topology, alias_remap.rdl,
 output_remap.rdl, filter_ctrl.rdl, axi_filter index.adoc Blocked Transactions.
 """
@@ -35,8 +33,8 @@ RESP_DECERR = 3
 _SENTINEL = 0x5A5A_5A5A_5A5A_5A5A
 _SLOT_MASK = (1 << 20) - 1
 
-# Region words from the contract observation: output_remap.rdl REGION_ATTRS
-# offset[55:0] with valid at bit 63; alias_remap.rdl REGION_START / REGION_END /
+# Test-chosen region words in the field layout of output_remap.rdl REGION_ATTRS
+# (offset[55:0], valid at bit 63) and alias_remap.rdl REGION_START / REGION_END /
 # REGION_ATTRS, whose offset is added to the input address.
 _VALID = 1 << 63
 _M0_TARGET = 0x0240_0000
@@ -52,9 +50,9 @@ _ALIAS_REGION = 2
 _MMODE_WINDOW = smc_addr("SMC_TOP_MMODE_REGION_BASE_ADDR")
 _XVISOR_WINDOW = smc_addr("SMC_TOP_XVISOR_REGION_BASE_ADDR")
 
-# filter_ctrl.rdl FILTER_CONFIG: DENY_B1 enables the entry with allow_burst (4 KiB
-# granule) and no read or write permission; the contract gives the word and its
-# readback with data_bus_width = 3.
+# filter_ctrl.rdl FILTER_CONFIG field layout: the test-chosen DENY_B1 word enables the
+# entry with allow_burst (4 KiB granule) and no read or write permission; its readback
+# carries data_bus_width = 3.
 _DENY_B1 = 0x0000_0000_0100_0010
 _DENY_B1_READBACK = 0x0000_0000_0100_3010
 _GRANULE = 0x1000
@@ -63,7 +61,7 @@ _OUT = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_{reg}_BASE_ADDR"
 _REMAP_ATTRS = "SMC_{unit}_REMAP_0__REGION_REGION_ATTRS_REG_ADDR"
 _ENTRY_REGS = ("FILTER_CONFIG", "START_ADDR", "END_ADDR")
 
-# Addresses the contract names (SYS_OUT memory, post-remap).
+# Test-chosen stimulus addresses (SYS_OUT memory, post-remap).
 _DENIED_M_WORD_ADDR = _MMODE_WINDOW + 0x40
 _DENIED_X_WORD_ADDR = _XVISOR_WINDOW + 0x40
 _ALIAS_ADDR = 0x0300_0100
@@ -630,7 +628,7 @@ class smc_outstage_order_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"{codes} and landed at 0x{_PEND_DIRECT:x} and 0x{pend_land:x}",
         )
 
-        # S7: cold reset with a write in flight (observe-only fate, SF-010).
+        # S7: cold reset with a write in flight (observe-only fate, owner value pending).
         responder.write_int(_FLIGHT_ADDR, _SENTINEL, _WORD)
         flight_word = 0xA7A7_0000_0000_D000
         flight = self._jtag_item(SmcSysAxiOp.WRITE, _FLIGHT_ADDR, flight_word)
@@ -669,8 +667,8 @@ class smc_outstage_order_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._mark_step("S7")
         self._log_chk(
             "CHK-STAGE-RESET-IN-FLIGHT",
-            f"fate of the interrupted write at 0x{_FLIGHT_ADDR:x} (observe-only, SF-010, "
-            f"not compared): {fate}; counters before reset write_count={w_flight} "
+            f"fate of the interrupted write at 0x{_FLIGHT_ADDR:x} (observe-only, owner "
+            f"value pending, not compared): {fate}; counters before reset write_count={w_flight} "
             f"read_count={r_flight}, after recovery write_count={w_after} read_count={r_after}; "
             f"{probes}; the fresh JTAG write and read at 0x{_FRESH_ADDR:x} answered OKAY "
             f"and read back 0x{got.rdata:016x}",

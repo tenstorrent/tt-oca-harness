@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP mailbox inputs tb_sep_mailbox_interrupts[7:0] into raw interrupt bits 263:256.
 
-Contract SMC_IRQ_008, anchor smc_sep_mbx_irq_vector_test.
-Allocated scenarios: IRQ-SEPMBX.S1, IRQ-SEPMBX.S2, IRQ-SEPMBX.S3, IRQ-SEPMBX.S4.
 Spec sources: interrupts.adoc SMC indexed interrupt map table, SMC interrupts and PLIC;
 port_table.adoc sep_mailbox_interrupts_i.
 """
@@ -259,7 +257,7 @@ class smc_sep_mbx_irq_vector_test_seq(SmcCsrSeq):
         self._mark_step("S5")
         self._log_chk(
             "CHK-SEPMBX-LATENCY-LOG",
-            f"observed {LATENCY_REPEATS} repeats, not compared (SF-004); {lat}",
+            f"observed {LATENCY_REPEATS} repeats, not compared (owner value pending); {lat}",
         )
 
         self._nonvac_fence()

@@ -2,14 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Instance pairs on the shared I2C bus: isolation, interrupts, clock gate and NACK handler.
 
-Contract SMC_I2C_TARGET_020, anchor smc_i2c_target_instance_pair_test.
-Scenarios: TGT-INSTANCES.S3-S6, TGT-LOOP.S3, TGT-LOOP.S6, TGT-CLKGATE.S1-S3, TGT-NACK-HANDLER.S1-S4.
 Sources: hw/ip/i2c/regs/i2c.rdl (INTR_TEST, TARGET_ID, ACQDATA, FDATA, RDATA, CONTROLLER_EVENTS,
 HOST_NACK_HANDLER_TIMEOUT), hw/sys/smc/doc/interrupts.adoc, clk_rst.adoc, memmap.adoc.
 
 Three wrapper instances share one open-drain bus (+smc_i2c_shared_bus). The same-address and
-contending-controller legs (SF-025, SF-020), the gated-bus legs (SF-026) and the NACK handler
-timing legs (SF-013, SF-032) print measured values and compare nothing.
+contending-controller legs, the gated-bus legs and the NACK handler timing legs are owner
+value pending: they print measured values and compare nothing.
 """
 
 from __future__ import annotations
@@ -534,7 +532,7 @@ class smc_i2c_target_instance_pair_test_seq(SmcCsrSeq):
             f"{w_acks} entries I2C0={_fmt(w_entries[0])} I2C1={_fmt(w_entries[1])}; read ack="
             f"{r_ack} byte={r_bytes.hex()} entries I2C0={_fmt(r_entries[0])} "
             f"I2C1={_fmt(r_entries[1])}; TARGET_EVENTS I2C0=0x{t_events[0]:08x} "
-            f"I2C1=0x{t_events[1]:08x}; both transactions completed (SF-025)"
+            f"I2C1=0x{t_events[1]:08x}; both transactions completed (owner value pending)"
         )
 
     # ----- S5 ---------------------------------------------------------------------------
@@ -589,7 +587,7 @@ class smc_i2c_target_instance_pair_test_seq(SmcCsrSeq):
             "CHK-I2C-TGT-INSTANCE-CONTENTION-LOG",
             f"{self.contention_s4}; two controllers to I2C2 0x{CONTROLLER_PAIR_TARGET_ADDR:02x} "
             f"with MULTI_CONTROLLER_MONITOR_EN: {rows}; I2C2 entries {_fmt(entries)}; bus STOPs "
-            f"{stops}; both controllers completed within the bound (SF-020)",
+            f"{stops}; both controllers completed within the bound (owner value pending)",
         )
 
     # ----- S6 ---------------------------------------------------------------------------
@@ -750,7 +748,8 @@ class smc_i2c_target_instance_pair_test_seq(SmcCsrSeq):
                 f"{n}=0x{read[n]:08x}(programmed 0x{self.programmed[n]:08x} kept={int(kept[n])})"
                 for n, _ in regs
             )
-            + f"; write 0x{SAME_ADDR:02x} acks={acks} entries {_fmt(entries)} (SF-026)",
+            + f"; write 0x{SAME_ADDR:02x} acks={acks} entries {_fmt(entries)} "
+            "(owner value pending)",
         )
 
     # ----- S9 ---------------------------------------------------------------------------
@@ -809,7 +808,8 @@ class smc_i2c_target_instance_pair_test_seq(SmcCsrSeq):
             f"parked scl/sda={parked}; gate set tb_i2c_cg_en={cg_level} scl/sda={gated_start}; "
             f"after release {GATED_DWELL_CHUNKS}x{GATED_DWELL_CYCLES} cycles: scl low in "
             f"{low_scl} samples, sda low in {low_sda}, last {samples[-1]}; after ungate "
-            f"{after_ungate}; recovery write acks={acks} entries {_fmt(entries)} (SF-026)",
+            f"{after_ungate}; recovery write acks={acks} entries {_fmt(entries)} "
+            "(owner value pending)",
         )
 
     # ----- S10 / S11 --------------------------------------------------------------------
@@ -956,7 +956,7 @@ class smc_i2c_target_instance_pair_test_seq(SmcCsrSeq):
             "CHK-I2C-TGT-NACKH-LOG",
             f"VAL={NACK_VAL_LONG}; "
             + "; ".join(rows)
-            + "; no coincidence compared (SF-013, SF-032)",
+            + "; no coincidence compared (owner value pending)",
         )
 
     # ----- evidence ---------------------------------------------------------------------

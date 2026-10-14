@@ -2,11 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Mailbox access results, ERROR_FLAGS read-to-clear and channel coincidence on pair 2.
 
-Contract SMC_MAILBOX_011, anchor smc_mailbox_access_error_test.
-Scenarios: MBX-ERR-EMPTY-READ S1-S3, MBX-ERR-FULL-WRITE S3/S4, MBX-WRDATA-READBACK S1/S2,
-MBX-RO-WRITE S2-S5, MBX-ERRFLAGS-CLEAR S1/S3/S4/S6, MBX-CONTEST-CHANNELS S1-S4.
-Sources: axi_lite_mailbox_unit interface.adoc, architecture.adoc, axil_mailbox.rdl;
-open SF-011/015/019/024.
+Sources: axi_lite_mailbox_unit interface.adoc, architecture.adoc, axil_mailbox.rdl.
 """
 
 from __future__ import annotations
@@ -161,7 +157,8 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
             "CHK-EMPTY-READ-SLVERR-DATA",
             f"READ_DATA of A and B answered SLVERR (resp {ea.resp_code}, {eb.resp_code}) with "
             f"rdata[31:0]=0x{ea.rdata & 0xFFFFFFFF:08x},0x{eb.rdata & 0xFFFFFFFF:08x}; "
-            f"rdata[63:32]=0x{ea.rdata >> 32:08x},0x{eb.rdata >> 32:08x} (measured, SF-015)",
+            f"rdata[63:32]=0x{ea.rdata >> 32:08x},0x{eb.rdata >> 32:08x} "
+            "(measured, owner value pending)",
         )
 
         fa = await self._flags("EF_A", "A")
@@ -199,7 +196,8 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
             "CHK-EMPTY-READ-NO-SIDE-EFFECT",
             f"STATUS[3:2] A/B before 0b{s0['A'] >> 2 & 3:02b}/0b{s0['B'] >> 2 & 3:02b}, A after "
             f"0b{s1 >> 2 & 3:02b}; STATUS[1:0] measured A/B/after "
-            f"{s0['A'] & 3}/{s0['B'] & 3}/{s1 & 3} (SF-008); B->A returned 0x{x:016x}, "
+            f"{s0['A'] & 3}/{s0['B'] & 3}/{s1 & 3} "
+            f"(owner value pending); B->A returned 0x{x:016x}, "
             f"A->B returned 0x{y:016x}",
         )
 
@@ -288,7 +286,7 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-WRITE-DATA-READ-EMPTY",
             f"WRITE_DATA read OKAY resp {e11.resp_code} rdata[31:0]=0x{e11.rdata & 0xFFFFFFFF:08x} "
-            f"rdata[63:32]=0x{e11.rdata >> 32:08x} (measured, SF-015)",
+            f"rdata[63:32]=0x{e11.rdata >> 32:08x} (measured, owner value pending)",
         )
 
         await self._push("W5", "A", w[7])
@@ -345,7 +343,8 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-READ-ONLY-WRITES-NO-SIDE-EFFECT-OBSERVED",
             f"ERROR_FLAGS[1] before={before_flags >> 1 & 1} after={ef_after >> 1 & 1}; "
-            f"IRQS before=0b{irqs_before:03b} after=0b{irqs_after:03b}; no compare (SF-019)",
+            f"IRQS before=0b{irqs_before:03b} after=0b{irqs_after:03b}; "
+            "no compare (owner value pending)",
         )
 
         st14 = await self._val("STATUS_14_BEFORE", "A", "STATUS")
@@ -357,8 +356,9 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-CHANNELS-WRITE-WITH-STATUS",
             f"grouped write resp {wr.resp_code}, grouped STATUS read resp {rd.resp_code}; "
-            f"STATUS before=0x{st14:x} grouped=0x{rd.rdata:x} (measured, SF-011); B popped the "
-            "word; no same-cycle claim (SF-024)",
+            f"STATUS before=0x{st14:x} grouped=0x{rd.rdata:x} "
+            "(measured, owner value pending); B popped the "
+            "word; no same-cycle claim (owner value pending)",
         )
 
         x2, w8 = 0x2000_0000_0000_0002, 0x8000_0000_0000_0008
@@ -381,7 +381,7 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-CHANNELS-CTRL-WITH-IRQS",
             f"grouped CTRL write resp {wr.resp_code}, grouped IRQS read resp {rd.resp_code} "
-            f"IRQS=0x{rd.rdata & IRQ_ALL:x}; no same-cycle claim (SF-024)",
+            f"IRQS=0x{rd.rdata & IRQ_ALL:x}; no same-cycle claim (owner value pending)",
         )
         members = [m for g in self._groups for m in g.items]
         assert len(members) == 6 and all(m.resp_code is not None for m in members)

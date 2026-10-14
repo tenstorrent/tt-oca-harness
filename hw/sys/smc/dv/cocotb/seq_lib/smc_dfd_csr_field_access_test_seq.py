@@ -2,13 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DST field storage, scratch registers and same-offset block independence.
 
-Contract SMC_DFD_TRACE_013, anchor smc_dfd_csr_field_access_test.
-Scenarios DST-CSR-ACCESS.S1/S3/S4, DST-INST-FIELDS.S1, DFD-SCRATCH-RW.S1/S2, DFD-APERTURE-MAP.S2.
 Sources: dfd_dst.rdl, dfd_dst_sink.rdl, dfd_funnel.rdl through the generated map, smc_cla.rdl.
 
 Every address, field position, width, reset value and access type comes from the generated
-register map through :mod:`seq_lib.smc_rdl_regmap`. Values the contract leaves to an open
-specification finding (SF-016, SF-017, SF-030) are measured and printed, not compared.
+register map through :mod:`seq_lib.smc_rdl_regmap`. Values the documents leave open
+(supported field value sets, instruction-trace write behaviour, reset value of uncovered
+positions) are measured and printed, not compared.
 """
 
 from __future__ import annotations
@@ -26,7 +25,7 @@ _BLOCKS = ("dst_sink", "funnel", "dst")
 _DST_REGISTERS = 6
 _FUSE_SENSE_MAX_CYCLES = 200_000
 
-# SF-016: the supported value set of these fields is not pinned, so their readback is printed.
+# The document does not pin the supported value set of these fields, so their readback is printed.
 _PRINT_ONLY_FIELDS = ("Trdstformat", "Trdstsyncmode")
 
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")
@@ -154,7 +153,7 @@ class smc_dfd_csr_field_access_test_seq(SmcCsrSeq):
         return (
             f"{compared} sw=rw DST field patterns (all ones then all zeros, field alone, others "
             f"at baseline) read back exactly; printed not compared (hardware-driven or "
-            f"SF-016/SF-017): {'; '.join(printed)}"
+            f"value set not stated): {'; '.join(printed)}"
         )
 
     # -- S3 ---------------------------------------------------------------
@@ -212,8 +211,8 @@ class smc_dfd_csr_field_access_test_seq(SmcCsrSeq):
             )
         return (
             "every write and read of the positions no DST field covers completed with OKAY inside "
-            "the bound; stored values printed per bit, none asserted (SF-030 open): "
-            + "; ".join(rows)
+            "the bound; stored values printed per bit, none asserted (reset value pending an "
+            "owner decision): " + "; ".join(rows)
         )
 
     # -- S5 ---------------------------------------------------------------
@@ -244,7 +243,8 @@ class smc_dfd_csr_field_access_test_seq(SmcCsrSeq):
         await self._write(ctl, base, "inst_restore")
         return (
             "Trdstinsttracing and Trdstinsttriggerenable written with the trace inactive and "
-            "active (no capture started) and read back; values printed, none asserted (SF-017 "
+            "active (no capture started) and read back; values printed, none asserted (the "
+            "document leaves it "
             f"open); hardware changed Trdstinsttracing: {changed}; " + "; ".join(rows)
         )
 
@@ -401,7 +401,7 @@ class smc_dfd_csr_field_access_test_seq(SmcCsrSeq):
 
         terms = [t for t, _ in _FENCE]
         stamp_terms = [t for t, _ in self._stamps if t in terms]
-        assert stamp_terms == terms, f"fence terms {stamp_terms}, contract order {terms}"
+        assert stamp_terms == terms, f"fence terms {stamp_terms}, expected order {terms}"
         times = [t for _, t in self._stamps]
         assert all(b > a for a, b in zip(times, times[1:])), f"stamps not increasing {times}"
         step_events = [name for kind, name in self._events if kind == "STEP"]

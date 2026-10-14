@@ -2,10 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Past-extent and last-aperture-word response of the SLVERR-declared units over SEP_IN.
 
-Contract XBAR_020, anchor smc_past_extent_slverr_units_test.
-Allocated scenarios: XBAR-DEC-RESET-UNIT.S3/S4, XBAR-DEC-EFUSE.S3/S4, XBAR-DEC-TIMER.S3/S4,
-XBAR-DEC-BASE-CONFIG.S4, XBAR-DEC-FABRIC-CTRL.S3/S4, XBAR-DEC-SPARE.S3/S4, XBAR-DEC-PERIPH.S2-S4,
-XBAR-DEC-CLA.S2.
 Spec sources: smc.rdl ocah_past_extent_resp placements, misc_wrap.rdl ocah_gap_resp,
 memmap.adoc Address Space Organization.
 """
@@ -312,7 +308,7 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         )
         return (
             f"{unit} aperture 0x{LOCAL_BASE_RESET + first:08X}..0x{LOCAL_BASE_RESET + last:08X} "
-            f"(generated_window, no past-extent response declared, SF-014); "
+            f"(generated_window, no past-extent response declared, owner value pending); "
             f"TOP@0x{top:08x} rresp={rname} rdata=0x{rdata:08X} bresp={bname}"
         )
 

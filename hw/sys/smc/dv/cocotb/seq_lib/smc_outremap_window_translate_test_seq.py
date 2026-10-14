@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """M-mode and Xvisor output remap translation across regions, edges and valid toggling.
 
-Contract SMC_FILTER_25, anchor smc_outremap_window_translate_test.
-Allocated scenarios: OUTREMAP-MMODE-ADDR.S1,S3; OUTREMAP-XVISOR-ADDR.S1,S3,S5;
-OUTREMAP-VALID.S1,S3; OUTROUTE-DIRECT.S1.
 Spec sources: output_remap.rdl REGION_ATTRS, fabric.adoc Fabric Topology and Outbound Traffic Flow.
 """
 
@@ -36,7 +33,7 @@ FUSE_BOUND = 200_000
 COUNT_POLL_BOUND = 200
 HOLD_CYCLES = 64
 
-# Region words the contract programs: (remap kind, region, offset target).
+# Region words the test programs: (remap kind, region, offset target).
 _M_TARGET = {0: 0x0240_0000, 3: 0x0250_0000, 7: 0x0260_0000}
 _X_TARGET = {0: 0x0270_0000, 3: 0x0280_0000, 7: 0x0290_0000, 1: 0x02A0_0000, 5: 0x02B0_0000}
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")
@@ -231,7 +228,7 @@ class smc_outremap_window_translate_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-MMODE-EDGES",
             f"{', '.join(m_edges)}; below-window 0x{below:X}: resp={below_resp} (printed, "
-            f"SF-018 gap-response family, LINKED-ISSUE), no AW, write_count held {writes}",
+            f"gap-response value not stated), no AW, write_count held {writes}",
         )
         self._log_chk(
             "CHK-XVISOR-EDGES",
@@ -292,7 +289,7 @@ class smc_outremap_window_translate_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-OUTREMAP-VALID-TOGGLE",
             f"{_GROUP} writes all OKAY; landing in issue order {landing} (R remapped, I identity); "
-            "SF-009 LINKED-ISSUE",
+            "owner value pending",
         )
 
         # S9: restore every programmed entry to its reset word.

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP_AXI hang detector below, beyond and at the timeout threshold.
 
-Contract SMC_IRQ_017, anchor smc_hang_sep_timeout_window_test.
-Allocated scenarios: IRQ-HANG-TIMEOUT.S2, IRQ-HANG-TIMEOUT.S6.
 Spec sources: HANG_DET_CTRL and HANG_DET_TIMEOUT_THRESHOLD in smc_base_config.rdl.
 """
 
@@ -346,7 +344,7 @@ class smc_hang_sep_timeout_window_test_seq(SmcCsrSeq):
             "CHK-SEPWIN-AT-LOG",
             f"stall of exactly 0x{THRESHOLD:x} rises: first_sep_irq_rise={at_sep} "
             f"first_raw286_rise={at_raw}; {text}; cleared after {cleared_at} rises "
-            "(observe-and-log, SF-009)",
+            "(observe-and-log, owner value pending)",
         )
 
         await self._arm("EXACT_SMALL")
@@ -360,7 +358,7 @@ class smc_hang_sep_timeout_window_test_seq(SmcCsrSeq):
             f"threshold 0x{THRESHOLD:x}: sep_irq_rise={small[0]} raw286_rise={small[1]} "
             f"irq_to_raw={small[1] - small[0]}; threshold 0x{THRESHOLD_LARGE:x}: "
             f"sep_irq_rise={large[0]} raw286_rise={large[1]} "
-            f"irq_to_raw={large[1] - large[0]} (observe-and-log, SF-009, SF-010)",
+            f"irq_to_raw={large[1] - large[0]} (observe-and-log, owner value pending)",
         )
 
         self._hold(0, "cleanup")

@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_POWER_TELEMETRY_016 / smc_telemetry_ctrl_access_test.
+"""Telemetry receiver 0 register access.
 
-Scenarios: TLM-CTRL-ACCESS.S1, S2, S3, S4, S5, S6, TLM-STATUS-FLAGS.S5.
 Sources: hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl,
 doc/programmer/src/smc-programming.adoc.
 """

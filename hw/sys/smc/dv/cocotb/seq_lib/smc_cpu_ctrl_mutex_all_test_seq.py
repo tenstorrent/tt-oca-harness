@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU_CTRL MUTEX[0..3] hold, release values, independence and liveness.
 
-Contract SMC_CPU_CTRL_013, anchor smc_cpu_ctrl_mutex_all_test.
-Scenarios: CPUCTRL-MUTEX.S2, CPUCTRL-MUTEX.S3, CPUCTRL-MUTEX.S4, CPUCTRL-MUTEX.S5, CPUCTRL-MUTEX.S6.
 Sources: hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl (MUTEX, MUTEX[4]), generated cpu_ctrl.h.
 """
 

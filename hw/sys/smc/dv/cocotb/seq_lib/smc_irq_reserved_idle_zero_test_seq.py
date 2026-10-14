@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Idle state of reserved, internal and peripheral-owned raw tb_cpu_interrupts positions.
 
-Contract SMC_IRQ_011, anchor smc_irq_reserved_idle_zero_test.
-Allocated scenarios: IRQ-PERIPH-RSVD.S1, IRQ-RSVD-TAIL.S1, IRQ-INTERNAL.S2, IRQ-VEC-ASSEMBLY.S3.
 Spec sources: interrupts.adoc SMC indexed interrupt map table and SMC interrupts trace notes.
 """
 
@@ -175,7 +173,7 @@ class smc_irq_reserved_idle_zero_test_seq(SmcCsrSeq):
         self.phases += 1
         self._log_chk(
             "CHK-RSVDIDLE-INTERNAL-LOG",
-            f"raw bits 323,322,321,320 over {n_rises} rises (SF-019, logged only): "
+            f"raw bits 323,322,321,320 over {n_rises} rises (owner value pending, logged only): "
             f"{self._distinct(samples, INTERNAL_BITS)}",
         )
 
@@ -183,7 +181,7 @@ class smc_irq_reserved_idle_zero_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-RSVDIDLE-PERIPH-LOG",
             f"raw bits 264-266,268-281,283-285 over {n_rises} rises "
-            f"(SF-019, logged only): {self._distinct(samples, PERIPH_BITS)}",
+            f"(owner value pending, logged only): {self._distinct(samples, PERIPH_BITS)}",
         )
 
         self._nonvac_fence()

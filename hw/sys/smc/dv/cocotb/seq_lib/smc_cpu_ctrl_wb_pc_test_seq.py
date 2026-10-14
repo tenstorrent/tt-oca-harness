@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_011 / smc_cpu_ctrl_wb_pc_test: CPU_CTRL WB_PC read decode and idle values.
+"""smc_cpu_ctrl_wb_pc_test: CPU_CTRL WB_PC read decode and idle values.
 
-Scenarios: CPUCTRL-WBPC.S1 (32 WB_PC words decode), CPUCTRL-WBPC.S3 (idle values).
 Sources: hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl, hw/sys/smc/doc/cpu.adoc.
 """
 
@@ -122,7 +121,8 @@ class smc_cpu_ctrl_wb_pc_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-WBPC-IDLE",
             f"{len(rows)} entries read twice, reads agree, printed beside tb_cpu_wb_pc<n> "
-            "(SF-013: meaning and idle value measured, not asserted): " + " ".join(rows),
+            "(owner value pending: meaning and idle value measured, not asserted): "
+            + " ".join(rows),
         )
 
         self.assert_all_reachable(len(addrs) + 2 * len(rows), "CPU_CTRL_WB_PC")

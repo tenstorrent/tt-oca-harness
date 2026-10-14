@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_MEM_ECC_016 / smc_beu_csr_access_test: BEU register access over SEP_IN.
+"""smc_beu_csr_access_test: BEU register access over SEP_IN.
 
-Scenarios: MEMECC-BEU-CSR.S1 to S9 (aperture, reset, storage, independence, reserved bits).
 Sources: hw/sys/smc/regs/blocks/bus_error_unit/bus_error_unit.rdl, hw/sys/smc/doc/cpu.adoc,
 hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/fabric.adoc (REGION_SIZE).
 """
@@ -257,7 +256,7 @@ class smc_beu_csr_access_test_seq(SmcDecodeProbeSeq):
             "CHK-BEU-DECERR-RESET",
             f"with REGION_SIZE at its reset 0x{REGION_SIZE_RESET:x} the BEU base of core 0 "
             f"(0x{_beu_base(0):08x}) and core 3 (0x{_beu_base(3):08x}) answered DECERR; "
-            f"DECERR read data {[hex(d) for d in decerr_data]} (SF-018 measured)",
+            f"DECERR read data {[hex(d) for d in decerr_data]} (measured)",
         )
 
         # S3
@@ -386,7 +385,7 @@ class smc_beu_csr_access_test_seq(SmcDecodeProbeSeq):
             f"bits {list(RESERVED_BITS)} written as ones in core 0 registers read "
             f"{ {r: hex(v) for r, v in reserved.items()} } against the expected "
             f"0x{RESERVED_PATTERN:x} (RDL software-writable); matches the expectation "
-            f"{matches} (SF-027 measured, not asserted); registers restored",
+            f"{matches} (measured, not asserted); registers restored",
         )
 
         # S9

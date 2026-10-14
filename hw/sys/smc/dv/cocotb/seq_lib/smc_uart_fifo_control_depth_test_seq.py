@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """UART0 FIFO enable change, depth, trigger field composition and receive order over SEP_IN.
 
-Contract SMC_UART_CORE_016, anchor smc_uart_fifo_control_depth_test.
-Allocated scenarios: UART-FIFO-CONTROL.S2/S5/S6/S8, UART-TX-PATH.S3, UART-RX-TRIGGER.S4/S5,
-UART-RX-PATH.S2/S7.
 Spec sources: hw/ip/uart/uart_16550/doc/{architecture,index}.adoc, hw/sys/smc/doc/periphs.adoc,
 hw/ip/uart/uart_16550/regs/uart_16550_main{,_wo}.rdl, doc/programmer/src/smc-programming.adoc.
 """
@@ -253,7 +250,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "before FIFO_ENABLE 0 then 1 LSR=0x%08x (DR=1, THRE=0, %d backlog writes); after it "
             "LSR=0x%08x (DR=0, THRE=1); TEMT followed and a frame later LSR=0x%08x (THRE=1); "
             "IIR %s; characters readable %s, none old or queued, only the frame already "
-            "shifting at the change may arrive (SF-016 open)",
+            "shifting at the change may arrive (allowance: owner value pending)",
             before,
             len(BACKLOG_CHARS),
             after,
@@ -288,7 +285,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "32 unpolled THR writes left LSR.THRE=0 (LSR=0x%08x), all 32 were received and the "
             "32 RBR reads equal the written sequence in order with LSR.OE clear (LSR=0x%08x); a "
             "33rd THR write after 32 writes completed with resp=%s, LSR=0x%08x, then %d "
-            "characters were readable with LSR=0x%08x (SF-018 open)",
+            "characters were readable with LSR=0x%08x (owner value pending)",
             busy,
             full,
             item.resp_code,
@@ -314,7 +311,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "S4",
             "after %d characters were held a second FIFO_ENABLE=1 write completed; LSR after the "
             "first write 0x%08x; %d of %d characters were still readable %s, each read preceded "
-            "by LSR.DR=1 and LSR.DR=0 after the last (LSR=0x%08x) (SF-016 open)",
+            "by LSR.DR=1 and LSR.DR=0 after the last (LSR=0x%08x) (owner value pending)",
             len(SAME_CHARS),
             mid,
             len(got),
@@ -344,7 +341,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "S5",
             "FCR written with FIFO_ENABLE clear and both reset bits completed; the held character "
             "%s (LSR=0x%08x, DR consistent with RBR); the next character read back intact as "
-            "0x%02x (SF-016 open)",
+            "0x%02x (owner value pending)",
             "survived" if kept is not None else "did not survive",
             lsr,
             got,
@@ -407,8 +404,8 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "S7",
             "ID-2 onset occupancy per {ECR, FCR[7:6]} state: A (ECR=1, FCR=0) %s; B (ECR=1, FCR=1) "
             "%s; C (FCR back to 0, ECR=1) %s; D (ECR=0, FCR=0) %s; onset(A)==onset(C), no ID 2 "
-            "in B while A has one, onset(D)<onset(A); exact values measured only (SF-012, "
-            "SF-013 open)",
+            "in B while A has one, onset(D)<onset(A); exact values measured only "
+            "(owner values pending)",
             text["A"],
             text["B"],
             text["C"],
@@ -452,7 +449,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "S8",
             "an RBR read with the receive buffer empty completed with resp=%s data=0x%08x, LSR "
             "before 0x%08x after 0x%08x; the character looped afterwards was received intact as "
-            "0x%02x with DR=1 (LSR=0x%08x) (SF-019 open)",
+            "0x%02x with DR=1 (LSR=0x%08x) (owner value pending)",
             item.resp_code,
             item.rdata,
             before,

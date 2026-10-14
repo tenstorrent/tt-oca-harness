@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Valid-access recovery after runs of outside-window, gap and past-extent DECERR probes.
 
-Contract XBAR_030, anchor smc_invalid_probe_recovery_test.
-Allocated scenarios: XBAR-RECOVERY.S1-S3, XBAR-GAP-DECERR.S5.
 Spec sources: memmap.adoc Address Space Organization, fabric.adoc Fabric Transaction Limits.
 """
 

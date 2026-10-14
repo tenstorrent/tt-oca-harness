@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-# Goal smc-i2c-fmtrst-repro, reproduction experiment derived from
-# smc_i2c_controller_scl_hold_test S1-S2.
+# Goal smc-i2c-fmtrst-repro, reproduction experiment derived from the first two steps
+# of the SCL-hold controller test (smc_i2c_controller_scl_hold_test).
 # Spec sources: hw/ip/i2c/regs/i2c.rdl TIMEOUT_CTRL, CONTROLLER_EVENTS, INTR_STATE, FIFO_CTRL.
 # Fact-recording leaf: the START, CMD_COMPLETE and FDATA-consumed lines carry measured values.
 """I2C0 controller recovery from a bus-timeout halt with FIFO_CTRL.FMTRST.

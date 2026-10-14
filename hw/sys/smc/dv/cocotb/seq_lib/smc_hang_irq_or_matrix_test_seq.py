@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Hang detector irq_test OR over detector pairs, drop orders and threshold zero.
 
-Contract SMC_IRQ_016, anchor smc_hang_irq_or_matrix_test.
-Allocated scenarios: IRQ-HANG-ISOLATE.S2 to S4 and IRQ-HANG-TEST.S3.
 Spec sources: HANG_DET_CTRL and HANG_DET_TIMEOUT_THRESHOLD in smc_base_config.rdl; interrupts.adoc.
 """
 

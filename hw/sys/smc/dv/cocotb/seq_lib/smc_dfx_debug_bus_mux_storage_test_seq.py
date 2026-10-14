@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_MEM_ECC_013 / smc_dfx_debug_bus_mux_storage_test: DEBUG_BUS_MUX write and readback.
+"""DEBUG_BUS_MUX write and readback.
 
-Scenarios: MEMECC-DFX-DEBUG-BUS-MUX.S1 (mode), S2 (identifier), S3 (lane selects 0 to 3),
-S4 (lane selects 4 to 7), S5 (walking one), S6 (one mux at a time), S7 (back to back).
 Sources: hw/sys/smc/regs/blocks/dfx_ctrl_status/dfx_ctrl_status.rdl, hw/sys/smc/doc/memmap.adoc.
 """
 
@@ -152,7 +150,8 @@ class smc_dfx_debug_bus_mux_storage_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-DFX-MUX-ID",
             f"Dbmid {assigned} read back exactly; unassigned readbacks printed "
-            f"({','.join(unassigned)}), expectation is SF-026 and is not asserted",
+            f"({','.join(unassigned)}), expectation is not stated in the document and is not "
+            "asserted",
         )
 
         # S4
@@ -179,7 +178,8 @@ class smc_dfx_debug_bus_mux_storage_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-DFX-MUX-SEL47",
             f"Muxselseg{seg47} each read back 63 with no other field changing; Rsvd158 wrote "
-            f"0x3f read 0x{rsvd_rb:x} (readback of the reserved field is SF-026, not asserted)",
+            f"0x3f read 0x{rsvd_rb:x} (readback of the reserved field is not stated in the "
+            "document, not asserted)",
         )
 
         # S6
@@ -192,7 +192,8 @@ class smc_dfx_debug_bus_mux_storage_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-DFX-MUX-WALK1",
             f"a one at each of the {WIDTH} bit positions read back as exactly that bit outside "
-            f"Rsvd158; Rsvd158 positions printed {','.join(rsvd_walk)} (SF-026, not asserted)",
+            f"Rsvd158; Rsvd158 positions printed {','.join(rsvd_walk)} (not stated in the "
+            "document, not asserted)",
         )
 
         # S7

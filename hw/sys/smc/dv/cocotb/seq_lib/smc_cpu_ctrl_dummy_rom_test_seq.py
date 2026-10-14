@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_015 / smc_cpu_ctrl_dummy_rom_test: DUMMY_ROM and DUMMY_ROM_NULL line and storage.
+"""smc_cpu_ctrl_dummy_rom_test: DUMMY_ROM and DUMMY_ROM_NULL line and storage.
 
-Scenarios: CPUCTRL-DUMMYROM.S2 (64-byte line read), CPUCTRL-DUMMYROM.S3 (read-write storage).
 Sources: hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl, hw/sys/smc/regs/gen/c/smc_addr.h.
 """
 
@@ -167,7 +166,7 @@ class smc_cpu_ctrl_dummy_rom_test_seq(SmcCsrSeq):
             "CHK-DROM-RW",
             f"{count} registers each read back own pattern in order and reverse order "
             + ",".join(f"0x{_pattern(i):x}" for i in range(count))
-            + "; restore returned the S2 words (SF-024: writability measured, owner answer pending)",
+            + "; restore returned the S2 words (writability measured, owner value pending)",
         )
 
         self.assert_all_reachable(count * 6, "CPU_CTRL_DUMMY_ROM")

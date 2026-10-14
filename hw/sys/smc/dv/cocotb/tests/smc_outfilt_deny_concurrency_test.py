@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Outbound deny entries answer DECERR under many outstanding denials and a concurrent DMA job.
 
-Contract SMC_FILTER_18, anchor smc_outfilt_deny_concurrency_test.
-Allocated scenarios: OUTFILT-DENY-RESPONSE.S1, S5, S6 and S7, OUTFILT-PRIORITY-PERM.S6.
 Spec sources: axi_filter index.adoc (Blocked Transactions, Match Then Permit), fabric.adoc,
 filter_ctrl.rdl FILTER_CONFIG.
 """

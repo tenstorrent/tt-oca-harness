@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_010 / smc_cpu_ctrl_scratch_all_test: CPU_CTRL SCRATCH[0..15] full sweep.
+"""smc_cpu_ctrl_scratch_all_test: CPU_CTRL SCRATCH[0..15] full sweep.
 
-Scenarios: CPUCTRL-SCRATCH.S1, CPUCTRL-SCRATCH.S3.
 Sources: hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl, doc/programmer/src/smc-programming.adoc.
 """
 
@@ -165,8 +164,8 @@ class smc_cpu_ctrl_scratch_all_test_seq(SmcCsrSeq):
             "CHK-SCRATCH-BITS",
             "all 16 entries read back "
             + ",".join(f"0x{p:08x}" for p in WIDTH_PATTERNS)
-            + " exactly when written; SF-031 SCRATCH entry usage by bench and firmware "
-            "unidentified, all 16 entries swept and restored",
+            + " exactly when written; owner value pending: SCRATCH entry usage by bench "
+            "and firmware unidentified, all 16 entries swept and restored",
         )
 
         expected = SCRATCH_COUNT * (

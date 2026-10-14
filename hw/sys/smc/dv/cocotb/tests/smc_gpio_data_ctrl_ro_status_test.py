@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO DATA_CTRL hardware-status bits written from software.
 
-Contract SMC_GPIO_CSR_009, anchor smc_gpio_data_ctrl_ro_status_test.
-Scenarios GPIO-CSR-DATA-CTRL-RO.S1, GPIO-CSR-DATA-CTRL-RO.S2 and GPIO-CSR-DATA-CTRL-RO.S3.
 Sources hw/ip/gpio/regs/gpio_intf.rdl (DATA_CTRL, DATA_CTRL_ENABLE).
 """
 

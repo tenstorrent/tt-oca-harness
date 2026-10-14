@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Instance isolation of the scratch, remap, filter and GPIO register arrays.
 
-Contract XBAR_031, anchor smc_instance_storage_isolation_test.
-Allocated scenarios: XBAR-INSTANCE-ISOLATION.S1-S6; XBAR-DEC-SPARE.S5.
 Spec sources: scratch.rdl SCRATCH[8]; misc_wrap.rdl scratch_cold; smc.rdl register arrays.
 """
 

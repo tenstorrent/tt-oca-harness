@@ -2,15 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C window answers while CLOCK_GATE_CONTROL.i2c_cg_en is set, and state kept across it.
 
-Contract SMC_I2C_CSR_IRQ_010, anchor smc_i2c_clock_gate_response_test.
-Scenarios: I2C-CLKGATE-RESP.S1-S4, S6, I2C-CLKGATE-RETAIN.S1-S4.
 Sources: hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl (i2c_cg_en),
 hw/sys/smc/doc/clk_rst.adoc, hw/ip/i2c/regs/i2c.rdl, hw/sys/smc/doc/interrupts.adoc.
 
 While the gate is set every read of the I2C window completes with SLVERR and 0xBADCAB1E;
 after it is cleared the window answers OKAY and every register and event written before
 the gate reads back unchanged. The fate of writes under the gate, the answers at gap and
-past-extent addresses and the interrupt levels are open (SF-017, SF-018, SF-019) and are
+past-extent addresses and the interrupt levels are open (owner value pending) and are
 logged without a compare.
 """
 
@@ -256,7 +254,8 @@ class smc_i2c_clock_gate_response_test_seq(SmcCsrSeq):
         self._mark("S5")
         self._chk(
             "CHK-I2C-GATE-WRITE-OBS",
-            "HOST_NACK_HANDLER_TIMEOUT[0]_resp=%d I2C_CTRL[2]_resp=%d (observation, SF-017)",
+            "HOST_NACK_HANDLER_TIMEOUT[0]_resp=%d I2C_CTRL[2]_resp=%d "
+            "(observation, owner value pending)",
             nack_resp,
             ctrl2_resp,
         )
@@ -275,7 +274,7 @@ class smc_i2c_clock_gate_response_test_seq(SmcCsrSeq):
             resp, _ = await self._observe(f"GAPW_{label}", addr, True, SLAVE_WRITE_PATTERN)
             gap.append(f"wr_{label}_resp={resp}")
         self._mark("S6")
-        self._chk("CHK-I2C-GATE-GAP-OBS", "%s (observation, SF-018)", " ".join(gap))
+        self._chk("CHK-I2C-GATE-GAP-OBS", "%s (observation, owner value pending)", " ".join(gap))
 
         # S7
         irq_now = self._irq_levels()
@@ -287,7 +286,7 @@ class smc_i2c_clock_gate_response_test_seq(SmcCsrSeq):
             "precondition tb_i2c_irq[1]=1 after %d cycles; gated tb_i2c_irq[1]=%d "
             "tb_peripheral_interrupts[24]=%d tb_cpu_interrupts[280]=%d; after %d cycles "
             "tb_i2c_irq[1]=%d tb_peripheral_interrupts[24]=%d tb_cpu_interrupts[280]=%d "
-            "(observation, SF-019)",
+            "(observation, owner value pending)",
             pre_cycles,
             *irq_now,
             IRQ_LATER_CYCLES,
@@ -378,7 +377,8 @@ class smc_i2c_clock_gate_response_test_seq(SmcCsrSeq):
         self._mark("S11")
         self._chk(
             "CHK-I2C-RETAIN-GATED-WRITE-OBS",
-            "HOST_NACK_HANDLER_TIMEOUT[0]=0x%08x %s; I2C_CTRL[2]=0x%08x %s (observation, SF-017)",
+            "HOST_NACK_HANDLER_TIMEOUT[0]=0x%08x %s; I2C_CTRL[2]=0x%08x %s "
+            "(observation, owner value pending)",
             nack_rb,
             "landed" if nack_rb == NACK_HANDLER_PATTERN else "dropped",
             ctrl2_rb,

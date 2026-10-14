@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PRIMARY OCTS count progression and 64-bit COUNT readout over timer_count_o.
 
-Contract SMC_POWER_TIMER_WDT_018, anchor smc_octs_primary_count_test.
-Scenarios: OCTS-PRIMARY-START.S1-S5/S8, OCTS-COUNT-PORT.S2-S3, OCTS-COUNT-REG.S2-S4, others.
 Sources: system_timer_octs architecture.adoc and interface.adoc, system_timer_octs.rdl.
 """
 
@@ -195,7 +193,8 @@ class smc_octs_primary_count_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-OCTS-PRESET-LOAD-COUNT",
             "PRESET 0x1000 then START on a running timer: first sample in [0x1000, 0x1040] is "
-            "0x%x at rise index %d of 64, %d consecutive differences all exactly 1 (SF-021)",
+            "0x%x at rise index %d of 64, %d consecutive differences all exactly 1 (owner value "
+            "pending)",
             win[reload_idx - start],
             reload_idx - start,
             checked,
@@ -326,7 +325,7 @@ class smc_octs_primary_count_test_seq(SmcCsrSeq):
             "preset 0xFFFFFFFFFFFFFFF0: the count net passed 0xFFFFFFFFFFFFFFFF to 0 at rise "
             "index %d with %d consecutive differences all exactly 1 mod 2^64; STATUS reads "
             "bracketing a 0 or 1 sample (before_idx, after_idx, STATUS, RUNNING) %s; "
-            "STATUS.RUNNING after the run %d (SF-027)",
+            "STATUS.RUNNING after the run %d (owner value pending)",
             wraps[0],
             checked,
             near_zero,
@@ -341,7 +340,8 @@ class smc_octs_primary_count_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-OCTS-ZERO-PRESET-START",
             "preset 0 then START: first nonzero sample 0x%x at rise index %d, every later "
-            "difference exactly 1; STATUS 0x%08x read after rise index %d (RUNNING %d, SF-021), "
+            "difference exactly 1; STATUS 0x%08x read after rise index %d (RUNNING %d, owner value "
+            "pending), "
             "STATUS 0x%08x at the 64th rise (RUNNING 1)",
             first,
             nz,
@@ -352,7 +352,8 @@ class smc_octs_primary_count_test_seq(SmcCsrSeq):
         )
         self._chk(
             "CHK-OCTS-ROLE-PERSISTS",
-            "STATUS.MODE read 0 after 4 of 4 starts %s; final STATUS 0x%08x MODE %d (SF-029)",
+            "STATUS.MODE read 0 after 4 of 4 starts %s; final STATUS 0x%08x MODE %d (owner value "
+            "pending)",
             modes,
             final,
             final & _MODE,
@@ -373,7 +374,7 @@ class smc_octs_primary_count_test_seq(SmcCsrSeq):
 
     def _fence(self) -> None:
         ids = [s for s, _ in self.steps]
-        assert ids == list(_STEP_IDS), f"step stamps {ids} not in contract order"
+        assert ids == list(_STEP_IDS), f"step stamps {ids} not in expected order"
         times = [t for _, t in self.steps]
         assert all(b > a for a, b in zip(times, times[1:])), f"stamps not increasing: {times}"
         order = [c for c, _ in self.chk_lines]

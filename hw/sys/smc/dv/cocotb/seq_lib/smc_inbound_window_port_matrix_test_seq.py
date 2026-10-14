@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Base registers, window words and scratch storage on sep, sys and jtag at both bases.
 
-Contract XBAR_022, anchor smc_inbound_window_port_matrix_test.
-Allocated scenarios: XBAR-WIN-LOCAL.S1/S3, XBAR-WIN-GLOBAL.S1/S2, XBAR-JTAG-LOCAL.S1/S2,
-XBAR-SYS-DEMUX.S1, XBAR-SEP-DEMUX.S1, INT-LOCAL-GLOBAL-REBASE.
 Spec sources: fabric.adoc Fabric Topology and Alias Remapping, memmap.adoc Memory Map,
 smc_base_config.rdl resets.
 """
@@ -312,7 +309,7 @@ class smc_inbound_window_port_matrix_test_seq(SmcCsrSeq):
         self.watch_state = f"S4 probe watcher {watch.samples} samples"
         return (
             f"{'; '.join(parts)}; tb_output_axi_awvalid/arvalid never high in "
-            f"{watch.samples} samples (last-word answer is observe-only, SF-039)"
+            f"{watch.samples} samples (last-word answer is observe-only, owner value pending)"
         )
 
     async def _s5_cross_base(self) -> tuple[str, str]:
@@ -362,7 +359,7 @@ class smc_inbound_window_port_matrix_test_seq(SmcCsrSeq):
         )
         self.watch_state += f"; S6 probe watcher {watch.samples} samples"
         return (
-            f"{'; '.join(parts)}; tb_remap_jtag_ar_hit/aw_hit observe-only (DOC-82) "
+            f"{'; '.join(parts)}; tb_remap_jtag_ar_hit/aw_hit observe-only "
             f"OR while arvalid/awvalid high "
             f"({watch.gated_samples['tb_remap_jtag_ar_hit']}/"
             f"{watch.gated_samples['tb_remap_jtag_aw_hit']} samples) = "

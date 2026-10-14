@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DMA copies through a SYS_OUT responder that stalls, delays and holds its channels.
 
-Contract SMC_POWER_DMA_ZEROER_020, anchor smc_dma_backpressure_breadth_test.
-Scenarios DMA-AXI-BACKPRESSURE.S1 to S4 (random stalls, in-flight plateau, long hold, realign).
 Specs hw/sys/smc/doc/dma.adoc, hw/sys/smc/doc/fabric.adoc, vendor idma overlay dma_ctrl.rdl.
 
 Sources and destinations sit in the output-fabric window and are preloaded and read back
@@ -475,7 +473,7 @@ class smc_dma_backpressure_breadth_test_seq(SmcCsrSeq):
             f"{PLATEAU_RISES} rises, maximum {ar_max}, cap {OUTSTANDING_AR_CAP}; "
             f"AW maximum under the hold {aw_hold_max}); {resumed} further ARs issued after the "
             f"release and the {ROWS}-row copy completed; with B delayed {B_DELAY_CYCLES} "
-            f"cycles alone the outstanding AW maximum is {aw_max} (SF-017 SF-028 open)"
+            f"cycles alone the outstanding AW maximum is {aw_max} (owner value pending)"
         )
 
     async def _s4(self) -> str:

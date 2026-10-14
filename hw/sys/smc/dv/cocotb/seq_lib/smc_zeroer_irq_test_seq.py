@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Zeroer completion interrupt count, timing, INT_EN control and PLIC source 324.
 
-Contract SMC_POWER_DMA_ZEROER_025, anchor smc_zeroer_irq_test.
-Scenarios ZEROER-IRQ.S1 to ZEROER-IRQ.S5.
 Sources hw/sys/smc/doc/zeroer.adoc, hw/sys/smc/doc/interrupts.adoc, zeroer_ctrl.rdl.
 
 A passive sampler reads tb_zeroer_intp, tb_plic_pending_324, tb_dma_intp, the SYS_OUT
@@ -266,8 +264,8 @@ class smc_zeroer_irq_test_seq(output_fabric_pass_all_cfg_seq):
             "CHK-ZEROER-IRQ-ONE-PULSE",
             "INT_EN job of %d bytes: %d tb_zeroer_intp pulse at rise %d after the last B "
             "handshake at rise %d, tb_plic_pending_324 rose at rise %d and stayed set "
-            "(observation point SF-007), tb_dma_intp high %d rise(s), quiet window %d rises, "
-            "pulse width %d rise(s), STATUS word 0x%x",
+            "(observation point pending owner value), tb_dma_intp high %d rise(s), quiet window "
+            "%d rises, pulse width %d rise(s), STATUS word 0x%x",
             _JOB_BYTES,
             n,
             rises[0],
@@ -411,9 +409,10 @@ class smc_zeroer_irq_test_seq(output_fabric_pass_all_cfg_seq):
             "S6",
             "CHK-ZEROER-IRQ-ZERO-SIZE-WIDTH",
             "SIZE 0 trigger with INT_EN set: %d pulses over %d rises, STATUS samples %s; pulse "
-            "widths of the earlier jobs %s rise(s) (SF-008); INT_EN cleared by a write while a "
-            "job was held busy: CTRL_STATUS word 0x%x right after, %d pulse(s) while held, "
-            "%d pulse(s) after release, CTRL_STATUS word 0x%x at the end (SF-005)",
+            "widths of the earlier jobs %s rise(s) (owner value pending); INT_EN cleared by a "
+            "write while a job was held busy: CTRL_STATUS word 0x%x right after, %d pulse(s) while "
+            "held, %d pulse(s) after release, CTRL_STATUS word 0x%x at the end "
+            "(owner value pending)",
             len(zero_rises),
             _ZERO_SIZE_CYCLES,
             "".join(str(v) for v in status_seen),
@@ -433,7 +432,7 @@ class smc_zeroer_irq_test_seq(output_fabric_pass_all_cfg_seq):
     def _nonvac(self) -> None:
         steps = [s for s, _t in self._stamps]
         assert steps == ["S1", "S2", "S3", "S4", "S5", "S6"], (
-            f"step stamps {steps} not in contract order"
+            f"step stamps {steps} not in the expected order"
         )
         times = [t for _s, t in self._stamps]
         assert all(b > a for a, b in zip(times, times[1:], strict=False)), (

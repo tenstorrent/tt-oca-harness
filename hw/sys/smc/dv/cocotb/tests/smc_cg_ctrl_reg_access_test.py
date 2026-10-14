@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CLOCK_GATE_CONTROL register access over SEP_IN.
 
-Contract SMC_CLOCK_GATE_012, anchor smc_cg_ctrl_reg_access_test.
-Scenarios GATE-CGC-REG.S1..S7 at the default clock triple.
 Sources: hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl, hw/sys/smc/doc/clk_rst.adoc.
 """
 

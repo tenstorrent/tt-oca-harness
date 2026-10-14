@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Three-port by two-base reachability matrix of the SMC window.
 
-Contract XBAR_022, anchor smc_inbound_window_port_matrix_test.
-Allocated scenarios: XBAR-WIN-LOCAL.S1/S3, XBAR-WIN-GLOBAL.S1/S2, XBAR-JTAG-LOCAL.S1/S2,
-XBAR-SYS-DEMUX.S1, XBAR-SEP-DEMUX.S1, INT-LOCAL-GLOBAL-REBASE.
 Spec sources: fabric.adoc Fabric Topology and Alias Remapping, memmap.adoc Memory Map,
 smc_base_config.rdl resets.
 """

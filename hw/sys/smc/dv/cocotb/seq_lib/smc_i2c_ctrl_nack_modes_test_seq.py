@@ -2,17 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C0 controller NACK reactions beyond the first-byte cases.
 
-Contract SMC_I2C_CTRL_002, anchor smc_i2c_ctrl_nack_modes_test.
-Scenarios: I2CC-ADDR-NACK.S2, I2CC-DATA-NACK.S2, I2CC-NAKOK.S2, I2CC-NAKOK.S3,
-I2CC-HALT-RECOVERY.S1, I2CC-NACK-TIMEOUT.S1, I2CC-NACK-TIMEOUT.S2, I2CC-NACK-TIMEOUT.S3,
-I2CC-STATUS-FLAGS.S6.
 Sources: hw/ip/i2c/regs/i2c.rdl (CONTROLLER_EVENTS.NACK, INTR_STATE.CONTROLLER_HALT,
 FDATA.NAKOK, HOST_NACK_HANDLER_TIMEOUT, STATUS.HOSTIDLE).
 
 Bench targets on the I2C0 pads answer for the controller: 0x10 NACKs its address, 0x12
 NACKs one chosen data byte, 0x50 is an EEPROM. A passive wire monitor frames every
 transfer. Each leg ends with CTRL cleared before the events. The handler-timeout effect on
-the bus (SF-010) and HOSTIDLE while halted (SF-015) are logged and not compared.
+the bus and HOSTIDLE while halted are owner value pending: they are logged and not compared.
 """
 
 from __future__ import annotations
@@ -627,13 +623,14 @@ class smc_i2c_ctrl_nack_modes_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-STATUS-HALT-OBS",
             f"STATUS=0x{status:08x} HOSTIDLE={int(bool(status & I2C_STATUS_HOSTIDLE))} read "
-            f"with NACK set (events=0x{events:08x}); no compare (SF-015)",
+            f"with NACK set (events=0x{events:08x}); no compare (owner value pending)",
         )
         self._chk(
             "CHK-NTO-CLEAR-OBS",
             f"HOST_NACK_HANDLER_TIMEOUT=EN|{NTO_CLEAR_VAL}; NACK clear completed {used} cycles "
             f"after the NACK (limit {CLEAR_DEADLINE_CYCLES}, before expiry); {len(rows)} "
-            f"samples over {S9_WINDOW_CYCLES} cycles, no compare (SF-010): {'; '.join(rows)}; "
+            f"samples over {S9_WINDOW_CYCLES} cycles, no compare (owner value pending): "
+            f"{'; '.join(rows)}; "
             f"recovery readback events=0x{ev:08x} halt={halt}",
         )
 

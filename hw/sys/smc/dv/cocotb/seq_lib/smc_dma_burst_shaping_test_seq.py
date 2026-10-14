@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DMA burst-length reduction and AW decoupling on the SYS_OUT address channels.
 
-Contract SMC_POWER_DMA_ZEROER_016, anchor smc_dma_burst_shaping_test.
-Scenarios DMA-BURST-SHAPING.S1, S2, S3, S4, S5, S6, S8 (reduction off, source and destination
-length limits, ignored and independent limits, AW after and before the first R beat, all bits).
 Specs vendor idma overlay dma_ctrl.rdl (CONFIG), hw/sys/smc/doc/dma.adoc.
 
 Sources and destinations sit in the SYS_OUT responder memory and are preloaded and read back

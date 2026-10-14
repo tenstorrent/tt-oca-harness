@@ -2,11 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Mailbox CTRL flush strobes, flush effects and live STATUS threshold levels on pair 4.
 
-Contract SMC_MAILBOX_012, anchor smc_mailbox_flush_status_test.
-Scenarios: MBX-STATUS-LEVEL S5, MBX-STATUS-THRESH S2-S4, MBX-CTRL-READBACK S1-S3,
-MBX-FLUSH-WRITE S1-S4, MBX-FLUSH-READ S1-S4, MBX-CONTEST-FLUSHPUSH S1-S3.
-Sources: axi_lite_mailbox_unit interface.adoc, architecture.adoc, axil_mailbox.rdl;
-open SF-012/018/022/024.
+Sources: axi_lite_mailbox_unit interface.adoc, architecture.adoc, axil_mailbox.rdl.
 """
 
 from __future__ import annotations
@@ -224,7 +220,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
             f"WIRQT=1: STATUS[2] one word={bits[0] >> 2} two words={bits[1] >> 2}; set: two "
             f"queued words; observed: STATUS[2]=1; cleared: B popped one word; checked_cleared: "
             f"STATUS[2]={bits[2] >> 2}; STATUS[1:0] logged 0x{st1 & 3:x}/0x{st2 & 3:x}/"
-            f"0x{st3 & 3:x}/0x{st4 & 3:x} (SF-008)",
+            f"0x{st3 & 3:x}/0x{st4 & 3:x} (owner value pending)",
         )
         self._log_chk(
             "CHK-STATUS-FOLLOWS-OCCUPANCY-NO-ACK",
@@ -286,7 +282,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
             f"CTRL=0x3 resp={both.resp_code}; A.READ_DATA words {[_hex(x) for x in words_a]} "
             f"(sent by B: {_hex(w[7])},{_hex(w[8])}); B.READ_DATA words "
             f"{[_hex(x) for x in words_b]} (sent by A: {_hex(w[5])},{_hex(w[6])}); both drains "
-            "ended in the empty error; no compare (SF-018 open)",
+            "ended in the empty error; no compare",
         )
 
         await self._flags("S7_EF_A", "A")
@@ -307,13 +303,13 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
             f"after wflush on A the peer READ_DATA answered resp {peer.resp_code} with "
             f"rdata[31:0]=0x{peer.rdata & 0xFFFFFFFF:08x} although {_hex(w[9])} and "
             f"{_hex(w[10])} had been queued; STATUS[1:0] B=0x{sb & 3:x} A=0x{sa & 3:x} "
-            "(SF-008)",
+            "(owner value pending)",
         )
         self._log_chk(
             "CHK-WFLUSH-CLEARS-FULL",
             f"after wflush of the full write FIFO the next write answered resp {wr2.resp_code} "
             f"and B popped {_hex(w[11])}; STATUS full bit A={sa >> 1 & 1} B={sb >> 1 & 1} "
-            "(SF-008)",
+            "(owner value pending)",
         )
 
         await self._push("S8_X", "B", w[12])
@@ -347,7 +343,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
             "CHK-RFLUSH-EMPTIES-OWN-READ-FIFO",
             f"after rflush on A, A.READ_DATA answered resp {own.resp_code} with "
             f"rdata[31:0]=0x{own.rdata & 0xFFFFFFFF:08x} although B had sent {_hex(w[13])}; "
-            f"STATUS[1:0] A=0x{s10 & 3:x} (SF-008)",
+            f"STATUS[1:0] A=0x{s10 & 3:x} (owner value pending)",
         )
 
         await self._push("S11_Y0", "B", w[0])
@@ -360,7 +356,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-RFLUSH-FREES-PEER",
             f"after rflush of A's full read FIFO the peer write answered resp {wr11.resp_code} "
-            f"and A popped {_hex(w[14])}; STATUS full bit B={s11 >> 1 & 1} (SF-008)",
+            f"and A popped {_hex(w[14])}; STATUS full bit B={s11 >> 1 & 1} (owner value pending)",
         )
 
         await self._push("S12_W", "A", w[15])
@@ -398,9 +394,9 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-WFLUSH-VS-PUSH-CONSISTENT",
             f"group resp CTRL={g_ctrl.resp_code} WRITE_DATA={g_wr.resp_code}; V0 not popped; "
-            f"V1 {'kept' if words else 'discarded'} (measured, SF-012); drain words "
+            f"V1 {'kept' if words else 'discarded'} (measured, owner value pending); drain words "
             f"{[_hex(x) for x in words]} ended in the empty error; V2 round trip "
-            f"{_hex(v[2])}; no same-cycle claim (SF-024)",
+            f"{_hex(v[2])}; no same-cycle claim (owner value pending)",
         )
 
         u = [0x5000_0000_0000_0000 + n for n in range(3)]
@@ -416,7 +412,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-RFLUSH-VS-PUSH-CONSISTENT",
             f"group resp CTRL={g_ctrl.resp_code} WRITE_DATA={g_wr.resp_code}; U0 not popped; "
-            f"U1 {'kept' if words else 'discarded'} (measured, SF-012); drain words "
+            f"U1 {'kept' if words else 'discarded'} (measured, owner value pending); drain words "
             f"{[_hex(x) for x in words]} ended in the empty error; U2 round trip "
             f"{_hex(u[2])}",
         )
@@ -433,7 +429,8 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-FLUSH-VS-POP-NO-STALE-NO-STUCK",
             f"group CTRL resp {g_ctrl.resp_code}, grouped READ_DATA resp {g_rd.resp_code} "
-            f"data={_hex(g_rd.rdata)} (measured, SF-024); afterwards A.READ_DATA answered "
+            f"data={_hex(g_rd.rdata)} "
+            "(measured, owner value pending); afterwards A.READ_DATA answered "
             f"SLVERR with no stale Z0; Z1 round trip {_hex(z[1])}",
         )
 

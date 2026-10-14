@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Gated peripheral window extent, isolation, write delivery and the AVSBus clock pad.
 
-Contract SMC_CLOCK_GATE_020, anchor smc_periph_cg_window_extent_test.
-Scenarios GATE-PER-{AVS,I2C,UART,TELEM,I3C}.S7..S9 and GATE-PER-AVS.S10.
 Sources: hw/sys/smc/regs/smc.rdl, hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/clk_rst.adoc.
 
 With one peripheral enable of CLOCK_GATE_CONTROL set, the window of that peripheral answers
@@ -184,7 +182,8 @@ class smc_periph_cg_window_extent_test_seq(SmcCsrSeq):
                 f"CLOCK_GATE_CONTROL=0x{gated:x}: "
                 f"registered {reg} @ 0x{addr:08x} and unbacked @ 0x{unbacked:08x} answered "
                 f"SLVERR with 0x{GATED_RDATA:08X}; window-end @ 0x{win_end:08x} answered "
-                f"{RESP_NAMES.get(end_resp, end_resp)} data 0x{end_data:08x} (extent per SF-013)"
+                f"{RESP_NAMES.get(end_resp, end_resp)} data 0x{end_data:08x} "
+                f"(extent owner value pending)"
             )
         self._stamp("S2")
         for line in extent_lines:
@@ -225,7 +224,7 @@ class smc_periph_cg_window_extent_test_seq(SmcCsrSeq):
             delivery_lines.append(
                 f"{name} {wreg} @ 0x{waddr:08x}: write 0x{pattern:08x} with CLOCK_GATE_CONTROL="
                 f"0x{gated:x} answered {RESP_NAMES[resp]}; word before 0x{before:08x}, after "
-                f"enable cleared 0x{after:08x}, unchanged={before == after} (SF-014)"
+                f"enable cleared 0x{after:08x}, unchanged={before == after} (owner value pending)"
             )
         self._stamp("S4")
         for line in delivery_lines:
@@ -245,7 +244,7 @@ class smc_periph_cg_window_extent_test_seq(SmcCsrSeq):
             "CHK-AVS-CLOCK-PRINT",
             f"{AVS_CLK_PROBE} rises over {AVS_COUNT_CYCLES} clk_smc_i cycles: avs_cg_en clear "
             f"{rises_clear}, avs_cg_en set {rises_set} (level {level_set} at the end of the set "
-            f"window; SF-028)",
+            f"window; owner value pending)",
         )
 
         # S6: restore.

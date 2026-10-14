@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """LOCKS register behaviour and the 32-slot lock assignment of SMC_EFUSE_MAP.
 
-Contract SMC_EFUSE_MAP_013, anchor smc_efuse_map_locks_register_test.
-Scenarios EMAP-LOCKS-WOSET.S1/S2/S4/S5/S6, EMAP-LOCK-SLOT-MAP.S1-S4, EMAP-LOCK-SW-STICKY.S3.
 Sources: smc_efuse_map.rdl (LOCKS, slot assignment), architecture.adoc (Hardware vs.
 Software Locks).
 

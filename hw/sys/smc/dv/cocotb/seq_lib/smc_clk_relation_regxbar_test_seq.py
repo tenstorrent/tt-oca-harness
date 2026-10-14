@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Register round trips on the SMC crossbar and the AVSBus window per clock cell.
 
-Contract SMC_CLOCK_SRC_006, anchor smc_clk_relation_regxbar_test.
-Allocated scenarios: CSRC-CLK-RELATION.S1..S5, CSRC-SMC-REGXBAR.S1, CSRC-SMC-REGXBAR.S2.
 Spec sources: hw/sys/smc/doc/clk_rst.adoc, smc_base_config.rdl, avsbus_controller.rdl.
 
 HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD and AVS_CFG_0.MAX_RETRIES are written, read back and
@@ -364,7 +362,8 @@ class smc_clk_relation_regxbar_test_seq(SmcCsrSeq):
                 f"cell {self.cell} periods {periods}: 2 writes issued together, both B "
                 f"responses taken, then {OUTSTANDING_READS} alternating reads under one AXI id "
                 f"issued together; {detail}; all OKAY within {elapsed} ns (bound "
-                f"{ACCESS_TIMEOUT_NS} ns, drain time printed, SF-035 open); each read returned "
+                f"{ACCESS_TIMEOUT_NS} ns, drain time printed, owner value pending); "
+                f"each read returned "
                 f"0x{THR_PATTERN & THR_MASK:05x} or 0x{out_word:08x} in issue order",
             )
             await self._wr("S5_THR_RESTORE", HANG_DET_SYS_AXI_TIMEOUT, saved_thr)

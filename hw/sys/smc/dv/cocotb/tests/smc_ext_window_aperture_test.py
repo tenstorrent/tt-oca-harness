@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_MEM_ECC_015 / smc_ext_window_aperture_test: external window and REGION_SIZE aperture."""
+"""smc_ext_window_aperture_test: external window and REGION_SIZE aperture."""
 
 from __future__ import annotations
 

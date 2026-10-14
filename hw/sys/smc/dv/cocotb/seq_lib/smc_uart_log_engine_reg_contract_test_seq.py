@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Log-engine bank, wrapper CTRL and UART reset words on four wrapper instances.
 
-Contract SMC_UART_LOG_ENGINE_009, anchor smc_uart_log_engine_reg_contract_test.
-Allocated scenarios: LOGENG-REGMAP-RESET.S1-S3, LOGENG-REGMAP-RW.S1-S4/S6/S7,
-LOGENG-REGMAP-ACCESS.S2-S5, LOGENG-UART-EN-CTRL.S1, LOGENG-INSTANCE-MAP.S1.
 Spec sources: hw/ip/uart/log_engine/regs/log_engine.rdl, hw/ip/uart/uart_log_engine_wrap/regs,
 hw/ip/uart/uart_wrap/regs/uart_wrap.rdl, hw/sys/smc/doc/periphs.adoc.
 """
@@ -72,7 +69,7 @@ FENCE_TERMS = " < ".join(chk for chk, _ in CHECKERS)
 
 
 class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
-    """Register contract of the log-engine bank and wrapper on instances 0..3."""
+    """Register map of the log-engine bank and wrapper on instances 0..3."""
 
     def __init__(self, name: str = "smc_uart_log_engine_reg_contract_test_seq") -> None:
         super().__init__(name)
@@ -160,7 +157,7 @@ class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
             "S2",
             "%d register reads (8 registers on %d instances) and %d LOG_CTRL slot reads "
             "(%d slots on %d instances) read 0x0 with OKAY responses before any write; "
-            "INTR_TEST read before any write: %s (SF-016)",
+            "INTR_TEST read before any write: %s (owner value pending)",
             self.reset_reads,
             len(self.wraps),
             self.slot_reads,
@@ -318,7 +315,7 @@ class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
             "CHK-LOGENG-ACCESS-INTR-TEST-READ",
             "S10",
             "INTR_TEST reads completed with resolvable data, measured as resp/data "
-            "(0 OKAY, 2 SLVERR, 3 DECERR): %s (owner answer SF-016 open)",
+            "(0 OKAY, 2 SLVERR, 3 DECERR): %s (owner answer pending)",
             ", ".join(self.intr_test_reads),
         )
         self._chk(
@@ -343,7 +340,7 @@ class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
             "CHK-LOGENG-ACCESS-UNIMPL",
             "S11",
             "after a write of 0x%08x INTR_ENABLE read 0x%08x and INTR_STATUS read 0x0 both from "
-            "clear and with 0x%02x forced (partial strobes: SF-022 open)",
+            "clear and with 0x%02x forced (partial strobes: owner answer pending)",
             _WORD_MASK,
             INTR_BOTH,
             INTR_BOTH,
@@ -436,7 +433,7 @@ class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
         assert marks == [c for c, _ in CHECKERS], f"checker order {marks}"
         for (chk, step), (_, n) in zip(CHECKERS, self.chk_marks):
             assert self.stamps[n - 1][0] == step, f"{chk} printed after {self.stamps[n - 1][0]}"
-        self.assert_all_reachable(self.accesses, "UART_LOG_ENGINE_REG_CONTRACT")
+        self.assert_all_reachable(self.accesses, "UART_LOG_ENGINE")
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
             FENCE_TERMS,

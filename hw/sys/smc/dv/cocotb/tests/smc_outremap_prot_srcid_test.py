@@ -32,4 +32,4 @@ class smc_outremap_prot_srcid_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_outremap_prot_srcid_test_seq("smc_outremap_prot_srcid_test_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        assert seq.accesses + seq.jtag_accesses >= 81, "fewer accesses than the contract floor"
+        assert seq.accesses + seq.jtag_accesses >= 81, "fewer accesses than the required floor"

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OCTS primary counter rate against the three input clock periods.
 
-Contract SMC_CLOCK_SRC_001, anchor smc_octs_clk_rate_test.
-Scenarios: CSRC-OCTS-CLK.S1, CSRC-OCTS-CLK.S2, CSRC-OCTS-CLK.S3, CSRC-OCTS-CLK.S4.
 Spec: clk_rst.adoc (Timer and Debug Timebases), system_timer_octs architecture.adoc.
 
 The ``+smc_cell`` run argument selects the ref / smc / periph period triple in ns: default

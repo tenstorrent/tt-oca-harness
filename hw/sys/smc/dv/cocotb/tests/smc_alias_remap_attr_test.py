@@ -1,9 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Alias remap AxCACHE replacement, attribute hold across half writes and the shared table.
-
-Contract SMC_FILTER_24, anchor smc_alias_remap_attr_test.
-"""
+"""Alias remap AxCACHE replacement, attribute hold across half writes and the shared table."""
 
 from __future__ import annotations
 

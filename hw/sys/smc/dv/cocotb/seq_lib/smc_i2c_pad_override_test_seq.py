@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-# Contract SMC_I2C_CSR_IRQ_011, anchor smc_i2c_pad_override_test.
-# Scenarios: I2C-OVRD-DRIVE.S1-S4, I2C-VAL-SENSE.S1-S3.
 # Spec sources: hw/ip/i2c/regs/i2c.rdl OVRD and VAL; hw/ip/i2c/doc/index.adoc per-instance ports.
 """I2C OVRD pull control as sampled levels on the I2C0 pads and the per-instance pull probes.
 
@@ -9,8 +7,8 @@
 ``SCLVAL`` / ``SDAVAL`` of 0 pulling the line low and 1 releasing it. The
 frontdoor writes OVRD words on instance 0 and the bench samples ``tb_i2c0_scl``,
 ``tb_i2c0_sda`` and the pull probes ``tb_i2cN_scl_dut_low`` / ``_sda_dut_low`` as
-levels. The pad pull-up model (SF-020), the VAL cadence and reset (SF-021) and
-the per-instance pad history (SF-031) are open, so the pad, settle and VAL
+levels. The pad pull-up model, the VAL cadence and reset and the per-instance pad
+history are owner value pending, so the pad, settle and VAL
 legs print measured values and compare nothing. Instance isolation compares the
 per-instance pull probes only.
 """

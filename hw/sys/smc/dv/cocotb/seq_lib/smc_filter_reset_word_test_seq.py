@@ -2,16 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Filter, alias remap and output remap reset words; a cold reset clears `locked`.
 
-Contract SMC_FILTER_12, anchor smc_filter_reset_word_test.
-Allocated scenarios: FILTER-RESET-WORD.S1-S5, FILTER-LOCK.S7.
 Spec sources: filter_ctrl.rdl, alias_remap.rdl, output_remap.rdl, axi_filter doc (Locking).
 
 Every access is a SEP_IN 8-byte access. The alias and output remap reset words are 0x0, so
 they are graded as the post-reset readback of a previously programmed non-zero value; the
 filter entry 7 legs and the entry 12 `locked` leg rest on a non-zero prior value too. The
 reset-word reads of S2 and the post-reset 0x0 compares of an untouched register cannot
-discriminate X/Z in this two-state model. SF-010 leaves open which reset clears filter
-entries; the leaf applies the cold reset and grades only what the contract states.
+discriminate X/Z in this two-state model. The document leaves open which reset clears filter
+entries; the leaf applies the cold reset and grades only what the document states.
 """
 
 from __future__ import annotations

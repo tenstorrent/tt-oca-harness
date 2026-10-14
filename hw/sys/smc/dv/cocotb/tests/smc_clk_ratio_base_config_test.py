@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""
-Contract SMC_CLOCK_RATIO_006 ANCHOR: smc_clk_ratio_base_config_test
-Scenarios: RATIO-BASECFG-XFER.S1, RATIO-BASECFG-XFER.S2, RATIO-BASECFG-XFER.S3
+"""smc_base_config reset values, threshold round trip and the LOCAL_BASE write.
+
 Sources: hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl, hw/sys/smc/doc/memmap.adoc
 """
 

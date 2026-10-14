@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Zeroer SRAM initialisation, partial ranges, egress use, unmapped and denied targets, DMA.
 
-Contract SMC_POWER_DMA_ZEROER_027, anchor smc_zeroer_sram_init_test.
-Scenarios ZEROER-SRAM-INIT.S1 to .S4 and ACCEL-EGRESS-ATTRS.S7.
 Sources doc/programmer/src/smc-programming.adoc, hw/sys/smc/doc/zeroer.adoc.
 """
 

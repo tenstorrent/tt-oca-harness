@@ -2,11 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Mailbox aperture decode, reset values, attributes and enabled-gate access.
 
-Contract SMC_MAILBOX_010, anchor smc_mailbox_register_map_reset_test.
-Scenarios: MBX-ADDR-MAP S1-S5, MBX-RESET-STATE S1-S4, MBX-ATTRIBUTES S1-S3,
-MBX-CG-ENABLED-ACCESS S1/S2/S3/S5.
 Sources: axi_lite_mailbox_unit axil_mailbox.rdl, memmap.adoc, interface.adoc, architecture.adoc;
-smc clk_rst.adoc, interrupts.adoc, periphs.adoc; open SF-017/023/025.
+smc clk_rst.adoc, interrupts.adoc, periphs.adoc.
 """
 
 from __future__ import annotations
@@ -37,7 +34,7 @@ AXI_TIMEOUT_NS = 50_000
 AXI_SLVERR = 2
 EMPTY_ERROR_LOW = 0xFEEDDEAD
 WRITE_DATA_EMPTY_LOW = 0xFEEDC0DE
-MAILBOX_BASE = 0xC001_8000
+MAILBOX_BASE = 0xC001_8000  # SMC_TOP_SMC_MAILBOX_BASE_ADDR
 PAIR_STRIDE = 0x1000
 INBOUND_OFFSET = 0x800
 IDLE_GAP_CYCLES = 512
@@ -46,7 +43,7 @@ NUM_PAIRS = 32
 REPRESENTATIVE = (0, 1, 15, 16, 31)
 SIDE = {"A": "OUTBOUND", "B": "INBOUND"}
 OKAY, ERROR = "okay", "error"
-# Register, defined-bit mask and reset value; the bits above the mask are reserved (SF-022).
+# Register, defined-bit mask and reset value; the bits above the mask are reserved.
 RESET_REGS = (
     ("STATUS", 0xF, 0x1),
     ("ERROR_FLAGS", 0x3, 0),
@@ -238,7 +235,8 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             "CHK-RESET-REGISTERS-REPRESENTATIVE-PAIRS",
             f"{reads} reads on {2 * len(REPRESENTATIVE)} apertures: STATUS[3:0]==0x1 and "
             f"ERROR_FLAGS[1:0], WIRQT[7:0], RIRQT[7:0], IRQS[2:0], IRQEN[2:0], IRQP[2:0], "
-            f"CTRL[1:0]==0; reserved upper bits nonzero in {len(upper)} reads {upper} (SF-022)",
+            f"CTRL[1:0]==0; reserved upper bits nonzero in {len(upper)} reads {upper} "
+            "(owner value pending)",
         )
 
         reads = 0
@@ -373,7 +371,7 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ATTRIBUTES-OBSERVED",
             f"SMC_ATTRIBUTES=0x{attrs:016x} mailbox_depth[39:36]={attrs >> 36 & 0xF} "
-            f"num_mailboxes[45:40]={attrs >> 40 & 0x3F} (raw, no compare, SF-017)",
+            f"num_mailboxes[45:40]={attrs >> 40 & 0x3F} (raw, no compare, owner value pending)",
         )
 
         w0, w1, w2 = 0x3100_0000_0000_0000, 0x3100_0000_0000_0001, 0x3100_0000_0000_0002
@@ -425,7 +423,7 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             "CHK-CG-FIRST-ACCESS-AFTER-IDLE",
             f"idle gap {IDLE_GAP_CYCLES} clk_smc_i cycles (stimulus); write answered OKAY and "
             f"the pop returned 0x{word:016x}; completion latency={self._latency[0]} clk_smc_i "
-            "cycles (measured, SF-023)",
+            "cycles (measured, owner value pending)",
         )
 
         word = 0x6000_0000_0000_0006

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Concurrent and overlapping accesses to SMC_EFUSE_MAP over a distinct-word image.
 
-Contract SMC_EFUSE_MAP_020, anchor smc_efuse_map_concurrency_test.
-Scenarios EMAP-CONCURRENCY.S1, S2, S3, S5.
 Sources: smc_efuse_map.rdl (LOCKS), port_table.adoc axil_smc_otp_jtag, architecture.adoc.
 
 The SEP_IN master is the s_axi port through ``sys_axi_agent``. The JTAG master is the ej_axi

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Counted SEP_IN accesses to scratch, UART SCR and a mixed outstanding group.
 
-Contract SMC_CLOCK_RATIO_011, anchor smc_clk_ratio_resp_once_test.
-Allocated scenarios: RATIO-RESP-ONCE.S1, RATIO-RESP-ONCE.S2, RATIO-RESP-ONCE.S3.
 Spec sources: hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/clk_rst.adoc, hw/sys/smc/doc/fabric.adoc.
 """
 
@@ -288,7 +286,7 @@ class smc_clk_ratio_resp_once_test_seq(SmcCsrSeq):
 
     def _assert_fence(self) -> None:
         ids = tuple(s for s, _ in self._steps)
-        assert ids == STEP_ORDER, f"step ids {ids} != contract order {STEP_ORDER}"
+        assert ids == STEP_ORDER, f"step ids {ids} != expected order {STEP_ORDER}"
         stamps = [t for _, t in self._steps]
         assert all(b > a for a, b in zip(stamps, stamps[1:])), f"stamps not increasing: {stamps}"
         chk_ids = tuple(c for c, _ in self._chk_lines)

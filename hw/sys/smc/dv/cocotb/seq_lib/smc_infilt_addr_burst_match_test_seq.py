@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Inbound filter address-range, enable, 56-bit, span, START = END and burst match.
 
-Contract SMC_FILTER_20, anchor smc_infilt_addr_burst_match_test.
-Allocated scenarios: INFILT-ADDR-MATCH.S1-S5, INFILT-BURST-MATCH.S1, S3.
 Spec sources: fabric.adoc Filtering and Protection, axi_filter index.adoc Match Then Permit and
 Address Range Granule, filter_ctrl.rdl FILTER_CONFIG.
 
@@ -37,7 +35,7 @@ _RESET_CFG = reg_reset_word(_FILTER_H, "FILTER_CTRL", "FILTER_CONFIG")
 _RESET_START = reg_reset_word(_FILTER_H, "FILTER_CTRL", "START_ADDR")
 _RESET_END = reg_reset_word(_FILTER_H, "FILTER_CTRL", "END_ADDR")
 
-# Contract words; the read-back adds data_bus_width 3.
+# Register words; the read-back adds data_bus_width 3.
 _PERMIT_B1 = 0x0000_0000_0100_0013
 _PERMIT_B0 = 0x0000_0000_0000_0013
 _DISABLED_B1 = 0x0000_0000_0100_0003

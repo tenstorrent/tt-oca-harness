@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Base and last register decode of the mailbox, eFuse, timer, CLA, DMA and zeroer apertures.
 
-Contract XBAR_027, anchor smc_unit_extent_register_decode_test.
-Allocated scenarios: XBAR-DEC-MAILBOX.S1/S2, XBAR-DEC-EFUSE.S1/S2, XBAR-DEC-TIMER.S1/S2,
-XBAR-DEC-CLA.S1, XBAR-DEC-MEMORIES.S1/S2, XBAR-DEC-SPARE.S2, XBAR-DEC-DMA-ZEROER.S2.
 Spec sources: smc.rdl unit placements and past-extent, memmap.adoc Address Space Organization,
 fabric.adoc Fabric Topology.
 """
@@ -267,13 +264,13 @@ class smc_unit_extent_register_decode_test_seq(SmcCsrSeq):
         self._mark_step("S2")
         self._log_chk(
             "CHK-MAILBOX-BASE-PORTS",
-            f"{mailbox} (SF-016, SF-019: write-only register, readback word is not an RDL reset, "
+            f"{mailbox} (write-only register, readback word is not an RDL reset, "
             f"RDL default 0x{AXIL_MAILBOX_WRITE_DATA_REG_DEFAULT & _MASK32:X}; OKAY and equality "
             f"across ports only)",
         )
         self._log_chk(
             "CHK-EFUSE-BASE-PORTS",
-            f"{efuse_map}; {efuse_status} (SF-016, SF-019: sense status is hardware driven, "
+            f"{efuse_map}; {efuse_status} (sense status is hardware driven, "
             f"equality across ports only); {efuse_timeout}",
         )
         self._log_chk("CHK-TIMER-BASE-PORTS", f"{timer_start}; {timer_ctrl}")
@@ -292,7 +289,7 @@ class smc_unit_extent_register_decode_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ROM-WORDS-PORTS",
             f"{'; '.join(rom_parts)} identical on {len(PORTS)} ports x {len(BASES)} bases, all "
-            f"OKAY, differ from the SPM patterns (SF-018: no spec value for the word)",
+            f"OKAY, differ from the SPM patterns (no spec value for the word)",
         )
 
         # S4: SPM words written through one base and port, read through the other.
@@ -359,7 +356,7 @@ class smc_unit_extent_register_decode_test_seq(SmcCsrSeq):
             f"(RDL reset 0x{CHIP_CONFIG_LC_STATE_REG_DEFAULT:X}) and NDMRESET_CLUSTER_COUNT@"
             f"0x{CLUSTER_COUNT:08X}=0x{cluster_count:08X} (RDL reset "
             f"0x{NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_DEFAULT:X}) hardware driven, observe-only "
-            f"(SF-019)",
+            f"(owner value pending)",
         )
 
         # S6: last registers of mailbox, eFuse interface control and system timer.
@@ -378,8 +375,8 @@ class smc_unit_extent_register_decode_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-LAST-REG-MAILBOX-EFUSE-TIMER",
             f"INBOUND_MAILBOX_31 CTRL@0x{MAILBOX_IN31_LAST:08X}=0x{mbox_last:08X} (write-only, "
-            f"RDL default 0x{AXIL_MAILBOX_CTRL_REG_DEFAULT & _MASK32:X}, observe-only, "
-            f"SF-016); eFuse PROGRAM_REQ_TIMEOUT@0x{EFUSE_PROGRAM_REQ_TIMEOUT:08X}="
+            f"RDL default 0x{AXIL_MAILBOX_CTRL_REG_DEFAULT & _MASK32:X}, observe-only); "
+            f"eFuse PROGRAM_REQ_TIMEOUT@0x{EFUSE_PROGRAM_REQ_TIMEOUT:08X}="
             f"0x{efuse_last:08X}; OCTS "
             f"TIMER_GPIO_ENABLE@0x{TIMER_LAST:08X}=0x{timer_last:08X}; eFuse and timer OKAY "
             f"at their RDL reset, mailbox OKAY",

@@ -1,9 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG requests through the alias remap regions land at the translated SYS_OUT addresses.
-
-Contract SMC_FILTER_23, anchor smc_alias_remap_translate_test.
-"""
+"""JTAG requests through the alias remap regions land at the translated SYS_OUT addresses."""
 
 from __future__ import annotations
 

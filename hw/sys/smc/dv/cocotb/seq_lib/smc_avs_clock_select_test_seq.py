@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AVS_CLOCK_SELECT table, ordered transitions and ungated-change recovery.
 
-Contract SMC_CLOCK_SRC_008, anchor smc_avs_clock_select_test.
-Scenarios CSRC-AVS-SELECT.S1 to CSRC-AVS-SELECT.S6.
 Sources: avsbus_controller.rdl AVS_CLOCK_SELECT, hw/ip/avsbus_controller/doc/interface.adoc.
 
 The select encoding is 00 periph clock direct, 01 periph clock divided, 10 ref clock direct,
@@ -233,7 +231,7 @@ class smc_avs_clock_select_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-AVS-SELECT-UNGATED-RECOVERY",
             f"CHK-AVS-SELECT-UNGATED-RECOVERY: ungated select {last}->{target} behaviour: "
-            f"{ungated}; owner answers SF-019; gated reprogram period {period} ps equals table "
+            f"{ungated}; owner value pending; gated reprogram period {period} ps equals table "
             f"{want} ps, high {100 * high:.1f}%",
         )
 

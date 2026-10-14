@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SCRATCH[0..7] traffic at ref / smc / periph 10 / 12 / 6 ns.
 
-Contract SMC_CLOCK_RATIO_005, anchor smc_clk_ratio_scratch_test.
-Allocated scenarios: RATIO-SCRATCH-XFER.S1, RATIO-SCRATCH-XFER.S2, RATIO-SCRATCH-XFER.S3.
 Spec sources: hw/sys/smc/regs/blocks/scratch/scratch.rdl, hw/sys/smc/doc/clk_rst.adoc.
 """
 

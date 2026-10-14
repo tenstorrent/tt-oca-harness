@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AVS_CFG_0, AVS_CFG_1 and AVS_CONFIG behaviour across the AVSBus CDC bridge.
 
-Contract SMC_CLOCK_SRC_015, anchor smc_avs_cfg_csr_cdc_test.
-Scenarios CSRC-AVS-CSR.S1..S5 and CSRC-CDC-AVS.S1..S3 at the default clock triple.
 Sources: hw/ip/avsbus_controller/regs/avsbus_controller.rdl, hw/sys/smc/doc/clk_rst.adoc.
 """
 

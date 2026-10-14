@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO DATA_CTRL field values, read-modify-write isolation and Programmer's Guide constants.
 
-Contract SMC_GPIO_CSR_008, anchor smc_gpio_data_ctrl_rw_values_test.
-Scenarios GPIO-CSR-DATA-CTRL-RW.S2, S3, S4 and S5.
 Sources hw/ip/gpio/regs/gpio_intf.rdl (DATA_CTRL), doc/programmer/src/smc-programming.adoc.
 
 Instance 60 is the pad the integrator table reserves. Every access is a whole-word write of

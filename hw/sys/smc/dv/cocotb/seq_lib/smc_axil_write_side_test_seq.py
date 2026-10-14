@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Downstream AXI-Lite write-side traffic and the idle windows around it.
 
-Contract SMC_AXIL_WRITE_SIDE_TEST, anchor smc_axil_write_side_test.
-Allocated scenarios: AXI-EXT-DUAL-WINDOW.S2, AXI-EXT-DUAL-WINDOW.S3, AXI-LITE-IDLE.S1,
-AXI-LITE-IDLE.S2, REGBLOCK-EXT-PENDING.S2.
 Spec sources: smc_external_mandatory.rdl efuse_shim_ctrl, regblock_udps.rdl external
 registers, fabric.adoc Topology (AXI-Lite network), AMBA no-VALID-when-idle rule.
 """
@@ -290,7 +287,8 @@ class smc_axil_write_side_test_seq(SmcCsrSeq):
             f"(last write wins), all {WRITE_PASSES} eFuse-shim writes OKAY; "
             f"{watch.concurrent} cycle(s) with the eFuse-shim and external ports high together "
             f"(any_master is their OR); high cycles {watch.high}; external-window write "
-            f"responses (printed, not asserted, SF-014) {[w.resp_code for w in ext_writes]}"
+            f"responses (printed, not asserted, owner value pending) "
+            f"{[w.resp_code for w in ext_writes]}"
         )
 
     async def _step_mixed(self) -> None:
@@ -347,7 +345,7 @@ class smc_axil_write_side_test_seq(SmcCsrSeq):
             f"all {len(members)} mixed members completed; eFuse-shim reads "
             f"{[hex(v) for v in reads]} equal the last value written, eFuse-shim writes OKAY; "
             f"{watch.concurrent} cycle(s) with the two downstream ports high together; "
-            f"external-window (op, resp, rdata) printed, not asserted (SF-014): {ext}"
+            f"external-window (op, resp, rdata) printed, not asserted (owner value pending): {ext}"
         )
 
     async def _step_pending(self) -> None:

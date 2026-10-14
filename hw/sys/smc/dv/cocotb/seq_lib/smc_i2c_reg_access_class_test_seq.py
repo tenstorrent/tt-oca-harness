@@ -2,18 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C register access classes with both engines disabled, on all three instances.
 
-Contract SMC_I2C_CSR_IRQ_016, anchor smc_i2c_reg_access_class_test.
-Scenarios: I2C-REG-RW-READBACK.S1-S5, I2C-REG-RO-WO-ACCESS.S1-S4, I2C-CTRL-REGS.S2-S4,
-I2C-INSTANCE-ISOLATION.S1.
 Sources: hw/ip/i2c/regs/i2c.rdl, hw/ip/i2c/regs/i2c_wrap.rdl, hw/ip/i2c/regs/i2c_ctrl.rdl,
 hw/ip/i2c/doc/index.adoc.
 
 Every access is a SEP_IN frontdoor word access with CTRL.ENABLEHOST and CTRL.ENABLETARGET
 held at 0 and no I2C bus traffic. The seed (RANDOM_SEED) picks the instance walked per
-register. The response codes of read-only writes and write-only reads (SF-006), the read
-value of write-only registers (SF-007), reserved-bit residue (SF-009), the threshold
-readbacks (SF-024, SF-026), TIMING0 THIGH/TLOW below 2 (SF-027) and the role bits (SF-025)
-are logged without a compare.
+register. The response codes of read-only writes and write-only reads, the read value of
+write-only registers, reserved-bit residue, the threshold readbacks, TIMING0 THIGH/TLOW
+below 2 and the role bits are owner value pending: they are logged without a compare.
 """
 
 from __future__ import annotations
@@ -290,7 +286,7 @@ class smc_i2c_reg_access_class_test_seq(SmcCsrSeq):
             "RANDOM_SEED=%d; %d readbacks equal the written word under the writable mask "
             "over %d families (all-ones and all-zero on instances 0,1,2; walking-one and "
             "walking-zero per family on seeded instance: %s); TIMING0 THIGH/TLOW below 2 "
-            "logged without compare (SF-027): %s",
+            "logged without compare (owner value pending): %s",
             self.seed,
             compares,
             len(RW_FAMILIES),
@@ -426,7 +422,7 @@ class smc_i2c_reg_access_class_test_seq(SmcCsrSeq):
         self._mark("S5")
         self._chk(
             "CHK-I2C-RW-OBSERVED",
-            "instance %d readbacks logged, none compared (SF-024, SF-026): %s",
+            "instance %d readbacks logged, none compared (owner value pending): %s",
             n,
             " ".join(seen),
         )
@@ -510,7 +506,7 @@ class smc_i2c_reg_access_class_test_seq(SmcCsrSeq):
             "CHK-I2C-ROWO-OBSERVED",
             "instance %d write-only reads %s; all-ones write responses %s; readback residue %s; "
             "TARGET_NACK_COUNT reads at reset,reset,after 0x%x,after: %s; STATUS=0x%03x and "
-            "INTR_STATE event bits 0x%x unchanged (SF-006, SF-007, SF-008, SF-009)",
+            "INTR_STATE event bits 0x%x unchanged (owner value pending)",
             n,
             " ".join(seen),
             " ".join(writes),

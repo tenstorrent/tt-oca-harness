@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Reset output synchronizers assert asynchronously and release on their own clock edge.
 
-Contract SMC_RESET_043, anchor smc_reset_sync_async_assert_test.
-Allocated scenarios: RST-SYNC-OUT.S2, RST-SYNC-OUT.S3, RST-SYNC-OUT.S4, RST-SYNC-OUT.S6.
 Spec sources: clk_rst.adoc (Reset Synchronization), port_table.adoc.
 
 ``powergood_i`` and ``tb_sep_wdt_reset_n`` are driven one third into a clock period. The

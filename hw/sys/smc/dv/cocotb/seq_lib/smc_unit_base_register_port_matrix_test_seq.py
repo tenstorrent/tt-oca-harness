@@ -2,10 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Base-register reset readback of the unit apertures from three ports at two bases.
 
-Contract XBAR_028, anchor smc_unit_base_register_port_matrix_test.
-Allocated scenarios: XBAR-DEC-WDT.S1, XBAR-DEC-RESET-UNIT.S1, XBAR-DEC-SPARE.S1,
-XBAR-DEC-BASE-CONFIG.S1/S3, XBAR-DEC-DFX.S1/S2, XBAR-DEC-FABRIC-CTRL.S1/S2,
-XBAR-DEC-DMA-ZEROER.S1, XBAR-DEC-CPU-CTRL.S1/S2.
 Spec sources: smc.rdl unit and array placements, smc_base_config.rdl, dfx_ctrl_status.rdl,
 memmap.adoc Address Space Organization, fabric.adoc Alias Remap Registers.
 """
@@ -140,7 +136,7 @@ _MMODE_ATTRS = "SMC_TOP_SMC_MMODE_REMAP_REGION_REGION_ATTRS_BASE_ADDR"
 _XVISOR_ATTRS = "SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR"
 _INBOUND_CONFIG = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR"
 _OUTBOUND_CONFIG = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR"
-# (label, symbol, reset word, last index, contract offset of the last instance from the base)
+# (label, symbol, reset word, last index, spec offset of the last instance from the base)
 ARRAYS = (
     ("ALIAS_REGION_START", _ALIAS_START, REMAP_REGION_REGION_START_REG_DEFAULT, 7, 0x1_20E0),
     ("MMODE_REGION_ATTRS", _MMODE_ATTRS, REMAP_REGION_REGION_ATTRS_REG_DEFAULT, 7, 0x1_3038),
@@ -298,7 +294,7 @@ class smc_unit_base_register_port_matrix_test_seq(SmcCsrSeq):
         first_addrs = []
         for (label, symbol, reset, _last, _off), offset in zip(ARRAYS, _ARRAY_FIRST_OFFSETS):
             addr = smc_indexed_addr(symbol, 0)
-            assert addr - LOCAL_BASE_RESET == offset, f"{label} base 0x{addr:x} off contract"
+            assert addr - LOCAL_BASE_RESET == offset, f"{label} base 0x{addr:x} off the spec"
             first_addrs.append((label, addr, reset))
         pre = []
         for label, addr, reset in first_addrs:
@@ -329,7 +325,7 @@ class smc_unit_base_register_port_matrix_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-RESET-UNIT-BASE-PORTS",
             f"{line} (generated address offset 0x{SS_WARM_RESET_N - LOCAL_BASE_RESET:X} from "
-            f"the base; SF-015: reset readback not in the pinned spec)",
+            f"the base; reset readback not in the pinned spec)",
         )
 
         # S5: first register of each spare sub-block.
@@ -362,7 +358,7 @@ class smc_unit_base_register_port_matrix_test_seq(SmcCsrSeq):
         # S7: hang detector registers over SEP_IN at LOCAL_BASE.
         hang = []
         for label, addr, offset in HANG_DET_CTRLS + HANG_DET_THRESHOLDS:
-            assert addr - LOCAL_BASE_RESET == 0x1_0000 + offset, f"{label} offset off contract"
+            assert addr - LOCAL_BASE_RESET == 0x1_0000 + offset, f"{label} offset off the spec"
             want = (
                 THRESHOLD_PIN
                 if label.endswith("THRESHOLD")
@@ -389,8 +385,8 @@ class smc_unit_base_register_port_matrix_test_seq(SmcCsrSeq):
         status_words = {v for _, _, v in status}
         self._log_chk(
             "CHK-DFX-REGS-PORTS",
-            f"STATUS@0x{DFX_STATUS:08X} observe-only (SF-019) [{self._values(status)}] vs FL "
-            f"reset 0x{DFX_CTRL_STATUS_STATUS_REG_DEFAULT:X} match="
+            f"STATUS@0x{DFX_STATUS:08X} observe-only (owner value pending) "
+            f"[{self._values(status)}] vs FL reset 0x{DFX_CTRL_STATUS_STATUS_REG_DEFAULT:X} match="
             f"{int(status_words == {DFX_CTRL_STATUS_STATUS_REG_DEFAULT})} (tie-off word "
             f"0x{DFX_STATUS_IDLE:X}); {ctrl}; {mux}; all OKAY",
         )
@@ -476,8 +472,8 @@ class smc_unit_base_register_port_matrix_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-CPU-CTRL-FIRST-REG-PORTS",
             f"RESET_VECTOR_0@0x{RESET_VECTOR_0:08X} RDL reset "
-            f"0x{CPU_CTRL_RESET_VECTOR_REG_DEFAULT:X} (SF-015): SEP_IN.L=0x{pre_cpu:X} "
-            f"[{self._values(cpu)}] all OKAY",
+            f"0x{CPU_CTRL_RESET_VECTOR_REG_DEFAULT:X} (owner value pending): "
+            f"SEP_IN.L=0x{pre_cpu:X} [{self._values(cpu)}] all OKAY",
         )
 
         # Restore the inbound entry 0 reset word.

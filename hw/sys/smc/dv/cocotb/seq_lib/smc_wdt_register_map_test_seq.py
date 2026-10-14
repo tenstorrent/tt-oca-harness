@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Per-core watchdog register decode, CTRL fields and CMP width over SEP_IN.
 
-Contract SMC_POWER_TIMER_WDT_007, anchor smc_wdt_register_map_test.
-Allocated scenarios: WDT-APERTURE.S2-S5, WDT-CTRL-FIELDS.S1-S4, WDT-CMP.S2.
 Spec sources: hw/sys/smc/doc/watchdog.adoc (Operation, Register Access),
 hw/sys/smc/regs/blocks/wdt/wdt.rdl.
 """
@@ -136,7 +134,7 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
             "CHK-WDT-OFFSET-DECODE",
             "S2",
             "on %d of %d cores CTRL=0x%x read back, SCALED_COUNT within its COUNT bracket [%s], "
-            "COUNT below 0x%08x after FEED 0x%08x, COUNT_HI and KEY read 0 (SF-014)",
+            "COUNT below 0x%08x after FEED 0x%08x, COUNT_HI and KEY read 0 (owner value pending)",
             len(WDT_CORES),
             len(WDT_CORES),
             WDT_CTRL_SCALE2,
@@ -277,7 +275,7 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
             "CHK-WDT-CTRL-LOCKED-WRITE",
             "S8",
             "locked CTRL write of 0x%08x read back 0x%08x; after KEY the same write read 0x%08x, "
-            "0x%08x with bit 28 masked; bit 28 (wdogip0) read %d (SF-008)",
+            "0x%08x with bit 28 masked; bit 28 (wdogip0) read %d (owner value pending)",
             WDT_CTRL_ALL_ONES,
             0,
             value,

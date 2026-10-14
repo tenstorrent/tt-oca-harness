@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU Debug Module sbcs capability and haltsum idle readbacks over the DMI.
 
-Contract SMC_JTAG_DM_013, anchor smc_jtag_dm_sbcs_haltsum_test.
-Scenarios JDM-DM-SBCS-CAPS.S1-S4 and JDM-DM-HALTSUM.S1-S3.
 Spec sources: hw/sys/smc/doc/cpu.adoc (Debug Module capability readbacks and DMI register
 inventory tables), hw/ip/jtag/jtag_stap/doc.
 """

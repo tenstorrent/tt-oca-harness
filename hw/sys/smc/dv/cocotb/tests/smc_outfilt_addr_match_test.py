@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Outbound filter entry 1 matches by address range, enable and 56-bit address.
 
-Contract SMC_FILTER_15, anchor smc_outfilt_addr_match_test.
-Allocated scenarios: OUTFILT-ADDR-MATCH.S1 to S5, FILTER-RANGE-GRANULE.S3.
 Spec sources: axi_filter index.adoc (Match Then Permit, Address Range Granule), fabric.adoc.
 """
 

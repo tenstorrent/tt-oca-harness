@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Concurrent and overlapping accesses to the SMC_EFUSE_MAP shadow window.
 
-Contract SMC_EFUSE_MAP_020, anchor smc_efuse_map_concurrency_test.
-Scenarios EMAP-CONCURRENCY.S1, S2, S3, S5 (same-edge reads, write racing a read, alternating
-locked and unlocked writes, eight outstanding reads).
 Sources: smc_efuse_map.rdl (LOCKS), port_table.adoc axil_smc_otp_jtag, architecture.adoc.
 
 The image is written into the run directory during ``build_phase``: LOCKS 0 and every other

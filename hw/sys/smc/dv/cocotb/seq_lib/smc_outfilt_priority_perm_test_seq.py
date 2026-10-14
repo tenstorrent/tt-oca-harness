@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Outbound filter default pass, allow entries, lowest-hit priority and per-channel permission.
 
-Contract SMC_FILTER_17, anchor smc_outfilt_priority_perm_test.
-Allocated scenarios: OUTFILT-PRIORITY-PERM.S1 to S5, OUTFILT-DEFAULT-PASS.S1 and S3.
 Spec sources: axi_filter index.adoc (Match Then Permit), fabric.adoc (Outbound Filtering),
 filter_ctrl.rdl FILTER_CONFIG read_allowed and write_allowed.
 

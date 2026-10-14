@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_POWER_TELEMETRY_017 / smc_telemetry_address_map_test.
+"""SMC telemetry receiver wrapper address map: offsets, counters, past-extent, unbacked.
 
-Scenarios TLM-ADDRESS-MAP.S1 to S5: receiver offsets, counter window, past-extent, unbacked.
 Sources: smc/doc/memmap.adoc, telemetry_receiver/doc/{memmap,interface}.adoc, smc.rdl.
 """
 
@@ -69,7 +68,7 @@ _REG_TYPES = (
 _INTR_ENABLE_PATTERNS = (0x01, 0x10, 0x11)
 _THRESHOLD_PATTERNS = (0x111, 0x222, 0x333)
 
-# Offsets named by the contract steps S4 to S6.
+# Offsets named by steps S4 to S6.
 _PAST_EXTENT_OFFSETS = (_EXTENT, _EXTENT + 0x4, _EXTENT + 0x80, 0xFFC)
 _FOURTH_WRITE_OFFSET = _EXTENT + 0xC
 _FOURTH_READ_OFFSET = _EXTENT + 0x4
@@ -78,7 +77,8 @@ _UNBACKED_WRITE = 0x11
 _FOURTH_WRITE = 0x11
 
 # ATB framing: 8-bit beats, 64-bit packet, 9-bit blocks (telemetry_receiver/doc/interface.adoc,
-# architecture.adoc); header bit positions are DV-owned.
+# architecture.adoc). The last-packet bit 63 and probe ID [60:56] are in architecture.adoc;
+# the next-block field position is not stated there.
 _BEAT_BITS = 8
 _BEATS_PER_PACKET = 64 // _BEAT_BITS
 _BLOCK_BITS = 9
@@ -199,7 +199,7 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         dut = cocotb.top
-        assert _NUM_RX == 3, f"generated receiver count {_NUM_RX}, contract covers 0 to 2"
+        assert _NUM_RX == 3, f"generated receiver count {_NUM_RX}, the test covers 0 to 2"
         for rx in range(_NUM_RX):
             assert hasattr(dut, f"tb_telemetry{rx}_atvalid"), f"tb_telemetry{rx}_* ports missing"
 
@@ -321,7 +321,7 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-TELEMETRY-PAST-EXTENT",
             "S4",
-            "measured, not compared (SF-009): %s",
+            "measured, not compared (owner value pending): %s",
             " ".join(measured),
         )
 
@@ -338,7 +338,8 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-TELEMETRY-UNBACKED-OFFSETS",
             "S5",
-            "measured, not compared (SF-008); receiver STATUS/INTR_ENABLE/INTR_STATUS/CTRL "
+            "measured, not compared (owner value pending); receiver "
+            "STATUS/INTR_ENABLE/INTR_STATUS/CTRL "
             "unchanged: %s",
             " ".join(measured),
         )
@@ -398,7 +399,7 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         order = [chk for chk, _ in self.chk_after]
         expect = [chk for chk, _ in _CHK_ORDER]
         dedup = [c for i, c in enumerate(order) if i == 0 or order[i - 1] != c]
-        assert dedup == expect, f"checker lines {dedup} not in contract order {expect}"
+        assert dedup == expect, f"checker lines {dedup} not in expected order {expect}"
         for chk, step in self.chk_after:
             assert dict(_CHK_ORDER)[chk] == step, f"{chk} printed after wrong step {step}"
         cocotb.log.info(

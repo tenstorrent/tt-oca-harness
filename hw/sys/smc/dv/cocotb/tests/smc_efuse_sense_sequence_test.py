@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Automatic fuse sense sequence after a deliberate cold reset.
 
-Contract SMC_EFUSE_CTRL_005, anchor smc_efuse_sense_sequence_test.
-Scenarios EFC-SENSE-REQ.S3/S4, EFC-SENSE-STREAM.S1, EFC-SENSE-DONE.S1/S2.
 Sources: smu-smc.adoc (eFuse Interface), efuse_interface_ctrl.rdl.
 """
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_027 / smc_beu_register_test: BEU register behaviour of the four instances."""
+"""smc_beu_register_test: BEU register behaviour of the four instances."""
 
 from __future__ import annotations
 

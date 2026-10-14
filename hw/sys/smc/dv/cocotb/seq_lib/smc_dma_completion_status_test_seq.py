@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DMA completion and status reporting through the SYS_OUT responder.
 
-Contract SMC_POWER_DMA_ZEROER_017, anchor smc_dma_completion_status_test.
-Scenarios DMA-COMPLETION.S1, S3, S5, S6, S7, S8 (DONE_0 reset, idle STATUS_0, bit 8, no-data, hold).
 Specs hw/sys/smc/doc/dma.adoc, doc/programmer/src/smc-programming.adoc, vendor idma dma_ctrl.rdl.
 
 Sources and destinations sit in the SYS_OUT responder memory and are preloaded and read back
@@ -315,7 +313,7 @@ class smc_dma_completion_status_test_seq(SmcCsrSeq):
             f"bit 8 transitions {edges}; DONE_0 first equals {j.id} at sample {first_done} of "
             f"{len(samples)}; STATUS_0 bit 8 after retirement {(after >> 8) & 1} "
             f"(STATUS_0 0x{after:x}); AR {len(ar)} AW {len(aw)} handshakes; destination equals "
-            f"source rows; timing is measured and printed, owner answers SF-009"
+            f"source rows; timing is measured and printed, owner value pending"
         )
 
     async def _no_data(self, step: str, name: str, config: int, reps_lo: int) -> str:

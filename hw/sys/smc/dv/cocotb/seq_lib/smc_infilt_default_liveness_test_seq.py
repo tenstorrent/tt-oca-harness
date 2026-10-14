@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Inbound filter default block, enable lifecycle, simultaneous ports, denial floods, reconfig.
 
-Contract SMC_FILTER_19, anchor smc_infilt_default_liveness_test.
-Allocated scenarios: INFILT-DEFAULT-BLOCK.S1-S3, INFILT-SYS-REG-ACCESS.S1, S3, S4,
-INFILT-PRIORITY-PERM.S6, INFILT-DENY-RESPONSE.S4, S5.
 Spec sources: fabric.adoc Filtering and Protection, axi_filter index.adoc Match Then Permit and
 Blocked Transactions, filter_ctrl.rdl FILTER_CONFIG.
 
@@ -33,7 +30,7 @@ if str(_SMC_REG_PY) not in sys.path:
 
 from smc_reg import CHIP_CONFIG_VERSION_LO_REG_DEFAULT  # noqa: E402
 
-# Contract words; a read-back adds data_bus_width 3.
+# Register words; a read-back adds data_bus_width 3.
 _PERMIT_B1 = 0x0000_0000_0100_0013
 _PERMIT_NS1 = 0x0000_0000_0100_0113
 _DENY_B1 = 0x0000_0000_0100_0010
@@ -612,7 +609,7 @@ class smc_infilt_default_liveness_test_seq(SmcCsrSeq):
             f"all 12 writes completed with responses {resp} (3 = DECERR, 0 = OKAY); each OKAY "
             f"changed its word and each DECERR left it; {flips} OKAY-to-DECERR transition(s) in "
             f"issue order; {in_flight} write(s) still outstanding and AW {aw_at_cfg} accepted "
-            "when the SEP_IN reconfiguration completed; LINKED-ISSUE SF-009 (the point from "
+            "when the SEP_IN reconfiguration completed; open question: the point from "
             "which the new entry governs is not stated)",
         )
 

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """START_ADDR / END_ADDR granule write-back and read-only data_bus_width over SEP_IN.
 
-Contract SMC_FILTER_14, anchor smc_filter_range_granule_test.
-Allocated scenarios: FILTER-RANGE-GRANULE.S2/S4/S5/S6, FILTER-CONFIG-FIELDS.S2.
 Spec sources: filter_ctrl.rdl FILTER_CONFIG / START_ADDR, axi_filter index.adoc granule examples.
 """
 
@@ -158,7 +156,7 @@ class smc_filter_range_granule_test_seq(SmcCsrSeq):
             "CHK-DBW-READ-ONLY",
             f"data_bus_width reads {DBW_RESET} at reset and after writes of 0 and 0x{DBW_BM:X}: "
             + "; ".join(dbw_text)
-            + " (BRESP printed, SF-020)",
+            + " (BRESP printed, owner value pending)",
         )
 
         # S3: granule rounding with allow_burst 0 and 1.
@@ -218,7 +216,7 @@ class smc_filter_range_granule_test_seq(SmcCsrSeq):
                 f"start=0x{s1:X} end=0x{e1:X}"
             )
         self._mark("OBSERVE_LEG")
-        self._log_chk("CHK-GRANULE-WRITEBACK-OBSERVE", "; ".join(obs) + " (SF-003)")
+        self._log_chk("CHK-GRANULE-WRITEBACK-OBSERVE", "; ".join(obs) + " (owner value pending)")
 
         # S6: restore.
         for bank in _BANKS:
@@ -231,7 +229,7 @@ class smc_filter_range_granule_test_seq(SmcCsrSeq):
         self._mark("RESTORED")
 
         assert self.accesses == ACCESS_COUNT, (
-            f"{self.accesses} accesses, contract cost {ACCESS_COUNT}"
+            f"{self.accesses} accesses, required cost {ACCESS_COUNT}"
         )
         self._log_chk(
             "CHK-TIMEOUT-PATHS",

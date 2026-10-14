@@ -2,16 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C0 TARGET_EVENTS START_DETECT and STOP_DETECT against CTRL.ENABLETARGET.
 
-Contract SMC_I2C_CSR_IRQ_015, anchor smc_i2c_target_event_flags_test.
-Allocated scenarios: I2C-TARGET-EVENTS-RECORD.S2, I2C-TARGET-EVENTS-RECORD.S4.
-Spec sources: hw/ip/i2c/regs/i2c.rdl TARGET_EVENTS and CTRL.ENABLETARGET; SF-016 open.
+Spec sources: hw/ip/i2c/regs/i2c.rdl TARGET_EVENTS and CTRL.ENABLETARGET.
 
 `TARGET_EVENTS.START_DETECT` and `STOP_DETECT` are set by hardware "while
 CTRL.ENABLETARGET = 1" and are `woclr`. A bench controller drives one START,
 address 0x2C, one data byte and STOP on the instance 0 pads, first with the
 target disabled (the flags stay clear) and then enabled (both set). The flags
 read set on repeated reads, and each clears only on its own written one. Which
-disable the record survives is SF-016: the values after `CTRL = 0` are logged
+disable the record survives is owner value pending: the values after `CTRL = 0` are logged
 and never compared.
 """
 
@@ -225,7 +223,7 @@ class smc_i2c_target_event_flags_test_seq(SmcCsrSeq):
             f"after CTRL=0 TARGET_EVENTS=0x{ev0:08x} TX_STRETCH={int(bool(st0 & TX_STRETCH))}; "
             f"{RETAIN_WAIT_CYCLES} clk_smc_i cycles later TARGET_EVENTS=0x{ev1:08x} "
             f"TX_STRETCH={int(bool(st1 & TX_STRETCH))}; after both written ones "
-            f"TARGET_EVENTS=0x{ev2:08x}; observed, none compared (SF-016)",
+            f"TARGET_EVENTS=0x{ev2:08x}; observed, none compared (owner value pending)",
         )
 
     async def body(self) -> None:

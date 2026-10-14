@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_POWER_TELEMETRY_014 / smc_telemetry_rx_flush_test.
+"""Telemetry receiver flush on receiver 0.
 
-Scenarios: TLM-RX-FLUSH.S1, S2, S3, S4, S6, INT-RXFLUSH-MISSINGLAST.
 Sources: hw/ip/telemetry_receiver/doc/architecture.adoc, hw/ip/telemetry_receiver/regs/
 telemetry_receiver.rdl, doc/programmer/src/smc-programming.adoc.
 """

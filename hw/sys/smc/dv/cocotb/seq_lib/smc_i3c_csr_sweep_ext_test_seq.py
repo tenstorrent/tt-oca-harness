@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Register sweep of the TTI, SoC management and secure firmware recovery blocks.
 
-Contract SMC_I3C_SPI_008, anchor smc_i3c_csr_sweep_ext_test.
-Scenarios I3CSPI-CSR-TTI.S1-S5, I3CSPI-CSR-SOCMGMT.S1-S5, I3CSPI-CSR-RECOVERY.S1-S5.
 Sources: target_transaction_interface.rdl, soc_management_interface.rdl and
 secure_firmware_recovery_interface.rdl of the pinned i3c-core, parsed at run time; register
 offsets from the generated oca_i3c_wrap_reg.py; instance windows from the generated smc_addr.h.
@@ -300,7 +298,7 @@ class smc_i3c_csr_sweep_ext_test_seq(SmcCsrSeq):
         updated = [f"{r.name}.{f.name}" for r in self.table for f in r.fields if not f.stable]
         cocotb.log.info("TABLE hardware-updated fields (%d): %s", len(updated), " ".join(updated))
         starts = " ".join(f"{p}=0x{o:03x}" for p, o in self.bases.items())
-        cocotb.log.info("TABLE block base offsets (generated map, SF-014): %s", starts)
+        cocotb.log.info("TABLE block base offsets (generated map, owner value pending): %s", starts)
         offs = "; ".join(f"{r.block}.{r.name}=0x{r.offset:03x}" for r in self.table)
         cocotb.log.info("TABLE offsets (generated map, inside the I3C CSR window): %s", offs)
         assert len(self.excluded) == len(_EXCLUDED), f"excluded {self.excluded}"
@@ -476,7 +474,7 @@ class smc_i3c_csr_sweep_ext_test_seq(SmcCsrSeq):
                     latched = (await self._rd(n, status)) & w1c_mask
                     if f.unimplemented or (observed == 0 and latched == 0):
                         linked[status.block] += 1
-                        note = "NOT-IMPLEMENTED" if f.unimplemented else "LINKED-ISSUE RTL-100"
+                        note = "NOT-IMPLEMENTED" if f.unimplemented else "LINKED-ISSUE"
                         if not f.unimplemented:
                             rtl100.add(f"{status.name}.{f.name}")
                         lines.append(f"{tag} set=0x{bit:x} read=0x{observed:x} {note}")
@@ -541,13 +539,13 @@ class smc_i3c_csr_sweep_ext_test_seq(SmcCsrSeq):
             f"observed (status read) -> latched (force dropped, status read) -> cleared (write 1 "
             f"with a second pre-set bit) -> checked_cleared (status read, neighbour kept): "
             f"{'; '.join(lines)}; self-clearing fields write 1 then read 0: "
-            f"{'; '.join(pulse_lines)}; RTL-100 fields (force leaves the status at 0): "
+            f"{'; '.join(pulse_lines)}; LINKED-ISSUE fields (force leaves the status at 0): "
             f"{' '.join(sorted(rtl100))}; measured DUT observation, S4 FORCE pattern writes with "
             f"the enable at reset leave woclr status bits set (cleared before the sweep, not "
-            f"asserted either way): {' '.join(residues) or 'none'}; SF-029 and SF-010 listed, not "
-            f"asserted: TTI RESET_CONTROL fields (SF-029 class, left at reset except the "
+            f"asserted either way): {' '.join(residues) or 'none'}; owner-pending items listed, "
+            f"not asserted: TTI RESET_CONTROL fields (left at reset except the "
             f"self-clearing IBI_RETRY_CTR_RST) and no STBY_CR_ENABLE_INIT-locked field exists in "
-            f"the TTI, SOCMGMT and RECOVERY blocks (SF-010 applies to the standby block); "
+            f"the TTI, SOCMGMT and RECOVERY blocks (applies to the standby block only); "
             f"SOCMGMT has 0 woclr fields; woclr fields without a force register in the RDL, listed "
             f"not driven: {' '.join(unforced)}"
         )

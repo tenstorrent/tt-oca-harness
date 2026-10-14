@@ -2,13 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Boundary sweep of the 24 SMC register islands that declare a past-extent response.
 
-Contract SMC_REG_ISLAND_BOUNDARY_001, anchor smc_reg_island_boundary_sweep_test.
-Scenarios ISL-PASTEXT-DECERR.S1-S9, ISL-PASTEXT-SLVERR.S1-S15.
 Sources: smc.rdl (ocah_past_extent_resp), regs/gen/adoc/memory_map.adoc, regs/gen/py memory map.
 
 Per island four words are probed over SEP_IN: the first word, the last decoded word, the first
 past-extent word and the aperture-end word. Every address is derived from the generated memory
-map and compared with the contract's table before the first probe.
+map and compared with the island table before the first probe.
 """
 
 from __future__ import annotations
@@ -63,7 +61,7 @@ HOLE = "hole"
 
 @dataclass(frozen=True)
 class Island:
-    """Contract table row: offsets from BASE and the nature of the first and last word."""
+    """Island table row: offsets from BASE and the nature of the first and last word."""
 
     name: str
     unit: str
@@ -84,7 +82,15 @@ ISLANDS = (
     Island("C3_WDT", "smc_cluster_core3_wdt", 0xC00, 0xC20, 0xC24, 0xFFC, RW, RW, _D),
     Island("DFX", "dfx_ctrl", 0xB800, 0xB814, 0xB818, 0xBFFC, "ro(sw=r)", RW, _D),
     Island(
-        "MAILBOX", "smc_mailbox", 0x18000, 0x3784C, 0x37850, 0x37FFC, "ro(SF-009)", "ro(SF-009)", _D
+        "MAILBOX",
+        "smc_mailbox",
+        0x18000,
+        0x3784C,
+        0x37850,
+        0x37FFC,
+        "ro(owner value pending)",
+        "ro(owner value pending)",
+        _D,
     ),
     Island("DMA", "dma_ctrl", 0x38000, 0x38134, 0x38138, 0x381FC, RW, RW, _D),
     Island(
@@ -113,7 +119,17 @@ ISLANDS = (
         RW,
         _S,
     ),
-    Island("I2C", "smc_i2c_wrap", 0x5000, 0x5E08, 0x5E0C, 0x5FFC, "ro(SF-009)", "ro(SF-009)", _S),
+    Island(
+        "I2C",
+        "smc_i2c_wrap",
+        0x5000,
+        0x5E08,
+        0x5E0C,
+        0x5FFC,
+        "ro(owner value pending)",
+        "ro(owner value pending)",
+        _S,
+    ),
     Island(
         "EFUSE_MAP", "smc_efuse_map", 0x7000, 0x73FC, 0x7400, 0x7FFC, "ro(woset lock bits)", RW, _S
     ),
@@ -135,8 +151,8 @@ ISLANDS = (
         0x92FC,
         0x9300,
         0x9FFC,
-        "ro(SF-009)",
-        "ro(SF-009)",
+        "ro(owner value pending)",
+        "ro(owner value pending)",
         _S,
     ),
     Island(
@@ -300,11 +316,11 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
             for word, off in derived.items():
                 if off != listed[word]:
                     mismatches.append(
-                        f"{isl.name} {word}: generated map 0x{off:x}, contract 0x{listed[word]:x}"
+                        f"{isl.name} {word}: generated map 0x{off:x}, table 0x{listed[word]:x}"
                     )
             if (rresp, bresp) != ("DECERR", _name(isl.write_resp)):
                 mismatches.append(
-                    f"{isl.name} past-extent response: RDL {rresp}/{bresp}, contract "
+                    f"{isl.name} past-extent response: RDL {rresp}/{bresp}, table "
                     f"DECERR/{_name(isl.write_resp)}"
                 )
             self.addr[isl.name] = {w: LOCAL_BASE_RESET + o for w, o in derived.items()}
@@ -416,8 +432,8 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
             "S5",
             "last decoded word of %d islands answered OKAY (declared holes OKAY,0x0); %d rw or "
             "hole words took the identity write with BRESP OKAY and read back the value read; "
-            "%d ro words not written (%s); watchdog state after the write (SF-003): %s; "
-            "values: %s",
+            "%d ro words not written (%s); watchdog state after the write "
+            "(owner value pending): %s; values: %s",
             len(ISLANDS),
             written,
             len(ro),
@@ -499,7 +515,7 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
             "CHK-ISL-PASTEXT-WRITE-SLVERR-CLASS",
             "S8",
             "%d match, %d LINKED-ISSUE of 30 words; RDL declares SLVERR (%d); DECERR answers are "
-            "LINKED-ISSUE on RTL-2, RTL-3, DOC-4, DOC-7, SPEC-40 (main-tree issue record); "
+            "LINKED-ISSUE (see the main-tree issue record); "
             "mismatch table: %s; per island: %s",
             match,
             len(linked),
@@ -581,7 +597,7 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
 
     @property
     def access_floor(self) -> int:
-        """Accesses the contract table calls for, from the table and not from the run."""
+        """Accesses the island table calls for, from the table and not from the run."""
         islands = len(ISLANDS)
         first = sum(_writable(i.first_nature) for i in ISLANDS)
         last = sum(_writable(i.last_nature) for i in ISLANDS)

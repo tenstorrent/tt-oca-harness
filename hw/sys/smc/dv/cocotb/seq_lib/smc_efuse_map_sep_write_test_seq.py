@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Unlocked SEP_IN writes over an all-zero SMC_EFUSE_MAP image.
 
-Contract SMC_EFUSE_MAP_012, anchor smc_efuse_map_sep_write_test.
-Scenarios EMAP-WR-SEP.S1-S5, EMAP-RESERVED-BITS.S1-S3, EMAP-ACCESS-WIDTH.S4, EMAP-SHADOW-OUT.S2.
 Sources: smc_efuse_map.rdl (address map, reserved fields), port_table.adoc (shadow_regs_o).
 
 Every read is compared against ``shadow``, a per-word model that starts from the image and

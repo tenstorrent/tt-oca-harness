@@ -2,10 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMBUS_CTRL.SMBALERT hardware clear by address match versus no clear on another address.
 
-Contract SMC_I2C_SMBUS_011, anchor smc_smbus_alert_self_clear_test.
-Scenarios: SMBALERT-SELF-CLEAR.S2, SMBALERT-SELF-CLEAR.S3.
 Sources: hw/ip/i2c/regs/i2c.rdl (SMBUS_CTRL.SMBALERT hwclr, when the controller addresses this
-target), open finding SF-008 for the race between a software write and the hardware clear.
+target).
 
 A transfer to 0x55, which matches no TARGET_ID address, leaves the request bit set and the
 alert pad asserted. A transfer to the own address 0x10 in the same run clears the bit and
@@ -241,7 +239,7 @@ class smc_smbus_alert_self_clear_test_seq(SmcCsrSeq):
             "CHK-SELFCLEAR-RACE-LOG",
             f"final_smbalert_bit={last[0]} final_tb_i2c0_smbalert={last[1]} stable_in_"
             f"{STABLE_POLLS}_consecutive_polls after {polls + 1} polls; second write landed after "
-            f"the transfer START; logged only, no value compared (SF-008)",
+            f"the transfer START; logged only, no value compared (owner value pending)",
         )
 
     async def _teardown(self, cg: int) -> None:

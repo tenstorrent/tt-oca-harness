@@ -2,14 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Contested inbound traffic: same-cycle multi-port, pending plus new, overlap, reset.
 
-Contract SMC_AXI_CONTESTED_PORTS_TEST, anchor smc_axi_contested_ports_test.
-Allocated scenarios: AXI-CONTESTED-PORTS.S1, .S2, .S3, .S4, .S6.
 Spec sources: fabric.adoc Topology, memmap.adoc Memory Map, scratch.rdl SCRATCH, port_table.adoc.
 
 SEP_IN, SYS_IN and JTAG reads of SCRATCH_COLD(0) are released from one clk_smc_i edge; the
-cycle bound is the 50 us driver guard (SF-021). The outcome of an access interrupted by a cool
-reset is printed and never graded (SF-017). The global-window response is printed, and its
-data is compared only when the response is OKAY.
+cycle bound is the 50 us driver guard (no bound is stated). The outcome of an access
+interrupted by a cool reset is printed and never graded (the outcome is not specified). The
+global-window response is printed, and its data is compared only when the response is OKAY.
 """
 
 from __future__ import annotations
@@ -521,7 +519,7 @@ class smc_axi_contested_ports_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-CONT-RESET-MID",
             f"on each of the {len(legs)} legs the read of VERSION_LO after reset release "
             f"completed OKAY within the guard and returned V=0x{version:X}; "
-            f"interrupted-access outcomes are printed and not graded (SF-017): "
+            f"interrupted-access outcomes are printed and not graded (owner value pending): "
             f"{' | '.join(legs)}",
         )
 

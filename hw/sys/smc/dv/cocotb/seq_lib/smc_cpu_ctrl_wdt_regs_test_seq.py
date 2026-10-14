@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_008 / smc_cpu_ctrl_wdt_regs_test: CPU_CTRL WDT and TEST_CTRL scalar registers.
+"""smc_cpu_ctrl_wdt_regs_test: CPU_CTRL WDT and TEST_CTRL scalar registers.
 
-Scenarios: CPUCTRL-WDTTMO.S1, CPUCTRL-WDTTMO.S2, CPUCTRL-WDTRST.S1, CPUCTRL-TESTCTRL.S1.
 Sources: hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl, doc/programmer/src/smc-programming.adoc.
 """
 
@@ -126,7 +125,7 @@ class smc_cpu_ctrl_wdt_regs_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-WDTRST-PULSE",
             "WDT_TIMEOUT_RESET bits [3:0] read 0 after each write completed; immediate readback "
-            "printed, not compared (SF-008): " + " ".join(rows),
+            "printed, not compared (owner value pending): " + " ".join(rows),
         )
 
         # S5
@@ -140,8 +139,8 @@ class smc_cpu_ctrl_wdt_regs_test_seq(SmcCsrSeq):
         self._stamp("S5")
         self._chk(
             "CHK-TESTCTRL-RO",
-            f"TEST_CTRL@0x{test_ctrl:08x} first read 0x{base:08x} (value open, SF-014) unchanged "
-            "after writes: " + " ".join(rows),
+            f"TEST_CTRL@0x{test_ctrl:08x} first read 0x{base:08x} (value open, owner value "
+            "pending) unchanged after writes: " + " ".join(rows),
         )
 
         expected = 1 + (2 * len(WDT_PATTERNS) + 2) + 3 * len(writes)

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Pulses on tb_ext_interrupt_0_i against raw bit 0 of tb_cpu_interrupts.
 
-Contract SMC_IRQ_006, anchor smc_ext_irq_pulse_sampling_test.
-Allocated scenarios: IRQ-EXT-SYNC.S3, IRQ-EXT-SYNC.S4, IRQ-EXT-SYNC.S5.
 Spec sources: port_table.adoc smc_ext_interrupts_i, interrupts.adoc SMC interrupts and PLIC.
 """
 

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Alias remap translation: reset identity, offsets, region edges, carry and open-rule legs.
 
-Contract SMC_FILTER_23, anchor smc_alias_remap_translate_test.
-Allocated scenarios: ALIAS-REMAP-RESET.S1,S2; ALIAS-REMAP-ADDR.S1-S7.
 Spec sources: alias_remap.rdl REGION_START/END/ATTRS; fabric.adoc Alias Remapping.
 """
 
@@ -285,7 +283,7 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
             "address 0x7A8 kept the sentinel",
         )
 
-        # S7: overlapping regions 1 and 2 (observe-only, SF-006).
+        # S7: overlapping regions 1 and 2 (observe-only, owner value pending).
         await self._program(1, _R1)
         await self._program(2, _R2)
         self._hits = [0, 0]
@@ -296,10 +294,10 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ALIAS-OVERLAP-OBSERVE",
             f"write 0x0200E010 over regions 1 and 2: resp={resp} landed_at=0x{land:08X} "
-            f"tb_remap_jtag_aw_hit_seen=0x{self._hits[0]:X} (SF-006 LINKED-ISSUE, printed only)",
+            f"tb_remap_jtag_aw_hit_seen=0x{self._hits[0]:X} (owner value pending, printed only)",
         )
 
-        # S8: empty and inverted regions (observe-only, SF-004).
+        # S8: empty and inverted regions (observe-only, owner value pending).
         await self._program(4, _R4)
         await self._program(6, _R6)
         shown = []
@@ -312,10 +310,10 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ALIAS-EMPTY-REGION-OBSERVE",
             f"region 4 START=END, region 6 START above END: {', '.join(shown)}, all OKAY "
-            "(SF-004 LINKED-ISSUE, landing printed)",
+            "(owner value pending, landing printed)",
         )
 
-        # S9: offset of region 3 changes while a JTAG group is outstanding (SF-009).
+        # S9: offset of region 3 changes while a JTAG group is outstanding (owner value pending).
         await self._set_attrs(3, _R3[2])
         items = []
         for k in range(_GROUP):
@@ -356,7 +354,7 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ALIAS-REPROGRAM-OUTSTANDING",
             f"{_GROUP} writes all OKAY; landing in issue order {order} (O +0x{_OFF_OLD:X}, "
-            f"N +0x{_OFF_NEW:X}); SF-009 LINKED-ISSUE",
+            f"N +0x{_OFF_NEW:X}); owner value pending",
         )
 
         # S10: clear START, END and ATTRS of every programmed region.

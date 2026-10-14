@@ -2,14 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Zeroer SRAM initialisation, partial ranges, egress use, unmapped and denied targets, DMA.
 
-Contract SMC_POWER_DMA_ZEROER_027, anchor smc_zeroer_sram_init_test.
-Scenarios ZEROER-SRAM-INIT.S1 to .S4 and ACCEL-EGRESS-ATTRS.S7.
 Sources doc/programmer/src/smc-programming.adoc, hw/sys/smc/doc/{zeroer,fabric}.adoc.
 
 The 128 KiB SRAM aperture is filled with a non-zero pattern over SEP_IN and cleared with the
 programmer's sequence, then read back whole. Partial ranges, an egress region with INT_EN, an
 unmapped local destination, a destination covered by an outbound-filter write block entry and
-two DMA copies follow. Values the contract leaves open (SF-018, SF-023) are measured and printed.
+two DMA copies follow. Values the documents leave open are measured and printed.
 """
 
 from __future__ import annotations
@@ -602,7 +600,7 @@ class smc_zeroer_sram_init_test_seq(output_fabric_pass_all_cfg_seq):
 
     def _nonvac(self) -> None:
         steps = [s for s, _t in self._stamps]
-        assert steps == list(_STEPS), f"step stamps {steps} not in contract order"
+        assert steps == list(_STEPS), f"step stamps {steps} not in the expected order"
         times = [t for _s, t in self._stamps]
         assert all(b > a for a, b in zip(times, times[1:], strict=False)), (
             f"step stamps {times} are not strictly increasing"

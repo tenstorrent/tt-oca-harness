@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_017 / smc_cpu_ctrl_access_rules_test: CPU_CTRL zero, read-only, reserved, AxPROT."""
+"""smc_cpu_ctrl_access_rules_test: CPU_CTRL zero, read-only, reserved, AxPROT."""
 
 from __future__ import annotations
 

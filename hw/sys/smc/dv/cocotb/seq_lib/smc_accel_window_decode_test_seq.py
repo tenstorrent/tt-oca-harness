@@ -2,12 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DMA and zeroer register windows: aliasing, boundary, holes, neighbours, REGION_SIZE.
 
-Contract SMC_POWER_DMA_ZEROER_028, anchor smc_accel_window_decode_test.
-Scenarios ACCEL-WINDOW-DECODE.S1 to S6 (no-alias, first/last, holes, neighbours, REGION_SIZE, RO).
 Specs hw/sys/smc/doc/{memmap,dma,zeroer}.adoc, vendor idma overlay dma_ctrl.rdl, zeroer_ctrl.rdl.
 
-Response and data inside the apertures but outside any register (SF-010) and the effect of writes
-to read-only registers (SF-011) are measured and printed, not asserted.
+Response and data inside the apertures but outside any register and the effect of writes
+to read-only registers are measured and printed, not asserted.
 """
 
 from __future__ import annotations
@@ -243,8 +241,9 @@ class smc_accel_window_decode_test_seq(SmcCsrSeq):
                 f"writes[{_runs([(a, r, 0) for a, r, _ in writes])}]"
             )
         self._mark("S4")
-        return "every hole access completed (SF-010 open, measured not asserted); " + "; ".join(
-            parts
+        return (
+            "every hole access completed (owner value pending, measured not asserted); "
+            + "; ".join(parts)
         )
 
     async def _s5(self) -> str:
@@ -326,8 +325,9 @@ class smc_accel_window_decode_test_seq(SmcCsrSeq):
             f"(never read; DONE_0 0x{done_before:x}->0x{after[DMA_DONE_0]:x})"
         )
         self._mark("S7")
-        return "all writes completed (SF-011 open, response and effect measured not asserted); " + (
-            "; ".join(out)
+        return (
+            "all writes completed (owner value pending, response and effect measured not "
+            "asserted); " + ("; ".join(out))
         )
 
     async def body(self) -> None:

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AVS_CLOCK_SELECT source and bypass selection at the AVS clock pad.
 
-Contract SMC_CLOCK_SRC_008, anchor smc_avs_clock_select_test.
-Scenarios CSRC-AVS-SELECT.S1 to CSRC-AVS-SELECT.S6.
 Sources: hw/ip/avsbus_controller/doc/interface.adoc, avsbus_controller.rdl, smc-programming.adoc.
 """
 

@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Outbound filter entries match AxPROT[1], burst admission and a wildcard source ID.
 
-Contract SMC_FILTER_16, anchor smc_outfilt_attr_match_test.
-Allocated scenarios: OUTFILT-NS-MATCH.S1 to S4, OUTFILT-BURST-MATCH.S1 to S3,
-OUTFILT-SRCID-MATCH.S1 and S3.
 Spec sources: axi_filter index.adoc (Match Then Permit), fabric.adoc (Non-Secure Bit Filtering,
 AXI Protection Bit Encoding), filter_ctrl.rdl FILTER_CONFIG, output_remap.rdl.
 

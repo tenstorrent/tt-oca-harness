@@ -2,14 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Adopter window routing: eFuse SHIM range and external regions over SEP_IN.
 
-Contract XBAR_016, anchor smc_ext_window_routing_test.
-Allocated scenarios: XBAR-EXT-SHIM.S1, S2, S3, XBAR-EXT-WINDOW.S2, S3, S4, S5.
 Spec sources: memmap.adoc AXI-Lite External Window, smc_external.rdl, smc.rdl smc_external.
 
 Every access is watched on tb_axil_efuse_bank_active and the tb_axil_external_{ar,aw}{valid,addr}
 probes from the cycle before it starts until a fixed drain after it completes. The EFUSE_SHIM_SIZE
-value is not pinned by the specification (SF-027); the sequence measures the first word at which
-tb_axil_efuse_bank_active stops rising and logs it, never comparing it with a stated value.
+value is not pinned by the specification (owner value pending); the sequence measures the first
+word at which tb_axil_efuse_bank_active stops rising and logs it, never comparing it with a
+stated value.
 """
 
 from __future__ import annotations
@@ -27,7 +26,7 @@ EXT_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR")
 SUPP_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR")
 STRAPS_LO = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR")
 MANDATORY_BEYOND_SHIM_OFFSET = STRAPS_LO - EXT_BASE
-# Window-top stimulus addresses of the contract (4 MiB window, SF-014: extent not pinned).
+# Window-top stimulus addresses (4 MiB window, extent not pinned).
 WINDOW_LAST_WORD = EXT_BASE + 0x3F_FFF8
 WINDOW_PAST = EXT_BASE + 0x40_0000
 
@@ -218,7 +217,7 @@ class smc_ext_window_routing_test_seq(SmcCsrSeq):
         shim_size = await self._measure_shim_size()
         assert shim_size >= 8, f"measured SHIM extent 0x{shim_size:x} leaves no last word"
         cocotb.log.info(
-            "SF-027 observe: first word at which tb_axil_efuse_bank_active does not rise is "
+            "observe: first word at which tb_axil_efuse_bank_active does not rise is "
             "offset 0x%x after %d scan reads",
             shim_size,
             self._scan_words,
@@ -251,7 +250,8 @@ class smc_ext_window_routing_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-SHIM-LAST-WORD-ROUTED",
             f"read 0x{last:08x} (measured SHIM extent 0x{shim_size:x} minus 8; EFUSE_SHIM_SIZE "
-            f"not pinned, SF-027) resp={item.resp_code} rdata=0x{item.rdata & 0xFFFFFFFF:08x}; "
+            f"not pinned, owner value pending) resp={item.resp_code} "
+            f"rdata=0x{item.rdata & 0xFFFFFFFF:08x}; "
             f"{w.text()}; last 4-byte word 0x{last4:08x} resp={item4.resp_code} "
             f"rdata=0x{item4.rdata & 0xFFFFFFFF:08x}; {w4.text()}",
         )
@@ -264,7 +264,7 @@ class smc_ext_window_routing_test_seq(SmcCsrSeq):
             "CHK-SHIM-PAST-RANGE-NOT-EFUSE",
             f"read 0x{past:08x} resp={item.resp_code} rdata=0x{item.rdata & 0xFFFFFFFF:08x} "
             f"external_arvalid_rose={int(w.ar > 0)}; {w.text()}; answering block unstated "
-            f"(SF-027)",
+            f"(owner value pending)",
         )
 
         item, wr = await self._access(
@@ -338,7 +338,8 @@ class smc_ext_window_routing_test_seq(SmcCsrSeq):
         )
         assert item.resp_code == AXI_RESP_DECERR, f"supplementary read resp={item.resp_code}"
         assert item.rdata & 0xFFFFFFFF == ERR_SLAVE_DATA, (
-            f"supplementary read data 0x{item.rdata:x}, want 0x{ERR_SLAVE_DATA:08x}"
+            f"supplementary read data 0x{item.rdata:x}, differs from the bench-defined "
+            f"error-slave signature 0x{ERR_SLAVE_DATA:08x}"
         )
         self._mark_step("RESPONSES")
         self._log_chk(
@@ -348,8 +349,11 @@ class smc_ext_window_routing_test_seq(SmcCsrSeq):
             f"supplementary 0x{SUPP_BASE:08x} resp=3 (DECERR) rdata=0x{ERR_SLAVE_DATA:08x} "
             f"({ws.text()}); fidelity against the port is not observable (no external-port R/B "
             f"probe in tb_top): the fallback is the response and data seen at sep_axi_in plus "
-            f"the AR address match on the port; data word is the DV-owned error-slave signature "
-            f"(csr_read_err_signature); SLVERR not driveable (SF-037)",
+            f"the AR address match on the port; memmap.adoc fixes only the DECERR response of the "
+            f"supplementary region; the data word is not a documented value: it is compared "
+            f"against the bench-defined error-slave signature (csr_read_err_signature); "
+            f"SLVERR not driveable "
+            f"(owner value pending)",
         )
 
         item, wt = await self._access(
@@ -367,7 +371,8 @@ class smc_ext_window_routing_test_seq(SmcCsrSeq):
             f"last word 0x{WINDOW_LAST_WORD:08x} resp={top_resp} rdata=0x{top_data:08x} "
             f"({wt.text()}); past 0x{WINDOW_PAST:08x} resp={item.resp_code} "
             f"rdata=0x{item.rdata & 0xFFFFFFFF:08x} external_request_seen={int(wp.ar > 0)} "
-            f"({wp.text()}); window extent not pinned (SF-014), past-window response printed only",
+            f"({wp.text()}); window extent not pinned (owner value pending), "
+            f"past-window response printed only",
         )
 
         self._timeout_paths()

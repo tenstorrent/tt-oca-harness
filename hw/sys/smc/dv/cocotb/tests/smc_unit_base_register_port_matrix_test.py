@@ -2,10 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Base-register reset readback of the unit apertures from three ports at two bases.
 
-Contract XBAR_028, anchor smc_unit_base_register_port_matrix_test.
-Allocated scenarios: XBAR-DEC-WDT.S1, XBAR-DEC-RESET-UNIT.S1, XBAR-DEC-SPARE.S1,
-XBAR-DEC-BASE-CONFIG.S1/S3, XBAR-DEC-DFX.S1/S2, XBAR-DEC-FABRIC-CTRL.S1/S2,
-XBAR-DEC-DMA-ZEROER.S1, XBAR-DEC-CPU-CTRL.S1/S2.
 Spec sources: smc.rdl unit and array placements, smc_base_config.rdl, dfx_ctrl_status.rdl,
 memmap.adoc Address Space Organization, fabric.adoc Alias Remap Registers.
 """

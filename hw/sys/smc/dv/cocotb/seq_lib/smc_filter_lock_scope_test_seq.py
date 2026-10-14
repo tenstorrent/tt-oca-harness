@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Scope of a filter lock: refused writes, queued writes, reads and frozen decisions.
 
-Contract SMC_FILTER_13, anchor smc_filter_lock_scope_test.
-Allocated scenarios: FILTER-LOCK.S1, S3, S4, S6, S8.
 Spec sources: axi_filter index.adoc Locking a Filter Entry and Match Then Permit, filter_ctrl.rdl.
 
 `FILTER_CONFIG.locked` is write-once. The sequence locks inbound 14 and 13, outbound 14, 13, 5, 3
@@ -37,7 +35,7 @@ _RESET_START = reg_reset_word(_FILTER_H, "FILTER_CTRL", "START_ADDR")
 _RESET_END = reg_reset_word(_FILTER_H, "FILTER_CTRL", "END_ADDR")
 _LOCKED_CFG = _RESET_CFG | _LOCKED
 
-# Contract words: DENY_BOTH_B1 / PERMIT_B1 and their read-backs (data_bus_width 3).
+# Register words: DENY_BOTH_B1 / PERMIT_B1 and their read-backs (data_bus_width 3).
 _DENY_B1 = 0x0000_0000_0100_0010
 _PERMIT_B1 = 0x0000_0000_0100_0013
 _READBACK_BITS = 0x3000
@@ -319,7 +317,7 @@ class smc_filter_lock_scope_test_seq(SmcCsrSeq):
             f"{disable3}, unlocked permit entry 4 covers the same range; entry 3 locked here only",
         )
 
-        # S5: observe-only, SF-016.
+        # S5: observe-only, the document does not state the combined-write outcome.
         cfg12 = _reg("outbound", "FILTER_CONFIG", 12)
         self._expect_decerr(cfg12)
         item = _write("OB12_COMBINED", cfg12, _COMBINED, refused=False)
@@ -332,7 +330,7 @@ class smc_filter_lock_scope_test_seq(SmcCsrSeq):
         bit63 = reads[0] >> 63
         self._log_chk(
             "CHK-LOCK-WITH-FIELDS-OBSERVE",
-            f"observe-only SF-016 combined write 0x{_COMBINED:x} BRESP {item.resp_code} "
+            f"observe-only combined write 0x{_COMBINED:x} BRESP {item.resp_code} "
             f"reads 0x{reads[0]:x} 0x{reads[1]:x} bit63 {bit63}; outbound 12 locked here only",
         )
         assert reads[0] == reads[1], f"reads differ: {[hex(r) for r in reads]}"

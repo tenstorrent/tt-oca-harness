@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """STATUS_SMU independence, reserved bits, pulses, resets and read-only writes.
 
-Contract SMC_JTAG_DM_020, anchor smc_dfx_status_smu_pulse_reset_test.
-Scenarios JDM-DFX-STATUS-STICKY.S6, S9 .. S13 and JDM-DFX-STATUS-RO.S1 .. S4.
 Spec: dfx_ctrl_status.rdl STATUS, memmap.adoc DFX Status, clk_rst.adoc.
+The idle word is set by the testbench driving the done and pass inputs high; the register
+description gives only the bit positions and the sticky behaviour, and its reset values are 0.
 """
 
 from __future__ import annotations
@@ -248,7 +248,7 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._stamp("S2")
         self._chk(
             "CHK-DFX-STATUS-RO-CLEAN",
-            f"STATUS_SMU=0x{clean:x} (DFX_STATUS_IDLE) after an 8-byte all-ones write on the "
+            f"STATUS_SMU=0x{clean:x} (bench idle word) after an 8-byte all-ones write on the "
             "clean status",
         )
 
@@ -268,7 +268,7 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-DFX-STATUS-STAGGER",
             f"STATUS_SMU 0x{mbist:x} (idle + bit 12) then 0x{both:x} (idle + bits 12 and 2) "
             f"after {both_polls} poll(s); done-then-success and all-six cells are not drivable "
-            "(SF-037)",
+            "(the bench cannot drive these inputs separately)",
         )
 
         # S4
@@ -304,7 +304,7 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-DFX-STATUS-WRITE-RESP",
             "AXI write responses "
             + ", ".join(f"{lbl}={RESP_NAMES.get(r)}" for lbl, r in resps)
-            + " (defined response is SF-029; printed, not asserted)",
+            + " (defined response pending an owner decision; printed, not asserted)",
         )
 
         # S6
@@ -357,7 +357,7 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"at poll {p_polls} of {MAX_STATUS_POLLS} ({latency_ps}ps after the pulse start), "
             f"held 0x{hold:x}; pulse started after the AR handshake with R pending: in-flight "
             f"read returned 0x{inflight:x}, then 0x{pulse2:x} at poll {p2_polls} "
-            f"({latency2_ps}ps), held 0x{hold2:x}; latency spec is SF-031",
+            f"({latency2_ps}ps), held 0x{hold2:x}; latency is not specified",
         )
 
         # S7
@@ -378,7 +378,7 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._chk(
             "CHK-DFX-STATUS-RESET-CLEARS",
             "; ".join(legs) + " (a bit that reads 0 after a reset was cleared by it; the "
-            "clearing reset is SF-030)",
+            "clearing reset is pending an owner decision)",
         )
 
         # S8
@@ -391,7 +391,7 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-DFX-STATUS-HIGH-THROUGH-RESET",
             f"tb_mem_repair_abort held 1 through a cold reset: STATUS_SMU=0x{held_word:x}, "
             f"bit 2 {'set' if held_word & DFX_MEM_REPAIR_ABORT else 'clear'} after release "
-            "(expected capture is SF-030)",
+            "(expected capture is pending an owner decision)",
         )
 
         # S9

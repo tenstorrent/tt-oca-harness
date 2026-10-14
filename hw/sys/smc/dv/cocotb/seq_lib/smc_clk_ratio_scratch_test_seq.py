@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Scratch register traffic at ref / smc / periph 10 / 12 / 6 ns.
 
-Contract SMC_CLOCK_RATIO_005, anchor smc_clk_ratio_scratch_test.
-Allocated scenarios: RATIO-SCRATCH-XFER.S1, RATIO-SCRATCH-XFER.S2, RATIO-SCRATCH-XFER.S3.
 Spec sources: hw/sys/smc/regs/blocks/scratch/scratch.rdl, hw/sys/smc/doc/clk_rst.adoc.
 """
 
@@ -130,7 +128,7 @@ class smc_clk_ratio_scratch_test_seq(SmcCsrSeq):
 
     def _assert_fence(self) -> None:
         ids = tuple(s for s, _ in self._steps)
-        assert ids == STEP_ORDER, f"step ids {ids} != contract order {STEP_ORDER}"
+        assert ids == STEP_ORDER, f"step ids {ids} != expected order {STEP_ORDER}"
         stamps = [t for _, t in self._steps]
         assert all(b > a for a, b in zip(stamps, stamps[1:])), f"stamps not increasing: {stamps}"
         chk_ids = tuple(c for c, _ in self._chk_lines)

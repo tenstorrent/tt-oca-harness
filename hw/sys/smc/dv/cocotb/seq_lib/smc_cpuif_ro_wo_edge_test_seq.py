@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Generated cpuif contract edges over SEP_IN: partial strobe, write-only, unreadable, past extent.
+"""Generated cpuif edges over SEP_IN: partial strobe, write-only, unreadable, past extent.
 
-Contract SMC_CPUIF_RO_WO_EDGE_TEST, anchor smc_cpuif_ro_wo_edge_test.
-Allocated scenarios: REGBLOCK-RO-WRITE.S2, REGBLOCK-WO-READ.S2, REGBLOCK-UNREADABLE-READ.S1/S2/S3.
-Spec sources: smc.rdl chip_config VERSION_LO sw=r, scratch.rdl SCRATCH[7] sw=rw, SF-001/008/009/010.
+Spec sources: smc.rdl chip_config VERSION_LO sw=r, scratch.rdl SCRATCH[7] sw=rw.
 """
 
 from __future__ import annotations
@@ -34,7 +32,7 @@ INTR_TEST = rdl_contract("smc_uart_wrap/uart_log_engine_wrap/log_engine/INTR_TES
 AVS_INTERRUPT_CLEAR = rdl_contract("smc_avsbus_controller/AVS_INTERRUPT_CLEAR")
 
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6")
-# (checker id, last step it depends on), in contract order.
+# (checker id, last step it depends on), in declaration order.
 _CHECKERS = (
     ("CHK-EDGE-RO-PARTIAL", "S2"),
     ("CHK-EDGE-WO-WRITE-READ-OBS", "S3"),
@@ -138,7 +136,7 @@ class smc_cpuif_ro_wo_edge_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-EDGE-RO-PARTIAL",
             f"VERSION_LO @ 0x{VERSION_LO:08X} baseline V0=0x{v0:08X} unchanged after "
-            f"{'; '.join(partial)} (BRESP printed not asserted, SF-008 LINKED-ISSUE)",
+            f"{'; '.join(partial)} (BRESP printed not asserted, owner value pending)",
         )
 
         wo_addr = INTR_TEST.addr
@@ -151,7 +149,7 @@ class smc_cpuif_ro_wo_edge_test_seq(SmcCsrSeq):
             "CHK-EDGE-WO-WRITE-READ-OBS",
             f"log_engine INTR_TEST @ 0x{wo_addr:08X}: write of 0 bresp={_name(wo_bresp)}, "
             f"read rresp={_name(wo_resp)} rdata=0x{wo_data:X}, both completed within the "
-            f"guard (SF-009 LINKED-ISSUE)",
+            f"guard (owner value pending)",
         )
 
         un_addr = AVS_INTERRUPT_CLEAR.addr
@@ -164,7 +162,7 @@ class smc_cpuif_ro_wo_edge_test_seq(SmcCsrSeq):
             "CHK-EDGE-UNREADABLE-OBS",
             f"AVS_INTERRUPT_CLEAR @ 0x{un_addr:08X}: read "
             f"rresp={_name(un_resp)} rdata=0x{un_data:X}, completed within the guard "
-            f"(SF-010 LINKED-ISSUE)",
+            f"(owner value pending)",
         )
 
         self.env.axi_monitor.expected_decerr_addrs.add(PAST_EXTENT)
@@ -180,7 +178,7 @@ class smc_cpuif_ro_wo_edge_test_seq(SmcCsrSeq):
             "CHK-EDGE-PAST-EXTENT-OBS",
             f"past SCRATCH_COLD @ 0x{PAST_EXTENT:08X}: read rresp={_name(pe_resp)} "
             f"rdata=0x{pe_data:X}, write bresp={_name(pe_bresp)}, both completed within the "
-            f"guard (SF-001 LINKED-ISSUE)",
+            f"guard (owner value pending)",
         )
         assert len(self.control_reads) == 4, f"{len(self.control_reads)} control reads, want 4"
         self._log_chk(

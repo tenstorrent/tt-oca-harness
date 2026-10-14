@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """REGION_SIZE-gated decode of the M-mode / Xvisor regions and the PLIC, CLINT and BEU units.
 
-Contract XBAR_025, anchor smc_region_gated_units_decode_test.
-Allocated scenarios: XBAR-REMAP-REGION-DECERR.S1/S4, XBAR-DEC-CLUSTER-LOCAL.S1-S4,
-INT-REGION-CLUSTER-LOCAL.
 Spec sources: memmap.adoc Address Space Organization and Memory Map, smc.rdl
 ocah_past_extent_resp, doc/integrator smu-smc.adoc Address Map and Aperture.
 """
@@ -272,7 +269,8 @@ class smc_region_gated_units_decode_test_seq(SmcCsrSeq):
         return (
             f"at REGION_SIZE 0x{REGION_SIZE_RESET:X} the base of the PLIC, CLINT and four BEU "
             f"units answered DECERR on read and write over sep_axi_in and sys_axi_in; "
-            f"rdata vs 0x{PAST_EXTENT_RDATA:08X} (SF-007 observe-only): {'; '.join(rows)}"
+            f"rdata vs 0x{PAST_EXTENT_RDATA:08X} (observe-only, owner value pending): "
+            f"{'; '.join(rows)}"
         )
 
     async def _step_remap_regions(self) -> str:
@@ -370,7 +368,7 @@ class smc_region_gated_units_decode_test_seq(SmcCsrSeq):
                     f"sys_out_counts {counts_before}->{counts_after}"
                 )
         self._mark_step("S4")
-        return "; ".join(rows) + " (observe-only, SF-005)"
+        return "; ".join(rows) + " (observe-only, owner value pending)"
 
     async def _step_decoded_after_widen(self) -> str:
         await self._write_region_size("256M", REGION_SIZE_256M)
@@ -389,7 +387,7 @@ class smc_region_gated_units_decode_test_seq(SmcCsrSeq):
         return (
             f"after REGION_SIZE 0x{REGION_SIZE_256M:X} CLINT MSIP[0] and the four BEU CAUSE read "
             f"{MSIP_RESET}/{CAUSE_RESET} with OKAY and the PLIC first register answered OKAY "
-            f"(reset undeclared, SF-025: value printed); the same bases answered DECERR at the reset "
+            f"(reset undeclared, value printed); the same bases answered DECERR at the reset "
             f"size: {', '.join(rows)}"
         )
 

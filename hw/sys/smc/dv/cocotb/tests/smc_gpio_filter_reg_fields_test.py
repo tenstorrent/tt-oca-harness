@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO ACCESS_FILTER requirement value space and individual enable bit set and clear.
 
-Contract SMC_GPIO_CSR_012, anchor smc_gpio_filter_reg_fields_test.
-Scenarios GPIO-CSR-FILTER-REG.S1 and GPIO-CSR-FILTER-REG.S3.
 Sources hw/ip/gpio/regs/gpio_intf.rdl (ACCESS_FILTER).
 """
 

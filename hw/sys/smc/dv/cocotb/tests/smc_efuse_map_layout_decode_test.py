@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Address decode of SMC_EFUSE_MAP: layout, read widths and the past-extent responder.
 
-Contract SMC_EFUSE_MAP_010, anchor smc_efuse_map_layout_decode_test.
-Scenarios EMAP-MAP-LAYOUT.S2-S6, EMAP-ACCESS-WIDTH.S1-S3, EMAP-UNMAPPED.S1-S4.
 Sources: smc_efuse_map.rdl (address map), smc.rdl (smc_efuse_map ocah_past_extent_resp).
 
 The image is written into the run directory during ``build_phase``: 256 pairwise-distinct

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO DATA_CTRL_ENABLE single-bit writes and DATA_CTRL cross-register isolation.
 
-Contract SMC_GPIO_CSR_010, anchor smc_gpio_data_ctrl_enable_fields_test.
-Scenarios GPIO-CSR-DATA-CTRL-ENABLE.S1 and GPIO-CSR-DATA-CTRL-ENABLE.S3.
 Sources hw/ip/gpio/regs/gpio_intf.rdl (DATA_CTRL_ENABLE, DATA_CTRL), integrator GPIO pad table.
 
 Instance 60 is the pad the integrator table reserves. Each DATA_CTRL_ENABLE bit is written

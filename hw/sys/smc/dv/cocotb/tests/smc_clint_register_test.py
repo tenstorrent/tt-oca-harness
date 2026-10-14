@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_026 / smc_clint_register_test: CLINT MSIP, MTIMECMP and MTIME registers."""
+"""smc_clint_register_test: CLINT MSIP, MTIMECMP and MTIME registers."""
 
 from __future__ import annotations
 

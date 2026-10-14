@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DATA_ACCEL hang detector below, beyond and at the timeout threshold.
 
-Contract SMC_IRQ_021, anchor smc_hang_data_timeout_window_test.
-Allocated scenarios: IRQ-HANG-TIMEOUT.S3.
 Spec sources: HANG_DET_CTRL and HANG_DET_TIMEOUT_THRESHOLD in smc_base_config.rdl.
 """
 
@@ -363,7 +361,7 @@ class smc_hang_data_timeout_window_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-DATAWIN-AT-LOG",
             f"stall of exactly 0x{THRESHOLD:x} rises: first_data_irq_rise={first}; "
-            f"{text}; cleared after {cleared_at} rises (observe-and-log, SF-009)",
+            f"{text}; cleared after {cleared_at} rises (observe-and-log, owner value pending)",
         )
 
         self._hold(0, "cleanup")

@@ -2,17 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C0 controller transactions framed on the wire.
 
-Contract SMC_I2C_CTRL_005, anchor smc_i2c_ctrl_wire_frames_test.
-Scenarios: I2CC-START-STOP.S3, I2CC-START-STOP.S4, I2CC-ADDR-BYTE.S1, I2CC-WRITE-XFER.S2,
-I2CC-READ-XFER.S1, I2CC-READ-XFER.S2, I2CC-READ-CONTINUE.S1, I2CC-BACK-TO-BACK.S3,
-I2CC-STATUS-FLAGS.S2, I2CC-STATUS-FLAGS.S4.
 Sources: hw/ip/i2c/regs/i2c.rdl (FDATA.START, FDATA.STOP, FDATA.FBYTE, FDATA.READB,
 FDATA.RCONT, RDATA.DATA, STATUS.RXEMPTY, STATUS.FMTEMPTY, STATUS.HOSTIDLE).
 
 Three bench EEPROM targets (0x50, 0x29, 0x6B) answer on the I2C0 pads and a passive wire
 monitor decodes every frame. Every transaction is queued with CTRL cleared and executed by
 setting ENABLEHOST. STATUS.HOSTIDLE during and after a transaction is logged and not
-compared (SF-015).
+compared (owner value pending).
 """
 
 from __future__ import annotations
@@ -428,7 +424,7 @@ class smc_i2c_ctrl_wire_frames_test_seq(SmcCsrSeq):
                 f"FMTEMPTY={int(bool(st & I2C_STATUS_FMTEMPTY))} wire [{wire}]"
                 for when, st, wire in reads
             )
-            + "; no compare (SF-015)",
+            + "; no compare (owner value pending)",
         )
 
     def _emit_timeout_paths(self) -> None:

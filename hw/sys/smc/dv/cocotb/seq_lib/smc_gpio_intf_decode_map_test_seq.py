@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO_INTF instance decode, co-resident aliasing and the Programmer's Guide address formula.
 
-Contract SMC_GPIO_CSR_007, anchor smc_gpio_intf_decode_map_test.
-Allocated scenarios: GPIO-CSR-DECODE.S1 to S4.
 Spec sources: hw/ip/gpio/regs/gpio_intf.rdl, hw/sys/smc/regs/smc.rdl,
 doc/programmer/src/smc-programming.adoc.
 """
@@ -98,7 +96,7 @@ class smc_gpio_intf_decode_map_test_seq(SmcRegblockFieldSweepSeq):
         ctrls = reg_instances(*_DATA_CTRL)
         assert len(filters) == len(enables) == len(ctrls) == _INSTANCES, (
             f"generated map declares {len(filters)} ACCESS_FILTER, {len(enables)} "
-            f"DATA_CTRL_ENABLE and {len(ctrls)} DATA_CTRL instances, contract says {_INSTANCES}"
+            f"DATA_CTRL_ENABLE and {len(ctrls)} DATA_CTRL instances, the spec says {_INSTANCES}"
         )
         aw_bp = gpio_intf_u32("GPIO_INTF__ACCESS_FILTER__AWPROT_REQUIREMENT_bp")
         ar_bp = gpio_intf_u32("GPIO_INTF__ACCESS_FILTER__ARPROT_REQUIREMENT_bp")

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_008 / smc_cpu_ctrl_wdt_regs_test: CPU_CTRL WDT and TEST_CTRL scalar registers."""
+"""smc_cpu_ctrl_wdt_regs_test: CPU_CTRL WDT and TEST_CTRL scalar registers."""
 
 from __future__ import annotations
 

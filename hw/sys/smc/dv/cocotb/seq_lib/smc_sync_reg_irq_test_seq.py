@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SYNC_REG.sync drives sync_irq_o; only bit 0 is implemented.
 
-Contract SMC_RESET_046, anchor smc_sync_reg_irq_test.
-Allocated scenarios: RST-SYNC-IRQ.S1, RST-SYNC-IRQ.S2, RST-SYNC-IRQ.S3.
 Spec sources: reset_unit.rdl SYNC_REG, port_table.adoc SMC Port Declaration (sync_irq_o).
 """
 

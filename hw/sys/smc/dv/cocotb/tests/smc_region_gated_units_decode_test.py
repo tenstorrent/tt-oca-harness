@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """REGION_SIZE-gated decode of the M-mode / Xvisor regions and the PLIC, CLINT and BEU units.
 
-Contract XBAR_025, anchor smc_region_gated_units_decode_test.
-Allocated scenarios: XBAR-REMAP-REGION-DECERR.S1/S4, XBAR-DEC-CLUSTER-LOCAL.S1-S4,
-INT-REGION-CLUSTER-LOCAL.
 Spec sources: memmap.adoc Address Space Organization and Memory Map, smc.rdl
 ocah_past_extent_resp, doc/integrator smu-smc.adoc Address Map and Aperture.
 """

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO DATA_CTRL hardware-status bits written from software.
 
-Contract SMC_GPIO_CSR_009, anchor smc_gpio_data_ctrl_ro_status_test.
-Scenarios GPIO-CSR-DATA-CTRL-RO.S1, GPIO-CSR-DATA-CTRL-RO.S2 and GPIO-CSR-DATA-CTRL-RO.S3.
 Sources hw/ip/gpio/regs/gpio_intf.rdl (DATA_CTRL, DATA_CTRL_ENABLE), integrator GPIO pad table.
 
 lsio_enable (bit 25) and pad2core (bit 31) are sw=r hw=w. Instance 60 receives software writes
@@ -158,7 +156,7 @@ class smc_gpio_data_ctrl_ro_status_test_seq(SmcCsrSeq):
         leg = (
             f"bit 25 reads 1 on pads {high}; write-zero responses {high_resps}"
             if high
-            else "no pad reads bit 25 = 1, the write-zero leg is open (SF-019)"
+            else "no pad reads bit 25 = 1, the write-zero leg is open (owner value pending)"
         )
         self._chk(
             "LSIO_ENABLE_WRITE",

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Gap, SLVERR-window and debug-module aperture responses on the three inbound ports.
 
-Contract XBAR_024, anchor smc_gap_decode_response_test.
-Allocated scenarios: XBAR-GAP-DECERR.S1-S4, XBAR-GAP-SLVERR-WINDOW.S1-S5, XBAR-DEC-DEBUG.S1/S2.
 Spec sources: memmap.adoc Address Space Organization, smc.rdl ocah_gap_resp / ocah_hole_resp /
 ocah_past_extent_resp placements, smc_mailbox placement.
 """

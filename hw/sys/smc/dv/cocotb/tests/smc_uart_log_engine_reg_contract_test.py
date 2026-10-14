@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Contract SMC_UART_LOG_ENGINE_009, anchor smc_uart_log_engine_reg_contract_test.
+"""Log-engine bank, wrapper CTRL and UART reset words on four wrapper instances.
 
-Allocated scenarios: LOGENG-REGMAP-RESET.S1-S3, LOGENG-REGMAP-RW.S1-S4/S6/S7,
-LOGENG-REGMAP-ACCESS.S2-S5, LOGENG-UART-EN-CTRL.S1, LOGENG-INSTANCE-MAP.S1.
 Spec sources: hw/ip/uart/log_engine/regs/log_engine.rdl, hw/ip/uart/uart_log_engine_wrap/regs,
 hw/ip/uart/uart_wrap/regs/uart_wrap.rdl, hw/sys/smc/doc/periphs.adoc.
 """

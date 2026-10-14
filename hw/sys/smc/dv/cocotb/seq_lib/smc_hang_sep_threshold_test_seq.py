@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP_AXI hang detector threshold updates, reset value and small values on live stalls.
 
-Contract SMC_IRQ_018, anchor smc_hang_sep_threshold_test.
-Allocated scenarios: IRQ-HANG-THRESH.S2, IRQ-HANG-THRESH.S3, IRQ-HANG-THRESH.S4.
 Spec sources: HANG_DET_CTRL and HANG_DET_TIMEOUT_THRESHOLD in smc_base_config.rdl.
 """
 
@@ -360,7 +358,7 @@ class smc_hang_sep_threshold_test_seq(SmcCsrSeq):
             f"rise {reenable}; sep irq first 1 at rise {st.first} of the stall, "
             f"rises_from_reenable={st.first - reenable} "
             f"(ceiling {ENABLE_CLEAR_CEILING}); cleared after {cleared} rises "
-            "(observe-and-log, SF-013)",
+            "(observe-and-log, owner value pending)",
         )
 
         # S6: reset threshold value
@@ -383,7 +381,7 @@ class smc_hang_sep_threshold_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-THR-DEFAULT-EXACT-LOG",
             f"first_sep_irq_rise={first} threshold={THR_DEFAULT} "
-            f"offset={first - THR_DEFAULT} (observe-and-log, SF-009)",
+            f"offset={first - THR_DEFAULT} (observe-and-log, owner value pending)",
         )
 
         # S7: small thresholds
@@ -407,7 +405,7 @@ class smc_hang_sep_threshold_test_seq(SmcCsrSeq):
             f"threshold={t} first_sep_irq_rise={small[t][0]} offset={small[t][0] - t}"
             for t in order
         )
-        self._log_chk("CHK-THR-SMALL-LOG", f"{offsets} (observe-and-log, SF-009)")
+        self._log_chk("CHK-THR-SMALL-LOG", f"{offsets} (observe-and-log, owner value pending)")
 
         # S8: cleanup
         self._hold(0, "cleanup")

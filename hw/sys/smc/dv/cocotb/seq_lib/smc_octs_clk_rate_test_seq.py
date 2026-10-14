@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OCTS TIMER_COUNT delta against edge counts of clk_smc_i, clk_ref_i and clk_periph_i.
 
-Contract SMC_CLOCK_SRC_001, anchor smc_octs_clk_rate_test.
-Scenarios: CSRC-OCTS-CLK.S1, CSRC-OCTS-CLK.S2, CSRC-OCTS-CLK.S3, CSRC-OCTS-CLK.S4.
 Spec: clk_rst.adoc (Timer and Debug Timebases), system_timer_octs architecture.adoc.
 """
 
@@ -256,7 +254,8 @@ class smc_octs_clk_rate_test_seq(SmcCsrSeq):
         gran = (ctrl & CREDIT_VAL_BM) >> CREDIT_VAL_BP
         assert gran > 0, "CREDIT_VAL reads 0"
         cocotb.log.info(
-            "SF-007 count-latch rule open: tolerance is CREDIT_VAL granularity %d only", gran
+            "count-latch rule owner value pending: tolerance is CREDIT_VAL granularity %d only",
+            gran,
         )
 
         tasks = [

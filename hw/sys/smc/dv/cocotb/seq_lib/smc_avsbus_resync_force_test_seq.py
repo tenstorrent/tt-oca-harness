@@ -2,15 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A forced AVSBus slave resync from idle, mid-frame, with a queue and twice.
 
-Contract SMC_POWER_AVS_011, anchor smc_avsbus_resync_force_test.
-Scenarios: AVS-RESYNC.S6, AVS-RESYNC.S7, AVS-RESYNC.S8, AVS-RESYNC.S9, INT-AVS-RESYNC-INFLIGHT.
 Sources: hw/ip/avsbus_controller/doc/architecture.adoc, regs/avsbus_controller.rdl.
 
 AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION requests one resync. The leaf counts the
 AVS_SLAVE_RESYNC episodes on the FSM debug bus (a code counts once it holds over two
 consecutive clk_periph_i samples) and the master subframes on avs_mdata. The instant the
-master sees the request and the second-request outcome (SF-013) are not observable at the
-SMC boundary, so the leaf prints the measured counts and asserts only what the contract states.
+master sees the request and the second-request outcome (owner value pending) are not
+observable at the SMC boundary, so the leaf prints the measured counts and asserts only what
+the documents state.
 """
 
 from __future__ import annotations
@@ -397,7 +396,8 @@ class smc_avsbus_resync_force_test_seq(SmcCsrSeq):
         self._chk(
             "S5",
             "CHK-AVS-FORCE-TWICE",
-            f"two back-to-back force writes gave {episodes} resync episode(s) (SF-013: owner "
+            f"two back-to-back force writes gave {episodes} resync episode(s) (open question: "
+            f"owner "
             f"answers one or two), the bus returned to AVS_IDLE, and the command queued "
             f"afterwards launched once and was answered ({occupied} reply)",
         )

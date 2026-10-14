@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Telemetry receivers 0, 1 and 2 stay independent of one another.
 
-Contract SMC_POWER_TELEMETRY_018, anchor smc_telemetry_receiver_isolation_test.
-Allocated scenarios: TLM-RECEIVER-ISOLATION.S1, .S2, .S3.
 Spec sources: hw/ip/telemetry_receiver/doc/architecture.adoc, doc/interface.adoc,
 regs/telemetry_receiver.rdl.
 
@@ -366,7 +364,7 @@ class smc_telemetry_receiver_isolation_test_seq(SmcCsrSeq):
             "receiver 0, a flush on receiver 1 and a threshold (%d) plus enable (0x%x) rewrite "
             "on receiver 2 left the untouched receivers at the words taken before each "
             "operation (STATUS, PROBE_ID, INTR_STATUS, CTRL); measured INTR_STATUS before the "
-            "pop rx1=0x%x rx2=0x%x, tb_telemetry_irq_any %d -> %d; SF-020 measured: transmitter "
+            "pop rx1=0x%x rx2=0x%x, tb_telemetry_irq_any %d -> %d; measured: transmitter "
             "flush pins at the bench boundary rx1=%s rx2=%s",
             OPS_THRESHOLD,
             OPS_THRESHOLD_REWRITE,
@@ -394,13 +392,13 @@ class smc_telemetry_receiver_isolation_test_seq(SmcCsrSeq):
 
     def _nonvac(self) -> None:
         steps = [s for s, _ in self._stamps]
-        assert steps == list(STEP_ORDER), f"step stamps {steps} not in contract order"
+        assert steps == list(STEP_ORDER), f"step stamps {steps} not in expected order"
         times = [t for _, t in self._stamps]
         assert all(b > a for a, b in zip(times, times[1:], strict=False)), (
             f"step stamps not strictly increasing: {times}"
         )
         ids = [c for c, _ in self._chk_marks]
-        assert ids == [c for c, _ in CHK_STEP], f"checker lines {ids} not in contract order"
+        assert ids == [c for c, _ in CHK_STEP], f"checker lines {ids} not in expected order"
         for (chk_id, count), (_, step) in zip(self._chk_marks, CHK_STEP, strict=True):
             assert count >= STEP_ORDER.index(step) + 1, (
                 f"{chk_id} printed before its step {step} stamp"

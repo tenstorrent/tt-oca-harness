@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Past-extent and last-aperture-word response of the DECERR write units.
 
-Contract XBAR_017, anchor smc_past_extent_decerr_units_test.
-Allocated scenarios: XBAR-DEC-WDT.S3/S4, XBAR-DEC-MAILBOX.S3/S4, XBAR-DEC-DMA-ZEROER.S3/S4,
-XBAR-DEC-DFX.S3, XBAR-DEC-CPU-CTRL.S3.
 Spec sources: smc.rdl ocah_past_extent_resp placements, memmap.adoc Address Space Organization.
 """
 

@@ -2,16 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Gated peripheral windows answer SLVERR with 0xBADCAB1E and recover when the enable clears.
 
-Contract XBAR_021, anchor smc_clock_gated_window_slverr_test.
-Allocated scenarios: XBAR-CG-SLVERR.S1, XBAR-CG-SLVERR.S2, XBAR-CG-SLVERR.S3,
-XBAR-CG-SLVERR.S4, XBAR-CG-SLVERR.S5.
 Spec sources: memmap.adoc Address Space Organization gated-clock rule;
 smc_base_config.rdl CLOCK_GATE_CONTROL field descriptions (cg_en, cg_hysteresis).
 
 Every window is polled with a literal bound of 400 clk_smc_i cycles, one re-read
 every 4 cycles; the interval between the enable write and the effective SLVERR is
-measured and printed, never compared (SF-021). Only the five peripherals named by
-the contract are driven (SF-022).
+measured and printed, never compared (owner value pending). Only the five peripherals named
+by the spec are driven (owner list pending).
 """
 
 from __future__ import annotations
@@ -279,7 +276,7 @@ class smc_clock_gated_window_slverr_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-CG-TRANSITION-BOUNDED",
             f"sys_in_resp={sys_resp} sys_in_rdata=0x{sys_rdata:08X} window={periph} "
-            f"completed within {AXI_TIMEOUT_NS} ns (SF-021 observe-only)",
+            f"completed within {AXI_TIMEOUT_NS} ns (observe-only, owner value pending)",
         )
 
         await self.csr_write("CGC_RESTORE", CLOCK_GATE_CONTROL, original)

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """dfx_ctrl register addresses, past-extent DECERR and the gap at offset 0xC.
 
-Contract SMC_JTAG_DM_022, anchor smc_dfx_aperture_extent_test.
-Scenarios JDM-DFX-APERTURE.S1 .. JDM-DFX-APERTURE.S5.
 Spec: smc.rdl dfx_ctrl placement, dfx_ctrl_status.rdl address map, memmap.adoc address space.
 """
 

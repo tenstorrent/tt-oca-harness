@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Telemetry interrupt aggregation across receivers 0, 1 and 2.
 
-Contract SMC_POWER_TELEMETRY_013, anchor smc_telemetry_irq_aggregate_test.
-Allocated scenarios: TLM-IRQ-AGGREGATE.S1, .S2, .S3, .S4.
 Spec sources: hw/sys/smc/doc/interrupts.adoc, hw/ip/telemetry_receiver/doc/architecture.adoc,
 regs/telemetry_receiver.rdl.
 
@@ -245,7 +243,7 @@ class smc_telemetry_irq_aggregate_test_seq(SmcCsrSeq):
             "a source on receiver 0, 1 and 2 alone set tb_telemetry_irq to 0b001, 0b010 and "
             "0b100 with tb_telemetry_irq_any=1 after %s clk_smc_i cycle(s); both read 0 after "
             "release, after %s cycle(s); platform interrupt IDs and PLIC delivery are not "
-            "observable here (SF-016)",
+            "observable here (owner value pending)",
             "/".join(str(r) for r, _ in seen),
             "/".join(str(f) for _, f in seen),
         )
@@ -365,7 +363,7 @@ class smc_telemetry_irq_aggregate_test_seq(SmcCsrSeq):
 
     def _assert_fence(self) -> None:
         ids = tuple(s for s, _ in self._stamps)
-        assert ids == STEP_ORDER, f"step ids {ids} != contract order {STEP_ORDER}"
+        assert ids == STEP_ORDER, f"step ids {ids} != expected order {STEP_ORDER}"
         times = [t for _, t in self._stamps]
         assert all(b > a for a, b in zip(times, times[1:])), f"stamps not increasing: {times}"
         chk_ids = tuple(c for c, _ in self._chk_marks)

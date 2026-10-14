@@ -2,14 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AVSBus pad enables follow AVS_CONFIG.AVS_GPIO_ENABLE and the enabled pads carry a frame.
 
-Contract SMC_POWER_AVS_015, anchor smc_avsbus_pad_enable_test.
-Scenarios: AVS-PAD-ENABLE.S1, AVS-PAD-ENABLE.S2.
-Sources: hw/ip/avsbus_controller/doc/interface.adoc, hw/sys/smc/doc/port_table.adoc.
+Sources: hw/ip/avsbus_controller/doc/interface.adoc, hw/sys/smc/doc/clk_rst.adoc.
 
 AVS_GPIO_ENABLE resets to 1 and drives the output enable of avs_clock and avs_mdata
 and the input enable of avs_sdata. The avs_clock pad (GPIO 49) enable is asserted
 exactly; the avs_mdata (50) and avs_sdata (51) enables are measured and printed
-because their pad numbers and polarity are an open finding (SF-022).
+because their pad numbers and polarity are an open finding (owner value pending).
 """
 
 from __future__ import annotations
@@ -46,7 +44,8 @@ READBACK_FIELDS = (
     | avs_field("AVSBUS_CONTROLLER__AVS_READBACK__CRC_bm")
 )
 
-# port_table.adoc: avs_clock is GPIO 49; avs_mdata and avs_sdata follow on 50 and 51.
+# clk_rst.adoc: avs_clock is GPIO 49; the GPIO numbers 50 and 51 for avs_mdata and avs_sdata
+# are not stated in the documents and are taken from the pad wiring.
 PADS = (("avs_clock", 49), ("avs_mdata", 50), ("avs_sdata", 51))
 CLOCK_PAD = 49
 
@@ -233,7 +232,8 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
             "CHK-AVS-PAD-ENABLE-FOLLOWS",
             f"AVS_GPIO_ENABLE reset {GPIO_ENABLE_RESET}, avs_clock pad (GPIO {CLOCK_PAD}) output "
             f"enable reset={reset_pads['avs_clock'][0]} after 0 write={off_pads['avs_clock'][0]} "
-            f"after 1 write={on_pads['avs_clock'][0]}; measured (c2p,p2c) per pad (SF-022) "
+            f"after 1 write={on_pads['avs_clock'][0]}; measured (c2p,p2c) per pad (owner value "
+            f"pending) "
             f"reset={reset_pads} write0={off_pads} write1={on_pads}",
         )
 

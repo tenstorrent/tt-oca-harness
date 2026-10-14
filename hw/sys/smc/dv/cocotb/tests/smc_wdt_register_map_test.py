@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Contract SMC_POWER_TIMER_WDT_007, anchor smc_wdt_register_map_test.
+"""Per-core watchdog register decode, CTRL fields and CMP width over SEP_IN.
 
-Allocated scenarios: WDT-APERTURE.S2-S5, WDT-CTRL-FIELDS.S1-S4, WDT-CMP.S2.
 Spec sources: hw/sys/smc/doc/watchdog.adoc (Operation, Register Access),
 hw/sys/smc/regs/blocks/wdt/wdt.rdl.
 """

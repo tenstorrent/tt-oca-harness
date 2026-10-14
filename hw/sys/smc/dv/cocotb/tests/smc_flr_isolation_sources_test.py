@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Isolation request sources, the FLR latch and skip_mem_repair_o.
 
-Contract SMC_CPU_WEDGE_BOOT_020, anchor smc_flr_isolation_sources_test.
-Scenarios CPU-FLR-ISOLATE-REQ-OR.S1-S3 and CPU-FLR-LATCH-SKIP-REPAIR.S1-S3.
 Sources: smc/doc/clk_rst.adoc (Function Level Reset and Isolation), smc/doc/cpu.adoc.
 """
 

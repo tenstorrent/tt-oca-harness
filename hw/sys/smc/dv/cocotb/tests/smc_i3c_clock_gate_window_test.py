@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I3C window response across the peripheral clock gate over SEP_IN AXI.
 
-Contract SMC_I3C_SPI_011, anchor smc_i3c_clock_gate_window_test.
-Scenarios I3CSPI-GATE-RESPONSE.S1-S5, I3CSPI-GATE-RESTORE.S1-S4, I3CSPI-GATE-INFLIGHT.S1-S4.
 Sources: smc_base_config.rdl CLOCK_GATE_CONTROL.i3c_cg_en, clk_rst.adoc, memmap.adoc.
 """
 

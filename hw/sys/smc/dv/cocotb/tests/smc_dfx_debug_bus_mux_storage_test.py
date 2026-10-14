@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_MEM_ECC_013 / smc_dfx_debug_bus_mux_storage_test: DEBUG_BUS_MUX register storage."""
+"""DEBUG_BUS_MUX register storage."""
 
 from __future__ import annotations
 

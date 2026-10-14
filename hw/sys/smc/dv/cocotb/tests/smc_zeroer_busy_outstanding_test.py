@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Zeroer busy status, completion and outstanding writes under a stalling SYS_OUT responder.
 
-Contract SMC_POWER_DMA_ZEROER_023, anchor smc_zeroer_busy_outstanding_test.
-Scenarios ZEROER-BUSY-COMPLETION.S1 to S5 and ZEROER-OUTSTANDING.S1 to S3.
 Sources hw/sys/smc/doc/zeroer.adoc, hw/sys/smc/doc/fabric.adoc, hw/ip/zeroer/regs/zeroer_ctrl.rdl.
 """
 

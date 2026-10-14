@@ -2,10 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Per-instance SMBUS_EN isolation of the SMBALERT gate across the three I2C instances.
 
-Contract SMC_I2C_SMBUS_008 revision 2, anchor smc_smbus_alert_instance_isolation_test.
-Scenarios: SMBALERT-ENABLE-GATE.S4.
 Sources: hw/ip/i2c/regs/i2c_ctrl.rdl (I2C_CTRL array), hw/ip/i2c/regs/i2c.rdl (SMBUS_STATUS),
-hw/ip/i2c/doc/index.adoc (OCAH Modifications), open finding SF-017 (padring reach).
+hw/ip/i2c/doc/index.adoc (OCAH Modifications).
+Padring reach is owner value pending.
 
 With the three alert pads driven low, clearing SMBUS_EN on one instance leaves
 SMBUS_STATUS.SMBALERT of the other two at 1.
@@ -170,7 +169,7 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
                 f"k={k}: instances {self.gate[k]['others']} read SMBUS_STATUS.SMBALERT=1 in "
                 f"{OBSERVE_POLLS} of {OBSERVE_POLLS} polls, own instance SMBUS_STATUS.SMBALERT="
                 f"{self.gate[k]['own_status']} INTR_STATE.SMBALERT={self.gate[k]['own_intr']} "
-                f"logged only (SF-004)"
+                f"logged only (owner value pending)"
                 for k in INSTANCES
             )
             + "; cleared: pads released and SMBUS_EN restored; checked_cleared: all three read 0 "

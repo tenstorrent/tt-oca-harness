@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Register sweep of the TTI, SoC management and secure firmware recovery blocks of six I3Cs.
 
-Contract SMC_I3C_SPI_008, anchor smc_i3c_csr_sweep_ext_test.
-Scenarios I3CSPI-CSR-TTI.S1-S5, I3CSPI-CSR-SOCMGMT.S1-S5, I3CSPI-CSR-RECOVERY.S1-S5.
 Sources: the pinned i3c-core RDL, the generated I3C wrapper map and smc_addr.h.
 """
 

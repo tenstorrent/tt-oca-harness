@@ -2,18 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C0 target bus symbols: abandoned transactions, START/STOP detect flags, UNEXP_STOP.
 
-Contract SMC_I2C_TARGET_016, anchor smc_i2c_target_bus_symbol_test.
-Scenarios: TGT-ABANDON.S1-S6, TGT-ACQ-REPSTART.S1, TGT-UNEXP-STOP.S1-S5, TGT-DETECT-FLAGS.S1-S6.
 Sources: hw/ip/i2c/regs/i2c.rdl (ACQDATA.SIGNAL, ACQDATA.ABYTE, TXDATA.DATA, STATUS.TARGETIDLE,
 FIFO_CTRL.ACQRST, INTR_STATE.UNEXP_STOP, INTR_TEST, INTR_ENABLE, TARGET_EVENTS.START_DETECT,
 TARGET_EVENTS.STOP_DETECT, CTRL.ENABLETARGET), hw/sys/smc/doc/interrupts.adoc.
 
 The bench controller on the I2C0 pads ends transactions early (STOP, repeated START, read NACK)
 and sends bare START and STOP symbols against the instance 0 target. The entry list the ACQ FIFO
-holds after each abandon (SF-029, SF-005), the bus positions that raise UNEXP_STOP (SF-021), the
-START_DETECT / STOP_DETECT race with a write-1-clear (SF-023, SF-032) are measured and logged, not
-compared. The repeated-START entries, the recovery transaction after every case, the read NACK
-byte, the interrupt register path and the detect-flag lifecycle are compared.
+holds after each abandon, the bus positions that raise UNEXP_STOP and the START_DETECT /
+STOP_DETECT race with a write-1-clear are owner value pending: they are measured and
+logged, not compared. The repeated-START entries, the recovery transaction after every case,
+the read NACK byte, the interrupt register path and the detect-flag lifecycle are compared.
 """
 
 from __future__ import annotations
@@ -467,7 +465,7 @@ class smc_i2c_target_bus_symbol_test_seq(SmcCsrSeq):
             rec_rows.append(f"{label}: acks {c['rec']['acks']} entries {_fmt(c['rec']['entries'])}")
         self._chk(
             "CHK-I2C-TGT-ABANDON-LOG",
-            "observe-and-log (SF-029, SF-005): " + "; ".join(rows),
+            "observe-and-log (owner value pending): " + "; ".join(rows),
         )
         self._chk(
             "CHK-I2C-TGT-ABANDON-RECOVER",
@@ -529,7 +527,7 @@ class smc_i2c_target_bus_symbol_test_seq(SmcCsrSeq):
         ]
         self._chk(
             "CHK-I2C-TGT-UNEXP-STOP-LOG",
-            "observe-and-log (SF-021): UNEXP_STOP "
+            "observe-and-log (owner value pending): UNEXP_STOP "
             + "; ".join(rows)
             + f"; second early STOP of case A after a write-1-clear {second} ({second_lines})",
         )
@@ -677,7 +675,7 @@ class smc_i2c_target_bus_symbol_test_seq(SmcCsrSeq):
         self._stamp("S10")
         self._chk(
             "CHK-I2C-TGT-DETECT-RACE-LOG",
-            "observe-and-log (SF-023, SF-032): "
+            "observe-and-log (owner value pending): "
             + "; ".join(rows)
             + "; the sweep places the clear near the STOP and proves no same-cycle coincidence",
         )

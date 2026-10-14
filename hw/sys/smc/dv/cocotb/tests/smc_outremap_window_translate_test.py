@@ -1,9 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG writes through the M-mode and Xvisor remap windows land at the region targets.
-
-Contract SMC_FILTER_25, anchor smc_outremap_window_translate_test.
-"""
+"""JTAG writes through the M-mode and Xvisor remap windows land at the region targets."""
 
 from __future__ import annotations
 

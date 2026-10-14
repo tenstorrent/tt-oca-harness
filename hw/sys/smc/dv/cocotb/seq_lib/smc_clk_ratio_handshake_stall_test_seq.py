@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Stalled R, W and B handshakes on UART SCR[0] and SCRATCH[0] at the default clock triple.
 
-Contract SMC_CLOCK_RATIO_012, anchor smc_clk_ratio_handshake_stall_test.
-Allocated scenarios: RATIO-HANDSHAKE-STALL.S1, RATIO-HANDSHAKE-STALL.S2, RATIO-HANDSHAKE-STALL.S3.
 Spec sources: hw/sys/smc/doc/fabric.adoc, hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/clk_rst.adoc.
 """
 
@@ -295,13 +293,13 @@ class smc_clk_ratio_handshake_stall_test_seq(SmcCsrSeq):
             "CHK-STALL-PERIPH-READ",
             f"UART0 SCR[0] read with r_ready_delay {READY_HOLD_CYCLES} "
             f"returned 0x{UART_PRELOAD:02x} OKAY; {read_text}; "
-            "completion count printed, SF-006 bound not asserted",
+            "completion count printed, completion bound not asserted",
         )
         self._emit_chk(
             "CHK-STALL-PERIPH-WRITE",
             f"UART0 SCR[0] write 0x{UART_WRITE:02x} with w_delay {STALL_CYCLES} and "
             f"b_ready_delay {READY_HOLD_CYCLES} drew one OKAY B beat and reads back 0x{back:02x}; "
-            f"{write_text}; completion count printed, SF-006 bound not asserted",
+            f"{write_text}; completion count printed, completion bound not asserted",
         )
         self._emit_chk(
             "CHK-STALL-SMC",
@@ -325,7 +323,7 @@ class smc_clk_ratio_handshake_stall_test_seq(SmcCsrSeq):
 
     def _assert_fence(self) -> None:
         ids = tuple(s for s, _ in self._steps)
-        assert ids == STEP_ORDER, f"step ids {ids} != contract order {STEP_ORDER}"
+        assert ids == STEP_ORDER, f"step ids {ids} != expected order {STEP_ORDER}"
         stamps = [t for _, t in self._steps]
         assert all(b > a for a, b in zip(stamps, stamps[1:])), f"stamps not increasing: {stamps}"
         chk_ids = tuple(c for c, _ in self._chk_lines)

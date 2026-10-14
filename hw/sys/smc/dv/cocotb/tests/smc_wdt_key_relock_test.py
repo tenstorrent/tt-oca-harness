@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Contract SMC_POWER_TIMER_WDT_008, anchor smc_wdt_key_relock_test.
+"""Core 0 watchdog KEY protocol corners and relock on every register.
 
-Allocated scenarios: WDT-KEY-UNLOCK.S3-S6, WDT-RELOCK.S1-S5, WDT-RELOCK.S7, WDT-RELOCK.S8.
 Spec sources: hw/sys/smc/doc/watchdog.adoc (Register Access), hw/sys/smc/regs/blocks/wdt/wdt.rdl.
 """
 

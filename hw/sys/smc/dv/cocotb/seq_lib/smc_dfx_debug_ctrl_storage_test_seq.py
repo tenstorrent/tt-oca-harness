@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_MEM_ECC_012 / smc_dfx_debug_ctrl_storage_test: DEBUG_CTRL field write and readback.
+"""DEBUG_CTRL field write and readback.
 
-Scenarios: MEMECC-DFX-DEBUG-CTRL.S1 (storage fields), S2 (clock bits), S3 (halt mask),
-S4 (walking one), S5 (bit 31), S6 (back to back).
 Sources: hw/sys/smc/regs/blocks/dfx_ctrl_status/dfx_ctrl_status.rdl, hw/sys/smc/doc/memmap.adoc.
 """
 
@@ -204,7 +202,7 @@ class smc_dfx_debug_ctrl_storage_test_seq(SmcCsrSeq):
             "CHK-DFX-CTRL-BIT31",
             f"4-byte write 0x{BIT31:08x} read back 0x{word_4b:08x}; "
             f"8-byte write 0x{UPPER_HALF:016x} read back slot 0x{slot_8b:016x}; "
-            "both resolvable, expected values are SF-014 and are not asserted",
+            "both resolvable, expected values are not stated in the document and are not asserted",
         )
 
         # S7

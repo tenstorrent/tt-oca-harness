@@ -2,10 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """JTAG-to-SYS_OUT path with responder control: route, split channels, recovery, stall.
 
-Contract XBAR_018, anchor smc_sys_out_path_responder_control_test.
-Allocated scenarios: XBAR-JTAG-OUTBOUND.S1, XBAR-JTAG-OUTBOUND.S2, XBAR-OUT-WSPLIT.S1,
-XBAR-OUT-WSPLIT.S2, XBAR-OUT-WSPLIT.S3, XBAR-OUT-RESP-READ.S4, XBAR-OUT-RESP-WRITE.S4,
-XBAR-CONCURRENT.S4.
 Spec sources: fabric.adoc Fabric Topology, Alias Remapping, Outbound Traffic Flow;
 smc-programming.adoc Address Map ext_out statement.
 """
@@ -47,7 +43,7 @@ from smc_reg import (  # noqa: E402
 
 REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 SCRATCH_COLD_0 = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0)
-# Contract value of REGION_SIZE (16 MiB); the generated reset must agree.
+# Spec value of REGION_SIZE (16 MiB); the generated reset must agree.
 REGION_SIZE_EXPECTED = 0x0100_0000
 assert REGION_SIZE_RESET == REGION_SIZE_EXPECTED
 INBOUND_PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
@@ -334,8 +330,8 @@ class smc_sys_out_path_responder_control_test_seq(SmcCsrSeq):
             "CHK-JTAG-OUTBOUND-SILENT",
             f"jtag_axi_rvalid stayed 0 for {SILENT_WINDOW_CYCLES} cycles of "
             f"tb_output_axi_resp_hold after the AR handshake; after release the response arrived "
-            f"(OBSERVE-ONLY, SF-003 "
-            f"open): resp_code={item.resp_code} rdata=0x{item.rdata:x} seeded=0x{SEED_WORD:x}",
+            f"(OBSERVE-ONLY, owner value pending): "
+            f"resp_code={item.resp_code} rdata=0x{item.rdata:x} seeded=0x{SEED_WORD:x}",
         )
 
     async def _split_write(self, mem, channel: str, data: int):
@@ -398,8 +394,8 @@ class smc_sys_out_path_responder_control_test_seq(SmcCsrSeq):
         at = {k: (None if v is None else v[0] - start) for k, v in marks.items()}
         self._log_chk(
             "CHK-WSPLIT-SAME-CYCLE",
-            f"both_handshake_cycles={both} (OBSERVE-ONLY, SF-004 open: AW/W independence at "
-            f"output_axi is not stated; no compare on the count); bresp OKAY, stored word "
+            f"both_handshake_cycles={both} (OBSERVE-ONLY, owner value pending: AW/W independence "
+            f"at output_axi is not stated; no compare on the count); bresp OKAY, stored word "
             f"matches; first-valid cycle offsets jtag_awvalid=+{at['jawv']} jtag_wvalid="
             f"+{at['jwv']} sys_out_awvalid=+{at['awv']} sys_out_wvalid=+{at['wv']}; handshakes "
             f"aw=+{at['aw']} w=+{at['w']}",
@@ -441,7 +437,7 @@ class smc_sys_out_path_responder_control_test_seq(SmcCsrSeq):
             "CHK-OUT-READ-RECOVERY",
             f"{plain} plain reads returned OKAY with 0x{READ_SEED_PLAIN:x} after SLVERR, DECERR "
             f"and OKAY reads; injected codes seen once each on the SYS_OUT wire; manager side "
-            f"(OBSERVE-ONLY, SF-003 open): {'; '.join(notes)}",
+            f"(OBSERVE-ONLY, owner value pending): {'; '.join(notes)}",
         )
 
     async def _write_recovery(self, mem, mon) -> None:
@@ -479,7 +475,7 @@ class smc_sys_out_path_responder_control_test_seq(SmcCsrSeq):
             "CHK-OUT-WRITE-RECOVERY",
             f"{plain} plain writes returned OKAY and the SYS_OUT memory held each word after "
             f"SLVERR, DECERR and OKAY writes; injected codes seen once each on the SYS_OUT wire; "
-            f"manager side (OBSERVE-ONLY, SF-003 open): {'; '.join(notes)}",
+            f"manager side (OBSERVE-ONLY, owner value pending): {'; '.join(notes)}",
         )
 
     async def _stall_local(self, mem) -> None:
@@ -544,8 +540,9 @@ class smc_sys_out_path_responder_control_test_seq(SmcCsrSeq):
             f"while the JTAG read was held by tb_output_axi_resp_hold: SYS_IN REGION_SIZE "
             f"0x{sys_rs.rdata:08x} OKAY in {t1 - t0} ps, SEP_IN REGION_SIZE 0x{sep_rs:08x} and "
             f"SCRATCH_COLD[0] 0x{sep_sc:x} answered by {t2 - t1} ps (guard {ACCESS_TIMEOUT_NS} "
-            f"ns); JTAG read still pending, then completed after release (OBSERVE-ONLY, SF-003 "
-            f"open): resp_code={item.resp_code} rdata=0x{item.rdata:x}",
+            f"ns); JTAG read still pending, then completed after release "
+            f"(OBSERVE-ONLY, owner value pending): "
+            f"resp_code={item.resp_code} rdata=0x{item.rdata:x}",
         )
 
     async def body(self) -> None:

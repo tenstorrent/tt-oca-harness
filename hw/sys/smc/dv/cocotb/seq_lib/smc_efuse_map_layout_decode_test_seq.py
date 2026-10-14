@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Address decode of SMC_EFUSE_MAP over a unique-index marker image.
 
-Contract SMC_EFUSE_MAP_010, anchor smc_efuse_map_layout_decode_test.
-Scenarios EMAP-MAP-LAYOUT.S2-S6, EMAP-ACCESS-WIDTH.S1-S3, EMAP-UNMAPPED.S1-S4.
 Sources: smc_efuse_map.rdl (address map), smc.rdl (smc_efuse_map ocah_past_extent_resp).
 
 Every expected word is ``image.words[n]`` of the generated image. The past-extent responder
@@ -293,7 +291,7 @@ class smc_efuse_map_layout_decode_test_seq(SmcCsrSeq):
             "CHK-EMAP-PAST-READ",
             "0x3FC read marker word 255 0x%08x with OKAY; 0x400 and 0xFFC each answered "
             "resp=DECERR(%d) with rdata 0x%08x / 0x%08x (smc.rdl smc_efuse_map "
-            "ocah_past_extent_resp; range per SF-014)",
+            "ocah_past_extent_resp; range pending owner answer)",
             edge,
             _AXI_DECERR,
             past[0],
@@ -311,8 +309,8 @@ class smc_efuse_map_layout_decode_test_seq(SmcCsrSeq):
         self._done("S10")
         self._chk(
             "CHK-EMAP-PAST-WRITE",
-            "0x400 bresp=%d 0xFFC bresp=%d; RDL smc.rdl:137 declares SLVERR (%d); observed "
-            "DECERR (%d) -> LINKED-ISSUE RTL-vs-RDL candidate",
+            "0x400 bresp=%d 0xFFC bresp=%d; RDL smc.rdl:137 declares SLVERR (%d); "
+            "DECERR encodes as %d; the bresp values show which one was returned",
             resps[0],
             resps[1],
             _AXI_SLVERR,

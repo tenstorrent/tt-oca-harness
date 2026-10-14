@@ -2,15 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMBALERT interrupt enable gating and routing to tb_i2c_irq for the three I2C instances.
 
-Contract SMC_I2C_SMBUS_007, anchor smc_smbus_alert_irq_route_test.
-Scenarios: SMBALERT-INTR-OUT.S1-S4, SMBALERT-INTR-TEST.S1-S2.
 Sources: hw/ip/i2c/regs/i2c.rdl (INTR_TEST, INTR_STATE, INTR_ENABLE SMBALERT),
 hw/sys/smc/doc/interrupts.adoc (I2C interrupts 0, 1, 2 at peripheral bits 23 to 25).
 
 `INTR_TEST.SMBALERT` latches `INTR_STATE.SMBALERT` with the alert pad idle. The latched bit
 reaches `tb_i2c_irq[i]` only while `INTR_ENABLE.SMBALERT` is set, follows each enable write
 and clears with a write of 1 to `INTR_STATE.SMBALERT`. The enable-to-output latency is
-measured and logged without a compare while the synchroniser latency is open (SF-006).
+measured and logged without a compare while the synchroniser latency is open (owner value pending).
 """
 
 from __future__ import annotations
@@ -175,7 +173,7 @@ class smc_smbus_alert_irq_route_test_seq(SmcCsrSeq):
                 f"enable_to_irq_ps={self.latency[i][2]}"
                 for i in INSTANCES
             )
-            + "; logged only, no value compared (SF-006)",
+            + "; logged only, no value compared (owner value pending)",
         )
 
     async def _toggled(self) -> None:

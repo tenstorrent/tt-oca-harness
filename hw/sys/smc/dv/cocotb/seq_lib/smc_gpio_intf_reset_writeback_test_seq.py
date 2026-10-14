@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Reset-word write-back of ACCESS_FILTER, DATA_CTRL_ENABLE and DATA_CTRL on 65 instances.
 
-Contract SMC_GPIO_CSR_011, anchor smc_gpio_intf_reset_writeback_test.
-Allocated scenarios: GPIO-CSR-RESET.S5.
 Spec sources: hw/ip/gpio/regs/gpio_intf.rdl, hw/sys/smc/regs/gen/c/smc_addr.h.
 """
 
@@ -63,11 +61,11 @@ class smc_gpio_intf_reset_writeback_test_seq(SmcRegblockFieldSweepSeq):
         ctrls = reg_instances(*_DATA_CTRL)
         assert len(filters) == len(enables) == len(ctrls) == _INSTANCES, (
             f"generated map declares {len(filters)} ACCESS_FILTER, {len(enables)} "
-            f"DATA_CTRL_ENABLE and {len(ctrls)} DATA_CTRL instances, contract says {_INSTANCES}"
+            f"DATA_CTRL_ENABLE and {len(ctrls)} DATA_CTRL instances, the spec says {_INSTANCES}"
         )
         ctrl_rw = ctrls[0].reg.rw_mask
         assert filters[0].reg.reset_word == _ACCESS_FILTER_RESET_WORD, (
-            f"ACCESS_FILTER RDL reset 0x{filters[0].reg.reset_word:08x}, contract says "
+            f"ACCESS_FILTER RDL reset 0x{filters[0].reg.reset_word:08x}, the spec says "
             f"0x{_ACCESS_FILTER_RESET_WORD:08x}"
         )
 
@@ -113,7 +111,7 @@ class smc_gpio_intf_reset_writeback_test_seq(SmcRegblockFieldSweepSeq):
         cocotb.log.info(
             "CHK-GPIO-RESET-WRITEBACK: %d instances; ACCESS_FILTER read 0x%08x, "
             "DATA_CTRL_ENABLE read 0x%x, DATA_CTRL software-writable bits (mask 0x%08x) read 0x0 "
-            "after the reset words were written back; %d contract compares",
+            "after the reset words were written back; %d expected-value compares",
             len(filters),
             _ACCESS_FILTER_RESET_WORD,
             _ZERO_WORD,

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Watchdog 0 CTRL.wdogip0 set, hold and clear sequence.
 
-Contract SMC_POWER_TIMER_WDT_012, anchor smc_wdt_ip0_clear_test.
-Scenarios WDT-INTR-PENDING.S1-S5, WDT-INTR-CLEAR.S1-S6 and WDT-FEED.S3.
 Sources wdt.rdl, watchdog.adoc#Operation, smc-programming.adoc#watchdog.
 """
 

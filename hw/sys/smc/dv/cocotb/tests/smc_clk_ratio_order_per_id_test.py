@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Per-ID SEP_IN response order across the SMC-domain and peripheral paths at 10 / 1.25 / 5 ns.
 
-Contract SMC_CLOCK_RATIO_010, anchor smc_clk_ratio_order_per_id_test.
-Allocated scenarios: RATIO-ORDER-PER-ID.S1, RATIO-ORDER-PER-ID.S2, RATIO-ORDER-PER-ID.S3.
 Spec sources: hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/fabric.adoc.
 """
 

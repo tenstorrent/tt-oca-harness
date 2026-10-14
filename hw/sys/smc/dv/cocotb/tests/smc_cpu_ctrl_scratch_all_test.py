@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_010 / smc_cpu_ctrl_scratch_all_test: CPU_CTRL SCRATCH[0..15] full sweep."""
+"""smc_cpu_ctrl_scratch_all_test: CPU_CTRL SCRATCH[0..15] full sweep."""
 
 from __future__ import annotations
 

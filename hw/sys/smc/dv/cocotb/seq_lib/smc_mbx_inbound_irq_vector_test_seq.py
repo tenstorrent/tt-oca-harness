@@ -2,10 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Inbound mailbox interrupts at raw tb_cpu_interrupts bits 319:288.
 
-Contract SMC_IRQ_013, anchor smc_mbx_inbound_irq_vector_test.
-Allocated scenarios: IRQ-MBX-INBOUND.S1, IRQ-MBX-INBOUND.S2, IRQ-MBX-INBOUND.S3.
 Spec sources: interrupts.adoc SMC indexed interrupt map table; axi_lite_mailbox_unit
-SMC mailbox wrapper and interrupt routing; open SF-006.
+SMC mailbox wrapper and interrupt routing; open question: owner value pending.
 """
 
 from __future__ import annotations
@@ -161,7 +159,9 @@ class smc_mbx_inbound_irq_vector_test_seq(SmcCsrSeq):
             row = await self._settle_group(f"S2_M{m}", (m,))
             rows.append(row)
         self._mark_step("S2")
-        self._log_chk("CHK-MBXIN-POSITION-LOG", "observe-and-log (SF-006): " + "; ".join(rows))
+        self._log_chk(
+            "CHK-MBXIN-POSITION-LOG", "observe-and-log (owner value pending): " + "; ".join(rows)
+        )
 
         rows = [await self._settle_group(f"S3_G{i}", g) for i, g in enumerate(PAIRS)]
         for m in ALL32:
@@ -173,7 +173,9 @@ class smc_mbx_inbound_irq_vector_test_seq(SmcCsrSeq):
             f"rise@{n}"
         )
         self._mark_step("S3")
-        self._log_chk("CHK-MBXIN-MULTI-LOG", "observe-and-log (SF-006): " + "; ".join(rows))
+        self._log_chk(
+            "CHK-MBXIN-MULTI-LOG", "observe-and-log (owner value pending): " + "; ".join(rows)
+        )
 
         await self._acc("S4_EN0_5", SmcSysAxiOp.WRITE, 5, "IRQEN", 0)
         want5 = want & ~(1 << 5)
@@ -192,7 +194,8 @@ class smc_mbx_inbound_irq_vector_test_seq(SmcCsrSeq):
         self._mark_step("S4")
         self._log_chk(
             "CHK-MBXIN-CLEAR-LOG",
-            f"observe-and-log (SF-006): after IRQEN=0 on mailbox 5 raw {_bits(after[0])} "
+            f"observe-and-log (owner value pending): after IRQEN=0 on mailbox 5 "
+            f"raw {_bits(after[0])} "
             f"mailbox=0x{after[1]:08x} first change@{seen} expected all-but-293 "
             f"{_bits(want5)} only_293_fell={only5}; after clear and flush of all 32 raw "
             f"{_bits(raw)} mailbox=0x{mbx:08x} baseline 0x{base_raw:08x} reached@{n}",

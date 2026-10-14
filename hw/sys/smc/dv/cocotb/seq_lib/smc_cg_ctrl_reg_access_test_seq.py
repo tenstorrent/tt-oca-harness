@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CLOCK_GATE_CONTROL register access over SEP_IN.
 
-Contract SMC_CLOCK_GATE_012, anchor smc_cg_ctrl_reg_access_test.
-Scenarios GATE-CGC-REG.S1..S7: reset value, walking one, walking zero, hysteresis, reserved, narrow.
 Sources: hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl, hw/sys/smc/doc/clk_rst.adoc.
 
 The register returns to its reset value at the end of every step, so no peripheral window is
@@ -244,7 +242,7 @@ class smc_cg_ctrl_reg_access_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-CGC-RESERVED-BITS",
             f"defined fields held 0x{BASE:016x} across both writes; {'; '.join(notes)}; "
-            f"reserved value not asserted (SF-003)",
+            f"reserved value not asserted (owner value pending)",
         )
 
         # S7: narrow accesses, printed and not compared.
@@ -288,7 +286,7 @@ class smc_cg_ctrl_reg_access_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-CGC-NARROW-ACCESS",
             f"{'; '.join(notes)}; every access completed, responses and values "
-            f"not asserted (SF-004)",
+            f"not asserted (owner value pending)",
         )
 
         # S8: rewrites.

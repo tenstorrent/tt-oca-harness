@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DMA two-dimensional copy breadth through the SYS_OUT responder.
 
-Contract SMC_POWER_DMA_ZEROER_014, anchor smc_dma_2d_copy_test.
-Scenarios DMA-2D-COPY.S3, S4, S5, S6, S7, S8 (independent strides, row counts, unaligned rows,
-single ID, stride edges, 56-bit stepping).
 Specs hw/sys/smc/doc/dma.adoc, vendor idma overlay dma_ctrl.rdl.
 
 Sources and destinations sit in the SYS_OUT responder memory and are preloaded and read back
@@ -412,7 +409,7 @@ class smc_dma_2d_copy_test_seq(SmcCsrSeq):
         self._mark("S6")
         return (
             f"{len(S6_CASES)} commands retired within {POLL_LIMIT} polls with tb_dma_busy low "
-            f"(SF-020 open, resulting bytes measured and printed): {'; '.join(results)}"
+            f"(owner value pending, resulting bytes measured and printed): {'; '.join(results)}"
         )
 
     async def _s7(self) -> str:
@@ -444,7 +441,7 @@ class smc_dma_2d_copy_test_seq(SmcCsrSeq):
             f"within {POLL_LIMIT} polls; logical rows past 2^56: source "
             f"{[hex(a) for a in past_src]} destination {[hex(a) for a in past_dst]}; issued AR "
             f"addresses {ar}; issued AW addresses {aw}; "
-            f"address_wrapped_to_low_range={wrapped} (SF-022 open, measured and printed); "
+            f"address_wrapped_to_low_range={wrapped} (owner value pending, measured and printed); "
             f"low-range destination bytes {'; '.join(low_rows)}"
         )
 

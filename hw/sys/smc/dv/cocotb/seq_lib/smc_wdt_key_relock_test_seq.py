@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Core 0 watchdog KEY protocol corners and relock on every register.
 
-Contract SMC_POWER_TIMER_WDT_008, anchor smc_wdt_key_relock_test.
-Allocated scenarios: WDT-KEY-UNLOCK.S3-S6, WDT-RELOCK.S1-S5, WDT-RELOCK.S7, WDT-RELOCK.S8.
 Spec sources: hw/sys/smc/doc/watchdog.adoc (Register Access), hw/sys/smc/regs/blocks/wdt/wdt.rdl.
 """
 
@@ -126,7 +124,7 @@ class smc_wdt_key_relock_test_seq(SmcCsrSeq):
             "S3",
             "after two magic writes CMP write 0x%04x read back 0x%04x, KEY then read 0x%x and "
             "the next write of 0x%04x was dropped (CMP 0x%04x); KEY read between the magic "
-            "writes and the register write = 0x%x (SF-009)",
+            "writes and the register write = 0x%x (owner value pending)",
             WDT_CMP_REPEAT,
             WDT_CMP_REPEAT,
             WDT_KEY_LOCKED,
@@ -264,7 +262,7 @@ class smc_wdt_key_relock_test_seq(SmcCsrSeq):
             "S9",
             "64-bit write 0x%016x at FEED: KEY read 0x%x after the locked-state write and 0x%x "
             "after the unlocked-state write; COUNT read 0x%08x (locked state) and 0x%08x "
-            "(unlocked state) after COUNT=0x%08x (SF-011)",
+            "(unlocked state) after COUNT=0x%08x (owner value pending)",
             WDT_WIDE_DATA,
             WDT_KEY_LOCKED,
             WDT_KEY_LOCKED,

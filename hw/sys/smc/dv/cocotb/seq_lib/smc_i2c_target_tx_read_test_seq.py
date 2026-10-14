@@ -2,17 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C0 target transmit path: TXDATA to SDA, automatic and software TX stretch.
 
-Contract SMC_I2C_TARGET_017, anchor smc_i2c_target_tx_read_test.
-Scenarios: TGT-TX-READ.S1-S5, TGT-TX-EMPTY-STRETCH.S1, S2, S4, S5, TGT-TX-SW-STRETCH.S1, S2,
-S4, S5.
 Sources: hw/ip/i2c/regs/i2c.rdl (TXDATA, CTRL.TX_STRETCH_CTRL_EN, TARGET_EVENTS.TX_PENDING,
 INTR_STATE.TX_STRETCH, FIFO_CTRL.TXRST, STATUS.TXEMPTY, TARGET_FIFO_STATUS.TXLVL).
 
 Software loads TXDATA on I2C0 and the bench controller on the I2C0 pads reads from the
 target at 0x23 (and 0x35 for pair 1). A monitor counts the clk_smc_i cycles in which SCL is
-low while the bench has released it, which only the DUT can cause. The mid-read empty FIFO
-(SF-008), FIFO_CTRL.TXRST during a hold (SF-027) and the repeated-READ clear sweep (SF-032)
-are measured and logged, not compared.
+low while the bench has released it, which only the DUT can cause. The mid-read empty FIFO,
+FIFO_CTRL.TXRST during a hold and the repeated-READ clear sweep are owner value pending:
+they are measured and logged, not compared.
 """
 
 from __future__ import annotations
@@ -475,7 +472,7 @@ class smc_i2c_target_tx_read_test_seq(SmcCsrSeq):
             "CHK-I2C-TGT-TX-AUTO-MIDREAD-LOG",
             f"hold samples after the first byte={held}; bytes read={bytes(rd.data).hex()}; "
             f"read complete before the second TXDATA write={complete_before}; ack={rd.ack}; "
-            f"no compare (SF-008)",
+            f"no compare (owner value pending)",
         )
 
     async def _s7_txrst_hold(self) -> None:
@@ -495,7 +492,7 @@ class smc_i2c_target_tx_read_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-I2C-TGT-TX-TXRST-STRETCH-LOG",
             f"TXRST written after {held} hold samples; read complete=1 ack={rd.ack} "
-            f"bytes={bytes(rd.data).hex()}; final bus {levels}; no compare (SF-027)",
+            f"bytes={bytes(rd.data).hex()}; final bus {levels}; no compare (owner value pending)",
         )
         self._chk(
             "CHK-I2C-TGT-TX-TXRST-RECOVER",
@@ -603,7 +600,7 @@ class smc_i2c_target_tx_read_test_seq(SmcCsrSeq):
         self._stamp("S10")
         self._chk(
             "CHK-I2C-TGT-TX-SW-RACE-LOG",
-            "; ".join(rows) + "; no same-cycle claim, no compare (SF-032)",
+            "; ".join(rows) + "; no same-cycle claim, no compare (owner value pending)",
         )
 
     # --------------------------------------------------------------- tokens --

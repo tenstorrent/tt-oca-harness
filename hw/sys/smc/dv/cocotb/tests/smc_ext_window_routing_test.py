@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Adopter window routing from the SEP_IN AXI port: eFuse SHIM range and external regions.
 
-Contract XBAR_016, anchor smc_ext_window_routing_test.
-Allocated scenarios: XBAR-EXT-SHIM.S1-S3, XBAR-EXT-WINDOW.S2-S5.
 Spec sources: memmap.adoc AXI-Lite External Window, smc_external.rdl, smc.rdl smc_external.
 """
 

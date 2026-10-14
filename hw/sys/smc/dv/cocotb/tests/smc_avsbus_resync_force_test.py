@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A forced AVSBus slave resync from idle, mid-frame, with a queue and twice.
 
-Contract SMC_POWER_AVS_011, anchor smc_avsbus_resync_force_test.
-Scenarios: AVS-RESYNC.S6, AVS-RESYNC.S7, AVS-RESYNC.S8, AVS-RESYNC.S9, INT-AVS-RESYNC-INFLIGHT.
 Sources: hw/ip/avsbus_controller/doc/architecture.adoc, regs/avsbus_controller.rdl.
 """
 

@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Generated cpuif contract edges over SEP_IN: partial strobe, write-only, unreadable, past extent.
+"""Generated cpuif edges over SEP_IN: partial strobe, write-only, unreadable, past extent.
 
-Contract SMC_CPUIF_RO_WO_EDGE_TEST, anchor smc_cpuif_ro_wo_edge_test.
-Allocated scenarios: REGBLOCK-RO-WRITE.S2, REGBLOCK-WO-READ.S2, REGBLOCK-UNREADABLE-READ.S1/S2/S3.
-Spec sources: smc.rdl chip_config VERSION_LO sw=r, scratch.rdl SCRATCH[7] sw=rw, SF-001/008/009/010.
+Spec sources: smc.rdl chip_config VERSION_LO sw=r, scratch.rdl SCRATCH[7] sw=rw.
 """
 
 from __future__ import annotations

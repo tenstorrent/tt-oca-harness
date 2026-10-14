@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Zeroer busy status, completion and outstanding writes under a stalling SYS_OUT responder.
 
-Contract SMC_POWER_DMA_ZEROER_023, anchor smc_zeroer_busy_outstanding_test.
-Scenarios ZEROER-BUSY-COMPLETION.S1 to S5 and ZEROER-OUTSTANDING.S1 to S3.
 Sources hw/sys/smc/doc/zeroer.adoc, hw/sys/smc/doc/fabric.adoc, hw/ip/zeroer/regs/zeroer_ctrl.rdl.
 
 Jobs run in the SYS_OUT window and are poisoned and compared through the responder's backdoor.
@@ -513,7 +511,7 @@ class smc_zeroer_busy_outstanding_test_seq(output_fabric_pass_all_cfg_seq):
             f"0x{ZEROER_CTRL_STATUS_START:x} (INT_EN only) over {reads} reads, interrupt pulses "
             f"{intp_hold}, tb_zeroer_state at the end of the hold {state_end} after transitions "
             f"{'>'.join(str(s) for s in seen)}, tb_zeroer_outstanding {outstanding_end}; no "
-            f"timeout indication observed (SF-019 open)"
+            f"timeout indication observed (owner value pending)"
         )
         return long_text, none_text
 
@@ -599,7 +597,7 @@ class smc_zeroer_busy_outstanding_test_seq(output_fabric_pass_all_cfg_seq):
             f"responder max_outstanding {h['responder_depth']} is fixed at bench build with no "
             f"public runtime knob and was not changed; {bound}; at all {wire.checked} sampled "
             f"rises the SYS_OUT count was not above tb_zeroer_outstanding; the cap value is not "
-            f"asserted (SF-017 open)"
+            f"asserted (owner value pending)"
         )
 
     async def _s8(self) -> str:
@@ -663,7 +661,7 @@ class smc_zeroer_busy_outstanding_test_seq(output_fabric_pass_all_cfg_seq):
     def _nonvac(self) -> None:
         steps = [s for s, _t in self._stamps]
         order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"]
-        assert steps == order, f"step stamps {steps} not in contract order"
+        assert steps == order, f"step stamps {steps} not in the expected order"
         times = [t for _s, t in self._stamps]
         assert all(b > a for a, b in zip(times, times[1:], strict=False)), (
             f"step stamps {times} are not strictly increasing"

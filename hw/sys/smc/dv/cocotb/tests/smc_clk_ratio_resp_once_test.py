@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Exactly-once SEP_IN responses across the SMC-domain and peripheral CDC paths at 10 / 1.25 / 5 ns.
 
-Contract SMC_CLOCK_RATIO_011, anchor smc_clk_ratio_resp_once_test.
-Allocated scenarios: RATIO-RESP-ONCE.S1, RATIO-RESP-ONCE.S2, RATIO-RESP-ONCE.S3.
 Spec sources: hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/clk_rst.adoc, hw/sys/smc/doc/fabric.adoc.
 """
 

@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_POWER_TELEMETRY_016 / smc_telemetry_ctrl_access_test: receiver 0 register access.
+"""Telemetry receiver 0 register access.
 
-Scenarios: TLM-CTRL-ACCESS.S1, S2, S3, S4, S5, S6, TLM-STATUS-FLAGS.S5.
 Sources: hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl,
 hw/ip/telemetry_receiver/doc/architecture.adoc, doc/programmer/src/smc-programming.adoc.
 
@@ -325,7 +324,7 @@ class smc_telemetry_ctrl_access_test_seq(SmcCsrSeq):
             "S3",
             "CHK-TELEMETRY-CTRL-PULSE-READ",
             "CTRL read after each write pulse, bits 0 and 4 printed and not compared "
-            "(SF-012 open): %s; the queued message left the queue after every write",
+            "(owner value pending): %s; the queued message left the queue after every write",
             " ".join(pulse_reads),
         )
 
@@ -353,7 +352,7 @@ class smc_telemetry_ctrl_access_test_seq(SmcCsrSeq):
             "CHK-TELEMETRY-CTRL-FULL-WORD",
             "CTRL 0x%08x with BUFFER_THRESHOLD 5 and TX_FLUSH pending; after the full-word "
             "write 0x%x CTRL read 0x%08x with BUFFER_THRESHOLD %d and bit 8 = %d "
-            "(pending request cancelled: SF-012 open, printed only)",
+            "(pending request cancelled: owner value pending, printed only)",
             pending_rb,
             BUFFER_POP_BM,
             ctrl,
@@ -399,7 +398,7 @@ class smc_telemetry_ctrl_access_test_seq(SmcCsrSeq):
             "S6",
             "CHK-TELEMETRY-INTR-TEST-ACCESS",
             "INTR_TEST read 0x%x after a write of 0x10 and 0x%x after a write of 0; after a "
-            "write of 0x1 it read 0x%x (bit 0 = %d) with INTR_STATUS 0x%x (SF-006 open, "
+            "write of 0x1 it read 0x%x (bit 0 = %d) with INTR_STATUS 0x%x (owner value pending, "
             "printed only)",
             held,
             released,
@@ -428,7 +427,7 @@ class smc_telemetry_ctrl_access_test_seq(SmcCsrSeq):
             "CHK-TELEMETRY-RO-WRITE-IGNORED",
             "writes of 0xFFFFFFFF and 0 to STATUS, PROBE_ID, COUNTER_VLDS, COUNTER[0] and "
             "COUNTER[31] left every register at its pre-write word, empty queue %s and one "
-            "queued message %s; write responses (0 OKAY, 2 SLVERR, 3 DECERR; SF-008 open, "
+            "queued message %s; write responses (0 OKAY, 2 SLVERR, 3 DECERR; owner value pending, "
             "printed only) empty %s message %s",
             [hex(w) for w in empty_before],
             [hex(w) for w in msg_before],

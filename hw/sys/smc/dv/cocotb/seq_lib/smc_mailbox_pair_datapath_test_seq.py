@@ -2,9 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Paired mailbox FIFO data path, partial-write lanes and push with pop on one FIFO.
 
-Contract SMC_MAILBOX_009, anchor smc_mailbox_pair_datapath_test.
-Scenarios: MBX-PAIR-DATAPATH S1/S2/S4-S6, MBX-PARTIAL-WRITE S1-S4, MBX-CONTEST-PUSHPOP S1-S3.
-Sources: axi_lite_mailbox_unit architecture.adoc, interface.adoc; open SF-010/014/020/024.
+Sources: axi_lite_mailbox_unit architecture.adoc, interface.adoc.
 """
 
 from __future__ import annotations
@@ -194,7 +192,7 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
             "CHK-PAIR-OWN-READ-FIFO-EMPTY",
             f"pair 15 writer's own READ_DATA answered "
             f"resp={own.resp_code} rdata=0x{own.rdata & 0xFFFFFFFF:08x}; peer returned X "
-            f"0x{x:016x}; writer STATUS=0x{status:016x} (measured, SF-008)",
+            f"0x{x:016x}; writer STATUS=0x{status:016x} (measured, owner value pending)",
         )
         self._log_chk(
             "CHK-PAIR-ISOLATION",
@@ -258,7 +256,7 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
             f"wstrb=0x00 write B resp={zero.resp_code}; "
             f"peer read resp={first.resp_code} data=0x{first.rdata:016x}; further OKAY "
             f"words {[hex(w) for _, w in rest]}; drain ended in the empty error; "
-            "no compare (SF-020 open)",
+            "no compare",
         )
 
         await self._wr("F9", "OUTBOUND", 0, f, wstrb=0xFF)
@@ -303,7 +301,7 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
             "CHK-PUSHPOP-FULL-OBSERVED",
             f"grouped read returned oldest 0x{rd.rdata:016x}; "
             f"push resp={wr.resp_code}; drained words {[hex(w) for _, w in words]} then "
-            "the empty error; push outcome not compared (SF-010 open)",
+            "the empty error; push outcome not compared (owner value pending)",
         )
 
         wr = self._item("A12", SmcSysAxiOp.WRITE, _addr("OUTBOUND", 4, "WRITE_DATA"), a)
@@ -317,7 +315,7 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
             f"group write resp={wr.resp_code}; read "
             f"resp={rd.resp_code} data=0x{rd.rdata:016x}; drained words "
             f"{[hex(w) for _, w in words]} then the empty error; outcome not compared "
-            "(SF-010 open)",
+            "(owner value pending)",
         )
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, cg)

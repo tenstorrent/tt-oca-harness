@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Watchdog COUNT enable conditions, COUNT write semantics, COUNT_HI read and FEED write.
 
-Contract SMC_POWER_TIMER_WDT_010, anchor smc_wdt_count_feed_test.
-Scenarios WDT-COUNT-WRITE.S1-S4, WDT-COUNT-ENABLE.S1-S5 and WDT-FEED.S1, S2, S4.
 Sources wdt.rdl, smc-programming.adoc#watchdog, watchdog.adoc.
 """
 
@@ -145,7 +143,8 @@ class smc_wdt_count_feed_test_seq(SmcCsrSeq):
             f"wdogenalways: reads {_hexes(s2)} strictly increasing; wdogenalways+wdogcoreawake: "
             f"reads {_hexes(s3)} strictly increasing (2 of 2 cells); both clear: reads "
             f"{_hexes(s1)} increase per read {_deltas(s1)} ({'held' if s1_held else 'counted'}, "
-            f"SF-014 is not asserted); wdogenalways cleared: reads {_hexes(s4)} increase per "
+            f"owner value pending, not asserted); wdogenalways cleared: reads {_hexes(s4)} "
+            f"increase per "
             f"read {_deltas(s4)} matches the S1 behaviour",
         )
 
@@ -173,7 +172,8 @@ class smc_wdt_count_feed_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-WDT-COUNT-WRITE",
             f"COUNT=0x100 with wdogenalways: reads {_hexes(s5)} each >= 0x100 and strictly "
-            f"increasing (first read minus written value {s5[0] - 0x100}, V or V+1 is SF-007), "
+            f"increasing (first read minus written value {s5[0] - 0x100}, V or V+1 is an open "
+            f"owner question), "
             f"pre-write 0x{pre:x} above first read 0x{s5[0]:x}, allowance {allowance}; "
             f"COUNT=0x80000010 both enables clear read 0x{c31:08x} with bit 31 = 0 and "
             f"bits 30:0 within 0x10..0x10+{allowance}",
@@ -208,7 +208,8 @@ class smc_wdt_count_feed_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-WDT-COUNT-ROLLOVER",
             f"{ROLLOVER_READS} reads from 0x7ffffff0: {_hexes(s7)}; bit 31 never read 1; "
-            f"{below_txt} (the value after 0x7fffffff is SF-014 and is not asserted)",
+            f"{below_txt} (the value after 0x7fffffff is an open owner question and is not "
+            f"asserted)",
         )
 
         # S8
@@ -242,7 +243,7 @@ class smc_wdt_count_feed_test_seq(SmcCsrSeq):
             "CHK-WDT-FEED-NONMAGIC",
             f"keyed FEED=0x0d09f00c left COUNT at 0x{c9:x} (>= 0x100000); KEY read 0x{key9:x} "
             f"after it ({'unlocked, re-locked by a CTRL rewrite' if key9 else 'locked'}, "
-            f"SF-010 is not asserted); locked FEED=0x0d09f00d left COUNT at 0x{c9b:x} "
+            f"owner value pending, not asserted); locked FEED=0x0d09f00d left COUNT at 0x{c9b:x} "
             f"(>= 0x100000)",
         )
 
@@ -286,8 +287,8 @@ class smc_wdt_count_feed_test_seq(SmcCsrSeq):
             )
         else:
             held_txt = (
-                f"no completion within {bound} ns for the bounded CTRL read (RTL-4 candidate, "
-                f"no further access during the hold)"
+                f"no completion within {bound} ns for the bounded CTRL read (no further "
+                f"access during the hold)"
             )
         still_low = self._core1_reset_n()
         assert still_low == 0, f"S10: tb_cpu_core_resets_n[1] read {still_low} after the hold"
@@ -304,7 +305,7 @@ class smc_wdt_count_feed_test_seq(SmcCsrSeq):
             f"tb_cpu_core_resets_n[1] read 0 after {lo_rises} rises (bound {LEVEL_BOUND}); hold "
             f"phase: {held_txt}; released, tb_cpu_core_resets_n[1] read 1 after {hi_rises} rises, "
             f"CTRL 0x{after_ctrl:x} with wdogcoreawake set and reads {_hexes(post)} increasing "
-            f"(the reset that defines the condition is SF-015)",
+            f"(the reset that defines the condition is an open owner question)",
         )
 
         await self.csr_write("S10_TIMEOUT_RESTORE", RESET_TIMEOUT, 0, length=8)

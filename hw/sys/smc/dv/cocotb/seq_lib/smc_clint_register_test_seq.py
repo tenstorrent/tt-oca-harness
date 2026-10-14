@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_CTRL_026 / smc_clint_register_test: CLINT MSIP, MTIMECMP and MTIME register behaviour.
+"""smc_clint_register_test: CLINT MSIP, MTIMECMP and MTIME register behaviour.
 
-Scenarios: CPUCTRL-CLINTREG.S1 (MSIP), S2 (MTIMECMP), S3 (MTIME advance), S4 (MTIME load).
 Sources: hw/sys/smc/regs/blocks/clint/clint.rdl, hw/sys/smc/doc/clk_rst.adoc,
 hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/fabric.adoc (REGION_SIZE).
 """
@@ -206,7 +205,7 @@ class smc_clint_register_test_seq(SmcCsrSeq):
             "CHK-CLINT-MTIMECMP",
             f"four distinct 64-bit values 0x{MTIMECMP_PATTERN:x}|n and the all-ones value read "
             f"back independently per core, probes agree for cores 0 and 1 ({len(notes)} probe "
-            f"samples); reset values open (SF-022) saved="
+            f"samples); reset values open (owner value pending) saved="
             f"{[hex(v) for v in saved_cmp]}",
         )
 
@@ -233,7 +232,7 @@ class smc_clint_register_test_seq(SmcCsrSeq):
             "CHK-CLINT-MTIME-ADV",
             f"MTIME reads {[hex(r) for r in reads]} never smaller, second read above first after "
             f"tb_clint_mtime changed 0x{probe0:x}->0x{probe1:x} in {cycles} clk_smc_i cycles; "
-            "tick-to-clock relation is the owner's answer to SF-022",
+            "tick-to-clock relation is an owner value pending",
         )
 
         # S6
@@ -267,7 +266,7 @@ class smc_clint_register_test_seq(SmcCsrSeq):
             "CHK-CLINT-MTIME-LOAD",
             f"MTIME at or above 0x{MTIME_LOAD_VALUE:x} at read {poll} of {MTIME_LOAD_MAX_READS}, "
             f"value 0x{value:x}, probe 0x{p_before:x}..0x{p_after:x}; reflected minus written = "
-            f"{value - MTIME_LOAD_VALUE} (SF-022)",
+            f"{value - MTIME_LOAD_VALUE} (owner value pending)",
         )
 
         # S6R

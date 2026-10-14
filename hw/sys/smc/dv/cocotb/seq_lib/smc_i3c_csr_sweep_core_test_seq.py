@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Register sweep of the base, PIO, standby controller and controller config blocks.
 
-Contract SMC_I3C_SPI_007, anchor smc_i3c_csr_sweep_core_test.
-Scenarios I3CSPI-CSR-BASE.S1-S5, I3CSPI-CSR-PIO.S1-S5, I3CSPI-CSR-STBY.S1-S5.
 Sources: base_registers.rdl, controller_config.rdl, pio_registers.rdl, standby_controller_mode.rdl
 and registers.rdl of the pinned i3c-core, parsed at run time; register offsets from the generated
 oca_i3c_wrap_reg.py; instance windows from the generated smc_addr.h.
@@ -46,7 +44,7 @@ _EXCLUDED = {
     "TX_DATA_PORT": "queue port with access side effects",
     "RX_DATA_PORT": "queue port with access side effects",
     "IBI_PORT": "queue port with access side effects",
-    "RESET_CONTROL": "SOFT_RST behaviour open (SF-029)",
+    "RESET_CONTROL": "SOFT_RST behaviour open (owner value pending)",
 }
 _ACTION = {
     ("HC_CONTROL", "BUS_ENABLE"),

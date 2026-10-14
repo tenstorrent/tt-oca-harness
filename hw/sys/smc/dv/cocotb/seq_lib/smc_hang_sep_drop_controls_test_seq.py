@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP_AXI hang detector control writes while a SEP_IN read stays held.
 
-Contract SMC_IRQ_019, anchor smc_hang_sep_drop_controls_test.
-Allocated scenarios: IRQ-HANG-DROP.S3 to S6, IRQ-HANG-TEST.S4.
 Spec sources: HANG_DET_CTRL and HANG_DET_TIMEOUT_THRESHOLD in smc_base_config.rdl.
 """
 
@@ -300,7 +298,7 @@ class smc_hang_sep_drop_controls_test_seq(SmcCsrSeq):
             f"late irq_en: rises_to_sep_irq={first} ({near} {LATE_FIRST_RISES} rises; "
             f"ceiling {LATE_CEILING_RISES}); after CTRL=irq_en then enable|irq_en: "
             f"rises_to_sep_irq={again}; hold lasted {held} rises (observe-and-log, "
-            "SF-013)",
+            "owner value pending)",
         )
 
     async def _toggle_phase(self, rng: random.Random, seed: str) -> None:
@@ -362,7 +360,9 @@ class smc_hang_sep_drop_controls_test_seq(SmcCsrSeq):
         )
         self._log_chk(
             "CHK-DROPCTL-TOGGLE-LOG",
-            f"seed={seed} hold {held} rises; " + "; ".join(rows) + " (observe-and-log, SF-013)",
+            f"seed={seed} hold {held} rises; "
+            + "; ".join(rows)
+            + " (observe-and-log, owner value pending)",
         )
 
     async def _both_causes_phase(self) -> None:
@@ -387,7 +387,7 @@ class smc_hang_sep_drop_controls_test_seq(SmcCsrSeq):
             f"irq_test cleared with the stall persisting: sep={stalled[0]} "
             f"raw286={stalled[1]}; stall released with irq_test set: sep={released[0]} "
             f"raw286={released[1]}; irq_test cleared: sep={final[0]} raw286={final[1]}; "
-            f"hold {held} rises (observe-and-log, SF-020)",
+            f"hold {held} rises (observe-and-log, owner value pending)",
         )
 
     async def body(self) -> None:

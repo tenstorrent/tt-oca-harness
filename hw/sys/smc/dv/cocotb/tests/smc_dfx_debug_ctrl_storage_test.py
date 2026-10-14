@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_CPU_MEM_ECC_012 / smc_dfx_debug_ctrl_storage_test: DEBUG_CTRL register storage."""
+"""DEBUG_CTRL register storage."""
 
 from __future__ import annotations
 

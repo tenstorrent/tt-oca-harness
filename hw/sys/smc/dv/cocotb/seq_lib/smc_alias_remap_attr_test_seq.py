@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Alias remap AxCACHE replacement, attribute hold across half writes and the shared table.
 
-Contract SMC_FILTER_24, anchor smc_alias_remap_attr_test.
-Allocated scenarios: ALIAS-REMAP-CACHE.S1-S4; ALIAS-REMAP-ATTR-HOLD.S1,S2; ALIAS-REMAP-SHARED.S1,S3.
 Spec sources: alias_remap.rdl REGION_START/END/ATTRS; fabric.adoc Alias Remapping, Fabric Topology.
 """
 
@@ -54,7 +52,7 @@ _DMA = {
     )
 }
 
-# Region bounds (START inclusive, END non-inclusive) and the table words of the contract.
+# Region bounds (START inclusive, END non-inclusive) and the table words of the test.
 _REGIONS = {
     2: (0x0200_2000, 0x0200_3000),
     4: (0x0200_6000, 0x0200_7000),
@@ -294,7 +292,7 @@ class smc_alias_remap_attr_test_seq(SmcCsrSeq):
             f"outside region 2 (cacheable 0xF); expected 0x{_MASTER_CACHE:X}",
         )
 
-        # S4: cacheable 0 is observe-only (SF-005).
+        # S4: cacheable 0 is observe-only (owner value pending).
         await self._set_attrs(2, _VALID)
         zero_aw, zero_ar = await self._observe_pair("ZERO", 0x0200_2110)
         assert zero_aw in (0, _MASTER_CACHE), f"awcache 0x{zero_aw:X} is neither 0 nor 0x3"
@@ -303,7 +301,7 @@ class smc_alias_remap_attr_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ALIAS-CACHE-ZERO-OBSERVE",
             f"awcache=0x{zero_aw:X} arcache=0x{zero_ar:X} for a hit on valid region 2 with "
-            "cacheable 0 (observe-only, SF-005 LINKED-ISSUE)",
+            "cacheable 0 (observe-only, owner value pending)",
         )
 
         # S5: 4-byte write of the offset half holds cacheable and valid.

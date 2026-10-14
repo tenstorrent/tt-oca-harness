@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC_POWER_TIMER_WDT_016 smc_wdt_irq_source_ids_test: raw vector width, bit 282, core-2 pending.
+"""SMC raw interrupt vector width, SEP watchdog indication on bit 282, core-2 WDT PLIC pending.
 
-Scenarios: WDT-INTR-PLIC.S4, WDT-SEP-WDT-IRQ.S1, WDT-SEP-WDT-IRQ.S2, WDT-SEP-WDT-IRQ.S3,
-WDT-SEP-WDT-IRQ.S4.
 Sources: hw/sys/smc/doc/interrupts.adoc (Raw Vector and PLIC Numbering),
 hw/sys/smc/doc/clk_rst.adoc (Reset).
 Registers: hw/sys/smc/regs/blocks/wdt/wdt.rdl; the SEP watchdog pin is driven on tb_sep_wdt_reset_n.
@@ -165,8 +163,8 @@ class smc_wdt_irq_source_ids_test_seq(SmcCsrSeq):
             "pin high: bit282 and irq_sync read 0 at %d of %d rises; after the fall both read 1 "
             "(bit282 first at rise %d, irq_sync first at rise %d of %d) and were equal at every "
             "one of %d samples; after the release bit282 returned to 0 at rise %s and irq_sync at "
-            "rise %s (latency and level or latch are SF-017, ID 283 pending latch not exported "
-            "SF-032)",
+            "rise %s (latency and level or latch are open owner questions, ID 283 pending latch "
+            "not exported; owner value pending)",
             WINDOW,
             WINDOW,
             rise_bit,
@@ -211,11 +209,11 @@ class smc_wdt_irq_source_ids_test_seq(SmcCsrSeq):
             "S5",
             "tb_cpu_interrupts is %d bits wide; during the SEP indication bit282 read 1 from "
             "rise %d and tb_plic_pending_331 read 1 at %d of %d rises (measured only, the warm "
-            "reset holds the cluster PLIC, BENCH-15 / SPEC-16); tb_plic_pending_331 read %d "
+            "reset holds the cluster PLIC); tb_plic_pending_331 read %d "
             "immediately before the core %d arming; with wdogip0 set "
             "tb_plic_pending_331 read 1 at rise %d while the raw vector stayed 0x%x over %d "
             "rises; after the clear core-2 CTRL.wdogip0 read %d and plic331 read %d at rise %d "
-            "(first 0 at rise %s, level or latch is SF-016)",
+            "(first 0 at rise %s, level or latch is an open owner question)",
             width,
             rise_bit,
             s3_plic_count,

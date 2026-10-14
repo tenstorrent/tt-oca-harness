@@ -1,8 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-# Contract SMC_I2C_CSR_IRQ_013, anchor smc_i2c_intr_output_path_test.
-# Scenarios I2C-INTR-ENABLE-MASK.S1-S4, I2C-IRQ-PERIPH-OUT.S1/S3/S4, I2C-IRQ-CPU-VEC.S1-S3,
-# I2C-INSTANCE-ISOLATION.S2.
 # Spec sources: hw/ip/i2c/regs/i2c.rdl INTR_STATE, INTR_ENABLE, INTR_TEST;
 # hw/sys/smc/doc/interrupts.adoc; hw/ip/i2c/doc/index.adoc.
 """I2C INTR_ENABLE and INTR_TEST through the instance outputs to peripheral and CPU interrupts.
@@ -11,9 +8,8 @@ Frontdoor only, one reset, no bus traffic. `CMD_COMPLETE` is raised through the
 `singlepulse` `INTR_TEST` field of instance n (n = 0, 1, 2) and observed on
 `tb_i2c_irq[n]` (peripheral interrupts 23 to 25) and on `tb_cpu_interrupts`
 (IDs 279 to 281). The combination of `INTR_ENABLE` and `INTR_STATE` into the
-output (SF-012), the CPU vector bit numbering (SF-014) and the write-to-output
-latency (SF-013) are open: those steps print measured values and compare none
-of them.
+output, the CPU vector bit numbering and the write-to-output latency are owner value
+pending: those steps print measured values and compare none of them.
 """
 
 from __future__ import annotations
@@ -300,7 +296,7 @@ class smc_i2c_intr_output_path_test_seq(SmcCsrSeq):
         self._chk("CHK-I2C-IRQ-PERIPH-ONEHOT", "; ".join(onehot_parts))
         self._chk("CHK-I2C-CPU-VEC-RAISE-OBS", "; ".join(cpu_sets))
 
-        # S4: INTR_ENABLE as a mask over a pending state (observation only, SF-012).
+        # S4: INTR_ENABLE as a mask over a pending state (observation only, owner value pending).
         mask_parts: list[str] = []
         await self._force(0, CMD_COMPLETE, "S4")
         held = []
@@ -451,7 +447,8 @@ class smc_i2c_intr_output_path_test_seq(SmcCsrSeq):
             f"baseline {self.baseline}",
         )
 
-        # S10: three pending enabled bits cleared one at a time (observation only, SF-012).
+        # S10: three pending enabled bits cleared one at a time (observation only,
+        # owner value pending).
         trio = (CMD_COMPLETE, "SDA_UNSTABLE", "RX_OVERFLOW")
         trio_en = 0
         for name in trio:

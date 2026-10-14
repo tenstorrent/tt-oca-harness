@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU_CTRL SEMA[0..3] signed accumulate, independence, wrap and pipelined writes.
 
-Contract SMC_CPU_CTRL_014, anchor smc_cpu_ctrl_sema_test.
-Scenarios: CPUCTRL-SEMA.S1 through CPUCTRL-SEMA.S6.
 Sources: hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl (SEMA, SEMA[4]), generated cpu_ctrl.h.
 """
 

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Register round trips on the SMC crossbar and the AVSBus window per clock cell.
 
-Contract SMC_CLOCK_SRC_006, anchor smc_clk_relation_regxbar_test.
-Scenarios: CSRC-CLK-RELATION.S1..S5, CSRC-SMC-REGXBAR.S1, CSRC-SMC-REGXBAR.S2.
 Spec: clk_rst.adoc, smc_base_config.rdl, avsbus_controller.rdl.
 
 The ``+smc_cell`` run argument selects the ref / smc / periph period triple in ns: default

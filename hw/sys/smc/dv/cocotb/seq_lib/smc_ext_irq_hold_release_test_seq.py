@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """External input level hold and release at raw bits 0, 2 and 16 of cpu_interrupts.
 
-Contract SMC_IRQ_005, anchor smc_ext_irq_hold_release_test.
-Allocated scenarios: IRQ-EXT-SYNC.S2.
 Spec sources: interrupts.adoc smc-interrupts-risc-v-plic, smu-smc.adoc interrupt-integration.
 """
 

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """REGION_SIZE zero collapse and the reset-based recovery of the fabric.
 
-Contract XBAR_019, anchor smc_region_zero_reset_recovery_test.
-Allocated scenarios: XBAR-REGION-ZERO.S1, S2, S3; XBAR-RESET-MID.S1, S2, S3.
 Spec sources: fabric.adoc Local and Remote Resource Access, Fabric Topology, Outbound Traffic
 Flow; smc-programming.adoc Address Map; smc_base_config.rdl GLOBAL_BASE, REGION_SIZE.
 """
@@ -52,7 +50,7 @@ _FILTER_RESET = {
 }
 _SCRATCH_RESET = rdl_contract("smc_misc_wrap/scratch_cold/SCRATCH[0]").reset_word
 
-# Contract values for the reprogrammed window.
+# Test-chosen values for the reprogrammed window.
 _GLOBAL_BASE_PROGRAMMED = 0x8000_0000
 _REGION_SIZE_PROGRAMMED = 0x0200_0000
 
@@ -462,7 +460,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await sys_task
         self._waits.append(
             f"outstanding_groups bound={AXI_TIMEOUT_NS} ns per member allow_timeout=True "
-            f"(interrupted by the reset, SF-013) sep[{self._fates(sep_members)}] "
+            f"(interrupted by the reset, owner value pending) sep[{self._fates(sep_members)}] "
             f"sys[{self._fates(sys_members)}]"
         )
         first = await self._rd(
@@ -478,7 +476,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"outstanding on each of sep_axi_in and sys_axi_in the first read of REGION_SIZE "
             f"answered OKAY with 0x{first:08x}; r_raw_valid read 0 on both ports at the release "
             f"and for {QUIET_WINDOW_CYCLES} cycles after the holds cleared; pre-reset accesses "
-            f"(observe-only, SF-013) sep[{self._fates(sep_members)}] "
+            f"(observe-only, owner value pending) sep[{self._fates(sep_members)}] "
             f"sys[{self._fates(sys_members)}]; "
             f"SCRATCH_COLD[0..3] read {[hex(v) for v in landed]} (observed)",
         )
@@ -505,7 +503,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await jtag_task
         self._waits.append(
             f"pending_jtag_group bound={AXI_TIMEOUT_NS} ns per member allow_timeout=True "
-            f"(interrupted by the reset, SF-013) [{self._fates(jtag_members)}]"
+            f"(interrupted by the reset, owner value pending) [{self._fates(jtag_members)}]"
         )
         post_word = 0x6B6B_0000_0000_0001
         await self._wr("jtag", OUTPUT_FABRIC_ADDR, post_word)
@@ -522,7 +520,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"exceeded the AW/AR handshakes issued since the reset over {QUIET_WINDOW_CYCLES} "
             f"cycles after the hold cleared (pre-reset address re-issued at output_axi: "
             f"{replayed}, observed); pre-reset accesses "
-            f"(observe-only, SF-013) [{self._fates(jtag_members)}]",
+            f"(observe-only, owner value pending) [{self._fates(jtag_members)}]",
         )
 
         # S7: a reprogrammed window does not survive the reset.

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Zeroer completion interrupt count, timing, INT_EN control and PLIC source 324.
 
-Contract SMC_POWER_DMA_ZEROER_025, anchor smc_zeroer_irq_test.
-Scenarios ZEROER-IRQ.S1 to ZEROER-IRQ.S5.
 Sources hw/sys/smc/doc/zeroer.adoc, hw/sys/smc/doc/interrupts.adoc, zeroer_ctrl.rdl.
 """
 
