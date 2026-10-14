@@ -116,6 +116,11 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 	$(BUILD_DIR)/oca_platform.o \
 	$(BUILD_DIR)/rsa_3072_app_otbn.o
 
+# Built with warnings fatal but not linked: the Adams Bridge ML-DSA-87 driver, which
+# no ROM path calls. Its host tests are under tests/host (make host-test).
+CHECK_OBJS := $(BUILD_DIR)/abr_driver.o
+$(CHECK_OBJS): CFLAGS += -Wall -Wextra -Werror
+
 # Compile every validator source so new format support is not silently omitted.
 # Keep its objects in a separate directory because the library and ROM both
 # provide lifecycle.c; flattening the names would overwrite one object.
@@ -251,7 +256,11 @@ toolchain-images: key-digests
 	  exit 1; \
 	fi
 
-toolchain-images-build: $(VMEM) $(ITCM_HEX) $(DTCM_HEX) bl1_test
+toolchain-images-build: $(VMEM) $(ITCM_HEX) $(DTCM_HEX) $(CHECK_OBJS) bl1_test
+
+.PHONY: host-test
+host-test:
+	$(MAKE) -C $(PROD_DIR)/tests/host
 
 $(BUILD_DIR):
 	mkdir -p "$(BUILD_DIR)"
@@ -289,11 +298,11 @@ $(FLAGS_STAMP): FORCE | $(BUILD_DIR)
 	  rm "$@.tmp"; \
 	fi
 
-$(OBJS): $(FLAGS_STAMP)
+$(OBJS) $(CHECK_OBJS): $(FLAGS_STAMP)
 
 # Header dependencies prevent objects compiled with incompatible shared
 # structure layouts from being linked together.
--include $(OBJS:.o=.d)
+-include $(OBJS:.o=.d) $(CHECK_OBJS:.o=.d)
 
 # Extract the SMC base into a macro-only header because vector.S cannot include C declarations.
 SMC_BASE_CONFIG_H := $(firstword $(wildcard $(addsuffix /smc_base_config.h,$(patsubst -I%,%,$(REG_INCLUDE_DIRS)))))
