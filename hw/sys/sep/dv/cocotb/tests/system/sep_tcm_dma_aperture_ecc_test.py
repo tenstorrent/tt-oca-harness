@@ -47,8 +47,12 @@ Bench: the TCM bit-flip hook (error inject, ``env/sep_tcm_flip.py``) XORs a mask
 into the stored 39-bit word (bits 31:0 data, 38:32 ECC). Flips land only on
 aperture words this leaf wrote. Before the first DMA access the leaf loads an
 all-zero image through ``tcm_load_i``, so every TCM word holds a valid code word
-and a DMA read of a bank pair never meets an unwritten neighbour. The PR-TCM
-tap packs the banks with bank 0 in the low bits: ICCM bank ``off[3:2]``, row
+and a DMA read of a bank pair never meets an unwritten neighbour. The leaf also
+pulses ``dbg_rstb_i`` and repeats the cold reset with the core held: the no_cpu
+bring-up never resets the core debug module, and its ``dmcontrol`` bits gate
+the core reset. The PR-TCM
+tap (``env/sep_fabric_tap.py``, read per bank with ``TapBeat.lane``) packs the
+banks with bank 0 in the low bits: ICCM bank ``off[3:2]``, row
 ``off[17:4]``; DCCM bank ``off[2]``, row ``off[16:3]`` (the bank map of
 ``tb/tb_top.sv``, ``tb_backdoor_mem``).
 
@@ -64,6 +68,7 @@ import os
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
@@ -105,7 +110,6 @@ WIDTH_ENC = 2  # TRANSFER_WIDTH: 4-byte beats
 WORD_BYTES = 4
 DBG_HI, DBG_LO = 367, 364
 ROW_BITS = 14
-TCM_FIELDS = ("clken", "wren", "addr", "wdata", "wecc", "rdata", "recc")
 ROW_MASK = (1 << ROW_BITS) - 1
 
 
@@ -115,17 +119,6 @@ def bank_row(mem: str, addr: int) -> tuple[int, int]:
     if mem == "ICCM":
         return (off >> 2) & 0x3, (off >> 4) & ROW_MASK
     return (off >> 2) & 0x1, (off >> 3) & ROW_MASK
-
-
-def lane(bits: str, idx: int, width: int) -> int | None:
-    """Field ``idx`` of ``width`` bits from an MSB-first bit string; None if X or Z."""
-    n = len(bits)
-    part = bits[n - (idx + 1) * width : n - idx * width]
-    return int(part, 2) if part and all(c in "01" for c in part) else None
-
-
-def _known(bits: str) -> int | None:
-    return int(bits, 2) if bits and all(c in "01" for c in bits) else None
 
 
 def pair_class(a: int, b: int) -> str:
@@ -234,8 +227,6 @@ class _TapSampler:
         self.prev = {"ICCM": None, "DCCM": None}
         self.nibble = 0
         self.armed = False
-        # Per-clock PR-TCM samples of the current window only.
-        self.rec: list[dict[str, dict]] = []
 
     @staticmethod
     def _bit(sig) -> int | None:
@@ -256,20 +247,6 @@ class _TapSampler:
                 if v == 1 and self.prev[mem] == 0:
                     self.rose[mem] = True
                 self.prev[mem] = v
-            smp = {}
-            for mem in ("ICCM", "DCCM"):
-                pre = f"pr_tcm_{mem.lower()}_"
-                raw = {n: str(getattr(self.dut, pre + n + "_o").value) for n in TCM_FIELDS}
-                smp[mem] = {
-                    "clken": _known(raw["clken"]),
-                    "wren": _known(raw["wren"]),
-                    "addr": _known(raw["addr"]),
-                    "wdata": raw["wdata"],
-                    "wecc": raw["wecc"],
-                    "rdata": raw["rdata"],
-                    "recc": raw["recc"],
-                }
-            self.rec.append(smp)
             bus = self.dut.ext_debug_bus_o.value
             s = str(bus)
             nib = s[len(s) - 1 - DBG_HI : len(s) - DBG_LO]
@@ -334,7 +311,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
     async def _write_tcm(self, mem: str, addr: int, data: int, src: int, what: str):
         """Stage ``data`` in SRAM and copy it to ``addr``; returns (rose, PR-TCM write word)."""
         await self.mem.fill(src, [data])
-        mark = 0  # the sampler record restarts at each copy
+        mark = self.tcm_tap.mark()
         st, rose, _ = await self._copy(src, addr, what)
         if st.error or not st.done:
             raise AssertionError(f"{what}: DMA write to 0x{addr:08x} ended {st.fmt()}")
@@ -353,48 +330,50 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
                 f"{what}: readback word 0x{rb:08x} reads 0x{before:08x} after a write of the "
                 f"complement 0x{comp:08x}"
             )
-        mark = 0  # the sampler record restarts at each copy
+        mark = self.tcm_tap.mark()
         st, rose, nib = await self._copy(addr, rb, what)
         after = (await self.mem.read(rb, 1))[0]
         return st, before, after, rose, nib, mark
 
-    def _written_word(self, mem: str, addr: int, mark: int) -> int | None:
+    def _written_word(self, mem: str, addr: int, mark) -> int | None:
         """39-bit word (data | ECC << 32) of the last PR-TCM write at ``addr`` since ``mark``."""
         bank, row = bank_row(mem, addr)
         hit = None
-        for smp in self.sampler.rec[mark:]:
-            f = smp[mem]
-            if f["clken"] is None or f["wren"] is None or f["addr"] is None:
-                continue
-            if (f["clken"] >> bank) & 1 and (f["wren"] >> bank) & 1:
-                if (f["addr"] >> (ROW_BITS * bank)) & ROW_MASK == row:
-                    hit = f
+        for b in self.tcm_tap.since(mark, mem.lower()):
+            if (
+                b.lane("clken", bank, 1) == 1
+                and b.lane("wren", bank, 1) == 1
+                and b.lane("addr", bank, ROW_BITS) == row
+            ):
+                hit = b
         if hit is None:
             return None
-        data = lane(hit["wdata"], bank, 32)
-        ecc = lane(hit["wecc"], bank, 7)
+        data, ecc = hit.lane("wdata", bank, 32), hit.lane("wecc", bank, 7)
         return None if data is None or ecc is None else data | (ecc << 32)
 
-    def _stored_word(self, mem: str, addr: int, mark: int) -> int | None:
+    def _stored_word(self, mem: str, addr: int, mark) -> int | None:
         """39-bit stored word on the PR-TCM response of the first read of ``addr`` since ``mark``.
 
-        The response lane is sampled on the clock after the request clock; the
-        lanes of the banks the request did not read are not used.
+        The response beat is the clock after the request beat; only the lane
+        of the bank the request read is used.
         """
         bank, row = bank_row(mem, addr)
-        rec = self.sampler.rec
-        for i in range(mark, len(rec) - 1):
-            f = rec[i][mem]
-            if f["clken"] is None or f["wren"] is None or f["addr"] is None:
+        ch = mem.lower()
+        beats = self.tcm_tap.since(mark)
+        for i, b in enumerate(beats):
+            if b.ch != ch:
                 continue
-            if not ((f["clken"] & ~f["wren"]) >> bank) & 1:
+            if not (
+                b.lane("clken", bank, 1) == 1
+                and b.lane("wren", bank, 1) == 0
+                and b.lane("addr", bank, ROW_BITS) == row
+            ):
                 continue
-            if (f["addr"] >> (ROW_BITS * bank)) & ROW_MASK != row:
-                continue
-            nxt = rec[i + 1][mem]
-            data = lane(nxt["rdata"], bank, 32)
-            ecc = lane(nxt["recc"], bank, 7)
-            return None if data is None or ecc is None else data | (ecc << 32)
+            for r in beats[i + 1 :]:
+                if r.ch == f"{ch}_rsp":
+                    data, ecc = r.lane("rdata", bank, 32), r.lane("recc", bank, 7)
+                    return None if data is None or ecc is None else data | (ecc << 32)
+            return None
         return None
 
     def _fail(self, chk: str, line: str) -> None:
@@ -405,26 +384,18 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
     # ---- steps 1 and 2 -------------------------------------------------------------
     async def _setup(self) -> None:
         top = cocotb.top
-        # The core TAP holds the reset-vector TDR that sets the core reset PC. The
-        # tb_top TAP pins start with TRST already low, so on a four-state
-        # simulator the TDR never sees a reset edge and the halted core's fetch
-        # address, and with it the ICCM DMA ready, stay X. The leaf takes the pins
-        # (jtag_bench_own_i), gives TRST a falling edge (the TDR takes RESET_VEC)
-        # and repeats the cold reset, so the core leaves reset with a known PC
-        # and is held off again.
-        top.jtag_tck_i.value = 0
-        top.jtag_tms_i.value = 1
-        top.jtag_tdi_i.value = 0
-        top.jtag_trst_n_i.value = 1
-        top.jtag_bench_own_i.value = 1
+        # The no_cpu bring-up leaves dbg_rstb_i high from time 0, so the VeeR
+        # debug module never takes its reset: dmcontrol.dmactive and ndmreset,
+        # and with them the core reset (core_rst_l = rst_l & dbg_core_rst_l),
+        # stay X on a four-state simulator. The leaf pulses dbg_rstb_i, then
+        # repeats the cold reset, so the held core leaves reset with known state.
+        top.dbg_rstb_i.value = 0
         await ClockCycles(top.clk_i, 4)
-        top.jtag_trst_n_i.value = 0
+        top.dbg_rstb_i.value = 1
         await ClockCycles(top.clk_i, 4)
         rel = await self.pulse_rst_ni()
         self.logger.info(
-            "CTL-TCM-TAP: core TAP reset (TRST falling edge), then a cold reset with the core "
-            "held: %s",
-            rel,
+            "CTL-TCM-RESET: dbg_rstb_i pulse, then a cold reset with the core held: %s", rel
         )
         # All-zero TCM image: every word a valid code word (tb_backdoor_mem).
         for name in ("sep_itcm.hex", "sep_dtcm.hex"):
@@ -629,6 +600,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         self.dbe_flag_seen = 0
         self.sampler = _TapSampler(top)
         self.sampler.start()
+        self.tcm_tap = SepFabricTap("PR-TCM").start()
 
         await self._setup()
         await self._aperture()
@@ -649,5 +621,6 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         self.n_checks += 1
 
         self.sampler.stop()
+        await self.tcm_tap.stop()
         self.logger.info("OBS-TCM-COPIES: %d secure DMA copies", self.n_copies)
         self.result_pass(TEST, seed, self.n_checks)

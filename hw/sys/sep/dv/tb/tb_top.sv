@@ -447,12 +447,18 @@ module sep_uvm_top
     assign dbg_disable_all_o                = dbg_disable_w;
 
     // TB-owned JTAG pins. In +cpu_boot mode the TB shifts a reset-vector TDR
-    // sequence that the vendored VeeR TAP ignores (see init_reset_vector_tdr).
-    // They remain at the idle TAP-reset values for no-CPU tests.
+    // sequence (see init_reset_vector_tdr). They remain at the idle TAP-reset
+    // values for no-CPU tests. TRST starts high and falls at 1 ps, so the TAP
+    // and its reset-vector TDR see a reset edge on a four-state simulator;
+    // otherwise the TDR, and the core reset PC it drives, stay X.
     logic jtag_tck   = 1'b0;
     logic jtag_tms   = 1'b0;
     logic jtag_tdi   = 1'b0;
-    logic jtag_trst_n = 1'b0;
+    logic jtag_trst_n = 1'b1;
+    initial begin : init_tap_trst
+        #1ps;
+        jtag_trst_n = 1'b0;
+    end
 
     localparam logic [4:0] ResetVectorTdrIr = 5'h18;
 

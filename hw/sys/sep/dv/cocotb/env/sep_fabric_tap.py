@@ -50,7 +50,9 @@ PR-DBG-SB  ``pr_dbg_sb``    as PR-LSU-ROM plus w data and r data (debug-module
 ========== ================ ==================================================
 
 Bank fields of PR-TCM are packed with bank 0 in the low bits (port comments
-in tb/sep_tb_signal_list.svh).
+in tb/sep_tb_signal_list.svh). A PR-TCM beat also keeps the bit string of each
+field, and ``TapBeat.lane`` reads one bank of it, so a bank the request did not
+enable can hold X without hiding the enabled bank.
 
 A field that resolves to X or Z is recorded as None, so a check that needs a
 known value fails on it instead of reading 0. A VALID or READY that resolves to
@@ -187,12 +189,28 @@ class TapBeat:
     seq: int
     """Position of the beat in the record of the tap, all channels together."""
     fields: dict[str, int | None] = field(default_factory=dict)
+    raw: dict[str, str] = field(default_factory=dict)
+    """MSB-first bit strings of the fields (PR-TCM only), for ``lane``."""
 
     def __getattr__(self, name: str):
         try:
             return self.fields[name]
         except KeyError as exc:
             raise AttributeError(name) from exc
+
+    def lane(self, name: str, idx: int, width: int) -> int | None:
+        """Lane ``idx`` of ``width`` bits of a packed field (PR-TCM banks, bank 0 low).
+
+        None when the lane holds X or Z, or when the beat carries no bit string
+        for the field. Other lanes of the field may be X: a bank the request
+        did not enable can read X while the enabled bank is known.
+        """
+        bits = self.raw.get(name)
+        if bits is None:
+            return None
+        n = len(bits)
+        part = bits[n - (idx + 1) * width : n - idx * width]
+        return int(part, 2) if part and all(c in "01" for c in part) else None
 
     def has_unknown(self) -> bool:
         return any(v is None for v in self.fields.values())
@@ -262,6 +280,12 @@ class SepFabricTap:
                 flds = {n: getattr(self.dut, f"{prefix}_{n}_o") for n in names}
             self._sigs[ch] = (valid, ready, flds)
 
+    def _raw(self, flds: dict[str, object]) -> dict[str, str]:
+        """Bit strings of the PR-TCM fields; other kinds record none."""
+        if self.kind != "tcm":
+            return {}
+        return {n: str(s.value) for n, s in flds.items()}
+
     def _reads(self, ch: str, fields: dict[str, int | None]) -> bool:
         """True when a request beat of ``ch`` has a response the next clock."""
         if self.kind == "macro":
@@ -282,7 +306,13 @@ class SepFabricTap:
                     if self._follow[ch] in pending:
                         t = get_sim_time("ps")
                         self.beats.append(
-                            TapBeat(ch, t, len(self.beats), {n: _val(s) for n, s in flds.items()})
+                            TapBeat(
+                                ch,
+                                t,
+                                len(self.beats),
+                                {n: _val(s) for n, s in flds.items()},
+                                self._raw(flds),
+                            )
                         )
                     continue
                 if not (_known(valid) and _known(ready)):
@@ -298,7 +328,13 @@ class SepFabricTap:
                 fire = _nonzero(valid) if self.kind == "tcm" else _hi(valid)
                 if fire and (ready is None or _hi(ready)):
                     t = get_sim_time("ps")
-                    beat = TapBeat(ch, t, len(self.beats), {n: _val(s) for n, s in flds.items()})
+                    beat = TapBeat(
+                        ch,
+                        t,
+                        len(self.beats),
+                        {n: _val(s) for n, s in flds.items()},
+                        self._raw(flds),
+                    )
                     self.beats.append(beat)
                     if self._reads(ch, beat.fields):
                         reads.add(ch)
