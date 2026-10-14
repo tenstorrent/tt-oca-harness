@@ -4,8 +4,9 @@
 
 ``SepSpiWireMonitor.start`` attaches ``OcahSpiMonitor`` to the approved SPI
 host pad ports of ``tb_top`` (``spi_cs_n_o``, ``spi_sck_o``, ``spi_mosi_o``,
-``spi_miso_i``, and the lane and output-enable taps ``spi_sd_o``,
-``spi_sd_oe_o``, ``spi_cs_oe_o``, ``spi_sck_oe_o``; docs/SEP_TB_ARCH.adoc)
+the lane and output-enable taps ``spi_sd_o``, ``spi_sd_oe_o``,
+``spi_cs_oe_o``, ``spi_sck_oe_o``, and ``spi_sd_rsp_o``, the four data lanes
+the DUT receives; docs/SEP_TB_ARCH.adoc)
 in Mode 0 and starts it. A leaf that
 programs another SPI mode calls ``set_mode(cpol, cpha)`` before the CONFIGOPTS
 write, so the monitor grades every later frame in that mode.
@@ -16,7 +17,9 @@ high, a driven lane changing on a sample edge or before the next shift edge,
 X/Z, a data lane output enable on while chip select is high or in a pattern
 other than none, lane 0, lanes 1:0 or lanes 3:0, the chip-select or clock
 output enable off while chip select is low; the rules of
-doc/integrator/src/smu-sep.adoc, "SEP SPI Host Pin Assignment"). It
+doc/integrator/src/smu-sep.adoc, "SEP SPI Host Pin Assignment", where the
+last one is derived: an undriven SPI.CS sits at the pad pull, so a low chip
+select and its clock edges reach the device only while driven). It
 then fails a mode the leaf lists with no graded frame, and logs::
 
     CHK-SPI-WIRE PASS seed=<n> frames=<n> per_mode=<mode>:<frames>,...
@@ -50,9 +53,9 @@ class SepSpiWireMonitor:
             dut.spi_cs_n_o,
             dut.spi_sck_o,
             mosi=dut.spi_mosi_o,
-            miso=dut.spi_miso_i,
             sd_out=dut.spi_sd_o,
             sd_oe=dut.spi_sd_oe_o,
+            sd_in=dut.spi_sd_rsp_o,
             cs_oe=dut.spi_cs_oe_o,
             sck_oe=dut.spi_sck_oe_o,
             name=name,

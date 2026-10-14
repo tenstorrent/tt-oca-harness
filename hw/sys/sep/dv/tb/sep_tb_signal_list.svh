@@ -884,7 +884,9 @@
 `SEP_TB_OUT(logic [3:0], spi_sd_oe_o)
 `SEP_TB_OUT(logic, spi_cs_oe_o)
 `SEP_TB_OUT(logic, spi_sck_oe_o)
-// Pad inputs of data lanes 0, 2 and 3 (sep_io_spi_rsp_i.sd); lane 1 is always
-// spi_miso_i. They reach the DUT only with +sep_spi_four_lane; otherwise those
-// lanes read 0. spi_sd_i[1] is not used.
+// Pad inputs of all four data lanes (sep_io_spi_rsp_i.sd). They reach the DUT
+// only with +sep_spi_four_lane; otherwise lane 1 is spi_miso_i and lanes 0, 2
+// and 3 read 0.
 `SEP_TB_IN(logic [3:0], spi_sd_i)
+// The four data lanes the DUT receives (sep_io_spi_rsp_i.sd). Monitor-only.
+`SEP_TB_OUT(logic [3:0], spi_sd_rsp_o)

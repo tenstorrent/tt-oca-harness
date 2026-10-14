@@ -747,11 +747,12 @@ module sep_uvm_top
     assign spi_sd_oe_o  = sep_io_spi_req_w.sd_oe;
     assign spi_cs_oe_o  = sep_io_spi_req_w.cs_oe;
     assign spi_sck_oe_o = sep_io_spi_req_w.sck_oe;
-    // Response lanes: lane 1 is spi_miso_i; lanes 0, 2 and 3 follow spi_sd_i
-    // only in a run with +sep_spi_four_lane, and read 0 otherwise.
+    // Response lanes: in a run with +sep_spi_four_lane all four lanes follow
+    // spi_sd_i; otherwise lane 1 is spi_miso_i and lanes 0, 2 and 3 read 0.
+    // spi_sd_rsp_o is a monitor-only copy of the lanes the DUT receives.
     initial spi_four_lane_q = $test$plusargs("sep_spi_four_lane");
-    assign spi_rsp_sd_w = spi_four_lane_q ? {spi_sd_i[3:2], spi_miso_i, spi_sd_i[0]}
-                                          : {2'b00, spi_miso_i, 1'b0};
+    assign spi_rsp_sd_w = spi_four_lane_q ? spi_sd_i : {2'b00, spi_miso_i, 1'b0};
+    assign spi_sd_rsp_o = spi_rsp_sd_w;
 
     // ------------------------------------------------------------------
     // SEP->SMC external AXI responder (real-ROM boot only).
