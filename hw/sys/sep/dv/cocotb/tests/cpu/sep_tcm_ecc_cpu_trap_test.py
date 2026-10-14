@@ -673,13 +673,13 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
     def _chk_ue(self) -> int:
         cfg = self.tcfg
         n = 0
-        nbrs = {r.kv["access"]: r.kv for r in self._recs("UE-NBR")}
-        ues = {r.kv["access"]: r.kv for r in self._recs("UE")}
+        nbrs = {r.kv["access"]: r.kv for r in self._recs("UNC-NBR")}
+        uncs = {r.kv["access"]: r.kv for r in self._recs("UNC")}
         for access, tag, wtag, cause, exp_nbr in (
             ("load", "ld", "ue_load", MCAUSE_LOAD_FAULT, cfg.data[cfg.ld_nbr]),
             ("store", "st", "ue_store", MCAUSE_STORE_FAULT, cfg.st_nbr_exp()),
         ):
-            nbr, ue = nbrs[access], ues[access]
+            nbr, unc = nbrs[access], uncs[access]
             traps = self._traps(tag)
             win = self._window(wtag)
             pul = self._pulses_in(win)
@@ -700,7 +700,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             )
             ok = (
                 len(traps) == 1
-                and int(ue["traps"]) == 1
+                and int(unc["traps"]) == 1
                 and int(traps[0]["mcause"]) == cause
                 and int(traps[0]["mscause"]) == MSCAUSE_ECC
                 and pul[BIT_D_DB]

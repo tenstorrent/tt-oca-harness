@@ -6830,8 +6830,15 @@ module sep_fcov (
   // refuses while RANGE_REGWEN is False (dl_locked). cp_dma_lock_recovery is
   // sampled by the memory, boot and reset owner.
   covergroup sep_dma_containment_cg with function sample (
-      logic [1:0] lw, logic lw_v, logic [1:0] iv, logic iv_v, logic lr_v, logic lc, logic lc_v,
-      logic dlr, logic dlr_v
+      logic [1:0] lw,
+      logic lw_v,
+      logic [1:0] iv,
+      logic iv_v,
+      logic lr_v,
+      logic lc,
+      logic lc_v,
+      logic dlr,
+      logic dlr_v
   );
     option.per_instance = 1;
     option.name = "sep_dma_containment_cg";
@@ -7301,7 +7308,8 @@ module sep_fcov (
     if (dl_locked) begin
       if (dl_base || dl_limit || dl_valid)
         u_sep_dma_containment_cg.sample(dl_base ? 2'd0 : (dl_limit ? 2'd1 : 2'd2), own_dma_irq,
-                                        2'd0, 1'b0, 1'b0, d_err, own_dma_irq && (d_err || !d_busy), 1'b0, 1'b0);
+                                        2'd0, 1'b0, 1'b0, d_err, own_dma_irq && (d_err || !d_busy),
+                                        1'b0, 1'b0);
       if (dl_regwen_wr) begin
         u_sep_dma_containment_cg.sample(
             2'd3, own_dma_irq && (dl_wd == RegwenTrue),
@@ -13607,8 +13615,8 @@ module sep_fcov (
     logic rm_v;  // {not OKAY, master 0 CPU LSU 1 m_axi, burst 0 FIXED 1 WRAP}
     logic [3:0] sb;
     logic sb_v;  // {AxBURST, response 0 OKAY 1 SLVERR 2 other}
-    logic [3:0] ot;
-    logic ot_v;  // {path 0 SRAM read 1 SRAM write 2 ROM read 3 stale beat, third}
+    logic [3:0] otf;
+    logic otf_v;  // {path 0 SRAM read 1 SRAM write 2 ROM read 3 stale beat, third}
     logic [4:0] te;
     logic te_v;  // {double with OKAY, memory 0 ICCM 1 DCCM, class}
     logic [2:0] dt;
@@ -13653,7 +13661,7 @@ module sep_fcov (
       illegal_bins fixed_wrap_multi_okay = {4'b00_00, 4'b10_00};
       illegal_bins incr_slverr = {4'b01_01};
     }
-    cp_otf_reset_x_path: coverpoint s.ot iff (s.ot_v) {
+    cp_otf_reset_x_path: coverpoint s.otf iff (s.otf_v) {
       bins sram_read_third[] = {[4'b00_00 : 4'b00_10]};
       bins sram_write_third[] = {[4'b01_00 : 4'b01_10]};
       bins rom_read = {4'b10_00};
@@ -13777,8 +13785,8 @@ module sep_fcov (
         e.sb_v = 1'b1;
       end
       4'd5: begin
-        e.ot   = v[3:0];
-        e.ot_v = 1'b1;
+        e.otf  = v[3:0];
+        e.otf_v = 1'b1;
       end
       4'd6: begin
         e.te   = v;

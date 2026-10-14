@@ -23,7 +23,7 @@
 //   TRAP i= tag= mcause= mscause= mepc=
 //   MEIP when= w0..w7= micect=
 //   CLAMP ic31= dc31= ict= dct=
-//   UE-NBR access= got= traps= / UE access= traps=
+//   UNC-NBR access= got= traps= / UNC access= traps=
 //   NMI-SETUP vec= vec_rb= lock_rb= tbl= / NMI mcause= mepc= vec_rb= entry=
 //
 // DCCM layout. The flipped DCCM words and the NMI vector table lie in the
@@ -595,7 +595,7 @@ int main(void) {
     g_tag = TAG_LD_NBR;
     uint32_t v = ld_word(g_prm[P_LD_NBR]);
     settle();
-    sep_mbx_puts("UE-NBR");
+    sep_mbx_puts("UNC-NBR");
     rec_str("access", "load");
     rec_hex("got", v);
     rec_hex("traps", g_ntrap - n0);
@@ -606,7 +606,7 @@ int main(void) {
     (void)ld_word(g_prm[P_LD_ADDR]);
     settle();
     mark("E", "ue_load", 0u);
-    sep_mbx_puts("UE");
+    sep_mbx_puts("UNC");
     rec_str("access", "load");
     rec_hex("traps", g_ntrap - n0);
     rec_end();
@@ -621,7 +621,7 @@ int main(void) {
     st_byte(g_prm[P_ST_NBR] + lane, g_prm[P_ST_BYTE]);
     settle();
     v = ld_word(g_prm[P_ST_NBR]);
-    sep_mbx_puts("UE-NBR");
+    sep_mbx_puts("UNC-NBR");
     rec_str("access", "store");
     rec_hex("got", v);
     rec_hex("traps", g_ntrap - n0);
@@ -632,7 +632,7 @@ int main(void) {
     st_byte(g_prm[P_ST_ADDR] + lane, g_prm[P_ST_BYTE]);
     settle();
     mark("E", "ue_store", 0u);
-    sep_mbx_puts("UE");
+    sep_mbx_puts("UNC");
     rec_str("access", "store");
     rec_hex("traps", g_ntrap - n0);
     rec_end();
