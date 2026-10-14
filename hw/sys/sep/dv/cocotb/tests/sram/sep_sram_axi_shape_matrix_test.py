@@ -22,8 +22,10 @@ Checkers:
   CHK-SRAM-OUTSTANDING  INCR bursts of lengths 1, 2, 7 and 16 in one 4 KiB page,
                         reads and writes interleaved with 1 to 4 outstanding:
                         every read beat returns the byte-model bytes of its
-                        address with the ID of its request, and every B beat
-                        carries the ID of its write (``m_axi`` channel monitor).
+                        address with the ID of its request, every B beat
+                        carries the ID of its write, and the peak count of
+                        outstanding requests on ``m_axi`` equals the drawn
+                        depth (``m_axi`` channel monitor).
   CHK-SRAM-REFUSE       FIXED bursts of lengths 2, 3, 8 and 16 and WRAP bursts of
                         lengths 2, 8 and 16 from the inbound master: the write
                         ends SLVERR and the words read back unchanged, and the
@@ -43,8 +45,7 @@ Checkers:
                         show on the tap.
 Controls (not counted): CTL-SRAM-FILTER (inbound filter entry readback),
 CTL-SRAM-REACH (both masters write and read back the first and last word, each
-of the 15 word-address bits and 128 drawn words). Observations: OBS-SRAM-DEPTH
-(peak outstanding count; the specification states no depth).
+of the 15 word-address bits and 128 drawn words).
 
 Environment choices (logged): the per-access completion bound, the bound of the
 waits on ``dbg_sep_reset_n_o``, and the quiet wait for a stale beat. The
@@ -622,9 +623,10 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         bad += await self._run_phase(c.phase_c, c.depth)
         close_graded_window(self.logger)
         n = len(c.phase_a) + len(c.phase_b) + len(c.phase_c)
-        self.logger.info(
-            "OBS-SRAM-DEPTH: peak_outstanding=%d drawn_depth=%d (not graded)", self._peak, c.depth
-        )
+        if self._peak != c.depth:
+            bad.append(
+                f"peak outstanding on m_axi {self._peak}, expected the drawn depth {c.depth}"
+            )
         if bad:
             msg = f"CHK-SRAM-OUTSTANDING FAIL: depth={c.depth} bursts={n} " + "; ".join(bad[:6])
             self.logger.error(msg)
