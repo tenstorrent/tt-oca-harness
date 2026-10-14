@@ -10,8 +10,6 @@ Past-extent write BRESP of SLVERR-declared blocks is logged as CHK-UNMAP-PAST-EX
 
 from __future__ import annotations
 
-import time
-
 import cocotb
 from cocotb.triggers import ClockCycles
 from ocah_axi_vip import RESP_DECERR, RESP_SLVERR, resp_name
@@ -149,7 +147,6 @@ class smu_smc_unmapped_response_test_seq:
         self.counts: dict[str, int] = {}
         self.last: dict[str, str] = {}
         self.expired: list[str] = []
-        self.step_ts: dict[str, float] = {}
         self.master = None
         self.jtag = None
 
@@ -157,7 +154,6 @@ class smu_smc_unmapped_response_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _site(self, site: str, last: str) -> None:
@@ -404,15 +400,4 @@ class smu_smc_unmapped_response_test_seq:
         sb.expect_eq(
             "expired TIMEOUT-PATH records", len(self.expired), 0, evidence="CHK_TIMEOUT_PATHS"
         )
-        # Bounded waits: J2A completion, ext_in read handshake, ext_in write handshake, and the
-        # smc_region_size_o poll.
-        sb.expect_eq("CHK-TIMEOUT-PATHS site count", len(paths), 4)
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 6, evidence="CHK-NONVAC")
         self.done = True

@@ -14,15 +14,15 @@ S3  A chiplet pull of port 4's wire raises a request on port 2: BUSY reads 1; th
     in completes it; BUSY polls back to 0.
 S4  STATUS level fields on port 2 at INVERT 0 and INVERT 1 (request out, acknowledge in held,
     request in held, acknowledge out) and on wire-OR port 3 during an assertion.
-S5  A stuck request is dropped by CONFIG.RESET, a trigger while RESET = 1 is discarded, and the
-    first trigger after RESET clears starts a new handshake.
+S5  A stuck request is dropped by CONFIG.RESET, a trigger while RESET = 1 is discarded (no request
+    while RESET = 1 nor in a window after RESET clears with the wire released), and the first
+    trigger after RESET clears starts a new handshake.
 S6  With RESET = 1 a request in is acknowledged and holds BUSY until it is released.
 S7  Every bounded wait is a site with its bound, last state and expiry.
 """
 
 from __future__ import annotations
 
-import time
 from typing import cast
 
 import cocotb
@@ -77,8 +77,8 @@ PAD_BOUND = 64
 DISCARD_WINDOW = 64
 BUSY_POLL_BOUND = 4
 # Bounded waits: a JTAG2AXI access and a handshake settle before a STATUS read.
-CONTRACT_WAITS = ("j2a", "settle")
-CONTRACT_WAIT_KINDS = 2
+EXPECTED_WAITS = ("j2a", "settle")
+EXPECTED_WAIT_KINDS = 2
 SITES = ("j2a", "settle", "discard_window", "busy_poll")
 
 
@@ -92,7 +92,6 @@ class smu_xtrig_ctp_status_reset_test_seq:
         self.sb = test.env.scoreboard
         self.jtag = None
         self.j2a = 0
-        self.step_ts: dict[str, float] = {}
         bounds = {
             "j2a": J2A_POLL_LIMIT,
             "settle": PAD_BOUND,
@@ -108,7 +107,6 @@ class smu_xtrig_ctp_status_reset_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _cell(self, name: str, addr: int, text: str) -> None:
@@ -462,6 +460,20 @@ class smu_xtrig_ctp_status_reset_test_seq:
         )
         await self._release_wire("S5 wire release after the discarded trigger")
         await self._config(P2P_LANE, CONFIG_P2P, "RESET cleared")
+        high = 0
+        for _ in range(DISCARD_WINDOW):
+            high |= self._bit("tb_xtrig_ctp_req_out_dout", P2P_LANE)
+            await ClockCycles(dut.clk_smu_i, 1)
+        self._ok(
+            "discard_window",
+            f"after RESET cleared req_out_dout[2] high_seen={high} over {DISCARD_WINDOW} clk_smu",
+        )
+        sb.expect_eq(
+            "no request after RESET clears with the wire released",
+            high,
+            0,
+            evidence="CHK-HS-RESET-DISCARD",
+        )
         await self._trigger("S5 trigger after reset cleared", 1)
         sb.expect_eq(
             "the first trigger after RESET clears raises a new request",
@@ -523,11 +535,11 @@ class smu_xtrig_ctp_status_reset_test_seq:
             "the delay is neither measured nor compared"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        recorded = [s for s in CONTRACT_WAITS if self.sites[s]["count"] > 0]
+        recorded = [s for s in EXPECTED_WAITS if self.sites[s]["count"] > 0]
         sb.expect_eq(
             "bounded wait kinds declared by the sequence all exercised",
             len(recorded),
-            CONTRACT_WAIT_KINDS,
+            EXPECTED_WAIT_KINDS,
         )
 
         for name in (
@@ -536,10 +548,3 @@ class smu_xtrig_ctp_status_reset_test_seq:
             "tb_xtrig_ctp_wire_ext_assert",
         ):
             getattr(dut, name).value = 0
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<S6<S7<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 8, evidence="CHK-NONVAC")

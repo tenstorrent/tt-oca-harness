@@ -6,8 +6,8 @@ Spec: hw/ip/gpio/regs/gpio_intf.rdl:17-52 (ACCESS_FILTER reset 0x0001_0100; with
 access requires an exact match between AxPROT and the requirement), hw/ip/gpio/doc/memmap.adoc:36,
 hw/ip/gpio/regs/gpio_intf.rdl:62-111 (DATA_CTRL), hw/ip/axi_filter/regs/filter_ctrl.rdl:36-42
 (an inbound entry matches when AxPROT[1] equals its allow_ns field).
-The response code and read data of a refused access are not fixed by the owner: they are logged and
-compared with OKAY only.
+The response code and read data of a refused access are logged; only whether the response is OKAY
+is compared.
 """
 
 from __future__ import annotations
@@ -334,7 +334,7 @@ class smu_smc_gpio_access_filter_test_seq:
             if resp != RESP_OKAY:
                 self._log(
                     f"CHK-DBG-GPIO-FILTER-WRITE: awprot={prot} refused_code={resp_name(resp)} "
-                    "LINKED-ISSUE owner value pending"
+                    "(measured, not compared)"
                 )
             obs.append((resp == RESP_OKAY, after == target))
         clear_ok = await self._set_filter(AF_RESET, AF_REQ, 0, "write_off")
@@ -366,7 +366,7 @@ class smu_smc_gpio_access_filter_test_seq:
             if resp != RESP_OKAY:
                 self._log(
                     f"CHK-DBG-GPIO-FILTER-READ: arprot={prot} refused_code={resp_name(resp)} "
-                    f"data=0x{raw:08x} LINKED-ISSUE owner value pending"
+                    f"data=0x{raw:08x} (measured, not compared)"
                 )
                 obs.append((False, None))
             else:

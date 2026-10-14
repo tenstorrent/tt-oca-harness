@@ -28,7 +28,7 @@ PRELOAD_IMAGE = "sep_efuse_shadow_lc_rma_sip_1.preload"
 LC_SETTLE_BOUND_CYCLES = 60000
 DBG_SETTLE_BOUND_CYCLES = 4096
 DBG_STABLE_CYCLES = 16
-CONTRACT_WAIT_LABELS = ["lc_settle", "dbg_settle"]
+EXPECTED_WAIT_LABELS = ["lc_settle", "dbg_settle"]
 
 
 class smu_lc_rma_sip_1_export_test_seq:
@@ -145,7 +145,7 @@ class smu_lc_rma_sip_1_export_test_seq:
         sb.expect_eq(
             "each wait label recorded exactly once",
             labels,
-            sorted(CONTRACT_WAIT_LABELS),
+            sorted(EXPECTED_WAIT_LABELS),
             evidence="CHK-TIMEOUT-PATHS",
         )
         sb.expect_eq(

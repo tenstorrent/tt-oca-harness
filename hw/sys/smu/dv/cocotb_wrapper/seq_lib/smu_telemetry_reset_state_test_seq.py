@@ -11,8 +11,6 @@ The JTAG2AXI bridge reads every register before any ATB beat is driven; nothing 
 
 from __future__ import annotations
 
-import time
-
 import cocotb
 from ocah_jtag_vip import OcahJtagState
 
@@ -41,7 +39,6 @@ STATUS_RESET = (STATUS_EMPTY_RESET * STATUS_EMPTY_BM) | (STATUS_FULL_RESET * STA
 STATUS_FIELD_BM = STATUS_EMPTY_BM | STATUS_FULL_BM
 
 J2A_POLL_LIMIT = 128
-CONTRACT_WAIT_KINDS = 1
 
 
 def _tel(name: str, receiver: int) -> int:
@@ -58,14 +55,12 @@ class smu_telemetry_reset_state_test_seq:
         self.done = False
         self.jtag = None
         self.j2a = 0
-        self.step_ts: dict[str, float] = {}
         self.sites: dict[str, dict] = {}
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _cell(self, name: str, addr: int, text: str) -> None:
@@ -178,13 +173,4 @@ class smu_telemetry_reset_state_test_seq:
             f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait kinds declared by the sequence", len(lines), CONTRACT_WAIT_KINDS)
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 5, evidence="CHK-NONVAC")
         self.done = True

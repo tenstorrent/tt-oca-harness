@@ -7,9 +7,9 @@ Spec: hw/sys/dtp/doc/clk_rst.adoc (Clock Stop, Reset Architecture), hw/sys/smu/d
 
 The clock-stop controller sits on the DTP ``rst_n_i``, which resets the clock-stop
 output to 0, and ``stop_clks_o`` follows the requests three ``clk_smu_i`` cycles
-later. The JTAG request is programmed in DEBUG_CONTROL and stays programmed
-through the primary reset, so TRST stays high and the TAP never re-enters
-Test-Logic-Reset.
+later. The JTAG request is programmed in DEBUG_CONTROL. The primary reset does
+not reset the TAP, which only power-on reset and TRST_n reach, so DEBUG_CONTROL
+keeps ``jtag_clock_stop`` programmed through it.
 """
 
 from __future__ import annotations

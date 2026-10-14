@@ -34,7 +34,7 @@ TAP_RESET_TCK = 16
 FULL_SENSE_WORDS = 256
 LAST_WORD = 255
 LEG_WORD_TRIGGERS = (("0", 1), ("128", 128))
-CONTRACT_WAIT_KINDS = ("done_rise", "strobe", "cold_fall", "cold_rise", "reset_rise")
+EXPECTED_WAIT_KINDS = ("done_rise", "strobe", "cold_fall", "cold_rise", "reset_rise")
 
 
 class smu_sep_cold_reassert_during_sense_test_seq:
@@ -375,7 +375,9 @@ class smu_sep_cold_reassert_during_sense_test_seq:
         else:
             self.log.info("OBSERVED word-255 window missed strobes_at_fall=%d", at_fall)
             self.log.info(
-                "CHK-SEP-SENSE-ABORT-RESTART: word255=missed LINKED-ISSUE owner decision pending"
+                "CHK-SEP-SENSE-ABORT-RESTART: word255 window missed strobes_at_fall=%d; "
+                "leg not claimed",
+                at_fall,
             )
 
         await self._step("S7", "final leg: release and a full sense")
@@ -440,7 +442,7 @@ class smu_sep_cold_reassert_during_sense_test_seq:
         kinds = {rec["kind"] for rec in self.sites.values()}
         sb.expect_true(
             "every bounded wait kind named by the test steps ran",
-            all(kind in kinds for kind in CONTRACT_WAIT_KINDS),
+            all(kind in kinds for kind in EXPECTED_WAIT_KINDS),
         )
 
         await RisingEdge(dut.clk_smu_i)

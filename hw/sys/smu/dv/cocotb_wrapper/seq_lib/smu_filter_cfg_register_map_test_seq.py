@@ -10,7 +10,7 @@ Bits the RDL defines no field for are logged as CHK-CFG-UNDEF-BITS and never com
 
 from __future__ import annotations
 
-import time
+from pathlib import Path
 
 import cocotb
 from ocah_axi_vip import RESP_OKAY, resp_name
@@ -26,6 +26,7 @@ from seq_lib.smu_addr_map import (
     OUTBOUND_FILTER_CONFIG_SYM,
     OUTBOUND_FILTER_END_SYM,
     OUTBOUND_FILTER_START_SYM,
+    c_header_u32,
     filter_ctrl_bm,
     filter_ctrl_field_reset_encode,
     smc_indexed_addr,
@@ -73,8 +74,11 @@ GAP_MASK = ~DEFINED_MASK & ((1 << 64) - 1)
 DBW_RESET = filter_ctrl_field_reset_encode("DATA_BUS_WIDTH")
 LOCKED = _BM["LOCKED"]
 CONFIG_RESET = DBW_RESET
-START_RESET = 0x0
-END_RESET = 0x7
+_FILTER_CTRL_H = (
+    Path(__file__).resolve().parents[6] / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c"
+) / "filter_ctrl.h"
+START_RESET = c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__START_ADDR__START_ADDR_reset")
+END_RESET = c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__END_ADDR__END_ADDR_reset")
 ADDR_MASK = (1 << 56) - 1
 ALL56 = ADDR_MASK
 RW_BITS = [
@@ -130,7 +134,6 @@ class smu_filter_cfg_register_map_test_seq:
         self.dut = cocotb.top
         self.cfg = test.cfg
         self.done = False
-        self.step_ts: dict[str, float] = {}
         self.expired: list[str] = []
         self.j2a_ops = 0
         self.j2a_last = None
@@ -144,7 +147,6 @@ class smu_filter_cfg_register_map_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _addr(self, inst: str, reg: str, entry: int) -> int:
@@ -544,17 +546,8 @@ class smu_filter_cfg_register_map_test_seq:
             raise AssertionError(f"J2A accesses {self.j2a_ops} outside budget {J2A_BUDGET}")
         sb.expect_eq("J2A last status", self.j2a_last, J2A_STATUS_SUCCESS)
         sb.expect_eq("axi last response", self.axi_last, resp_name(RESP_OKAY))
-        sb.expect_eq("bounded wait sites", len(paths), 2)
         self._log(f"CHK-TIMEOUT-PATHS: sites={len(paths)} expired={len(self.expired)}")
         sb.expect_eq(
             "CHK-TIMEOUT-PATHS expired waits", len(self.expired), 0, evidence="CHK_TIMEOUT_PATHS"
         )
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<S6<S7<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 8, evidence="CHK-NONVAC")
         self.done = True

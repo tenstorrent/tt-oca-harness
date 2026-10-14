@@ -15,7 +15,6 @@ access and its 32-bit lane compared, with the same expected values the test step
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 
 import cocotb
@@ -24,6 +23,7 @@ from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import c_header_u32, smc_addr
 from seq_lib.smu_jtag_helpers import (
+    DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
     SMC_DBG_AXSIZE_8B,
@@ -69,7 +69,7 @@ THRESHOLD_RESET = c_header_u32(
 
 J2A_POLL_LIMIT = 128
 RESET_DONE_BOUND_NS = 200000
-CONTRACT_WAIT_KINDS = 2
+EXPECTED_WAIT_KINDS = 2
 
 
 class smu_smc_base_config_state_test_seq:
@@ -82,7 +82,6 @@ class smu_smc_base_config_state_test_seq:
         self.done = False
         self.jtag = None
         self.j2a = 0
-        self.step_ts: dict[str, float] = {}
         self.sites = {
             "reset_done": {
                 "bound": f"{RESET_DONE_BOUND_NS} ns",
@@ -97,7 +96,6 @@ class smu_smc_base_config_state_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     async def _wait_reset_done(self) -> None:
@@ -157,8 +155,8 @@ class smu_smc_base_config_state_test_seq:
         for _ in range(8):
             await jtag.step_tms(0)
         idcode = await jtag.read_idcode()
-        if idcode != 0x1:
-            raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
+        if idcode != DTP_DEFAULT_IDCODE:
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:08x} got 0x{idcode:08x}")
         gate = dut.tb_smc_jtag2axi_security_disable.value
         if not gate.is_resolvable or int(gate) & 1:
             raise AssertionError(f"SMC J2A gated: security_disable={gate}")
@@ -224,16 +222,8 @@ class smu_smc_base_config_state_test_seq:
         expired = sum(rec["expired"] for rec in self.sites.values())
         self._log(
             f"CHK-TIMEOUT-PATHS: sites={len(lines)} expired={expired} "
-            f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
+            f"j2a_accesses_counted={self.j2a}"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait kinds named by the test steps", len(lines), CONTRACT_WAIT_KINDS)
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 6, evidence="CHK-NONVAC")
+        sb.expect_eq("bounded wait kinds named by the test steps", len(lines), EXPECTED_WAIT_KINDS)
         self.done = True

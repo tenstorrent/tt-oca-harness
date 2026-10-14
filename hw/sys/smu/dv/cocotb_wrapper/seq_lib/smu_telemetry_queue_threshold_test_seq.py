@@ -10,13 +10,10 @@ message exposed, empty reads zero, live threshold status); doc/index.adoc "Messa
 Each message is one last-flagged ATB packet on lane 0 whose probe id is in bits [60:56], whose
 header block is invalid and whose other blocks are all ones; the observed registers do not depend
 on the open block layout. Registers are read over JTAG2AXI. INTR_STATUS.BUFFER_THRESHOLD is
-sampled as a register readback only; interrupt delivery at the SMU boundary is not claimed
-(owner value pending).
+sampled as a register readback only; interrupt delivery at the SMU boundary is not claimed.
 """
 
 from __future__ import annotations
-
-import time
 
 import cocotb
 from cocotb.triggers import RisingEdge
@@ -69,7 +66,6 @@ QUEUE_DEPTH = 8
 THRESHOLD_LOW = 3
 THRESHOLD_HIGH = 5
 J2A_POLL_LIMIT = 128
-STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "PASS")
 
 
 def _tel(name: str) -> int:
@@ -94,14 +90,12 @@ class smu_telemetry_queue_threshold_test_seq:
         self.done = False
         self.jtag = None
         self.j2a = 0
-        self.step_ts: dict[str, float] = {}
         self.sites: dict[str, dict] = {}
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _cell(self, name: str, addr: int, text: str) -> None:
@@ -386,12 +380,4 @@ class smu_telemetry_queue_threshold_test_seq:
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
         sb.expect_eq("bounded wait sites exercised", sorted(self.sites), ["atb_beat", "j2a"])
-
-        self.step_ts["PASS"] = time.monotonic()
-        observed = sorted(self.step_ts, key=self.step_ts.get)
-        for a, b in zip(STEPS, STEPS[1:]):
-            if self.step_ts[b] <= self.step_ts[a]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<S6<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", observed, list(STEPS), evidence="CHK-NONVAC")
         self.done = True

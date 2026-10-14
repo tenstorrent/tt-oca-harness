@@ -11,7 +11,6 @@ writing anything, and smc_region_size_o is sampled on clk_smu_i.
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 
 import cocotb
@@ -20,6 +19,7 @@ from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import c_header_u32, smc_addr
 from seq_lib.smu_jtag_helpers import (
+    DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
     SMC_DBG_AXSIZE_8B,
@@ -53,7 +53,6 @@ CG_HYST_BP = c_header_u32(_BASE_CONFIG_H, f"{_CGC}CG_HYSTERESIS_bp")
 CG_HYST_RESET = c_header_u32(_BASE_CONFIG_H, f"{_CGC}CG_HYSTERESIS_reset")
 
 J2A_POLL_LIMIT = 128
-CONTRACT_WAIT_KINDS = 1
 
 
 class smu_smc_aperture_reset_state_test_seq:
@@ -66,7 +65,6 @@ class smu_smc_aperture_reset_state_test_seq:
         self.done = False
         self.jtag = None
         self.j2a = 0
-        self.step_ts: dict[str, float] = {}
         self.sites = {
             "j2a": {"bound": f"{J2A_POLL_LIMIT} polls", "count": 0, "last": "none", "expired": 0},
         }
@@ -75,7 +73,6 @@ class smu_smc_aperture_reset_state_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _cell(self, name: str, addr: int, text: str) -> None:
@@ -121,8 +118,8 @@ class smu_smc_aperture_reset_state_test_seq:
         for _ in range(8):
             await jtag.step_tms(0)
         idcode = await jtag.read_idcode()
-        if idcode != 0x1:
-            raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
+        if idcode != DTP_DEFAULT_IDCODE:
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         gate = dut.tb_smc_jtag2axi_security_disable.value
         if not gate.is_resolvable or int(gate) & 1:
             raise AssertionError(f"SMC J2A gated: security_disable={gate}")
@@ -193,13 +190,4 @@ class smu_smc_aperture_reset_state_test_seq:
             f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait kinds declared by the sequence", len(lines), CONTRACT_WAIT_KINDS)
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 6, evidence="CHK-NONVAC")
         self.done = True

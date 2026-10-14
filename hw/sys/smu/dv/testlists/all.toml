@@ -1980,6 +1980,34 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
+[[groups]]
+name = "smc_under_smu"
+tests = [
+  "smu_dtp_bsr_extest_loopback_test",
+  "smu_ext_boot_seq_gate_test",
+  "smu_i3c_mem_port_connectivity_test",
+  "smu_ic_reset_ss_domain_matrix_test",
+  "smu_smc_mailbox_int_test",
+  "smu_smc_mailbox_sanity_test",
+  "smu_smc_rom_boot_min_pass_test",
+  "smu_smc_reset_ctrl_test",
+  "smu_smc_wdt_sanity_test",
+  "smu_smc_wdt_timeout_irq_test",
+  "smu_system_timer_octs_test",
+  "smu_periph_ext_window_test",
+  "smu_smc_boundary_io_test",
+  "smu_smc_ss_reset_ctrl_sweep_test",
+  "smu_smc_boundary_lane_sweep_test",
+  "smu_smc_gpio_pad_output_test",
+  "smu_smc_efuse_shadow_sense_reset_test",
+  "smu_smc_cool_reset_pin_test",
+  "smu_smc_peripheral_irq_test",
+  "smu_sram_auto_init_disabled_test",
+  "smu_telemetry_atb_capture_test",
+  "smu_cla_action_test",
+  "smu_smc_wdt_boundary_timeout_test",
+]
+
 [[tests]]
 name = "smu_smc_scratch_bridge_readback_test"
 module = "smu_smc_scratch_bridge_readback_test"

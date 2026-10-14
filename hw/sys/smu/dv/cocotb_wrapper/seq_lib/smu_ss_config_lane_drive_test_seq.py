@@ -37,9 +37,9 @@ J2A_POLL_LIMIT = 128
 PIN_POLL_LIMIT = 64
 PIN_POLL_CYCLES = 4
 # S1 reads SS_CONFIG_LOCK once, S2 writes 32 lanes, S3 writes twice and reads SS_CONFIG back.
-CONTRACT_J2A_ACCESSES = 36
+EXPECTED_J2A_ACCESSES = 36
 # One propagation wait after each of the 32 lane writes and the two S3 writes.
-CONTRACT_PIN_WAITS = 34
+EXPECTED_PIN_WAITS = 34
 
 
 class smu_ss_config_lane_drive_test_seq:
@@ -227,19 +227,17 @@ class smu_ss_config_lane_drive_test_seq:
         pin = self.sites["pin"]["count"]
         self._log(
             f"CHK-TIMEOUT-PATHS: expired={expired} j2a_waits={j2a} pin_waits={pin} "
-            f"(declared {CONTRACT_J2A_ACCESSES} J2A accesses + "
-            f"{CONTRACT_PIN_WAITS} pin waits)"
+            f"(declared {EXPECTED_J2A_ACCESSES} J2A accesses + "
+            f"{EXPECTED_PIN_WAITS} pin waits)"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("J2A wait sites exercised", j2a, CONTRACT_J2A_ACCESSES)
-        sb.expect_eq("pin wait sites exercised", pin, CONTRACT_PIN_WAITS)
+        sb.expect_eq("J2A wait sites exercised", j2a, EXPECTED_J2A_ACCESSES)
+        sb.expect_eq("pin wait sites exercised", pin, EXPECTED_PIN_WAITS)
 
-        await ClockCycles(dut.clk_smu_i, 2)
-        self.step_ts["PASS"] = float(get_sim_time(unit="ns"))
-        order = ["S1", "S2", "S3", "S4", "PASS"]
+        order = ["S1", "S2", "S3", "S4"]
         deltas = [self.step_ts[b] - self.step_ts[a] for a, b in zip(order, order[1:])]
         self._log(
-            "CHK-NONVAC: ordered fence S1<S2<S3<S4<PASS "
+            "CHK-NONVAC: ordered fence S1<S2<S3<S4 "
             + " ".join(f"{a}->{b}={d:.0f}ns" for a, b, d in zip(order, order[1:], deltas))
         )
         sb.expect_eq(

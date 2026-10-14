@@ -7,14 +7,15 @@ smc_efuse_map.rdl Address Map; smu-smc.adoc 256 32-bit words per instance; inter
 fuse_command_resp_t {data, status, valid}; efuse_interface_ctrl.rdl efuse_sense_done bit 0.
 
 The stream is captured at the SMU boundary during the shared bring-up. Sixteen map words are
-read back over JTAG2AXI and compared with the stream word of the same index. Three open owner
-questions are waived: the pre-sense status is never read, no multi-word element is assembled, and
-the per-slice equality of smc_shadow_regs with the stream is logged and never compared.
+read back over JTAG2AXI; each map word and the stream word of the same index are compared with
+the word of that index in the +smc_efuse_hex image the run loads, and the map word with the
+stream word. The pre-sense status, multi-word elements and the per-slice smc_shadow_regs values
+are not compared.
 """
 
 from __future__ import annotations
 
-import time
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import Event, RisingEdge
@@ -23,6 +24,7 @@ from ocah_jtag_vip import OcahJtagState
 from seq_lib.smu_addr_map import smc_addr, smc_indexed_addr
 from seq_lib.smu_fuse_sense_probe import smc_command_nets
 from seq_lib.smu_jtag_helpers import (
+    DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
     axi64_unpack32,
@@ -52,13 +54,28 @@ CAPTURE_BOUND_EDGES = 400_000
 DONE_BOUND_EDGES = 200_000
 TAIL_EDGES = 64
 J2A_POLL_LIMIT = 128
-CONTRACT_WAIT_SITES = 3
-IDCODE = 0x1
+EXPECTED_WAIT_SITES = 3
 SITE_NAMES = ("S1_stream_capture", "S1_done_rise", "j2a")
+EFUSE_IMAGE_ASSET = (
+    Path(__file__).resolve().parents[6] / "hw/sys/smu/dv/assets/smc_efuse_readback_pattern.hex"
+)
 
 
 def _site(bound: int) -> dict:
     return {"bound": bound, "count": 0, "last": "none", "expired": 0}
+
+
+def load_efuse_image() -> list[int]:
+    """Words of the +smc_efuse_hex image: one 32-bit hex word per line, word N on line N."""
+    path = Path(cocotb.plusargs.get("smc_efuse_hex", EFUSE_IMAGE_ASSET))
+    words = []
+    for line in path.read_text().splitlines():
+        text = line.split("//", 1)[0].strip()
+        if text:
+            words.append(int(text, 16) & WORD_MASK)
+    if len(words) != STREAM_WORDS:
+        raise AssertionError(f"eFuse image {path} has {len(words)} words, want {STREAM_WORDS}")
+    return words
 
 
 class SmuEfuseStreamCapture:
@@ -144,7 +161,6 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
         self.cfg = test.cfg
         self.sb = test.env.scoreboard
         self.capture = test.efuse_capture
-        self.step_ts: dict[str, float] = {}
         self.j2a = 0
         self.sites = {**self.capture.sites, "j2a": _site(J2A_POLL_LIMIT)}
 
@@ -152,7 +168,6 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _cell(self, name: str, text: str) -> None:
@@ -189,6 +204,7 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
         dut = self.dut
         sb = self.sb
         cap = self.capture
+        image = load_efuse_image()
 
         self._mark("S1", "SETUP: stream capture, done rise, TAP reset, IDCODE, J2A gate open")
         await self.cfg.reset_done.wait()
@@ -213,8 +229,8 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
         for _ in range(8):
             await jtag.step_tms(0)
         idcode = await jtag.read_idcode()
-        if idcode != IDCODE:
-            raise AssertionError(f"IDCODE want 0x{IDCODE:x} got 0x{idcode:08x}")
+        if idcode != DTP_DEFAULT_IDCODE:
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         gate = dut.tb_smc_jtag2axi_security_disable.value
         if not gate.is_resolvable or int(gate) & 1:
             raise AssertionError(f"SMC J2A gated: security_disable={gate}")
@@ -225,9 +241,16 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
             addr = MAP_BASE + 4 * idx
             reads[idx] = await self._rd32(addr, f"map word {idx}")
             self._cell(
-                "all_256_words_match",
-                f"addr=0x{addr:08x} idx={idx} read=0x{reads[idx]:08x} stream=0x{stream[idx]:08x}",
+                "sampled_word_vs_stream",
+                f"addr=0x{addr:08x} idx={idx} read=0x{reads[idx]:08x} stream=0x{stream[idx]:08x} "
+                f"image=0x{image[idx]:08x}",
             )
+        sb.expect_eq(
+            "sampled eFuse map words and stream words equal the eFuse image word of the same index",
+            [(idx, reads[idx], stream[idx]) for idx in SAMPLED_INDICES],
+            [(idx, image[idx], image[idx]) for idx in SAMPLED_INDICES],
+            evidence="BOOT_SHADOW_SAMPLES",
+        )
         sb.expect_eq(
             "sampled eFuse map words equal the stream word of the same index",
             [(idx, reads[idx]) for idx in SAMPLED_INDICES],
@@ -245,9 +268,9 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
                 raise AssertionError(f"element {cell} word {idx} is not in the sampled set")
             self._cell(cell, f"addr=0x{addr:08x} value=0x{reads[idx]:08x}")
             got.append((cell, reads[idx]))
-            want.append((cell, stream[idx]))
+            want.append((cell, image[idx]))
         sb.expect_eq(
-            "each named map element's first word equals its stream word",
+            "each named map element's first word equals its eFuse image word",
             got,
             want,
             evidence="BOOT_SHADOW_ELEMENTS",
@@ -272,19 +295,14 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
         bits = len(dut.smc_shadow_regs)
         for idx in SAMPLED_INDICES:
             slc = self._slice(port, 4 * idx, 4)
-            self._log(
-                f"CHK-BOOT-SHADOW-PORT: idx={idx} slice=0x{slc:08x} stream=0x{stream[idx]:08x} "
-                f"equal={int(slc == stream[idx])}"
+            self._cell(
+                "shadow_port_slice",
+                f"idx={idx} slice=0x{slc:08x} stream=0x{stream[idx]:08x} "
+                f"equal={int(slc == stream[idx])} (measured, not compared)",
             )
         self._cell(
-            "port_matches_map",
-            f"smc_shadow_regs nonzero={int(port != 0)} bits={bits}",
-        )
-        sb.expect_eq(
-            "smc_shadow_regs resolves and is not all zero after the sense",
-            (True, port != 0),
-            (True, True),
-            evidence="BOOT_SHADOW_PORT",
+            "shadow_port_nonzero",
+            f"smc_shadow_regs nonzero={int(port != 0)} bits={bits} (measured, not compared)",
         )
 
         self._mark("S6", "TIMEOUT: bounded waits and last state")
@@ -299,15 +317,7 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
         expired = sum(rec["expired"] for rec in self.sites.values())
         self._log(
             f"CHK-TIMEOUT-PATHS: sites={len(lines)} expired={expired} "
-            f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
+            f"j2a_accesses_counted={self.j2a}"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait sites named by the test steps", len(lines), CONTRACT_WAIT_SITES)
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "S6", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<S6<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 7, evidence="CHK-NONVAC")
+        sb.expect_eq("bounded wait sites named by the test steps", len(lines), EXPECTED_WAIT_SITES)

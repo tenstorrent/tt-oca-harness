@@ -228,12 +228,21 @@ class smu_ndm_reset_handshake_test_seq:
         await self._cold_reset()
         seen = await self._rd32(NDMRESET_REQUEST, "NDMRESET_REQUEST")
         sb.expect_eq(
-            f"NDMRESET_REQUEST reads its reset value {REQUEST_RESET} after a cold reset "
-            "with all request pins low",
+            "NDMRESET_REQUEST reads 0 with all request pins low after a cold reset",
             seen & REQUEST_BM,
             REQUEST_RESET,
             evidence="NDM_REQUEST_S4",
         )
+        dut.tb_smc_ndmreset_request.value = 1
+        seen = await self._poll_request_bit(0, 1)
+        sb.expect_eq(
+            "NDMRESET_REQUEST follows request pin 0 after the cold reset",
+            seen & REQUEST_BM,
+            0x1,
+            evidence="NDM_REQUEST_S4",
+        )
+        dut.tb_smc_ndmreset_request.value = 0
+        await self._poll_request_bit(0, 0)
         self.steps.append("S5")
 
         # S6: single process lanes reach the port and clear again.

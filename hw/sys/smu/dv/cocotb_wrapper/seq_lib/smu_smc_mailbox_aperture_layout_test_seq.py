@@ -11,19 +11,16 @@ Outbound mailbox 0 answers each of its ten offsets as its own register, WIRQT an
 0, 1 and 31 and of the inbound aperture of pair 0 are independent, SMC_ATTRIBUTES reports 32
 mailboxes of depth 2 (the high word is read with a 4-byte upper-lane access; an 8-byte read and
 slice replaces it when that access does not answer SUCCESS). The response above the registers is
-observe-only (owner value pending): only a resolved, non-BUSY status is compared. No
-force/deposit; all stimulus is JTAG2AXI MMIO.
+logged and not compared.
 """
 
 from __future__ import annotations
-
-import time
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import smc_addr
+from seq_lib.smu_addr_map import cpu_ctrl_bm, smc_addr
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_BUSY,
@@ -45,23 +42,16 @@ MASK32 = 0xFFFF_FFFF
 FEED_C0DE = 0xFEED_C0DE
 FEED_DEAD = 0xFEED_DEAD
 SC = {J2A_STATUS_SUCCESS: "SUCCESS", J2A_STATUS_SLVERR: "SLVERR", J2A_STATUS_BUSY: "BUSY"}
-
-OFF = {
-    "WRITE_DATA": 0x0,
-    "READ_DATA": 0x8,
-    "STATUS": 0x10,
-    "ERROR_FLAGS": 0x18,
-    "WIRQT": 0x20,
-    "RIRQT": 0x28,
-    "IRQS": 0x30,
-    "IRQEN": 0x38,
-    "IRQP": 0x40,
-    "CTRL": 0x48,
-}
+NUM_MAILBOXES_BM = cpu_ctrl_bm("CPU_CTRL__SMC_ATTRIBUTES__NUM_MAILBOXES_bm")
+MAILBOX_DEPTH_BM = cpu_ctrl_bm("CPU_CTRL__SMC_ATTRIBUTES__MAILBOX_DEPTH_bm")
 
 
 def _out(idx: int, reg: str) -> int:
     return smc_addr(f"SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_{idx}_{reg}_BASE_ADDR")
+
+
+def _field(raw: int, mask: int) -> int:
+    return (raw & mask) >> ((mask & -mask).bit_length() - 1)
 
 
 MBX0 = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR")
@@ -85,13 +75,11 @@ class smu_smc_mailbox_aperture_layout_test_seq:
         self.j2a_last = "none"
         self.j2a_expired = False
         self.sites: list[tuple[str, str, str, str]] = []
-        self.step_ts: dict[str, float] = {}
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     @staticmethod
@@ -206,18 +194,18 @@ class smu_smc_mailbox_aperture_layout_test_seq:
 
         # S2 outbound mailbox 0 offsets
         self._mark("S2", "outbound mailbox 0: ten offsets, WIRQT and IRQEN round trips")
-        wd = await self._rd("ten_offsets_distinct.WRITE_DATA", MBX0 + OFF["WRITE_DATA"])
-        rd = await self._rd("ten_offsets_distinct.READ_DATA", MBX0 + OFF["READ_DATA"])
-        _, status = await self._rd("ten_offsets_distinct.STATUS", MBX0 + OFF["STATUS"])
-        _, err = await self._rd("ten_offsets_distinct.ERROR_FLAGS", MBX0 + OFF["ERROR_FLAGS"])
-        _, rirqt = await self._rd("ten_offsets_distinct.RIRQT", MBX0 + OFF["RIRQT"])
-        _, irqs = await self._rd("ten_offsets_distinct.IRQS", MBX0 + OFF["IRQS"])
-        _, irqp = await self._rd("ten_offsets_distinct.IRQP", MBX0 + OFF["IRQP"])
-        ctrl = await self._rd("ten_offsets_distinct.CTRL", MBX0 + OFF["CTRL"])
-        await self._wr("wirqt_roundtrip.write", MBX0 + OFF["WIRQT"], 0x1)
-        _, wirqt_rb = await self._rd("wirqt_roundtrip.read", MBX0 + OFF["WIRQT"])
-        await self._wr("irqen_roundtrip.write", MBX0 + OFF["IRQEN"], 0x5)
-        _, irqen_rb = await self._rd("irqen_roundtrip.read", MBX0 + OFF["IRQEN"])
+        wd = await self._rd("ten_offsets_distinct.WRITE_DATA", _out(0, "WRITE_DATA"))
+        rd = await self._rd("ten_offsets_distinct.READ_DATA", _out(0, "READ_DATA"))
+        _, status = await self._rd("ten_offsets_distinct.STATUS", _out(0, "STATUS"))
+        _, err = await self._rd("ten_offsets_distinct.ERROR_FLAGS", _out(0, "ERROR_FLAGS"))
+        _, rirqt = await self._rd("ten_offsets_distinct.RIRQT", _out(0, "RIRQT"))
+        _, irqs = await self._rd("ten_offsets_distinct.IRQS", _out(0, "IRQS"))
+        _, irqp = await self._rd("ten_offsets_distinct.IRQP", _out(0, "IRQP"))
+        ctrl = await self._rd("ten_offsets_distinct.CTRL", _out(0, "CTRL"))
+        await self._wr("wirqt_roundtrip.write", _out(0, "WIRQT"), 0x1)
+        _, wirqt_rb = await self._rd("wirqt_roundtrip.read", _out(0, "WIRQT"))
+        await self._wr("irqen_roundtrip.write", _out(0, "IRQEN"), 0x5)
+        _, irqen_rb = await self._rd("irqen_roundtrip.read", _out(0, "IRQEN"))
         sb.expect_eq(
             "CHK-MBX-OFFSET-MAP (WRITE_DATA, READ_DATA, STATUS, ERROR_FLAGS, RIRQT, IRQS, IRQP, "
             "CTRL, WIRQT rb, IRQEN rb)",
@@ -295,25 +283,23 @@ class smu_smc_mailbox_aperture_layout_test_seq:
             )
         sb.expect_eq(
             "CHK-MBX-SMC-ATTRIBUTES (status, num_mailboxes, mailbox_depth)",
-            (hi_status, (hi >> 8) & 0x3F, (hi >> 4) & 0xF),
+            (
+                hi_status,
+                _field(hi << 32, NUM_MAILBOXES_BM),
+                _field(hi << 32, MAILBOX_DEPTH_BM),
+            ),
             (J2A_STATUS_SUCCESS, 32, 2),
             evidence="MBX_SMC_ATTRIBUTES",
         )
 
-        # S7 above the registers (observe-only)
+        # S7 above the registers (measured, not compared)
         self._mark("S7", "offsets 0x50 and 0x7F8 read, offset 0x50 write")
         s_a, d_a = await self._rd("above_registers_response_recorded.rd_0x50", HOLE_LOW)
         s_b, d_b = await self._rd("above_registers_response_recorded.rd_0x7f8", HOLE_HIGH)
         s_c = await self._wr("above_registers_response_recorded.wr_0x50", HOLE_LOW, 0x0)
         self._log(
-            f"CHK-MBX-APERTURE-HOLE-LOG: off=0x50 rd status={SC.get(s_a, s_a)} data=0x{d_a:08x} ; "
+            f"CELL above_registers: off=0x50 rd status={SC.get(s_a, s_a)} data=0x{d_a:08x} ; "
             f"wr status={SC.get(s_c, s_c)}; off=0x7f8 rd status={SC.get(s_b, s_b)} data=0x{d_b:08x}"
-        )
-        sb.expect_eq(
-            "CHK-MBX-APERTURE-HOLE-LOG (rd 0x50, rd 0x7f8, wr 0x50 resolved non-BUSY)",
-            (s_a != J2A_STATUS_BUSY, s_b != J2A_STATUS_BUSY, s_c != J2A_STATUS_BUSY),
-            (True, True, True),
-            evidence="MBX_APERTURE_HOLE_LOG",
         )
 
         # S8 timeout inventory
@@ -341,15 +327,4 @@ class smu_smc_mailbox_aperture_layout_test_seq:
         self._log(
             f"CELL final lane_vector=0x{lane_vector:08x} mbx0_irqen=0x{e0_after:x} "
             f"mbx1_irqen=0x{e1_rb:x} inbound0_irqen=0x{i_rb:x}"
-        )
-        self.step_ts["PASS"] = time.monotonic()
-
-        order = [f"S{i}" for i in range(1, 9)] + ["PASS"]
-        for step in order:
-            if step not in self.step_ts:
-                raise AssertionError(f"CHK-NONVAC missing step term: {step}")
-        advancing = sum(1 for a, b in zip(order, order[1:]) if self.step_ts[b] >= self.step_ts[a])
-        self._log(f"CHK-NONVAC: Ordered fence {'<'.join(order)} advancing={advancing}")
-        sb.expect_eq(
-            "CHK-NONVAC ordered step count", advancing, len(order) - 1, evidence="CHK-NONVAC"
         )

@@ -11,12 +11,10 @@ Outbound mailbox 0 over the SMC fabric JTAG2AXI bridge: IRQS and STATUS latch wi
 and lane 0 of smc_ext_mailbox_interrupts_o follow IRQEN, the lane drops with the enable, flush and
 acknowledge return to baseline, WIRQT = 5 clamps to MailboxDepth - 1, and an acknowledge while the
 occupancy still exceeds WIRQT is observed and logged only. The lane-n = mailbox-n mapping is proven
-by smu_smc_mailbox_int_test. No force/deposit; all stimulus is JTAG2AXI MMIO.
+by smu_smc_mailbox_int_test.
 """
 
 from __future__ import annotations
-
-import time
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -70,13 +68,11 @@ class smu_smc_mailbox_threshold_lane_test_seq:
         self.j2a_last = "none"
         self.j2a_expired = False
         self.sites: list[tuple[str, str, str, str]] = []
-        self.step_ts: dict[str, float] = {}
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     @staticmethod
@@ -281,7 +277,7 @@ class smu_smc_mailbox_threshold_lane_test_seq:
             evidence="MBX_WT_CLAMP",
         )
 
-        # S7 acknowledge while the condition holds (observe only)
+        # S7 acknowledge while the condition holds (lane trace measured, not compared)
         self._mark("S7", "acknowledge IRQS with two words queued; 256-sample lane trace")
         await self._wr("ack_while_condition_true.IRQS_ack", IRQS, IRQ_WTIRQ)
         trace = await self._window("ack_while_condition_true.trace", WINDOW_TRACE)
@@ -291,7 +287,7 @@ class smu_smc_mailbox_threshold_lane_test_seq:
         runs = [(v & 1, n) for v, n in self._runs([t & 1 for t in trace])]
         self._log(
             f"CHK-MBX-WT-REASSERT-LOG: irqs_1=0x{irqs7a:x} irqs_2=0x{irqs7b:x} "
-            f"lane_runs={runs} (LINKED-ISSUE, owner value pending, never compared)"
+            f"lane_runs={runs} (measured, not compared)"
         )
         sb.expect_eq(
             "CHK-MBX-WT-REASSERT-LOG (status_bit2)",
@@ -350,14 +346,3 @@ class smu_smc_mailbox_threshold_lane_test_seq:
         )
 
         await ClockCycles(dut.clk_smu_i, 32)
-        self.step_ts["PASS"] = time.monotonic()
-
-        order = [f"S{i}" for i in range(1, 10)] + ["PASS"]
-        for step in order:
-            if step not in self.step_ts:
-                raise AssertionError(f"CHK-NONVAC missing step term: {step}")
-        advancing = sum(1 for a, b in zip(order, order[1:]) if self.step_ts[b] >= self.step_ts[a])
-        self._log(f"CHK-NONVAC: Ordered fence {'<'.join(order)} advancing={advancing}")
-        sb.expect_eq(
-            "CHK-NONVAC ordered step count", advancing, len(order) - 1, evidence="CHK-NONVAC"
-        )

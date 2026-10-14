@@ -6,12 +6,13 @@ Spec: system_timer_octs.rdl (CTRL, TIMER_START, STATUS.MODE/RUNNING and reset va
 architecture.adoc and interface.adoc (secondary role, timer_count_o); cpu_ctrl.rdl
 (SMC_ATTRIBUTES.chiplet_is_primary); port_table.adoc (chiplet_is_primary_i, timer_count_o).
 
+The default-strap reads of SMC_ATTRIBUTES and STATUS.MODE are the control for the strap-low leg,
+and a PRIMARY-mode START that runs the timer is the control for the SECONDARY hold.
+
 32-bit CSRs at addr[2]=1 use the upper 64-bit J2A lane (wstrb 0xF0).
 """
 
 from __future__ import annotations
-
-import time
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -19,6 +20,7 @@ from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import cpu_ctrl_bm, smc_addr, system_timer_octs_bm
 from seq_lib.smu_jtag_helpers import (
+    DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
     jtag2axi_single_read,
@@ -48,6 +50,8 @@ STATUS_RUNNING_BM = system_timer_octs_bm(f"{_P}STATUS__RUNNING_bm")
 STATUS_MODE_BM = system_timer_octs_bm(f"{_P}STATUS__MODE_bm")
 STATUS_RUNNING_RESET = system_timer_octs_bm(f"{_P}STATUS__RUNNING_reset")
 ATTR_PRIMARY_BM = cpu_ctrl_bm("CPU_CTRL__SMC_ATTRIBUTES__CHIPLET_IS_PRIMARY_bm")
+# system_timer_octs.rdl STATUS.MODE: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).
+MODE_PRIMARY = 0
 MODE_SECONDARY = 1
 ZERO_CELLS = (
     ("TIMER_START", ADDR_START),
@@ -62,7 +66,7 @@ ZERO_CELLS = (
 J2A_POLL_LIMIT = 128
 RESET_DONE_BOUND = 5000
 RESET_SAMPLER_BOUND = 4_000_000
-CONTRACT_WAIT_SITES = 4
+EXPECTED_WAIT_SITES = 5
 HOLD_SAMPLES = 1024
 STRAP_SETTLE_CYCLES = 64
 HOLD_PRESET = 0x0001_0000
@@ -79,7 +83,6 @@ class smu_octs_reset_and_secondary_hold_test_seq:
         self.done = False
         self.jtag = None
         self.j2a = 0
-        self.step_ts: dict[str, float] = {}
         self.sites: dict[str, dict] = {}
         self.stop_sampling = False
         self.reset_samples = 0
@@ -96,7 +99,6 @@ class smu_octs_reset_and_secondary_hold_test_seq:
         )
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _cell(self, name: str, addr: int, text: str) -> None:
@@ -210,14 +212,14 @@ class smu_octs_reset_and_secondary_hold_test_seq:
         for _ in range(8):
             await jtag.step_tms(0)
         idcode = await jtag.read_idcode()
-        if idcode != 0x1:
-            raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
+        if idcode != DTP_DEFAULT_IDCODE:
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         gate = dut.tb_smc_jtag2axi_security_disable.value
         if not gate.is_resolvable or int(gate) & 1:
             raise AssertionError(f"SMC J2A gated: security_disable={gate}")
         self._log(f"CELL setup idcode=0x{idcode:08x} security_disable={int(gate)}")
 
-        self._mark("S2", "read the nine OCTS reset cells")
+        self._mark("S2", "read the nine OCTS reset cells and SMC_ATTRIBUTES at the default strap")
         ctrl = await self._j2a_rd32(ADDR_CTRL, "CTRL")
         self._cell("CTRL", ADDR_CTRL, f"value=0x{ctrl:08x} want=0x{CTRL_RESET:08x}")
         sb.expect_eq("CHK-OCTSR-RESET-CSR CTRL", ctrl, CTRL_RESET, evidence="OCTSR_RESET_CSR")
@@ -232,6 +234,14 @@ class smu_octs_reset_and_secondary_hold_test_seq:
             int(bool(status & STATUS_RUNNING_BM)),
             STATUS_RUNNING_RESET,
             evidence="OCTSR_RESET_CSR",
+        )
+        default_attrs = await self._j2a_rd32(ADDR_ATTRS, "SMC_ATTRIBUTES default strap")
+        self._cell("SMC_ATTRIBUTES", ADDR_ATTRS, f"default strap value=0x{default_attrs:08x}")
+        sb.expect_eq(
+            "CHK-OCTSR-STRAP-LOW default strap: chiplet_is_primary and STATUS.MODE",
+            (default_attrs & ATTR_PRIMARY_BM, status & STATUS_MODE_BM),
+            (ATTR_PRIMARY_BM, MODE_PRIMARY),
+            evidence="OCTSR_STRAP_LOW",
         )
 
         self._mark("S3", "timer_count_o samples since reset release are all zero")
@@ -333,7 +343,35 @@ class smu_octs_reset_and_secondary_hold_test_seq:
         dut.tb_chiplet_secondary.value = 0
         self._log("CELL tb_chiplet_secondary restored=0")
 
-        self._mark("S6", "TIMEOUT: bounded waits and last state")
+        self._mark("S6", "strap high: START in PRIMARY mode runs the timer")
+        await ClockCycles(dut.clk_smu_i, STRAP_SETTLE_CYCLES)
+        await self._j2a_wr32(ADDR_START, 1, "TIMER_START primary")
+        status = await self._j2a_rd32(ADDR_STATUS, "STATUS primary")
+        self._cell("STATUS.RUNNING", ADDR_STATUS, f"primary value=0x{status:08x}")
+        rec = self._site("run_pin_wait", f"{HOLD_SAMPLES} clk_smu")
+        first = self._pin()
+        moved = None
+        for i in range(HOLD_SAMPLES):
+            await RisingEdge(dut.clk_smu_i)
+            value = self._pin()
+            rec["count"] = i + 1
+            rec["last"] = f"edges={i + 1} first=0x{first:016x} value=0x{value:016x}"
+            if value != first:
+                moved = value
+                break
+        if moved is None:
+            rec["expired"] += 1
+            self._log(f"TIMEOUT-PATH run_pin_wait: EXPIRED last={rec['last']}")
+        rec["done"] = True
+        self._cell("timer_count_o", 0, f"primary run {rec['last']}")
+        sb.expect_eq(
+            "CHK-OCTSR-SECONDARY-HOLD control: PRIMARY START sets RUNNING and moves timer_count_o",
+            (int(bool(status & STATUS_RUNNING_BM)), moved is not None),
+            (1, True),
+            evidence="OCTSR_SECONDARY_HOLD",
+        )
+
+        self._mark("S7", "TIMEOUT: bounded waits and last state")
         lines = []
         for site, rec in self.sites.items():
             state = "EXPIRED" if rec["expired"] else "ok"
@@ -350,21 +388,8 @@ class smu_octs_reset_and_secondary_hold_test_seq:
         sb.expect_eq(
             "TIMEOUT-PATH site count equals the declared waits",
             sum(1 for rec in self.sites.values() if rec["count"] > 0),
-            CONTRACT_WAIT_SITES,
+            EXPECTED_WAIT_SITES,
             evidence="CHK_TIMEOUT_PATHS",
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "S6", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<S6<PASS)")
-        sb.expect_eq(
-            "CHK-NONVAC ordered fence",
-            sorted(self.step_ts, key=self.step_ts.get),
-            order,
-            evidence="CHK-NONVAC",
-        )
         self.done = True

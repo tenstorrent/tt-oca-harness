@@ -9,8 +9,6 @@ The BRESP of the write that sets locked is logged as CHK-LOCK-SET and never comp
 
 from __future__ import annotations
 
-import time
-
 import cocotb
 from cocotb.triggers import RisingEdge
 from ocah_axi_vip import RESP_DECERR, RESP_OKAY, resp_name
@@ -126,7 +124,6 @@ class smu_filter_lock_test_seq:
         self.done = False
         self.sites: dict[str, int] = {}
         self.last: dict[str, str] = {}
-        self.step_ts: dict[str, float] = {}
         self.parity: dict[str, list] = {i: [] for i in INSTANCES}
         self.master = None
         self.expired: list[str] = []
@@ -136,7 +133,6 @@ class smu_filter_lock_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _addr(self, inst: str, reg: str, entry: int) -> int:
@@ -488,23 +484,14 @@ class smu_filter_lock_test_seq:
         for line in paths:
             self._log(f"TIMEOUT-PATH {line}")
         for site, count in want_sites.items():
-            sb.expect_eq(f"axi accesses at site {site}", self.sites.get(site), count)
+            sb.expect_eq(
+                f"axi accesses at site {site}",
+                self.sites.get(site),
+                count,
+                evidence="CHK_TIMEOUT_PATHS",
+            )
         sb.expect_eq("j2a accesses", self.j2a, J2A_ACCESSES)
         sb.expect_eq("j2a last status", self.last["j2a"], f"status={J2A_STATUS_DECERR}")
         sb.expect_eq("expired TIMEOUT-PATH records", self.expired, [])
         self._log(f"CHK-TIMEOUT-PATHS: sites={len(paths)} expired={len(self.expired)}")
-        sb.expect_eq(
-            "CHK-TIMEOUT-PATHS site count",
-            len(paths),
-            len(SITES),
-            evidence="CHK_TIMEOUT_PATHS",
-        )
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 10, evidence="CHK-NONVAC")
         self.done = True

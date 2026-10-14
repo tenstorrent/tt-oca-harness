@@ -7,15 +7,14 @@ Reset Synchronization; port_table.adoc rst_cold_ni, powergood_i, rst_primary_*_n
 
 The stimulus is powergood_i, rst_cold_ni and jtag_trst only. Two samplers read the stable
 power-good, the stable cold reset and the primary resets on every clk_ref_i and clk_smu_i edge.
-Counts that the owner has not fixed are logged and never compared.
-Observe-only legs: the order between the exported stable
-cold pin and the primary outputs is logged; the primary outputs are compared for holding 0 while
-the cold reset is asserted and for releasing within the bounded wait.
+The assertion latencies and the clk_smu_i samples where the SMC primary reset reads 1 while the
+stable cold reset reads 0 are logged and not compared. The primary outputs are compared for
+holding 0 while the cold reset is asserted and for releasing within the bounded wait, and the
+clk_ref_i primary reset for reading 0 at every clk_ref_i sample where the stable cold reset
+reads 0.
 """
 
 from __future__ import annotations
-
-import time
 
 import cocotb
 from cocotb.triggers import RisingEdge
@@ -66,7 +65,6 @@ class smu_smc_cold_boot_release_order_test_seq:
         self.dut = cocotb.top
         self.cfg = test.cfg
         self.sb = test.env.scoreboard
-        self.step_ts: dict[str, float] = {}
         self.sites = {
             name: {"bound": 0, "count": 0, "last": "none", "expired": 0} for name in SITE_NAMES
         }
@@ -78,7 +76,6 @@ class smu_smc_cold_boot_release_order_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _cell(self, name: str, text: str) -> None:
@@ -398,16 +395,22 @@ class smu_smc_cold_boot_release_order_test_seq:
             }
             self._log(
                 f"CHK-{token.replace('_', '-')}: prim1_cold0_samples={early} runs={runs} "
-                f"lead_clk_{wkey}={lead} samples={len(rec['prim'])} "
-                "(observe-only, owner value pending)"
+                f"lead_clk_{wkey}={lead} samples={len(rec['prim'])}"
             )
+            if wkey == "ref":
+                sb.expect_eq(
+                    f"{name} reads 0 at every sample where the stable cold reset reads 0",
+                    early,
+                    0,
+                    evidence=token,
+                )
             a0, a1 = a_hold_start[idx], a_hold_end[idx]
             b0, b1 = b_hold_start[idx], b_hold_end[idx]
             first_cold0 = next((k for k in range(b_fall[idx], b1) if rec["cold"][k] == 0), None)
             self._log(
                 f"CHK-{token.replace('_', '-')}: assert_latency_edges={b0 - b_fall[idx]} "
                 f"vs_exported_pin={None if first_cold0 is None else b0 - first_cold0} "
-                "(observe-only, owner value pending)"
+                "(measured, not compared)"
             )
             hold_viol = sum(rec["prim"][a0:a1]) + sum(rec["prim"][b0:b1])
             viol_idx = [k for k in range(a0, a1) if rec["prim"][k]] + [
@@ -443,7 +446,7 @@ class smu_smc_cold_boot_release_order_test_seq:
             self._log(
                 f"CHK-BOOT-COLD-TO-PRIMARY: boot={boot} smc_rise={sw['prim_rises']} "
                 f"smc_cold_rise={sw['cold_rises']} ref_rise={rw['prim_rises']} "
-                f"ref_cold_rise={rw['cold_rises']} (observe-only, owner value pending)"
+                f"ref_cold_rise={rw['cold_rises']}"
             )
         self._cell(
             "primary_after_stable_cold_both_domains",
@@ -472,7 +475,7 @@ class smu_smc_cold_boot_release_order_test_seq:
                 f"ref_latency_dest_clks={wins[(boot, 'ref')]['latency']}"
             )
 
-        # S8: timeout records and ordered fence.
+        # S8: timeout records.
         self._mark("S8", "TIMEOUT: bounded waits and last state")
         lines = []
         for site, rec in self.sites.items():
@@ -505,14 +508,6 @@ class smu_smc_cold_boot_release_order_test_seq:
                 ]
             ),
         )
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<S6<S7<S8<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 9, evidence="CHK-NONVAC")
         dut.powergood_i.value = 1
         dut.rst_cold_ni.value = 1
         dut.jtag_trst.value = 1

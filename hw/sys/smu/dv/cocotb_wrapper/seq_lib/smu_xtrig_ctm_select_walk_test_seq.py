@@ -19,7 +19,6 @@ S4  Every bounded wait is a site with its bound, last state and expiry.
 
 from __future__ import annotations
 
-import time
 from typing import cast
 
 import cocotb
@@ -51,12 +50,11 @@ CT_DST_SELECT_BM = cross_trigger_u32("CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT
 CT_DST_SELECT_BW = cross_trigger_u32("CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_bw")
 
 KIND_PORTS = (0, 16, 18)
-MIN_BITS_PER_REGISTER = 8
 
 J2A_POLL_LIMIT = 128
 # Bounded waits: a JTAG2AXI access.
-CONTRACT_WAITS = ("j2a",)
-CONTRACT_WAIT_COUNT = 1
+EXPECTED_WAITS = ("j2a",)
+EXPECTED_WAIT_COUNT = 1
 SITES = ("j2a",)
 
 
@@ -70,7 +68,6 @@ class smu_xtrig_ctm_select_walk_test_seq:
         self.sb = test.env.scoreboard
         self.jtag = None
         self.j2a = 0
-        self.step_ts: dict[str, float] = {}
         self.sites = {
             site: {"bound": J2A_POLL_LIMIT, "count": 0, "last": "none", "expired": 0}
             for site in SITES
@@ -80,7 +77,6 @@ class smu_xtrig_ctm_select_walk_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _cell(self, name: str, addr: int, text: str) -> None:
@@ -206,22 +202,15 @@ class smu_xtrig_ctm_select_walk_test_seq:
             got = await self._rd32(addr, f"CT_SRC[{idx}] clear")
             self._cell(f"CT_SRC[{idx}] clear", addr, f"wrote=0x00000000 read=0x{got:08x}")
             cleared[idx] = got
-        bits_per_register = {idx: [r[2] for r in records if r[0] == idx] for idx in KIND_PORTS}
-        written_bits = [r[1] for r in records]
-        kinds = (
-            all(len(bits) >= MIN_BITS_PER_REGISTER for bits in bits_per_register.values()),
-            len(written_bits) == len(set(written_bits)),
-            all(cleared[idx] == 0 for idx in KIND_PORTS),
-        )
-        self._log(
-            "CHK-CT-SRC-KINDS: bits_per_register="
-            f"{ {idx: len(bits) for idx, bits in bits_per_register.items()} } "
-            f"distinct_bits={len(set(written_bits))} cleared={cleared}"
-        )
+        bits_per_register = {idx: sum(1 for r in records if r[0] == idx) for idx in KIND_PORTS}
+        self._log(f"CHK-CT-SRC-KINDS: bits_per_register={bits_per_register} cleared={cleared}")
         sb.expect_eq(
-            "CT_SRC kinds: bits per register, no repeated bit, cleared",
-            kinds,
-            (True, True, True),
+            "CT_SRC kinds: walked bits read back per index kind, then 0 after the clear",
+            ([(idx, n, got) for idx, n, _, got in records], cleared),
+            (
+                [(KIND_PORTS[n % len(KIND_PORTS)], n, 1 << n) for n in range(CT_DST_SELECT_BW)],
+                {idx: 0 for idx in KIND_PORTS},
+            ),
             evidence="CHK-CT-SRC-KINDS",
         )
 
@@ -241,17 +230,9 @@ class smu_xtrig_ctm_select_walk_test_seq:
             f"j2a_accesses_counted={self.j2a}"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        recorded = [s for s in CONTRACT_WAITS if self.sites[s]["count"] > 0]
+        recorded = [s for s in EXPECTED_WAITS if self.sites[s]["count"] > 0]
         sb.expect_eq(
             "bounded wait kinds declared by the sequence all exercised",
             len(recorded),
-            CONTRACT_WAIT_COUNT,
+            EXPECTED_WAIT_COUNT,
         )
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 5, evidence="CHK-NONVAC")

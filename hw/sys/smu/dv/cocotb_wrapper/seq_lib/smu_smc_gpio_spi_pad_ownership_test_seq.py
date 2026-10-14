@@ -322,10 +322,7 @@ class smu_smc_gpio_spi_pad_ownership_test_seq:
         )
 
     async def _s3(self, sb) -> None:
-        self._log(
-            "CHK-DBG-GPIO-SPI-DISABLE: core2pad_en/pad2core_en level=unobservable "
-            "(no bench tap) LINKED-ISSUE active level not observed"
-        )
+        self._log("CELL core2pad_en/pad2core_en level unobservable (no bench tap)")
         obs = []
         self.disabled = {}
         for pad in DISABLE_PADS:

@@ -10,12 +10,10 @@ Outbound mailbox 0 over the SMC fabric JTAG2AXI bridge: STATUS live flags agains
 the empty-read and full-write SLVERR responses with their error flags, ERROR_FLAGS clear on read,
 the error interrupt enable and acknowledge on lane 0 of smc_ext_mailbox_interrupts_o, and SLVERR
 on writes to STATUS, READ_DATA, ERROR_FLAGS and IRQP. The lane-n = mailbox-n mapping is proven by
-smu_smc_mailbox_int_test. No force/deposit; all stimulus is JTAG2AXI MMIO.
+smu_smc_mailbox_int_test.
 """
 
 from __future__ import annotations
-
-import time
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -46,7 +44,7 @@ CTRL = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_CTRL_BASE_ADDR")
 ST_EMPTY = mailbox_u32("AXIL_MAILBOX__STATUS__EMPTY_bm")
 ST_FULL = mailbox_u32("AXIL_MAILBOX__STATUS__FULL_bm")
 ST_WTHRESH = mailbox_u32("AXIL_MAILBOX__STATUS__WRITE_LEVEL_ABOVE_THRESH_bm")
-IRQ_EIRQ = 0x4
+IRQ_EIRQ = mailbox_u32("AXIL_MAILBOX__IRQS__EIRQ_bm")
 
 EMPTY_READ_DATA = 0xFEED_DEAD
 J2A_POLL = 128
@@ -67,13 +65,11 @@ class smu_smc_mailbox_status_error_test_seq:
         self.j2a_last = "none"
         self.j2a_expired = False
         self.sites: list[tuple[str, str, str, str]] = []
-        self.step_ts: dict[str, float] = {}
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     @staticmethod
@@ -177,9 +173,9 @@ class smu_smc_mailbox_status_error_test_seq:
         _, err = await self._rd("read_while_empty.ERROR_FLAGS", ERROR_FLAGS)
         _, irqs = await self._rd("read_while_empty.IRQS", IRQS)
         sb.expect_eq(
-            "CHK-MBX-ERR-READ-EMPTY (status, data, error_flags, irqs_bit2)",
-            (st_rd, rd_data, err, (irqs >> 2) & 1),
-            (J2A_STATUS_SLVERR, EMPTY_READ_DATA, 0x1, 1),
+            "CHK-MBX-ERR-READ-EMPTY (status, data, error_flags, irqs_eirq)",
+            (st_rd, rd_data, err, (irqs & IRQ_EIRQ) != 0),
+            (J2A_STATUS_SLVERR, EMPTY_READ_DATA, 0x1, True),
             evidence="MBX_ERR_READ_EMPTY",
         )
 
@@ -211,9 +207,9 @@ class smu_smc_mailbox_status_error_test_seq:
         _, irqs5 = await self._rd("write_while_full.IRQS", IRQS)
         _, status5 = await self._rd("write_while_full.STATUS", STATUS)
         sb.expect_eq(
-            "CHK-MBX-ERR-WRITE-FULL (status, error_flags, irqs_bit2, STATUS)",
-            (st_w3, err5, (irqs5 >> 2) & 1, status5),
-            (J2A_STATUS_SLVERR, 0x2, 1, ST_EMPTY | ST_FULL | ST_WTHRESH),
+            "CHK-MBX-ERR-WRITE-FULL (status, error_flags, irqs_eirq, STATUS)",
+            (st_w3, err5, (irqs5 & IRQ_EIRQ) != 0, status5),
+            (J2A_STATUS_SLVERR, 0x2, True, ST_EMPTY | ST_FULL | ST_WTHRESH),
             evidence="MBX_ERR_WRITE_FULL",
         )
 
@@ -222,9 +218,9 @@ class smu_smc_mailbox_status_error_test_seq:
         _, err6 = await self._rd("error_flags_read_clears.ERROR_FLAGS", ERROR_FLAGS)
         _, irqs6 = await self._rd("error_flags_read_clears.IRQS", IRQS)
         sb.expect_eq(
-            "CHK-MBX-ERR-CLEAR-ON-READ (error_flags, irqs_bit2)",
-            (err6, (irqs6 >> 2) & 1),
-            (0, 1),
+            "CHK-MBX-ERR-CLEAR-ON-READ (error_flags, irqs_eirq)",
+            (err6, (irqs6 & IRQ_EIRQ) != 0),
+            (0, True),
             evidence="MBX_ERR_CLEAR_ON_READ",
         )
 
@@ -237,9 +233,9 @@ class smu_smc_mailbox_status_error_test_seq:
         _, irqs7 = await self._rd("error_irq_ack_lane_drops.IRQS", IRQS)
         fell = await self._wait_lane(0, "S7_lane0_fall")
         sb.expect_eq(
-            "CHK-MBX-ERR-IRQ-ACK (irqp_bit2, lane_rose, irqs_bit2_after, lane_fell)",
-            ((irqp >> 2) & 1, rose, (irqs7 >> 2) & 1, fell),
-            (1, True, 0, True),
+            "CHK-MBX-ERR-IRQ-ACK (irqp_bit2, lane_rose, irqs_eirq_after, lane_fell)",
+            ((irqp >> 2) & 1, rose, (irqs7 & IRQ_EIRQ) != 0, fell),
+            (1, True, False, True),
             evidence="MBX_ERR_IRQ_ACK",
         )
 
@@ -313,14 +309,3 @@ class smu_smc_mailbox_status_error_test_seq:
         lane0 = self._sample(dut.ext_mailbox_interrupts_o, "ext_mailbox_interrupts_o") & 1
         self._log(f"CELL final irqen=0x{IRQ_EIRQ:x} irqs=0x{irqs8:x} lane0={lane0}")
         await ClockCycles(dut.clk_smu_i, 32)
-        self.step_ts["PASS"] = time.monotonic()
-
-        order = [f"S{i}" for i in range(1, 12)] + ["PASS"]
-        for step in order:
-            if step not in self.step_ts:
-                raise AssertionError(f"CHK-NONVAC missing step term: {step}")
-        advancing = sum(1 for a, b in zip(order, order[1:]) if self.step_ts[b] >= self.step_ts[a])
-        self._log(f"CHK-NONVAC: Ordered fence {'<'.join(order)} advancing={advancing}")
-        sb.expect_eq(
-            "CHK-NONVAC ordered step count", advancing, len(order) - 1, evidence="CHK-NONVAC"
-        )

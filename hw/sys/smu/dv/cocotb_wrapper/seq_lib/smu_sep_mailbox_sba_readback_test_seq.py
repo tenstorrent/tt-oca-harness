@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """WIRQT write-readback of the sixteen SEP mailbox ports from the SEP debug system bus.
 
-Spec: hw/sys/sep/doc/mailbox.adoc:28-30 (FIFOs of eight 64-bit entries), axil_mailbox.rdl
-(WIRQT.wirqt[7:0] at 0x20, sw=rw, reset 0), axil_mailbox_sep_wrap.rdl, hw/sys/sep/regs/sep.rdl:127.
+Spec: hw/sys/sep/doc/mailbox.adoc (mailbox layout: two FIFOs of eight 64-bit entries),
+axil_mailbox.rdl (WIRQT.wirqt[7:0] at 0x20, sw=rw, reset 0), axil_mailbox_sep_wrap.rdl,
+hw/sys/sep/regs/sep.rdl (axil_mailbox placement).
 
 S1 is S0..S3 of ``smu_dtp_sep_dm_dmi_test`` (reused). S2: for each mailbox m in 0..7, WIRQT of
 outbound_mailbox_m and inbound_mailbox_m reads 0 (reset value), takes V_m = 1 + (m % 7), a value
@@ -13,8 +14,6 @@ records its bound, the observed worst case and its last state.
 """
 
 from __future__ import annotations
-
-import time
 
 from seq_lib.smu_dtp_sep_dm_dmi_test_seq import smu_dtp_sep_dm_dmi_test_seq
 from seq_lib.smu_dtp_sep_dm_sba_test_seq import DMI_RETRIES, SBA_POLLS, SBCS_ADDR
@@ -28,7 +27,6 @@ from seq_lib.smu_sep_sba_peripheral_test_seq import (
 WIRQT_RESET = 0
 SIZE_32 = 2
 SITES = ("sba_sbbusy_poll", "dmi_busy_retry")
-ORDER = ("S1", "S2", "S3", "PASS")
 
 
 def _port(kind: str, mbox: int) -> str:
@@ -49,7 +47,6 @@ class smu_sep_mailbox_sba_readback_test_seq(smu_sep_sba_fabric_sweep_test_seq):
     def __init__(self, test) -> None:
         super().__init__(test)
         self.accesses = 0
-        self.stamps: dict[str, float] = {}
         self.done = False
         self._scans = 0
         self._sbcs_reads = 0
@@ -158,8 +155,7 @@ class smu_sep_mailbox_sba_readback_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
 
     def _stamp(self, step: str) -> None:
-        self.stamps[step] = time.monotonic()
-        self._log(f"STEP {step} t={self.stamps[step]:.3f}")
+        self._log(f"STEP {step}")
 
     async def run(self) -> None:
         await smu_dtp_sep_dm_dmi_test_seq.run(self)
@@ -170,12 +166,4 @@ class smu_sep_mailbox_sba_readback_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         self._stamp("S2")
         self._timeout_paths(sb)
         self._stamp("S3")
-        self._stamp("PASS")
-        for a, b in zip(ORDER, ORDER[1:]):
-            if self.stamps[a] >= self.stamps[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<PASS)")
-        sb.expect_eq(
-            "CHK-NONVAC ordered fence", list(self.stamps), list(ORDER), evidence="CHK-NONVAC"
-        )
         self.done = True

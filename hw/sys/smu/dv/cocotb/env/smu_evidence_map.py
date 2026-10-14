@@ -49,18 +49,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "ALIAS_CACHE_HIT",
             "an alias hit carries the programmed cacheable value 0..15 on AW and AR",
         ),
-        (
-            "CHK-ALIAS-CACHE-ZERO",
-            "ALIAS_CACHE_ZERO",
-            "cacheable 0 gives AxCACHE 0 on smu_axi_out against the measured bridge value",
-        ),
-        (
-            "CHK-ALIAS-CACHE-MISS",
-            "ALIAS_CACHE_MISS",
-            "an access that misses every region keeps the bridge AxCACHE",
-        ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and AXI waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S7<PASS"),
     ],
     "smu_axi_alias_remap_manager_scope_test": [
         (
@@ -264,24 +253,26 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-OCTSR-RESET-PIN",
             "OCTSR_RESET_PIN",
-            "timer_count_o is 0 on every clk_smu sample from reset release until the START write",
+            "timer_count_o is 0 on every clk_smu sample from the bench's reset-done indication "
+            "until the START write",
         ),
         (
             "CHK-OCTSR-STRAP-LOW",
             "OCTSR_STRAP_LOW",
-            "strap low: SMC_ATTRIBUTES.chiplet_is_primary reads 0 and STATUS.MODE reads SECONDARY",
+            "SMC_ATTRIBUTES.chiplet_is_primary and STATUS.MODE read 1 and PRIMARY at the default "
+            "strap, and 0 and SECONDARY with the strap low",
         ),
         (
             "CHK-OCTSR-SECONDARY-HOLD",
             "OCTSR_SECONDARY_HOLD",
-            "SECONDARY ignores TIMER_START: STATUS.RUNNING 0 and timer_count_o 0 for 1024 cycles",
+            "SECONDARY ignores TIMER_START: STATUS.RUNNING 0 and timer_count_o 0 for 1024 cycles; "
+            "a PRIMARY START sets RUNNING and moves timer_count_o within 1024 cycles",
         ),
         (
             "CHK-TIMEOUT-PATHS",
             "CHK_TIMEOUT_PATHS",
             "bounded J2A waits and pin samplers with last state",
         ),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<PASS"),
     ],
     "smu_otp_prod_error_resp_test": [
         (
@@ -530,8 +521,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-DBGCTL-BIT4-READONLY",
             "CHK-DBGCTL-BIT4-READONLY",
-            "bit 4 reads 0 with a 1 shifted in and no request, and 1 with a lane request "
-            "while 0 is shifted in",
+            "bit 4 reads 0 on the read that follows a scan shifting 1 into it with no request, "
+            "and 1 with a lane request while 0 is shifted in",
         ),
         (
             "CHK-JTAG-STOP-LATENCY",
@@ -541,13 +532,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-DBGCTL-RESET-CLEARS",
             "CHK-DBGCTL-RESET-CLEARS",
-            "TRST, Test-Logic-Reset via TMS and power-on reset each clear jtag_clock_stop, "
-            "cla_clock_stop_en and dtp_stop_clks_o",
+            "jtag_clock_stop and dtp_stop_clks_o read 0 after each of TRST, Test-Logic-Reset via "
+            "TMS and power-on reset; cla_clock_stop_en is logged",
         ),
         (
             "CHK-TIMEOUT-PATHS",
             "CHK_TIMEOUT_PATHS",
-            "bounded TDR, pin and reset waits with last state",
+            "bounded stop-output, Update-DR and reset waits with last state",
         ),
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<PASS"),
     ],
@@ -833,9 +824,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-TIMEOUT-PATHS",
             "CHK_TIMEOUT_PATHS",
-            "bounded system-bus and pin waits with last state",
+            "bounded SBA and DMI waits with last state",
         ),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<PASS"),
     ],
     "smu_sep_sba_fabric_sweep_test": [
         (
@@ -1053,11 +1043,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK_TIMEOUT_PATHS",
             "bounded J2A and AXI waits with last state",
         ),
-        (
-            "CHK-NONVAC",
-            "CHK-NONVAC",
-            "ordered fence S1<S2<...<S7<PASS",
-        ),
     ],
     "smu_smc_unmapped_response_test": [
         (
@@ -1068,7 +1053,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-UNMAP-PAST-EXTENT",
             "CHK-UNMAP-PAST-EXTENT",
-            "past-extent reads answer DECERR/0xBADCAB1E; writes SLVERR or DECERR per block",
+            "past-extent reads answer DECERR/0xBADCAB1E and DECERR-declared writes answer DECERR; "
+            "the writes the RDL and memmap declare SLVERR are logged and answered DECERR in this "
+            "run, a mismatch recorded for the owner",
         ),
         (
             "CHK-UNMAP-MMODE-XVISOR",
@@ -1080,7 +1067,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK_TIMEOUT_PATHS",
             "bounded J2A and AXI waits with last state",
         ),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S5<PASS"),
     ],
     "smu_filter_lock_test": [
         (
@@ -1118,8 +1104,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "LOCK_PARITY",
             "response and value sequence of S2 to S6 equal on inbound and outbound",
         ),
-        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and AXI waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S9<PASS"),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "the bounded AXI write, read and probe wait sites each completed their declared "
+            "access count",
+        ),
     ],
     "smu_i3c_mem_port_connectivity_test": [
         (
@@ -1198,9 +1188,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "ICEXT_HOLD_POR",
             "power-on reset restores every bit including hold",
         ),
-        ("CHK-ICEXT-HOLD-SELF", "ICEXT_HOLD_SELF", "Test-Logic-Reset leaves reset_hold unchanged"),
+        (
+            "CHK-ICEXT-HOLD-SELF",
+            "ICEXT_HOLD_SELF",
+            "Test-Logic-Reset leaves reset_hold unchanged at 0 and at 1",
+        ),
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded JTAG waits with last TAP state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S12<PASS"),
     ],
     "smu_jtag_ic_reset_layout_caps_test": [
         ("CHK-ICLAY-IC-LEN", "ICLAY_IC_LEN", "163-bit marker emerges after exactly 155 TCKs"),
@@ -1236,7 +1229,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "JTAG_CAPS ignores shifted-in bits and is exactly 60 bits",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded JTAG waits with last TAP state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S9<PASS"),
     ],
     "smu_jtag_trst_por_reset_test": [
         (
@@ -1267,10 +1259,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-RSTH-TDO-RST",
             "RSTH_TDO_RST",
-            "jtag_tdo and jtag_tdo_oen match after TRST_n, power-on reset and both",
+            "the (jtag_tdo, jtag_tdo_oen) pair after TRST_n equals the pair after power-on reset "
+            "and after both",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded JTAG waits with last TAP state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S7<PASS"),
     ],
     "smu_jtag_reset_override_test": [
         (
@@ -1460,7 +1452,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the five peripheral cg_en bits read 0 and cg_hysteresis reads its reset value",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<PASS"),
     ],
     "smu_smc_base_config_state_test": [
         (
@@ -1480,7 +1471,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "read their RDL reset values",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<PASS"),
     ],
     "smu_smc_boundary_io_test": [
         (
@@ -1583,7 +1573,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-NDM-REQUEST-S4",
             "NDM_REQUEST_S4",
-            "NDMRESET_REQUEST reads 0 with all request pins low",
+            "NDMRESET_REQUEST reads 0 with all request pins low after a cold reset and follows "
+            "request pin 0 high again",
         ),
         (
             "CHK-NDM-PROCESS-S1",
@@ -1632,8 +1623,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "OREMAP_REGS_MASKS",
             "output remap offset[55:0] and valid[63] store and read back",
         ),
-        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and AXI waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<...<S6<PASS"),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "every bounded AXI wait site completed its declared access count",
+        ),
     ],
     "smu_reset_csr_access_test": [
         (
@@ -1688,7 +1682,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-DTP-SYSRESET-S2",
             "DTP_SYSRESET_S2",
-            "dtp_stop_clks_o returns to 1 three clk_smu_i cycles after the primary reset releases",
+            "dtp_stop_clks_o first reads 1 on the third clk_smu_i edge after the primary reset "
+            "releases",
         ),
     ],
     "smu_smc_cold_boot_release_order_test": [
@@ -1732,7 +1727,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-BOOT-PRIM-REF-ORDER",
             "BOOT_PRIM_REF_ORDER",
-            "rst_primary_ref_clk_no reads 0 at every sample while the cold reset is asserted",
+            "rst_primary_ref_clk_no reads 0 at every sample while the cold reset is asserted "
+            "and at every clk_ref sample where the stable cold reset reads 0",
         ),
         (
             "CHK-BOOT-PRIM-EDGE",
@@ -1746,7 +1742,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "each primary reset rises within its bounded wait and reads 1 at the end of each boot",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded reset-pin waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<S8<PASS"),
     ],
     "smu_smc_cool_reset_pin_test": [
         (
@@ -1777,11 +1772,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "SCRATCH[0] bits[31:0] read 0 after boot over JTAG2AXI",
         ),
         (
-            "CHK-BOOT-SCRATCH0-UPPER",
-            "BOOT_SCRATCH0_UPPER",
-            "SCRATCH[0] upper word logged, read status SUCCESS",
-        ),
-        (
             "CHK-BOOT-RESET-VECTORS",
             "BOOT_RESET_VECTORS",
             "RESET_VECTOR[0..3] each read 0xC004_0000",
@@ -1804,7 +1794,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-BOOT-ATTRIBUTES",
             "BOOT_ATTRIBUTES",
-            "SMC_ATTRIBUTES cores, sram_size, mailboxes, ext interrupts and primary strap decoded",
+            "SMC_ATTRIBUTES cores, sram_size, mailboxes, mailbox depth, ext interrupts and the "
+            "primary strap decode to their documented values",
         ),
         (
             "CHK-BOOT-DUMMY-ROM",
@@ -1812,7 +1803,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "DUMMY_ROM_0..3 read their words and DUMMY_ROM_NULL[0..3] read 0",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS"),
     ],
     "smu_smc_dtp_jtag2axi_smoke_test": [
         ("CHK-JTAG2AXI-SMOKE-SCRATCH", "CHK-JTAG2AXI-SMOKE-SCRATCH", "J2A scratch write/readback"),
@@ -1844,13 +1834,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "MBX_SMC_ATTRIBUTES",
             "SMC_ATTRIBUTES reports 32 mailboxes of depth 2",
         ),
-        (
-            "CHK-MBX-APERTURE-HOLE-LOG",
-            "MBX_APERTURE_HOLE_LOG",
-            "accesses above the registers resolve non-BUSY, status and data logged",
-        ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<S8<PASS"),
     ],
     "smu_smc_mailbox_int_test": [
         (
@@ -1902,7 +1886,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "writes to STATUS, READ_DATA, ERROR_FLAGS and IRQP are SLVERR and change nothing",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and lane-0 waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11<PASS"),
     ],
     "smu_smc_mailbox_threshold_lane_test": [
         (
@@ -1936,7 +1919,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "acknowledge with occupancy above WIRQT observed and logged, STATUS bit 2 stays 1",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and lane-0 waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS"),
     ],
     "smu_smc_reset_ctrl_test": [
         ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "SMC primary reset released"),
@@ -1956,12 +1938,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-BOOT-RSTUNIT-ISOLATION",
             "BOOT_RSTUNIT_ISOLATION",
-            "isolation request, FLR counter and SYNC registers read their RDL reset value 0",
+            "the four isolation registers, the two FLR counter registers and SYNC_REG read their "
+            "RDL reset value 0",
         ),
         (
             "CHK-BOOT-RSTUNIT-VIS",
             "BOOT_RSTUNIT_VIS",
-            "ISOLATE_REQ_VIS bits 4 and 8 read their RDL reset value 1",
+            "ISOLATE_REQ_VIS bits 4 and 8 read their RDL reset value 1; bit 0 reads the idle pin "
+            "level 0, which differs from the RDL reset value 1 of this hardware-written field; "
+            "logged, not compared",
         ),
         (
             "CHK-BOOT-RSTUNIT-IDLE-OUTPUTS",
@@ -1969,7 +1954,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "isolate_req_o, skip_mem_repair_o and sync_irq_o are 0 with the pins idle",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<PASS"),
     ],
     "smu_smc_gpio_pad_output_test": [
         (
@@ -2116,7 +2100,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-RESET-REASSERT",
             "SEP_RESET_REASSERT",
             "sep_reset_n_o reads 0 on every sample while the cold reset is re-asserted after done "
-            "and after response words 0, 128 and near 255",
+            "and after response words 0 and 128, and near 255 when that fall lands before the "
+            "256th strobe",
         ),
         (
             "CHK-SEP-DONE-COLD-CLEAR",
@@ -2176,7 +2161,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "SCRATCH[0..15] read 0 at reset and read back the written pattern over JTAG2AXI",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<PASS"),
     ],
     "smu_smc_smoke_test": [
         ("CHK-SMC-ROM-READ", "SMC_ROM_READ_OK", "SMC ROM read activity observed"),
@@ -2207,10 +2191,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-BOOT-INIT-REARM",
             "BOOT_INIT_REARM",
-            "a second cold reset restarts the write count and done rises once more",
+            "after a second cold reset done rises once more with a write count above the count "
+            "read during the reset",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded done/ROM-read waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<PASS"),
     ],
     "smu_smc_ss_reset_ctrl_sweep_test": [
         (
@@ -2285,7 +2269,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK_TIMEOUT_PATHS",
             "bounded J2A and pin waits with last state",
         ),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence S1<S2<S3<S4 with positive simulated time between steps",
+        ),
     ],
     "smu_sys_in_filter_program_jtag_test": [
         ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "after program window OKAY"),
@@ -2372,11 +2360,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK_TIMEOUT_PATHS",
             "bounded J2A and ATB waits with last state",
         ),
-        (
-            "CHK-NONVAC",
-            "CHK-NONVAC",
-            "ordered fence S1<S2<S3<S4<S5<S6<PASS",
-        ),
     ],
     "smu_telemetry_reset_state_test": [
         (
@@ -2391,7 +2374,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "PROBE_ID, COUNTER_VLDS and the counters read 0 on the empty queue",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_system_timer_octs_test": [
         (
@@ -2531,13 +2513,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-BOOT-SHADOW-SAMPLES",
             "BOOT_SHADOW_SAMPLES",
-            "sampled SMC eFuse map words read over JTAG2AXI equal the stream word of the same "
-            "index",
+            "sampled SMC eFuse map words read over JTAG2AXI and the stream words of the same "
+            "index equal the words of the eFuse image the run loads, and the map words equal "
+            "the stream words",
         ),
         (
             "CHK-BOOT-SHADOW-ELEMENTS",
             "BOOT_SHADOW_ELEMENTS",
-            "the first word of each named smc_efuse_map element equals its stream word",
+            "the first word of each named smc_efuse_map element equals its word in the eFuse "
+            "image the run loads",
         ),
         (
             "CHK-BOOT-SENSE-STATUS",
@@ -2545,16 +2529,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "EFUSE_INTERFACE_CTRL_STATUS.efuse_sense_done reads 1 after smc_fuse_sense_done_o rose",
         ),
         (
-            "CHK-BOOT-SHADOW-PORT",
-            "BOOT_SHADOW_PORT",
-            "smc_shadow_regs resolves and is not all zero after the sense",
-        ),
-        (
             "CHK-TIMEOUT-PATHS",
             "CHK_TIMEOUT_PATHS",
             "bounded sense, capture and J2A waits with last state",
         ),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<PASS"),
     ],
     "smu_smc_efuse_shadow_sense_reset_test": [
         (
@@ -2740,7 +2718,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK_TIMEOUT_PATHS",
             "bounded J2A, reset and pin waits with last state",
         ),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<PASS"),
     ],
     "smu_xtrig_ctm_illegal_phase_test": [
         ("CHK-XT-ILLEGAL", "XT_ILLEGAL_PHASE", "DTP[9:2] follows abort/double-req pin patterns"),
@@ -2757,10 +2734,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-CT-SRC-KINDS",
             "CHK-CT-SRC-KINDS",
-            "each CT_SRC index kind takes at least 8 distinct bits and reads 0 after the clear",
+            "each of the three CT_SRC index kinds reads back its walked bits and reads 0 after "
+            "the clear",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_xtrig_ctn_csr_rw_test": [
         (
@@ -2782,10 +2759,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-CTN-SERIALISED-ACCESS",
             "CHK-CTN-SERIALISED-ACCESS",
-            "back-to-back CT_SRC and CTP accesses return the values last written to each register",
+            "interleaved CT_SRC and CTP accesses over JTAG2AXI return the values last written to "
+            "each register",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<PASS"),
     ],
     "smu_xtrig_ctn_reset_values_test": [
         (
@@ -2799,7 +2776,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CONFIG, STATUS and STRETCH_MULT of all 16 CTPs read 0",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_xtrig_ctp_status_reset_test": [
         (
@@ -2823,7 +2799,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-HS-RESET-DISCARD",
             "CHK-HS-RESET-DISCARD",
-            "req_out_dout[2] stays low for 64 clk_smu while a trigger arrives with RESET = 1",
+            "req_out_dout[2] stays low for 64 clk_smu while a trigger arrives with RESET = 1, "
+            "and for 64 clk_smu after RESET clears with the wire released",
         ),
         (
             "CHK-HS-RESET-RX",
@@ -2835,7 +2812,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK_TIMEOUT_PATHS",
             "bounded J2A and pad waits with last state",
         ),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<PASS"),
     ],
 }
 

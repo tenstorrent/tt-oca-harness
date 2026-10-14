@@ -9,7 +9,7 @@ Bits the RDL defines no field for are logged as CHK-CFG-UNDEF-BITS and never com
 
 from __future__ import annotations
 
-import time
+from pathlib import Path
 
 import cocotb
 from ocah_axi_vip import RESP_OKAY, resp_name
@@ -19,6 +19,7 @@ from seq_lib.smu_addr_map import (
     INBOUND0_END,
     INBOUND0_FILTER_CONFIG,
     INBOUND0_START,
+    c_header_u32,
     smc_indexed_addr,
 )
 from seq_lib.smu_axi_helpers import (
@@ -58,17 +59,30 @@ XVISOR_BASE = SMC_APERTURE_LOCAL_BASE + 0x1_4000
 OREMAP_STRIDE = 0x8
 ALIAS_REG_OFFS = (("start", 0x0), ("end", 0x8), ("attrs", 0x10))
 
-ADDR_FIELD = ((1 << 56) - 1) & ~0xFFF
-CACHEABLE_FIELD = 0xF << 56
-VALID = 1 << 63
+_IP = Path(__file__).resolve().parents[6] / "hw" / "ip"
+_ALIAS_REMAP_H = _IP / "axi_alias_remap" / "regs" / "gen" / "c" / "alias_remap.h"
+_OUTPUT_REMAP_H = _IP / "output_remap" / "regs" / "gen" / "c" / "output_remap.h"
+
+
+def _alias_bm(reg_field: str) -> int:
+    return c_header_u32(_ALIAS_REMAP_H, f"ALIAS_REMAP__REMAP_REGION__{reg_field}_bm")
+
+
+def _oremap_bm(reg_field: str) -> int:
+    return c_header_u32(_OUTPUT_REMAP_H, f"OUTPUT_REMAP__OUTPUT_REMAP_REGION__{reg_field}_bm")
+
+
+ADDR_FIELD = _alias_bm("REGION_START__START_ADDR")
+CACHEABLE_FIELD = _alias_bm("REGION_ATTRS__CACHEABLE")
+VALID = _alias_bm("REGION_ATTRS__VALID")
 ALL_ONES = (1 << 64) - 1
 ALIAS_MASKS = {
     "start": ADDR_FIELD,
-    "end": ADDR_FIELD,
-    "attrs": ADDR_FIELD | CACHEABLE_FIELD | VALID,
+    "end": _alias_bm("REGION_END__END_ADDR"),
+    "attrs": _alias_bm("REGION_ATTRS__OFFSET") | CACHEABLE_FIELD | VALID,
 }
-OREMAP_OFFSET = (1 << 56) - 1
-OREMAP_MASK = OREMAP_OFFSET | VALID
+OREMAP_OFFSET = _oremap_bm("REGION_ATTRS__OFFSET")
+OREMAP_MASK = OREMAP_OFFSET | _oremap_bm("REGION_ATTRS__VALID")
 
 # START above END selects no input address.
 NO_MATCH_START = 0x0000_0010_0000_0000
@@ -112,7 +126,6 @@ class smu_remap_cfg_register_map_test_seq:
         self.done = False
         self.sites: dict[str, int] = {}
         self.last_resp: dict[str, str] = {}
-        self.step_ts: dict[str, float] = {}
         self.expired: list[str] = []
         self.j2a_ops = 0
         self.j2a_last = None
@@ -121,7 +134,6 @@ class smu_remap_cfg_register_map_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _expire(self, site: str, exc: Exception) -> None:
@@ -448,23 +460,15 @@ class smu_remap_cfg_register_map_test_seq:
         for line in paths:
             self._log(f"TIMEOUT-PATH {line}")
         for site, want in want_sites.items():
-            sb.expect_eq(f"axi accesses at site {site}", self.sites.get(site), want)
+            sb.expect_eq(
+                f"axi accesses at site {site}",
+                self.sites.get(site),
+                want,
+                evidence="CHK_TIMEOUT_PATHS",
+            )
         sb.expect_eq("J2A accesses issued", self.j2a_ops, 5)
         sb.expect_eq("J2A last status", self.j2a_last, J2A_STATUS_SUCCESS)
         sb.expect_eq("expired TIMEOUT-PATH records", self.expired, [])
         self._log(f"CHK-TIMEOUT-PATHS: sites={len(paths)} expired={len(self.expired)}")
-        sb.expect_eq(
-            "CHK-TIMEOUT-PATHS site count",
-            len(paths),
-            1 + len(want_sites),
-            evidence="CHK_TIMEOUT_PATHS",
-        )
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "S6", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<S6<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 7, evidence="CHK-NONVAC")
+        sb.expect_eq("bounded wait sites recorded", len(paths), 1 + len(want_sites))
         self.done = True

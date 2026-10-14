@@ -19,7 +19,6 @@ S6  Every bounded wait is a site with its bound, last state and expiry.
 
 from __future__ import annotations
 
-import time
 from typing import cast
 
 import cocotb
@@ -73,8 +72,8 @@ CT_SRC0_VALUE = 0x10
 CTP0_CONFIG_VALUE = 0x3
 CTP0_STRETCH_VALUE = 0x55
 REQ_LANE = 1
-# The DTP internal lanes follow the NUM_CTP external ports in the CTM; the SMU exposes the
-# last SMU_INT_CT_EXPOSED of them, and exposed lane 0 is xtrig_ctm_dst_req[0].
+# hw/sys/dtp/doc/clk_rst.adoc: the SMU exports DTP internal lanes 9 to 2; exposed lane 0 is
+# xtrig_ctm_dst_req[0].
 SMU_INT_CT_EXPOSED = 8
 
 J2A_POLL_LIMIT = 128
@@ -89,8 +88,8 @@ STOP_RISE_BOUND = 64
 PULSE_HOLD = 8
 POST_RELEASE_EDGES = 8
 # Bounded waits: JTAG2AXI poll, reset-low window, reset_done, request rise, clear.
-CONTRACT_WAITS = ("j2a", "reset_low", "reset_done", "req_rise", "req_clear")
-CONTRACT_WAIT_KINDS = 5
+EXPECTED_WAITS = ("j2a", "reset_low", "reset_done", "req_rise", "req_clear")
+EXPECTED_WAIT_KINDS = 5
 SITES = (
     "j2a",
     "reset_low",
@@ -116,7 +115,6 @@ class smu_xtrig_cold_reset_clears_ctn_test_seq:
         self.jtag = None
         self.j2a = 0
         self.rebringups = 0
-        self.step_ts: dict[str, float] = {}
         self.sites = {
             site: {"bound": 0, "count": 0, "last": "none", "expired": 0} for site in SITES
         }
@@ -135,7 +133,6 @@ class smu_xtrig_cold_reset_clears_ctn_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _cell(self, name: str, addr: int, text: str) -> None:
@@ -537,21 +534,14 @@ class smu_xtrig_cold_reset_clears_ctn_test_seq:
             f"j2a_accesses_counted={self.j2a} tap_rebringups={self.rebringups}"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        recorded = [s for s in CONTRACT_WAITS if self.sites[s]["count"] > 0]
+        recorded = [s for s in EXPECTED_WAITS if self.sites[s]["count"] > 0]
         sb.expect_eq(
             "bounded wait kinds declared by the sequence all exercised",
             len(recorded),
-            CONTRACT_WAIT_KINDS,
+            EXPECTED_WAIT_KINDS,
         )
 
         for name in ("xtrig_ctm_dst_req", "xtrig_ctm_src_ack", "xtrig_clk_stop_req"):
             getattr(dut, name).value = 0
         dut.tb_xtrig_ctp_req_in_din.value = 0
         dut.tb_xtrig_ctp_ack_in_din.value = 0
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "S6", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<S6<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 7, evidence="CHK-NONVAC")

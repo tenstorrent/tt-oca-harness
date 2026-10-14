@@ -5,16 +5,14 @@
 Spec: cpu_ctrl.rdl:11-18 (RESET_VECTOR), :21-88 (RESET_CTRL), :91-111 (CORE_RESET_PULSE_COUNT),
 :115-124 (RESET_TIMEOUT), :164-199 (WDT_TIMEOUT, WDT_TIMEOUT_RESET), :213-221 (SCRATCH),
 :224-261 (SMC_ATTRIBUTES), :300-352 (DUMMY_ROM), :358-390 (offsets); smc.rdl:89 (CPU_CTRL base);
-cpu.adoc:9-10, :88; periphs.adoc:182; port_table.adoc:67; tb_wrapper_top.sv:1436.
+cpu.adoc:9-10, :88; periphs.adoc SMC Peripheral Parameter Overrides; port_table.adoc:67 and the
+chiplet_is_primary_i row.
 
-SMC_ATTRIBUTES num_cpu_interrupts, mailbox_depth, no_output_remap and the upper word of each
-SCRATCH register are logged and never compared (the owner has not fixed their reset
-values, no pinned source). A SCRATCH[0] divergence is an open owner question.
+SMC_ATTRIBUTES num_cpu_interrupts, no_output_remap and the upper word of each SCRATCH register
+are logged and not compared.
 """
 
 from __future__ import annotations
-
-import time
 
 import cocotb
 from cocotb.triggers import with_timeout
@@ -65,20 +63,23 @@ RESET_CTRL_FIELDS = (
 PULSE_COUNT_FIELDS = ("PRE_RESET_COUNT", "POST_RESET_COUNT", "CORE_RESETS_DONE")
 DUMMY_ROM_WORDS = [cpu_ctrl_bm(f"{_C}DUMMY_ROM_{i}__DUMMY_ROM_WORD_{i}_reset") for i in range(4)]
 
-# Scenario sources: cpu.adoc:9 (four cores), cpu.adoc:10 and :88 (1 MiB = 2^20), periphs.adoc:182
-# (32 mailboxes), port_table.adoc:67 (width 256), tb_wrapper_top.sv:1436 (primary at idle strap).
+# Scenario sources: cpu.adoc:9 (four cores), cpu.adoc:10 and :88 (1 MiB = 2^20), periphs.adoc
+# SMC Peripheral Parameter Overrides table (NumMailboxes 32, MailboxDepth 2), port_table.adoc:67
+# (width 256), cpu_ctrl.rdl SMC_ATTRIBUTES chiplet_is_primary ("Driven by strap") and the
+# port_table.adoc chiplet_is_primary_i row: the test drives the strap to primary.
 ATTR_EXPECT = {
     "NUM_CORES": 4,
     "SRAM_SIZE": 20,
     "NUM_MAILBOXES": 32,
+    "MAILBOX_DEPTH": 2,
     "NUM_EXT_INTERRUPTS": 256,
     "CHIPLET_IS_PRIMARY": 1,
 }
-ATTR_OBSERVE = ("NO_OUTPUT_REMAP", "NUM_CPU_INTERRUPTS", "MAILBOX_DEPTH")
+ATTR_OBSERVE = ("NO_OUTPUT_REMAP", "NUM_CPU_INTERRUPTS")
 
 J2A_POLL_LIMIT = 128
 RESET_DONE_BOUND_NS = 200_000
-CONTRACT_WAIT_KINDS_EXERCISED = 2
+EXPECTED_WAIT_KINDS_EXERCISED = 2
 
 
 def scratch_addr(n: int) -> int:
@@ -127,7 +128,6 @@ class smu_smc_cpu_ctrl_boot_state_test_seq:
         self.done = False
         self.jtag = None
         self.j2a = 0
-        self.step_ts: dict[str, float] = {}
         self.sites = {
             "j2a": {"bound": f"{J2A_POLL_LIMIT} polls", "count": 0, "last": "none", "expired": 0},
             "reset_done": {
@@ -142,7 +142,6 @@ class smu_smc_cpu_ctrl_boot_state_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _cell(self, name: str, addr: int, text: str) -> None:
@@ -228,12 +227,6 @@ class smu_smc_cpu_ctrl_boot_state_test_seq:
         upper = raw >> 32
         self._log(f"CHK-BOOT-SCRATCH0-UPPER: upper=0x{upper:08x}")
         self._cell("upper_word", scratch_addr(0), f"upper=0x{upper:08x} status=SUCCESS")
-        sb.expect_eq(
-            "CHK-BOOT-SCRATCH0-UPPER read status",
-            J2A_STATUS_SUCCESS,
-            J2A_STATUS_SUCCESS,
-            evidence="BOOT_SCRATCH0_UPPER",
-        )
 
         self._mark("S3", "RESET_VECTOR[0..3]")
         vectors = [await self._rd64(vector_addr(i), f"reset_vector_{i}") for i in range(4)]
@@ -286,7 +279,7 @@ class smu_smc_cpu_ctrl_boot_state_test_seq:
         obs = {k: _field(attr, cpu_ctrl_bm(f"{_C}SMC_ATTRIBUTES__{k}_bm")) for k in ATTR_OBSERVE}
         self._log(
             f"CHK-BOOT-ATTRIBUTES: no_output_remap={obs['NO_OUTPUT_REMAP']} "
-            f"num_cpu_interrupts={obs['NUM_CPU_INTERRUPTS']} mailbox_depth={obs['MAILBOX_DEPTH']}"
+            f"num_cpu_interrupts={obs['NUM_CPU_INTERRUPTS']}"
         )
         self._cell("attr_decoded", ADDR_ATTRIBUTES, " ".join(f"{k}={v}" for k, v in got.items()))
         sb.expect_eq(
@@ -322,16 +315,8 @@ class smu_smc_cpu_ctrl_boot_state_test_seq:
         expired = sum(rec["expired"] for rec in self.sites.values())
         self._log(
             f"CHK-TIMEOUT-PATHS: sites={len(lines)} expired={expired} "
-            f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
+            f"j2a_accesses_counted={self.j2a}"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait kinds exercised", len(lines), CONTRACT_WAIT_KINDS_EXERCISED)
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 10, evidence="CHK-NONVAC")
+        sb.expect_eq("bounded wait kinds exercised", len(lines), EXPECTED_WAIT_KINDS_EXERCISED)
         self.done = True

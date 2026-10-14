@@ -14,14 +14,14 @@ S2  Port 3 CONFIG 0x7 and 0x0, STRETCH_MULT 0, 1 and 0xFFFF each written and rea
 S3  Port 3 STATUS read, written 0xFFFF_FFFF, read again.
 S4  STRETCH_MULT = 0x1000 + i written to ports 0..15 and read back; CONFIG 0x1 on port 0 and 0x6 on
     port 15; CONFIG and STRETCH_MULT of ports 0 and 15 read back.
-S5  Back-to-back CT_SRC[0] and port 0 STRETCH_MULT write-then-read, alternating reads of CT_SRC[25],
-    CTP[15], CT_SRC[0], CTP[0], then CT_SRC[0], CT_SRC[25] and CONFIG of ports 0 and 15 cleared.
+S5  Interleaved CT_SRC[0] and port 0 STRETCH_MULT write-then-read over JTAG2AXI, alternating reads
+    of CT_SRC[25], CTP[15], CT_SRC[0], CTP[0], then CT_SRC[0], CT_SRC[25] and CONFIG of ports 0
+    and 15 cleared.
 S6  Every bounded wait is a site with its bound, last state and expiry.
 """
 
 from __future__ import annotations
 
-import time
 from typing import cast
 
 import cocotb
@@ -57,7 +57,6 @@ MODE_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__MODE_bm")
 INVERT_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__INVERT_bm")
 RESET_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__RESET_bm")
 STRETCH_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__STRETCH_MULT__STRETCH_MULT_bm")
-STATUS_RESET = 0
 
 CONFIG_ALL = MODE_BM | INVERT_BM | RESET_BM
 PORT_LOW = 0
@@ -73,8 +72,8 @@ CT_SRC_SET = 0x1
 
 J2A_POLL_LIMIT = 128
 # Bounded waits: a JTAG2AXI access.
-CONTRACT_WAITS = ("j2a",)
-CONTRACT_WAIT_COUNT = 1
+EXPECTED_WAITS = ("j2a",)
+EXPECTED_WAIT_COUNT = 1
 SITES = ("j2a",)
 
 
@@ -88,7 +87,6 @@ class smu_xtrig_ctn_csr_rw_test_seq:
         self.sb = test.env.scoreboard
         self.jtag = None
         self.j2a = 0
-        self.step_ts: dict[str, float] = {}
         self.sites = {
             site: {"bound": J2A_POLL_LIMIT, "count": 0, "last": "none", "expired": 0}
             for site in SITES
@@ -98,7 +96,6 @@ class smu_xtrig_ctn_csr_rw_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _cell(self, name: str, addr: int, text: str) -> None:
@@ -286,7 +283,7 @@ class smu_xtrig_ctn_csr_rw_test_seq:
             evidence="CHK-CTP-WINDOW-INDEPENDENCE",
         )
 
-        self._mark("S5", "back-to-back CT_SRC and CTP accesses")
+        self._mark("S5", "interleaved CT_SRC and CTP accesses over JTAG2AXI")
         src_first = self._ctm_src_addr(CT_SRC_FIRST)
         src_last = self._ctm_src_addr(CT_SRC_LAST)
         str_low = self._ctp_addr(PORT_LOW, CTP_STRETCH_OFF)
@@ -342,17 +339,9 @@ class smu_xtrig_ctn_csr_rw_test_seq:
             f"j2a_accesses_counted={self.j2a}"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        recorded = [s for s in CONTRACT_WAITS if self.sites[s]["count"] > 0]
+        recorded = [s for s in EXPECTED_WAITS if self.sites[s]["count"] > 0]
         sb.expect_eq(
             "bounded wait kinds declared by the sequence all exercised",
             len(recorded),
-            CONTRACT_WAIT_COUNT,
+            EXPECTED_WAIT_COUNT,
         )
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "S6", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<S6<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 7, evidence="CHK-NONVAC")

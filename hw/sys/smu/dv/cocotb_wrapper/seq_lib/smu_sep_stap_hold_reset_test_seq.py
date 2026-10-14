@@ -382,8 +382,8 @@ class smu_sep_stap_hold_reset_test_seq:
         await self._require_reset_done()
         await self._require_debug_open()
         self._log(
-            f"CHK-DBG-STAP-TMS-HOLD: reset_done_polls={self.reset_done_polls} "
-            f"posture_polls={self.posture_polls} LINKED-ISSUE bring-up wait"
+            f"CELL bring_up reset_done_polls={self.reset_done_polls} "
+            f"posture_polls={self.posture_polls}"
         )
 
         raw = make_smu_jtag_tap(self.dut, self.cfg.jtag_period_ns)
@@ -436,9 +436,8 @@ class smu_sep_stap_hold_reset_test_seq:
         after_trst = await self._capture_3dcr(PAYLOAD_RESET, "capture 3DCR after TRST")
         self._cell("trst_clears_3dcr", f"before=0x{before_trst:x} after=0x{after_trst:x}")
         self._log(
-            f"CHK-DBG-STAP-3DCR-RESET: observed_via=tb_stap_sep_tms "
-            f"tms_before_trst={tms_before} tms_after_trst={tms_after} "
-            "LINKED-ISSUE owner value pending"
+            f"CELL tms_level_around_trst tb_stap_sep_tms before={tms_before} after={tms_after} "
+            "(measured, not compared)"
         )
 
         results = {}

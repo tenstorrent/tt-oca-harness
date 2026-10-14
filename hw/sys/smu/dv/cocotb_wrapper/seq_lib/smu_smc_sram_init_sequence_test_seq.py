@@ -7,13 +7,10 @@ smc_init_mem_done_o and smc_disable_sram_auto_init_i rows.
 
 One sampler reads smc_init_mem_done_o, smc_scratch_write_count_dv_o and smc_rom_read_count_o on
 every clk_smu_i edge from before the shared bring-up. The only stimulus is a second cold reset on
-rst_cold_ni. The done level during that reset is not fixed by the owner and is logged, never
-compared.
+rst_cold_ni. The done level during that reset is logged and not compared.
 """
 
 from __future__ import annotations
-
-import time
 
 import cocotb
 from cocotb.triggers import RisingEdge
@@ -87,7 +84,6 @@ class smu_smc_sram_init_sequence_test_seq:
         self.dut = cocotb.top
         self.sb = test.env.scoreboard
         self.sampler = test.sampler
-        self.step_ts: dict[str, float] = {}
         self.sites = {
             name: {"bound": 0, "count": 0, "last": "none", "expired": 0} for name in SITE_NAMES
         }
@@ -96,7 +92,6 @@ class smu_smc_sram_init_sequence_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _state(self) -> str:
@@ -204,7 +199,7 @@ class smu_smc_sram_init_sequence_test_seq:
             expired=s.expired,
         )
 
-        # S5: timeout records and ordered fence.
+        # S5: timeout records.
         self._mark("S5", "TIMEOUT: bounded waits and last state")
         for site, r in self.sites.items():
             state = "EXPIRED" if r["expired"] else "ok"
@@ -225,12 +220,4 @@ class smu_smc_sram_init_sequence_test_seq:
                 "S4_done_rise_boot2",
             ],
         )
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "S5", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<S5<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 6, evidence="CHK-NONVAC")
         dut.rst_cold_ni.value = 1

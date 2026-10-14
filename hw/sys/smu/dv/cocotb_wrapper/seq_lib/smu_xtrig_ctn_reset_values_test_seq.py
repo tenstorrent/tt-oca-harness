@@ -15,7 +15,6 @@ S4  Every bounded wait is a site with its bound, last state and expiry.
 
 from __future__ import annotations
 
-import time
 from typing import cast
 
 import cocotb
@@ -62,7 +61,6 @@ class smu_xtrig_ctn_reset_values_test_seq:
         self.sb = test.env.scoreboard
         self.jtag = None
         self.j2a = 0
-        self.step_ts: dict[str, float] = {}
         self.sites = {
             "j2a": {"bound": J2A_POLL_LIMIT, "count": 0, "last": "none", "expired": 0},
         }
@@ -71,7 +69,6 @@ class smu_xtrig_ctn_reset_values_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _cell(self, name: str, addr: int, text: str) -> None:
@@ -208,11 +205,3 @@ class smu_xtrig_ctn_reset_values_test_seq:
             self.j2a,
             len(src_values) + len(ctp_values),
         )
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "S4", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<S4<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 5, evidence="CHK-NONVAC")

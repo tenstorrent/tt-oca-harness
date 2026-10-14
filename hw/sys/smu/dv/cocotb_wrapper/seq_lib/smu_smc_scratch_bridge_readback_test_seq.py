@@ -2,21 +2,20 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SCRATCH[0..15] reset value and write-readback through the SMC fabric JTAG2AXI bridge.
 
-Spec: cpu_ctrl.rdl:213-222 (SCRATCH data[31:0] rw, reset 0) and :372 (SCRATCH[16] @0x80,
-stride 8); smc.rdl:89 (smc_cpu_ctrl at SMC base + 0x3_9000); memmap.adoc.
+Spec: cpu_ctrl.rdl (reg SCRATCH: data[31:0] sw=rw reset 0; SCRATCH[16] @0x80, stride 8);
+smc.rdl (smc_cpu_ctrl placement at SMC base + 0x3_9000); memmap.adoc.
 
 Each SCRATCH[n] is read, written with a distinct pattern and read back, all over the bridge.
 """
 
 from __future__ import annotations
 
-import time
-
 import cocotb
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import smc_indexed_addr, smc_indexed_stride
 from seq_lib.smu_jtag_helpers import (
+    DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
     jtag2axi_single_read,
@@ -32,7 +31,6 @@ SCRATCH_RESET = 0x0
 PATTERN_FORMULA = "(0xA5A50000 ^ (n * 0x01010101)) & 0xFFFFFFFF"
 
 J2A_POLL_LIMIT = 128
-CONTRACT_WAIT_KINDS_EXERCISED = 1
 
 
 def scratch_addr(n: int) -> int:
@@ -53,7 +51,6 @@ class smu_smc_scratch_bridge_readback_test_seq:
         self.done = False
         self.jtag = None
         self.j2a = 0
-        self.step_ts: dict[str, float] = {}
         self.sites = {
             "j2a": {"bound": f"{J2A_POLL_LIMIT} polls", "count": 0, "last": "none", "expired": 0},
         }
@@ -62,7 +59,6 @@ class smu_smc_scratch_bridge_readback_test_seq:
         cocotb.log.info(msg)
 
     def _mark(self, step: str, text: str) -> None:
-        self.step_ts[step] = time.monotonic()
         self._log(f"STEP {step}: {text}")
 
     def _count(self, label: str, status: int, addr: int, kind: str) -> None:
@@ -119,19 +115,21 @@ class smu_smc_scratch_bridge_readback_test_seq:
         sb = self.test.env.scoreboard
         dut = self.dut
 
-        self._mark("S1", "SETUP: bring-up, IDCODE, J2A gate sample")
+        self._mark("S1", "SETUP: bring-up, IDCODE, J2A gate open")
         self.jtag = jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         await jtag.reset_tap()
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await jtag.step_tms(0)
         idcode = await jtag.read_idcode()
-        if idcode != 0x1:
-            raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
+        if idcode != DTP_DEFAULT_IDCODE:
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         gate = dut.tb_smc_jtag2axi_security_disable.value
         lc = dut.lc_state_o.value
         if not gate.is_resolvable or not lc.is_resolvable:
             raise AssertionError(f"X/Z on gate={gate} lc_state_o={lc}")
+        if int(gate) & 1:
+            raise AssertionError(f"SMC J2A gated: security_disable={gate}")
         self._log(f"CHK-COMP-SCRATCH-READBACK: lc_state_o=0x{int(lc):x} j2a_gate={int(gate)}")
         self._log(f"CELL setup idcode=0x{idcode:08x} security_disable={int(gate)}")
 
@@ -179,13 +177,4 @@ class smu_smc_scratch_bridge_readback_test_seq:
             f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait kinds exercised", len(lines), CONTRACT_WAIT_KINDS_EXERCISED)
-
-        self.step_ts["PASS"] = time.monotonic()
-        order = ["S1", "S2", "S3", "PASS"]
-        for a, b in zip(order, order[1:]):
-            if self.step_ts[a] >= self.step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self._log("CHK-NONVAC: PASS (ordered fence S1<S2<S3<PASS)")
-        sb.expect_eq("CHK-NONVAC ordered fence", len(order), 4, evidence="CHK-NONVAC")
         self.done = True

@@ -16,8 +16,8 @@ S2: a four-beat INCR burst of 8-byte beats at SEP-local 0x2000_1000, written and
     AxSIZE 3, four W beats on the write, and nothing on the eFuse bank-control port. The
     response code the extension port's tie-off returns is logged and not compared.
 S3: the same burst shape from the SHIM base 0x2000_0000 carries every beat to the eFuse bank
-    control port as AXI-Lite transfers whose addresses advance by the beat size, and none to the
-    extension port.
+    control port as AXI-Lite transfers in ascending address order whose 4-byte spans cover the
+    burst, and none to the extension port.
 S4: SEP_REGION_SIZE returns to its reset value and entry 1 is disabled.
 S5: every bounded wait is a runtime site record.
 """
@@ -94,10 +94,10 @@ SAMPLER_CAP_CLK = BEAT_GAP_CLK * BURST_BEATS
 # write and a read burst.
 SETUP_SBA_ACCESSES = 4 + 1 + 2
 RESTORE_SBA_ACCESSES = 1 + 1 + 2
-CONTRACT_SBA_ACCESSES = SETUP_SBA_ACCESSES + RESTORE_SBA_ACCESSES
-CONTRACT_BURSTS = 4
-CONTRACT_PORT_WAITS = 2
-CONTRACT_POSTURE_WAITS = 1
+EXPECTED_SBA_ACCESSES = SETUP_SBA_ACCESSES + RESTORE_SBA_ACCESSES
+EXPECTED_BURSTS = 4
+EXPECTED_PORT_WAITS = 2
+EXPECTED_POSTURE_WAITS = 1
 
 # Bit positions in the pulp AXI4 request/response structs of the 32-bit address, 64-bit data,
 # 6-bit ID, 12-bit user extension port (vendor/pulp-platform/axi include/axi/typedef.svh).
@@ -451,14 +451,13 @@ class smu_sep_inbound_burst_extension_test_seq(smu_dtp_sep_dm_sba_test_seq):
             )
             leg = "write" if write else "read"
             self._log(
-                f"CHK-DBG-EXT-BURST: resp={resp_name(resp)} "
-                f"LINKED-ISSUE owner value pending leg={leg}"
+                f"CHK-DBG-EXT-BURST: resp={resp_name(resp)} (measured, not compared) leg={leg}"
             )
             results[leg] = (self._summary(ext), self._summary(shim))
             first = (ext.of("aw") or ext.of("ar") or [(0, 0, 0)])[0]
             self._log(
                 f"CELL incr_burst addr=0x{first[0]:08x} len={first[1]} size={first[2]} "
-                f"beats={len(ext.of('w')) if write else BURST_BEATS} leg={leg}"
+                f"w_beats={len(ext.of('w'))} leg={leg}"
             )
             self._log(
                 f"CELL burst_first_addr_decode ext_hits={len(ext.events)} "
@@ -494,8 +493,7 @@ class smu_sep_inbound_burst_extension_test_seq(smu_dtp_sep_dm_sba_test_seq):
             step = addrs[1] - addrs[0] if len(addrs) > 1 else 0
             self._log(
                 f"CHK-DBG-SHIM-BURST: shim_transfers={len(addrs)} step_bytes={step} "
-                f"beat_bytes={BEAT_BYTES} LINKED-ISSUE (SHIM data width / downsizing "
-                f"unstated in memory_map.adoc / smu-sep.adoc) leg={leg}"
+                f"beat_bytes={BEAT_BYTES} leg={leg}"
             )
             covered = sorted(a + i for a in addrs for i in range(LITE_TRANSFER_BYTES))
             results[leg] = (
@@ -543,13 +541,13 @@ class smu_sep_inbound_burst_extension_test_seq(smu_dtp_sep_dm_sba_test_seq):
             "wait sites per kind against the test steps",
             dict(kinds),
             {
-                "posture": CONTRACT_POSTURE_WAITS,
-                "sba": CONTRACT_SBA_ACCESSES,
-                "port": CONTRACT_PORT_WAITS,
-                "burst_resp": CONTRACT_BURSTS,
-                "beat_wait": CONTRACT_BURSTS,
-                "hold": CONTRACT_BURSTS,
-                "drain": CONTRACT_BURSTS,
+                "posture": EXPECTED_POSTURE_WAITS,
+                "sba": EXPECTED_SBA_ACCESSES,
+                "port": EXPECTED_PORT_WAITS,
+                "burst_resp": EXPECTED_BURSTS,
+                "beat_wait": EXPECTED_BURSTS,
+                "hold": EXPECTED_BURSTS,
+                "drain": EXPECTED_BURSTS,
             },
         )
 
@@ -568,8 +566,8 @@ class smu_sep_inbound_burst_extension_test_seq(smu_dtp_sep_dm_sba_test_seq):
             (positive, sba, self.bursts, final_region),
             (
                 [True] * (len(order) - 1),
-                CONTRACT_SBA_ACCESSES,
-                CONTRACT_BURSTS,
+                EXPECTED_SBA_ACCESSES,
+                EXPECTED_BURSTS,
                 SEP_REGION_SIZE_RESET,
             ),
             evidence="CHK-NONVAC",

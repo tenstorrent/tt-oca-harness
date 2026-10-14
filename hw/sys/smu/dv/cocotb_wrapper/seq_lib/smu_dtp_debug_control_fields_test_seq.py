@@ -53,12 +53,11 @@ UPDATE_DR_STATE = int(OcahJtagState.UPDATE_DR)
 TRST_HOLD_REF = 8
 TLR_TMS_HIGHS = 5
 
-# Bounded waits: a stop-output wait, a TDR capture settle and a reset_done wait.
-CONTRACT_WAITS = ("stop_wait", "tdr_settle", "reset_done")
-CONTRACT_WAIT_KINDS = 3
+# Bounded waits: a stop-output wait and a reset_done wait.
+EXPECTED_WAITS = ("stop_wait", "reset_done")
+EXPECTED_WAIT_KINDS = 2
 SITES = (
     "stop_wait",
-    "tdr_settle",
     "reset_done",
     "por_assert",
     "por_release",
@@ -81,7 +80,6 @@ class smu_dtp_debug_control_fields_test_seq:
             site: {"bound": 0, "count": 0, "last": "none", "expired": 0} for site in SITES
         }
         self.sites["stop_wait"]["bound"] = STOP_BOUND
-        self.sites["tdr_settle"]["bound"] = TDR_SETTLE
         self.sites["reset_done"]["bound"] = RESET_DONE_BOUND
         self.sites["por_assert"]["bound"] = POR_BOUND_REF
         self.sites["por_release"]["bound"] = POR_BOUND_REF
@@ -121,13 +119,9 @@ class smu_dtp_debug_control_fields_test_seq:
         return int(await self.jtag.read("DEBUG_CONTROL", shift_value=shift_value))
 
     async def _settle(self, label: str) -> None:
-        edges = 0
         for _ in range(TDR_SETTLE):
             await RisingEdge(self.dut.clk_smu_i)
-            edges += 1
-        if edges != TDR_SETTLE:
-            self._expire("tdr_settle", f"{label}: {edges} of {TDR_SETTLE} clk_smu edges")
-        self._ok("tdr_settle", f"{label}: {edges} clk_smu edges")
+        self._log(f"{label}: {TDR_SETTLE} clk_smu edges")
 
     async def _stop_wait(self, expect: int, label: str) -> int:
         """clk_smu_i edges from now until dtp_stop_clks_o equals ``expect``, within STOP_BOUND."""
@@ -365,11 +359,11 @@ class smu_dtp_debug_control_fields_test_seq:
             f"tdr_scans_counted={self.scans}"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        recorded = [s for s in CONTRACT_WAITS if self.sites[s]["count"] > 0]
+        recorded = [s for s in EXPECTED_WAITS if self.sites[s]["count"] > 0]
         sb.expect_eq(
             "bounded wait kinds declared by the sequence all exercised",
             len(recorded),
-            CONTRACT_WAIT_KINDS,
+            EXPECTED_WAIT_KINDS,
         )
 
         await self._write(0)
