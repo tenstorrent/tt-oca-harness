@@ -4219,6 +4219,57 @@ module sep_uvm_top
     };
 `undef SEP_FCOV_IC
 
+    // Memory, boot, reset sampler taps of the CPU path (docs/SEP_FCOV.adoc,
+    // memory, boot, reset groups, Sampled signal paths): the trap unit
+    // (veer.dec.tlu: trap cause, ECC counters, their requests and write
+    // strobes, the threshold field of the CSR write data), the LSU M-stage
+    // packet and address (veer.lsu) and the DTM output before the core and
+    // uncore mux (dmi_en, dmi_addr, dmi_wr_en). Read-only, no force. They
+    // exist only with the full core; the stub build ties them to 0.
+`ifndef SEP_CPU_STUB
+`define SEP_FCOV_TLU `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.dec.tlu
+`define SEP_FCOV_LSU `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.lsu
+    wire [31:0] fcov_tlu_mcause    = `SEP_FCOV_TLU.mcause;
+    wire [3:0]  fcov_tlu_mscause   = `SEP_FCOV_TLU.mscause;
+    wire [31:0] fcov_tlu_mdccmect  = `SEP_FCOV_TLU.mdccmect;
+    wire [31:0] fcov_tlu_miccmect  = `SEP_FCOV_TLU.miccmect;
+    wire        fcov_tlu_dccm_ce   = `SEP_FCOV_TLU.mdccme_ce_req;
+    wire        fcov_tlu_iccm_ce   = `SEP_FCOV_TLU.miccme_ce_req;
+    wire        fcov_tlu_ce_int    = `SEP_FCOV_TLU.ce_int;
+    wire        fcov_tlu_wr_dccmect = `SEP_FCOV_TLU.wr_mdccmect_r;
+    wire        fcov_tlu_wr_iccmect = `SEP_FCOV_TLU.wr_miccmect_r;
+    wire [4:0]  fcov_tlu_csr_wt    = `SEP_FCOV_TLU.dec_csr_wrdata_r[31:27];
+    wire        fcov_lsu_m_valid   = `SEP_FCOV_LSU.lsu_pkt_m.valid;
+    wire        fcov_lsu_m_load    = `SEP_FCOV_LSU.lsu_pkt_m.load;
+    wire        fcov_lsu_m_store   = `SEP_FCOV_LSU.lsu_pkt_m.store;
+    wire        fcov_lsu_m_dma     = `SEP_FCOV_LSU.lsu_pkt_m.dma;
+    wire [31:0] fcov_lsu_m_addr    = `SEP_FCOV_LSU.lsu_addr_m;
+    wire        fcov_dmi_en        = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_en;
+    wire [6:0]  fcov_dmi_addr      = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_addr;
+    wire        fcov_dmi_wr_en     = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_wr_en;
+`undef SEP_FCOV_TLU
+`undef SEP_FCOV_LSU
+`else
+    wire [31:0] fcov_tlu_mcause    = '0;
+    wire [3:0]  fcov_tlu_mscause   = '0;
+    wire [31:0] fcov_tlu_mdccmect  = '0;
+    wire [31:0] fcov_tlu_miccmect  = '0;
+    wire        fcov_tlu_dccm_ce   = 1'b0;
+    wire        fcov_tlu_iccm_ce   = 1'b0;
+    wire        fcov_tlu_ce_int    = 1'b0;
+    wire        fcov_tlu_wr_dccmect = 1'b0;
+    wire        fcov_tlu_wr_iccmect = 1'b0;
+    wire [4:0]  fcov_tlu_csr_wt    = '0;
+    wire        fcov_lsu_m_valid   = 1'b0;
+    wire        fcov_lsu_m_load    = 1'b0;
+    wire        fcov_lsu_m_store   = 1'b0;
+    wire        fcov_lsu_m_dma     = 1'b0;
+    wire [31:0] fcov_lsu_m_addr    = '0;
+    wire        fcov_dmi_en        = 1'b0;
+    wire [6:0]  fcov_dmi_addr      = '0;
+    wire        fcov_dmi_wr_en     = 1'b0;
+`endif
+
     sep_fcov u_sep_fcov (
         .clk_i                 (clk_i),
         .rst_ni                (rst_n_int),
@@ -4501,7 +4552,72 @@ module sep_uvm_top
         .wdt_tl_h2d_i      (`SEP_CORE.u_sep_wdt_wrap.tl_d_i),
         .wdt_tl_d2h_i      (`SEP_CORE.u_sep_wdt_wrap.tl_d_o),
         .te_pins_one_i     ({&fcov_te_axi, fcov_te_gater === 1'b1}),
-        .te_pins_zero_i    ({~|fcov_te_axi, fcov_te_gater === 1'b0})
+        .te_pins_zero_i    ({~|fcov_te_axi, fcov_te_gater === 1'b0}),
+
+        // Memory, boot, reset taps of the CPU path, the memory macros and
+        // the debug interface.
+        .cpu_trace_insn_i   (cpu_trace_insn_o),
+        .cpu_trace_ecause_i (cpu_trace_ecause_o),
+        .cpu_trace_tval_i   (cpu_trace_tval_o),
+        .ecc_dbg_i          (ext_debug_bus_o[367:364]),
+        .sram_req_i         (u_dut.sep_sram_req),
+        .sram_rsp_i         (u_dut.sep_sram_rsp),
+        .tcm_axi_req_i      (`SEP_CORE.cpu_tcm_axi_req),
+        .tcm_axi_resp_i     (`SEP_CORE.cpu_tcm_axi_resp),
+        .tcm_i_clken_i      (pr_tcm_iccm_clken_o),
+        .tcm_i_wren_i       (pr_tcm_iccm_wren_o),
+        .tcm_i_addr_i       (pr_tcm_iccm_addr_o),
+        .tcm_i_wdata_i      (pr_tcm_iccm_wdata_o),
+        .tcm_i_wecc_i       (pr_tcm_iccm_wecc_o),
+        .tcm_i_rdata_i      (pr_tcm_iccm_rdata_o),
+        .tcm_i_recc_i       (pr_tcm_iccm_recc_o),
+        .tcm_d_clken_i      (pr_tcm_dccm_clken_o),
+        .tcm_d_wren_i       (pr_tcm_dccm_wren_o),
+        .tcm_d_addr_i       (pr_tcm_dccm_addr_o),
+        .tcm_d_wdata_i      (pr_tcm_dccm_wdata_o),
+        .tcm_d_wecc_i       (pr_tcm_dccm_wecc_o),
+        .tcm_d_rdata_i      (pr_tcm_dccm_rdata_o),
+        .tcm_d_recc_i       (pr_tcm_dccm_recc_o),
+        .ifu_arvalid_i      (pr_ifu_arvalid_o),
+        .ifu_arready_i      (pr_ifu_arready_o),
+        .ifu_araddr_i       (pr_ifu_araddr_o),
+        .ifu_arid_i         (pr_ifu_arid_o),
+        .ifu_rvalid_i       (pr_ifu_rvalid_o),
+        .ifu_rready_i       (pr_ifu_rready_o),
+        .ifu_rresp_i        (pr_ifu_rresp_o),
+        .ifu_rid_i          (pr_ifu_rid_o),
+        .ifu_rlast_i        (pr_ifu_rlast_o),
+        .ifu_rom_req_i      (`SEP_CORE.ifu_rom_axi_req),
+        .ifu_sram_req_i     (`SEP_CORE.ifu_sram_axi_req),
+        .lsu_rom_req_i      (`SEP_CORE.lsu_rom_axi_req),
+        .lsu_rom_resp_i     (`SEP_CORE.lsu_rom_axi_resp),
+        .lsu_xbar_req_i     (`SEP_CORE.lsu_xbar_axi_req),
+        .lsu_xbar_resp_i    (`SEP_CORE.lsu_xbar_axi_resp),
+        .rom_macro_req_i    (pr_rom_macro_req_o),
+        .rom_macro_addr_i   (pr_rom_macro_addr_o),
+        .tlu_mcause_i       (fcov_tlu_mcause),
+        .tlu_mscause_i      (fcov_tlu_mscause),
+        .tlu_mdccmect_i     (fcov_tlu_mdccmect),
+        .tlu_miccmect_i     (fcov_tlu_miccmect),
+        .tlu_dccm_ce_req_i  (fcov_tlu_dccm_ce),
+        .tlu_iccm_ce_req_i  (fcov_tlu_iccm_ce),
+        .tlu_ce_int_i       (fcov_tlu_ce_int),
+        .tlu_wr_dccmect_i   (fcov_tlu_wr_dccmect),
+        .tlu_wr_iccmect_i   (fcov_tlu_wr_iccmect),
+        .tlu_csr_wt_i       (fcov_tlu_csr_wt),
+        .lsu_m_valid_i      (fcov_lsu_m_valid),
+        .lsu_m_load_i       (fcov_lsu_m_load),
+        .lsu_m_store_i      (fcov_lsu_m_store),
+        .lsu_m_dma_i        (fcov_lsu_m_dma),
+        .lsu_m_addr_i       (fcov_lsu_m_addr),
+        .nmi_vec_i          (`SEP_CORE.nmi_vec),
+        .dmi_en_i           (fcov_dmi_en),
+        .dmi_addr_i         (fcov_dmi_addr),
+        .dmi_wr_en_i        (fcov_dmi_wr_en),
+        .dmi_core_en_i      (dmi_core_enable_i === 1'b1),
+        .dmi_uncore_cfg_i   (dmi_uncore_enable_i === 1'b1),
+        .dmi_uncore_en_i    (dmi_uncore_en_o),
+        .dmi_uncore_wr_en_i (dmi_uncore_wr_en_o)
     );
 `endif
 

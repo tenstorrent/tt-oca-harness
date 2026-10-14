@@ -369,6 +369,23 @@ Observation probe groups:
   (`u_sep_system_peripherals.mailbox_axil_req` and `mailbox_axil_resp`) and
   the inbound filter (`u_sep_system_peripherals.u_inbound_filter`). Owners: the owning tests of
   the mailbox, IRQ and PIC groups.
+* Memory aperture, CPU ECC and CPU debug FCOV sampler taps (`cov/sv/sep_fcov.sv`,
+  memory, boot, reset groups): read-only references from the `u_sep_fcov`
+  connection block to the trap unit (`veer.dec.tlu`: `mcause`, `mscause`,
+  `mdccmect`, `miccmect`, `mdccme_ce_req`, `miccme_ce_req`, `ce_int`,
+  `wr_mdccmect_r`, `wr_miccmect_r` and `dec_csr_wrdata_r[31:27]`), the LSU
+  M-stage packet and address (`veer.lsu`: `lsu_pkt_m` and `lsu_addr_m`), the DTM
+  output of `u_el2_veer_wrapper` (`dmi_en`, `dmi_addr`, `dmi_wr_en`), the
+  `sep.sv` nets `cpu_tcm_axi_req` and `cpu_tcm_axi_resp`, `ifu_rom_axi_req`,
+  `ifu_sram_axi_req`, `lsu_rom_axi_req` and `lsu_xbar_axi_req` with their
+  responses, and `nmi_vec`, and the wrapper nets `u_dut.sep_sram_req` and
+  `u_dut.sep_sram_rsp`; the core taps are tied to 0 on the CPU stub build. The
+  sampler also reads the probes PR-TCM, PR-IFU and PR-ROM-MACRO, the CPU trace
+  ports, `ext_debug_bus_o[367:364]`, the DMI enables and the uncore DMI
+  outputs. Owners: `sep_boot_rom_aperture_sweep_test`,
+  `sep_sram_axi_shape_matrix_test`, `sep_tcm_dma_aperture_ecc_test`,
+  `sep_tcm_ecc_cpu_trap_test`, `sep_cpu_demux_unmapped_fetch_test`,
+  `sep_debug_master_target_matrix_test`, `sep_cpu_isa_pmp_csr_test`.
 * The covergroup sampler's direct reads of the WDT bark interrupt
   (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read
   `ARSIZE` (owner `sep_axi_partial_lane_read_test`); and, for the Phase 2 SPI

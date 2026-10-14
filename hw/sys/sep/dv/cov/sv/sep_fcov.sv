@@ -367,7 +367,86 @@ module sep_fcov (
   // test_en_i consumer pins, bit 0 the clock gater, bit 1 the AXI cells:
   // every pin of the class at 1, every pin of the class at 0.
   input wire [1:0]           te_pins_one_i,
-  input wire [1:0]           te_pins_zero_i
+  input wire [1:0]           te_pins_zero_i,
+
+  // Memory, boot, reset taps of the CPU path, the memory macros and the
+  // debug interface (docs/SEP_FCOV.adoc, memory, boot, reset groups,
+  // Sampled signal paths): read-only, no force. The trap unit, LSU and DTM
+  // taps are 0 on the CPU stub build.
+  input wire [31:0]          cpu_trace_insn_i,
+  input wire [4:0]           cpu_trace_ecause_i,
+  input wire [31:0]          cpu_trace_tval_i,
+  input wire [3:0]           ecc_dbg_i,         // ext_debug_bus_o[367:364]
+  input sep_pkg::sep_sram_req_t sram_req_i,     // u_dut.sep_sram_req
+  input sep_pkg::sep_sram_rsp_t sram_rsp_i,     // u_dut.sep_sram_rsp
+  // cpu_tcm_axi_req / resp: the crossbar backdoor into the core DMA port.
+  input sep_pkg::sep_32_64_6_12_axi_req_t  tcm_axi_req_i,
+  input sep_pkg::sep_32_64_6_12_axi_resp_t tcm_axi_resp_i,
+  // The TCM macro request and response (u_dut.sep_cpu_tcm_req, _rsp), bank
+  // 0 in the low bits: ICCM 4 banks, DCCM 2 banks, 14-bit rows, 32-bit
+  // data and 7-bit ECC per bank.
+  input wire [3:0]           tcm_i_clken_i,
+  input wire [3:0]           tcm_i_wren_i,
+  input wire [55:0]          tcm_i_addr_i,
+  input wire [127:0]         tcm_i_wdata_i,
+  input wire [27:0]          tcm_i_wecc_i,
+  input wire [127:0]         tcm_i_rdata_i,
+  input wire [27:0]          tcm_i_recc_i,
+  input wire [1:0]           tcm_d_clken_i,
+  input wire [1:0]           tcm_d_wren_i,
+  input wire [27:0]          tcm_d_addr_i,
+  input wire [63:0]          tcm_d_wdata_i,
+  input wire [13:0]          tcm_d_wecc_i,
+  input wire [63:0]          tcm_d_rdata_i,
+  input wire [13:0]          tcm_d_recc_i,
+  // u_sep_cpu.ifu_axi_req / resp before the IFU demux (PR-IFU).
+  input wire                 ifu_arvalid_i,
+  input wire                 ifu_arready_i,
+  input wire [31:0]          ifu_araddr_i,
+  input wire [2:0]           ifu_arid_i,
+  input wire                 ifu_rvalid_i,
+  input wire                 ifu_rready_i,
+  input wire [1:0]           ifu_rresp_i,
+  input wire [2:0]           ifu_rid_i,
+  input wire                 ifu_rlast_i,
+  // Post-demux CPU master ports of sep.sv.
+  input sep_pkg::sep_32_64_3_12_axi_req_t  ifu_rom_req_i,
+  input sep_pkg::sep_32_64_3_12_axi_req_t  ifu_sram_req_i,
+  input sep_pkg::sep_32_64_3_12_axi_req_t  lsu_rom_req_i,
+  input sep_pkg::sep_32_64_3_12_axi_resp_t lsu_rom_resp_i,
+  input sep_pkg::sep_32_64_3_12_axi_req_t  lsu_xbar_req_i,
+  input sep_pkg::sep_32_64_3_12_axi_resp_t lsu_xbar_resp_i,
+  // The ROM macro request after the ROM interface shim (word index).
+  input wire                 rom_macro_req_i,
+  input wire [12:0]          rom_macro_addr_i,
+  // veer.dec.tlu: trap cause, ECC counters and their requests, the counter
+  // write strobes and the threshold field of the CSR write data.
+  input wire [31:0]          tlu_mcause_i,
+  input wire [3:0]           tlu_mscause_i,
+  input wire [31:0]          tlu_mdccmect_i,
+  input wire [31:0]          tlu_miccmect_i,
+  input wire                 tlu_dccm_ce_req_i,  // mdccme_ce_req
+  input wire                 tlu_iccm_ce_req_i,  // miccme_ce_req
+  input wire                 tlu_ce_int_i,
+  input wire                 tlu_wr_dccmect_i,   // wr_mdccmect_r
+  input wire                 tlu_wr_iccmect_i,   // wr_miccmect_r
+  input wire [4:0]           tlu_csr_wt_i,       // dec_csr_wrdata_r[31:27]
+  // veer.lsu: the M-stage packet and address.
+  input wire                 lsu_m_valid_i,
+  input wire                 lsu_m_load_i,
+  input wire                 lsu_m_store_i,
+  input wire                 lsu_m_dma_i,
+  input wire [31:0]          lsu_m_addr_i,
+  input wire [30:0]          nmi_vec_i,          // SEP_CORE.nmi_vec, bits 31:1
+  // DTM output before the core and uncore mux, the DMI enables and the
+  // uncore DMI outputs.
+  input wire                 dmi_en_i,
+  input wire [6:0]           dmi_addr_i,
+  input wire                 dmi_wr_en_i,
+  input wire                 dmi_core_en_i,      // dmi_core_enable_i
+  input wire                 dmi_uncore_cfg_i,   // dmi_uncore_enable_i
+  input wire                 dmi_uncore_en_i,    // dmi_uncore_en_o
+  input wire                 dmi_uncore_wr_en_i  // dmi_uncore_wr_en_o
 );
 
   import sep_top_addrmap_pkg::*;
@@ -5057,7 +5136,10 @@ module sep_fcov (
       logic [1:0] ext_cls,
       logic [1:0] ext_burst,
       logic [1:0] tcm_cell,
-      logic own_tcm
+      logic own_tcm,
+      logic [3:0] tri_cell,
+      logic tri_v,
+      logic eri_v
   );
     option.per_instance = 1;
     option.name = "sep_fabric_dedicated_port_cg";
@@ -5078,6 +5160,18 @@ module sep_fcov (
     cp_tcm_dma_dir_range: coverpoint tcm_cell iff (own_tcm) {
       bins r_iccm = {2'b00}; bins r_dccm = {2'b01}; bins w_iccm = {2'b10}; bins w_dccm = {2'b11};
     }
+    // CPU path cells (memory, boot, reset groups): {backdoor request, cell}.
+    // Cell 0 IFU read ICCM, 1 LSU read ICCM, 2 LSU write ICCM, 3 LSU read
+    // DCCM, 4 LSU write DCCM.
+    cp_tcm_refused_initiator: coverpoint tri_cell iff (tri_v) {
+      bins ifu_read_iccm = {4'b0_000};
+      bins lsu_read_iccm = {4'b0_001};
+      bins lsu_write_iccm = {4'b0_010};
+      bins lsu_read_dccm = {4'b0_011};
+      bins lsu_write_dccm = {4'b0_100};
+      illegal_bins backdoor_request = {[4'b1_000 : 4'b1_111]};
+    }
+    cp_ext_refused_ifu: coverpoint eri_v iff (eri_v) {bins no_request_at_fetch_address = {1'b1};}
   endgroup
 
   // ---------------------------------------------------------------------
@@ -5954,11 +6048,11 @@ module sep_fcov (
         if ((ei == INIT_SI) && (eb == axi_pkg::BURST_INCR) && !w && (el == 8'd7)) ebu = 2'd2;
         u_sep_fabric_dedicated_port_cg.sample(
             (ei == INIT_LSU) ? {2'd1, w} : (ei == INIT_SI) ? {2'd2, w} : (ei == INIT_DMA) ? {2'd3, w} : 3'd0,
-            own_ext, own_dma, ecls, ebu, 2'd0, 1'b0);
+            own_ext, own_dma, ecls, ebu, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0);
       end
       if (tcm_hit)
-        u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, tcm_cell_q,
-                                              own_tcm_dma);
+        u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, tcm_cell_q, own_tcm_dma,
+                                              4'd0, 1'b0, 1'b0);
       // Alias remap input.
       if (al_ar_hs || al_aw_hs) begin
         logic    w;
@@ -11087,6 +11181,12 @@ module sep_fcov (
     logic rt_v;  // 0 shift through, 1 dmi_rst_vec changes at Update-DR
     logic ta;
     logic ta_v;  // 0 quiet reset then a beat, 1 beat in reset
+    logic [1:0] da;
+    logic da_v;  // {dmi_core_enable_i, DMI address 0x50 and above}
+    logic [1:0] tv;
+    logic tv_v;  // 0 taken trap, 1 interrupt cause 0x1E, 2 NMI
+    logic [2:0] ic;
+    logic ic_v;  // 0 M, 1 C, 2 Zba, 3 Zbb, 4 Zbc retired, 5 Zbs trapped
   } mr_dbg_t;
 
   covergroup sep_debug_trace_cg with function sample (mr_dbg_t s);
@@ -11101,6 +11201,23 @@ module sep_fcov (
     cp_trace_activity: coverpoint s.ta iff (s.ta_v) {
       bins quiet_reset_then_beat = {1'b0}; illegal_bins beat_in_reset = {1'b1};
     }
+    cp_dmi_aperture: coverpoint s.da iff (s.da_v) {
+      bins enable0_core = {2'b00};
+      bins enable0_upper = {2'b01};
+      bins enable1_core = {2'b10};
+      bins enable1_upper = {2'b11};
+    }
+    cp_traced_event: coverpoint s.tv iff (s.tv_v) {
+      bins taken_trap = {2'd0}; bins interrupt_0x1e = {2'd1}; bins nmi = {2'd2};
+    }
+    cp_instr_class: coverpoint s.ic iff (s.ic_v) {
+      bins retired_m = {3'd0};
+      bins retired_c = {3'd1};
+      bins retired_zba = {3'd2};
+      bins retired_zbb = {3'd3};
+      bins retired_zbc = {3'd4};
+      bins trapped_zbs = {3'd5};
+    }
   endgroup
 
   typedef struct packed {
@@ -11109,6 +11226,11 @@ module sep_fcov (
     logic ev_v;  // 0 early capture, 1..4 non-sampling event, 5 change outside
     logic sk;
     logic sk_v;  // 0 strap change held, 1 change after the capture
+    logic rw;
+    logic rw_v;  // 0 macro request at the store word only for readbacks, 1 other
+    logic rr_v;  // byte or halfword ROM store response
+    logic [1:0] du;
+    logic du_v;  // {uncore DMI output high, DMI address 0x50 and above}
   } mr_abs_t;
 
   covergroup sep_documented_absence_cg with function sample (mr_abs_t s);
@@ -11125,6 +11247,15 @@ module sep_fcov (
     }
     cp_stm_strap_stability: coverpoint s.sk iff (s.sk_v) {
       bins strap_change_held = {1'b0}; illegal_bins change_after_capture = {1'b1};
+    }
+    cp_rom_write_master: coverpoint s.rw iff (s.rw_v) {
+      bins cpu_store_readback_only = {1'b0}; illegal_bins macro_request_not_readback = {1'b1};
+    }
+    cp_rom_write_response: coverpoint s.rr_v iff (s.rr_v) {bins byte_half_store_response = {1'b1};}
+    cp_dmi_uncore: coverpoint s.du iff (s.du_v) {
+      bins disabled_lower_never = {2'b00};
+      bins disabled_upper_never = {2'b01};
+      illegal_bins uncore_output_with_enable_0 = {2'b10, 2'b11};
     }
   endgroup
 
@@ -13301,6 +13432,1167 @@ module sep_fcov (
         e.sk_v = 1'b1;
         u_sep_documented_absence_cg.sample(e);
       end else mr_ss_cnt <= mr_ss_cnt + 1;
+    end
+  end
+
+  // =====================================================================
+  // Memory apertures, CPU ECC and the CPU debug paths (docs/SEP_FCOV.adoc,
+  // memory, boot, reset, WDT and clock groups): sep_mem_aperture_cg,
+  // sep_cpu_ecc_irq_cg, and the CPU-path points of sep_debug_trace_cg,
+  // sep_documented_absence_cg and sep_fabric_dedicated_port_cg. Every point
+  // samples only while graded_owner holds the code of a test that owns the
+  // point or the cell. The windows, ages and waits below are choices of the
+  // environment; the specification gives none.
+  // =====================================================================
+  wire mm_own_rom = (graded_owner == FcovOwnSepBootRomApertureSweepTest);
+  wire mm_own_sram = (graded_owner == FcovOwnSepSramAxiShapeMatrixTest);
+  wire mm_own_tdma = (graded_owner == FcovOwnSepTcmDmaApertureEccTest);
+  wire mm_own_trap = (graded_owner == FcovOwnSepTcmEccCpuTrapTest);
+  wire mm_own_demux = (graded_owner == FcovOwnSepCpuDemuxUnmappedFetchTest);
+  wire mm_own_dmi = (graded_owner == FcovOwnSepDebugMasterTargetMatrixTest);
+  wire mm_own_isa = (graded_owner == FcovOwnSepCpuIsaPmpCsrTest);
+
+  localparam int unsigned MmRomRdAge = 16;  // a ROM read request this recent explains a macro request
+  localparam int unsigned MmStoreQuiet = 32;  // clk_i edges watched after a ROM store response
+  localparam int unsigned MmCoreQuiet = 16;  // edges watched after a core TCM access
+  localparam int unsigned MmCeSilent = 64;  // edges of ce_int with mie[30] clear and no trap
+  localparam int unsigned MmVecWin = 4;  // clocks on each side of a correctable pulse
+  localparam int unsigned MmTrapWait = 8;  // edges from a trace trap beat to its mcause
+  localparam int unsigned MmKindWin = 4;  // edges from a macro ECC read to its pulse
+
+  localparam logic [31:0] MmRomLast = BootRomEnd - 32'd8;  // last 64-bit ROM word
+  localparam logic [31:0] MmIccmBase = 32'(SEP_ICCM_MEM_BASE_ADDR);
+  localparam logic [31:0] MmIccmEnd = MmIccmBase + 32'(SEP_ICCM_MEM_SIZE);
+  localparam logic [31:0] MmDccmBase = 32'(SEP_DCCM_MEM_BASE_ADDR);
+  localparam logic [31:0] MmDccmEnd = MmDccmBase + 32'(SEP_DCCM_MEM_SIZE);
+  // Trap causes (doc/interrupts.adoc, Memory ECC Errors and Non-PIC
+  // Interrupt Paths).
+  localparam logic [31:0] MmMcauseNmi = 32'hF000_1000;
+  localparam logic [4:0] MmCauseCe = 5'h1E;
+  localparam logic [1:0] MmBurstFixed = 2'd0;
+  localparam logic [1:0] MmBurstIncr = 2'd1;
+  localparam logic [1:0] MmBurstWrap = 2'd2;
+  localparam logic [1:0] MmRespSlverr = 2'b10;
+  localparam logic [1:0] MmRespDecerr = 2'b11;
+
+  typedef struct packed {
+    logic [2:0] mx;
+    logic mx_v;  // 0..3 ROM {last word, half}; 4/5 ICCM first/last; 6/7 DCCM first/last
+    logic as;
+    logic as_v;  // ROM access size: 0 byte, 1 half
+    logic [2:0] mi;
+    logic mi_v;  // 0 ROM request, 1 ROM response, 2 SRAM request, 3 SRAM response, 4 TCM request
+    logic [2:0] rm;
+    logic rm_v;  // {not OKAY, master 0 CPU LSU 1 m_axi, burst 0 FIXED 1 WRAP}
+    logic [3:0] sb;
+    logic sb_v;  // {AxBURST, response 0 OKAY 1 SLVERR 2 other}
+    logic [3:0] ot;
+    logic ot_v;  // {path 0 SRAM read 1 SRAM write 2 ROM read 3 stale beat, third}
+    logic [4:0] te;
+    logic te_v;  // {double with OKAY, memory 0 ICCM 1 DCCM, class}
+    logic [2:0] dt;
+    logic dt_v;  // see cp_demux_target
+    logic ci;
+    logic ci_v;  // 0 ICCM fetch by the IFU, 1 DCCM access by the LSU
+  } mm_ap_t;
+
+  covergroup sep_mem_aperture_cg with function sample (mm_ap_t s);
+    option.per_instance = 1;
+    option.name = "sep_mem_aperture_cg";
+    cp_mem_x_class: coverpoint s.mx iff (s.mx_v) {
+      bins rom_first_byte = {3'd0};
+      bins rom_first_half = {3'd1};
+      bins rom_last_byte = {3'd2};
+      bins rom_last_half = {3'd3};
+      bins iccm_first = {3'd4};
+      bins iccm_last = {3'd5};
+      bins dccm_first = {3'd6};
+      bins dccm_last = {3'd7};
+    }
+    cp_access_size: coverpoint s.as iff (s.as_v) {bins rom_byte = {1'b0}; bins rom_half = {1'b1};}
+    cp_macro_if: coverpoint s.mi iff (s.mi_v) {
+      bins rom_request = {3'd0};
+      bins rom_response = {3'd1};
+      bins sram_request = {3'd2};
+      bins sram_response = {3'd3};
+      bins tcm_request = {3'd4};
+    }
+    cp_requesting_master: coverpoint s.rm iff (s.rm_v) {
+      bins cpu_lsu_fixed = {3'b000};
+      bins cpu_lsu_wrap = {3'b001};
+      bins m_axi_fixed = {3'b010};
+      bins m_axi_wrap = {3'b011};
+      illegal_bins single_beat_not_okay = {[3'b100 : 3'b111]};
+    }
+    // AxBURST 0 FIXED, 1 INCR, 2 WRAP. FIXED and WRAP sample with 2 or
+    // more beats; INCR samples at any length.
+    cp_sram_burst: coverpoint s.sb iff (s.sb_v) {
+      bins fixed_multi_slverr = {4'b00_01};
+      bins wrap_multi_slverr = {4'b10_01};
+      illegal_bins fixed_wrap_multi_okay = {4'b00_00, 4'b10_00};
+      illegal_bins incr_slverr = {4'b01_01};
+    }
+    cp_otf_reset_x_path: coverpoint s.ot iff (s.ot_v) {
+      bins sram_read_third[] = {[4'b00_00 : 4'b00_10]};
+      bins sram_write_third[] = {[4'b01_00 : 4'b01_10]};
+      bins rom_read = {4'b10_00};
+      illegal_bins beat_without_request_after_release = {[4'b11_00 : 4'b11_11]};
+    }
+    // Class 0 single data, 1 single ECC, 2 two data, 3 data and ECC, 4 two ECC.
+    cp_tcm_ecc: coverpoint s.te iff (s.te_v) {
+      bins iccm_single_data = {5'b0_0_000};
+      bins iccm_single_ecc = {5'b0_0_001};
+      bins iccm_double_2data = {5'b0_0_010};
+      bins iccm_double_data_ecc = {5'b0_0_011};
+      bins iccm_double_2ecc = {5'b0_0_100};
+      bins dccm_single_data = {5'b0_1_000};
+      bins dccm_single_ecc = {5'b0_1_001};
+      bins dccm_double_2data = {5'b0_1_010};
+      bins dccm_double_data_ecc = {5'b0_1_011};
+      bins dccm_double_2ecc = {5'b0_1_100};
+      illegal_bins double_okay = {
+        5'b1_0_010, 5'b1_0_011, 5'b1_0_100, 5'b1_1_010, 5'b1_1_011, 5'b1_1_100
+      };
+    }
+    cp_demux_target: coverpoint s.dt iff (s.dt_v) {
+      bins ifu_error_responder = {3'd0};
+      bins lsu_rom_port = {3'd1};
+      bins lsu_xbar_port = {3'd2};
+      illegal_bins ifu_unmapped_not_decerr = {3'd4};
+      illegal_bins ifu_port_other_class = {3'd5};
+      illegal_bins lsu_rom_address_on_xbar = {3'd6};
+      illegal_bins lsu_sram_address_on_rom = {3'd7};
+    }
+    cp_core_internal_path: coverpoint s.ci iff (s.ci_v) {
+      bins iccm_ifu_fetch = {1'b0}; bins dccm_lsu_access = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [3:0] cc;
+    logic cc_v;  // {request mismatch, memory 0 ICCM 1 DCCM, at or above 2^t, mie[30]}
+    logic cl;
+    logic cl_v;  // 0 t from 0 to 5 reads t, 1 written above 26 reads 26
+    logic md;
+    logic md_v;  // 0 taken once per arming, 1 no trap with mie[30] clear
+    logic de;
+    logic de_v;  // 0 single-bit read corrected, 1 double-bit read not OKAY
+    logic [1:0] tc;
+    logic tc_v;  // {mscause not 1, store}
+    logic nf_v;
+    logic [2:0] dp;
+    logic dp_v;  // 0 bit 367, 1 bit 365, 2 bit 364; 4 wide, 5 and 6 kind mismatch
+    logic np;
+    logic np_v;  // 0 vector unchanged, 1 changed
+  } mm_ecc_t;
+
+  covergroup sep_cpu_ecc_irq_cg with function sample (mm_ecc_t s);
+    option.per_instance = 1;
+    option.name = "sep_cpu_ecc_irq_cg";
+    cp_ce_counter: coverpoint s.cc iff (s.cc_v) {
+      bins iccm_below_mie0 = {4'b0_0_0_0};
+      bins iccm_above_mie0 = {4'b0_0_1_0};
+      bins dccm_below_mie0 = {4'b0_1_0_0};
+      bins dccm_below_mie1 = {4'b0_1_0_1};
+      bins dccm_above_mie0 = {4'b0_1_1_0};
+      bins dccm_above_mie1 = {4'b0_1_1_1};
+      ignore_bins iccm_mie1 = {4'b0_0_0_1, 4'b0_0_1_1};
+      illegal_bins request_mismatch = {[4'b1_000 : 4'b1_111]};
+    }
+    cp_ce_clamp: coverpoint s.cl iff (s.cl_v) {
+      bins t_0_to_5 = {1'b0}; bins above_26_reads_26 = {1'b1};
+    }
+    cp_mceip_delivery: coverpoint s.md iff (s.md_v) {
+      bins taken_once_per_arming = {1'b0}; bins no_trap_mie30_clear = {1'b1};
+    }
+    cp_dma_ecc_response: coverpoint s.de iff (s.de_v) {
+      bins single_corrected = {1'b0}; bins double_not_okay = {1'b1};
+    }
+    cp_tcm_trap_cause: coverpoint s.tc iff (s.tc_v) {
+      bins dccm_load_mcause5 = {2'b00};
+      bins dccm_store_mcause7 = {2'b01};
+      illegal_bins mscause_not_1 = {2'b10, 2'b11};
+    }
+    cp_nmi_fast_path: coverpoint s.nf_v iff (s.nf_v) {bins nmi_vec_fetch = {1'b1};}
+    cp_ecc_dbg_pulse: coverpoint s.dp iff (s.dp_v) {
+      bins iccm_single_367 = {3'd0};
+      bins dccm_single_365 = {3'd1};
+      bins dccm_double_364 = {3'd2};
+      illegal_bins wider_than_one_clk = {3'd4};
+      illegal_bins double_event_single_pulse = {3'd5};
+      illegal_bins single_event_double_pulse = {3'd6};
+    }
+    cp_ecc_no_pic: coverpoint s.np iff (s.np_v) {
+      bins vector_unchanged = {1'b0}; illegal_bins vector_changed = {1'b1};
+    }
+  endgroup
+
+  sep_mem_aperture_cg u_sep_mem_aperture_cg = new();
+  sep_cpu_ecc_irq_cg  u_sep_cpu_ecc_irq_cg  = new();
+
+  // One-point sample helpers.
+  task automatic mm_ap(input logic [3:0] pt, input logic [4:0] v);
+    mm_ap_t e;
+    e = '0;
+    case (pt)
+      4'd0: begin
+        e.mx   = v[2:0];
+        e.mx_v = 1'b1;
+      end
+      4'd1: begin
+        e.as   = v[0];
+        e.as_v = 1'b1;
+      end
+      4'd2: begin
+        e.mi   = v[2:0];
+        e.mi_v = 1'b1;
+      end
+      4'd3: begin
+        e.rm   = v[2:0];
+        e.rm_v = 1'b1;
+      end
+      4'd4: begin
+        e.sb   = v[3:0];
+        e.sb_v = 1'b1;
+      end
+      4'd5: begin
+        e.ot   = v[3:0];
+        e.ot_v = 1'b1;
+      end
+      4'd6: begin
+        e.te   = v;
+        e.te_v = 1'b1;
+      end
+      4'd7: begin
+        e.dt   = v[2:0];
+        e.dt_v = 1'b1;
+      end
+      default: begin
+        e.ci   = v[0];
+        e.ci_v = 1'b1;
+      end
+    endcase
+    u_sep_mem_aperture_cg.sample(e);
+  endtask
+
+  task automatic mm_ecc(input logic [2:0] pt, input logic [3:0] v);
+    mm_ecc_t e;
+    e = '0;
+    case (pt)
+      3'd0: begin
+        e.cc   = v;
+        e.cc_v = 1'b1;
+      end
+      3'd1: begin
+        e.cl   = v[0];
+        e.cl_v = 1'b1;
+      end
+      3'd2: begin
+        e.md   = v[0];
+        e.md_v = 1'b1;
+      end
+      3'd3: begin
+        e.de   = v[0];
+        e.de_v = 1'b1;
+      end
+      3'd4: begin
+        e.tc   = v[1:0];
+        e.tc_v = 1'b1;
+      end
+      3'd5: e.nf_v = 1'b1;
+      3'd6: begin
+        e.dp   = v[2:0];
+        e.dp_v = 1'b1;
+      end
+      default: begin
+        e.np   = v[0];
+        e.np_v = 1'b1;
+      end
+    endcase
+    u_sep_cpu_ecc_irq_cg.sample(e);
+  endtask
+
+  task automatic mm_dbg(input logic [1:0] pt, input logic [2:0] v);
+    mr_dbg_t e;
+    e = '0;
+    case (pt)
+      2'd0: begin
+        e.da   = v[1:0];
+        e.da_v = 1'b1;
+      end
+      2'd1: begin
+        e.tv   = v[1:0];
+        e.tv_v = 1'b1;
+      end
+      default: begin
+        e.ic   = v;
+        e.ic_v = 1'b1;
+      end
+    endcase
+    u_sep_debug_trace_cg.sample(e);
+  endtask
+
+  task automatic mm_abs(input logic [1:0] pt, input logic [1:0] v);
+    mr_abs_t e;
+    e = '0;
+    case (pt)
+      2'd0: begin
+        e.rw   = v[0];
+        e.rw_v = 1'b1;
+      end
+      2'd1: e.rr_v = 1'b1;
+      default: begin
+        e.du   = v;
+        e.du_v = 1'b1;
+      end
+    endcase
+    u_sep_documented_absence_cg.sample(e);
+  endtask
+
+  function automatic logic mm_rom(input logic [31:0] a);
+    return in_win(a, BootRomBase, BootRomEnd);
+  endfunction
+  function automatic logic mm_sram(input logic [31:0] a);
+    return in_win(a, SramBase, SramEnd);
+  endfunction
+  function automatic logic [1:0] mm_rcls(input logic [1:0] r);
+    if (r == AxiOkay) return 2'd0;
+    if (r == MmRespSlverr) return 2'd1;
+    return 2'd2;
+  endfunction
+  // A count at or above 2^t: count field [26:0], exponent field [31:27]
+  // (doc/interrupts.adoc, Correctable (single-bit) errors).
+  function automatic logic mm_at(input logic [31:0] c);
+    return {5'd0, c[26:0]} >= (32'd1 << c[31:27]);
+  endfunction
+
+  longint unsigned mm_cyc = 0;  // clk_i edges, the index of the next edge
+  always @(posedge clk_i) mm_cyc <= mm_cyc + 1;
+
+  // ---------------------------------------------------------------------
+  // CPU-LSU burst attributes of the transaction in flight.
+  // ---------------------------------------------------------------------
+  logic [7:0] mm_aw_len_q = '0;
+  logic [7:0] mm_ar_len_q = '0;
+  logic [1:0] mm_aw_burst_q = '0;
+  logic [1:0] mm_ar_burst_q = '0;
+  always @(posedge clk_i) begin
+    if (aw_hs) begin
+      mm_aw_len_q   <= lsu_req_i.aw.len;
+      mm_aw_burst_q <= lsu_req_i.aw.burst;
+    end
+    if (ar_hs) begin
+      mm_ar_len_q   <= lsu_req_i.ar.len;
+      mm_ar_burst_q <= lsu_req_i.ar.burst;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // ROM loads and stores on the LSU bus: cp_mem_x_class (ROM cells),
+  // cp_access_size, cp_rom_write_response.
+  // ---------------------------------------------------------------------
+  always @(posedge clk_i) begin
+    if (!in_reset && mm_own_rom && ar_hs && mm_rom(lsu_ar_addr_i) && (lsu_ar_size_i <= 3'd1)) begin
+      mm_ap(4'd1, {4'd0, lsu_ar_size_i[0]});
+      if ({lsu_ar_addr_i[31:3], 3'b000} == BootRomBase) mm_ap(4'd0, {3'd0, lsu_ar_size_i[0]});
+      if ({lsu_ar_addr_i[31:3], 3'b000} == MmRomLast) mm_ap(4'd0, {3'd1, lsu_ar_size_i[0]});
+    end
+    if (mm_own_rom && b_any && mm_rom(aw_addr_q) && (wr_lanes inside {4'd1, 4'd2})) begin
+      mm_ap(4'd1, {4'd0, (wr_lanes == 4'd2)});
+      if (lsu_b_resp_i != 2'b01) mm_abs(2'd1, 2'd0);
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // cp_macro_if: request and response phases of the memory macro ports.
+  // ---------------------------------------------------------------------
+  always @(posedge clk_i) begin
+    if (mm_own_rom && (rom_req_i.req === 1'b1)) mm_ap(4'd2, 5'd0);
+    if (mm_own_rom && (rom_rsp_i.rvalid === 1'b1)) mm_ap(4'd2, 5'd1);
+    if (mm_own_sram && (sram_req_i.req === 1'b1)) mm_ap(4'd2, 5'd2);
+    if (mm_own_sram && (sram_rsp_i.rvalid === 1'b1)) mm_ap(4'd2, 5'd3);
+    if (mm_own_tdma && ((|tcm_i_clken_i === 1'b1) || (|tcm_d_clken_i === 1'b1))) mm_ap(4'd2, 5'd4);
+  end
+
+  // ---------------------------------------------------------------------
+  // cp_requesting_master and cp_sram_burst. The CPU LSU uses the single
+  // outstanding pairing of the LSU model; the inbound master (m_axi, as the
+  // DUT receives it) has its own counters with the same rule.
+  // ---------------------------------------------------------------------
+  wire mm_in_aw_hs = (in_req_i.aw_valid === 1'b1) && (in_resp_i.aw_ready === 1'b1);
+  wire mm_in_ar_hs = (in_req_i.ar_valid === 1'b1) && (in_resp_i.ar_ready === 1'b1);
+  wire mm_in_b_hs = (in_resp_i.b_valid === 1'b1) && (in_req_i.b_ready === 1'b1);
+  wire mm_in_r_hs = (in_resp_i.r_valid === 1'b1) && (in_req_i.r_ready === 1'b1);
+  wire mm_in_r_end = mm_in_r_hs && (in_resp_i.r.last === 1'b1);
+  logic [3:0] mm_in_aw_out = '0;
+  logic [3:0] mm_in_ar_out = '0;
+  logic [55:0] mm_in_aw_a, mm_in_ar_a;
+  logic [7:0] mm_in_aw_len, mm_in_ar_len;
+  logic [1:0] mm_in_aw_burst, mm_in_ar_burst;
+  function automatic logic mm_in_sram(input logic [55:0] a);
+    logic [55:0] off;
+    // The SEP-local address: an address in the SEP global window has the
+    // window base removed, as the inbound remap does.
+    off = ((a >= sep_base_i) && (a < (sep_base_i + sep_size_i))) ? (a - sep_base_i) : a;
+    return (off >= 56'(SramBase)) && (off < 56'(SramEnd));
+  endfunction
+  function automatic logic mm_fw(input logic [1:0] b);
+    return (b == MmBurstFixed) || (b == MmBurstWrap);
+  endfunction
+  always @(posedge clk_i) begin
+    if (in_reset) begin
+      mm_in_aw_out <= '0;
+      mm_in_ar_out <= '0;
+    end else begin
+      if (mm_own_sram && mm_in_b_hs && (mm_in_aw_out == 4'd1) && !mm_in_aw_hs && mm_in_sram(
+              mm_in_aw_a
+          )) begin
+        if ((mm_in_aw_len == 8'd0) && mm_fw(mm_in_aw_burst))
+          mm_ap(4'd3, {2'd0, (in_resp_i.b.resp != AxiOkay), 1'b1, (mm_in_aw_burst == MmBurstWrap)});
+        if (((mm_in_aw_len != 8'd0) && mm_fw(mm_in_aw_burst)) || (mm_in_aw_burst == MmBurstIncr))
+          mm_ap(4'd4, {1'b0, mm_in_aw_burst, mm_rcls(in_resp_i.b.resp)});
+      end
+      if (mm_own_sram && mm_in_r_hs && (mm_in_ar_out == 4'd1) && !mm_in_ar_hs && mm_in_sram(
+              mm_in_ar_a
+          )) begin
+        if ((mm_in_ar_len != 8'd0 && mm_fw(mm_in_ar_burst)) || (mm_in_ar_burst == MmBurstIncr))
+          mm_ap(4'd4, {1'b0, mm_in_ar_burst, mm_rcls(in_resp_i.r.resp)});
+        if (mm_in_r_end && (mm_in_ar_len == 8'd0) && mm_fw(mm_in_ar_burst))
+          mm_ap(4'd3, {2'd0, (in_resp_i.r.resp != AxiOkay), 1'b1, (mm_in_ar_burst == MmBurstWrap)});
+      end
+      mm_in_aw_out <= mm_in_aw_out + (mm_in_aw_hs ? 4'd1 : 4'd0) -
+          ((mm_in_b_hs && ((mm_in_aw_out != 4'd0) || mm_in_aw_hs)) ? 4'd1 : 4'd0);
+      mm_in_ar_out <= mm_in_ar_out + (mm_in_ar_hs ? 4'd1 : 4'd0) -
+          ((mm_in_r_end && ((mm_in_ar_out != 4'd0) || mm_in_ar_hs)) ? 4'd1 : 4'd0);
+      if (mm_in_aw_hs) begin
+        mm_in_aw_a     <= in_req_i.aw.addr;
+        mm_in_aw_len   <= in_req_i.aw.len;
+        mm_in_aw_burst <= in_req_i.aw.burst;
+      end
+      if (mm_in_ar_hs) begin
+        mm_in_ar_a     <= in_req_i.ar.addr;
+        mm_in_ar_len   <= in_req_i.ar.len;
+        mm_in_ar_burst <= in_req_i.ar.burst;
+      end
+      // CPU LSU single-beat FIXED and WRAP accesses at the SRAM aperture.
+      if (mm_own_sram && b_any && mm_sram(
+              aw_addr_q
+          ) && (mm_aw_len_q == 8'd0) && mm_fw(
+              mm_aw_burst_q
+          ))
+        mm_ap(4'd3, {2'd0, (lsu_b_resp_i != AxiOkay), 1'b0, (mm_aw_burst_q == MmBurstWrap)});
+      if (mm_own_sram && r_any && mm_sram(
+              ar_addr_q
+          ) && (mm_ar_len_q == 8'd0) && mm_fw(
+              mm_ar_burst_q
+          ))
+        mm_ap(4'd3, {2'd0, (lsu_r_resp_i != AxiOkay), 1'b0, (mm_ar_burst_q == MmBurstWrap)});
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // cp_otf_reset_x_path. A single-beat CPU-LSU SRAM access in flight when
+  // rst_ni falls: the offset is the clk_i edges after the request handshake
+  // edge (AR, or the later of AW and W) and before the fall, against W, the
+  // edges strictly between the handshake and the response of the last access
+  // of that path that completed alone. A ROM read in flight is the handshake
+  // on sep_boot_rom_req with no rvalid yet. After the release, the first R
+  // or B beat (rvalid for ROM) must follow a request issued after it. The
+  // tracking is ungated; the gate applies at the fall.
+  // ---------------------------------------------------------------------
+  logic mm_or_pend = 1'b0;
+  logic mm_ow_aw = 1'b0;
+  logic mm_ow_w = 1'b0;
+  longint unsigned mm_or_hs = 0;
+  longint unsigned mm_ow_awc = 0;
+  longint unsigned mm_ow_wc = 0;
+  longint unsigned mm_or_wlen = 0;
+  longint unsigned mm_ow_wlen = 0;
+  logic mm_rom_pend = 1'b0;
+  logic mm_st_sram = 1'b0;
+  logic mm_st_rom = 1'b0;
+  logic mm_st_post = 1'b0;
+  logic mm_st_post_r = 1'b0;
+  wire [63:0] mm_ow_anchor = (mm_ow_awc > mm_ow_wc) ? mm_ow_awc : mm_ow_wc;
+  wire mm_rom_hs = (rom_req_i.req === 1'b1) && (rom_rsp_i.gnt === 1'b1);
+  wire mm_rom_rv = (rom_rsp_i.rvalid === 1'b1);
+  always @(posedge clk_i) begin
+    if (in_reset) begin
+      mm_or_pend <= 1'b0;
+      mm_ow_aw   <= 1'b0;
+      mm_ow_w    <= 1'b0;
+    end else begin
+      if (r_hs && mm_or_pend) begin
+        if (ar_out_q == 4'd1) mm_or_wlen <= mm_cyc - mm_or_hs - 1;
+        mm_or_pend <= 1'b0;
+      end
+      if (ar_hs && mm_sram(lsu_ar_addr_i) && (lsu_req_i.ar.len == 8'd0)) begin
+        mm_or_pend <= 1'b1;
+        mm_or_hs   <= mm_cyc;
+      end
+      if (b_hs) begin
+        if (mm_ow_aw && mm_ow_w && (aw_out_q == 4'd1)) mm_ow_wlen <= mm_cyc - mm_ow_anchor - 1;
+        mm_ow_aw <= 1'b0;
+        mm_ow_w  <= 1'b0;
+      end
+      if (aw_hs && mm_sram(lsu_aw_addr_i) && (lsu_req_i.aw.len == 8'd0)) begin
+        mm_ow_aw  <= 1'b1;
+        mm_ow_awc <= mm_cyc;
+      end
+      if (w_hs && !mm_ow_w) begin
+        mm_ow_w  <= 1'b1;
+        mm_ow_wc <= mm_cyc;
+      end
+    end
+    if (rst_ni !== 1'b1) mm_rom_pend <= 1'b0;
+    else if (mm_rom_hs) mm_rom_pend <= 1'b1;
+    else if (mm_rom_rv) mm_rom_pend <= 1'b0;
+    // Recovery after the release.
+    if (in_reset) begin
+      mm_st_post   <= 1'b0;
+      mm_st_post_r <= 1'b0;
+    end else begin
+      if (mm_st_sram) begin
+        if ((b_hs || r_hs) && !mm_st_post) begin
+          if (mm_own_sram) mm_ap(4'd5, 5'b0_11_00);
+          mm_st_sram <= 1'b0;
+        end else if (b_hs || r_hs) mm_st_sram <= 1'b0;
+        if (aw_hs || ar_hs) mm_st_post <= 1'b1;
+      end
+      if (mm_st_rom) begin
+        if (mm_rom_rv && !mm_st_post_r) begin
+          if (mm_own_rom) mm_ap(4'd5, 5'b0_11_00);
+          mm_st_rom <= 1'b0;
+        end else if (mm_rom_rv) mm_st_rom <= 1'b0;
+        if (mm_rom_hs) mm_st_post_r <= 1'b1;
+      end
+      if (!mm_own_sram) mm_st_sram <= 1'b0;
+      if (!mm_own_rom) mm_st_rom <= 1'b0;
+    end
+  end
+  function automatic logic [1:0] mm_third(input longint unsigned el, input longint unsigned w,
+                                          output logic ok);
+    longint unsigned o;
+    ok = (el >= 1) && (w != 0) && ((el - 1) < w);
+    o  = el - 1;
+    if (o * 3 < w) return 2'd0;
+    if (o * 3 < w * 2) return 2'd1;
+    return 2'd2;
+  endfunction
+  always @(negedge rst_ni) begin
+    logic [1:0] t;
+    logic ok;
+    if (mm_own_sram) begin
+      if (mm_or_pend) begin
+        t = mm_third(mm_cyc - mm_or_hs, mm_or_wlen, ok);
+        if (ok) mm_ap(4'd5, {3'b0_00, t});
+      end
+      if (mm_ow_aw && mm_ow_w) begin
+        t = mm_third(mm_cyc - mm_ow_anchor, mm_ow_wlen, ok);
+        if (ok) mm_ap(4'd5, {3'b0_01, t});
+      end
+      mm_st_sram <= mm_or_pend || (mm_ow_aw && mm_ow_w);
+    end
+    if (mm_own_rom && mm_rom_pend) begin
+      mm_ap(4'd5, 5'b0_10_00);
+      mm_st_rom <= 1'b1;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // TCM model: the last word written through the macro port of each
+  // {memory, bank, row}. A macro read returns its data the clock after the
+  // request; the read data and ECC against the model give the error kind
+  // and position of cp_tcm_ecc. Rows with no write through the port (the
+  // backdoor image) have no model entry and give no event.
+  // ---------------------------------------------------------------------
+  logic [38:0] mm_tm[int unsigned];
+  logic [3:0] mm_trd_i = '0;
+  logic [55:0] mm_trd_ia = '0;
+  logic [1:0] mm_trd_d = '0;
+  logic [27:0] mm_trd_da = '0;
+  function automatic int unsigned mm_key(input logic m, input int unsigned b,
+                                         input logic [13:0] row);
+    return (int'(m) << 16) | (b << 14) | int'(row);
+  endfunction
+  // Error event of the last macro read: memory, class (0 single data, 1
+  // single ECC, 2 two data, 3 data and ECC, 4 two ECC) and the written data.
+  logic mm_ev = 1'b0;
+  logic mm_ev_m = 1'b0;
+  logic [2:0] mm_ev_c = '0;
+  logic [31:0] mm_ev_wd = '0;
+  // cpu_tcm_axi_req transactions in flight.
+  wire mm_ct_ar_hs = (tcm_axi_req_i.ar_valid === 1'b1) && (tcm_axi_resp_i.ar_ready === 1'b1);
+  wire mm_ct_aw_hs = (tcm_axi_req_i.aw_valid === 1'b1) && (tcm_axi_resp_i.aw_ready === 1'b1);
+  wire mm_ct_r_hs = (tcm_axi_resp_i.r_valid === 1'b1) && (tcm_axi_req_i.r_ready === 1'b1);
+  wire mm_ct_r_end = mm_ct_r_hs && (tcm_axi_resp_i.r.last === 1'b1);
+  wire mm_ct_b_hs = (tcm_axi_resp_i.b_valid === 1'b1) && (tcm_axi_req_i.b_ready === 1'b1);
+  wire mm_ct_req = (tcm_axi_req_i.ar_valid === 1'b1) || (tcm_axi_req_i.aw_valid === 1'b1);
+  logic [3:0] mm_ct_ar_out = '0;
+  logic [3:0] mm_ct_aw_out = '0;
+  logic [31:0] mm_ct_ar_a = '0;
+  wire mm_ct_busy = (mm_ct_ar_out != 4'd0) || (mm_ct_aw_out != 4'd0) || mm_ct_req ||
+      (tcm_axi_req_i.w_valid === 1'b1);
+  longint unsigned mm_ct_last = 0;  // edge of the last cpu_tcm activity
+  // DMA-path event waiting for its R beat; CPU-path event for the pulse kind.
+  logic mm_dp_on = 1'b0;
+  logic mm_dp_m = 1'b0;
+  logic [2:0] mm_dp_c = '0;
+  logic [31:0] mm_dp_wd = '0;
+  logic mm_ce_v = 1'b0;
+  logic mm_ce_m = 1'b0;
+  logic mm_ce_dbl = 1'b0;
+  longint unsigned mm_ce_t = 0;
+  always @(posedge clk_i) begin
+    int unsigned nb;
+    int unsigned nd;
+    int unsigned ne;
+    logic ok;
+    logic m;
+    logic [31:0] wd;
+    logic [38:0] rd;
+    logic [38:0] df;
+    int unsigned k;
+    // Reads of the previous edge: data and ECC now on the response.
+    nb = 0;
+    nd = 0;
+    ne = 0;
+    ok = 1'b1;
+    m  = 1'b0;
+    wd = '0;
+    for (int b = 0; b < 4; b++) begin
+      if (mm_trd_i[b]) begin
+        k = mm_key(1'b0, b, mm_trd_ia[14*b+:14]);
+        if (mm_tm.exists(k)) begin
+          rd = {tcm_i_recc_i[7*b+:7], tcm_i_rdata_i[32*b+:32]};
+          if ($isunknown(rd)) ok = 1'b0;
+          else begin
+            df = rd ^ mm_tm[k];
+            if (df != '0) begin
+              nb++;
+              nd = $countones(df[31:0]);
+              ne = $countones(df[38:32]);
+              m  = 1'b0;
+              wd = mm_tm[k][31:0];
+            end
+          end
+        end
+      end
+    end
+    for (int b = 0; b < 2; b++) begin
+      if (mm_trd_d[b]) begin
+        k = mm_key(1'b1, b, mm_trd_da[14*b+:14]);
+        if (mm_tm.exists(k)) begin
+          rd = {tcm_d_recc_i[7*b+:7], tcm_d_rdata_i[32*b+:32]};
+          if ($isunknown(rd)) ok = 1'b0;
+          else begin
+            df = rd ^ mm_tm[k];
+            if (df != '0) begin
+              nb++;
+              nd = $countones(df[31:0]);
+              ne = $countones(df[38:32]);
+              m  = 1'b1;
+              wd = mm_tm[k][31:0];
+            end
+          end
+        end
+      end
+    end
+    mm_ev <= 1'b0;
+    if (ok && (nb == 1) && ((nd + ne) inside {1, 2})) begin
+      mm_ev    <= 1'b1;
+      mm_ev_m  <= m;
+      mm_ev_wd <= wd;
+      if ((nd == 1) && (ne == 0)) mm_ev_c <= 3'd0;
+      else if ((nd == 0) && (ne == 1)) mm_ev_c <= 3'd1;
+      else if (nd == 2) mm_ev_c <= 3'd2;
+      else if (nd == 1) mm_ev_c <= 3'd3;
+      else mm_ev_c <= 3'd4;
+    end
+    // Writes of this edge update the model; reads of this edge answer next.
+    for (int b = 0; b < 4; b++) begin
+      if ((tcm_i_clken_i[b] === 1'b1) && (tcm_i_wren_i[b] === 1'b1)) begin
+        k = mm_key(1'b0, b, tcm_i_addr_i[14*b+:14]);
+        if ($isunknown({tcm_i_wecc_i[7*b+:7], tcm_i_wdata_i[32*b+:32]})) begin
+          if (mm_tm.exists(k)) mm_tm.delete(k);
+        end else mm_tm[k] = {tcm_i_wecc_i[7*b+:7], tcm_i_wdata_i[32*b+:32]};
+      end
+      mm_trd_i[b] <= (tcm_i_clken_i[b] === 1'b1) && (tcm_i_wren_i[b] !== 1'b1);
+    end
+    for (int b = 0; b < 2; b++) begin
+      if ((tcm_d_clken_i[b] === 1'b1) && (tcm_d_wren_i[b] === 1'b1)) begin
+        k = mm_key(1'b1, b, tcm_d_addr_i[14*b+:14]);
+        if ($isunknown({tcm_d_wecc_i[7*b+:7], tcm_d_wdata_i[32*b+:32]})) begin
+          if (mm_tm.exists(k)) mm_tm.delete(k);
+        end else mm_tm[k] = {tcm_d_wecc_i[7*b+:7], tcm_d_wdata_i[32*b+:32]};
+      end
+      mm_trd_d[b] <= (tcm_d_clken_i[b] === 1'b1) && (tcm_d_wren_i[b] !== 1'b1);
+    end
+    mm_trd_ia <= tcm_i_addr_i;
+    mm_trd_da <= tcm_d_addr_i;
+  end
+
+  // DMA path (the event with a cpu_tcm read in flight) and CPU path (none).
+  always @(posedge clk_i) begin
+    if (in_reset) begin
+      mm_ct_ar_out <= '0;
+      mm_ct_aw_out <= '0;
+      mm_dp_on     <= 1'b0;
+      mm_ce_v      <= 1'b0;
+    end else begin
+      if (mm_ct_busy) mm_ct_last <= mm_cyc;
+      mm_ct_ar_out <= mm_ct_ar_out + (mm_ct_ar_hs ? 4'd1 : 4'd0) -
+          ((mm_ct_r_end && ((mm_ct_ar_out != 4'd0) || mm_ct_ar_hs)) ? 4'd1 : 4'd0);
+      mm_ct_aw_out <= mm_ct_aw_out + (mm_ct_aw_hs ? 4'd1 : 4'd0) -
+          ((mm_ct_b_hs && ((mm_ct_aw_out != 4'd0) || mm_ct_aw_hs)) ? 4'd1 : 4'd0);
+      if (mm_ct_ar_hs) mm_ct_ar_a <= tcm_axi_req_i.ar.addr;
+      // cp_mem_x_class TCM cells.
+      if (mm_own_tdma && (mm_ct_ar_hs || mm_ct_aw_hs)) begin
+        logic [31:0] a;
+        a = mm_ct_ar_hs ? tcm_axi_req_i.ar.addr : tcm_axi_req_i.aw.addr;
+        if (a == MmIccmBase) mm_ap(4'd0, 5'd4);
+        if (a == MmIccmEnd - 32'd4) mm_ap(4'd0, 5'd5);
+        if (a == MmDccmBase) mm_ap(4'd0, 5'd6);
+        if (a == MmDccmEnd - 32'd4) mm_ap(4'd0, 5'd7);
+      end
+      // A DMA-path event takes the next R beat of the backdoor port.
+      begin
+        logic on;
+        logic dm;
+        logic [2:0] dc;
+        logic [31:0] dw;
+        logic notok;
+        logic [31:0] lane;
+        on = mm_dp_on;
+        dm = mm_dp_m;
+        dc = mm_dp_c;
+        dw = mm_dp_wd;
+        if (mm_ev && (mm_ct_ar_out != 4'd0)) begin
+          on = 1'b1;
+          dm = mm_ev_m;
+          dc = mm_ev_c;
+          dw = mm_ev_wd;
+        end
+        if (on && mm_ct_r_hs) begin
+          notok = (tcm_axi_resp_i.r.resp != AxiOkay);
+          lane  = mm_ct_ar_a[2] ? tcm_axi_resp_i.r.data[63:32] : tcm_axi_resp_i.r.data[31:0];
+          if (mm_own_tdma) begin
+            mm_ap(4'd6, {(dc >= 3'd2) && !notok, dm, dc});
+            if ((dc <= 3'd1) && (lane === dw)) mm_ecc(3'd3, 4'd0);
+            if ((dc >= 3'd2) && notok) mm_ecc(3'd3, 4'd1);
+          end
+          on = 1'b0;
+        end
+        mm_dp_on <= on;
+        mm_dp_m  <= dm;
+        mm_dp_c  <= dc;
+        mm_dp_wd <= dw;
+      end
+      if (mm_ev && !mm_ct_busy && (mm_ct_ar_out == 4'd0)) begin
+        mm_ce_v   <= 1'b1;
+        mm_ce_m   <= mm_ev_m;
+        mm_ce_dbl <= (mm_ev_c >= 3'd2);
+        mm_ce_t   <= mm_cyc;
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // cp_ecc_dbg_pulse and cp_ecc_no_pic: ext_debug_bus_o bits 367 (ICCM
+  // single), 365 (DCCM single) and 364 (DCCM double) on a CPU access (no
+  // cpu_tcm activity in the last MmCoreQuiet edges).
+  // ---------------------------------------------------------------------
+  logic [2:0] mm_pq = '0;
+  logic [2:0] mm_pon = '0;
+  int unsigned mm_pw[3] = '{default: 0};
+  logic [42:0] mm_vec_q = '0;
+  logic [2:0] mm_vhist = '0;
+  logic mm_np_on = 1'b0;
+  logic mm_np_chg = 1'b0;
+  int unsigned mm_np_cnt = 0;
+  always @(posedge clk_i) begin
+    logic [2:0] p;
+    logic cpu;
+    logic vchg;
+    p    = {ecc_dbg_i[0] === 1'b1, ecc_dbg_i[1] === 1'b1, ecc_dbg_i[3] === 1'b1};
+    cpu  = !mm_ct_busy && ((mm_cyc - mm_ct_last) > MmCoreQuiet);
+    vchg = (vec_i !== mm_vec_q);
+    for (int i = 0; i < 3; i++) begin
+      if (p[i] && !mm_pq[i]) begin
+        mm_pon[i] <= mm_own_trap && cpu && !in_reset;
+        mm_pw[i]  <= 1;
+        if (mm_own_trap && cpu && mm_ce_v && mm_ce_m && ((mm_cyc - mm_ce_t) <= MmKindWin)) begin
+          if ((i == 1) && mm_ce_dbl && !p[2]) mm_ecc(3'd6, 4'd5);
+          if ((i == 2) && !mm_ce_dbl) mm_ecc(3'd6, 4'd6);
+        end
+      end else if (p[i]) mm_pw[i] <= mm_pw[i] + 1;
+      else if (mm_pq[i]) begin
+        if (mm_pon[i] && mm_own_trap) mm_ecc(3'd6, (mm_pw[i] == 1) ? 4'(i) : 4'd4);
+        mm_pon[i] <= 1'b0;
+      end
+    end
+    // A correctable pulse: the vector over MmVecWin clocks on each side.
+    if (mm_np_on) begin
+      if (mm_np_cnt == MmVecWin) begin
+        if (mm_own_trap) mm_ecc(3'd7, {3'd0, mm_np_chg});
+        mm_np_on <= 1'b0;
+      end else begin
+        mm_np_chg <= mm_np_chg || vchg;
+        mm_np_cnt <= mm_np_cnt + 1;
+      end
+    end else if (mm_own_trap && cpu && !in_reset && ((p[0] && !mm_pq[0]) || (p[1] && !mm_pq[1]))) begin
+      mm_np_on  <= 1'b1;
+      mm_np_chg <= (|mm_vhist) || vchg;
+      mm_np_cnt <= 0;
+    end
+    mm_pq    <= p;
+    mm_vec_q <= vec_i;
+    mm_vhist <= {mm_vhist[1:0], vchg};
+  end
+
+  // ---------------------------------------------------------------------
+  // cp_ce_counter and cp_ce_clamp: the correctable counters of the trap
+  // unit. A sample at each change of a counter or of mie[30]; the request
+  // is the per-memory term of ce_int (mdccme_ce_req, miccme_ce_req).
+  // ---------------------------------------------------------------------
+  logic [31:0] mm_dc_q = '0;
+  logic [31:0] mm_ic_q = '0;
+  logic mm_mie5_q = 1'b0;
+  logic mm_clw_on = 1'b0;
+  logic mm_clw_d = 1'b0;
+  logic [4:0] mm_clw_t = '0;
+  always @(posedge clk_i) begin
+    logic mie5;
+    logic at;
+    logic [4:0] f;
+    mie5 = (tlu_mie_i[5] === 1'b1);
+    if (!in_reset && mm_own_trap && !$isunknown({tlu_mdccmect_i, tlu_miccmect_i})) begin
+      if ((tlu_mdccmect_i != mm_dc_q) || (mie5 != mm_mie5_q)) begin
+        at = mm_at(tlu_mdccmect_i);
+        mm_ecc(3'd0, {(tlu_dccm_ce_req_i === 1'b1) != at, 1'b1, at, mie5});
+      end
+      if ((tlu_miccmect_i != mm_ic_q) || (mie5 != mm_mie5_q)) begin
+        at = mm_at(tlu_miccmect_i);
+        mm_ecc(3'd0, {(tlu_iccm_ce_req_i === 1'b1) != at, 1'b0, at, mie5});
+      end
+    end
+    if (mm_clw_on) begin
+      f = mm_clw_d ? tlu_mdccmect_i[31:27] : tlu_miccmect_i[31:27];
+      if (mm_own_trap && (mm_clw_t <= 5'd5) && (f == mm_clw_t)) mm_ecc(3'd1, 4'd0);
+      if (mm_own_trap && (mm_clw_t > 5'd26) && (f == 5'd26)) mm_ecc(3'd1, 4'd1);
+    end
+    mm_clw_on <= (tlu_wr_dccmect_i === 1'b1) || (tlu_wr_iccmect_i === 1'b1);
+    mm_clw_d  <= (tlu_wr_dccmect_i === 1'b1);
+    mm_clw_t  <= tlu_csr_wt_i;
+    mm_dc_q   <= tlu_mdccmect_i;
+    mm_ic_q   <= tlu_miccmect_i;
+    mm_mie5_q <= mie5;
+  end
+
+  // ---------------------------------------------------------------------
+  // Trace events: cp_traced_event, cp_instr_class, cp_mceip_delivery,
+  // cp_tcm_trap_cause, cp_nmi_fast_path.
+  // ---------------------------------------------------------------------
+  // Class of an encoding (ratified RISC-V M, C and bit-manipulation
+  // encodings): 0 M, 1 C, 2 Zba, 3 Zbb, 4 Zbc, 5 Zbs, 7 other.
+  function automatic logic [2:0] mm_icls(input logic [31:0] i);
+    logic [6:0] op;
+    logic [2:0] f3;
+    logic [6:0] f7;
+    logic [4:0] rs2;
+    if (i[1:0] != 2'b11) return 3'd1;
+    op  = i[6:0];
+    f3  = i[14:12];
+    f7  = i[31:25];
+    rs2 = i[24:20];
+    if (op == 7'b0110011) begin
+      if (f7 == 7'b0000001) return 3'd0;
+      if ((f7 == 7'b0010000) && (f3 inside {3'b010, 3'b100, 3'b110})) return 3'd2;
+      if ((f7 == 7'b0100000) && (f3 inside {3'b100, 3'b110, 3'b111})) return 3'd3;
+      if ((f7 == 7'b0000101) && (f3 inside {3'b100, 3'b101, 3'b110, 3'b111})) return 3'd3;
+      if ((f7 == 7'b0110000) && (f3 inside {3'b001, 3'b101})) return 3'd3;
+      if ((f7 == 7'b0000100) && (f3 == 3'b100) && (rs2 == 5'd0)) return 3'd3;
+      if ((f7 == 7'b0000101) && (f3 inside {3'b001, 3'b010, 3'b011})) return 3'd4;
+      if ((f7 inside {7'b0010100, 7'b0100100, 7'b0110100}) && (f3 == 3'b001)) return 3'd5;
+      if ((f7 == 7'b0100100) && (f3 == 3'b101)) return 3'd5;
+    end
+    if (op == 7'b0010011) begin
+      if ((f7 == 7'b0110000) && (f3 == 3'b001) && (rs2 inside {5'd0, 5'd1, 5'd2, 5'd4, 5'd5}))
+        return 3'd3;
+      if ((f7 == 7'b0110000) && (f3 == 3'b101)) return 3'd3;
+      if ((i[31:20] inside {12'h287, 12'h698}) && (f3 == 3'b101)) return 3'd3;
+      if ((f7 inside {7'b0010100, 7'b0100100, 7'b0110100}) && (f3 == 3'b001)) return 3'd5;
+      if ((f7 == 7'b0100100) && (f3 == 3'b101)) return 3'd5;
+    end
+    return 3'd7;
+  endfunction
+
+  logic [31:0] mm_mc_q = '0;
+  logic mm_md_arm = 1'b0;
+  logic mm_md_mst = 1'b0;
+  int unsigned mm_sil_cnt = 0;
+  logic mm_sil_done = 1'b0;
+  logic mm_tw_on = 1'b0;
+  logic [4:0] mm_tw_exp = '0;
+  int unsigned mm_tw_cnt = 0;
+  logic mm_nf_on = 1'b0;
+  always @(posedge clk_i) begin
+    logic tr;
+    logic exc;
+    logic intr;
+    logic ce_ev;
+    logic nmi_new;
+    logic [2:0] c;
+    tr      = (cpu_trace_valid_i === 1'b1) && !in_reset;
+    exc     = (cpu_trace_exc_i === 1'b1);
+    intr    = (cpu_trace_interrupt_i === 1'b1);
+    ce_ev   = tr && intr && (cpu_trace_ecause_i == MmCauseCe);
+    nmi_new = !in_reset && (tlu_mcause_i == MmMcauseNmi) && (mm_mc_q != MmMcauseNmi);
+    // cp_traced_event.
+    if (mm_own_trap || mm_own_isa) begin
+      if (tr && exc && !intr) mm_dbg(2'd1, 3'd0);
+      if (ce_ev) mm_dbg(2'd1, 3'd1);
+      if (nmi_new) mm_dbg(2'd1, 3'd2);
+    end
+    // cp_instr_class.
+    if (mm_own_isa && tr) begin
+      c = mm_icls(cpu_trace_insn_i);
+      if (!exc && !intr && (c <= 3'd4)) mm_dbg(2'd2, c);
+      if (exc && !intr && (c == 3'd5)) mm_dbg(2'd2, 3'd5);
+    end
+    // cp_mceip_delivery: one trap per arming of mie[30] with mstatus.MIE set.
+    if (!mm_mie5_q && (tlu_mie_i[5] === 1'b1)) begin
+      mm_md_arm <= 1'b1;
+      mm_md_mst <= (tlu_mstatus_mie_i === 1'b1);
+    end else if (mm_md_arm && (tlu_mstatus_mie_i === 1'b1)) mm_md_mst <= 1'b1;
+    if (ce_ev) begin
+      if (mm_own_trap && mm_md_arm && mm_md_mst) mm_ecc(3'd2, 4'd0);
+      mm_md_arm <= 1'b0;
+    end
+    if ((tlu_ce_int_i === 1'b1) && (tlu_mie_i[5] === 1'b0) && !in_reset) begin
+      if (ce_ev) mm_sil_done <= 1'b1;
+      else if (!mm_sil_done) begin
+        if (mm_sil_cnt + 1 == MmCeSilent) begin
+          if (mm_own_trap) mm_ecc(3'd2, 4'd1);
+          mm_sil_done <= 1'b1;
+        end
+        mm_sil_cnt <= mm_sil_cnt + 1;
+      end
+    end else begin
+      mm_sil_cnt  <= 0;
+      mm_sil_done <= 1'b0;
+    end
+    // cp_tcm_trap_cause: a DCCM load or store exception, its mcause and mscause.
+    if (mm_tw_on) begin
+      if (tlu_mcause_i == 32'(mm_tw_exp)) begin
+        if (mm_own_trap) mm_ecc(3'd4, {2'd0, (tlu_mscause_i != 4'd1), (mm_tw_exp == 5'd7)});
+        mm_tw_on <= 1'b0;
+      end else if (mm_tw_cnt == MmTrapWait) mm_tw_on <= 1'b0;
+      mm_tw_cnt <= mm_tw_cnt + 1;
+    end
+    if (mm_own_trap && tr && exc && !intr && (cpu_trace_ecause_i inside {5'd5, 5'd7}) && in_win(
+            cpu_trace_tval_i, MmDccmBase, MmDccmEnd
+        )) begin
+      mm_tw_on  <= 1'b1;
+      mm_tw_exp <= cpu_trace_ecause_i;
+      mm_tw_cnt <= 0;
+    end
+    // cp_nmi_fast_path: the first instruction after the NMI is at SEP_NMI_VEC.
+    if (nmi_new) mm_nf_on <= 1'b1;
+    else if (mm_nf_on && tr && !exc && !intr) begin
+      if (mm_own_trap && (cpu_trace_addr_i == {nmi_vec_i, 1'b0})) mm_ecc(3'd5, 4'd0);
+      mm_nf_on <= 1'b0;
+    end
+    if (in_reset) mm_nf_on <= 1'b0;
+    mm_mc_q <= tlu_mcause_i;
+  end
+
+  // ---------------------------------------------------------------------
+  // cp_dmi_aperture and cp_dmi_uncore: each DMI access of the DTM, and the
+  // uncore DMI outputs while dmi_uncore_enable_i is 0.
+  // ---------------------------------------------------------------------
+  always @(posedge clk_i) begin
+    logic up;
+    logic uo;
+    up = (dmi_addr_i >= 7'h50);
+    uo = (dmi_uncore_en_i === 1'b1) || (dmi_uncore_wr_en_i === 1'b1);
+    if (mm_own_dmi && !in_reset) begin
+      if (dmi_en_i === 1'b1) begin
+        mm_dbg(2'd0, {1'b0, (dmi_core_en_i === 1'b1), up});
+        if (dmi_uncore_cfg_i !== 1'b1) mm_abs(2'd2, {uo, up});
+      end else if ((dmi_uncore_cfg_i !== 1'b1) && uo) mm_abs(2'd2, {1'b1, up});
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // cp_rom_write_master: a CPU store to the ROM aperture. A ROM macro
+  // request (after the interface shim) at the store word is a readback when
+  // a read request for that word reached sep_boot_rom_req within
+  // MmRomRdAge edges; the cell hits MmStoreQuiet edges after the store
+  // response when every such request was a readback.
+  // ---------------------------------------------------------------------
+  longint unsigned mm_rrd[int unsigned];
+  logic mm_sw_on = 1'b0;
+  logic mm_sw_bad = 1'b0;
+  logic mm_sw_b = 1'b0;
+  logic [12:0] mm_sw_word = '0;
+  int unsigned mm_sw_cnt = 0;
+  always @(posedge clk_i) begin
+    int unsigned w;
+    logic rb;
+    if ((rom_req_i.req === 1'b1) && (rom_req_i.wenable !== 1'b1))
+      mm_rrd[int'(rom_req_i.addr[15:3])] = mm_cyc;
+    if (mm_sw_on && (rom_macro_req_i === 1'b1) && (rom_macro_addr_i == mm_sw_word)) begin
+      w  = int'(mm_sw_word);
+      rb = mm_rrd.exists(w) && ((mm_cyc - mm_rrd[w]) <= MmRomRdAge);
+      if (!rb) begin
+        if (mm_own_rom) mm_abs(2'd0, 2'd1);
+        mm_sw_bad <= 1'b1;
+      end
+    end
+    if (in_reset || !mm_own_rom) mm_sw_on <= 1'b0;
+    else if (aw_hs && mm_rom(lsu_aw_addr_i)) begin
+      mm_sw_on   <= 1'b1;
+      mm_sw_bad  <= 1'b0;
+      mm_sw_b    <= 1'b0;
+      mm_sw_cnt  <= 0;
+      mm_sw_word <= 13'((lsu_aw_addr_i - BootRomBase) >> 3);
+    end else if (mm_sw_on) begin
+      if (b_hs) mm_sw_b <= 1'b1;
+      if (mm_sw_b) begin
+        if (mm_sw_cnt == MmStoreQuiet) begin
+          if (!mm_sw_bad) mm_abs(2'd0, 2'd0);
+          mm_sw_on <= 1'b0;
+        end
+        mm_sw_cnt <= mm_sw_cnt + 1;
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // cp_demux_target and cp_ext_refused_ifu: the IFU fetch class by ID, the
+  // post-demux CPU ports, and the Extension and outbound requests in the
+  // window of an unmapped fetch.
+  // ---------------------------------------------------------------------
+  logic [1:0] mm_ifu_cls[8] = '{default: 2'd0};  // 0 ROM, 1 SRAM, 2 other
+  logic mm_eu_on = 1'b0;
+  logic mm_eu_leak = 1'b0;
+  logic [31:0] mm_eu_a = '0;
+  logic [2:0] mm_eu_id = '0;
+  function automatic logic [1:0] mm_acls(input logic [31:0] a);
+    if (mm_rom(a)) return 2'd0;
+    if (mm_sram(a)) return 2'd1;
+    return 2'd2;
+  endfunction
+  wire mm_ifu_ar = (ifu_arvalid_i === 1'b1) && (ifu_arready_i === 1'b1);
+  wire mm_ifu_r = (ifu_rvalid_i === 1'b1) && (ifu_rready_i === 1'b1) && (ifu_rlast_i === 1'b1);
+  wire mm_lr_ar = (lsu_rom_req_i.ar_valid === 1'b1) && (lsu_rom_resp_i.ar_ready === 1'b1);
+  wire mm_lr_aw = (lsu_rom_req_i.aw_valid === 1'b1) && (lsu_rom_resp_i.aw_ready === 1'b1);
+  wire mm_lx_ar = (lsu_xbar_req_i.ar_valid === 1'b1) && (lsu_xbar_resp_i.ar_ready === 1'b1);
+  wire mm_lx_aw = (lsu_xbar_req_i.aw_valid === 1'b1) && (lsu_xbar_resp_i.aw_ready === 1'b1);
+  wire mm_eu_hit = ((ext_req_i.ar_valid === 1'b1) && (ext_req_i.ar.addr == mm_eu_a)) ||
+      ((ext_req_i.aw_valid === 1'b1) && (ext_req_i.aw.addr == mm_eu_a)) ||
+      ((out_req_i.ar_valid === 1'b1) && (out_req_i.ar.addr[31:0] == mm_eu_a)) ||
+      ((out_req_i.aw_valid === 1'b1) && (out_req_i.aw.addr[31:0] == mm_eu_a));
+  always @(posedge clk_i) begin
+    logic [31:0] la;
+    logic [31:0] xa;
+    if (in_reset) begin
+      mm_eu_on <= 1'b0;
+    end else begin
+      if (mm_ifu_r) begin
+        if (mm_own_demux && (mm_ifu_cls[ifu_rid_i] == 2'd2))
+          mm_ap(4'd7, (ifu_rresp_i == MmRespDecerr) ? 5'd0 : 5'd4);
+        if (mm_eu_on && (ifu_rid_i == mm_eu_id)) begin
+          if (mm_own_demux && !mm_eu_leak && !mm_eu_hit)
+            u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, 4'd0,
+                                                  1'b0, 1'b1);
+          mm_eu_on <= 1'b0;
+        end
+      end else if (mm_eu_on && mm_eu_hit) mm_eu_leak <= 1'b1;
+      if (mm_ifu_ar) begin
+        mm_ifu_cls[ifu_arid_i] <= mm_acls(ifu_araddr_i);
+        if (!mm_eu_on && (mm_acls(ifu_araddr_i) == 2'd2)) begin
+          mm_eu_on   <= 1'b1;
+          mm_eu_leak <= 1'b0;
+          mm_eu_a    <= ifu_araddr_i;
+          mm_eu_id   <= ifu_arid_i;
+        end
+      end
+      if (mm_own_demux) begin
+        if ((ifu_rom_req_i.ar_valid === 1'b1) && mm_sram(ifu_rom_req_i.ar.addr)) mm_ap(4'd7, 5'd5);
+        if ((ifu_sram_req_i.ar_valid === 1'b1) && mm_rom(ifu_sram_req_i.ar.addr)) mm_ap(4'd7, 5'd5);
+        if (mm_lr_ar || mm_lr_aw) begin
+          la = mm_lr_ar ? lsu_rom_req_i.ar.addr : lsu_rom_req_i.aw.addr;
+          if (mm_rom(la)) mm_ap(4'd7, 5'd1);
+          if (mm_sram(la)) mm_ap(4'd7, 5'd7);
+        end
+        if (mm_lx_ar || mm_lx_aw) begin
+          xa = mm_lx_ar ? lsu_xbar_req_i.ar.addr : lsu_xbar_req_i.aw.addr;
+          if (mm_sram(xa)) mm_ap(4'd7, 5'd2);
+          if (mm_rom(xa)) mm_ap(4'd7, 5'd6);
+        end
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // cp_core_internal_path and cp_tcm_refused_initiator: a core access to
+  // the TCM (an ICCM macro read with no cpu_tcm activity in the last
+  // MmCoreQuiet edges is an IFU fetch; the LSU M-stage packet gives the LSU
+  // loads and stores), then MmCoreQuiet edges with no request on
+  // cpu_tcm_axi_req. A request at the accessed word in that window is the
+  // illegal cell. Cells: 0 IFU read ICCM, 1 LSU read ICCM, 2 LSU write
+  // ICCM, 3 LSU read DCCM, 4 LSU write DCCM.
+  // ---------------------------------------------------------------------
+  logic [4:0] mm_cq_on = '0;
+  logic [4:0] mm_cq_req = '0;
+  int unsigned mm_cq_cnt[5] = '{default: 0};
+  logic [31:0] mm_cq_a[5] = '{default: '0};
+  always @(posedge clk_i) begin
+    logic [4:0] ev;
+    logic lsu;
+    logic [31:0] ra;
+    lsu = (lsu_m_valid_i === 1'b1) && (lsu_m_dma_i !== 1'b1);
+    ev = '0;
+    ev[0] = ((tcm_i_clken_i & ~tcm_i_wren_i) != 4'd0) && !$isunknown(tcm_i_clken_i) &&
+        !mm_ct_busy && ((mm_cyc - mm_ct_last) > MmCoreQuiet);
+    if (lsu && in_win(lsu_m_addr_i, MmIccmBase, MmIccmEnd)) begin
+      ev[1] = (lsu_m_load_i === 1'b1);
+      ev[2] = (lsu_m_store_i === 1'b1);
+    end
+    if (lsu && in_win(lsu_m_addr_i, MmDccmBase, MmDccmEnd)) begin
+      ev[3] = (lsu_m_load_i === 1'b1);
+      ev[4] = (lsu_m_store_i === 1'b1);
+    end
+    ra = (tcm_axi_req_i.ar_valid === 1'b1) ? tcm_axi_req_i.ar.addr : tcm_axi_req_i.aw.addr;
+    for (int c = 0; c < 5; c++) begin
+      if (in_reset || !mm_own_demux) mm_cq_on[c] <= 1'b0;
+      else if (mm_cq_on[c]) begin
+        if (mm_ct_req) begin
+          mm_cq_req[c] <= 1'b1;
+          if ((c != 0) && ({ra[31:2], 2'b00} == mm_cq_a[c])) begin
+            u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, {
+                                                  1'b1, 3'(c)}, 1'b1, 1'b0);
+            mm_cq_on[c] <= 1'b0;
+          end
+        end
+        if (mm_cq_cnt[c] == MmCoreQuiet) begin
+          mm_cq_on[c] <= 1'b0;
+          if (!mm_cq_req[c] && !mm_ct_req) begin
+            u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, {
+                                                  1'b0, 3'(c)}, 1'b1, 1'b0);
+            if (c == 0) mm_ap(4'd8, 5'd0);
+            if (c >= 3) mm_ap(4'd8, 5'd1);
+          end
+        end
+        mm_cq_cnt[c] <= mm_cq_cnt[c] + 1;
+      end else if (ev[c]) begin
+        mm_cq_on[c]  <= 1'b1;
+        mm_cq_req[c] <= 1'b0;
+        mm_cq_cnt[c] <= 1;
+        mm_cq_a[c]   <= {lsu_m_addr_i[31:2], 2'b00};
+      end
     end
   end
 
