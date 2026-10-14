@@ -1114,8 +1114,9 @@ class sep_timer_clock_contract_test(sep_base_test):
             await self._wait_high(dut.sep_cpu_reset_n_o, "sep_cpu_reset_n_o")
         elif ev == "DBG_PULSE":
             # Runs only on the full-CPU build, where dbg_rstb_i resets the EL2 debug
-            # module; the debug reset input of the CPU core must read 0 in the pulse.
-            load = dut.u_dut.u_sep.u_sep_cpu.u_el2_veer_wrapper.dbg_rst_l
+            # module; the debug reset input of the core wrapper (tap dbg_rst_l_probe_o,
+            # tied to 1 on the CPU stub build) must read 0 in the pulse.
+            load = dut.dbg_rst_l_probe_o
             await RisingEdge(dut.clk_i)
             dut.dbg_rstb_i.value = 0
             await ClockCycles(dut.clk_i, PULSE_CYCLES)
@@ -1123,7 +1124,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             low = self.rd(load)
             await RisingEdge(dut.clk_i)
             dut.dbg_rstb_i.value = 1
-            assert low == 0, "u_el2_veer_wrapper.dbg_rst_l did not fall during the dbg_rstb_i pulse"
+            assert low == 0, "dbg_rst_l_probe_o did not fall during the dbg_rstb_i pulse"
             await ClockCycles(dut.clk_i, PULSE_CYCLES)
             self.n_dbg += 1
         elif ev == "SW_RESET":

@@ -1154,8 +1154,8 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |<<sep_cpu_ctrl_timeout_inert_rand_test,`sep_cpu_ctrl_timeout_inert_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
-|ocah_axi_vip; outbound responder hold (error inject)
-|Proves that the reserved timeout registers stay inert under a real stall of each block path: `TIMEOUT_INTERRUPT` reads 0 and no PIC source rises. The outbound filter, alias remap and DMA stalls hold the response in the outbound responder, an error inject the test adds to `docs/SEP_TB_ARCH.adoc`. The entropy write and entropy read stalls hold the CPU-LSU response of an access to the entropy pool `STATUS` register.
+|ocah_axi_vip; outbound responder hold (error inject); `timeout_interrupt_probe_o` (observation tap)
+|Proves that the reserved timeout registers stay inert under a real stall of each block path: `TIMEOUT_INTERRUPT` reads 0 on every clock of the stall and no PIC source rises. The outbound filter, alias remap and DMA stalls hold the response in the outbound responder, an error inject the test adds to `docs/SEP_TB_ARCH.adoc`. The entropy write and entropy read stalls hold the CPU-LSU response of an access to the entropy pool `STATUS` register.
 |<<sep_nmi_vector_bark_rand_test,`sep_nmi_vector_bark_rand_test`>>
 |3
 |cpu, +skip_fuse_sense
@@ -1345,7 +1345,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |no_cpu, skip-sense plusarg
 |Reset taps, DMA copy model, fault-latch and register retention model, `mpc_run_sync` observation tap
-|Proves that a `wdt_rst_ni` pulse keeps software reset requests, fault status and DMA and SPI state, also against a pending `SW_RESET_N` sequence and a running DMA copy. Proves that a cold reset clears the same state. The `dbg_rstb_i` sequence runs the same legs, and the run-request synchronizer leg shows that the pulse reaches the debug domain. Extends the open CPU-reset and scratch tests with the retention and overlap cells only. The watchdog registers are graded in `sep_timer_clock_contract_test`.
+|Proves that a `wdt_rst_ni` pulse keeps software reset requests, fault status and DMA and SPI state, also against a pending `SW_RESET_N` sequence and a running DMA copy. Proves that a cold reset clears the same state. On the full-CPU leaf a `dbg_rstb_i` pulse runs the same sequence, overlap and DMA legs (a running and an idle copy), and the run-request synchronizer leg shows that the pulse reaches the debug domain. Extends the open CPU-reset and scratch tests with the retention and overlap cells only. The watchdog registers are graded in `sep_timer_clock_contract_test`.
 
 |<<sep_sw_reset_isolation_matrix_test,`sep_sw_reset_isolation_matrix_test`>>
 |3
@@ -1386,7 +1386,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |<<sep_timer_clock_contract_test,`sep_timer_clock_contract_test`>>
 |3
 |no_cpu
-|LSU master, `clk_i`, `clk_ref_i` and `clk_wdt_i` drive, timer register model
+|LSU master, `clk_i`, `clk_ref_i` and `clk_wdt_i` drive, timer register model, `dbg_rst_l_probe_o` (observation tap)
 |Proves that `REFERENCE_COUNTER` advances at the `clk_ref_i` rate and restarts from zero after a cold reset, that the watchdog bark and bite follow their thresholds in order and `INTR_TEST` forces the bark, and that the wakeup threshold and count work across the 32-bit boundary. Proves that 11 watchdog registers, each on the lane that its offset selects, answer four patterns with their access type. Owns the watchdog threshold and `WDOG_REGWEN.regwen` contract across every reset event: `regwen` clears once, the thresholds keep their values over a `wdt_rst_ni` pulse, a `dbg_rstb_i` pulse, a software engine reset and a `sep_reset_n` override, and all return to their defaults only at a cold reset. Extends the open timer tests with those cells only.
 
 |<<sep_boot_rom_aperture_sweep_test,`sep_boot_rom_aperture_sweep_test`>>

@@ -39,8 +39,10 @@ Checks:
                      fetch at word address 1 and before its response beat,
                      and PR-ROM-MACRO shows that fetch at the macro before the
                      fall; after ``sep_cpu_reset_n_o`` rises, the first PR-ROM
-                     request is word 0, no response beat precedes it and the
-                     first response carries image word 0 (reset_controller.adoc
+                     request is word 0, no response beat precedes it, no
+                     word-1 request appears from the ``sep_cpu_reset_n_o``
+                     fall up to it, and the first response carries image
+                     word 0 (reset_controller.adoc
                      SEP Reset Controller). The response window W comes from the
                      same fetch of the calibration boot, whose beat carries
                      image word 1.
@@ -981,6 +983,9 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         )
         midflight = int(t_fall < t_hs + self.W * period and not early_rsp and macro_w1 >= 1)
         t_first = first.t_ps if first is not None else None
+        # A word-1 request from the clock the CPU reset is seen low up to the first
+        # request after the release is a replay of the abandoned fetch: the core
+        # issues no fetch in that window.
         replay = (
             -1
             if first is None
@@ -988,7 +993,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                 1
                 for b in beats
                 if b.ch == "req"
-                and t_rel <= b.t_ps < t_first
+                and cpu_low < b.t_ps < t_first
                 and b.addr is not None
                 and b.addr >> 3 == 1
             )

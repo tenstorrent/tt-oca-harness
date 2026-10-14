@@ -371,10 +371,13 @@ static void leg_hole(void) {
 }
 
 // ---- step 4: array corner ----
+// A cell with ``with_inv`` first wrote ``mask`` and read it back as ``raw_inv``; the
+// cell passes only when that read-back holds every implemented bit, so a field that
+// ignores writes cannot pass a drawn 0 by reading its reset value.
 static void rw_line(const char *grp, uint32_t src, uint32_t wr, uint32_t raw, uint32_t mask,
-                    int with_src) {
+                    int with_src, int with_inv, uint32_t raw_inv) {
     uint32_t rd = raw & mask;
-    int pass = rd == wr;
+    int pass = rd == wr && (!with_inv || (raw_inv & mask) == mask);
     rec_chk("RW", pass);
     rec_str("group", grp);
     if (with_src) {
@@ -385,6 +388,10 @@ static void rw_line(const char *grp, uint32_t src, uint32_t wr, uint32_t raw, ui
     rec_hex("raw", raw);
     rec_hex("rsvd", raw & ~mask);
     rec_hex("mask", mask);
+    if (with_inv) {
+        rec_hex("inv", mask);
+        rec_hex("raw_inv", raw_inv);
+    }
     chk_end(pass);
 }
 
@@ -396,23 +403,26 @@ static void leg_array(uint32_t ne) {
             uint32_t g = (go >> (4u * s)) & 0xFu;
             uint32_t m = m_grp(g);
             uint32_t v = v_grp(g, i) & m;
-            // The field holds 0 here; a drawn 0 first takes the inverse, so the
-            // read-back always differs from the value before the write.
-            if (v == 0u) {
+            // The field holds 0 here; a drawn 0 first takes the inverse and reads
+            // it back, so each graded read-back differs from the value before it.
+            int inv = v == 0u;
+            uint32_t raw_inv = 0u;
+            if (inv) {
                 pic_wr32(a_grp(g, n), m);
+                raw_inv = pic_rd32(a_grp(g, n));
             }
             pic_wr32(a_grp(g, n), v);
             uint32_t raw = pic_rd32(a_grp(g, n));
-            rw_line(k_grp[g], n, v, raw, m, 1);
+            rw_line(k_grp[g], n, v, raw, m, 1, inv, raw_inv);
         }
         pic_wr32(a_meipl(n), 0u);
         pic_wr32(a_meie(n), 0u);
         pic_wr32(a_gw(n), 0u);
     }
     pic_wr32(SEP_TOP_PIC_MPICCFG_BASE_ADDR, 1u);
-    rw_line("mpiccfg", 0u, 1u, pic_read_mpiccfg(), CFG_BM, 0);
+    rw_line("mpiccfg", 0u, 1u, pic_read_mpiccfg(), CFG_BM, 0, 0, 0u);
     pic_wr32(SEP_TOP_PIC_MPICCFG_BASE_ADDR, 0u);
-    rw_line("mpiccfg", 0u, 0u, pic_read_mpiccfg(), CFG_BM, 0);
+    rw_line("mpiccfg", 0u, 0u, pic_read_mpiccfg(), CFG_BM, 0, 0, 0u);
 }
 
 // ---- step 5: entry 0 corner ----

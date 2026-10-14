@@ -578,6 +578,12 @@
 // Output of the CPU run-request synchronizer (u_sep_cpu.mpc_reset_run_req_sync).
 // Tied to 0 on the CPU stub build.
 `SEP_TB_OUT(logic, mpc_run_sync_probe_o)
+// Debug reset input of the VeeR EL2 wrapper (u_sep_cpu.u_el2_veer_wrapper.dbg_rst_l).
+// Tied to 1 on the CPU stub build.
+`SEP_TB_OUT(logic, dbg_rst_l_probe_o)
+// Read source of SEP_CPU_CTRL.TIMEOUT_INTERRUPT.reserved (sw=r, hw=w, no storage):
+// the hwif_in value that the register block returns on a read, on each clock.
+`SEP_TB_OUT(logic, timeout_interrupt_probe_o)
 // The two Key Manager reset conditioner outputs: bit 1 rst_cold_aasd_n, bit 0
 // rst_warm_sync_n (u_key_manager_s3c_scan).
 `SEP_TB_OUT(logic [1:0], km_cond_rst_probe_o)

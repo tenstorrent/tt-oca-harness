@@ -19,7 +19,9 @@ follows the console live (``env/sep_fw_console``: graded window on ``M G`` /
 * CHK-HOLE     (firmware) a CPU access to each of the five holes and to the
                past-extent range reads 0, traps nothing, and leaves the seven
                armed alias targets unchanged.
-* CHK-RW       (firmware) each implemented field holds the written value.
+* CHK-RW       (firmware) each implemented field holds the written value; for
+               a drawn 0 the read-back of the inverse write first equals the
+               field mask.
 * CHK-ENTRY0   (firmware) entry 0 of the four arrays reads 0 after an all-ones
                write, and the write does not land in entry 1.
 * CHK-GWCLR0   (firmware) ``meigwclr`` reads 0 after a write with the
@@ -267,24 +269,32 @@ class sep_pic_reg_rand_test(sep_base_test):
         }
         lo, hi = self._leg_clk("reset")
         rst = [r for r in self.reads if lo <= r[0] < hi]
-        # Control: the CHK-RW read-backs of the array corner, in order.
+        # Control: the CHK-RW read-backs of the array corner, in order. A cell with
+        # a drawn 0 reads twice: the inverse read-back (raw_inv), then the cell (raw).
         arr_lo, arr_hi = self._leg_clk("array")
         arr = [r for r in self.reads if arr_lo <= r[0] < arr_hi]
         rw = [r for r in self.con.records("CHK-RW") if arr_lo <= r.clk]
-        ctrl_reads = len(rw)
+        seq = [
+            (rec.kv.get("group"), key, rec.kv.get(key))
+            for rec in rw
+            for key in ("raw_inv", "raw")
+            if key in rec.kv
+        ]
+        n_inv = sum(1 for rec in rw if "raw_inv" in rec.kv)
+        ctrl_reads = len(seq)
         ctrl_match = 0
         ctrl_nonzero = 0
         mism: list[tuple] = []
-        for i, rec in enumerate(rw):
-            raw = rec.kv.get("raw")
+        for i, (grp, key, raw) in enumerate(seq):
             if i < len(arr) and arr[i][3] and arr[i][2] == raw:
                 ctrl_match += 1
                 ctrl_nonzero += int(raw != 0)
             elif len(mism) < 4:
                 got = arr[i][2] if i < len(arr) else None
-                mism.append((i, rec.kv.get("group"), raw, got))
+                mism.append((i, grp, key, raw, got))
         ctrl_ok = (
-            ctrl_reads == 3 * ne + 2
+            len(rw) == 3 * ne + 2
+            and ctrl_reads == len(rw) + n_inv
             and len(arr) == ctrl_reads
             and ctrl_match == ctrl_reads
             and ctrl_nonzero >= 1

@@ -41,7 +41,9 @@ read that completes in the hold is a sample: it must answer OKAY with
 ``TIMEOUT_INTERRUPT`` 0, and any other response fails CHK-TO-INERT. The vector
 (``sep_internal_interrupts_probe_o``, the six excluded idle sources masked) is
 sampled on every clock of the hold, with at least one sample per held clock,
-and is compared with the baseline on each sample and after release.
+and is compared with the baseline on each sample and after release. The same
+watch samples ``timeout_interrupt_probe_o``, the read source of
+``TIMEOUT_INTERRUPT`` (the field has no storage), and every sample must be 0.
 
 Randomization (``SepSeededRng`` from the run seed): the order of the nine
 arming writes and the order of the stalled blocks. The hold length, the
@@ -51,10 +53,10 @@ Checkers:
   CHK-ARMED       the six counts not written by the open tests read 0x1.
   CHK-STALL-REAL  the stalled access gets no response during the hold and one
                   after release (one line per block and direction).
-  CHK-TO-INERT    TIMEOUT_INTERRUPT 0x0 in every in-hold sample and after
-                  release, the masked vector equal to the baseline on every
-                  clock of the hold and after release, and the stated
-                  response of the stalled access.
+  CHK-TO-INERT    TIMEOUT_INTERRUPT 0x0 in every in-hold sample, on every
+                  clock of the hold (tap) and after release, the masked
+                  vector equal to the baseline on every clock of the hold and
+                  after release, and the stated response of the stalled access.
   CTL-ARMED       reset reads and the three registers the open tests write.
   CTL-VEC-LIVE    a mailbox push raises vector bit 0 and its release drops it.
 """
@@ -184,29 +186,41 @@ class _AliasReg(SepAxiRegDriver):
 
 
 class _VecWatch:
-    """Samples the masked vector on every clock of a held interval.
+    """Samples the masked vector and the TIMEOUT_INTERRUPT tap on every clock of a hold.
 
     Each sample is taken in the ReadOnly phase of a ``clk_i`` rising edge.
     ``stop`` takes one last sample at the next rising edge, with the hold still
     in place, and returns after that time step, so the caller can drive the
-    release. It returns the sample count and the first sample that differs
-    from the baseline (or reads X/Z), so a pulse between end-point snapshots
-    fails.
+    release. It returns the sample count, the first vector sample that differs
+    from the baseline (or reads X/Z) and the first sample of
+    ``timeout_interrupt_probe_o`` (the read source of ``TIMEOUT_INTERRUPT``)
+    that is not 0, so a one-clock pulse between end-point snapshots or between
+    two bus reads fails.
     """
 
     def __init__(self, base: int) -> None:
         self.base = base
         self.samples = 0
         self.first_bad: tuple[int, str] | None = None
+        self.to_first_bad: tuple[int, str] | None = None
         self._on = True
         self._task = cocotb.start_soon(self._loop())
 
     async def _loop(self) -> None:
         sig = cocotb.top.sep_internal_interrupts_probe_o
+        to_tap = cocotb.top.timeout_interrupt_probe_o
         while True:
             await RisingEdge(cocotb.top.clk_i)
             await ReadOnly()
             self.samples += 1
+            try:
+                t = sep_base_test.rd_known(to_tap, 1) & 1
+            except Exception as exc:  # noqa: BLE001 - an X/Z sample is a deviation
+                t = None
+                if self.to_first_bad is None:
+                    self.to_first_bad = (self.samples, f"unknown:{exc}")
+            if t and self.to_first_bad is None:
+                self.to_first_bad = (self.samples, f"0x{t:x}")
             try:
                 v = sep_base_test.rd_known(sig, VEC_GRADED) & VEC_GRADED
             except Exception as exc:  # noqa: BLE001 - an X/Z sample is a deviation
@@ -218,13 +232,13 @@ class _VecWatch:
             if not self._on:
                 return
 
-    async def stop(self) -> tuple[int, tuple[int, str] | None]:
+    async def stop(self) -> tuple[int, tuple[int, str] | None, tuple[int, str] | None]:
         self._on = False
         await self._task
         # The last sample leaves this coroutine in ReadOnly; a write is legal
         # again from the next time step.
         await NextTimeStep()
-        return self.samples, self.first_bad
+        return self.samples, self.first_bad, self.to_first_bad
 
 
 @pyuvm.test()
@@ -441,7 +455,7 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         block: str,
         d: str,
         in_hold: list,
-        watch: tuple[int, tuple[int, str] | None],
+        watch: tuple[int, tuple[int, str] | None, tuple[int, str] | None],
         held: int,
         vec_hold: int,
         resp_txt: str,
@@ -452,7 +466,9 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         Every read that completed in the hold is a sample: it must answer OKAY
         with ``TIMEOUT_INTERRUPT`` 0, so an aborted (non-OKAY) read fails. The
         vector watch must hold one sample per held clock, each equal to the
-        baseline, so a source that pulses between snapshots fails.
+        baseline, so a source that pulses between snapshots fails. The same
+        watch samples the read source of ``TIMEOUT_INTERRUPT`` on every clock,
+        and any sample other than 0 fails.
         """
         await ClockCycles(cocotb.top.clk_i, QUIET)
         to_after = await self._lsu_rd(TO_INT)
@@ -469,7 +485,7 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
             if in_hold
             else "not_sampled"
         )
-        w_samples, w_bad = watch
+        w_samples, w_bad, to_bad = watch
         vec_ok = vec_hold == self.base and vec_after == self.base and w_bad is None
         line = (
             f"block={block} dir={d} timeout_int=0x{to_after & TO_INT_FIELD:x} "
@@ -477,10 +493,19 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
             f"vec={'baseline' if vec_ok else 'changed'} "
             f"vec_samples={w_samples} held_clocks={held} "
             f"vec_first_bad={'none' if w_bad is None else f'{w_bad[1]}@{w_bad[0]}'} "
+            f"to_tap_samples={w_samples} "
+            f"to_tap_first_bad={'none' if to_bad is None else f'{to_bad[1]}@{to_bad[0]}'} "
             f"vec_hold=0x{vec_hold:011x} vec_after=0x{vec_after:011x} "
             f"vec_base=0x{self.base:011x} resp={resp_txt}"
         )
-        if not to_ok or bad_reads or not vec_ok or w_samples < held or not resp_ok:
+        if (
+            not to_ok
+            or bad_reads
+            or not vec_ok
+            or to_bad is not None
+            or w_samples < held
+            or not resp_ok
+        ):
             self._fail("CHK-TO-INERT", line)
         self._pass("CHK-TO-INERT", line)
 

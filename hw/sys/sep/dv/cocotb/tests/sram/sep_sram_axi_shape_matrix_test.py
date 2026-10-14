@@ -605,11 +605,20 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
 
     @staticmethod
     def _depth_peak(beats) -> int:
+        """Peak count of accepted AR/AW without their last R or B.
+
+        In one clock the completions count before the requests, so a request
+        accepted on the clock of the previous last response does not overlap it.
+        """
+
+        def done(b) -> bool:
+            return b.ch == "b" or (b.ch == "r" and b.last == 1)
+
         cur = peak = 0
-        for b in sorted(beats, key=lambda x: x.clk):
+        for b in sorted(beats, key=lambda x: (x.clk, 0 if done(x) else 1)):
             if b.ch in ("ar", "aw"):
                 cur += 1
-            elif b.ch == "b" or (b.ch == "r" and b.last == 1):
+            elif done(b):
                 cur -= 1
             peak = max(peak, cur)
         return peak

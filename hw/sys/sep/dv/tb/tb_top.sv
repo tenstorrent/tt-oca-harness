@@ -1732,6 +1732,17 @@ module sep_uvm_top
 `else
     assign mpc_run_sync_probe_o = 1'b0;
 `endif
+    // Debug reset input of the core wrapper; the CPU stub has none.
+`ifndef SEP_CPU_STUB
+    assign dbg_rst_l_probe_o = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dbg_rst_l;
+`else
+    assign dbg_rst_l_probe_o = 1'b1;
+`endif
+    // Read source of TIMEOUT_INTERRUPT.reserved, the value a register read returns.
+`define SEP_SYS_CSR `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+    assign timeout_interrupt_probe_o =
+        `SEP_SYS_CSR.sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.reserved.next;
+`undef SEP_SYS_CSR
 
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are

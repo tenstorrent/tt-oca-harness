@@ -194,6 +194,16 @@ Observation probe groups:
   `sep_scan_reset_override_test`. `mpc_run_sync_probe_o`, the output of the
   CPU run-request synchronizer (`u_sep_cpu.mpc_reset_run_req_sync`), tied to 0
   on the CPU stub build; owner `sep_cpu_reset_retention_test`.
+  `dbg_rst_l_probe_o`, the debug reset input of the core wrapper
+  (`u_sep_cpu.u_el2_veer_wrapper.dbg_rst_l`), tied to 1 on the CPU stub
+  build; owner `sep_timer_clock_contract_test`, which reads it only on the
+  VCS full-CPU leaf.
+* `TIMEOUT_INTERRUPT` read-source tap (`timeout_interrupt_probe_o`): the
+  hardware input `sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.reserved.next` of
+  the `SEP_CPU_CTRL` register block in `u_sep_system_csr`. The field has no
+  storage (sw=r, hw=w), so this is the value a read returns on that clock. No
+  frontdoor shows the level between two bus reads. Owner:
+  `sep_cpu_ctrl_timeout_inert_rand_test` (CHK-TO-INERT).
   `km_cond_rst_probe_o`, the two Key Manager reset conditioner outputs (bit 1
   `rst_cold_aasd_n`, bit 0 `rst_warm_sync_n` of `u_key_manager_s3c_scan`);
   owner `sep_scan_reset_override_test`.

@@ -28,7 +28,8 @@ band: before the ``SW_RESET_N`` write, between the write and the
 ``ip_rst_n[D]`` fall, after the fall), the DMA leg (a pulse against a running
 and an idle copy), the cold-reset leg (``rst_ni`` in the middle of a copy) and
 a recovery copy. The full-CPU build adds the DBG sequence, the DBG overlap
-runs and the run-request synchronizer leg (CHK-DBG-SYNC). The leaf selects
+runs, the DBG DMA leg (a ``dbg_rstb_i`` pulse against a running and an idle
+copy) and the run-request synchronizer leg (CHK-DBG-SYNC). The leaf selects
 these legs from the build it runs on (the full ``sep_cpu`` present), not from
 the simulator, and sets ``required_evidence`` to match.
 
@@ -59,8 +60,11 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           released after the write of 1 and reads its probe at
                           the RDL default; the sibling keeps its value and
                           ``SW_RESET_N`` reads 0x76.
-  CHK-DMA-CPURST          each DMA mode: the copy completes, the programmed
-                          registers, ``RANGE_REGWEN`` and both latches are kept.
+  CHK-DMA-CPURST          each pulse class and DMA mode: the copy completes,
+                          the programmed registers, ``RANGE_REGWEN`` and both
+                          latches are kept. The WDT runs also need the
+                          ``sep_cpu_reset_n`` tap low in the pulse; the DBG runs
+                          (full-CPU build) take credit only with CHK-DBG-SYNC.
   CHK-DMA-COLDRST         the cold reset in the middle of a copy returns every
                           moved Secure DMA register, both status registers and
                           ``SW_RESET_N`` to their reset values; the destination
@@ -516,8 +520,10 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 await self._sequence(cls)
                 await self._retention_reads(cls)
             await self._overlap_leg()
-            for mode in self.plan.dma_modes:
-                await self._dma_leg(mode)
+            # Every DMA run, the DBG runs too, comes before the in-flight leg.
+            for cls in self.classes:
+                for mode in self.plan.dma_modes:
+                    await self._dma_leg(cls, mode)
             r1 = await self._cold_leg()
             await self._after_cold(r1)
             await self._close()
@@ -1084,9 +1090,9 @@ class sep_cpu_reset_retention_test(sep_base_test):
         pin.value = 1
 
     # ---- step 8: DMA leg --------------------------------------------------------
-    async def _dma_leg(self, mode: str) -> None:
+    async def _dma_leg(self, cls: str, mode: str) -> None:
         dut = cocotb.top
-        await self._latch_faults(f"DMA {mode}")
+        await self._latch_faults(f"DMA {cls} {mode}")
         st_addr = _D.addr("STATUS")
         await self.dma.wr(st_addr, ST_DONE | ST_CHUNK_DONE)
         st0 = await self.dma.read_status()
@@ -1100,33 +1106,43 @@ class sep_cpu_reset_retention_test(sep_base_test):
         await self.dma.go()
         t_go = self.clk
         mr = self.taps.mark()
+        mp = self.pins[cls].mark()
         if mode == "RUNNING":
             while self.clk < t_go + self.copy_delay:
                 await RisingEdge(dut.clk_i)
-            await self._pulse("WDT", self.plan.dma_width)
+            await self._pulse(cls, self.plan.dma_width)
             await self.taps.resets["sep_cpu_reset_n"].wait_level(1, TAP_BOUND)
             first = await self.dma.read_status()
             busy_after = first.busy
             if not busy_after:
                 raise AssertionError(
-                    f"DMA RUNNING: the first STATUS read after the pulse shows BUSY=0 "
+                    f"DMA {cls} RUNNING: the first STATUS read after the pulse shows BUSY=0 "
                     f"({first.fmt()}); the pulse did not land on a running copy"
                 )
         else:
             await self.dma.poll_status(
                 lambda s: s.done, self.dma.done_bound(COPY_BYTES), "idle done"
             )
-            await self._pulse("WDT", self.plan.dma_width)
+            await self._pulse(cls, self.plan.dma_width)
             await self.taps.resets["sep_cpu_reset_n"].wait_level(1, TAP_BOUND)
             busy_after = (await self.dma.read_status()).busy
         cpu = self.taps.resets["sep_cpu_reset_n"]
         n = cpu.clk - mr["sep_cpu_reset_n"].clk
         cpu_low = n - cpu.high_clocks_since(mr["sep_cpu_reset_n"])
-        self.cpu_rst["wdt_events"] += 1
-        self.cpu_rst["low"] += int(cpu_low > 0)
-        self.cpu_rst["sep_high"] &= (
-            self.taps.resets["sep_reset_n"].high_clocks_since(mr["sep_reset_n"]) == n
-        )
+        pin_fall = len(self.pins[cls].fall_clks_since(mp))
+        if cls == "WDT":
+            self.cpu_rst["wdt_events"] += 1
+            self.cpu_rst["low"] += int(cpu_low > 0)
+            self.cpu_rst["sep_high"] &= (
+                self.taps.resets["sep_reset_n"].high_clocks_since(mr["sep_reset_n"]) == n
+            )
+        else:
+            self.logger.info(
+                "OBS-CPU-RST-DBG: dma_mode=%s width=%d sep_cpu_reset_n_low=%d",
+                mode,
+                self.plan.dma_width,
+                cpu_low,
+            )
         st = await self.dma.poll_status(
             lambda s: s.done or s.error, 4 * self.dma.done_bound(COPY_BYTES), f"{mode} done"
         )
@@ -1147,12 +1163,14 @@ class sep_cpu_reset_retention_test(sep_base_test):
             and lk == self.lk
             and (dst_st & DMA_REG_PATH_BIT)
             and (pst & PERIPH_BIT[self.plan.latch])
-            and cpu_low > 0
+            and pin_fall == 1
+            and (cpu_low > 0 or cls == "DBG")
         )
         self._chk(
             "CHK-DMA-CPURST",
             bool(ok),
-            f"mode={mode} cpu_rst_pulse={int(cpu_low > 0)} busy_after_pulse={busy_after} "
+            f"pulse={cls} mode={mode} pin_fall={pin_fall} cpu_rst_pulse={int(cpu_low > 0)} "
+            f"busy_after_pulse={busy_after} "
             f"done={st.done} error={st.error} regs_kept={int(regs_ok)} RANGE_REGWEN=0x{lk:x} "
             f"mem_mismatch={mism} bus_err_status=0x{dst_st:x} periph_status=0x{pst:x} "
             f"delay={self.copy_delay if mode == 'RUNNING' else 'na'}",
