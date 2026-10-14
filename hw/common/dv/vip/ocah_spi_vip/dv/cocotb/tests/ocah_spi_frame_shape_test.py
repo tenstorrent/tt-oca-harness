@@ -145,18 +145,18 @@ async def ocah_spi_frame_shape_test(dut) -> None:
         records = flash.get_transactions()[before:]
         if len(records) != 1:
             raise AssertionError(f"one frame gave {len(records)} device records")
-        return records[0]
+        return dict(records[0])
 
-    async def refuse_walk(check_id: str, cases: list[tuple[str, int, list[int], str]], wel: bool):
+    async def refuse_walk(check_id: str, cases: list[tuple[str, int, list[int], str]], latch: bool):
         """Each case: label, opcode, bits, reason. Every frame is refused with no state change."""
-        if wel:
+        if latch:
             await host.write_enable()
         else:
             await host.write_disable()
         start_digest = digest()
         observed, expected, lines = [], [], []
         for label, opcode, bits, reason in cases:
-            wel_before = flash.write_enabled
+            latch_before = flash.write_enabled
             rec = await frame(bits)
             complete = len(bits) // 8
             payload_bytes = complete - 1 - ADDR_BYTES if reason == "partial_byte" else 0
@@ -170,20 +170,20 @@ async def ocah_spi_frame_shape_test(dut) -> None:
                     len(bits),
                     len(bits) % 8,
                     max(payload_bytes, 0),
-                    wel_before,
+                    latch_before,
                     start_digest,
                 )
             )
             lines.append(
                 f"{label}:bits={len(bits)} complete_bytes={complete} tail={len(bits) % 8} "
-                f"wel={int(wel_before)}->{int(flash.write_enabled)}"
+                f"latch={int(latch_before)}->{int(flash.write_enabled)}"
             )
         log.info("%s cases=%d %s", check_id, len(cases), " ".join(lines))
         checker.expect_equal(
             check_id,
             observed,
             expected,
-            context=f"frames={len(cases)} wel={int(wel)} sectors_sha256={start_digest}",
+            context=f"frames={len(cases)} latch={int(latch)} sectors_sha256={start_digest}",
         )
 
     wren = bytes([OcahSpiOpcode.WRITE_ENABLE])
@@ -197,12 +197,12 @@ async def ocah_spi_frame_shape_test(dut) -> None:
     await refuse_walk(
         "CHK-SPI-SHAPE-OPCODE",
         [(f"wren{n}", -1, bits_of(wren, n), "partial_opcode") for n in range(1, 8)],
-        wel=False,
+        latch=False,
     )
     await refuse_walk(
         "CHK-SPI-SHAPE-OPCODE",
         [(f"wrdi{n}", -1, bits_of(wrdi, n), "partial_opcode") for n in range(1, 8)],
-        wel=True,
+        latch=True,
     )
     # Address phase of every mutating command: 0 to 23 address bits.
     await refuse_walk(
@@ -215,7 +215,7 @@ async def ocah_spi_frame_shape_test(dut) -> None:
             )
             for j in range(8 * ADDR_BYTES)
         ],
-        wel=True,
+        latch=True,
     )
     # Payload phase: 1 to 7 bits into the first or second byte, and no byte at all.
     await refuse_walk(
@@ -231,7 +231,7 @@ async def ocah_spi_frame_shape_test(dut) -> None:
             for t in range(1, 8)
         ]
         + [("pp_empty", OcahSpiOpcode.PAGE_PROGRAM, bits_of(pp), "no_payload")],
-        wel=True,
+        latch=True,
     )
     # Commands without a payload: any bit after the last command or address bit.
     extra = bytes([tail_byte])
@@ -246,7 +246,7 @@ async def ocah_spi_frame_shape_test(dut) -> None:
             )
             for t in range(1, 9)
         ],
-        wel=False,
+        latch=False,
     )
     await refuse_walk(
         "CHK-SPI-SHAPE-NOPAYLOAD",
@@ -259,7 +259,7 @@ async def ocah_spi_frame_shape_test(dut) -> None:
             )
             for t in range(1, 9)
         ],
-        wel=True,
+        latch=True,
     )
     await refuse_walk(
         "CHK-SPI-SHAPE-ERASE",
@@ -272,7 +272,7 @@ async def ocah_spi_frame_shape_test(dut) -> None:
             )
             for t in range(1, 9)
         ],
-        wel=True,
+        latch=True,
     )
     # Read input phases: address and FAST READ dummy.
     await refuse_walk(
@@ -289,7 +289,7 @@ async def ocah_spi_frame_shape_test(dut) -> None:
             (f"frd{d}", OcahSpiOpcode.FAST_READ, bits_of(fr, 32 + d), "partial_dummy")
             for d in range(8)
         ],
-        wel=False,
+        latch=False,
     )
 
     # Latch controls: exact one-byte frames set and clear the latch.
@@ -312,7 +312,7 @@ async def ocah_spi_frame_shape_test(dut) -> None:
     status = SR1_WEL
     page_head = payload[:2]
     aborts_observed, aborts_expected = [], []
-    wel_before, digest_before = flash.write_enabled, digest()
+    latch_before, digest_before = flash.write_enabled, digest()
     for name, head, opcode, stream, outputs in (
         (
             "jedec",
@@ -334,8 +334,8 @@ async def ocah_spi_frame_shape_test(dut) -> None:
     checker.expect_equal(
         "CHK-SPI-READ-ABORT",
         (aborts_observed, flash.write_enabled, digest()),
-        (aborts_expected, wel_before, digest_before),
-        context=f"frames={len(aborts_observed)} wel={int(wel_before)} sectors_sha256={digest_before}",
+        (aborts_expected, latch_before, digest_before),
+        context=f"frames={len(aborts_observed)} latch={int(latch_before)} sectors_sha256={digest_before}",
     )
 
     # Erase control: exactly the target sector returns to 0xFF and the latch is consumed.

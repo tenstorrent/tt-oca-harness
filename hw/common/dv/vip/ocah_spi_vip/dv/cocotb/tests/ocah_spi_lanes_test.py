@@ -30,6 +30,7 @@ matches the device records against the monitor frames in input clocks.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import cocotb
 from ocah_spi_vip import (
@@ -71,7 +72,10 @@ def read_segments(opcode: int, addr: int, length: int) -> list:
     """Command segments of a read at its lane widths."""
     fmt = command_format(opcode)
     assert fmt is not None
-    segs = [(1, "tx", bytes([opcode])), (fmt.addr_lanes, "tx", addr.to_bytes(ADDR_BYTES, "big"))]
+    segs: list[tuple[int, str, Any]] = [
+        (1, "tx", bytes([opcode])),
+        (fmt.addr_lanes, "tx", addr.to_bytes(ADDR_BYTES, "big")),
+    ]
     if fmt.dummy_clocks:
         segs.append((fmt.data_lanes if fmt.addr_lanes > 1 else 1, "dummy", fmt.dummy_clocks))
     segs.append((fmt.data_lanes, "rx", length))
@@ -83,7 +87,7 @@ def phase_bytes(beats, start: int, lanes: int, field: int) -> bytes:
     values = [beat[field] or 0 for beat in beats[start:]]
     if lanes == 1:
         values = [(v >> (0 if field == 0 else 1)) & 1 for v in values]
-    return lanes_to_bytes(values, lanes)[0]
+    return bytes(lanes_to_bytes(values, lanes)[0])
 
 
 @cocotb.test()
@@ -97,7 +101,7 @@ async def ocah_spi_lanes_test(dut) -> None:
     log.info("start: page addr=0x%06x len=%d", addr, length)
 
     def frames_since(mark: int) -> list:
-        return monitor.get_transactions()[mark:]
+        return list(monitor.get_transactions()[mark:])
 
     wren = [(1, "tx", bytes([OcahSpiOpcode.WRITE_ENABLE]))]
     await bfm.lane_frame(wren)

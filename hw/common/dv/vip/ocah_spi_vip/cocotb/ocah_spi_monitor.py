@@ -426,7 +426,7 @@ class OcahSpiMonitor:
 
         while True:
             await First(*triggers)
-            now = _sim_time_ns()
+            now = _sim_time_ns() or 0.0
             cs = _level(self._cs_n)
             if cs != 0:
                 if cs is None:
@@ -641,7 +641,7 @@ class OcahSpiMonitor:
 def _sim_time_ns() -> Optional[float]:
     """Simulation time in ns, ``None`` when the simulator exposes none."""
     try:
-        return cocotb.utils.get_sim_time("ns")
+        return float(cocotb.utils.get_sim_time("ns"))
     except Exception:  # noqa: BLE001
         return None
 
@@ -687,7 +687,7 @@ def _has_xz(sig, mask: int) -> bool:
 def _lanes_changed(prev, cur) -> bool:
     """A lane that both samples drive changed value, or either sample is X/Z."""
     if prev is None or cur is None:
-        return prev != cur
+        return bool(prev != cur)
     (prev_value, prev_oe), (cur_value, cur_oe) = prev, cur
     return bool((prev_value ^ cur_value) & prev_oe & cur_oe)
 

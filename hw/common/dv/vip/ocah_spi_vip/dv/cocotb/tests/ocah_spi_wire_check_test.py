@@ -32,6 +32,7 @@ here.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import cocotb
 from ocah_spi_vip import OcahSpiMonitorError
@@ -74,7 +75,7 @@ async def ocah_spi_wire_check_test(dut) -> None:
         checker.expect_equal(check_id, added, expected, context=context)
 
     # Legal frames in every mode.
-    legal = []
+    legal: list[tuple[str, list[tuple[Any, ...]], list[tuple[Any, ...]]]] = []
     for cpol, cpha in MODES:
         set_mode(cpol, cpha)
         await bfm.drive(hold_ns=2 * bfm.half_period_ns)
@@ -84,18 +85,11 @@ async def ocah_spi_wire_check_test(dut) -> None:
             before = len(monitor.get_transactions())
             await bfm.raw_frame(bits)
             txns = monitor.get_transactions()[before:]
-            legal.append(
-                (
-                    f"mode{cpol}{cpha}",
-                    [
-                        (t["bit_count"], t["opcode"], t["wire_errors"], t["cpol"], t["cpha"])
-                        for t in txns
-                    ],
-                )
-            )
             log.info("legal mode=%d%d bits=0x%04x frames=%s", cpol, cpha, value, txns)
-            expected_txn = [(16, value >> 8, (), cpol, cpha)]
-            legal[-1] = (legal[-1][0], legal[-1][1], expected_txn)
+            observed = [
+                (t["bit_count"], t["opcode"], t["wire_errors"], t["cpol"], t["cpha"]) for t in txns
+            ]
+            legal.append((f"mode{cpol}{cpha}", observed, [(16, value >> 8, (), cpol, cpha)]))
     checker.expect_equal(
         "CHK-SPI-WIRE-LEGAL",
         [(name, got) for name, got, _ in legal],

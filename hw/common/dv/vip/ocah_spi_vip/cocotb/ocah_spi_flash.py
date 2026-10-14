@@ -642,8 +642,8 @@ class OcahSpiFlash:
             if not self._wel:
                 addr, _, _ = await self._recv_write_frame(graded=False)
                 raise _Refused("wel_clear", addr=addr)
-            addr, extra, tail_bits = await self._recv_write_frame()
-            if extra or tail_bits:
+            addr, trailing, tail_bits = await self._recv_write_frame()
+            if trailing or tail_bits:
                 raise _Refused("unexpected_payload", addr=addr)
             self._do_sector_erase(addr)
             self._wel = False

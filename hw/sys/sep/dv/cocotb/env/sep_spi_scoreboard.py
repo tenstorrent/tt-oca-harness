@@ -154,4 +154,4 @@ def _wire_data(frame: dict | None, opcode: int, addr_bytes: int, *, response: bo
     start = fmt.input_clocks(addr_bytes) if response else 8 * (1 + addr_bytes)
     field_index = 2 if response else 0
     values = [beat[field_index] or 0 for beat in beats[start:]]
-    return lanes_to_bytes(values, fmt.data_lanes)[0]
+    return bytes(lanes_to_bytes(values, fmt.data_lanes)[0])
