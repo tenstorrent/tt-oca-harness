@@ -27,14 +27,21 @@ Checks:
   CHK-DBG-SBA   : (entry S) for each of the nine accesses (SRAM word 0 and its
                   local alias at 32 and 64 bits, ``WDOG_BARK_THOLD``, HMAC
                   ``MSG_LENGTH_LOWER``, ``SEP_SW_DEBUG``, cold scratch word 0,
-                  secure DMA ``INTR_SRC_ADDR_0[0]`` at 32 bits) the debug-master
-                  readback equals the written value and the independent read
-                  (``sram_word0_probe_o`` or the bench LSU master) at the full
-                  access width; the value before the write differs from the
-                  written value. On PR-DBG-SB each access shows one write and
-                  one read record with ID bits [2:1] = 0, and a 64-bit access
-                  one data beat in each (``hw/sys/sep/doc/cpu.adoc``, chapter
-                  introduction).
+                  secure DMA ``INTR_SRC_ADDR_0[0]`` at 32 bits), compared at the
+                  full access width (field mask for a register): the
+                  independent path (``sram_word0_probe_o`` or the bench LSU
+                  master) reads the debug-master write value, and the value
+                  before the write differs from it. The bench LSU master then
+                  writes a second drawn value ``new`` that differs from the
+                  write value in a graded bit and reads it back; the debug-master
+                  read returns ``new`` in the one R beat on PR-DBG-SB (the lane
+                  of the access) and in ``sbdata``, and the independent path
+                  still reads ``new`` after it. ``sbdata`` holds the write value
+                  from the write, so a read whose data never arrives fails.
+                  ``sberror`` reads 0 after the write and after the read. On
+                  PR-DBG-SB each access shows one write and one read record
+                  with ID bits [2:1] = 0, and a 64-bit access one data beat in
+                  each (``hw/sys/sep/doc/cpu.adoc``, chapter introduction).
   CHK-DMI-UNCORE: (entry C) with ``dmi_uncore_enable_i`` = 0,
                   ``dmi_uncore_en_o`` and ``dmi_uncore_wr_en_o`` are 0 on every
                   ``clk_i`` cycle from step 1 to the end of step 9, which holds
@@ -72,10 +79,11 @@ read from the DUT. The responses of the accesses outside the moved window
 
 Randomization (``SepSeededRng`` from the run seed): the order of the seven
 targets, the size order of each SRAM target, every write value (redrawn while
-it equals the value before the write), the set-up value of SRAM word 0, the
-moved base B (16 MiB aligned, 0xD100_0000 to 0xEF00_0000, so the reset alias
-and B - 8 are below the moved window and every moved alias is below 2**32) and
-the size order of the moved-alias leg.
+it equals the value before the write), the LSU value ``new`` of each access
+(redrawn while it equals the write value in the graded bits), the set-up value
+of SRAM word 0, the moved base B (16 MiB aligned, 0xD100_0000 to 0xEF00_0000,
+so the reset alias and B - 8 are below the moved window and every moved alias
+is below 2**32) and the size order of the moved-alias leg.
 
 VCS only (``tools = ["vcs"]``), ``+skip_fuse_sense``. The leaf fails on a build
 without the full ``sep_cpu``.
@@ -91,7 +99,7 @@ from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_fabric_tap import SepFabricTap, TapMark
 from env.sep_fcov_gate import close_graded_window, open_graded_window
-from env.sep_field_compare import field_compare
+from env.sep_field_compare import field_compare, lane32
 from env.sep_jtag_dmi import (
     DM_DMCONTROL,
     DMCONTROL_DMACTIVE,
@@ -174,6 +182,9 @@ class _Access:
     mask: int
     before: int = 0
     wr: int = 0
+    mid: int = 0
+    new: int = 0
+    new_rb: int = 0
     rd: int | None = None
     after: int | None = None
     sberr: tuple[int, int] = (0, 0)
@@ -427,13 +438,35 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         word = self.rd(cocotb.top.sram_word0_probe_o)
         return word & ((1 << (8 * size)) - 1)
 
+    @staticmethod
+    def _is_sram(acc: _Access) -> bool:
+        return acc.target in ("SRAM_WORD", "SRAM_ALIAS", "MOVED_ALIAS")
+
     async def _independent(self, acc: _Access) -> int:
-        if acc.target in ("SRAM_WORD", "SRAM_ALIAS", "MOVED_ALIAS"):
+        if self._is_sram(acc):
             return self._probe(acc.size)
         return await self._lsu(SepAxiOp.READ, acc.addr)
 
+    async def _independent_write(self, acc: _Access, value: int) -> None:
+        """Write the location by the bench LSU master (SRAM word at its direct address)."""
+        addr = SRAM_WORD if self._is_sram(acc) else acc.addr
+        await self._lsu(SepAxiOp.WRITE, addr, value, length=acc.size)
+        await ClockCycles(cocotb.top.clk_i, SETTLE)
+
+    def _draw_new(self, acc: _Access) -> int:
+        """A value that differs from the debug-master write value in a graded bit."""
+        while True:
+            v = self.rng.getrandbits(8 * acc.size)
+            if (v ^ acc.wr) & acc.mask:
+                return v
+
     async def _sba_access(self, acc: _Access) -> None:
-        """Step 7: before, write, debug readback, after; tap records by mark."""
+        """Step 7: before, debug write, CPU-path value, LSU write, debug read, after.
+
+        Between the debug-master write and the debug-master read the bench LSU
+        master writes a second drawn value, so the read value differs from the
+        value that ``sbdata`` holds from the write.
+        """
         acc.before = await self._independent(acc)
         acc.wr = self._draw_value(acc.size, acc.before)
         sb_mark = self.sb_tap.mark()
@@ -441,6 +474,11 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         pair_mark = self._pair_mark()
         try:
             werr = await self.dmi.sba_write(acc.addr, acc.wr, size=acc.size)
+            await ClockCycles(cocotb.top.clk_i, SETTLE)
+            acc.mid = await self._independent(acc)
+            acc.new = self._draw_new(acc)
+            await self._independent_write(acc, acc.new)
+            acc.new_rb = await self._independent(acc)
             acc.rd, rerr = await self.dmi.sba_read(acc.addr, size=acc.size)
         except DmiError:
             pin, pout = self._pair_since(pair_mark)
@@ -488,23 +526,63 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         )
         return ok, text
 
+    @staticmethod
+    def _r_beat(acc: _Access) -> tuple[int | None, int | None]:
+        """(data, resp) of the one R beat of the access on PR-DBG-SB.
+
+        The data is the lane of the access (``lane32`` for 4 bytes, the whole
+        beat for 8). None when the access has no R beat, more than one, or a
+        data or response field that holds X or Z.
+        """
+        r = [b for b in acc.sb if b.ch == "r"]
+        if len(r) != 1:
+            return None, None
+        data, resp = r[0].data, r[0].resp
+        if data is not None and acc.size == 4:
+            data = lane32(data, acc.addr)
+        return data, resp
+
     def _value_ok(self, acc: _Access) -> tuple[bool, str]:
-        if acc.target in ("SRAM_WORD", "SRAM_ALIAS", "MOVED_ALIAS"):
-            mask = (1 << (8 * acc.size)) - 1
-            ok = acc.rd == acc.wr and acc.after == acc.wr
+        # Write leg: the CPU path reads the debug-master write value. Read leg:
+        # the bench LSU master then writes ``new``, and the R beat of the
+        # debug-master read on PR-DBG-SB and the sbdata readback both carry
+        # ``new``. sbdata holds ``wr`` from the write, and ``new`` differs from
+        # ``wr`` in a graded bit, so a read whose data never arrives fails.
+        r_data, r_resp = self._r_beat(acc)
+        mask = acc.mask
+        pairs = (
+            ("cpu_path", acc.mid, acc.wr),
+            ("new_rb", acc.new_rb, acc.new),
+            ("r_data", r_data, acc.new),
+            ("rd", acc.rd, acc.new),
+            ("cpu_path_end", acc.after, acc.new),
+        )
+        ok = True
+        rsvd = []
+        for name, got, exp in pairs:
+            if got is None:
+                ok = False
+                rsvd.append(f"rsvd_{name}=X")
+                continue
+            c = field_compare(got, exp, mask)
+            ok = ok and c.ok
+            rsvd.append(f"rsvd_{name}=0x{c.rsvd:x}")
+        if self._is_sram(acc):
             cmp = f"mask=0x{mask:x}"
         else:
-            c_rd = field_compare(acc.rd, acc.wr, acc.mask)
-            c_cpu = field_compare(acc.after, acc.wr, acc.mask)
-            ok = c_rd.ok and c_cpu.ok
-            cmp = f"field_mask=0x{acc.mask:x} rsvd_rd=0x{c_rd.rsvd:x} rsvd_cpu=0x{c_cpu.rsvd:x}"
+            cmp = f"field_mask=0x{mask:x} " + " ".join(rsvd)
         ok = ok and acc.before != acc.wr and acc.sberr == (0, 0)
         w = 2 * acc.size
+
+        def h(v: int | None) -> str:
+            return "X" if v is None else f"0x{v:0{w}x}"
+
         text = (
             f"target={acc.target} addr=0x{acc.addr:08x} size={acc.size} "
-            f"wr=0x{acc.wr:0{w}x} rd=0x{acc.rd:0{w}x} cpu_path=0x{acc.after:0{w}x} "
-            f"before=0x{acc.before:0{w}x} sberror_wr={acc.sberr[0]} sberror_rd={acc.sberr[1]} "
-            f"{cmp}"
+            f"before={h(acc.before)} wr={h(acc.wr)} cpu_path={h(acc.mid)} "
+            f"new={h(acc.new)} new_rb={h(acc.new_rb)} r_data={h(r_data)} rd={h(acc.rd)} "
+            f"cpu_path_end={h(acc.after)} sberror_wr={acc.sberr[0]} sberror_rd={acc.sberr[1]} "
+            f"rresp_obs={'X' if r_resp is None else r_resp} {cmp}"
         )
         return ok, text
 

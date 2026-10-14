@@ -15,6 +15,12 @@ with ``jtag_tdo_o``; a leaf sets ``jtag_bench_own_i`` to 1 before it uses this
 layer (``SepJtagDmi.take_pins``). The TAP driver is the shared
 ``OcahJtagMasterDriver``.
 
+The driver reads an X or Z on TDO as 0. This layer puts a sampler on the
+driver's TDO handle that records each X or Z value the driver reads in
+Shift-DR, and a ``dtmcs`` or ``dmi`` scan with an X or Z in a captured bit
+raises ``DmiError``. An undriven TDO therefore cannot decode as a DMI success
+with data 0.
+
 Usage::
 
     dmi = SepJtagDmi.from_dut(dut)
@@ -30,7 +36,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ocah_jtag_vip import OcahJtagMasterDriver
+from ocah_jtag_vip import OcahJtagMasterDriver, OcahJtagState
 
 IR_WIDTH = 5
 IR_IDCODE = 0x01
@@ -92,6 +98,33 @@ class DmiError(AssertionError):
     """A DMI access failed or stayed busy past its bound."""
 
 
+class _TdoSampler:
+    """Stands in for the TDO handle on the driver bus.
+
+    The driver reads ``value`` once per TCK cycle, before it advances its
+    tracked TAP state, so the tracked state at the read is the state of the
+    sampled bit. A read in Shift-DR whose bits are not all 0 or 1 is recorded
+    in ``unknown``. Every other attribute is the handle's own.
+    """
+
+    def __init__(self, handle: Any, tap: OcahJtagMasterDriver) -> None:
+        self._handle = handle
+        self._tap = tap
+        self.unknown: list[str] = []
+
+    @property
+    def value(self) -> Any:
+        val = self._handle.value
+        if self._tap.get_current_state() is OcahJtagState.SHIFT_DR:
+            bits = str(val)
+            if not bits or any(c not in "01" for c in bits):
+                self.unknown.append(bits)
+        return val
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._handle, name)
+
+
 def dtmcs_fields(value: int) -> dict[str, int]:
     """Decode ``dtmcs``: version, abits, dmistat, idle."""
     return {
@@ -119,6 +152,13 @@ class SepJtagDmi:
         self.abits = abits
         self.busy_bound = busy_bound
         self.log = log or logging.getLogger("cocotb.sep_jtag_dmi")
+        tdo = getattr(tap.bus, "tdo", None)
+        if tdo is None:
+            raise DmiError("the TAP driver has no TDO handle")
+        if not isinstance(tdo, _TdoSampler):
+            tdo = _TdoSampler(tdo, tap)
+            tap.bus.tdo = tdo
+        self._tdo = tdo
 
     @classmethod
     def from_dut(cls, dut, *, tck_period_ns: int = 40, **kwargs: Any) -> "SepJtagDmi":
@@ -148,9 +188,20 @@ class SepJtagDmi:
     def dmi_bits(self) -> int:
         return self.abits + 34
 
+    async def _shift_dr_known(self, value: int, width: int, what: str) -> int:
+        """``shift_dr`` back to Run-Test/Idle; raise when a captured bit is X or Z."""
+        self._tdo.unknown.clear()
+        cap = await self.tap.shift_dr(value, width, back_to_rti=True)
+        if self._tdo.unknown:
+            raise DmiError(
+                f"{what}: TDO held X or Z on {len(self._tdo.unknown)} of {width} "
+                f"captured bits (values {','.join(self._tdo.unknown)})"
+            )
+        return int(cap)
+
     async def read_dtmcs(self) -> int:
         await self.tap.shift_ir(IR_DTMCS, IR_WIDTH, back_to_rti=False)
-        return int(await self.tap.shift_dr(0, DTMCS_BITS, back_to_rti=True))
+        return await self._shift_dr_known(0, DTMCS_BITS, "dtmcs scan")
 
     async def dmi_reset(self) -> None:
         """Write ``dtmcs.dmireset`` (bit 16) to clear a sticky DMI error."""
@@ -167,7 +218,9 @@ class SepJtagDmi:
 
     async def _dmi_scan(self, addr: int, data: int, op: int) -> tuple[int, int]:
         await self.tap.shift_ir(IR_DMI, IR_WIDTH, back_to_rti=False)
-        cap = await self.tap.shift_dr(self._pack(addr, data, op), self.dmi_bits, back_to_rti=True)
+        cap = await self._shift_dr_known(
+            self._pack(addr, data, op), self.dmi_bits, f"dmi scan addr=0x{addr:02x} op={op}"
+        )
         return self._unpack(cap)
 
     async def _dmi_access(self, addr: int, data: int, op: int) -> int:
