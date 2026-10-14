@@ -51,7 +51,10 @@ Checks:
 
 The routine first sets ``mrac`` as the SEP firmware start-up does
 (``fw/startup/crt0.s``): every 256 MiB region side-effect except region 12
-(ICCM, DCCM, PIC). The core then issues each store at its own size, so a 32-bit
+(ICCM, DCCM, PIC). The CSR number and the value are parsed from the first
+``li t0`` and ``csrw <csr>, t0`` pair of ``_start`` in that file; the routine
+reads the CSR back into a mailbox record, and a read-back that differs fails
+the leaf (``CTL-DEMUX-MRAC``). The core then issues each store at its own size, so a 32-bit
 register write reaches a register block with its own strobe and no zero-strobe
 neighbour beat. ``OBS-DMA-CSR-WRITE`` logs the shape and BRESP of every LSU
 write to the secure DMA registers; ``OBS-EXT-READ`` logs every NMI.
@@ -67,6 +70,8 @@ cpu run mode (real core), ``+skip_fuse_sense``; Verilator and VCS.
 from __future__ import annotations
 
 import os
+import re
+from pathlib import Path
 
 import cocotb
 import pyuvm
@@ -181,7 +186,7 @@ _SLOTS = (
     "GATE FAIL TRAP_CAUSE TRAP_VAL NMI NMI_ADDR ROMLD_B ROMLD_V ROMLD_E SRAMLD_B SRAMLD_V "
     "SRAMLD_E EXT_B EXT_E OUT_B OUT_E FB0 FE0 FB1 FE1 FB2 FE2 CORE_B MARKV CORE_M DCCMV CORE_E "
     "DMA1_B DMA_ST DMA1_E LSUL_B ILOAD LSUL_E LSUS_B LSUS_E DMA2_B IREAD DMA2_E DMA3_B DMA3_E "
-    "PAIR_B PAIR0 PAIR1 PAIR_E DONE"
+    "PAIR_B PAIR0 PAIR1 PAIR_E DONE MRAC"
 ).split()
 OFF = {name: 8 * (k + 1) for k, name in enumerate(_SLOTS)}
 if max(OFF.values()) + 8 > 0x200:
@@ -196,11 +201,28 @@ SRAM_R = SRAM_BASE + 0x208  # DMA destination of the ICCM readback (step 10)
 SRAM_S = SRAM_BASE + 0x210  # DMA source of the ICCM write control (step 10)
 SRAM_LD_LO = SRAM_BASE + 0x1000
 
-# VeeR EL2 mrac (region access control): two bits per 256 MiB region, bit 2r
-# cacheable, bit 2r+1 side-effect. The SEP firmware value of fw/startup/crt0.s:
-# every region side-effect except region 12.
-CSR_MRAC = 0x7C0
-MRAC_SEP = 0xA8AA_AAAA
+CRT0 = Path(__file__).resolve().parents[3] / "fw" / "startup" / "crt0.s"
+
+
+def _crt0_mrac(path: Path) -> tuple[int, int]:
+    """(CSR number, value) of the first ``li t0, V`` / ``csrw C, t0`` pair of ``_start``.
+
+    That pair is the VeeR EL2 ``mrac`` write of the SEP firmware start-up.
+    """
+    text = path.read_text()
+    equ = {m[1]: int(m[2], 0) for m in re.finditer(r"^\s*\.equ\s+(\w+)\s*,\s*(\w+)", text, re.M)}
+    body = text.split("_start:", 1)[1]
+    m = re.search(r"^\s*li\s+t0\s*,\s*(\w+)\s*\n\s*csrw\s+(\w+)\s*,\s*t0\b", body, re.M)
+    if m is None:
+        raise RuntimeError(f"{path}: no li t0 / csrw t0 pair in _start")
+    csr = equ.get(m[2])
+    if csr is None:
+        csr = int(m[2], 0)
+    return csr, int(m[1], 0)
+
+
+# VeeR EL2 mrac (region access control) as fw/startup/crt0.s writes it.
+CSR_MRAC, MRAC_SEP = _crt0_mrac(CRT0)
 
 # Environment choices (logged).
 DMA_POLL = 4_000  # STATUS reads per DMA copy
@@ -274,8 +296,12 @@ def _fail_if_ne(a: Asm, addr: int, exp: int, mask: int, code: int, tag: str) -> 
     a.label(f"ok_{tag}")
 
 
-def _dma_copy(a: Asm, src: int, dst: int, tag: str) -> None:
-    """One 4-byte secure DMA copy, polled to DONE or ERROR (bounded); logs STATUS."""
+def _dma_copy(a: Asm, src: int, dst: int, tag: str, code: int) -> None:
+    """One 4-byte secure DMA copy, polled to DONE, ERROR or ABORTED; logs STATUS.
+
+    A poll that expires with none of the three bits set writes fail marker
+    ``code`` with the last STATUS and stops the routine.
+    """
     _store_const(a, STATUS, ST_CLEAN_W1C)
     for reg, val in (
         ("SRC_ADDR_LO", src),
@@ -294,6 +320,8 @@ def _dma_copy(a: Asm, src: int, dst: int, tag: str) -> None:
     a.li(T1, STATUS).li(T2, DMA_POLL).li(T3, ST_DONE | ST_ERROR | ST_ABORTED)
     a.label(f"dma_{tag}").op(lw(A0, T1, 0), and_(A1, A0, T3)).br("bne", A1, ZERO, f"dmax_{tag}")
     a.op(addi(T2, T2, -1)).br("bne", T2, ZERO, f"dma_{tag}")
+    a.op(sw(A0, GP, OFF["FAIL"] + 4))
+    a.li(T0, code).op(sw(T0, GP, OFF["FAIL"]), FENCE).j("halt")
     a.label(f"dmax_{tag}").op(sw(A0, GP, OFF["DMA_ST"]), FENCE)
 
 
@@ -344,6 +372,7 @@ def build_main(p: _Plan) -> Asm:
         ("ENABLED_MEMORY_RANGE_BASE", "ENABLED_MEMORY_RANGE_LIMIT", "RANGE_VALID"), rng_regs
     ):
         _fail_if_ne(a, addr, val, SECURE_DMA.mask32(name), 0x200 | len(a.labels), name)
+    a.op(csrr(T0, CSR_MRAC), sw(T0, GP, OFF["MRAC"]), FENCE)
     # Staged SRAM words: the load word, the DMA sources and a readback word that
     # differs from W.
     _store_const(a, p.sram_ld, p.sram_ld_val)
@@ -401,7 +430,7 @@ def build_main(p: _Plan) -> Asm:
     _gate(a, 0)
     # Step 9: DMA copy of an SRAM word to a DCCM word (control).
     _mark(a, "DMA1_B")
-    _dma_copy(a, SRAM_A, p.dccm_d1, "d1")
+    _dma_copy(a, SRAM_A, p.dccm_d1, "d1", 0x301)
     _mark(a, "DMA1_E")
     # Step 10: LSU load and store at the ICCM word W.
     _gate(a, 1)
@@ -417,11 +446,11 @@ def build_main(p: _Plan) -> Asm:
     _mark(a, "LSUS_E")
     _gate(a, 0)
     _mark(a, "DMA2_B")
-    _dma_copy(a, p.iccm_w, SRAM_R, "d2")
+    _dma_copy(a, p.iccm_w, SRAM_R, "d2", 0x302)
     a.li(T1, SRAM_R).op(lw(A0, T1, 0), sw(A0, GP, OFF["IREAD"]))
     _mark(a, "DMA2_E")
     _mark(a, "DMA3_B")
-    _dma_copy(a, SRAM_S, p.iccm_d2, "d3")
+    _dma_copy(a, SRAM_S, p.iccm_d2, "d3", 0x303)
     _mark(a, "DMA3_E")
     # Step 11: the DCCM pair.
     _mark(a, "PAIR_B")
@@ -593,16 +622,30 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
     async def _wait_done(self):
         """The done record; a fail record or the bound ends the leaf."""
         names = {v: k for k, v in OFF.items()}
+        mrac_seen = False
         for cyc in range(DONE_BOUND):
+            mrac = None if mrac_seen else self.mbx.find(OFF["MRAC"])
+            if mrac is not None:
+                mrac_seen = True
+                line = f"csr=0x{CSR_MRAC:03x} readback=0x{mrac.val:08x} crt0=0x{MRAC_SEP:08x}"
+                if mrac.val != MRAC_SEP:
+                    self.logger.error("CTL-DEMUX-MRAC FAIL: %s", line)
+                    raise AssertionError(f"CTL-DEMUX-MRAC FAIL: {line}")
+                self.logger.info("CTL-DEMUX-MRAC: %s", line)
             fail = self.mbx.find(OFF["FAIL"])
             if fail is not None:
                 raw = self.mbx.find(OFF["FAIL"] + 4)
                 raise AssertionError(
-                    f"routine fail marker 0x{fail.val:x} (set-up readback, read "
+                    f"routine fail marker 0x{fail.val:x} (0x1xx or 0x2xx set-up "
+                    f"readback, 0x30n expired DMA poll of copy n; read "
                     f"0x{(raw.val if raw else 0):08x})"
                 )
             done = self.mbx.find(OFF["DONE"])
             if done is not None:
+                if not mrac_seen:
+                    raise AssertionError(
+                        "CTL-DEMUX-MRAC FAIL: no mrac record before the done record"
+                    )
                 return done
             if cyc % PROGRESS == 0:
                 recs = self.mbx.records()

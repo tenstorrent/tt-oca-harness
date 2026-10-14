@@ -23,10 +23,15 @@ counts the CPU trace retirements of the ``minstret`` block. It grades:
   reads without a trap. Readbacks are logged and never compared with the
   drawn values or with each other: the implemented width and granularity are
   not claimed.
-* CHK-MRAC (host) for each drawn ``mrac`` value the user-mode load from the
-  PMP-denied SRAM region traps with ``mcause`` 5 and the denied word does not
-  reach its register; the allowed-region load of the same run returns the
-  stored word (control).
+* CHK-MRAC (host) for each drawn ``mrac`` value the CSR reads back the drawn
+  value, the user-mode load from the PMP-denied SRAM region traps with
+  ``mcause`` 5 and the denied word does not reach its register; the
+  allowed-region load of the same run returns the stored word (control). Each
+  2-bit region field of a draw is 0b00, 0b01 or 0b10 (cpu.adoc, Memory
+  attributes: a cacheability and a side-effect attribute per region); a field
+  with both bits set, whose readback the specification does not state, is not
+  drawn. A draw equal to the start-up value ``MRAC_BOOT`` is redrawn, so a
+  core that ignores the write fails the readback.
 * CHK-TRACE-INSTRET (host) the ``minstret`` delta over the straight-line block
   equals the retirements that the trace monitor counts from the first
   ``minstret`` read up to the second.
@@ -74,6 +79,9 @@ NROW_MAX = 306
 NCTRL = 5
 NPMP = 16
 NMRAC = 4
+# The mrac value that fw/startup/crt0.s writes and the firmware restores after
+# each mrac iteration.
+MRAC_BOOT = 0xA8AAAAAA
 
 # Two 4 KiB naturally aligned SRAM regions that the firmware uses for nothing
 # else: the PMP-allowed and the PMP-denied region of the mrac step.
@@ -211,7 +219,10 @@ class IsaCfg:
             v = rng.getrandbits(32)
             if v not in cfg.pmp:  # a draw equal to an earlier one is redrawn
                 cfg.pmp.append(v)
-        cfg.mrac = [rng.getrandbits(32) for _ in range(NMRAC)]
+        while len(cfg.mrac) < NMRAC:
+            v = sum(rng.choice((0, 1, 2)) << (2 * r) for r in range(16))
+            if v != MRAC_BOOT:  # a draw equal to the start-up value is redrawn
+                cfg.mrac.append(v)
         for _ in range(NMRAC):
             aw = rng.getrandbits(32) | 1
             dw = rng.getrandbits(32) | 1
@@ -415,6 +426,7 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
             ok = (
                 int(kv["j"]) == j
                 and int(kv["v"]) == cfg.mrac[j]
+                and int(kv["rb"]) == cfg.mrac[j]
                 and mc == MCAUSE_LOAD_FAULT
                 and int(kv["traps"]) == 1
                 and rok == cfg.aw[j]
