@@ -49,7 +49,9 @@ Checks:
                        BRESP OKAY and the written value reads back: (a) one
                        full-strobe 64-bit write per pair from the debug-module
                        system bus, (b) a CPU 32-bit store to the even word,
-                       (c) a CPU 32-bit store to the odd word. One line per
+                       (c) a CPU 32-bit store to the odd word; (b) and (c)
+                       reach the port as 4-byte writes (``mrac`` as the
+                       firmware start-up sets it). One line per
                        access (watchdog.adoc Bus Interface: the 64-bit port is
                        narrowed to the 32-bit ``aon_timer`` register block).
                        Graded last, after every other check.
@@ -225,6 +227,11 @@ MRET = 0x3020_0073
 CSR_MCAUSE = 0x342
 CSR_MDSEAC = 0xFC0  # VeeR EL2 D-bus error address capture
 CSR_MDEAU = 0xBC0  # VeeR EL2 D-bus error address unlock
+# VeeR EL2 mrac (region access control): two bits per 256 MiB region, bit 2r
+# cacheable, bit 2r+1 side-effect. The SEP firmware value of fw/startup/crt0.s:
+# every region side-effect except region 12 (ICCM, DCCM, PIC).
+CSR_MRAC = 0x7C0
+MRAC_SEP = 0xA8AA_AAAA
 
 
 def _i(op: int, f3: int, rd: int, rs1: int, imm: int) -> int:
@@ -302,6 +309,10 @@ def _csrw0(csr: int) -> int:
     return (csr << 20) | (1 << 12) | 0x73
 
 
+def _csrw(csr: int, rs1: int) -> int:
+    return (csr << 20) | (rs1 << 15) | (1 << 12) | 0x73
+
+
 def _li(rd: int, v: int) -> list[int]:
     v &= 0xFFFF_FFFF
     hi = ((v + 0x800) >> 12) & 0xFFFFF
@@ -341,8 +352,13 @@ class _Asm:
 
 
 def entry_words(marker: int) -> list[int]:
-    """Open the outbound mailbox window, store ``marker``, jump to the routine."""
-    w = _li(T0, MBX)
+    """Set mrac, open the outbound mailbox window, store ``marker``, jump to the routine.
+
+    ``mrac`` takes the SEP firmware start-up value, so each register store leaves
+    the core at its own size.
+    """
+    w = _li(T0, MRAC_SEP) + [_csrw(CSR_MRAC, T0)]
+    w += _li(T0, MBX)
     for reg, val in (
         ("START_ADDR", MBX),
         ("END_ADDR", MBX + 0xFF),
@@ -1159,6 +1175,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 and resp == 0
                 and row["rd"] == row["exp"]
                 and (row["kind"] != "a" or (aw.size == 3 and w.strb == 0xFF))
+                and (row["kind"] == "a" or aw.size == 2)
                 and (row["sberr"] is None or row["sberr"] == (0, 0))
             )
             width = 16 if row["kind"] == "a" else 8
