@@ -126,6 +126,7 @@ from seq_lib.sep_dma_ops import (
     ST_DONE,
     SepDmaOps,
     SepMemWords,
+    control_word,
 )
 from seq_lib.sep_irq_aggregator_seq import (
     DMA_CLEAR_ADDR,
@@ -197,6 +198,10 @@ CONTROL_RESET = word_reset(CONTROL_ADDR) & CONTROL_RD_MASK
 INTR_STATE_ADDR = _D.addr("INTR_STATE")
 INTR_STATE_MASK = _D.mask32("INTR_STATE")
 INTR_STATE_RESET = _D.reset32("INTR_STATE")
+# INTR_TEST forces each INTR_STATE status bit and holds it until a write of 0
+# (OpenTitan status-type interrupt), so the cold reset has set bits to clear.
+INTR_TEST_ADDR = _D.addr("INTR_TEST")
+INTR_TEST_MASK = _D.mask32("INTR_TEST")
 # The copy configuration the leaf programs, and the range registers.
 COPY_CFG = (
     "SRC_ADDR_LO",
@@ -1195,11 +1200,16 @@ class sep_cpu_reset_retention_test(sep_base_test):
         await self.mem.fill(COPY_DST, pat_b)
         await self.dma.wr(HSIE, 0)
         written = await self._program_copy()
+        # CONTROL with GO=0 and INITIAL_TRANSFER=1, then the INTR_STATE force: both
+        # read a value other than their RDL reset before the reset.
+        await self.dma.wr(CONTROL_ADDR, control_word(initial=1))
+        await self.dma.wr(INTR_TEST_ADDR, INTR_TEST_MASK)
         pre: dict[str, int] = {}
         for r in DMA_REGS:
             if r.name in ("STATUS", "INTR_STATE"):
                 continue
             pre[r.name] = await self.dma.rd(r.addr)
+        ctl_pre = await self.dma.rd(CONTROL_ADDR)
         intr_pre = await self.dma.rd(INTR_STATE_ADDR)
         if pre["HANDSHAKE_INTR_ENABLE"] & HSIE_RESET:
             raise AssertionError("cold leg: HANDSHAKE_INTR_ENABLE did not take the write of 0")
@@ -1210,14 +1220,22 @@ class sep_cpu_reset_retention_test(sep_base_test):
             armed_pre[p.name] = await self.pd.read(p)
             if (armed_pre[p.name] & p.mask) == (p.reset & p.mask):
                 at_default.append(f"{p.name}=0x{armed_pre[p.name]:x}")
+        for name, got, rst, msk in (
+            ("CONTROL", ctl_pre, CONTROL_RESET, CONTROL_RD_MASK),
+            ("INTR_STATE", intr_pre, INTR_STATE_RESET, INTR_STATE_MASK),
+        ):
+            if (got & msk) == (rst & msk):
+                at_default.append(f"{name}=0x{got:x}")
         # Every register the cold reset grades must read a value other than its RDL
         # reset first, or a missing reset could not show.
         self._ctl(
             "CTL-COLD-ARMED",
             not at_default,
-            f"registers={len(armed_pre)} at_rdl_default={at_default or 'none'}",
+            f"registers={len(armed_pre) + 2} at_rdl_default={at_default or 'none'} "
+            f"CONTROL_pre=0x{ctl_pre & CONTROL_RD_MASK:08x} "
+            f"INTR_STATE_pre=0x{intr_pre & INTR_STATE_MASK:x}",
         )
-        control_go = await self.dma.go()
+        await self.dma.go()
         t_go = self.clk
         while self.clk < t_go + self.copy_delay:
             await RisingEdge(dut.clk_i)
@@ -1249,7 +1267,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             "sw_pre": sw_pre,
             "armed_pre": armed_pre,
             "intr_pre": intr_pre,
-            "control_go": control_go,
+            "ctl_pre": ctl_pre,
         }
 
     async def _after_cold(self, c: dict) -> None:
@@ -1269,9 +1287,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
             else:
                 unmoved.append(f"{r.name}={got:#x}{'' if fc.ok else '(!=reset)'}")
         self.logger.info("OBS-DMA-COLD-UNMOVED: %s", " ".join(unmoved))
-        # CONTROL (readable fields) and INTR_STATE are graded on every seed: GO and
-        # INITIAL_TRANSFER were written 1 for the running copy, and INTR_STATE can
-        # hold a flag of an earlier copy.
+        # CONTROL (readable fields) and INTR_STATE are graded on every seed:
+        # CTL-COLD-ARMED read both at a value other than their RDL reset.
         ctl = await self.dma.rd(CONTROL_ADDR)
         intr = await self.dma.rd(INTR_STATE_ADDR)
         for name, got, exp, msk in (
@@ -1319,8 +1336,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
             f"SW_RESET_N=0x{swv & SW_FIELDS:02x} dest_graded={int(dest_graded)} "
             f"dest_unchanged_after_reset={int(unchanged) if dest_graded else 'na'} "
             f"control_src_words={src_m} control_patB_words={b_m} "
-            f"CONTROL_at_go=0x{c['control_go'] & CONTROL_RD_MASK:08x} "
-            f"CONTROL=0x{ctl & CONTROL_RD_MASK:08x} INTR_STATE_pre=0x{c['intr_pre']:x} "
+            f"CONTROL_pre=0x{c['ctl_pre'] & CONTROL_RD_MASK:08x} "
+            f"CONTROL=0x{ctl & CONTROL_RD_MASK:08x} INTR_STATE_pre=0x{c['intr_pre'] & INTR_STATE_MASK:x} "
             f"INTR_STATE=0x{intr & INTR_STATE_MASK:x} graded_regs={','.join(graded)}"
             + (f" {mism}" if mism else ""),
         )
