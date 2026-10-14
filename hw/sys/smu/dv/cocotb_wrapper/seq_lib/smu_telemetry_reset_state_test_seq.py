@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Telemetry receiver control, status, interrupt and message registers at reset.
 
-Contract SMU_MISC_PERIPH_009, anchor smu_telemetry_reset_state_test.
 Spec: telemetry_receiver.rdl (CTRL, STATUS, INTR_*, TELEMETRY_PROBE_ID, TELEMETRY_COUNTER_VLDS,
 TELEMETRY_COUNTER reset values); telemetry_receiver_wrap.rdl and smc.rdl (three receivers at
 SMC base + 0x9000 + 0x100 * k); doc/memmap.adoc "Reset Behavior".
@@ -179,7 +178,7 @@ class smu_telemetry_reset_state_test_seq:
             f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait kinds named by the contract", len(lines), CONTRACT_WAIT_KINDS)
+        sb.expect_eq("bounded wait kinds declared by the sequence", len(lines), CONTRACT_WAIT_KINDS)
 
         self.step_ts["PASS"] = time.monotonic()
         order = ["S1", "S2", "S3", "S4", "PASS"]

@@ -2,14 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """eFuse shim response stream against the SMC eFuse map read back over JTAG2AXI.
 
-Contract SMU_SMC_BOOT_007, anchor smu_smc_efuse_shadow_map_readback_test.
 Spec: smc.rdl smc_efuse_map at 0xC0007000 and efuse_interface_ctrl at 0xC0008000;
 smc_efuse_map.rdl Address Map; smu-smc.adoc 256 32-bit words per instance; interface.adoc
 fuse_command_resp_t {data, status, valid}; efuse_interface_ctrl.rdl efuse_sense_done bit 0.
 
 The stream is captured at the SMU boundary during the shared bring-up. Sixteen map words are
-read back over JTAG2AXI and compared with the stream word of the same index. SF-016, SF-018 and
-SF-020 are waived: the pre-sense status is never read, no multi-word element is assembled, and
+read back over JTAG2AXI and compared with the stream word of the same index. Three open owner
+questions are waived: the pre-sense status is never read, no multi-word element is assembled, and
 the per-slice equality of smc_shadow_regs with the stream is logged and never compared.
 """
 
@@ -303,7 +302,7 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
             f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait sites named by the contract", len(lines), CONTRACT_WAIT_SITES)
+        sb.expect_eq("bounded wait sites named by the test steps", len(lines), CONTRACT_WAIT_SITES)
 
         self.step_ts["PASS"] = time.monotonic()
         order = ["S1", "S2", "S3", "S4", "S5", "S6", "PASS"]

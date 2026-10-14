@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SCRATCH[0..15] reset value and write-readback through the SMC fabric JTAG2AXI bridge.
 
-Contract SMU_MISC_COMPOSITION_009, anchor smu_smc_scratch_bridge_readback_test.
 Spec: cpu_ctrl.rdl:213-222 (SCRATCH data[31:0] rw, reset 0) and :372 (SCRATCH[16] @0x80,
 stride 8); smc.rdl:89 (smc_cpu_ctrl at SMC base + 0x3_9000); memmap.adoc.
 

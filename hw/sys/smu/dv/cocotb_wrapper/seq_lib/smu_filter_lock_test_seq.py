@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Write-once filter entry lock on the inbound and outbound filters. SEP=1, no Force.
 
-Contract SMU_FABRIC_FILTER_014, anchor smu_filter_lock_test.
 Spec: hw/ip/axi_filter/doc/index.adoc (Locking a Filter Entry, Match Then Permit, Blocked
 Transactions), hw/ip/axi_filter/regs/filter_ctrl.rdl, hw/sys/smc/doc/fabric.adoc (filtering).
 The BRESP of the write that sets locked is logged as CHK-LOCK-SET and never compared.

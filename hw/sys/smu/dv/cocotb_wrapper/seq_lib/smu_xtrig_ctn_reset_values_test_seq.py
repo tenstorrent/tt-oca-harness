@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_xtrig_ctn_reset_values_test. SEP=1 (sep_rtl), no Force.
 
-Contract: SMU_MISC_XTRIG_007 revision 1, anchor smu_xtrig_ctn_reset_values_test.
 Spec: cross_trigger_matrix.rdl (CT_SRC[n].CONFIG_0.CT_DST_SELECT reset 0x0, offset 0x8 * n),
 cross_trigger_port.rdl (CONFIG @0x0, STATUS @0x4, STRETCH_MULT @0x8, all reset 0x0),
 cross_trigger_network.rdl (CT_SRC and CTP windows), smc.rdl (dtp_ctrl_reg at the DTP CSR base).

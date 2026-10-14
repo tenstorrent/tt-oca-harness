@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_isolation_retention_test - isolation registers and FLR counters across cool and cold reset.
 
-SMU_RESET_024 (smu_isolation_retention_test), steps S1-S5, checkers CHK-ISO-RETAIN-S1..S4.
+Steps S1-S5, checkers CHK-ISO-RETAIN-S1..S4.
 Spec: hw/sys/smc/doc/clk_rst.adoc (Isolation Controls, Isolation Connections, Timing and Recovery).
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\

@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC scratchpad zero-fill completion indication and its order against the first ROM read.
 
-Contract SMU_SMC_BOOT_005, anchor smu_smc_sram_init_sequence_test.
 Spec: hw/sys/smc/doc/cpu.adoc Reset and Boot; hw/sys/smu/doc/port_table.adoc
 smc_init_mem_done_o and smc_disable_sram_auto_init_i rows.
 
 One sampler reads smc_init_mem_done_o, smc_scratch_write_count_dv_o and smc_rom_read_count_o on
 every clk_smu_i edge from before the shared bring-up. The only stimulus is a second cold reset on
-rst_cold_ni. The done level during that reset is open (SF-010) and is logged, never compared.
+rst_cold_ni. The done level during that reset is not fixed by the owner and is logged, never
+compared.
 """
 
 from __future__ import annotations
@@ -158,7 +158,8 @@ class smu_smc_sram_init_sequence_test_seq:
             f"at the rise cycle={rise1}"
         )
         self._log(
-            f"CELL first_rom_read_after_init_done smc_rom_read_count_o={first_val} cycle={first_cycle}"
+            f"CELL first_rom_read_after_init_done smc_rom_read_count_o={first_val} "
+            f"cycle={first_cycle}"
         )
         sb.expect_eq(
             "ROM read counter is 0 at the rise and its first increment is later than the rise",
@@ -208,13 +209,14 @@ class smu_smc_sram_init_sequence_test_seq:
         for site, r in self.sites.items():
             state = "EXPIRED" if r["expired"] else "ok"
             self._log(
-                f"TIMEOUT-PATH {site}: bound={r['bound']} {state} count={r['count']} last={r['last']}"
+                f"TIMEOUT-PATH {site}: bound={r['bound']} {state} "
+                f"count={r['count']} last={r['last']}"
             )
         expired = sum(r["expired"] for r in self.sites.values())
         self._log(f"CHK-TIMEOUT-PATHS: sites={len(self.sites)} expired={expired}")
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
         sb.expect_eq(
-            "bounded wait sites named by the contract",
+            "bounded wait sites named by the test steps",
             sorted(self.sites),
             [
                 "S1_sampler",

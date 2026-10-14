@@ -17,8 +17,7 @@ class smu_sep_stap_hold_reset_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_sep_stap_hold_reset_test "
-            "SMU_WRAPPER_DEBUG_PATHS_009 SEP=1 DTP TAP -> SEP STAP 3DCR"
+            "DUT_TAG=WRAPPER smu_sep_stap_hold_reset_test SEP=1 DTP TAP -> SEP STAP 3DCR"
         )
         seq = smu_sep_stap_hold_reset_test_seq(self)
         await seq.run()

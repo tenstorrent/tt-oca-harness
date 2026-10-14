@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC inbound responses for between-unit, past-extent and M-mode/Xvisor addresses. SEP=1, no Force.
 
-Contract SMU_FABRIC_XBAR_017, anchor smu_smc_unmapped_response_test.
 Spec: hw/sys/smc/regs/smc.rdl (ocah_gap_resp, ocah_past_extent_resp, ocah_aperture_size),
 hw/sys/smc/doc/memmap.adoc (Address Space Organization), doc/integrator/src/smu-smc.adoc.
 The BRESP at BASE+0x001_7000 and BASE+0x001_7FFC is logged as CHK-UNMAP-0X17000-WRITE only.
@@ -405,7 +404,7 @@ class smu_smc_unmapped_response_test_seq:
         sb.expect_eq(
             "expired TIMEOUT-PATH records", len(self.expired), 0, evidence="CHK_TIMEOUT_PATHS"
         )
-        # Contract waits: J2A completion, ext_in read handshake, ext_in write handshake, and the
+        # Bounded waits: J2A completion, ext_in read handshake, ext_in write handshake, and the
         # smc_region_size_o poll.
         sb.expect_eq("CHK-TIMEOUT-PATHS site count", len(paths), 4)
 

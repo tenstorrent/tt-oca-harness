@@ -2,17 +2,17 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_smc_mailbox_aperture_layout_test.
 
-Contract: SMU_SMC_MAILBOX_WDT_008   ANCHOR: smu_smc_mailbox_aperture_layout_test
-Spec: axil_mailbox.rdl:46-244 (offsets, resets, rclr, ocah_hole_resp); axil_mailbox_smc_wrap.rdl:17-23
-  (outbound_mailbox_N @N*0x1000, inbound_mailbox_N @N*0x1000+0x800); memmap.adoc; interface.adoc
-  Access Results; smc.rdl smc_mailbox; cpu_ctrl.rdl SMC_ATTRIBUTES; periphs.adoc (32 mailboxes, depth 2).
+Spec: axil_mailbox.rdl:46-244 (offsets, resets, rclr, ocah_hole_resp);
+  axil_mailbox_smc_wrap.rdl:17-23 (outbound_mailbox_N @N*0x1000, inbound_mailbox_N @N*0x1000+0x800);
+  memmap.adoc; interface.adoc Access Results; smc.rdl smc_mailbox; cpu_ctrl.rdl SMC_ATTRIBUTES;
+  periphs.adoc (32 mailboxes, depth 2).
 
 Outbound mailbox 0 answers each of its ten offsets as its own register, WIRQT and IRQEN of mailboxes
 0, 1 and 31 and of the inbound aperture of pair 0 are independent, SMC_ATTRIBUTES reports 32
 mailboxes of depth 2 (the high word is read with a 4-byte upper-lane access; an 8-byte read and
 slice replaces it when that access does not answer SUCCESS). The response above the registers is
-observe-only (SF-019): only a resolved, non-BUSY status is compared. No force/deposit; all stimulus
-is JTAG2AXI MMIO.
+observe-only (owner value pending): only a resolved, non-BUSY status is compared. No
+force/deposit; all stimulus is JTAG2AXI MMIO.
 """
 
 from __future__ import annotations
@@ -74,7 +74,7 @@ HOLE_HIGH = MBX0 + 0x7F8
 
 
 class smu_smc_mailbox_aperture_layout_test_seq:
-    """SMU_SMC_MAILBOX_WDT_008: aperture layout, stride, independence and attributes."""
+    """Aperture layout, stride, independence and attributes."""
 
     def __init__(self, test) -> None:
         self.test = test

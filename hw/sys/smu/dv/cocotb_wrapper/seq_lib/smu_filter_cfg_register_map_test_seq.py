@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Filter control register map of the inbound and outbound filters over smu_axi_in. SEP=1, no Force.
 
-Contract SMU_FABRIC_FILTER_011, anchor smu_filter_cfg_register_map_test.
-Spec: hw/ip/axi_filter/regs/filter_ctrl.rdl (field positions, access, resets), hw/ip/axi_filter/doc/index.adoc
-(Address Range Granule, Locking), hw/sys/smc/regs/smc.rdl (instance bases, stride 0x20).
+Spec: hw/ip/axi_filter/regs/filter_ctrl.rdl (field positions, access, resets),
+hw/ip/axi_filter/doc/index.adoc (Address Range Granule, Locking),
+hw/sys/smc/regs/smc.rdl (instance bases, stride 0x20).
 Bits the RDL defines no field for are logged as CHK-CFG-UNDEF-BITS and never compared.
 """
 

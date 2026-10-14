@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dtp_sysreset_stop_clks_test - dtp_stop_clks_o across a primary reset.
 
-SMU_RESET_029 (smu_dtp_sysreset_stop_clks_test), steps S1-S3, checkers CHK-DTP-SYSRESET-S1..S2.
+Steps S1-S3, checkers CHK-DTP-SYSRESET-S1..S2.
 Spec: hw/sys/dtp/doc/clk_rst.adoc (Clock Stop, Reset Architecture), hw/sys/smu/doc/port_table.adoc.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\

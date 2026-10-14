@@ -2,15 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU_CTRL reset-state registers read through the SMC fabric JTAG2AXI bridge.
 
-Contract SMU_SMC_BOOT_008, anchor smu_smc_cpu_ctrl_boot_state_test.
 Spec: cpu_ctrl.rdl:11-18 (RESET_VECTOR), :21-88 (RESET_CTRL), :91-111 (CORE_RESET_PULSE_COUNT),
 :115-124 (RESET_TIMEOUT), :164-199 (WDT_TIMEOUT, WDT_TIMEOUT_RESET), :213-221 (SCRATCH),
 :224-261 (SMC_ATTRIBUTES), :300-352 (DUMMY_ROM), :358-390 (offsets); smc.rdl:89 (CPU_CTRL base);
 cpu.adoc:9-10, :88; periphs.adoc:182; port_table.adoc:67; tb_wrapper_top.sv:1436.
 
 SMC_ATTRIBUTES num_cpu_interrupts, mailbox_depth, no_output_remap and the upper word of each
-SCRATCH register are logged and never compared (SF-027, SF-035, no pinned source). A SCRATCH[0]
-divergence belongs to SF-026.
+SCRATCH register are logged and never compared (the owner has not fixed their reset
+values, no pinned source). A SCRATCH[0] divergence is an open owner question.
 """
 
 from __future__ import annotations

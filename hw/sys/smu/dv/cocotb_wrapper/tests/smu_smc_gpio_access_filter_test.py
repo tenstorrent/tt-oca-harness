@@ -16,10 +16,7 @@ class smu_smc_gpio_access_filter_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info(
-            "DUT_TAG=WRAPPER smu_smc_gpio_access_filter_test "
-            "SMU_WRAPPER_DEBUG_PATHS_022 SEP=1 J2A+s_axi"
-        )
+        self.logger.info("DUT_TAG=WRAPPER smu_smc_gpio_access_filter_test SEP=1 J2A+s_axi")
         seq = smu_smc_gpio_access_filter_test_seq(self)
         await seq.run()
         assert seq.done, "gpio access filter scenario incomplete"

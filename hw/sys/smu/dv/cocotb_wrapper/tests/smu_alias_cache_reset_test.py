@@ -16,9 +16,7 @@ class smu_alias_cache_reset_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info(
-            "DUT_TAG=WRAPPER smu_alias_cache_reset_test SMU_FABRIC_FILTER_019 SEP=1 J2A+s_axi"
-        )
+        self.logger.info("DUT_TAG=WRAPPER smu_alias_cache_reset_test SEP=1 J2A+s_axi")
         seq = smu_alias_cache_reset_test_seq(self)
         await seq.run()
         assert seq.done, "alias cache reset scenario incomplete"

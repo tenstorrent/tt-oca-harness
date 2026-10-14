@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_secure_tm_real_sense_window_test.
 
-Contract SMU_SEP_006, anchor smu_secure_tm_real_sense_window_test.
 Spec: hw/sys/sep/doc/test_mode.adoc (TEST_EN latched when fuse sensing is done, cleared only by
 chip reset), hw/sys/sep/doc/lifecycle_controller.adoc, doc/integrator/src/smu.adoc.
 Port rows: hw/sys/smu/doc/port_table.adoc; response valid bit: hw/ip/efuse/doc/interface.adoc.

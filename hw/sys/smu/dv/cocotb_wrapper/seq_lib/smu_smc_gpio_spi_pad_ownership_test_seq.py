@@ -2,11 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP SPI host ownership of GPIO pads 0-3, 8 and 9, lsio_disable, and the undriven pads.
 
-Contract SMU_WRAPPER_DEBUG_PATHS_023, anchor smu_smc_gpio_spi_pad_ownership_test.
 Spec: doc/integrator/src/smu-sep.adoc:236-270 (pads 0-3, 8, 9 driven by the SPI host; 4-7, 10 and
 54 not driven; lsio_disable returns a pad to register control), hw/ip/gpio/regs/gpio_intf.rdl:62-111
 (DATA_CTRL fields, lsio_enable read-only, the LSIO request outranks interface_enable).
-The active level of the boundary enables core2pad_en_o / pad2core_en_o is not observed (SF-018).
+The active level of the boundary enables core2pad_en_o / pad2core_en_o is not observed (no
+bench tap).
 The DATA_CTRL lsio_enable of the undriven pads is logged only.
 """
 
@@ -324,7 +324,7 @@ class smu_smc_gpio_spi_pad_ownership_test_seq:
     async def _s3(self, sb) -> None:
         self._log(
             "CHK-DBG-GPIO-SPI-DISABLE: core2pad_en/pad2core_en level=unobservable "
-            "(no bench tap) LINKED-ISSUE SF-018"
+            "(no bench tap) LINKED-ISSUE active level not observed"
         )
         obs = []
         self.disabled = {}

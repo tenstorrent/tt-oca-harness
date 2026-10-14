@@ -16,9 +16,7 @@ class smu_smc_unmapped_response_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info(
-            "DUT_TAG=WRAPPER smu_smc_unmapped_response_test SMU_FABRIC_XBAR_017 SEP=1 J2A+s_axi"
-        )
+        self.logger.info("DUT_TAG=WRAPPER smu_smc_unmapped_response_test SEP=1 J2A+s_axi")
         seq = smu_smc_unmapped_response_test_seq(self)
         await seq.run()
         assert seq.done, "unmapped response scenario incomplete"

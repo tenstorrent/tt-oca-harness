@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SS_CONFIG write-through to the ss_config_o lanes, lane by lane.
 
-Contract SMU_MISC_COMPOSITION_006, anchor smu_ss_config_lane_drive_test.
 Spec: reset_unit.rdl (SS_CONFIG 32-bit R/W reset 0, SS_CONFIG_LOCK); smc.rdl (smc_reset_unit at
 SMC base + 0x2000); smu and smc port_table.adoc (ss_config_o [31:0] carries SS_CONFIG).
 
@@ -228,7 +227,8 @@ class smu_ss_config_lane_drive_test_seq:
         pin = self.sites["pin"]["count"]
         self._log(
             f"CHK-TIMEOUT-PATHS: expired={expired} j2a_waits={j2a} pin_waits={pin} "
-            f"(contract names {CONTRACT_J2A_ACCESSES} J2A accesses + {CONTRACT_PIN_WAITS} pin waits)"
+            f"(declared {CONTRACT_J2A_ACCESSES} J2A accesses + "
+            f"{CONTRACT_PIN_WAITS} pin waits)"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
         sb.expect_eq("J2A wait sites exercised", j2a, CONTRACT_J2A_ACCESSES)

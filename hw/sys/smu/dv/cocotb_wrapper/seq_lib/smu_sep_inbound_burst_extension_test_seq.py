@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """INCR bursts from the external AXI input into the SEP extension port and the eFuse SHIM.
 
-Contract SMU_WRAPPER_DEBUG_PATHS_016, anchor smu_sep_inbound_burst_extension_test.
 Spec: hw/sys/sep/doc/memory_map.adoc:90-95, hw/sys/sep/doc/fabric.adoc:38,
 doc/integrator/src/smu-sep.adoc:141-143, hw/sys/smu/doc/port_table.adoc:201-202,
 doc/programmer/src/sep-smc-common.adoc:82,118-200.
@@ -90,7 +89,7 @@ RESP_CLK = 512
 DRAIN_CLK = 64
 SAMPLER_CAP_CLK = BEAT_GAP_CLK * BURST_BEATS
 
-# Contract steps: S1 writes entry 1 (clear, start, end, enable) and the region size, reads both
+# Test steps: S1 writes entry 1 (clear, start, end, enable) and the region size, reads both
 # back; S4 writes the region size and the entry config, reads both back. S2 and S3 each issue a
 # write and a read burst.
 SETUP_SBA_ACCESSES = 4 + 1 + 2
@@ -451,7 +450,10 @@ class smu_sep_inbound_burst_extension_test_seq(smu_dtp_sep_dm_sba_test_seq):
                 shim_want=0,
             )
             leg = "write" if write else "read"
-            self._log(f"CHK-DBG-EXT-BURST: resp={resp_name(resp)} LINKED-ISSUE SF-016 leg={leg}")
+            self._log(
+                f"CHK-DBG-EXT-BURST: resp={resp_name(resp)} "
+                f"LINKED-ISSUE owner value pending leg={leg}"
+            )
             results[leg] = (self._summary(ext), self._summary(shim))
             first = (ext.of("aw") or ext.of("ar") or [(0, 0, 0)])[0]
             self._log(
@@ -492,7 +494,7 @@ class smu_sep_inbound_burst_extension_test_seq(smu_dtp_sep_dm_sba_test_seq):
             step = addrs[1] - addrs[0] if len(addrs) > 1 else 0
             self._log(
                 f"CHK-DBG-SHIM-BURST: shim_transfers={len(addrs)} step_bytes={step} "
-                f"beat_bytes={BEAT_BYTES} LINKED-ISSUE SF-NEW (SHIM data width / downsizing "
+                f"beat_bytes={BEAT_BYTES} LINKED-ISSUE (SHIM data width / downsizing "
                 f"unstated in memory_map.adoc / smu-sep.adoc) leg={leg}"
             )
             covered = sorted(a + i for a in addrs for i in range(LITE_TRANSFER_BYTES))
@@ -531,13 +533,14 @@ class smu_sep_inbound_burst_extension_test_seq(smu_dtp_sep_dm_sba_test_seq):
         )
         kinds = Counter(rec["kind"] for rec in self.sites)
         self._log(
-            f"CHK-TIMEOUT-PATHS: sites={len(self.sites)} expired={expired} finite_and_stated={finite} "
+            f"CHK-TIMEOUT-PATHS: sites={len(self.sites)} expired={expired} "
+            f"finite_and_stated={finite} "
             f"kinds={dict(kinds)}"
         )
         sb.expect_eq("every site finite with a last state", finite, True)
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
         sb.expect_eq(
-            "wait sites per kind against the contract steps",
+            "wait sites per kind against the test steps",
             dict(kinds),
             {
                 "posture": CONTRACT_POSTURE_WAITS,

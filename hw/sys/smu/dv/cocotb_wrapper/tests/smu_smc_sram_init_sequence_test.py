@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_smc_sram_init_sequence_test - scratchpad zero-fill completion across two cold boots.
 
-Contract SMU_SMC_BOOT_005, anchor smu_smc_sram_init_sequence_test.
 Spec: hw/sys/smc/doc/cpu.adoc Reset and Boot; hw/sys/smu/doc/port_table.adoc
 smc_init_mem_done_o row. On the `--dut smu` wrapper under sep_rtl with the automatic
 initialization enabled, smc_init_mem_done_o rises once after the last scratch write, no ROM read

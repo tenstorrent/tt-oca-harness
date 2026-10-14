@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_xtrig_ctp_status_reset_test. SEP=1 (sep_rtl), no Force.
 
-Contract: SMU_MISC_XTRIG_017 revision 1, anchor smu_xtrig_ctp_status_reset_test.
 Spec: cross_trigger_port.rdl (CONFIG.MODE, INVERT, RESET; STATUS.BUSY, REQ_OUT, ACK_IN, REQ_IN and
 ACK_OUT with INVERT undone, REQ_OUT and ACK_OUT read 0 in wire-OR mode),
 cross_trigger_port/doc/architecture.adoc (sender and receiver state machines, RESET),
@@ -77,7 +76,7 @@ J2A_POLL_LIMIT = 128
 PAD_BOUND = 64
 DISCARD_WINDOW = 64
 BUSY_POLL_BOUND = 4
-# Waits the contract names: a JTAG2AXI access and a handshake settle before a STATUS read.
+# Bounded waits: a JTAG2AXI access and a handshake settle before a STATUS read.
 CONTRACT_WAITS = ("j2a", "settle")
 CONTRACT_WAIT_KINDS = 2
 SITES = ("j2a", "settle", "discard_window", "busy_poll")
@@ -267,7 +266,10 @@ class smu_xtrig_ctp_status_reset_test_seq:
         await self._wait_bit("tb_xtrig_ctp_req_out_dout", P2P_LANE, 1 - asserted, label)
 
     async def _level_cells(self, invert: int) -> None:
-        """S4 cells on port 2 for one polarity; asserted pad level is 1 at INVERT 0, 0 at INVERT 1."""
+        """S4 cells on port 2 for one polarity.
+
+        The asserted pad level is 1 at INVERT 0 and 0 at INVERT 1.
+        """
         asserted = 1 - invert
         tag = f"invert={invert}"
         self.sb.expect_eq(
@@ -515,11 +517,15 @@ class smu_xtrig_ctp_status_reset_test_seq:
             f"CHK-TIMEOUT-PATHS: sites={len(lines)} expired={expired} "
             f"j2a_accesses_counted={self.j2a}"
         )
-        self._log("CHK-STATUS-BUSY: SF-025 two-cycle registered BUSY delay not compared")
+        self._log(
+            "CHK-STATUS-BUSY: BUSY rises two clk_i cycles after a state machine leaves IDLE and "
+            "falls two clk_i cycles after both return to IDLE (architecture.adoc); "
+            "the delay is neither measured nor compared"
+        )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
         recorded = [s for s in CONTRACT_WAITS if self.sites[s]["count"] > 0]
         sb.expect_eq(
-            "bounded wait kinds named by the contract all exercised",
+            "bounded wait kinds declared by the sequence all exercised",
             len(recorded),
             CONTRACT_WAIT_KINDS,
         )

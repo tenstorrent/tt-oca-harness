@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_jtag_ic_reset_ext_override_test - IC_RESET external port and reset_hold gating.
 
-Contract: SMU_JTAG_TAP_014   Anchor: smu_jtag_ic_reset_ext_override_test
 Sources: hw/ip/jtag/jtag_ptap/doc/architecture.adoc (IC_RESET Support),
 hw/sys/dtp/doc/clk_rst.adoc (IC_RESET Overrides), doc/programmer/src/dtp-programming.adoc,
 doc/integrator/src/smu-composition.adoc
@@ -18,8 +17,8 @@ Every image keeps the SMC and SEP slice bits [154:3] at 1, so only bits 0, 1 and
 ports `jtag_ic_reset_ext_ovrd` and `jtag_ic_reset_ext_ctrl_n` are sampled 16 clk_smu_i cycles
 after each Update-DR. Test-Logic-Reset is reached with TMS high only: the driver's reset_tap()
 also pulses TRST_n, which would clear reset_hold-protected bits. The scenario runs 39 IC_RESET
-scans. SF-016 (edge timing) is avoided by the sample point; SF-024 (transient pulse when enable
-and control change together) is logged and not compared.
+scans. Edge timing is avoided by the sample point; the transient pulse when enable
+and control change together is logged and not compared.
 """
 
 from __future__ import annotations
@@ -210,7 +209,7 @@ class smu_jtag_ic_reset_ext_override_test(smu_base_test):
         self.logger.info(
             "S6 pulse_transitions=%d first=%s last=%s (enable 1->0, control 1->0) "
             "pulse_transitions=%d first=%s last=%s (enable 0->1, control 0->1); "
-            "SF-024: transient pulse not compared",
+            "transient pulse not compared",
             pulses_on,
             seen_on[0],
             seen_on[-1],

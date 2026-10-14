@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_smc_mailbox_threshold_lane_test.
 
-Contract: SMU_SMC_MAILBOX_WDT_006   ANCHOR: smu_smc_mailbox_threshold_lane_test
 Spec: axil_mailbox.rdl (STATUS, WIRQT, IRQS woclr, IRQEN, IRQP, CTRL.wflush);
   axil_mailbox_smc_wrap.rdl;
   smc.rdl smc_mailbox; architecture.adoc Interrupts (IRQP = IRQS & IRQEN, strict greater-than
@@ -12,7 +11,7 @@ Outbound mailbox 0 over the SMC fabric JTAG2AXI bridge: IRQS and STATUS latch wi
 and lane 0 of smc_ext_mailbox_interrupts_o follow IRQEN, the lane drops with the enable, flush and
 acknowledge return to baseline, WIRQT = 5 clamps to MailboxDepth - 1, and an acknowledge while the
 occupancy still exceeds WIRQT is observed and logged only. The lane-n = mailbox-n mapping is proven
-by smu_smc_mailbox_int_test (SMU_ALL_004). No force/deposit; all stimulus is JTAG2AXI MMIO.
+by smu_smc_mailbox_int_test. No force/deposit; all stimulus is JTAG2AXI MMIO.
 """
 
 from __future__ import annotations
@@ -60,7 +59,7 @@ SC = {J2A_STATUS_SUCCESS: "SUCCESS"}
 
 
 class smu_smc_mailbox_threshold_lane_test_seq:
-    """SMU_SMC_MAILBOX_WDT_006: outbound mailbox 0 write-threshold interrupt lane."""
+    """Outbound mailbox 0 write-threshold interrupt lane."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -292,7 +291,7 @@ class smu_smc_mailbox_threshold_lane_test_seq:
         runs = [(v & 1, n) for v, n in self._runs([t & 1 for t in trace])]
         self._log(
             f"CHK-MBX-WT-REASSERT-LOG: irqs_1=0x{irqs7a:x} irqs_2=0x{irqs7b:x} "
-            f"lane_runs={runs} (SF-015, LINKED-ISSUE, never compared)"
+            f"lane_runs={runs} (LINKED-ISSUE, owner value pending, never compared)"
         )
         sb.expect_eq(
             "CHK-MBX-WT-REASSERT-LOG (status_bit2)",

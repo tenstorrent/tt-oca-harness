@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_xtrig_cold_reset_clears_ctn_test - cold reset across the cross-trigger network.
 
-Contract: SMU_MISC_XTRIG_008, anchor smu_xtrig_cold_reset_clears_ctn_test.
 Spec: dtp/doc/clk_rst.adoc, cross_trigger_port/doc/architecture.adoc, CTN/CTM/CTP RDL resets.
 The SMU cold reset returns the programmed CTN registers to their RDL reset values, clears a
 point-to-point request in REQ_ASSERTED and WAIT_ACK_DEASSERT, and holds dtp_stop_clks_o low.

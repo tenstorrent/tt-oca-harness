@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_lc_rma_sip_1_export_test - the RMA_SIP LC_STATE pair is exported as 0xC3.
 
-Contract SMU_WRAPPER_LC_GATING_009 (hw/sys/sep/doc/otp_fuse_controller.adoc:216-224,
-hw/sys/sep/doc/lifecycle_controller.adoc:98-148, hw/sys/smu/doc/port_table.adoc:131).
+Spec: hw/sys/sep/doc/otp_fuse_controller.adoc:216-224,
+hw/sys/sep/doc/lifecycle_controller.adoc:98-148, hw/sys/smu/doc/port_table.adoc:131.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_lc_rma_sip_1_export_test --target compile_smu_chiplet

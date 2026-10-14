@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC aperture CSRs, region-size pin and peripheral clock-gate enables at reset.
 
-Contract SMU_MISC_PERIPH_017, anchor smu_smc_aperture_reset_state_test.
 Spec: smc_base_config.rdl (GLOBAL_BASE, LOCAL_BASE, REGION_SIZE, CLOCK_GATE_CONTROL resets);
 smc.rdl (smc_base_config at SMC base + 0x1_0000); port_table.adoc (smc_region_size_o).
 
@@ -194,7 +193,7 @@ class smu_smc_aperture_reset_state_test_seq:
             f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait kinds named by the contract", len(lines), CONTRACT_WAIT_KINDS)
+        sb.expect_eq("bounded wait kinds declared by the sequence", len(lines), CONTRACT_WAIT_KINDS)
 
         self.step_ts["PASS"] = time.monotonic()
         order = ["S1", "S2", "S3", "S4", "S5", "PASS"]

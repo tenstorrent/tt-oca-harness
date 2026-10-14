@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_smc_mailbox_status_error_test.
 
-Contract: SMU_SMC_MAILBOX_WDT_007   ANCHOR: smu_smc_mailbox_status_error_test
 Spec: axil_mailbox.rdl (STATUS, ERROR_FLAGS, IRQS, IRQEN, IRQP, CTRL); axil_mailbox_smc_wrap.rdl;
   smc.rdl smc_mailbox; interface.adoc Access Results; architecture.adoc IRQ model; periphs.adoc
   MailboxDepth = 2.
@@ -11,7 +10,7 @@ Outbound mailbox 0 over the SMC fabric JTAG2AXI bridge: STATUS live flags agains
 the empty-read and full-write SLVERR responses with their error flags, ERROR_FLAGS clear on read,
 the error interrupt enable and acknowledge on lane 0 of smc_ext_mailbox_interrupts_o, and SLVERR
 on writes to STATUS, READ_DATA, ERROR_FLAGS and IRQP. The lane-n = mailbox-n mapping is proven by
-smu_smc_mailbox_int_test (SMU_ALL_004). No force/deposit; all stimulus is JTAG2AXI MMIO.
+smu_smc_mailbox_int_test. No force/deposit; all stimulus is JTAG2AXI MMIO.
 """
 
 from __future__ import annotations
@@ -57,7 +56,7 @@ SC = {J2A_STATUS_SUCCESS: "SUCCESS", J2A_STATUS_SLVERR: "SLVERR"}
 
 
 class smu_smc_mailbox_status_error_test_seq:
-    """SMU_SMC_MAILBOX_WDT_007: outbound mailbox 0 STATUS and access-error behaviour."""
+    """Outbound mailbox 0 STATUS and access-error behaviour."""
 
     def __init__(self, test) -> None:
         self.test = test

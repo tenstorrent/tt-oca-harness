@@ -258,7 +258,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-OCTSR-RESET-CSR",
             "OCTSR_RESET_CSR",
-            "OCTS CTRL reads its RDL reset word, the seven other CSRs read 0 and STATUS.RUNNING is 0",
+            "OCTS CTRL reads its RDL reset word, the seven other CSRs read 0 and STATUS.RUNNING is "
+            "0",
         ),
         (
             "CHK-OCTSR-RESET-PIN",
@@ -1820,7 +1821,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-MBX-OFFSET-MAP",
             "MBX_OFFSET_MAP",
-            "ten offsets of outbound mailbox 0 answer as distinct registers, WIRQT and IRQEN read back",
+            "ten offsets of outbound mailbox 0 answer as distinct registers, WIRQT and IRQEN read "
+            "back",
         ),
         (
             "CHK-MBX-STRIDE-WIRQT",
@@ -2269,12 +2271,14 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-COMP-SS-CONFIG-SINGLE-LANE",
             "COMP_SS_CONFIG_SINGLE_LANE",
-            "writing SS_CONFIG = 1 << i leaves ss_config_o equal to 1 << i for each of the 32 lanes",
+            "writing SS_CONFIG = 1 << i leaves ss_config_o equal to 1 << i for each of the 32 "
+            "lanes",
         ),
         (
             "CHK-COMP-SS-CONFIG-ALL-ONES-ZERO",
             "COMP_SS_CONFIG_ALL_ONES_ZERO",
-            "all-ones then all-zeros writes drive ss_config_o to the same value and SS_CONFIG reads 0",
+            "all-ones then all-zeros writes drive ss_config_o to the same value and SS_CONFIG "
+            "reads 0",
         ),
         (
             "CHK-TIMEOUT-PATHS",
@@ -2527,7 +2531,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-BOOT-SHADOW-SAMPLES",
             "BOOT_SHADOW_SAMPLES",
-            "sampled SMC eFuse map words read over JTAG2AXI equal the stream word of the same index",
+            "sampled SMC eFuse map words read over JTAG2AXI equal the stream word of the same "
+            "index",
         ),
         (
             "CHK-BOOT-SHADOW-ELEMENTS",
@@ -2761,7 +2766,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-CTP-CFG-STRETCH-RW",
             "CHK-CTP-CFG-STRETCH-RW",
-            "port 3 CONFIG reads back 0x7 and 0x0 and STRETCH_MULT reads back 0, 1 and 0xFFFF as written",
+            "port 3 CONFIG reads back 0x7 and 0x0 and STRETCH_MULT reads back 0, 1 and 0xFFFF as "
+            "written",
         ),
         (
             "CHK-CTP-STATUS-WRITE-IGNORED",
@@ -2799,17 +2805,20 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-STATUS-BUSY",
             "CHK-STATUS-BUSY",
-            "STATUS.BUSY reads 1 while the request is outstanding and 0 after the handshake completes",
+            "STATUS.BUSY reads 1 while the request is outstanding and 0 after the handshake "
+            "completes",
         ),
         (
             "CHK-STATUS-LEVELS",
             "CHK-STATUS-LEVELS",
-            "REQ_OUT, ACK_IN, REQ_IN and ACK_OUT read 1 at INVERT 0 and 1; REQ_OUT and ACK_OUT read 0 in wire-OR",
+            "REQ_OUT, ACK_IN, REQ_IN and ACK_OUT read 1 at INVERT 0 and 1; REQ_OUT and ACK_OUT "
+            "read 0 in wire-OR",
         ),
         (
             "CHK-HS-RESET-RECOVER",
             "CHK-HS-RESET-RECOVER",
-            "RESET drops a stuck req_out and REQ_OUT; the first trigger after RESET clears raises it again",
+            "RESET drops a stuck req_out and REQ_OUT; the first trigger after RESET clears raises "
+            "it again",
         ),
         (
             "CHK-HS-RESET-DISCARD",

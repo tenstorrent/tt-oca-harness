@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Alias remap and output remap register map over smu_axi_in. SEP=1, no Force.
 
-Contract SMU_FABRIC_FILTER_012, anchor smu_remap_cfg_register_map_test.
 Spec: hw/ip/axi_alias_remap/regs/alias_remap.rdl, hw/ip/output_remap/regs/output_remap.rdl,
 hw/sys/smc/regs/smc.rdl (array bases and strides), doc/trm/src/memory_map.adoc.
 Bits the RDL defines no field for are logged as CHK-CFG-UNDEF-BITS and never compared.
@@ -78,7 +77,8 @@ NO_MATCH_END = 0x0000_0001_0000_0000
 WINDOW_START = ALIAS_BASE
 WINDOW_END = XVISOR_BASE + (NUM_REGIONS - 1) * OREMAP_STRIDE + 7
 
-# smu_axi_in waits per site, two 32-bit halves per 64-bit register access; J2A accesses: aperture write+readback, three BAR writes.
+# smu_axi_in waits per site, two 32-bit halves per 64-bit register access; J2A accesses:
+# aperture write+readback, three BAR writes.
 J2A_POLL_LIMIT = 128
 S4_WALK_BITS_START = 44
 S4_WALK_BITS_ATTRS = 44 + 4 + 1

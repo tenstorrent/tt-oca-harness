@@ -2,14 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_xtrig_ctm_select_walk_test. SEP=1 (sep_rtl), no Force.
 
-Contract: SMU_MISC_XTRIG_010 revision 1, anchor smu_xtrig_ctm_select_walk_test.
 Spec: cross_trigger_matrix.rdl (CT_SRC[n].CT_DST_SELECT[NUM_CT_DST-1:0] sw=rw reset 0, CT_SRC @0x0
-+= 0x8), cross_trigger_matrix/doc/architecture.adoc (port indexing: 0..15 CTP ports, 16..17
-SMC-reserved lanes, 18..25 exposed lanes; NUM_CT_DST = 26), cross_trigger_network.rdl (ctm @0x0),
++= 0x8), cross_trigger_matrix/doc/architecture.adoc (port indexing: external indices 0..NUM_CTP-1
+with NUM_CTP = 16, internal indices NUM_CTP..N-1 with N = 26; NUM_CT_DST = 26),
+cross_trigger_network.rdl (ctm @0x0),
 smc.rdl (DTP CSR window base). Addresses and masks come from the generated headers.
 
 The CT_SRC register of index kind n mod 3 is used for bit n: kind 0 is CT_SRC[0] (CTP port),
-kind 1 is CT_SRC[16] (SMC-reserved lane), kind 2 is CT_SRC[18] (exposed lane).
+kind 1 is CT_SRC[16] (first internal index), kind 2 is CT_SRC[18] (internal index).
 
 S1  Idle inputs, TAP in Run-Test/Idle, IDCODE, J2A gate open.
 S2  For n = 0..25 write 1 << n to the CT_SRC register of kind n mod 3 and read it back.
@@ -54,7 +54,7 @@ KIND_PORTS = (0, 16, 18)
 MIN_BITS_PER_REGISTER = 8
 
 J2A_POLL_LIMIT = 128
-# Waits the contract names: a JTAG2AXI access.
+# Bounded waits: a JTAG2AXI access.
 CONTRACT_WAITS = ("j2a",)
 CONTRACT_WAIT_COUNT = 1
 SITES = ("j2a",)
@@ -243,7 +243,7 @@ class smu_xtrig_ctm_select_walk_test_seq:
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
         recorded = [s for s in CONTRACT_WAITS if self.sites[s]["count"] > 0]
         sb.expect_eq(
-            "bounded wait kinds named by the contract all exercised",
+            "bounded wait kinds declared by the sequence all exercised",
             len(recorded),
             CONTRACT_WAIT_COUNT,
         )

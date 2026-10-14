@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_xtrig_ctn_csr_rw_test - CTP CSR write and read-back, window independence, serialised access.
 
-Contract: SMU_MISC_XTRIG_009, anchor smu_xtrig_ctn_csr_rw_test.
 Spec: cross_trigger_port.rdl (CONFIG, STATUS, STRETCH_MULT), cross_trigger_network.rdl and
 architecture.adoc (Address Map), cross_trigger_matrix.rdl (CT_SRC), smc.rdl (DTP CSR window base).
 CONFIG and STRETCH_MULT of the CTP ports and CT_SRC registers are accessed through the SMC fabric

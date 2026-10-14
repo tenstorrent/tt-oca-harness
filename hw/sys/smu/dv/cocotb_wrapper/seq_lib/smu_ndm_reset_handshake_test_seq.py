@@ -2,8 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_ndm_reset_handshake_test. No Force.
 
-SMU_RESET_026 (smu_ndm_reset_handshake_test), steps S1-S8, checkers CHK-NDM-REQUEST-S1..S4 and CHK-NDM-PROCESS-S1..S3.
-Spec: hw/sys/smc/regs/blocks/ndm_reset/ndm_reset.rdl, doc/integrator/src/smu-smc.adoc (External CPU cluster NDM reset), hw/sys/smu/doc/port_table.adoc.
+Steps S1-S8, checkers CHK-NDM-REQUEST-S1..S4 and CHK-NDM-PROCESS-S1..S3.
+Spec: hw/sys/smc/regs/blocks/ndm_reset/ndm_reset.rdl,
+doc/integrator/src/smu-smc.adoc (External CPU cluster NDM reset),
+hw/sys/smu/doc/port_table.adoc.
 
 ``NDMRESET_REQUEST`` is the read-only mirror of ``smc_ndmreset_request_i``.
 ``NDMRESET_PROCESS`` is a 32-bit register whose low lanes drive

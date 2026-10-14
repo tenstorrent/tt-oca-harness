@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The RMA_SIP raw 4'b0011 LC_STATE pair reaches every SMU observation point as 0xC3.
 
-Contract SMU_WRAPPER_LC_GATING_009, anchor smu_lc_rma_sip_1_export_test.
-Spec: hw/sys/sep/doc/otp_fuse_controller.adoc:216-224, hw/sys/sep/doc/lifecycle_controller.adoc:98-148,
-hw/sys/smu/doc/port_table.adoc:131 (lc_state_o).
+Spec: hw/sys/sep/doc/otp_fuse_controller.adoc:216-224,
+hw/sys/sep/doc/lifecycle_controller.adoc:98-148, hw/sys/smu/doc/port_table.adoc:131 (lc_state_o).
 
 The exported word is ``{~raw[3:0], raw[3:0]}``; RMA_SIP raw 4'b0011 gives 0xC3. The shadow image
 named by ``+sep_shadow_reg_preload`` is the only stimulus.
@@ -144,7 +143,7 @@ class smu_lc_rma_sip_1_export_test_seq:
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK-TIMEOUT-PATHS")
         sb.expect_eq(
-            "each contract wait label recorded exactly once",
+            "each wait label recorded exactly once",
             labels,
             sorted(CONTRACT_WAIT_LABELS),
             evidence="CHK-TIMEOUT-PATHS",

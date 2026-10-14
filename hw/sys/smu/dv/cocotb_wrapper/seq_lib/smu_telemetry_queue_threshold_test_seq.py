@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Telemetry receiver 0 message queue order, empty/full status and buffer threshold.
 
-Contract SMU_MISC_PERIPH_012, anchor smu_telemetry_queue_threshold_test.
 Spec: telemetry_receiver.rdl (CTRL.BUFFER_POP / BUFFER_THRESHOLD, STATUS.BUFFER_EMPTY / BUFFER_FULL,
 TELEMETRY_PROBE_ID, INTR_STATUS.BUFFER_THRESHOLD read-only, INTR_TEST.BUFFER_THRESHOLD);
 doc/architecture.adoc "Message Queue and Readout" and "Interrupts" (eight-message queue, oldest
@@ -11,7 +10,8 @@ message exposed, empty reads zero, live threshold status); doc/index.adoc "Messa
 Each message is one last-flagged ATB packet on lane 0 whose probe id is in bits [60:56], whose
 header block is invalid and whose other blocks are all ones; the observed registers do not depend
 on the open block layout. Registers are read over JTAG2AXI. INTR_STATUS.BUFFER_THRESHOLD is
-sampled as a register readback only; interrupt delivery at the SMU boundary is not claimed (SF-027).
+sampled as a register readback only; interrupt delivery at the SMU boundary is not claimed
+(owner value pending).
 """
 
 from __future__ import annotations

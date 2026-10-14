@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OCTS reset state, strap-low readback and SECONDARY ignore of TIMER_START.
 
-Contract SMU_MISC_PERIPH_006, anchor smu_octs_reset_and_secondary_hold_test.
 Spec: system_timer_octs.rdl (CTRL, TIMER_START, STATUS.MODE/RUNNING and reset values);
 architecture.adoc and interface.adoc (secondary role, timer_count_o); cpu_ctrl.rdl
 (SMC_ATTRIBUTES.chiplet_is_primary); port_table.adoc (chiplet_is_primary_i, timer_count_o).
@@ -349,7 +348,7 @@ class smu_octs_reset_and_secondary_hold_test_seq:
             f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
         )
         sb.expect_eq(
-            "TIMEOUT-PATH site count equals the contract waits",
+            "TIMEOUT-PATH site count equals the declared waits",
             sum(1 for rec in self.sites.values() if rec["count"] > 0),
             CONTRACT_WAIT_SITES,
             evidence="CHK_TIMEOUT_PATHS",

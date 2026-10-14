@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_sep_mailbox_sba_readback_test - WIRQT readback of the sixteen SEP mailbox ports.
 
-Contract: SMU_MISC_COMPOSITION_010, anchor smu_sep_mailbox_sba_readback_test.
 Spec: hw/sys/sep/doc/mailbox.adoc:28-30, axil_mailbox.rdl WIRQT, axil_mailbox_sep_wrap.rdl.
 
 From the SEP debug system bus: WIRQT of every outbound and inbound mailbox port reads 0, takes a

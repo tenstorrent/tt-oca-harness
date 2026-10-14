@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_sep_cold_reassert_during_sense_test - cold reset re-asserted around the SEP fuse sense.
 
-Contract SMU_SEP_005, anchor smu_sep_cold_reassert_during_sense_test.
 Spec: hw/sys/sep/doc/reset_controller.adoc, hw/sys/sep/doc/clk_rst.adoc,
 hw/sys/sep/doc/otp_fuse_controller.adoc, hw/ip/efuse/doc/architecture.adoc.
 

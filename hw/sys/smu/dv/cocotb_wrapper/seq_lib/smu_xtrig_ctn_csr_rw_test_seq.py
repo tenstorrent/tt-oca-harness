@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_xtrig_ctn_csr_rw_test. SEP=1 (sep_rtl), no Force.
 
-Contract: SMU_MISC_XTRIG_009 revision 1, anchor smu_xtrig_ctn_csr_rw_test.
-Spec: cross_trigger_port.rdl (CONFIG.MODE, INVERT, RESET sw=rw; STATUS writes complete with OKAY and
-leave the register unchanged; STRETCH_MULT[15:0] sw=rw; CONFIG @0x0, STATUS @0x4, STRETCH_MULT @0x8),
+Spec: cross_trigger_port.rdl (CONFIG.MODE, INVERT, RESET sw=rw; STATUS writes complete with OKAY
+and leave the register unchanged; STRETCH_MULT[15:0] sw=rw; CONFIG @0x0, STATUS @0x4,
+STRETCH_MULT @0x8),
 cross_trigger_network.rdl (ctm @0x0, ctp[NUM_CTP] @0x200 += 0x10), cross_trigger_network/doc/
 architecture.adoc (Address Map), cross_trigger_matrix.rdl (CT_SRC @0x0 += 0x8), smc.rdl (DTP CSR
 window base). Addresses and masks come from the generated headers.
@@ -72,7 +72,7 @@ STRETCH_SERIAL = 0x2A5A
 CT_SRC_SET = 0x1
 
 J2A_POLL_LIMIT = 128
-# Waits the contract names: a JTAG2AXI access.
+# Bounded waits: a JTAG2AXI access.
 CONTRACT_WAITS = ("j2a",)
 CONTRACT_WAIT_COUNT = 1
 SITES = ("j2a",)
@@ -344,7 +344,7 @@ class smu_xtrig_ctn_csr_rw_test_seq:
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
         recorded = [s for s in CONTRACT_WAITS if self.sites[s]["count"] > 0]
         sb.expect_eq(
-            "bounded wait kinds named by the contract all exercised",
+            "bounded wait kinds declared by the sequence all exercised",
             len(recorded),
             CONTRACT_WAIT_COUNT,
         )

@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_lc_rma_chip_1_export_test - the RMA_CHIPLET LC_STATE pair is exported as 0x87.
 
-Contract SMU_WRAPPER_LC_GATING_011 (hw/sys/sep/doc/otp_fuse_controller.adoc:216-224,
-hw/sys/sep/doc/lifecycle_controller.adoc:98-148, hw/sys/smu/doc/port_table.adoc:131).
+Spec: hw/sys/sep/doc/otp_fuse_controller.adoc:216-224,
+hw/sys/sep/doc/lifecycle_controller.adoc:98-148, hw/sys/smu/doc/port_table.adoc:131.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_lc_rma_chip_1_export_test --target compile_smu_chiplet
@@ -18,7 +18,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_lc_rma_chip_1_export_test(smu_base_test):
-    """lc_state_o, obs_sep_lc_state_o and smc_lc_state_in_o carry 0x87 under the RMA_CHIPLET image."""
+    """lc_state_o, obs_sep_lc_state_o and smc_lc_state_in_o carry 0x87 for the RMA_CHIPLET image."""
 
     use_shared_env = True
 

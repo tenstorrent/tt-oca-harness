@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_xtrig_ctn_reset_values_test - CTN register reset values behind the SMC DTP CSR window.
 
-Contract: SMU_MISC_XTRIG_007, anchor smu_xtrig_ctn_reset_values_test.
 Spec: cross_trigger_matrix.rdl (CT_SRC, CT_DST_SELECT reset 0x0), cross_trigger_port.rdl (CONFIG,
 STATUS, STRETCH_MULT reset 0x0), cross_trigger_network.rdl, smc.rdl (dtp_ctrl_reg window).
 The 26 CT_SRC registers and CONFIG, STATUS and STRETCH_MULT of the 16 CTPs read 0 after reset.

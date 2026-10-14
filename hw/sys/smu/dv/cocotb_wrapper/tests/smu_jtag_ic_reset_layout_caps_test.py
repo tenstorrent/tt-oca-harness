@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_jtag_ic_reset_layout_caps_test - IC_RESET TDR layout and JTAG_CAPS readback.
 
-Contract: SMU_JTAG_TAP_013   Anchor: smu_jtag_ic_reset_layout_caps_test
 Sources: hw/ip/jtag/jtag_ptap/doc/architecture.adoc (IC_RESET Support, JTAG Capabilities),
 doc/integrator/src/smu-composition.adoc (IC_RESET TDR Structure, JTAG Configuration
 Parameters, Cross Trigger Parameters), hw/sys/dtp/doc/clk_rst.adoc, hw/sys/dtp/doc/overview.adoc
@@ -15,7 +14,7 @@ km_jtag_rst_n, otbn_jtag_rst_n, aes_jtag_rst_n, hmac_jtag_rst_n, kmac_jtag_rst_n
 trng_jtag_rst_n, abr_jtag_rst_n; SMC ports 9..76 = fuse_reset_n, warm_reset_n, cool_reset_n,
 cold_reset_n, ss_cold_reset_n[0..31] = 13..44, ss_warm_reset_n[0..31] = 45..76. The default
 external stub has one port, so port 0 and the last external port are the same pair. The index
-mapping is SF-023.
+mapping is not stated by either document.
 
 Only reset_control bits are ever cleared, one at a time, with every reset_enable bit at 1, so no
 override is asserted. reset_hold is cleared for one scan in S3 and restored by the next scan. The
@@ -30,7 +29,8 @@ configuration values of smu-composition.adoc: num_xtrig_ctp 16, num_xtra_stap 1,
 sep_dbg_en and smc_dbg_en 1, num_smc_ic_rst 68, num_sep_ic_rst 8, num_ext_ic_rst 1, every
 instruction enable 1, och_ver 8'h00 (JTAG_OCH_VER). num_xtrig_int_ct is the SMU-exposed 8 or
 8 plus the 2 SMC-reserved lanes (dtp overview.adoc: the first two lanes connect to the SMC DFD
-CLA); SF-021 is open, so bits 59:54 are accepted in {8, 10} and excluded from the exact compare.
+CLA); the owner has not fixed num_xtrig_int_ct, so bits 59:54 are accepted in {8, 10} and
+excluded from the exact compare.
 
 Scan budget: 33 IC_RESET scans (S1 1, S2 2, S3 7, S4 2, S5 11, S6 6, S7 3, final verify 1) and
 5 JTAG_CAPS scans (S8 1, S9 4). Samples are taken 16 clk_smu_i cycles after each Update-DR.
@@ -447,7 +447,7 @@ class smu_jtag_ic_reset_layout_caps_test(smu_base_test):
             port_watcher.cancel()
         assert samples[0] > 0, "S7 port watcher took no samples"
         self.logger.info(
-            "S7 SF-034: compare is read1 == read2 == written image; ok=%s slices1=%s slices2=%s",
+            "S7 compare is read1 == read2 == written image; ok=%s slices1=%s slices2=%s",
             (pre_ok, ok1, ok2),
             slices1,
             slices2,
@@ -478,7 +478,7 @@ class smu_jtag_ic_reset_layout_caps_test(smu_base_test):
         for name, lsb, width in CAPS_FIELDS:
             self.logger.info("S8 JTAG_CAPS.%s = %d", name, (caps >> lsb) & ((1 << width) - 1))
         int_ct = (caps >> 54) & 0x3F
-        self.logger.info("S8 SF-021 num_xtrig_int_ct observed %d, accepted {8, 10}", int_ct)
+        self.logger.info("S8 num_xtrig_int_ct observed %d, accepted {8, 10}", int_ct)
         sb.expect_eq(
             "JTAG_CAPS default configuration, num_xtrig_int_ct in {8, 10}",
             (caps & CAPS_MASK, int_ct in (8, 10)),

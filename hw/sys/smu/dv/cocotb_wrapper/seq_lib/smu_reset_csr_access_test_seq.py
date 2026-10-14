@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_reset_csr_access_test. No Force.
 
-SMU_RESET_027 (smu_reset_csr_access_test), steps S1-S9,
+Steps S1-S9,
 checkers CHK-CSR-RESET-VALUES-S2..S4, CHK-CSR-ACCESS-S1..S3 and CHK-SYNC-IRQ-S1..S2.
 Spec: hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl,
 hw/sys/smc/regs/blocks/ndm_reset/ndm_reset.rdl, hw/sys/smc/doc/clk_rst.adoc,

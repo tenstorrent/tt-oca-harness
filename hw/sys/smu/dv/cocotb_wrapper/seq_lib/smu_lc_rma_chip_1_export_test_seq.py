@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The RMA_CHIPLET raw 4'b0111 LC_STATE pair reaches every SMU observation point as 0x87.
 
-Contract SMU_WRAPPER_LC_GATING_011, anchor smu_lc_rma_chip_1_export_test.
-Spec: hw/sys/sep/doc/otp_fuse_controller.adoc:216-224, hw/sys/sep/doc/lifecycle_controller.adoc:98-148,
-hw/sys/smu/doc/port_table.adoc:131 (lc_state_o).
+Spec: hw/sys/sep/doc/otp_fuse_controller.adoc:216-224,
+hw/sys/sep/doc/lifecycle_controller.adoc:98-148, hw/sys/smu/doc/port_table.adoc:131 (lc_state_o).
 
 The exported word is ``{~raw[3:0], raw[3:0]}``; RMA_CHIPLET raw 4'b0111 gives 0x87. The shadow image
 named by ``+sep_shadow_reg_preload`` is the only stimulus.
@@ -140,7 +139,7 @@ class smu_lc_rma_chip_1_export_test_seq:
         self._log(f"CHK-TIMEOUT-PATHS: records={len(self.records)} expired={expired}")
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK-TIMEOUT-PATHS")
         sb.expect_eq(
-            "bounded wait labels named by the contract, each exactly once",
+            "bounded wait labels named by the test steps, each exactly once",
             sorted(rec["label"] for rec in self.records),
             sorted(CONTRACT_WAIT_LABELS),
             evidence="CHK-TIMEOUT-PATHS",

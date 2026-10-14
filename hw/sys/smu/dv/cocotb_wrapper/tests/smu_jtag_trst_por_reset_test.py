@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_jtag_trst_por_reset_test - TRST_n and power-on reset put the primary TAP in Test-Logic-Reset.
 
-Contract: SMU_JTAG_TAP_011   Anchor: smu_jtag_trst_por_reset_test
 Sources: hw/ip/jtag/jtag_ptap/doc/architecture.adoc (TAP Controller State Machine, Reset
 Hierarchy, TDO Retiming, ID Code), hw/ip/jtag/jtag_ptap/doc/interface.adoc (Instruction encodings),
 hw/sys/dtp/doc/clk_rst.adoc (Reset Architecture, Reset Distribution), hw/sys/smu/doc/port_table.adoc
@@ -12,9 +11,9 @@ encodings of the state machine table). The combined reset jtag_trst_n = pwr_on_r
 holds the controller in Test-Logic-Reset without TCK, and Test-Logic-Reset loads IDCODE into the
 instruction register, so the decoded instruction is the one-hot 64'h2 (bit <opcode>) and a DR scan
 returns the IDCODE 0x0000_0001. A TMS-low TCK is the first one that leaves Test-Logic-Reset. The
-reset values of jtag_tdo and jtag_tdo_oen are not documented (SF-015): the samples after TRST_n,
+reset values of jtag_tdo and jtag_tdo_oen are not documented: the samples after TRST_n,
 after power-on reset and after both are compared with each other and logged. How powergood_stable
-is derived is SF-026: the test drives powergood_i and observes the TAP only.
+is derived is not documented: the test drives powergood_i and observes the TAP only.
 """
 
 from __future__ import annotations
@@ -279,7 +278,7 @@ class smu_jtag_trst_por_reset_test(smu_base_test):
         legs["both"] = (low, await self._tdo_pair(dut))
         self.logger.info(
             "S7 (jtag_tdo, jtag_tdo_oen) before reset in Shift-DR under BYPASS: %s; "
-            "while reset held / after release: %s; the reset values are SF-015 and are not "
+            "while reset held / after release: %s; the reset values are not documented and are not "
             "compared with a constant",
             pre_pairs,
             legs,

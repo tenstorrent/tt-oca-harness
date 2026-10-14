@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_sep_cold_reassert_during_sense_test.
 
-Contract SMU_SEP_005, anchor smu_sep_cold_reassert_during_sense_test.
 Spec: hw/sys/sep/doc/reset_controller.adoc, hw/sys/sep/doc/clk_rst.adoc,
 hw/sys/sep/doc/otp_fuse_controller.adoc, hw/ip/efuse/doc/architecture.adoc.
 Response valid bit: hw/ip/efuse/doc/interface.adoc; done reset value 0: sep_cpu_ctrl.rdl.
@@ -193,7 +192,7 @@ class smu_sep_cold_reassert_during_sense_test_seq:
         return strobes
 
     async def _hold(self, label: str) -> dict:
-        """Hold the reset for the contract window, then stop the sampler started at the fall."""
+        """Hold the reset for the bounded window, then stop the sampler started at the fall."""
         counts, rec = self.held.pop(label)
         await ClockCycles(self.dut.clk_ref_i, HOLD_REF_CYCLES)
         counts["stop"] = True
@@ -375,7 +374,9 @@ class smu_sep_cold_reassert_during_sense_test_seq:
             await self._compare_held("255", at_fall, held, ABORT_RESTART)
         else:
             self.log.info("OBSERVED word-255 window missed strobes_at_fall=%d", at_fall)
-            self.log.info("CHK-SEP-SENSE-ABORT-RESTART: word255=missed LINKED-ISSUE SF-014")
+            self.log.info(
+                "CHK-SEP-SENSE-ABORT-RESTART: word255=missed LINKED-ISSUE owner decision pending"
+            )
 
         await self._step("S7", "final leg: release and a full sense")
         await self._release("final")
@@ -438,7 +439,7 @@ class smu_sep_cold_reassert_during_sense_test_seq:
         )
         kinds = {rec["kind"] for rec in self.sites.values()}
         sb.expect_true(
-            "every bounded wait kind named by the contract ran",
+            "every bounded wait kind named by the test steps ran",
             all(kind in kinds for kind in CONTRACT_WAIT_KINDS),
         )
 

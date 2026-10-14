@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP STAP deselected TMS parking, scan-path exclusion and 3DCR reset rules.
 
-Contract SMU_WRAPPER_DEBUG_PATHS_009, anchor smu_sep_stap_hold_reset_test.
 Spec: jtag_stap architecture.adoc (a STAP adds its SIB bit while deselected; a deselected STAP
 ties its host TMS to the TMS-Hold bit; 3DCR bit 2 TMS-Hold, bit 1 Select, bit 0 Config-Hold, all
 reset 0; the register resets on TRST, and on Test-Logic-Reset unless Config-Hold is set).
@@ -59,7 +58,7 @@ TLR_TMS_HIGHS = 5
 IDLE_TCKS = 2
 IDLE_TCKS_AFTER_RELEASE = 8
 
-# Bounds of the contract's bounded waits.
+# Bounds of the bounded waits.
 POSTURE_POLL_LIMIT = 500
 POSTURE_POLL_CYCLES = 10
 RESET_DONE_POLL_LIMIT = 500
@@ -80,7 +79,7 @@ MARKER_BITS = 24
 FLUSH_WIDTH = 64
 EXPECTED_CHAIN_LEN = IDCODE_DR_WIDTH + SIB_COUNT
 
-# Network scans each contract step makes.
+# Network scans each test step makes.
 SCANS_S1 = 2
 SCANS_S2 = 9
 SCANS_S3 = 10
@@ -88,8 +87,8 @@ SCANS_S4 = 5
 SCANS_S5 = 5
 EXPECTED_SCANS = SCANS_S1 + SCANS_S2 + SCANS_S3 + SCANS_S4 + SCANS_S5
 
-# Bounded waits the contract names: the posture wait, a TMS window per TMS-Hold value and one TRST
-# hold; the reset_done poll is the SF-023 bring-up wait.
+# Bounded waits: the posture wait, a TMS window per TMS-Hold value and one TRST
+# hold; the reset_done poll is the bring-up wait.
 EXPECTED_SITE_KINDS = {"posture": 1, "reset_done": 1, "tms_window": 2, "trst_hold": 1}
 
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6")
@@ -384,7 +383,7 @@ class smu_sep_stap_hold_reset_test_seq:
         await self._require_debug_open()
         self._log(
             f"CHK-DBG-STAP-TMS-HOLD: reset_done_polls={self.reset_done_polls} "
-            f"posture_polls={self.posture_polls} LINKED-ISSUE SF-023"
+            f"posture_polls={self.posture_polls} LINKED-ISSUE bring-up wait"
         )
 
         raw = make_smu_jtag_tap(self.dut, self.cfg.jtag_period_ns)
@@ -438,7 +437,8 @@ class smu_sep_stap_hold_reset_test_seq:
         self._cell("trst_clears_3dcr", f"before=0x{before_trst:x} after=0x{after_trst:x}")
         self._log(
             f"CHK-DBG-STAP-3DCR-RESET: observed_via=tb_stap_sep_tms "
-            f"tms_before_trst={tms_before} tms_after_trst={tms_after} LINKED-ISSUE SF-025"
+            f"tms_before_trst={tms_before} tms_after_trst={tms_after} "
+            "LINKED-ISSUE owner value pending"
         )
 
         results = {}
@@ -479,7 +479,7 @@ class smu_sep_stap_hold_reset_test_seq:
         kinds = dict(Counter(rec["kind"] for rec in self.sites))
         self._log(f"CHK-TIMEOUT-PATHS: sites={len(self.sites)} kinds={kinds} expired={expired}")
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait kinds named by the contract", kinds, EXPECTED_SITE_KINDS)
+        sb.expect_eq("bounded wait kinds named by the test steps", kinds, EXPECTED_SITE_KINDS)
 
         await RisingEdge(self.dut.clk_ref_i)
         self._log(f"OBS final {SEP_STAP_TMS}={self._tms_level()} after the Test-Logic-Reset legs")

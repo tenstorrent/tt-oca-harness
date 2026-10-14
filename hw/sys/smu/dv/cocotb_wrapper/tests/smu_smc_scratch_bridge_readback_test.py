@@ -18,10 +18,7 @@ class smu_smc_scratch_bridge_readback_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info(
-            "DUT_TAG=WRAPPER smu_smc_scratch_bridge_readback_test SMU_MISC_COMPOSITION_009 "
-            "SEP=1 J2A"
-        )
+        self.logger.info("DUT_TAG=WRAPPER smu_smc_scratch_bridge_readback_test SEP=1 J2A")
         seq = smu_smc_scratch_bridge_readback_test_seq(self)
         await seq.run()
         assert seq.done, "scratch bridge readback scenario incomplete"

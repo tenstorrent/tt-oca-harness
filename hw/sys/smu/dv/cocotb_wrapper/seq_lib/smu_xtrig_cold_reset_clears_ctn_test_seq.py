@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_xtrig_cold_reset_clears_ctn_test. SEP=1 (sep_rtl), no Force.
 
-Contract: SMU_MISC_XTRIG_008 revision 4, anchor smu_xtrig_cold_reset_clears_ctn_test.
 Spec: dtp/doc/clk_rst.adoc (rst_n_i resets all CTN and CSR state; stop_clks_o low while rst_n_i is
 asserted), cross_trigger_port/doc/architecture.adoc (sender state machine), CTN/CTM/CTP RDL resets.
 Addresses and masks come from the generated cross-trigger headers.
@@ -89,7 +88,7 @@ ACK_RELEASE_SETTLE = 8
 STOP_RISE_BOUND = 64
 PULSE_HOLD = 8
 POST_RELEASE_EDGES = 8
-# Waits the contract names: JTAG2AXI poll, reset-low window, reset_done, request rise, clear.
+# Bounded waits: JTAG2AXI poll, reset-low window, reset_done, request rise, clear.
 CONTRACT_WAITS = ("j2a", "reset_low", "reset_done", "req_rise", "req_clear")
 CONTRACT_WAIT_KINDS = 5
 SITES = (
@@ -540,7 +539,7 @@ class smu_xtrig_cold_reset_clears_ctn_test_seq:
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
         recorded = [s for s in CONTRACT_WAITS if self.sites[s]["count"] > 0]
         sb.expect_eq(
-            "bounded wait kinds named by the contract all exercised",
+            "bounded wait kinds declared by the sequence all exercised",
             len(recorded),
             CONTRACT_WAIT_KINDS,
         )

@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC base-configuration register state and the region-size pin at boot.
 
-Contract SMU_SMC_BOOT_010, anchor smu_smc_base_config_state_test.
 Spec: smc_base_config.rdl (GLOBAL_BASE, LOCAL_BASE, REGION_SIZE, CLOCK_GATE_CONTROL and
 HANG_DET_* resets); smc.rdl (smc_base_config at SMC base + 0x1_0000); port_table.adoc
 (smc_region_size_o).
@@ -11,7 +10,7 @@ The JTAG2AXI bridge reads the registers without writing anything and smc_region_
 sampled on clk_smu_i. GLOBAL_BASE, LOCAL_BASE, REGION_SIZE and CLOCK_GATE_CONTROL are 64-bit
 registers read with 8-byte accesses. The HANG_DET_* control and threshold registers declare no
 regwidth, so the RDL makes them 32 bits wide at 8-byte spacing; each is read with a 4-byte
-access and its 32-bit lane compared, with the same expected values the contract lists.
+access and its 32-bit lane compared, with the same expected values the test steps list.
 """
 
 from __future__ import annotations
@@ -228,7 +227,7 @@ class smu_smc_base_config_state_test_seq:
             f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait kinds named by the contract", len(lines), CONTRACT_WAIT_KINDS)
+        sb.expect_eq("bounded wait kinds named by the test steps", len(lines), CONTRACT_WAIT_KINDS)
 
         self.step_ts["PASS"] = time.monotonic()
         order = ["S1", "S2", "S3", "S4", "S5", "PASS"]

@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC reset-unit register state and the idle isolate, skip-repair and sync outputs at boot.
 
-Contract SMU_SMC_BOOT_011, anchor smu_smc_reset_unit_state_test.
 Spec: reset_unit.rdl (SS_CONFIG :11-17, locks :20-27, SS_FORCE_TO_REF_CLK :30-35, cold/warm
 reset :38-51, holds :54-86, SS_COLD_RESET_LOCK :89-96, SYNC_REG :108-113, isolation :116-145,
-ISOLATE_REQ_VIS bits 4 and 8 :159,165, FLR counters :168-181); smc.rdl:55 (smc_reset_unit at 0xC000_2000);
+ISOLATE_REQ_VIS bits 4 and 8 :159,165, FLR counters :168-181); smc.rdl:55 (smc_reset_unit at
+0xC000_2000);
 port_table.adoc:128,140,144; clk_rst.adoc:300,349-354.
 
 The JTAG2AXI bridge reads the 32-bit reset-unit registers without writing anything; the TB
@@ -253,7 +253,8 @@ class smu_smc_reset_unit_state_test_seq:
         vis = await self._j2a_rd32(ISOLATE_REQ_VIS_ADDR, "ISOLATE_REQ_VIS")
         self._log(f"CELL isolate_req_vis addr=0x{ISOLATE_REQ_VIS_ADDR:08x} value=0x{vis:08x}")
         self._log(
-            f"CHK-BOOT-RSTUNIT-VIS: isolate_req_pin={vis & 1} word=0x{vis:08x} (SF-036 observe-only)"
+            f"CHK-BOOT-RSTUNIT-VIS: isolate_req_pin={vis & 1} word=0x{vis:08x} "
+            "(observe-only, owner value pending)"
         )
         sb.expect_eq(
             "CHK-BOOT-RSTUNIT-VIS isolate_req_vis cool_reset_n_i and cool_reset_n_o bits",
@@ -292,7 +293,7 @@ class smu_smc_reset_unit_state_test_seq:
             f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait kinds named by the contract", len(lines), CONTRACT_WAIT_KINDS)
+        sb.expect_eq("bounded wait kinds named by the test steps", len(lines), CONTRACT_WAIT_KINDS)
 
         self.step_ts["PASS"] = time.monotonic()
         order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "PASS"]

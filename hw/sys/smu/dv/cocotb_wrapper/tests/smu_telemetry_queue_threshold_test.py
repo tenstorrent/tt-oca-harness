@@ -16,9 +16,7 @@ class smu_telemetry_queue_threshold_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info(
-            "DUT_TAG=WRAPPER smu_telemetry_queue_threshold_test SMU_MISC_PERIPH_012 SEP=1 J2A"
-        )
+        self.logger.info("DUT_TAG=WRAPPER smu_telemetry_queue_threshold_test SEP=1 J2A")
         seq = smu_telemetry_queue_threshold_test_seq(self)
         await seq.run()
         assert seq.done, "telemetry queue threshold scenario incomplete"

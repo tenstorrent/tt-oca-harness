@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Alias remap AxCACHE replacement on a hit, preservation on a miss, transparent reset state.
 
-Contract SMU_FABRIC_FILTER_019, anchor smu_alias_cache_reset_test.
 Spec: alias_remap.rdl (REGION_START/END/ATTRS: offset[55:12], cacheable[59:56], valid[63]);
 fabric.adoc Alias Remapping, Traffic Managers, Outbound Filtering;
 sep-smc-common.adoc Global Aperture and Address Remapping.
@@ -329,7 +328,10 @@ class smu_alias_cache_reset_test_seq:
             SMC_CHIP_CONFIG_VERSION_LO,
             f"status={vst} data=0x{vdata:08x}",
         )
-        self._log(f"SF-027 initiator_axcache aw={init_aw} ar={init_ar} measured on smu_axi_out")
+        self._log(
+            f"owner value pending: initiator_axcache aw={init_aw} ar={init_ar} "
+            "measured on smu_axi_out"
+        )
         sb.expect_eq(
             "CHK-ALIAS-RESET-TRANSPARENT address, status, VERSION_LO",
             (OA, OA, vst, vdata),
@@ -391,7 +393,7 @@ class smu_alias_cache_reset_test_seq:
         else:
             self._log(
                 f"CHK-ALIAS-CACHE-ZERO: initiator_axcache=0 observed={observed[0]} "
-                "non-discriminating (SF-027)"
+                "non-discriminating (owner value pending)"
             )
         sb.expect_eq(
             "CHK-ALIAS-CACHE-ZERO cacheable=0 AxCACHE",
@@ -432,7 +434,7 @@ class smu_alias_cache_reset_test_seq:
             f"j2a_accesses_counted={self.j2a} (counted at the call sites of this seq)"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
-        sb.expect_eq("bounded wait kinds named by the contract", len(lines), CONTRACT_WAIT_KINDS)
+        sb.expect_eq("bounded wait kinds declared by the sequence", len(lines), CONTRACT_WAIT_KINDS)
 
         self.step_ts["PASS"] = time.monotonic()
         order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "PASS"]

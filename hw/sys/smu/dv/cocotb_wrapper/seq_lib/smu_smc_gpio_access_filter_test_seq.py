@@ -2,13 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO bank AxPROT access filter on the external AXI path, pad 11.
 
-Contract SMU_WRAPPER_DEBUG_PATHS_022, anchor smu_smc_gpio_access_filter_test.
 Spec: hw/ip/gpio/regs/gpio_intf.rdl:17-52 (ACCESS_FILTER reset 0x0001_0100; with an enable set an
 access requires an exact match between AxPROT and the requirement), hw/ip/gpio/doc/memmap.adoc:36,
 hw/ip/gpio/regs/gpio_intf.rdl:62-111 (DATA_CTRL), hw/ip/axi_filter/regs/filter_ctrl.rdl:36-42
 (an inbound entry matches when AxPROT[1] equals its allow_ns field).
-The response code and read data of a refused access are SF-019: they are logged and compared
-with OKAY only.
+The response code and read data of a refused access are not fixed by the owner: they are logged and
+compared with OKAY only.
 """
 
 from __future__ import annotations
@@ -101,7 +100,7 @@ AXI_RESP_BOUND_CLK = 256
 J2A_POLL_LIMIT = 128
 PROTS = range(8)
 
-# Accesses the contract steps need, counted from the step text.
+# Accesses the test steps need, counted from the step text.
 # J2A: S1 aperture write and read (2) + per inbound entry config clear, start, end, config enable
 # and config readback (5 each, two entries).
 FLOOR_J2A = 2 + 2 * 5
@@ -335,7 +334,7 @@ class smu_smc_gpio_access_filter_test_seq:
             if resp != RESP_OKAY:
                 self._log(
                     f"CHK-DBG-GPIO-FILTER-WRITE: awprot={prot} refused_code={resp_name(resp)} "
-                    "LINKED-ISSUE SF-019"
+                    "LINKED-ISSUE owner value pending"
                 )
             obs.append((resp == RESP_OKAY, after == target))
         clear_ok = await self._set_filter(AF_RESET, AF_REQ, 0, "write_off")
@@ -367,7 +366,7 @@ class smu_smc_gpio_access_filter_test_seq:
             if resp != RESP_OKAY:
                 self._log(
                     f"CHK-DBG-GPIO-FILTER-READ: arprot={prot} refused_code={resp_name(resp)} "
-                    f"data=0x{raw:08x} LINKED-ISSUE SF-019"
+                    f"data=0x{raw:08x} LINKED-ISSUE owner value pending"
                 )
                 obs.append((False, None))
             else:

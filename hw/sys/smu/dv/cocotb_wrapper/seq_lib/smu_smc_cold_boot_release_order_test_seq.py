@@ -2,14 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cold boot release order of the power-good, cold and primary resets.
 
-Contract SMU_SMC_BOOT_004, anchor smu_smc_cold_boot_release_order_test.
 Spec: clk_rst.adoc Reset Architecture, Power-Good and Cold Reset, Primary and Warm Reset,
 Reset Synchronization; port_table.adoc rst_cold_ni, powergood_i, rst_primary_*_no rows.
 
 The stimulus is powergood_i, rst_cold_ni and jtag_trst only. Two samplers read the stable
 power-good, the stable cold reset and the primary resets on every clk_ref_i and clk_smu_i edge.
-Counts that the waived findings SF-008 and SF-009 leave open are logged and never compared.
-SF-007/SF-009 observe-only legs per the supervisor record: the order between the exported stable
+Counts that the owner has not fixed are logged and never compared.
+Observe-only legs: the order between the exported stable
 cold pin and the primary outputs is logged; the primary outputs are compared for holding 0 while
 the cold reset is asserted and for releasing within the bounded wait.
 """
@@ -400,7 +399,7 @@ class smu_smc_cold_boot_release_order_test_seq:
             self._log(
                 f"CHK-{token.replace('_', '-')}: prim1_cold0_samples={early} runs={runs} "
                 f"lead_clk_{wkey}={lead} samples={len(rec['prim'])} "
-                "(SF-007/SF-009 observe-only)"
+                "(observe-only, owner value pending)"
             )
             a0, a1 = a_hold_start[idx], a_hold_end[idx]
             b0, b1 = b_hold_start[idx], b_hold_end[idx]
@@ -408,7 +407,7 @@ class smu_smc_cold_boot_release_order_test_seq:
             self._log(
                 f"CHK-{token.replace('_', '-')}: assert_latency_edges={b0 - b_fall[idx]} "
                 f"vs_exported_pin={None if first_cold0 is None else b0 - first_cold0} "
-                "(SF-009 observe-only)"
+                "(observe-only, owner value pending)"
             )
             hold_viol = sum(rec["prim"][a0:a1]) + sum(rec["prim"][b0:b1])
             viol_idx = [k for k in range(a0, a1) if rec["prim"][k]] + [
@@ -444,7 +443,7 @@ class smu_smc_cold_boot_release_order_test_seq:
             self._log(
                 f"CHK-BOOT-COLD-TO-PRIMARY: boot={boot} smc_rise={sw['prim_rises']} "
                 f"smc_cold_rise={sw['cold_rises']} ref_rise={rw['prim_rises']} "
-                f"ref_cold_rise={rw['cold_rises']} (SF-007/SF-009 observe-only)"
+                f"ref_cold_rise={rw['cold_rises']} (observe-only, owner value pending)"
             )
         self._cell(
             "primary_after_stable_cold_both_domains",
@@ -487,7 +486,7 @@ class smu_smc_cold_boot_release_order_test_seq:
         self._log(f"CHK-TIMEOUT-PATHS: sites={len(lines)} expired={expired}")
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
         sb.expect_eq(
-            "bounded wait sites named by the contract",
+            "bounded wait sites named by the test steps",
             sorted(self.sites),
             sorted(
                 [

@@ -16,9 +16,7 @@ class smu_smc_cpu_ctrl_boot_state_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info(
-            "DUT_TAG=WRAPPER smu_smc_cpu_ctrl_boot_state_test SMU_SMC_BOOT_008 SEP=1 J2A"
-        )
+        self.logger.info("DUT_TAG=WRAPPER smu_smc_cpu_ctrl_boot_state_test SEP=1 J2A")
         seq = smu_smc_cpu_ctrl_boot_state_test_seq(self)
         await seq.run()
         assert seq.done, "cpu_ctrl boot state scenario incomplete"

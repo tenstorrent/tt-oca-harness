@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_secure_tm_real_sense_window_test - secure_tm_o across a real SEP fuse sense.
 
-Contract SMU_SEP_006, anchor smu_secure_tm_real_sense_window_test.
 Spec: hw/sys/sep/doc/test_mode.adoc, hw/sys/sep/doc/lifecycle_controller.adoc,
 doc/integrator/src/smu.adoc, hw/sys/smu/doc/port_table.adoc, hw/ip/efuse/doc/interface.adoc.
 

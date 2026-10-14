@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_isolation_retention_test. No Force.
 
-SMU_RESET_024 (smu_isolation_retention_test), steps S1-S5, checkers CHK-ISO-RETAIN-S1..S4.
+Steps S1-S5, checkers CHK-ISO-RETAIN-S1..S4.
 Spec: hw/sys/smc/doc/clk_rst.adoc (Isolation Controls, Isolation Connections, Timing and Recovery).
 
 The isolation registers and the FLR counters are cold-reset state: a cool

@@ -18,9 +18,7 @@ class smu_octs_reset_and_secondary_hold_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info(
-            "DUT_TAG=WRAPPER smu_octs_reset_and_secondary_hold_test SMU_MISC_PERIPH_006 SEP=1 J2A"
-        )
+        self.logger.info("DUT_TAG=WRAPPER smu_octs_reset_and_secondary_hold_test SEP=1 J2A")
         seq = smu_octs_reset_and_secondary_hold_test_seq(self)
         await seq.run()
         assert seq.done, "OCTS reset and secondary hold scenario incomplete"

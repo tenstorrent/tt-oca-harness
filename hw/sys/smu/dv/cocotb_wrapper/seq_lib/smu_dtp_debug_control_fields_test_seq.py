@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_dtp_debug_control_fields_test. SEP=1 (sep_rtl), no Force.
 
-Contract: SMU_MISC_XTRIG_019, anchor smu_dtp_debug_control_fields_test.
 Spec: jtag_ptap/doc/architecture.adoc (PTAP DEBUG_CONTROL fields: 5-bit TDR, bits 0..3 R/W reset 0,
 bit 4 read-only reset 0), dtp/doc/clk_rst.adoc (Clock Stop: jtag_clock_stop and the clock-stop
 request lanes aggregate onto dtp_stop_clks_o; jtag_clock_stop resets on TRST, power-on reset and
@@ -54,7 +53,7 @@ UPDATE_DR_STATE = int(OcahJtagState.UPDATE_DR)
 TRST_HOLD_REF = 8
 TLR_TMS_HIGHS = 5
 
-# Waits the contract names: a stop-output wait, a TDR capture settle and a reset_done wait.
+# Bounded waits: a stop-output wait, a TDR capture settle and a reset_done wait.
 CONTRACT_WAITS = ("stop_wait", "tdr_settle", "reset_done")
 CONTRACT_WAIT_KINDS = 3
 SITES = (
@@ -362,12 +361,13 @@ class smu_dtp_debug_control_fields_test_seq:
             )
         expired = sum(rec["expired"] for rec in self.sites.values())
         self._log(
-            f"CHK-TIMEOUT-PATHS: sites={len(SITES)} expired={expired} tdr_scans_counted={self.scans}"
+            f"CHK-TIMEOUT-PATHS: sites={len(SITES)} expired={expired} "
+            f"tdr_scans_counted={self.scans}"
         )
         sb.expect_eq("expired TIMEOUT-PATH records", expired, 0, evidence="CHK_TIMEOUT_PATHS")
         recorded = [s for s in CONTRACT_WAITS if self.sites[s]["count"] > 0]
         sb.expect_eq(
-            "bounded wait kinds named by the contract all exercised",
+            "bounded wait kinds declared by the sequence all exercised",
             len(recorded),
             CONTRACT_WAIT_KINDS,
         )
