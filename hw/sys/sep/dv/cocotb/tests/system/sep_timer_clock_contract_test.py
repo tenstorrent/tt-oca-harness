@@ -54,7 +54,7 @@ import bisect
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_edge_timer import SepEdgeTimer, SepPinEdgeCounter
@@ -895,10 +895,17 @@ class sep_timer_clock_contract_test(sep_base_test):
         assert cause & CAUSE_FIELD, (
             f"CTL-WKUP-CAUSE FAIL: WKUP_CAUSE=0x{cause:x} after the wakeup expiries"
         )
+        t_clear = self._now()
         await self._wr(WKUP_CAUSE, 0)
         after = await self._poll_eq("WKUP_CAUSE", WKUP_CAUSE, 0, CAUSE_FIELD, "CTL-WKUP-CAUSE")
+        # The clear crosses the same clock boundary as a set would, so its measured landing
+        # time bounds the wait before a WKUP_CAUSE write is graded.
+        landing_ps = self._now() - t_clear
         self.logger.info(
-            "CTL-WKUP-CAUSE: before_clear=%d after_clear=%d", cause & 1, after & CAUSE_FIELD
+            "CTL-WKUP-CAUSE: before_clear=%d after_clear=%d landing_ps=%d",
+            cause & 1,
+            after & CAUSE_FIELD,
+            landing_ps,
         )
 
         n_checks = 0
@@ -930,11 +937,21 @@ class sep_timer_clock_contract_test(sep_base_test):
             # WKUP_CAUSE (RW0C): a write cannot set it.
             pat = cfg.patterns("WKUP_CAUSE")[pi]
             await self._wr(WKUP_CAUSE, pat)
+            # Wait twice the measured landing time of the clear, then 16 more clk_wdt_i
+            # periods, before the graded read.
+            await Timer(2 * landing_ps, unit="ps")
             await self._wait_wdt(16)
             got = await self._rd(WKUP_CAUSE)
             fc = field_compare(got, 0, CAUSE_FIELD)
             assert fc.ok, (
-                f"CHK-WDT-SHAPE FAIL: WKUP_CAUSE set by a write of 0x{pat:x}: {fc.fields()}"
+                f"CHK-WDT-SHAPE FAIL: WKUP_CAUSE set by a write of 0x{pat:x}: {fc.fields()} "
+                f"wait=2x{landing_ps}ps+16 clk_wdt_i"
+            )
+            self.logger.info(
+                "WDT-SHAPE LOG: reg=WKUP_CAUSE pattern=0x%08x %s wait=2x%dps+16 clk_wdt_i",
+                pat,
+                fc.fields(),
+                landing_ps,
             )
             n_checks += 1
         assert all(differs.values()), f"CHK-WDT-SHAPE FAIL: dead register {differs}"
