@@ -54,7 +54,8 @@ Checks:
       primary program/read, FAST_READ, neighbour program/read, erase, primary read,
       neighbour read, post-erase RDSR, the ignored WEL-clear PP and its read,
       WREN, RDSR2, WRDI, recovery JEDEC);
-    - the PAGE PROGRAM (0x02) landed at the random addr with the random data;
+    - the PAGE PROGRAM (0x02) landed at the random addr with the random data,
+      and the device accepted it (``ok``): its frame ended on a byte boundary;
     - the SECTOR ERASE wiped the page (BFM memory == 0xFF at addr afterwards)
       and left the neighbour 4 KiB sector intact;
     - CHK-WP-PP/BFM: the controller delivered the third PAGE PROGRAM to the
@@ -298,9 +299,16 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
 
         pp = txns[6]
         exp_bytes = cfg.pp_bytes()
-        if pp.get("addr") != cfg.addr or bytes(pp.get("data_in") or b"") != exp_bytes:
+        if (
+            pp.get("addr") != cfg.addr
+            or bytes(pp.get("data_in") or b"") != exp_bytes
+            or not pp.get("ok")
+        ):
             self.logger.error(
-                "SPI flash command breadth GOLDEN FAIL: PP addr=0x%06x data_in=%s vs exp addr=0x%06x data=%s",
+                "SPI flash command breadth GOLDEN FAIL: PP ok=%s reason=%s addr=0x%06x data_in=%s "
+                "vs exp ok=True addr=0x%06x data=%s",
+                pp.get("ok"),
+                pp.get("reason"),
                 pp.get("addr", 0),
                 bytes(pp.get("data_in") or b"").hex(),
                 cfg.addr,
@@ -315,9 +323,13 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         if (
             neigh_pp.get("addr") != cfg.neigh_addr
             or bytes(neigh_pp.get("data_in") or b"") != neigh_bytes
+            or not neigh_pp.get("ok")
         ):
             self.logger.error(
-                "SPI flash command breadth GOLDEN FAIL: neighbour PP addr=0x%06x data_in=%s vs exp addr=0x%06x data=%s",
+                "SPI flash command breadth GOLDEN FAIL: neighbour PP ok=%s reason=%s addr=0x%06x "
+                "data_in=%s vs exp ok=True addr=0x%06x data=%s",
+                neigh_pp.get("ok"),
+                neigh_pp.get("reason"),
                 neigh_pp.get("addr", 0),
                 bytes(neigh_pp.get("data_in") or b"").hex(),
                 cfg.neigh_addr,

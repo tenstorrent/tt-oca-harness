@@ -123,7 +123,8 @@ complete, so a partially programmed pairing never triggers.
 
 An EAP can drive one or more actions:
 
-* *Debug interrupt* — raise a non-maskable interrupt to the CPU.
+* *Debug interrupt* — raise the CLA interrupt, an ordinary maskable PLIC
+  source (see Interrupts below).
 * *Clock stop* — halt clocks to freeze the design for inspection.
 * *GPIO toggle* — the generic block provides this action, but SMC terminates
   it on an unused local signal; it does not drive a pad.

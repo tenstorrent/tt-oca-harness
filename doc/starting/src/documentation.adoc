@@ -61,6 +61,9 @@ End each block reference with "Memory Map and Register Reference", containing
 and peripheral register ownership distinct.
 
 `tools/doc/block_catalog.rb` numbers and indexes blocks across the PDF book.
+The PDF numbers sections four levels deep, down to each subsystem chapter;
+`tools/doc/section_xref_numbering.rb` makes a cross-reference to a deeper
+section render its title instead of a number the heading does not show.
 The Antora extensions `tools/doc/block-captions.js` and
 `tools/doc/block-indexes.js` number blocks within each TRM topic and assemble
 the HTML indexes. Keep these extensions enabled in both the standalone and

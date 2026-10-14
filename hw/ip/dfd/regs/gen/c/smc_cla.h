@@ -69,6 +69,7 @@ typedef union {
 #define DFD_DST_SINK__TRDSTRAMIMPL__TRDSTRAMHASSMEM_bp 13
 #define DFD_DST_SINK__TRDSTRAMIMPL__TRDSTRAMHASSMEM_bw 1
 #define DFD_DST_SINK__TRDSTRAMIMPL__TRDSTRAMHASSMEM_reset 0x1
+// Frame length in 64-byte units. Only 1, 2, 4 and 8 (64, 128, 256 and 512 bytes) are supported, and the value must match the DST's trDstVendorFrameLength.
 #define DFD_DST_SINK__TRDSTRAMIMPL__TRDSTRAMVENDORFRAMELENGTH_bm 0xf000000
 #define DFD_DST_SINK__TRDSTRAMIMPL__TRDSTRAMVENDORFRAMELENGTH_bp 24
 #define DFD_DST_SINK__TRDSTRAMIMPL__TRDSTRAMVENDORFRAMELENGTH_bw 4
@@ -81,6 +82,7 @@ typedef union {
         uint32_t Trdstramhassram :1;
         uint32_t Trdstramhassmem :1;
         uint32_t :10;
+        // Frame length in 64-byte units. Only 1, 2, 4 and 8 (64, 128, 256 and 512 bytes) are supported, and the value must match the DST's trDstVendorFrameLength.
         uint32_t Trdstramvendorframelength :4;
         uint32_t :4;
     } f;
@@ -180,6 +182,7 @@ typedef union {
 #define DFD_DST_SINK__TRDSTRAMRPLOW__RSVD10_bp 0
 #define DFD_DST_SINK__TRDSTRAMRPLOW__RSVD10_bw 2
 #define DFD_DST_SINK__TRDSTRAMRPLOW__RSVD10_reset 0x0
+// Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Each trDstRamData read that returns unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.
 #define DFD_DST_SINK__TRDSTRAMRPLOW__TRDSTRAMRPLOW_bm 0xfffffffc
 #define DFD_DST_SINK__TRDSTRAMRPLOW__TRDSTRAMRPLOW_bp 2
 #define DFD_DST_SINK__TRDSTRAMRPLOW__TRDSTRAMRPLOW_bw 30
@@ -187,6 +190,7 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t Rsvd10 :2;
+        // Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Each trDstRamData read that returns unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.
         uint32_t Trdstramrplow :30;
     } f;
     uint32_t w;
@@ -205,12 +209,14 @@ typedef union {
 } dfd_dst_sink__Trdstramrphigh_t;
 
 // reg - dfd_dst_sink::Trdstramdata
+// Reading launches a trace-RAM read at trDstRamRPLow. When the RAM holds unread data, the read returns that 32-bit word and advances trDstRamRPLow; otherwise the pointer does not move.
 #define DFD_DST_SINK__TRDSTRAMDATA__TRDSTRAMDATA_bm 0xffffffff
 #define DFD_DST_SINK__TRDSTRAMDATA__TRDSTRAMDATA_bp 0
 #define DFD_DST_SINK__TRDSTRAMDATA__TRDSTRAMDATA_bw 32
 #define DFD_DST_SINK__TRDSTRAMDATA__TRDSTRAMDATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Reading launches a trace-RAM read at trDstRamRPLow. When the RAM holds unread data, the read returns that 32-bit word and advances trDstRamRPLow; otherwise the pointer does not move.
         uint32_t Trdstramdata :32;
     } f;
     uint32_t w;
@@ -4226,7 +4232,7 @@ typedef struct __attribute__ ((__packed__)) {
 #define DFD_DST__TRDSTCONTROL__TRDSTINHIBITSRC_bp 15
 #define DFD_DST__TRDSTCONTROL__TRDSTINHIBITSRC_bw 1
 #define DFD_DST__TRDSTCONTROL__TRDSTINHIBITSRC_reset 0x0
-// When the field is set tp 2'b10, sent timestamp. All other vlaues not NA.
+// Periodic sync mode. 2'b00: off. 2'b01: stream counting, with trDstVendorStreamLength frames between non-compressed packets. 2'b10: send a timestamp packet every 2^(trDstSyncMax + 4) Cluster clocks. 2'b11: no effect, as 2'b00.
 #define DFD_DST__TRDSTCONTROL__TRDSTSYNCMODE_bm 0x30000
 #define DFD_DST__TRDSTCONTROL__TRDSTSYNCMODE_bp 16
 #define DFD_DST__TRDSTCONTROL__TRDSTSYNCMODE_bw 2
@@ -4256,7 +4262,7 @@ typedef union {
         uint32_t Trdstinststallena :1;
         uint32_t :1;
         uint32_t Trdstinhibitsrc :1;
-        // When the field is set tp 2'b10, sent timestamp. All other vlaues not NA.
+        // Periodic sync mode. 2'b00: off. 2'b01: stream counting, with trDstVendorStreamLength frames between non-compressed packets. 2'b10: send a timestamp packet every 2^(trDstSyncMax + 4) Cluster clocks. 2'b11: no effect, as 2'b00.
         uint32_t Trdstsyncmode :2;
         uint32_t :2;
         // When trDstSyncMode is set to 2'b10, timestamp will be sent for every 2^(trDstSyncMax + 4) Cluster clocks.
@@ -4289,12 +4295,12 @@ typedef union {
 #define DFD_DST__TRDSTIMPL__TRDSTPROTOCOLMINOR_bp 20
 #define DFD_DST__TRDSTIMPL__TRDSTPROTOCOLMINOR_bw 4
 #define DFD_DST__TRDSTIMPL__TRDSTPROTOCOLMINOR_reset 0x0
-// Specify frame length. Frame Length = trDstVendorFrameLength* 64 ; Frame Length should be a multiple of Bank Data Width.
+// Specify frame length. Frame Length = trDstVendorFrameLength* 64 bytes; Frame Length should be a multiple of Bank Data Width. Only 1, 2, 4 and 8 (64, 128, 256 and 512 bytes) are supported, because the DST sink finds frame boundaries at the power of two given by the highest set bit of its frame length. Program the sink's trDstRamVendorFrameLength with the same value.
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_bm 0xf000000
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_bp 24
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_bw 4
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORFRAMELENGTH_reset 0x1
-// Specify Stream length. A stream starts with "no compressed packet". Stream length specifies number of frames before a non-compressed packet is sent.Stream Length = 32* 2^(trDstVendorStreamLength + 1)
+// Specify Stream length. A stream starts with "no compressed packet". Stream length specifies number of frames before a non-compressed packet is sent, and applies only when trDstSyncMode is 2'b01. Values 0 to 4 give Stream Length = 32* 2^trDstVendorStreamLength (32 to 512 frames); values 5 to 7 give 32.
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bm 0x70000000
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bp 28
 #define DFD_DST__TRDSTIMPL__TRDSTVENDORSTREAMLENGTH_bw 3
@@ -4312,9 +4318,9 @@ typedef union {
         uint32_t :4;
         uint32_t Trdstprotocolmajor :4;
         uint32_t Trdstprotocolminor :4;
-        // Specify frame length. Frame Length = trDstVendorFrameLength* 64 ; Frame Length should be a multiple of Bank Data Width.
+        // Specify frame length. Frame Length = trDstVendorFrameLength* 64 bytes; Frame Length should be a multiple of Bank Data Width. Only 1, 2, 4 and 8 (64, 128, 256 and 512 bytes) are supported, because the DST sink finds frame boundaries at the power of two given by the highest set bit of its frame length. Program the sink's trDstRamVendorFrameLength with the same value.
         uint32_t Trdstvendorframelength :4;
-        // Specify Stream length. A stream starts with "no compressed packet". Stream length specifies number of frames before a non-compressed packet is sent.Stream Length = 32* 2^(trDstVendorStreamLength + 1)
+        // Specify Stream length. A stream starts with "no compressed packet". Stream length specifies number of frames before a non-compressed packet is sent, and applies only when trDstSyncMode is 2'b01. Values 0 to 4 give Stream Length = 32* 2^trDstVendorStreamLength (32 to 512 frames); values 5 to 7 give 32.
         uint32_t Trdstvendorstreamlength :3;
         // DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.
         uint32_t Trdsttimestampconfig :1;
@@ -4335,6 +4341,7 @@ typedef union {
 #define DFD_DST__TRDSTINSTFEATURES__TRDSTINSTENREPEATEDHISTORY_bp 8
 #define DFD_DST__TRDSTINSTFEATURES__TRDSTINSTENREPEATEDHISTORY_bw 1
 #define DFD_DST__TRDSTINSTFEATURES__TRDSTINSTENREPEATEDHISTORY_reset 0x0
+// Source ID sent in the trace packet headers. Only bits [3:0] are used.
 #define DFD_DST__TRDSTINSTFEATURES__TRDSTSRCID_bm 0xfff0000
 #define DFD_DST__TRDSTINSTFEATURES__TRDSTSRCID_bp 16
 #define DFD_DST__TRDSTINSTFEATURES__TRDSTSRCID_bw 12
@@ -4350,6 +4357,7 @@ typedef union {
         uint32_t :6;
         uint32_t Trdstinstenrepeatedhistory :1;
         uint32_t :7;
+        // Source ID sent in the trace packet headers. Only bits [3:0] are used.
         uint32_t Trdstsrcid :12;
         uint32_t Trdstsrcbits :4;
     } f;
@@ -4357,7 +4365,7 @@ typedef union {
 } dfd_dst__Trdstinstfeatures_t;
 
 // reg - dfd_dst::CDbgDebugTraceCfg
-// Trace Source ID
+// Stored but not used. The trace packet headers carry trDstInstFeatures[trDstSrcID].
 #define DFD_DST__CDBGDEBUGTRACECFG__TRACESOURCEID_bm 0xf
 #define DFD_DST__CDBGDEBUGTRACECFG__TRACESOURCEID_bp 0
 #define DFD_DST__CDBGDEBUGTRACECFG__TRACESOURCEID_bw 4
@@ -4384,7 +4392,7 @@ typedef union {
 #define DFD_DST__CDBGDEBUGTRACECFG__FRAMECLOSUREMODE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Trace Source ID
+        // Stored but not used. The trace packet headers carry trDstInstFeatures[trDstSrcID].
         uint32_t TraceSourceId :4;
         // Use "Filler Packet" to align a stream of trace packets within a frame boundary.
         uint32_t TraceFrameFillByte :8;

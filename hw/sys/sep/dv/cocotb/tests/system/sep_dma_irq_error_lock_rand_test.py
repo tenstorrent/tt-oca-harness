@@ -1,13 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Secure DMA interrupt enable gate, size errors with recovery, and the range lock (logged).
+"""Secure DMA interrupt enable gate, size errors, the range lock and a non-zero ADDR_HI.
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense with a PROD image
 and zero disable vectors, because the leaf pulses ``rst_ni``. Every trial
 starts from a cold reset, because the register description states no write
-that releases INTR_STATE. Leg L3 reads state after reset, so it runs on a
-four-state simulator only (VCS); on Verilator the leaf logs ``L3-SKIP`` and
-runs L1 and L2.
+that releases INTR_STATE. All four legs run on every simulator.
 
 Leg L1, enable gate (``secure_dma.adoc``, INTR_STATE, INTR_ENABLE;
 ``interrupts.adoc``, SEP CPU Interrupt Vector Map). Six trials: a single-chunk
@@ -29,26 +27,54 @@ a write of 1 to STATUS.ERROR, with no reset, ERROR and ERROR_CODE read 0 and a
 legal copy completes with the destination equal to the source. Control:
 SHA-256 at encoding 2 completes with ERROR clear.
 
-Leg L3, range lock (VCS only, logged only). The register description does not
-name the write that applies the lock (RANGE_REGWEN is RW0C with reset True), so
-the lock check is blocked. The leg runs an outside-range trial
-(``OBS-DMA-RANGE-OUT``), a lock from idle and a lock after a size error, with
-unlock attempts 0x6, 0xF, 0x9 and 0x0 in a drawn order, and logs every
-read-back as ``OBS-DMA-LOCK LOG``. It grades nothing.
+Leg L3, range lock (``sep-programming.adoc``, zero fill procedure: write MuBi4
+False 0x9 to RANGE_REGWEN to fix the enabled memory range until reset;
+``dma.adoc``, Zero Fill; ``dma.hjson``, RANGE_VALID). A lock from idle and a
+lock after a size error, each from a cold reset: write BASE, LIMIT and
+RANGE_VALID=1, read them back with RANGE_REGWEN (control: the writes landed and
+RANGE_REGWEN reads True 0x6), write 0x9 to RANGE_REGWEN, then the unlock
+attempts 0x6, 0xF, 0x9 and 0x0 in a drawn order. After the lock write and after
+each attempt the leaf writes new BASE and LIMIT values and RANGE_VALID=0 and
+reads all four registers back. An outside-range copy runs first and is logged
+only (``OBS-DMA-RANGE-OUT``): the range does not bound a copy between internal
+addresses (``dma.adoc``, Zero Fill).
+
+Leg L4, non-zero ADDR_HI (``dma.adoc``, SEP secure DMA integration: the DMA
+master interface has 32-bit addresses and ASID 0x7 is its only route). A copy
+from the SRAM source to the SRAM destination with the SEP ASID, legal LO
+addresses and a drawn non-zero SRC_ADDR_HI, then the same copy with a drawn
+non-zero DST_ADDR_HI, must move no data to the 32-bit LO destination: every
+word of the destination and its guards reads back the sentinel. The copy must
+also end with DONE or ERROR in a bounded number of STATUS reads. STATUS.ERROR
+and ERROR_CODE are logged (``OBS-DMA-HI-ADDR``) and not graded, because no
+document defines the ADDR_HI rule for the SEP DMA route. Control: the same copy
+with both ADDR_HI at 0 completes and the destination equals the source. After
+each non-zero trial, with no reset, a write of 1 to STATUS.ERROR and a clean
+state precede a legal copy that must complete with the destination equal to the
+source.
 
 Randomization (``SepSeededRng`` from the run seed): the INTR_ENABLE values and
 the trial order of L1, the copy sizes and the multi-chunk shape, the L2 sizes,
 the buffer placement and the guards, the sentinel byte and the source words,
 and for L3 the outside case, the region sizes and order, the outside distance,
-the range values and the unlock-attempt orders. Every value is drawn before the
-first stimulus, on every simulator.
+the range values and the unlock-attempt orders, and for L4 the copy size and
+the two ADDR_HI values. Every value is drawn before the first stimulus, on
+every simulator.
 
 Checkers:
   CHK-DMA-IRQ       per L1 trial: the three lines against the gate model, with
                     the twin of the same event in the same seed.
   CHK-DMA-SIZE-ERR  per L2 kind: the error response, its clear and the
                     recovery copy; the encoding-2 hash control completes.
-  CHK-DMA-LOCK      blocked: ``OBS-DMA-LOCK LOG`` lines only, not counted.
+  CHK-DMA-LOCK      per L3 lock write and unlock attempt, in both contexts:
+                    RANGE_REGWEN reads 0x9, BASE and LIMIT read the values
+                    written before the lock and RANGE_VALID reads 1. Every
+                    new value differs from the locked one, so a write that
+                    lands changes the read-back.
+  CHK-DMA-HI-ADDR   per L4 side (SRC_ADDR_HI, DST_ADDR_HI): the destination
+                    footprint at DST_ADDR_LO keeps the sentinel, the copy ends,
+                    and the recovery copy completes; the ADDR_HI=0 control
+                    completes with the source data.
 """
 
 from __future__ import annotations
@@ -80,12 +106,15 @@ from seq_lib.sep_dma_ops import (
     RANGE_REGWEN,
     RANGE_VALID,
     ST_ERROR,
+    STATUS,
     TOTAL_DATA_SIZE,
     TRANSFER_WIDTH,
     DmaTimeout,
     SepDmaOps,
     SepMemWords,
+    asid_word,
     control_word,
+    transfer_width_word,
 )
 
 TEST = "sep_dma_irq_error_lock_rand_test"
@@ -94,7 +123,7 @@ TEST = "sep_dma_irq_error_lock_rand_test"
 SRAM_BASE = 0x1000_0000
 SRAM_LIMIT = 0x1003_FFFF
 SRAM_SIZE = SRAM_LIMIT - SRAM_BASE + 1
-ASID_SEP = 0x77
+ASID_SEP = asid_word(7, 7)
 
 EVENTS = ("done", "chunk", "error")
 EVENT_BIT = {
@@ -104,10 +133,7 @@ EVENT_BIT = {
 }
 INTR_EN_ALL = _D.mask32("INTR_ENABLE")
 L2_KINDS = ("total", "chunk", "both", "hash_w0", "hash_w1")
-UNLOCK_VALUES = (0x6, 0xF, 0x9, 0x0)
 OUTSIDE_CASES = (("src", "below"), ("src", "above"), ("dst", "below"), ("dst", "above"))
-REGWEN_TRUE = 0x6
-REGWEN_FALSE = 0x9
 
 MAX_BYTES = 1024  # largest L1/L2 transfer
 POST_WAIT = 200  # clocks of line sampling after DONE or ERROR
@@ -119,7 +145,16 @@ SIZE_ERR_MASK = _D.field_mask("ERROR_CODE", "size_error")
 SRC_ERR_MASK = _D.field_mask("ERROR_CODE", "src_addr_error")
 DST_ERR_MASK = _D.field_mask("ERROR_CODE", "dst_addr_error")
 REGWEN_MASK = _D.field_mask("RANGE_REGWEN", "regwen")
+_REGWEN_LSB = _D.field_lsb("RANGE_REGWEN", "regwen")
+_REGWEN_ALL = REGWEN_MASK >> _REGWEN_LSB
+# RANGE_REGWEN is MuBi4 with reset True; False is its bitwise complement.
+REGWEN_TRUE = (_D.reset32("RANGE_REGWEN") & REGWEN_MASK) >> _REGWEN_LSB
+REGWEN_FALSE = ~REGWEN_TRUE & _REGWEN_ALL
+UNLOCK_VALUES = (REGWEN_TRUE, _REGWEN_ALL, REGWEN_FALSE, 0)
+ADDR_HI_ALL = _D.mask32("SRC_ADDR_HI")
+HI_SIDES = ("src", "dst")
 VALID_MASK = _D.field_mask("RANGE_VALID", "range_valid")
+_VALID_LSB = _D.field_lsb("RANGE_VALID", "range_valid")
 
 
 def _word(b: int) -> int:
@@ -171,12 +206,19 @@ class _Cfg:
         self.l3_src_first = bool(rng.getrandbits(1))
         self.out_dist = 4 * rng.randrange(1, 1025)
         self.out_off = 4 * rng.randrange(0, 0x4000)
-        self.lock_vals = [self._range_pair(rng) for _ in range(12)]
+        self.lock_vals = [self._range_pair(rng)]
+        while len(self.lock_vals) < 12:
+            nb, nl = self._range_pair(rng)
+            if nb != self.lock_vals[0][0] and nl != self.lock_vals[0][1]:
+                self.lock_vals.append((nb, nl))
         self.orders = {}
         for ctx in ("idle", "after_error"):
             o = list(UNLOCK_VALUES)
             rng.shuffle(o)
             self.orders[ctx] = o
+        # L4.
+        self.hi_size = 4 * rng.randrange(4, MAX_BYTES // 4 + 1)
+        self.addr_hi = {s: rng.randrange(1, ADDR_HI_ALL + 1) for s in HI_SIDES}
 
     def _place(self, rng, size: int) -> tuple[int, int]:
         span = size + 2 * self.guard
@@ -205,14 +247,16 @@ class _Cfg:
             f"l3_src_first={int(self.l3_src_first)} out_dist={self.out_dist} "
             f"orders="
             + ";".join(f"{c}:" + ",".join(f"0x{v:x}" for v in o) for c, o in self.orders.items())
+            + f" l4_size={self.hi_size} "
+            + " ".join(f"l4_{s}_hi=0x{self.addr_hi[s]:08x}" for s in HI_SIDES)
         )
 
 
 @pyuvm.test()
 class sep_dma_irq_error_lock_rand_test(sep_base_test):
-    """DMA interrupt enable gate, size errors with recovery, logged range lock."""
+    """DMA interrupt enable gate, size errors with recovery, range lock."""
 
-    required_evidence = ("CHK-DMA-IRQ", "CHK-DMA-SIZE-ERR")
+    required_evidence = ("CHK-DMA-IRQ", "CHK-DMA-SIZE-ERR", "CHK-DMA-LOCK", "CHK-DMA-HI-ADDR")
 
     # ---- helpers -----------------------------------------------------------
     def _pass(self, chk: str, line: str) -> None:
@@ -354,7 +398,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         if kind in ("chunk", "both"):
             await ops.wr(CHUNK_DATA_SIZE, 0)
         if kind.startswith("hash"):
-            await ops.wr(TRANSFER_WIDTH, int(kind[-1]))
+            await ops.wr(TRANSFER_WIDTH, transfer_width_word(int(kind[-1])))
             await ops.go(opcode=OP_SHA256, initial=1)
         else:
             await ops.go(opcode=OP_COPY, initial=1)
@@ -368,10 +412,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         istate = await ops.rd(INTR_STATE)
         await ClockCycles(cocotb.top.clk_i, 8)
         src11 = int(self.irq.any_high_since(m, "src11"))
-        # Recovery with no reset.
-        await ops.clean_state()
+        # Recovery with no reset: write 1 to STATUS.ERROR alone.
+        await ops.wr(STATUS, ST_ERROR)
         st_c = await ops.read_status()
         ecode_c = await ops.rd(ERROR_CODE)
+        await ops.clean_state()
         await ops.wr(CONTROL, control_word())
         await self._sentinel_dst()
         await ops.program_transfer(src=c.src, dst=c.dst, total=rsize, chunk=rsize)
@@ -400,11 +445,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             and rec_ok,
         )
 
-    async def _l2_control(self) -> int:
-        """SHA-256 at TRANSFER_WIDTH encoding 2 completes with ERROR clear (window closed)."""
+    async def _l2_control(self, kind: str) -> int:
+        """SHA-256 at the size of `kind` and TRANSFER_WIDTH encoding 2 completes with ERROR clear."""
         c = self.cfg_t
         ops = self.ops
-        size = c.l2_size["hash_w0"]
+        size = c.l2_size[kind]
         await self._cold_reset()
         await self._base_config(MAX_BYTES // 4)
         await ops.wr(INTR_ENABLE, INTR_EN_ALL)
@@ -414,9 +459,10 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         ecode = await ops.rd(ERROR_CODE)
         ok = int(res.status.done and not res.status.error and (ecode & ERROR_CODE_MASK) == 0)
         self.logger.info(
-            "CTL-DMA-SIZE-ERR LOG seed=%d hash_width_enc=2 size=%d control_width_ok=%d "
+            "CTL-DMA-SIZE-ERR LOG seed=%d kind=%s hash_width_enc=2 size=%d control_width_ok=%d "
             "error_code=0x%x %s",
             c.seed,
+            kind,
             size,
             ok,
             ecode,
@@ -426,23 +472,135 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
 
     async def _leg_l2(self) -> None:
         results = [await self._l2_kind(k) for k in L2_KINDS]
-        ctl = await self._l2_control()
-        if not ctl:
-            self._ctrl_missing("CHK-DMA-SIZE-ERR control: SHA-256 at width encoding 2 failed")
-        for line, ok in results:
-            line = line.replace("@@CTRL@@", f"control_width_ok={ctl}")
+        # One control per hash kind, at that kind's size: the SIZE_ERROR of each
+        # width case then comes from the width alone.
+        hash_kinds = [k for k in L2_KINDS if k.startswith("hash")]
+        ctl = {k: await self._l2_control(k) for k in hash_kinds}
+        for k in hash_kinds:
+            if not ctl[k]:
+                self._ctrl_missing(
+                    f"CHK-DMA-SIZE-ERR control: SHA-256 at width encoding 2 and size "
+                    f"{self.cfg_t.l2_size[k]} (kind={k}) failed"
+                )
+        for (line, ok), k in zip(results, L2_KINDS):
+            k_ctl = ctl[k] if k in ctl else int(all(ctl.values()))
+            line = line.replace("@@CTRL@@", f"control_width_ok={k_ctl}")
             if not ok:
                 self._fail("CHK-DMA-SIZE-ERR", line)
             self._pass("CHK-DMA-SIZE-ERR", line)
 
-    # ---- L3 (logged only) ----------------------------------------------------
+    # ---- L4 ------------------------------------------------------------------
+    async def _hi_copy(self, src_hi: int, dst_hi: int):
+        """One L4 copy; returns (last STATUS, ended, ERROR_CODE, destination footprint).
+
+        The footprint is the destination of the copy and its two guards, read
+        back from the SRAM after the copy ends or the STATUS bound expires.
+        """
+        c = self.cfg_t
+        ops = self.ops
+        size = c.hi_size
+        await ops.program_transfer(
+            src=c.src, dst=c.dst, total=size, chunk=size, src_hi=src_hi, dst_hi=dst_hi
+        )
+        await ops.go(opcode=OP_COPY, initial=1)
+        st, ended = None, False
+        for _ in range(ops.done_bound(size)):
+            st = await ops.read_status()
+            if st.done or st.error:
+                ended = True
+                break
+        ecode = await ops.rd(ERROR_CODE)
+        foot = await self.mem.read(c.dst - c.guard, (size + 2 * c.guard) // 4)
+        return st, ended, ecode, foot
+
+    def _hi_image_ok(self, foot: list[int]) -> tuple[int, int]:
+        """(source mismatches, sentinel mismatches) of a footprint after a legal copy."""
+        c = self.cfg_t
+        g = c.guard // 4
+        n = c.hi_size // 4
+        sent = _word(c.sentinel)
+        mism = sum(1 for got, w in zip(foot[g : g + n], c.words) if got != w)
+        guard_bad = sum(1 for w in foot[:g] + foot[g + n :] if w != sent)
+        return mism, guard_bad
+
+    async def _l4_control(self) -> int:
+        """The L4 copy with both ADDR_HI at 0 completes with the source data."""
+        c = self.cfg_t
+        await self._cold_reset()
+        await self._base_config(c.hi_size // 4)
+        st, ended, ecode, foot = await self._hi_copy(0, 0)
+        mism, guard_bad = self._hi_image_ok(foot)
+        ok = int(ended and st.done and not st.error and mism == 0 and guard_bad == 0)
+        self.logger.info(
+            "CTL-DMA-HI-ADDR LOG seed=%d size=%d src=0x%08x dst=0x%08x control_ok=%d "
+            "mismatch=%d guard_bad=%d error_code=0x%x %s",
+            c.seed,
+            c.hi_size,
+            c.src,
+            c.dst,
+            ok,
+            mism,
+            guard_bad,
+            ecode,
+            st.fmt(),
+        )
+        return ok
+
+    async def _l4_side(self, side: str) -> tuple[str, bool]:
+        c = self.cfg_t
+        ops = self.ops
+        hi = c.addr_hi[side]
+        await self._cold_reset()
+        await self._base_config(c.hi_size // 4)
+        st, ended, ecode, foot = await self._hi_copy(
+            hi if side == "src" else 0, hi if side == "dst" else 0
+        )
+        sent = _word(c.sentinel)
+        moved = sum(1 for w in foot if w != sent)
+        self.logger.info(
+            "OBS-DMA-HI-ADDR seed=%d side=%s addr_hi=0x%08x error=%d done=%d src_err=%d "
+            "dst_err=%d error_code=0x%x %s",
+            c.seed,
+            side,
+            hi,
+            st.error,
+            st.done,
+            int(bool(ecode & SRC_ERR_MASK)),
+            int(bool(ecode & DST_ERR_MASK)),
+            ecode,
+            st.fmt(),
+        )
+        # Recovery with no reset: write 1 to STATUS.ERROR, then a clean state.
+        await ops.wr(STATUS, ST_ERROR)
+        await ops.clean_state()
+        await ops.wr(CONTROL, control_word())
+        await self._sentinel_dst()
+        rst, rended, _, rec = await self._hi_copy(0, 0)
+        mism, guard_bad = self._hi_image_ok(rec)
+        rec_ok = rended and rst.done and not rst.error and mism == 0 and guard_bad == 0
+        line = (
+            f"side={side} addr_hi=0x{hi:08x} lo_dst=0x{c.dst:08x} size={c.hi_size} "
+            f"ended={int(ended)} done={st.done} footprint_words={len(foot)} "
+            f"footprint_changed={moved} recovery_done={int(rec_ok)} @@CTRL@@ "
+            f"recovery_mismatch={mism} recovery_guard_bad={guard_bad}"
+        )
+        return line, ended and moved == 0 and rec_ok
+
+    async def _leg_l4(self) -> None:
+        results = [await self._l4_side(s) for s in HI_SIDES]
+        ctl = await self._l4_control()
+        if not ctl:
+            self._ctrl_missing("CHK-DMA-HI-ADDR control: the ADDR_HI=0 copy failed")
+        for line, ok in results:
+            line = line.replace("@@CTRL@@", f"control_ok={ctl}")
+            if not ok:
+                self._fail("CHK-DMA-HI-ADDR", line)
+            self._pass("CHK-DMA-HI-ADDR", line)
+
+    # ---- L3 ------------------------------------------------------------------
     async def _wr_log(self, addr: int, value: int) -> int:
         seq = await self.ops.access(SepAxiOp.WRITE, addr, value, ungraded=True)
         return int(seq.resp_code)
-
-    async def _rd_log(self, addr: int) -> tuple[int, int]:
-        seq = await self.ops.access(SepAxiOp.READ, addr, ungraded=True)
-        return int(seq.rdata) & 0xFFFF_FFFF, int(seq.resp_code)
 
     async def _l3_outside(self) -> None:
         c = self.cfg_t
@@ -498,38 +656,35 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
 
     async def _lock_attempts(self, ctx: str, pre: tuple[int, int]) -> None:
         c = self.cfg_t
+        ops = self.ops
         vals = iter(c.lock_vals[1:] if ctx == "idle" else c.lock_vals[6:])
 
         async def attempt(name: str, regwen_val: int) -> None:
-            resp_rw = await self._wr_log(RANGE_REGWEN, regwen_val)
+            resp_rw = await self._wr_log(RANGE_REGWEN, regwen_val << _REGWEN_LSB)
             nb, nl = next(vals)
+            if nb == pre[0] or nl == pre[1]:
+                self._ctrl_missing(
+                    f"CHK-DMA-LOCK ctx={ctx} attempt={name}: new value equals the locked "
+                    f"value (0x{nb:08x}/0x{nl:08x})"
+                )
             resps = [
                 await self._wr_log(RANGE_BASE, nb),
                 await self._wr_log(RANGE_LIMIT, nl),
                 await self._wr_log(RANGE_VALID, 0),
             ]
-            regwen, _ = await self._rd_log(RANGE_REGWEN)
-            base, _ = await self._rd_log(RANGE_BASE)
-            limit, _ = await self._rd_log(RANGE_LIMIT)
-            valid, _ = await self._rd_log(RANGE_VALID)
-            self.logger.info(
-                "OBS-DMA-LOCK LOG seed=%d blocked=1 attempt=%s regwen=0x%x base=0x%08x "
-                "limit=0x%08x valid=%d ctx=%s pre_lock=0x%08x/0x%08x new=0x%08x/0x%08x "
-                "write_resp=%d/%s",
-                c.seed,
-                name,
-                regwen & REGWEN_MASK,
-                base,
-                limit,
-                valid & VALID_MASK,
-                ctx,
-                pre[0],
-                pre[1],
-                nb,
-                nl,
-                resp_rw,
-                "/".join(map(str, resps)),
+            regwen = (await ops.rd(RANGE_REGWEN) & REGWEN_MASK) >> _REGWEN_LSB
+            base = await ops.rd(RANGE_BASE)
+            limit = await ops.rd(RANGE_LIMIT)
+            valid = (await ops.rd(RANGE_VALID) & VALID_MASK) >> _VALID_LSB
+            line = (
+                f"ctx={ctx} attempt={name} regwen=0x{regwen:x}/0x{REGWEN_FALSE:x} "
+                f"base=0x{base:08x}/0x{pre[0]:08x} limit=0x{limit:08x}/0x{pre[1]:08x} "
+                f"valid={valid}/1 new=0x{nb:08x}/0x{nl:08x}/0 "
+                f"write_resp={resp_rw}/{'/'.join(map(str, resps))} control_pre_lock_landed=1"
             )
+            if regwen != REGWEN_FALSE or base != pre[0] or limit != pre[1] or valid != 1:
+                self._fail("CHK-DMA-LOCK", line)
+            self._pass("CHK-DMA-LOCK", line)
 
         await attempt("lock", REGWEN_FALSE)
         for v in c.orders[ctx]:
@@ -539,40 +694,35 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         c = self.cfg_t
         ops = self.ops
         await self._cold_reset()
+        open_graded_window(TEST, self.logger)
         if ctx == "idle":
             pre = c.lock_vals[0]
         else:
             pre = (SRAM_BASE, SRAM_LIMIT)
             await ops.wr(_D.addr("ADDR_SPACE_ID"), ASID_SEP)
-        await self._wr_log(RANGE_BASE, pre[0])
-        await self._wr_log(RANGE_LIMIT, pre[1])
-        base, _ = await self._rd_log(RANGE_BASE)
-        limit, _ = await self._rd_log(RANGE_LIMIT)
-        regwen, _ = await self._rd_log(RANGE_REGWEN)
-        await self._wr_log(RANGE_VALID, 1)
-        valid, _ = await self._rd_log(RANGE_VALID)
-        err_seen = "-"
+        await ops.wr(RANGE_BASE, pre[0])
+        await ops.wr(RANGE_LIMIT, pre[1])
+        await ops.wr(RANGE_VALID, 1 << _VALID_LSB)
+        base = await ops.rd(RANGE_BASE)
+        limit = await ops.rd(RANGE_LIMIT)
+        valid = (await ops.rd(RANGE_VALID) & VALID_MASK) >> _VALID_LSB
+        regwen = (await ops.rd(RANGE_REGWEN) & REGWEN_MASK) >> _REGWEN_LSB
+        err_seen = 1
         if ctx == "after_error":
             src, dst = (c.src, c.dst) if c.l3_src_first else (c.dst, c.src)
             await ops.program_transfer(src=src, dst=dst, total=0, chunk=c.zero_chunk)
             await ops.go(opcode=OP_COPY, initial=1)
             _, seen = await self._wait_error(ERR_POLL_BOUND)
-            err_seen = str(int(seen))
-        self.logger.info(
-            "CTL-DMA-LOCK LOG seed=%d ctx=%s base=0x%08x/0x%08x limit=0x%08x/0x%08x "
-            "regwen=0x%x expect_regwen=0x%x valid=%d error_seen=%s",
-            c.seed,
-            ctx,
-            base,
-            pre[0],
-            limit,
-            pre[1],
-            regwen & REGWEN_MASK,
-            REGWEN_TRUE,
-            valid & VALID_MASK,
-            err_seen,
+            err_seen = int(seen)
+        ctl = (
+            f"ctx={ctx} base=0x{base:08x}/0x{pre[0]:08x} limit=0x{limit:08x}/0x{pre[1]:08x} "
+            f"regwen=0x{regwen:x}/0x{REGWEN_TRUE:x} valid={valid}/1 error_seen={err_seen}"
         )
+        self.logger.info("CTL-DMA-LOCK seed=%d %s", c.seed, ctl)
+        if (base, limit, regwen, valid, err_seen) != (pre[0], pre[1], REGWEN_TRUE, 1, 1):
+            self._ctrl_missing(f"CHK-DMA-LOCK control before the lock: {ctl}")
         await self._lock_attempts(ctx, pre)
+        close_graded_window(self.logger)
 
     async def _leg_l3(self) -> None:
         await self._l3_outside()
@@ -584,14 +734,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         seed = self.random_seed()
         self.cfg_t = c = _Cfg(seed)
         self.n_checks = 0
-        sim = str(getattr(cocotb, "SIM_NAME", "") or "").lower()
-        run_l3 = "verilator" not in sim
         self.logger.info(
-            "PLAN seed=%d L1 6 trials, L2 5 kinds + width-2 control, L3 %s (sim=%s); "
-            "every trial from a cold reset",
+            "PLAN seed=%d L1 6 trials, L2 5 kinds + width-2 control, L3 outside copy + "
+            "lock from idle and after an error with 4 unlock attempts each, L4 2 ADDR_HI "
+            "sides + ADDR_HI=0 control; every trial from a cold reset",
             seed,
-            "logged only" if run_l3 else "skipped",
-            sim,
         )
         self.logger.info("DRAW %s", c.draw_line())
 
@@ -612,15 +759,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
 
         await self._leg_l1()
         await self._leg_l2()
-        if run_l3:
-            await self._leg_l3()
-        else:
-            self.logger.info(
-                "L3-SKIP LOG seed=%d sim=%s: leg L3 reads state after reset and runs on a "
-                "four-state simulator only",
-                seed,
-                sim,
-            )
+        await self._leg_l3()
+        await self._leg_l4()
         close_graded_window(self.logger)
         await self.irq.stop()
         await self.busy.stop()

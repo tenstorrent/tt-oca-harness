@@ -3,9 +3,14 @@
 //
 // SEP CPU LSU local-alias twin test. The 768 MiB window at SEP_LOCAL_BASE_ADDR
 // (reset 0xD000_0000) rewrites to 0x1000_0000 (hw/sys/sep/doc/fabric.adoc,
-// "Address Remapping"), so an alias address answers as its direct twin. The
-// window base stays at its reset value: the specification states no legal
-// range for it.
+// "Address Remapping"), so an alias address answers as its direct twin. After
+// the reset-base accesses the firmware moves the window to the patched base,
+// repeats the scratch and SPI CSID twins and a marker write through the moved
+// window, and restores the reset base. The test draws the moved base 16 MiB
+// aligned in [0xD100_0000, 0xEF00_0000]; the specification states no legal
+// range for the base. The firmware makes no access to the reset-base alias
+// while the window is moved: that address then matches no local route, and the
+// specification states no CPU consequence of an error response on a load.
 //
 // The firmware only drives the accesses and prints what it read. The cocotb
 // test sep_cpu_lsu_alias_window_twin_test seeds the values, patches them into
@@ -15,10 +20,15 @@
 //
 // Console lines (one per access group):
 //   TWIN-PARAMS scratch=<v> csid=<v> sram_start=<v> sram_end=<v> marker=<v>
-//               local_base=<v>
+//               local_base=<v> moved_base=<v> moved_marker=<v>
 //   TWIN unit=<name> d1=<v> a=<v> d2=<v>   static word: direct, alias, direct
 //   TWIN unit=<name> d1=<v> a=<v>          SRAM word: direct, alias
 //   TWIN-WR alias=<addr> direct=<v>        marker write through the alias
+//   TWIN-MOVED-BASE base=<v> readback=<v>  moved base written, CSR read back
+//   TWIN-MOVED unit=<name> d1=<v> a=<v> d2=<v>
+//                                          static word: direct, moved alias, direct
+//   TWIN-MOVED-WR alias=<addr> direct=<v>  marker write through the moved alias
+//   TWIN-MOVED-RESTORE readback=<v>        CSR read back after the reset base write
 
 #include <stdint.h>
 
@@ -29,12 +39,15 @@
 #define TWIN_PARAM_MAGIC 0xA7C1D3E5u
 
 #define WINDOW_BASE SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR_reset
+#define LOCAL_BASE_REG SEP_TOP_SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_BASE_ADDR
 #define SRAM_BASE SEP_TOP_SEP_SRAM_BASE_ADDR
 #define SRAM_SIZE SEP_TOP_SEP_SRAM_SIZE
 // The alias window maps onto the local region (hw/sys/sep/doc/fabric.adoc, SEP
 // CPU local-alias traffic). The test patches the first direct address of that
 // region, SEP_TOP_REG_MAP_BASE_ADDR of the generated map, into g_twin_params[6].
 #define ALIAS_OF(direct) ((direct) + (WINDOW_BASE - g_twin_params[6]))
+// Alias of a direct address with the window at the moved base g_twin_params[7].
+#define MOVED_OF(direct) ((direct) + (g_twin_params[7] - g_twin_params[6]))
 
 // One static word per unit class. The cold scratch word and the SPI host CSID
 // are writable; SEP_VERSION_ID and COMPONENT_ID are read-only; AES
@@ -49,11 +62,13 @@
 #define SRAM_END_WORD (SRAM_BASE + SRAM_SIZE - 4u)
 
 // Layout: [0]=magic, [1]=scratch value, [2]=CSID value, [3]=SRAM start-word
-// value, [4]=SRAM last-word value, [5]=marker, [6]=local region base. The test
-// patches the block from the run seed and the generated map; the committed
-// defaults keep a standalone directed image.
-volatile uint32_t g_twin_params[7] = {
-    TWIN_PARAM_MAGIC, 0x5C7A7C11u, 0x0000C51Du, 0x5A7A0001u, 0x5A7AFFFCu, 0x3A7CE7EDu, 0x10000000u,
+// value, [4]=SRAM last-word value, [5]=marker, [6]=local region base,
+// [7]=moved window base, [8]=marker through the moved window. The test patches
+// the block from the run seed and the generated map; the committed defaults
+// keep a standalone directed image.
+volatile uint32_t g_twin_params[9] = {
+    TWIN_PARAM_MAGIC, 0x5C7A7C11u, 0x0000C51Du, 0x5A7A0001u, 0x5A7AFFFCu,
+    0x3A7CE7EDu,      0x10000000u, 0xE0000000u, 0x030BE7EDu,
 };
 
 static inline void wr32(uint32_t addr, uint32_t v) {
@@ -69,11 +84,12 @@ static void put_kv(const char *key, uint32_t v) {
     sep_mbx_puthex(v);
 }
 
-static void twin_static(const char *name, uint32_t direct) {
+static void twin_static(const char *tag, const char *name, uint32_t direct, uint32_t alias) {
     uint32_t d1 = rd32(direct);
-    uint32_t a = rd32(ALIAS_OF(direct));
+    uint32_t a = rd32(alias);
     uint32_t d2 = rd32(direct);
-    sep_mbx_puts("TWIN unit=");
+    sep_mbx_puts(tag);
+    sep_mbx_puts(" unit=");
     sep_mbx_puts(name);
     put_kv(" d1=", d1);
     put_kv(" a=", a);
@@ -106,6 +122,8 @@ int main(void) {
     put_kv(" sram_end=", g_twin_params[4]);
     put_kv(" marker=", g_twin_params[5]);
     put_kv(" local_base=", g_twin_params[6]);
+    put_kv(" moved_base=", g_twin_params[7]);
+    put_kv(" moved_marker=", g_twin_params[8]);
     sep_mbx_puts("\n");
 
     // Seed each writable static word and both SRAM words at the direct address.
@@ -114,11 +132,11 @@ int main(void) {
     wr32(SRAM_START_WORD, g_twin_params[3]);
     wr32(SRAM_END_WORD, g_twin_params[4]);
 
-    twin_static("scratch", SCRATCH_WORD);
-    twin_static("aes_word", AES_WORD);
-    twin_static("sys_csr", SYS_CSR_WORD);
-    twin_static("spi_word", SPI_WORD);
-    twin_static("esrc_word", ESRC_WORD);
+    twin_static("TWIN", "scratch", SCRATCH_WORD, ALIAS_OF(SCRATCH_WORD));
+    twin_static("TWIN", "aes_word", AES_WORD, ALIAS_OF(AES_WORD));
+    twin_static("TWIN", "sys_csr", SYS_CSR_WORD, ALIAS_OF(SYS_CSR_WORD));
+    twin_static("TWIN", "spi_word", SPI_WORD, ALIAS_OF(SPI_WORD));
+    twin_static("TWIN", "esrc_word", ESRC_WORD, ALIAS_OF(ESRC_WORD));
 
     twin_sram("sram_start", SRAM_START_WORD);
     twin_sram("sram_end", SRAM_END_WORD);
@@ -129,6 +147,28 @@ int main(void) {
     uint32_t back = rd32(SCRATCH_WORD);
     put_kv("TWIN-WR alias=", ALIAS_OF(SCRATCH_WORD));
     put_kv(" direct=", back);
+    sep_mbx_puts("\n");
+
+    // Moved window: program the patched base and read the CSR back, repeat the
+    // scratch and SPI CSID twins through it, write a second marker through the
+    // moved alias of the scratch word and read it back direct, then restore the
+    // reset base.
+    wr32(LOCAL_BASE_REG, g_twin_params[7]);
+    put_kv("TWIN-MOVED-BASE base=", g_twin_params[7]);
+    put_kv(" readback=", rd32(LOCAL_BASE_REG));
+    sep_mbx_puts("\n");
+
+    twin_static("TWIN-MOVED", "scratch", SCRATCH_WORD, MOVED_OF(SCRATCH_WORD));
+    twin_static("TWIN-MOVED", "spi_word", SPI_WORD, MOVED_OF(SPI_WORD));
+
+    wr32(MOVED_OF(SCRATCH_WORD), g_twin_params[8]);
+    back = rd32(SCRATCH_WORD);
+    put_kv("TWIN-MOVED-WR alias=", MOVED_OF(SCRATCH_WORD));
+    put_kv(" direct=", back);
+    sep_mbx_puts("\n");
+
+    wr32(LOCAL_BASE_REG, WINDOW_BASE);
+    put_kv("TWIN-MOVED-RESTORE readback=", rd32(LOCAL_BASE_REG));
     sep_mbx_puts("\n");
 
     sep_mbx_puts("TWIN-DONE\n");

@@ -135,10 +135,17 @@ flash = OcahSpiFlash(
 | `flash.jedec_id`, `.flash_size`, `.addr_bytes`, `.status_reg1`, `.status_reg2`, `.write_enabled` | read-only | The configuration and state a checker predicts against |
 
 Frame record keys: `opcode`, `addr`, `data_out` (complete bytes the device
-sent), `data_in` (payload bytes the device accepted), `ok`, `reason`
-(`""`, `"wel_clear"`, or `"unknown_opcode"`).  A PAGE PROGRAM or SECTOR ERASE
-issued with the write-enable latch clear is refused: the address is decoded,
-no payload is taken, memory is unchanged, and the record carries `ok=False`.
+sent), `data_in` (complete payload bytes the device received), `ok` (the
+device accepted the frame), `reason`
+(`""`, `"wel_clear"`, `"partial_byte"`, or `"unknown_opcode"`).  A PAGE
+PROGRAM or SECTOR ERASE issued with the write-enable latch clear is refused:
+the address is decoded, no payload is taken, memory is unchanged, and the
+record carries `ok=False`.  A PAGE PROGRAM whose chip-select rises 1 to 7 bits
+into a payload byte, sent with the latch set, is refused with
+`reason="partial_byte"`, also when a registered callback handles PAGE
+PROGRAM: the callback is not called, memory and the latch are unchanged, and
+`data_in` holds the complete payload bytes.  A frame refused for a clear latch
+is not graded for its byte boundary.
 The device is instant-ready: the BUSY bit never sets and a program or erase
 completes when chip-select rises.
 
@@ -215,7 +222,7 @@ seq.check_host_responses()        # CHK-SPI-HOST-*: the controller received what
 | `page_program(addr, data)` | `None` | 0x02, address, payload |
 | `sector_erase(addr)` | `None` | 0x20, address |
 | `read(addr, n)`, `fast_read(addr, n)` | `bytes` | 0x03 / 0x0B (one dummy byte), address, `n` response bytes |
-| `raw_command(opcode, *, addr, dummy_bytes, tx, rx_len)` | `bytes` | Any opcode, for out-of-scope probes |
+| `raw_command(opcode, *, addr, dummy_bytes, tx, rx_len, tail_bits)` | `bytes` | Any opcode, for out-of-scope probes; `tail_bits` (0 to 7) ends the frame that many bits into a further byte |
 | `responses(opcode)` | `list[bytes]` | Every response the controller received for that opcode |
 
 ---
@@ -281,6 +288,7 @@ rules and their identifiers:
 | `CHK-SPI-STATUS-WEL` | READ STATUS REGISTER 1 reported the latch the model predicts (set after WRITE ENABLE, clear after WRITE DISABLE, consumed by a program or erase) |
 | `CHK-SPI-STATUS-SR2` | READ STATUS REGISTER 2 reported the configured register |
 | `CHK-SPI-WREN-ORDER` | A program or erase was accepted only with the latch set, and refused (no payload taken) only with it clear |
+| `CHK-SPI-FRAME-BYTES` | A PAGE PROGRAM sent with the latch set ended on a payload byte boundary |
 | `CHK-SPI-READ-DATA` | READ and FAST READ streamed the model's bytes at that address |
 | `CHK-SPI-HOST-JEDEC`, `-STATUS`, `-READBACK` | The controller received, frame by frame, what the device sent |
 | `CHK-SPI-CMD-ORDER` | The in-scope opcode sequence equals the expected one |
@@ -383,7 +391,8 @@ python3 tools/dv/run_dv.py --dut smc --items smc_spi_pad_bfm_test --tool verilat
 ```
 
 The harness selftests (`ocah_spi_jedec_test`, `ocah_spi_program_readback_test`,
-`ocah_spi_erase_test`, `ocah_spi_ordering_test`, `ocah_spi_unsupported_test`)
+`ocah_spi_erase_test`, `ocah_spi_ordering_test`, `ocah_spi_unsupported_test`,
+`ocah_spi_partial_byte_test`)
 prove the device, the controller engine, the monitor, and the checker against
 each other; each carries an in-band probe that hands a fail-fast checker a
 wrong identifier, pattern, order, vacuous erase, or unprotected program and

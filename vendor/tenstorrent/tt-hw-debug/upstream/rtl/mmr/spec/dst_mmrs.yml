@@ -140,8 +140,10 @@ trDstControl:
     FIELDS_RANGE: '17:16'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: When the field is set tp 2'b10, sent timestamp. All other vlaues
-      not NA.
+    DESCRIPTION: 'Periodic sync mode. 2''b00: off. 2''b01: stream counting, with
+      trDstVendorStreamLength frames between non-compressed packets. 2''b10: send
+      a timestamp packet every 2^(trDstSyncMax + 4) Cluster clocks. 2''b11: no
+      effect, as 2''b00.'
     HW_READ: DST
     SW_WRITE: W
     SW_READ: R
@@ -224,8 +226,11 @@ trDstImpl:
     FIELDS_RANGE: '27:24'
     RESET_VALUE: '1'
     LEGAL_VALUE: ''
-    DESCRIPTION: Specify frame length. Frame Length = trDstVendorFrameLength* 64 ;
-      Frame Length should be a multiple of Bank Data Width.
+    DESCRIPTION: Specify frame length. Frame Length = trDstVendorFrameLength* 64 bytes;
+      Frame Length should be a multiple of Bank Data Width. Only 1, 2, 4 and 8 (64,
+      128, 256 and 512 bytes) are supported, because the DST sink finds frame boundaries
+      at the power of two given by the highest set bit of its frame length. Program
+      the sink's trDstRamVendorFrameLength with the same value.
     SW_WRITE: W
     SW_READ: R
     SW_TYPE: ''
@@ -235,8 +240,9 @@ trDstImpl:
     RESET_VALUE: '4'
     LEGAL_VALUE: ''
     DESCRIPTION: Specify Stream length. A stream starts with "no compressed packet".
-      Stream length specifies number of frames before a non-compressed packet is sent.Stream
-      Length = 32* 2^(trDstVendorStreamLength + 1)
+      Stream length specifies number of frames before a non-compressed packet is sent,
+      and applies only when trDstSyncMode is 2'b01. Values 0 to 4 give Stream Length
+      = 32* 2^trDstVendorStreamLength (32 to 512 frames); values 5 to 7 give 32.
     SW_WRITE: W
     SW_READ: R
     SW_TYPE: ''
@@ -289,7 +295,7 @@ trDstInstFeatures:
     FIELDS_RANGE: '27:16'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: Source ID sent in the trace packet headers. Only bits [3:0] are used.
     SW_WRITE: W
     SW_READ: R
     SW_TYPE: ''
@@ -364,7 +370,7 @@ c_dbg_debug_trace_cfg:
     FIELDS_RANGE: '3:0'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: 'Trace Source ID'
+    DESCRIPTION: Stored but not used. The trace packet headers carry trDstInstFeatures[trDstSrcID].
     SW_WRITE: W
     SW_READ: R
     SW_TYPE: ''

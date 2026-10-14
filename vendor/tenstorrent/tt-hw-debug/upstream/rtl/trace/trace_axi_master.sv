@@ -90,6 +90,7 @@ module trace_axi_master #(
     } state_t;
 
     state_t state, next_state;
+    logic [$bits(state_t)-1:0] state_q;
     logic next_ready_o;
     axi_req_t next_axi_req_o;
 
@@ -101,8 +102,9 @@ module trace_axi_master #(
         .rst_n (rst_ni),
         .en    ('1),
         .in    (next_state),
-        .out   (state)
+        .out   (state_q)
     );
+    assign state = state_t'(state_q);
     generic_dff #(
         .WIDTH       ($bits(logic)),
         .RESET_VALUE ('1)

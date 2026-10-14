@@ -25,7 +25,7 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
   localparam int unsigned IpPollIntervalCycles = 64;
   localparam int unsigned IpWaitSlackCycles = 1024;
   // Keyed writes each contribute two accesses; compare polling adds variable reads.
-  localparam int unsigned FixedAccesses = 83;
+  localparam int unsigned FixedAccesses = 85;
   localparam int unsigned FeedCases = 2;
   localparam bit [31:0] CountStart = 32'h0100_0000;
   localparam bit [31:0] ScaledStart = 32'h0001_0000;
@@ -146,8 +146,8 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
                      ));
     end
 
-    wdt_write(WDT_CTRL, AlwaysMask | 32'(ScaledShift));
-    ctrl_read(AlwaysMask | 32'(ScaledShift), ctrl);
+    wdt_write(WDT_CTRL, AlwaysMask | (32'(ScaledShift) << WDT_CTRL_WDOGSCALE_SHIFT));
+    ctrl_read(AlwaysMask | (32'(ScaledShift) << WDT_CTRL_WDOGSCALE_SHIFT), ctrl);
     wdt_write(WDT_COUNT, ScaledStart);
     read_count(c0, t0);
     csr_read(smc_wdt_addr(core, WDT_SCALED_COUNT), scaled, "WDT.SCALED_COUNT");
@@ -186,6 +186,8 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
     check_evidence(ChkZeroCmp, "sampled compare rollover", 64'(predicate), 64'h1, samples);
 
     wdt_write(WDT_FEED, SmcWdtFeedMagic);
+    ctrl_read(AlwaysMask | ZeroCmpMask, ctrl, 1'b1);
+    ip_check(ctrl, 1'b1, negative);
     wdt_write(WDT_CMP, IpCompare);
     cmp_read();
     wdt_write(WDT_CTRL, AlwaysMask);
@@ -219,6 +221,8 @@ class smc_wdt_feed_zerocmp_test_seq extends smc_wdt_base_test_seq;
 
     wdt_write(WDT_FEED, SmcWdtFeedMagic);
     count_side(1'b0, c0);
+    ctrl_read(AlwaysMask, ctrl, 1'b1);
+    ip_check(ctrl, 1'b1, negative);
     wdt_write(WDT_CTRL, AlwaysMask);
     ctrl_read(AlwaysMask, ctrl, 1'b1);
     count_side(1'b0, c1);

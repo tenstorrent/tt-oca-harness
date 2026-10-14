@@ -63,6 +63,11 @@ def _hi(sig) -> bool:
         return False
 
 
+def _known_bit(sig) -> bool:
+    """The signal resolves to 0 or 1."""
+    return _bits(sig) in ("0", "1")
+
+
 def _resp(sig):
     try:
         return int(sig.value)
@@ -406,9 +411,21 @@ class SepAxiMonitor(uvm_component):
         has_aw = all(sig[n] is not None for n in ("awvalid", "awready", "wvalid", "wready"))
         has_ar = sig["arvalid"] is not None and sig["arready"] is not None
 
+        rst = getattr(dut, "rst_ni", None)
+        valids = [
+            n for n in ("rvalid", "bvalid", "arvalid", "awvalid", "wvalid") if sig[n] is not None
+        ]
+
         while True:
             await RisingEdge(dut.clk_i)
             self.cycles += 1
+            if rst is not None and not _hi(rst):
+                # A reset drops every read in flight; its R beats never come.
+                self._ar_pending.clear()
+                continue
+            for n in valids:
+                if not _known_bit(sig[n]):
+                    self._fail(f"{n}={_bits(sig[n])} out of reset (VALID must be 0 or 1)")
             if has_aw:
                 self._tick_ready_wait("aw", _hi(sig["awvalid"]) and not _hi(sig["awready"]))
                 self._tick_ready_wait("w", _hi(sig["wvalid"]) and not _hi(sig["wready"]))
@@ -430,6 +447,8 @@ class SepAxiMonitor(uvm_component):
             if _hi(sig["rvalid"]) and _hi(sig["rready"]):
                 self.r_beats += 1
                 code = _resp(sig["rresp"]) if sig["rresp"] is not None else None
+                if sig["rresp"] is not None and code is None:
+                    self._fail(f"R beat RRESP={_bits(sig['rresp'])} (X/Z on an accepted beat)")
                 self.resp_tally[code if code in (0, 1, 2, 3) else None] += 1
                 if self._beat_capture is not None:
                     self._beat_capture.append(code)
@@ -448,13 +467,22 @@ class SepAxiMonitor(uvm_component):
                     self._decerr("R")
             if has_b and _hi(sig["bvalid"]) and _hi(sig["bready"]):
                 self.b_resps += 1
-                if _resp(sig["bresp"]) == 3 and self.fail_decerr:
+                bcode = _resp(sig["bresp"]) if sig["bresp"] is not None else None
+                if sig["bresp"] is not None and bcode is None:
+                    self._fail(f"B beat BRESP={_bits(sig['bresp'])} (X/Z on an accepted beat)")
+                if bcode == 3 and self.fail_decerr:
                     self._decerr("B")
 
     def check_phase(self) -> None:
         assert not self.errors, (
             f"SEP AXI monitor [{self.bus_prefix}] found {len(self.errors)} "
             f"protocol error(s): " + "; ".join(self.errors[:8])
+        )
+        # An armed credit that no DECERR consumed means a probe that expected
+        # DECERR got another answer, and the credit would hide the next one.
+        assert self._armed_decerr == 0, (
+            f"SEP AXI monitor [{self.bus_prefix}] ended with {self._armed_decerr} "
+            "armed DECERR credit(s) unconsumed and unreleased"
         )
         # The lane check joins R to AR by ID. Recorded ARs with R beats on the
         # bus but no beat ever joined means the join is broken, and the lane

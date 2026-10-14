@@ -116,7 +116,7 @@ module dtp_stap_props
   // The check runs through reset, so the first sampled cycle, which has no past sample, takes the
   // reset clause alone.
   logic past_valid_q = 1'b0;
-  always_ff @(posedge tck_i) past_valid_q <= 1'b1;
+  always @(posedge tck_i) past_valid_q <= 1'b1;
   `OCAH_FV_ASSERT(ast_dbg_disable_sync_fail_closed,
                   `OCAH_FV_IMPLIES(!pwr_on_rst_ni,
                                    dbg_disable_q_i == '1 && dbg_disable_stage1_i == '1) &&

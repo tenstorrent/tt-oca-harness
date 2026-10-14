@@ -2,7 +2,6 @@
 +define+TARGET_FLIST
 +define+SIMULATION=1
 hw/common/defs/ocah_vendor_defines.svh
-// Package(aou) Target(aou)
 vendor/tenstorrent/aou/upstream/RTL/packet_def_pkg.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_RX_CORE.sv
 vendor/tenstorrent/aou/upstream/RTL/AOU_ACTIVATION_CTRL.sv

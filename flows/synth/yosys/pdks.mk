@@ -20,6 +20,7 @@ PDK_ROOT ?= $(OCAH_ROOT)/local/pdks
 PDK_SENTINEL = $(PDK_ROOT)/ciel/$(TECH)/versions/$($(TECH)_HASH)
 
 # Hashes for PDKs to install - currently matching prior EDA container
+# Updating these hashes may allow unpinning ciel version - see `nix/packages/ciel.nix`
 sky130_HASH ?= d400e26845538beaeb7cc5fdb9bfc06c30ea27cb
 ihp-sg13g2_HASH ?= a2bf8ea81aee7d0fcdd6d62168edca0d7d0bcb08
 gf180mcuD_HASH ?= 8f2d1529c86235d726979eb9ecb7e9628108590b

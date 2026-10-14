@@ -31,6 +31,7 @@ run_modes = ["debug_tdr"]
 name = "dtp_jtag_ic_reset_test"
 module = { cocotb = "dtp_jtag_ic_reset_test", uvm = "dtp_jtag_ic_reset_test" }
 seed = 1
+reseed = 2
 timeout_sec = 1800
 tags = ["debug_tdr", "ic_reset", "jtag"]
 run_modes = ["debug_tdr"]
@@ -47,6 +48,7 @@ run_modes = ["debug_tdr"]
 name = "dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test"
 module = { cocotb = "dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test", uvm = "dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test" }
 seed = 1
+reseed = 2
 timeout_sec = 1800
 tags = ["debug_tdr", "debug_control", "jtag"]
 run_modes = ["debug_tdr"]
@@ -55,6 +57,7 @@ run_modes = ["debug_tdr"]
 name = "dtp_dbg_ctrl_clk_stop_cla_clock_stop_test"
 module = { cocotb = "dtp_dbg_ctrl_clk_stop_cla_clock_stop_test", uvm = "dtp_dbg_ctrl_clk_stop_cla_clock_stop_test" }
 seed = 1
+reseed = 2
 timeout_sec = 1800
 tags = ["debug_tdr", "debug_control", "jtag"]
 run_modes = ["debug_tdr"]
@@ -63,6 +66,7 @@ run_modes = ["debug_tdr"]
 name = "dtp_dbg_ctrl_clk_stop_random_clock_stop_test"
 module = { cocotb = "dtp_dbg_ctrl_clk_stop_random_clock_stop_test", uvm = "dtp_dbg_ctrl_clk_stop_random_clock_stop_test" }
 seed = 1
+reseed = 2
 timeout_sec = 1800
 tags = ["debug_tdr", "debug_control", "jtag"]
 run_modes = ["debug_tdr"]

@@ -381,11 +381,13 @@
 -module kv_write_client
 -module kv_write_rule_check
 
-// lowRISC/opentitan -- 127 modules.
+// lowRISC/opentitan -- 126 modules.
 // OpenTitan functional IP. Each core ships with lowRISC's own block-level DV and
 // SEP does not modify it. SEP's claim is the integration -- the CSR aperture, the
 // reset and clock domain, the alert and interrupt wiring -- and that logic lives in
 // the TT wrappers, which stay graded.
+// secure_dma stays graded: SEP adds the zero fill to it (opcode 4, vendor patch
+// 0047), so its code is SEP RTL.
 -module aes
 -module aes_cipher_control
 -module aes_cipher_control_fsm
@@ -499,7 +501,6 @@
 -module prim_sha2_pad
 -module prim_subst_perm
 -module prim_trivium
--module secure_dma
 -module secure_dma_reg_top
 -module sha3
 -module sha3pad

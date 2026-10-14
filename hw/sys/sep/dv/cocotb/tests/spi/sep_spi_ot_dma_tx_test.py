@@ -33,7 +33,9 @@ Checks:
                     Handshake mode does not raise STATUS.chunk_done (RTL: only when
                     hardware handshake is off); sep_dma_basic_test covers that status.
     CHK-SPI-IDLE  : OT SPI reaches idle, ERROR_STATUS==0.
-    CHK-DMA-TX    : flash read-back == the DMA-fed data (SRAM->DMA->TXFIFO->flash).
+    CHK-DMA-TX    : flash read-back == the DMA-fed data (SRAM->DMA->TXFIFO->flash),
+                    and the device accepted each PAGE PROGRAM (its frame ended on a
+                    byte boundary).
     CHK-NONVAC    : the programmed data differs from the erased 0xFF (data landed).
     CHK-ERR-OVERFLOW : a TXDATA write past STATUS.TXFULL latches exactly
                     ERROR_STATUS.OVERFLOW; CTRL.SW_RST + W1C releases the host and
@@ -361,6 +363,11 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
                 raise AssertionError(
                     f"SPI DMA-TX breadth golden case[{case.idx}]: missing PP addr=0x{case.addr:06x} "
                     f"data={exp.hex()}"
+                )
+            if not match.get("ok"):
+                raise AssertionError(
+                    f"SPI DMA-TX breadth golden case[{case.idx}]: the flash refused PP "
+                    f"addr=0x{case.addr:06x} reason={match.get('reason')}"
                 )
             mem = flash.read_memory(case.addr, case.nwords * 4)
             if mem != exp:

@@ -33,7 +33,7 @@ compares a golden.
 |Framework |PyUVM on cocotb
 |Simulators |Verilator (`user`, line, expression) and VCS (the cover properties, the covergroups, and line, condition, branch and toggle over the SMU's own logic)
 |Coverage set |`--items all`, the package regression. The SEP firmware and lifecycle leaves need the RISC-V toolchain, so the run of record is a developer or self-hosted run: `python3 tools/dv/run_dv.py --dut smu --tool verilator --items all --cov` for the cover properties, then `tools/dv/fcov_owners.py` over its run directory (<<smu-fcov-owners>>); `python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov` for the covergroups and the code and toggle families (`cov/config/vcs/README.md`). No `regress.yml` tier collects coverage: both `smu` rows carry `coverage: false`
-|Policy files |`cov/config/verilator/smu_wrapper_coverage_policy.toml`, `cov/config/vcs/smu_wrapper_coverage_policy.toml`
+|Policy files |`cov/config/verilator/smu_wrapper_coverage_policy.toml`, `cov/config/vcs/smu_wrapper_coverage_policy.toml`; the SV-UVM view reports against `cov/config/vcs/smu_wrapper_uvm_coverage_policy.toml`, which sets no floor
 |===
 
 === Coverage Goals

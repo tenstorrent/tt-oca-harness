@@ -31,7 +31,7 @@ module dtp_cross_trigger_network_sby_env
 
 `ifdef FORMAL
   logic released_q = 1'b0;
-  always_ff @(posedge clk_i) released_q <= 1'b1;
+  always @(posedge clk_i) released_q <= 1'b1;
 
   always_comb begin
     asm_env_resets_asserted : assume (released_q || !rst_ni);

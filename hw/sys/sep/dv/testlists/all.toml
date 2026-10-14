@@ -46,7 +46,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_spi_cold_reset_values_rand_test, VCS only (spi.toml). It reads SPI host
 #   state after rst_ni, and Verilator is two-state.
 name = "all"
-expected_count = 150
+expected_count = 165
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -114,6 +114,7 @@ tests = [
     "sep_pic_irq_source_map_delivery_test",
     "sep_efuse_token_match_fault_pic_test",
     "sep_dma_basic_test",
+    "sep_dma_zero_test",
     "sep_cpu_dbg_reset_independence_test",
     "sep_hmac_sha_variant_rand_test",
     "sep_aes_mode_keysize_rand_test",
@@ -197,7 +198,21 @@ tests = [
     "sep_dma_transfer_matrix_rand_test",
     "sep_dma_irq_error_lock_rand_test",
     "sep_dma_abort_recovery_rand_test",
+    "sep_dma_zero_fill_rand_test",
+    "sep_dma_zero_fill_continuation_test",
     "sep_spi_dma_handshake_rand_test",
+    "sep_mailbox_fifo_model_rand_test",
+    "sep_mailbox_access_error_inject_test",
+    "sep_mailbox_filter_type_matrix_test",
+    "sep_mailbox_debug_bypass_test",
+    "sep_mailbox_reset_clear_test",
+    "sep_pic_reg_rand_test",
+    "sep_pic_external_access_refuse_test",
+    "sep_pic_priority_gate_rand_test",
+    "sep_pic_pending_map_walk_rand_test",
+    "sep_cpu_bridge_fault_matrix_rand_test",
+    "sep_cpu_ctrl_timeout_inert_rand_test",
+    "sep_nmi_vector_bark_rand_test",
 ]
 
 [[groups]]
@@ -218,6 +233,7 @@ tests = [
     "sep_pic_irq_source_map_delivery_test",
     "sep_efuse_token_match_fault_pic_test",
     "sep_dma_basic_test",
+    "sep_dma_zero_test",
     "sep_reset_wdt_sanity_test",
     "sep_efuse_jtag_axil_el2_cpu_mux_test",
     "sep_cpu_ifu_lsu_alias_remap_matrix_test",
@@ -226,6 +242,11 @@ tests = [
     "sep_spi_ot_dma_tx_test",
     "sep_cpu_lsu_alias_window_twin_test",
     "sep_fabric_dma_endpoint_matrix_test",
+    "sep_pic_reg_rand_test",
+    "sep_pic_external_access_refuse_test",
+    "sep_pic_priority_gate_rand_test",
+    "sep_pic_pending_map_walk_rand_test",
+    "sep_nmi_vector_bark_rand_test",
 ]
 
 [[groups]]
@@ -360,7 +381,16 @@ tests = [
     "sep_dma_transfer_matrix_rand_test",
     "sep_dma_irq_error_lock_rand_test",
     "sep_dma_abort_recovery_rand_test",
+    "sep_dma_zero_fill_rand_test",
+    "sep_dma_zero_fill_continuation_test",
     "sep_spi_dma_handshake_rand_test",
+    "sep_mailbox_fifo_model_rand_test",
+    "sep_mailbox_access_error_inject_test",
+    "sep_mailbox_filter_type_matrix_test",
+    "sep_mailbox_debug_bypass_test",
+    "sep_mailbox_reset_clear_test",
+    "sep_cpu_bridge_fault_matrix_rand_test",
+    "sep_cpu_ctrl_timeout_inert_rand_test",
 ]
 
 [[groups]]
@@ -604,7 +634,7 @@ tests = [
 # Convenience group of the SPI and DMA Phase 3 tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_spi_dma"
-expected_count = 9
+expected_count = 11
 tests = [
     "sep_spi_pad_speed_dir_matrix_test",
     "sep_spi_pad_timing_cfg_rand_test",
@@ -615,4 +645,26 @@ tests = [
     "sep_dma_irq_error_lock_rand_test",
     "sep_dma_abort_recovery_rand_test",
     "sep_spi_dma_handshake_rand_test",
+    "sep_dma_zero_fill_rand_test",
+    "sep_dma_zero_fill_continuation_test",
+]
+
+[[groups]]
+# Convenience group of the mailbox, IRQ and PIC tests.
+# The `all`, `cpu_stub` and `cpu` groups hold the same tests.
+name = "mailbox_irq_pic"
+expected_count = 12
+tests = [
+    "sep_mailbox_fifo_model_rand_test",
+    "sep_mailbox_access_error_inject_test",
+    "sep_mailbox_filter_type_matrix_test",
+    "sep_mailbox_debug_bypass_test",
+    "sep_mailbox_reset_clear_test",
+    "sep_pic_reg_rand_test",
+    "sep_pic_external_access_refuse_test",
+    "sep_pic_priority_gate_rand_test",
+    "sep_pic_pending_map_walk_rand_test",
+    "sep_cpu_bridge_fault_matrix_rand_test",
+    "sep_cpu_ctrl_timeout_inert_rand_test",
+    "sep_nmi_vector_bark_rand_test",
 ]

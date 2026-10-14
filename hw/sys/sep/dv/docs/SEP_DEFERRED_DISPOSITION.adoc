@@ -36,9 +36,16 @@ local-alias remap that `sep_cpu_lsu_alias_window_twin_test` and
 register (`hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl`), and the
 IFU AxPROT is a core output; no LC or fuse input reaches them. The SPI host
 and the secure DMA that `sep_spi_pad_speed_dir_matrix_test`,
-`sep_spi_pad_timing_cfg_rand_test`, `sep_spi_fifo_stall_watermark_rand_test`
-and `sep_dma_transfer_matrix_rand_test` grade take no LC or fuse input
-(`hw/sys/sep/rtl/sep_ot_spi_wrap.sv`, `hw/sys/sep/rtl/sep_dma_wrap.sv`).
+`sep_spi_pad_timing_cfg_rand_test`, `sep_spi_fifo_stall_watermark_rand_test`,
+`sep_spi_ot_host_csr_irq_rand_test` and `sep_dma_transfer_matrix_rand_test`
+grade take no LC or fuse input
+(`hw/sys/sep/rtl/sep_ot_spi_wrap.sv`, `hw/sys/sep/rtl/sep_dma_wrap.sv`). The
+mailboxes, the PIC, the bridge-fault and timeout registers of `SEP_CPU_CTRL`
+and the NMI vector that the eleven mailbox, IRQ and PIC leaves of the scope
+grade take no fuse content. The inbound filter that these leaves program takes
+`feat_ctrl.sep_debug` (`hw/sys/sep/rtl/sep.sv`, `inbound_filter_skip_i`), and
+each of these leaves needs it at 0, the reset decode that `+skip_fuse_sense`
+leaves in place.
 
 |Why the real path is not needed
 |A test that does not need fuse content may use `+skip_fuse_sense`. The real
@@ -46,15 +53,23 @@ sense path and the shadow are graded by the eFuse and LCC tests, which run
 without the plusarg.
 
 |Scope
-|The `+skip_fuse_sense` entry in the testlist `args` of these thirteen tests:
+|The `+skip_fuse_sense` entry in the testlist `args` of these twenty-five tests:
 `sep_fabric_alias_remap_attr_rand_test`, `sep_fabric_smc_route_test`,
-`sep_dma_transfer_matrix_rand_test` (`testlists/system.toml`); `sep_cpu_lsu_alias_window_twin_test`,
+`sep_dma_transfer_matrix_rand_test`, `sep_mailbox_fifo_model_rand_test`,
+`sep_mailbox_access_error_inject_test`, `sep_mailbox_filter_type_matrix_test`,
+`sep_mailbox_reset_clear_test`, `sep_cpu_bridge_fault_matrix_rand_test`,
+`sep_cpu_ctrl_timeout_inert_rand_test` (`testlists/system.toml`);
+`sep_cpu_lsu_alias_window_twin_test`,
 `sep_fabric_dma_endpoint_matrix_test`, `sep_dma_basic_test`,
 `sep_cpu_ifu_lsu_alias_remap_matrix_test`,
-`sep_pic_irq_source_map_delivery_test` (`testlists/cpu.toml`);
+`sep_pic_irq_source_map_delivery_test`, `sep_pic_reg_rand_test`,
+`sep_pic_external_access_refuse_test`, `sep_pic_priority_gate_rand_test`,
+`sep_pic_pending_map_walk_rand_test`, `sep_nmi_vector_bark_rand_test`
+(`testlists/cpu.toml`);
 `sep_spi_ot_dma_tx_test`, `sep_spi_ot_flash_cmd_rand_test`,
 `sep_spi_pad_speed_dir_matrix_test`, `sep_spi_pad_timing_cfg_rand_test`,
-`sep_spi_fifo_stall_watermark_rand_test` (`testlists/spi.toml`).
+`sep_spi_fifo_stall_watermark_rand_test`, `sep_spi_ot_host_csr_irq_rand_test`
+(`testlists/spi.toml`).
 |===
 
 [[sep-standin-recheck]]
@@ -64,10 +79,10 @@ without the plusarg.
 |===
 |Stand-in |Command |Expected
 
-|`+skip_fuse_sense` on the thirteen leaves
+|`+skip_fuse_sense` on the twenty-five leaves
 |`grep -A8 'name = "<test>"' hw/sys/sep/dv/testlists/*.toml` for each test of
 the scope, then `grep -n 'BRINGUP LOG: feat_ctrl'` in any log of
 `sep_fabric_smc_route_test`
-|`+skip_fuse_sense` in the `args` of each of the thirteen entries, and
+|`+skip_fuse_sense` in the `args` of each of the twenty-five entries, and
 `feat_ctrl=0x0000000000000000`, the reset decode.
 |===

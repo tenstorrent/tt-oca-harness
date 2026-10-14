@@ -89,7 +89,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_0__WIRQT
 
@@ -104,7 +104,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_0__RIRQT
 
@@ -345,7 +345,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_0__WIRQT
 
@@ -360,7 +360,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_0__RIRQT
 
@@ -601,7 +601,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_1__WIRQT
 
@@ -616,7 +616,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_1__RIRQT
 
@@ -857,7 +857,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_1__WIRQT
 
@@ -872,7 +872,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_1__RIRQT
 
@@ -1113,7 +1113,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_2__WIRQT
 
@@ -1128,7 +1128,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_2__RIRQT
 
@@ -1369,7 +1369,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_2__WIRQT
 
@@ -1384,7 +1384,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_2__RIRQT
 
@@ -1625,7 +1625,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_3__WIRQT
 
@@ -1640,7 +1640,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_3__RIRQT
 
@@ -1881,7 +1881,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_3__WIRQT
 
@@ -1896,7 +1896,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_3__RIRQT
 
@@ -2137,7 +2137,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_4__WIRQT
 
@@ -2152,7 +2152,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_4__RIRQT
 
@@ -2393,7 +2393,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_4__WIRQT
 
@@ -2408,7 +2408,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_4__RIRQT
 
@@ -2649,7 +2649,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_5__WIRQT
 
@@ -2664,7 +2664,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_5__RIRQT
 
@@ -2905,7 +2905,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_5__WIRQT
 
@@ -2920,7 +2920,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_5__RIRQT
 
@@ -3161,7 +3161,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_6__WIRQT
 
@@ -3176,7 +3176,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_6__RIRQT
 
@@ -3417,7 +3417,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_6__WIRQT
 
@@ -3432,7 +3432,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_6__RIRQT
 
@@ -3673,7 +3673,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_7__WIRQT
 
@@ -3688,7 +3688,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__outbound_mailbox_7__RIRQT
 
@@ -3929,7 +3929,7 @@
 
         virtual function void build();
             this.wirqt = uvm_reg_field::type_id::create("wirqt");
-            this.wirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.wirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_7__WIRQT
 
@@ -3944,7 +3944,7 @@
 
         virtual function void build();
             this.rirqt = uvm_reg_field::type_id::create("rirqt");
-            this.rirqt.configure(this, 8, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.rirqt.configure(this, 64, 0, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : axil_mailbox_sep_wrap__inbound_mailbox_7__RIRQT
 

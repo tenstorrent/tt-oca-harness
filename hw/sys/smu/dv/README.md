@@ -183,7 +183,11 @@ A testlist scenario carries both implementations in its `module` binding map
 selects the same VPLAN scenario in either framework; the UVM class name is
 the `uvm` entry (`+UVM_TESTNAME`). A group runs its UVM-implemented subset;
 naming a scenario with no `uvm` entry errors.
-VCS only: Verilator has no SV-UVM support. The bench architecture is in
+VCS only: Verilator has no SV-UVM support. With `--cov` the view reports
+every coverage family against
+`cov/config/vcs/smu_wrapper_uvm_coverage_policy.toml`, the same scope and
+exclusion files as the cocotb view's policy with no `[[thresholds]]` row, so
+the figures are reported and none is gated. The bench architecture is in
 `docs/SMU_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
 conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
 

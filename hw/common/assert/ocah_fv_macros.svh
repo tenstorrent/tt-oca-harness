@@ -35,10 +35,11 @@
 
 // Reset held in the initial state: the declaration initializer marks the first cycle and the
 // assumption pins reset low there, so every $past sampled after reset release reads a value that
-// exists in the trace.
+// exists in the trace. The flag is written by always: licensed backends reject a variable with a
+// declaration initializer that an always_ff writes.
 `define OCAH_FV_INITIAL_RESET(__clk, __rst_n) \
   logic ocah_fv_first_cycle_q = 1'b1; \
-  always_ff @(posedge __clk) ocah_fv_first_cycle_q <= 1'b0; \
+  always @(posedge __clk) ocah_fv_first_cycle_q <= 1'b0; \
   asm_initial_reset : assume property (@(posedge __clk) !ocah_fv_first_cycle_q || !(__rst_n));
 `else
 `define OCAH_FV_ASSERT(__name, __expr, __clk, __rst_n)
