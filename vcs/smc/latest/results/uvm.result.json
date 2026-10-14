@@ -4,13 +4,13 @@
     "coverage_policy_application": "artifacts/smc/coverage/report/policy-application.json",
     "coverage_report": "artifacts/smc/coverage/report",
     "coverage_summary": "artifacts/smc/coverage/report/summary.json",
-    "log": "vcs/smc/runs/uvm/smc_default_reg_rd_test/seed_1871257486/attempt_0/logs/smc_default_reg_rd_test.log",
+    "log": "vcs/smc/runs/uvm/smc_default_reg_rd_test/seed_1759006659/attempt_0/logs/smc_default_reg_rd_test.log",
     "regression_json": "vcs/smc/runs/uvm/stages/regress/regression.json",
     "result_json": "vcs/smc/runs/uvm/result.json",
     "run_dir": "vcs/smc/runs/uvm"
   },
   "coverage": {
-    "comparison_key": "COVCMP-1fe778d0dce56623",
+    "comparison_key": "COVCMP-45203c9902ff1d5f",
     "details_available": true,
     "effective_metrics": {
       "assertion": 52.92,
@@ -19,7 +19,7 @@
       "fsm_state": 4.26,
       "functional": 36.12,
       "line": 70.21,
-      "toggle": 3.31,
+      "toggle": 3.3,
       "user": 23.4252
     },
     "holes_summary": {
@@ -71,11 +71,11 @@
   "failure_buckets": [],
   "flow": "smc",
   "framework": "uvm",
-  "generated_at": "2026-10-11T13:35:32+00:00",
+  "generated_at": "2026-10-14T17:12:08+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "b7bdfc400a0d044b1025f69621cff6804b1dae43",
-    "short_sha": "b7bdfc4"
+    "sha": "56d3474836711922655de7b0acc2530a31e9dab6",
+    "short_sha": "56d3474"
   },
   "junit_xml": {
     "missing": 0,
@@ -88,10 +88,10 @@
   },
   "run_metadata": {
     "executor": "lsf",
-    "generated_at": "2026-10-11T11:17:38.700358+00:00",
+    "generated_at": "2026-10-14T15:05:37.259735+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "b7bdfc400a0d044b1025f69621cff6804b1dae43",
+      "commit": "56d3474836711922655de7b0acc2530a31e9dab6",
       "dirty": "false"
     },
     "label": "all",
@@ -118,68 +118,68 @@
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 6.918,
+      "duration_sec": 23.591,
       "name": "smc_default_reg_rd_test",
       "reason": "positive pass evidence matched",
-      "seed": 1871257486,
+      "seed": 1759006659,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 11.881,
-      "name": "smc_multi_reset_csr_persistence_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1563771298,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 6.168,
+      "duration_sec": 23.235,
       "name": "smc_mutex_semaphore_test",
       "reason": "positive pass evidence matched",
-      "seed": 1953296885,
+      "seed": 948520532,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 24.383,
+      "name": "smc_reset_unit_lock_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1485640735,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 23.185,
+      "name": "smc_spm_mem_boundary_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1539557406,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 28.749,
+      "name": "smc_multi_reset_csr_persistence_test",
+      "reason": "positive pass evidence matched",
+      "seed": 677215370,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 11.058,
+      "duration_sec": 27.988,
       "name": "smc_register_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 1071059526,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 8.005,
-      "name": "smc_reset_unit_lock_test",
-      "reason": "positive pass evidence matched",
-      "seed": 558395678,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 6.683,
-      "name": "smc_spm_mem_boundary_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1713585702,
+      "seed": 382241012,
       "stage": "sim",
       "status": "PASS"
     }
   ],
   "timing": {
-    "duration_sec": 175.323,
-    "end_time": "2026-10-11T11:17:38.600002+00:00",
-    "start_time": "2026-10-11T11:14:51.463807+00:00"
+    "duration_sec": 280.27,
+    "end_time": "2026-10-14T15:05:37.173039+00:00",
+    "start_time": "2026-10-14T15:02:17.843868+00:00"
   },
   "tool": "vcs"
 }
