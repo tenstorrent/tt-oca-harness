@@ -5,7 +5,8 @@
 ``CHK-SPI-WIRE-LEGAL``: in each of the four modes the controller sends legal
 READ frames with a seeded address; the monitor records no violation and
 decodes all 32 bits it was sent (command byte and address), so it samples on
-the mode's sample edge. Two hand-driven frames
+the mode's sample edge; no violation is recorded on the bus between frames
+either. Two hand-driven frames
 are legal too: MOSI changes half way through the half period that starts at a
 shift edge (Mode 0), and MOSI changes in a held gap after a sample edge before
 the next segment (Mode 1).
@@ -95,10 +96,12 @@ async def ocah_spi_wire_check_test(dut) -> None:
             ]
             expected = [(32, int(OcahSpiOpcode.READ), addr, (), cpol, cpha)]
             legal.append((f"mode{cpol}{cpha}", observed, expected))
+    # Every violation since start counts, including one on the idle bus
+    # between frames, which no frame record carries.
     checker.expect_equal(
         "CHK-SPI-WIRE-LEGAL",
-        [(name, got) for name, got, _ in legal],
-        [(name, want) for name, _, want in legal],
+        ([(name, got) for name, got, _ in legal], monitor.get_wire_errors()),
+        ([(name, want) for name, _, want in legal], []),
         context=f"frames={len(legal)} violations_total={len(monitor.get_wire_errors())}",
     )
 
