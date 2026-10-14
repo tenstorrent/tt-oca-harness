@@ -39,6 +39,8 @@ PR-TCM     ``pr_tcm``       iccm, dccm: clken wren addr wdata wecc (any clken
                             clock after a beat with a read bank, clken & ~wren)
 PR-IFU     ``pr_ifu``       ar: addr id len size; r: resp id last (IFU request
                             before the IFU demux; 0 on the CPU stub build)
+PR-IFU-    ``pr_ifu_xbar``  as PR-IFU (IFU demux local crossbar port; 0 on the
+XBAR                        CPU stub build)
 PR-LSU-ROM ``pr_lsu_rom``   aw, ar: addr id len size; w: strb last;
                             b: resp id; r: resp id last (LSU demux ROM port)
 PR-LSU-    ``pr_lsu_xbar``  as PR-LSU-ROM (LSU demux local crossbar port)
@@ -132,6 +134,7 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
         "tcm",
     ),
     "PR-IFU": ("pr_ifu", {"ar": _AXI_SHAPE, "r": ("resp", "id", "last")}, "axi"),
+    "PR-IFU-XBAR": ("pr_ifu_xbar", {"ar": _AXI_SHAPE, "r": ("resp", "id", "last")}, "axi"),
     "PR-LSU-ROM": ("pr_lsu_rom", dict(_AXI_PORT), "axi"),
     "PR-LSU-XBAR": ("pr_lsu_xbar", dict(_AXI_PORT), "axi"),
     "PR-XBAR-TCM": ("pr_xbar_tcm", dict(_AXI_PORT), "axi"),

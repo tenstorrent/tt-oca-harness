@@ -8,7 +8,8 @@ holds bytes ``8*i`` to ``8*i+7`` of the aperture, little-endian: byte offset 0
 is bits 7:0. ``tb_backdoor_mem`` loads it at time 0 from ``+sep_boot_rom_hex``
 (``$readmemh``, one 16-digit word per line, word 0 first).
 
-The module has no simulator import at load time, so the pre-sim stage hook
+The aperture base and size come from the generated RDL register map
+(``sep_reg_meta.sym``). The module has no simulator import at load time, so the pre-sim stage hook
 (``cocotb/dv_sim_prestage.py``) can write an image before the simulator starts.
 
 Words 0 to ``STUB_WORDS - 1`` hold the boot stub, which the leaf supplies as
@@ -29,8 +30,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable
 
-ROM_BASE = 0x1004_0000
-ROM_BYTES = 64 * 1024
+from sep_reg_meta import sym
+
+# Aperture base and size from the generated RDL register map.
+ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
+ROM_BYTES = sym("SEP_BOOT_ROM_MEM_SIZE")
 ROM_WORD_BYTES = 8
 ROM_WORDS = ROM_BYTES // ROM_WORD_BYTES
 STUB_WORDS = 16

@@ -63,9 +63,9 @@ That is the AXI4 lane rule for an INCR burst and for a WRAP burst whose window i
 8 bytes or more, and not for a narrow FIXED burst or a WRAP window under 8
 bytes. The refused write bursts therefore draw their size from the legal set of
 their shape (FIXED: 8 bytes; WRAP of 2 beats: 4 or 8 bytes); the refused read
-bursts draw from all four sizes. ``PR-SRAM`` carries the SRAM byte offset from
-0x1000_0000 (``hw/ip/memory_interface/rtl/memory_interface.sv``, the memory port
-subtracts ``MEM_BASE_ADDR``); the leaf compares it at 8-byte word granularity.
+bursts draw from all four sizes. ``PR-SRAM`` carries the byte offset of the
+request from the SRAM base ``SEP_SRAM_MEM_BASE_ADDR`` (``docs/SEP_TB_ARCH.adoc``,
+PR-SRAM entry); the leaf compares it at 8-byte word granularity.
 
 The graded window (owner code of this test) is open around the outstanding
 bursts, the refused bursts, the single-beat bursts and each reset in flight. The

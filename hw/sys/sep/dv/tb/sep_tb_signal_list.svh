@@ -876,6 +876,19 @@
 `SEP_TB_OUT(logic [1:0], pr_ifu_rresp_o)
 `SEP_TB_OUT(logic [2:0], pr_ifu_rid_o)
 `SEP_TB_OUT(logic, pr_ifu_rlast_o)
+// PR-IFU-XBAR: the IFU demux port to the local crossbar (sep.sv
+// ifu_sram_axi_req) and its response. Tied to 0 on the CPU stub build.
+`SEP_TB_OUT(logic, pr_ifu_xbar_arvalid_o)
+`SEP_TB_OUT(logic, pr_ifu_xbar_arready_o)
+`SEP_TB_OUT(logic [31:0], pr_ifu_xbar_araddr_o)
+`SEP_TB_OUT(logic [2:0], pr_ifu_xbar_arid_o)
+`SEP_TB_OUT(logic [7:0], pr_ifu_xbar_arlen_o)
+`SEP_TB_OUT(logic [2:0], pr_ifu_xbar_arsize_o)
+`SEP_TB_OUT(logic, pr_ifu_xbar_rvalid_o)
+`SEP_TB_OUT(logic, pr_ifu_xbar_rready_o)
+`SEP_TB_OUT(logic [1:0], pr_ifu_xbar_rresp_o)
+`SEP_TB_OUT(logic [2:0], pr_ifu_xbar_rid_o)
+`SEP_TB_OUT(logic, pr_ifu_xbar_rlast_o)
 // PR-LSU-ROM: the LSU demux port to the ROM mux (sep.sv lsu_rom_axi_req) and
 // its response.
 `SEP_TB_OUT(logic, pr_lsu_rom_awvalid_o)

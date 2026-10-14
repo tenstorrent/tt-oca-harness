@@ -12,7 +12,8 @@ word that holds a byte address:
   ``+sep_tcm_flip_list=<path>`` applies after each ``tcm_load_i`` image load,
   so a firmware leg starts with the errors in place.
 
-The module has no simulator import at load time.
+The ICCM and DCCM bases and sizes come from the generated RDL register map
+(``sep_reg_meta.sym``). The module has no simulator import at load time.
 """
 
 from __future__ import annotations
@@ -20,10 +21,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable
 
-ICCM_BASE = 0xC000_0000
-ICCM_BYTES = 256 * 1024
-DCCM_BASE = 0xC004_0000
-DCCM_BYTES = 128 * 1024
+from sep_reg_meta import sym
+
+# Aperture bases and sizes from the generated RDL register map.
+ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
+ICCM_BYTES = sym("SEP_ICCM_MEM_SIZE")
+DCCM_BASE = sym("SEP_DCCM_MEM_BASE_ADDR")
+DCCM_BYTES = sym("SEP_DCCM_MEM_SIZE")
 DATA_BITS = 32
 ECC_BITS = 7
 WORD_BITS = DATA_BITS + ECC_BITS

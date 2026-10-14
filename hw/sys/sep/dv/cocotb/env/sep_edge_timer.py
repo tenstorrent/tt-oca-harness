@@ -21,10 +21,16 @@ between them: ``1 -> X -> 0`` is a fall at the time the net resolves to 0, so
 an absence check ("no fall in the window") fails on it. ``xz_episodes`` lists
 every stretch at X or Z with the known values around it, for the leaf to log.
 
-A query on a timer that was never started, or a ``SepPinEdgeCounter.since``
-over a window the counter did not sample for its whole length (not running at
-the mark, or stopped or restarted after it), raises ``SepEdgeIdleError``, so a
-count or an absence cannot pass on an empty record.
+A ``SepEdgeTimer`` query covers the window from ``since_ps`` (default: the
+start of the last run) to ``until_ps`` (default: now). It raises
+``SepEdgeIdleError`` unless one run of the timer covers the whole window: the
+timer was started at or before ``since_ps`` and was not stopped or restarted
+before ``until_ps``, and no change in the window was dropped from a bounded
+record. A ``SepPinEdgeCounter.since`` over a window the counter did not sample
+for its whole length (not running at the mark, or stopped or restarted after
+it) also raises ``SepEdgeIdleError``. So a count or an absence cannot pass on an
+empty record. A leaf that stops a timer before it grades passes the end of its
+graded window as ``until_ps``.
 
 Usage::
 
@@ -120,10 +126,15 @@ class SepEdgeTimer:
         self.name = name or getattr(sig, "_name", "sig")
         self.changes: deque[TimedChange] = deque(maxlen=keep)
         self._task: Any = None
+        self._runs: list[list[int | None]] = []
+        """[start, stop] of each run in ps; stop is None while the run goes on."""
+        self._dropped = False
 
     def start(self) -> "SepEdgeTimer":
         if self._task is None:
-            self.changes.append(TimedChange(_now_ps(), _value(self.sig)))
+            t = _now_ps()
+            self._runs.append([t, None])
+            self._append(TimedChange(t, _value(self.sig)))
             self._task = cocotb.start_soon(self._run())
         return self
 
@@ -131,64 +142,105 @@ class SepEdgeTimer:
         if self._task is not None:
             self._task.cancel()
             self._task = None
+            self._runs[-1][1] = _now_ps()
+
+    def _append(self, c: TimedChange) -> None:
+        if self.changes.maxlen is not None and len(self.changes) == self.changes.maxlen:
+            self._dropped = True
+        self.changes.append(c)
 
     async def _run(self) -> None:
         while True:
             await Edge(self.sig)
-            self.changes.append(TimedChange(_now_ps(), _value(self.sig)))
+            self._append(TimedChange(_now_ps(), _value(self.sig)))
 
-    def _require_started(self) -> None:
-        if not self.changes:
+    def _window(self, since_ps: int | None, until_ps: int | None) -> tuple[int, int]:
+        """The queried window; raises unless one run covers all of it."""
+        if not self._runs:
             raise SepEdgeIdleError(f"SEP-EDGE FAIL: {self.name} timer was never started")
+        lo = self._runs[-1][0] if since_ps is None else since_ps
+        running = self._task is not None
+        hi = until_ps if until_ps is not None else (_now_ps() if running else None)
+        if hi is None:
+            raise SepEdgeIdleError(
+                f"SEP-EDGE FAIL: {self.name} timer stopped at {self._runs[-1][1]} ps; the query "
+                "names no window end (until_ps), so the timer did not run through it"
+            )
+        if hi < lo:
+            raise ValueError(f"{self.name}: window end {hi} ps is before its start {lo} ps")
+        for start, stop in self._runs:
+            if start <= lo and (stop is None or stop >= hi):
+                break
+        else:
+            raise SepEdgeIdleError(
+                f"SEP-EDGE FAIL: {self.name} timer did not run through the window "
+                f"{lo}-{hi} ps (runs {self._runs})"
+            )
+        if self._dropped and self.changes and self.changes[0].t_ps > lo:
+            raise SepEdgeIdleError(
+                f"SEP-EDGE FAIL: {self.name} record dropped changes after {lo} ps "
+                f"(keep={self.changes.maxlen})"
+            )
+        return lo, hi
 
-    def since(self, t_ps: int) -> list[TimedChange]:
-        """The changes at or after ``t_ps``."""
-        self._require_started()
-        return [c for c in self.changes if c.t_ps >= t_ps]
+    def since(self, t_ps: int | None = None, *, until_ps: int | None = None) -> list[TimedChange]:
+        """The changes in the window from ``t_ps`` to ``until_ps``."""
+        lo, hi = self._window(t_ps, until_ps)
+        return [c for c in self.changes if lo <= c.t_ps <= hi]
 
-    def rises(self, since_ps: int = 0, *, bit: int | None = None) -> list[int]:
-        """Times of 0 to 1 transitions (of ``bit``, or of a 1-bit signal).
+    def rises(
+        self, since_ps: int | None = None, *, until_ps: int | None = None, bit: int | None = None
+    ) -> list[int]:
+        """Times of 0 to 1 transitions in the window (of ``bit``, or of a 1-bit signal).
 
         A ``0 -> X/Z -> 1`` pass counts, at the time the value resolves to 1.
         """
-        return self._edges(since_ps, 0, 1, bit)
+        return self._edges(since_ps, until_ps, 0, 1, bit)
 
-    def falls(self, since_ps: int = 0, *, bit: int | None = None) -> list[int]:
-        """Times of 1 to 0 transitions (of ``bit``, or of a 1-bit signal).
+    def falls(
+        self, since_ps: int | None = None, *, until_ps: int | None = None, bit: int | None = None
+    ) -> list[int]:
+        """Times of 1 to 0 transitions in the window (of ``bit``, or of a 1-bit signal).
 
         A ``1 -> X/Z -> 0`` pass counts, at the time the value resolves to 0.
         """
-        return self._edges(since_ps, 1, 0, bit)
+        return self._edges(since_ps, until_ps, 1, 0, bit)
 
-    def _values(self, bit: int | None) -> list[tuple[int, int | None]]:
-        self._require_started()
+    def _values(self, bit: int | None, hi: int) -> list[tuple[int, int | None]]:
+        vals = [c for c in self.changes if c.t_ps <= hi]
         if bit is None:
-            return [(c.t_ps, c.value) for c in self.changes]
-        return [(c.t_ps, None if c.value is None else (c.value >> bit) & 1) for c in self.changes]
+            return [(c.t_ps, c.value) for c in vals]
+        return [(c.t_ps, None if c.value is None else (c.value >> bit) & 1) for c in vals]
 
-    def _edges(self, since_ps: int, frm: int, to: int, bit: int | None) -> list[int]:
+    def _edges(
+        self, since_ps: int | None, until_ps: int | None, frm: int, to: int, bit: int | None
+    ) -> list[int]:
+        lo, hi = self._window(since_ps, until_ps)
         out = []
         known = None
-        for t_ps, v in self._values(bit):
+        for t_ps, v in self._values(bit, hi):
             if v is None:
                 continue
-            if known == frm and v == to and t_ps >= since_ps:
+            if known == frm and v == to and t_ps >= lo:
                 out.append(t_ps)
             known = v
         return out
 
-    def xz_episodes(self, since_ps: int = 0, *, bit: int | None = None) -> list[XzEpisode]:
-        """Every stretch at X or Z that ends at or after ``since_ps`` (or is still open)."""
+    def xz_episodes(
+        self, since_ps: int | None = None, *, until_ps: int | None = None, bit: int | None = None
+    ) -> list[XzEpisode]:
+        """Every stretch at X or Z that ends in the window (or is still open at its end)."""
+        lo, hi = self._window(since_ps, until_ps)
         out = []
         known = None
         start = None
-        for t_ps, v in self._values(bit):
+        for t_ps, v in self._values(bit, hi):
             if v is None:
                 if start is None:
                     start = (t_ps, known)
                 continue
             if start is not None:
-                if t_ps >= since_ps:
+                if t_ps >= lo:
                     out.append(XzEpisode(start[0], t_ps, start[1], v))
                 start = None
             known = v
@@ -198,7 +250,7 @@ class SepEdgeTimer:
 
     def value_at(self, t_ps: int) -> int | None:
         """The value after every change at or before ``t_ps``."""
-        self._require_started()
+        self._window(t_ps, t_ps)
         val = None
         for c in self.changes:
             if c.t_ps > t_ps:
@@ -206,9 +258,11 @@ class SepEdgeTimer:
             val = c.value
         return val
 
-    def fmt(self, since_ps: int = 0, limit: int = 16) -> str:
+    def fmt(
+        self, since_ps: int | None = None, limit: int = 16, *, until_ps: int | None = None
+    ) -> str:
         """A one-line value-change log for an ``OBS-`` line."""
-        items = self.since(since_ps)[:limit]
+        items = self.since(since_ps, until_ps=until_ps)[:limit]
         body = " ".join(f"{c.t_ps}ps={'X' if c.value is None else hex(c.value)}" for c in items)
         return f"{self.name}[{body}]"
 
@@ -297,6 +351,22 @@ if __name__ == "__main__":
     tm.changes.extend(
         TimedChange(t, v) for t, v in ((0, 1), (10, None), (20, 0), (30, 1), (40, None), (50, 1))
     )
-    assert tm.falls() == [20] and tm.rises() == [30]
-    assert tm.xz_episodes(15) == [XzEpisode(10, 20, 1, 0), XzEpisode(40, 50, 1, 1)]
+    tm._runs = [[0, 60]]
+    assert tm.falls(until_ps=60) == [20] and tm.rises(until_ps=60) == [30]
+    assert tm.xz_episodes(15, until_ps=60) == [XzEpisode(10, 20, 1, 0), XzEpisode(40, 50, 1, 1)]
+    assert tm.value_at(25) == 0
+    for args in ((None, None), (0, 70)):
+        try:
+            tm.falls(args[0], until_ps=args[1])
+        except SepEdgeIdleError:
+            pass
+        else:
+            raise AssertionError(f"a query past the stop must raise: {args}")
+    tm._runs = [[0, 25], [35, None]]
+    try:
+        tm.falls(20, until_ps=40)
+    except SepEdgeIdleError:
+        pass
+    else:
+        raise AssertionError("a window across a restart must raise")
     print("sep_edge_timer self-check PASS")

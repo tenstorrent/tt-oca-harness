@@ -2025,6 +2025,33 @@ module sep_uvm_top
     assign pr_ifu_rid_o = '0;
     assign pr_ifu_rlast_o = '0;
 `endif
+    // PR-IFU-XBAR: the IFU demux port to the local crossbar and its response;
+    // the CPU stub has no IFU.
+`ifndef SEP_CPU_STUB
+    assign pr_ifu_xbar_arvalid_o = `SEP_CORE.ifu_sram_axi_req.ar_valid;
+    assign pr_ifu_xbar_arready_o = `SEP_CORE.ifu_sram_axi_resp.ar_ready;
+    assign pr_ifu_xbar_araddr_o = `SEP_CORE.ifu_sram_axi_req.ar.addr;
+    assign pr_ifu_xbar_arid_o = `SEP_CORE.ifu_sram_axi_req.ar.id;
+    assign pr_ifu_xbar_arlen_o = `SEP_CORE.ifu_sram_axi_req.ar.len;
+    assign pr_ifu_xbar_arsize_o = `SEP_CORE.ifu_sram_axi_req.ar.size;
+    assign pr_ifu_xbar_rvalid_o = `SEP_CORE.ifu_sram_axi_resp.r_valid;
+    assign pr_ifu_xbar_rready_o = `SEP_CORE.ifu_sram_axi_req.r_ready;
+    assign pr_ifu_xbar_rresp_o = `SEP_CORE.ifu_sram_axi_resp.r.resp;
+    assign pr_ifu_xbar_rid_o = `SEP_CORE.ifu_sram_axi_resp.r.id;
+    assign pr_ifu_xbar_rlast_o = `SEP_CORE.ifu_sram_axi_resp.r.last;
+`else
+    assign pr_ifu_xbar_arvalid_o = 1'b0;
+    assign pr_ifu_xbar_arready_o = 1'b0;
+    assign pr_ifu_xbar_araddr_o = '0;
+    assign pr_ifu_xbar_arid_o = '0;
+    assign pr_ifu_xbar_arlen_o = '0;
+    assign pr_ifu_xbar_arsize_o = '0;
+    assign pr_ifu_xbar_rvalid_o = 1'b0;
+    assign pr_ifu_xbar_rready_o = 1'b0;
+    assign pr_ifu_xbar_rresp_o = '0;
+    assign pr_ifu_xbar_rid_o = '0;
+    assign pr_ifu_xbar_rlast_o = '0;
+`endif
     // PR-LSU-ROM: the LSU demux port to the ROM mux.
     assign pr_lsu_rom_awvalid_o = `SEP_CORE.lsu_rom_axi_req.aw_valid;
     assign pr_lsu_rom_awready_o = `SEP_CORE.lsu_rom_axi_resp.aw_ready;

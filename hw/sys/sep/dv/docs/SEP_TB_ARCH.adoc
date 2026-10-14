@@ -277,6 +277,9 @@ Observation probe groups:
    read data. PR-ROM also carries the macro side of the ROM interface shim
    (`pr_rom_macro_*`: `rom_macro_req`, `rom_macro_addr`, the 64-bit word
    index, and `rom_macro_rdata` of `sep_ip_integration`; monitor PR-ROM-MACRO).
+   The PR-SRAM address (`pr_sram_addr_o`) is the byte offset of the request
+   from the SRAM base `SEP_SRAM_MEM_BASE_ADDR`, not the bus address; a check
+   compares it at 8-byte word granularity, the width of one SRAM word.
    Owners: `sep_cpu_lsu_alias_window_twin_test`,
    `sep_fabric_inbound_rebase_test`,
    `sep_fabric_filter_match_priority_rand_test`,
@@ -295,6 +298,11 @@ Observation probe groups:
    AxSIZE) and the response the demux returns (R `resp`, `id`, `last`,
    DECERR of the error responder included); tied to 0 on the CPU stub build.
    Owners: `sep_cpu_reset_entry_test`, `sep_cpu_demux_unmapped_fetch_test`.
+** PR-IFU-XBAR (`pr_ifu_xbar_*`): the IFU demux port to the local crossbar
+   (`sep.sv` `ifu_sram_axi_req`, with its response): AR address, ID, AxLEN,
+   AxSIZE and R `resp`, `id`, `last`. Every IFU fetch that the demux sends
+   toward the crossbar crosses this port; tied to 0 on the CPU stub build.
+   Owner: `sep_cpu_demux_unmapped_fetch_test`.
 ** PR-LSU-ROM (`pr_lsu_rom_*`) and PR-LSU-XBAR (`pr_lsu_xbar_*`): the LSU
    demux ports to the ROM mux and to the local crossbar (`sep.sv`
    `lsu_rom_axi_req` and `lsu_xbar_axi_req`, with their responses): AW and AR

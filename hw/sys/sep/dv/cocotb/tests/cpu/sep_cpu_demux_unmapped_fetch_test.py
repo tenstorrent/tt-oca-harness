@@ -14,19 +14,23 @@ the handler logs ``mcause`` and ``mtval`` and resumes there. The routine logs
 every value as a 32-bit store to the outbound mailbox; each marker store has
 its own mailbox slot, so the bench finds it by address on the PR-LSU-XBAR tap
 and bounds each window with two markers. A gate record opens the graded window
-for steps 7, 8 and the LSU pair of step 10 and closes it for every control leg.
+for steps 5, 7, 8 and the LSU pair of step 10 and closes it for every control leg.
 
 Checks:
   CHK-IFU-DECERR     : the PR-IFU response to each fetch at an unmapped target
                        U is DECERR, with no PR-ROM or PR-SRAM request between the
-                       fetch handshake and its response (cpu.adoc, CPU: the IFU
-                       demux sends every address other than ROM and SRAM to a
-                       DECERR responder). Control: the ROM fetches (boot stub,
-                       trap handler) and the SRAM fetch of the copied routine
-                       appear on those taps.
-  CHK-IFU-NEVER      : no request at U on PR-EXT or PR-OUT in the fetch window.
-                       Control: the LSU read at 0x2000_0100 is on PR-EXT and the
-                       LSU store at 0x8000_0000 is on PR-OUT.
+                       fetch handshake and its response and no PR-IFU-XBAR
+                       request outside the SRAM in the fetch window (cpu.adoc,
+                       CPU: the IFU demux sends every address other than ROM and
+                       SRAM to a DECERR responder). Control: the ROM fetches
+                       (boot stub, trap handler) and the SRAM fetch of the
+                       copied routine appear on those taps, the SRAM fetch also
+                       on PR-IFU-XBAR.
+  CHK-IFU-NEVER      : no request at U on PR-EXT or PR-OUT, and no PR-IFU-XBAR
+                       request outside the SRAM, in the fetch window. Control:
+                       the LSU read at 0x2000_0100 is on PR-EXT, the LSU store at
+                       0x8000_0000 is on PR-OUT and the SRAM fetch of the copied
+                       routine is on PR-IFU-XBAR.
   CHK-LSU-ROUTE      : the ROM load is on PR-LSU-ROM only and the SRAM load on
                        PR-LSU-XBAR only (cpu.adoc, CPU: the LSU demux).
   CHK-CORE-PATH-XBAR : the ICCM marker run, the DCCM pattern accesses and the
@@ -352,12 +356,14 @@ def build_main(p: _Plan) -> Asm:
         _store_const(a, SRAM_RT + 4 * k, insn)
     a.op(FENCE, FENCE_I).li(T0, SRAM_RT).op(jalr(RA, T0, 0))
     # Step 5: one ROM load and one SRAM load, each between two markers.
+    _gate(a, 1)
     _mark(a, "ROMLD_B")
     a.li(T0, p.rom_ld).op(lw(A0, T0, 0), sw(A0, GP, OFF["ROMLD_V"]))
     _mark(a, "ROMLD_E")
     _mark(a, "SRAMLD_B")
     a.li(T0, p.sram_ld).op(lw(A0, T0, 0), sw(A0, GP, OFF["SRAMLD_V"]))
     _mark(a, "SRAMLD_E")
+    _gate(a, 0)
     # Step 6: extension-port read (its bus error ends in an NMI) and the
     # outbound store.
     _mark(a, "EXT_B")
@@ -549,6 +555,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             "PR-ROM",
             "PR-SRAM",
             "PR-IFU",
+            "PR-IFU-XBAR",
             "PR-LSU-ROM",
             "PR-LSU-XBAR",
             "PR-XBAR-TCM",
@@ -686,7 +693,12 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             1 for b in sram_req if b.addr is not None and (b.addr & (SRAM_BYTES - 1)) >> 3 == rt_off
         )
         ctl_rom_port = sum(1 for b in rom_req if b.we == 0)
+        # The IFU demux port to the local crossbar: the SRAM fetch of the copied
+        # routine is its control; a request outside the SRAM is a misroute.
+        xbar_ar = [b for b in self.taps["PR-IFU-XBAR"].beats if b.ch == "ar"]
+        ctl_xbar = sum(1 for b in xbar_ar if b.addr is not None and SRAM_RT <= b.addr < SRAM_RT + 8)
         ctl_ok = ctl_rom >= 1 and ctl_sram >= 1 and ctl_rom_port >= 1 and ctl_sram_port >= 1
+        ctl_ok = ctl_ok and ctl_xbar >= 1
         e0 = self._win("EXT_B", "EXT_E")
         ext_ctl = sum(
             1
@@ -702,6 +714,12 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         for k, u in enumerate(p.u):
             w = self._win(f"FB{k}", f"FE{k}")
             ars = [b for b in ifu_ar if w[0] <= b.t_ps <= w[1] and b.addr == u]
+            xbar_n = sum(
+                1
+                for b in xbar_ar
+                if w[0] <= b.t_ps <= w[1]
+                and (b.addr is None or not SRAM_BASE <= b.addr < SRAM_BASE + SRAM_BYTES)
+            )
             causes = self._recs(f"FB{k}", f"FE{k}", "TRAP_CAUSE")
             tvals = self._recs(f"FB{k}", f"FE{k}", "TRAP_VAL")
             self.logger.info(
@@ -728,11 +746,12 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
                     sram_n = sum(1 for b in sram_req if ar.t_ps <= b.t_ps <= t_r)
             self._grade(
                 "CHK-IFU-DECERR",
-                resp == RESP_DECERR and rom_n == 0 and sram_n == 0 and ctl_ok,
+                resp == RESP_DECERR and rom_n == 0 and sram_n == 0 and xbar_n == 0 and ctl_ok,
                 f"fetch=0x{u:08x} resp={'X' if resp is None else ('DECERR' if resp == RESP_DECERR else resp)} "
-                f"rom_req={rom_n} sram_req={sram_n} control_rom={ctl_rom} control_sram={ctl_sram} "
+                f"rom_req={rom_n} sram_req={sram_n} ifu_xbar_req_outside_sram={xbar_n} "
+                f"control_rom={ctl_rom} control_sram={ctl_sram} "
                 f"control_rom_port={ctl_rom_port} control_sram_port={ctl_sram_port} "
-                f"ifu_req_at_U={len(ars)}",
+                f"control_ifu_xbar_sram={ctl_xbar} ifu_req_at_U={len(ars)}",
             )
             ext_seen = sum(
                 1
@@ -746,9 +765,16 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             )
             self._grade(
                 "CHK-IFU-NEVER",
-                ext_seen == 0 and out_seen == 0 and ext_ctl >= 1 and out_ctl >= 1 and len(ars) >= 1,
+                ext_seen == 0
+                and out_seen == 0
+                and xbar_n == 0
+                and ext_ctl >= 1
+                and out_ctl >= 1
+                and ctl_xbar >= 1
+                and len(ars) >= 1,
                 f"target=0x{u:08x} ext_seen={ext_seen} out_seen={out_seen} "
-                f"lsu_ext_seen={ext_ctl} lsu_out_seen={out_ctl} ifu_req_at_U={len(ars)}",
+                f"ifu_xbar_req_outside_sram={xbar_n} lsu_ext_seen={ext_ctl} "
+                f"lsu_out_seen={out_ctl} control_ifu_xbar_sram={ctl_xbar} ifu_req_at_U={len(ars)}",
             )
         # Each NMI record with the last marker before it and its D-bus error address.
         names = {v: k for k, v in OFF.items()}

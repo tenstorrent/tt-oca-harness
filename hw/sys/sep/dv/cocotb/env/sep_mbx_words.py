@@ -13,6 +13,12 @@ A write that is not one beat, or a strobe that is not one full 32-bit lane,
 fails the leaf: the record shape is part of the generated code, so another
 shape shows a broken path and is never dropped.
 
+``records``, ``since`` and ``find`` apply the idle-tap guard of the PR-OUT tap:
+they raise ``TapIdleError`` when the tap took no sample after the mark (a mark
+from :meth:`SepMbxWords.mark`; with no mark, when the tap never sampled), so an
+absence or a count cannot pass on a tap that was not started or was stopped
+before the stimulus. ``wait`` raises when its bound expires.
+
 Usage::
 
     out = SepFabricTap("PR-OUT").start()
@@ -37,6 +43,17 @@ class MbxRec:
     t_ps: int
 
 
+class MbxMark(int):
+    """A record index that also carries the sampled clock count of the tap at the mark."""
+
+    clk: int
+
+    def __new__(cls, index: int, clk: int) -> "MbxMark":
+        obj = super().__new__(cls, index)
+        obj.clk = clk
+        return obj
+
+
 class SepMbxWords:
     """Decoded word records of one PR-OUT tap."""
 
@@ -48,7 +65,16 @@ class SepMbxWords:
         self._aws: list = []
         self._ws: list = []
 
+    def _guard(self, after: int) -> None:
+        # A plain index carries no clock count: the tap must have sampled at all.
+        self.tap._require_sampled(after)
+
     def records(self) -> list[MbxRec]:
+        """Every record so far; raises ``TapIdleError`` if the tap never sampled."""
+        self._guard(0)
+        return self._decode()
+
+    def _decode(self) -> list[MbxRec]:
         beats = self.tap.beats
         for b in beats[self._scan :]:
             if b.ch == "aw":
@@ -71,14 +97,18 @@ class SepMbxWords:
             self._recs.append(MbxRec(i, off, val, w.t_ps))
         return self._recs
 
-    def mark(self) -> int:
-        return len(self.records())
+    def mark(self) -> MbxMark:
+        return MbxMark(len(self._decode()), self.tap.clk)
 
     def since(self, after: int = 0, off: int | None = None) -> list[MbxRec]:
-        return [r for r in self.records()[after:] if off is None or r.off == off]
+        """The records after ``after``; raises ``TapIdleError`` if the tap took no sample after it."""
+        self._guard(after)
+        return [r for r in self._decode()[after:] if off is None or r.off == off]
 
     def find(self, off: int, *, after: int = 0, val: int | None = None) -> MbxRec | None:
-        for r in self.records()[after:]:
+        """The first record at ``off`` after ``after``; raises like ``since``."""
+        self._guard(after)
+        for r in self._decode()[after:]:
             if r.off == off and (val is None or r.val == val):
                 return r
         return None
@@ -90,7 +120,7 @@ class SepMbxWords:
         clk = cocotb.top.clk_i
         pos = after
         for _ in range(bound):
-            recs = self.records()
+            recs = self._decode()
             for r in recs[pos:]:
                 if r.off == off and (val is None or r.val == val):
                     return r

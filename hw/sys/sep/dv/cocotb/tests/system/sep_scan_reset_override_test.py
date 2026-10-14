@@ -266,6 +266,7 @@ class sep_scan_reset_override_test(sep_base_test):
         t_rise = int(get_sim_time("ps"))
         await ClockCycles(dut.clk_i, H)
         await ReadOnly()
+        t_end = int(get_sim_time("ps"))
         stop["v"] = True
         await RisingEdge(dut.clk_i)
         if not task.done():
@@ -274,7 +275,7 @@ class sep_scan_reset_override_test(sep_base_test):
             await t.stop()
         rises = {}
         for (name, _p, bit), t in zip(NETS, timers):
-            r = t.rises(t_rise, bit=bit or 0)
+            r = t.rises(t_rise, until_ps=t_end, bit=bit or 0)
             rises[name] = r[0] if r else None
         return {
             "samples": [s for s in samples if s[0] >= t_fall],
