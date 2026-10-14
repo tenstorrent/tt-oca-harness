@@ -210,14 +210,16 @@ async def ocah_spi_lanes_test(dut) -> None:
     await bfm.drive(hold_ns=3 * half)
     legs.append(("cs_oe_low", [e.split(":")[0] for e in monitor.get_wire_errors()[before:]]))
 
-    stop_error = None
+    errors = monitor.get_wire_errors()
+    expected_stop = f"{monitor.name}: {len(errors)} wire-check violation(s); first: {errors[0]}"
+    stop_text = ""
     try:
         await monitor.stop()
     except OcahSpiMonitorError as exc:
-        stop_error = exc
+        stop_text = str(exc)
     checker.expect_equal(
         "CHK-SPI-LANE-OE",
-        (legal_errors, legs, stop_error is not None),
+        (legal_errors, legs, stop_text == expected_stop),
         (
             [],
             [
@@ -227,7 +229,7 @@ async def ocah_spi_lanes_test(dut) -> None:
             ],
             True,
         ),
-        context=f"stop() raised {stop_error!r}",
+        context=f"stop() raised {stop_text!r}",
     )
     await flash.stop()
 
