@@ -70,7 +70,9 @@ other SCK edge is the shift edge.  It grades the controller's pins:
 ``oe_lanes``          with ``sd_oe``: at each sample edge the data lane output
                       enables are none, lane 0, lanes 1:0 or lanes 3:0
 ``oe_ctrl``           with ``cs_oe``/``sck_oe``: both are on at each sample
-                      edge
+                      edge (a sample edge needs a driven chip-select low and
+                      a driven clock edge; an undriven pad does not carry
+                      them)
 ====================  =====================================================
 
 With the four-lane taps the MOSI checks apply to every lane whose output

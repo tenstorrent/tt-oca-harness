@@ -355,7 +355,7 @@ pins:
 | `xz` | While chip-select is low, chip-select, SCK and MOSI (with `sd_out`, every driven lane) resolve to 0 or 1; while chip-select is not low (reset included) an X/Z is not graded |
 | `oe_idle` | With `sd_oe`: no data lane output enable rises, or is on at an SCK edge, while chip-select is high |
 | `oe_lanes` | With `sd_oe`: at each sample edge the data lane output enables are none, lane 0, lanes 1:0 or lanes 3:0 |
-| `oe_ctrl` | With `cs_oe`/`sck_oe`: both are on at each sample edge |
+| `oe_ctrl` | With `cs_oe`/`sck_oe`: both are on at each sample edge. Derived, not stated in a pin table: a sample edge needs a driven chip-select low and a driven clock edge, and an undriven pad does not carry them |
 
 With `sd_out`, `mosi_edge` applies to every lane whose output enable is on
 before and after a change.
