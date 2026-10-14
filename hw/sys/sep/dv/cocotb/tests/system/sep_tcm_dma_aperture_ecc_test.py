@@ -47,10 +47,9 @@ Bench: the TCM bit-flip hook (error inject, ``env/sep_tcm_flip.py``) XORs a mask
 into the stored 39-bit word (bits 31:0 data, 38:32 ECC). Flips land only on
 aperture words this leaf wrote. Before the first DMA access the leaf loads an
 all-zero image through ``tcm_load_i``, so every TCM word holds a valid code word
-and a DMA read of a bank pair never meets an unwritten neighbour. The leaf also
-pulses ``dbg_rstb_i`` and repeats the cold reset with the core held: the no_cpu
-bring-up never resets the core debug module, and its ``dmcontrol`` bits gate
-the core reset. The PR-TCM
+and a DMA read of a bank pair never meets an unwritten neighbour. The leaf logs and
+checks that the core reset (``core_rst_l``, which the debug module's
+``dmcontrol`` gates) and the reset vector are known after bring-up. The PR-TCM
 tap (``env/sep_fabric_tap.py``, read per bank with ``TapBeat.lane``) packs the
 banks with bank 0 in the low bits: ICCM bank ``off[3:2]``, row
 ``off[17:4]``; DCCM bank ``off[2]``, row ``off[16:3]`` (the bank map of
@@ -384,19 +383,18 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
     # ---- steps 1 and 2 -------------------------------------------------------------
     async def _setup(self) -> None:
         top = cocotb.top
-        # The no_cpu bring-up leaves dbg_rstb_i high from time 0, so the VeeR
-        # debug module never takes its reset: dmcontrol.dmactive and ndmreset,
-        # and with them the core reset (core_rst_l = rst_l & dbg_core_rst_l),
-        # stay X on a four-state simulator. The leaf pulses dbg_rstb_i, then
-        # repeats the cold reset, so the held core leaves reset with known state.
-        top.dbg_rstb_i.value = 0
-        await ClockCycles(top.clk_i, 4)
-        top.dbg_rstb_i.value = 1
-        await ClockCycles(top.clk_i, 4)
-        rel = await self.pulse_rst_ni()
-        self.logger.info(
-            "CTL-TCM-RESET: dbg_rstb_i pulse, then a cold reset with the core held: %s", rel
-        )
+        # The no_cpu bring-up pulses dbg_rstb_i with the cold reset and tb_top
+        # gives the core TAP a TRST edge, so the held core leaves reset with a
+        # known state; the leaf logs that state.
+        w = top.u_dut.u_sep.u_sep_cpu.u_el2_veer_wrapper
+        state = {
+            "core_rst_l": str(w.veer.core_rst_l.value),
+            "dbg_core_rst_l": str(w.veer.dbg_core_rst_l.value),
+            "rst_vec": str(w.veer.rst_vec.value),
+        }
+        self.logger.info("CTL-TCM-RESET: core reset state after bring-up %s", state)
+        if any(c not in "01" for v in state.values() for c in v):
+            raise AssertionError(f"CTL-TCM-RESET FAIL: core reset state not known {state}")
         # All-zero TCM image: every word a valid code word (tb_backdoor_mem).
         for name in ("sep_itcm.hex", "sep_dtcm.hex"):
             with open(os.path.join(os.getcwd(), name), "w") as fh:
