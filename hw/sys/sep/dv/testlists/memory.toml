@@ -169,3 +169,32 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+sep_edn_jtag_reset_waive", "+sep_efuse_preload"]
 
+
+[[tests]]
+# SEP SRAM serves every INCR length and every single-beat burst type. A multi-beat FIXED
+# or WRAP burst from the inbound master answers SLVERR and changes nothing. A cold reset
+# during an access leaves the interface usable.
+name = "sep_sram_axi_shape_matrix_test"
+module = "sram.sep_sram_axi_shape_matrix_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["sram", "fabric", "reset", "memory", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+sep_axi_wrap_len1_inject"]
+
+[[tests]]
+# On a DMA-path TCM read a single-bit error returns corrected data, and a two-bit error
+# returns an error response and sets DMA_BUS_ERR_STATUS.host_path_err. ICCM and DCCM do
+# not alias. The leaf needs the TCM controller of the full CPU and fails without it.
+name = "sep_tcm_dma_aperture_ecc_test"
+module = "system.sep_tcm_dma_aperture_ecc_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["tcm", "ecc", "dma", "memory", "subsystem"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "default"
+args = ["+skip_fuse_sense", "+sep_require_full_cpu"]

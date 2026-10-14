@@ -435,6 +435,12 @@ Exceptions (a closed set):
   error has no frontdoor. The response, the counters and the trap state the
   checkers read are not forced. Driver: `env/sep_tcm_flip.py`. Owners:
   `sep_tcm_dma_aperture_ecc_test`, `sep_tcm_ecc_cpu_trap_test`.
+* *Single-beat WRAP inject* — `+sep_axi_wrap_len1_inject` lets a master drive
+  a WRAP burst with AxLEN = 0, which AXI4 does not allow. The `ocah_axi_sva`
+  checker of `m_axi` and of `s_axi` sees AxBURST = INCR on such an AW or AR, so
+  it tracks the request as a single-beat burst and checks every other rule; the
+  DUT gets the WRAP burst. The SRAM response and the read-back the checkers read
+  are not forced. Owner: `sep_sram_axi_shape_matrix_test`.
 * *ROM bit-flip* — stored-bit error inject on the boot ROM macro array,
   outside `sep`, behind `sep_boot_rom_rsp_i`. A rising edge of `rom_flip_i`
   XORs `rom_flip_mask_i` into the stored 64-bit word `rom_flip_index_i`. The
