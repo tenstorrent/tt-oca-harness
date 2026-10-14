@@ -4281,7 +4281,7 @@ Tool: VCS.
 [cols="2,6,4,3,3,3",options="header"]
 |===
 |Coverpoint |Bins and crosses |Illegal bins |Sampled signals |Owning tests |Notes
-|`cp_test_en_consumer` |`test_en_i` {0, 1} x consumer class {clock-gater test ports, AXI cell test inputs} = 4 cells. A cell hits when every discovered pin of the class equals the `test_en_i` value. The pin lists come from a hierarchy walk of the test. Spec: `doc/port_table.adoc`, port list (`test_en_i`) |None |`test_en_i`, the consumer pins of the hierarchy walk |`sep_scan_reset_override_test` |executable. CHK-TEST-EN-PINS fills the four cells in every leaf. `test_en_i` is an added hook (top-port drive)
+|`cp_test_en_consumer` |`test_en_i` {0, 1} x consumer class {clock-gater test ports, AXI cell test inputs} = 4 cells. A cell hits when every discovered pin of the class equals the `test_en_i` value. The pin lists come from a hierarchy walk of the test. Spec: `doc/port_table.adoc`, port list (`test_en_i`) |None |`test_en_i`, the consumer pins of the hierarchy walk |`sep_scan_reset_override_test` |executable. The hierarchy walk logged as `OBS-TEST-EN-PINS` fills a cell when every pin of the class follows; no graded check backs the cells, because the `test_en_i` consumer set is a Blocked feature in SEP_VPLAN. `test_en_i` is an added hook (top-port drive)
 |===
 
 [[sep-fcov-p2-mem-aperture]]

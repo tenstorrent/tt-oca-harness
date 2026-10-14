@@ -1969,18 +1969,27 @@ N * ln(N) / (d * reseed) regressions. The seed count of an entry stays small
 (3 or 4) and is not raised to fill cells; an entry that runs more seeds states
 the reason.
 
-*Testlist entries.* A Phase 3 test has one testlist entry. One entry on
-`lsu_stub_all_live` gives a Verilator leaf on that build and a VCS leaf on
-`--target default`, so a test that grades some checks on one simulator only
+*Testlist entries.* A Phase 3 test has one testlist entry. Each entry runs on
+its testlist target, so a test that grades some checks on one simulator only
 splits them inside its one entry, and the leaf selects them from the simulator.
+Full-CPU legs of a `no_cpu` test run in a dedicated full-CPU entry
+(`target = "default"`, `+sep_require_full_cpu`, which fails a leaf on a CPU-stub
+build), and the leaf selects them from the build it runs on. A VCS `--cov` run
+uses `--target default` for every entry.
 A second entry exists only when the run mode differs in a way that one entry
-cannot carry: a time-0 bench plusarg that the prestage hook cannot set, or a
-different run mode (`cpu` and `no_cpu`). No entry exists to pin a cell (no
+cannot carry: a time-0 bench plusarg that the prestage hook cannot set, a
+different run mode (`cpu` and `no_cpu`), or a full-CPU leg. No entry exists to pin a cell (no
 per-cell variant, no cell or field plusarg). The tests with a second entry are
 5.13 `sep_boot_release_terms_test`, whose entry
 `sep_boot_release_terms_test_smc_hold` adds the bench plusarg
 `+sep_smc_fuse_sense_hold`; 5.28 `sep_debug_master_target_matrix_test`, which
-has one `cpu` entry and one `no_cpu` entry of the one module; and 7.28
+has one `cpu` entry and one `no_cpu` entry
+(`sep_debug_master_target_matrix_test_sba`, on `target = "default"`) of the one
+module; 5.15 `sep_cpu_reset_retention_test`, 5.20
+`sep_secure_tm_strap_sampling_test` and 5.22 `sep_timer_clock_contract_test`,
+whose full-CPU entries `sep_cpu_reset_retention_test_dbg`,
+`sep_secure_tm_strap_sampling_test_dbg` and `sep_timer_clock_contract_test_dbg`
+run the `dbg_rstb_i` legs on VCS; and 7.28
 `sep_km_fault_inject_rand_test`, which has one entry for each of its two
 preloaded `rom_main` builds (HOST and HOST-UNREC, set by the t=0 plusarg
 `+km_rom_hex`). An extension leg runs in the testlist entry of its
@@ -1997,7 +2006,9 @@ testlist entry whose leaf drives the `sep_reset_n` override (on the bench pins
 TDR) or a per-IP hold `jtag_<ip>_rst_hold_i` adds `+sep_edn_jtag_reset_waive`.
 The plusarg turns off only the crypto EDN arbiter and adapter request-hold
 assertions (`tb/tb_top.sv`), and `tb_top` logs that it is set. The Phase 3
-entries that add it are 5.17, 5.20, 5.22 and 6.29.
+entries that add it are 5.17, 5.18, 5.20, 5.22 and 6.29. Entry 5.18 adds it
+because the scan reset asserts the same crypto engine resets without the
+isolation sequence.
 
 A test with two classes uses two of the three classes on different legs: a
 drawn configuration for one leg and a matrix point for another, or a directed
@@ -2998,9 +3009,13 @@ the test does.
 |What does `dmi_active_o` indicate: a per-access activity pulse, or a debug-module-active level such as `dmactive`? (`hw/sys/sep/doc/port_table.adoc` gives only "DMI active indicator".)
 |`sep_debug_master_target_matrix_test` does not grade it
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
-|Isolated-read data placement
-|For 1-, 2- and 8-byte reads in an isolated window, which lane or bytes carry 0x1501A7ED? (`hw/sys/sep/doc/reset_controller.adoc` gives the value only.)
-|`sep_sw_reset_isolation_matrix_test` grades SLVERR for every size and the data on 4-byte reads only. `sep_cpu_reset_retention_test` grades a 4-byte isolated read of HMAC (SLVERR, 0x1501A7ED)
+|`test_en_i` consumers
+|Which clock-gater test ports and AXI cell test inputs must `test_en_i` reach? The design ties some of them to 0. (`hw/sys/sep/doc/port_table.adoc` gives `test_en_i` only.)
+|`sep_scan_reset_override_test` logs the hierarchy walk as `OBS-TEST-EN-PINS` and does not grade it
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|Debug-master access outside the moved local alias window
+|What response does a debug-master access get at the old alias or just below the window after `SEP_LOCAL_BASE_ADDR` moves? (`hw/sys/sep/doc/memory_map.adoc` gives the alias rule only.)
+|`sep_debug_master_target_matrix_test` grades the address pass-through of the remap and logs the response as `OBS-ALIAS-OUTSIDE`
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`pmpaddr` implementation
 |What is the implemented `pmpaddr` width and granularity? (`hw/sys/sep/doc/cpu.adoc`, Processor Core, states only 16 entries with Smepmp.)
@@ -3879,8 +3894,8 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>; <<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Secure scan chain command admission
 |-
-|PERMANENT-HOLE (Memory, boot, reset); ADD-PORT (eFuse, lifecycle)
-|Command admission on the secure scan chain belongs to the adopter DFT integration (`hw/sys/sep/doc/test_mode.adoc`, Protection While Active). The RTL simulation has no scan chain. Needs a port that reports the admitted command class and `secure_tm` at the secure-chain DFT controller.
+|PERMANENT-HOLE
+|Command admission on the secure scan chain belongs to the adopter DFT integration (`hw/sys/sep/doc/test_mode.adoc`, Protection While Active). The RTL simulation has no scan chain, so no OCAH port can report the admitted command class or `secure_tm`.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`SECURE_TM` protection outputs
 |-
@@ -3994,8 +4009,8 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Secure chain test and dump command admission
 |-
-|ADD-PORT
-|Needs the same port as secure scan chain command admission.
+|PERMANENT-HOLE
+|Admission belongs to the adopter DFT integration (`hw/sys/sep/doc/test_mode.adoc`, Protection While Active). The RTL simulation has no scan chain, so no OCAH port can report the command class, as for secure scan chain command admission.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |General scan chain admission
 |-
@@ -4024,8 +4039,8 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Scan test versus dump operation class
 |-
-|ADD-PORT
-|Needs the same port as secure scan chain command admission.
+|PERMANENT-HOLE
+|Admission belongs to the adopter DFT integration (`hw/sys/sep/doc/test_mode.adoc`, Protection While Active). The RTL simulation has no scan chain, so no OCAH port can report the command class, as for secure scan chain command admission.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Program and read commands that reach the bank port after the guard
 |The command at `efuse_shim_command_req_o` after the guard
@@ -4373,7 +4388,17 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`dbg_sb_req` and `dbg_sb_rsp`
 |Read-only tap
 |The system-bus master port of the debug module: ID bits and beat shape.
-|`sep_debug_master_target_matrix_test` (CHK-DBG-SBA)
+|`sep_debug_master_target_matrix_test` (CHK-DBG-SBA), `sep_cpu_reset_entry_test` (CHK-WDT-STORE-RESP)
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|PR-DBG-IN and PR-DBG-OUT
+|Read-only tap
+|The debug-module system-bus request at the input and at the output of the debug local alias remap (`u_dbg_local_alias_remap`): AW and AR valid, ready and address. Tied to 0 on the CPU-stub build.
+|`sep_debug_master_target_matrix_test` (CHK-DBG-ALIAS-MOVE, CHK-DBG-ALIAS-OLD, CHK-DBG-ALIAS-BELOW)
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|Isolate-stage slave-side taps
+|Read-only tap
+|The accepted transactions and the responses at the slave side of each of the 14 isolate stages of the crypto AXI interconnect (`iso_slv_{aw,ar,b,r}_hs_probe_o`, `iso_slv_{b,r}resp_probe_o`).
+|`sep_sw_reset_isolation_matrix_test` (CHK-ISO-DRAIN)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`dmi_uncore_en_o`, `dmi_uncore_wr_en_o`, `jtag_tdo_o`
 |Read-only tap
@@ -4383,7 +4408,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Clock-gater test pins and AXI cell test inputs
 |Read-only tap
 |The test pins found by a hierarchy walk.
-|`sep_scan_reset_override_test` (CHK-TEST-EN-PINS)
+|`sep_scan_reset_override_test` (CHK-STRAP-INDEP; the walk is logged as `OBS-TEST-EN-PINS`)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Memory, boot and reset FCOV sampler nets
 |Sampler taps
@@ -4552,13 +4577,19 @@ use it" names the entries whose checks need the hook.
 |Top-port drive
 |Debug-module stimulus. `tb_top.sv` ties both to 0.
 |`dmi_core_enable_i`, `dmi_uncore_enable_i`
-|`sep_debug_master_target_matrix_test`
+|`sep_debug_master_target_matrix_test`, `sep_cpu_reset_entry_test` (CHK-WDT-STORE-RESP)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`jtag_tck_i`, `jtag_tms_i`, `jtag_tdi_i`, `jtag_trst_ni` as bench inputs and a DTM shifter
 |Top-port drive
 |The reset-vector TDR, the TAP reset and the debug module. `tb_top.sv` keeps the pins in internal registers.
 |`jtag_tck_i`, `jtag_tms_i`, `jtag_tdi_i`, `jtag_trst_ni`
-|`sep_cpu_reset_entry_test`, `sep_debug_master_target_matrix_test`
+|`sep_cpu_reset_entry_test`, `sep_debug_master_target_matrix_test`, `sep_boot_rom_aperture_sweep_test` and `sep_cpu_demux_unmapped_fetch_test` (the power-on `jtag_trst_ni` pulse)
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|`+sep_axi_wrap_len1_inject`
+|Error inject
+|Lets a master drive a WRAP burst with AxLEN = 0, which AXI4 does not allow; the `ocah_axi_sva` checkers track it as a single-beat burst.
+|The `m_axi` and `s_axi` request of the bench masters
+|`sep_sram_axi_shape_matrix_test` (CHK-SRAM-SINGLE)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |TCM bit-flip hook
 |Error inject
@@ -4606,7 +4637,7 @@ use it" names the entries whose checks need the hook.
 |Existing bench hook
 |Turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override (<<sep-vplan-phase3-edn-waiver>>).
 |The assertion control of `tb_top`
-|`sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`
+|`sep_ip_reset_override_matrix_test`, `sep_scan_reset_override_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`jtag_id_i` drive
 |Top-port drive
