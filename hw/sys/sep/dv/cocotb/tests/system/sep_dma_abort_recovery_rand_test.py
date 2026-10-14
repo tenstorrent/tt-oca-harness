@@ -50,8 +50,9 @@ Checkers:
                        sentinel destination word (``CTRL-MISSING`` otherwise).
   CHK-DMA-ABORT-BEATS  no AR, AW, W or B handshake on ``dma_axi_req_probe_o``
                        from the ABORTED rise on ``dma_status_probe_o`` to the
-                       GO write of the recovery copy; beats appear before the
-                       ABORT write and after the recovery GO write. The probe
+                       GO write of the recovery copy. Controls: AR or AW beats
+                       appear before the ABORT write, and AR, AW, W and B beats
+                       each appear after the recovery GO write. The probe
                        carries no R channel, so R beats are not graded.
   CHK-DMA-ABORT-CLR    a write of 1 to STATUS.ABORTED clears it.
   CHK-DMA-RECOVER      the recovery copy sets DONE, leaves ERROR and
@@ -548,7 +549,10 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
             (b for b in ev_go.ar + ev_go.aw + ev_go.w + ev_go.b if t_rise <= b.clk < m_tap_rec.clk),
             key=lambda b: b.clk,
         )
-        n_rec_beats = len(ev_rec.ar) + len(ev_rec.aw)
+        # Every graded channel must show beats in the recovery copy, so a dead or
+        # misdecoded AR, AW, W or B tap cannot pass the silence check.
+        rec_ch = {ch: len(getattr(ev_rec, ch)) for ch in ("ar", "aw", "w", "b")}
+        n_rec_beats = sum(rec_ch.values())
         last_drain = max(
             [b.clk for b in ev_go.ar + ev_go.aw + ev_go.w + ev_go.b if b.clk < t_rise],
             default=None,
@@ -557,11 +561,13 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
             f"phase={plan.cls} beats_before_abort={len(before)} beats_after_aborted={len(after)} "
             f"beats_recovery={n_rec_beats} aborted_rise_clk={t_rise} abort_write_clk="
             f"{rec['m_tap_ab'].clk} last_beat_before_rise={last_drain} "
+            + " ".join(f"{ch}_recovery={n}" for ch, n in rec_ch.items())
+            + " "
             + " ".join(
                 f"{ch}_after={sum(1 for b in after if b.ch == ch)}" for ch in ("ar", "aw", "w", "b")
             )
         )
-        if not before or n_rec_beats == 0:
+        if not before or min(rec_ch.values()) == 0:
             self._ctrl_missing(f"CHK-DMA-ABORT-BEATS control: {beats_line}")
         if after:
             b0 = after[0]
