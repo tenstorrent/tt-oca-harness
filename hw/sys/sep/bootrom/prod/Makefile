@@ -258,6 +258,17 @@ toolchain-images: key-digests
 
 toolchain-images-build: $(VMEM) $(ITCM_HEX) $(DTCM_HEX) $(CHECK_OBJS) bl1_test
 
+# Every release build, whatever target asked for it, checks that its image carries
+# no part of the ML-DSA-87 test key.
+ifeq ($(BUILD_TYPE),release)
+MLDSA87_TEST_KEY := $(PROD_DIR)/tests/signing_keys/mldsa87_test_private_key.pem
+RELEASE_KEY_CHECK := $(BUILD_DIR)/release_key_check.stamp
+toolchain-images-build: $(RELEASE_KEY_CHECK)
+$(RELEASE_KEY_CHECK): $(ELF) $(MLDSA87_TEST_KEY) $(TOOLS_DIR)/check_release_image.py
+	$(MANIFEST_PYTHON) "$(TOOLS_DIR)/check_release_image.py" --key "$(MLDSA87_TEST_KEY)" "$(ELF)"
+	touch "$@"
+endif
+
 .PHONY: host-test
 host-test:
 	$(MAKE) -C $(PROD_DIR)/tests/host
