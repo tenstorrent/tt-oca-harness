@@ -1429,7 +1429,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |cpu
 |CPU firmware, CPU trace port, architectural instruction table
-|Proves that the core runs RV32IMC with Zba, Zbb, Zbc and Zbe enabled and that Zbs is illegal, that the 16 PMP address entries do not alias, that `mrac` grants no permission, and that the trace port matches `minstret`. Extends the open ROM and trace tests with those cells only.
+|Proves that the core executes M, C, Zba, Zbb and Zbc instructions and that Zbs is illegal (Zbe is enabled but not executed: the specification gives no Zbe encodings), that the 16 PMP address entries do not alias, that `mrac` grants no permission, and that the trace port matches `minstret`. Extends the open ROM and trace tests with those cells only.
 |===
 
 [[sep-vplan-summary-6]]
