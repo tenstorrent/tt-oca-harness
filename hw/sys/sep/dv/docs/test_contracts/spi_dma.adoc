@@ -1126,7 +1126,7 @@ The offsets come from `spi_controller.adoc`, and TXDATA at 0x28 and RXDATA at 0x
 
 [arabic]
 . Draw every value from the seed and log it in `DRAW` lines. Bring up with the CPU held off. Write BASE and LIMIT around the SEP SRAM, RANGE_VALID = 1, ADDR_SPACE_ID = 0x77 and both ADDR_HI registers = 0.
-. Leg Z, per cell: fill the destination span and its guards with drawn words that have no zero byte. Copy eight non-zero words between two other SRAM blocks. Program the fill (SRC_ADDR_LO = 0, the destination, the sizes, the width and DST_CONFIG) and write CONTROL with OPCODE 4, INITIAL_TRANSFER=1 and GO=1. Wait for DONE with the re-GO rule of `sep_dma_abort_recovery_rand_test`, step 3. Read the destination span, STATUS and ERROR_CODE (CHK-DMA-ZERO-IMAGE, CHK-DMA-ZERO-BEAT, CHK-DMA-ZERO-RESIDUE).
+. Leg Z, per cell: fill the destination span and its guards with drawn words that have no zero byte. Copy eight non-zero words between two other SRAM blocks, the destination block zeroed first, and read the destination block back. Program the fill (SRC_ADDR_LO = 0, the destination, the sizes, the width and DST_CONFIG) and write CONTROL with OPCODE 4, INITIAL_TRANSFER=1 and GO=1. Wait for DONE with the re-GO rule of `sep_dma_abort_recovery_rand_test`, step 3. Read the destination span, STATUS and ERROR_CODE (CHK-DMA-ZERO-IMAGE, CHK-DMA-ZERO-BEAT, CHK-DMA-ZERO-RESIDUE).
 . Leg W, with INTR_ENABLE = DMA_DONE | DMA_ERROR: fill the whole range (CHK-DMA-ZERO-WIN-OK, CHK-DMA-ZERO-IRQ); fill from below BASE at width 4 and, with BASE one byte above the start, at width 1; fill past LIMIT in one chunk (CHK-DMA-ZERO-IRQ) and across LIMIT in a later chunk (CHK-DMA-ZERO-WIN-ERR each); fill to an unaligned LIMIT (CHK-DMA-ZERO-WIN-EXACT); copy to a destination outside the range (CHK-DMA-ZERO-COPY-CTRL). Write 1 to STATUS.ERROR after each error and wait for BUSY=0.
 . Leg E: write OPCODE 5 with GO, then after the clear a zero fill (CHK-DMA-ZERO-OPC). Write SPI CONTROL.TX_WATERMARK = 1 with the TX FIFO empty and HANDSHAKE_INTR_ENABLE = 1, wait for the trigger probe, and write a zero fill with HARDWARE_HANDSHAKE_ENABLE=1 (CHK-DMA-ZERO-HS). Restore both registers.
 . Leg A: measure the clean time of a fill of the drawn size, refill the sentinel, start the fill again and write CONTROL with ABORT=1 after the drawn fraction of that time. A write that finds BUSY=0 or that ends with DONE is repeated with the next drawn fraction, at most three times, then CTRL-MISSING. Read the destination, wait a quarter of the clean time and read it again, write 1 to STATUS.ABORTED, then run a recovery fill (CHK-DMA-ZERO-ABORT).
@@ -1142,11 +1142,11 @@ The offsets come from `spi_controller.adoc`, and TXDATA at 0x28 and RXDATA at 0x
 |CHK-DMA-ZERO-BEAT
 |No AR handshake in the window of the fill; one AW per model write with AxLEN 0, AxADDR[31:2] and WSTRB equal to the model; one OKAY B per AW. A DUT that reads the source shows AR beats. Control: the 4-byte-wide copy of eight words before the fill records eight AR handshakes at the eight source word addresses through the same tap, else CTRL-MISSING. This proves the AR decode of the tap live for every `ar=0` result of the leaf. Each fill or copy window also fails (`DMA-TAP-WINDOW FAIL`) unless the tap sampled every clock from GO to BUSY=0, so an empty AR or AW list comes from a sampled window. Evidence: `CHK-DMA-ZERO-BEAT PASS seed=<n> ... ar=0 copy_ar=8 aw=<k> beats=<k> shape=model`.
 |CHK-DMA-ZERO-RESIDUE
-|The bytes the fill writes read 0 although the last word of the copy before it is non-zero. A DUT that writes its data register unchanged writes that word. Evidence: `CHK-DMA-ZERO-RESIDUE PASS seed=<n> ... copy_last=<w> cleared_bytes=<b>`.
+|The bytes the fill writes read 0 although the last word of the copy before it is non-zero. A DUT that writes its data register unchanged writes that word. Control: the copy destination, zeroed before the copy, reads back equal to the eight non-zero source words, else CTRL-MISSING, so the copy data passed through the DMA datapath before the fill. Evidence: `CHK-DMA-ZERO-RESIDUE PASS seed=<n> ... copy_last=<w> copy_dst_last=<w> cleared_bytes=<b>`.
 |CHK-DMA-ZERO-WIN-OK
 |A fill of the whole range completes and clears it; the guards outside the range keep their words.
 |CHK-DMA-ZERO-WIN-ERR
-|Per out-of-range fill: ERROR=1 and ERROR_CODE equals DST_ADDR_ERROR alone; the AW count equals the model writes inside the range (none when the first write is outside); those bytes read 0 and every other byte keeps its word. A DUT that checks only the first chunk writes past LIMIT in the crossing case.
+|Per out-of-range fill: ERROR=1 and ERROR_CODE equals DST_ADDR_ERROR alone; no AR handshake; one AW per model write inside the range (none when the first write is outside) with AxLEN 0, AxADDR[31:2] and WSTRB equal to the model, and no other AW or W handshake; one OKAY B per AW; those bytes read 0 and every other byte keeps its word. A DUT that checks only the first chunk writes past LIMIT in the crossing case; a DUT that writes outside the range in place of an in-range write fails the per-write address compare.
 |CHK-DMA-ZERO-WIN-EXACT
 |A fill whose narrow last write ends on an unaligned LIMIT completes with ERROR=0, and the bytes after LIMIT keep their words. A DUT that checks whole words rejects this fill.
 |CHK-DMA-ZERO-COPY-CTRL
@@ -1160,7 +1160,7 @@ The offsets come from `spi_controller.adoc`, and TXDATA at 0x28 and RXDATA at 0x
 |CHK-DMA-ZERO-ABORT
 |ABORTED reads 1; the destination is whole zero words followed by sentinel words, at least one of each, and reads the same a quarter of the clean time later; ABORTED reads 0 after its write of 1; the recovery fill completes and clears the whole destination.
 |CHK-DMA-ZERO-WIN-LOCK
-|After MuBi4 False is written to RANGE_REGWEN, RANGE_REGWEN reads other than True and a later write to LIMIT leaves it unchanged; a fill past LIMIT then stops at the first write beyond it with DST_ADDR_ERROR.
+|After MuBi4 False is written to RANGE_REGWEN, RANGE_REGWEN reads other than True and a later write to LIMIT leaves it unchanged; a fill past LIMIT then ends with DST_ADDR_ERROR, with the AR, AW, W and B shape of CHK-DMA-ZERO-WIN-ERR for the writes up to LIMIT and no write beyond it.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

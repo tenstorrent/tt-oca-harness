@@ -48,11 +48,16 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          addresses, through the same tap, else CTRL-MISSING.
   CHK-DMA-ZERO-RESIDUE   per Leg Z cell: the cleared bytes read 0 although the
                          last word of the copy before the fill is non-zero.
+                         Control: the copy destination, zeroed before the
+                         copy, reads back equal to the non-zero source words,
+                         else CTRL-MISSING.
   CHK-DMA-ZERO-WIN-OK    the fill of the whole range completes, clears the
                          range and leaves the guards.
   CHK-DMA-ZERO-WIN-ERR   per out-of-range fill: ERROR=1 with ERROR_CODE equal
-                         to DST_ADDR_ERROR alone, AW beats for the in-range
-                         beats only, the in-range beats cleared and every other
+                         to DST_ADDR_ERROR alone; no AR; one AW per in-range
+                         model beat with AxLEN 0, AxADDR[31:2] and the WSTRB
+                         lanes of that beat, and no other AW or W; one OKAY B
+                         per AW; the in-range beats cleared and every other
                          byte unchanged.
   CHK-DMA-ZERO-WIN-EXACT the fill whose narrow last beat ends on an unaligned
                          LIMIT completes and leaves the bytes after LIMIT.
@@ -77,8 +82,9 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          the whole destination.
   CHK-DMA-ZERO-WIN-LOCK  RANGE_REGWEN reads other than True after it is written
                          False and LIMIT keeps its value through a later write;
-                         a fill past LIMIT then stops at the first beat beyond
-                         it.
+                         a fill past LIMIT then ends in DST_ADDR_ERROR with
+                         the AW, W and B shape of CHK-DMA-ZERO-WIN-ERR for
+                         the beats up to LIMIT and no beat beyond it.
 
 Logged only: ``OBS-DMA-ZERO-ABORT``, the AR and AW handshakes after the ABORTED
 rise (``sep_dma_abort_recovery_rand_test`` grades that contract).
@@ -565,6 +571,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             )
             await self.mem.fill(c.region.addr, c.region.words)
             await self.mem.fill(c.copy_src.addr, c.copy_src.words)
+            await self.mem.fill(c.copy_dst, [0] * (COPY_BYTES // 4))
             cp = await self._run(
                 opcode=OP_COPY,
                 src=c.copy_src.addr,
@@ -581,6 +588,12 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
                     "CHK-DMA-ZERO-BEAT",
                     f"{tag} copy ar={len(cp_ar)} expect={len(exp_ar)} "
                     f"addrs={[f'0x{a or 0:08x}' for a in cp_ar[:4]]}",
+                )
+            cp_got = await self.mem.read(c.copy_dst, COPY_BYTES // 4)
+            if cp_got != c.copy_src.words:
+                self._ctrl_missing(
+                    "CHK-DMA-ZERO-RESIDUE",
+                    f"{tag} copy_dst {self._diff(cp_got, c.copy_src.words, c.copy_dst)}",
                 )
             inc, wrap = MODES[c.mode]
             run = await self._run(
@@ -616,7 +629,8 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             self._pass(
                 "CHK-DMA-ZERO-RESIDUE",
                 all(img[a] == 0 for a in cleared),
-                f"{tag} copy_last=0x{c.copy_src.words[-1]:08x} cleared_bytes={len(cleared)}",
+                f"{tag} copy_last=0x{c.copy_src.words[-1]:08x} "
+                f"copy_dst_last=0x{cp_got[-1]:08x} cleared_bytes={len(cleared)}",
             )
             await self._idle()
 
@@ -641,14 +655,15 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         exp = self._expect_words(d.region, fill, beats)
         st = run.status
         ec = run.error_code & ERROR_CODE_MASK
-        aw = len(run.ev.aw)
-        ok = st.error and not st.done and ec == DST_ERR and got == exp and aw == len(beats)
+        probs = self._beat_problems(run.ev, beats)
+        ok = st.error and not st.done and ec == DST_ERR and got == exp and not probs
         self._pass(
             "CHK-DMA-ZERO-WIN-ERR",
-            ok and not run.ev.ar,
+            ok,
             f"case={case} base=0x{base:08x} limit=0x{limit:08x} dst=0x{fill.dst_base:08x} "
             f"total={fill.total} chunk={fill.chunk} {st.fmt()} error_code=0x{ec:x} "
-            f"aw={aw} in_range_beats={len(beats)} {self._diff(got, exp, d.region.addr)}",
+            f"aw={len(run.ev.aw)} in_range_beats={len(beats)} "
+            f"{' '.join(probs) or 'shape=model'} {self._diff(got, exp, d.region.addr)}",
         )
         if irq:
             done_r = self.irq.rises_since(m_irq, "done")
@@ -916,15 +931,17 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         st = run.status
         ec = run.error_code & ERROR_CODE_MASK
         cmp = field_compare(limit_rb, plan.l_limit, _D.mask32("ENABLED_MEMORY_RANGE_LIMIT"))
+        probs = self._beat_problems(run.ev, beats)
         self._pass(
             "CHK-DMA-ZERO-WIN-LOCK",
             cmp.ok
             and st.error
             and ec == DST_ERR
             and got == exp
-            and len(run.ev.aw) == len(beats) == plan.l_words,
+            and not probs
+            and len(beats) == plan.l_words,
             f"regwen=0x{regwen:x} limit_readback=0x{limit_rb:08x} {st.fmt()} "
             f"error_code=0x{ec:x} aw={len(run.ev.aw)} in_range_beats={len(beats)} "
-            f"{self._diff(got, exp, r.addr)}",
+            f"{' '.join(probs) or 'shape=model'} {self._diff(got, exp, r.addr)}",
         )
         await self._idle()
