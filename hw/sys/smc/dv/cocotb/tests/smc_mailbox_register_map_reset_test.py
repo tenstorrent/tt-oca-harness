@@ -27,7 +27,7 @@ class smc_mailbox_register_map_reset_test(smc_base_test):
         "CHK-REGISTER-STATE-PER-APERTURE",
         "CHK-ADDRESS-EXAMPLES-PAIR0",
         "CHK-ATTRIBUTES-OBSERVED",
-        "CHK-ATTRIBUTES-MATCH-OBSERVED-UNIT",
+        "CHK-PAIR31-DEPTH-TWO",
         "CHK-CG-FIRST-ACCESS-AFTER-IDLE",
         "CHK-CG-RETENTION-ACROSS-IDLE",
         "CHK-CG-BACK-TO-BACK-IN-ORDER",

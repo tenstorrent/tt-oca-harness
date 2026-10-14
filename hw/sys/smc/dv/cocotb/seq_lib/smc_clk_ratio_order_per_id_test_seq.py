@@ -21,6 +21,7 @@ AXI_TIMEOUT_NS = 50_000
 FUSE_SENSE_MAX_CYCLES = 200_000
 SAMPLER_CATCHUP_CYCLES = 64
 OKAY = 0
+#: A write between unit apertures answers DECERR, except BASE+0x17000..0x17FFF (memmap.adoc).
 DECERR = 3
 RESP_NAME = {OKAY: "OKAY", DECERR: "DECERR"}
 SAME_ID = 0x21

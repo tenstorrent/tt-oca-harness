@@ -17,7 +17,7 @@ class smc_hang_sep_timeout_window_test(smc_base_test):
         "CHK-SEPWIN-BELOW",
         "CHK-SEPWIN-BEYOND",
         "CHK-SEPWIN-AT-LOG",
-        "CHK-SEPWIN-EXACT-LOG",
+        "CHK-SEPWIN-EXACT-DELTA",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )

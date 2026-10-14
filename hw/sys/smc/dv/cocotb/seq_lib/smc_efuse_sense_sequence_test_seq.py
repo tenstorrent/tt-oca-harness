@@ -29,7 +29,8 @@ _NUM_WORDS = 256
 _HOLD_SAMPLES = 8
 _QUIET_WINDOW = 64
 _POST_RISE_READS = 4
-_HANDOVER_CYCLES = 2  # smu-smc.adoc lines 431-433: valid falls two cycles after the last strobe
+# doc/integrator/src/smu-smc.adoc, When valid falls: valid falls two cycles after the last strobe
+_HANDOVER_CYCLES = 2
 _SENSE_BOUND_CYCLES = 200_000
 _RESET_BOUND_CYCLES = 2_000
 _RELEASE_BOUND_CYCLES = 20_000
@@ -222,8 +223,8 @@ class smc_efuse_sense_sequence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._chk(
             "CHK-SENSE-REQ-LATENCY",
             "tb_efuse_shim_cmd_valid first read 1 %d clk_smc_i cycles after the first edge with "
-            "rst_primary_smc_clk_no=1 (edge %d to %d; measured, no bound is asserted: owner value "
-            "pending) with exactly %d rising edge before the first strobe at edge %d",
+            "rst_primary_smc_clk_no=1 (edge %d to %d; not specified, measured, no bound is "
+            "asserted) with exactly %d rising edge before the first strobe at edge %d",
             latency,
             rel,
             first,
@@ -309,7 +310,7 @@ class smc_efuse_sense_sequence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._chk(
             "CHK-SENSE-DONE-OFFSET",
             "tb_fuse_sense_done rose %d cycles after the 256th strobe (edge %d to %d; the "
-            "port-visible offset is measured, owner value pending); "
+            "port-visible offset is not specified, measured); "
             "the first STATUS read issued after "
             "the rise (edge %d) read efuse_sense_done=1 and %d reads issued after the rise all "
             "read 1; %d reads straddling the rise read %s",
@@ -328,7 +329,7 @@ class smc_efuse_sense_sequence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         )
         assert fall - last == _HANDOVER_CYCLES, (
             f"cmd_valid fell {fall - last} cycles after the last strobe at edge {last}, the "
-            f"adoc states {_HANDOVER_CYCLES} (owner value pending); "
+            f"adoc states {_HANDOVER_CYCLES}; "
             f"rise of sense done at edge {rise}"
         )
         await self._wait_edges("quiet_window", _RESET_BOUND_CYCLES, fall + _QUIET_WINDOW)
@@ -377,7 +378,7 @@ class smc_efuse_sense_sequence_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 )
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s as measured event edges, strict < between adjacent "
-            "terms; SENSE_DONE@%d VALID_LOW@%d (shared edge allowed, owner value pending); "
+            "terms; SENSE_DONE@%d VALID_LOW@%d (shared edge allowed; not specified, measured); "
             "checker lines %s; "
             "step stamps %s ps",
             " < ".join(f"{term}@{edge}" for term, edge in zip(_TERMS, edges)),

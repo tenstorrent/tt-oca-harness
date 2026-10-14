@@ -262,7 +262,7 @@ class smc_dma_traffic_shape_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-DTS-COUPLED-COPY",
             f"NEXT_ID {nid} non-zero, DONE {before} -> {self._done}, {S2_ROWS} rows landed at "
-            f"{rows} equal to their sources; output_axi shape (owner value pending, printed): "
+            f"{rows} equal to their sources; output_axi shape (not specified, measured, printed): "
             f"{shape}",
         )
 
@@ -274,7 +274,7 @@ class smc_dma_traffic_shape_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-DTS-LINEAR",
             f"NEXT_ID {nid} rose, DONE {before} -> {self._done}, all {S3_BYTES} bytes at "
-            f"0x{S3_DST:x} equal the source; bursts at output_axi (owner value pending, printed): "
+            f"0x{S3_DST:x} equal the source; bursts at output_axi (not specified, measured): "
             f"AR bursts={len(self._sampler.ar)} AW bursts={len(self._sampler.aw)} {shape}",
         )
 
@@ -302,7 +302,7 @@ class smc_dma_traffic_shape_test_seq(SmcCsrSeq):
             "CHK-DTS-QUEUE-FOUR",
             f"NEXT_ID reads {ids} non-zero and rising, DONE {before} -> {self._done} "
             f"(advance {self._done - before}), each destination equals its own source; "
-            f"transfer order at output_axi (owner value pending, printed): "
+            f"transfer order at output_axi (not specified, measured, printed): "
             f"{self._sampler.first_order()} {self._sampler.addrs()}",
         )
 
@@ -317,7 +317,7 @@ class smc_dma_traffic_shape_test_seq(SmcCsrSeq):
             "CHK-DTS-PAGE-ALIGNED",
             f"NEXT_ID {nid}, DONE {before} -> {self._done}, all {S5_BYTES} bytes at "
             f"0x{S5_DST:x} equal the source starting at 0x{S5_SRC:x}; split rule "
-            f"(owner value pending, printed): first AR address {first_ar}; {shape}",
+            f"(not specified, measured, printed): first AR address {first_ar}; {shape}",
         )
 
         await self.csr_write("CONFIG_RESTORE", DMA_CTRL_CONFIG, 0)

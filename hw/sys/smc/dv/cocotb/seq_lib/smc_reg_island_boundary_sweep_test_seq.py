@@ -29,11 +29,12 @@ from .smc_addr_map import (
     generated_window,
     smc_addr,
 )
+from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
 
 AXI_RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 OKAY, SLVERR, DECERR = 0, 2, 3
-PAST_DATA = 0xBADCAB1E
+PAST_DATA = SmcCsrSeq.ERR_SLAVE_SIGNATURE
 ISLAND_COUNT = 24
 REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 LOCAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR")
@@ -42,8 +43,8 @@ GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 STEP_ORDER = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11")
 CHK_STEP = (
     ("CHK-ISL-SETUP-GOLDENS", "S1"),
-    ("CHK-ISL-FIRST-WORD-RW", "S3"),
-    ("CHK-ISL-LAST-DECODED-WORD-RW", "S5"),
+    ("CHK-ISL-FIRST-WORD-WRITE-OKAY", "S3"),
+    ("CHK-ISL-LAST-DECODED-WORD-WRITE-OKAY", "S5"),
     ("CHK-ISL-PASTEXT-READ-DECERR", "S6"),
     ("CHK-ISL-PASTEXT-WRITE-DECERR-CLASS", "S7"),
     ("CHK-ISL-PASTEXT-WRITE-SLVERR-CLASS", "S8"),
@@ -51,8 +52,9 @@ CHK_STEP = (
     ("CHK-ISL-TABLE", "S10"),
 )
 FENCE_TERMS = (
-    "SETUP-GOLDENS < FIRST-WORD-RW < LAST-DECODED-WORD-RW < PASTEXT-READ-DECERR < "
-    "PASTEXT-WRITE-DECERR-CLASS < PASTEXT-WRITE-SLVERR-CLASS < PASTEXT-NOCHANGE < TABLE"
+    "SETUP-GOLDENS < FIRST-WORD-WRITE-OKAY < LAST-DECODED-WORD-WRITE-OKAY < "
+    "PASTEXT-READ-DECERR < PASTEXT-WRITE-DECERR-CLASS < PASTEXT-WRITE-SLVERR-CLASS < "
+    "PASTEXT-NOCHANGE < TABLE"
 )
 
 RW = "rw"
@@ -88,8 +90,8 @@ ISLANDS = (
         0x3784C,
         0x37850,
         0x37FFC,
-        "ro(owner value pending)",
-        "ro(owner value pending)",
+        "ro(not specified)",
+        "ro(not specified)",
         _D,
     ),
     Island("DMA", "dma_ctrl", 0x38000, 0x38134, 0x38138, 0x381FC, RW, RW, _D),
@@ -126,8 +128,8 @@ ISLANDS = (
         0x5E08,
         0x5E0C,
         0x5FFC,
-        "ro(owner value pending)",
-        "ro(owner value pending)",
+        "ro(not specified)",
+        "ro(not specified)",
         _S,
     ),
     Island(
@@ -151,8 +153,8 @@ ISLANDS = (
         0x92FC,
         0x9300,
         0x9FFC,
-        "ro(owner value pending)",
-        "ro(owner value pending)",
+        "ro(not specified)",
+        "ro(not specified)",
         _S,
     ),
     Island(
@@ -399,7 +401,7 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
         ro = [f"{i.name}={i.first_nature}" for i in ISLANDS if not _writable(i.first_nature)]
         written = sum(_writable(i.first_nature) for i in ISLANDS)
         self._chk(
-            "CHK-ISL-FIRST-WORD-RW",
+            "CHK-ISL-FIRST-WORD-WRITE-OKAY",
             "S3",
             "first word of %d islands answered OKAY (RESET hole OKAY,0x%x); %d rw or hole words "
             "took the identity write with BRESP OKAY and read back the value read; %d ro words "
@@ -428,12 +430,12 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
             if i.name.endswith("_WDT")
         )
         self._chk(
-            "CHK-ISL-LAST-DECODED-WORD-RW",
+            "CHK-ISL-LAST-DECODED-WORD-WRITE-OKAY",
             "S5",
             "last decoded word of %d islands answered OKAY (declared holes OKAY,0x0); %d rw or "
             "hole words took the identity write with BRESP OKAY and read back the value read; "
             "%d ro words not written (%s); watchdog state after the write "
-            "(owner value pending): %s; values: %s",
+            "(not specified, measured): %s; values: %s",
             len(ISLANDS),
             written,
             len(ro),
@@ -514,8 +516,8 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
         self._chk(
             "CHK-ISL-PASTEXT-WRITE-SLVERR-CLASS",
             "S8",
-            "%d match, %d LINKED-ISSUE of 30 words; RDL declares SLVERR (%d); DECERR answers are "
-            "LINKED-ISSUE (see the main-tree issue record); "
+            "%d match, %d mismatch of 30 words; RDL declares SLVERR (%d); the mismatching words "
+            "answer DECERR; "
             "mismatch table: %s; per island: %s",
             match,
             len(linked),
@@ -566,7 +568,7 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
         return (
             f"{isl.name} [{' | '.join(cells)}] nature first={isl.first_nature} "
             f"last={isl.last_nature}; RDL write={_name(isl.write_resp)}; "
-            f"{'match' if class_match else 'LINKED-ISSUE'}"
+            f"{'match' if class_match else 'mismatch'}"
         )
 
     async def _s10(self) -> None:
@@ -582,12 +584,12 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
             match += ok
             linked += not ok
         assert len(rows) == ISLAND_COUNT and match + linked == len(rows), (
-            f"S10 table has {len(rows)} rows, {match} match, {linked} LINKED-ISSUE"
+            f"S10 table has {len(rows)} rows, {match} match, {linked} mismatch"
         )
         self._chk(
             "CHK-ISL-TABLE",
             "S10",
-            "%d rows, %d match, %d LINKED-ISSUE; %s",
+            "%d rows, %d match, %d mismatch; %s",
             len(rows),
             match,
             linked,

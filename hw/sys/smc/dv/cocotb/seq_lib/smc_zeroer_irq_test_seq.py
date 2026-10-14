@@ -264,7 +264,8 @@ class smc_zeroer_irq_test_seq(output_fabric_pass_all_cfg_seq):
             "CHK-ZEROER-IRQ-ONE-PULSE",
             "INT_EN job of %d bytes: %d tb_zeroer_intp pulse at rise %d after the last B "
             "handshake at rise %d, tb_plic_pending_324 rose at rise %d and stayed set "
-            "(observation point pending owner value), tb_dma_intp high %d rise(s), quiet window "
+            "(observation point not specified, measured), tb_dma_intp high %d rise(s), quiet "
+            "window "
             "%d rises, pulse width %d rise(s), STATUS word 0x%x",
             _JOB_BYTES,
             n,
@@ -409,10 +410,10 @@ class smc_zeroer_irq_test_seq(output_fabric_pass_all_cfg_seq):
             "S6",
             "CHK-ZEROER-IRQ-ZERO-SIZE-WIDTH",
             "SIZE 0 trigger with INT_EN set: %d pulses over %d rises, STATUS samples %s; pulse "
-            "widths of the earlier jobs %s rise(s) (owner value pending); INT_EN cleared by a "
+            "widths of the earlier jobs %s rise(s) (not specified, measured); INT_EN cleared by a "
             "write while a job was held busy: CTRL_STATUS word 0x%x right after, %d pulse(s) while "
             "held, %d pulse(s) after release, CTRL_STATUS word 0x%x at the end "
-            "(owner value pending)",
+            "(not specified, measured)",
             len(zero_rises),
             _ZERO_SIZE_CYCLES,
             "".join(str(v) for v in status_seen),

@@ -19,6 +19,7 @@ from cocotb.utils import get_sim_time
 from env.smc_reset_item import SmcResetOp
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import smc_efuse_map_u32
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_image_pattern_test_seq import (
     LOCKS_WORDS,
@@ -34,7 +35,11 @@ _WORD_MASK = 0xFFFF_FFFF
 _SLOTS = 32
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S5R", "S6", "S7", "S8")
 #: SMC_CONFIG low-word bits that carry an assigned meaning.
-_SMC_CONFIG_ASSIGNED = (1 << 0) | (1 << 7) | (1 << 15)
+_SMC_CONFIG_ASSIGNED = (
+    smc_efuse_map_u32("SMC_EFUSE_MAP__SMC_CONFIG__ROM_FLIP_ENDIANNESS_bm")
+    | smc_efuse_map_u32("SMC_EFUSE_MAP__SMC_CONFIG__SRAM_AUTO_ZERO_DISABLE_bm")
+    | smc_efuse_map_u32("SMC_EFUSE_MAP__SMC_CONFIG__DFT_IGNORE_ERROR_bm")
+)
 _SENSE_BOUND_CYCLES = 200_000
 
 

@@ -11,7 +11,14 @@ import cocotb
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_addr
+from .smc_addr_map import (
+    _SMC_BASE_CFG_H,
+    GLOBAL_BASE_RESET,
+    LOCAL_BASE_RESET,
+    REGION_SIZE_RESET,
+    _field_mask,
+    smc_addr,
+)
 from .smc_base_test_seq import wait_fuse_sense_done
 from .smc_cg_obs_utils import emit_chk, log_step
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -23,10 +30,9 @@ THR_SYS = smc_addr("SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD_B
 THR_SEP = smc_addr("SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD_BASE_ADDR")
 THR_ACCEL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR")
 
-GLOBAL_BASE_RESET = 0x4000_0000
-LOCAL_BASE_RESET = 0xC000_0000
-REGION_SIZE_RESET = 0x0100_0000
-THRESHOLD_RESET = 0x1000
+THRESHOLD_RESET = _field_mask(
+    _SMC_BASE_CFG_H, "SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_reset"
+)
 THRESHOLD_PATTERN = 0x5A5A5
 LOCAL_BASE_WRITE_DATA = 0xB000_0000
 
@@ -165,8 +171,8 @@ class smc_clk_ratio_base_config_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-BASECFG-RO-IGNORED",
             f"CHK-BASECFG-RO-IGNORED: LOCAL_BASE before 0x{before:x} (resp{bresp}); write "
-            f"0x{LOCAL_BASE_WRITE_DATA:x} write_resp={write_resp} (printed, owner value pending); "
-            f"after 0x{after:x} (resp{aresp})",
+            f"0x{LOCAL_BASE_WRITE_DATA:x} write_resp={write_resp} "
+            f"(printed, not specified, measured); after 0x{after:x} (resp{aresp})",
         )
 
         self.bounded_waits.append(("sep_in_axi_access", f"{AXI_TIMEOUT_NS}ns", self.last_access))

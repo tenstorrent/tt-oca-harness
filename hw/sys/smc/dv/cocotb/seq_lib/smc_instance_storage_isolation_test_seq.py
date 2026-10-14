@@ -319,7 +319,13 @@ class smc_instance_storage_isolation_test_seq(SmcCsrSeq):
         for writer in PORTS:
             pattern = PORT_PATTERNS[writer]
             await self._access(
-                writer, f"W64_{writer}", SmcSysAxiOp.WRITE, addr, 8, pattern, wstrb=0x0F
+                writer,
+                f"W64_{writer}",
+                SmcSysAxiOp.WRITE,
+                addr,
+                8,
+                pattern | (0xDEAD_BEEF << 32),
+                wstrb=0x0F,
             )
             reads[writer] = [
                 await self._access(
@@ -333,7 +339,8 @@ class smc_instance_storage_isolation_test_seq(SmcCsrSeq):
         self._mark_step("SCRATCH_PORTS")
         self._log_chk(
             "CHK-SCRATCH-32BIT-PORTS",
-            "SCRATCH_COLD[0] written as one 32-bit word through an 8-byte write (strobe 0x0F) "
+            "SCRATCH_COLD[0] written as one 32-bit word through an 8-byte write (strobe 0x0F, "
+            "upper lanes 0xDEADBEEF) "
             + "; ".join(
                 f"from {w} 0x{PORT_PATTERNS[w]:08X} read back by SEP_IN/SYS_IN/JTAG "
                 f"{self._hexes(reads[w])}"

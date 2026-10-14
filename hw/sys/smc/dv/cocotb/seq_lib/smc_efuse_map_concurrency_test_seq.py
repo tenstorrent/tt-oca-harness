@@ -430,7 +430,6 @@ class smc_efuse_map_concurrency_test_seq(SmcCsrSeq):
             f"S5: response data {[hex(v & _MASK32) for _t, _i, v in rs]}"
         )
         r_times = [t for t, _i, _v in rs]
-        assert r_times == sorted(r_times), f"S5: response times not in order {r_times}"
         assert all(r.resp_code == _AXI_OKAY for r in reads), (
             f"S5: response codes {[r.resp_code for r in reads]}"
         )

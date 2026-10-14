@@ -25,13 +25,16 @@ MAILBOX_CG_EN = _field_mask(
 WRITE_ABOVE = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__STATUS__WRITE_LEVEL_ABOVE_THRESH_bm")
 READ_ABOVE = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__STATUS__READ_LEVEL_ABOVE_THRESH_bm")
 WTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__WTIRQ_bm")
+RTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__RTIRQ_bm")
+EIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__EIRQ_bm")
+READ_ERROR = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__ERROR__READ_ERROR_bm")
+WRITE_ERROR = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__ERROR__WRITE_ERROR_bm")
 WFLUSH = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__CTRL__WFLUSH_bm")
 RFLUSH = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__CTRL__RFLUSH_bm")
-IRQ_ALL = 0x7
+IRQ_ALL = WTIRQ | RTIRQ | EIRQ
 CTRL_BITS = WFLUSH | RFLUSH
 
 FUSE_SENSE_RISES = 200_000
-AXI_TIMEOUT_NS = 50_000
 AXI_SLVERR = 2
 EMPTY_ERROR_LOW = 0xFEEDDEAD
 DRAIN_LIMIT = 6
@@ -76,7 +79,6 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         super().__init__(name)
         self._stamps: list[tuple[str, int]] = []
         self._chk_marks: list[tuple[str, int]] = []
-        self._irqs_writes = 0
 
     def _mark_step(self, step_id: str) -> None:
         self._stamps.append((step_id, int(get_sim_time("ps"))))
@@ -123,8 +125,6 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         return self._check(item, mode)
 
     async def _wr(self, name, side, reg, data, mode=OKAY):
-        if reg == "IRQS":
-            self._irqs_writes += 1
         return await self._do(name, SmcSysAxiOp.WRITE, side, reg, data, mode)
 
     async def _rd(self, name, side, reg, mode=OKAY, expected=None):
@@ -160,7 +160,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         return item.rdata & CTRL_BITS
 
     async def _flags(self, name, side) -> int:
-        return await self._val(name, side, "ERROR_FLAGS") & 0x3
+        return await self._val(name, side, "ERROR_FLAGS") & (READ_ERROR | WRITE_ERROR)
 
     async def _baseline(self, tag: str) -> tuple[int, int]:
         """Clear A's flags and IRQS, then read both; both must be zero."""
@@ -181,7 +181,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         return group
 
     async def body(self) -> None:
-        await self.wait_fuse_sense_done()
+        await self.wait_fuse_sense_done(max_cycles=FUSE_SENSE_RISES)
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
         await self.csr_write("CLOCK_GATE_CONTROL_EN", CLOCK_GATE_CONTROL, cg | MAILBOX_CG_EN)
         await self.csr_read(
@@ -194,12 +194,12 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         self._mark_step("S2")
         self._log_chk(
             "CHK-CTRL-ZERO-AT-RESET",
-            f"CTRL of A and B read OKAY with bits[1:0] A={ca} B={cb} at reset",
+            f"CTRL of A and B read OKAY with bits[1:0] A={ca} B={cb} at reset; the reset leg "
+            "cannot fail on a missing reset under the 2-state build (bench limit)",
         )
 
         w = [0x3000_0000_0000_0000 + n for n in range(16)]
         assert await self._val("IRQEN_A", "A", "IRQEN") & IRQ_ALL == 0, "IRQEN A not zero"
-        irqs_start = self._irqs_writes
         await self._wr("WIRQT_1", "A", "WIRQT", 1)
         await self._push("S3_W0", "A", w[0])
         st1 = await self._val("S3_STATUS_1", "A", "STATUS")
@@ -213,14 +213,13 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         bits = [s & WRITE_ABOVE for s in (st1, st2, st3, st4)]
         assert bits == [0, WRITE_ABOVE, 0, 0], f"STATUS[2] at 1,2,1,0 words: {bits}"
         assert irqs3 & WTIRQ, f"IRQS 0b{irqs3:03b}: IRQS[0] not latched while above WIRQT"
-        assert self._irqs_writes == irqs_start, "IRQS written during S3"
         self._mark_step("S3")
         self._log_chk(
             "CHK-WRITE-THRESHOLD-STRICT",
             f"WIRQT=1: STATUS[2] one word={bits[0] >> 2} two words={bits[1] >> 2}; set: two "
             f"queued words; observed: STATUS[2]=1; cleared: B popped one word; checked_cleared: "
             f"STATUS[2]={bits[2] >> 2}; STATUS[1:0] logged 0x{st1 & 3:x}/0x{st2 & 3:x}/"
-            f"0x{st3 & 3:x}/0x{st4 & 3:x} (owner value pending)",
+            f"0x{st3 & 3:x}/0x{st4 & 3:x} (not specified, measured)",
         )
         self._log_chk(
             "CHK-STATUS-FOLLOWS-OCCUPANCY-NO-ACK",
@@ -244,7 +243,6 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         await self._pop("S4_P2", "B", w[4])
         rbits = [s & READ_ABOVE for s in (r1, r2, r3, r4)]
         assert rbits == [READ_ABOVE, 0, READ_ABOVE, 0], f"B STATUS[3] points: {rbits}"
-        assert self._irqs_writes == irqs_start, "IRQS written during S3 or S4"
         self._mark_step("S4")
         self._log_chk(
             "CHK-READ-THRESHOLD-STRICT",
@@ -255,7 +253,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-THRESHOLD-BITS-FALL-LIVE",
             f"STATUS[2] 1->{bits[2] >> 2}->{bits[3] >> 2} and B STATUS[3] 1->{rbits[3] >> 3} as "
-            f"occupancy fell; IRQS writes between S3 and S4 end = {self._irqs_writes - irqs_start}",
+            "occupancy fell; no IRQS write is issued between S3 and S4",
         )
 
         outcomes = []
@@ -303,13 +301,13 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
             f"after wflush on A the peer READ_DATA answered resp {peer.resp_code} with "
             f"rdata[31:0]=0x{peer.rdata & 0xFFFFFFFF:08x} although {_hex(w[9])} and "
             f"{_hex(w[10])} had been queued; STATUS[1:0] B=0x{sb & 3:x} A=0x{sa & 3:x} "
-            "(owner value pending)",
+            "(not specified, measured)",
         )
         self._log_chk(
             "CHK-WFLUSH-CLEARS-FULL",
             f"after wflush of the full write FIFO the next write answered resp {wr2.resp_code} "
             f"and B popped {_hex(w[11])}; STATUS full bit A={sa >> 1 & 1} B={sb >> 1 & 1} "
-            "(owner value pending)",
+            "(not specified, measured)",
         )
 
         await self._push("S8_X", "B", w[12])
@@ -343,7 +341,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
             "CHK-RFLUSH-EMPTIES-OWN-READ-FIFO",
             f"after rflush on A, A.READ_DATA answered resp {own.resp_code} with "
             f"rdata[31:0]=0x{own.rdata & 0xFFFFFFFF:08x} although B had sent {_hex(w[13])}; "
-            f"STATUS[1:0] A=0x{s10 & 3:x} (owner value pending)",
+            f"STATUS[1:0] A=0x{s10 & 3:x} (not specified, measured)",
         )
 
         await self._push("S11_Y0", "B", w[0])
@@ -356,7 +354,8 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-RFLUSH-FREES-PEER",
             f"after rflush of A's full read FIFO the peer write answered resp {wr11.resp_code} "
-            f"and A popped {_hex(w[14])}; STATUS full bit B={s11 >> 1 & 1} (owner value pending)",
+            f"and A popped {_hex(w[14])}; STATUS full bit B={s11 >> 1 & 1} "
+            "(not specified, measured)",
         )
 
         await self._push("S12_W", "A", w[15])
@@ -394,9 +393,9 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-WFLUSH-VS-PUSH-CONSISTENT",
             f"group resp CTRL={g_ctrl.resp_code} WRITE_DATA={g_wr.resp_code}; V0 not popped; "
-            f"V1 {'kept' if words else 'discarded'} (measured, owner value pending); drain words "
+            f"V1 {'kept' if words else 'discarded'} (not specified, measured); drain words "
             f"{[_hex(x) for x in words]} ended in the empty error; V2 round trip "
-            f"{_hex(v[2])}; no same-cycle claim (owner value pending)",
+            f"{_hex(v[2])}; no same-cycle claim (not specified, measured)",
         )
 
         u = [0x5000_0000_0000_0000 + n for n in range(3)]
@@ -412,7 +411,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-RFLUSH-VS-PUSH-CONSISTENT",
             f"group resp CTRL={g_ctrl.resp_code} WRITE_DATA={g_wr.resp_code}; U0 not popped; "
-            f"U1 {'kept' if words else 'discarded'} (measured, owner value pending); drain words "
+            f"U1 {'kept' if words else 'discarded'} (not specified, measured); drain words "
             f"{[_hex(x) for x in words]} ended in the empty error; U2 round trip "
             f"{_hex(u[2])}",
         )
@@ -430,7 +429,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
             "CHK-FLUSH-VS-POP-NO-STALE-NO-STUCK",
             f"group CTRL resp {g_ctrl.resp_code}, grouped READ_DATA resp {g_rd.resp_code} "
             f"data={_hex(g_rd.rdata)} "
-            "(measured, owner value pending); afterwards A.READ_DATA answered "
+            "(not specified, measured); afterwards A.READ_DATA answered "
             f"SLVERR with no stale Z0; Z1 round trip {_hex(z[1])}",
         )
 
@@ -484,7 +483,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
             "%d reads and raise AssertionError on expiry; the sequence has no other wait",
             waits,
             self.accesses,
-            AXI_TIMEOUT_NS,
+            self.cfg.axi_timeout_ns,
             self.accesses,
             DRAIN_LIMIT,
         )

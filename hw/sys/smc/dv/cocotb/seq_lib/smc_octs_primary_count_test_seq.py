@@ -174,6 +174,10 @@ class smc_octs_primary_count_test_seq(SmcCsrSeq):
         status_64 = await self._read("STATUS_64TH", _STATUS)
         nz = next((i for i, v in enumerate(win) if v), None)
         assert nz is not None, f"count net stayed 0 over 64 rises after START; {win}"
+        assert win[nz] <= _RELOAD_SPAN, (
+            f"first nonzero sample 0x{win[nz]:x} after START with preset 0 is above "
+            f"0x{_RELOAD_SPAN:x}"
+        )
         self._diffs_from(start + nz, 64 - nz, "S2 zero-preset run")
         assert status_64 & _RUNNING, f"STATUS.RUNNING clear at the 64th rise (0x{status_64:08x})"
         zero_start = (nz, win[nz], status_first, status_first_idx - start, status_64)
@@ -193,8 +197,8 @@ class smc_octs_primary_count_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-OCTS-PRESET-LOAD-COUNT",
             "PRESET 0x1000 then START on a running timer: first sample in [0x1000, 0x1040] is "
-            "0x%x at rise index %d of 64, %d consecutive differences all exactly 1 (owner value "
-            "pending)",
+            "0x%x at rise index %d of 64, %d consecutive differences all exactly 1 (not specified, "
+            "measured)",
             win[reload_idx - start],
             reload_idx - start,
             checked,
@@ -325,7 +329,7 @@ class smc_octs_primary_count_test_seq(SmcCsrSeq):
             "preset 0xFFFFFFFFFFFFFFF0: the count net passed 0xFFFFFFFFFFFFFFFF to 0 at rise "
             "index %d with %d consecutive differences all exactly 1 mod 2^64; STATUS reads "
             "bracketing a 0 or 1 sample (before_idx, after_idx, STATUS, RUNNING) %s; "
-            "STATUS.RUNNING after the run %d (owner value pending)",
+            "STATUS.RUNNING after the run %d (not specified, measured)",
             wraps[0],
             checked,
             near_zero,
@@ -340,8 +344,8 @@ class smc_octs_primary_count_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-OCTS-ZERO-PRESET-START",
             "preset 0 then START: first nonzero sample 0x%x at rise index %d, every later "
-            "difference exactly 1; STATUS 0x%08x read after rise index %d (RUNNING %d, owner value "
-            "pending), "
+            "difference exactly 1; STATUS 0x%08x read after rise index %d (RUNNING %d, not "
+            "specified, measured), "
             "STATUS 0x%08x at the 64th rise (RUNNING 1)",
             first,
             nz,
@@ -352,8 +356,8 @@ class smc_octs_primary_count_test_seq(SmcCsrSeq):
         )
         self._chk(
             "CHK-OCTS-ROLE-PERSISTS",
-            "STATUS.MODE read 0 after 4 of 4 starts %s; final STATUS 0x%08x MODE %d (owner value "
-            "pending)",
+            "STATUS.MODE read 0 after 4 of 4 starts %s; final STATUS 0x%08x MODE %d (not "
+            "specified, measured)",
             modes,
             final,
             final & _MODE,

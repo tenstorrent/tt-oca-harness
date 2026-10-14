@@ -13,6 +13,7 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
     LOCAL_BASE_RESET,
+    _component_row,
     generated_decoded_extent,
     generated_past_extent_resp,
     generated_window,
@@ -22,7 +23,6 @@ from .smc_addr_map import (
 from .smc_csr_seq_utils import SmcCsrSeq
 
 AXI_RESP_DECERR = 3
-PAST_EXTENT_RDATA = 0xBADCAB1E
 WRITE_PATTERN = 0xA5A55A5A
 FUSE_WAIT_BOUND_SMC_CYCLES = 200_000
 AXI_TIMEOUT_NS = 50_000
@@ -61,7 +61,7 @@ class smc_past_extent_decerr_units_test_seq(SmcCsrSeq):
         cocotb.log.info("%s: %s", chk_id, text)
         self._chk_marks.append((chk_id, int(get_sim_time("ps"))))
 
-    async def _read_past(self, label: str, addr: int) -> int:
+    async def _read_past(self, label: str, addr: int, want: int) -> int:
         item = SmcSysAxiItem(f"rd_{label}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
@@ -76,9 +76,7 @@ class smc_past_extent_decerr_units_test_seq(SmcCsrSeq):
             f"{label} @ 0x{addr:08x}: rresp {item.resp_code}, want DECERR (rdata 0x{item.rdata:x})"
         )
         got = item.rdata & 0xFFFF_FFFF
-        assert got == PAST_EXTENT_RDATA, (
-            f"{label} @ 0x{addr:08x}: rdata 0x{got:08x}, want 0x{PAST_EXTENT_RDATA:08x}"
-        )
+        assert got == want, f"{label} @ 0x{addr:08x}: rdata 0x{got:08x}, want 0x{want:08x}"
         return got
 
     async def _write_past(self, label: str, addr: int) -> int:
@@ -109,6 +107,7 @@ class smc_past_extent_decerr_units_test_seq(SmcCsrSeq):
         assert extent % 4 == 0, f"{unit}: decoded extent 0x{extent:x} not on a 4-byte boundary"
         rresp_name, bresp_name = generated_past_extent_resp(unit)
         assert rresp_name == "DECERR", f"{unit}: RDL past-extent rresp {rresp_name}"
+        past_rdata = _component_row(unit)["past_response"]["rdata"]
         past = window_first + extent
         top = window_last & ~0x3
         assert window_first < past < top, f"{unit}: past 0x{past:x} top 0x{top:x} not ordered"
@@ -118,7 +117,7 @@ class smc_past_extent_decerr_units_test_seq(SmcCsrSeq):
             before[lbl] = await self.csr_read(f"{tag}_{lbl}_PRE", addr)
         bresps = []
         for where, addr in (("PAST", past), ("TOP", top)):
-            rdata = await self._read_past(f"{tag}_{where}", addr)
+            rdata = await self._read_past(f"{tag}_{where}", addr, past_rdata)
             bresp = await self._write_past(f"{tag}_{where}", addr)
             for lbl, laddr in live:
                 after = await self.csr_read(f"{tag}_{lbl}_POST_{where}", laddr)
@@ -126,6 +125,10 @@ class smc_past_extent_decerr_units_test_seq(SmcCsrSeq):
                     f"{unit} {lbl}: 0x{after:x} after write to 0x{addr:08x}, was 0x{before[lbl]:x}"
                 )
             declared = 3 if bresp_name == "DECERR" else 2
+            assert bresp == declared, (
+                f"{unit} {where} @ 0x{addr:08x}: bresp {_RESP_NAMES.get(bresp, bresp)}, "
+                f"declared {bresp_name}"
+            )
             bresps.append(
                 f"{where}@0x{addr:08x} rresp=DECERR rdata=0x{rdata:08X} "
                 f"bresp={_RESP_NAMES.get(bresp, bresp)}(declared {bresp_name}, "

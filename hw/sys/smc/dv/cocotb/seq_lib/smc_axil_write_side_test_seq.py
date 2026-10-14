@@ -287,7 +287,7 @@ class smc_axil_write_side_test_seq(SmcCsrSeq):
             f"(last write wins), all {WRITE_PASSES} eFuse-shim writes OKAY; "
             f"{watch.concurrent} cycle(s) with the eFuse-shim and external ports high together "
             f"(any_master is their OR); high cycles {watch.high}; external-window write "
-            f"responses (printed, not asserted, owner value pending) "
+            f"responses (printed, not asserted, not specified, measured) "
             f"{[w.resp_code for w in ext_writes]}"
         )
 
@@ -345,7 +345,7 @@ class smc_axil_write_side_test_seq(SmcCsrSeq):
             f"all {len(members)} mixed members completed; eFuse-shim reads "
             f"{[hex(v) for v in reads]} equal the last value written, eFuse-shim writes OKAY; "
             f"{watch.concurrent} cycle(s) with the two downstream ports high together; "
-            f"external-window (op, resp, rdata) printed, not asserted (owner value pending): {ext}"
+            f"external-window (op, resp, rdata) (not specified, measured): {ext}"
         )
 
     async def _step_pending(self) -> None:

@@ -15,7 +15,7 @@ class smc_i2c_clock_gate_response_test(smc_base_test):
 
     required_evidence = (
         "CHK-I2C-GATE-READ-SLVERR",
-        "CHK-I2C-GATE-WRITE-OBS",
+        "CHK-I2C-GATE-WRITE-SLVERR",
         "CHK-I2C-GATE-GAP-OBS",
         "CHK-I2C-GATE-UNGATE-OKAY",
         "CHK-I2C-GATE-IRQ-OBS",

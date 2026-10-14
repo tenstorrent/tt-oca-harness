@@ -47,12 +47,12 @@ def _neg(value: int) -> int:
 
 
 class smc_cpu_ctrl_sema_test_seq(SmcCsrSeq):
-    """SEMA signed accumulate; values owner-pending, measured and printed."""
+    """SEMA signed accumulate; values the RDL does not state are measured and printed."""
 
     def __init__(self, name: str = "smc_cpu_ctrl_sema_test_seq") -> None:
         super().__init__(name)
         self.stamps: list[tuple[str, int]] = []
-        self.chk_order: list[tuple[str, str]] = []
+        self.chk_order: list[tuple[str, str, int]] = []
         self.waits: list[tuple[str, str, str]] = []
         self.last_state = "no access yet"
 
@@ -61,7 +61,7 @@ class smc_cpu_ctrl_sema_test_seq(SmcCsrSeq):
 
     def _chk(self, step: str, chk_id: str, text: str, *args) -> None:
         cocotb.log.info("%s: " + text, chk_id, *args)
-        self.chk_order.append((step, chk_id))
+        self.chk_order.append((step, chk_id, len(self.stamps)))
 
     async def _rd(self, tag: str, n: int, expected: int | None = None) -> int:
         data = await self.csr_read(tag, SEMA_ADDR[n], expected=expected, length=ACCESS_BYTES)
@@ -139,23 +139,22 @@ class smc_cpu_ctrl_sema_test_seq(SmcCsrSeq):
         neg_a = await self._rd("S4_A", 0)
         neg_b = await self._rd("S4_B", 0)
         assert neg_a == neg_b, f"S4: reads disagree 0x{neg_a:x} vs 0x{neg_b:x}"
-        await self._wr("S4_RESTORE", 0, _neg(neg_a))
-        neg_final = await self._rd_twice("S4_FINAL", 0)
+        await self._wr("S4_RESTORE", 0, 1)
+        neg_final = await self._rd("S4_FINAL", 0, expected=0)
         self._stamp("S4")
         self._chk(
             "S4",
             "CHK-SEMA-NEG",
-            "SEMA[0] after -1 from 0 reads 0x%x twice; restore by writing 0x%x, final read "
-            "0x%x (owner value pending: result not asserted)",
+            "SEMA[0] after -1 from 0 reads 0x%x twice (not specified, measured); restore by "
+            "writing 0x1, final read 0x%x (asserted 0)",
             neg_a,
-            _neg(neg_a),
             neg_final,
         )
 
         # S5: 16-bit boundaries
         for tag, d in (("L1", 16383), ("L2", 16383), ("L3", 1)):
             await self._wr(f"S5_{tag}", 0, d)
-        at_max = await self._rd("S5_MAX", 0)
+        at_max = await self._rd("S5_MAX", 0, expected=0x7FFF)
         await self._wr("S5_OVER", 0, 1)
         over = await self._rd_twice("S5_OVER_RD", 0)
         await self._wr("S5_RESTORE1", 0, _neg(over))
@@ -170,7 +169,8 @@ class smc_cpu_ctrl_sema_test_seq(SmcCsrSeq):
             "S5",
             "CHK-SEMA-WRAP",
             "SEMA[0] after +32767 reads 0x%x; after one more +1 reads 0x%x; restore read 0x%x; "
-            "after -32768 and -1 reads 0x%x; final read 0x%x (owner value pending: not asserted)",
+            "after -32768 and -1 reads 0x%x; final read 0x%x (0x7fff asserted, the other values "
+            "not specified, measured)",
             at_max,
             over,
             mid,
@@ -188,13 +188,13 @@ class smc_cpu_ctrl_sema_test_seq(SmcCsrSeq):
             "S6",
             "CHK-SEMA-UPPER",
             "SEMA[0] after write 0x00010005 reads 0x%x twice; restore by writing 0x%x, final read "
-            "0x%x (owner value pending: not asserted)",
+            "0x%x (not specified, measured)",
             upper,
             _neg(upper),
             upper_final,
         )
 
-        # S7: eight back-to-back writes to SEMA[1]
+        # S7: eight writes to SEMA[1] as one group item
         await self._rd("S7_PRE", 1, expected=0)
         items = []
         for k in range(PIPELINED_WRITES):
@@ -208,7 +208,7 @@ class smc_cpu_ctrl_sema_test_seq(SmcCsrSeq):
         await self.start_item(group)
         await self.finish_item(group)
         self.accesses += PIPELINED_WRITES
-        self.last_state = f"{PIPELINED_WRITES} pipelined writes of +1 to SEMA[1] completed"
+        self.last_state = f"{PIPELINED_WRITES} grouped writes of +1 to SEMA[1] completed"
         total = await self._rd("S7_SUM", 1, expected=PIPELINED_WRITES)
         await self._wr("S7_NEG8", 1, -PIPELINED_WRITES)
         zero = await self._rd("S7_ZERO", 1, expected=0)
@@ -216,7 +216,8 @@ class smc_cpu_ctrl_sema_test_seq(SmcCsrSeq):
         self._chk(
             "S7",
             "CHK-SEMA-PIPELINED",
-            "%d back-to-back +1 writes completed within the %dns bound; SEMA[1] reads %d, "
+            "%d +1 writes issued as one group item (overlap not measured) completed within the "
+            "%dns bound; SEMA[1] reads %d, "
             "then %d after -%d",
             PIPELINED_WRITES,
             bound_ns,
@@ -234,11 +235,14 @@ class smc_cpu_ctrl_sema_test_seq(SmcCsrSeq):
         times = [t for _, t in self.stamps]
         assert all(b > a for a, b in zip(times, times[1:])), f"stamps not increasing: {times}"
         expected_chk = [c for c in FENCE_CHECKERS if c]
-        assert [c for _, c in self.chk_order] == expected_chk, (
-            f"checker lines {[c for _, c in self.chk_order]}, expected {expected_chk}"
+        assert [c for _, c, _ in self.chk_order] == expected_chk, (
+            f"checker lines {[c for _, c, _ in self.chk_order]}, expected {expected_chk}"
         )
-        for step, chk_id in self.chk_order:
-            assert dict(self.stamps)[step] > times[0], f"{chk_id} printed before bring-up"
+        for step, chk_id, n_stamps in self.chk_order:
+            assert n_stamps == FENCE_STEPS.index(step) + 1, (
+                f"{chk_id} printed after {n_stamps} step stamps, expected "
+                f"{FENCE_STEPS.index(step) + 1} for {step}"
+            )
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
             " < ".join(FENCE),

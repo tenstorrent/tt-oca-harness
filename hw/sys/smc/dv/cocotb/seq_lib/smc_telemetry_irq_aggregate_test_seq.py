@@ -5,8 +5,9 @@
 Spec sources: hw/sys/smc/doc/interrupts.adoc, hw/ip/telemetry_receiver/doc/architecture.adoc,
 regs/telemetry_receiver.rdl.
 
-The ATB framing is the DV-owned layout of the receiver CSR leaf: eight-bit beats assemble
-LSB-first into 64-bit packets of 9-bit blocks, a 5-bit probe ID header and a last-packet flag.
+ATB framing from telemetry_receiver/doc/architecture.adoc (Assembly and Decode): eight beats
+LSB first, bit 63 last packet, probe ID [60:56]; the 9-bit block layout from bit 0 is a bench
+choice.
 """
 
 from __future__ import annotations
@@ -243,7 +244,7 @@ class smc_telemetry_irq_aggregate_test_seq(SmcCsrSeq):
             "a source on receiver 0, 1 and 2 alone set tb_telemetry_irq to 0b001, 0b010 and "
             "0b100 with tb_telemetry_irq_any=1 after %s clk_smc_i cycle(s); both read 0 after "
             "release, after %s cycle(s); platform interrupt IDs and PLIC delivery are not "
-            "observable here (owner value pending)",
+            "observable here (not specified, measured)",
             "/".join(str(r) for r, _ in seen),
             "/".join(str(f) for _, f in seen),
         )

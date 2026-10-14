@@ -19,6 +19,8 @@ from .smc_csr_seq_utils import SmcCsrSeq
 SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 # TB ceiling in clk_smc_i rises for every pin-to-raw-bit wait; not a latency claim.
 CEILING_RISES = 64
+# The external inputs pass a three-flop synchroniser (interrupts.adoc).
+SYNC_FLOPS = 3
 WIDE_WIDTH_CYCLES = (4, 8, 16)
 SHORT_WIDTH_QUARTERS = (1, 2, 3)
 PHASE_QUARTERS = (0, 1, 2, 3)
@@ -26,7 +28,7 @@ LATENCY_REPEATS = 8
 LATENCY_HOLD_RISES = 32
 _STEPS = ("S1", "S2", "S3", "S4")
 _CHECKERS = (
-    "CHK-EXTPULSE-WIDE-LOG",
+    "CHK-EXTPULSE-WIDE",
     "CHK-EXTPULSE-SHORT-NOLATCH",
     "CHK-EXTPULSE-SHORT-SEEN-LOG",
     "CHK-EXTPULSE-LATENCY-LOG",
@@ -126,6 +128,9 @@ class smc_ext_irq_pulse_sampling_test_seq(SmcCsrSeq):
                 moved = [hex(v) for v in samples if v & ~1 != base & ~1]
                 assert not moved, f"{label}: another raw bit moved {moved[:2]} (base 0x{base:x})"
                 assert bits[-1] == 0, f"{label}: raw bit 0 still 1 at the {window}-rise window end"
+                assert high >= cycles - 1 and self._high_runs(bits) == 1, (
+                    f"{label}: wide pulse read {high} high samples"
+                )
                 self.wide_runs += 1
                 parts.append(f"w{cycles}/ph{phase_q}:pulsed={int(high > 0)},high={high}")
                 cocotb.log.info(
@@ -184,6 +189,9 @@ class smc_ext_irq_pulse_sampling_test_seq(SmcCsrSeq):
             cocotb.log.info(
                 "LATENCY repeat %d rise=%d fall=%d clk_smc_i rises", rep, n_rise, n_fall
             )
+        assert min(rises) >= SYNC_FLOPS and min(falls) >= SYNC_FLOPS, (
+            f"edge latency below the {SYNC_FLOPS}-flop synchroniser: rises {rises} falls {falls}"
+        )
         return (
             f"rise rises {rises} min={min(rises)} max={max(rises)}; "
             f"fall rises {falls} min={min(falls)} max={max(falls)}"
@@ -194,7 +202,7 @@ class smc_ext_irq_pulse_sampling_test_seq(SmcCsrSeq):
         await self.wait_fuse_sense_done()
         assert hasattr(dut, "tb_ext_interrupt_0_i"), "tb_ext_interrupt_0_i missing"
         assert hasattr(dut, "tb_cpu_interrupts"), "tb_cpu_interrupts missing"
-        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
+        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0)
         cocotb.log.info(
             "SEED RANDOM_SEED=%s SCRATCH_COLD_WARM_0=0x%x", os.environ.get("RANDOM_SEED", "1"), got
         )
@@ -208,7 +216,11 @@ class smc_ext_irq_pulse_sampling_test_seq(SmcCsrSeq):
         wide = await self._wide_pulses(base)
         assert self.wide_runs == len(WIDE_WIDTH_CYCLES) * len(PHASE_QUARTERS)
         self._mark_step("S2")
-        self._log_chk("CHK-EXTPULSE-WIDE-LOG", f"{self.wide_runs} wide pulses logged: {wide}")
+        self._log_chk(
+            "CHK-EXTPULSE-WIDE",
+            f"{self.wide_runs} wide pulses each read as one high run of at least width - 1 "
+            f"samples: {wide}",
+        )
 
         short, seen = await self._short_pulses(base)
         assert self.short_runs == len(SHORT_WIDTH_QUARTERS) * len(PHASE_QUARTERS)

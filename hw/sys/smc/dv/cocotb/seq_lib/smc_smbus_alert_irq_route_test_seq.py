@@ -8,7 +8,8 @@ hw/sys/smc/doc/interrupts.adoc (I2C interrupts 0, 1, 2 at peripheral bits 23 to 
 `INTR_TEST.SMBALERT` latches `INTR_STATE.SMBALERT` with the alert pad idle. The latched bit
 reaches `tb_i2c_irq[i]` only while `INTR_ENABLE.SMBALERT` is set, follows each enable write
 and clears with a write of 1 to `INTR_STATE.SMBALERT`. The enable-to-output latency is
-measured and logged without a compare while the synchroniser latency is open (owner value pending).
+measured and logged without a compare; the specification does not state the synchroniser
+latency.
 """
 
 from __future__ import annotations
@@ -173,7 +174,7 @@ class smc_smbus_alert_irq_route_test_seq(SmcCsrSeq):
                 f"enable_to_irq_ps={self.latency[i][2]}"
                 for i in INSTANCES
             )
-            + "; logged only, no value compared (owner value pending)",
+            + "; logged only, no value compared (not specified, measured)",
         )
 
     async def _toggled(self) -> None:

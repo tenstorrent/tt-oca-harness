@@ -5,8 +5,9 @@
 Sources: hw/ip/telemetry_receiver/doc/architecture.adoc (Reset and Flush), doc/interface.adoc,
 hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl, doc/programmer/src/smc-programming.adoc.
 
-The ATB framing is the DV-owned table of the telemetry receiver CSR leaf: 8-bit beats, 64-bit
-packets, 9-bit blocks, 5-bit probe ID header. No document fixes the bit positions.
+ATB framing from telemetry_receiver/doc/architecture.adoc (Assembly and Decode): eight beats
+LSB first, bit 63 last packet, probe ID [60:56]; the 9-bit block layout from bit 0 is a bench
+choice.
 """
 
 from __future__ import annotations
@@ -55,7 +56,8 @@ THRESHOLD = 3
 CTRL_THRESHOLD_ONLY = THRESHOLD << THRESHOLD_BP
 CTRL_THRESHOLD_PENDING = CTRL_THRESHOLD_ONLY | TX_FLUSH_BM
 
-# ATB framing (DV-owned table, same layout as the telemetry receiver CSR leaf).
+# ATB framing: beats, last-packet bit and probe ID from architecture.adoc; block layout is a
+# bench choice.
 _ATB_BEAT_BITS = 8
 _ATB_PACKET_BITS = 64
 _BEATS_PER_PACKET = _ATB_PACKET_BITS // _ATB_BEAT_BITS

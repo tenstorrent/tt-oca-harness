@@ -46,7 +46,7 @@ class smc_wdt_irq_source_ids_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.fence_done = False
         self._stamps: list[tuple[str, int]] = []
-        self._chk_after: list[tuple[str, str]] = []
+        self._chk_after: list[tuple[str, str, int]] = []
         self._waits: list[str] = []
 
     def _reg(self, reg: str) -> int:
@@ -56,7 +56,7 @@ class smc_wdt_irq_source_ids_test_seq(SmcCsrSeq):
         self._stamps.append((step, int(get_sim_time("ps"))))
 
     def _chk(self, chk_id: str, step: str, text: str, *args) -> None:
-        self._chk_after.append((chk_id, step))
+        self._chk_after.append((chk_id, step, len(self._stamps)))
         cocotb.log.info(f"{chk_id}: {text}", *args)
 
     @staticmethod
@@ -163,8 +163,8 @@ class smc_wdt_irq_source_ids_test_seq(SmcCsrSeq):
             "pin high: bit282 and irq_sync read 0 at %d of %d rises; after the fall both read 1 "
             "(bit282 first at rise %d, irq_sync first at rise %d of %d) and were equal at every "
             "one of %d samples; after the release bit282 returned to 0 at rise %s and irq_sync at "
-            "rise %s (latency and level or latch are open owner questions, ID 283 pending latch "
-            "not exported; owner value pending)",
+            "rise %s (latency and level or latch are not specified, ID 283 pending latch "
+            "not exported)",
             WINDOW,
             WINDOW,
             rise_bit,
@@ -213,7 +213,7 @@ class smc_wdt_irq_source_ids_test_seq(SmcCsrSeq):
             "immediately before the core %d arming; with wdogip0 set "
             "tb_plic_pending_331 read 1 at rise %d while the raw vector stayed 0x%x over %d "
             "rises; after the clear core-2 CTRL.wdogip0 read %d and plic331 read %d at rise %d "
-            "(first 0 at rise %s, level or latch is an open owner question)",
+            "(first 0 at rise %s, level or latch is not specified)",
             width,
             rise_bit,
             s3_plic_count,
@@ -235,14 +235,14 @@ class smc_wdt_irq_source_ids_test_seq(SmcCsrSeq):
         assert ids == list(STEPS), f"step ids {ids}, expected {list(STEPS)}"
         times = [t for _, t in self._stamps]
         assert all(b > a for a, b in zip(times, times[1:])), f"stamps not increasing: {times}"
-        stamp_of = dict(self._stamps)
-        chk_ids = [c for c, _ in self._chk_after]
+        chk_ids = [c for c, _, _ in self._chk_after]
         assert chk_ids == ["CHK-SEP-WDT-IRQ-LEVEL", "CHK-SEP-WDT-IRQ-DISTINCT"], (
             f"checker lines {chk_ids} out of order"
         )
-        order = [STEPS.index(step) for _, step in self._chk_after]
+        order = [STEPS.index(step) for _, step, _ in self._chk_after]
         assert order == sorted(order), f"checker steps {order} out of order"
-        assert all(stamp_of[step] > 0 for _, step in self._chk_after)
+        for chk_id, step, n in self._chk_after:
+            assert n >= STEPS.index(step) + 1, f"{chk_id} printed before {step} was stamped"
         self.fence_done = True
         cocotb.log.info(
             "CHK-NONVAC: ordered fence S1<S2<S3<S4<S5 strictly increasing, each line after its "

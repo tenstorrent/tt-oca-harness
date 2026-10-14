@@ -9,14 +9,14 @@ hw/ip/uart/uart_wrap/regs/uart_wrap.rdl, hw/sys/smc/doc/periphs.adoc.
 from __future__ import annotations
 
 import pyuvm
-from seq_lib.smc_uart_log_engine_reg_contract_test_seq import (
-    smc_uart_log_engine_reg_contract_test_seq,
+from seq_lib.smc_uart_log_engine_reg_map_test_seq import (
+    smc_uart_log_engine_reg_map_test_seq,
 )
 from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
-class smc_uart_log_engine_reg_contract_test(smc_base_test):
+class smc_uart_log_engine_reg_map_test(smc_base_test):
     """Log-engine bank, wrapper CTRL, UART reset words and bank placement on four instances."""
 
     required_evidence = (
@@ -38,5 +38,5 @@ class smc_uart_log_engine_reg_contract_test(smc_base_test):
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
-        seq = smc_uart_log_engine_reg_contract_test_seq("smc_uart_log_engine_reg_contract_seq")
+        seq = smc_uart_log_engine_reg_map_test_seq("smc_uart_log_engine_reg_map_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)

@@ -7,8 +7,8 @@ smc_base_config.rdl CLOCK_GATE_CONTROL field descriptions (cg_en, cg_hysteresis)
 
 Every window is polled with a literal bound of 400 clk_smc_i cycles, one re-read
 every 4 cycles; the interval between the enable write and the effective SLVERR is
-measured and printed, never compared (owner value pending). Only the five peripherals named
-by the spec are driven (owner list pending).
+measured and printed, never compared (the specification does not state the value). Only
+the five peripherals named by the spec are driven.
 """
 
 from __future__ import annotations
@@ -191,6 +191,11 @@ class smc_clock_gated_window_slverr_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         cocotb.start_soon(self._count_edges())
         await self.wait_fuse_sense_done()
+        self._fuse_last = {}
+        for sub in ("tb_fuse_sense_done", "tb_fuse_reset_n", "tb_rst_warm_smc_clk_n"):
+            sig = getattr(cocotb.top, sub).value
+            assert sig.is_resolvable, f"{sub} is X/Z ({sig})"
+            self._fuse_last[sub] = int(sig)
         original = await self.csr_read("CGC_SAVE", CLOCK_GATE_CONTROL)
         self.base = original & ~ALL_CG_EN
         self._mark_step("SAVED")
@@ -276,7 +281,7 @@ class smc_clock_gated_window_slverr_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-CG-TRANSITION-BOUNDED",
             f"sys_in_resp={sys_resp} sys_in_rdata=0x{sys_rdata:08X} window={periph} "
-            f"completed within {AXI_TIMEOUT_NS} ns (observe-only, owner value pending)",
+            f"completed within {AXI_TIMEOUT_NS} ns (observe-only, not specified, measured)",
         )
 
         await self.csr_write("CGC_RESTORE", CLOCK_GATE_CONTROL, original)
@@ -286,7 +291,7 @@ class smc_clock_gated_window_slverr_test_seq(SmcCsrSeq):
         self._waits.append(f"sep_in_axi_access={AXI_TIMEOUT_NS}ns last[{self._last_poll}]")
         self._waits.append(f"sys_in_axi_access={AXI_TIMEOUT_NS}ns last[resp={sys_resp}]")
         for sub in ("tb_fuse_sense_done", "tb_fuse_reset_n", "tb_rst_warm_smc_clk_n"):
-            self._waits.append(f"{sub}={FUSE_SUB_WAIT_CYCLES}cyc last[asserted]")
+            self._waits.append(f"{sub}={FUSE_SUB_WAIT_CYCLES}cyc last[{self._fuse_last[sub]}]")
         self._log_chk(
             "CHK-TIMEOUT-PATHS",
             f"{len(self._waits)} bounded waits: {' | '.join(self._waits)}; "

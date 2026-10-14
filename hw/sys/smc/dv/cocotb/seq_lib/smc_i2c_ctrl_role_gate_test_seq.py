@@ -9,8 +9,9 @@ Three FDATA entries are queued with both core roles off; the pads stay idle and 
 bench EEPROM sees no START. Setting `CTRL.ENABLEHOST` then runs the queued stream, which
 the EEPROM frames as one START, one STOP and one data byte. Clearing `I2C_CTRL.I2C_EN`
 leaves the core role enables where they were. `VAL` is read with the lines released and
-pulled low and the words are logged without a compare while the oversampling rate is open
-(owner value pending).
+pulled low and the words are logged without a compare while the specification does not
+state the oversampling rate. After `CTRL` is cleared again, three more queued entries leave
+the bench EEPROM without a START and the pull probes at 0.
 """
 
 from __future__ import annotations
@@ -70,7 +71,7 @@ DATA_BYTE = 0xA7
 WINDOW_CYCLES = 4000
 SAMPLE_CYCLES = 16
 PULL_CYCLES = 2000
-CLEAR_WINDOW_SAMPLES = 16
+CLEAR_WINDOW_SAMPLES = WINDOW_CYCLES // SAMPLE_CYCLES
 
 BUS_RELEASE_POLLS = 2000
 BUS_RELEASE_STEP = 4
@@ -341,6 +342,15 @@ class smc_i2c_ctrl_role_gate_test_seq(SmcCsrSeq):
         assert ctrl & I2C_CTRL_ENABLEHOST == 0, (
             f"CTRL.ENABLEHOST reads set after clear (0x{ctrl:08x})"
         )
+        await self.csr_write(
+            "CLEAR_FDATA_ADDR", I2C0_FDATA, _fdata(EEPROM_ADDR << 1, I2C_FDATA_START)
+        )
+        await self.csr_write("CLEAR_FDATA_OFFSET", I2C0_FDATA, _fdata(MEM_OFFSET))
+        await self.csr_write("CLEAR_FDATA_DATA", I2C0_FDATA, _fdata(DATA_BYTE, I2C_FDATA_STOP))
+        queued = await self._status("STATUS_CLEAR_QUEUED")
+        assert not queued & I2C_STATUS_FMTEMPTY, (
+            f"STATUS.FMTEMPTY set with entries queued after the clear (0x{queued:08x})"
+        )
         for _ in range(CLEAR_WINDOW_SAMPLES):
             pads = self._pads()
             assert pads["scl_dut_low"] == 0 and pads["sda_dut_low"] == 0, (
@@ -354,8 +364,9 @@ class smc_i2c_ctrl_role_gate_test_seq(SmcCsrSeq):
             f"set: ENABLEHOST written with three entries queued, start latency L="
             f"{self.latency} cycles; observed: starts={seen['starts']} stops={seen['stops']} "
             f"mem[0x{MEM_OFFSET:02x}]=0x{seen['mem']:02x} data_bytes={seen['bytes']}; "
-            f"cleared: CTRL written to 0; checked_cleared: dut_low probes 0 over "
-            f"{CLEAR_WINDOW_SAMPLES} samples and target counters unchanged {after}",
+            f"cleared: CTRL written to 0 and three entries queued; checked_cleared: dut_low "
+            f"probes 0 over {CLEAR_WINDOW_SAMPLES} samples and target counters unchanged "
+            f"{after}",
         )
 
     def _emit_timeout_paths(self) -> None:

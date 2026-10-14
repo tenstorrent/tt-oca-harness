@@ -13,9 +13,9 @@ from seq_lib.smc_inbound_outside_window_decerr_test_seq import (
 )
 from smc_base_test import smc_base_test
 
-# Accesses the sequence issues: 8 filter setup/restore, 6 S2 reads, 8 + 8 + 8 + 16 + 32 DECERR-class
-# accesses and one live control read.
-STIMULUS_FLOOR = 87
+# Accesses the sequence issues: 8 filter setup/restore, 3 scratch seed/restore, 6 S2 reads,
+# 8 + 8 + 8 + 16 + 32 DECERR-class accesses and one live control read.
+STIMULUS_FLOOR = 90
 
 
 @pyuvm.test()

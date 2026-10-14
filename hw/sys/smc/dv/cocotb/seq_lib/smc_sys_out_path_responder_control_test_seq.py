@@ -330,7 +330,7 @@ class smc_sys_out_path_responder_control_test_seq(SmcCsrSeq):
             "CHK-JTAG-OUTBOUND-SILENT",
             f"jtag_axi_rvalid stayed 0 for {SILENT_WINDOW_CYCLES} cycles of "
             f"tb_output_axi_resp_hold after the AR handshake; after release the response arrived "
-            f"(OBSERVE-ONLY, owner value pending): "
+            f"(OBSERVE-ONLY, not specified, measured): "
             f"resp_code={item.resp_code} rdata=0x{item.rdata:x} seeded=0x{SEED_WORD:x}",
         )
 
@@ -394,7 +394,7 @@ class smc_sys_out_path_responder_control_test_seq(SmcCsrSeq):
         at = {k: (None if v is None else v[0] - start) for k, v in marks.items()}
         self._log_chk(
             "CHK-WSPLIT-SAME-CYCLE",
-            f"both_handshake_cycles={both} (OBSERVE-ONLY, owner value pending: AW/W independence "
+            f"both_handshake_cycles={both} (not specified, measured: AW/W independence "
             f"at output_axi is not stated; no compare on the count); bresp OKAY, stored word "
             f"matches; first-valid cycle offsets jtag_awvalid=+{at['jawv']} jtag_wvalid="
             f"+{at['jwv']} sys_out_awvalid=+{at['awv']} sys_out_wvalid=+{at['wv']}; handshakes "
@@ -437,7 +437,7 @@ class smc_sys_out_path_responder_control_test_seq(SmcCsrSeq):
             "CHK-OUT-READ-RECOVERY",
             f"{plain} plain reads returned OKAY with 0x{READ_SEED_PLAIN:x} after SLVERR, DECERR "
             f"and OKAY reads; injected codes seen once each on the SYS_OUT wire; manager side "
-            f"(OBSERVE-ONLY, owner value pending): {'; '.join(notes)}",
+            f"(OBSERVE-ONLY, not specified, measured): {'; '.join(notes)}",
         )
 
     async def _write_recovery(self, mem, mon) -> None:
@@ -475,7 +475,7 @@ class smc_sys_out_path_responder_control_test_seq(SmcCsrSeq):
             "CHK-OUT-WRITE-RECOVERY",
             f"{plain} plain writes returned OKAY and the SYS_OUT memory held each word after "
             f"SLVERR, DECERR and OKAY writes; injected codes seen once each on the SYS_OUT wire; "
-            f"manager side (OBSERVE-ONLY, owner value pending): {'; '.join(notes)}",
+            f"manager side (OBSERVE-ONLY, not specified, measured): {'; '.join(notes)}",
         )
 
     async def _stall_local(self, mem) -> None:
@@ -541,7 +541,7 @@ class smc_sys_out_path_responder_control_test_seq(SmcCsrSeq):
             f"0x{sys_rs.rdata:08x} OKAY in {t1 - t0} ps, SEP_IN REGION_SIZE 0x{sep_rs:08x} and "
             f"SCRATCH_COLD[0] 0x{sep_sc:x} answered by {t2 - t1} ps (guard {ACCESS_TIMEOUT_NS} "
             f"ns); JTAG read still pending, then completed after release "
-            f"(OBSERVE-ONLY, owner value pending): "
+            f"(OBSERVE-ONLY, not specified, measured): "
             f"resp_code={item.resp_code} rdata=0x{item.rdata:x}",
         )
 
@@ -554,7 +554,9 @@ class smc_sys_out_path_responder_control_test_seq(SmcCsrSeq):
         self.stage = "fuse_sense"
         await self.wait_fuse_sense_done()
         for sub in ("tb_fuse_sense_done", "tb_fuse_reset_n", "tb_rst_warm_smc_clk_n"):
-            self._wait_state(f"fuse_{sub}", f"{FUSE_SENSE_CYCLES}clk_smc_i", "released")
+            sig = getattr(cocotb.top, sub).value
+            assert sig.is_resolvable, f"{sub} is X/Z ({sig})"
+            self._wait_state(f"fuse_{sub}", f"{FUSE_SENSE_CYCLES}clk_smc_i", str(int(sig)))
         self.watch = _HandshakeWatch()
         cocotb.start_soon(self.watch.run())
         dut = cocotb.top

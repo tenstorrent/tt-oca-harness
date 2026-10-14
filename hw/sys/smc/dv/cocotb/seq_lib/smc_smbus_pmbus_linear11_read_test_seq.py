@@ -6,7 +6,8 @@ Sources: hw/ip/i2c/regs/i2c.rdl (FDATA, RDATA, SMBUS_CTRL.SMBSUS), hw/ip/i2c/reg
 (I2C_CONTROLLER_MODE_EN), hw/ip/i2c/doc/memmap.adoc (Endianness).
 
 The word is a data pattern: the two RDATA bytes are compared in the order the bench target
-sent them, and the Linear11 decode is logged and not compared (owner value pending).
+sent them, and the Linear11 decode is logged and not compared;
+the specification does not state the value.
 """
 
 from __future__ import annotations
@@ -232,7 +233,7 @@ class smc_smbus_pmbus_linear11_read_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-PMBUS-DECODE-LOG",
             f"command 0x{POS_CMD:02x} {self.pos_decode}; command 0x{NEG_CMD:02x} "
-            f"{_linear11(got)}; logged, no value compared (owner value pending)",
+            f"{_linear11(got)}; logged, no value compared (not specified, measured)",
         )
 
     def _sus_low(self) -> int:

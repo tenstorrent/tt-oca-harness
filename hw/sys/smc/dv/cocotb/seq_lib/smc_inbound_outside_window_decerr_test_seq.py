@@ -46,6 +46,7 @@ AXI_RESP_DECERR = 3
 FUSE_WAIT_BOUND_SMC_CYCLES = 200_000
 AXI_TIMEOUT_NS = 50_000
 WRITE_PATTERN = 0xA5A55A5A
+SCRATCH_SEED = 0xC0DE_0001
 PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
 _RESP_NAMES = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", None: "none"}
 
@@ -247,6 +248,7 @@ class smc_inbound_outside_window_decerr_test_seq(SmcCsrSeq):
             expected=PASS_ALL_CONFIG,
             length=8,
         )
+        await self.csr_write("SCRATCH_COLD0_SEED", SCRATCH_COLD_0, SCRATCH_SEED, length=4)
         self._mark_step("S1")
 
         # S2: REGION_SIZE and the in-window positive control.
@@ -273,7 +275,7 @@ class smc_inbound_outside_window_decerr_test_seq(SmcCsrSeq):
                     False,
                     base + SCRATCH_OFFSET,
                     decerr=False,
-                    expected=0,
+                    expected=SCRATCH_SEED,
                 )
                 controls.append(f"{port}.{bname}=0x{item.rdata & 0xFFFF_FFFF:08X}")
         control_hits = self.watch.read_hit0_cycles - base_watch[2]
@@ -322,14 +324,14 @@ class smc_inbound_outside_window_decerr_test_seq(SmcCsrSeq):
         self._mark_step("S6")
         self._log_chk(
             "CHK-OUTSIDE-WINDOW-DECERR",
-            f"DECERR on read and write: {outside}; read data observe-only (owner value pending)",
+            f"DECERR on read and write: {outside}; read data (not specified, measured)",
         )
 
         # S7: positive control after the DECERR accesses shows the probes are live.
         self._sample_probes("S7")
         hits_before = self.watch.read_hit0_cycles
         item = await self._access(
-            "SYS_IN", "SCRATCH_LIVE", False, SCRATCH_COLD_0, decerr=False, expected=0
+            "SYS_IN", "SCRATCH_LIVE", False, SCRATCH_COLD_0, decerr=False, expected=SCRATCH_SEED
         )
         live_hits = self.watch.read_hit0_cycles - hits_before
         assert live_hits > 0, "tb_inb_read_hit[0] did not move for the in-window control"
@@ -362,6 +364,9 @@ class smc_inbound_outside_window_decerr_test_seq(SmcCsrSeq):
         )
 
         self.watch.stop = True
+
+        await self.csr_write("SCRATCH_COLD0_RESTORE", SCRATCH_COLD_0, 0, length=4)
+        await self.csr_read("SCRATCH_COLD0_RESTORE_RB", SCRATCH_COLD_0, expected=0, length=4)
 
         # Restore the inbound entry to its reset.
         await self.csr_write(

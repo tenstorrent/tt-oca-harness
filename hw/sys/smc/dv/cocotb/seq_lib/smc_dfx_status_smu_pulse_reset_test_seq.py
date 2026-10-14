@@ -18,13 +18,17 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from ._one_shot import _OneShot
 from .smc_addr_map import (
     DFX_MBIST_ABORT,
+    DFX_MBIST_DONE,
+    DFX_MBIST_PASS,
     DFX_MEM_REPAIR_ABORT,
-    DFX_STATUS_IDLE,
+    DFX_MEM_REPAIR_DONE,
+    DFX_MEM_REPAIR_SUCCESS,
     DFX_STATUS_SMU,
     reset_unit_u32,
     smc_addr,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_dfx_aperture_extent_test_seq import observed_idle_word
 from .smc_reset_seq_base import SmcResetSeqBase
 
 MAX_STATUS_POLLS = 4
@@ -32,23 +36,27 @@ FUSE_SENSE_MAX_CYCLES = 200_000
 AR_HANDSHAKE_MAX_CYCLES = 64
 SS_WARM = smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR")
 SS_WARM_RESET_VALUE = reset_unit_u32("RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_reset")
-DEFINED_BITS = DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT | DFX_MBIST_ABORT
-ALL_ONES_64 = (1 << 64) - 1
-IDLE_MBIST = DFX_STATUS_IDLE | DFX_MBIST_ABORT
-IDLE_REPAIR = DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT
-IDLE_BOTH = DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT | DFX_MBIST_ABORT
-STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")
-FENCE_TERMS = (
-    "BRINGUP_CLEAN_IDLE",
-    "RO_CLEAN_UNCHANGED",
-    "MBIST_ALONE",
-    "STAGGER_TWO_WORDS",
-    "RESERVED_ZERO",
-    "RO_WRITES_IGNORED",
-    "PULSE_CAPTURED",
-    "RESETS_PRINTED",
-    "HELD_THROUGH_RESET_PRINTED",
+DEFINED_BITS = (
+    DFX_MEM_REPAIR_DONE
+    | DFX_MEM_REPAIR_SUCCESS
+    | DFX_MBIST_DONE
+    | DFX_MBIST_PASS
+    | DFX_MEM_REPAIR_ABORT
+    | DFX_MBIST_ABORT
 )
+ALL_ONES_64 = (1 << 64) - 1
+FENCE_TERMS = {
+    "S1": "BRINGUP_CLEAN_IDLE",
+    "S2": "RO_CLEAN_UNCHANGED",
+    "S3": "MBIST_ALONE_THEN_STAGGER",
+    "S4": "RESERVED_ZERO",
+    "S5": "RO_WRITES_IGNORED",
+    "S6": "PULSE_CAPTURED",
+    "S7": "COLD_RESET_CLEARS",
+    "S8": "HELD_THROUGH_RESET_PRINTED",
+    "S9": "TIMEOUTS_LOGGED",
+}
+STEPS = tuple(FENCE_TERMS)
 CHK_ORDER = (
     ("CHK-DFX-STATUS-RO-CLEAN", "S2"),
     ("CHK-DFX-STATUS-MBIST-ALONE", "S3"),
@@ -221,9 +229,9 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._pins(0, 0)
         return start
 
-    async def _set_both_bits(self, label: str) -> None:
+    async def _set_both_bits(self, label: str, idle_both: int) -> None:
         self._pins(1, 1)
-        await self._poll(label, lambda w: w == IDLE_BOTH)
+        await self._poll(label, lambda w: w == idle_both)
         self._pins(0, 0)
 
     async def body(self) -> None:
@@ -237,14 +245,19 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
         # S1
         await self._sense_wait("bringup")
         self._pins(0, 0)
-        base = await self._read("S1_BASELINE", expected=DFX_STATUS_IDLE)
-        assert base == DFX_STATUS_IDLE, f"baseline 0x{base:x} want 0x{DFX_STATUS_IDLE:x}"
+        idle = observed_idle_word(dut)
+        idle_mbist = idle | DFX_MBIST_ABORT
+        idle_repair = idle | DFX_MEM_REPAIR_ABORT
+        idle_both = idle | DFX_MEM_REPAIR_ABORT | DFX_MBIST_ABORT
+        base = await self._read("S1_BASELINE", expected=idle)
+        assert base == idle, f"baseline 0x{base:x} want 0x{idle:x}"
         self._stamp("S1")
 
         # S2
         await self._write("S2_ONES_CLEAN", ALL_ONES_64, None)
-        clean = await self._read("S2_AFTER_ONES", expected=DFX_STATUS_IDLE)
-        assert clean == DFX_STATUS_IDLE, f"after all-ones write 0x{clean:x}"
+        idle = observed_idle_word(dut)
+        clean = await self._read("S2_AFTER_ONES", expected=idle)
+        assert clean == idle, f"after all-ones write 0x{clean:x} want 0x{idle:x}"
         self._stamp("S2")
         self._chk(
             "CHK-DFX-STATUS-RO-CLEAN",
@@ -254,10 +267,10 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
 
         # S3
         self._pins(0, 1)
-        mbist, mbist_polls = await self._poll("S3_MBIST", lambda w: w == IDLE_MBIST)
+        mbist, mbist_polls = await self._poll("S3_MBIST", lambda w: w == idle_mbist)
         assert mbist & DFX_MEM_REPAIR_ABORT == 0, f"bit 2 set with mbist alone: 0x{mbist:x}"
         self._pins(1, 1)
-        both, both_polls = await self._poll("S3_BOTH", lambda w: w == IDLE_BOTH)
+        both, both_polls = await self._poll("S3_BOTH", lambda w: w == idle_both)
         self._stamp("S3")
         self._chk(
             "CHK-DFX-STATUS-MBIST-ALONE",
@@ -273,9 +286,9 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
 
         # S4
         self._pins(0, 0)
-        word = await self._read("S4_PINS_LOW", expected=IDLE_BOTH)
+        word = await self._read("S4_PINS_LOW", expected=idle_both)
         reserved = word & ALL_ONES_64 & ~DEFINED_BITS
-        assert word == IDLE_BOTH, f"STATUS_SMU 0x{word:x} want 0x{IDLE_BOTH:x}"
+        assert word == idle_both, f"STATUS_SMU 0x{word:x} want 0x{idle_both:x}"
         assert reserved == 0, f"reserved bits read 1: 0x{reserved:x} (word 0x{word:x})"
         self._stamp("S4")
         self._chk(
@@ -292,35 +305,37 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
             ("S5_ONES_STRB10", ALL_ONES_64, 0x10),
         ):
             resps.append((label, await self._write(label, data, strb)))
-            held = await self._read(f"{label}_RB", expected=IDLE_BOTH)
-            assert held == IDLE_BOTH, f"{label}: STATUS_SMU 0x{held:x} want 0x{IDLE_BOTH:x}"
+            held = await self._read(f"{label}_RB", expected=idle_both)
+            assert held == idle_both, f"{label}: STATUS_SMU 0x{held:x} want 0x{idle_both:x}"
         self._stamp("S5")
         self._chk(
             "CHK-DFX-STATUS-RO-SET",
-            f"STATUS_SMU stayed 0x{IDLE_BOTH:x} (idle + bits 12 and 2) after a zero write and "
+            f"STATUS_SMU stayed 0x{idle_both:x} (idle + bits 12 and 2) after a zero write and "
             "all-ones writes with strobes 0x01 and 0x10",
         )
         self._chk(
             "CHK-DFX-STATUS-WRITE-RESP",
             "AXI write responses "
             + ", ".join(f"{lbl}={RESP_NAMES.get(r)}" for lbl, r in resps)
-            + " (defined response pending an owner decision; printed, not asserted)",
+            + " (not specified, measured; printed, not asserted)",
         )
 
         # S6
         await self._cold_reset()
-        pre = await self._read("S6_AFTER_COLD", expected=DFX_STATUS_IDLE)
-        assert pre == DFX_STATUS_IDLE, f"STATUS_SMU 0x{pre:x} after cold reset, want idle"
+        idle = observed_idle_word(dut)
+        pre = await self._read("S6_AFTER_COLD", expected=idle)
+        assert pre == idle, f"STATUS_SMU 0x{pre:x} after cold reset, want idle 0x{idle:x}"
         start = await self._pulse_pin()
         pulse, p_polls = await self._poll(
-            "S6_PULSE", lambda w: w == IDLE_REPAIR, (DFX_STATUS_IDLE, IDLE_REPAIR)
+            "S6_PULSE", lambda w: w == idle_repair, (idle, idle_repair)
         )
         latency_ps = int(get_sim_time("ps")) - start
-        hold = await self._read("S6_PULSE_HOLD", expected=IDLE_REPAIR)
-        assert hold == IDLE_REPAIR, f"bit 2 dropped after the pulse: 0x{hold:x}"
+        hold = await self._read("S6_PULSE_HOLD", expected=idle_repair)
+        assert hold == idle_repair, f"bit 2 dropped after the pulse: 0x{hold:x}"
         await self._cold_reset()
-        pre2 = await self._read("S6_AFTER_COLD2", expected=DFX_STATUS_IDLE)
-        assert pre2 == DFX_STATUS_IDLE, f"STATUS_SMU 0x{pre2:x} after cold reset, want idle"
+        idle = observed_idle_word(dut)
+        pre2 = await self._read("S6_AFTER_COLD2", expected=idle)
+        assert pre2 == idle, f"STATUS_SMU 0x{pre2:x} after cold reset, want idle 0x{idle:x}"
         rd = SmcSysAxiItem("rd_S6_INFLIGHT")
         rd.op = SmcSysAxiOp.READ
         rd.addr = DFX_STATUS_SMU
@@ -343,13 +358,13 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await reader
         self.accesses += 1
         inflight = rd.rdata
-        assert inflight in (DFX_STATUS_IDLE, IDLE_REPAIR), f"torn in-flight word 0x{inflight:x}"
+        assert inflight in (idle, idle_repair), f"torn in-flight word 0x{inflight:x}"
         pulse2, p2_polls = await self._poll(
-            "S6_PULSE_INFLIGHT", lambda w: w == IDLE_REPAIR, (DFX_STATUS_IDLE, IDLE_REPAIR)
+            "S6_PULSE_INFLIGHT", lambda w: w == idle_repair, (idle, idle_repair)
         )
         latency2_ps = int(get_sim_time("ps")) - start2
-        hold2 = await self._read("S6_INFLIGHT_HOLD", expected=IDLE_REPAIR)
-        assert hold2 == IDLE_REPAIR, f"bit 2 dropped after the in-flight pulse: 0x{hold2:x}"
+        hold2 = await self._read("S6_INFLIGHT_HOLD", expected=idle_repair)
+        assert hold2 == idle_repair, f"bit 2 dropped after the in-flight pulse: 0x{hold2:x}"
         self._stamp("S6")
         self._chk(
             "CHK-DFX-STATUS-PULSE",
@@ -367,9 +382,12 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
             ("warm", self._warm_reset),
             ("primary", self._primary_reset),
         ):
-            await self._set_both_bits(f"S7_{name}_SET")
+            await self._set_both_bits(f"S7_{name}_SET", idle_both)
             await action()
             after = await self._read(f"S7_{name}_AFTER")
+            if name == "cold":
+                idle = observed_idle_word(dut)
+                assert after == idle, f"cold reset left STATUS_SMU 0x{after:x}, want 0x{idle:x}"
             legs.append(
                 f"{name}: bit2 1->{_bit(after, DFX_MEM_REPAIR_ABORT)} "
                 f"bit12 1->{_bit(after, DFX_MBIST_ABORT)} word=0x{after:x}"
@@ -377,8 +395,8 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._stamp("S7")
         self._chk(
             "CHK-DFX-STATUS-RESET-CLEARS",
-            "; ".join(legs) + " (a bit that reads 0 after a reset was cleared by it; the "
-            "clearing reset is pending an owner decision)",
+            "; ".join(legs) + " (the cold reset clears bits 2 and 12, asserted; the warm and "
+            "primary results are printed)",
         )
 
         # S8
@@ -391,7 +409,7 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-DFX-STATUS-HIGH-THROUGH-RESET",
             f"tb_mem_repair_abort held 1 through a cold reset: STATUS_SMU=0x{held_word:x}, "
             f"bit 2 {'set' if held_word & DFX_MEM_REPAIR_ABORT else 'clear'} after release "
-            "(expected capture is pending an owner decision)",
+            "(not specified, measured)",
         )
 
         # S9
@@ -419,7 +437,7 @@ class smc_dfx_status_smu_pulse_reset_test_seq(SmcResetSeqBase, SmcCsrSeq):
             assert n_stamps == STEPS.index(step) + 1, f"{chk_id} printed before {step}"
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
-            " < ".join(FENCE_TERMS),
+            " < ".join(FENCE_TERMS[s] for s in steps),
             ",".join(order),
             ",".join(f"{s}={t}ps" for s, t in self._stamps),
         )

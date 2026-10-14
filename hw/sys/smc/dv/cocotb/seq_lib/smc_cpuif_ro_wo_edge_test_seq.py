@@ -12,6 +12,7 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_csr_field_catalog import misc_wrap_reset
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_rdl_regmap import rdl_contract
 
@@ -23,6 +24,7 @@ WRITE_ALL_ONES = 0xFFFF_FFFF
 PARTIAL_STROBES = (0x3, 0xC, 0x1)
 _RESP_NAMES = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
+VERSION_LO_RESET = misc_wrap_reset("CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
 VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 SCRATCH_COLD_7 = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 7)
 PAST_EXTENT = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR") + smc_addr(
@@ -115,6 +117,7 @@ class smc_cpuif_ro_wo_edge_test_seq(SmcCsrSeq):
 
         resp, v0 = await self._read("VERSION_LO_V0", VERSION_LO)
         assert resp == AXI_RESP_OKAY, f"VERSION_LO baseline rresp {_name(resp)}, want OKAY"
+        assert v0 == VERSION_LO_RESET, f"VERSION_LO read 0x{v0:x}, reset 0x{VERSION_LO_RESET:x}"
         resp = await self._write("SCRATCH_COLD7_SETUP", SCRATCH_COLD_7, CONTROL_VALUE)
         assert resp == AXI_RESP_OKAY, f"SCRATCH_COLD(7) setup bresp {_name(resp)}, want OKAY"
         self._mark_step("S1")
@@ -136,7 +139,7 @@ class smc_cpuif_ro_wo_edge_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-EDGE-RO-PARTIAL",
             f"VERSION_LO @ 0x{VERSION_LO:08X} baseline V0=0x{v0:08X} unchanged after "
-            f"{'; '.join(partial)} (BRESP printed not asserted, owner value pending)",
+            f"{'; '.join(partial)} (BRESP printed not asserted, not specified, measured)",
         )
 
         wo_addr = INTR_TEST.addr
@@ -149,7 +152,7 @@ class smc_cpuif_ro_wo_edge_test_seq(SmcCsrSeq):
             "CHK-EDGE-WO-WRITE-READ-OBS",
             f"log_engine INTR_TEST @ 0x{wo_addr:08X}: write of 0 bresp={_name(wo_bresp)}, "
             f"read rresp={_name(wo_resp)} rdata=0x{wo_data:X}, both completed within the "
-            f"guard (owner value pending)",
+            f"guard (not specified, measured)",
         )
 
         un_addr = AVS_INTERRUPT_CLEAR.addr
@@ -162,7 +165,7 @@ class smc_cpuif_ro_wo_edge_test_seq(SmcCsrSeq):
             "CHK-EDGE-UNREADABLE-OBS",
             f"AVS_INTERRUPT_CLEAR @ 0x{un_addr:08X}: read "
             f"rresp={_name(un_resp)} rdata=0x{un_data:X}, completed within the guard "
-            f"(owner value pending)",
+            f"(not specified, measured)",
         )
 
         self.env.axi_monitor.expected_decerr_addrs.add(PAST_EXTENT)
@@ -178,7 +181,7 @@ class smc_cpuif_ro_wo_edge_test_seq(SmcCsrSeq):
             "CHK-EDGE-PAST-EXTENT-OBS",
             f"past SCRATCH_COLD @ 0x{PAST_EXTENT:08X}: read rresp={_name(pe_resp)} "
             f"rdata=0x{pe_data:X}, write bresp={_name(pe_bresp)}, both completed within the "
-            f"guard (owner value pending)",
+            f"guard (not specified, measured)",
         )
         assert len(self.control_reads) == 4, f"{len(self.control_reads)} control reads, want 4"
         self._log_chk(

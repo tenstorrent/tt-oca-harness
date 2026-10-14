@@ -14,10 +14,11 @@ from seq_lib.smc_gpio_data_ctrl_enable_fields_test_seq import (
 )
 from smc_base_test import smc_base_test
 
-# Written out here rather than read from `seq.accesses`.
+# Expected CSR access floor, independent of the sequence count:
 #   2 idle reads                                                          2
 #   3 bits x (set, read back, restore, read back)                        12
 #   2 orders x (2 writes, 2 reads, 2 final reads, 2 restores, 2 reads)  20
+#   2 end reads                                                           2
 GPIO_DATA_CTRL_ENABLE_MIN_CSR_ACCESSES = 2 + 3 * 4 + 2 * 10 + 2
 
 

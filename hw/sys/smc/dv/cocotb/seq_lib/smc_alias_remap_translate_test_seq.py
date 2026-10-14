@@ -204,6 +204,11 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done(FUSE_BOUND)
+        self._fuse_last = {}
+        for sub in ("tb_fuse_sense_done", "tb_fuse_reset_n", "tb_rst_warm_smc_clk_n"):
+            sig = getattr(cocotb.top, sub).value
+            assert sig.is_resolvable, f"{sub} is X/Z ({sig})"
+            self._fuse_last[sub] = int(sig)
         watcher = cocotb.start_soon(self._watch_output())
         mem = self.cfg.sys_out_mem
         assert mem is not None, "SYS_OUT responder not bound"
@@ -283,7 +288,7 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
             "address 0x7A8 kept the sentinel",
         )
 
-        # S7: overlapping regions 1 and 2 (observe-only, owner value pending).
+        # S7: overlapping regions 1 and 2; the specification does not state the value.
         await self._program(1, _R1)
         await self._program(2, _R2)
         self._hits = [0, 0]
@@ -294,10 +299,10 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ALIAS-OVERLAP-OBSERVE",
             f"write 0x0200E010 over regions 1 and 2: resp={resp} landed_at=0x{land:08X} "
-            f"tb_remap_jtag_aw_hit_seen=0x{self._hits[0]:X} (owner value pending, printed only)",
+            f"tb_remap_jtag_aw_hit_seen=0x{self._hits[0]:X} (not specified, measured)",
         )
 
-        # S8: empty and inverted regions (observe-only, owner value pending).
+        # S8: empty and inverted regions (observe-only, the specification does not state the value).
         await self._program(4, _R4)
         await self._program(6, _R6)
         shown = []
@@ -310,10 +315,11 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ALIAS-EMPTY-REGION-OBSERVE",
             f"region 4 START=END, region 6 START above END: {', '.join(shown)}, all OKAY "
-            "(owner value pending, landing printed)",
+            "(not specified, measured, landing printed)",
         )
 
-        # S9: offset of region 3 changes while a JTAG group is outstanding (owner value pending).
+        # S9: offset of region 3 changes while a JTAG group is outstanding; the specification
+        # does not state the value.
         await self._set_attrs(3, _R3[2])
         items = []
         for k in range(_GROUP):
@@ -326,11 +332,16 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
             self._seed(item.addr, item.addr + _OFF_OLD, item.addr + _OFF_NEW)
         writes, _ = output_responder_counts()
         mark = len(self._events)
+        aw0 = len([e for e in self._events if e[0] == "aw"])
         group = SmcSysAxiGroupItem("reprogram_group", items)
         task = cocotb.start_soon(
             _OneShot(group, "reprogram_group_os").start(self.env.jtag_axi_agent.sequencer)
         )
         await self.csr_write("R3_ATTRS_NEW", _reg("ATTRS", 3), _R3_NEW, _WORD)
+        accepted = len([e for e in self._events if e[0] == "aw"]) - aw0
+        done, _ = output_responder_counts()
+        assert accepted >= 1, "no group write accepted when R3_ATTRS_NEW landed"
+        assert done < writes + _GROUP, f"all {_GROUP} group writes complete before R3_ATTRS_NEW"
         await task
         self.jtag_accesses += _GROUP
         await self._wait_writes(writes + _GROUP, "REPROGRAM")
@@ -354,7 +365,7 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ALIAS-REPROGRAM-OUTSTANDING",
             f"{_GROUP} writes all OKAY; landing in issue order {order} (O +0x{_OFF_OLD:X}, "
-            f"N +0x{_OFF_NEW:X}); owner value pending",
+            f"N +0x{_OFF_NEW:X}); not specified, measured",
         )
 
         # S10: clear START, END and ATTRS of every programmed region.
@@ -369,9 +380,13 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
 
     def _finish(self) -> None:
         waits = (
-            ("tb_fuse_sense_done", f"{FUSE_BOUND}clk_smc_i", "asserted"),
-            ("tb_fuse_reset_n", f"{FUSE_BOUND}clk_smc_i", "released"),
-            ("tb_rst_warm_smc_clk_n", f"{FUSE_BOUND}clk_smc_i", "released"),
+            ("tb_fuse_sense_done", f"{FUSE_BOUND}clk_smc_i", self._fuse_last["tb_fuse_sense_done"]),
+            ("tb_fuse_reset_n", f"{FUSE_BOUND}clk_smc_i", self._fuse_last["tb_fuse_reset_n"]),
+            (
+                "tb_rst_warm_smc_clk_n",
+                f"{FUSE_BOUND}clk_smc_i",
+                self._fuse_last["tb_rst_warm_smc_clk_n"],
+            ),
             ("sep_in_axi_access", f"{AXI_TIMEOUT_NS}ns", f"{self.accesses} accesses done"),
             ("jtag_axi_access", f"{AXI_TIMEOUT_NS}ns", f"{self.jtag_accesses} accesses done"),
             ("output_write_count_poll", f"{COUNT_POLL_BOUND}clk_smc_i", self._count_last),

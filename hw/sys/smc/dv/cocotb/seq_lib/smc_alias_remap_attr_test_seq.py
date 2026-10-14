@@ -13,7 +13,7 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import smc_indexed_addr
+from .smc_addr_map import DMA_CONFIG_ENABLED_ND, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_output_fabric_vip_utils import jtag_axi_read, jtag_axi_write, output_responder_counts
 from .smc_rdl_regmap import smc_reg_addr
@@ -29,7 +29,6 @@ COUNT_POLL_BOUND = 200
 DMA_POLLS = 50
 DMA_POLL_CYCLES = 20
 _GROUP = 8
-_DMA_CONFIG_ENABLED_ND = 1 << 10
 _DMA = {
     name: smc_reg_addr(f"DMA_CTRL_{name}_REG_ADDR")
     for name in (
@@ -220,7 +219,7 @@ class smc_alias_remap_attr_test_seq(SmcCsrSeq):
 
     async def _dma_start(self, src: int, dst: int, tag: str) -> int:
         baseline = await self.csr_read(f"DMA_DONE_BASE_{tag}", _DMA["DONE_0"])
-        await self.csr_write(f"DMA_CONFIG_{tag}", _DMA["CONFIG"], _DMA_CONFIG_ENABLED_ND)
+        await self.csr_write(f"DMA_CONFIG_{tag}", _DMA["CONFIG"], DMA_CONFIG_ENABLED_ND)
         for name, value in (
             ("DST_ADDRESS_LO", dst & 0xFFFF_FFFF),
             ("DST_ADDRESS_HI", dst >> 32),
@@ -252,6 +251,11 @@ class smc_alias_remap_attr_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done(FUSE_BOUND)
+        self._fuse_last = {}
+        for sub in ("tb_fuse_sense_done", "tb_fuse_reset_n", "tb_rst_warm_smc_clk_n"):
+            sig = getattr(cocotb.top, sub).value
+            assert sig.is_resolvable, f"{sub} is X/Z ({sig})"
+            self._fuse_last[sub] = int(sig)
         watcher = cocotb.start_soon(self._watch_output())
         mem = self.cfg.sys_out_mem
         assert mem is not None, "SYS_OUT responder not bound"
@@ -292,7 +296,7 @@ class smc_alias_remap_attr_test_seq(SmcCsrSeq):
             f"outside region 2 (cacheable 0xF); expected 0x{_MASTER_CACHE:X}",
         )
 
-        # S4: cacheable 0 is observe-only (owner value pending).
+        # S4: cacheable 0 is observe-only (the specification does not state the value).
         await self._set_attrs(2, _VALID)
         zero_aw, zero_ar = await self._observe_pair("ZERO", 0x0200_2110)
         assert zero_aw in (0, _MASTER_CACHE), f"awcache 0x{zero_aw:X} is neither 0 nor 0x3"
@@ -301,7 +305,7 @@ class smc_alias_remap_attr_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ALIAS-CACHE-ZERO-OBSERVE",
             f"awcache=0x{zero_aw:X} arcache=0x{zero_ar:X} for a hit on valid region 2 with "
-            "cacheable 0 (observe-only, owner value pending)",
+            "cacheable 0 (observe-only, not specified, measured)",
         )
 
         # S5: 4-byte write of the offset half holds cacheable and valid.
@@ -376,6 +380,9 @@ class smc_alias_remap_attr_test_seq(SmcCsrSeq):
             _OneShot(group, "shared_group_os").start(self.env.jtag_axi_agent.sequencer)
         )
         done_at_start = await self.csr_read("DMA_DONE_AT_GROUP_START", _DMA["DONE_0"])
+        assert done_at_start == base, (
+            f"DONE_0 {done_at_start} when the group started, want {base} (DMA still running)"
+        )
         await task
         self.jtag_accesses += _GROUP
         self._group_last = f"{_GROUP} group writes completed"
@@ -411,9 +418,13 @@ class smc_alias_remap_attr_test_seq(SmcCsrSeq):
 
     def _finish(self) -> None:
         waits = (
-            ("tb_fuse_sense_done", f"{FUSE_BOUND}clk_smc_i", "asserted"),
-            ("tb_fuse_reset_n", f"{FUSE_BOUND}clk_smc_i", "released"),
-            ("tb_rst_warm_smc_clk_n", f"{FUSE_BOUND}clk_smc_i", "released"),
+            ("tb_fuse_sense_done", f"{FUSE_BOUND}clk_smc_i", self._fuse_last["tb_fuse_sense_done"]),
+            ("tb_fuse_reset_n", f"{FUSE_BOUND}clk_smc_i", self._fuse_last["tb_fuse_reset_n"]),
+            (
+                "tb_rst_warm_smc_clk_n",
+                f"{FUSE_BOUND}clk_smc_i",
+                self._fuse_last["tb_rst_warm_smc_clk_n"],
+            ),
             ("sep_in_axi_access", f"{AXI_TIMEOUT_NS}ns", f"{self.accesses} accesses done"),
             ("jtag_axi_access", f"{AXI_TIMEOUT_NS}ns", f"{self.jtag_accesses} accesses done"),
             ("jtag_group_await", f"{AXI_TIMEOUT_NS}ns per item", self._group_last),

@@ -365,7 +365,7 @@ class smc_dma_backpressure_breadth_test_seq(SmcCsrSeq):
         await self._pass_all()
         self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
         self.rng = random.Random(self.seed)
-        cocotb.log.info("DMA-BP-BREADTH seed=%d", self.seed)
+        cocotb.log.info("seed=%d", self.seed)
         self.tally = _EgressTally(dut)
         cocotb.start_soon(self.tally.run())
         self.next_expected_id = await self.csr_read("DONE_BASE", DMA_CTRL_DONE_0)
@@ -473,7 +473,7 @@ class smc_dma_backpressure_breadth_test_seq(SmcCsrSeq):
             f"{PLATEAU_RISES} rises, maximum {ar_max}, cap {OUTSTANDING_AR_CAP}; "
             f"AW maximum under the hold {aw_hold_max}); {resumed} further ARs issued after the "
             f"release and the {ROWS}-row copy completed; with B delayed {B_DELAY_CYCLES} "
-            f"cycles alone the outstanding AW maximum is {aw_max} (owner value pending)"
+            f"cycles alone the outstanding AW maximum is {aw_max} (not specified, measured)"
         )
 
     async def _s4(self) -> str:

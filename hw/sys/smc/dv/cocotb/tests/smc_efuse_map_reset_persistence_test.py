@@ -6,7 +6,7 @@ The warm reset is driven through the JTAG reset-control override.
 Sources: smu-smc.adoc (eFuse Interface), clk_rst.adoc (rst_warm_n), smc-programming.adoc (LOCKS).
 
 The image is written into the run directory during ``build_phase``: every field and LOCKS
-are 0.
+are 0 except the first word of SPARE[5], which holds a marker.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from env.smc_protocol_vip_item import SmcProtocolVipKind
 from seq_lib._one_shot import _OneShot
 from seq_lib.smc_efuse_image_pattern_test_seq import load_image
 from seq_lib.smc_efuse_map_reset_persistence_test_seq import (
+    marker_spare_value,
     smc_efuse_map_reset_persistence_test_seq,
 )
 from smc_base_test import smc_base_test
@@ -65,7 +66,7 @@ _CONFIG_TEMPLATE = """\
     write_locked = "False"
     read_locked = "False"
     [SPARE.fields.spare_data]
-    value = 0x0
+    value = 0x{spare_value:x}
 """
 
 
@@ -80,7 +81,7 @@ def write_zero_image() -> Path:
     )
     hex_path = Path.cwd() / hex_path
     config = hex_path.with_suffix(".toml")
-    config.write_text(_CONFIG_TEMPLATE, encoding="utf-8")
+    config.write_text(_CONFIG_TEMPLATE.format(spare_value=marker_spare_value()), encoding="utf-8")
     cmd = [
         sys.executable,
         str(_EFUSE_DIR / "generate_efuse_preload.py"),

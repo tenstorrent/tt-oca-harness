@@ -37,7 +37,6 @@ class smc_jtag_dm_sbcs_haltsum_test(smc_base_test):
             SmcProtocolVipKind.JTAG,
             type(self).__name__,
             csr_accesses=0,
-            # JTAG DMI only: the sbcs / haltsum compares carry the fail-capability.
             min_csr_accesses=0,
             proxy=False,
             details="CPU JTAG DMI: sbcs capability and haltsum idle readbacks",

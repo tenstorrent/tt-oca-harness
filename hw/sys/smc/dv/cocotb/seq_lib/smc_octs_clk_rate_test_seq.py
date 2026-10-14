@@ -65,14 +65,14 @@ FENCE_TERMS = (
     "COUNT_PAIR_1",
     "CELL_REWINDOW",
     "PRESET_WRITTEN",
-    "SECOND_START",
+    "THIRD_START",
     "RELOAD_SAMPLE",
 )
 CLOCKS = ("smc", "ref", "periph")
 
 
 class smc_octs_clk_rate_test_seq(SmcCsrSeq):
-    """Measure the OCTS count delta of two windows and of the second-START reload."""
+    """Measure the OCTS count delta of two windows and of the reload after the preset START."""
 
     def __init__(
         self,
@@ -254,7 +254,8 @@ class smc_octs_clk_rate_test_seq(SmcCsrSeq):
         gran = (ctrl & CREDIT_VAL_BM) >> CREDIT_VAL_BP
         assert gran > 0, "CREDIT_VAL reads 0"
         cocotb.log.info(
-            "count-latch rule owner value pending: tolerance is CREDIT_VAL granularity %d only",
+            "the specification does not state the count-latch rule: "
+            "tolerance is CREDIT_VAL granularity %d only",
             gran,
         )
 
@@ -312,7 +313,7 @@ class smc_octs_clk_rate_test_seq(SmcCsrSeq):
         self._mark(FENCE_TERMS[5])
         await self._access("OCTS_START_2", SmcSysAxiOp.WRITE, OCTS_TIMER_START, 1)
         status_mid = await self._read_status("OCTS_STATUS_MID")
-        assert status_mid & STATUS_RUNNING_BM, f"RUNNING 0 before 2nd START: 0x{status_mid:x}"
+        assert status_mid & STATUS_RUNNING_BM, f"RUNNING 0 before the third START: 0x{status_mid:x}"
         await self._access("OCTS_START_3", SmcSysAxiOp.WRITE, OCTS_TIMER_START, 1)
         write_done = self._snap()
         self._mark(FENCE_TERMS[6])
@@ -321,7 +322,7 @@ class smc_octs_clk_rate_test_seq(SmcCsrSeq):
         gap = c2_issue["smc"] - write_done["smc"]
         since = c2_done["smc"] - write_done["smc"]
         assert gap <= RELOAD_MAX_CYCLES, (
-            f"c2 read issued {gap} clk_smc_i cycles after the second START write, "
+            f"c2 read issued {gap} clk_smc_i cycles after the third START write, "
             f"limit {RELOAD_MAX_CYCLES}"
         )
         assert c2 >= PRESET, f"c2 0x{c2:x} below preset 0x{PRESET:x}: counter did not reload"
@@ -334,7 +335,7 @@ class smc_octs_clk_rate_test_seq(SmcCsrSeq):
         self._emit(
             "CHK-OCTS-START-RELOAD",
             f"preset P=0x{PRESET:x}; c2=0x{c2:x} in [P, P+{since}+{gran}] "
-            f"({gap} clk_smc_i cycles after the second START write); "
+            f"({gap} clk_smc_i cycles after the third START write); "
             f"STATUS before=0x{status_mid:x} after=0x{status_end:x} RUNNING=1; "
             f"window c2=0x{c2:x} c3=0x{win3['c1']:x} "
             f"delta={win3['delta']} within [{win3['e_lo'] - gran}, {win3['e_hi'] + gran}] "

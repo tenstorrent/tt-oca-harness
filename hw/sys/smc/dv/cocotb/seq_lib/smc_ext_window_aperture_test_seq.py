@@ -243,9 +243,9 @@ class smc_ext_window_aperture_test_seq(SmcCsrSeq):
             "CHK-EXT-READ-REQ",
             f"read @0x{WINDOW:08x} (BASE+0x{WINDOW_OFFSET:x}) produced {ars} external AR rising "
             f"edge, completed resp={RESP_NAMES.get(resp, resp)} rdata=0x{rdata:x}; "
-            f"AR address printed 0x{ar_addr:x} against the expected window offset (window offset "
+            f"AR address 0x{ar_addr:x} measured, not compared (window offset "
             f"0x{WINDOW_OFFSET:x}, full address 0x{WINDOW:x}); response and data are the "
-            f"reference terminator's (owner value pending)",
+            f"reference terminator's (not specified, measured)",
         )
         return ar_addr
 
@@ -275,7 +275,7 @@ class smc_ext_window_aperture_test_seq(SmcCsrSeq):
             f"two writes @0x{WINDOW:08x} each produced one external AW rising edge with the AR "
             f"address of the read leg 0x{ar_addr:x}: "
             + "; ".join(rows)
-            + "; write data and strobes are not exported (owner value pending)",
+            + "; write data and strobes are not exported (not specified, measured)",
         )
 
     async def _shim_leg(self) -> None:
@@ -356,9 +356,10 @@ class smc_ext_window_aperture_test_seq(SmcCsrSeq):
             assert not member.timed_out and member.resp_code is not None, (
                 f"group member {member.get_name()} did not complete"
             )
-            assert member.resp_code in (0, AXI_RESP_DECERR), (
-                f"group member {member.get_name()} answered resp={member.resp_code}"
-            )
+        assert window.resp_code in (0, AXI_RESP_DECERR), (
+            f"group member {window.get_name()} answered resp={window.resp_code}"
+        )
+        assert shrink.resp_code == 0, f"{label}: REGION_SIZE write answered {shrink.resp_code}"
         self._probes_clean()
         overlap = self._delta(before, after, "overlap")
         assert overlap > 0, f"{label}: no cycle had two SEP_IN accesses outstanding"

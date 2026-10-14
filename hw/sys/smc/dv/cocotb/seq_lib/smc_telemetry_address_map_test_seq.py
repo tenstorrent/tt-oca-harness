@@ -256,7 +256,8 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
             "S2",
             "%d register types x %d apertures read OKAY at window base + 0x%x * i + 0x00 to 0x18 "
             "with reset values; INTR_ENABLE %s and BUFFER_THRESHOLD %s written to receivers 0 to 2 "
-            "read back as their own and restored to 0",
+            "read back as their own and restored to 0; zero reset values are bench-limited "
+            "(2-state zero init)",
             len(_REG_TYPES),
             _NUM_RX,
             _STRIDE,
@@ -321,7 +322,7 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-TELEMETRY-PAST-EXTENT",
             "S4",
-            "measured, not compared (owner value pending): %s",
+            "measured, not compared (not specified, measured): %s",
             " ".join(measured),
         )
 
@@ -338,7 +339,7 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-TELEMETRY-UNBACKED-OFFSETS",
             "S5",
-            "measured, not compared (owner value pending); receiver "
+            "measured, not compared (not specified, measured); receiver "
             "STATUS/INTR_ENABLE/INTR_STATUS/CTRL "
             "unchanged: %s",
             " ".join(measured),

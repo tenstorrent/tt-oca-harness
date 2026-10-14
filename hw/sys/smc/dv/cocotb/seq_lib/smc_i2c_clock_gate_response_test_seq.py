@@ -7,9 +7,9 @@ hw/sys/smc/doc/clk_rst.adoc, hw/ip/i2c/regs/i2c.rdl, hw/sys/smc/doc/interrupts.a
 
 While the gate is set every read of the I2C window completes with SLVERR and 0xBADCAB1E;
 after it is cleared the window answers OKAY and every register and event written before
-the gate reads back unchanged. The fate of writes under the gate, the answers at gap and
-past-extent addresses and the interrupt levels are open (owner value pending) and are
-logged without a compare.
+the gate reads back unchanged. Writes under the gate complete with SLVERR. The answers at gap
+and past-extent addresses and the interrupt levels: the specification does not state the
+values; they are logged without a compare.
 """
 
 from __future__ import annotations
@@ -19,16 +19,15 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
+from .smc_addr_map import I2C_CG_EN, reg_reset_word, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_i2c_field_masks import I2C_WRAP_CONTROLLER_MODE, I2C_WRAP_SMBUS_EN
-from .smc_i2c_master_target_test_seq import _i2c_u32
+from .smc_i2c_master_target_test_seq import _I2C_H, _i2c_u32
 from .smc_i2c_target_smbus_test_seq import _pack_target_id
 
 INSTANCES = (0, 1, 2)
 AXI_SLVERR = 2
-ERR_SIGNATURE = 0xBADCAB1E
-STATUS_RESET = 0x33C
+ERR_SIGNATURE = SmcCsrSeq.ERR_SLAVE_SIGNATURE
 TARGET_TIMEOUT_PATTERN = 0x1234
 NACK_HANDLER_PATTERN = 0x321
 GATE_POLL_CYCLES = 2000
@@ -42,6 +41,7 @@ IRQ_INDEX = 1
 PERIPHERAL_IRQ_BIT = 24
 CPU_IRQ_BIT = 280
 
+STATUS_RESET = reg_reset_word(_I2C_H, "I2C", "STATUS")
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 WINDOW_BASE = smc_addr("SMC_TOP_SMC_I2C_WRAP_BASE_ADDR")
 WINDOW_EXTENT = smc_addr("SMC_TOP_SMC_I2C_WRAP_SIZE")
@@ -76,7 +76,7 @@ INTR_ENABLE_PATTERN = (
 FENCE_STEPS = tuple(f"S{n}" for n in (1, 2, 3, 4, 5, 6, 7, 8, 10, 11))
 CHK_STEPS = {
     "CHK-I2C-GATE-READ-SLVERR": ("S2", "S4"),
-    "CHK-I2C-GATE-WRITE-OBS": ("S5",),
+    "CHK-I2C-GATE-WRITE-SLVERR": ("S5",),
     "CHK-I2C-GATE-GAP-OBS": ("S6",),
     "CHK-I2C-GATE-UNGATE-OKAY": ("S8",),
     "CHK-I2C-GATE-IRQ-OBS": ("S3", "S7"),
@@ -246,16 +246,18 @@ class smc_i2c_clock_gate_response_test_seq(SmcCsrSeq):
 
         # S5
         nack_resp = await self.csr_write_expect_error(
-            "GATED_NACK_TIMEOUT", _reg("HOST_NACK_HANDLER_TIMEOUT", 0), NACK_HANDLER_PATTERN
+            "GATED_NACK_TIMEOUT",
+            _reg("HOST_NACK_HANDLER_TIMEOUT", 0),
+            NACK_HANDLER_PATTERN,
+            resp=AXI_SLVERR,
         )
         ctrl2_resp = await self.csr_write_expect_error(
-            "GATED_CTRL2", _wrap_ctrl(2), I2C_WRAP_SMBUS_EN
+            "GATED_CTRL2", _wrap_ctrl(2), I2C_WRAP_SMBUS_EN, resp=AXI_SLVERR
         )
         self._mark("S5")
         self._chk(
-            "CHK-I2C-GATE-WRITE-OBS",
-            "HOST_NACK_HANDLER_TIMEOUT[0]_resp=%d I2C_CTRL[2]_resp=%d "
-            "(observation, owner value pending)",
+            "CHK-I2C-GATE-WRITE-SLVERR",
+            "HOST_NACK_HANDLER_TIMEOUT[0]_resp=%d I2C_CTRL[2]_resp=%d (both SLVERR, clk_rst.adoc)",
             nack_resp,
             ctrl2_resp,
         )
@@ -274,7 +276,9 @@ class smc_i2c_clock_gate_response_test_seq(SmcCsrSeq):
             resp, _ = await self._observe(f"GAPW_{label}", addr, True, SLAVE_WRITE_PATTERN)
             gap.append(f"wr_{label}_resp={resp}")
         self._mark("S6")
-        self._chk("CHK-I2C-GATE-GAP-OBS", "%s (observation, owner value pending)", " ".join(gap))
+        self._chk(
+            "CHK-I2C-GATE-GAP-OBS", "%s (observation, not specified, measured)", " ".join(gap)
+        )
 
         # S7
         irq_now = self._irq_levels()
@@ -286,7 +290,7 @@ class smc_i2c_clock_gate_response_test_seq(SmcCsrSeq):
             "precondition tb_i2c_irq[1]=1 after %d cycles; gated tb_i2c_irq[1]=%d "
             "tb_peripheral_interrupts[24]=%d tb_cpu_interrupts[280]=%d; after %d cycles "
             "tb_i2c_irq[1]=%d tb_peripheral_interrupts[24]=%d tb_cpu_interrupts[280]=%d "
-            "(observation, owner value pending)",
+            "(observation, not specified, measured)",
             pre_cycles,
             *irq_now,
             IRQ_LATER_CYCLES,
@@ -378,7 +382,7 @@ class smc_i2c_clock_gate_response_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-I2C-RETAIN-GATED-WRITE-OBS",
             "HOST_NACK_HANDLER_TIMEOUT[0]=0x%08x %s; I2C_CTRL[2]=0x%08x %s "
-            "(observation, owner value pending)",
+            "(observation, not specified, measured)",
             nack_rb,
             "landed" if nack_rb == NACK_HANDLER_PATTERN else "dropped",
             ctrl2_rb,

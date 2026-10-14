@@ -12,7 +12,14 @@ import cocotb
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import _LOG_ENGINE_H, _field_mask, log_engine_u32, smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    _LOG_ENGINE_H,
+    _REPO,
+    _field_mask,
+    log_engine_u32,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_log_engine_utils import (
     IIR_PENDING,
@@ -29,6 +36,17 @@ from .smc_log_engine_utils import (
 )
 
 _LOG_ENGINE_ADDR_H = _LOG_ENGINE_H.with_name("log_engine_addr.h")
+_WRAP_ADDR_H = (
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
+    / "uart_log_engine_wrap_addr.h"
+)
 _WORD_MASK = 0xFFFF_FFFF
 _ENGINE_BASE_SYMBOL = f"{WRAP}LOG_ENGINE_BASE_ADDR"
 
@@ -39,7 +57,7 @@ ADDR_LO_MASK = log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_LO_b
 ADDR_LO_BITS = log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_LO_bw")
 ADDR_HI_BITS = log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bw")
 ADDR_HI_MASK = (1 << ADDR_HI_BITS) - 1
-WRITE_ADDR_BITS = 32
+WRITE_ADDR_BITS = log_engine_u32("LOG_ENGINE__LOG_WRITE_ADDR__LOG_WRITE_ADDR_bw")
 FETCH_ERR = log_engine_u32("LOG_ENGINE__INTR_ENABLE__LOG_FETCH_ERR_bm")
 WRITE_ERR = log_engine_u32("LOG_ENGINE__INTR_ENABLE__LOG_WRITE_ERR_bm")
 INTR_BOTH = FETCH_ERR | WRITE_ERR
@@ -68,10 +86,10 @@ CHECKERS = (
 FENCE_TERMS = " < ".join(chk for chk, _ in CHECKERS)
 
 
-class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
+class smc_uart_log_engine_reg_map_test_seq(SmcCsrSeq):
     """Register map of the log-engine bank and wrapper on instances 0..3."""
 
-    def __init__(self, name: str = "smc_uart_log_engine_reg_contract_test_seq") -> None:
+    def __init__(self, name: str = "smc_uart_log_engine_reg_map_test_seq") -> None:
         super().__init__(name)
         self.stamps: list[tuple[str, int]] = []
         self.chk_marks: list[tuple[str, int]] = []
@@ -138,7 +156,8 @@ class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
         return engine_reg(wrap, "LOG_REGION_ADDR")
 
     def _addr_hi(self, wrap: int) -> int:
-        return self._addr_lo(wrap) + ADDR_LO_BITS // 8
+        hi_bp = log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bp")
+        return self._addr_lo(wrap) + hi_bp // 8
 
     def _log_ctrl(self, wrap: int, element: int) -> int:
         return smc_indexed_addr(_ENGINE_BASE_SYMBOL, wrap) + smc_indexed_addr(
@@ -157,7 +176,9 @@ class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
             "S2",
             "%d register reads (8 registers on %d instances) and %d LOG_CTRL slot reads "
             "(%d slots on %d instances) read 0x0 with OKAY responses before any write; "
-            "INTR_TEST read before any write: %s (owner value pending)",
+            "INTR_TEST read before any write: %s (not specified, measured); the 0x0 compares carry "
+            "no reset evidence on the 2-state build, which zero-initialises every flop, so a "
+            "missing reset also reads 0x0",
             self.reset_reads,
             len(self.wraps),
             self.slot_reads,
@@ -315,7 +336,7 @@ class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
             "CHK-LOGENG-ACCESS-INTR-TEST-READ",
             "S10",
             "INTR_TEST reads completed with resolvable data, measured as resp/data "
-            "(0 OKAY, 2 SLVERR, 3 DECERR): %s (owner answer pending)",
+            "(0 OKAY, 2 SLVERR, 3 DECERR): %s (not specified, measured)",
             ", ".join(self.intr_test_reads),
         )
         self._chk(
@@ -340,7 +361,7 @@ class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
             "CHK-LOGENG-ACCESS-UNIMPL",
             "S11",
             "after a write of 0x%08x INTR_ENABLE read 0x%08x and INTR_STATUS read 0x0 both from "
-            "clear and with 0x%02x forced (partial strobes: owner answer pending)",
+            "clear and with 0x%02x forced (partial strobes: not specified, measured)",
             _WORD_MASK,
             INTR_BOTH,
             INTR_BOTH,
@@ -349,11 +370,12 @@ class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
     async def _s12(self) -> None:
         stride = smc_addr(WRAP_STRIDE_SYMBOL)
         window = wrap_ctrl_reg(0)
-        scr_offset = uart_reg(0, "SCR") - window
-        size_offset = (
-            smc_indexed_addr(_ENGINE_BASE_SYMBOL, 0)
-            - window
-            + _field_mask(_LOG_ENGINE_ADDR_H, "LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR")
+        ctrl_offset = _field_mask(
+            _WRAP_ADDR_H, "UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR"
+        )
+        scr_offset = _field_mask(_WRAP_ADDR_H, "UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR")
+        size_offset = _field_mask(
+            _WRAP_ADDR_H, "UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR"
         )
         for wrap in self.wraps:
             ctrl = wrap_ctrl_reg(wrap)
@@ -363,7 +385,7 @@ class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
         for wrap in self.wraps:
             base = window + wrap * stride
             words = (
-                ("CTRL", base, wrap_ctrl_reg(wrap), UART_EN),
+                ("CTRL", base + ctrl_offset, wrap_ctrl_reg(wrap), UART_EN),
                 ("SCR", base + scr_offset, uart_reg(wrap, "SCR"), (0x30 + wrap) & SCR_MASK),
                 (
                     "SIZE",
@@ -393,7 +415,8 @@ class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-LOGENG-UART-EN-RW",
             "S12",
-            "wrapper CTRL read 0x0 at reset (S1) and 0x%x after a write of 0x%x and 0x0 after a "
+            "wrapper CTRL read 0x0 at reset (S1; no reset evidence on the 2-state build, which "
+            "zero-initialises every flop) and 0x%x after a write of 0x%x and 0x0 after a "
             "write of 0 on %d instances",
             UART_EN,
             UART_EN,
@@ -402,10 +425,12 @@ class smc_uart_log_engine_reg_contract_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-LOGENG-BANK-PLACEMENT",
             "S12",
-            "signatures written at window_base+n*0x%x+{0x0,0x%x,0x%x} read back at the "
+            "signatures written at window_base+n*0x%x+{0x%x,0x%x,0x%x} from the wrapper map read "
+            "back at the "
             "generated CTRL, UART SCR and LOG_REGION_SIZE address of the same instance and 0 "
             "at every other instance: %s",
             stride,
+            ctrl_offset,
             scr_offset,
             size_offset,
             " ".join(placed),

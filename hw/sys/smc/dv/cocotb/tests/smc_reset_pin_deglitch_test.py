@@ -19,8 +19,9 @@ from seq_lib.smc_reset_pin_deglitch_test_seq import (
 )
 from smc_base_test import smc_base_test
 
-# Bounded reset WAIT_STATE handshakes of the positive control (asserted, released).
-EXPECTED_WAIT_CHECKS = 2
+# Bounded reset WAIT_STATE handshakes of the positive controls (cool and cold, asserted and
+# released).
+EXPECTED_WAIT_CHECKS = 4
 
 
 @pyuvm.test()

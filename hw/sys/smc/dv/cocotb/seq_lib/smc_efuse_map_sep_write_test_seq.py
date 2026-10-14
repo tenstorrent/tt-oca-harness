@@ -17,6 +17,7 @@ import random
 import cocotb
 from cocotb.utils import get_sim_time
 
+from .smc_addr_map import _component_row, generated_past_extent_resp, smc_efuse_map_u32
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_image_pattern_test_seq import (
     EFUSE_MAP_BASE,
@@ -32,7 +33,14 @@ _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
 _SENSE_BOUND_CYCLES = 200_000
 _CFG_PATTERN = 0xFFFF_FFFF_FFFF_7F7E
 _OCCP_PATTERN = 0xA5A5_A5A5_5A5A_5A5A
-_CFG_RSVD = 0xFFFF_FFFF_FFFF_0000 | 0x7E | 0x7F00
+_CFG_RSVD = (
+    smc_efuse_map_u32("SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_LOW_bm")
+    | smc_efuse_map_u32("SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_MID_bm")
+    | smc_efuse_map_u32("SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_HIGH_bm")
+)
+_AXI_CODES = {"OKAY": 0, "EXOKAY": 1, "SLVERR": 2, "DECERR": 3}
+_PAST_RRESP = generated_past_extent_resp("smc_efuse_map")[0]
+_PAST_DATA = _component_row("smc_efuse_map")["past_response"]["rdata"]
 _HALF_LO = 0x1234_5678
 _HALF_HI = 0x9ABC_DEF0
 _CHK_STEP = {
@@ -274,11 +282,13 @@ class smc_efuse_map_sep_write_test_seq(SmcCsrSeq):
             await self._neighbours(f"S5_{k}", below, spare[k + 1][0] if k < 27 else None)
             if k == 27:
                 self._calls += 1
-                rdata = await self.csr_read_expect_error(
-                    "S5_PAST_EXTENT", word_addr(EFUSE_MAP_WORDS)
+                rdata = await self.csr_read_err_signature(
+                    "S5_PAST_EXTENT", word_addr(EFUSE_MAP_WORDS), resp=_AXI_CODES[_PAST_RRESP]
                 )
+                assert rdata == _PAST_DATA, f"S5: past-extent read returned 0x{rdata:x}"
                 past_extent = (
-                    f"0x{word_addr(EFUSE_MAP_WORDS):08x} answered with an error, rdata=0x{rdata:x}"
+                    f"0x{word_addr(EFUSE_MAP_WORDS):08x} answered {_PAST_RRESP}"
+                    f"({_AXI_CODES[_PAST_RRESP]}) with rdata=0x{rdata:08x}"
                 )
         self._done("S5")
         self._chk(
@@ -291,7 +301,7 @@ class smc_efuse_map_sep_write_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-EMAP-WR-NEIGHBOUR",
             "%d word-below/above reads kept their model values across S2, S3 and S5; word above "
-            "SPARE[27]: %s (error response asserted, no value compared)",
+            "SPARE[27]: %s (response code and data asserted)",
             self._neighbour_reads,
             past_extent,
         )

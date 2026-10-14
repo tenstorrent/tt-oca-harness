@@ -44,7 +44,7 @@ _EXCLUDED = {
     "TX_DATA_PORT": "queue port with access side effects",
     "RX_DATA_PORT": "queue port with access side effects",
     "IBI_PORT": "queue port with access side effects",
-    "RESET_CONTROL": "SOFT_RST behaviour open (owner value pending)",
+    "RESET_CONTROL": "SOFT_RST behaviour (not specified, measured)",
 }
 _ACTION = {
     ("HC_CONTROL", "BUS_ENABLE"),

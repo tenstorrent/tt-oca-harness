@@ -15,6 +15,7 @@ from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 from ._one_shot import _OneShot
 from .smc_addr_map import smc_addr, smc_indexed_addr
 from .smc_axi_port_watch import SmcAxiPortWatch
+from .smc_csr_field_catalog import misc_wrap_reset
 from .smc_csr_seq_utils import SmcCsrSeq
 
 FUSE_WAIT_BOUND_SMC_CYCLES = 200_000
@@ -28,6 +29,9 @@ SCRATCH_SEED = 0xC0DE_0500
 WARM_SEED = 0xC0DE_0600
 SPM_BASE = smc_addr("SMC_TOP_SPM_MEMORY_BASE_ADDR") + 0x8_0000
 CHIP_CONFIG_NAMES = ("VERSION_LO", "VERSION_HI", "CHIP_ID", "LC_STATE")
+CHIP_CONFIG_RESETS = {
+    name: misc_wrap_reset(f"CHIP_CONFIG__{name}__{name}_reset") for name in CHIP_CONFIG_NAMES[:3]
+}
 CHIP_CONFIG_ADDRS = tuple(
     smc_addr(f"SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_{name}_BASE_ADDR") for name in CHIP_CONFIG_NAMES
 )
@@ -167,7 +171,12 @@ class smc_xbar_outstanding_limits_test_seq(SmcCsrSeq):
         for i in range(SPM_WORDS):
             await self.csr_write(f"SPMW_{i}_SEED", spm_addr(i), spm_word(i), length=8)
         for name, addr in zip(CHIP_CONFIG_NAMES, CHIP_CONFIG_ADDRS):
-            self.chip_config.append(await self.csr_read(f"CHIP_CONFIG_{name}", addr) & MASK32)
+            word = await self.csr_read(f"CHIP_CONFIG_{name}", addr) & MASK32
+            if name in CHIP_CONFIG_RESETS:
+                assert word == CHIP_CONFIG_RESETS[name], (
+                    f"CHIP_CONFIG {name} read 0x{word:08x}, reset 0x{CHIP_CONFIG_RESETS[name]:08x}"
+                )
+            self.chip_config.append(word)
         self._watch = SmcAxiPortWatch(cocotb.top, "s_axi")
         self._watcher = cocotb.start_soon(self._watch.run())
 
@@ -201,7 +210,7 @@ class smc_xbar_outstanding_limits_test_seq(SmcCsrSeq):
             "CHK-XLIM-LITE-OVER",
             f"5-read and 8-read SCRATCH_COLD groups completed OKAY, each read its own word; "
             f"limit 4 not asserted, stall cycles 5-group {stall5}, 8-group {stall8} "
-            f"(observed, owner value pending)",
+            f"(observed, not specified, measured)",
         )
 
     async def _step_lite_multi(self) -> None:
@@ -273,7 +282,7 @@ class smc_xbar_outstanding_limits_test_seq(SmcCsrSeq):
             "CHK-XLIM-LOCAL-OVER",
             f"9-read and 16-read SPM groups completed OKAY, each read SPMW(i); limit 8 not "
             f"asserted, stall cycles 9-group {stall9}, 16-group {stall16} "
-            f"(observed, owner value pending)",
+            f"(observed, not specified, measured)",
         )
 
     async def _step_local_multi(self) -> None:

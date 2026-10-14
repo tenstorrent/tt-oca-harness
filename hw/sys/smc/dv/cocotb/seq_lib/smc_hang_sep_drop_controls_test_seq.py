@@ -37,7 +37,7 @@ THRESHOLD = 0x40
 THRESHOLD_LARGE = 0x1000
 RAISE_CEILING_RISES = 128
 HOLD_WINDOW_RISES = 65
-NOLATCH_RISES = 128
+GATE_HOLD_RISES = 128
 LATE_FIRST_RISES = 4
 LATE_CEILING_RISES = 128
 TOGGLES = 8
@@ -51,13 +51,14 @@ AXI_TIMEOUT_NS = 50_000
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
 _CHECKERS = (
     "CHK-DROPCTL-IRQEN-CLEAR",
-    "CHK-DROPCTL-NOLATCH",
+    "CHK-DROPCTL-GATE-HOLD",
+    "CHK-DROPCTL-ENABLE-CLEAR",
     "CHK-DROPCTL-REENABLE-LOG",
     "CHK-DROPCTL-TOGGLE-GATING",
     "CHK-DROPCTL-TOGGLE-LOG",
     "CHK-DROPCTL-BOTH-CAUSES-LOG",
 )
-_CHECK_STEP = ("S2", "S3", "S4", "S5", "S5", "S6")
+_CHECK_STEP = ("S2", "S3", "S3", "S4", "S5", "S5", "S6")
 
 
 class _Stall:
@@ -262,7 +263,7 @@ class smc_hang_sep_drop_controls_test_seq(SmcCsrSeq):
             f"CTRL.irq 0 (CTRL=0x{status:x})",
         )
 
-        await self._quiet(st, "S3", NOLATCH_RISES)
+        await self._quiet(st, "S3", GATE_HOLD_RISES)
         irq_reads = []
         for i in range(3):
             irq_reads.append(
@@ -274,14 +275,41 @@ class smc_hang_sep_drop_controls_test_seq(SmcCsrSeq):
             )
         self._assert_held(st, "S3")
         self._mark_step("S3")
-        cocotb.log.info("LIFECYCLE CHK-DROPCTL-NOLATCH set: irq dropped by the irq_en clear")
-        cocotb.log.info("LIFECYCLE CHK-DROPCTL-NOLATCH observed: sep irq each rise, 3 CTRL reads")
-        cocotb.log.info("LIFECYCLE CHK-DROPCTL-NOLATCH cleared: no clearing write issued")
-        cocotb.log.info("LIFECYCLE CHK-DROPCTL-NOLATCH checked_cleared: CTRL.irq 0 x3")
+        cocotb.log.info("LIFECYCLE CHK-DROPCTL-GATE-HOLD set: irq dropped by the irq_en clear")
+        cocotb.log.info("LIFECYCLE CHK-DROPCTL-GATE-HOLD observed: sep irq each rise, 3 CTRL reads")
+        cocotb.log.info("LIFECYCLE CHK-DROPCTL-GATE-HOLD cleared: no clearing write issued")
+        cocotb.log.info("LIFECYCLE CHK-DROPCTL-GATE-HOLD checked_cleared: CTRL.irq 0 x3")
         self._log_chk(
-            "CHK-DROPCTL-NOLATCH",
-            f"sep irq, raw286 0 at each of {NOLATCH_RISES} rises with no write; "
+            "CHK-DROPCTL-GATE-HOLD",
+            f"sep irq, raw286 0 at each of {GATE_HOLD_RISES} rises with no write; "
             f"CTRL reads {[hex(r) for r in irq_reads]} irq 0 each; sep irq unchanged 0",
+        )
+
+        await self._ctrl("S3_ARM_AGAIN", HANG_DET_ARMED)
+        live_at = await self._await_high("S3 enable clear")
+        await self._ctrl("S3_ENABLE_CLEAR", HANG_DET_IRQ_EN)
+        await RisingEdge(cocotb.top.clk_smc_i)
+        sep, raw = self._sample("S3 enable clear")
+        self._assert_held(st, "S3 enable clear")
+        status = await self._jtag(
+            "S3_ENABLE_CLEAR_CTRL_IRQ", HANG_DET_SEP_AXI_CTRL, SmcSysAxiOp.READ
+        )
+        assert sep == 0 and raw == 0 and not status & HANG_DET_IRQ, (
+            f"S3 enable clear: sep={sep} raw286={raw} CTRL=0x{status:x}, want irq 0"
+        )
+        await self._ctrl("S3_ENABLE_RESTORE", HANG_DET_ENABLE)
+        await self._quiet(st, "S3 restore", HOLD_WINDOW_RISES)
+        cocotb.log.info("LIFECYCLE CHK-DROPCTL-ENABLE-CLEAR set: sep irq 1 at rise %d", live_at)
+        cocotb.log.info("LIFECYCLE CHK-DROPCTL-ENABLE-CLEAR observed: sep irq, raw286, CTRL.irq")
+        cocotb.log.info(
+            "LIFECYCLE CHK-DROPCTL-ENABLE-CLEAR cleared: CTRL=0x%x written over JTAG",
+            HANG_DET_IRQ_EN,
+        )
+        cocotb.log.info("LIFECYCLE CHK-DROPCTL-ENABLE-CLEAR checked_cleared: all read 0")
+        self._log_chk(
+            "CHK-DROPCTL-ENABLE-CLEAR",
+            f"sep irq 1 at rise {live_at} with CTRL armed; enable cleared with irq_en set, "
+            f"sep irq, raw286 0 one rise after the readback; CTRL.irq 0 (CTRL=0x{status:x})",
         )
 
         await self._ctrl("S4_ENABLE_IRQEN", HANG_DET_ARMED)
@@ -298,7 +326,7 @@ class smc_hang_sep_drop_controls_test_seq(SmcCsrSeq):
             f"late irq_en: rises_to_sep_irq={first} ({near} {LATE_FIRST_RISES} rises; "
             f"ceiling {LATE_CEILING_RISES}); after CTRL=irq_en then enable|irq_en: "
             f"rises_to_sep_irq={again}; hold lasted {held} rises (observe-and-log, "
-            "owner value pending)",
+            "not specified, measured)",
         )
 
     async def _toggle_phase(self, rng: random.Random, seed: str) -> None:
@@ -362,7 +390,7 @@ class smc_hang_sep_drop_controls_test_seq(SmcCsrSeq):
             "CHK-DROPCTL-TOGGLE-LOG",
             f"seed={seed} hold {held} rises; "
             + "; ".join(rows)
-            + " (observe-and-log, owner value pending)",
+            + " (observe-and-log, not specified, measured)",
         )
 
     async def _both_causes_phase(self) -> None:
@@ -387,7 +415,7 @@ class smc_hang_sep_drop_controls_test_seq(SmcCsrSeq):
             f"irq_test cleared with the stall persisting: sep={stalled[0]} "
             f"raw286={stalled[1]}; stall released with irq_test set: sep={released[0]} "
             f"raw286={released[1]}; irq_test cleared: sep={final[0]} raw286={final[1]}; "
-            f"hold {held} rises (observe-and-log, owner value pending)",
+            f"hold {held} rises (observe-and-log, not specified, measured)",
         )
 
     async def body(self) -> None:
@@ -448,7 +476,7 @@ class smc_hang_sep_drop_controls_test_seq(SmcCsrSeq):
             assert when >= stamp_of[step], f"{chk_id} printed before its step {step} stamp"
         assert self._reads == 3, f"{self._reads} SEP_IN stalls started, want 3"
         cocotb.log.info(
-            "CHK-NONVAC: ordered fence ARM<IRQ-EN-CLEAR<NO-LATCH<LATE-IRQ-EN<TOGGLES<"
+            "CHK-NONVAC: ordered fence ARM<IRQ-EN-CLEAR<GATE-HOLD<ENABLE-CLEAR<LATE-IRQ-EN<TOGGLES<"
             "IRQ-TEST-PLUS-TIMEOUT<CLEANUP; checker lines %s; stamps %s",
             ",".join(chk_ids),
             ",".join(f"{s}={t}" for s, t in self._stamps),

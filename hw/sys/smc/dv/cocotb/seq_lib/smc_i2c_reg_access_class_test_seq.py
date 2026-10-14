@@ -9,7 +9,8 @@ Every access is a SEP_IN frontdoor word access with CTRL.ENABLEHOST and CTRL.ENA
 held at 0 and no I2C bus traffic. The seed (RANDOM_SEED) picks the instance walked per
 register. The response codes of read-only writes and write-only reads, the read value of
 write-only registers, reserved-bit residue, the threshold readbacks, TIMING0 THIGH/TLOW
-below 2 and the role bits are owner value pending: they are logged without a compare.
+below 2 and the role bits: the specification does not state the values;
+they are logged without a compare.
 """
 
 from __future__ import annotations
@@ -184,6 +185,14 @@ def with_field(word: int, mask: int, value: int) -> int:
     return (word & ~mask) | ((value << pos) & mask)
 
 
+def _zero_reset(register: str) -> int:
+    """Reset word of a read-only register; 0 where the generated header has no field reset."""
+    try:
+        return _reset(register)
+    except KeyError:
+        return 0
+
+
 class smc_i2c_reg_access_class_test_seq(SmcCsrSeq):
     """Access classes of the I2C instance registers and I2C_CTRL with the engines disabled."""
 
@@ -286,7 +295,7 @@ class smc_i2c_reg_access_class_test_seq(SmcCsrSeq):
             "RANDOM_SEED=%d; %d readbacks equal the written word under the writable mask "
             "over %d families (all-ones and all-zero on instances 0,1,2; walking-one and "
             "walking-zero per family on seeded instance: %s); TIMING0 THIGH/TLOW below 2 "
-            "logged without compare (owner value pending): %s",
+            "logged without compare (not specified, measured): %s",
             self.seed,
             compares,
             len(RW_FAMILIES),
@@ -422,7 +431,7 @@ class smc_i2c_reg_access_class_test_seq(SmcCsrSeq):
         self._mark("S5")
         self._chk(
             "CHK-I2C-RW-OBSERVED",
-            "instance %d readbacks logged, none compared (owner value pending): %s",
+            "instance %d readbacks logged, none compared (not specified, measured): %s",
             n,
             " ".join(seen),
         )
@@ -436,6 +445,13 @@ class smc_i2c_reg_access_class_test_seq(SmcCsrSeq):
                     f"{register}_W{word:x}", _reg(register, n), True, word
                 )
                 codes.append(f"{register}<=0x{word:x}:resp={resp}")
+                if word == ALL_ONES and (register == "STATUS" or register in ZERO_RESET_RO):
+                    want = STATUS_RESET if register == "STATUS" else _zero_reset(register)
+                    got = await self.csr_read(f"{register}_AFTER_ONES", _reg(register, n))
+                    assert got == want, (
+                        f"{register}[{n}] reads 0x{got:08x} after writing all ones, "
+                        f"expected its reset 0x{want:08x}"
+                    )
             status = await self.csr_read(f"{register}_AFTER_STATUS", _reg("STATUS", n))
             assert status == STATUS_RESET, (
                 f"STATUS[{n}] reads 0x{status:08x} after writing {register}"
@@ -449,8 +465,8 @@ class smc_i2c_reg_access_class_test_seq(SmcCsrSeq):
         self._mark("S6")
         self._chk(
             "CHK-I2C-RO-IGNORED",
-            "instance %d write response codes %s; after both writes STATUS=0x%03x and "
-            "%s read 0x0 (reset-value-only proof); VAL=0x%08x logged",
+            "instance %d write response codes %s; after the all-ones write and after both writes "
+            "STATUS=0x%03x and %s read their reset; VAL=0x%08x logged",
             n,
             " ".join(codes),
             values["STATUS"],
@@ -506,7 +522,7 @@ class smc_i2c_reg_access_class_test_seq(SmcCsrSeq):
             "CHK-I2C-ROWO-OBSERVED",
             "instance %d write-only reads %s; all-ones write responses %s; readback residue %s; "
             "TARGET_NACK_COUNT reads at reset,reset,after 0x%x,after: %s; STATUS=0x%03x and "
-            "INTR_STATE event bits 0x%x unchanged (owner value pending)",
+            "INTR_STATE event bits 0x%x unchanged (not specified, measured)",
             n,
             " ".join(seen),
             " ".join(writes),

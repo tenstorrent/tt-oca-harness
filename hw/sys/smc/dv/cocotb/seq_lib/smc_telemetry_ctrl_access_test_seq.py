@@ -5,8 +5,9 @@
 Sources: hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl,
 hw/ip/telemetry_receiver/doc/architecture.adoc, doc/programmer/src/smc-programming.adoc.
 
-The ATB framing is the DV-owned table of the telemetry receiver CSR leaf: 8-bit beats, 64-bit
-packets, 9-bit blocks, 5-bit probe ID header. No document fixes the bit positions.
+ATB framing from telemetry_receiver/doc/architecture.adoc (Assembly and Decode): eight beats
+LSB first, bit 63 last packet, probe ID [60:56]; the 9-bit block layout from bit 0 is a bench
+choice.
 """
 
 from __future__ import annotations
@@ -97,7 +98,8 @@ RO_REGISTERS = (
     ("COUNTER31", COUNTER_LAST),
 )
 
-# ATB framing (DV-owned table, same layout as the telemetry receiver CSR leaf).
+# ATB framing: beats, last-packet bit and probe ID from architecture.adoc; block layout is a
+# bench choice.
 _ATB_BEAT_BITS = 8
 _ATB_PACKET_BITS = 64
 _BEATS_PER_PACKET = _ATB_PACKET_BITS // _ATB_BEAT_BITS
@@ -313,6 +315,9 @@ class smc_telemetry_ctrl_access_test_seq(SmcCsrSeq):
                     await self._wait_buffer(False, f"{label}_FILLED")
                 await self.csr_write(label, CTRL, pulse)
                 ctrl = await self.csr_read(f"{label}_RB", CTRL)
+                assert ctrl & (BUFFER_POP_BM | RX_FLUSH_BM) == 0, (
+                    f"{label}: CTRL 0x{ctrl:08x} reads a pulse bit set after the write"
+                )
                 if fill:
                     await self._wait_buffer(True, f"{label}_DONE")
                 pulse_reads.append(
@@ -323,8 +328,8 @@ class smc_telemetry_ctrl_access_test_seq(SmcCsrSeq):
         self._emit(
             "S3",
             "CHK-TELEMETRY-CTRL-PULSE-READ",
-            "CTRL read after each write pulse, bits 0 and 4 printed and not compared "
-            "(owner value pending): %s; the queued message left the queue after every write",
+            "CTRL read after each write pulse, bits 0 and 4 read 0 (sw=w in the RDL): %s; "
+            "the queued message left the queue after every write",
             " ".join(pulse_reads),
         )
 
@@ -352,7 +357,7 @@ class smc_telemetry_ctrl_access_test_seq(SmcCsrSeq):
             "CHK-TELEMETRY-CTRL-FULL-WORD",
             "CTRL 0x%08x with BUFFER_THRESHOLD 5 and TX_FLUSH pending; after the full-word "
             "write 0x%x CTRL read 0x%08x with BUFFER_THRESHOLD %d and bit 8 = %d "
-            "(pending request cancelled: owner value pending, printed only)",
+            "(pending request cancelled: not specified, measured, printed only)",
             pending_rb,
             BUFFER_POP_BM,
             ctrl,
@@ -390,6 +395,7 @@ class smc_telemetry_ctrl_access_test_seq(SmcCsrSeq):
         assert released == 0, f"INTR_TEST wrote 0 and read 0x{released:x}"
         await self.csr_write("INTR_TEST_PULSE", INTR_TEST, TEST_MISSING_LAST)
         pulse = await self.csr_read("INTR_TEST_PULSE_RB", INTR_TEST)
+        assert pulse & TEST_MISSING_LAST == 0, f"INTR_TEST bit 0 reads 1 (0x{pulse:x})"
         intr = await self.csr_read("INTR_TEST_PULSE_STATUS", INTR_STATUS)
         await self.csr_write("INTR_TEST_END_ZERO", INTR_TEST, 0)
         await self.csr_write("INTR_TEST_END_CLR", INTR_STATUS, INTR_MISSING_LAST | INTR_THRESHOLD)
@@ -398,8 +404,8 @@ class smc_telemetry_ctrl_access_test_seq(SmcCsrSeq):
             "S6",
             "CHK-TELEMETRY-INTR-TEST-ACCESS",
             "INTR_TEST read 0x%x after a write of 0x10 and 0x%x after a write of 0; after a "
-            "write of 0x1 it read 0x%x (bit 0 = %d) with INTR_STATUS 0x%x (owner value pending, "
-            "printed only)",
+            "write of 0x1 it read 0x%x (bit 0 = %d, sw=w in the RDL) with INTR_STATUS 0x%x "
+            "(printed only)",
             held,
             released,
             pulse,
@@ -427,7 +433,8 @@ class smc_telemetry_ctrl_access_test_seq(SmcCsrSeq):
             "CHK-TELEMETRY-RO-WRITE-IGNORED",
             "writes of 0xFFFFFFFF and 0 to STATUS, PROBE_ID, COUNTER_VLDS, COUNTER[0] and "
             "COUNTER[31] left every register at its pre-write word, empty queue %s and one "
-            "queued message %s; write responses (0 OKAY, 2 SLVERR, 3 DECERR; owner value pending, "
+            "queued message %s; write responses (0 OKAY, 2 SLVERR, 3 DECERR; not specified, "
+            "measured, "
             "printed only) empty %s message %s",
             [hex(w) for w in empty_before],
             [hex(w) for w in msg_before],

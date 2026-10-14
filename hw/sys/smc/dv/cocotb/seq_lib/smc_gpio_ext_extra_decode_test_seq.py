@@ -25,12 +25,18 @@ ABOVE_SHIM = external_gpio_ctrl_addr(0)
 INTF_ADDRS = tuple(INTF_BASE + 4 * i for i in range(INTF_SIZE // 4))
 WRITE_DATA = 0xA5A5_5A5A
 
-STEP_ORDER = ("S1", "S2", "S3", "S4", "S5")
+STEP_ORDER = (
+    "BRINGUP_DONE",
+    "EXTRA_INTF_ROUTED",
+    "EXTRA_CTRL_ROUTED",
+    "RESPONSES_PRINTED",
+    "SHIM_BOUNDARY",
+)
 CHK_ORDER = (
-    ("S2", "CHK-GPIO-EXT-EXTRA-INTF-ROUTED"),
-    ("S3", "CHK-GPIO-EXT-EXTRA-CTRL-ROUTED"),
-    ("S4", "CHK-GPIO-EXT-EXTRA-RESPONSE"),
-    ("S5", "CHK-GPIO-EXT-EXTRA-SHIM-BOUNDARY"),
+    ("EXTRA_INTF_ROUTED", "CHK-GPIO-EXT-EXTRA-INTF-ROUTED"),
+    ("EXTRA_CTRL_ROUTED", "CHK-GPIO-EXT-EXTRA-CTRL-ROUTED"),
+    ("RESPONSES_PRINTED", "CHK-GPIO-EXT-EXTRA-RESPONSE"),
+    ("SHIM_BOUNDARY", "CHK-GPIO-EXT-EXTRA-SHIM-BOUNDARY"),
 )
 EXPECTED_ACCESSES = 8
 
@@ -84,7 +90,7 @@ class smc_gpio_ext_extra_decode_test_seq(SmcDecodeProbeSeq):
         )
         self.env.axi_monitor.expected_decerr_addrs.update(set(INTF_ADDRS) | {CTRL_ADDR, ABOVE_SHIM})
         await ClockCycles(cocotb.top.clk_smc_i, 1)
-        self._mark("S1")
+        self._mark("BRINGUP_DONE")
 
     async def _s2(self) -> str:
         for addr in INTF_ADDRS:
@@ -93,7 +99,7 @@ class smc_gpio_ext_extra_decode_test_seq(SmcDecodeProbeSeq):
         rows = self.rows[:6]
         assert len(rows) == 6 and all(r[5] > 0 for r in rows), f"intf probes {rows}"
         await ClockCycles(cocotb.top.clk_smc_i, 1)
-        self._mark("S2")
+        self._mark("EXTRA_INTF_ROUTED")
         return "six probes: " + self._routed_text(rows)
 
     async def _s3(self) -> str:
@@ -102,7 +108,7 @@ class smc_gpio_ext_extra_decode_test_seq(SmcDecodeProbeSeq):
         rows = self.rows[6:]
         assert len(rows) == 2 and all(r[5] > 0 for r in rows), f"ctrl probes {rows}"
         await ClockCycles(cocotb.top.clk_smc_i, 1)
-        self._mark("S3")
+        self._mark("EXTRA_CTRL_ROUTED")
         return "two probes: " + self._routed_text(rows)
 
     async def _s4(self) -> str:
@@ -114,11 +120,11 @@ class smc_gpio_ext_extra_decode_test_seq(SmcDecodeProbeSeq):
             for _l, k, a, r, d, _h in self.rows
         ]
         await ClockCycles(cocotb.top.clk_smc_i, 1)
-        self._mark("S4")
+        self._mark("RESPONSES_PRINTED")
         return (
             f"all {EXPECTED_ACCESSES} accesses completed DECERR (3); "
             + "; ".join(parts)
-            + "; read data printed (owner answer pending)"
+            + "; read data printed (not specified, measured)"
         )
 
     async def _s5(self) -> str:
@@ -162,7 +168,7 @@ class smc_gpio_ext_extra_decode_test_seq(SmcDecodeProbeSeq):
         )
         assert above_hits > 0, f"0x{ABOVE_SHIM:08x} never reached the external port"
         await ClockCycles(dut.clk_smc_i, 1)
-        self._mark("S5")
+        self._mark("SHIM_BOUNDARY")
         return (
             f"SHIM base 0x{SHIM_BASE:08x} read resp={shim_resp} rdata=0x{shim_rdata:08x}: "
             f"tb_axil_efuse_bank_active high {active[0]} cycle(s), external-port ar requests "
@@ -174,10 +180,10 @@ class smc_gpio_ext_extra_decode_test_seq(SmcDecodeProbeSeq):
     async def body(self) -> None:
         await self._s1()
         cocotb.log.info("BRINGUP_DONE at %d ps", self.steps[-1][1])
-        self._chk("S2", "CHK-GPIO-EXT-EXTRA-INTF-ROUTED", await self._s2())
-        self._chk("S3", "CHK-GPIO-EXT-EXTRA-CTRL-ROUTED", await self._s3())
-        self._chk("S4", "CHK-GPIO-EXT-EXTRA-RESPONSE", await self._s4())
-        self._chk("S5", "CHK-GPIO-EXT-EXTRA-SHIM-BOUNDARY", await self._s5())
+        self._chk("EXTRA_INTF_ROUTED", "CHK-GPIO-EXT-EXTRA-INTF-ROUTED", await self._s2())
+        self._chk("EXTRA_CTRL_ROUTED", "CHK-GPIO-EXT-EXTRA-CTRL-ROUTED", await self._s3())
+        self._chk("RESPONSES_PRINTED", "CHK-GPIO-EXT-EXTRA-RESPONSE", await self._s4())
+        self._chk("SHIM_BOUNDARY", "CHK-GPIO-EXT-EXTRA-SHIM-BOUNDARY", await self._s5())
         self._nonvac()
 
     def _nonvac(self) -> None:

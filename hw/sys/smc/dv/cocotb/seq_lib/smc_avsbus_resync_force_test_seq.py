@@ -7,9 +7,9 @@ Sources: hw/ip/avsbus_controller/doc/architecture.adoc, regs/avsbus_controller.r
 AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION requests one resync. The leaf counts the
 AVS_SLAVE_RESYNC episodes on the FSM debug bus (a code counts once it holds over two
 consecutive clk_periph_i samples) and the master subframes on avs_mdata. The instant the
-master sees the request and the second-request outcome (owner value pending) are not
-observable at the SMC boundary, so the leaf prints the measured counts and asserts only what
-the documents state.
+master sees the request and the second-request outcome (the specification does not state
+the value) are not observable at the SMC boundary, so the leaf prints the measured counts and
+asserts only what the documents state.
 """
 
 from __future__ import annotations
@@ -274,8 +274,8 @@ class smc_avsbus_resync_force_test_seq(SmcCsrSeq):
         await self.csr_write("S3_CMD0", AVS_CMD, CMD_MID_0)
         await self.csr_write("S3_CMD1", AVS_CMD, CMD_MID_1)
         await self._wait_probe("S3_SHIFT_WAIT", lambda: "SHIFT" in self.probes.current)
+        await self._force("S3", cfg1_base)
         state_at_force = self.probes.current
-        await self._force("S3")
         req_ps = int(get_sim_time("ps"))
         await self._poll_force_clear("S3_CLEAR_POLL", cfg1_base)
         await self._wait_probe(
@@ -396,9 +396,9 @@ class smc_avsbus_resync_force_test_seq(SmcCsrSeq):
         self._chk(
             "S5",
             "CHK-AVS-FORCE-TWICE",
-            f"two back-to-back force writes gave {episodes} resync episode(s) (open question: "
-            f"owner "
-            f"answers one or two), the bus returned to AVS_IDLE, and the command queued "
+            f"two back-to-back force writes gave {episodes} resync episode(s) (the "
+            f"specification does not state whether one or two), the bus returned to AVS_IDLE, "
+            f"and the command queued "
             f"afterwards launched once and was answered ({occupied} reply)",
         )
         await self._drain_readback("S5_END")

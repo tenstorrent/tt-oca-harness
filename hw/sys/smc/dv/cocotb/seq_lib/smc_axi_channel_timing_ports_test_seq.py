@@ -329,8 +329,14 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
         )
 
     @staticmethod
-    def _lead(win: _Window) -> str:
+    def _lead(win: _Window, aw_ahead: bool) -> str:
         assert win.aw_first is not None and win.w_first is not None, "no AW or W observed"
+        ahead = win.aw_first < win.w_first
+        behind = win.aw_first > win.w_first
+        assert ahead if aw_ahead else behind, (
+            f"AW first cycle {win.aw_first}, W first cycle {win.w_first}, "
+            f"want {'AW' if aw_ahead else 'W'} presented first"
+        )
         return f"aw_valid-w_valid={win.aw_first - win.w_first}"
 
     # -- r_hold pulses ---------------------------------------------------
@@ -410,25 +416,29 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
             )
             cocotb.start_soon(self.watches[port].run())
 
-    async def _scratch_skew(self, label: str, base: int, tag: int, timing_of) -> list[str]:
+    async def _scratch_skew(
+        self, label: str, base: int, tag: int, timing_of, aw_ahead: bool
+    ) -> list[str]:
         notes = []
         for k, port in enumerate(PORTS):
             watch = self.watches[port]
             win = watch.begin()
             word = tag + k
             await self._write(port, f"{label}{k}", scratch(base + k), word, timing=timing_of)
-            notes.append(f"{port} {self._lead(win)} wr=OKAY")
+            notes.append(f"{port} {self._lead(win, aw_ahead)} wr=OKAY")
             await self._read(port, f"{label}{k}_RB", scratch(base + k), word)
         return notes
 
-    async def _burst_skew(self, label: str, offset: int, prefix: int, timing) -> str:
+    async def _burst_skew(
+        self, label: str, offset: int, prefix: int, timing, aw_ahead: bool
+    ) -> str:
         watch = self.watches["SEP_IN"]
         win = watch.begin()
         word = burst_word(prefix)
         await self._write(
             "SEP_IN", label, W0 + offset, word, length=8, beats=BURST_BEATS, timing=timing
         )
-        lead = self._lead(win)
+        lead = self._lead(win, aw_ahead)
         await self._read("SEP_IN", f"{label}_RB", W0 + offset, word, length=8, beats=BURST_BEATS)
         return f"SEP_IN {BURST_BEATS}-beat burst {lead} wr=OKAY rd={BURST_BEATS} beats in order"
 
@@ -589,9 +599,9 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
 
         aw_lag = AxiTimingProfile(aw_delay=SKEW)
         w_lag = AxiTimingProfile(w_delay=SKEW)
-        w_first = await self._scratch_skew("WFIRST", 0, 0xC0DE_1000, aw_lag)
+        w_first = await self._scratch_skew("WFIRST", 0, 0xC0DE_1000, aw_lag, False)
         self._mark_step("S2")
-        burst_w = await self._burst_skew("WFIRST_BURST", 0, 0xC2, aw_lag)
+        burst_w = await self._burst_skew("WFIRST_BURST", 0, 0xC2, aw_lag, False)
         self._mark_step("S3")
         self._log_chk(
             "CHK-CTP-W-FIRST",
@@ -599,9 +609,9 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
             "ordinary reads returned 0xC0DE_1000+k",
         )
 
-        aw_first = await self._scratch_skew("AWFIRST", 3, 0xC0DE_2000, w_lag)
+        aw_first = await self._scratch_skew("AWFIRST", 3, 0xC0DE_2000, w_lag, True)
         self._mark_step("S4")
-        burst_a = await self._burst_skew("AWFIRST_BURST", 0x400, 0xC3, w_lag)
+        burst_a = await self._burst_skew("AWFIRST_BURST", 0x400, 0xC3, w_lag, True)
         self._mark_step("S5")
         self._log_chk(
             "CHK-CTP-AW-FIRST",

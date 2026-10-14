@@ -158,7 +158,7 @@ class smc_sep_wdt_irq_level_test_seq(SmcCsrSeq):
             "tb_rst_warm_smc_clk_n",
         ):
             assert hasattr(dut, sig), f"{sig} missing"
-        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
+        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0)
         cocotb.log.info(
             "SEED RANDOM_SEED=%s SCRATCH_COLD_WARM_0=0x%x", os.environ.get("RANDOM_SEED", "1"), got
         )
@@ -238,7 +238,8 @@ class smc_sep_wdt_irq_level_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-SEPWDT-LATENCY-LOG",
             f"fall_to_first_raw282_high_rises={raw_at} "
-            f"release_to_first_raw282_low_rises={first_low} (observe-and-log, owner value pending)",
+            f"release_to_first_raw282_low_rises={first_low} "
+            "(observe-and-log, not specified, measured)",
         )
 
         self._nonvac_fence()

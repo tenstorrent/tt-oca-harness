@@ -9,7 +9,7 @@ Sources: hw/ip/i2c/regs/i2c.rdl INTR_TEST / INTR_STATE, hw/ip/i2c/regs/i2c_wrap.
 `INTR_STATE` is `sw = r` on the status bits and `woclr` on the event bits. Every
 `INTR_ENABLE` word stays at reset, so only register reads observe the result.
 The `INTR_TEST` read-back and the combination of a live condition with
-`INTR_TEST` (owner value pending) are logged and never compared.
+`INTR_TEST`: the specification does not state the values; both are logged and never compared.
 """
 
 from __future__ import annotations
@@ -21,34 +21,15 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_i2c_master_target_test_seq import _i2c_u32
+from .smc_rdl_regmap import rdl_contract
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 NUM_I2CS = 3
 
-STATUS_NAMES = (
-    "FMT_THRESHOLD",
-    "RX_THRESHOLD",
-    "ACQ_THRESHOLD",
-    "CONTROLLER_HALT",
-    "TX_STRETCH",
-    "TX_THRESHOLD",
-    "ACQ_STRETCH",
-)
-EVENT_NAMES = (
-    "RX_OVERFLOW",
-    "SCL_INTERFERENCE",
-    "SDA_INTERFERENCE",
-    "STRETCH_TIMEOUT",
-    "SDA_UNSTABLE",
-    "CMD_COMPLETE",
-    "UNEXP_STOP",
-    "HOST_TIMEOUT",
-    "SMBALERT",
-    "CONTROLLER_TX_FIFO_ERROR",
-    "CONTROLLER_RX_FIFO_ERROR",
-    "TARGET_TX_FIFO_ERROR",
-    "TARGET_RX_FIFO_ERROR",
-)
+_TEST_FIELDS = rdl_contract("smc_i2c_wrap/i2c[0]/INTR_TEST").fields
+STATUS_NAMES = tuple(f.name for f in _TEST_FIELDS if f.access == "read-write")
+EVENT_NAMES = tuple(f.name for f in _TEST_FIELDS if f.access == "write-only")
+
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")
 
 
@@ -169,11 +150,15 @@ class smc_i2c_intr_test_state_test_seq(SmcCsrSeq):
             self.measured.append(name)
             forced.append(f"{name}=0x{post:08x}")
         await self.csr_write("STATUS_RELEASE", INTR_TEST[0], 0)
-        assert self.measured, f"no status bit could be measured; UNMEASURED {self.unmeasured}"
+        assert not self.live, f"status bits held live at the baseline: {self.live}"
+        assert len(self.measured) == len(STATUS_NAMES), (
+            f"{len(self.measured)} of {len(STATUS_NAMES)} status bits measured; "
+            f"UNMEASURED {self.unmeasured}"
+        )
         self._emit(
             "CHK-I2C-STATUS-FORCE",
             f"measured {self.measured} read 1 in INTR_STATE after INTR_TEST force "
-            f"({', '.join(forced)}); INTR_TEST read-back (owner value pending, logged only) "
+            f"({', '.join(forced)}); INTR_TEST read-back (not specified, logged only) "
             f"{ {k: f'0x{v:08x}' for k, v in readbacks.items()} }; "
             f"UNMEASURED {self.unmeasured}",
         )
@@ -232,7 +217,7 @@ class smc_i2c_intr_test_state_test_seq(SmcCsrSeq):
             self._emit(
                 "CHK-I2C-STATUS-LIVE-OBS",
                 f"no status bit was live (INTR_STATE=0x{idle:08x} INTR_TEST=0x{idle_test:08x}); "
-                f"the cell condition-and-INTR_TEST combination (owner value pending) "
+                f"the cell condition-and-INTR_TEST combination (not specified, measured) "
                 f"is not measured",
             )
         else:
@@ -245,8 +230,7 @@ class smc_i2c_intr_test_state_test_seq(SmcCsrSeq):
                 words.append(f"{name}: after_test1=0x{one:08x} after_test0=0x{zero:08x}")
             self._emit(
                 "CHK-I2C-STATUS-LIVE-OBS",
-                f"live status bits observed, owner value pending, no value compared: "
-                f"{'; '.join(words)}",
+                f"live status bits observed, not specified, no value compared: {'; '.join(words)}",
             )
         self._mark("S5")
 

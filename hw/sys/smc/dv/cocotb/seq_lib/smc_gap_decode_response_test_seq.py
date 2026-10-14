@@ -8,6 +8,9 @@ ocah_past_extent_resp placements, smc_mailbox placement.
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import cocotb
 from cocotb.triggers import ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
@@ -17,6 +20,7 @@ from ._one_shot import _OneShot
 from .smc_addr_map import (
     GLOBAL_BASE_RESET,
     LOCAL_BASE_RESET,
+    _component_row,
     generated_past_extent_resp,
     generated_window,
     smc_addr,
@@ -35,8 +39,28 @@ from .smc_output_fabric_vip_utils import (
 )
 
 AXI_RESP_OKAY = 0
-AXI_RESP_DECERR = 3
-BADCAB1E = 0xBADCAB1E
+_RESP_CODES = {"OKAY": 0, "EXOKAY": 1, "SLVERR": 2, "DECERR": 3}
+
+
+def _rdl_gap_resp() -> tuple[int, int, int]:
+    """``(rresp, rdata, bresp)`` of ``ocah_gap_resp`` in smc.rdl."""
+    text = (Path(__file__).resolve().parents[3] / "regs" / "smc.rdl").read_text()
+    m = re.search(
+        r"ocah_gap_resp\s*=\s*ocah_resp'\{rresp:\s*ocah_resp_e::(\w+),\s*"
+        r"rdata:\s*(0x[0-9A-Fa-f]+),\s*bresp:\s*ocah_resp_e::(\w+)\}",
+        text,
+    )
+    assert m, "ocah_gap_resp not found in smc.rdl"
+    return _RESP_CODES[m.group(1)], int(m.group(2), 16), _RESP_CODES[m.group(3)]
+
+
+def _generated_hole_resp(unit: str) -> tuple[int, int, int]:
+    """``(rresp, rdata, bresp)`` the generated memory map gives every hole of ``unit``."""
+    ((_, hole),) = _component_row(unit)["hole_responses"]
+    return _RESP_CODES[hole["rresp"]], hole["rdata"], _RESP_CODES[hole["bresp"]]
+
+
+GAP_RESP = _rdl_gap_resp()
 WRITE_PATTERN = 0xA5A55A5A
 PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
 FUSE_WAIT_BOUND_SMC_CYCLES = 200_000
@@ -128,22 +152,23 @@ class smc_gap_decode_response_test_seq(SmcCsrSeq):
         assert item.resp_code is not None, f"{port} {label} @ 0x{addr:08x}: no bresp recorded"
         return item.resp_code
 
-    async def _rd_decerr(self, port: str, label: str, addr: int) -> int:
+    async def _rd_decerr(self, port: str, label: str, addr: int, want=GAP_RESP) -> int:
         self.env.axi_monitor.expected_decerr_addrs.add(addr)
         resp, rdata = await self._rd(port, label, addr)
-        assert resp == AXI_RESP_DECERR, (
-            f"{port} {label} @ 0x{addr:08x}: rresp {_rname(resp)}, want DECERR (rdata 0x{rdata:x})"
+        assert resp == want[0], (
+            f"{port} {label} @ 0x{addr:08x}: rresp {_rname(resp)}, want {_rname(want[0])} "
+            f"(rdata 0x{rdata:x})"
         )
-        assert rdata == BADCAB1E, (
-            f"{port} {label} @ 0x{addr:08x}: rdata 0x{rdata:08x}, want 0x{BADCAB1E:08x}"
+        assert rdata == want[1], (
+            f"{port} {label} @ 0x{addr:08x}: rdata 0x{rdata:08x}, want 0x{want[1]:08x}"
         )
         return rdata
 
-    async def _wr_decerr(self, port: str, label: str, addr: int) -> int:
+    async def _wr_decerr(self, port: str, label: str, addr: int, want=GAP_RESP) -> int:
         self.env.axi_monitor.expected_decerr_addrs.add(addr)
         resp = await self._wr(port, label, addr)
-        assert resp == AXI_RESP_DECERR, (
-            f"{port} {label} @ 0x{addr:08x}: bresp {_rname(resp)}, want DECERR"
+        assert resp == want[2], (
+            f"{port} {label} @ 0x{addr:08x}: bresp {_rname(resp)}, want {_rname(want[2])}"
         )
         return resp
 
@@ -298,7 +323,7 @@ class smc_gap_decode_response_test_seq(SmcCsrSeq):
             self._log_chk(
                 chk,
                 f"write@0x{local + off:08X} bresp_declared=SLVERR bresp_observed="
-                f"{_rname(wr[where])} (observe-only, owner value pending)",
+                f"{_rname(wr[where])} (observe-only, not specified, measured)",
             )
         self._log_chk(
             "CHK-SLVERR-WINDOW-READ",
@@ -325,23 +350,26 @@ class smc_gap_decode_response_test_seq(SmcCsrSeq):
                 f"{p}@{b} first={_rname(w['FIRST'])} last={_rname(w['LAST'])}"
                 for (p, b), (w, _) in win.items()
             )
-            + "; equal across ports and bases (value observe-only, owner value pending)",
+            + "; equal across ports and bases (value observe-only, not specified, measured)",
         )
 
         first, last = generated_window("debug_module")
+        hole = _generated_hole_resp("debug_module")
         texts = []
         for port, (base_name, base) in COMBOS:
             parts = []
             for where, addr in self._debug_addrs(base):
-                rdata = await self._rd_decerr(port, f"{base_name}_DBG_{where}_RD", addr)
-                await self._wr_decerr(port, f"{base_name}_DBG_{where}_WR", addr)
-                parts.append(f"{where}@0x{addr:08X} DECERR/0x{rdata:08X}/DECERR")
+                rdata = await self._rd_decerr(port, f"{base_name}_DBG_{where}_RD", addr, hole)
+                await self._wr_decerr(port, f"{base_name}_DBG_{where}_WR", addr, hole)
+                parts.append(
+                    f"{where}@0x{addr:08X} {_rname(hole[0])}/0x{rdata:08X}/{_rname(hole[2])}"
+                )
             texts.append(f"{port}@{base_name} " + " ".join(parts))
         self._mark_step("S9")
         self._log_chk(
             "CHK-DEBUG-APERTURE-DECERR",
             f"debug_module generated window 0x{LOCAL_BASE_RESET + first:08X}.."
-            f"0x{LOCAL_BASE_RESET + last:08X} (owner value pending); " + "; ".join(texts),
+            f"0x{LOCAL_BASE_RESET + last:08X} (not specified, measured); " + "; ".join(texts),
         )
 
         await self._restore()

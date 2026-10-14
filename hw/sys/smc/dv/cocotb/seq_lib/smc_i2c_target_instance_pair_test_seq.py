@@ -532,7 +532,7 @@ class smc_i2c_target_instance_pair_test_seq(SmcCsrSeq):
             f"{w_acks} entries I2C0={_fmt(w_entries[0])} I2C1={_fmt(w_entries[1])}; read ack="
             f"{r_ack} byte={r_bytes.hex()} entries I2C0={_fmt(r_entries[0])} "
             f"I2C1={_fmt(r_entries[1])}; TARGET_EVENTS I2C0=0x{t_events[0]:08x} "
-            f"I2C1=0x{t_events[1]:08x}; both transactions completed (owner value pending)"
+            f"I2C1=0x{t_events[1]:08x}; both transactions completed (not specified, measured)"
         )
 
     # ----- S5 ---------------------------------------------------------------------------
@@ -587,7 +587,7 @@ class smc_i2c_target_instance_pair_test_seq(SmcCsrSeq):
             "CHK-I2C-TGT-INSTANCE-CONTENTION-LOG",
             f"{self.contention_s4}; two controllers to I2C2 0x{CONTROLLER_PAIR_TARGET_ADDR:02x} "
             f"with MULTI_CONTROLLER_MONITOR_EN: {rows}; I2C2 entries {_fmt(entries)}; bus STOPs "
-            f"{stops}; both controllers completed within the bound (owner value pending)",
+            f"{stops}; both controllers completed within the bound (not specified, measured)",
         )
 
     # ----- S6 ---------------------------------------------------------------------------
@@ -732,9 +732,9 @@ class smc_i2c_target_instance_pair_test_seq(SmcCsrSeq):
             read[name] = await self.csr_read(f"UNGATED_{name}", addr)
             assert read[name] != self.ERR_SLAVE_SIGNATURE, f"{name} read the error signature"
         kept = {name: read[name] == self.programmed[name] for name, _ in regs}
-        for name, addr in regs:
-            if not kept[name]:
-                await self.csr_write(f"REWRITE_{name}", addr, self.programmed[name])
+        assert all(kept.values()), (
+            f"registers lost across the clock gate: {[n for n, ok in kept.items() if not ok]}"
+        )
         await self._acq_reset(0, "S8")
         await self._wait_bus_released("s8_bus_released")
         vip = self._new_vip("smc_i2c_pair_ungate")
@@ -749,7 +749,7 @@ class smc_i2c_target_instance_pair_test_seq(SmcCsrSeq):
                 for n, _ in regs
             )
             + f"; write 0x{SAME_ADDR:02x} acks={acks} entries {_fmt(entries)} "
-            "(owner value pending)",
+            "(not specified, measured)",
         )
 
     # ----- S9 ---------------------------------------------------------------------------
@@ -809,7 +809,7 @@ class smc_i2c_target_instance_pair_test_seq(SmcCsrSeq):
             f"after release {GATED_DWELL_CHUNKS}x{GATED_DWELL_CYCLES} cycles: scl low in "
             f"{low_scl} samples, sda low in {low_sda}, last {samples[-1]}; after ungate "
             f"{after_ungate}; recovery write acks={acks} entries {_fmt(entries)} "
-            "(owner value pending)",
+            "(not specified, measured)",
         )
 
     # ----- S10 / S11 --------------------------------------------------------------------
@@ -956,7 +956,7 @@ class smc_i2c_target_instance_pair_test_seq(SmcCsrSeq):
             "CHK-I2C-TGT-NACKH-LOG",
             f"VAL={NACK_VAL_LONG}; "
             + "; ".join(rows)
-            + "; no coincidence compared (owner value pending)",
+            + "; no coincidence compared (not specified, measured)",
         )
 
     # ----- evidence ---------------------------------------------------------------------

@@ -151,12 +151,15 @@ class smc_gpio_data_ctrl_ro_status_test_seq(SmcCsrSeq):
             )
             high_resps.append(f"pad{idx}:resp={r}")
             await self._write(f"HIGH_{idx}_RESTORE", inst, reset)
-            await self._read(f"HIGH_{idx}_RESTORE_RB", inst)
+            after_restore = await self._read(f"HIGH_{idx}_RESTORE_RB", inst)
+            assert after_restore & rw == reset & rw, (
+                f"pad {idx} restore reads 0x{after_restore & rw:08x}"
+            )
         self._mark("LSIO_ENABLE_WRITE")
         leg = (
             f"bit 25 reads 1 on pads {high}; write-zero responses {high_resps}"
             if high
-            else "no pad reads bit 25 = 1, the write-zero leg is open (owner value pending)"
+            else "no pad reads bit 25 = 1, the write-zero leg has nothing to test"
         )
         self._chk(
             "LSIO_ENABLE_WRITE",
@@ -175,8 +178,16 @@ class smc_gpio_data_ctrl_ro_status_test_seq(SmcCsrSeq):
         await self._write("EN_RX_SET", en, use_reg_rx)
         en_on = await self._read("EN_RX_RB", en)
         assert en_on & use_reg_rx, f"use_reg_rx reads 0x{en_on:08x} after its write"
-        level = await self._read("P2C_RX", dc)
-        assert level & p2c, f"bit 31 reads 0 with the receive path enabled: 0x{level:08x}"
+        dut = cocotb.top
+        dut.tb_gpio_ext_drive_en.value = 1 << _INSTANCE
+        dut.tb_gpio_ext_drive_value.value = 0
+        lo_word = await self._read("P2C_RX_LOW", dc)
+        assert lo_word & p2c == 0, f"bit 31 reads 1 with pad {_INSTANCE} driven 0: 0x{lo_word:08x}"
+        dut.tb_gpio_ext_drive_value.value = 1 << _INSTANCE
+        level = await self._read("P2C_RX_HIGH", dc)
+        assert level & p2c == p2c, f"bit 31 reads 0 with pad {_INSTANCE} driven 1: 0x{level:08x}"
+        dut.tb_gpio_ext_drive_en.value = 0
+        dut.tb_gpio_ext_drive_value.value = 0
         await self._write("EN_RX_CLR", en, idle_en)
         await self._write("RX_OFF", dc, reset)
         back = await self._read("P2C_CLR_RB", dc)
@@ -186,9 +197,9 @@ class smc_gpio_data_ctrl_ro_status_test_seq(SmcCsrSeq):
             "PAD2CORE_WRITE",
             "CHK-GPIO-DATA-CTRL-PAD2CORE-RO",
             f"instance {_INSTANCE} bit 31 read {off >> _PAD2CORE_BIT & 1} after a software write "
-            f"of 1 with the receive path unselected, {level >> _PAD2CORE_BIT & 1} with "
-            f"enable_rx_tx=2'b10 and use_reg_rx set (pull-up level, printed), "
-            f"{back >> _PAD2CORE_BIT & 1} after both cleared",
+            f"of 1 with the receive path unselected; with enable_rx_tx=2'b10 and use_reg_rx set "
+            f"it followed the driven pad level ({lo_word >> _PAD2CORE_BIT & 1}->"
+            f"{level >> _PAD2CORE_BIT & 1}); {back >> _PAD2CORE_BIT & 1} after both cleared",
         )
 
         await self._write("ALL_ONES", dc, _ALL_ONES)

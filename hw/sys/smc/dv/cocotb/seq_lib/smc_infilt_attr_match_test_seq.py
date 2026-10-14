@@ -33,7 +33,7 @@ _PERMIT_NS1 = 0x0000_0000_0100_0113
 _DENY_NS0 = 0x0000_0000_0100_0010
 _PERMIT_SRC5 = 0x0000_0000_0105_0013
 _PERMIT_GRP10 = 0x0000_0000_01A0_0013
-_READBACK_BITS = 0x3000
+_READBACK_BITS = _RESET_CFG
 _PAGE = smc_addr("SMC_TOP_SPM_MEMORY_BASE_ADDR") + 0x5_0000
 _PAGE_END = _PAGE + 0xFFF
 _WORDS = 9
@@ -313,7 +313,7 @@ class smc_infilt_attr_match_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-INB-SRCID-WILDCARD-ZERO",
             f"src_id 0 entry matches AxUSER 0 (OKAY, hit bit 2): {s6}; the any-ID half is "
-            "unreachable at this bench (owner value pending) and is not claimed",
+            "unreachable at this bench (not specified, measured) and is not claimed",
         )
 
         # S7: a non-zero src_id does not match AxUSER 0.

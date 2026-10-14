@@ -205,7 +205,7 @@ class smc_clint_register_test_seq(SmcCsrSeq):
             "CHK-CLINT-MTIMECMP",
             f"four distinct 64-bit values 0x{MTIMECMP_PATTERN:x}|n and the all-ones value read "
             f"back independently per core, probes agree for cores 0 and 1 ({len(notes)} probe "
-            f"samples); reset values open (owner value pending) saved="
+            f"samples); reset values not specified, measured, saved="
             f"{[hex(v) for v in saved_cmp]}",
         )
 
@@ -232,7 +232,7 @@ class smc_clint_register_test_seq(SmcCsrSeq):
             "CHK-CLINT-MTIME-ADV",
             f"MTIME reads {[hex(r) for r in reads]} never smaller, second read above first after "
             f"tb_clint_mtime changed 0x{probe0:x}->0x{probe1:x} in {cycles} clk_smc_i cycles; "
-            "tick-to-clock relation is an owner value pending",
+            "tick-to-clock relation not specified, measured",
         )
 
         # S6
@@ -266,7 +266,7 @@ class smc_clint_register_test_seq(SmcCsrSeq):
             "CHK-CLINT-MTIME-LOAD",
             f"MTIME at or above 0x{MTIME_LOAD_VALUE:x} at read {poll} of {MTIME_LOAD_MAX_READS}, "
             f"value 0x{value:x}, probe 0x{p_before:x}..0x{p_after:x}; reflected minus written = "
-            f"{value - MTIME_LOAD_VALUE} (owner value pending)",
+            f"{value - MTIME_LOAD_VALUE} (not specified, measured)",
         )
 
         # S6R

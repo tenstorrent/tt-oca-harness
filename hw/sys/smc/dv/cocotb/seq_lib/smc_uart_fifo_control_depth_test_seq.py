@@ -9,7 +9,7 @@ hw/ip/uart/uart_16550/regs/uart_16550_main{,_wo}.rdl, doc/programmer/src/smc-pro
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import Timer
+from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
@@ -53,7 +53,6 @@ DIVISOR_SLOW = 8
 # uart_16550/doc/interface.adoc: 16x oversampling, 8N1 frame = 10 bits.
 OVERSAMPLE = 16
 FRAME_BITS = 10
-PERIPH_CLK_NS = 5
 FIFO_DEPTH = 32
 
 POLL_LIMIT_TEMT = 20_000
@@ -107,6 +106,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
         self.chk_marks: list[tuple[str, int]] = []
         self.waits: dict[str, list] = {}
         self.divisor = DIVISOR_FAST
+        self.lsr_seen = 0
         base = uart_base(UART)
         self.thr = base + THR_OFFSET
         self.fcr = base + FCR_OFFSET
@@ -129,9 +129,6 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
         assert sig.is_resolvable, f"UART0 TX pad is unresolved ({sig})"
         return f"tx{int(sig)}"
 
-    def _frame_ns(self) -> int:
-        return OVERSAMPLE * FRAME_BITS * self.divisor * PERIPH_CLK_NS
-
     async def _lsr(self, tag: str) -> int:
         return await self.csr_read(tag, self.r["lsr"])
 
@@ -143,6 +140,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
         lsr = 0
         for _ in range(limit):
             lsr = await self._lsr(f"{name}_LSR")
+            self.lsr_seen |= lsr
             self.waits[name] = [f"{limit}polls", f"lsr=0x{lsr:08x},{self._pad()}"]
             if lsr & mask:
                 return lsr
@@ -234,7 +232,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             f"S2: after FIFO_ENABLE 0 then 1 LSR=0x{after:08x}, expected DR=0 and THRE=1"
         )
         await self._wait_temt("S2_CHANGE")
-        await Timer(self._frame_ns(), unit="ns")
+        await ClockCycles(cocotb.top.clk_periph, OVERSAMPLE * FRAME_BITS * (self.divisor + 1))
         late = await self._lsr("S2_LSR_LATE")
         iir = await self._iir("S2_IIR")
         assert late & LSR_THRE, f"S2: a frame after TEMT LSR=0x{late:08x}, expected THRE=1"
@@ -250,7 +248,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "before FIFO_ENABLE 0 then 1 LSR=0x%08x (DR=1, THRE=0, %d backlog writes); after it "
             "LSR=0x%08x (DR=0, THRE=1); TEMT followed and a frame later LSR=0x%08x (THRE=1); "
             "IIR %s; characters readable %s, none old or queued, only the frame already "
-            "shifting at the change may arrive (allowance: owner value pending)",
+            "shifting at the change may arrive (allowance not specified, measured)",
             before,
             len(BACKLOG_CHARS),
             after,
@@ -261,16 +259,36 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
 
     async def _s3(self) -> None:
         chars = depth_chars(0x31)
+        self.lsr_seen = 0
         await self._send("S3_FILL", chars)
         busy = await self._lsr("S3_LSR_BUSY")
         assert not busy & LSR_THRE, f"S3: THRE set after 32 unpolled writes (LSR=0x{busy:08x})"
         await self._wait_temt("S3_32")
         full = await self._wait_dr("S3_32")
-        assert not full & LSR_OE, f"S3: overrun after 32 characters (LSR=0x{full:08x})"
+        assert not full & LSR_OE and not self.lsr_seen & LSR_OE, (
+            f"S3: overrun during 32 characters (LSR=0x{full:08x}, seen=0x{self.lsr_seen:08x})"
+        )
         got = [await self._rbr(f"S3_RBR{i}") for i in range(FIFO_DEPTH)]
         assert got == chars, f"S3: read {got}, expected {chars}"
         tail = await self._lsr("S3_LSR_TAIL")
-        assert not tail & (LSR_OE | LSR_DR), f"S3: after the 32 reads LSR=0x{tail:08x}"
+        assert not tail & (LSR_OE | LSR_DR) and not self.lsr_seen & LSR_OE, (
+            f"S3: after the 32 reads LSR=0x{tail:08x}, seen=0x{self.lsr_seen:08x}"
+        )
+        over = [(0x91 + 5 * i) & 0xFF for i in range(FIFO_DEPTH + 1)]
+        self.lsr_seen = 0
+        await self._send("S3_OVER", over)
+        await self._wait_temt("S3_OVER")
+        await ClockCycles(cocotb.top.clk_periph, OVERSAMPLE * FRAME_BITS * (self.divisor + 1))
+        self.lsr_seen |= await self._lsr("S3_LSR_OVER")
+        assert self.lsr_seen & LSR_OE, (
+            f"S3: no overrun after {len(over)} characters with no RBR read "
+            f"(seen=0x{self.lsr_seen:08x}), a {FIFO_DEPTH}-deep receive FIFO must overrun"
+        )
+        kept = [await self._rbr(f"S3_OVER_RBR{i}") for i in range(FIFO_DEPTH)]
+        assert kept == over[:FIFO_DEPTH], f"S3: overrun read {kept}, expected {over[:FIFO_DEPTH]}"
+        left = await self._lsr("S3_LSR_OVER_TAIL")
+        assert not left & LSR_DR, f"S3: DR still set after {FIFO_DEPTH} reads (LSR=0x{left:08x})"
+        seen_over = self.lsr_seen
         await self._send("S3_FILL2", chars)
         item = await self._tolerant("S3_THR33", SmcSysAxiOp.WRITE, self.thr, 0x7E)
         thre33 = await self._lsr("S3_LSR_33")
@@ -283,11 +301,16 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "CHK-UART-FIFO-DEPTH-32",
             "S3",
             "32 unpolled THR writes left LSR.THRE=0 (LSR=0x%08x), all 32 were received and the "
-            "32 RBR reads equal the written sequence in order with LSR.OE clear (LSR=0x%08x); a "
+            "32 RBR reads equal the written sequence in order with LSR.OE clear (LSR=0x%08x); 33 "
+            "characters sent with no RBR read set LSR.OE (seen 0x%08x) and exactly the first 32 "
+            "were read with LSR.DR=0 after them (LSR=0x%08x), a 32-entry receive FIFO that drops "
+            "the new character on overrun; a "
             "33rd THR write after 32 writes completed with resp=%s, LSR=0x%08x, then %d "
-            "characters were readable with LSR=0x%08x (owner value pending)",
+            "characters were readable with LSR=0x%08x (not specified, measured)",
             busy,
             full,
+            seen_over,
+            left,
             item.resp_code,
             thre33,
             len(extra),
@@ -302,8 +325,8 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
         await self._fcr("S4_FCR_ON2", 0, True, False)
         got = await self._drain("S4_DRAIN")
         final = await self._lsr("S4_LSR_FINAL")
-        assert len(got) <= len(SAME_CHARS) and not final & LSR_DR, (
-            f"S4: {len(got)} characters readable ({got}), final LSR=0x{final:08x}"
+        assert got in ([], list(SAME_CHARS)) and not final & LSR_DR, (
+            f"S4: readable {got}, expected none or {list(SAME_CHARS)}; final LSR=0x{final:08x}"
         )
         self._step("S4")
         self._chk(
@@ -311,7 +334,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "S4",
             "after %d characters were held a second FIFO_ENABLE=1 write completed; LSR after the "
             "first write 0x%08x; %d of %d characters were still readable %s, each read preceded "
-            "by LSR.DR=1 and LSR.DR=0 after the last (LSR=0x%08x) (owner value pending)",
+            "by LSR.DR=1 and LSR.DR=0 after the last (LSR=0x%08x) (not specified, measured)",
             len(SAME_CHARS),
             mid,
             len(got),
@@ -341,7 +364,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "S5",
             "FCR written with FIFO_ENABLE clear and both reset bits completed; the held character "
             "%s (LSR=0x%08x, DR consistent with RBR); the next character read back intact as "
-            "0x%02x (owner value pending)",
+            "0x%02x (not specified, measured)",
             "survived" if kept is not None else "did not survive",
             lsr,
             got,
@@ -405,7 +428,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "ID-2 onset occupancy per {ECR, FCR[7:6]} state: A (ECR=1, FCR=0) %s; B (ECR=1, FCR=1) "
             "%s; C (FCR back to 0, ECR=1) %s; D (ECR=0, FCR=0) %s; onset(A)==onset(C), no ID 2 "
             "in B while A has one, onset(D)<onset(A); exact values measured only "
-            "(owner values pending)",
+            "(not specified, measured)",
             text["A"],
             text["B"],
             text["C"],
@@ -449,7 +472,7 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "S8",
             "an RBR read with the receive buffer empty completed with resp=%s data=0x%08x, LSR "
             "before 0x%08x after 0x%08x; the character looped afterwards was received intact as "
-            "0x%02x with DR=1 (LSR=0x%08x) (owner value pending)",
+            "0x%02x with DR=1 (LSR=0x%08x) (not specified, measured)",
             item.resp_code,
             item.rdata,
             before,

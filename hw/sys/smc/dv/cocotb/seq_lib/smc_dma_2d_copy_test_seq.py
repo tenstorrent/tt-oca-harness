@@ -69,6 +69,7 @@ S5_DST_STRIDE = 0x28
 S6_ROWS = 3
 S6_LENGTH = 16
 # (name, source stride, destination stride, destination offset from the source base)
+S6_EXACT_CASES = ("ZERO_BOTH", "ZERO_SRC")
 S6_CASES = (
     ("ZERO_BOTH", 0, 0, 0x400),
     ("ZERO_SRC", 0, 0x20, 0x400),
@@ -402,6 +403,14 @@ class smc_dma_2d_copy_test_seq(SmcCsrSeq):
             await ClockCycles(cocotb.top.clk_smc_i, 1)
             assert self._busy() == 0, f"{name}: tb_dma_busy high after DONE_0 reached {j.id}"
             result = bytes(self._responder.read(j.dst, span))
+            if name in S6_EXACT_CASES:
+                want = bytearray([SENTINEL]) * span
+                for n in range(S6_ROWS):
+                    row = region[n * sstride : n * sstride + S6_LENGTH]
+                    want[n * dstride : n * dstride + S6_LENGTH] = row
+                assert result == bytes(want), (
+                    f"{name}: destination {result.hex()}, expected {bytes(want).hex()}"
+                )
             results.append(
                 f"{name} src stride 0x{sstride:x} dst stride 0x{dstride:x} id {j.id} "
                 f"source {region.hex()} destination {result.hex()}"
@@ -409,7 +418,8 @@ class smc_dma_2d_copy_test_seq(SmcCsrSeq):
         self._mark("S6")
         return (
             f"{len(S6_CASES)} commands retired within {POLL_LIMIT} polls with tb_dma_busy low "
-            f"(owner value pending, resulting bytes measured and printed): {'; '.join(results)}"
+            f"(ZERO_BOTH and ZERO_SRC compared against dma.adoc row addressing, the other cases' "
+            f"resulting bytes measured and printed): {'; '.join(results)}"
         )
 
     async def _s7(self) -> str:
@@ -441,7 +451,7 @@ class smc_dma_2d_copy_test_seq(SmcCsrSeq):
             f"within {POLL_LIMIT} polls; logical rows past 2^56: source "
             f"{[hex(a) for a in past_src]} destination {[hex(a) for a in past_dst]}; issued AR "
             f"addresses {ar}; issued AW addresses {aw}; "
-            f"address_wrapped_to_low_range={wrapped} (owner value pending, measured and printed); "
+            f"address_wrapped_to_low_range={wrapped} (not specified, measured and printed); "
             f"low-range destination bytes {'; '.join(low_rows)}"
         )
 

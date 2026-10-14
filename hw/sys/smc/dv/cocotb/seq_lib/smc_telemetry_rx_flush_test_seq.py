@@ -5,8 +5,9 @@
 Sources: hw/ip/telemetry_receiver/doc/architecture.adoc (Reset and Flush, Interrupts),
 hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl, doc/programmer/src/smc-programming.adoc.
 
-The ATB framing is the DV-owned table of the telemetry receiver CSR leaf: 8-bit beats, 64-bit
-packets, 9-bit blocks, 5-bit probe ID header. No document fixes the bit positions.
+ATB framing from telemetry_receiver/doc/architecture.adoc (Assembly and Decode): eight beats
+LSB first, bit 63 last packet, probe ID [60:56]; the 9-bit block layout from bit 0 is a bench
+choice.
 """
 
 from __future__ import annotations
@@ -75,11 +76,13 @@ ENABLE_MISSING_LAST = _tel("TELEMETRY_RECEIVER__INTR_ENABLE__MISSING_LAST_bm")
 ENABLE_THRESHOLD = _tel("TELEMETRY_RECEIVER__INTR_ENABLE__BUFFER_THRESHOLD_bm")
 
 THRESHOLD = 1
+ONE_SHOT_PROBE_ID = 0x1B
 CTRL_THRESHOLD = THRESHOLD << THRESHOLD_BP
 CTRL_FLUSH = CTRL_THRESHOLD | RX_FLUSH_BM
 CTRL_POP = CTRL_THRESHOLD | BUFFER_POP_BM
 
-# ATB framing (DV-owned table, same layout as the telemetry receiver CSR leaf).
+# ATB framing: beats, last-packet bit and probe ID from architecture.adoc; block layout is a
+# bench choice.
 _ATB_BEAT_BITS = 8
 _ATB_PACKET_BITS = 64
 _BEATS_PER_PACKET = _ATB_PACKET_BITS // _ATB_BEAT_BITS
@@ -334,15 +337,23 @@ class smc_telemetry_rx_flush_test_seq(SmcCsrSeq):
             ctrl = await self.csr_read(f"ONE_SHOT_CTRL_{repeat}", CTRL)
             assert not ctrl & RX_FLUSH_BM, f"CTRL.TELEMETRY_RX_FLUSH reads 1 (0x{ctrl:x})"
             ctrl_reads.append(ctrl)
+        await self._send_message(ONE_SHOT_PROBE_ID, "one_shot_after")
+        await self._wait_buffer(False, "ONE_SHOT_AFTER")
+        probe = await self.csr_read("ONE_SHOT_AFTER_PROBE", PROBE_ID) & PROBE_ID_BM
+        assert probe == ONE_SHOT_PROBE_ID, (
+            f"PROBE_ID after the repeated flushes is 0x{probe:02x}, want 0x{ONE_SHOT_PROBE_ID:02x}"
+        )
+        await self._pop_to_empty("ONE_SHOT_AFTER")
         self._stamp("S3")
         self._emit(
             "S3",
             "CHK-TELEMETRY-RX-FLUSH-ONE-SHOT",
-            "CTRL bit 4 read 0 after the flush and after two further flushes (CTRL reads %s, "
-            "owner value pending for the pulse readback); each empty flush left BUFFER_EMPTY 1, "
-            "the head registers 0 "
-            "and no interrupt source",
+            "CTRL bit 4 read 0 after the flush and after two further flushes (CTRL reads %s; "
+            "TELEMETRY_RX_FLUSH is sw=w in the RDL, so the read is 0); each empty flush left "
+            "BUFFER_EMPTY 1, the head registers 0 and no interrupt source, and a message sent "
+            "after the repeated flushes was kept with PROBE_ID 0x%02x",
             [hex(word) for word in ctrl_reads],
+            probe,
         )
 
         # S4: restart
@@ -377,7 +388,7 @@ class smc_telemetry_rx_flush_test_seq(SmcCsrSeq):
             "CHK-TELEMETRY-RX-FLUSH-MID-MESSAGE",
             "%d of %d beats of an unfinished packet and one flush (no second flush): the next "
             "complete message read PROBE_ID 0x%02x in %d poll(s) and one pop emptied the queue "
-            "(exactly one message; probe latch rule pending)",
+            "(exactly one message; the specification does not state the probe latch rule)",
             PARTIAL_BEATS,
             _BEATS_PER_PACKET,
             probe,

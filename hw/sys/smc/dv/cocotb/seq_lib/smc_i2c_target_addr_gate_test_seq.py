@@ -6,8 +6,8 @@ Sources: hw/ip/i2c/regs/i2c.rdl (CTRL, TARGET_ID, ACQDATA, STATUS, FIFO_CTRL).
 
 The bench controller on the I2C0 pads sends START and a 7-bit address to the target; the ACK bit
 it reads and the ACQ FIFO entries software pops are the evidence. Every compare uses mask 0x7F
-or 0x00. The STOP entry sequence after an address ACK (owner value pending) and ENABLETARGET cleared
-or ACQRST written mid-transfer (owner value pending) are measured and logged, not compared.
+or 0x00. The STOP entry sequence after an address ACK and ENABLETARGET cleared or ACQRST written
+mid-transfer are measured and logged, not compared; the specification does not state the values.
 """
 
 from __future__ import annotations
@@ -499,7 +499,7 @@ class smc_i2c_target_addr_gate_test_seq(SmcCsrSeq):
             "CHK-I2C-TGT-ADDR-ONLY",
             f"address-only write ACK bit {a_acks[0]}; first entry {_fmt(a_entries[:1])} compared; "
             f"all entries {_fmt(a_entries)} logged; INTR_STATE=0x{a_intr:08x} "
-            f"UNEXP_STOP={int(bool(a_intr & INTR_UNEXP_STOP))} logged (owner value pending)",
+            f"UNEXP_STOP={int(bool(a_intr & INTR_UNEXP_STOP))} logged (not specified, measured)",
         )
         self._chk(
             "CHK-I2C-TGT-RESTART-ADDRESS",
@@ -562,7 +562,7 @@ class smc_i2c_target_addr_gate_test_seq(SmcCsrSeq):
         self._stamp("S10")
         self._chk(
             "CHK-I2C-TGT-ROLE-MIDTRANSFER-LOG",
-            "; ".join(rows) + "; no compare (owner value pending)",
+            "; ".join(rows) + "; no compare (not specified, measured)",
         )
 
         await self._fifo_reset("S10_RECOVER")

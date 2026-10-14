@@ -11,23 +11,28 @@ import cocotb
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    _REPO,
+    GLOBAL_BASE_RESET,
+    LOCAL_BASE_RESET,
+    REGION_SIZE_RESET,
+    reg_reset_word,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 
-RESET_VECTOR_RESET = 0x0000_0000_C004_0000
+_BLOCKS_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks"
+_CPU_CTRL_H = _BLOCKS_H / "cpu_ctrl.h"
+_CHIP_CONFIG_H = _BLOCKS_H / "chip_config.h"
+
+RESET_VECTOR_RESET = reg_reset_word(_CPU_CTRL_H, "CPU_CTRL", "RESET_VECTOR")
+RESET_CTRL_RESET = reg_reset_word(_CPU_CTRL_H, "CPU_CTRL", "RESET_CTRL")
 DEBUG_RESET_N_BIT = 24
-VERSION_LO_RESET = 0x0001_00A0
-GLOBAL_BASE_RESET = 0x0000_0000_4000_0000
-LOCAL_BASE_RESET = 0x0000_0000_C000_0000
-REGION_SIZE_RESET = 0x0000_0000_0100_0000
+VERSION_LO_RESET = reg_reset_word(_CHIP_CONFIG_H, "CHIP_CONFIG", "VERSION_LO")
 LOCAL_BASE_WRITE = 0x0000_0000_D000_0000
-DUMMY_ROM_WORDS = (
-    0x0145_0513_0000_0517,
-    0xFFF0_0693_3055_1073,
-    0x1050_0073_3046_B073,
-    0x0000_0000_FFDF_F06F,
-)
-DUMMY_ROM_NULL_WORDS = (0, 0, 0, 0)
+DUMMY_ROM_WORDS = tuple(reg_reset_word(_CPU_CTRL_H, "CPU_CTRL", f"DUMMY_ROM_{i}") for i in range(4))
+DUMMY_ROM_NULL_WORDS = (reg_reset_word(_CPU_CTRL_H, "CPU_CTRL", "DUMMY_ROM_NULL"),) * 4
 SCRATCH_ALL_ONES = 0xFFFF_FFFF_FFFF_FFFF
 SCRATCH_ALL_ONES_READ = 0x0000_0000_FFFF_FFFF
 SCRATCH_PATTERN = 0x0000_0000_A5C3_9E71
@@ -110,15 +115,15 @@ class smc_cpu_boot_regs_read_test_seq(SmcCsrSeq):
             + f", each == 0x{RESET_VECTOR_RESET:016x}",
         )
 
-        reset_ctrl = await self._rd_any("RESET_CTRL", RESET_CTRL, 8)
+        reset_ctrl = await self._rd("RESET_CTRL", RESET_CTRL, RESET_CTRL_RESET)
         self._stamp("S3")
         debug_bit = (reset_ctrl >> DEBUG_RESET_N_BIT) & 1
-        assert debug_bit == 0, f"RESET_CTRL=0x{reset_ctrl:x}: debug_reset_n bit reads {debug_bit}"
         self._chk(
             "CHK-BOOT-DEBUG-RESET-N",
             "S3",
-            f"RESET_CTRL read 0x{reset_ctrl:016x}; bit {DEBUG_RESET_N_BIT} (debug_reset_n) == 0 "
-            "before any write",
+            f"RESET_CTRL read 0x{reset_ctrl:016x} == reset 0x{RESET_CTRL_RESET:016x}; bit "
+            f"{DEBUG_RESET_N_BIT} (debug_reset_n) == {debug_bit} before any write (the 0 bit and "
+            "the DUMMY_ROM_NULL zero words are reset-equal under 2-state Verilator)",
         )
 
         lo = await self._rd_any("STRAPS_LO", STRAPS_LO, 4)
@@ -132,7 +137,7 @@ class smc_cpu_boot_regs_read_test_seq(SmcCsrSeq):
             "CHK-BOOT-STRAP-WORD",
             "S4",
             f"STRAPS_LO=0x{lo:08x} STRAPS_HI=0x{hi:08x} 64-bit@STRAPS_LO=0x{word:016x} "
-            "== (HI<<32)|LO",
+            "compared, non-discriminating on zero straps (measured)",
         )
 
         ver_lo = await self._rd("VERSION_LO", VERSION_LO, VERSION_LO_RESET, 4)
@@ -172,7 +177,8 @@ class smc_cpu_boot_regs_read_test_seq(SmcCsrSeq):
             "CHK-BOOT-LOCALBASE-RO",
             "S7",
             f"write of 0x{LOCAL_BASE_WRITE:016x} to LOCAL_BASE answered resp={wr.resp_code} "
-            f"(printed, not asserted, owner value pending); LOCAL_BASE reads 0x{local_after:016x} "
+            "(printed, not asserted; not specified, measured); "
+            f"LOCAL_BASE reads 0x{local_after:016x} "
             f"== 0x{LOCAL_BASE_RESET:016x}",
         )
 
@@ -191,7 +197,8 @@ class smc_cpu_boot_regs_read_test_seq(SmcCsrSeq):
             "DUMMY_ROM_0..3 read "
             + " ".join(f"0x{v:016x}" for v in stub)
             + "; DUMMY_ROM_NULL[0..3] read "
-            + " ".join(f"0x{v:x}" for v in null),
+            + " ".join(f"0x{v:x}" for v in null)
+            + " (the DUMMY_ROM_NULL zero words are reset-equal under 2-state Verilator)",
         )
 
         burst = SmcSysAxiItem("rd_DUMMY_ROM_BURST")
@@ -223,7 +230,7 @@ class smc_cpu_boot_regs_read_test_seq(SmcCsrSeq):
             "CHK-BOOT-DUMMY-BURST",
             "S9",
             f"{BURST_BEATS}-beat burst read at DUMMY_ROM_0 0x{DUMMY_ROM[0]:08x} answered "
-            f"resp={burst.resp_code} (owner value pending); beats "
+            f"resp={burst.resp_code} (not specified, measured); beats "
             + " ".join(f"0x{b:x}" for b in beats)
             + (
                 "; equal to the stub then null words in address order"

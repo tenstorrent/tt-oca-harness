@@ -166,7 +166,7 @@ class smc_cpu_ctrl_dummy_rom_test_seq(SmcCsrSeq):
             "CHK-DROM-RW",
             f"{count} registers each read back own pattern in order and reverse order "
             + ",".join(f"0x{_pattern(i):x}" for i in range(count))
-            + "; restore returned the S2 words (writability measured, owner value pending)",
+            + "; restore returned the S2 words (sw=rw per cpu_ctrl.rdl)",
         )
 
         self.assert_all_reachable(count * 6, "CPU_CTRL_DUMMY_ROM")

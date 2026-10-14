@@ -91,8 +91,6 @@ class smc_cpu_boot_release_sequence_test_seq(SmcResetSeqBase):
         return int(value)
 
     def _ext_boot(self) -> int:
-        if hasattr(cocotb.top, "ext_boot_seq_done"):
-            return self._sig("ext_boot_seq_done")
         return 1 - self._sig("tb_hold_ext_boot")
 
     def _sample(self) -> tuple[int, ...]:
@@ -262,7 +260,7 @@ class smc_cpu_boot_release_sequence_test_seq(SmcResetSeqBase):
             "CHK-FUSE-RELEASE-BOTH-TERMS",
             "all core reset outputs and the uncore reset output first read 1 at edge %d, %d edges "
             "after the ext_boot rise (edge %d) and %d edges after the sense-done rise (edge %d); "
-            "latency is owner value pending, measured, not compared",
+            "latency is not specified, measured, not compared",
             release,
             release - boot,
             boot,
@@ -286,7 +284,8 @@ class smc_cpu_boot_release_sequence_test_seq(SmcResetSeqBase):
             "CHK-INIT-MEM-DONE-BYPASS",
             "smc_init_mem_done_o read 1 on all %d recorded edges with a CPU reset output at 1 "
             "(first %d, last %d); first read 1 at edge %d (cold reset asserted at edge %d, "
-            "smc_disable_sram_auto_init_i held 1 by the bench, strap mapping owner value pending)",
+            "smc_disable_sram_auto_init_i held 1 by the bench, strap mapping not specified, "
+            "measured)",
             len(up),
             up[0],
             up[-1],
@@ -326,7 +325,7 @@ class smc_cpu_boot_release_sequence_test_seq(SmcResetSeqBase):
             "CHK-COLD-SELF-ISOLATE-RELEASE",
             "tb_cpu_cluster_isolate fell at edge %d, %d clk_smc_i rises after the latest of "
             "init-done (edge %d), core release (edge %d) and uncore release (edge %d); the spec "
-            "gives four cycles, clock and counting rule owner value pending (measured, "
+            "gives four cycles, clock and counting rule not specified (measured, "
             "not compared)",
             fall,
             fall - latest,
@@ -366,7 +365,7 @@ class smc_cpu_boot_release_sequence_test_seq(SmcResetSeqBase):
             "CHK-FUSE-EXT-BOOT-MID-SENSE",
             "tb_hold_ext_boot driven 0 at edge %d with tb_fuse_sense_done 0 (cold reset release "
             "edge %d); no CPU reset output 1 before sense done at edge %d; all CPU resets "
-            "released at edge %d, %d edges after sense done (latency owner value pending, "
+            "released at edge %d, %d edges after sense done (latency not specified, "
             "measured, not compared)",
             drive,
             rel2,

@@ -8,7 +8,8 @@ FDATA.NAKOK, HOST_NACK_HANDLER_TIMEOUT, STATUS.HOSTIDLE).
 Bench targets on the I2C0 pads answer for the controller: 0x10 NACKs its address, 0x12
 NACKs one chosen data byte, 0x50 is an EEPROM. A passive wire monitor frames every
 transfer. Each leg ends with CTRL cleared before the events. The handler-timeout effect on
-the bus and HOSTIDLE while halted are owner value pending: they are logged and not compared.
+the bus and HOSTIDLE while halted: the specification does not state the values;
+they are logged and not compared.
 """
 
 from __future__ import annotations
@@ -623,13 +624,13 @@ class smc_i2c_ctrl_nack_modes_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-STATUS-HALT-OBS",
             f"STATUS=0x{status:08x} HOSTIDLE={int(bool(status & I2C_STATUS_HOSTIDLE))} read "
-            f"with NACK set (events=0x{events:08x}); no compare (owner value pending)",
+            f"with NACK set (events=0x{events:08x}); no compare (not specified, measured)",
         )
         self._chk(
             "CHK-NTO-CLEAR-OBS",
             f"HOST_NACK_HANDLER_TIMEOUT=EN|{NTO_CLEAR_VAL}; NACK clear completed {used} cycles "
             f"after the NACK (limit {CLEAR_DEADLINE_CYCLES}, before expiry); {len(rows)} "
-            f"samples over {S9_WINDOW_CYCLES} cycles, no compare (owner value pending): "
+            f"samples over {S9_WINDOW_CYCLES} cycles, no compare (not specified, measured): "
             f"{'; '.join(rows)}; "
             f"recovery readback events=0x{ev:08x} halt={halt}",
         )

@@ -725,7 +725,8 @@ class SmcScoreboard(uvm_subscriber):
             return
         assert item.resp_ok, (
             f"SYS AXI {item.op.value} @ 0x{item.addr:014x} returned non-OKAY "
-            f"(reset_aborted={item.reset_aborted}: completed with no response)"
+            f"(resp={item.resp_code}, timed_out={item.timed_out}, "
+            f"reset_aborted={item.reset_aborted})"
         )
         if item.expected_resp is not None:
             assert item.resp_code == item.expected_resp, (

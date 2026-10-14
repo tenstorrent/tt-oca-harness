@@ -279,7 +279,7 @@ class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
             f"for all eight values (M-mode {mmode}, Xvisor {xvisor})",
         )
 
-        # S6: source ID per path, observe-only (owner value pending).
+        # S6: source ID per path, observe-only (the specification does not state the value).
         direct = self._stable("direct", await self._path(_DIRECT, _DIRECT, 6))
         mmode_user = self._stable("mmode", await self._path(_MMODE_WIN, _MMODE_LAND, 7))
         xvisor_user = self._stable("xvisor", await self._path(_XVISOR_WIN, _XVISOR_LAND, 8))
@@ -296,7 +296,7 @@ class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
                 "fallback: only resolvability and stability are asserted",
             )
 
-        # S7: valid-clear region, observe-only (owner value pending).
+        # S7: valid-clear region, observe-only (the specification does not state the value).
         word = 0xF000_0000_0000_0004
         _, aw = await self._write_leg(_M4_ADDR, 0, _M4_ADDR, word, window=False)
         _, ar = await self._read_leg(_M4_ADDR, 0, _M4_ADDR, word)

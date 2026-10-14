@@ -15,8 +15,9 @@ from env.smc_reset_item import SmcResetOp
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import DFX_STATUS_IDLE, dfx_status_u32, smc_addr
+from .smc_addr_map import dfx_status_u32, smc_addr
 from .smc_csr_seq_utils import ALL_ONES_WORD, SmcCsrSeq
+from .smc_dfx_aperture_extent_test_seq import observed_idle_word
 from .smc_reset_seq_base import SmcResetSeqBase
 
 OKAY = 0
@@ -28,15 +29,16 @@ STATUS_SMU = smc_addr("SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR")
 DEBUG_BUS_MUX = smc_addr("SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR")
 BIT31 = 1 << 31
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8")
-FENCE_TERMS = (
-    "BRINGUP_BASELINE",
-    "FIELDS_HOLD",
-    "EFFECT_FIELDS_CLEAR",
-    "COLD_RESET_BIT31",
-    "NO_OBSERVABLE_256",
-    "INFLIGHT_OVERLAP_MEASURED",
-    "STATUS_ACCESS_WITH_CG_EN",
-)
+FENCE_TERMS = {
+    "S1": "BRINGUP_BASELINE",
+    "S2": "FIELDS_HOLD",
+    "S3": "EFFECT_FIELDS_CLEAR",
+    "S4": "COLD_RESET_BIT31",
+    "S5": "NO_OBSERVABLE_256",
+    "S6": "INFLIGHT_OVERLAP",
+    "S7": "STATUS_ACCESS_WITH_CG_EN",
+    "S8": "TIMEOUTS_LOGGED",
+}
 CHK_ORDER = (
     ("CHK-DEBUGCTRL-FIELD-HOLD", "S2"),
     ("CHK-DEBUGCTRL-EFFECT-CLEAR", "S3"),
@@ -303,8 +305,9 @@ class smc_dfx_debug_ctrl_noeffect_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._chk(
             "CHK-DEBUGCTRL-NO-OBSERVABLE",
             f"tb_cla_clock_stop and tb_cla_halt_clock_global stayed 0 for {OBSERVE_CYCLES} "
-            f"clk_smc cycles with DEBUG_CTRL=0x{ALL_NOEFFECT:08x}; xtrigger_ss_o lanes are not "
-            "exported by the bench, so no lane is observable",
+            f"clk_smc cycles with DEBUG_CTRL=0x{ALL_NOEFFECT:08x} (measured; the CLA is not "
+            "programmed in this leaf, so the probes are not shown to rise); xtrigger_ss_o lanes "
+            "are not exported by the bench, so no lane is observable",
         )
 
         # S6
@@ -328,8 +331,9 @@ class smc_dfx_debug_ctrl_noeffect_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
         watch.stop = True
         await watcher
         self.accesses += 2
-        for member in (rd, wr):
-            assert member.resp_code is not None, f"{member.get_name()}: no response code"
+        assert rd.resp_code == OKAY and wr.resp_code == OKAY, (
+            f"in-flight group: rd={rd.resp_code} wr={wr.resp_code}"
+        )
         overlap = watch.overlap()
         assert overlap > 0, f"the read and write group never overlapped ({watch.state()})"
         self._last_access = (
@@ -345,21 +349,22 @@ class smc_dfx_debug_ctrl_noeffect_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-CLKGATE-INFLIGHT",
             f"DEBUG_BUS_MUX 8-byte read resp={RESP_NAMES.get(rd.resp_code)} "
             f"rdata=0x{rd.rdata:x} and DEBUG_CTRL cg_en write resp={RESP_NAMES.get(wr.resp_code)} "
-            f"both completed within {axi_bound}ns, overlapped {overlap} clk_smc cycles "
-            f"({watch.state()}); clock effect is pending an owner decision; cg_en restored to 0",
+            f"both answered OKAY within {axi_bound}ns, overlapped {overlap} clk_smc "
+            f"cycles ({watch.state()}); clock effect not specified, measured; cg_en restored to 0",
         )
 
         # S7
         await self.csr_write("S7_CG_EN_ON", DEBUG_CTRL, CG_EN_MASK, length=4)
-        status = await self.csr_read("STATUS_SMU", STATUS_SMU, expected=DFX_STATUS_IDLE, length=8)
-        assert status == DFX_STATUS_IDLE, f"STATUS_SMU=0x{status:x} want 0x{DFX_STATUS_IDLE:x}"
+        idle = observed_idle_word(cocotb.top)
+        status = await self.csr_read("STATUS_SMU", STATUS_SMU, expected=idle, length=8)
+        assert status == idle, f"STATUS_SMU=0x{status:x} want 0x{idle:x}"
         cg_on = CG_EN_MASK | NOEFFECT_VALUES["DEBUG_MARKER"]
         await self._write_expect("S7_CG_EN_WRITE", cg_on)
         await self._write_expect("S7_CG_EN_RESTORE", 0)
         self._stamp("S7")
         self._chk(
             "CHK-CLKGATE-STATUS-ACCESS",
-            f"with cg_en=1 force_clk_en=0 STATUS_SMU=0x{status:x} (DFX_STATUS_IDLE) OKAY and "
+            f"with cg_en=1 force_clk_en=0 STATUS_SMU=0x{status:x} (idle word) OKAY and "
             f"DEBUG_CTRL write 0x{cg_on:08x} read back exactly; cg_en restored to 0",
         )
 
@@ -390,7 +395,7 @@ class smc_dfx_debug_ctrl_noeffect_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
             assert n_stamps == STEPS.index(step) + 1, f"{chk_id} printed before {step}"
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
-            " < ".join(FENCE_TERMS),
+            " < ".join(FENCE_TERMS[s] for s in steps),
             ",".join(order),
             ",".join(f"{s}={t}ps" for s, t in self._stamps),
         )

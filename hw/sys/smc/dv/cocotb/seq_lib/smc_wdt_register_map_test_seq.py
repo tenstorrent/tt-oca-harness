@@ -43,6 +43,7 @@ WDT_CTRL_IP_BIT = 1 << 28
 WDT_CTRL_ALL_WRITABLE = 0x0000_330F
 WDT_CMP_WIDE = 0xDEAD_A5A5
 WDT_CMP_WIDE_READ = 0x0000_A5A5
+WDT_REGISTER_MAP_ACCESSES = 287
 
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")
 CHECKERS = (
@@ -96,7 +97,8 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-WDT-CTRL-RESET",
             "S1",
-            "CTRL read 0x%08x on %d of %d cores before any write",
+            "CTRL read 0x%08x on %d of %d cores before any write (bench limit: 2-state zero init, "
+            "a missing reset also reads 0)",
             0,
             len(WDT_CORES),
             len(WDT_CORES),
@@ -134,7 +136,8 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
             "CHK-WDT-OFFSET-DECODE",
             "S2",
             "on %d of %d cores CTRL=0x%x read back, SCALED_COUNT within its COUNT bracket [%s], "
-            "COUNT below 0x%08x after FEED 0x%08x, COUNT_HI and KEY read 0 (owner value pending)",
+            "COUNT below 0x%08x after FEED 0x%08x, COUNT_HI and KEY read 0 (not specified, "
+            "measured)",
             len(WDT_CORES),
             len(WDT_CORES),
             WDT_CTRL_SCALE2,
@@ -275,7 +278,7 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
             "CHK-WDT-CTRL-LOCKED-WRITE",
             "S8",
             "locked CTRL write of 0x%08x read back 0x%08x; after KEY the same write read 0x%08x, "
-            "0x%08x with bit 28 masked; bit 28 (wdogip0) read %d (owner value pending)",
+            "0x%08x with bit 28 masked; bit 28 (wdogip0) read %d (not specified, measured)",
             WDT_CTRL_ALL_ONES,
             0,
             value,
@@ -317,7 +320,7 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
         assert marks == [c for c, _ in CHECKERS], f"checker order {marks}"
         for (chk, step), (_, n) in zip(CHECKERS, self.chk_marks):
             assert self.stamps[n - 1][0] == step, f"{chk} printed after {self.stamps[n - 1][0]}"
-        self.assert_all_reachable(self.accesses, "WDT_REGISTER_MAP")
+        self.assert_all_reachable(WDT_REGISTER_MAP_ACCESSES, "WDT_REGISTER_MAP")
         cocotb.log.info(
             "CHK-NONVAC: ordered fence checker lines in step order, strictly increasing step "
             "stamps, each line printed after its own compare; checker lines %s; stamps %s",

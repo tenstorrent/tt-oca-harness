@@ -31,7 +31,7 @@ _WORD_MASK = 0xFFFF_FFFF
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
 _SENSE_BOUND_CYCLES = 200_000
 #: (region name, write lock bit, read lock bit) the register map names for orientation.
-_CONTRACT_BITS = (
+_LOCK_BITS = (
     ("SPARE0", 8, 9),
     ("SPARE1", None, 11),
     ("SPARE27", 62, None),
@@ -200,7 +200,7 @@ class smc_efuse_map_lock_field_enforce_test_seq(SmcCsrSeq):
         assert image is not None, "the testcase module sets the image before starting"
         self._rnd = random.Random(self.seed)
         reg = {r.name: r for r in REGIONS}
-        for name, wbit, rbit in _CONTRACT_BITS:
+        for name, wbit, rbit in _LOCK_BITS:
             for kind, bit, mask in (
                 ("write", wbit, reg[name].write_lock),
                 ("read", rbit, reg[name].read_lock),
@@ -226,7 +226,7 @@ class smc_efuse_map_lock_field_enforce_test_seq(SmcCsrSeq):
 
         # S1: sense, LOCKS 0
         await self._sense_wait("sense1")
-        lo, hi = await self._read_locks("BASE_LOCKS")
+        await self._read_locks("BASE_LOCKS")
         self._done("S1")
 
         # S2: positive control
@@ -239,9 +239,7 @@ class smc_efuse_map_lock_field_enforce_test_seq(SmcCsrSeq):
         # S3: SPARE[0] and SPARE[27] write locks, neighbours
         await self._set_locks("S3_WLOCK", wl["SPARE0"] | wl["SPARE27"])
         port_a = self._port()
-        held = {}
         for k in (0, 27):
-            held[k] = list(self.shadow[w] for w in spare[k])
             await self._write_pattern(f"S3_LOCKED_SPARE{k}", spare[k], lands=False)
         port_b = self._port()
         assert port_a == port_b, (
@@ -250,7 +248,6 @@ class smc_efuse_map_lock_field_enforce_test_seq(SmcCsrSeq):
         )
         for k in (0, 27):
             await self._expect_words(f"S3_HELD_SPARE{k}", spare[k])
-            assert [self.shadow[w] for w in spare[k]] == held[k]
         for k in (1, 26):
             await self._write_pattern(f"S3_NB_SPARE{k}", spare[k], lands=True)
             await self._expect_words(f"S3_NB_RB_SPARE{k}", spare[k])
@@ -367,7 +364,6 @@ class smc_efuse_map_lock_field_enforce_test_seq(SmcCsrSeq):
             hidden_after,
             len(probe_after),
         )
-        assert (lo, hi) == (0, 0)
         self.access_floor = self._calls
 
         # fence

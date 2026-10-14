@@ -15,7 +15,15 @@ from env.smc_reset_item import SmcResetItem, SmcResetOp
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import _REPO, reg_field_encode, smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    _REPO,
+    DMA_CONFIG_ENABLED_ND,
+    _field_mask,
+    reg_field_encode,
+    reg_reset_word,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_output_fabric_vip_utils import (
     RESPONDER_OBS_TIMEOUT_CYCLES,
@@ -26,6 +34,8 @@ from .smc_rdl_regmap import rdl_contract, smc_reg_addr
 from .smc_reset_seq_base import SmcResetSeqBase
 
 _FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
+_ALIAS_H = _REPO / "hw" / "ip" / "axi_alias_remap" / "regs" / "gen" / "c" / "alias_remap.h"
+_ENTRY_ENABLED = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm")
 
 _WORD = 8
 RESP_OKAY = 0
@@ -98,7 +108,6 @@ _DMA = {
     )
 }
 # dma_ctrl.rdl CONFIG: the enable that arms the non-descriptor frontend.
-_DMA_CONFIG_ENABLED_ND = 1 << 10
 _DMA_CONFIG_RESET = 0
 _DMA_POLLS = 50
 _DMA_POLL_CYCLES = 20
@@ -363,7 +372,7 @@ class smc_outstage_order_test_seq(SmcResetSeqBase, SmcCsrSeq):
 
     async def _dma_submit(self, src: int, dst: int) -> int:
         baseline = await self.csr_read("DMA_DONE_BASE", _DMA["DONE_0"])
-        await self.csr_write("DMA_CONFIG", _DMA["CONFIG"], _DMA_CONFIG_ENABLED_ND)
+        await self.csr_write("DMA_CONFIG", _DMA["CONFIG"], DMA_CONFIG_ENABLED_ND)
         for name, value in (
             ("DST_ADDRESS_LO", dst & 0xFFFF_FFFF),
             ("DST_ADDRESS_HI", dst >> 32),
@@ -462,7 +471,9 @@ class smc_outstage_order_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 expected=resets["FILTER_CONFIG"],
                 length=_WORD,
             )
-            assert got & 0x10 == 0, f"outbound entry {entry} entry_enabled set (0x{got:x})"
+            assert got & _ENTRY_ENABLED == 0, (
+                f"outbound entry {entry} entry_enabled set (0x{got:x})"
+            )
         m_word = _M0_TARGET + (_DENIED_M_WORD_ADDR - _MMODE_WINDOW)
         x_word = _X0_TARGET + (_DENIED_X_WORD_ADDR - _XVISOR_WINDOW)
         self._seed(_DENIED_M_WORD_ADDR, _DENIED_X_WORD_ADDR, m_word, x_word)
@@ -474,8 +485,12 @@ class smc_outstage_order_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 entry, target, target + _GRANULE - 1, _DENY_B1, _DENY_B1_READBACK
             )
         word_m, word_x = 0xA2A2_0000_0000_0040, 0xB2B2_0000_0000_0040
-        refused_m = await self._refused_write("DENY_M", _DENIED_M_WORD_ADDR, word_m, 0)
-        refused_x = await self._refused_write("DENY_X", _DENIED_X_WORD_ADDR, word_x, 0)
+        refused_m = await self._refused_write(
+            "DENY_M", _DENIED_M_WORD_ADDR, word_m, BLOCKED_WINDOW_CYCLES
+        )
+        refused_x = await self._refused_write(
+            "DENY_X", _DENIED_X_WORD_ADDR, word_x, BLOCKED_WINDOW_CYCLES
+        )
         for addr in (m_word, x_word, _DENIED_M_WORD_ADDR, _DENIED_X_WORD_ADDR):
             kept = responder.read_int(addr, _WORD)
             assert kept == _SENTINEL, (
@@ -542,7 +557,7 @@ class smc_outstage_order_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-STAGE-BLOCKED-NOTHING-ON-OUTPUT",
             f"write at 0x{_BLOCK_ADDR:x} answered DECERR (resp {refused['resp']}); over "
             f"{refused['cycles']} cycles awvalid {refused['aw']} and wvalid {refused['w']} "
-            f"cycles read 1 and write_count stayed {refused['wc']}; sentinels at 0x{block_land:x} "
+            f"cycles were 0 and write_count stayed {refused['wc']}; sentinels at 0x{block_land:x} "
             f"and 0x{_BLOCK_ADDR:x} kept; control write at 0x{_CONTROL_ADDR:x} landed at "
             f"0x{control_land:x} and write_count advanced {refused['wc']} -> {wc_ctl}",
         )
@@ -628,7 +643,7 @@ class smc_outstage_order_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"{codes} and landed at 0x{_PEND_DIRECT:x} and 0x{pend_land:x}",
         )
 
-        # S7: cold reset with a write in flight (observe-only fate, owner value pending).
+        # S7: cold reset with a write in flight; the specification does not state its fate.
         responder.write_int(_FLIGHT_ADDR, _SENTINEL, _WORD)
         flight_word = 0xA7A7_0000_0000_D000
         flight = self._jtag_item(SmcSysAxiOp.WRITE, _FLIGHT_ADDR, flight_word)
@@ -667,8 +682,8 @@ class smc_outstage_order_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._mark_step("S7")
         self._log_chk(
             "CHK-STAGE-RESET-IN-FLIGHT",
-            f"fate of the interrupted write at 0x{_FLIGHT_ADDR:x} (observe-only, owner "
-            f"value pending, not compared): {fate}; counters before reset write_count={w_flight} "
+            f"fate of the interrupted write at 0x{_FLIGHT_ADDR:x} (observe-only, not "
+            f"specified, not compared): {fate}; counters before reset write_count={w_flight} "
             f"read_count={r_flight}, after recovery write_count={w_after} read_count={r_after}; "
             f"{probes}; the fresh JTAG write and read at 0x{_FRESH_ADDR:x} answered OKAY "
             f"and read back 0x{got.rdata:016x}",
@@ -685,10 +700,11 @@ class smc_outstage_order_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await self.csr_read("M0_AFTER_RESET", m_attrs, expected=remap_default, length=_WORD)
         for entry in (1, 2):
             await self._restore_entry(entry)
-        for label, addr in (("M0", m_attrs), ("X0", x_attrs), ("ALIAS2_ATTRS", alias["ATTRS"])):
+        for label, addr in (("M0", m_attrs), ("X0", x_attrs)):
             await self._program(f"{label}_RESTORE", addr, remap_default)
-        for label in ("START", "END"):
-            await self._program(f"ALIAS2_{label}_RESTORE", alias[label], remap_default)
+        for label in ("START", "END", "ATTRS"):
+            alias_reset = reg_reset_word(_ALIAS_H, "ALIAS_REMAP", f"REMAP_REGION__REGION_{label}")
+            await self._program(f"ALIAS2_{label}_RESTORE", alias[label], alias_reset)
         self._mark_step("S8")
         self.finished = True
         self._nonvac_fence()

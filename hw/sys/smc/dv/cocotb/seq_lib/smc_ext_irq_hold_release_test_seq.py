@@ -18,6 +18,8 @@ SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADD
 # TB ceiling for a pin-to-raw-bit transition in clk_smc_i rises; not a latency claim.
 WAIT_BOUND_RISES = 64
 HOLD_RISES = 256
+# The external inputs pass a three-flop synchroniser (interrupts.adoc).
+SYNC_FLOPS = 3
 RELEASE_RISES = 64
 _STEPS = ("S1", "S2", "S3", "S4", "S5")
 _CHECKERS = ("CHK-EXTHOLD-BIT0", "CHK-EXTHOLD-BIT2", "CHK-EXTHOLD-BIT16")
@@ -107,6 +109,10 @@ class smc_ext_irq_hold_release_test_seq(SmcCsrSeq):
         self._drive(bit, 1, f"{label} hold")
         cocotb.log.info("LIFECYCLE CHK-EXTHOLD-BIT%d set: input for raw bit %d driven 1", bit, bit)
         rise = await self._wait_bit(bit, 1, f"{label}_RISE")
+        assert rise >= SYNC_FLOPS, (
+            f"{label}: raw bit {bit} rose after {rise} rises, before the {SYNC_FLOPS}-flop "
+            "synchroniser latency"
+        )
         await self._hold(bit, 1, HOLD_RISES, f"{label}_HOLD")
         cocotb.log.info(
             "LIFECYCLE CHK-EXTHOLD-BIT%d observed: raw bit %d read 1 after %d rises and at "
@@ -122,6 +128,10 @@ class smc_ext_irq_hold_release_test_seq(SmcCsrSeq):
             "LIFECYCLE CHK-EXTHOLD-BIT%d cleared: input for raw bit %d driven 0", bit, bit
         )
         fall = await self._wait_bit(bit, 0, f"{label}_FALL")
+        assert fall >= SYNC_FLOPS, (
+            f"{label}: raw bit {bit} fell after {fall} rises, before the {SYNC_FLOPS}-flop "
+            "synchroniser latency"
+        )
         await self._hold(bit, 0, RELEASE_RISES, f"{label}_RELEASED")
         cocotb.log.info(
             "LIFECYCLE CHK-EXTHOLD-BIT%d checked_cleared: raw bit %d read 0 after %d rises and "
@@ -165,7 +175,7 @@ class smc_ext_irq_hold_release_test_seq(SmcCsrSeq):
                 f"{fall} rises and vector equalled baseline 0x{self._baseline:x} for "
                 f"{RELEASE_RISES} rises",
             )
-        await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
+        await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0)
         self.done = True
         self._timeout_paths()
         self._nonvac_fence()

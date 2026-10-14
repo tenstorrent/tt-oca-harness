@@ -14,7 +14,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, Edge, First, Timer
 from cocotb.utils import get_sim_time
-from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
+from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import smc_addr
 from .smc_avsbus_protocol_utils import AVS_CFG_0, AVS_CFG_1, avs_field
@@ -35,6 +35,9 @@ NUMERATOR_BP = avs_field(_F + "CLK_DIVIDER_DUTY_CYCLE_NUMERATOR_bp")
 GPIO_ENABLE_RESET = avs_field("AVSBUS_CONTROLLER__AVS_CONFIG__AVS_GPIO_ENABLE_reset")
 GPIO_ENABLE_BM = avs_field("AVSBUS_CONTROLLER__AVS_CONFIG__AVS_GPIO_ENABLE_bm")
 MAX_RETRIES_BM = avs_field("AVSBUS_CONTROLLER__AVS_CFG_0__MAX_RETRIES_bm")
+MAX_RETRIES_BP = avs_field("AVSBUS_CONTROLLER__AVS_CFG_0__MAX_RETRIES_bp")
+MAX_RETRIES_RESET = avs_field("AVSBUS_CONTROLLER__AVS_CFG_0__MAX_RETRIES_reset")
+RESYNC_INTERVAL_RESET = avs_field("AVSBUS_CONTROLLER__AVS_CFG_0__RESYNC_INTERVAL_reset")
 RESYNC_INTERVAL_BM = avs_field("AVSBUS_CONTROLLER__AVS_CFG_0__RESYNC_INTERVAL_bm")
 
 DEFINED_BM = SELECT_BM | STOP_BM | FORCE_BM | TURN_OFF_BM | DIVIDER_BM | NUMERATOR_BM
@@ -51,6 +54,7 @@ MEASURE_PERIODS = 8
 ACCESS_TIMEOUT_NS = 50_000
 EDGE_TIMEOUT_NS = 100_000
 OKAY = 0
+GROUP_AXI_ID = 0x21
 
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8")
 FENCE_TERMS = (
@@ -91,9 +95,10 @@ class smc_avs_cfg_csr_cdc_test_seq(SmcCsrSeq):
         self.last_edge_state = "no edge wait yet"
         self.force_wait_state = "no periph wait yet"
 
-    async def _access(
-        self, label: str, op: SmcSysAxiOp, addr: int, data: int = 0, wstrb: int | None = None
-    ) -> int:
+    @staticmethod
+    def _member(
+        label: str, op: SmcSysAxiOp, addr: int, data: int = 0, wstrb: int | None = None
+    ) -> SmcSysAxiItem:
         item = SmcSysAxiItem(f"{'rd' if op == SmcSysAxiOp.READ else 'wr'}_{label}")
         item.op = op
         item.addr = addr
@@ -103,6 +108,12 @@ class smc_avs_cfg_csr_cdc_test_seq(SmcCsrSeq):
             item.wdata = data
             if wstrb is not None:
                 item.wstrb = wstrb
+        return item
+
+    async def _access(
+        self, label: str, op: SmcSysAxiOp, addr: int, data: int = 0, wstrb: int | None = None
+    ) -> int:
+        item = self._member(label, op, addr, data, wstrb)
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
@@ -120,6 +131,21 @@ class smc_avs_cfg_csr_cdc_test_seq(SmcCsrSeq):
 
     async def _wr(self, label: str, addr: int, data: int, wstrb: int | None = None) -> None:
         await self._access(label, SmcSysAxiOp.WRITE, addr, data, wstrb)
+
+    async def _group(self, name: str, items: list[SmcSysAxiItem]) -> None:
+        """Issue accesses on one AXI ID so that they are outstanding together."""
+        for item in items:
+            item.axi_id = GROUP_AXI_ID
+        group = SmcSysAxiGroupItem(name, items)
+        await self.start_item(group)
+        await self.finish_item(group)
+        self.accesses += len(items)
+        for item in items:
+            self.last_resp = item.resp_code
+            assert item.resp_code == OKAY, (
+                f"{item.get_name()} @ 0x{item.addr:08x}: response code {item.resp_code}, "
+                f"expected OKAY ({OKAY})"
+            )
 
     async def _gated_write(self, label: str, current: int, new: int) -> int:
         """Change clock-configuration fields in the programmer's gated order."""
@@ -189,7 +215,8 @@ class smc_avs_cfg_csr_cdc_test_seq(SmcCsrSeq):
         assert hasattr(cocotb.top, "clk_periph"), "clk_periph not exported"
 
         # S1: setup is the base bring-up at the default triple; the words to restore are read.
-        saved0 = await self._rd("AVS_CFG_0_SAVE", AVS_CFG_0)
+        reset0 = (MAX_RETRIES_RESET << MAX_RETRIES_BP) | RESYNC_INTERVAL_RESET
+        saved0 = await self._rd("AVS_CFG_0_SAVE", AVS_CFG_0, expected=reset0)
         saved1 = await self._rd("AVS_CFG_1_SAVE", AVS_CFG_1)
         self._stamp("S1")
 
@@ -205,8 +232,8 @@ class smc_avs_cfg_csr_cdc_test_seq(SmcCsrSeq):
             "CHK-AVS-CSR-RESET",
             f"AVS_CFG_1=0x{reset_cfg:08x} (reset 0x{reset1:08x}) and "
             f"AVS_CONFIG=0x{reset_config:08x} (reset 0x{GPIO_ENABLE_RESET:08x}), both OKAY; "
-            f"AVS_CFG_0=0x{saved0:08x} (MAX_RETRIES and RESYNC_INTERVAL fields "
-            f"0x{saved0 & (MAX_RETRIES_BM | RESYNC_INTERVAL_BM):08x})",
+            f"AVS_CFG_0=0x{saved0:08x} (reset 0x{reset0:08x}; MAX_RETRIES and RESYNC_INTERVAL "
+            f"fields 0x{saved0 & (MAX_RETRIES_BM | RESYNC_INTERVAL_BM):08x})",
         )
 
         # S3: each field alone through the gated sequence.
@@ -313,7 +340,7 @@ class smc_avs_cfg_csr_cdc_test_seq(SmcCsrSeq):
             "CHK-AVS-CSR-UNALLOCATED",
             f"unallocated mask 0x{UNALLOCATED_BM:08x}: read before 0x{before & UNALLOCATED_BM:08x}"
             f", after writing ones 0x{after & UNALLOCATED_BM:08x}, after writing zeros "
-            f"0x{cleared & UNALLOCATED_BM:08x} (owner value pending); defined fields unchanged "
+            f"0x{cleared & UNALLOCATED_BM:08x} (not specified, measured); defined fields unchanged "
             f"0x{before & DEFINED_BM:08x}; AVS clock span {MEASURE_PERIODS} periods "
             f"{period_before} ps before, {period_after} ps after",
         )
@@ -330,23 +357,32 @@ class smc_avs_cfg_csr_cdc_test_seq(SmcCsrSeq):
         )
         cur = rt
 
-        # S8: write then read, then two back-to-back writes and two reads.
+        # S8: write then read, then two outstanding writes and two outstanding reads.
         imm = (cur & ~DIVIDER_BM) | (0x06 << DIVIDER_BP)
         got_imm = await self._gated_write("IMM", cur, imm)
         new0 = saved0 ^ (MAX_RETRIES_BM & (1 << 16)) ^ (RESYNC_INTERVAL_BM & 1)
         assert new0 != saved0
         pair1 = (imm & ~DIVIDER_BM) | (DIVIDER_S3 << DIVIDER_BP) | TURN_OFF_BM
         await self._wr("PAIR_GATE_ON", AVS_CFG_1, imm | TURN_OFF_BM)
-        await self._wr("PAIR_CFG_0", AVS_CFG_0, new0)
-        await self._wr("PAIR_CFG_1", AVS_CFG_1, pair1)
-        read0 = await self._rd("PAIR_RD_CFG_0", AVS_CFG_0, expected=new0)
-        read1 = await self._rd("PAIR_RD_CFG_1", AVS_CFG_1, expected=pair1)
+        writes = [
+            self._member("PAIR_CFG_0", SmcSysAxiOp.WRITE, AVS_CFG_0, new0),
+            self._member("PAIR_CFG_1", SmcSysAxiOp.WRITE, AVS_CFG_1, pair1),
+        ]
+        await self._group("PAIR_WR", writes)
+        reads = [
+            self._member("PAIR_RD_CFG_0", SmcSysAxiOp.READ, AVS_CFG_0),
+            self._member("PAIR_RD_CFG_1", SmcSysAxiOp.READ, AVS_CFG_1),
+        ]
+        await self._group("PAIR_RD", reads)
+        read0, read1 = reads[0].rdata, reads[1].rdata
+        assert read0 == new0, f"PAIR_RD_CFG_0: read 0x{read0:08x}, expected 0x{new0:08x}"
+        assert read1 == pair1, f"PAIR_RD_CFG_1: read 0x{read1:08x}, expected 0x{pair1:08x}"
         await self._wr("PAIR_GATE_OFF", AVS_CFG_1, pair1 & ~TURN_OFF_BM)
         cur = await self._rd("PAIR_GATE_OFF_RB", AVS_CFG_1, expected=pair1 & ~TURN_OFF_BM)
         self._stamp("S8")
         self._chk(
             "CHK-CDC-AVS-ORDER",
-            f"write then read returned 0x{got_imm:08x} (wrote 0x{imm:08x}); back-to-back writes "
+            f"write then read returned 0x{got_imm:08x} (wrote 0x{imm:08x}); outstanding writes "
             f"AVS_CFG_0=0x{new0:08x}, AVS_CFG_1=0x{pair1:08x} read back in order "
             f"0x{read0:08x}, 0x{read1:08x}",
         )

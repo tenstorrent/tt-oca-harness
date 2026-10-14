@@ -60,7 +60,7 @@ def _or_bits(bits) -> int:
 def _lock_words(kind: str, rnd: random.Random) -> list[int]:
     """LOCKS words 0 and 1 of the kind, write-lock bits only."""
     if kind == "zero":
-        return [0, 0]
+        return [min(_WRITE_LOCKS_LO), 0]
     if kind == "ones":
         return [_or_bits(_WRITE_LOCKS_LO), _or_bits(_WRITE_LOCKS_HI)]
     if kind == "unique":

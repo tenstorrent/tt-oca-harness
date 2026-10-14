@@ -19,10 +19,12 @@ from ._one_shot import _OneShot
 from .smc_addr_map import (
     HANG_DET_ARMED,
     HANG_DET_DATA_ACCEL_CTRL,
+    HANG_DET_DATA_ACCEL_TIMEOUT,
     HANG_DET_IRQ,
     HANG_DET_SEP_AXI_CTRL,
     HANG_DET_SEP_AXI_TIMEOUT,
     HANG_DET_SYS_AXI_CTRL,
+    HANG_DET_SYS_AXI_TIMEOUT,
     HANG_DET_THR_VALUE,
     smc_addr,
 )
@@ -43,7 +45,12 @@ CLEAR_CEILING_RISES = 128
 FUSE_SENSE_RISES = 200_000
 AXI_TIMEOUT_NS = 50_000
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6")
-_CHECKERS = ("CHK-SEPWIN-BELOW", "CHK-SEPWIN-BEYOND", "CHK-SEPWIN-AT-LOG", "CHK-SEPWIN-EXACT-LOG")
+_CHECKERS = (
+    "CHK-SEPWIN-BELOW",
+    "CHK-SEPWIN-BEYOND",
+    "CHK-SEPWIN-AT-LOG",
+    "CHK-SEPWIN-EXACT-DELTA",
+)
 _CHECK_STEP = ("S2", "S3", "S4", "S5")
 
 
@@ -156,6 +163,20 @@ class smc_hang_sep_timeout_window_test_seq(SmcCsrSeq):
                 f"SEP threshold readback 0x{thr:x} want 0x{threshold:x}"
             )
         await self.csr_write(f"HANG_SEP_ARM_{label}", HANG_DET_SEP_AXI_CTRL, HANG_DET_ARMED)
+
+    async def _set_peers(self, label: str, armed: bool) -> None:
+        """Arm or disarm the SYS_AXI and DATA_ACCEL detectors; armed ones use THRESHOLD."""
+        for name, ctrl, timeout in (
+            ("SYS", HANG_DET_SYS_AXI_CTRL, HANG_DET_SYS_AXI_TIMEOUT),
+            ("DATA", HANG_DET_DATA_ACCEL_CTRL, HANG_DET_DATA_ACCEL_TIMEOUT),
+        ):
+            if armed:
+                await self.csr_write(f"HANG_{name}_THR_{label}", timeout, THRESHOLD)
+            await self.csr_write(
+                f"HANG_{name}_{'ARM' if armed else 'OFF'}_{label}",
+                ctrl,
+                HANG_DET_ARMED if armed else 0,
+            )
 
     async def _stall(self, name: str, release_at: int, watch: int, assert_zero: bool = False):
         """Stall from the AR handshake, release at rise release_at, sample watch rises.
@@ -302,12 +323,16 @@ class smc_hang_sep_timeout_window_test_seq(SmcCsrSeq):
             f"raw286 read 0 at each of {BELOW_WINDOW_RISES} rises from the AR handshake",
         )
 
+        await self._set_peers("BEYOND", True)
         sep_at, raw_at, rdata = await self._beyond()
         cleared = await self._await_sep_low("beyond")
+        await self._set_peers("BEYOND", False)
         self.phases += 1
         self._mark_step("S3")
         cocotb.log.info(
-            "LIFECYCLE CHK-SEPWIN-BEYOND set: SEP_IN read held past threshold 0x%x", THRESHOLD
+            "LIFECYCLE CHK-SEPWIN-BEYOND set: SEP_IN read held past threshold 0x%x, SYS_AXI "
+            "and DATA_ACCEL armed",
+            THRESHOLD,
         )
         cocotb.log.info(
             "LIFECYCLE CHK-SEPWIN-BEYOND observed: sep irq at rise %d, raw286 at "
@@ -324,8 +349,9 @@ class smc_hang_sep_timeout_window_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-SEPWIN-BEYOND",
             f"sep irq first 1 at rise {sep_at}, raw286 first 1 at rise {raw_at} "
-            f"(ceiling {BEYOND_CEILING_RISES}); sys=0 data=0; CTRL=0x{rdata:x} irq=1, "
-            f"only SEP status set; cleared after {cleared} rises",
+            f"(ceiling {BEYOND_CEILING_RISES}); sys=0 data=0 with both armed at threshold "
+            f"0x{THRESHOLD:x}; CTRL=0x{rdata:x} irq=1, only SEP status set; cleared after "
+            f"{cleared} rises",
         )
 
         await self._arm("AT")
@@ -344,7 +370,7 @@ class smc_hang_sep_timeout_window_test_seq(SmcCsrSeq):
             "CHK-SEPWIN-AT-LOG",
             f"stall of exactly 0x{THRESHOLD:x} rises: first_sep_irq_rise={at_sep} "
             f"first_raw286_rise={at_raw}; {text}; cleared after {cleared_at} rises "
-            "(observe-and-log, owner value pending)",
+            "(observe-and-log, not specified, measured)",
         )
 
         await self._arm("EXACT_SMALL")
@@ -353,12 +379,18 @@ class smc_hang_sep_timeout_window_test_seq(SmcCsrSeq):
         large = await self._exact("large", THRESHOLD_LARGE)
         self.phases += 1
         self._mark_step("S5")
+        assert large[0] - small[0] == THRESHOLD_LARGE - THRESHOLD, (
+            f"sep irq rose at rise {small[0]} with threshold 0x{THRESHOLD:x} and at rise "
+            f"{large[0]} with threshold 0x{THRESHOLD_LARGE:x}, want a difference of "
+            f"{THRESHOLD_LARGE - THRESHOLD}"
+        )
         self._log_chk(
-            "CHK-SEPWIN-EXACT-LOG",
+            "CHK-SEPWIN-EXACT-DELTA",
             f"threshold 0x{THRESHOLD:x}: sep_irq_rise={small[0]} raw286_rise={small[1]} "
             f"irq_to_raw={small[1] - small[0]}; threshold 0x{THRESHOLD_LARGE:x}: "
             f"sep_irq_rise={large[0]} raw286_rise={large[1]} "
-            f"irq_to_raw={large[1] - large[0]} (observe-and-log, owner value pending)",
+            f"irq_to_raw={large[1] - large[0]}; sep irq rise difference "
+            f"{large[0] - small[0]} == 0x{THRESHOLD_LARGE:x} - 0x{THRESHOLD:x}",
         )
 
         self._hold(0, "cleanup")

@@ -25,20 +25,19 @@ _BLOCKS = ("dst_sink", "funnel", "dst")
 _DST_REGISTERS = 6
 _FUSE_SENSE_MAX_CYCLES = 200_000
 
-# The document does not pin the supported value set of these fields, so their readback is printed.
-_PRINT_ONLY_FIELDS = ("Trdstformat", "Trdstsyncmode")
+# The document does not pin the supported value set of this field, so its readback is printed.
+_PRINT_ONLY_FIELDS = ("Trdstformat",)
 
-_STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")
 _FENCE = (
-    ("BRINGUP_SENSE_DONE", "S1"),
-    ("FIELD_LIST_BUILT", "S1"),
-    ("RW_PATTERNS", "S2"),
-    ("ISOLATION", "S3"),
-    ("UNDEFINED_BITS_PRINTED", "S4"),
-    ("INST_FIELDS_PRINTED", "S5"),
-    ("SCRATCH_PATTERNS", "S6"),
-    ("SCRATCH_DISTINCT", "S7"),
-    ("OFFSET_FF8_DISTINCT", "S8"),
+    "BRINGUP_SENSE_DONE",
+    "FIELD_LIST_BUILT",
+    "RW_PATTERNS",
+    "ISOLATION",
+    "UNDEFINED_BITS_PRINTED",
+    "INST_FIELDS_PRINTED",
+    "SCRATCH_PATTERNS",
+    "SCRATCH_DISTINCT",
+    "OFFSET_FF8_DISTINCT",
 )
 _CHK_STEP = (
     ("CHK-DST-RW-PATTERNS", "RW_PATTERNS"),
@@ -211,8 +210,8 @@ class smc_dfd_csr_field_access_test_seq(SmcCsrSeq):
             )
         return (
             "every write and read of the positions no DST field covers completed with OKAY inside "
-            "the bound; stored values printed per bit, none asserted (reset value pending an "
-            "owner decision): " + "; ".join(rows)
+            "the bound; stored values printed per bit, none asserted (not specified, measured): "
+            + "; ".join(rows)
         )
 
     # -- S5 ---------------------------------------------------------------
@@ -349,7 +348,6 @@ class smc_dfd_csr_field_access_test_seq(SmcCsrSeq):
             f"{_DST_REGISTERS}"
         )
         scratch = self._scratch(registers)
-        dst_rw = [reg for reg in dst]
         for reg in dst:
             reset_read = await self._read(reg, "reset")
             assert reset_read & reg.static_mask == reg.reset_word & reg.static_mask, (
@@ -358,11 +356,11 @@ class smc_dfd_csr_field_access_test_seq(SmcCsrSeq):
             )
         self._stamp("FIELD_LIST_BUILT")
 
-        text = await self._rw_patterns(dst_rw)
+        text = await self._rw_patterns(dst)
         self._stamp("RW_PATTERNS")
         self._chk("CHK-DST-RW-PATTERNS", text)
 
-        text = await self._isolation(dst_rw)
+        text = await self._isolation(dst)
         self._stamp("ISOLATION")
         self._chk("CHK-DST-FIELD-ISOLATION", text)
 
@@ -399,7 +397,7 @@ class smc_dfd_csr_field_access_test_seq(SmcCsrSeq):
             restored,
         )
 
-        terms = [t for t, _ in _FENCE]
+        terms = list(_FENCE)
         stamp_terms = [t for t, _ in self._stamps if t in terms]
         assert stamp_terms == terms, f"fence terms {stamp_terms}, expected order {terms}"
         times = [t for _, t in self._stamps]

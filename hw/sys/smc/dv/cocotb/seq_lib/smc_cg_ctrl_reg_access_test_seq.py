@@ -23,13 +23,19 @@ from .smc_cg_obs_utils import (
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 
-ENABLE_COUNT = 14
-ENABLES_BM = (1 << ENABLE_COUNT) - 1
-HYST_RESET = 0x1F
+_CGC = "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__"
+ENABLES_BM = 0
+for _symbol, _mask in _addr._parse_simple_defines(_addr._SMC_BASE_CFG_H).items():
+    if _symbol.startswith(_CGC) and _symbol.endswith("_CG_EN_bm"):
+        ENABLES_BM |= _mask
+ENABLE_COUNT = ENABLES_BM.bit_length()
+assert ENABLES_BM == (1 << ENABLE_COUNT) - 1, f"enable masks 0x{ENABLES_BM:x} are not contiguous"
+HYST_RESET = (_addr.CLOCK_GATE_CONTROL_RESET & CG_HYST_MASK) >> CG_HYST_SHIFT
 BASE = HYST_RESET << CG_HYST_SHIFT
 DEFINED_BM = ENABLES_BM | CG_HYST_MASK
-RESERVED_LO_BM = ((1 << 10) - 1) << ENABLE_COUNT
-RESERVED_HI_BM = ((1 << 34) - 1) << 30
+_RESERVED_BM = ((1 << 64) - 1) & ~DEFINED_BM
+RESERVED_LO_BM = _RESERVED_BM & ((1 << CG_HYST_SHIFT) - 1)
+RESERVED_HI_BM = _RESERVED_BM & ~((1 << CG_HYST_SHIFT) - 1)
 HYST_VALUES = (0x00, 0x01, 0x1F, 0x20, 0x3F)
 OKAY = 0
 ACCESS_TIMEOUT_NS = 50_000
@@ -155,7 +161,9 @@ class smc_cg_ctrl_reg_access_test_seq(SmcCsrSeq):
         raw = await self._rd("RESET")
         assert raw & ENABLES_BM == 0, f"reset enables read 0x{raw & ENABLES_BM:04x}, expected 0"
         hyst = (raw & CG_HYST_MASK) >> CG_HYST_SHIFT
-        assert hyst == HYST_RESET, f"reset cg_hysteresis read 0x{hyst:02x}, expected 0x1f"
+        assert hyst == HYST_RESET, (
+            f"reset cg_hysteresis read 0x{hyst:02x}, expected 0x{HYST_RESET:02x}"
+        )
         self._stamp("S2")
         self._chk(
             "CHK-CGC-RESET-VALUE",
@@ -242,7 +250,7 @@ class smc_cg_ctrl_reg_access_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-CGC-RESERVED-BITS",
             f"defined fields held 0x{BASE:016x} across both writes; {'; '.join(notes)}; "
-            f"reserved value not asserted (owner value pending)",
+            f"reserved value not asserted (not specified, measured)",
         )
 
         # S7: narrow accesses, printed and not compared.
@@ -286,7 +294,7 @@ class smc_cg_ctrl_reg_access_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-CGC-NARROW-ACCESS",
             f"{'; '.join(notes)}; every access completed, responses and values "
-            f"not asserted (owner value pending)",
+            f"not asserted (not specified, measured)",
         )
 
         # S8: rewrites.
@@ -308,8 +316,8 @@ class smc_cg_ctrl_reg_access_test_seq(SmcCsrSeq):
         await self._wr("PAIR_A", BASE | (1 << 2))
         await self._wr("PAIR_B", BASE | (1 << 9))
         got = await self._rd("PAIR_RB")
-        assert got & DEFINED_BM == BASE | (1 << 9), f"back-to-back pair read 0x{got:x}"
-        notes.append(f"back-to-back pair read 0x{got & DEFINED_BM:08x}")
+        assert got & DEFINED_BM == BASE | (1 << 9), f"successive pair read 0x{got:x}"
+        notes.append(f"successive pair read 0x{got & DEFINED_BM:08x}")
         await self._restore("PAIR")
         self._stamp("S8")
         self._chk(

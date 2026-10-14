@@ -33,7 +33,6 @@ THR_MASK = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__WIRQT__WIRQT_bm")
 IRQ_ALL = WTIRQ | RTIRQ | EIRQ
 
 FUSE_SENSE_RISES = 200_000
-AXI_TIMEOUT_NS = 50_000
 AXI_SLVERR = 2
 EMPTY_ERROR_LOW = 0xFEEDDEAD
 DRAIN_LIMIT = 6
@@ -166,7 +165,7 @@ class smc_mailbox_threshold_irqs_test_seq(SmcCsrSeq):
         await self._wr(f"{tag}_{reg}", target, reg, value)
 
     async def body(self) -> None:
-        await self.wait_fuse_sense_done()
+        await self.wait_fuse_sense_done(max_cycles=FUSE_SENSE_RISES)
         seed = int(os.environ.get("RANDOM_SEED", "1"))
         cocotb.log.info("SEED RANDOM_SEED=%d", seed)
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
@@ -198,14 +197,16 @@ class smc_mailbox_threshold_irqs_test_seq(SmcCsrSeq):
         self._mark_step("S2")
         self._log_chk(
             "CHK-THRESHOLD-RESET-AND-INRANGE",
-            f"WIRQT/RIRQT[7:0] of A and B read {sorted(set(resets.values()))} at reset "
-            "and read back exactly 0, 1, 0 after those writes on all four registers",
+            f"WIRQT/RIRQT of A and B read {sorted(set(resets.values()))} at reset (all 64 bits) "
+            "and read back exactly 0, 1, 0 after those writes on all four registers; the zero "
+            "reset values cannot fail on a missing reset under the 2-state build (bench limit)",
         )
         self._log_chk(
             "CHK-IRQS-ZERO-AFTER-RESET",
             f"set: no source after reset; observed: IRQS[2:0]=0 on {len(idle)} apertures "
             f"{sorted(idle)}, every response OKAY; cleared: not applicable; "
-            "checked_cleared: same reads before the first access",
+            "checked_cleared: same reads before the first access; the zero reset values cannot "
+            "fail on a missing reset under the 2-state build (bench limit)",
         )
 
         clamp = {}
@@ -224,7 +225,7 @@ class smc_mailbox_threshold_irqs_test_seq(SmcCsrSeq):
             "CHK-THRESHOLD-CLAMP-BEHAVIOUR",
             "STATUS above-threshold bit (one word, two words, readback) "
             f"{clamp}; bit 0 at one word and 1 at two words for every value; readback logged "
-            "as measured (owner value pending)",
+            "(not specified, measured)",
         )
 
         wide = {}
@@ -375,7 +376,7 @@ class smc_mailbox_threshold_irqs_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-IRQS-OVERLAPPING-SOURCES",
             f"group write resp={cross.resp_code} and full write resp={full.resp_code}; "
-            f"IRQS[2:0]=0x{overlap:x}; no same-cycle alignment claimed (owner value pending)",
+            f"IRQS[2:0]=0x{overlap:x}; no same-cycle alignment claimed (not specified, measured)",
         )
 
         await self._ack("Q")
@@ -441,8 +442,9 @@ class smc_mailbox_threshold_irqs_test_seq(SmcCsrSeq):
             rs = await self._bits(f"G_{tag}_IRQS", A, "IRQS", IRQ_ALL)
             ren = await self._bits(f"G_{tag}_IRQEN", A, "IRQEN", IRQ_ALL)
             rp = await self._bits(f"G_{tag}_IRQP", A, "IRQP", IRQ_ALL)
-            assert ren == en and rs & WTIRQ, f"{tag}: IRQEN {ren} IRQS 0x{rs:x}"
-            assert rp == rs & ren, f"{tag}: IRQP 0x{rp:x} != 0x{rs:x} & 0x{ren:x}"
+            assert (ren, rs, rp) == (en, WTIRQ, WTIRQ & en), (
+                f"{tag}: IRQEN {ren} IRQS 0x{rs:x} IRQP 0x{rp:x}"
+            )
             rows.append(f"{tag}: IRQS={rs:x} IRQEN={ren:x} IRQP={rp:x}")
         await self._pop("G_POP0", B, W1)
         await self._pop("G_POP1", B, W2)
@@ -450,8 +452,8 @@ class smc_mailbox_threshold_irqs_test_seq(SmcCsrSeq):
         self._mark_step("S14")
         self._log_chk(
             "CHK-IRQP-FOLLOWS-LIVE-ENABLE-CHANGE",
-            f"after each group IRQP[2:0] equalled IRQS AND IRQEN: {rows}; reads made after the "
-            "group completed; no same-cycle claim (owner value pending)",
+            f"after each group IRQS was 0b001 and IRQP[2:0] equalled 0b001 AND IRQEN: {rows}; "
+            "reads made after the group completed; no same-cycle claim (not specified, measured)",
         )
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, cg)
@@ -500,6 +502,6 @@ class smc_mailbox_threshold_irqs_test_seq(SmcCsrSeq):
             "False last[%d accesses completed]; the sequence has no wait of its own",
             waits,
             self.accesses,
-            AXI_TIMEOUT_NS,
+            self.cfg.axi_timeout_ns,
             self.accesses,
         )

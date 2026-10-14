@@ -157,15 +157,15 @@ class smc_cpu_ctrl_scratch_all_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-SCRATCH-WALK",
             f"k=0..15 wrote 0x{walk_pattern(0):08x}..0x{walk_pattern(15):08x} to entry k alone: "
-            "entry k held it and 15 idle entries read 0 per walk (240 idle zero reads "
-            "reset-equal, cannot fail on X/Z under Verilator)",
+            "entry k held it and the 15 idle entries read the 0 written before the walk "
+            "(240 compares)",
         )
         self._chk(
             "CHK-SCRATCH-BITS",
             "all 16 entries read back "
             + ",".join(f"0x{p:08x}" for p in WIDTH_PATTERNS)
-            + " exactly when written; owner value pending: SCRATCH entry usage by bench "
-            "and firmware unidentified, all 16 entries swept and restored",
+            + " exactly when written; SCRATCH entry usage by bench "
+            "and firmware not specified, measured, all 16 entries swept and restored",
         )
 
         expected = SCRATCH_COUNT * (

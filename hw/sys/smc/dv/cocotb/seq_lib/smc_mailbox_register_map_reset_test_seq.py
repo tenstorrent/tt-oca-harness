@@ -15,7 +15,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_addr_symbols
+from .smc_addr_map import _REPO, _field_mask, reg_reset_word, smc_addr, smc_addr_symbols
 from .smc_csr_seq_utils import SmcCsrSeq
 
 _AXIL_MAILBOX_H = (
@@ -30,7 +30,6 @@ MAILBOX_CG_EN = _field_mask(
 EIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__EIRQ_bm")
 
 FUSE_SENSE_RISES = 200_000
-AXI_TIMEOUT_NS = 50_000
 AXI_SLVERR = 2
 EMPTY_ERROR_LOW = 0xFEEDDEAD
 WRITE_DATA_EMPTY_LOW = 0xFEEDC0DE
@@ -43,17 +42,35 @@ NUM_PAIRS = 32
 REPRESENTATIVE = (0, 1, 15, 16, 31)
 SIDE = {"A": "OUTBOUND", "B": "INBOUND"}
 OKAY, ERROR = "okay", "error"
-# Register, defined-bit mask and reset value; the bits above the mask are reserved.
-RESET_REGS = (
-    ("STATUS", 0xF, 0x1),
-    ("ERROR_FLAGS", 0x3, 0),
-    ("WIRQT", 0xFF, 0),
-    ("RIRQT", 0xFF, 0),
-    ("IRQS", 0x7, 0),
-    ("IRQEN", 0x7, 0),
-    ("IRQP", 0x7, 0),
-    ("CTRL", 0x3, 0),
+
+
+def _reg_mask(reg: str, fields: tuple[str, ...]) -> int:
+    mask = 0
+    for field in fields:
+        mask |= _field_mask(_AXIL_MAILBOX_H, f"AXIL_MAILBOX__{reg}__{field}_bm")
+    return mask
+
+
+# Register, mask of its defined fields and reset value, from the generated header.
+RESET_REGS = tuple(
+    (name, _reg_mask(reg, fields), reg_reset_word(_AXIL_MAILBOX_H, "AXIL_MAILBOX", reg))
+    for name, reg, fields in (
+        (
+            "STATUS",
+            "STATUS",
+            ("EMPTY", "FULL", "WRITE_LEVEL_ABOVE_THRESH", "READ_LEVEL_ABOVE_THRESH"),
+        ),
+        ("ERROR_FLAGS", "ERROR", ("READ_ERROR", "WRITE_ERROR")),
+        ("WIRQT", "WIRQT", ("WIRQT",)),
+        ("RIRQT", "RIRQT", ("RIRQT",)),
+        ("IRQS", "IRQS", ("WTIRQ", "RTIRQ", "EIRQ")),
+        ("IRQEN", "IRQEN", ("WTIRQ", "RTIRQ", "EIRQ")),
+        ("IRQP", "IRQP", ("WTIRQ", "RTIRQ", "EIRQ")),
+        ("CTRL", "CTRL", ("WFLUSH", "RFLUSH")),
+    )
 )
+WIRQT_MASK = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__WIRQT__WIRQT_bm")
+RIRQT_MASK = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__RIRQT__RIRQT_bm")
 _OUTBOUND_SYMBOLS = smc_addr_symbols(r"SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_\d+_BASE_ADDR")
 _INBOUND_SYMBOLS = smc_addr_symbols(r"SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_\d+_BASE_ADDR")
 assert len(_OUTBOUND_SYMBOLS) == len(_INBOUND_SYMBOLS) == NUM_PAIRS
@@ -75,7 +92,7 @@ _CHECKERS = (
     ("CHK-REGISTER-STATE-PER-APERTURE", "S9"),
     ("CHK-ADDRESS-EXAMPLES-PAIR0", "S10"),
     ("CHK-ATTRIBUTES-OBSERVED", "S11"),
-    ("CHK-ATTRIBUTES-MATCH-OBSERVED-UNIT", "S12"),
+    ("CHK-PAIR31-DEPTH-TWO", "S12"),
     ("CHK-IRQ-VECTORS-LOW-AT-RESET", "S3"),
     ("CHK-CG-FIRST-ACCESS-AFTER-IDLE", "S13"),
     ("CHK-CG-RETENTION-ACROSS-IDLE", "S14"),
@@ -197,7 +214,7 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         self._latency = [count[0], 0]
 
     async def body(self) -> None:
-        await self.wait_fuse_sense_done()
+        await self.wait_fuse_sense_done(max_cycles=FUSE_SENSE_RISES)
         cocotb.log.info("seed: %s", os.environ.get("RANDOM_SEED", "1"))
         self._mark_step("S1")
 
@@ -211,7 +228,8 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             "CHK-CG-ENABLE-RESET-AND-SET",
             f"set: mailbox_cg_en reset value {cg >> 1 & 1}; observed: CLOCK_GATE_CONTROL read "
             f"0x{cg:x}; cleared: write sets bit 1; checked_cleared: read back 0x{cg_rb:x} "
-            f"bit 1 = {cg_rb >> 1 & 1}",
+            f"bit 1 = {cg_rb >> 1 & 1}; the zero reset value cannot fail on a missing reset "
+            "under the 2-state build (bench limit); STATUS[0]=1 is the discriminating reset leg",
         )
 
         first = self._vectors()
@@ -234,9 +252,11 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-RESET-REGISTERS-REPRESENTATIVE-PAIRS",
             f"{reads} reads on {2 * len(REPRESENTATIVE)} apertures: STATUS[3:0]==0x1 and "
-            f"ERROR_FLAGS[1:0], WIRQT[7:0], RIRQT[7:0], IRQS[2:0], IRQEN[2:0], IRQP[2:0], "
-            f"CTRL[1:0]==0; reserved upper bits nonzero in {len(upper)} reads {upper} "
-            "(owner value pending)",
+            f"ERROR_FLAGS[1:0], WIRQT[63:0], RIRQT[63:0], IRQS[2:0], IRQEN[2:0], IRQP[2:0], "
+            f"CTRL[1:0]==0; bits outside the defined fields nonzero in {len(upper)} reads "
+            f"{upper} (not specified, measured); the zero reset values cannot fail on a missing "
+            "reset under the 2-state build (bench limit); STATUS[0]=1 is the discriminating "
+            "reset leg",
         )
 
         reads = 0
@@ -251,7 +271,9 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         self._mark_step("S5")
         self._log_chk(
             "CHK-RESET-ALL-64-APERTURES",
-            f"{reads} reads on 64 apertures: STATUS[3:0]==0x1 and IRQS[2:0]==0 on every one",
+            f"{reads} reads on 64 apertures: STATUS[3:0]==0x1 and IRQS[2:0]==0 on every one; the "
+            "zero reset values cannot fail on a missing reset under the 2-state build (bench "
+            "limit); STATUS[0]=1 is the discriminating reset leg",
         )
 
         empties = {}
@@ -317,7 +339,11 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             for reg, mask in (("ERROR_FLAGS", 3), ("IRQS", 7), ("IRQP", 7), ("CTRL", 3)):
                 val = await self._val(f"S8_{reg}_{side}", 0, side, reg)
                 assert val & mask == 0, f"pair 0 {side} {reg} 0x{val:x}"
-            for reg, value, mask in (("WIRQT", 1, 0xFF), ("RIRQT", 1, 0xFF), ("IRQEN", 5, 7)):
+            for reg, value, mask in (
+                ("WIRQT", 1, WIRQT_MASK),
+                ("RIRQT", 1, RIRQT_MASK),
+                ("IRQEN", 5, 7),
+            ):
                 await self._wr(f"S8_{reg}_{side}", 0, side, reg, value)
                 for other, omask, _ in RESET_REGS:
                     if other in ("WIRQT", "RIRQT", "IRQEN"):
@@ -339,7 +365,9 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         await self._wr("S9_WIRQT", 15, "A", "WIRQT", 1)
         w9 = {}
         for pair, side in ((15, "A"), (15, "B"), (14, "A"), (16, "A")):
-            w9[f"{pair}{side}"] = await self._val(f"S9_RB_{pair}{side}", pair, side, "WIRQT") & 0xFF
+            w9[f"{pair}{side}"] = (
+                await self._val(f"S9_RB_{pair}{side}", pair, side, "WIRQT") & WIRQT_MASK
+            )
         assert w9 == {"15A": 1, "15B": 0, "14A": 0, "16A": 0}, f"WIRQT readbacks {w9}"
         await self._wr("S9_RESTORE", 15, "A", "WIRQT", 0)
         self._mark_step("S9")
@@ -371,7 +399,7 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ATTRIBUTES-OBSERVED",
             f"SMC_ATTRIBUTES=0x{attrs:016x} mailbox_depth[39:36]={attrs >> 36 & 0xF} "
-            f"num_mailboxes[45:40]={attrs >> 40 & 0x3F} (raw, no compare, owner value pending)",
+            f"num_mailboxes[45:40]={attrs >> 40 & 0x3F} (raw, no compare; not specified, measured)",
         )
 
         w0, w1, w2 = 0x3100_0000_0000_0000, 0x3100_0000_0000_0001, 0x3100_0000_0000_0002
@@ -395,7 +423,7 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         await self._val("S12_IN_EF", 31, "B", "ERROR_FLAGS")
         self._mark_step("S12")
         self._log_chk(
-            "CHK-ATTRIBUTES-MATCH-OBSERVED-UNIT",
+            "CHK-PAIR31-DEPTH-TWO",
             f"pair 31: two writes OKAY popped 0x{w0:016x} then 0x{w1:016x} at the inbound "
             f"aperture; third write answered SLVERR (resp {third.resp_code})",
         )
@@ -404,7 +432,9 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             f"set: no IRQS source latched; observed: tb_mailbox_interrupts=0x{first[0]:08x} "
             f"tb_ext_mailbox_interrupts=0x{first[1]:08x} tb_cpu_interrupts[319:288]="
             f"0x{first[2]:08x}; cleared: not applicable; checked_cleared: second sample "
-            f"0x{second[0]:08x}/0x{second[1]:08x}/0x{second[2]:08x}; positive control: pair-31 "
+            f"0x{second[0]:08x}/0x{second[1]:08x}/0x{second[2]:08x}; the zero reset values cannot "
+            "fail on a missing reset under the 2-state build (bench limit); STATUS[0]=1 is the "
+            "discriminating reset leg; positive control: pair-31 "
             f"outbound IRQS[2] with IRQEN[2] set raised tb_ext_mailbox_interrupts=0x"
             f"{vec_on[1]:08x} (in=0x{vec_on[0]:08x} cpu=0x{vec_on[2]:08x}) after {rise} cycles "
             f"and read 0x{vec_off[0]:08x}/0x{vec_off[1]:08x}/0x{vec_off[2]:08x} after the "
@@ -423,7 +453,7 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             "CHK-CG-FIRST-ACCESS-AFTER-IDLE",
             f"idle gap {IDLE_GAP_CYCLES} clk_smc_i cycles (stimulus); write answered OKAY and "
             f"the pop returned 0x{word:016x}; completion latency={self._latency[0]} clk_smc_i "
-            "cycles (measured, owner value pending)",
+            "cycles (not specified, measured)",
         )
 
         word = 0x6000_0000_0000_0006
@@ -431,7 +461,7 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         await self._wr("S14_WIRQT", 6, "A", "WIRQT", 1)
         await self._wr("S14_IRQEN", 6, "A", "IRQEN", 5)
         await self._idle_gap()
-        wirqt = await self._val("S14_WIRQT_RB", 6, "A", "WIRQT") & 0xFF
+        wirqt = await self._val("S14_WIRQT_RB", 6, "A", "WIRQT") & WIRQT_MASK
         irqen = await self._val("S14_IRQEN_RB", 6, "A", "IRQEN") & 0x7
         assert (wirqt, irqen) == (1, 5), f"after idle WIRQT 0x{wirqt:x} IRQEN 0x{irqen:x}"
         await self._pop("S14_POP", 6, "B", word)
@@ -441,7 +471,7 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         self._mark_step("S14")
         self._log_chk(
             "CHK-CG-RETENTION-ACROSS-IDLE",
-            f"after {IDLE_GAP_CYCLES} idle cycles WIRQT[7:0]={wirqt} IRQEN[2:0]=0x{irqen:x} "
+            f"after {IDLE_GAP_CYCLES} idle cycles WIRQT={wirqt} IRQEN[2:0]=0x{irqen:x} "
             f"and the queued word popped unchanged 0x{word:016x}",
         )
 
@@ -514,6 +544,6 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             IDLE_GAP_CYCLES,
             self._latency[0],
             self.accesses,
-            AXI_TIMEOUT_NS,
+            self.cfg.axi_timeout_ns,
             self.accesses,
         )

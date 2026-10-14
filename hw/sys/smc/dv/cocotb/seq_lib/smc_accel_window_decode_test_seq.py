@@ -4,8 +4,8 @@
 
 Specs hw/sys/smc/doc/{memmap,dma,zeroer}.adoc, vendor idma overlay dma_ctrl.rdl, zeroer_ctrl.rdl.
 
-Response and data inside the apertures but outside any register and the effect of writes
-to read-only registers are measured and printed, not asserted.
+Hole and past-extent responses are compared with the generated memory map; the effect of
+writes to read-only registers is measured and printed, not asserted.
 """
 
 from __future__ import annotations
@@ -14,13 +14,25 @@ import cocotb
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import DMA_CG_EN, REGION_SIZE_RESET, ZEROER_CG_EN, smc_addr
+from .smc_addr_map import (
+    DMA_CG_EN,
+    LOCAL_BASE_RESET,
+    REGION_SIZE_RESET,
+    ZEROER_CG_EN,
+    _component_row,
+    generated_decoded_extent,
+    generated_past_extent_resp,
+    generated_window,
+    smc_addr,
+)
 from .smc_base_test_seq import wait_fuse_sense_done
 from .smc_csr_seq_utils import SmcCsrSeq
 
 AXI_RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 AXI_RESP_DECERR = 3
-ERR_DATA = 0xBADCAB1E
+AXI_RESP_CODE = {name: code for code, name in AXI_RESP_NAME.items()}
+_DMA_ROW = _component_row("dma_ctrl")
+ERR_DATA = _DMA_ROW["past_response"]["rdata"]
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
@@ -36,17 +48,31 @@ ZER_DEST = smc_addr("SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR")
 ZER_SIZE = smc_addr("SMC_TOP_ZEROER_CTRL_SIZE_BASE_ADDR")
 ZER_CTRL_STATUS = smc_addr("SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR")
 
-DMA_APERTURE_LAST_WORD = DMA_BASE + 0x1FC
+DMA_APERTURE_END = LOCAL_BASE_RESET + generated_window("dma_ctrl")[1]
+ZEROER_APERTURE_END = LOCAL_BASE_RESET + generated_window("zeroer_ctrl")[1]
+assert LOCAL_BASE_RESET + generated_window("dma_ctrl")[0] == DMA_BASE
+assert LOCAL_BASE_RESET + generated_window("zeroer_ctrl")[0] == ZEROER_BASE
+DMA_APERTURE_LAST_WORD = DMA_APERTURE_END - 3
 BELOW_DMA = DMA_BASE - 4
-ABOVE_ZEROER = ZEROER_BASE + 0x200
+ABOVE_ZEROER = ZEROER_APERTURE_END + 1
 REDUCED_REGION_SIZE = 0x2_0000
 
-DMA_HOLES = (
-    [DMA_BASE + 0x44]
-    + [DMA_BASE + 0x4C + 8 * n for n in range(16)]
-    + list(range(DMA_BASE + 0x138, DMA_BASE + 0x200, 4))
+(_DMA_HOLE_ROW,) = (resp for _, resp in _DMA_ROW["hole_responses"])
+DMA_HOLE_RRESP = AXI_RESP_CODE[_DMA_HOLE_ROW["rresp"]]
+DMA_HOLE_RDATA = _DMA_HOLE_ROW["rdata"]
+DMA_HOLE_BRESP = AXI_RESP_CODE[_DMA_HOLE_ROW["bresp"]]
+DMA_PAST_RRESP, DMA_PAST_BRESP = (
+    AXI_RESP_CODE[name] for name in generated_past_extent_resp("dma_ctrl")
 )
-ZEROER_HOLES = list(range(ZEROER_BASE + 0x18, ZEROER_BASE + 0x200, 8))
+ZEROER_PAST_RRESP, ZEROER_PAST_BRESP = (
+    AXI_RESP_CODE[name] for name in generated_past_extent_resp("zeroer_ctrl")
+)
+
+DMA_HOLES = [DMA_BASE + 0x44] + [DMA_BASE + 0x4C + 8 * n for n in range(16)]
+DMA_PAST = list(range(DMA_BASE + generated_decoded_extent("dma_ctrl"), DMA_APERTURE_END + 1, 4))
+ZEROER_PAST = list(
+    range(ZEROER_BASE + generated_decoded_extent("zeroer_ctrl"), ZEROER_APERTURE_END + 1, 8)
+)
 
 STEP_ORDER = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
 CHK_ORDER = (
@@ -199,11 +225,10 @@ class smc_accel_window_decode_test_seq(SmcCsrSeq):
         first_zer = await self.csr_read("ZER_FIRST_RD", ZER_DEST, expected=zer_pat, length=8)
         last_zer = await self.csr_read("ZER_LAST_RD", ZER_CTRL_STATUS, expected=0, length=8)
         dma_dst = await self.csr_read("DMA_DST_LO_RD", DMA_DST_LO, expected=dma_pat)
-        below_resp, below = await self._read_any("DMA_LAST_WORD", DMA_APERTURE_LAST_WORD, 4)
+        self._expect_decerr_at([DMA_APERTURE_LAST_WORD])
+        below = await self._read_decerr("DMA_LAST_WORD", DMA_APERTURE_LAST_WORD)
         above = await self.csr_read("ZER_BOUNDARY_RD", ZEROER_BASE, expected=zer_pat, length=8)
-        assert not (below_resp == 0 and below in (zer_pat & 0xFFFF_FFFF, zer_pat >> 32)), (
-            f"BASE+0x3_81FF word returned zeroer DEST_ADDR content 0x{below:x}"
-        )
+        assert below == ERR_DATA, f"DMA word past its extent reads 0x{below:x}, not 0x{ERR_DATA:x}"
         await self.csr_write("DMA_CONFIG_RESTORE", DMA_CONFIG, self.saved["DMA_CONFIG"])
         await self.csr_write("DMA_REPS_HI_RESTORE", DMA_REPS_HI, self.saved["DMA_REPS_HI"])
         await self.csr_write("DMA_DST_LO_RESTORE", DMA_DST_LO, self.saved["DMA_DST_LO"])
@@ -213,36 +238,44 @@ class smc_accel_window_decode_test_seq(SmcCsrSeq):
             f"DMA first CONFIG=0x{first_dma:x} and last NUM_REPETITIONS_HI=0x{last_dma:x} and "
             f"zeroer first DEST_ADDR=0x{first_zer:x} and last CTRL_STATUS=0x{last_zer:x} "
             f"answered OKAY with their own content; DST_ADDRESS_LO=0x{dma_dst:x}; "
-            f"BASE+0x3_81FF word (0x{DMA_APERTURE_LAST_WORD:08x}) answered "
-            f"{AXI_RESP_NAME.get(below_resp)}/0x{below:x} and carried no zeroer content; "
+            f"DMA word past its extent (0x{DMA_APERTURE_LAST_WORD:08x}) answered "
+            f"DECERR/0x{below:x}; "
             f"BASE+0x3_8200 (0x{ZEROER_BASE:08x}) read zeroer DEST_ADDR 0x{above:x}"
         )
 
-    async def _sweep(self, addrs: list[int], length: int) -> tuple[list, list]:
+    async def _sweep(
+        self, addrs: list[int], length: int, rresp: int, rdata: int, bresp: int
+    ) -> tuple[list, list]:
         reads, writes = [], []
         for addr in addrs:
             resp, data = await self._read_any(f"HOLE_RD_{addr:08x}", addr, length)
+            assert resp == rresp, f"hole read @ 0x{addr:08x}: resp={resp}, expected {rresp}"
+            assert data & 0xFFFF_FFFF == rdata, (
+                f"hole read @ 0x{addr:08x}: data 0x{data:x}, expected 0x{rdata:x}"
+            )
             reads.append((addr, resp, data))
         for addr in addrs:
             resp = await self._write_any(f"HOLE_WR_{addr:08x}", addr, 0, length)
+            assert resp == bresp, f"hole write @ 0x{addr:08x}: resp={resp}, expected {bresp}"
             writes.append((addr, resp, 0))
         return reads, writes
 
     async def _s4(self) -> str:
-        self._expect_decerr_at(DMA_HOLES + ZEROER_HOLES)
+        self._expect_decerr_at(DMA_PAST + ZEROER_PAST)
         parts = []
-        for window, addrs, length in (
-            ("DMA", DMA_HOLES, 4),
-            ("ZEROER", ZEROER_HOLES, 8),
+        for window, addrs, length, rresp, rdata, bresp in (
+            ("DMA in-extent hole", DMA_HOLES, 4, DMA_HOLE_RRESP, DMA_HOLE_RDATA, DMA_HOLE_BRESP),
+            ("DMA past-extent", DMA_PAST, 4, DMA_PAST_RRESP, ERR_DATA, DMA_PAST_BRESP),
+            ("ZEROER past-extent", ZEROER_PAST, 8, ZEROER_PAST_RRESP, ERR_DATA, ZEROER_PAST_BRESP),
         ):
-            reads, writes = await self._sweep(addrs, length)
+            reads, writes = await self._sweep(addrs, length, rresp, rdata, bresp)
             parts.append(
                 f"{window} {len(addrs)} words reads[{_runs(reads)}] "
                 f"writes[{_runs([(a, r, 0) for a, r, _ in writes])}]"
             )
         self._mark("S4")
         return (
-            "every hole access completed (owner value pending, measured not asserted); "
+            "every hole and past-extent access answered as the generated map gives; "
             + "; ".join(parts)
         )
 
@@ -325,9 +358,8 @@ class smc_accel_window_decode_test_seq(SmcCsrSeq):
             f"(never read; DONE_0 0x{done_before:x}->0x{after[DMA_DONE_0]:x})"
         )
         self._mark("S7")
-        return (
-            "all writes completed (owner value pending, response and effect measured not "
-            "asserted); " + ("; ".join(out))
+        return "all writes completed (response and effect not specified, measured); " + (
+            "; ".join(out)
         )
 
     async def body(self) -> None:

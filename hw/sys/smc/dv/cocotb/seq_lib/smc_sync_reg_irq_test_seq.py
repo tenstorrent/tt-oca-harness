@@ -3,6 +3,9 @@
 """SYNC_REG.sync drives sync_irq_o; only bit 0 is implemented.
 
 Spec sources: reset_unit.rdl SYNC_REG, port_table.adoc SMC Port Declaration (sync_irq_o).
+
+The reset-value read is measured only: the bench zero-initialises flops, so it cannot fail on a
+4-state reset value.
 """
 
 from __future__ import annotations
@@ -70,12 +73,13 @@ class smc_sync_reg_irq_test_seq(SmcCsrSeq):
         rst_rdata = await self.csr_read("SYNC_REG_RESET", SYNC_REG, expected=0)
         rst_irq = self._sample_irq("RESET")
         assert rst_rdata == 0 and rst_irq == 0, (
-            f"after primary reset SYNC_REG=0x{rst_rdata:x} sync_irq_o={rst_irq}, want 0 and 0"
+            f"after bring-up SYNC_REG=0x{rst_rdata:x} sync_irq_o={rst_irq}, want 0 and 0"
         )
         self._mark_step("S2")
         self._log_chk(
             "CHK-SYNC-RESET-0",
-            f"SYNC_REG read 0x{rst_rdata:08X} and sync_irq_o={rst_irq} after primary reset",
+            f"SYNC_REG read 0x{rst_rdata:08X} and sync_irq_o={rst_irq} after the bring-up reset "
+            f"(measured, not proven: the bench zero-initialises flops)",
         )
 
         await self.csr_write("SYNC_REG_SET", SYNC_REG, 0x1)

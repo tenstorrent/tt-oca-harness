@@ -19,7 +19,7 @@ from cocotb.utils import get_sim_time
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_indexed_addr
+from .smc_addr_map import _REPO, _field_mask, reg_reset_word, smc_indexed_addr
 from .smc_base_test_seq import wait_fuse_sense_done
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_reset_seq_base import SmcResetSeqBase
@@ -29,9 +29,12 @@ AXI_TIMEOUT_NS = 50_000
 ACCESS_FLOOR = 82
 ENTRIES = (0, 7, 15)
 LOCK_ENTRY = 12
-RESET_CFG, RESET_START, RESET_END = 0x3000, 0x0, 0x7
+_FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
+RESET_CFG = reg_reset_word(_FILTER_H, "FILTER_CTRL", "FILTER_CONFIG")
+RESET_START = reg_reset_word(_FILTER_H, "FILTER_CTRL", "START_ADDR")
+RESET_END = reg_reset_word(_FILTER_H, "FILTER_CTRL", "END_ADDR")
 E7_START, E7_END, E7_CFG, E7_CFG_RB = 0x0200_1000, 0x0200_1FFF, 0x0105_0013, 0x0105_3013
-LOCKED_CFG = 0x8000_0000_0000_3000
+LOCKED_CFG = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__LOCKED_bm") | RESET_CFG
 SRC3_WRITE, SRC3_READ = 0x3_0000, 0x3_3000
 ALIAS_START, ALIAS_END, ALIAS_ATTRS = 0x0200_2000, 0x0200_3000, 0x8F00_0000_0000_1000
 MMODE_ATTRS = {0: 0x8000_0000_0240_0000, 7: 0x8000_0000_0250_0000}
@@ -114,7 +117,11 @@ class smc_filter_reset_word_test_seq(SmcResetSeqBase, SmcCsrSeq):
     async def _fuse_sense(self, label: str) -> None:
         await wait_fuse_sense_done(FUSE_SENSE_BOUND)
         for sub in ("tb_fuse_sense_done", "tb_fuse_reset_n", "tb_rst_warm_smc_clk_n"):
-            self._timeout_paths.append(f"{label}.{sub}: bound={FUSE_SENSE_BOUND}smc_cycles last=1")
+            sig = getattr(cocotb.top, sub).value
+            assert sig.is_resolvable, f"{sub} is X/Z ({sig})"
+            self._timeout_paths.append(
+                f"{label}.{sub}: bound={FUSE_SENSE_BOUND}smc_cycles last={int(sig)}"
+            )
 
     async def _reset_words(self) -> None:
         lines = {}

@@ -17,7 +17,13 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    GLOBAL_BASE_RESET,
+    LOCAL_BASE_RESET,
+    REGION_SIZE_RESET,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_output_fabric_vip_utils import (
     INBOUND0_END,
@@ -36,13 +42,13 @@ from smc_reg import (  # noqa: E402
     FILTER_CTRL_START_ADDR_REG_DEFAULT,
 )
 
-LOCAL_BASE = 0xC000_0000
-GLOBAL_BASE = 0x4000_0000
+LOCAL_BASE = LOCAL_BASE_RESET
+GLOBAL_BASE = GLOBAL_BASE_RESET
 BASES = (("LOCAL", LOCAL_BASE), ("GLOBAL", GLOBAL_BASE))
 PORTS = ("SEP", "SYS", "JTAG")
-GLOBAL_BASE_WORD = 0x4000_0000
-LOCAL_BASE_WORD = 0xC000_0000
-REGION_SIZE_WORD = 0x0100_0000
+GLOBAL_BASE_WORD = GLOBAL_BASE_RESET
+LOCAL_BASE_WORD = LOCAL_BASE_RESET
+REGION_SIZE_WORD = REGION_SIZE_RESET
 BASE_REGS = (
     ("GLOBAL_BASE", 0x0, GLOBAL_BASE_WORD),
     ("LOCAL_BASE", 0x8, LOCAL_BASE_WORD),
@@ -309,7 +315,7 @@ class smc_inbound_window_port_matrix_test_seq(SmcCsrSeq):
         self.watch_state = f"S4 probe watcher {watch.samples} samples"
         return (
             f"{'; '.join(parts)}; tb_output_axi_awvalid/arvalid never high in "
-            f"{watch.samples} samples (last-word answer is observe-only, owner value pending)"
+            f"{watch.samples} samples (last-word answer is observe-only, not specified, measured)"
         )
 
     async def _s5_cross_base(self) -> tuple[str, str]:

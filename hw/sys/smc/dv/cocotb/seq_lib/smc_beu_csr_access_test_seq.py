@@ -213,6 +213,9 @@ class smc_beu_csr_access_test_seq(SmcDecodeProbeSeq):
             assert member.resp_code in (OKAY, AXI_RESP_DECERR), (
                 f"{name} {member.get_name()}: resp={member.resp_code}"
             )
+        assert members[1].resp_code == OKAY, (
+            f"{name}: REGION_SIZE write answered {members[1].resp_code}"
+        )
         return sampler
 
     @staticmethod

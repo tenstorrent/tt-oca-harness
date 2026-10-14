@@ -15,7 +15,8 @@ class smc_hang_sep_drop_controls_test(smc_base_test):
 
     required_evidence = (
         "CHK-DROPCTL-IRQEN-CLEAR",
-        "CHK-DROPCTL-NOLATCH",
+        "CHK-DROPCTL-GATE-HOLD",
+        "CHK-DROPCTL-ENABLE-CLEAR",
         "CHK-DROPCTL-REENABLE-LOG",
         "CHK-DROPCTL-TOGGLE-GATING",
         "CHK-DROPCTL-TOGGLE-LOG",
@@ -23,7 +24,7 @@ class smc_hang_sep_drop_controls_test(smc_base_test):
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 8
+    min_evidence = 9
 
     auto_protocol_vip = False
 

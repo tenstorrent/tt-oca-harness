@@ -308,7 +308,7 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         )
         return (
             f"{unit} aperture 0x{LOCAL_BASE_RESET + first:08X}..0x{LOCAL_BASE_RESET + last:08X} "
-            f"(generated_window, no past-extent response declared, owner value pending); "
+            f"(generated_window, no past-extent response declared, not specified, measured); "
             f"TOP@0x{top:08x} rresp={rname} rdata=0x{rdata:08X} bresp={bname}"
         )
 

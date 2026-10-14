@@ -186,7 +186,7 @@ class smc_plic_register_test_seq(SmcCsrSeq):
             f"PRIORITY[k] for k={list(PRIORITY_SOURCES)} read back every value 0..7, "
             f"tb_plic_priority_low bit (k-1) = PRIORITY[k] bit 0 agreed for "
             f"k={list(PRIORITY_PROBED)} "
-            f"({len(probe_notes)} samples); reset values open (owner value pending) saved="
+            f"({len(probe_notes)} samples); reset values not specified, measured, saved="
             f"{ {k: hex(v) for k, v in saved_prio.items()} }",
         )
 
@@ -212,7 +212,7 @@ class smc_plic_register_test_seq(SmcCsrSeq):
             f"0x{before[10]:x} after 0x{after[10]:x} unchanged by a write of 0x{ALL_ONES_32:x}; "
             f"tb_plic_pending_low=0x{probe:x} ({width} bits, bit n = source n + 1) equals "
             "(PENDING[0] >> 1) low bits; "
-            "reset and live content open (owner value pending)",
+            "reset and live content not specified, measured",
         )
 
         # S5
@@ -276,7 +276,7 @@ class smc_plic_register_test_seq(SmcCsrSeq):
             "CHK-PLICREG-THRESHOLD",
             f"THRESHOLD of contexts {list(ENABLE_CONTEXTS)} read back each value 0..7 with the "
             f"other three unchanged, tb_plic_threshold0 agreed for context 0 ({th_samples} "
-            f"samples); reset values open (owner value pending) saved="
+            f"samples); reset values not specified, measured, saved="
             f"{ {c: hex(v) for c, v in saved_th.items()} }",
         )
 

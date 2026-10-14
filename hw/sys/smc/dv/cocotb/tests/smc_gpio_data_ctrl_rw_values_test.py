@@ -14,7 +14,7 @@ from seq_lib.smc_gpio_data_ctrl_rw_values_test_seq import (
 )
 from smc_base_test import smc_base_test
 
-# Written out here rather than read from `seq.accesses`.
+# Expected CSR access floor, independent of the sequence count:
 #   1 idle read                                                            1
 #   4 enable_rx_tx values x (write, read) + restore, read                  10
 #   4 interrupt_type values x (write, read) + restore, read                10

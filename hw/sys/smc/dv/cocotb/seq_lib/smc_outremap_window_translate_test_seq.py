@@ -140,6 +140,11 @@ class smc_outremap_window_translate_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done(FUSE_BOUND)
+        self._fuse_last = {}
+        for sub in ("tb_fuse_sense_done", "tb_fuse_reset_n", "tb_rst_warm_smc_clk_n"):
+            sig = getattr(cocotb.top, sub).value
+            assert sig.is_resolvable, f"{sub} is X/Z ({sig})"
+            self._fuse_last[sub] = int(sig)
         watcher = cocotb.start_soon(self._watch_aw())
         responder = self.cfg.sys_out_mem
         assert responder is not None, "SYS_OUT responder not bound"
@@ -266,11 +271,15 @@ class smc_outremap_window_translate_test_seq(SmcCsrSeq):
             responder.write_int(item.addr, _SENTINEL, _WORD)
             responder.write_int(_M_TARGET[0] + _GROUP_BASE + _WORD * k, _SENTINEL, _WORD)
         writes, _ = output_responder_counts()
+        aw0 = len(self._aw)
         group = SmcSysAxiGroupItem("valid_toggle_group", items)
         task = cocotb.start_soon(
             _OneShot(group, "valid_toggle_os").start(self.env.jtag_axi_agent.sequencer)
         )
         await self.csr_write("M0_VALID_CLEAR", _attrs("MMODE", 0), _M_TARGET[0], length=_WORD)
+        done, _ = output_responder_counts()
+        assert len(self._aw) - aw0 >= 1, "no group write accepted when the valid clear landed"
+        assert done < writes + _GROUP, f"all {_GROUP} group writes complete before the valid clear"
         await task
         self.jtag_accesses += _GROUP
         await self._wait_writes(writes + _GROUP, "VALID_TOGGLE")
@@ -289,7 +298,7 @@ class smc_outremap_window_translate_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-OUTREMAP-VALID-TOGGLE",
             f"{_GROUP} writes all OKAY; landing in issue order {landing} (R remapped, I identity); "
-            "owner value pending",
+            "not specified, measured",
         )
 
         # S9: restore every programmed entry to its reset word.
@@ -307,9 +316,13 @@ class smc_outremap_window_translate_test_seq(SmcCsrSeq):
 
     def _finish(self) -> None:
         waits = (
-            ("tb_fuse_sense_done", f"{FUSE_BOUND}clk_smc_i", "asserted"),
-            ("tb_fuse_reset_n", f"{FUSE_BOUND}clk_smc_i", "released"),
-            ("tb_rst_warm_smc_clk_n", f"{FUSE_BOUND}clk_smc_i", "released"),
+            ("tb_fuse_sense_done", f"{FUSE_BOUND}clk_smc_i", self._fuse_last["tb_fuse_sense_done"]),
+            ("tb_fuse_reset_n", f"{FUSE_BOUND}clk_smc_i", self._fuse_last["tb_fuse_reset_n"]),
+            (
+                "tb_rst_warm_smc_clk_n",
+                f"{FUSE_BOUND}clk_smc_i",
+                self._fuse_last["tb_rst_warm_smc_clk_n"],
+            ),
             ("sep_in_axi_access", f"{AXI_TIMEOUT_NS}ns", f"{self.accesses} accesses done"),
             ("jtag_axi_access", f"{AXI_TIMEOUT_NS}ns", f"{self.jtag_accesses} accesses done"),
             ("output_write_count_poll", f"{COUNT_POLL_BOUND}clk_smc_i", self._count_last),

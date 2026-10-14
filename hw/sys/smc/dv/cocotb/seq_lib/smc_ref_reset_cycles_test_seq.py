@@ -159,7 +159,7 @@ class smc_ref_reset_cycles_test_seq(SmcResetSeqBase):
             "CHK-REF-RESET-RELEASE-CYCLES",
             f"N_rel={n_rel} clk_ref_i cycles from the rst_cold_ni release to "
             f"rst_primary_ref_clk_no=1 at ref {self.cfg.ref_clk_period_ns} ns "
-            f"(minimum {RELEASE_MIN_CYCLES}; owner value pending); "
+            f"(minimum {RELEASE_MIN_CYCLES}; not specified, measured); "
             f"rst_primary_ref_clk_no reads {still} after the chain release",
         )
 
@@ -221,7 +221,7 @@ class smc_ref_reset_cycles_test_seq(SmcResetSeqBase):
             f"a {GLITCH_SAMPLES}-cycle low pulse left rst_primary_ref_clk_no high at all "
             f"{glitch_samples} samples; a {ASSERT_SAMPLES}-cycle low pulse drove it to 0 "
             f"{n_assert} clk_ref_i cycles after the first low sample "
-            f"at ref {self.cfg.ref_clk_period_ns} ns (owner value pending)",
+            f"at ref {self.cfg.ref_clk_period_ns} ns (not specified, measured)",
         )
         await self._chain_released("chain_release_after_32")
         self._stamp("CHAIN_RELEASED")

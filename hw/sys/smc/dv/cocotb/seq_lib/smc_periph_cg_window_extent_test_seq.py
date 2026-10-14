@@ -183,7 +183,7 @@ class smc_periph_cg_window_extent_test_seq(SmcCsrSeq):
                 f"registered {reg} @ 0x{addr:08x} and unbacked @ 0x{unbacked:08x} answered "
                 f"SLVERR with 0x{GATED_RDATA:08X}; window-end @ 0x{win_end:08x} answered "
                 f"{RESP_NAMES.get(end_resp, end_resp)} data 0x{end_data:08x} "
-                f"(extent owner value pending)"
+                f"(extent not specified, measured)"
             )
         self._stamp("S2")
         for line in extent_lines:
@@ -224,7 +224,8 @@ class smc_periph_cg_window_extent_test_seq(SmcCsrSeq):
             delivery_lines.append(
                 f"{name} {wreg} @ 0x{waddr:08x}: write 0x{pattern:08x} with CLOCK_GATE_CONTROL="
                 f"0x{gated:x} answered {RESP_NAMES[resp]}; word before 0x{before:08x}, after "
-                f"enable cleared 0x{after:08x}, unchanged={before == after} (owner value pending)"
+                f"enable cleared 0x{after:08x}, unchanged={before == after} "
+                f"(not specified, measured)"
             )
         self._stamp("S4")
         for line in delivery_lines:
@@ -244,7 +245,7 @@ class smc_periph_cg_window_extent_test_seq(SmcCsrSeq):
             "CHK-AVS-CLOCK-PRINT",
             f"{AVS_CLK_PROBE} rises over {AVS_COUNT_CYCLES} clk_smc_i cycles: avs_cg_en clear "
             f"{rises_clear}, avs_cg_en set {rises_set} (level {level_set} at the end of the set "
-            f"window; owner value pending)",
+            f"window; not specified, measured)",
         )
 
         # S6: restore.

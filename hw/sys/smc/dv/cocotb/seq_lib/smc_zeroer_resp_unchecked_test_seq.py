@@ -158,7 +158,8 @@ class smc_zeroer_resp_unchecked_test_seq(output_fabric_pass_all_cfg_seq):
                     f"of the start write; the job never issued a burst"
                 )
             for _ in range(_STATUS_CLEAR_CYCLES):
-                if await self._status() == 0:
+                status_first = await self._status()
+                if status_first == 0:
                     break
                 await ClockCycles(cocotb.top.clk_smc_i, 1)
             else:
@@ -167,7 +168,6 @@ class smc_zeroer_resp_unchecked_test_seq(output_fabric_pass_all_cfg_seq):
                     f"AW handshakes {len(wire.aw)}, interrupt pulses {wire.intp_rises}, "
                     f"responses injected {plan}"
                 )
-            status_first = 0
             status_word = await self.csr_read(
                 f"ZEROER_CTRL_STATUS_SECOND_{label}", ZEROER_CTRL_STATUS, length=8
             )
@@ -241,6 +241,10 @@ class smc_zeroer_resp_unchecked_test_seq(output_fabric_pass_all_cfg_seq):
         assert self._base_bursts >= 2, f"baseline issued {self._base_bursts} burst(s)"
         assert base["intp"] == 1, f"baseline raised {base['intp']} interrupt pulse(s), expected 1"
         assert base["status"] == 0 and base["status2"] == 0, "baseline STATUS did not read 0"
+        assert base["slverr_seen"] == 0 and base["decerr_seen"] == 0, (
+            f"baseline B channel carried {base['slverr_seen']} SLVERR and "
+            f"{base['decerr_seen']} DECERR beat(s)"
+        )
         assert base["other_bits"] == ZEROER_CTRL_STATUS_START, (
             f"baseline CTRL_STATUS reads 0x{base['other_bits']:x} outside STATUS"
         )

@@ -355,7 +355,7 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._chk(
             "CHK-EMAP-SHADOW-OUT-SENSED",
             "shadow_regs read as one %d-bit integer, word n at bits [32n+31:32n], image %s with "
-            "LOCKS 0x%x: %s (port semantics owner value pending)",
+            "LOCKS 0x%x: %s (port semantics not specified, measured)",
             32 * EFUSE_MAP_WORDS,
             image.path.name,
             image.locks,

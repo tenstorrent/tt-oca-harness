@@ -41,7 +41,7 @@ _WORD = 8
 _FUSE_BOUND = 200_000
 _AXI_TIMEOUT_NS = 50_000
 _SEP_FLOOR = 90
-_JTAG_COUNT = 23
+_JTAG_COUNT = 25
 _ENTRIES = (1, 2, 3)
 
 
@@ -350,6 +350,10 @@ class smc_outfilt_attr_match_test_seq(SmcCsrSeq):
             await self.csr_read(f"{label}_ATTRS_RESET", attrs, expected=_REMAP_RESET, length=_WORD)
             await self.csr_write(f"{label}_ATTRS", attrs, value, _WORD)
             await self.csr_read(f"{label}_ATTRS_RB", attrs, expected=value, length=_WORD)
+        control = [
+            await self._probe(_MMODE_WINDOW, 0, 1, False, land=_MMODE_LAND),
+            await self._probe(_XVISOR_WINDOW, 0, 1, False, land=_XVISOR_LAND),
+        ]
         for entry, span in zip(_ENTRIES, _WILD):
             await self._program(f"S7_E{entry}", entry, span, DENY_B1)
         wild = [
@@ -362,8 +366,9 @@ class smc_outfilt_attr_match_test_seq(SmcCsrSeq):
         self._mark_step("S7")
         self._log_chk(
             "CHK-OUT-SRCID-WILDCARD",
-            f"src_id 0 deny entries 1..3 over direct, M-mode window and Xvisor window: "
-            f"{' '.join(wild)}",
+            f"M-mode and Xvisor window writes land with the deny entries disabled: "
+            f"{' '.join(control)}; src_id 0 deny entries 1..3 over direct, M-mode window and "
+            f"Xvisor window: {' '.join(wild)}",
         )
 
         # S8

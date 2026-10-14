@@ -7,8 +7,9 @@ Spec: clk_rst.adoc (Power-Good and Cold Reset), port_table.adoc (SMC Port Declar
 ``rst_cold_ni`` and ``rst_cool_ni`` each pass a 32-sample de-glitcher on ``clk_ref_i``. A pulse
 of exactly 31 low samples is therefore ignored: a 400-sample (cold) or 100-sample (cool) hold
 monitor keeps the outputs released at every sample. The pulse length is measured by counting
-``clk_ref_i`` rising edges between the pin drives. A held cool pulse then asserts the primary
-resets, so the monitored outputs are known to move in this run.
+``clk_ref_i`` rising edges between the pin drives. A held cool pulse and a held cold pulse then
+assert the primary resets (and the stable cold reset), so the monitored outputs are known to move
+in this run.
 """
 
 from __future__ import annotations
@@ -53,7 +54,7 @@ class smc_reset_pin_deglitch_test_seq(SmcResetSeqBase):
     """31-sample pulses on the cold and cool pins are ignored by the de-glitchers."""
 
     ASSERT_BOUND_REF_CYCLES = 200
-    RELEASE_BOUND_REF_CYCLES = 700
+    RELEASE_BOUND_REF_CYCLES = 1000
     STEPS = ("S1", "S2", "S3")
     CHECKERS = ("CHK-COLD-31-IGNORED", "CHK-COOL-31-IGNORED")
 
@@ -126,14 +127,14 @@ class smc_reset_pin_deglitch_test_seq(SmcResetSeqBase):
             )
         )
         self.cold_pulse_samples = await self._pulse(dut.rst_cold_ni, ref_log)
-        await monitor
-        self.cold_checked = COLD_WINDOW_SAMPLES
+        self.cold_checked = (await monitor).hold_samples
         self._mark_step("S2", "rst_cold_ni 31-sample pulse, 400-sample hold")
         self._log_chk(
             "CHK-COLD-31-IGNORED",
             f"rst_cold_ni low for {self.cold_pulse_samples} clk_ref_i samples (expected "
-            f"{PULSE_SAMPLES}); rst_cold_stable_ref_clk_no, rst_primary_ref_clk_no, "
-            f"rst_primary_smc_clk_no read 1 at all {COLD_WINDOW_SAMPLES} clk_ref_i samples "
+            f"{PULSE_SAMPLES}); powergood_stable_o, rst_cold_stable_ref_clk_no, "
+            f"rst_primary_ref_clk_no, rst_primary_smc_clk_no read 1 at all {COLD_WINDOW_SAMPLES} "
+            f"clk_ref_i samples "
             f"({self.cold_checked} samples checked)",
         )
 
@@ -148,8 +149,7 @@ class smc_reset_pin_deglitch_test_seq(SmcResetSeqBase):
             )
         )
         self.cool_pulse_samples = await self._pulse(dut.rst_cool_ni, ref_log)
-        await monitor
-        self.cool_checked = COOL_WINDOW_SAMPLES
+        self.cool_checked = (await monitor).hold_samples
         self._mark_step("S3", "rst_cool_ni 31-sample pulse, 100-sample hold")
         self._log_chk(
             "CHK-COOL-31-IGNORED",
@@ -158,7 +158,8 @@ class smc_reset_pin_deglitch_test_seq(SmcResetSeqBase):
             f"all {COOL_WINDOW_SAMPLES} clk_ref_i samples",
         )
 
-        # Positive control: a held cool pin asserts the primary resets.
+        # Positive controls: a held cool pin asserts the primary resets, and a held cold pin
+        # asserts the stable cold reset and the primary resets.
         await self._send(SmcResetOp.COOL_RST_LO)
         asserted = await self._wait_state(
             "COOL_ASSERT_CONTROL",
@@ -174,6 +175,21 @@ class smc_reset_pin_deglitch_test_seq(SmcResetSeqBase):
             asserted.wait_ref_cycles,
         )
 
+        await self._send(SmcResetOp.COLD_RST_LO)
+        cold_asserted = await self._wait_state(
+            "COLD_ASSERT_CONTROL",
+            expect_rst_cold_stable_ref_clk_n=0,
+            expect_rst_primary_ref_clk_n=0,
+            expect_rst_primary_smc_clk_n=0,
+        )
+        await self._send(SmcResetOp.COLD_RST_HI)
+        await self._wait_released("COLD_RELEASE_CONTROL")
+        cocotb.log.info(
+            "SETUP-POSITIVE-CONTROL: a held rst_cold_ni (>=32 samples) asserted the stable cold "
+            "reset and the primary resets within %s ref cycles and released",
+            cold_asserted.wait_ref_cycles,
+        )
+
         self._finish_fence()
 
     def _finish_fence(self) -> None:
@@ -187,7 +203,7 @@ class smc_reset_pin_deglitch_test_seq(SmcResetSeqBase):
         for (chk, t_chk), step in zip(self._chk_marks, ("S2", "S3")):
             assert t_chk >= step_time[step], f"{chk} printed at {t_chk} before {step}"
         cocotb.log.info(
-            "CHK-NONVAC: ordered fence S1<S2<S3<PASS (positive control after S3); checker lines "
+            "CHK-NONVAC: ordered fence S1<S2<S3<PASS (positive controls after S3); checker lines "
             "%s; stamps %s",
             ",".join(chk_ids),
             ",".join(f"{s}={t}" for s, t in self._step_stamps),

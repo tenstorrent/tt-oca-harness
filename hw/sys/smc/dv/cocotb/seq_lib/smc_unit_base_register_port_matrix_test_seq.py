@@ -71,18 +71,18 @@ BASES = (("LOCAL", LOCAL_BASE_RESET), ("GLOBAL", GLOBAL_BASE_RESET))
 PORTS = ("SEP_IN", "SYS_IN", "JTAG")
 _NO_SEP_PORTS = ("SYS_IN", "JTAG")
 
-# Reset words pinned by the functional list.
-VERSION_LO_PIN = 0x0001_00A0
-GLOBAL_BASE_PIN = 0x4000_0000
-LOCAL_BASE_PIN = 0xC000_0000
-REGION_SIZE_PIN = 0x0100_0000
-THRESHOLD_PIN = 0x1000
-assert CHIP_CONFIG_VERSION_LO_REG_DEFAULT == VERSION_LO_PIN
-assert (GLOBAL_BASE_RESET, LOCAL_BASE_RESET) == (GLOBAL_BASE_PIN, LOCAL_BASE_PIN)
-assert SMC_BASE_CONFIG_GLOBAL_BASE_REG_DEFAULT == GLOBAL_BASE_PIN
-assert SMC_BASE_CONFIG_LOCAL_BASE_REG_DEFAULT == LOCAL_BASE_PIN
-assert SMC_BASE_CONFIG_REGION_SIZE_REG_DEFAULT == REGION_SIZE_PIN
-assert SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_REG_DEFAULT == THRESHOLD_PIN
+# Reset words stated by smc_base_config.rdl and chip_config.rdl.
+VERSION_LO_RESET_WORD = 0x0001_00A0
+GLOBAL_BASE_RESET_WORD = 0x4000_0000
+LOCAL_BASE_RESET_WORD = 0xC000_0000
+REGION_SIZE_RESET_WORD = 0x0100_0000
+THRESHOLD_RESET_WORD = 0x1000
+assert CHIP_CONFIG_VERSION_LO_REG_DEFAULT == VERSION_LO_RESET_WORD
+assert (GLOBAL_BASE_RESET, LOCAL_BASE_RESET) == (GLOBAL_BASE_RESET_WORD, LOCAL_BASE_RESET_WORD)
+assert SMC_BASE_CONFIG_GLOBAL_BASE_REG_DEFAULT == GLOBAL_BASE_RESET_WORD
+assert SMC_BASE_CONFIG_LOCAL_BASE_REG_DEFAULT == LOCAL_BASE_RESET_WORD
+assert SMC_BASE_CONFIG_REGION_SIZE_REG_DEFAULT == REGION_SIZE_RESET_WORD
+assert SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_REG_DEFAULT == THRESHOLD_RESET_WORD
 
 WDT_CTRLS = tuple(
     (f"CORE{n}_WDT_CTRL", smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{n}_WDT_CTRL_BASE_ADDR"))
@@ -325,7 +325,7 @@ class smc_unit_base_register_port_matrix_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-RESET-UNIT-BASE-PORTS",
             f"{line} (generated address offset 0x{SS_WARM_RESET_N - LOCAL_BASE_RESET:X} from "
-            f"the base; reset readback not in the pinned spec)",
+            f"the base; the readback is not stated in a document)",
         )
 
         # S5: first register of each spare sub-block.
@@ -334,7 +334,7 @@ class smc_unit_base_register_port_matrix_test_seq(SmcCsrSeq):
             await self._reg_line(
                 "SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, 4, SCRATCH_SCRATCH_REG_DEFAULT
             ),
-            await self._reg_line("VERSION_LO", VERSION_LO, 4, VERSION_LO_PIN),
+            await self._reg_line("VERSION_LO", VERSION_LO, 4, VERSION_LO_RESET_WORD),
             await self._reg_line(
                 "NDMRESET_REQUEST", NDMRESET_REQUEST, 4, NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT
             ),
@@ -348,9 +348,9 @@ class smc_unit_base_register_port_matrix_test_seq(SmcCsrSeq):
 
         # S6: base configuration registers.
         base_cfg = [
-            await self._reg_line("GLOBAL_BASE", GLOBAL_BASE, WORD, GLOBAL_BASE_PIN),
-            await self._reg_line("LOCAL_BASE", LOCAL_BASE, WORD, LOCAL_BASE_PIN),
-            await self._reg_line("REGION_SIZE", REGION_SIZE, WORD, REGION_SIZE_PIN),
+            await self._reg_line("GLOBAL_BASE", GLOBAL_BASE, WORD, GLOBAL_BASE_RESET_WORD),
+            await self._reg_line("LOCAL_BASE", LOCAL_BASE, WORD, LOCAL_BASE_RESET_WORD),
+            await self._reg_line("REGION_SIZE", REGION_SIZE, WORD, REGION_SIZE_RESET_WORD),
         ]
         self._mark_step("S6")
         self._log_chk("CHK-BASE-CONFIG-RESETS-PORTS", "; ".join(base_cfg) + " all OKAY")
@@ -360,7 +360,7 @@ class smc_unit_base_register_port_matrix_test_seq(SmcCsrSeq):
         for label, addr, offset in HANG_DET_CTRLS + HANG_DET_THRESHOLDS:
             assert addr - LOCAL_BASE_RESET == 0x1_0000 + offset, f"{label} offset off the spec"
             want = (
-                THRESHOLD_PIN
+                THRESHOLD_RESET_WORD
                 if label.endswith("THRESHOLD")
                 else SMC_BASE_CONFIG_HANG_DET_CTRL_REG_DEFAULT
             )
@@ -370,7 +370,7 @@ class smc_unit_base_register_port_matrix_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-HANG-DET-RESETS",
             f"{'; '.join(hang)}; controls read 0x{SMC_BASE_CONFIG_HANG_DET_CTRL_REG_DEFAULT:X}, "
-            f"thresholds 0x{THRESHOLD_PIN:X}, SEP_IN at LOCAL_BASE, all OKAY",
+            f"thresholds 0x{THRESHOLD_RESET_WORD:X}, SEP_IN at LOCAL_BASE, all OKAY",
         )
 
         # S8: DFX registers; STATUS is observe-only.
@@ -385,8 +385,8 @@ class smc_unit_base_register_port_matrix_test_seq(SmcCsrSeq):
         status_words = {v for _, _, v in status}
         self._log_chk(
             "CHK-DFX-REGS-PORTS",
-            f"STATUS@0x{DFX_STATUS:08X} observe-only (owner value pending) "
-            f"[{self._values(status)}] vs FL reset 0x{DFX_CTRL_STATUS_STATUS_REG_DEFAULT:X} match="
+            f"STATUS@0x{DFX_STATUS:08X} observe-only (not specified, measured) "
+            f"[{self._values(status)}] vs RDL reset 0x{DFX_CTRL_STATUS_STATUS_REG_DEFAULT:X} match="
             f"{int(status_words == {DFX_CTRL_STATUS_STATUS_REG_DEFAULT})} (tie-off word "
             f"0x{DFX_STATUS_IDLE:X}); {ctrl}; {mux}; all OKAY",
         )
@@ -472,7 +472,7 @@ class smc_unit_base_register_port_matrix_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-CPU-CTRL-FIRST-REG-PORTS",
             f"RESET_VECTOR_0@0x{RESET_VECTOR_0:08X} RDL reset "
-            f"0x{CPU_CTRL_RESET_VECTOR_REG_DEFAULT:X} (owner value pending): "
+            f"0x{CPU_CTRL_RESET_VECTOR_REG_DEFAULT:X} (not specified, measured): "
             f"SEP_IN.L=0x{pre_cpu:X} [{self._values(cpu)}] all OKAY",
         )
 

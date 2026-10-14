@@ -15,7 +15,12 @@ import cocotb
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    _component_row,
+    generated_past_extent_resp,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_image_pattern_test_seq import EFUSE_MAP_WORDS, EfuseImage
 
@@ -23,9 +28,9 @@ _MASK32 = 0xFFFF_FFFF
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11")
 _SENSE_BOUND_CYCLES = 200_000
 _AXI_OKAY = 0
-_AXI_SLVERR = 2
-_AXI_DECERR = 3
-_PAST_DATA = 0xBADCAB1E
+_AXI_CODES = {"OKAY": 0, "EXOKAY": 1, "SLVERR": 2, "DECERR": 3}
+_PAST_RRESP, _PAST_BRESP = generated_past_extent_resp("smc_efuse_map")
+_PAST_DATA = _component_row("smc_efuse_map")["past_response"]["rdata"]
 _PAST_OFFSETS = (0x400, 0xFFC)
 _CHK_STEP = {
     "CHK-EMAP-LAYOUT-JPI-I2C": "S2",
@@ -282,7 +287,7 @@ class smc_efuse_map_layout_decode_test_seq(SmcCsrSeq):
         for off in _PAST_OFFSETS:
             self._calls += 1
             rdata = await self.csr_read_err_signature(
-                f"S9_PAST_{off:x}", self.base + off, resp=_AXI_DECERR
+                f"S9_PAST_{off:x}", self.base + off, resp=_AXI_CODES[_PAST_RRESP]
             )
             assert rdata == _PAST_DATA, f"S9: 0x{off:x} rdata 0x{rdata:x}"
             past.append(rdata)
@@ -290,10 +295,11 @@ class smc_efuse_map_layout_decode_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-EMAP-PAST-READ",
             "0x3FC read marker word 255 0x%08x with OKAY; 0x400 and 0xFFC each answered "
-            "resp=DECERR(%d) with rdata 0x%08x / 0x%08x (smc.rdl smc_efuse_map "
-            "ocah_past_extent_resp; range pending owner answer)",
+            "resp=%s(%d) with rdata 0x%08x / 0x%08x (smc.rdl smc_efuse_map "
+            "ocah_past_extent_resp)",
             edge,
-            _AXI_DECERR,
+            _PAST_RRESP,
+            _AXI_CODES[_PAST_RRESP],
             past[0],
             past[1],
         )
@@ -309,12 +315,12 @@ class smc_efuse_map_layout_decode_test_seq(SmcCsrSeq):
         self._done("S10")
         self._chk(
             "CHK-EMAP-PAST-WRITE",
-            "0x400 bresp=%d 0xFFC bresp=%d; RDL smc.rdl:137 declares SLVERR (%d); "
-            "DECERR encodes as %d; the bresp values show which one was returned",
+            "0x400 bresp=%d 0xFFC bresp=%d; smc.rdl smc_efuse_map ocah_past_extent_resp declares "
+            "%s (%d); the bresp values show which one was returned",
             resps[0],
             resps[1],
-            _AXI_SLVERR,
-            _AXI_DECERR,
+            _PAST_BRESP,
+            _AXI_CODES[_PAST_BRESP],
         )
 
         # S11

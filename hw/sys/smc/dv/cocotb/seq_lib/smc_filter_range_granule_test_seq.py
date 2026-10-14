@@ -11,7 +11,7 @@ import cocotb
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import _REPO, _field_mask, smc_indexed_addr
+from .smc_addr_map import _REPO, _field_mask, reg_reset_word, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 _FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
@@ -20,8 +20,8 @@ DBW_BP = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp")
 ALLOW_BURST = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm")
 DBW_RESET = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_reset")
 FC_RESET = DBW_RESET << DBW_BP
-START_RESET = 0
-END_RESET = 7
+START_RESET = reg_reset_word(_FILTER_H, "FILTER_CTRL", "START_ADDR")
+END_RESET = reg_reset_word(_FILTER_H, "FILTER_CTRL", "END_ADDR")
 FUSE_WAIT_BOUND_SMC_CYCLES = 200_000
 AXI_TIMEOUT_NS = 50_000
 ACCESS_COUNT = 94
@@ -156,7 +156,7 @@ class smc_filter_range_granule_test_seq(SmcCsrSeq):
             "CHK-DBW-READ-ONLY",
             f"data_bus_width reads {DBW_RESET} at reset and after writes of 0 and 0x{DBW_BM:X}: "
             + "; ".join(dbw_text)
-            + " (BRESP printed, owner value pending)",
+            + " (BRESP printed, not specified, measured)",
         )
 
         # S3: granule rounding with allow_burst 0 and 1.
@@ -216,7 +216,9 @@ class smc_filter_range_granule_test_seq(SmcCsrSeq):
                 f"start=0x{s1:X} end=0x{e1:X}"
             )
         self._mark("OBSERVE_LEG")
-        self._log_chk("CHK-GRANULE-WRITEBACK-OBSERVE", "; ".join(obs) + " (owner value pending)")
+        self._log_chk(
+            "CHK-GRANULE-WRITEBACK-OBSERVE", "; ".join(obs) + " (not specified, measured)"
+        )
 
         # S6: restore.
         for bank in _BANKS:

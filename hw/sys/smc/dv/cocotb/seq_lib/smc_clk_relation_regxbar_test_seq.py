@@ -13,7 +13,7 @@ eight same-ID reads outstanding.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import Event, First, RisingEdge, Timer
+from cocotb.triggers import ClockCycles, Event, First, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
@@ -32,6 +32,7 @@ OKAY = 0
 OUTSTANDING_READS = 8
 READ_AXI_ID = 0x21
 LANE_BYTES = 8
+QUIET_CYCLES = 256
 
 CELL_STEPS = {
     "default": ("S1", "S2", "S3"),
@@ -241,9 +242,10 @@ class smc_clk_relation_regxbar_test_seq(SmcCsrSeq):
         read_start = int(get_sim_time("ns"))
         self.group_state = f"{len(reads)} same-ID reads issued at {read_start} ns"
         await self._issue_group("clk_relation_outstanding_reads", reads)
+        elapsed = int(get_sim_time("ns")) - start
+        await ClockCycles(cocotb.top.clk_smc_i, QUIET_CYCLES)
         stop.set()
         await sampler
-        elapsed = int(get_sim_time("ns")) - start
         self.accesses += len(writes) + len(reads)
         self.group_state = f"10 responses collected in {elapsed} ns"
         assert elapsed <= ACCESS_TIMEOUT_NS, (
@@ -362,7 +364,7 @@ class smc_clk_relation_regxbar_test_seq(SmcCsrSeq):
                 f"cell {self.cell} periods {periods}: 2 writes issued together, both B "
                 f"responses taken, then {OUTSTANDING_READS} alternating reads under one AXI id "
                 f"issued together; {detail}; all OKAY within {elapsed} ns (bound "
-                f"{ACCESS_TIMEOUT_NS} ns, drain time printed, owner value pending); "
+                f"{ACCESS_TIMEOUT_NS} ns, drain time printed, not specified, measured); "
                 f"each read returned "
                 f"0x{THR_PATTERN & THR_MASK:05x} or 0x{out_word:08x} in issue order",
             )

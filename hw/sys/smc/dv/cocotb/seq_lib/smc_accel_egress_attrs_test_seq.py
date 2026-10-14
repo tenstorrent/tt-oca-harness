@@ -127,14 +127,14 @@ class smc_accel_egress_attrs_test_seq(output_fabric_pass_all_cfg_seq):
     def __init__(self, name: str = "smc_accel_egress_attrs_test_seq") -> None:
         super().__init__(name)
         self.steps: list[tuple[str, int]] = []
-        self.chk_steps: list[tuple[str, str]] = []
+        self.chk_steps: list[tuple[str, str, int]] = []
 
     def _step(self, step: str) -> None:
         self.steps.append((step, int(get_sim_time("ps"))))
 
     def _chk(self, chk: str, step: str, text: str, *args) -> None:
         cocotb.log.info("%s: " + text, chk, *args)
-        self.chk_steps.append((chk, step))
+        self.chk_steps.append((chk, step, len(self.steps)))
 
     async def _poll_status(self, want: int, cycles: int, what: str) -> None:
         for _ in range(cycles):
@@ -256,7 +256,7 @@ class smc_accel_egress_attrs_test_seq(output_fabric_pass_all_cfg_seq):
             "CHK-ACCEL-EGRESS-CACHE",
             "S3",
             "bit 1 set on all %d DMA AR and %d DMA AW; ARCACHE values %s, AWCACHE values %s "
-            "(alias remap at reset; encoding pending owner value, alias remap values not driven)",
+            "(alias remap at reset; the encoding is not specified, alias remap values not driven)",
             len(kept["dma_ar"]),
             len(kept["dma_aw"]),
             [f"0x{v:x}" for v in encodings["dma_ar"]],
@@ -273,11 +273,16 @@ class smc_accel_egress_attrs_test_seq(output_fabric_pass_all_cfg_seq):
                     f"{sorted(f'0x{v:x}' for v in values)}"
                 )
                 summary.append(f"{name}.{member}=0x{values.pop():x}")
+        users = {req["user"] for name in windows for req in kept[name]}
+        assert len(users) == 1, (
+            f"DMA and zeroer requests carry different AxUSER: {sorted(f'0x{u:x}' for u in users)}"
+        )
         self._step("S4")
         self._chk(
             "CHK-ACCEL-EGRESS-PROT-USER",
             "S4",
-            "each member is constant over the run (values pending owner value): %s",
+            "each member is constant over the run and AxUSER is the same on all three kinds "
+            "(values not specified, measured): %s",
             " ".join(summary),
         )
         self._fence()
@@ -287,14 +292,13 @@ class smc_accel_egress_attrs_test_seq(output_fabric_pass_all_cfg_seq):
         assert ids == list(_STEP_IDS), f"step order {ids}, expected {list(_STEP_IDS)}"
         stamps = [t for _, t in self.steps]
         assert all(b > a for a, b in zip(stamps, stamps[1:])), f"stamps not increasing: {stamps}"
-        assert self.chk_steps == list(_CHK_ORDER), (
-            f"checker lines {self.chk_steps}, expected {list(_CHK_ORDER)}"
-        )
-        stamp_of = dict(self.steps)
-        assert all(stamp_of[step] >= 0 for _, step in self.chk_steps)
+        printed = [(c, s) for c, s, _ in self.chk_steps]
+        assert printed == list(_CHK_ORDER), f"checker lines {printed}, expected {list(_CHK_ORDER)}"
+        for chk, step, n in self.chk_steps:
+            assert n >= _STEP_IDS.index(step) + 1, f"{chk} printed before {step} was stamped"
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
             "S1<S2<S3<S4 step stamps strictly increasing, each checker line after its compare",
-            [c for c, _ in self.chk_steps],
+            [c for c, _, _ in self.chk_steps],
             stamps,
         )

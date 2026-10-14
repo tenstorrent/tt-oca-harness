@@ -9,8 +9,8 @@ CTRL.ENABLETARGET = 1" and are `woclr`. A bench controller drives one START,
 address 0x2C, one data byte and STOP on the instance 0 pads, first with the
 target disabled (the flags stay clear) and then enabled (both set). The flags
 read set on repeated reads, and each clears only on its own written one. Which
-disable the record survives is owner value pending: the values after `CTRL = 0` are logged
-and never compared.
+disable the record survives: the specification does not state the value;
+the values after `CTRL = 0` are logged and never compared.
 """
 
 from __future__ import annotations
@@ -223,7 +223,7 @@ class smc_i2c_target_event_flags_test_seq(SmcCsrSeq):
             f"after CTRL=0 TARGET_EVENTS=0x{ev0:08x} TX_STRETCH={int(bool(st0 & TX_STRETCH))}; "
             f"{RETAIN_WAIT_CYCLES} clk_smc_i cycles later TARGET_EVENTS=0x{ev1:08x} "
             f"TX_STRETCH={int(bool(st1 & TX_STRETCH))}; after both written ones "
-            f"TARGET_EVENTS=0x{ev2:08x}; observed, none compared (owner value pending)",
+            f"TARGET_EVENTS=0x{ev2:08x}; observed, none compared (not specified, measured)",
         )
 
     async def body(self) -> None:

@@ -35,7 +35,7 @@ HOLD_CYCLES = 16
 IDLE_CYCLES = 64
 PULSE_QUIET_CYCLES = 32
 
-STEP_ORDER = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
+STEP_ORDER = ("BASELINE", "LOWER", "UPPER", "HOLD", "IDLE", "EDGE_PULSE", "RESTORE")
 CHK_ORDER = (
     "CHK-OR-LOWER",
     "CHK-OR-UPPER",
@@ -155,7 +155,7 @@ class smc_gpio_irq_or_test_seq(SmcCsrSeq):
             f"baseline: tb_peripheral_interrupts[29:28]=0x{(per >> 28) & 3:x} want 0"
         )
         assert raw == 0, f"baseline: tb_gpio_interrupt=0x{raw:x} want 0"
-        self._mark("S1")
+        self._mark("BASELINE")
 
     async def _level_one(self, wrap: int, mine: int, other: int) -> str:
         """Assert one wrap, require its half and not the other, then release."""
@@ -193,12 +193,12 @@ class smc_gpio_irq_or_test_seq(SmcCsrSeq):
 
     async def _s2(self) -> str:
         out = [await self._level_one(w, LOWER_LINE, UPPER_LINE) for w in LOWER]
-        self._mark("S2")
+        self._mark("LOWER")
         return "; ".join(out)
 
     async def _s3(self) -> str:
         out = [await self._level_one(w, UPPER_LINE, LOWER_LINE) for w in UPPER]
-        self._mark("S3")
+        self._mark("UPPER")
         return "; ".join(out)
 
     async def _s4(self) -> str:
@@ -247,7 +247,7 @@ class smc_gpio_irq_or_test_seq(SmcCsrSeq):
         assert self._lines(dut) == (0, 0), f"lines {self._lines(dut)} after all cleared"
         for wrap in WRAPS:
             await self._program(wrap, _TYPE_LEVEL_HIGH, False)
-        self._mark("S4")
+        self._mark("HOLD")
         return ", ".join(trace) + f"; hold window {HOLD_CYCLES} cycles"
 
     async def _s5(self) -> str:
@@ -273,7 +273,7 @@ class smc_gpio_irq_or_test_seq(SmcCsrSeq):
             assert raw == 0, f"idle cycle {i}: tb_gpio_interrupt=0x{raw:x}"
             assert (per >> 28) & 3 == 0, f"idle cycle {i}: [29:28]=0x{(per >> 28) & 3:x}"
             await ClockCycles(dut.clk_smc_i, 1)
-        self._mark("S5")
+        self._mark("IDLE")
         return (
             f"interrupt_enable clear on wraps {WRAPS}, pads low, [29:28]=0 and raw vector 0 for "
             f"{IDLE_CYCLES} cycles after positive controls on wraps 4 and 60 set and released"
@@ -339,7 +339,7 @@ class smc_gpio_irq_or_test_seq(SmcCsrSeq):
                 f"wrap{wrap} type2 pulse: [{line}] pulsed once, width {lw} clk_smc_i cycles, "
                 f"raw bit width {rw} clk_smc_i cycles, equal"
             )
-        self._mark("S6")
+        self._mark("EDGE_PULSE")
         return "; ".join(out) + f"; line 0 for {PULSE_QUIET_CYCLES} cycles after each"
 
     async def _s7(self) -> None:
@@ -351,15 +351,15 @@ class smc_gpio_irq_or_test_seq(SmcCsrSeq):
             await self.csr_write(f"GPIO{wrap}_RESTORE", _data_ctrl(wrap), 0)
             word = await self.csr_read(f"GPIO{wrap}_RESTORE_RB", _data_ctrl(wrap))
             assert word & mask == 0, f"wrap {wrap}: DATA_CTRL 0x{word:08x} after restore"
-        self._mark("S7")
+        self._mark("RESTORE")
 
     async def body(self) -> None:
         await self._s1()
-        self._chk("S2", "CHK-OR-LOWER", await self._text2())
-        self._chk("S3", "CHK-OR-UPPER", await self._text3())
-        self._chk("S4", "CHK-OR-HOLD-UNTIL-ALL-CLEAR", await self._s4())
-        self._chk("S5", "CHK-OR-IDLE", await self._s5())
-        self._chk("S6", "CHK-OR-EDGE-PULSE", await self._s6())
+        self._chk("LOWER", "CHK-OR-LOWER", await self._text2())
+        self._chk("UPPER", "CHK-OR-UPPER", await self._text3())
+        self._chk("HOLD", "CHK-OR-HOLD-UNTIL-ALL-CLEAR", await self._s4())
+        self._chk("IDLE", "CHK-OR-IDLE", await self._s5())
+        self._chk("EDGE_PULSE", "CHK-OR-EDGE-PULSE", await self._s6())
         await self._s7()
         self.assert_all_reachable(self.accesses, "GPIO_IRQ_OR")
         self._nonvac()
@@ -376,7 +376,9 @@ class smc_gpio_irq_or_test_seq(SmcCsrSeq):
         assert all(b > a for a, b in zip(stamps, stamps[1:])), f"stamps not increasing {stamps}"
         assert tuple(c for _, c in self.chk_steps) == CHK_ORDER, f"checker lines {self.chk_steps}"
         step_ids = [s for s, _ in self.chk_steps]
-        assert step_ids == ["S2", "S3", "S4", "S5", "S6"], f"checker steps {step_ids}"
+        assert step_ids == ["LOWER", "UPPER", "HOLD", "IDLE", "EDGE_PULSE"], (
+            f"checker steps {step_ids}"
+        )
         cocotb.log.info(
             "CHK-NONVAC: ordered fence BASELINE < LOWER < UPPER < HOLD < IDLE < EDGE_PULSE < "
             "RESTORE; checker lines %s; stamps %s",

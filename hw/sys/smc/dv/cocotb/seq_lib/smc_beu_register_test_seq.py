@@ -132,7 +132,7 @@ class smc_beu_register_test_seq(SmcCsrSeq):
             "CHK-BEUREG-RESET",
             f"BEU 0..{BEU_COUNT - 1} ENABLE read 0x{ENABLE_RESET:016x}; PLIC_ENABLE, LOCAL_ENABLE, "
             "ACCRUED_ENABLE and CAUSE read 0 (the 0x0 reads are reset-equal under 2-state "
-            "Verilator); PHYS_ADDR has no reset value (owner value pending) read "
+            "Verilator); PHYS_ADDR has no reset value (not specified, measured) read "
             f"{[hex(p) for p in phys_saved]}",
         )
 
@@ -172,7 +172,7 @@ class smc_beu_register_test_seq(SmcCsrSeq):
             "CHK-BEUREG-BITS",
             f"defined bits {list(DEFINED_BITS)} of ENABLE, PLIC_ENABLE and LOCAL_ENABLE read back "
             f"as written alone on each of {BEU_COUNT} BEUs ({bit_cells} cells) with the other "
-            "three instances unchanged; reserved bits readbacks (owner value pending) "
+            "three instances unchanged; reserved bits readbacks (not specified, measured) "
             f"{ {r: sorted(hex(v) for v in s) for r, s in reserved_seen.items()} }",
         )
 
@@ -207,7 +207,7 @@ class smc_beu_register_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-BEUREG-CAUSE",
             f"CAUSE read back each written value {list(CAUSE_VALUES)} on every BEU and 0 after the "
-            f"re-arm write; the readback of {CAUSE_UNDEFINED} (owner value pending) per BEU is "
+            f"re-arm write; the readback of {CAUSE_UNDEFINED} (not specified, measured) per BEU is "
             f"{[hex(u) for u in undefined]}",
         )
 

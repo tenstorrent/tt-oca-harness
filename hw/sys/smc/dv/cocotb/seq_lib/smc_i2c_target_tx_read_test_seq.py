@@ -8,8 +8,8 @@ INTR_STATE.TX_STRETCH, FIFO_CTRL.TXRST, STATUS.TXEMPTY, TARGET_FIFO_STATUS.TXLVL
 Software loads TXDATA on I2C0 and the bench controller on the I2C0 pads reads from the
 target at 0x23 (and 0x35 for pair 1). A monitor counts the clk_smc_i cycles in which SCL is
 low while the bench has released it, which only the DUT can cause. The mid-read empty FIFO,
-FIFO_CTRL.TXRST during a hold and the repeated-READ clear sweep are owner value pending:
-they are measured and logged, not compared.
+FIFO_CTRL.TXRST during a hold and the repeated-READ clear sweep: the specification does not
+state the values; they are measured and logged, not compared.
 """
 
 from __future__ import annotations
@@ -37,6 +37,7 @@ from .smc_i2c_field_masks import (
     I2C_TARGET_FIFO_STATUS_TXLVL_BM,
     I2C_WRAP_CTRL_TARGET,
 )
+from .smc_i2c_master_target_test_seq import _i2c_u32
 from .smc_i2c_protocol_vip import SmcI2cMasterVip
 from .smc_i2c_slot_utils import drive_to_slot, release_bus
 from .smc_i2c_target_acq_stretch_test_seq import SclStretchMonitor
@@ -53,7 +54,11 @@ I2C0 = 0
 ADDR0 = 0x23
 ADDR1 = 0x35
 VIP_SPEED = 2_000_000
-EVENTS_BITS_2_0 = 0x7
+TX_PENDING_BUS_TIMEOUT_ARBITRATION_LOST = (
+    I2C_TARGET_EVENTS_TX_PENDING
+    | _i2c_u32("I2C__TARGET_EVENTS__BUS_TIMEOUT_bm")
+    | _i2c_u32("I2C__TARGET_EVENTS__ARBITRATION_LOST_bm")
+)
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 _REGS = {
@@ -338,7 +343,9 @@ class smc_i2c_target_tx_read_test_seq(SmcCsrSeq):
         )
         await self.csr_write("I2C0_CTRL_AUTO", R["ctrl"], CTRL_AUTO)
         events = await self.csr_read("S1_EVENTS", R["events"])
-        assert events & EVENTS_BITS_2_0 == 0, f"S1: TARGET_EVENTS bits 2:0 read 0x{events:08x}"
+        assert events & TX_PENDING_BUS_TIMEOUT_ARBITRATION_LOST == 0, (
+            f"S1: TARGET_EVENTS bits 2:0 read 0x{events:08x}"
+        )
         status = await self.csr_read("S1_STATUS", R["status"])
         assert status & I2C_STATUS_ACQEMPTY, f"S1: STATUS.ACQEMPTY clear (0x{status:08x})"
         assert status & I2C_STATUS_TXEMPTY, f"S1: STATUS.TXEMPTY clear (0x{status:08x})"
@@ -376,7 +383,7 @@ class smc_i2c_target_tx_read_test_seq(SmcCsrSeq):
         assert rd.data == [0x10, 0x11], f"S3: read {[hex(b) for b in rd.data]}"
         empty, level = await self._fifo_state("S3_AFTER_READ")
         assert empty == 0, f"S3: STATUS.TXEMPTY=1 with six bytes loaded and two read (lvl={level})"
-        assert level >= 1, f"S3: TXLVL={level} with six bytes loaded and two read"
+        assert 1 <= level <= 4, f"S3: TXLVL={level} with six bytes loaded and two read"
         await self.csr_write("S3_TXRST", R["fifo_ctrl"], I2C_FIFO_CTRL_TXRST)
         empty_after, level_after = await self._fifo_state("S3_AFTER_TXRST")
         assert empty_after == 1, f"S3: STATUS.TXEMPTY={empty_after} after TXRST"
@@ -385,7 +392,7 @@ class smc_i2c_target_tx_read_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-I2C-TGT-TX-READ-RESIDUE",
             f"bytes read {bytes(rd.data).hex()} == 1011; after the read TXEMPTY={empty} "
-            f"TXLVL={level} (>=1, residue logged); after TXRST TXEMPTY={empty_after} "
+            f"TXLVL={level} (1 to 4, residue logged); after TXRST TXEMPTY={empty_after} "
             f"TXLVL={level_after}",
         )
 
@@ -437,7 +444,9 @@ class smc_i2c_target_tx_read_test_seq(SmcCsrSeq):
             f"{self.monitor.runs[runs2:]}; read started near {int(get_sim_time('ns'))} ns end"
         )
         events = await self.csr_read("S5_EVENTS", R["events"])
-        assert events & EVENTS_BITS_2_0 == 0, f"S5: TARGET_EVENTS=0x{events:08x} in automatic mode"
+        assert events & TX_PENDING_BUS_TIMEOUT_ARBITRATION_LOST == 0, (
+            f"S5: TARGET_EVENTS=0x{events:08x} in automatic mode"
+        )
         self._stamp("S5")
         self._chk(
             "CHK-I2C-TGT-TX-AUTO-STRETCH",
@@ -472,7 +481,7 @@ class smc_i2c_target_tx_read_test_seq(SmcCsrSeq):
             "CHK-I2C-TGT-TX-AUTO-MIDREAD-LOG",
             f"hold samples after the first byte={held}; bytes read={bytes(rd.data).hex()}; "
             f"read complete before the second TXDATA write={complete_before}; ack={rd.ack}; "
-            f"no compare (owner value pending)",
+            f"no compare (not specified, measured)",
         )
 
     async def _s7_txrst_hold(self) -> None:
@@ -492,7 +501,8 @@ class smc_i2c_target_tx_read_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-I2C-TGT-TX-TXRST-STRETCH-LOG",
             f"TXRST written after {held} hold samples; read complete=1 ack={rd.ack} "
-            f"bytes={bytes(rd.data).hex()}; final bus {levels}; no compare (owner value pending)",
+            f"bytes={bytes(rd.data).hex()}; final bus {levels}; "
+            f"no compare (not specified, measured)",
         )
         self._chk(
             "CHK-I2C-TGT-TX-TXRST-RECOVER",
@@ -600,7 +610,7 @@ class smc_i2c_target_tx_read_test_seq(SmcCsrSeq):
         self._stamp("S10")
         self._chk(
             "CHK-I2C-TGT-TX-SW-RACE-LOG",
-            "; ".join(rows) + "; no same-cycle claim, no compare (owner value pending)",
+            "; ".join(rows) + "; no same-cycle claim, no compare (not specified, measured)",
         )
 
     # --------------------------------------------------------------- tokens --

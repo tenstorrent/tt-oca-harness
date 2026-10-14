@@ -8,9 +8,10 @@
 frontdoor writes OVRD words on instance 0 and the bench samples ``tb_i2c0_scl``,
 ``tb_i2c0_sda`` and the pull probes ``tb_i2cN_scl_dut_low`` / ``_sda_dut_low`` as
 levels. The pad pull-up model, the VAL cadence and reset and the per-instance pad
-history are owner value pending, so the pad, settle and VAL
-legs print measured values and compare nothing. Instance isolation compares the
-per-instance pull probes only.
+history: the specification does not state the values, so the pad, settle and VAL
+legs print measured values and compare nothing on the pad levels. The pull probes are
+compared with the OVRD value in the pull and release legs and read 0 with TXOVRDEN=0.
+Instance isolation compares the per-instance pull probes only.
 """
 
 from __future__ import annotations
@@ -136,6 +137,10 @@ class smc_i2c_pad_override_test_seq(SmcCsrSeq):
         for word in words:
             await self.csr_write(f"OVRD_DISABLED_{word:x}", _ovrd(0), word)
             rows = await self._sample_cycles(DISABLED_SAMPLES)
+            assert all(r[2:] == (0, 0) for r in rows), (
+                f"OVRD {_word_name(word)} with TXOVRDEN=0: a pull probe is set "
+                f"({' '.join(_fmt(r) for r in rows)})"
+            )
             parts.append(f"{_word_name(word)}:{' '.join(_fmt(r) for r in rows)}")
         self._mark("S2")
         self._chk(
@@ -149,9 +154,13 @@ class smc_i2c_pad_override_test_seq(SmcCsrSeq):
         await self.csr_write(f"OVRD_{label}", _ovrd(0), word)
         settle, held = await self._settle(label)
         exp = (int(bool(word & SCLVAL)), int(bool(word & SDAVAL)))
+        assert held[2:] == (1 - exp[0], 1 - exp[1]), (
+            f"OVRD {_word_name(word)}: pull probes scl_dut_low,sda_dut_low={held[2]},{held[3]}, "
+            f"want {1 - exp[0]},{1 - exp[1]} (a VAL of 0 pulls the line low)"
+        )
         return (
             f"{_word_name(word)}: settle_cycle={settle} held scl,sda,scl_dut_low,sda_dut_low="
-            f"{_fmt(held)} (RDL line level scl,sda={exp[0]}{exp[1]}, not compared)"
+            f"{_fmt(held)} (RDL line level scl,sda={exp[0]}{exp[1]}; pull probes compared)"
         )
 
     async def _s3(self) -> None:

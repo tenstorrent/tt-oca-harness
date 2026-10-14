@@ -4,6 +4,10 @@
 
 Spec sources: hw/sys/smc/regs/blocks/scratch/scratch.rdl,
 hw/sys/smc/regs/blocks/misc_wrap/misc_wrap.rdl.
+
+The reset-value read is measured only: the bench zero-initialises flops, so it cannot fail on a
+4-state reset value. Each bank writes its own pattern (0xA5000000 + 16*bank + n), so a write that
+lands in the other bank at the same index changes that register's readback.
 """
 
 from __future__ import annotations
@@ -20,7 +24,7 @@ BANK_BASES = (("cold", SCRATCH_COLD_0), ("cold_warm", SCRATCH_COLD_WARM_0))
 REGS_PER_BANK = 8
 PATTERN_BASE = 0xA5000000
 MASK32 = 0xFFFFFFFF
-ACCESS_FLOOR = 16 + 2 * 16 * 17
+ACCESS_EXACT = 16 + 2 * 16 * 17 + 2 * 16
 STEP_ORDER = ("S1", "S2", "S3")
 CHK_ORDER = ("CHK-SCRATCH-RESET-0", "CHK-SCRATCH-INDEPENDENT-RW")
 CHK_STEP = {"CHK-SCRATCH-RESET-0": "S2", "CHK-SCRATCH-INDEPENDENT-RW": "S3"}
@@ -67,9 +71,9 @@ class smc_scratch_banks_test_seq(SmcCsrSeq):
 
     async def _write_sweep(self, tag: str, pattern) -> tuple[int, int]:
         writes = reads = 0
-        for bank, _base in BANK_BASES:
+        for b, (bank, _base) in enumerate(BANK_BASES):
             for n in range(REGS_PER_BANK):
-                value = pattern(n)
+                value = pattern(b, n)
                 await self.csr_write(f"{tag}_{bank}_{n}", self._addr(bank, n), value)
                 self._shadow[(bank, n)] = value
                 writes += 1
@@ -90,20 +94,24 @@ class smc_scratch_banks_test_seq(SmcCsrSeq):
         self._emit_chk(
             "CHK-SCRATCH-RESET-0",
             f"scratch_cold[0..7]={cold} scratch_cold_warm[0..7]={warm} "
-            "all 0x00000000 after the bring-up cold reset",
+            "all 0x00000000 after the bring-up cold reset (measured, not proven: the bench "
+            "zero-initialises flops)",
         )
 
         writes = reads = 0
-        w, r = await self._write_sweep("TRUE", lambda n: PATTERN_BASE + n)
+        w, r = await self._write_sweep("TRUE", lambda b, n: PATTERN_BASE + (b << 4) + n)
         writes += w
         reads += r
-        w, r = await self._write_sweep("COMPL", lambda n: (~(PATTERN_BASE + n)) & MASK32)
+        w, r = await self._write_sweep(
+            "COMPL", lambda b, n: (~(PATTERN_BASE + (b << 4) + n)) & MASK32
+        )
         writes += w
         reads += r
         self._mark_step("S3")
         self._emit_chk(
             "CHK-SCRATCH-INDEPENDENT-RW",
-            f"{writes // 2} writes of 0xA5000000+n then {writes // 2} writes of ~(0xA5000000+n); "
+            f"{writes // 2} writes of 0xA5000000 + 16*bank + n then {writes // 2} writes of "
+            f"~(0xA5000000 + 16*bank + n); "
             f"after each write all 16 registers read their shadow ({reads} reads, {reads} "
             f"compares); final scratch_cold={self._bank_values('cold')} "
             f"scratch_cold_warm={self._bank_values('cold_warm')}",

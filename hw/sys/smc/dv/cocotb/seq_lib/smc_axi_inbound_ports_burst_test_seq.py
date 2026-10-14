@@ -13,7 +13,7 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_addr_map import _REPO, reg_reset_word, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG
 
@@ -34,9 +34,10 @@ INBOUND0_CONFIG = smc_indexed_addr(_INB.format("FILTER_CONFIG"), 0)
 OUTBOUND1_CONFIG = smc_indexed_addr(_OUTB.format("FILTER_CONFIG"), 1)
 OUTBOUND1_START = smc_indexed_addr(_OUTB.format("START_ADDR"), 1)
 INBOUND_PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
-INBOUND_CONFIG_RESET = 0x3000
-INBOUND_START_RESET = 0x0
-INBOUND_END_RESET = 0x7
+_FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
+INBOUND_CONFIG_RESET = reg_reset_word(_FILTER_H, "FILTER_CTRL", "FILTER_CONFIG")
+INBOUND_START_RESET = reg_reset_word(_FILTER_H, "FILTER_CTRL", "START_ADDR")
+INBOUND_END_RESET = reg_reset_word(_FILTER_H, "FILTER_CTRL", "END_ADDR")
 
 CHIP_CONFIG = tuple(
     (name, smc_addr(f"SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_{name}_BASE_ADDR"))

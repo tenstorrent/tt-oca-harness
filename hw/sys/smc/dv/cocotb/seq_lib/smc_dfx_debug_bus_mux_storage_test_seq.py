@@ -98,19 +98,16 @@ class smc_dfx_debug_bus_mux_storage_test_seq(SmcCsrSeq):
         await self.csr_write(name, DEBUG_BUS_MUX, data, length=8)
         self._last_access = f"{name}@0x{DEBUG_BUS_MUX:08x} wdata=0x{data:016x} written"
 
-    async def _write_expect(self, name: str, data: int, ignore: int = 0) -> int:
-        """Write `data`, read back and compare every bit outside `ignore`; return the readback."""
+    async def _write_expect(self, name: str, data: int) -> int:
+        """Write `data`, read back and compare all 64 bits; return the readback."""
         await self._write(name, data)
         got = await self._read(f"{name}_RB")
-        assert (got ^ data) & ~ignore & FULL_MASK == 0, (
-            f"{name}: wrote 0x{data:016x}, read 0x{got:016x} ({self._last_access})"
-        )
+        assert got == data, f"{name}: wrote 0x{data:016x}, read 0x{got:016x} ({self._last_access})"
         return got
 
     async def body(self) -> None:
         dut = cocotb.top
         axi_bound = self.cfg.axi_timeout_ns
-        rsvd_mask = RSVD[0]
 
         # S1
         await self.wait_fuse_sense_done(FUSE_SENSE_MAX_CYCLES)
@@ -142,16 +139,12 @@ class smc_dfx_debug_bus_mux_storage_test_seq(SmcCsrSeq):
         for ident in ASSIGNED_IDS:
             await self._write_expect(f"ID_{ident}", _put(ID, ident))
             assigned.append(ident)
-        unassigned = []
         for ident in UNASSIGNED_IDS:
-            got = await self._write_expect(f"ID_{ident}", _put(ID, ident), ignore=ID[0])
-            unassigned.append(f"{ident}->Dbmid=0x{(got & ID[0]) >> ID[1]:x}")
+            await self._write_expect(f"ID_{ident}", _put(ID, ident))
         self._stamp("S3")
         self._chk(
             "CHK-DFX-MUX-ID",
-            f"Dbmid {assigned} read back exactly; unassigned readbacks printed "
-            f"({','.join(unassigned)}), expectation is not stated in the document and is not "
-            "asserted",
+            f"Dbmid {assigned} and unassigned values {list(UNASSIGNED_IDS)} read back exactly",
         )
 
         # S4
@@ -172,28 +165,22 @@ class smc_dfx_debug_bus_mux_storage_test_seq(SmcCsrSeq):
         for idx in range(4, 8):
             await self._write_expect(f"SEG{idx}_63", _put(SEGS[idx], 63))
             seg47.append(idx)
-        got = await self._write_expect("RSVD158_63", _put(RSVD, 63), ignore=rsvd_mask)
-        rsvd_rb = (got & rsvd_mask) >> RSVD[1]
+        await self._write_expect("RSVD158_63", _put(RSVD, 63))
         self._stamp("S5")
         self._chk(
             "CHK-DFX-MUX-SEL47",
             f"Muxselseg{seg47} each read back 63 with no other field changing; Rsvd158 wrote "
-            f"0x3f read 0x{rsvd_rb:x} (readback of the reserved field is not stated in the "
-            "document, not asserted)",
+            "0x3f and read back exactly",
         )
 
         # S6
-        rsvd_walk = []
         for bit in range(WIDTH):
-            got = await self._write_expect(f"WALK1_BIT{bit}", 1 << bit, ignore=rsvd_mask)
-            if rsvd_mask >> bit & 1:
-                rsvd_walk.append(f"{bit}:0x{got & rsvd_mask:x}")
+            await self._write_expect(f"WALK1_BIT{bit}", 1 << bit)
         self._stamp("S6")
         self._chk(
             "CHK-DFX-MUX-WALK1",
-            f"a one at each of the {WIDTH} bit positions read back as exactly that bit outside "
-            f"Rsvd158; Rsvd158 positions printed {','.join(rsvd_walk)} (not stated in the "
-            "document, not asserted)",
+            f"a one at each of the {WIDTH} bit positions, Rsvd158 included, read back as exactly "
+            "that bit",
         )
 
         # S7

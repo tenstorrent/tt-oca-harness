@@ -22,7 +22,12 @@ from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 from ocah_axi_vip import AxiTimingProfile
 
 from ._one_shot import _OneShot
-from .smc_addr_map import _REPO, reg_field_encode, smc_indexed_addr
+from .smc_addr_map import (
+    _REPO,
+    DMA_CONFIG_ENABLED_ND,
+    reg_field_encode,
+    smc_indexed_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_output_fabric_vip_utils import (
     BLOCKED_WRITE_HOLD_CYCLES,
@@ -97,7 +102,6 @@ _DMA_NAMES = (
     "NUM_REPETITIONS_HI",
 )  # fmt: skip
 _DMA = {name: smc_reg_addr(f"DMA_CTRL_{name}_REG_ADDR") for name in _DMA_NAMES}
-_DMA_CONFIG_ENABLED_ND = 1 << 10
 
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
 FENCE_TERMS = (
@@ -229,8 +233,8 @@ class smc_outfilt_deny_concurrency_test_seq(SmcCsrSeq):
             f"denied JTAG read at 0x{addr:x} answered resp {item.resp_code}, want {RESP_DECERR}"
         )
         got = self._r_beats[r0:]
-        assert got and all(r == RESP_DECERR for r in got), (
-            f"denied JTAG read at 0x{addr:x} R beat responses {got}, want all {RESP_DECERR}"
+        assert len(got) == beats and all(r == RESP_DECERR for r in got), (
+            f"denied JTAG read at 0x{addr:x} R beat responses {got}, want {beats} x {RESP_DECERR}"
         )
         await self._hold_reads(f"read 0x{addr:x}", reads0, arvalid0)
         return (
@@ -263,7 +267,7 @@ class smc_outfilt_deny_concurrency_test_seq(SmcCsrSeq):
     async def _dma_with_denied_write(self) -> tuple[str, int]:
         """Submit one DMA descriptor and issue a denied JTAG write before polling DONE."""
         baseline = await self.csr_read("DMA_DONE_BASE", _DMA["DONE_0"])
-        await self.csr_write("DMA_CONFIG", _DMA["CONFIG"], _DMA_CONFIG_ENABLED_ND)
+        await self.csr_write("DMA_CONFIG", _DMA["CONFIG"], DMA_CONFIG_ENABLED_ND)
         for name, value in (
             ("DST_ADDRESS_LO", _DST & 0xFFFF_FFFF), ("DST_ADDRESS_HI", _DST >> 32),
             ("SRC_ADDRESS_LO", _SRC & 0xFFFF_FFFF), ("SRC_ADDRESS_HI", _SRC >> 32),
@@ -275,7 +279,13 @@ class smc_outfilt_deny_concurrency_test_seq(SmcCsrSeq):
             await self.csr_write(f"DMA_{name}", _DMA[name], value)
         item = self._write_item("jtag_deny_dma_0x8800", _DMA_DENIED, 0xC0DE_0000_0000_8800)
         await self.csr_read("DMA_NEXT_ID", _DMA["NEXT_ID_0"])
-        jtag = cocotb.start_soon(self._jtag(item))
+        answered: list[int] = []
+
+        async def _denied_write() -> None:
+            await self._jtag(item)
+            answered.append(int(get_sim_time("ps")))
+
+        jtag = cocotb.start_soon(_denied_write())
         polls = 0
         for polls in range(1, _DMA_POLLS + 1):
             done = await self.csr_read("DMA_DONE_POLL", _DMA["DONE_0"])
@@ -292,7 +302,11 @@ class smc_outfilt_deny_concurrency_test_seq(SmcCsrSeq):
             )
         done_at = int(get_sim_time("ps"))
         await jtag
-        jtag_at = int(get_sim_time("ps"))
+        jtag_at = answered[0]
+        assert jtag_at <= done_at, (
+            f"denied JTAG write answered at {jtag_at} ps, after the DMA completion seen at "
+            f"{done_at} ps"
+        )
         assert item.resp_code == RESP_DECERR, (
             f"denied JTAG write at 0x{_DMA_DENIED:x} answered resp {item.resp_code}"
         )

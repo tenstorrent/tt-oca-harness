@@ -21,8 +21,9 @@ from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 from ocah_axi_vip import AxiTimingProfile
 
 from ._one_shot import _OneShot
-from .smc_addr_map import _REPO, smc_addr, smc_indexed_addr
+from .smc_addr_map import _REPO, _field_mask, reg_reset_word, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_rdl_regmap import rdl_contract
 
 _SMC_REG_PY = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -36,10 +37,13 @@ _PERMIT_NS1 = 0x0000_0000_0100_0113
 _DENY_B1 = 0x0000_0000_0100_0010
 _DISABLED_B1 = 0x0000_0000_0100_0003
 _NO_WRITE_B1 = 0x0000_0000_0100_0011
-_READBACK_BITS = 0x3000
-_RESET_CFG = 0x3000
-_RESET_START = 0
-_RESET_END = 7
+_FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
+_ENTRY_ENABLED = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm")
+_RESET_CFG = reg_reset_word(_FILTER_H, "FILTER_CTRL", "FILTER_CONFIG")
+_RESET_START = reg_reset_word(_FILTER_H, "FILTER_CTRL", "START_ADDR")
+_RESET_END = reg_reset_word(_FILTER_H, "FILTER_CTRL", "END_ADDR")
+_READBACK_BITS = _RESET_CFG
+_SCRATCH_RESET = rdl_contract("smc_misc_wrap/scratch_cold/SCRATCH[0]").reset_word
 _WIN_START = 0xC000_0000
 _WIN_END = 0xC0FF_FFFF
 _OTHER_START = 0x0200_0000
@@ -354,7 +358,7 @@ class smc_infilt_default_liveness_test_seq(SmcCsrSeq):
         # S1: entries 1..4 start disabled; scratch registers and page words are seeded.
         for entry in (1, 2, 3, 4):
             cfg = await self.csr_read(f"IB{entry}_QUIET", _reg("FILTER_CONFIG", entry), length=8)
-            assert not cfg & 0x10, f"inbound entry {entry} enabled at reset: 0x{cfg:x}"
+            assert not cfg & _ENTRY_ENABLED, f"inbound entry {entry} enabled at reset: 0x{cfg:x}"
         for i in range(1, 7):
             await self.csr_write(f"SEED_SCR{i}", _scratch(i), _scratch_seed(i))
         for k in range(4):
@@ -575,8 +579,9 @@ class smc_infilt_default_liveness_test_seq(SmcCsrSeq):
             self._run_group("sys_in_reconfig_group", writes, _AXI_BOUND_NS, timing=_HOLD)
         )
         await self.csr_write("S8_IB2_NO_WRITE", _reg("FILTER_CONFIG", 2), _NO_WRITE_B1, length=8)
-        in_flight = _RECONFIG_WRITES - self._watch.b_since_mark
         aw_at_cfg = self._watch.aw_since_mark
+        b_at_cfg = self._watch.b_since_mark
+        in_flight = aw_at_cfg - b_at_cfg
         await self._join("S8 reconfig group", task, _AXI_BOUND_NS * _RECONFIG_WRITES)
         await self.csr_read(
             "S8_IB2_NO_WRITE_RB",
@@ -584,9 +589,9 @@ class smc_infilt_default_liveness_test_seq(SmcCsrSeq):
             expected=_NO_WRITE_B1 | _READBACK_BITS,
             length=8,
         )
-        assert in_flight >= 1, (
+        assert aw_at_cfg >= 1 and in_flight >= 1, (
             f"S8 no SYS_IN write was outstanding when the SEP_IN write completed "
-            f"(AW {aw_at_cfg}, B {self._watch.b_since_mark})"
+            f"(AW {aw_at_cfg}, B {b_at_cfg})"
         )
         resp = [w.resp_code for w in writes]
         assert all(r in (0, _DECERR) for r in resp), f"S8 responses {resp}"
@@ -609,8 +614,8 @@ class smc_infilt_default_liveness_test_seq(SmcCsrSeq):
             f"all 12 writes completed with responses {resp} (3 = DECERR, 0 = OKAY); each OKAY "
             f"changed its word and each DECERR left it; {flips} OKAY-to-DECERR transition(s) in "
             f"issue order; {in_flight} write(s) still outstanding and AW {aw_at_cfg} accepted "
-            "when the SEP_IN reconfiguration completed; open question: the point from "
-            "which the new entry governs is not stated)",
+            "when the SEP_IN reconfiguration completed; the point from which the new entry "
+            "governs is not stated",
         )
 
         # S9: every programmed entry and scratch register returns to its reset word.
@@ -625,7 +630,7 @@ class smc_infilt_default_liveness_test_seq(SmcCsrSeq):
                 f"IB{entry}_END_RESTORE", _reg("END_ADDR", entry), _RESET_END, length=8
             )
         for i in range(1, 7):
-            await self.csr_restore(f"SCR{i}", _scratch(i), 0)
+            await self.csr_restore(f"SCR{i}", _scratch(i), _SCRATCH_RESET)
         for entry in (1, 2, 3, 4):
             await self.csr_read(
                 f"IB{entry}_CFG_FINAL", _reg("FILTER_CONFIG", entry), _RESET_CFG, length=8
@@ -659,7 +664,7 @@ class smc_infilt_default_liveness_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
             " < ".join(_TERMS),
-            ",".join(c.replace("LIFECYCLE", "LIFE-CYCLE") for c, _ in self._chk_marks),
+            ",".join(c for c, _ in self._chk_marks),
             ",".join(f"{s}={t}" for s, t in self._term_stamps),
         )
         cocotb.log.info("CHK-TIMEOUT-PATHS: %s", " | ".join(self._waits))

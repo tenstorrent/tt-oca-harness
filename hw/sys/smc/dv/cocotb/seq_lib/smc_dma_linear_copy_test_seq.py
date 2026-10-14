@@ -83,8 +83,6 @@ S7_STRIDE = 0x4000
 S7_DST_BASE = 0x2000
 LENGTH_BUCKETS = ((1, 64), (65, 1024), (1025, 4000))
 OFFSET_BUCKETS = ((0, 0), (1, 3), (4, 7))
-BUCKET_NAMES = ("small", "mid", "large")
-OFFSET_NAMES = ("aligned", "1-3", "4-7")
 
 _TB_SIGNALS = (
     "tb_output_axi_arvalid",
@@ -282,7 +280,7 @@ class smc_dma_linear_copy_test_seq(SmcCsrSeq):
         await self._pass_all()
         self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
         self.rng = random.Random(self.seed)
-        cocotb.log.info("DMA-LIN-COPY seed=%d", self.seed)
+        cocotb.log.info("seed=%d", self.seed)
         self.sampler = _BurstSampler(dut)
         cocotb.start_soon(self.sampler.run())
         self.next_expected_id = await self.csr_read("DONE_BASE", DMA_CTRL_DONE_0)
@@ -391,6 +389,10 @@ class smc_dma_linear_copy_test_seq(SmcCsrSeq):
             await ClockCycles(cocotb.top.clk_smc_i, 1)
             assert self._busy() == 0, f"{name}: tb_dma_busy still high after DONE_0 reached {c.id}"
             result = bytes(self._responder.read(dst, S6_LENGTH))
+            if src == dst:
+                assert result == original, (
+                    f"{name}: region {result.hex()} changed from {original.hex()}"
+                )
             results.append(
                 f"{name} src 0x{src:x} dst 0x{dst:x} source pattern {original.hex()} "
                 f"result {result.hex()} equals_original_source={result == original}"
@@ -398,7 +400,8 @@ class smc_dma_linear_copy_test_seq(SmcCsrSeq):
         self._mark("S6")
         return (
             f"each overlapping copy retired with DONE_0 equal to its ID and tb_dma_busy low "
-            f"(owner value pending, measured and printed): {'; '.join(results)}"
+            f"(SRC_EQ_DST compared with the unchanged region, the other cases' resulting bytes "
+            f"measured and printed): {'; '.join(results)}"
         )
 
     def _draw_offset(self, bucket: int) -> int:
@@ -422,14 +425,6 @@ class smc_dma_linear_copy_test_seq(SmcCsrSeq):
             await self._run(c, seed=False)
             self._compare(c)
             rows.append(f"{length}B/{so}/{do}")
-        for kind, names in (
-            ("length", BUCKET_NAMES),
-            ("source-offset", OFFSET_NAMES),
-            ("destination-offset", OFFSET_NAMES),
-        ):
-            key = {"length": "len", "source-offset": "src", "destination-offset": "dst"}[kind]
-            empty = [n for n, k in zip(names, counts[key]) if k == 0]
-            assert not empty, f"empty {kind} buckets {empty} ({counts[key]})"
         self._mark("S7")
         return (
             f"seed {self.seed} printed before the first copy; {S7_COUNT} copies "

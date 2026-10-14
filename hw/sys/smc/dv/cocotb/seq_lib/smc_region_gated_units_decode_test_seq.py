@@ -19,6 +19,7 @@ from .smc_addr_map import (
     GLOBAL_BASE_RESET,
     LOCAL_BASE_RESET,
     REGION_SIZE_RESET,
+    _component_row,
     generated_decoded_extent,
     generated_past_extent_resp,
     generated_window,
@@ -42,7 +43,7 @@ _CLINT_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "cli
 
 AXI_RESP_OKAY = 0
 AXI_RESP_DECERR = 3
-PAST_EXTENT_RDATA = 0xBADCAB1E
+_RESP_CODES = {"OKAY": 0, "EXOKAY": 1, "SLVERR": 2, "DECERR": 3}
 WRITE_PATTERN = 0xA5A55A5A
 SCRATCH_PATTERN = 0x5A5A_C3C3
 FUSE_WAIT_BOUND_SMC_CYCLES = 200_000
@@ -269,7 +270,7 @@ class smc_region_gated_units_decode_test_seq(SmcCsrSeq):
         return (
             f"at REGION_SIZE 0x{REGION_SIZE_RESET:X} the base of the PLIC, CLINT and four BEU "
             f"units answered DECERR on read and write over sep_axi_in and sys_axi_in; "
-            f"rdata vs 0x{PAST_EXTENT_RDATA:08X} (observe-only, owner value pending): "
+            f"rdata (not specified, measured): "
             f"{'; '.join(rows)}"
         )
 
@@ -368,7 +369,7 @@ class smc_region_gated_units_decode_test_seq(SmcCsrSeq):
                     f"sys_out_counts {counts_before}->{counts_after}"
                 )
         self._mark_step("S4")
-        return "; ".join(rows) + " (observe-only, owner value pending)"
+        return "; ".join(rows) + " (observe-only, not specified, measured)"
 
     async def _step_decoded_after_widen(self) -> str:
         await self._write_region_size("256M", REGION_SIZE_256M)
@@ -430,6 +431,7 @@ class smc_region_gated_units_decode_test_seq(SmcCsrSeq):
         for port in PORTS:
             for label, unit, past, top in targets:
                 _rr, declared = generated_past_extent_resp(unit)
+                past_rdata = _component_row(unit)["past_response"]["rdata"]
                 for where, addr in (("PAST", past), ("TOP", top)):
                     rd = await self._xfer(
                         port,
@@ -439,9 +441,9 @@ class smc_region_gated_units_decode_test_seq(SmcCsrSeq):
                         expect_resp=AXI_RESP_DECERR,
                     )
                     got = rd.rdata & 0xFFFF_FFFF
-                    assert got == PAST_EXTENT_RDATA, (
+                    assert got == past_rdata, (
                         f"{port} {label} {where} @ 0x{addr:08x}: rdata 0x{got:08x}, "
-                        f"want 0x{PAST_EXTENT_RDATA:08x}"
+                        f"want 0x{past_rdata:08x}"
                     )
                     wr = await self._xfer(
                         port,
@@ -450,6 +452,10 @@ class smc_region_gated_units_decode_test_seq(SmcCsrSeq):
                         addr,
                         wdata=WRITE_PATTERN,
                         tolerate=True,
+                    )
+                    assert wr.resp_code == _RESP_CODES[declared], (
+                        f"{port} {label} {where} @ 0x{addr:08x}: bresp "
+                        f"{_RESP_NAMES[wr.resp_code]}, declared {declared}"
                     )
                     rows.append(
                         f"{port}:{label}.{where}@0x{addr:08X} rresp=DECERR rdata=0x{got:08X} "

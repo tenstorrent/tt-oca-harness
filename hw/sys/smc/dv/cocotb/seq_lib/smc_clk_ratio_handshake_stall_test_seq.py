@@ -86,6 +86,8 @@ class _Window:
         self.first_arvalid: int | None = None
         self.first_awvalid: int | None = None
         self.w_hs: int | None = None
+        self.first_rvalid: int | None = None
+        self.first_bvalid: int | None = None
         self.rready_rise: int | None = None
         self.bready_rise: int | None = None
         self.r_hs: int | None = None
@@ -119,6 +121,10 @@ class _StallSampler:
                 w.first_arvalid = w.cycle
             if awvalid and w.first_awvalid is None:
                 w.first_awvalid = w.cycle
+            if rvalid and w.first_rvalid is None:
+                w.first_rvalid = w.cycle
+            if bvalid and w.first_bvalid is None:
+                w.first_bvalid = w.cycle
             if wvalid and wready and w.w_hs is None:
                 w.w_hs = w.cycle
             if rready and not self._prev_rready and w.first_arvalid is not None:
@@ -210,6 +216,14 @@ class smc_clk_ratio_handshake_stall_test_seq(SmcCsrSeq):
             f"{self._last_access}: read 0x{item.rdata:08x}, want 0x{want:08x}"
         )
         assert win.r_stall > 0, f"{self._last_access}: no R stall seen (r_stall={win.r_stall})"
+        assert win.first_rvalid is not None and win.r_hs is not None, (
+            f"{self._last_access}: RVALID or R handshake missing {vars(win)}"
+        )
+        held = win.r_hs - win.first_rvalid
+        assert win.r_stall == held, (
+            f"{self._last_access}: RVALID not held until the handshake "
+            f"(stalled {win.r_stall} cycles, first RVALID to handshake {held})"
+        )
         return item, win
 
     async def _stalled_write(self, tag: str, addr: int, label: str, data: int):
@@ -221,7 +235,17 @@ class smc_clk_ratio_handshake_stall_test_seq(SmcCsrSeq):
         assert win.w_hs - win.first_awvalid > 0, (
             f"{self._last_access}: no W trail seen (W trail {win.w_hs - win.first_awvalid})"
         )
+        assert win.w_hs - win.first_awvalid >= STALL_CYCLES, (
+            f"{self._last_access}: W trail {win.w_hs - win.first_awvalid} cycles, "
+            f"w_delay {STALL_CYCLES}"
+        )
         assert win.b_stall > 0, f"{self._last_access}: no B stall seen (b_stall={win.b_stall})"
+        assert win.first_bvalid is not None, f"{self._last_access}: BVALID never seen"
+        held = win.b_hs - win.first_bvalid
+        assert win.b_stall == held, (
+            f"{self._last_access}: BVALID not held until the handshake "
+            f"(stalled {win.b_stall} cycles, first BVALID to handshake {held})"
+        )
         return item, win
 
     @staticmethod

@@ -7,7 +7,7 @@ Sources: hw/ip/avsbus_controller/doc/interface.adoc, hw/sys/smc/doc/clk_rst.adoc
 AVS_GPIO_ENABLE resets to 1 and drives the output enable of avs_clock and avs_mdata
 and the input enable of avs_sdata. The avs_clock pad (GPIO 49) enable is asserted
 exactly; the avs_mdata (50) and avs_sdata (51) enables are measured and printed
-because their pad numbers and polarity are an open finding (owner value pending).
+because their pad numbers and polarity are not specified.
 """
 
 from __future__ import annotations
@@ -232,8 +232,8 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
             "CHK-AVS-PAD-ENABLE-FOLLOWS",
             f"AVS_GPIO_ENABLE reset {GPIO_ENABLE_RESET}, avs_clock pad (GPIO {CLOCK_PAD}) output "
             f"enable reset={reset_pads['avs_clock'][0]} after 0 write={off_pads['avs_clock'][0]} "
-            f"after 1 write={on_pads['avs_clock'][0]}; measured (c2p,p2c) per pad (owner value "
-            f"pending) "
+            f"after 1 write={on_pads['avs_clock'][0]}; measured (c2p,p2c) per pad (not specified, "
+            f"measured) "
             f"reset={reset_pads} write0={off_pads} write1={on_pads}",
         )
 

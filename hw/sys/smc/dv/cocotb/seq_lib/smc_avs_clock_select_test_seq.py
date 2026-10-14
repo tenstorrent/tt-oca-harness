@@ -5,8 +5,9 @@
 Sources: avsbus_controller.rdl AVS_CLOCK_SELECT, hw/ip/avsbus_controller/doc/interface.adoc.
 
 The select encoding is 00 periph clock direct, 01 periph clock divided, 10 ref clock direct,
-11 ref clock divided; the divider holds its reset value of 4. Each programmed value goes
-through the gated sequence: set TURN_OFF_ALL_PREMUX_CLOCKS, write the select, clear it.
+11 ref clock divided; CLK_DIVIDER_VALUE stays at its reset value 0, which
+avsbus_controller.rdl describes as keeping the hardware-default divisor of 4. Each programmed
+value goes through the gated sequence: set TURN_OFF_ALL_PREMUX_CLOCKS, write the select, clear it.
 """
 
 from __future__ import annotations
@@ -26,16 +27,8 @@ CLOCK_SELECT_BP = avs_field("AVSBUS_CONTROLLER__AVS_CFG_1__AVS_CLOCK_SELECT_bp")
 PREMUX_OFF_BM = avs_field("AVSBUS_CONTROLLER__AVS_CFG_1__TURN_OFF_ALL_PREMUX_CLOCKS_bm")
 STOP_ON_IDLE_BM = avs_field("AVSBUS_CONTROLLER__AVS_CFG_1__STOP_AVS_CLOCK_ON_IDLE_bm")
 
-PERIPH_PERIOD_PS = 5_000
-REF_PERIOD_PS = 10_000
+#: Hardware-default divisor kept by the CLK_DIVIDER_VALUE reset of 0 (avsbus_controller.rdl).
 DIVISOR = 4
-#: Select encoding to expected period in ps at the default 10 / 5 ns triple.
-TABLE_PS = {
-    0: PERIPH_PERIOD_PS,
-    1: DIVISOR * PERIPH_PERIOD_PS,
-    2: REF_PERIOD_PS,
-    3: DIVISOR * REF_PERIOD_PS,
-}
 MEASURE_PERIODS = 8
 EDGE_TIMEOUT_NS = 100_000
 FENCE = (
@@ -64,6 +57,7 @@ class smc_avs_clock_select_test_seq(SmcCsrSeq):
         self._steps: list[tuple[str, int]] = []
         self._chk_after: list[tuple[str, str]] = []
         self._cfg = 0
+        self._table_ps: dict[int, int] = {}
 
     @staticmethod
     def _clk() -> int:
@@ -141,7 +135,7 @@ class smc_avs_clock_select_test_seq(SmcCsrSeq):
 
     async def _program_measure(self, label: str, select: int) -> tuple[int, float, int]:
         await self._gated_select(label, select)
-        period, high, discarded = await self._measure_settled(label, TABLE_PS[select])
+        period, high, discarded = await self._measure_settled(label, self._table_ps[select])
         cocotb.log.info("%s: select %d after %d discarded windows", label, select, discarded)
         return period, high, discarded
 
@@ -156,6 +150,9 @@ class smc_avs_clock_select_test_seq(SmcCsrSeq):
         dut = cocotb.top
         assert hasattr(dut, "tb_avs_clk_from_dut"), "tb_avs_clk_from_dut is not exported"
         seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        periph = round(self.cfg.periph_clk_period_ns * 1000)
+        ref = round(self.cfg.ref_clk_period_ns * 1000)
+        self._table_ps = {0: periph, 1: DIVISOR * periph, 2: ref, 3: DIVISOR * ref}
         cfg1 = await self.csr_read("AVS_CFG_1_SAVE", AVS_CFG_1)
         self._cfg = cfg1 & ~PREMUX_OFF_BM
         assert (cfg1 & STOP_ON_IDLE_BM) == 0, (
@@ -168,7 +165,7 @@ class smc_avs_clock_select_test_seq(SmcCsrSeq):
         rows = []
         for select in (0, 1, 2, 3):
             period, high, _ = await self._program_measure(f"TAB{select}", select)
-            want = TABLE_PS[select]
+            want = self._table_ps[select]
             assert period == want, (
                 f"select {select}: AVS clock period {period} ps, table says {want} ps"
             )
@@ -179,8 +176,10 @@ class smc_avs_clock_select_test_seq(SmcCsrSeq):
         self._stamp("SELECT_TABLE_MEASURED")
         self._chk(
             "CHK-AVS-SELECT-TABLE",
-            "CHK-AVS-SELECT-TABLE: gated select table at ref 10 ns / periph 5 ns, divider "
-            f"{DIVISOR}, 8 periods each: " + " ".join(rows) + "; read-back equal to written",
+            f"CHK-AVS-SELECT-TABLE: gated select table at ref {ref / 1000:g} ns / periph "
+            f"{periph / 1000:g} ns, divider {DIVISOR}, 8 periods each: "
+            + " ".join(rows)
+            + "; read-back equal to written",
         )
 
         # S3: all 12 ordered pairs.
@@ -190,9 +189,11 @@ class smc_avs_clock_select_test_seq(SmcCsrSeq):
         done = []
         for a, b in pairs:
             pre, _, pre_disc = await self._program_measure(f"T{a}to{b}_FROM", a)
-            assert pre == TABLE_PS[a], f"before {a}->{b}: period {pre} ps, table {TABLE_PS[a]} ps"
+            assert pre == self._table_ps[a], (
+                f"before {a}->{b}: period {pre} ps, table {self._table_ps[a]} ps"
+            )
             period, high, disc = await self._program_measure(f"T{a}to{b}", b)
-            want = TABLE_PS[b]
+            want = self._table_ps[b]
             assert period == want, (
                 f"transition {a}->{b}: period {period} ps, table for select {b} is {want} ps"
             )
@@ -216,14 +217,14 @@ class smc_avs_clock_select_test_seq(SmcCsrSeq):
         ungated = "stopped"
         try:
             up, uhigh, _ = await self._measure("UNGATED")
-            ungated = f"period {up} ps high {100 * uhigh:.1f}% (table {TABLE_PS[target]} ps)"
+            ungated = f"period {up} ps high {100 * uhigh:.1f}% (table {self._table_ps[target]} ps)"
         except NoPadEdge as exc:
             ungated = f"no edge within bound ({exc})"
         cocotb.log.info(
             "STEP S4: ungated select %d -> %d, unguarded-interval clock: %s", last, target, ungated
         )
         period, high, _ = await self._program_measure("RECOVER", target)
-        want = TABLE_PS[target]
+        want = self._table_ps[target]
         assert period == want, (
             f"gated reprogram of select {target}: period {period} ps, table says {want} ps"
         )
@@ -231,8 +232,8 @@ class smc_avs_clock_select_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-AVS-SELECT-UNGATED-RECOVERY",
             f"CHK-AVS-SELECT-UNGATED-RECOVERY: ungated select {last}->{target} behaviour: "
-            f"{ungated}; owner value pending; gated reprogram period {period} ps equals table "
-            f"{want} ps, high {100 * high:.1f}%",
+            f"{ungated}; ungated behaviour not specified, measured; gated reprogram period "
+            f"{period} ps equals table {want} ps, high {100 * high:.1f}%",
         )
 
         # S5 and the fence.

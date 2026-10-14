@@ -27,7 +27,6 @@ MAILBOX_CG_EN = _field_mask(
 )
 
 FUSE_SENSE_RISES = 200_000
-AXI_TIMEOUT_NS = 50_000
 AXI_SLVERR = 2
 EMPTY_ERROR_DATA = 0xFEEDDEAD
 PAIRS = (0, 1, 15, 16, 31)
@@ -151,7 +150,7 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
         return ",".join(f"pair{m}=0x{w:016x}" for m, w in words.items())
 
     async def body(self) -> None:
-        await self.wait_fuse_sense_done()
+        await self.wait_fuse_sense_done(max_cycles=FUSE_SENSE_RISES)
         seed = int(os.environ.get("RANDOM_SEED", "1"))
         rng = random.Random(seed)
         cocotb.log.info("SEED RANDOM_SEED=%d", seed)
@@ -192,7 +191,7 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
             "CHK-PAIR-OWN-READ-FIFO-EMPTY",
             f"pair 15 writer's own READ_DATA answered "
             f"resp={own.resp_code} rdata=0x{own.rdata & 0xFFFFFFFF:08x}; peer returned X "
-            f"0x{x:016x}; writer STATUS=0x{status:016x} (measured, owner value pending)",
+            f"0x{x:016x}; writer STATUS=0x{status:016x} (not specified, measured)",
         )
         self._log_chk(
             "CHK-PAIR-ISOLATION",
@@ -261,9 +260,9 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
 
         await self._wr("F9", "OUTBOUND", 0, f, wstrb=0xFF)
         await self._wr("PARTIAL9", "OUTBOUND", 0, 0xFFFF_FFFF_55AA_55AA, wstrb=0x0F)
-        third = await self.csr_write_expect_error(
-            "THIRD", _addr("OUTBOUND", 0, "WRITE_DATA"), 0x7777_7777_7777_7777, length=8
-        )
+        third = (
+            await self._wr("THIRD", "OUTBOUND", 0, 0x7777_7777_7777_7777, mode=ERROR)
+        ).resp_code
         await self._rd("F9", "INBOUND", 0, expected=f)
         await self._rd("PARTIAL9", "INBOUND", 0, expected=0x55AA_55AA)
         await self._rd("EMPTY9", "INBOUND", 0)
@@ -301,7 +300,7 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
             "CHK-PUSHPOP-FULL-OBSERVED",
             f"grouped read returned oldest 0x{rd.rdata:016x}; "
             f"push resp={wr.resp_code}; drained words {[hex(w) for _, w in words]} then "
-            "the empty error; push outcome not compared (owner value pending)",
+            "the empty error; push outcome not compared (not specified, measured)",
         )
 
         wr = self._item("A12", SmcSysAxiOp.WRITE, _addr("OUTBOUND", 4, "WRITE_DATA"), a)
@@ -315,7 +314,7 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
             f"group write resp={wr.resp_code}; read "
             f"resp={rd.resp_code} data=0x{rd.rdata:016x}; drained words "
             f"{[hex(w) for _, w in words]} then the empty error; outcome not compared "
-            "(owner value pending)",
+            "(not specified, measured)",
         )
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, cg)
@@ -365,7 +364,7 @@ class smc_mailbox_pair_datapath_test_seq(SmcCsrSeq):
             "drain is bounded at %d reads and raises AssertionError on expiry",
             waits,
             self.accesses,
-            AXI_TIMEOUT_NS,
+            self.cfg.axi_timeout_ns,
             self.accesses,
             DRAIN_LIMIT,
         )

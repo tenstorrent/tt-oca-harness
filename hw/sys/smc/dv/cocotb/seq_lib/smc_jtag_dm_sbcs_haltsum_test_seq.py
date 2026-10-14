@@ -15,10 +15,12 @@ from cocotb.utils import get_sim_time
 from .smc_cpu_vip_utils import (
     CPU_CTRL_RESET_CTRL,
     CPU_RESET_CTRL_DEBUG_RELEASE,
+    cpu_ctrl_u32,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_jtag_protocol_vip import SmcJtagTap
 
+DEBUG_RESET_N = cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__DEBUG_RESET_N_N0_SCAN_bm")
 DMI_HALTSUM1 = 0x13
 DMI_SBCS = 0x38
 DMI_HALTSUM0 = 0x40
@@ -52,15 +54,16 @@ CHK_BY_STEP = {
     "S7": "CHK-HALTSUM1-IDLE",
     "S8": "CHK-HALTSUM-WRITE-IGNORED",
 }
-FENCE_TERMS = (
-    "RELEASED_AND_ACTIVE",
-    "SBVERSION",
-    "SBASIZE",
-    "SBACCESS_CAPS",
-    "SBCS_WRITE_IMMUNE",
-    "HALTSUM_IDLE",
-    "HALTSUM_WRITE_IGNORED",
-)
+FENCE_TERMS = {
+    "S1": "RELEASED_AND_ACTIVE",
+    "S2": "SBVERSION",
+    "S3": "SBASIZE",
+    "S4": "SBACCESS_CAPS",
+    "S5": "SBCS_WRITE_IMMUNE",
+    "S6": "HALTSUM0_IDLE",
+    "S7": "HALTSUM1_IDLE",
+    "S8": "HALTSUM_WRITE_IGNORED",
+}
 VIP_FILE = "seq_lib/smc_jtag_protocol_vip.py"
 VIP_DMI_BUSY_RETRIES = 4
 
@@ -111,7 +114,7 @@ class smc_jtag_dm_sbcs_haltsum_test_seq(SmcCsrSeq):
             assert idx_chk > idx_step, f"{cid} printed before {step} completed"
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
-            " < ".join(FENCE_TERMS),
+            " < ".join(FENCE_TERMS[e[1]] for e in steps),
             ", ".join(c[1] for c in chks),
             ",".join(str(s) for s in stamps),
         )
@@ -125,7 +128,9 @@ class smc_jtag_dm_sbcs_haltsum_test_seq(SmcCsrSeq):
         )
         await ClockCycles(cocotb.top.clk_smc_i, 64)
         reset_ctrl = await self.csr_read("CPU_CTRL_RESET_CTRL_RB", CPU_CTRL_RESET_CTRL, length=8)
-        assert reset_ctrl & (1 << 24), f"debug_reset_n not set in RESET_CTRL (got 0x{reset_ctrl:X})"
+        assert reset_ctrl & DEBUG_RESET_N, (
+            f"debug_reset_n not set in RESET_CTRL (got 0x{reset_ctrl:X})"
+        )
 
         self._tap = SmcJtagTap(name="smc_jtag_dm_sbcs")
         self._tap.init_signals()

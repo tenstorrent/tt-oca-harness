@@ -37,12 +37,11 @@ CFG_IN_FLIGHT = _RX_ENABLE | _IF_ENABLE | _IRQ_ENABLE | (1 << _TYPE_BP)
 # hardware LSIO request status.
 _RESET_READ_MASK = ~(_PAD2CORE | _LSIO_ENABLE) & 0xFFFF_FFFF
 
-STEP_ORDER = ("S1", "S2", "S3", "S4", "S5")
-TERM_ORDER = ("IRQ_ASSERTED", "RESET_LEVEL", "RESET_EDGE", "RESET_ACCESS", "RESTORE")
+STEP_ORDER = ("IRQ_ASSERTED", "RESET_LEVEL", "RESET_EDGE", "RESET_ACCESS", "RESTORE")
 CHK_ORDER = (
-    ("S2", "CHK-RST-PRIMARY-LEVEL-IRQ"),
-    ("S3", "CHK-RST-PRIMARY-EDGE"),
-    ("S4", "CHK-RST-PRIMARY-AXI-BOUNDED"),
+    ("RESET_LEVEL", "CHK-RST-PRIMARY-LEVEL-IRQ"),
+    ("RESET_EDGE", "CHK-RST-PRIMARY-EDGE"),
+    ("RESET_ACCESS", "CHK-RST-PRIMARY-AXI-BOUNDED"),
 )
 
 AFTER_RELEASE_CYCLES = 64
@@ -193,7 +192,7 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
 
     async def _step_level(self, dut, sampler: _Sampler) -> str:
         pre = sampler.count
-        in_reset, released, latency, rise = await self._reset_cycle(sampler, "S2")
+        in_reset, released, latency, rise = await self._reset_cycle(sampler, "RESET_LEVEL")
         self.latency = latency
         irq, rst = sampler.irq, sampler.rst_n
         before = [i for i in range(pre, in_reset) if rst[i] == 1]
@@ -244,7 +243,7 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
         await self._assert_pin()
         for _ in range(latency - EDGE_LEAD_CYCLES):
             await RisingEdge(dut.clk_smc_i)
-        at_rise = self._rst_level("S3 pad rise")
+        at_rise = self._rst_level("edge pad rise")
         assert at_rise == 1, (
             f"rst_primary_smc_clk_no already {at_rise} when the pad rose (L={latency}); "
             f"the edge is not inside the synchroniser window"
@@ -254,7 +253,7 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
         fall = None
         for n in range(1, EDGE_SETUP_WINDOW_CYCLES + 1):
             await RisingEdge(dut.clk_smc_i)
-            if self._rst_level("S3 fall") == 0:
+            if self._rst_level("edge fall") == 0:
                 fall = n
                 break
         assert fall is not None, (
@@ -262,7 +261,7 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
             f"after the pad rose (L={latency})"
         )
         in_reset = sampler.count
-        rise = await self._hold_and_release("S3")
+        rise = await self._hold_and_release("RESET_EDGE")
         released = sampler.count
         await ClockCycles(dut.clk_smc_i, AFTER_RELEASE_CYCLES)
         irq = sampler.irq
@@ -308,7 +307,7 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
         task = cocotb.start_soon(write())
         fall = issued = done_at = None
         for cycle in range(AXI_BOUND_CYCLES + 1):
-            rst = self._rst_level("S4 write")
+            rst = self._rst_level("access write")
             aw = dut.s_axi_awvalid.value
             assert aw.is_resolvable, "s_axi_awvalid is X/Z"
             if issued is None and int(aw):
@@ -323,7 +322,7 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
         state = (
             f"issued={issued} fall={fall} resp_code={item.resp_code} timed_out={item.timed_out} "
             f"reset_aborted={item.reset_aborted} "
-            f"rst_primary_smc_clk_no={self._rst_level('S4 state')}"
+            f"rst_primary_smc_clk_no={self._rst_level('access state')}"
         )
         assert done_at is not None, (
             f"in-flight write to 0x{DATA_CTRL:08x} neither answered nor reset-aborted within "
@@ -336,15 +335,19 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
             f"launch-to-fall {fall}, launch-to-completion {done_at} (L={latency})"
         )
         if item.reset_aborted:
-            assert fall <= done_at, f"reset abort reported before the fall ({state})"
+            assert (
+                item.resp_code is None
+                and not item.timed_out
+                and self.env.scoreboard.sys_axi_reset_aborted_seen >= 1
+            ), f"reset abort not booked by the scoreboard ({state})"
             kind = "bench master reset flush"
         else:
             assert item.resp_code is not None, f"completion without response or abort ({state})"
             kind = f"DUT's own response resp={item.resp_code}"
-        rise = await self._hold_and_release("S4")
+        rise = await self._hold_and_release("RESET_ACCESS")
         await self.wait_fuse_sense_done()
-        ctrl = await self.csr_read("S4_DATA_CTRL_RB", DATA_CTRL)
-        enable = await self.csr_read("S4_DATA_CTRL_ENABLE_RB", DATA_CTRL_ENABLE)
+        ctrl = await self.csr_read("ACCESS_DATA_CTRL_RB", DATA_CTRL)
+        enable = await self.csr_read("ACCESS_DATA_CTRL_ENABLE_RB", DATA_CTRL_ENABLE)
         assert ctrl & _RESET_READ_MASK == 0 and enable & _RESET_READ_MASK == 0, (
             f"after the reset DATA_CTRL read 0x{ctrl:08x} and DATA_CTRL_ENABLE 0x{enable:08x}; "
             f"non-zero under mask 0x{_RESET_READ_MASK:08x}"
@@ -354,7 +357,8 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
             f"{latency - AXI_LAUNCH_LEAD_CYCLES} cycles after the rst_cold_ni assert "
             f"(L={latency}) was issued {issued} cycles after the launch, "
             f"rst_primary_smc_clk_no fell {fall} cycles after the launch and the "
-            f"write completed {done_at} cycles after the launch; completion kind: {kind} "
+            f"write completed {done_at} cycles after the launch; "
+            f"completion kind (measured): {kind} "
             f"(0 OKAY, 2 SLVERR, 3 DECERR); bound {AXI_BOUND_CYCLES} cycles (SEP_IN driver "
             f"bound {driver_bound_ns} ns); effective reset rose {rise} cycles after the "
             f"release; after it DATA_CTRL read 0x{ctrl:08x} and DATA_CTRL_ENABLE "
@@ -369,7 +373,7 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
         assert tuple(self.chk_steps) == CHK_ORDER, f"checker lines {self.chk_steps}"
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
-            " < ".join(TERM_ORDER),
+            " < ".join(STEP_ORDER),
             ",".join(c for _, c in self.chk_steps),
             ",".join(f"{s}={ps}" for s, ps in self.steps),
         )
@@ -382,34 +386,31 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
         sampler = _Sampler(dut)
         sampler.start()
 
-        # S1
         self._drive(dut, 1)
         await self.csr_write("LEVEL_PROGRAM", DATA_CTRL, CFG_LEVEL_HIGH)
-        asserted_at = await self._await_irq(sampler, "S1 level interrupt")
-        self._mark("S1")
+        asserted_at = await self._await_irq(sampler, "level interrupt")
+        self._mark("IRQ_ASSERTED")
 
-        # S2
         text = await self._step_level(dut, sampler)
         await self.wait_fuse_sense_done()
-        self._mark("S2")
-        self._chk("S2", "CHK-RST-PRIMARY-LEVEL-IRQ", f"{text}; asserted {asserted_at} cycles in")
+        self._mark("RESET_LEVEL")
+        self._chk(
+            "RESET_LEVEL", "CHK-RST-PRIMARY-LEVEL-IRQ", f"{text}; asserted {asserted_at} cycles in"
+        )
 
-        # S3
         text = await self._step_edge(dut, sampler)
         await self.wait_fuse_sense_done()
-        self._mark("S3")
-        self._chk("S3", "CHK-RST-PRIMARY-EDGE", text)
+        self._mark("RESET_EDGE")
+        self._chk("RESET_EDGE", "CHK-RST-PRIMARY-EDGE", text)
 
-        # S4
         text = await self._step_access(dut, sampler)
-        self._mark("S4")
-        self._chk("S4", "CHK-RST-PRIMARY-AXI-BOUNDED", text)
+        self._mark("RESET_ACCESS")
+        self._chk("RESET_ACCESS", "CHK-RST-PRIMARY-AXI-BOUNDED", text)
 
-        # S5
         self._drive(dut, None)
         await self.csr_write("RESTORE_DATA_CTRL", DATA_CTRL, 0)
         await self.csr_read("RESTORE_DATA_CTRL_RB", DATA_CTRL, expected=0)
         sampler.stop()
-        self._mark("S5")
+        self._mark("RESTORE")
         self._nonvac()
         self.assert_all_reachable(self.accesses, "GPIO_RST_PRIMARY")

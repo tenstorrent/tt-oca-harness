@@ -4,10 +4,10 @@
 
 Sources: hw/ip/i2c/regs/i2c_ctrl.rdl (I2C_CTRL array), hw/ip/i2c/regs/i2c.rdl (SMBUS_STATUS),
 hw/ip/i2c/doc/index.adoc (OCAH Modifications).
-Padring reach is owner value pending.
+The specification does not state the padring reach.
 
 With the three alert pads driven low, clearing SMBUS_EN on one instance leaves
-SMBUS_STATUS.SMBALERT of the other two at 1.
+SMBUS_STATUS.SMBALERT of the other two at 1 and masks its own SMBUS_STATUS.SMBALERT to 0.
 """
 
 from __future__ import annotations
@@ -131,6 +131,10 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
                     f"with SMBUS_EN cleared on instance {k} only"
                 )
         own_status = await self._status(f"gate{k}_own_status", k)
+        assert own_status == 0, (
+            f"k={k}: SMBUS_STATUS.SMBALERT of the cleared instance reads {own_status}; "
+            f"SMBUS_EN low masks smbalert_ni (index.adoc)"
+        )
         own_intr = (
             await self.csr_read(f"gate{k}_own_intr", _reg("INTR_STATE", k))
         ) & I2C_INTR_STATE_SMBALERT
@@ -168,8 +172,9 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
             + "; ".join(
                 f"k={k}: instances {self.gate[k]['others']} read SMBUS_STATUS.SMBALERT=1 in "
                 f"{OBSERVE_POLLS} of {OBSERVE_POLLS} polls, own instance SMBUS_STATUS.SMBALERT="
-                f"{self.gate[k]['own_status']} INTR_STATE.SMBALERT={self.gate[k]['own_intr']} "
-                f"logged only (owner value pending)"
+                f"{self.gate[k]['own_status']} (masked, compared) "
+                f"INTR_STATE.SMBALERT={self.gate[k]['own_intr']} "
+                f"logged only (not specified, measured)"
                 for k in INSTANCES
             )
             + "; cleared: pads released and SMBUS_EN restored; checked_cleared: all three read 0 "

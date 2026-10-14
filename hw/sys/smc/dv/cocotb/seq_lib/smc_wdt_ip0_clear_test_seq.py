@@ -127,7 +127,8 @@ class smc_wdt_ip0_clear_test_seq(SmcCsrSeq):
             f"after a keyed CTRL write of bit 28 = 0 above CMP, 0 after CMP "
             f"0x{WDT_CMP_HIGH:x} and the clear sequence, and 1 at read {latency} of "
             f"{WDT_POLL_LIMIT} after CMP dropped to "
-            f"0x{WDT_CMP_LOW:x} (first-read latency is an open owner question)",
+            f"0x{WDT_CMP_LOW:x} (first-read latency is not specified; zero reset values are "
+            f"bench-limited, 2-state zero init)",
         )
 
         # S6
@@ -205,13 +206,15 @@ class smc_wdt_ip0_clear_test_seq(SmcCsrSeq):
         await self._expect("S11_CLEARED", ctrl_a)
         await self._wr("S11_WRITE_ONE", "CTRL", ctrl_a | WDT_IP0_MASK)
         ctrl11 = await self._ctrl("S11_READ")
-        assert ctrl11 in range(0, 1 << 32), f"S11: CTRL read 0x{ctrl11:x} out of range"
+        assert (ctrl11 >> WDT_IP0_BIT) & 1 == 1, (
+            f"S11: CTRL bit 28 reads 0 after a keyed write of 1 (CTRL 0x{ctrl11:08x})"
+        )
         self._mark_step("S11")
         self._log_chk(
             "CHK-WDT-IP0-WRITE-ONE",
             f"scaled count below CMP 0x{WDT_CMP_MID:x}: after KEY and CTRL write of "
             f"0x{ctrl_a | WDT_IP0_MASK:08x} CTRL read 0x{ctrl11:08x}, bit 28 = "
-            f"{(ctrl11 >> WDT_IP0_BIT) & 1} (value is an open owner question and is not asserted)",
+            f"{(ctrl11 >> WDT_IP0_BIT) & 1} (wdogip0 is sw=rw, so the write stores 1)",
         )
 
         self._nonvac_fence()

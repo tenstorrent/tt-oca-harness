@@ -9,7 +9,8 @@ Every access is a 32-bit aligned SEP_IN frontdoor access straight after bring-up
 reads run before any write to an I2C register; the GPIO pad-select writes of the I2C pad groups
 come first so that SMBUS_STATUS senses the idle SMBus pads. Offsets of I2C_CTRL,
 reserved bits, registers without a reset literal and the FIFO read ports, the access
-latency and VAL are owner value pending: they are logged without a compare, as are the
+latency and VAL: the specification does not state the values;
+they are logged without a compare, as are the
 responses of the four gap writes.
 """
 
@@ -32,7 +33,7 @@ from .smc_i2c_master_target_test_seq import _I2C_CTRL_H, _I2C_H, _i2c_u32
 INSTANCES = (0, 1, 2)
 WORD_BYTES = 4
 AXI_DECERR = 3
-ERR_SIGNATURE = 0xBADCAB1E
+ERR_SIGNATURE = SmcCsrSeq.ERR_SLAVE_SIGNATURE
 STATUS_RESET = 0x33C
 GAP_WRITE_DATA = 0xA5A5_5A5A
 ALTERNATIONS = 32
@@ -282,7 +283,7 @@ class smc_i2c_window_decode_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-I2C-RESERVED-OBS",
             "reserved-bit residue (value & ~declared_mask) of %d register reads, nonzero: %s; "
-            "%s (observation, owner value pending)",
+            "%s (observation, not specified, measured)",
             len(INSTANCES) * (len(RESET_REGISTERS) + 2),
             " ".join(residues) or "none",
             " ".join(ctrl),
@@ -301,7 +302,7 @@ class smc_i2c_window_decode_test_seq(SmcCsrSeq):
         self._mark("S4")
         self._chk(
             "CHK-I2C-RESET-SIDE-OBS",
-            "%s; STATUS re-read 0x%03x on all instances (observation, owner value pending)",
+            "%s; STATUS re-read 0x%03x on all instances (observation, not specified, measured)",
             " ".join(seen),
             STATUS_RESET,
         )
@@ -320,7 +321,7 @@ class smc_i2c_window_decode_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-I2C-CTRL-RESET",
             "I2C_CTRL[0..2] at 0x%08x,0x%08x,0x%08x read OKAY with %s; element spacing %s "
-            "(owner value pending); reset-value-only proof",
+            "(not specified, measured); reset-value-only proof",
             _wrap_ctrl(0),
             _wrap_ctrl(1),
             _wrap_ctrl(2),
@@ -447,7 +448,7 @@ class smc_i2c_window_decode_test_seq(SmcCsrSeq):
             "CHK-I2C-DECODE-ALTERNATE",
             "%d alternating reads (instance 0/1 and instance 2/I2C_CTRL[0]) returned the pattern "
             "of the addressed block; max access time %.0f ns = %.1f clk_smc_i cycles of %.2f ns "
-            "(measured, owner value pending)",
+            "(not specified, measured)",
             2 * ALTERNATIONS,
             worst_ns,
             worst_ns / period,
@@ -495,7 +496,7 @@ class smc_i2c_window_decode_test_seq(SmcCsrSeq):
         self._mark("S9")
         self._chk(
             "CHK-I2C-GAP-NO-SIDE-EFFECT",
-            "%d gap reads and %d gap writes (write resp codes %s, logged, owner value pending) "
+            "%d gap reads and %d gap writes (write resp codes %s, logged, not specified) "
             "interleaved "
             "with OKAY accesses left all %d snapshot words equal; tb_i2c_irq 0b000 on %d samples",
             len(gap_reads),

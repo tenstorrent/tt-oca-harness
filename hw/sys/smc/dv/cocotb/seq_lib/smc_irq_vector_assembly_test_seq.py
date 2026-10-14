@@ -353,7 +353,7 @@ class smc_irq_vector_assembly_test_seq(output_fabric_pass_all_cfg_seq):
         )
         self._log_chk(
             "CHK-VECASM-INBOUND-LOG",
-            f"observe-and-log (owner value pending): expected raw 288 (mailbox 0) and "
+            f"observe-and-log (not specified, measured): expected raw 288 (mailbox 0) and "
             f"raw 319 (mailbox 31); after the mailbox 0 push raw 288={mbx0_raw[288]} raw 319="
             f"{mbx0_raw[319]}; after the mailbox 31 push raw 288={mbx31_raw[288]} "
             f"raw 319={mbx31_raw[319]}; rises high over the run raw 288="

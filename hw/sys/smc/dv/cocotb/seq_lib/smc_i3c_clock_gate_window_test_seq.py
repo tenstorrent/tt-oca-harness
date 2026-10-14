@@ -7,8 +7,8 @@ Sources: smc_base_config.rdl CLOCK_GATE_CONTROL.i3c_cg_en, clk_rst.adoc access g
 While CLOCK_GATE_CONTROL.i3c_cg_en is set every access to an I3C window answers SLVERR with
 read data 0xBADCAB1E; the GPIO interface and UART windows keep answering OKAY, and each I3C
 window answers OKAY with its HCI_VERSION reset again after the enable is cleared. The
-retention of a DAT word written while gated (owner value pending) and the response of
-accesses queued around the gate write (owner value pending) are measured and printed, not asserted.
+retention of a DAT word written while gated and the response of accesses queued around the
+gate write are measured and printed, not asserted; the specification does not state the values.
 """
 
 from __future__ import annotations
@@ -395,36 +395,36 @@ class smc_i3c_clock_gate_window_test_seq(SmcCsrSeq):
             I3C_HCI_VERSION_RESET,
         )
 
-        # S8 outstanding groups: (b) first, then the clear and read, then (a) last
+        # S8 outstanding groups: set_clear_group first, then the clear and read, then inflight_group
         def member(op, name, addr, data=0):
             return self._item(op, name, addr, data, "any", GROUP_BOUND_NS)
 
         rd, wr = SmcSysAxiOp.READ, SmcSysAxiOp.WRITE
-        group_b = [
-            member(wr, "GB_CG_SET", CLOCK_GATE_CONTROL, set_word),
-            member(rd, "GB_HCI_I0_SET", hci_version(0)),
-            member(rd, "GB_HCI_I1_SET", hci_version(1)),
-            member(wr, "GB_CG_CLEAR", CLOCK_GATE_CONTROL, clear_word),
-            member(rd, "GB_HCI_I0_CLR", hci_version(0)),
-            member(rd, "GB_HCI_I1_CLR", hci_version(1)),
+        set_clear_group = [
+            member(wr, "SETCLR_CG_SET", CLOCK_GATE_CONTROL, set_word),
+            member(rd, "SETCLR_HCI_I0_SET", hci_version(0)),
+            member(rd, "SETCLR_HCI_I1_SET", hci_version(1)),
+            member(wr, "SETCLR_CG_CLEAR", CLOCK_GATE_CONTROL, clear_word),
+            member(rd, "SETCLR_HCI_I0_CLR", hci_version(0)),
+            member(rd, "SETCLR_HCI_I1_CLR", hci_version(1)),
         ]
         report = []
-        group = SmcSysAxiGroupItem("group_b", group_b)
+        group = SmcSysAxiGroupItem("set_clear_group", set_clear_group)
         t0 = get_sim_time("ns")
         await self.start_item(group)
         await self.finish_item(group)
         elapsed = get_sim_time("ns") - t0
-        assert elapsed <= GROUP_BOUND_NS, f"group b took {elapsed} ns"
-        self.accesses += len(group_b)
-        for m in group_b:
+        assert elapsed <= GROUP_BOUND_NS, f"set clear group took {elapsed} ns"
+        self.accesses += len(set_clear_group)
+        for m in set_clear_group:
             assert not m.timed_out and m.resp_code in (AXI_RESP_OKAY, AXI_RESP_SLVERR), (
-                f"group b member {m.get_name()} resp={m.resp_code}"
+                f"set clear group member {m.get_name()} resp={m.resp_code}"
             )
             data = f"0x{m.rdata & ALL_ONES:08x}" if m.op is rd else "-"
-            report.append(f"b:{m.get_name()}=resp{m.resp_code}/{data}")
-        self._wait_note("S8_group_b", GROUP_BOUND_NS, f"{elapsed:.1f}ns done")
-        await self._write_ok("CG_CLEAR_AFTER_B", CLOCK_GATE_CONTROL, clear_word)
-        await self._read_ok("HCI_VERSION_AFTER_B", hci_version(0), I3C_HCI_VERSION_RESET)
+            report.append(f"set_clear:{m.get_name()}=resp{m.resp_code}/{data}")
+        self._wait_note("S8_set_clear_group", GROUP_BOUND_NS, f"{elapsed:.1f}ns done")
+        await self._write_ok("CG_CLEAR_AFTER_SET_CLEAR", CLOCK_GATE_CONTROL, clear_word)
+        await self._read_ok("HCI_VERSION_AFTER_SET_CLEAR", hci_version(0), I3C_HCI_VERSION_RESET)
 
         def tolerant_read(name):
             item = member(rd, name, hci_version(0))
@@ -433,23 +433,23 @@ class smc_i3c_clock_gate_window_test_seq(SmcCsrSeq):
 
         def outcome(item) -> str:
             if item.timed_out:
-                return f"no completion in {GROUP_BOUND_NS} ns (LINKED-ISSUE, reported separately)"
+                return f"no completion in {GROUP_BOUND_NS} ns"
             return f"resp{item.resp_code}/0x{item.rdata & ALL_ONES:08x}"
 
-        read_a = tolerant_read("GA_HCI_I0_TOLERANT")
-        write_a = member(wr, "GA_CG_SET", CLOCK_GATE_CONTROL, set_word)
+        read_a = tolerant_read("INFLIGHT_HCI_I0_TOLERANT")
+        write_a = member(wr, "INFLIGHT_CG_SET", CLOCK_GATE_CONTROL, set_word)
         t0 = get_sim_time("ns")
-        group_a = SmcSysAxiGroupItem("group_a", [read_a, write_a])
-        await self.start_item(group_a)
-        await self.finish_item(group_a)
+        inflight_group = SmcSysAxiGroupItem("inflight_group", [read_a, write_a])
+        await self.start_item(inflight_group)
+        await self.finish_item(inflight_group)
         a_ns = get_sim_time("ns") - t0
         self.accesses += 2
         assert not write_a.timed_out and write_a.resp_code == AXI_RESP_OKAY, (
-            f"group a set write resp={write_a.resp_code} timed_out={write_a.timed_out}"
+            f"inflight group set write resp={write_a.resp_code} timed_out={write_a.timed_out}"
         )
-        self._wait_note("S8_group_a_set_write", GROUP_BOUND_NS, "OKAY")
-        self._wait_note("S8_group_a_read_tolerant", GROUP_BOUND_NS, outcome(read_a))
-        await self._write_ok("CG_CLEAR_AFTER_A", CLOCK_GATE_CONTROL, clear_word)
+        self._wait_note("S8_inflight_group_set_write", GROUP_BOUND_NS, "OKAY")
+        self._wait_note("S8_inflight_group_read_tolerant", GROUP_BOUND_NS, outcome(read_a))
+        await self._write_ok("CG_CLEAR_AFTER_INFLIGHT", CLOCK_GATE_CONTROL, clear_word)
         final = tolerant_read("FINAL_HCI_I0_TOLERANT")
         await self.start_item(final)
         await self.finish_item(final)
@@ -458,12 +458,13 @@ class smc_i3c_clock_gate_window_test_seq(SmcCsrSeq):
         self._mark("INFLIGHT_GROUPS")
         self._chk(
             "CHK-I3C-GATE-INFLIGHT-GROUPS",
-            "group b: all %d members completed inside %d ns with OKAY or SLVERR (printed "
-            "not asserted): %s; after the clear HCI_VERSION answered OKAY 0x%08x; group a (read "
+            "set clear group: all %d members completed inside %d ns with OKAY or SLVERR (printed "
+            "not asserted): %s; after the clear HCI_VERSION answered OKAY 0x%08x; inflight "
+            "group (read "
             "issued with the set write, read first): set write OKAY, in-flight read %s after "
             "%.1f ns (a beat arriving after the bound is discarded by the driver and not "
             "observable here); clearing write OKAY; final tolerant HCI_VERSION read %s",
-            len(group_b),
+            len(set_clear_group),
             GROUP_BOUND_NS,
             " ".join(report),
             I3C_HCI_VERSION_RESET,
@@ -476,8 +477,8 @@ class smc_i3c_clock_gate_window_test_seq(SmcCsrSeq):
         self._wait_note("SEP_IN_default", default_bound, "every other access answered")
         cocotb.log.info(
             "CHK-TIMEOUT-PATHS: %d bounded waits: %s; expiry raises AssertionError "
-            "naming the outstanding member, except the two tolerant S8 group (a) reads whose "
-            "expiry is printed LINKED-ISSUE, reported separately",
+            "naming the outstanding member, except the two tolerant S8 inflight group reads whose "
+            "expiry is printed",
             len(self.waits),
             " ".join(f"{n}={b}ns last={s}" for n, b, s in self.waits),
         )

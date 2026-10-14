@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP_AXI hang detector threshold updates, reset value and small values on live stalls.
+"""SEP_AXI hang detector threshold updates, threshold 0x1000 and small values on live stalls.
 
 Spec sources: HANG_DET_CTRL and HANG_DET_TIMEOUT_THRESHOLD in smc_base_config.rdl.
 """
@@ -267,6 +267,9 @@ class smc_hang_sep_threshold_test_seq(SmcCsrSeq):
             "raise", RAISE_CEILING, RAISE_WRITE_AT, [("THR", HANG_DET_SEP_AXI_TIMEOUT, THR_HIGH)]
         )
         self._need_irq(st, "raise", RAISE_CEILING)
+        assert st.first >= THR_LOW, (
+            f"raise: sep irq at rise {st.first}, before threshold 0x{THR_LOW:x}"
+        )
         await self._release(task, "raise")
         cleared = await self._ctrl_off("raise")
         self.phases += 1
@@ -317,6 +320,9 @@ class smc_hang_sep_threshold_test_seq(SmcCsrSeq):
         # S4: the stored threshold applies to the next stall
         st, task = await self._stall("after", AFTER_COMPLETION_CEILING)
         self._need_irq(st, "after", AFTER_COMPLETION_CEILING)
+        assert st.first >= THR_LOW, (
+            f"after: sep irq at rise {st.first}, before threshold 0x{THR_LOW:x}"
+        )
         await self._release(task, "after")
         cleared = await self._ctrl_off("after")
         self.phases += 1
@@ -358,12 +364,13 @@ class smc_hang_sep_threshold_test_seq(SmcCsrSeq):
             f"rise {reenable}; sep irq first 1 at rise {st.first} of the stall, "
             f"rises_from_reenable={st.first - reenable} "
             f"(ceiling {ENABLE_CLEAR_CEILING}); cleared after {cleared} rises "
-            "(observe-and-log, owner value pending)",
+            "(observe-and-log, not specified, measured)",
         )
 
-        # S6: reset threshold value
+        # S6: threshold 0x1000
         first, cleared = await self._measure("default", THR_DEFAULT, THR_DEFAULT + MARGIN)
         assert first, f"sep irq still 0 at {THR_DEFAULT + MARGIN} rises"
+        assert first >= THR_DEFAULT, f"sep irq at rise {first}, before threshold 0x{THR_DEFAULT:x}"
         self.phases += 1
         self._mark_step("S6")
         self._lifecycle(
@@ -381,7 +388,7 @@ class smc_hang_sep_threshold_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-THR-DEFAULT-EXACT-LOG",
             f"first_sep_irq_rise={first} threshold={THR_DEFAULT} "
-            f"offset={first - THR_DEFAULT} (observe-and-log, owner value pending)",
+            f"offset={first - THR_DEFAULT} (observe-and-log, not specified, measured)",
         )
 
         # S7: small thresholds
@@ -389,6 +396,7 @@ class smc_hang_sep_threshold_test_seq(SmcCsrSeq):
         for thr_value in order:
             first, cleared = await self._measure(f"small{thr_value}", thr_value, thr_value + MARGIN)
             assert first, f"threshold {thr_value}: sep irq still 0 at {thr_value + MARGIN} rises"
+            assert first >= thr_value, f"threshold {thr_value}: sep irq at rise {first}"
             small[thr_value] = (first, cleared)
             self._lifecycle(
                 "CHK-THR-SMALL-RISE",
@@ -405,7 +413,7 @@ class smc_hang_sep_threshold_test_seq(SmcCsrSeq):
             f"threshold={t} first_sep_irq_rise={small[t][0]} offset={small[t][0] - t}"
             for t in order
         )
-        self._log_chk("CHK-THR-SMALL-LOG", f"{offsets} (observe-and-log, owner value pending)")
+        self._log_chk("CHK-THR-SMALL-LOG", f"{offsets} (observe-and-log, not specified, measured)")
 
         # S8: cleanup
         self._hold(0, "cleanup")

@@ -55,7 +55,7 @@ class smc_cpu_ctrl_mutex_all_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_cpu_ctrl_mutex_all_test_seq") -> None:
         super().__init__(name)
         self.stamps: list[tuple[str, int]] = []
-        self.chk_order: list[tuple[str, str]] = []
+        self.chk_order: list[tuple[str, str, int]] = []
         self.waits: list[tuple[str, str, str]] = []
         self.last_state = "no access yet"
 
@@ -64,7 +64,7 @@ class smc_cpu_ctrl_mutex_all_test_seq(SmcCsrSeq):
 
     def _chk(self, step: str, chk_id: str, text: str, *args) -> None:
         cocotb.log.info("%s: " + text, chk_id, *args)
-        self.chk_order.append((step, chk_id))
+        self.chk_order.append((step, chk_id, len(self.stamps)))
 
     async def _rd(self, tag: str, n: int) -> int:
         """Read MUTEX[n] and return bit 0 of the delivered data."""
@@ -182,7 +182,8 @@ class smc_cpu_ctrl_mutex_all_test_seq(SmcCsrSeq):
         self._chk(
             "S5",
             "CHK-MUTEX-BACK2BACK",
-            "id=%d two reads bit0 first,second [%s] within %dns bound",
+            "id=%d two reads issued as one group item (overlap not measured) bit0 first,second "
+            "[%s] within %dns bound",
             B2B_AXI_ID,
             " ".join(b2b_log),
             bound_ns,
@@ -229,12 +230,14 @@ class smc_cpu_ctrl_mutex_all_test_seq(SmcCsrSeq):
         times = [t for _, t in self.stamps]
         assert all(b > a for a, b in zip(times, times[1:])), f"stamps not increasing: {times}"
         expected_chk = [c for c in FENCE_CHECKERS if c]
-        assert [c for _, c in self.chk_order] == expected_chk, (
-            f"checker lines {[c for _, c in self.chk_order]}, expected {expected_chk}"
+        assert [c for _, c, _ in self.chk_order] == expected_chk, (
+            f"checker lines {[c for _, c, _ in self.chk_order]}, expected {expected_chk}"
         )
-        stamp_of = dict(self.stamps)
-        for step, chk_id in self.chk_order:
-            assert stamp_of[step] >= times[0], f"{chk_id} printed before bring-up"
+        for step, chk_id, n_stamps in self.chk_order:
+            assert n_stamps == FENCE_STEPS.index(step) + 1, (
+                f"{chk_id} printed after {n_stamps} step stamps, expected "
+                f"{FENCE_STEPS.index(step) + 1} for {step}"
+            )
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
             " < ".join(FENCE),

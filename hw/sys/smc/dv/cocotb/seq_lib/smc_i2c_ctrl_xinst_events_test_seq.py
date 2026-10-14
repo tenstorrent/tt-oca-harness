@@ -6,9 +6,9 @@ Sources: hw/ip/i2c/regs/i2c.rdl (FDATA.READB, RDATA.DATA, CONTROLLER_EVENTS.NACK
 INTR_STATE.UNEXP_STOP, INTR_ENABLE), hw/sys/smc/doc/interrupts.adoc (I2C interrupts 0-2).
 
 Three instances share one open-drain bus (+smc_i2c_shared_bus) and one is the controller
-at a time. The unconfigured-address NACK and every UNEXP_STOP leg are owner value pending:
-they are logged and not compared. Each interrupt-line leg checks the line low while the enable is
-clear, then 1 << k after the enable, then low after the clear.
+at a time. The unconfigured-address NACK and every UNEXP_STOP leg: the specification does not
+state the value; they are logged and not compared. Each interrupt-line leg checks the line
+low while the enable is clear, then 1 << k after the enable, then low after the clear.
 """
 
 from __future__ import annotations
@@ -52,6 +52,8 @@ CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_A
 
 INTR_CMD_COMPLETE = _i2c_u32("I2C__INTR_STATE__CMD_COMPLETE_bm")
 INTR_CONTROLLER_HALT = _i2c_u32("I2C__INTR_STATE__CONTROLLER_HALT_bm")
+ENABLE_CMD_COMPLETE = _i2c_u32("I2C__INTR_ENABLE__CMD_COMPLETE_bm")
+ENABLE_CONTROLLER_HALT = _i2c_u32("I2C__INTR_ENABLE__CONTROLLER_HALT_bm")
 INTR_UNEXP_STOP = _i2c_u32("I2C__INTR_STATE__UNEXP_STOP_bm")
 EV_NACK = I2C_CONTROLLER_EVENTS_NACK
 
@@ -375,7 +377,7 @@ class smc_i2c_ctrl_xinst_events_test_seq(SmcCsrSeq):
             f"{frame.addr_acked}); instance 0 CONTROLLER_EVENTS=0x{events[0]:08x} "
             f"NACK={int(bool(events[0] & EV_NACK))}; INTR_STATE=0x{intr:08x} CONTROLLER_HALT="
             f"{int(bool(intr & INTR_CONTROLLER_HALT))}; recovery readback events="
-            f"0x{ev_after:08x} halt={halt_after}; no compare (owner value pending)",
+            f"0x{ev_after:08x} halt={halt_after}; no compare (not specified, measured)",
         )
 
     async def _unexp_window(self, label: str) -> list[tuple[int, int]]:
@@ -416,7 +418,7 @@ class smc_i2c_ctrl_xinst_events_test_seq(SmcCsrSeq):
             f"instance 1 target 0x{STOP_TARGET_ADDR:02x}, controller STOP straight after the "
             f"address, wire frame {frame}, {done}; INTR_STATE.UNEXP_STOP per poll "
             f"({len(rows)} polls over {UNEXP_WINDOW_CYCLES} cycles): {self._rows(rows)}; "
-            f"final={rows[-1][1]}; no compare (owner value pending)",
+            f"final={rows[-1][1]}; no compare (not specified, measured)",
         )
 
     async def _s5_unexp_clear(self) -> None:
@@ -428,7 +430,7 @@ class smc_i2c_ctrl_xinst_events_test_seq(SmcCsrSeq):
             "CHK-UNEXP-CLEAR-OBS",
             f"instance 1 INTR_STATE before the written 1: 0x{before:08x} UNEXP_STOP="
             f"{int(bool(before & INTR_UNEXP_STOP))}; after: 0x{after:08x} UNEXP_STOP="
-            f"{int(bool(after & INTR_UNEXP_STOP))}; no compare (owner value pending)",
+            f"{int(bool(after & INTR_UNEXP_STOP))}; no compare (not specified, measured)",
         )
 
     async def _s6_unexp_normal(self) -> None:
@@ -455,7 +457,7 @@ class smc_i2c_ctrl_xinst_events_test_seq(SmcCsrSeq):
             f"instance 1 target 0x{STOP_TARGET_ADDR:02x}, normal write 0xA5 0x5A then STOP, "
             f"wire frame {frame}, {done}; INTR_STATE before the write 0x{pre:08x}; "
             f"UNEXP_STOP per poll ({len(rows)} polls over {UNEXP_WINDOW_CYCLES} cycles): "
-            f"{self._rows(rows)}; final={rows[-1][1]}; no compare (owner value pending)",
+            f"{self._rows(rows)}; final={rows[-1][1]}; no compare (not specified, measured)",
         )
 
     async def _irq_leg_setup(self, k: int, label: str) -> None:
@@ -497,7 +499,7 @@ class smc_i2c_ctrl_xinst_events_test_seq(SmcCsrSeq):
             assert low0 == 0 and low1 == 0, (
                 f"{label}: tb_i2c_irq 0b{low0:03b}/0b{low1:03b} with INTR_ENABLE.CMD_COMPLETE=0"
             )
-            await self.csr_write(f"{label}_ENABLE", en_addr, INTR_CMD_COMPLETE)
+            await self.csr_write(f"{label}_ENABLE", en_addr, ENABLE_CMD_COMPLETE)
             high = await self._wait_irq(f"{label}_irq_high", 1 << k)
             await self.csr_write(f"{label}_CLEAR", _reg("INTR_STATE", k), INTR_CMD_COMPLETE)
             low = await self._wait_irq(f"{label}_irq_low", 0)
@@ -538,7 +540,7 @@ class smc_i2c_ctrl_xinst_events_test_seq(SmcCsrSeq):
             assert low0 == 0 and low1 == 0, (
                 f"{label}: tb_i2c_irq 0b{low0:03b}/0b{low1:03b} with INTR_ENABLE.CONTROLLER_HALT=0"
             )
-            await self.csr_write(f"{label}_ENABLE", en_addr, INTR_CONTROLLER_HALT)
+            await self.csr_write(f"{label}_ENABLE", en_addr, ENABLE_CONTROLLER_HALT)
             high = await self._wait_irq(f"{label}_irq_high", 1 << k)
             ev_after, halt_after = await self._recover(k, label)
             low = await self._wait_irq(f"{label}_irq_low", 0)

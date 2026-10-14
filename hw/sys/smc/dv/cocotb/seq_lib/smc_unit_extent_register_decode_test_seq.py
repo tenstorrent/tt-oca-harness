@@ -356,7 +356,7 @@ class smc_unit_extent_register_decode_test_seq(SmcCsrSeq):
             f"(RDL reset 0x{CHIP_CONFIG_LC_STATE_REG_DEFAULT:X}) and NDMRESET_CLUSTER_COUNT@"
             f"0x{CLUSTER_COUNT:08X}=0x{cluster_count:08X} (RDL reset "
             f"0x{NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_DEFAULT:X}) hardware driven, observe-only "
-            f"(owner value pending)",
+            f"(not specified, measured)",
         )
 
         # S6: last registers of mailbox, eFuse interface control and system timer.

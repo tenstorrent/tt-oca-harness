@@ -388,6 +388,9 @@ class smc_uart_irq_thre_identify_test_seq(SmcCsrSeq):
             assert not (_pending(iir) and _id(iir) == ID_THRE), (
                 f"S6: IIR=0x{iir:x} reported ID 1 with ETBEI clear (sample {n}); {self._state()}"
             )
+            assert self._irq() == 0, (
+                f"S6: uart_interrupt high with IER=0 (sample {n}); {self._state()}"
+            )
             samples.append(f"0x{iir:x}")
         lsr = await self._rd_lsr("S6_LSR")
         assert lsr & LSR_THRE, f"S6: LSR=0x{lsr:x} has THRE clear with the buffer drained"
@@ -395,8 +398,8 @@ class smc_uart_irq_thre_identify_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-UART-THRE-MASK",
             "S6",
-            "with ETBEI clear and the buffer drained %d IIR samples [%s] never reported ID 1 "
-            "and LSR=0x%x read THRE=1",
+            "with ETBEI clear and the buffer drained %d IIR samples [%s] never reported ID 1, "
+            "uart_interrupt read 0 at each, and LSR=0x%x read THRE=1",
             MASK_SAMPLES,
             ",".join(samples),
             lsr,
@@ -438,7 +441,7 @@ class smc_uart_irq_thre_identify_test_seq(SmcCsrSeq):
             "CHK-UART-THRE-ETBEI-EMPTY",
             "S7",
             "with ETBEI set on an already empty buffer and LSR=0x%x read before and 0x%x after: "
-            "%s, the next IIR read 0x%x; owner answer pending",
+            "%s, the next IIR read 0x%x (not specified, measured)",
             lsr_pre,
             lsr,
             shown,

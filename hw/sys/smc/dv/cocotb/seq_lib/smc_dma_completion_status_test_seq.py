@@ -313,7 +313,7 @@ class smc_dma_completion_status_test_seq(SmcCsrSeq):
             f"bit 8 transitions {edges}; DONE_0 first equals {j.id} at sample {first_done} of "
             f"{len(samples)}; STATUS_0 bit 8 after retirement {(after >> 8) & 1} "
             f"(STATUS_0 0x{after:x}); AR {len(ar)} AW {len(aw)} handshakes; destination equals "
-            f"source rows; timing is measured and printed, owner value pending"
+            f"source rows; timing is measured and printed (not specified)"
         )
 
     async def _no_data(self, step: str, name: str, config: int, reps_lo: int) -> str:

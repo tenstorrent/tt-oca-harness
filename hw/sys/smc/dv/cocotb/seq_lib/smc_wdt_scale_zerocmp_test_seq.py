@@ -89,11 +89,12 @@ class smc_wdt_scale_zerocmp_test_seq(SmcCsrSeq):
         for s in range(1, 16):
             await self._wr(f"S2_{s}_COUNT", "COUNT", (1 << s) - 1)
             await self._wr(f"S2_{s}_CTRL", "CTRL", s)
+            c1 = await self._rd(f"S2_{s}_C1", "COUNT")
             sc = await self._rd(f"S2_{s}_SC", "SCALED_COUNT")
             c2 = await self._rd(f"S2_{s}_C2", "COUNT")
-            assert sc <= (c2 >> s), (
-                f"scale {s}: SCALED_COUNT 0x{sc:x} above COUNT>>s 0x{c2 >> s:x} "
-                f"(COUNT 0x{c2:x}, written 0x{(1 << s) - 1:x})"
+            assert (c1 >> s) <= sc <= (c2 >> s), (
+                f"scale {s}: SCALED_COUNT 0x{sc:x} outside [0x{c1 >> s:x}, 0x{c2 >> s:x}] "
+                f"(COUNT 0x{c1:x}, 0x{c2:x}, written 0x{(1 << s) - 1:x})"
             )
             held_rows.append(f"{s}:{sc:x}")
         self._mark_step("S2")
@@ -112,7 +113,7 @@ class smc_wdt_scale_zerocmp_test_seq(SmcCsrSeq):
                 f"COUNT=0x{c:08x} scale {s}: SCALED_COUNT=0x{sc:x} COUNT>>s=0x{c >> s:x}"
                 for c, s, sc in wide
             )
-            + "; the width limit is an open owner question and is not asserted",
+            + "; the width limit is not specified and is not asserted",
         )
 
         # S4
@@ -177,8 +178,7 @@ class smc_wdt_scale_zerocmp_test_seq(SmcCsrSeq):
             "CHK-WDT-ZEROCMP-CMP0",
             f"CMP=0xFFFF cleared: wdogip0={ip7_pre}; CMP=0 with wdogzerocmp set: "
             f"wdogip0={ip7}; 8 COUNT reads "
-            f"{','.join(f'0x{r:x}' for r in reads7)} (count after each clear is an open owner "
-            f"question)",
+            f"{','.join(f'0x{r:x}' for r in reads7)} (count after each clear is not specified)",
         )
 
         # S8
@@ -214,7 +214,7 @@ class smc_wdt_scale_zerocmp_test_seq(SmcCsrSeq):
             f"vs CMP<<0=0x40; scale 3 CMP 4: 16 reads contain a drop, wdogip0={ip8}, "
             f"max 0x{max(reads8):x} vs CMP<<3=0x20; zerocmp set at COUNT 0x{last:x} after "
             f"{poll + 1} polls: 8 reads {','.join(f'0x{r:x}' for r in reads9)} contain a drop "
-            f"(latency is an open owner question)",
+            f"(latency is not specified)",
         )
 
         self._nonvac_fence()

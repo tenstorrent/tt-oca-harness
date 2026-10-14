@@ -259,6 +259,10 @@ class smc_efuse_fuse_reset_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
             lambda: any(v == 1 for _i, _c, v in reads),
         )
         first_one = next(k for k, r in enumerate(reads) if r[2] == 1)
+        assert reads[first_one][1] <= window_end, (
+            f"first STATUS read of 1 completed at edge {reads[first_one][1]}, "
+            f"after the window end {window_end}"
+        )
         self._stop_reads = True
         await stream
         after = reads[first_one:]
@@ -297,7 +301,7 @@ class smc_efuse_fuse_reset_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
         count = release - boot
         assert count >= _PIPE_STAGES, (
             f"fuse_reset_n rose {count} edges after ext_boot (edge {boot} to {release}), "
-            f"port_table.adoc states {_PIPE_STAGES} pipeline stages (owner value pending)"
+            f"port_table.adoc states {_PIPE_STAGES} pipeline stages"
         )
         last_edge = min(release + 8, len(rec))
         warm_rise = next((i for i in range(boot, last_edge) if rec[i][_WARM]), None)
@@ -307,7 +311,7 @@ class smc_efuse_fuse_reset_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-FRST-16-STAGE",
             "ext_boot first read 1 at edge %d, tb_fuse_reset_n 0 on every edge from edge %d to "
             "%d and first read 1 at edge %d: %d edges after ext_boot (adoc minimum %d; exact "
-            "count with the input synchroniser is measured, owner value pending); "
+            "count with the input synchroniser is measured); "
             "tb_rst_warm_smc_clk_n was "
             "%d at the ext_boot edge, first high at edge %s (%s edges relative to the release)",
             boot,
@@ -340,7 +344,7 @@ class smc_efuse_fuse_reset_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
         count2 = early - sense2
         assert count2 >= _PIPE_STAGES, (
             f"fuse_reset_n rose {count2} edges after sense done (edge {sense2} to {early}), "
-            f"port_table.adoc states {_PIPE_STAGES} pipeline stages (owner value pending)"
+            f"port_table.adoc states {_PIPE_STAGES} pipeline stages"
         )
         self._done("S4")
         self._chk(
@@ -348,7 +352,7 @@ class smc_efuse_fuse_reset_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "ext_boot 1 on every edge from the release (edge %d) to the fuse reset rise "
             "(edge %d); tb_fuse_reset_n 0 until sense done at edge %d; the rise came %d edges "
             "after sense done (adoc minimum %d; S3 count after ext_boot was %d, equality is "
-            "printed not asserted, owner value pending: %s)",
+            "printed not asserted: %s)",
             rel2,
             early,
             sense2,
@@ -374,8 +378,8 @@ class smc_efuse_fuse_reset_gate_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-FRST-BOOT-DROP",
             "ext_boot read 0 at edge %d after tb_hold_ext_boot=1 (it was 1 before); "
             "tb_fuse_reset_n observed levels %s over %d edges from edge %d, first level %d, "
-            "change edge %s (the level after a boot-done drop is the owner's open answer, "
-            "owner answer pending; nothing else asserted)",
+            "change edge %s (the level after a boot-done drop is not specified, measured; "
+            "nothing else asserted)",
             drop,
             levels,
             _WINDOW_EDGES,

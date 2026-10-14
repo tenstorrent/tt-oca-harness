@@ -5,10 +5,9 @@
 Spec sources: hw/ip/telemetry_receiver/doc/architecture.adoc, doc/interface.adoc,
 regs/telemetry_receiver.rdl.
 
-The ATB framing is the DV-owned layout of the receiver CSR leaf: eight-bit beats assemble
-LSB-first into 64-bit packets of 9-bit blocks (doc/architecture.adoc, doc/interface.adoc), a
-5-bit probe ID header and a last-packet flag; the bit positions of header and flag are bench
-assumptions, as in that leaf. The message driven here is one last-flagged packet.
+ATB framing from telemetry_receiver/doc/architecture.adoc (Assembly and Decode): eight beats
+LSB first, bit 63 last packet, probe ID [60:56]; the 9-bit block layout from bit 0 is a bench
+choice. The message driven here is one last-flagged packet.
 """
 
 from __future__ import annotations
@@ -56,7 +55,7 @@ ENABLE_THRESHOLD_BM = _tel("TELEMETRY_RECEIVER__INTR_ENABLE__BUFFER_THRESHOLD_bm
 REGS_ALL = ("STATUS", "TELEMETRY_PROBE_ID", "TELEMETRY_COUNTER_VLDS", "INTR_STATUS", "CTRL")
 REGS_OPS = ("STATUS", "TELEMETRY_PROBE_ID", "INTR_STATUS", "CTRL")
 
-# DV-owned ATB framing (bit positions are bench assumptions, see the module docstring).
+# ATB framing: see the module docstring.
 BEAT_BITS = 8
 PACKET_BITS = 64
 BEATS_PER_PACKET = PACKET_BITS // BEAT_BITS
@@ -353,7 +352,7 @@ class smc_telemetry_receiver_isolation_test_seq(SmcCsrSeq):
         await self._write("S4_CLEAN_FLUSH", "CTRL", 2, RX_FLUSH_BM)
         await self._wait_empty("S4_CLEAN_EMPTY", 2, True)
         self._stamp("S4")
-        sf020 = {
+        af_pins_present = {
             rx: hasattr(dut, f"tb_telemetry{rx}_afvalid")
             and hasattr(dut, f"tb_telemetry{rx}_afready")
             for rx in (1, 2)
@@ -373,8 +372,8 @@ class smc_telemetry_receiver_isolation_test_seq(SmcCsrSeq):
             intr_by_rx[2],
             irq_any_start,
             irq_any_end,
-            "present" if sf020[1] else "absent",
-            "present" if sf020[2] else "absent",
+            "present" if af_pins_present[1] else "absent",
+            "present" if af_pins_present[2] else "absent",
         )
 
     async def _timeout_paths(self) -> None:

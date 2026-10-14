@@ -19,8 +19,10 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import (
     HANG_DET_ARMED,
     HANG_DET_DATA_ACCEL_CTRL,
+    HANG_DET_DATA_ACCEL_TIMEOUT,
     HANG_DET_IRQ,
     HANG_DET_SEP_AXI_CTRL,
+    HANG_DET_SEP_AXI_TIMEOUT,
     HANG_DET_SYS_AXI_CTRL,
     HANG_DET_SYS_AXI_TIMEOUT,
     HANG_DET_THR_VALUE,
@@ -48,10 +50,12 @@ SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADD
 SYS_BIT = 286
 INBOUND_PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
 THRESHOLD = 0x40
+THRESHOLD_WIDE = 0x80
 THRESHOLD_CLEANUP = 0x1000
 BELOW_HOLD_RISES = 16
 BELOW_WINDOW_RISES = 256
 BEYOND_CEILING_RISES = 128
+BEYOND_WIDE_CEILING_RISES = 192
 AT_AFTER_RISES = 8
 AR_CEILING_RISES = 256
 DONE_CEILING_RISES = 256
@@ -192,20 +196,35 @@ class smc_hang_sys_timeout_window_test_seq(SmcCsrSeq):
         await self._await_done(task, name)
         return BELOW_WINDOW_RISES
 
-    async def _beyond(self) -> tuple[int, int, int]:
+    async def _set_peers(self, label: str, armed: bool) -> None:
+        """Arm or disarm the SEP_AXI and DATA_ACCEL detectors; armed ones use THRESHOLD."""
+        for name, ctrl, timeout in (
+            ("SEP", HANG_DET_SEP_AXI_CTRL, HANG_DET_SEP_AXI_TIMEOUT),
+            ("DATA", HANG_DET_DATA_ACCEL_CTRL, HANG_DET_DATA_ACCEL_TIMEOUT),
+        ):
+            if armed:
+                await self.csr_write(f"HANG_{name}_THR_{label}", timeout, THRESHOLD)
+            await self.csr_write(
+                f"HANG_{name}_{'ARM' if armed else 'OFF'}_{label}",
+                ctrl,
+                HANG_DET_ARMED if armed else 0,
+            )
+
+    async def _beyond(
+        self, name: str = "beyond", ceiling: int = BEYOND_CEILING_RISES
+    ) -> tuple[int, int, int]:
         """Stall past the threshold; return (sys rise, raw rise, CTRL rdata)."""
-        name = "beyond"
         task = self._start_read(name)
         await self._await_ar(name)
         wait = f"{name} irq wait"
-        self._waits[wait] = (BEYOND_CEILING_RISES, "no rise yet")
+        self._waits[wait] = (ceiling, "no rise yet")
         sys_at = raw_at = 0
         sys_irq = raw = sep = data = 0
-        for n in range(1, BEYOND_CEILING_RISES + 1):
+        for n in range(1, ceiling + 1):
             await RisingEdge(cocotb.top.clk_smc_i)
             sys_irq, raw, sep, data = self._sample(f"{wait}[{n}]")
             self._waits[wait] = (
-                BEYOND_CEILING_RISES,
+                ceiling,
                 f"sys={sys_irq} raw286={raw} sep={sep} data={data} after {n} rises",
             )
             assert sep == 0 and data == 0, (
@@ -218,14 +237,14 @@ class smc_hang_sys_timeout_window_test_seq(SmcCsrSeq):
         else:
             raise AssertionError(
                 f"{wait}: sys irq rose at {sys_at}, raw286 at {raw_at} within "
-                f"{BEYOND_CEILING_RISES} rises of the AR handshake (last sys={sys_irq} "
+                f"{ceiling} rises of the AR handshake (last sys={sys_irq} "
                 f"raw286={raw})"
             )
         rdata = await self.csr_read("HANG_SYS_CTRL_IRQ", HANG_DET_SYS_AXI_CTRL)
         assert rdata & HANG_DET_IRQ, f"HANG_DET_SYS_AXI_CTRL=0x{rdata:x}: irq bit reads 0"
         self._hold(0, "beyond-threshold release")
         await self._await_done(task, name)
-        await self.csr_write("HANG_SYS_CTRL_OFF_BEYOND", HANG_DET_SYS_AXI_CTRL, 0)
+        await self.csr_write(f"HANG_SYS_CTRL_OFF_{name.upper()}", HANG_DET_SYS_AXI_CTRL, 0)
         return sys_at, raw_at, rdata
 
     async def _at_threshold(self) -> tuple[str, int]:
@@ -324,13 +343,31 @@ class smc_hang_sys_timeout_window_test_seq(SmcCsrSeq):
             f"raw286 read 0 at each of {zero_rises} rises from the AR handshake",
         )
 
+        await self._set_peers("BEYOND", True)
         sys_at, raw_at, rdata = await self._beyond()
         cleared = await self._await_sys_low("beyond")
+        await self.csr_write("HANG_SYS_THR_WIDE", HANG_DET_SYS_AXI_TIMEOUT, THRESHOLD_WIDE)
+        thr = await self.csr_read(
+            "HANG_SYS_THR_WIDE_RB", HANG_DET_SYS_AXI_TIMEOUT, expected=THRESHOLD_WIDE
+        )
+        assert (thr & HANG_DET_THR_VALUE) == THRESHOLD_WIDE, (
+            f"SYS threshold readback 0x{thr:x} want 0x{THRESHOLD_WIDE:x}"
+        )
+        await self.csr_write("HANG_SYS_ARM_WIDE", HANG_DET_SYS_AXI_CTRL, HANG_DET_ARMED)
+        wide_at, wide_raw, _ = await self._beyond("beyond_wide", BEYOND_WIDE_CEILING_RISES)
+        await self._await_sys_low("beyond_wide")
+        assert wide_at - sys_at == THRESHOLD_WIDE - THRESHOLD, (
+            f"sys irq rose at rise {sys_at} with threshold 0x{THRESHOLD:x} and at rise "
+            f"{wide_at} with threshold 0x{THRESHOLD_WIDE:x}, want a difference of "
+            f"{THRESHOLD_WIDE - THRESHOLD}"
+        )
+        await self._set_peers("BEYOND", False)
+        await self.csr_write("HANG_SYS_THR_RESTORE", HANG_DET_SYS_AXI_TIMEOUT, THRESHOLD)
         self.phases += 1
         self._mark_step("S3")
         self._log_legs(
             "CHK-SYSWIN-BEYOND",
-            f"SYS_IN read held past threshold 0x{THRESHOLD:x}",
+            f"SYS_IN read held past threshold 0x{THRESHOLD:x}, SEP_AXI and DATA_ACCEL armed",
             "tb_axi_hang_irq_sys, tb_cpu_interrupts[286] and CTRL.irq",
             "CTRL written 0 after the release",
             f"tb_axi_hang_irq_sys and raw286 read 0 after {cleared} rises",
@@ -338,8 +375,10 @@ class smc_hang_sys_timeout_window_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-SYSWIN-BEYOND",
             f"sys irq first 1 at rise {sys_at}, raw286 first 1 at rise {raw_at} "
-            f"(ceiling {BEYOND_CEILING_RISES}); sep=0 data=0; CTRL=0x{rdata:x} irq=1; "
-            f"cleared after {cleared} rises",
+            f"(ceiling {BEYOND_CEILING_RISES}); sep=0 data=0 with both armed at threshold "
+            f"0x{THRESHOLD:x}; CTRL=0x{rdata:x} irq=1; cleared after {cleared} rises; threshold "
+            f"0x{THRESHOLD_WIDE:x}: sys irq first 1 at rise {wide_at}, raw286 at rise "
+            f"{wide_raw}, {wide_at - sys_at} later than at 0x{THRESHOLD:x}",
         )
 
         text, first = await self._at_threshold()
@@ -349,7 +388,7 @@ class smc_hang_sys_timeout_window_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-SYSWIN-AT-LOG",
             f"stall of exactly 0x{THRESHOLD:x} rises: first_sys_irq_rise={first}; "
-            f"{text}; cleared after {cleared_at} rises (observe-and-log, owner value pending)",
+            f"{text}; cleared after {cleared_at} rises (observe-and-log, not specified, measured)",
         )
 
         self._hold(0, "cleanup")
@@ -389,7 +428,7 @@ class smc_hang_sys_timeout_window_test_seq(SmcCsrSeq):
         stamp_of = dict(self._stamps)
         for (chk_id, when), step in zip(self._chk_marks, _CHECK_STEP):
             assert when >= stamp_of[step], f"{chk_id} printed before its step {step} stamp"
-        assert self._reads == 3, f"{self._reads} SYS_IN reads started, want 3"
+        assert self._reads == 4, f"{self._reads} SYS_IN reads started, want 4"
         cocotb.log.info(
             "CHK-NONVAC: ordered fence ARM<BELOW<BEYOND<AT<CLEANUP; checker lines %s; stamps %s",
             ",".join(chk_ids),

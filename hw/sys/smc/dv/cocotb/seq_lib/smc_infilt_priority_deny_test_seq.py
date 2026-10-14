@@ -37,7 +37,7 @@ _RDONLY_B1 = 0x0000_0000_0100_0011
 _WRONLY_B1 = 0x0000_0000_0100_0012
 _DENY_NS1 = 0x0000_0000_0100_0110
 _PERMIT_B0 = 0x0000_0000_0000_0013
-_READBACK_BITS = 0x3000
+_READBACK_BITS = _RESET_CFG
 _SPM = smc_addr("SMC_TOP_SPM_MEMORY_BASE_ADDR")
 _PAGE_A = _SPM + 0x6_0000
 _PAGE_D = _SPM + 0x7_0000
@@ -389,12 +389,13 @@ class smc_infilt_priority_deny_test_seq(SmcCsrSeq):
         parts = []
         for tag, chan in (("single", single), ("4-beat", burst)):
             beats = chan["r_beats"]
-            assert beats, f"{tag} denied read returned no R beat"
+            want_beats = 1 if tag == "single" else 4
+            assert len(beats) == want_beats, f"{tag} denied read returned {len(beats)} R beats"
             assert all(resp == _DECERR for resp, _ in beats), f"{tag} R beats {beats}"
             assert beats[-1][1] == 1, f"{tag} last returned beat lacks RLAST: {beats}"
             parts.append(
                 f"{tag} {len(beats)} R beats rresp {[r for r, _ in beats]} rlast on last "
-                f"rdata 0x{chan['rdata']:x} (beat count and rdata printed, not graded) "
+                f"rdata 0x{chan['rdata']:x} (beat count compared exactly, rdata printed) "
                 f"{self._fmt(tag, chan)}"
             )
         self._mark_step("S6")

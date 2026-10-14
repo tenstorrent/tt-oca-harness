@@ -35,6 +35,7 @@ WDT_SCALED_PROBE = 0x1234
 WDT_WIDE_DATA = (WDT_MAGIC_KEY << 32) | WDT_FEED_VALUE
 
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")
+WDT_KEY_RELOCK_ACCESSES = 76
 CHECKERS = (
     ("CHK-WDT-KEY-NONMAGIC", "S2"),
     ("CHK-WDT-KEY-REPEATED-MAGIC", "S3"),
@@ -124,7 +125,7 @@ class smc_wdt_key_relock_test_seq(SmcCsrSeq):
             "S3",
             "after two magic writes CMP write 0x%04x read back 0x%04x, KEY then read 0x%x and "
             "the next write of 0x%04x was dropped (CMP 0x%04x); KEY read between the magic "
-            "writes and the register write = 0x%x (owner value pending)",
+            "writes and the register write = 0x%x (not specified, measured)",
             WDT_CMP_REPEAT,
             WDT_CMP_REPEAT,
             WDT_KEY_LOCKED,
@@ -262,7 +263,7 @@ class smc_wdt_key_relock_test_seq(SmcCsrSeq):
             "S9",
             "64-bit write 0x%016x at FEED: KEY read 0x%x after the locked-state write and 0x%x "
             "after the unlocked-state write; COUNT read 0x%08x (locked state) and 0x%08x "
-            "(unlocked state) after COUNT=0x%08x (owner value pending)",
+            "(unlocked state) after COUNT=0x%08x (not specified, measured)",
             WDT_WIDE_DATA,
             WDT_KEY_LOCKED,
             WDT_KEY_LOCKED,
@@ -279,8 +280,7 @@ class smc_wdt_key_relock_test_seq(SmcCsrSeq):
         assert marks == [c for c, _ in CHECKERS], f"checker order {marks}"
         for (chk, step), (_, n) in zip(CHECKERS, self.chk_marks):
             assert self.stamps[n - 1][0] == step, f"{chk} printed after {self.stamps[n - 1][0]}"
-        expected_accesses = self.accesses
-        self.assert_all_reachable(expected_accesses, "WDT_KEY_RELOCK")
+        self.assert_all_reachable(WDT_KEY_RELOCK_ACCESSES, "WDT_KEY_RELOCK")
         cocotb.log.info(
             "CHK-NONVAC: ordered fence checker lines in step order, strictly increasing step "
             "stamps, each line printed after its own compare; checker lines %s; stamps %s",

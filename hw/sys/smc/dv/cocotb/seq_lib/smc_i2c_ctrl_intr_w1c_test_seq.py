@@ -4,14 +4,15 @@
 
 Sources: hw/ip/i2c/regs/i2c.rdl (INTR_STATE, INTR_ENABLE), hw/sys/smc/doc/interrupts.adoc.
 
-`INTR_STATE.CMD_COMPLETE` is read 0, set by the STOP of a write transaction to the bench
-EEPROM, cleared by a written 1 and set again by a second identical transaction. A write,
-repeated START, read transaction logs the wire monitor counts at the first read that shows
-`CMD_COMPLETE` (the set point is owner value pending). A second bench pad driver pulls SDA inside
-the ninth SCL high window to set `SDA_UNSTABLE` and pulls SCL low after the ninth rise to set
-`SCL_INTERFERENCE`; each flag is read set before its written 1 and read 0 after it. The SCL
-pull is repeated with the interrupt enable clear: `tb_i2c_irq` stays 0b000 while the flag is
-set, reads 0b001 once the enable is written and 0b000 after the clear.
+`INTR_STATE.CMD_COMPLETE` is read 0, reads 1 after the target frames the STOP of a write
+transaction to the bench EEPROM, cleared by a written 1 and set again by a second identical
+transaction. A write, repeated START, read transaction logs the wire monitor counts at the
+first read that shows `CMD_COMPLETE` (the specification does not state the set point). A
+second bench pad driver pulls SDA inside the ninth SCL high window to set `SDA_UNSTABLE` and
+pulls SCL low after the ninth rise to set `SCL_INTERFERENCE`; each flag is read set before its
+written 1 and read 0 after it. The SCL pull is repeated with the interrupt enable clear:
+`tb_i2c_irq` stays 0b000 while the flag is set, reads 0b001 once the enable is written and
+0b000 after the clear.
 """
 
 from __future__ import annotations
@@ -409,7 +410,7 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
             f"the wire monitor counted starts={seen['starts']} stops={seen['stops']} "
             f"data_bytes={seen['data']} of the write-restart-read of {READ_BYTES} bytes; "
             f"frames {seen['frames']}; final starts={monitor.starts - starts0} "
-            f"stops={monitor.stops - stops0}; no expected value (owner value pending)",
+            f"stops={monitor.stops - stops0}; no expected value (not specified, measured)",
         )
 
     async def _sda_unstable(self) -> None:
@@ -432,7 +433,7 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
             f"before (0x{pre:08x}); observed: SDA_UNSTABLE=1 after {polls} polls "
             f"(INTR_STATE=0x{word:08x}); cleared: written 1 (before 0x{before:08x}); "
             f"checked_cleared: INTR_STATE=0x{after:08x}; "
-            f"detection window per RDL only (owner value pending)",
+            f"detection window per RDL only (not specified, measured)",
         )
 
     async def _scl_interference_leg(self, label: str) -> tuple[int, int]:
@@ -461,7 +462,7 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
             f"{ACK_RISE}, INTR_ENABLE=0; observed: SCL_INTERFERENCE=1 after {polls} polls "
             f"(INTR_STATE=0x{word:08x}); cleared: written 1 (before 0x{before:08x}); "
             f"checked_cleared: INTR_STATE=0x{after:08x}; "
-            f"detection window per RDL only (owner value pending)",
+            f"detection window per RDL only (not specified, measured)",
         )
 
     async def _scl_interference_gate(self) -> None:

@@ -125,7 +125,7 @@ class smc_cpu_ctrl_wdt_regs_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-WDTRST-PULSE",
             "WDT_TIMEOUT_RESET bits [3:0] read 0 after each write completed; immediate readback "
-            "printed, not compared (owner value pending): " + " ".join(rows),
+            "printed, not compared (not specified, measured): " + " ".join(rows),
         )
 
         # S5
@@ -139,8 +139,8 @@ class smc_cpu_ctrl_wdt_regs_test_seq(SmcCsrSeq):
         self._stamp("S5")
         self._chk(
             "CHK-TESTCTRL-RO",
-            f"TEST_CTRL@0x{test_ctrl:08x} first read 0x{base:08x} (value open, owner value "
-            "pending) unchanged after writes: " + " ".join(rows),
+            f"TEST_CTRL@0x{test_ctrl:08x} first read 0x{base:08x} (value not specified, "
+            "measured) unchanged after writes: " + " ".join(rows),
         )
 
         expected = 1 + (2 * len(WDT_PATTERNS) + 2) + 3 * len(writes)

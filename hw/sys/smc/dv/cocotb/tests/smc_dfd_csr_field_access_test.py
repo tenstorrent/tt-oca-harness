@@ -12,8 +12,7 @@ from env.smc_protocol_vip_item import SmcProtocolVipKind
 from seq_lib.smc_dfd_csr_field_access_test_seq import smc_dfd_csr_field_access_test_seq
 from smc_base_test import smc_base_test
 
-# Floor written out here: six DST resets, the S2 field patterns, the S3 isolation snapshots,
-# S5, 6 x (36 patterns x 2 + restore), 6 + 6 distinct and the S8 and restore accesses.
+# Lower bound on the SEP_IN accesses of one pass of the sequence.
 CSR_FIELD_ACCESS_MIN_CSR_ACCESSES = 800
 
 

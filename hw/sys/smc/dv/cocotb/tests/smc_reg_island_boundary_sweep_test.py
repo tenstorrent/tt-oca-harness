@@ -21,8 +21,8 @@ class smc_reg_island_boundary_sweep_test(smc_base_test):
 
     required_evidence = (
         "CHK-ISL-SETUP-GOLDENS",
-        "CHK-ISL-FIRST-WORD-RW",
-        "CHK-ISL-LAST-DECODED-WORD-RW",
+        "CHK-ISL-FIRST-WORD-WRITE-OKAY",
+        "CHK-ISL-LAST-DECODED-WORD-WRITE-OKAY",
         "CHK-ISL-PASTEXT-READ-DECERR",
         "CHK-ISL-PASTEXT-WRITE-DECERR-CLASS",
         "CHK-ISL-PASTEXT-WRITE-SLVERR-CLASS",

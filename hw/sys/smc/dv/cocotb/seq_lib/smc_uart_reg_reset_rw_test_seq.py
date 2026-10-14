@@ -176,7 +176,8 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
             "CHK-UART-RESET-VALUES",
             "S2",
             "%d instances: RBR IER LCR MCR SCR ECR ITR read 0x00, IIR reads 0x%02x, "
-            "LSR reads 0x%02x",
+            "LSR reads 0x%02x; the 0x00 reset compares are not reset evidence on the 2-state "
+            "bench (zero-initialised flops read 0x00 with or without a reset)",
             len(INSTANCES),
             IIR_RESET,
             LSR_RESET,
@@ -219,7 +220,9 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-UART-RESET-DL",
             "S3",
-            "with DLAB set DLL=0x00 DLM=0x00 on %d instances",
+            "with DLAB set DLL=0x00 DLM=0x00 on %d instances; the 0x00 reset compares are not "
+            "reset evidence on the 2-state bench (zero-initialised flops read 0x00 with or "
+            "without a reset)",
             len(INSTANCES),
         )
         ref = self.vectors[0]
@@ -247,7 +250,7 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
             "CHK-UART-RW-IER",
             "S4",
             "IER bits 4:0 read back for 5 single-bit writes and all five set; %s "
-            "(owner value pending)",
+            "(not specified, measured)",
             " ".join(upper),
         )
 

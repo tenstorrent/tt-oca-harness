@@ -120,7 +120,8 @@ class smc_octs_csr_access_test_seq(SmcCsrSeq):
             "CHK-OCTS-RESET-VALUES",
             "CTRL 0x%08x; TIMER_START STATUS PRESET_LO PRESET_HI COUNT_LO COUNT_HI "
             "CREDIT_EXPIRED TIMER_GPIO_ENABLE all 0x0 (STATUS.MODE 0, RUNNING 0); "
-            "timer_count_o 0 at %d of %d rises",
+            "timer_count_o 0 at %d of %d rises; zero reset values are bench-limited (2-state "
+            "zero init)",
             ctrl0,
             zero_rises,
             _COUNT_SAMPLES,
@@ -202,8 +203,9 @@ class smc_octs_csr_access_test_seq(SmcCsrSeq):
             f"STATUS 0x{status:08x} after TIMER_START, expected MODE 0 and RUNNING 1 only"
         )
         assert count_hi == 0, f"COUNT_HI 0x{count_hi:08x} after a write of 0xFFFFFFFF"
-        assert abs(count_lo - count_prev) <= _COUNT_SLACK, (
-            f"COUNT_LO 0x{count_lo:08x} not within 0x{_COUNT_SLACK:x} of 0x{count_prev:08x}"
+        assert count_prev <= count_lo <= count_prev + _COUNT_SLACK, (
+            f"COUNT_LO 0x{count_lo:08x} not in [0x{count_prev:08x}, "
+            f"0x{count_prev + _COUNT_SLACK:08x}]"
         )
         assert count_lo != 0xFFFF_FFFF, "COUNT_LO took the written 0xFFFFFFFF"
         assert count_lo > 0, "COUNT_LO did not advance after TIMER_START"
@@ -225,9 +227,10 @@ class smc_octs_csr_access_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-OCTS-READONLY-START",
             "TIMER_START read %d after a write of 1; writes of 0xFFFFFFFF to STATUS COUNT_LO "
-            "COUNT_HI returned resp %s %s %s (owner value pending); STATUS 0x%08x MODE 0 RUNNING "
+            "COUNT_HI returned resp %s %s %s (not specified, measured); STATUS 0x%08x MODE 0 "
+            "RUNNING "
             "1; COUNT_HI "
-            "0x%x; COUNT_LO 0x%08x within 0x%x of previous 0x%08x",
+            "0x%x; COUNT_LO 0x%08x no lower than previous 0x%08x and within 0x%x of it",
             start_rb,
             _RESP_NAME.get(resp_status, resp_status),
             _RESP_NAME.get(resp_lo, resp_lo),
@@ -235,8 +238,8 @@ class smc_octs_csr_access_test_seq(SmcCsrSeq):
             status,
             count_hi,
             count_lo,
-            _COUNT_SLACK,
             count_prev,
+            _COUNT_SLACK,
         )
 
         # S6
@@ -247,7 +250,7 @@ class smc_octs_csr_access_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-OCTS-APERTURE-PAST",
             "read 0x24 resp %s data 0x%08x; read 0x28 resp %s data 0x%08x; write 0x24 resp %s "
-            "(owner value pending)",
+            "(not specified, measured)",
             _RESP_NAME.get(r1, r1),
             past1,
             _RESP_NAME.get(r2, r2),

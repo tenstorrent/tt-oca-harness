@@ -271,7 +271,7 @@ class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
         else:
             raise AssertionError(f"S6_FLR_LOW: tb_flr_sync_ref still 1 after {_BOUND} cycles")
         launch_sampler = cocotb.start_soon(self._clear_latency())
-        await self.csr_write("SMC_REG_CLR", SMC_REG, 0)
+        await self.csr_write("SMC_REG_CLR", SMC_REG, 0xFFFF_FFFF)
         clr_skip, clr_iso = await launch_sampler
         await self._hold(self._skip, 0, _HOLD, "S6_SKIP_STAYS")
         outcomes: list[tuple[int, int, int]] = []
@@ -297,9 +297,9 @@ class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
         self._stamp("S6")
         self._chk(
             "CHK-FLR-LATCH-CLEAR",
-            f"ISOLATE_REQ_SMC_REG written 0: tb_skip_mem_repair_o read 0 after {clr_skip} rises "
-            f"and tb_isolate_req_o[3] read 0 after {clr_iso} rises; FLR edge swept against the "
-            f"write "
+            f"ISOLATE_REQ_SMC_REG written 0xffffffff: tb_skip_mem_repair_o read 0 after "
+            f"{clr_skip} rises and tb_isolate_req_o[3] read 0 after {clr_iso} rises; FLR edge "
+            f"swept against the write "
             f"launch: latch cleared by the write for delays 0..{first_set - 1}, left set from "
             f"delay {first_set} = write-clear latency {clr_skip} - edge-set latency {skip_up}, "
             f"the coincident delay (swept {len(outcomes)} delays)",

@@ -38,7 +38,7 @@ _LOCKED_CFG = _RESET_CFG | _LOCKED
 # Register words: DENY_BOTH_B1 / PERMIT_B1 and their read-backs (data_bus_width 3).
 _DENY_B1 = 0x0000_0000_0100_0010
 _PERMIT_B1 = 0x0000_0000_0100_0013
-_READBACK_BITS = 0x3000
+_READBACK_BITS = _RESET_CFG
 _COMBINED = 0x8000_0000_0023_0003
 _REFUSED_START = 0x0200_1000
 _REFUSED_END = 0x0200_1FFF
@@ -218,6 +218,8 @@ class smc_filter_lock_scope_test_seq(SmcCsrSeq):
             write_delta=0,
             read_delta=1,
         )
+        _w, reads = output_responder_counts()
+        assert reads == counts[1] + 1, f"SYS_OUT read count {reads}, want {counts[1] + 1}"
         counts[1] += 1
 
     async def _jtag_blocked(self, addr: int, word: int, counts: list[int]) -> str:

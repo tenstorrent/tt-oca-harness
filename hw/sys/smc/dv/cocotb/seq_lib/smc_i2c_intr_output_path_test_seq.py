@@ -7,9 +7,8 @@
 Frontdoor only, one reset, no bus traffic. `CMD_COMPLETE` is raised through the
 `singlepulse` `INTR_TEST` field of instance n (n = 0, 1, 2) and observed on
 `tb_i2c_irq[n]` (peripheral interrupts 23 to 25) and on `tb_cpu_interrupts`
-(IDs 279 to 281). The combination of `INTR_ENABLE` and `INTR_STATE` into the
-output, the CPU vector bit numbering and the write-to-output latency are owner value
-pending: those steps print measured values and compare none of them.
+(IDs 279 to 281). S4 and S10 print the enable-mask levels and the write-to-output latency
+without comparing them; S8 compares CPU IDs 279 to 281 (interrupts.adoc).
 """
 
 from __future__ import annotations
@@ -26,7 +25,6 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_rdl_regmap import rdl_contract
 
 _NUM_I2C = 3
-_PERIPH_BASE = 23
 _CPU_BASE = 279
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
@@ -296,7 +294,8 @@ class smc_i2c_intr_output_path_test_seq(SmcCsrSeq):
         self._chk("CHK-I2C-IRQ-PERIPH-ONEHOT", "; ".join(onehot_parts))
         self._chk("CHK-I2C-CPU-VEC-RAISE-OBS", "; ".join(cpu_sets))
 
-        # S4: INTR_ENABLE as a mask over a pending state (observation only, owner value pending).
+        # S4: INTR_ENABLE as a mask over a pending state (observation only, the specification
+        # does not state the value).
         mask_parts: list[str] = []
         await self._force(0, CMD_COMPLETE, "S4")
         held = []
@@ -448,7 +447,7 @@ class smc_i2c_intr_output_path_test_seq(SmcCsrSeq):
         )
 
         # S10: three pending enabled bits cleared one at a time (observation only,
-        # owner value pending).
+        # the specification does not state the value).
         trio = (CMD_COMPLETE, "SDA_UNSTABLE", "RX_OVERFLOW")
         trio_en = 0
         for name in trio:

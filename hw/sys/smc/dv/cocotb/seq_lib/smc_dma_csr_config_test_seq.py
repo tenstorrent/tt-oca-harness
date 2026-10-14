@@ -5,7 +5,7 @@
 Specs hw/sys/smc/doc/dma.adoc, hw/sys/smc/doc/memmap.adoc, vendor idma overlay dma_ctrl.rdl.
 
 The destination bytes of both copies are read through the SYS_OUT responder's backdoor.
-Reserved CONFIG bits [31:11] are never written; their read-back is measured and printed.
+A CONFIG write with the reserved bits [31:11] set must read back 0 in them.
 """
 
 from __future__ import annotations
@@ -186,11 +186,20 @@ class smc_dma_csr_config_test_seq(SmcCsrSeq):
             await sweep(n << SRC_MAX_LLEN_SHIFT)
         for n in range(8):
             await sweep(n << DST_MAX_LLEN_SHIFT)
+        reserved_value = 0x5A5 | ~CONFIG_MASK & 0xFFFF_FFFF
+        await self.csr_write("CFG_WR_RESERVED", ADDR["CONFIG"], reserved_value)
+        got = await self.csr_read("CFG_RD_RESERVED", ADDR["CONFIG"])
+        assert got & ~CONFIG_MASK & 0xFFFF_FFFF == 0, (
+            f"CONFIG wrote 0x{reserved_value:08x}, reserved bits [31:11] read "
+            f"0x{got & ~CONFIG_MASK & 0xFFFF_FFFF:08x} (full 0x{got:08x})"
+        )
+        assert got & CONFIG_MASK == 0x5A5, f"CONFIG bits [10:0] read 0x{got & CONFIG_MASK:03x}"
         self._mark("S4")
         return (
             f"{writes} CONFIG writes (bits 0..10 alone, SRC_MAX_LLEN 0..7, DST_MAX_LLEN 0..7) "
-            f"read back exactly in bits [10:0]; reserved bits [31:11] never written, read "
-            f"back with OR 0x{reserved_or:08x} (owner value pending: measured, not asserted)"
+            f"read back exactly in bits [10:0] with reserved bits [31:11] OR 0x{reserved_or:08x}; "
+            f"a write of 0x{reserved_value:08x} with bits [31:11] set read back 0x{got:08x}, "
+            f"reserved bits 0 (dma_ctrl.rdl defines CONFIG [10:0] only)"
         )
 
     def _seed(self, src: int, dst: int, rows: int, src_stride: int, dst_stride: int) -> bytes:

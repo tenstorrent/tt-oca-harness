@@ -8,7 +8,7 @@ FDATA.RCONT, RDATA.DATA, STATUS.RXEMPTY, STATUS.FMTEMPTY, STATUS.HOSTIDLE).
 Three bench EEPROM targets (0x50, 0x29, 0x6B) answer on the I2C0 pads and a passive wire
 monitor decodes every frame. Every transaction is queued with CTRL cleared and executed by
 setting ENABLEHOST. STATUS.HOSTIDLE during and after a transaction is logged and not
-compared (owner value pending).
+compared; the specification does not state the value.
 """
 
 from __future__ import annotations
@@ -424,7 +424,7 @@ class smc_i2c_ctrl_wire_frames_test_seq(SmcCsrSeq):
                 f"FMTEMPTY={int(bool(st & I2C_STATUS_FMTEMPTY))} wire [{wire}]"
                 for when, st, wire in reads
             )
-            + "; no compare (owner value pending)",
+            + "; no compare (not specified, measured)",
         )
 
     def _emit_timeout_paths(self) -> None:

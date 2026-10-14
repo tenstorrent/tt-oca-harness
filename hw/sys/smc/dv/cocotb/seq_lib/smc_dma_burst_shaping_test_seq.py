@@ -365,14 +365,13 @@ class smc_dma_burst_shaping_test_seq(SmcCsrSeq):
             r = _Run(f"SRC{n}", SRC_UNALIGNED, DST_UNALIGNED, self._config(src=1, src_llen=n))
             await self._run(r)
             longest = self._limit(r, "AR", r.ar, 1 << n, 1 << (n + 3))
-            if n == 0:
-                assert longest == 1, f"{r.name}: multi-beat read at SRC_MAX_LLEN 0"
+            assert longest == 1 << n, f"{r.name}: longest read {longest} beats, want {1 << n}"
             parts.append(f"n={n}: {len(r.ar)} AR bursts longest {longest} (limit {1 << n})")
         self._mark("S3")
         return (
             f"with SRC_REDUCE_LEN set, each {LENGTH}-byte copy delivered the exact payload and "
-            f"every AR burst has at most 2^n beats inside one 2^(n+3)-byte block; "
-            + "; ".join(parts)
+            f"every AR burst has at most 2^n beats inside one 2^(n+3)-byte block and the longest "
+            f"has exactly 2^n beats; " + "; ".join(parts)
         )
 
     async def _s4(self) -> str:
@@ -381,14 +380,13 @@ class smc_dma_burst_shaping_test_seq(SmcCsrSeq):
             r = _Run(f"DST{n}", SRC_UNALIGNED, DST_UNALIGNED, self._config(dst=1, dst_llen=n))
             await self._run(r)
             longest = self._limit(r, "AW", r.aw, 1 << n, 1 << (n + 3))
-            if n == 0:
-                assert longest == 1, f"{r.name}: multi-beat write at DST_MAX_LLEN 0"
+            assert longest == 1 << n, f"{r.name}: longest write {longest} beats, want {1 << n}"
             parts.append(f"n={n}: {len(r.aw)} AW bursts longest {longest} (limit {1 << n})")
         self._mark("S4")
         return (
             f"with DST_REDUCE_LEN set, each {LENGTH}-byte copy delivered the exact payload and "
-            f"every AW burst has at most 2^n beats inside one 2^(n+3)-byte block; "
-            + "; ".join(parts)
+            f"every AW burst has at most 2^n beats inside one 2^(n+3)-byte block and the longest "
+            f"has exactly 2^n beats; " + "; ".join(parts)
         )
 
     async def _s5(self) -> str:

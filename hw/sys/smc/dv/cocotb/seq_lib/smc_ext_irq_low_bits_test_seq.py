@@ -19,6 +19,8 @@ from .smc_csr_seq_utils import SmcCsrSeq
 SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 # TB ceiling in clk_smc_i rises for every pin-to-raw-bit wait; not a latency claim.
 CEILING_RISES = 64
+# The external inputs pass a three-flop synchroniser (interrupts.adoc).
+SYNC_FLOPS = 3
 HOLD_RISES = 64
 _STEPS = ("S1", "S2", "S3", "S4", "S5")
 _CHECKERS = (
@@ -107,6 +109,10 @@ class smc_ext_irq_low_bits_test_seq(SmcCsrSeq):
         await RisingEdge(cocotb.top.clk_smc_i)
         self._drive(bit, value, name)
         rises = await self._reach(name, prev, target)
+        assert rises >= SYNC_FLOPS, (
+            f"{name}: raw bit moved after {rises} rises, before the {SYNC_FLOPS}-flop "
+            "synchroniser latency"
+        )
         await self._hold(name, target)
         self.phases += 1
         return rises
@@ -151,7 +157,7 @@ class smc_ext_irq_low_bits_test_seq(SmcCsrSeq):
             "tb_ext_interrupt_0_sync",
         ):
             assert hasattr(dut, sig), f"{sig} missing"
-        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
+        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0)
         cocotb.log.info(
             "SEED RANDOM_SEED=%s SCRATCH_COLD_WARM_0=0x%x", os.environ.get("RANDOM_SEED", "1"), got
         )

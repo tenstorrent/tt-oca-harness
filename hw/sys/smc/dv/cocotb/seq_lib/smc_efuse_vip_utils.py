@@ -12,8 +12,7 @@ both:
    SEP_IN AXI read into the eFuse-shim window and requires the probe to be
    *sampled at 1* while the request is in flight. Without this leg an ``== 0``
    assertion on the probe is indistinguishable from a stuck-at-0 / undriven /
-   mis-tied activity sensor, and passes on a completely dead eFuse-bank master
-   (`[NEGATIVE-NEEDS-POSITIVE-CONTROL]`).
+   mis-tied activity sensor, and passes on a completely dead eFuse-bank master.
 2. **Idle re-check** -- :func:`check_efuse_otp_observability` re-samples the same
    probe after the bounded OTP/chip-config work and requires it back at 0.
 
@@ -49,8 +48,7 @@ from .smc_addr_map import _REPO, _field_mask, smc_addr
 # at time 0, one 32-bit word per line, word ``n`` backing
 # ``SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR + 4*n``. Tests that want an exact expectation
 # for a map read derive it from this file at run time, so the expectation
-# follows a regenerated asset
-# ([NO-UNJUSTIFIED-PRELOAD] / [ADDRESS-FROM-AUTHORITATIVE-MAP]).
+# follows a regenerated asset.
 #
 # Proof class of anything checked this way is **transport**: it proves the map
 # window decodes and returns the sensed word, not that fuse programming works.
@@ -118,15 +116,8 @@ EFUSE_BLOCKED_READ_DATA = 0xBADCAB1E
 # Positive-control stimulus target, addressed by generated symbol (no hand
 # literal): the eFuse-shim AXI-Lite window at 0xC040_0000.
 #
-# Why this window and not the EFUSE_READ_CTRL FSM: the eFuse read/program
-# interfaces reach the macro over the separate custom command port
-# ``efuse_shim_command_req_o``, so triggering a fuse read does NOT move
-# ``efuse_bank_ctrl_req_o``. The only fabric stimulus that does is an access
-# routed to the eFuse leg whose address falls outside the eFuse map / interface
-# CSR ranges: ``smc_periph_axi_lite_xbar.sv`` maps 0xC040_0000 (+EFUSE_SHIM_SIZE)
-# to the eFuse leg, and ``efuse_interface_controller.sv`` decodes anything
-# outside [SMC_EFUSE_MAP .. EFUSE_INTERFACE_CTRL] to ``SHIM_SEL``, i.e. straight
-# out on ``efuse_bank_ctrl_req_o``.
+# Accesses to this window are forwarded unchanged to efuse_bank_ctrl (smu-smc.adoc, eFuse
+# Interface, SHIM control address window).
 EFUSE_SHIM_CTRL_WINDOW = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR")
 
 # Offset 0 of that window is implemented by ``efuse_shim_ctrl_reg``
@@ -136,7 +127,7 @@ EFUSE_SHIM_CTRL_WINDOW = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTR
 #
 # The value is imported by symbol from the generated PeakRDL C header
 # (``EFUSE_SHIM_CTRL__EFUSE_BANK_INIT_TIME__INIT_TIME_reset``), so it follows
-# an RDL regeneration ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+# an RDL regeneration.
 _EFUSE_SHIM_CTRL_H = (
     _REPO / "hw" / "ip" / "efuse" / "dv" / "models" / "regs" / "gen" / "c" / "efuse_shim_ctrl.h"
 )

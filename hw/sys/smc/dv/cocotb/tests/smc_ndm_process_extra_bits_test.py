@@ -11,7 +11,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_ndm_process_extra_bits_test(smc_base_test):
-    """Write 0xFFFFFFF0 to NDMRESET_PROCESS; process_o stays 0."""
+    """Write 0xFFFFFFF0 to NDMRESET_PROCESS; process_o stays 0; 0xF and 0xFFFFFFFF drive 0xF."""
 
     required_evidence = ("CHK-NDM-PROCESS-ABOVE-COUNT", "CHK-NONVAC")
     min_evidence = 2
@@ -24,4 +24,7 @@ class smc_ndm_process_extra_bits_test(smc_base_test):
         assert seq.process_readback == 0xFFFFFFF0 and seq.samples_taken == 64, (
             f"the sequence did not complete its compare "
             f"(readback={seq.process_readback}, samples={seq.samples_taken})"
+        )
+        assert seq.driven_samples == 64, (
+            f"the sequence did not complete its drive compare (samples={seq.driven_samples})"
         )

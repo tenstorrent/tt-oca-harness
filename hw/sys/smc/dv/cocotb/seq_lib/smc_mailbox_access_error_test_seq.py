@@ -25,13 +25,15 @@ MAILBOX_CG_EN = _field_mask(
 READ_ERROR = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__ERROR__READ_ERROR_bm")
 WRITE_ERROR = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__ERROR__WRITE_ERROR_bm")
 WTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__WTIRQ_bm")
+RTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__RTIRQ_bm")
 EIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__EIRQ_bm")
-IRQ_ALL = 0x7
-STATUS_THRESH = 0xC
+IRQ_ALL = WTIRQ | RTIRQ | EIRQ
+STATUS_THRESH = _field_mask(
+    _AXIL_MAILBOX_H, "AXIL_MAILBOX__STATUS__WRITE_LEVEL_ABOVE_THRESH_bm"
+) | _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__STATUS__READ_LEVEL_ABOVE_THRESH_bm")
 WFLUSH = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__CTRL__WFLUSH_bm")
 
 FUSE_SENSE_RISES = 200_000
-AXI_TIMEOUT_NS = 50_000
 AXI_SLVERR = 2
 EMPTY_ERROR_LOW = 0xFEEDDEAD
 WRITE_DATA_EMPTY_LOW = 0xFEEDC0DE
@@ -129,7 +131,7 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
         return item
 
     async def _flags(self, name, side) -> int:
-        return await self._val(name, side, "ERROR_FLAGS") & 0x3
+        return await self._val(name, side, "ERROR_FLAGS") & (READ_ERROR | WRITE_ERROR)
 
     async def _group(self, name, members) -> SmcSysAxiGroupItem:
         group = SmcSysAxiGroupItem(name, members)
@@ -142,7 +144,7 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
         return group
 
     async def body(self) -> None:
-        await self.wait_fuse_sense_done()
+        await self.wait_fuse_sense_done(max_cycles=FUSE_SENSE_RISES)
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
         await self.csr_write("CLOCK_GATE_CONTROL_EN", CLOCK_GATE_CONTROL, cg | MAILBOX_CG_EN)
         await self.csr_read(
@@ -158,7 +160,7 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
             f"READ_DATA of A and B answered SLVERR (resp {ea.resp_code}, {eb.resp_code}) with "
             f"rdata[31:0]=0x{ea.rdata & 0xFFFFFFFF:08x},0x{eb.rdata & 0xFFFFFFFF:08x}; "
             f"rdata[63:32]=0x{ea.rdata >> 32:08x},0x{eb.rdata >> 32:08x} "
-            "(measured, owner value pending)",
+            "(not specified, measured)",
         )
 
         fa = await self._flags("EF_A", "A")
@@ -197,7 +199,7 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
             f"STATUS[3:2] A/B before 0b{s0['A'] >> 2 & 3:02b}/0b{s0['B'] >> 2 & 3:02b}, A after "
             f"0b{s1 >> 2 & 3:02b}; STATUS[1:0] measured A/B/after "
             f"{s0['A'] & 3}/{s0['B'] & 3}/{s1 & 3} "
-            f"(owner value pending); B->A returned 0x{x:016x}, "
+            f"(not specified, measured); B->A returned 0x{x:016x}, "
             f"A->B returned 0x{y:016x}",
         )
 
@@ -286,9 +288,10 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-WRITE-DATA-READ-EMPTY",
             f"WRITE_DATA read OKAY resp {e11.resp_code} rdata[31:0]=0x{e11.rdata & 0xFFFFFFFF:08x} "
-            f"rdata[63:32]=0x{e11.rdata >> 32:08x} (measured, owner value pending)",
+            f"rdata[63:32]=0x{e11.rdata >> 32:08x} (not specified, measured)",
         )
 
+        await self._wr("IRQS_CLEAN_12", "A", "IRQS", IRQ_ALL)
         await self._push("W5", "A", w[7])
         i0 = await self._val("IRQS_WD_0", "A", "IRQS") & IRQ_ALL
         one = await self._rd("WD_ONE", "A", "WRITE_DATA")
@@ -301,6 +304,7 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
         assert i0 == i1 and i2 == i3 and f12 == 0, (
             f"IRQS 0b{i0:03b}/0b{i1:03b}/0b{i2:03b}/0b{i3:03b} ERROR_FLAGS 0b{f12:02b}"
         )
+        assert not (i1 | i3) & EIRQ, f"WRITE_DATA read raised IRQS[2]: 0b{i1:03b}/0b{i3:03b}"
         await self._pop("W5", "B", w[7])
         await self._pop("W6", "B", w[8])
         self._mark_step("S12")
@@ -344,7 +348,7 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
             "CHK-READ-ONLY-WRITES-NO-SIDE-EFFECT-OBSERVED",
             f"ERROR_FLAGS[1] before={before_flags >> 1 & 1} after={ef_after >> 1 & 1}; "
             f"IRQS before=0b{irqs_before:03b} after=0b{irqs_after:03b}; "
-            "no compare (owner value pending)",
+            "no compare (not specified, measured)",
         )
 
         st14 = await self._val("STATUS_14_BEFORE", "A", "STATUS")
@@ -357,8 +361,8 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
             "CHK-CHANNELS-WRITE-WITH-STATUS",
             f"grouped write resp {wr.resp_code}, grouped STATUS read resp {rd.resp_code}; "
             f"STATUS before=0x{st14:x} grouped=0x{rd.rdata:x} "
-            "(measured, owner value pending); B popped the "
-            "word; no same-cycle claim (owner value pending)",
+            "(not specified, measured); B popped the "
+            "word; no same-cycle claim (not specified, measured)",
         )
 
         x2, w8 = 0x2000_0000_0000_0002, 0x8000_0000_0000_0008
@@ -381,14 +385,15 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-CHANNELS-CTRL-WITH-IRQS",
             f"grouped CTRL write resp {wr.resp_code}, grouped IRQS read resp {rd.resp_code} "
-            f"IRQS=0x{rd.rdata & IRQ_ALL:x}; no same-cycle claim (owner value pending)",
+            f"IRQS=0x{rd.rdata & IRQ_ALL:x}; no same-cycle claim (not specified, measured)",
         )
         members = [m for g in self._groups for m in g.items]
         assert len(members) == 6 and all(m.resp_code is not None for m in members)
         self._log_chk(
             "CHK-CHANNELS-COMPLETE-BOUNDED",
             f"{len(self._groups)} groups, {len(members)} members all completed with resp "
-            f"{[m.resp_code for m in members]} under the {AXI_TIMEOUT_NS} ns driver limit; "
+            f"{[m.resp_code for m in members]} under the {self.cfg.axi_timeout_ns} ns driver "
+            "limit; "
             "no cycle count assumed",
         )
 
@@ -438,6 +443,6 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
             "allow_timeout False last[%d accesses completed]; the sequence has no wait of its own",
             waits,
             self.accesses,
-            AXI_TIMEOUT_NS,
+            self.cfg.axi_timeout_ns,
             self.accesses,
         )

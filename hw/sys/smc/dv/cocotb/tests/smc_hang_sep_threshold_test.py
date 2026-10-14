@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP_AXI hang detector threshold updates, reset value and small values on live stalls."""
+"""SEP_AXI hang detector threshold updates, threshold 0x1000 and small values on live stalls."""
 
 from __future__ import annotations
 

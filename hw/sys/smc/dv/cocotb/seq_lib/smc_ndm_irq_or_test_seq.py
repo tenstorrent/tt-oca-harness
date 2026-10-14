@@ -146,7 +146,7 @@ class smc_ndm_irq_or_test_seq(SmcCsrSeq):
         assert len(dut.tb_ndmreset_request) == REQUEST_BITS, (
             f"tb_ndmreset_request width {len(dut.tb_ndmreset_request)}, want {REQUEST_BITS}"
         )
-        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
+        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0)
         cocotb.log.info(
             "SEED RANDOM_SEED=%s SCRATCH_COLD_WARM_0=0x%x", os.environ.get("RANDOM_SEED", "1"), got
         )

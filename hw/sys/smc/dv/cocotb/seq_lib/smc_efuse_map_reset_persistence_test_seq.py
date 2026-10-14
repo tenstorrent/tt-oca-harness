@@ -6,8 +6,9 @@ The warm reset is driven through the JTAG reset-control override.
 Sources: smu-smc.adoc (eFuse Interface), clk_rst.adoc (rst_warm_n), smc-programming.adoc (LOCKS).
 
 SPARE[3] (map words 56-63) holds P1 under a write lock, SPARE[4] word 0 (map word 64) holds P2
-under a read lock. A warm reset keeps both and does not re-sense; a cold reset clears the locks
-and re-senses the all-zero image.
+under a read lock. SPARE[5] word 0 is sensed as a non-zero marker and overwritten before the
+resets. A warm reset keeps both and does not re-sense; a cold reset clears the locks and the
+written patterns and re-senses the marker.
 """
 
 from __future__ import annotations
@@ -40,6 +41,8 @@ _MID_GAP_EDGES = 2
 _DRIVER_BOUND_NS = 50_000
 _P1, _P2, _P3, _P4 = 0xA5C3_1E71, 0x3C69_D2B4, 0x5AE1_7C93, 0xC7D2_0B58
 _LOCKS_SET = 0x0002_4000
+RESENSE_MARKER = 0x5A5A_1234
+_P5 = 0xE2B4_6D09
 _CHK_STEP = {
     "CHK-EMAP-RST-WARM-VALUES": "S3",
     "CHK-EMAP-RST-WARM-LOCKS": "S4",
@@ -48,6 +51,12 @@ _CHK_STEP = {
     "CHK-EMAP-RST-COLD-LOCKS": "S7",
     "CHK-EMAP-RST-COLD-MID": "S8",
 }
+
+
+def marker_spare_value() -> int:
+    """SPARE field value that places ``RESENSE_MARKER`` in the first word of SPARE[5]."""
+    reg = {r.name: r for r in REGIONS}
+    return RESENSE_MARKER << (32 * (reg["SPARE5"].first_word - reg["SPARE0"].first_word))
 
 
 def _warm_pack(*, ovrd: int, val: int) -> int:
@@ -450,6 +459,7 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         reg = {r.name: r for r in REGIONS}
         spare3 = range(reg["SPARE3"].first_word, reg["SPARE3"].end_word)
         spare4_w0 = reg["SPARE4"].first_word
+        spare5_w0 = reg["SPARE5"].first_word
         assert (spare3.start, len(spare3), spare4_w0) == (56, 8, 64), (
             f"SPARE[3] words {spare3}, SPARE[4] first word {spare4_w0}"
         )
@@ -461,7 +471,12 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         pats = (_P1, _P2, _P3, _P4)
         assert all(p not in (0, _WORD_MASK) for p in pats)
         assert len({p for p in pats} | {~p & _WORD_MASK for p in pats}) == 8, "patterns collide"
-        assert all(w == 0 for w in image.words), "the image has a non-zero word"
+        assert image.words[spare5_w0] == RESENSE_MARKER, (
+            f"SPARE[5] word 0 of the image is 0x{image.words[spare5_w0]:08x}"
+        )
+        assert all(w == 0 for n, w in enumerate(image.words) if n != spare5_w0), (
+            "the image has a non-zero word besides the marker"
+        )
         self.locks_model = image.locks
         assert self.locks_model == 0, f"image LOCKS 0x{self.locks_model:x} is not 0"
 
@@ -474,6 +489,9 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         for word in spare3:
             await self._write_word(f"S2_P1_{word}", word, _P1)
         await self._write_word("S2_P2", spare4_w0, _P2)
+        await self._rd("S2_MARKER_RB", word_addr(spare5_w0), RESENSE_MARKER)
+        await self._write_word("S2_P5", spare5_w0, _P5)
+        await self._rd("S2_P5_RB", word_addr(spare5_w0), _P5)
         await self._expect_words("S2_RB3", spare3, _P1)
         await self._expect_words("S2_RB4", range(spare4_w0, spare4_w0 + 1), _P2)
         self._calls += 1
@@ -598,6 +616,7 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         lo, hi = await self._read_locks("S7_LOCKS")
         assert (lo, hi) == (0, 0)
         await self._expect_words("S7_ZERO3", spare3, 0)
+        await self._rd("S7_RESENSE", word_addr(spare5_w0), RESENSE_MARKER)
         await self._write_word("S7_P3", spare3[0], _P3)
         await self._rd("S7_P3_RB", word_addr(spare3[0]), _P3)
         await self._write_word("S7_P4", spare4_w0, _P4)
@@ -606,10 +625,12 @@ class smc_efuse_map_reset_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._chk(
             "CHK-EMAP-RST-COLD-LOCKS",
             "after the cold reset and sense done LOCKS lo=0x%08x hi=0x%08x, all %d SPARE[3] "
-            "words read 0; P3=0x%08x landed in SPARE[3] word 0 and P4=0x%08x in SPARE[4] word 0",
+            "words read 0, SPARE[5] word 0 read the sensed marker 0x%08x; P3=0x%08x landed in "
+            "SPARE[3] word 0 and P4=0x%08x in SPARE[4] word 0",
             lo,
             hi,
             len(spare3),
+            RESENSE_MARKER,
             _P3,
             _P4,
         )

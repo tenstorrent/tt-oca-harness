@@ -14,7 +14,7 @@ class smc_ext_irq_pulse_sampling_test(smc_base_test):
     """Pin pulses of controlled width and phase against tb_cpu_interrupts[0]."""
 
     required_evidence = (
-        "CHK-EXTPULSE-WIDE-LOG",
+        "CHK-EXTPULSE-WIDE",
         "CHK-EXTPULSE-SHORT-NOLATCH",
         "CHK-EXTPULSE-SHORT-SEEN-LOG",
         "CHK-EXTPULSE-LATENCY-LOG",

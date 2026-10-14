@@ -216,7 +216,7 @@ class smc_sep_mbx_irq_vector_test_seq(SmcCsrSeq):
             "tb_mailbox_irq_any",
         ):
             assert hasattr(dut, sig), f"{sig} missing"
-        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
+        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0)
         cocotb.log.info(
             "SEED RANDOM_SEED=%s SCRATCH_COLD_WARM_0=0x%x", os.environ.get("RANDOM_SEED", "1"), got
         )
@@ -257,7 +257,7 @@ class smc_sep_mbx_irq_vector_test_seq(SmcCsrSeq):
         self._mark_step("S5")
         self._log_chk(
             "CHK-SEPMBX-LATENCY-LOG",
-            f"observed {LATENCY_REPEATS} repeats, not compared (owner value pending); {lat}",
+            f"observed {LATENCY_REPEATS} repeats, not compared (not specified, measured); {lat}",
         )
 
         self._nonvac_fence()

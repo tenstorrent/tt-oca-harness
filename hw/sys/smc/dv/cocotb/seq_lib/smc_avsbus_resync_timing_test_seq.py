@@ -8,8 +8,8 @@ No AVS_CMD traffic runs except the one command that proves the bus returned to s
 RESYNC_INTERVAL 0. The FSM probe is sampled on every clk_periph_i edge; a state counts once it
 holds over two consecutive samples. The interval after a RESYNC_INTERVAL write is measured from
 the second resync on, so the value in force is the written one whenever the register domain
-picks it up (owner value pending). Open owner answers (second-request outcome, interval rule,
-edge mapping, AVS_RESET restart) are measured and printed.
+picks it up. The second-request outcome, interval rule, edge mapping and AVS_RESET restart are
+not specified and are measured and printed.
 """
 
 from __future__ import annotations
@@ -307,9 +307,9 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             if not order or order[-1] != name:
                 order.append(name)
         assert any(n == RESET for _, n in probes.events[base_e:]), (
-            f"AVS_RESET never seen after the cold reset (open question: whether it restarts the "
-            f"AVS "
-            f"FSM); sequence {'>'.join(order)}"
+            f"AVS_RESET never seen after the cold reset (the specification does not state whether "
+            f"it "
+            f"restarts the AVS FSM); sequence {'>'.join(order)}"
         )
         assert order[0] == RESET and order[1] == RESYNC, (
             f"states after the cold reset {'>'.join(order)}: AVS_RESET then AVS_SLAVE_RESYNC "
@@ -389,7 +389,7 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-AVS-RESYNC-LEN35",
             f"first resync after the cold reset: avs_mdata 1 at all {in_span} probe samples "
             f"inside the span; span {span_ns:.1f} ns = {periods:.2f} avs_clock_o periods "
-            f"({self.t_avs_ns:.2f} ns each), 35 expected within 1 (owner value pending)",
+            f"({self.t_avs_ns:.2f} ns each), 35 expected within 1 (not specified, measured)",
         )
         self._chk(
             "S3",
@@ -484,7 +484,8 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-AVS-RESYNC-FLAG",
             f"AVS_SLAVE_IS_IN_RESYNC read 1 at every poll deep inside the bit-1 span and 0 at "
             f"every poll deep in AVS_IDLE ({counts}; lag window 3 avs_clock_o periods = "
-            f"{margin_ps / 1000:.0f} ns, owner value pending); polls near an edge, offset from the "
+            f"{margin_ps / 1000:.0f} ns, not specified, measured); polls near an edge, offset from "
+            f"the "
             f"probe "
             f"entry: {edges_text}",
         )
@@ -510,8 +511,8 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "S4",
             "CHK-AVS-FSM-IDLE-FLAG",
             f"AVS_BUS_IS_IDLE read 1 at every poll deep in AVS_IDLE with nothing in flight and "
-            f"0 at every poll deep inside the resync span ({counts}); edge mapping (owner value "
-            f"pending): "
+            f"0 at every poll deep inside the resync span ({counts}); edge mapping (not specified, "
+            f"measured): "
             f"{edges_text}",
         )
 
@@ -563,7 +564,7 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"L = period - (interval + 1) - 3 * {t_avs_reg:.1f} clk_reg_i cycles, all >= 0, "
             f"period grows with the interval; L across intervals {residuals[0]:.2f} / "
             f"{residuals[1]:.2f} / {residuals[2]:.2f} clk_reg_i cycles, constancy is "
-            f"owner value pending (printed, not asserted; 1 avs_clock_o period = "
+            f"not specified, measured (printed, not asserted; 1 avs_clock_o period = "
             f"{self.t_avs_ns:.1f} ns)",
         )
 
@@ -582,8 +583,8 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"RESYNC_INTERVAL 0: measured period from the end of one resync to the start of the "
             f"next {period_zero / 1000:.1f} ns ({period_zero / 1000 / self.t_reg_ns:.1f} clk_reg_i "
             f"cycles); a command queued afterwards was answered ({occupied} reply, {drained} "
-            f"read back within {probes.samples - base_sf} probe samples); owner answer "
-            f"pending, value printed only",
+            f"read back within {probes.samples - base_sf} probe samples); not specified, value "
+            f"printed only",
         )
 
         # S8: rewrite mid-count
@@ -620,8 +621,8 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"{following / 1000:.1f} ns after the end of the first (new interval period "
             f"{period_small / 1000:.1f} ns); since_end {since_end / 1000:.1f} ns, since_write "
             f"{since_write / 1000:.1f} ns, following {following / 1000:.1f} ns, period_default "
-            f"{period_default / 1000:.1f} ns, period_small {period_small / 1000:.1f} ns; rule per "
-            "owner value pending, crossing term likewise, measured only",
+            f"{period_default / 1000:.1f} ns, period_small {period_small / 1000:.1f} ns; rule "
+            "not specified, crossing term likewise, measured only",
         )
 
         # S9: timeouts and fence

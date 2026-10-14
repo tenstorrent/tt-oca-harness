@@ -205,8 +205,8 @@ tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_uart_log_engine_reg_contract_test"
-module = "smc_uart_log_engine_reg_contract_test"
+name = "smc_uart_log_engine_reg_map_test"
+module = "smc_uart_log_engine_reg_map_test"
 seed = 1
 timeout_sec = 3600
 tags = ["ci", "uart"]

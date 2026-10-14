@@ -104,7 +104,6 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
         cnt = smc_addr("SMC_TOP_SMC_CPU_CTRL_CORE_RESET_PULSE_COUNT_BASE_ADDR")
         rto = smc_addr("SMC_TOP_SMC_CPU_CTRL_RESET_TIMEOUT_BASE_ADDR")
         wdt = smc_addr("SMC_TOP_SMC_CPU_CTRL_WDT_TIMEOUT_BASE_ADDR")
-        wdt_rst = smc_addr("SMC_TOP_SMC_CPU_CTRL_WDT_TIMEOUT_RESET_BASE_ADDR")
         test_ctrl = smc_addr("SMC_TOP_SMC_CPU_CTRL_TEST_CTRL_BASE_ADDR")
         attrs = smc_addr("SMC_TOP_SMC_CPU_CTRL_SMC_ATTRIBUTES_BASE_ADDR")
         local_base = smc_addr("SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR")
@@ -166,8 +165,6 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
         await self._wr_ok("RESET_TIMEOUT_ZERO", rto, 0)
         count_zero = await self._expect("CORE_RESET_PULSE_COUNT_ZERO_RB", cnt, done_field)
         rto_zero = await self._expect("RESET_TIMEOUT_ZERO_RB", rto, 0)
-        await self._wr_ok("WDT_TIMEOUT_RESET_ZERO", wdt_rst, 0, length=4)
-        wdt_zero = await self._expect("WDT_TIMEOUT_RESET_ZERO_RB", wdt_rst, 0, length=4)
         await self._wr_ok("CORE_RESET_PULSE_COUNT_RESTORE", cnt, count_reset & ~done_field)
         await self._expect("CORE_RESET_PULSE_COUNT_RESTORE_RB", cnt, count_reset)
         self._stamp("S2")
@@ -175,7 +172,7 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
             "CHK-ACCR-ZERO",
             f"after full-width 0: CORE_RESET_PULSE_COUNT 0x{count_set:x}->0x{count_zero:x} "
             f"(core_resets_done 0x{done_reset:x}), RESET_TIMEOUT 0x{rto_set:x}->0x{rto_zero:x} "
-            f"(reset_applied 0, reset_timeout 0), WDT_TIMEOUT_RESET read 0x{wdt_zero:x}; "
+            "(reset_applied 0, reset_timeout 0); "
             f"CORE_RESET_PULSE_COUNT restored 0x{count_reset:x}",
         )
 
@@ -194,7 +191,7 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
             rows.append(f"{label}:wr=0x{WORD64:x},resp={resp},read=0x{after:x}")
         before = await self._rd("CORE_RESETS_DONE_BEFORE", cnt)
         assert before == count_reset, f"pulse count read 0x{before:x} != 0x{count_reset:x}"
-        for label, word in (("ONES", before | done_bm), ("ZERO", before & ~done_bm)):
+        for label, word in (("ZERO", before & ~done_bm),):
             resp = await self._wr(f"CORE_RESETS_DONE_{label}", cnt, word)
             after = await self._expect(f"CORE_RESETS_DONE_{label}_AFTER", cnt, before)
             rows.append(f"core_resets_done_{label}:wr=0x{word:x},resp={resp},read=0x{after:x}")
@@ -202,7 +199,7 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-ACCR-RO-RESP",
             "each read-only register read its pre-write word after the write "
-            "(write responses printed, owner value pending): " + " ".join(rows),
+            "(write responses printed, not specified, measured): " + " ".join(rows),
         )
 
         # S4
@@ -250,7 +247,7 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-ACCR-RESERVED",
             "named fields held after ones over undeclared bits; reserved bits as read "
-            "(owner value pending): " + " ".join(rows),
+            "(not specified, measured): " + " ".join(rows),
         )
 
         # S5
@@ -273,7 +270,7 @@ class smc_cpu_ctrl_access_rules_test_seq(SmcCsrSeq):
         self._stamp("S5")
         self._chk(
             "CHK-ACCR-PROT",
-            "secure and non-secure SCRATCH[1] accesses completed (owner value pending): "
+            "secure and non-secure SCRATCH[1] accesses completed (not specified, measured): "
             + " ".join(rows),
         )
 

@@ -27,7 +27,7 @@ from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 from ocah_axi_vip import AxiTimingProfile
 
 from ._one_shot import _OneShot
-from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_addr_map import _REPO, reg_reset_word, smc_addr, smc_indexed_addr
 from .smc_base_test_seq import wait_fuse_sense_done
 from .smc_csr_field_catalog import catalog_entry
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -52,7 +52,10 @@ GLOBAL_BASE = 0x4000_0000
 PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
 WORD0 = 0xC0DE_0A00
 WORD1 = 0xC0DE_0A01
-RESET_CFG, RESET_START, RESET_END = 0x3000, 0x0, 0x7
+_FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
+RESET_CFG = reg_reset_word(_FILTER_H, "FILTER_CTRL", "FILTER_CONFIG")
+RESET_START = reg_reset_word(_FILTER_H, "FILTER_CTRL", "START_ADDR")
+RESET_END = reg_reset_word(_FILTER_H, "FILTER_CTRL", "END_ADDR")
 EXPECTED_ACCESSES = 132
 PORTS = ("SEP", "SYS", "JTAG")
 PREFIX = {"SEP": "s_axi", "SYS": "sys_axi", "JTAG": "jtag_axi"}
@@ -141,8 +144,6 @@ class _PendingWatch:
                 n: _value(getattr(dut, f"s_axi_{n}"), f"s_axi_{n}")
                 for n in ("arvalid", "arready", "awvalid", "wvalid", "rvalid", "rready")
             }
-            if not self._done and sig["arvalid"] and sig["arready"]:
-                self._pending = True
             if self._pending and not self._done:
                 self.pending_cycles += 1
                 if sig["rvalid"] and not sig["rready"]:
@@ -151,6 +152,8 @@ class _PendingWatch:
                     self.presented_while_pending += 1
                 if sig["rvalid"] and sig["rready"]:
                     self._done = True
+            if not self._done and sig["arvalid"] and sig["arready"]:
+                self._pending = True
 
 
 class smc_axi_contested_ports_test_seq(SmcResetSeqBase, SmcCsrSeq):
@@ -257,7 +260,11 @@ class smc_axi_contested_ports_test_seq(SmcResetSeqBase, SmcCsrSeq):
     async def _fuse_sense(self, label: str) -> None:
         await wait_fuse_sense_done(FUSE_SENSE_BOUND)
         for sub in ("tb_fuse_sense_done", "tb_fuse_reset_n", "tb_rst_warm_smc_clk_n"):
-            self._timeout_paths.append(f"{label}.{sub}: bound={FUSE_SENSE_BOUND}smc_cycles last=1")
+            sig = getattr(cocotb.top, sub).value
+            assert sig.is_resolvable, f"{sub} is X/Z ({sig})"
+            self._timeout_paths.append(
+                f"{label}.{sub}: bound={FUSE_SENSE_BOUND}smc_cycles last={int(sig)}"
+            )
 
     async def _contest(self, ports: tuple[str, ...], label: str, addr: int, want: int):
         """Release one read per port from a single clk_smc_i edge; return items and skew."""
@@ -347,7 +354,6 @@ class smc_axi_contested_ports_test_seq(SmcResetSeqBase, SmcCsrSeq):
             watcher = cocotb.start_soon(watch.run())
             local = self._item("SEP", SmcSysAxiOp.READ, f"lg_local{n}", SCRATCH_0, expected=WORD0)
             remote = self._item("SYS", SmcSysAxiOp.READ, f"lg_global{n}", GLOBAL_SCRATCH_0)
-            remote.allow_error = True
             await RisingEdge(clk)
             tasks = {
                 "SEP": self._start("SEP", local, f"lg_local{n}"),
@@ -365,16 +371,16 @@ class smc_axi_contested_ports_test_seq(SmcResetSeqBase, SmcCsrSeq):
             assert not remote.timed_out and remote.resp_code is not None, (
                 f"round {n} global read did not complete"
             )
-            if remote.resp_code == 0:
-                assert remote.rdata & 0xFFFF_FFFF == WORD0, (
-                    f"round {n} OKAY global read returned 0x{remote.rdata & 0xFFFFFFFF:x}"
-                )
+            assert remote.resp_code == 0 and remote.rdata & 0xFFFF_FFFF == WORD0, (
+                f"round {n} global read resp={RESP_NAMES.get(remote.resp_code)} "
+                f"rdata=0x{remote.rdata & 0xFFFFFFFF:x}"
+            )
             glob.append(f"{RESP_NAMES.get(remote.resp_code)}:0x{remote.rdata & 0xFFFFFFFF:X}")
             assert watch.skew() == 0, f"round {n}: ARVALID skew {watch.first_ar}"
         return (
             f"in all {GLOBAL_ROUNDS} rounds both reads completed within {AXI_TIMEOUT_NS} ns; "
             f"the local read at 0x{SCRATCH_0:08X} returned 0x{WORD0:08X} OKAY; global read at "
-            f"0x{GLOBAL_SCRATCH_0:08X} responses (printed, observe-only) {' '.join(glob)}"
+            f"0x{GLOBAL_SCRATCH_0:08X} returned the same word OKAY: {' '.join(glob)}"
         )
 
     async def _poll_request(self, port: str, channel: str, label: str) -> int:
@@ -519,7 +525,7 @@ class smc_axi_contested_ports_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-CONT-RESET-MID",
             f"on each of the {len(legs)} legs the read of VERSION_LO after reset release "
             f"completed OKAY within the guard and returned V=0x{version:X}; "
-            f"interrupted-access outcomes are printed and not graded (owner value pending): "
+            f"interrupted-access outcomes are printed and not graded (not specified, measured): "
             f"{' | '.join(legs)}",
         )
 

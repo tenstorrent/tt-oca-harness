@@ -20,7 +20,15 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import _REPO, _field_mask, reg_reset_word, smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    _REPO,
+    GLOBAL_BASE_RESET,
+    LOCAL_BASE_RESET,
+    _field_mask,
+    reg_reset_word,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 
 _SMC_REG_PY = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "py"
@@ -39,9 +47,11 @@ _RESET_END = reg_reset_word(_FILTER_H, "FILTER_CTRL", "END_ADDR")
 _PERMIT_B1 = 0x0000_0000_0100_0013
 _PERMIT_B0 = 0x0000_0000_0000_0013
 _DISABLED_B1 = 0x0000_0000_0100_0003
-_READBACK_BITS = 0x3000
+_READBACK_BITS = _RESET_CFG
 _P0 = smc_addr("SMC_TOP_SPM_MEMORY_BASE_ADDR") + 0x4_0000
-_VERSION_ALIAS = 0x4000_2900
+_VERSION_ALIAS = GLOBAL_BASE_RESET + (
+    smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR") - LOCAL_BASE_RESET
+)
 _HIGH_LOW_ADDR = 0x0000_C006_5800
 _HIGH_ADDR = 0x00AB_C006_5800
 _DECERR = 3

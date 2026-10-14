@@ -39,21 +39,21 @@ _ACCESS_FILTER_RESET_WORD = 0x00010100
 _PG_BASE = 0xC000_3000
 _PG_STRIDE = 0x10
 _PG_PINS = (0, 32, 64)
-_S4_INSTANCE = 60
-_EVENTS = ("S1", "S2", "S3_WRITES", "S3_READBACKS", "S3", "S4", "S5")
-_TERMS = (
+_DISTINCT_INSTANCE = 60
+_EVENTS = (
     "SNAPSHOT_TAKEN",
     "ENDPOINT_PATTERNS",
     "CORESIDENT_WRITES",
     "CORESIDENT_READBACKS",
+    "NO_ALIAS",
     "REGISTER_DISTINCT",
     "FORMULA_COMPARE",
 )
 _CHK_ORDER = (
-    ("S2", "CHK-GPIO-DECODE-ENDPOINTS"),
-    ("S3", "CHK-GPIO-DECODE-NO-ALIAS"),
-    ("S4", "CHK-GPIO-DECODE-REG-DISTINCT"),
-    ("S5", "CHK-GPIO-DECODE-PG-FORMULA"),
+    ("ENDPOINT_PATTERNS", "CHK-GPIO-DECODE-ENDPOINTS"),
+    ("NO_ALIAS", "CHK-GPIO-DECODE-NO-ALIAS"),
+    ("REGISTER_DISTINCT", "CHK-GPIO-DECODE-REG-DISTINCT"),
+    ("FORMULA_COMPARE", "CHK-GPIO-DECODE-PG-FORMULA"),
 )
 
 
@@ -104,12 +104,12 @@ class smc_gpio_intf_decode_map_test_seq(SmcRegblockFieldSweepSeq):
         ar_bm = gpio_intf_u32("GPIO_INTF__ACCESS_FILTER__ARPROT_REQUIREMENT_bm")
         core2pad = gpio_intf_u32("GPIO_INTF__DATA_CTRL__CORE2PAD_bm")
         use_c2p = gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_CORE2PAD_bm")
+        use_tx = gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_TX_bm")
         use_rx = gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_RX_bm")
 
         def flt(aw: int, ar: int) -> int:
             return ((aw << aw_bp) & aw_bm) | ((ar << ar_bp) & ar_bm)
 
-        # S1
         snap = []
         for f, e, c in zip(filters, enables, ctrls):
             snap.append(
@@ -119,9 +119,8 @@ class smc_gpio_intf_decode_map_test_seq(SmcRegblockFieldSweepSeq):
                     await self.csr_read(f"{c.label}:snapshot", c.addr),
                 )
             )
-        self._stamp("S1")
+        self._stamp("SNAPSHOT_TAKEN")
 
-        # S2
         s2_ends = []
         for idx in (0, _LAST):
             f, e, c = filters[idx], enables[idx], ctrls[idx]
@@ -153,25 +152,25 @@ class smc_gpio_intf_decode_map_test_seq(SmcRegblockFieldSweepSeq):
                 "s2_restore",
                 (base_c & c.reg.rw_mask, base_e & e.reg.rw_mask, _ACCESS_FILTER_RESET_WORD),
             )
-        self._stamp("S2")
+        self._stamp("ENDPOINT_PATTERNS")
         self._chk(
-            "S2",
+            "ENDPOINT_PATTERNS",
             "CHK-GPIO-DECODE-ENDPOINTS",
             "instances 0 and 64 answered OKAY at offsets 0x0, 0x4, 0x8 and each pattern read back "
             "at its own offset; " + "; ".join(s2_ends),
         )
 
-        # S3
         sb_before = self.env.scoreboard.sys_axi_value_checks_seen
         patterns = []
         for n in range(_INSTANCES):
             m = n % 64
-            ena = use_c2p if n == _LAST else 0
+            m3 = (n + n // 64) & 7
+            ena = (use_c2p if m3 & 1 else 0) | (use_tx if m3 & 2 else 0) | (use_rx if m3 & 4 else 0)
             patterns.append((flt(m & 7, (m >> 3) & 7), ena))
         for n in range(_INSTANCES):
             await self._write_word(filters[n], "s3", patterns[n][0])
             await self._write_word(enables[n], "s3", patterns[n][1])
-        self._stamp("S3_WRITES")
+        self._stamp("CORESIDENT_WRITES")
         reads = []
         for n in range(_INSTANCES):
             got_f = await self._read_rw(filters[n], "s3", patterns[n][0])
@@ -181,7 +180,7 @@ class smc_gpio_intf_decode_map_test_seq(SmcRegblockFieldSweepSeq):
                 f"{ctrls[n].label}: DATA_CTRL read 0x{got_c:08x}, snapshot 0x{snap[n][2]:08x}"
             )
             reads.append((got_f, got_e))
-        self._stamp("S3_READBACKS")
+        self._stamp("CORESIDENT_READBACKS")
         distinct_adjacent = 0
         for n in range(_LAST):
             assert reads[n] != reads[n + 1], (
@@ -202,21 +201,25 @@ class smc_gpio_intf_decode_map_test_seq(SmcRegblockFieldSweepSeq):
             await self._read_rw(filters[n], "s3_restore", _ACCESS_FILTER_RESET_WORD)
             await self._read_rw(enables[n], "s3_restore", snap[n][1] & enables[n].reg.rw_mask)
         self.assert_value_checks(sb_before, _INSTANCES * 2, "GPIO_INTF_DECODE_MAP")
-        self._stamp("S3")
+        self._stamp("NO_ALIAS")
         self._chk(
-            "S3",
+            "NO_ALIAS",
             "CHK-GPIO-DECODE-NO-ALIAS",
             f"{_INSTANCES} instances read back their own ACCESS_FILTER pattern "
             f"(n mod 64 over awprot/arprot, 0x{reads[0][0]:08x}..0x{reads[_LAST - 1][0]:08x}) "
-            f"and DATA_CTRL_ENABLE (instance {_LAST} only 0x{reads[_LAST][1]:x}) after all writes; "
+            f"and DATA_CTRL_ENABLE (instance number mod 8 over its three bits, instance {_LAST} "
+            f"0x{reads[_LAST][1]:x}) after all writes; "
             f"{distinct_adjacent} adjacent pairs differ, {len(set(reads))} distinct pairs; "
             f"instance {_LAST} ACCESS_FILTER 0x{reads[_LAST][0]:08x}; all restored",
         )
 
-        # S4
-        f, e, c = filters[_S4_INSTANCE], enables[_S4_INSTANCE], ctrls[_S4_INSTANCE]
+        f, e, c = (
+            filters[_DISTINCT_INSTANCE],
+            enables[_DISTINCT_INSTANCE],
+            ctrls[_DISTINCT_INSTANCE],
+        )
         trio = (c, e, f)
-        base_c, base_e = snap[_S4_INSTANCE][2] & c.reg.rw_mask, snap[_S4_INSTANCE][1]
+        base_c, base_e = snap[_DISTINCT_INSTANCE][2] & c.reg.rw_mask, snap[_DISTINCT_INSTANCE][1]
         base_e &= e.reg.rw_mask
         held = [core2pad, use_c2p | use_rx, flt(3, 5)]
         new = [0, use_c2p, flt(4, 2)]
@@ -237,16 +240,15 @@ class smc_gpio_intf_decode_map_test_seq(SmcRegblockFieldSweepSeq):
         await self.csr_write(f"{e.label}:s4_restore", e.addr, base_e)
         await self.csr_write(f"{f.label}:s4_restore", f.addr, _ACCESS_FILTER_RESET_WORD)
         await self._read_trio(trio, "s4_restore", (base_c, base_e, _ACCESS_FILTER_RESET_WORD))
-        self._stamp("S4")
+        self._stamp("REGISTER_DISTINCT")
         self._chk(
-            "S4",
+            "REGISTER_DISTINCT",
             "CHK-GPIO-DECODE-REG-DISTINCT",
-            f"instance {_S4_INSTANCE}: each of the three registers written alone left the other "
-            "two at their prior values (DATA_CTRL/DATA_CTRL_ENABLE/ACCESS_FILTER reads shown); "
-            + "; ".join(s4),
+            f"instance {_DISTINCT_INSTANCE}: each of the three registers written alone left the "
+            "other two at their prior values "
+            "(DATA_CTRL/DATA_CTRL_ENABLE/ACCESS_FILTER reads shown); " + "; ".join(s4),
         )
 
-        # S5
         rows = []
         for pin in _PG_PINS:
             base = _PG_BASE + pin * _PG_STRIDE
@@ -276,9 +278,9 @@ class smc_gpio_intf_decode_map_test_seq(SmcRegblockFieldSweepSeq):
             )
             rows.append(f"pin {pin} base 0x{base:08x} ACCESS_FILTER@0x{base + 8:08x}=0x{got:08x}")
         assert len(rows) == 3
-        self._stamp("S5")
+        self._stamp("FORMULA_COMPARE")
         self._chk(
-            "S5",
+            "FORMULA_COMPARE",
             "CHK-GPIO-DECODE-PG-FORMULA",
             "formula 0xC0003000 + pin*0x10 equals the generated DATA_CTRL address, +0x4 "
             "DATA_CTRL_ENABLE, +0x8 ACCESS_FILTER; " + "; ".join(rows),
@@ -296,7 +298,7 @@ class smc_gpio_intf_decode_map_test_seq(SmcRegblockFieldSweepSeq):
         assert all(b >= a for a, b in zip(chk_ps, chk_ps[1:])), f"{self.chk_steps}"
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
-            " < ".join(_TERMS),
+            " < ".join(_EVENTS),
             ",".join(c for _, c, _ in self.chk_steps),
             ",".join(f"{n}={p}" for n, p in self.events),
         )

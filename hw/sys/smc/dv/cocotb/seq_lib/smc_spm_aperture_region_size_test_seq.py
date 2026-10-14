@@ -34,8 +34,8 @@ REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 GLOBAL_BASE_ADDR = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 
 # Spec values: the generated resets and the sizes around the window end.
-CONTRACT_REGION_SIZE_RESET = 0x100_0000
-CONTRACT_GLOBAL_BASE_RESET = 0x4000_0000
+DOC_REGION_SIZE_RESET = 0x100_0000
+RDL_GLOBAL_BASE_RESET = 0x4000_0000
 REGION_SIZE_2M = 0x20_0000
 REGION_SIZE_1M = 0x10_0000
 WINDOW_END_OFFSET = 0x16_0000
@@ -44,8 +44,8 @@ _WORD = 8
 WINDOW_OFFSET = SPM_MEMORY_BASE + SPM_MEMORY_SIZE - _WORD - LOCAL_BASE_RESET
 WINDOW_LOCAL = LOCAL_BASE_RESET + WINDOW_OFFSET
 WINDOW_GLOBAL = GLOBAL_BASE_RESET + WINDOW_OFFSET
-assert REGION_SIZE_RESET == CONTRACT_REGION_SIZE_RESET
-assert GLOBAL_BASE_RESET == CONTRACT_GLOBAL_BASE_RESET
+assert REGION_SIZE_RESET == DOC_REGION_SIZE_RESET
+assert GLOBAL_BASE_RESET == RDL_GLOBAL_BASE_RESET
 assert WINDOW_OFFSET + _WORD == WINDOW_END_OFFSET
 assert REGION_SIZE_1M <= WINDOW_OFFSET < WINDOW_END_OFFSET <= REGION_SIZE_2M
 
@@ -277,9 +277,9 @@ class smc_spm_aperture_region_size_test_seq(SmcCsrSeq):
         self._stamp("RESTORED_POSITIVE_CONTROL")
         self._chk(
             "CHK-SPM-REGION-DECERR",
-            "at REGION_SIZE 0x%x read and write of 0x%x answered DECERR (owner value pending: "
-            "DECERR read data 0x%x printed, not compared); after restore the word read 0x%x, "
-            "not the refused 0x%x, and the fresh 0x%x read back 0x%x",
+            "at REGION_SIZE 0x%x read and write of 0x%x answered DECERR (not specified, "
+            "measured: DECERR read data 0x%x printed, not compared); after restore the word "
+            "read 0x%x, not the refused 0x%x, and the fresh 0x%x read back 0x%x",
             REGION_SIZE_1M,
             WINDOW_LOCAL,
             rdata,
@@ -320,10 +320,13 @@ class smc_spm_aperture_region_size_test_seq(SmcCsrSeq):
         await self.start_item(group)
         await self.finish_item(group)
         self.accesses += 2
-        for member in group.items:
-            assert member.resp_code in (AXI_RESP_OKAY, AXI_RESP_DECERR), (
-                f"{label} {member.get_name()}: resp={member.resp_code}, expected OKAY or DECERR"
-            )
+        assert window_item.resp_code in (AXI_RESP_OKAY, AXI_RESP_DECERR), (
+            f"{label} {window_item.get_name()}: resp={window_item.resp_code}, "
+            "expected OKAY or DECERR"
+        )
+        assert region_item.resp_code == AXI_RESP_OKAY, (
+            f"{label}: REGION_SIZE write answered {region_item.resp_code}"
+        )
 
     def _overlap(self, label: str, sampler: _HandshakeSampler, is_read: bool) -> str:
         window_addr = WINDOW_LOCAL

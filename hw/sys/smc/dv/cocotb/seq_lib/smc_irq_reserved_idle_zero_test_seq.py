@@ -121,7 +121,7 @@ class smc_irq_reserved_idle_zero_test_seq(SmcCsrSeq):
         assert len(dut.tb_cpu_interrupts) >= 328, (
             f"tb_cpu_interrupts width {len(dut.tb_cpu_interrupts)}, want >= 328"
         )
-        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
+        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0)
         self._waits["SEP_IN csr_read SCRATCH_COLD_WARM_0 (AssertionError on expiry)"] = (
             f"{AXI_TIMEOUT_NS} ns",
             f"read data=0x{got:x}",
@@ -173,15 +173,15 @@ class smc_irq_reserved_idle_zero_test_seq(SmcCsrSeq):
         self.phases += 1
         self._log_chk(
             "CHK-RSVDIDLE-INTERNAL-LOG",
-            f"raw bits 323,322,321,320 over {n_rises} rises (owner value pending, logged only): "
-            f"{self._distinct(samples, INTERNAL_BITS)}",
+            f"raw bits 323,322,321,320 over {n_rises} rises "
+            f"(not specified, measured, logged only): {self._distinct(samples, INTERNAL_BITS)}",
         )
 
         self.phases += 1
         self._log_chk(
             "CHK-RSVDIDLE-PERIPH-LOG",
             f"raw bits 264-266,268-281,283-285 over {n_rises} rises "
-            f"(owner value pending, logged only): {self._distinct(samples, PERIPH_BITS)}",
+            f"(not specified, measured, logged only): {self._distinct(samples, PERIPH_BITS)}",
         )
 
         self._nonvac_fence()

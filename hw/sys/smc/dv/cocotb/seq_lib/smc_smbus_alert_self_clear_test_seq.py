@@ -239,7 +239,7 @@ class smc_smbus_alert_self_clear_test_seq(SmcCsrSeq):
             "CHK-SELFCLEAR-RACE-LOG",
             f"final_smbalert_bit={last[0]} final_tb_i2c0_smbalert={last[1]} stable_in_"
             f"{STABLE_POLLS}_consecutive_polls after {polls + 1} polls; second write landed after "
-            f"the transfer START; logged only, no value compared (owner value pending)",
+            f"the transfer START; logged only, no value compared (not specified, measured)",
         )
 
     async def _teardown(self, cg: int) -> None:

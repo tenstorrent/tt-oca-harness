@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Mailbox IRQS acknowledge, IRQP OR and the 32 inbound and 32 outbound interrupt outputs.
+"""Mailbox IRQS acknowledge, IRQP OR and the inbound and outbound interrupt outputs of
+representative pairs.
 
 Sources: axi_lite_mailbox_unit architecture.adoc, interface.adoc; smc interrupts.adoc.
 """
 
 from __future__ import annotations
-
-import os
 
 import cocotb
 from cocotb.triggers import ClockCycles
@@ -29,11 +28,9 @@ WTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__WTIRQ_bm")
 RTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__RTIRQ_bm")
 EIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__EIRQ_bm")
 READ_ERROR = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__ERROR__READ_ERROR_bm")
-THR_MASK = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__WIRQT__WIRQT_bm")
 IRQ_ALL = WTIRQ | RTIRQ | EIRQ
 
 FUSE_SENSE_RISES = 200_000
-AXI_TIMEOUT_NS = 50_000
 AXI_SLVERR = 2
 EMPTY_ERROR_LOW = 0xFEEDDEAD
 POLL_CAP = 128
@@ -212,9 +209,7 @@ class smc_mailbox_irq_ack_output_test_seq(SmcCsrSeq):
             await self._pop(f"{tag}_END", target, W2)
 
     async def body(self) -> None:
-        await self.wait_fuse_sense_done()
-        seed = int(os.environ.get("RANDOM_SEED", "1"))
-        cocotb.log.info("SEED RANDOM_SEED=%d", seed)
+        await self.wait_fuse_sense_done(max_cycles=FUSE_SENSE_RISES)
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
         await self.csr_write("CLOCK_GATE_CONTROL_EN", CLOCK_GATE_CONTROL, cg | MAILBOX_CG_EN)
         await self.csr_read(
@@ -246,11 +241,16 @@ class smc_mailbox_irq_ack_output_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-ACK-CLEARS-ONLY-WRITTEN-BITS",
             f"set: three sources latched; observed: IRQS[2:0]=0b{built:03b}, 0b{after_zero:03b} "
-            f"after writing 0x0; cleared: write 0x4; checked_cleared: IRQS[2:0]=0b{after_bit2:03b}",
+            f"after writing 0x0; cleared: write 0x4; "
+            f"checked_cleared: IRQS[2:0]=0b{after_bit2:03b}; "
+            "in S3 only IRQS[2] separates the cases because IRQS[1:0] relatch while their "
+            "conditions hold, so the selective acknowledge of bits 1:0 is checked in S5",
         )
         self._log_chk(
             "CHK-IRQS-READ-DOES-NOT-CLEAR",
-            f"two consecutive IRQS reads returned 0b{built:03b} and 0b{again:03b}",
+            f"two consecutive IRQS reads returned 0b{built:03b} and 0b{again:03b}; in S3 only "
+            "IRQS[2] can fall on a clearing read because IRQS[1:0] relatch while their conditions "
+            "hold, and S5 repeats the two reads on IRQS[1:0] after the conditions end",
         )
 
         await self._ack("S4_ACK", A, WTIRQ | RTIRQ)
@@ -265,7 +265,7 @@ class smc_mailbox_irq_ack_output_test_seq(SmcCsrSeq):
             "CHK-ACK-REASSERTS-OBSERVED",
             f"set: occupancy above both thresholds; observed: IRQS[1:0]=0b{got:02b} again "
             f"after write 0x3 and {reads} reads "
-            "(timing not compared, owner value pending); cleared: write 0x3; "
+            "(not specified, measured; timing not compared); cleared: write 0x3; "
             f"checked_cleared: IRQS[1:0] read 0b{got:02b} within {ACK_READS} reads",
         )
 
@@ -273,17 +273,33 @@ class smc_mailbox_irq_ack_output_test_seq(SmcCsrSeq):
         await self._pop("S5_POP_B1", B, W2)
         await self._pop("S5_POP_A", A, W3)
         latched = await self._irqs("S5_LATCHED", A, WTIRQ | RTIRQ)
-        await self._ack("S5_ACK", A, WTIRQ | RTIRQ)
+        again5 = await self._irqs("S5_LATCHED2", A, WTIRQ | RTIRQ)
+        await self._ack("S5_ACK_W", A, WTIRQ)
+        only_r = await self._irqs("S5_ONLY_R", A, WTIRQ | RTIRQ)
+        await self._ack("S5_ACK_R", A, RTIRQ)
         clear1 = await self._irqs("S5_CLR1", A, WTIRQ | RTIRQ)
         clear2 = await self._irqs("S5_CLR2", A, WTIRQ | RTIRQ)
-        assert (latched, clear1, clear2) == (WTIRQ | RTIRQ, 0, 0), (latched, clear1, clear2)
+        assert (latched, again5, only_r, clear1, clear2) == (
+            WTIRQ | RTIRQ,
+            WTIRQ | RTIRQ,
+            RTIRQ,
+            0,
+            0,
+        ), (
+            latched,
+            again5,
+            only_r,
+            clear1,
+            clear2,
+        )
         await self._quiesce("S5_END", B)
         self._mark_step("S5")
         self._log_chk(
             "CHK-ACK-AFTER-CONDITION-STAYS-CLEAR",
             f"set: latched bits with the conditions ended; observed: IRQS[1:0]=0b{latched:02b} "
-            f"after the pops; cleared: write 0x3; checked_cleared: IRQS[1:0]={clear1} then "
-            f"{clear2}",
+            f"then 0b{again5:02b} on a second read after the pops; write 0x1 left "
+            f"0b{only_r:02b}; cleared: write 0x2 as well; checked_cleared: IRQS[1:0]={clear1} "
+            f"then {clear2}",
         )
 
         drained = await self._val("S6_DRAIN", A, "ERROR_FLAGS") & 0x3
@@ -321,8 +337,8 @@ class smc_mailbox_irq_ack_output_test_seq(SmcCsrSeq):
             "CHK-ACK-VS-EVENT-OBSERVED",
             f"IRQS[0]={bit0} after the group {{IRQS write 0x1, WRITE_DATA write}}; responses "
             f"ack={ack.resp_code} write={push.resp_code}; "
-            "no compare (owner value pending), no same-cycle "
-            "alignment claimed (owner value pending)",
+            "no compare (not specified, measured), no same-cycle "
+            "alignment claimed (not specified, measured)",
         )
 
         X, Y = B, A
@@ -445,7 +461,7 @@ class smc_mailbox_irq_ack_output_test_seq(SmcCsrSeq):
             await self._poll(f"S13_rise_{m}", bit, bit)
             irqp_x = await self._val(f"S13_IRQPX{m}", xi, "IRQP") & IRQ_ALL
             irqp_y = await self._val(f"S13_IRQPY{m}", yo, "IRQP") & IRQ_ALL
-            assert irqp_x and irqp_y, f"pair {m}: IRQP 0x{irqp_x:x} 0x{irqp_y:x}"
+            assert (irqp_x, irqp_y) == (WTIRQ, WTIRQ), f"pair {m}: IRQP 0x{irqp_x:x} 0x{irqp_y:x}"
             await self._hold(f"S13_level_{m}", bit, bit, LEVEL_CYCLES)
             await self._pop(f"S13_POPY{m}", yo, W1)
             await self._pop(f"S13_POPX{m}", xi, W1)
@@ -532,7 +548,7 @@ class smc_mailbox_irq_ack_output_test_seq(SmcCsrSeq):
             f"set: inbound IRQP non-zero on pair 7; observed: tb_mailbox_interrupts==0x00000080 "
             f"on {IDLE_CYCLES} consecutive idle cycles after rising at cycle {n}; cleared: "
             "condition ended and IRQS acknowledged; checked_cleared: output 0; the gate idle "
-            "state is not observed (owner value pending)",
+            "state is not observed (not specified, measured)",
         )
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, cg)
@@ -583,6 +599,6 @@ class smc_mailbox_irq_ack_output_test_seq(SmcCsrSeq):
             fuse,
             own,
             self.accesses,
-            AXI_TIMEOUT_NS,
+            self.cfg.axi_timeout_ns,
             self.accesses,
         )

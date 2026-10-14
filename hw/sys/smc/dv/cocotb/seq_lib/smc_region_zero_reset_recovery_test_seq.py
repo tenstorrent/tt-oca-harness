@@ -431,8 +431,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._log_chk(
             "CHK-REGION-ZERO-RESET-RECOVERY",
             f"after the cold reset REGION_SIZE read 0x{size:08x} and GLOBAL_BASE 0x{base:08x} "
-            f"through sep_axi_in with OKAY, SCRATCH_COLD[0] read 0x{scratch0:x} (reset word, "
-            f"not the 0x3b3b00000001 the jtag write sent to SYS_OUT)",
+            f"through sep_axi_in with OKAY, SCRATCH_COLD[0] read 0x{scratch0:x} (reset word)",
         )
 
         # S5: reset with 12 inbound accesses outstanding on each inbound port.
@@ -460,7 +459,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await sys_task
         self._waits.append(
             f"outstanding_groups bound={AXI_TIMEOUT_NS} ns per member allow_timeout=True "
-            f"(interrupted by the reset, owner value pending) sep[{self._fates(sep_members)}] "
+            f"(interrupted by the reset, not specified, measured) sep[{self._fates(sep_members)}] "
             f"sys[{self._fates(sys_members)}]"
         )
         first = await self._rd(
@@ -476,7 +475,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"outstanding on each of sep_axi_in and sys_axi_in the first read of REGION_SIZE "
             f"answered OKAY with 0x{first:08x}; r_raw_valid read 0 on both ports at the release "
             f"and for {QUIET_WINDOW_CYCLES} cycles after the holds cleared; pre-reset accesses "
-            f"(observe-only, owner value pending) sep[{self._fates(sep_members)}] "
+            f"(observe-only, not specified, measured) sep[{self._fates(sep_members)}] "
             f"sys[{self._fates(sys_members)}]; "
             f"SCRATCH_COLD[0..3] read {[hex(v) for v in landed]} (observed)",
         )
@@ -503,7 +502,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await jtag_task
         self._waits.append(
             f"pending_jtag_group bound={AXI_TIMEOUT_NS} ns per member allow_timeout=True "
-            f"(interrupted by the reset, owner value pending) [{self._fates(jtag_members)}]"
+            f"(interrupted by the reset, not specified, measured) [{self._fates(jtag_members)}]"
         )
         post_word = 0x6B6B_0000_0000_0001
         await self._wr("jtag", OUTPUT_FABRIC_ADDR, post_word)
@@ -520,7 +519,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"exceeded the AW/AR handshakes issued since the reset over {QUIET_WINDOW_CYCLES} "
             f"cycles after the hold cleared (pre-reset address re-issued at output_axi: "
             f"{replayed}, observed); pre-reset accesses "
-            f"(observe-only, owner value pending) [{self._fates(jtag_members)}]",
+            f"(observe-only, not specified, measured) [{self._fates(jtag_members)}]",
         )
 
         # S7: a reprogrammed window does not survive the reset.
