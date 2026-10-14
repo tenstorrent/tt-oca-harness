@@ -329,3 +329,17 @@ tags = ["lcc", "efuse", "strap", "reset", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+sep_edn_jtag_reset_waive"]
+
+[[tests]]
+# The same leaf on the full-CPU model, where the dbg_rstb_i event of leg B is graded
+# through the run-request synchronizer; it fails without the full CPU.
+name = "sep_secure_tm_strap_sampling_test_dbg"
+module = "efuse.sep_secure_tm_strap_sampling_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["lcc", "efuse", "strap", "reset", "subsystem"]
+run_modes = ["no_cpu"]
+tools = ["vcs"]
+target = "default"
+args = ["+sep_edn_jtag_reset_waive", "+sep_require_full_cpu"]
