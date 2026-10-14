@@ -72,9 +72,12 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-DMA-COLDRST-RECOVER a new copy after the cold reset completes and matches.
   CHK-WDT-INFLIGHT        last leg, every seed and build: a ``wdt_rst_ni`` pulse
                           lands while an accepted ``SW_RESET_N`` write has its B
-                          outstanding. No response of that write reaches the
-                          CPU port after the CPU reset is released, and the next
-                          ``SW_RESET_N`` write handshakes OKAY within the bound.
+                          outstanding and is released before the calibrated B
+                          latency. No B of that write reaches the CPU port on or
+                          after the first clock ``sep_cpu_reset_n`` is low (a B
+                          before it, OKAY, or no B passes), the CPU reset falls
+                          and rises, and the next ``SW_RESET_N`` write shows its
+                          AW and an OKAY B on the bus within the bound.
 
 Controls (not counted): ``CTL-CPU-RST`` (a ``wdt_rst_ni`` pulse drops
 ``sep_cpu_reset_n`` with ``sep_reset_n`` high, and the ``rst_ni`` pulse drops
@@ -232,8 +235,8 @@ DBG_ALLOW = 2  # CHK-DBG-SYNC allowance beyond the two-flop synchronizer
 SYNC_LAT = 2
 WRITE_BOUND = 4_000
 # In-flight leg: the pulse asserts this many clocks after the write's AW handshake and
-# lasts INFLIGHT_WIDTH clocks, so it ends before the write's B response (the
-# calibrated B latency, CAL-TISO) returns.
+# lasts INFLIGHT_WIDTH clocks. The leg checks that the release comes before the
+# calibrated B latency (CAL-TISO) and fails otherwise.
 INFLIGHT_OFFSET = 1
 INFLIGHT_WIDTH = 2
 
@@ -995,20 +998,27 @@ class sep_cpu_reset_retention_test(sep_base_test):
         """A ``wdt_rst_ni`` pulse lands while an accepted write has its B outstanding.
 
         The write is a ``SW_RESET_N`` write of its present value. The pulse asserts
-        ``INFLIGHT_OFFSET`` clocks after the AW handshake and ends before the
-        calibrated B latency. CHK-WDT-INFLIGHT passes when no response of the write
-        reaches the CPU port after the CPU reset is released (the port was reset,
-        so a later response belongs to no request) and the next ``SW_RESET_N``
-        write handshakes OKAY within ``WRITE_BOUND`` clocks. A late response is
-        graded the clock it is seen: on the full-CPU build the LSU demux ID
-        counter asserts on the next edge and the simulator stops there.
+        ``INFLIGHT_OFFSET`` clocks after the AW handshake and is released before the
+        calibrated B latency. CHK-WDT-INFLIGHT grades the B of that write against
+        the ``sep_cpu_reset_n`` tap: a B handshake on the CPU port on or after the
+        first clock the CPU reset is low is a FAIL (the reset port holds no request
+        for it), and a B before that clock (drained) or no B (dropped) passes. The
+        CPU reset must fall and rise within the bound. The next ``SW_RESET_N``
+        write then needs its AW and an OKAY B on the ``s_axi`` bus within
+        ``WRITE_BOUND`` clocks; it is graded on the bus, because the stand-in
+        master pairs a B with the oldest open write of its ID and is not reset by
+        ``sep_cpu_reset_n``. A late B is graded the clock it is seen: on the
+        full-CPU build the LSU demux ID counter asserts on the next edge and the
+        simulator stops there.
         """
         dut = cocotb.top
         await self._open()
         sw_now = await self._rd(SW)
+        cpu = self.taps.resets["sep_cpu_reset_n"]
         await FallingEdge(dut.clk_i)
         cm = self.chan.mark()
         mp = self.pins["WDT"].mark()
+        mc = cpu.mark()
         self._sw_issue(sw_now & SW_FIELDS)
         aw = None
         for _ in range(WRITE_BOUND):
@@ -1033,52 +1043,99 @@ class sep_cpu_reset_retention_test(sep_base_test):
         p_first = low[0] if low else None
         p_rel = rel[0] if rel else None
         b_open = not b_before
+        b_due = None if self.lat_b is None else aw + self.lat_b
         self.logger.info(
             "WDT-INFLIGHT-PLACE: aw_clk=%d pulse_first_low=%s pulse_release=%s width=%d "
-            "b_outstanding_at_pulse=%d calibrated_b_after_aw=%s",
+            "b_outstanding_at_pulse=%d calibrated_b_after_aw=%s calibrated_b_clk=%s",
             aw,
             p_first,
             p_rel,
             INFLIGHT_WIDTH,
             int(b_open),
             self.lat_b,
+            b_due,
         )
-        if not (b_open and p_first is not None and p_first > aw and p_rel is not None):
-            raise AssertionError("in-flight leg: the pulse did not land with the B outstanding")
-        # Watch the write's response; grade a late one the clock it shows.
-        b_clk = b_resp = None
+        # The pulse lands with the B outstanding and is released before the clock
+        # the pulse-free B returns, so a B that keeps the calibrated latency is late.
+        if not (
+            b_open
+            and p_first is not None
+            and p_first > aw
+            and p_rel is not None
+            and b_due is not None
+            and p_rel < b_due
+        ):
+            raise AssertionError(
+                "in-flight leg: the pulse did not land with the B outstanding and end "
+                f"before the calibrated B (pulse_release={p_rel} calibrated_b_clk={b_due})"
+            )
+        # Watch the write's B and the CPU reset; grade a late B the clock it shows.
+        b_clk = b_resp = c_fall = c_rise = None
+        late = False
         for _ in range(WRITE_BOUND):
+            if b_clk is None:
+                beats = [b for b in self.chan.since(cm, "b") if b.axi_id == 0]
+                if beats:
+                    b_clk, b_resp = beats[0].clk - self.off, beats[0].resp
+            falls = cpu.fall_clks_since(mc)
+            rises = cpu.rise_clks_since(mc)
+            c_fall = falls[0] if falls else None
+            c_rise = rises[0] if rises else None
+            late = b_clk is not None and c_fall is not None and b_clk >= c_fall
+            # A drained B is final once the CPU reset has fallen and risen after it.
+            if late or (b_clk is not None and c_rise is not None):
+                break
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            beats = [b for b in self.chan.since(cm, "b") if b.axi_id == 0]
-            if beats:
-                b_clk, b_resp = beats[0].clk - self.off, beats[0].resp
-                break
-        late = b_clk is not None and b_clk >= p_rel
+        outcome = "late" if late else ("dropped" if b_clk is None else "drained")
         where = (
             f"write id=0 aw_clk={aw} pulse_first_low={p_first} pulse_release={p_rel} "
-            f"b_clk={b_clk} b_resp={RESP_NAME.get(b_resp, b_resp)}"
+            f"cpu_reset_fall={c_fall} cpu_reset_rise={c_rise} "
+            f"b_clk={b_clk} b_resp={RESP_NAME.get(b_resp, b_resp)} b_outcome={outcome}"
         )
         if late:
             self._chk_late_inflight(
                 f"{where} late_response=1 (the B of a write accepted before the CPU reset "
-                "reached the CPU port after the reset release) next_write=not_reached"
+                "reached the CPU port on or after the reset assertion) next_write=not_reached"
             )
         await FallingEdge(dut.clk_i)
-        ev = self._sw_issue(sw_now & SW_FIELDS)
-        nxt = "OKAY"
-        try:
-            await self._wait_ev(ev, "in-flight leg next SW_RESET_N write")
-        except AssertionError as exc:
-            nxt = f"none ({exc})"
+        nxt = await self._inflight_next(sw_now & SW_FIELDS)
         if late:
             self.logger.info("OBS-WDT-INFLIGHT-NEXT: next_write=%s", nxt)
             raise AssertionError(self._inflight_fail.replace("not_reached", nxt))
+        reset_seen = c_fall is not None and c_rise is not None and c_rise > c_fall
+        drained_ok = b_clk is None or b_resp == RESP_OKAY
         self._chk(
             "CHK-WDT-INFLIGHT",
-            nxt == "OKAY",
+            reset_seen and drained_ok and nxt == "OKAY",
             f"{where} late_response=0 next_write={nxt} bound={WRITE_BOUND}",
         )
+
+    async def _inflight_next(self, value: int) -> str:
+        """Issue the next ``SW_RESET_N`` write; grade its AW and B on the bus.
+
+        Returns ``OKAY``, the non-OKAY response name, or ``none (...)``.
+        """
+        dut = cocotb.top
+        cm = self.chan.mark()
+        self._sw_issue(value)
+        aw = None
+        for _ in range(WRITE_BOUND):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if aw is None:
+                got = self._aw_after(cm)
+                if got:
+                    aw = got[0]
+            if aw is not None:
+                beats = [
+                    b for b in self.chan.since(cm, "b") if b.axi_id == 0 and b.clk - self.off > aw
+                ]
+                if beats:
+                    resp = beats[0].resp
+                    return "OKAY" if resp == RESP_OKAY else str(RESP_NAME.get(resp, resp))
+        what = "no AW handshake" if aw is None else f"aw_clk={aw}, no B"
+        return f"none ({what} within {WRITE_BOUND} clocks)"
 
     def _chk_late_inflight(self, values: str) -> None:
         line = f"CHK-WDT-INFLIGHT FAIL: {values}"

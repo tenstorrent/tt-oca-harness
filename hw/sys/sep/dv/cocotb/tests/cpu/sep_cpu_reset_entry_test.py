@@ -61,6 +61,9 @@ Checks:
                        firmware start-up sets it). One line per
                        access (watchdog.adoc Bus Interface: the 64-bit port is
                        narrowed to the 32-bit ``aon_timer`` register block).
+                       The (a) read-back is graded on the bus: an AR of size 8
+                       to the pair after the write's B, and an R beat with
+                       RRESP OKAY that carries the written value.
                        Graded last, after every other check.
 
 Every CPU reset is applied at a quiet point: after a pass-count store of the
@@ -1203,6 +1206,22 @@ class sep_cpu_reset_entry_test(sep_base_test):
             out.append((aw, w, b))
         return out
 
+    @staticmethod
+    def _reads(tap: SepFabricTap) -> list[tuple]:
+        """(ar, r) per read on ``tap``: the first R of the AR's ID after the AR."""
+        ars = [b for b in tap.beats if b.ch == "ar"]
+        rs = [b for b in tap.beats if b.ch == "r"]
+        used: set[int] = set()
+        out = []
+        for ar in ars:
+            r = next(
+                (x for x in rs if x.seq not in used and x.id == ar.id and x.seq > ar.seq), None
+            )
+            if r is not None:
+                used.add(r.seq)
+            out.append((ar, r))
+        return out
+
     async def _cpu_store_leg(self) -> None:
         """(b) and (c): the store routine, started by the SRAM flag at a quiet point."""
         dut = cocotb.top
@@ -1274,8 +1293,12 @@ class sep_cpu_reset_entry_test(sep_base_test):
         wdt = [
             x for x in self._writes(tap) if x[0].addr is not None and WDT_LO <= x[0].addr < WDT_HI
         ]
+        wdt_rd = [
+            x for x in self._reads(tap) if x[0].addr is not None and WDT_LO <= x[0].addr < WDT_HI
+        ]
         for i, (reg, addr, val, werr, rd, rerr) in enumerate(res):
             aw, w, b = wdt[i] if i < len(wdt) else (None, None, None)
+            ar, r = wdt_rd[i] if i < len(wdt_rd) else (None, None)
             self.st_rows.append(
                 {
                     "kind": "a",
@@ -1287,6 +1310,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
                     "b": b,
                     "exp": val,
                     "rd": rd,
+                    "ar": ar,
+                    "r": r,
                     "nmi": [],
                     "sberr": (werr, rerr),
                 }
@@ -1295,9 +1320,18 @@ class sep_cpu_reset_entry_test(sep_base_test):
             self.st_errors.append(
                 f"{len(wdt)} WDT writes on PR-DBG-SB, expected {len(SBA_ACCESSES)}"
             )
+        if len(wdt_rd) != len(SBA_ACCESSES):
+            self.st_errors.append(
+                f"{len(wdt_rd)} WDT reads on PR-DBG-SB, expected {len(SBA_ACCESSES)}"
+            )
 
     def _grade_store_resp(self) -> None:
-        """One CHK-WDT-STORE-RESP line per access: BRESP OKAY and the value reads back."""
+        """One CHK-WDT-STORE-RESP line per access: BRESP OKAY and the value reads back.
+
+        An (a) read-back counts only from the bus: an AR to the pair after the
+        write's B, size 8, and an R beat with RRESP OKAY whose data is the
+        written value and is what ``sbdata1``/``sbdata0`` return.
+        """
 
         def h(v, width=8):
             return "X" if v is None else f"0x{v:0{width}x}"
@@ -1319,6 +1353,20 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 and (row["kind"] == "a" or (aw.size == 2 and w.strb == lane))
                 and (row["sberr"] is None or row["sberr"] == (0, 0))
             )
+            if row["kind"] == "a":
+                ar, r = row["ar"], row["r"]
+                ok = (
+                    ok
+                    and w.data == row["exp"]
+                    and b is not None
+                    and ar is not None
+                    and r is not None
+                    and ar.seq > b.seq
+                    and ar.addr == row["addr"]
+                    and ar.size == 3
+                    and r.resp == 0
+                    and r.data == row["exp"]
+                )
             width = 16 if row["kind"] == "a" else 8
             text = (
                 f"access=({row['kind']}) master={row['master']} reg={row['reg']} "
@@ -1331,6 +1379,16 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 text += " nmi_mcause=" + ",".join(f"0x{c:08x}" for c in row["nmi"])
             if row["sberr"] is not None:
                 text += f" sberror_wr={row['sberr'][0]} sberror_rd={row['sberr'][1]}"
+            if row["kind"] == "a":
+                ar, r = row["ar"], row["r"]
+                text += (
+                    f" wdata={h(None if w is None else w.data, 16)}"
+                    f" ar_addr={h(None if ar is None else ar.addr)}"
+                    f" ar_size={'X' if ar is None else ar.size}"
+                    f" ar_after_b={int(ar is not None and b is not None and ar.seq > b.seq)}"
+                    f" rresp={'X' if r is None or r.resp is None else r.resp}"
+                    f" rdata={h(None if r is None else r.data, 16)}"
+                )
             self._grade("CHK-WDT-STORE-RESP", ok, text)
 
     def _grade_no_early(self) -> None:
