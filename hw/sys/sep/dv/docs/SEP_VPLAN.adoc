@@ -4395,8 +4395,8 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`xbar_tcm_req` and `cpu_tcm_axi_resp`
 |Read-only tap
-|The crossbar `cpu_tcm` target: the DMA path into the TCM, used as a control.
-|`sep_cpu_demux_unmapped_fetch_test` (CHK-CORE-PATH-XBAR)
+|The crossbar `cpu_tcm` target: the DMA path into the TCM, used as a control and as the response anchor of a DMA read of a TCM word.
+|`sep_cpu_demux_unmapped_fetch_test` (CHK-CORE-PATH-XBAR), `sep_tcm_dma_aperture_ecc_test` (CHK-TCM-DBE)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`dbg_sb_req` and `dbg_sb_rsp`
 |Read-only tap

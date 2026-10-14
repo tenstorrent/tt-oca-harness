@@ -312,8 +312,8 @@ Observation probe groups:
    DMA path into the core DMA slave port, same fields with a 6-bit ID. The
    VPLAN names this tap `xbar_tcm_req` and `cpu_tcm_axi_resp`; no net is
    named `xbar_tcm_req`, and the tap reads the `sep.sv` nets
-   `cpu_tcm_axi_req` and `cpu_tcm_axi_resp`. Owner:
-   `sep_cpu_demux_unmapped_fetch_test`.
+   `cpu_tcm_axi_req` and `cpu_tcm_axi_resp`. Owners:
+   `sep_cpu_demux_unmapped_fetch_test`, `sep_tcm_dma_aperture_ecc_test`.
 ** PR-DBG-SB (`pr_dbg_sb_*`): the debug-module system-bus master after its
    local alias remap (`sep.sv` `dbg_axi_req` and `dbg_axi_resp`): the PR-LSU
    fields plus W and R data. Owner: `sep_debug_master_target_matrix_test`.

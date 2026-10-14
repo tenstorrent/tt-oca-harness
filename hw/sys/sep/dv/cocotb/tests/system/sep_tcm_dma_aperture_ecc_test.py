@@ -35,9 +35,13 @@ Checkers:
                  on the PR-TCM response differs from the written word (PR-TCM
                  request) in bit k only.
   CHK-TCM-DBE    for 16 drawn bit pairs of each memory (at least 4 each of
-                 data-data, data-ECC and ECC-ECC), the DMA read ends with
-                 ``host_path_err`` set. Control: the flag reads 0 after the clear
-                 and after the clean read of the same word, and the stored word
+                 data-data, data-ECC and ECC-ECC), the read of the flipped word
+                 is one AR at its 8-byte word on PR-XBAR-TCM, every R beat with
+                 the ID of that AR answers SLVERR or DECERR, the DMA transfer
+                 ends with STATUS.error at 1 and STATUS.done at 0, and
+                 ``host_path_err`` is set. Control: the clean read of the same
+                 word is one AR on PR-XBAR-TCM answered OKAY, the flag reads 0
+                 after the clear and after that clean read, and the stored word
                  differs from the written word in the two flipped bits.
 Observations (not graded): OBS-TCM-EXCL (whether the other memory's clock-enable
 tap rose), OBS-TCM-DBG (``ext_debug_bus_o[367:364]`` during each DMA read),
@@ -53,7 +57,9 @@ checks that the core reset (``core_rst_l``, which the debug module's
 tap (``env/sep_fabric_tap.py``, read per bank with ``TapBeat.lane``) packs the
 banks with bank 0 in the low bits: ICCM bank ``off[3:2]``, row
 ``off[17:4]``; DCCM bank ``off[2]``, row ``off[16:3]`` (the bank map of
-``tb/tb_top.sv``, ``tb_backdoor_mem``).
+``tb/tb_top.sv``, ``tb_backdoor_mem``). The PR-XBAR-TCM tap
+(``env/sep_fabric_tap.py``) is the local crossbar ``cpu_tcm`` target, the DMA
+path into the core DMA slave port: the AXI read response of each TCM read.
 
 The graded window (owner code of this test) is open around the aperture copies
 and around each flip and its read. Set-up, clears, writes before a flip and the
@@ -110,6 +116,8 @@ WORD_BYTES = 4
 DBG_HI, DBG_LO = 367, 364
 ROW_BITS = 14
 ROW_MASK = (1 << ROW_BITS) - 1
+RESP_OKAY = 0
+RESP_ERR = (2, 3)  # SLVERR, DECERR
 
 
 def bank_row(mem: str, addr: int) -> tuple[int, int]:
@@ -375,6 +383,22 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             return None
         return None
 
+    def _xbar_read(self, addr: int, mark) -> tuple[list[int | None], str]:
+        """R responses of the one PR-XBAR-TCM read of ``addr`` since ``mark``.
+
+        Returns ([], why) unless exactly one AR shows, at the 8-byte word of
+        ``addr``; else the RRESP of every R beat with the ID of that AR.
+        """
+        ars = self.xbar_tap.since(mark, "ar")
+        desc = "ar=" + ",".join(b.fmt() for b in ars)
+        if len(ars) != 1 or ars[0].addr is None or (ars[0].addr & ~7) != (addr & ~7):
+            return [], desc
+        rs = [b for b in self.xbar_tap.since(mark, "r") if b.id == ars[0].id]
+        desc += " r=" + ",".join(b.fmt() for b in rs)
+        if not rs or rs[-1].last != 1:
+            return [], desc
+        return [b.resp for b in rs], desc
+
     def _fail(self, chk: str, line: str) -> None:
         msg = f"{chk} FAIL: {line}"
         self.logger.error(msg)
@@ -537,7 +561,9 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         flag = await self._clear_bus_err()
         rose, written = await self._write_tcm(mem, addr, data, FLIP_STAGE, f"{tag} write")
         rb = RB_STAGE + 0x8000 + 4 * (j % 256)
+        xmark = self.xbar_tap.mark()
         st, _, got, _, nib, _ = await self._read_tcm(mem, addr, data, rb, f"{tag} clean read")
+        clean_resp, clean_desc = self._xbar_read(addr, xmark)
         clean_flag = await self._bus_err()
         self.logger.info("OBS-TCM-DBG: mem=%s kind=none bus367_364=0b%s", mem, format(nib, "04b"))
         self.n_clean_reads += 1
@@ -548,7 +574,9 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         mask = bit_mask(a, b)
         await tcm_flip(cocotb.top, addr, mask)
+        xmark = self.xbar_tap.mark()
         st, _, got, _, nib, mark = await self._read_tcm(mem, addr, data, rb, f"{tag} read")
+        resp, desc = self._xbar_read(addr, xmark)
         berr = await self._bus_err()
         close_graded_window(self.logger)
         stored = self._stored_word(mem, addr, mark)
@@ -557,13 +585,18 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         self.dbe_flag_seen |= hpe
         flipped = int(written is not None and stored is not None and (stored ^ written) == mask)
         cf = int(bool((flag | clean_flag) & DMA_HOST_PATH_BIT))
+        err_resp = int(bool(resp) and all(r in RESP_ERR for r in resp))
+        clean_okay = int(bool(clean_resp) and all(r == RESP_OKAY for r in clean_resp))
+        dma_err = int(bool(st.error) and not st.done)
         line = (
             f"mem={mem} addr=0x{addr:08x} k1={a} k2={b} class={pair_class(a, b)} "
+            f"rresp_err={err_resp} clean_rresp_okay={clean_okay} dma_error={dma_err} "
             f"host_path_err={hpe} clean_flag={cf} stored_bits_flipped={flipped} "
             f"written={'X' if written is None else hex(written)} "
-            f"stored={'X' if stored is None else hex(stored)} dma={st.fmt()}"
+            f"stored={'X' if stored is None else hex(stored)} dma={st.fmt()} "
+            f"xbar_tcm=[{desc}] clean_xbar_tcm=[{clean_desc}]"
         )
-        if not hpe or cf or not flipped:
+        if not (err_resp and clean_okay and dma_err and hpe) or cf or not flipped:
             self._fail("CHK-TCM-DBE", line)
         self.logger.info("CHK-TCM-DBE PASS: %s", line)
         self.n_checks += 1
@@ -599,6 +632,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         self.sampler = _TapSampler(top)
         self.sampler.start()
         self.tcm_tap = SepFabricTap("PR-TCM").start()
+        self.xbar_tap = SepFabricTap("PR-XBAR-TCM").start()
 
         await self._setup()
         await self._aperture()
