@@ -13,7 +13,7 @@ READ and QUAD I/O READ:
   device record's ``data_out`` equals it, and the monitor's lane decode of the
   response phase equals it, each at the command's lane width.
 * ``CHK-SPI-LANE-JEDEC``: READ JEDEC ID answers on lane 1 in standard mode.
-* ``CHK-SPI-LANE-REFUSE``: a quad program ending inside a nibble is refused as
+* ``CHK-SPI-LANE-REFUSE``: a quad program ending one nibble into a payload byte is refused as
   ``partial_byte``, a quad I/O read ending in its four-lane address as
   ``partial_address`` and in its dummy clocks as ``partial_dummy``; memory and
   the latch are unchanged.
@@ -97,7 +97,9 @@ async def ocah_spi_lanes_test(dut) -> None:
     bfm, flash, monitor, checker = harness.host.bfm, harness.flash, harness.monitor, harness.checker
     addr, length = random_page_span(rng)
     payload = bytes(rng.randrange(256) for _ in range(length))
-    payload = bytes([payload[0] & 0x7F]) + payload[1:]
+    # Byte 0 is neither erased nor zero: a READ grades real data, and the refused
+    # program's zero byte would clear its set bits if it were taken.
+    payload = bytes([(payload[0] & 0x7F) | 0x01]) + payload[1:]
     log.info("start: page addr=0x%06x len=%d", addr, length)
 
     def frames_since(mark: int) -> list:
@@ -152,7 +154,7 @@ async def ocah_spi_lanes_test(dut) -> None:
     memory = flash.read_memory(addr, length)
     rec_mark = len(flash.get_transactions())
     head = bytes([OcahSpiOpcode.QUAD_PAGE_PROGRAM]) + addr.to_bytes(ADDR_BYTES, "big")
-    await bfm.lane_frame([(1, "tx", head), (4, "tx", payload[:1]), (4, "dummy", 1)])
+    await bfm.lane_frame([(1, "tx", head), (4, "tx", b"\x00"), (4, "dummy", 1)])
     eb = command_format(OcahSpiOpcode.QUAD_IO_READ)
     assert eb is not None
     eb_cmd = (1, "tx", bytes([OcahSpiOpcode.QUAD_IO_READ]))
@@ -173,7 +175,7 @@ async def ocah_spi_lanes_test(dut) -> None:
             memory,
             True,
         ),
-        context="quad program cut in a nibble; quad I/O read cut in its address and its dummy",
+        context="quad program cut one nibble into a byte; quad I/O read cut in its address and its dummy",
     )
     await bfm.lane_frame([(1, "tx", bytes([OcahSpiOpcode.WRITE_DISABLE]))])
 
