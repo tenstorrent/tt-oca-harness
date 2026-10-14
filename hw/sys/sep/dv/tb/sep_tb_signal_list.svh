@@ -988,6 +988,22 @@
 `SEP_TB_OUT(logic [1:0], pr_dbg_sb_rresp_o)
 `SEP_TB_OUT(logic [2:0], pr_dbg_sb_rid_o)
 `SEP_TB_OUT(logic, pr_dbg_sb_rlast_o)
+// PR-DBG-IN / PR-DBG-OUT: the debug-module system-bus request at the input
+// (sep_cpu dbg_axi_req_raw) and at the output (dbg_axi_req_o) of the debug
+// local alias remap u_dbg_local_alias_remap: AW and AR valid, ready and
+// address. Tied to 0 on the CPU stub build, which has no debug module.
+`SEP_TB_OUT(logic, pr_dbg_in_awvalid_o)
+`SEP_TB_OUT(logic, pr_dbg_in_awready_o)
+`SEP_TB_OUT(logic [31:0], pr_dbg_in_awaddr_o)
+`SEP_TB_OUT(logic, pr_dbg_in_arvalid_o)
+`SEP_TB_OUT(logic, pr_dbg_in_arready_o)
+`SEP_TB_OUT(logic [31:0], pr_dbg_in_araddr_o)
+`SEP_TB_OUT(logic, pr_dbg_out_awvalid_o)
+`SEP_TB_OUT(logic, pr_dbg_out_awready_o)
+`SEP_TB_OUT(logic [31:0], pr_dbg_out_awaddr_o)
+`SEP_TB_OUT(logic, pr_dbg_out_arvalid_o)
+`SEP_TB_OUT(logic, pr_dbg_out_arready_o)
+`SEP_TB_OUT(logic [31:0], pr_dbg_out_araddr_o)
 // Core JTAG and DMI outputs of sep that the DUT instance leaves open
 // otherwise: the TAP TDO and the uncore DMI enable and write enable.
 `SEP_TB_OUT(logic, jtag_tdo_o)

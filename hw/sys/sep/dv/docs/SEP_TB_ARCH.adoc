@@ -309,6 +309,12 @@ Observation probe groups:
 ** PR-DBG-SB (`pr_dbg_sb_*`): the debug-module system-bus master after its
    local alias remap (`sep.sv` `dbg_axi_req` and `dbg_axi_resp`): the PR-LSU
    fields plus W and R data. Owner: `sep_debug_master_target_matrix_test`.
+** PR-DBG-IN (`pr_dbg_in_*`) and PR-DBG-OUT (`pr_dbg_out_*`): the
+   debug-module system-bus request at the input and at the output of the
+   debug local alias remap (`sep_cpu.sv` `u_dbg_local_alias_remap`, nets
+   `dbg_axi_req_raw` and `dbg_axi_req_o` with the AW and AR ready of their
+   responses): AW and AR valid, ready and address; tied to 0 on the CPU stub
+   build. Owner: `sep_debug_master_target_matrix_test`.
 ** PR-DMACSR (`pr_dmacsr_*`): the request at the DMA CSR target port
    (`dma_csr_req`), AW and AR address. Owner:
    `sep_fabric_dma_endpoint_matrix_test`.
