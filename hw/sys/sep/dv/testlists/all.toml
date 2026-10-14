@@ -55,7 +55,7 @@ tests = ["sep_axi_smoke_test"]
 #   full-CPU `default` target. Their dbg_rstb_i legs need the VeeR debug module
 #   or the run-request synchronizer, which the CPU stub does not have.
 name = "all"
-expected_count = 176
+expected_count = 178
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -233,6 +233,8 @@ tests = [
     "sep_timer_clock_contract_test",
     "sep_timer_clock_contract_test_dbg",
     "sep_secure_tm_strap_sampling_test_dbg",
+    "sep_tcm_ecc_cpu_trap_test",
+    "sep_cpu_isa_pmp_csr_test",
 ]
 
 [[groups]]
@@ -267,6 +269,8 @@ tests = [
     "sep_pic_pending_map_walk_rand_test",
     "sep_nmi_vector_bark_rand_test",
     "sep_cpu_reset_entry_test",
+    "sep_tcm_ecc_cpu_trap_test",
+    "sep_cpu_isa_pmp_csr_test",
 ]
 
 [[groups]]
@@ -700,7 +704,7 @@ tests = [
 # It is not a VPLAN group: `all` holds the same tests, and `cpu_stub` and `cpu`
 # hold all of them except the two `_dbg` entries.
 name = "phase3_memory_boot_reset"
-expected_count = 14
+expected_count = 16
 tests = [
     "sep_boot_release_terms_test",
     "sep_boot_release_terms_test_smc_hold",
@@ -716,4 +720,6 @@ tests = [
     "sep_timer_clock_contract_test",
     "sep_timer_clock_contract_test_dbg",
     "sep_secure_tm_strap_sampling_test_dbg",
+    "sep_tcm_ecc_cpu_trap_test",
+    "sep_cpu_isa_pmp_csr_test",
 ]

@@ -237,3 +237,16 @@ tags = ["boot", "reset", "cpu", "jtag", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
+
+[[tests]]
+# RV32 M, Zba, Zbb and Zbc results match the ISA model, a Zbs instruction is illegal, a
+# pmpaddr write changes that entry only, and mrac grants no permission.
+name = "sep_cpu_isa_pmp_csr_test"
+module = "cpu.sep_cpu_isa_pmp_csr_test"
+firmware = "cpu_isa_pmp_csr_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["cpu", "isa", "pmp", "csr", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]

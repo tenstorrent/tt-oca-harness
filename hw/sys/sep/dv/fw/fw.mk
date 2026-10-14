@@ -93,6 +93,9 @@ FW_TEST_BITMANIP := \
 # Deferred: toolchain.mk, which defines FW_ARCH_BITMANIP, is included later.
 $(foreach t,$(FW_TEST_BITMANIP), \
   $(eval FW_TEST_IMAGE_CFLAGS_$(t) += -march=$$(FW_ARCH_BITMANIP)))
+# cpu_isa_pmp_csr_test is built for RV32I: the only M, C or Zb* encodings it
+# retires are the explicit instruction words of its table rows and of bset.
+FW_TEST_IMAGE_CFLAGS_cpu_isa_pmp_csr_test += -march=rv32i_zicsr_zifencei
 
 # Default link mode: link/modes/tcm.ld, auto-discovered by compile.mk.
 FW_DEFAULT_TEST_MODE := tcm
