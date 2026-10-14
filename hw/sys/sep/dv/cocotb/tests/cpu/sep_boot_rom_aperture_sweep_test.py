@@ -488,8 +488,18 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
     def _in(beats, t0: int, t1: int, ch: str | None = None) -> list:
         return [b for b in beats if t0 <= b.t_ps <= t1 and (ch is None or b.ch == ch)]
 
+    def _taps_live(self) -> None:
+        """Raise unless every tap task has run without a stop since the leaf started it.
+
+        The taps start once and stop only after the last grade, so a live task
+        means its record is continuous over every graded window up to now.
+        """
+        for t in self.taps:
+            t.check_life()
+
     def _marker_t(self, off: int) -> int:
         """Time of the AW handshake of a marker store on PR-LSU-XBAR."""
+        self._taps_live()
         hits = [
             b.t_ps
             for b in self.lsu_xbar.beats
@@ -971,6 +981,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                 await RisingEdge(dut.clk_i)
         await ClockCycles(dut.clk_i, 2)
         close_graded_window(self.logger)
+        self._taps_live()
         period = self._period_ps()
         beats = self.rom.beats
         early_rsp = [b for b in beats if b.ch == "rsp" and t_hs < b.t_ps <= t_fall]

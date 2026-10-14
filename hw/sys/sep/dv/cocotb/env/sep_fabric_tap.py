@@ -67,7 +67,11 @@ that counts no handshake cannot pass on an unknown handshake. Verilator is
 
 ``since``, ``count`` and ``addrs`` raise ``TapIdleError`` when the monitor took
 no sample after the mark (not started, or stopped before the stimulus), so a
-zero-count check cannot pass on a monitor that never ran.
+zero-count check cannot pass on a monitor that never ran. They raise
+``MonitorLifeError`` (env/sep_monitor_life.py) when the monitor task ended
+without ``stop``, or when the mark is from an earlier run of the tap, so a
+count or absence check cannot pass on a record that a dead task left partial.
+``stop`` raises the same error when the task ended before it.
 
 Usage::
 
@@ -87,6 +91,8 @@ from dataclasses import dataclass, field
 import cocotb
 from cocotb.triggers import ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from sep_monitor_life import MonitorLife
+from sep_monitor_life import MonitorLifeError as MonitorLifeError
 
 _AXI_FULL = ("addr", "id", "user", "cache", "prot", "len", "size", "burst")
 _W_FIELDS = ("data", "strb", "last")
@@ -178,13 +184,15 @@ class TapIdleError(AssertionError):
 
 
 class TapMark(int):
-    """A beat index that also carries the sampled clock count at the mark."""
+    """A beat index that also carries the sampled clock count and run epoch at the mark."""
 
     clk: int
+    epoch: int | None
 
-    def __new__(cls, index: int, clk: int) -> "TapMark":
+    def __new__(cls, index: int, clk: int, epoch: int | None = None) -> "TapMark":
         obj = super().__new__(cls, index)
         obj.clk = clk
+        obj.epoch = epoch
         return obj
 
 
@@ -247,6 +255,7 @@ class SepFabricTap:
         # Sampled clock edges since construction.
         self.clk = 0
         self._task = None
+        self.life = MonitorLife(f"TAP {name}", lambda: self.clk)
         self._sigs: dict[str, tuple[object, object, dict[str, object]]] = {}
         # Response channels of the macro kinds: channel -> request channel. A
         # response beat is the field sample on the clock after a request beat
@@ -350,19 +359,24 @@ class SepFabricTap:
 
     def start(self) -> "SepFabricTap":
         if self._task is None:
-            self._task = cocotb.start_soon(self._run())
+            self._task = self.life.start(self._run())
         return self
 
     async def stop(self) -> None:
-        if self._task is not None:
-            self._task.cancel()
-            self._task = None
+        """Close the run; raises ``MonitorLifeError`` if the task ended before."""
+        self._task = None
+        await self.life.stop()
 
     def mark(self) -> "TapMark":
         """A position in the record; ``since`` returns the beats after it."""
-        return TapMark(len(self.beats), self.clk)
+        return TapMark(len(self.beats), self.clk, self.life.mark_epoch())
+
+    def check_life(self, mark: int | None = None) -> None:
+        """Raise ``MonitorLifeError`` unless the record is continuous from ``mark`` to now."""
+        self.life.check(getattr(mark, "epoch", None))
 
     def _require_sampled(self, mark: int) -> None:
+        self.check_life(mark)
         mark_clk = getattr(mark, "clk", 0)
         if self.clk <= mark_clk:
             raise TapIdleError(
@@ -408,8 +422,10 @@ def check_axprot(logger, chk: str, tap: "SepFabricTap", master: str, ch: str, ex
     """Grade every AxPROT a master drove on one channel against ``expect``.
 
     Fails when the channel carried no beat, when any beat holds X or Z, or
-    when any beat differs from ``expect``.
+    when any beat differs from ``expect``. Raises ``MonitorLifeError`` when
+    the tap task ended without ``stop``.
     """
+    tap.check_life()
     vals = [b.prot for b in tap.beats if b.ch == ch]
     bad = [v for v in vals if v != expect]
     seen = (

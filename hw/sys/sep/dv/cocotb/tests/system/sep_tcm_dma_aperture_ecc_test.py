@@ -276,7 +276,10 @@ class _TapSampler:
         self.armed = True
 
     def take(self) -> tuple[dict[str, bool], int]:
+        """Close the window; raises if the sampler task ended while it was open."""
         self.armed = False
+        if self.task is None or self.task.done():
+            raise AssertionError("MONITOR-LIFE FAIL: TCM clock-enable sampler task is not running")
         return dict(self.rose), self.nibble
 
 

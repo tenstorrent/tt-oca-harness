@@ -16,7 +16,12 @@ FAIL`` while ``xz_fail`` is set. Verilator is 2-state.
 
 A query over a window the watcher never sampled (not started, stopped before
 the stimulus, or no clock since the mark) raises ``BitWatchIdleError``, so a
-"never rose" or "never high" check cannot pass on an empty record.
+"never rose" or "never high" check cannot pass on an empty record. A query
+raises ``MonitorLifeError`` (env/sep_monitor_life.py) when the watcher task
+ended without ``stop``, or when the mark is from an earlier run of the
+watcher, so it cannot pass on a record that a dead task left partial. The
+bounded waits and ``level`` raise the same error, and ``stop`` raises it when
+the task ended before it.
 
 Usage::
 
@@ -36,6 +41,8 @@ from typing import Any
 
 import cocotb
 from cocotb.triggers import ReadOnly, RisingEdge
+from sep_monitor_life import MonitorLife
+from sep_monitor_life import MonitorLifeError as MonitorLifeError
 
 
 class BitWatchXZError(AssertionError):
@@ -61,11 +68,12 @@ class _BitRec:
 
 @dataclass(frozen=True)
 class BitMark:
-    """A point in the record: the clock and, per bit, the rise and high counts."""
+    """A point in the record: the clock, per bit the rise and high counts, and the run epoch."""
 
     clk: int
     rises: dict[str, int]
     high: dict[str, int]
+    epoch: int | None = None
 
 
 class SepBitWatch:
@@ -88,6 +96,7 @@ class SepBitWatch:
         self.xz_fail = xz_fail
         self.clk = 0
         self._task: Any = None
+        self.life = MonitorLife(f"BIT-WATCH {self.name}", lambda: self.clk)
         self.log = logging.getLogger("cocotb.sep_bit_watch")
 
     def _key(self, bit: str | None) -> str:
@@ -107,26 +116,29 @@ class SepBitWatch:
 
     def start(self) -> "SepBitWatch":
         if self._task is None:
-            self._task = cocotb.start_soon(self._run())
+            self._task = self.life.start(self._run())
         return self
 
     async def stop(self) -> None:
-        if self._task is not None:
-            self._task.cancel()
-            self._task = None
+        """Close the run; raises ``MonitorLifeError`` if the task ended before."""
+        self._task = None
+        await self.life.stop()
 
     def mark(self) -> BitMark:
         return BitMark(
             self.clk,
             {k: len(r.rises) for k, r in self.bits.items()},
             {k: r.high_clocks for k, r in self.bits.items()},
+            self.life.mark_epoch(),
         )
 
     def level(self, bit: str | None = None) -> int | None:
         """The level of the last sample (None before the first sample)."""
+        self.life.check()
         return self._rec(bit).level
 
     def _require_sampled(self, mark: BitMark) -> None:
+        self.life.check(mark.epoch)
         if self.clk <= mark.clk:
             raise BitWatchIdleError(
                 f"BIT-WATCH FAIL: {self.name} took no sample after the mark "
@@ -163,9 +175,11 @@ class SepBitWatch:
         """Wait at most ``bound`` clocks for a rise after ``mark``; return its clock."""
         clk = self.dut.clk_i
         for _ in range(bound + 1):
+            self.life.check(mark.epoch)
             rises = self._rises_after(mark, bit)
             if rises:
                 return rises[0]
+            self.life.require_running()
             await RisingEdge(clk)
         raise BitWatchTimeout(
             f"{self.name}[{bit or self._default}] did not rise within {bound} clocks "
@@ -176,6 +190,7 @@ class SepBitWatch:
         """Wait at most ``bound`` clocks for the bit to read ``level``; return the clock."""
         clk = self.dut.clk_i
         for _ in range(bound + 1):
+            self.life.require_running()
             if self._rec(bit).level == level:
                 return self.clk
             await RisingEdge(clk)
