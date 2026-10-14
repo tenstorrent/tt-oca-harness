@@ -30,8 +30,8 @@ falls on a ``clk_i`` edge or on the drawn release point. The hold interval H
 Checkers:
   CHK-SCAN-IDLE     test_en_i=0: the 11 nets stay high on every clk_i edge from
                     the scan_rst_ni fall to the end of the hold after its rise.
-  CHK-SCAN-REPLACE  test_en_i=1: the 11 nets are low on the last clk_i edge
-                    before the release and high with scan_rst_ni=1;
+  CHK-SCAN-REPLACE  test_en_i=1: the 11 nets are low on every clk_i edge
+                    while scan_rst_ni is low and high with scan_rst_ni=1;
                     sep_reset_n and aon_rst_n rise before the next clk_i and
                     clk_wdt_i edge. Other rise offsets: OBS-SCAN-OFFSET.
   CHK-STRAP-INDEP   secure_tm_o does not move across the test_en_i toggles, at
@@ -205,14 +205,17 @@ class sep_scan_reset_override_test(sep_base_test):
         dut = cocotb.top
         tm0 = self.tm_expect
         moved = []
+        seen = {"n": 0, "last": 0}
 
         async def _watch(stop: dict) -> None:
             while not stop["v"]:
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
                 tm = self.rd(dut.secure_tm_o)
+                seen["n"] += 1
+                seen["last"] = int(get_sim_time("ps"))
                 if tm != tm0:
-                    moved.append((int(get_sim_time("ps")), tm))
+                    moved.append((seen["last"], tm))
 
         stop = {"v": False}
         task = cocotb.start_soon(_watch(stop))
@@ -220,10 +223,13 @@ class sep_scan_reset_override_test(sep_base_test):
             await self._set_test_en(v)
             await ClockCycles(dut.clk_i, H)
             self.test_en_toggles += 1
+        t_end = int(get_sim_time("ps"))
         stop["v"] = True
-        await RisingEdge(dut.clk_i)
-        if not task.done():
-            task.cancel()
+        await task
+        assert seen["n"] and seen["last"] >= t_end, (
+            f"CHK-STRAP-INDEP FAIL: secure_tm_o watcher did not sample through the toggles "
+            f"(samples={seen['n']} last={seen['last']} ps end={t_end} ps)"
+        )
         assert not moved, (
             f"CHK-STRAP-INDEP FAIL: secure_tm_o moved from {tm0} across the test_en_i toggles "
             f"(strap={strap}): {moved[:4]}"
@@ -267,9 +273,10 @@ class sep_scan_reset_override_test(sep_base_test):
         await ReadOnly()
         t_end = int(get_sim_time("ps"))
         stop["v"] = True
-        await RisingEdge(dut.clk_i)
-        if not task.done():
-            task.cancel()
+        await task
+        assert samples and samples[-1][0] >= t_end, (
+            f"{chk} FAIL: net sampler did not sample through the hold (end={t_end} ps)"
+        )
         for t in timers:
             await t.stop()
         rises = {}
@@ -456,6 +463,14 @@ class sep_scan_reset_override_test(sep_base_test):
         b = await self._scan_pulse(1, "CHK-SCAN-REPLACE")
         close_graded_window(self.logger)
         names = [n[0] for n in NETS]
+        # Every clk_i edge from the scan_rst_ni fall to the last edge before the release.
+        during = [(t, vals) for t, vals in b["samples"] if b["t_fall"] < t <= b["last_edge"]]
+        high = [(t, [names[i] for i, v in enumerate(vals) if v != 0]) for t, vals in during]
+        high = [x for x in high if x[1]]
+        assert len(during) == cfg.w and not high, (
+            f"CHK-SCAN-REPLACE FAIL: net(s) not low with scan_rst_ni=0 test_en_i=1 "
+            f"(edges={len(during)} expected={cfg.w}): {high[:4]}"
+        )
         not_low = [names[i] for i, v in enumerate(b["before_release"]) if v != 0]
         assert not not_low, (
             f"CHK-SCAN-REPLACE FAIL: net(s) not low on the last clk_i edge before the release "
@@ -475,7 +490,7 @@ class sep_scan_reset_override_test(sep_base_test):
         nclk, nwdt = clk_e[0], wdt_e[0]
         r_sep, r_aon = b["rises"]["sep_reset_n"], b["rises"]["aon_rst_n"]
         line = (
-            f"nets_low={N_NETS - len(not_low)}/{N_NETS}; scan_rst_ni rose t={t_rise} "
+            f"nets_low={N_NETS - len(not_low)}/{N_NETS} low_edges={len(during)}; scan_rst_ni rose t={t_rise} "
             f"sep_reset_n rose t={r_sep} next_clk_i_edge t={nclk} aon_rst_n rose t={r_aon} "
             f"next_clk_wdt_i_edge t={nwdt}"
         )

@@ -296,6 +296,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             clk += 1
             self.clk = clk
             nl = len(self.con.lines)
+            self.smp_nl = nl
             bus = str(dut.ext_debug_bus_o.value)
             top = len(bus) - 1
             for b in DBG_BITS:
@@ -362,7 +363,16 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
                 break
         return i + 1, nxt
 
+    def _covered(self, win: tuple[int, int]) -> None:
+        """The sampler ran past the last console line of ``win``."""
+        if self.smp_nl_end <= win[1]:
+            raise AssertionError(
+                f"per-clock sampler stopped at console line {self.smp_nl_end}, before the end "
+                f"of the graded window {win}"
+            )
+
     def _pulses_in(self, win: tuple[int, int]) -> dict[int, list[Pulse]]:
+        self._covered(win)
         out: dict[int, list[Pulse]] = {b: [] for b in DBG_BITS}
         for p in self.pulses:
             if win[0] <= p.nl <= win[1]:
@@ -370,6 +380,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         return out
 
     def _trace_in(self, win: tuple[int, int]) -> list[tuple]:
+        self._covered(win)
         return [r for r in self.trace if win[0] <= r[1] <= win[1]]
 
     def _traps(self, tag: str | None = None) -> list[dict]:
@@ -856,12 +867,19 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             for p in self.pulses
             if p.bit in (BIT_I_SB, BIT_D_SB) and any(w[0] <= p.nl <= w[1] for w in ce_wins)
         ]
+        late = [p.clk for p in ce_pulses if p.clk + VEC_WINDOW > self.smp_clk_end]
+        if late:
+            raise AssertionError(
+                f"CHK-TCM-NO-PIC FAIL: sampler stopped at clk={self.smp_clk_end}, inside the vector "
+                f"window of the pulses at clk={late[:6]}"
+            )
         moved = [
             p.clk
             for p in ce_pulses
             if any(p.clk - VEC_WINDOW < c <= p.clk + VEC_WINDOW for c, *_ in self.vec_changes)
         ]
         setup = self._leg("pic_setup")
+        self._covered(setup)
         rise = 0
         for _c, nl, old, new in self.vec_changes:
             if old is None or not setup[0] <= nl <= setup[1]:
@@ -915,6 +933,8 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         self.pulses: list[Pulse] = []
         self.vec_changes: list[tuple] = []
         self.trace: list[tuple] = []
+        self.clk = 0
+        self.smp_nl = 0
         self.sb.expected_line = _BANNER
         self.con = SepFwConsole(self, graded_test=TEST).start()
         smp = cocotb.start_soon(self._sample())
@@ -929,8 +949,17 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
                 no_boot_cycles=_NO_BOOT_CYCLES,
             )
         finally:
-            smp.cancel()
+            # The sampler loops until it is cancelled: a sampler that has already ended
+            # raised or returned early, so its record does not cover the run.
+            ended = smp.done()
+            if not ended:
+                smp.cancel()
+            self.smp_nl_end = self.smp_nl
+            self.smp_clk_end = self.clk
             await self.con.stop()
+        if ended:
+            smp.result()
+            raise AssertionError(f"per-clock sampler ended early at clk={self.clk}")
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
         seeds = self.con.text_lines("SEED")
         if not seeds or f"seed=0x{seed & _M32:08x}" not in seeds[0]:

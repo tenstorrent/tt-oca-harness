@@ -59,7 +59,7 @@ import bisect
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge, Timer
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_edge_timer import SepEdgeTimer, SepPinEdgeCounter
@@ -726,7 +726,7 @@ class sep_timer_clock_contract_test(sep_base_test):
 
         # Forced bark with enable 0 and 1.
         await self._wdt_baseline(bx, dx, 0, graded=True)
-        samples = {"high": 0, "n": 0}
+        samples = {"high": 0, "n": 0, "last": 0}
         stop = {"v": False}
 
         async def _watch() -> None:
@@ -734,6 +734,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
                 samples["n"] += 1
+                samples["last"] = self._now()
                 samples["high"] += self.rd(dut.wdt_timer_rst_req_o)
 
         watch = cocotb.start_soon(_watch())
@@ -746,6 +747,12 @@ class sep_timer_clock_contract_test(sep_base_test):
             await self._poll_eq("INTR_STATE", INTR_STATE, 0, BARK_BIT, "CHK-WDT-INTRTEST")
             cnt = await self._rd(WDOG_COUNT)
             assert cnt < bx, f"CHK-WDT-INTRTEST FAIL: count 0x{cnt:x} not far below bx"
+            if watch.done():
+                watch.result()
+                raise AssertionError(
+                    f"CHK-WDT-INTRTEST FAIL: wdt_timer_rst_req_o watcher ended early "
+                    f"(enable={en} samples={samples['n']})"
+                )
             assert samples["high"] == 0, (
                 f"CHK-WDT-INTRTEST FAIL: wdt_timer_rst_req_o high on {samples['high']} of "
                 f"{samples['n']} clk_i edges (enable={en})"
@@ -757,10 +764,15 @@ class sep_timer_clock_contract_test(sep_base_test):
                 cnt,
                 samples["n"],
             )
+        # The watcher ends only on the stop flag, so a normal join shows that it sampled
+        # every clk_i edge from the first force to the end of the second clear.
+        t_end = self._now()
         stop["v"] = True
-        await RisingEdge(dut.clk_i)
-        if not watch.done():
-            watch.cancel()
+        await watch
+        assert samples["last"] >= t_end and samples["high"] == 0, (
+            f"CHK-WDT-INTRTEST FAIL: wdt_timer_rst_req_o high on {samples['high']} of "
+            f"{samples['n']} clk_i edges, last sample {samples['last']} ps, window end {t_end} ps"
+        )
         await self._wr(WDOG_CTRL, 0)
 
         # pause_in_sleep and ALERT_TEST.
@@ -961,23 +973,32 @@ class sep_timer_clock_contract_test(sep_base_test):
                 n_checks += 1
                 differs[name] |= (got & mask) != (reset & mask)
                 self.logger.info("WDT-SHAPE LOG: reg=%s lane=%s %s", name, lane, fc.fields())
-            # WKUP_CAUSE (RW0C): a write cannot set it.
+            # WKUP_CAUSE (RW0C): a write cannot set it. A write lands no later than twice
+            # the measured landing time of the clear plus 16 clk_wdt_i periods, so the
+            # cause is read back-to-back from the write response to the end of that
+            # window, and every read is graded.
             pat = cfg.patterns("WKUP_CAUSE")[pi]
             await self._wr(WKUP_CAUSE, pat)
-            # Wait twice the measured landing time of the clear, then 16 more clk_wdt_i
-            # periods, before the graded read.
-            await Timer(2 * landing_ps, unit="ps")
-            await self._wait_wdt(16)
-            got = await self._rd(WKUP_CAUSE)
-            fc = field_compare(got, 0, CAUSE_FIELD)
-            assert fc.ok, (
+            t_wr = self._now()
+            reads = []
+            while True:
+                got = await self._rd(WKUP_CAUSE)
+                reads.append(got)
+                now = self._now()
+                if now - t_wr >= 2 * landing_ps and self._edges("clk_wdt_i", t_wr, now) >= 16:
+                    break
+            bad = [r for r in reads if not field_compare(r, 0, CAUSE_FIELD).ok]
+            fc = field_compare(bad[0] if bad else reads[-1], 0, CAUSE_FIELD)
+            assert not bad, (
                 f"CHK-WDT-SHAPE FAIL: WKUP_CAUSE set by a write of 0x{pat:x}: {fc.fields()} "
-                f"wait=2x{landing_ps}ps+16 clk_wdt_i"
+                f"set_reads={len(bad)}/{len(reads)} window=2x{landing_ps}ps+16 clk_wdt_i"
             )
             self.logger.info(
-                "WDT-SHAPE LOG: reg=WKUP_CAUSE pattern=0x%08x %s wait=2x%dps+16 clk_wdt_i",
+                "WDT-SHAPE LOG: reg=WKUP_CAUSE pattern=0x%08x %s reads=%d "
+                "window=2x%dps+16 clk_wdt_i",
                 pat,
                 fc.fields(),
+                len(reads),
                 landing_ps,
             )
             n_checks += 1

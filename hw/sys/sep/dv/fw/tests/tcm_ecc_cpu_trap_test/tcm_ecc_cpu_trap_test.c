@@ -16,9 +16,10 @@
 // Console lines (one record per line):
 //   M G <leg> / M C <leg>          leg markers (sep_console_rec.h)
 //   B <tag> <k> / E <tag> <k>      begin and end of one flipped-word access
-//   SAMPLE leg= tag= k= ic= dc= mip= mie= mst= traps=
+//   SAMPLE leg= tag= k= ic= dc= mip= mie= mst= traps= wt=
 //                                  MICCMECT, MDCCMECT, mip, mie, mstatus and
-//                                  the trap count, read after the access
+//                                  the trap count, read after the access, and
+//                                  the counter reads of the wait before them
 //   ARM leg= kind= traps_before= traps_after= ic= dc= mip=
 //   TRAP i= tag= mcause= mscause= mepc=
 //   MEIP when= w0..w7= micect=
@@ -152,9 +153,28 @@ static inline void st_byte(uint32_t a, uint32_t b) {
     __asm__ volatile(".option push\n.option norvc\nsb %1, 0(%0)\n.option pop" ::"r"(a), "r"(b)
                      : "memory");
 }
-// Let a corrected access reach the counter before the CSR reads of a sample.
-static inline void settle(void) {
-    __asm__ volatile("fence\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop" ::: "memory");
+// Read the count field of MICCMECT (iccm = 1) or MDCCMECT (iccm = 0) until it
+// reaches goal, at most P_WAIT reads, so that a corrected access has updated the
+// counter before the sample reads it. Returns the reads taken; P_WAIT means the
+// count did not reach goal and the sample shows the count as it is.
+static uint32_t wait_count(uint32_t iccm, uint32_t goal) {
+    uint32_t i = 0;
+    for (; i < g_prm[P_WAIT]; i++) {
+        uint32_t c = iccm ? CSR_READ(0x7F1) : CSR_READ(0x7F2);
+        if ((c & CNT_MASK) >= goal) {
+            break;
+        }
+    }
+    return i;
+}
+
+// Wait, at most P_WAIT reads, until the trap count leaves n0.
+static void wait_trap_count(uint32_t n0) {
+    for (uint32_t i = 0; i < g_prm[P_WAIT]; i++) {
+        if (g_ntrap != n0) {
+            break;
+        }
+    }
 }
 
 void __attribute__((interrupt("machine"), aligned(4))) trap_handler(void) {
@@ -204,17 +224,25 @@ static void put_traps(void) {
 }
 
 struct samp {
-    uint32_t ic, dc, mip, mie, mst, traps;
+    uint32_t ic, dc, mip, mie, mst, traps, wt;
 };
 
+// A sample: both counters, mip, mie, mstatus and the trap count. A sample after
+// a flipped-word access is taken with take_after, which first waits for the count.
 static void take(struct samp *s) {
-    settle();
+    s->wt = 0u;
     s->ic = CSR_READ(0x7F1);
     s->dc = CSR_READ(0x7F2);
     s->mip = CSR_READ(mip);
     s->mie = CSR_READ(mie);
     s->mst = CSR_READ(mstatus);
     s->traps = g_ntrap;
+}
+
+static void take_after(struct samp *s, uint32_t iccm, uint32_t goal) {
+    uint32_t wt = wait_count(iccm, goal);
+    take(s);
+    s->wt = wt;
 }
 
 static void put_samp(const char *leg, const char *tag, uint32_t k, const struct samp *s) {
@@ -228,6 +256,7 @@ static void put_samp(const char *leg, const char *tag, uint32_t k, const struct 
     rec_hex("mie", s->mie);
     rec_hex("mst", s->mst);
     rec_hex("traps", s->traps);
+    rec_hex("wt", s->wt);
     rec_end();
 }
 
@@ -328,7 +357,7 @@ static void iccm_leg(void) {
     put_samp("iccm", "before", 0u, &s);
     mark("B", "iccm_block", 0u);
     iccm_block(g_iccm_samp);
-    take(&s);
+    take_after(&s, 1u, n);
     mark("E", "iccm_block", 0u);
     put_samp("iccm", "quiet", n, &s);
     for (uint32_t i = 0; i < NFLIP_MAX; i++) {
@@ -350,11 +379,14 @@ static void iccm_leg(void) {
     put_samp("iccm", "rewrite", 0u, &s);
 }
 
+// s holds the sample before the access; the sample after it waits until the
+// count rises above that sample.
 static uint32_t dccm_access(uint32_t k, uint32_t tag, struct samp *s) {
+    uint32_t goal = (s->dc & CNT_MASK) + 1u;
     g_tag = tag;
     mark("B", "dccm_ce", k);
     uint32_t v = ld_word(g_prm[P_DADDR + k]);
-    take(s);
+    take_after(s, 0u, goal);
     mark("E", "dccm_ce", k);
     return v;
 }
@@ -601,7 +633,6 @@ int main(void) {
     uint32_t n0 = g_ntrap;
     g_tag = TAG_LD_NBR;
     uint32_t v = ld_word(g_prm[P_LD_NBR]);
-    settle();
     sep_mbx_puts("UNC-NBR");
     rec_str("access", "load");
     rec_hex("got", v);
@@ -611,7 +642,7 @@ int main(void) {
     g_tag = TAG_LD;
     mark("B", "ue_load", 0u);
     (void)ld_word(g_prm[P_LD_ADDR]);
-    settle();
+    wait_trap_count(n0);
     mark("E", "ue_load", 0u);
     sep_mbx_puts("UNC");
     rec_str("access", "load");
@@ -626,7 +657,7 @@ int main(void) {
     n0 = g_ntrap;
     g_tag = TAG_ST_NBR;
     st_byte(g_prm[P_ST_NBR] + lane, g_prm[P_ST_BYTE]);
-    settle();
+    __asm__ volatile("fence" ::: "memory");
     v = ld_word(g_prm[P_ST_NBR]);
     sep_mbx_puts("UNC-NBR");
     rec_str("access", "store");
@@ -637,7 +668,7 @@ int main(void) {
     g_tag = TAG_ST;
     mark("B", "ue_store", 0u);
     st_byte(g_prm[P_ST_ADDR] + lane, g_prm[P_ST_BYTE]);
-    settle();
+    wait_trap_count(n0);
     mark("E", "ue_store", 0u);
     sep_mbx_puts("UNC");
     rec_str("access", "store");
