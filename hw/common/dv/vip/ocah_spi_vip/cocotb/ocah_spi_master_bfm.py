@@ -132,6 +132,7 @@ class OcahSpiMasterBfm:
         await Timer(self.half_period_ns, _TIME_UNIT)
         received = [await self._clock_bit(int(bit) & 0x1) for bit in bits]
         await Timer(self.half_period_ns, _TIME_UNIT)
+        self._release_lanes()
         self._cs_n.value = 1
         await Timer(self.half_period_ns, _TIME_UNIT)
         self.frames += 1
@@ -169,6 +170,7 @@ class OcahSpiMasterBfm:
             received.append(await self._shift_byte(0))
         await self._shift_bits(0, tail_bits)
         await Timer(self.half_period_ns, _TIME_UNIT)
+        self._release_lanes()
         self._cs_n.value = 1
         await Timer(self.half_period_ns, _TIME_UNIT)
         self.frames += 1
@@ -238,12 +240,18 @@ class OcahSpiMasterBfm:
             return await self._clock(bit, None)
         return (await self._clock(bit & 1, 0b0001) >> 1) & 1
 
+    def _release_lanes(self) -> None:
+        """Turn every data lane output enable off; called before chip select rises."""
+        if self._sd_oe is not None:
+            self._sd_oe.value = 0
+
     async def _clock(self, value: int, oe: int | None) -> int:
         """One SCK cycle that leaves and returns to the CPOL level; returns the input sample.
 
-        CPHA 0: the output is set half a period before the leading edge and
-        held through the trailing edge, where the next one is set. CPHA 1: the
-        output is set on the leading edge and sampled on the trailing edge.
+        CPHA 0: the output is set half a period before the leading edge, and
+        the input is sampled at the leading edge. CPHA 1: the output is set on
+        the leading edge, and the input is sampled at the trailing edge. Each
+        sample is taken in the time step of its edge, before the clock moves.
         ``oe`` None drives MOSI; otherwise ``value`` goes on the four lanes
         with output enables ``oe`` and the four input lanes are sampled.
         """
@@ -264,9 +272,9 @@ class OcahSpiMasterBfm:
         if self.cpha == 0:
             put()
             await Timer(self.half_period_ns, _TIME_UNIT)
+            received = get()
             self._sclk.value = active
             await Timer(self.half_period_ns, _TIME_UNIT)
-            received = get()
             self._sclk.value = self.cpol
         else:
             self._sclk.value = active
@@ -318,7 +326,7 @@ class OcahSpiMasterBfm:
             else:
                 raise ValueError(f"{self.name}: segment kind {kind!r}")
         await Timer(self.half_period_ns, _TIME_UNIT)
-        self._sd_oe.value = 0
+        self._release_lanes()
         self._cs_n.value = 1
         await Timer(self.half_period_ns, _TIME_UNIT)
         self.frames += 1
