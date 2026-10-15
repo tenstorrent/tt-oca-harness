@@ -12,8 +12,7 @@ and the set of lanes the live leg walks.
 
 Reading the vector back at the DTP against the +xtrig_int_ct_mode the bench
 elaborated the build with is a plumbing compare: it carries no evidence token,
-and it does not decode CFG, whose packed layout no specification in this tree
-states.
+and it does not decode CFG, whose packed layout is unspecified.
 
 The evidence is the live leg. Each external CTM lane is requested in turn and
 the ack pins are sampled: port_table.adoc states the ack ports are "Unused in
