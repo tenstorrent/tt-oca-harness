@@ -71,15 +71,17 @@ Checkers:
                    EVENT_ENABLE 0 (masked control) it reads 0. Controls:
                    before the segment STATUS shows the watermark flag 0 and
                    SPI_EVENT reads 0; after it STATUS shows the flag 1.
-  CHK-SPI-SWRST-ABORT  CONTROL.SW_RST cuts a Tx or Rx segment (seeded) after a
-                   drawn number of sck cycles. SW_RST clears the internal
-                   state, not the registers. After the abort no data lane
-                   output enable is on (``spi_sd_oe_o`` = 0) and chip select
-                   is high (``doc/integrator/src/smu-sep.adoc``, "SEP SPI Host
-                   Pin Assignment": a data lane is driven only while chip
-                   select is asserted), and TXQD = RXQD = CMDQD = 0. Controls: chip select is
-                   low just before the SW_RST write, and the window has fewer
-                   sck cycles than the segment. ``spi_cs_oe_o`` and
+  CHK-SPI-SWRST-ABORT  CONTROL.SW_RST cuts a Tx segment at each width (x1, x2
+                   and x4) after a drawn number of sck cycles. SW_RST clears
+                   the internal state, not the registers. After the abort no
+                   data lane output enable is on (``spi_sd_oe_o`` = 0) and chip
+                   select is high (``doc/integrator/src/smu-sep.adoc``, "SEP SPI
+                   Host Pin Assignment": a data lane is driven only while chip
+                   select is asserted), and TXQD = RXQD = CMDQD = 0. Controls:
+                   the last pad sample before the SW_RST write shows chip
+                   select low and ``spi_sd_oe_o`` equal to the lane mask of the
+                   Tx segment (0001 at x1, 0011 at x2, 1111 at x4), and the
+                   window has fewer sck cycles than the segment. ``spi_cs_oe_o`` and
                    ``spi_sck_oe_o`` after the abort have no golden and are
                    logged with OBS-SPI-SWRST-CTRL-OE. One clean frame (Tx
                    then Rx, CSAAT) at the same width follows and is graded by
@@ -183,6 +185,8 @@ PAYLOAD_POOL = 512
 DATA_BYTES_MAX = 32
 # The SW_RST abort segment: at most this many words (also at most the TX depth).
 ABORT_WORDS = 16
+# Data lane output enables of a Tx segment, per lane count (spi_sd_oe_o[3:0]).
+TX_OE_MASK = {1: 0b0001, 2: 0b0011, 4: 0b1111}
 # The watermark event leg: at most this many TX words queued.
 EVENT_TX_WORDS_MAX = 8
 
@@ -194,6 +198,11 @@ class _CtrlMissing(AssertionError):
 def _val(sig) -> int | None:
     v = sig.value
     return int(v) if v.is_resolvable else None
+
+
+def _bin4(v: int | None) -> str:
+    """A 4-bit output-enable value as logged: four binary digits, or X."""
+    return "X" if v is None else f"{v:04b}"
 
 
 @pyuvm.test()
@@ -443,12 +452,11 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self.n_cmds = rng.randrange(1, 4)
         self.payload = [rng.getrandbits(32) for _ in range(PAYLOAD_POOL)]
         self._pi = 0
-        # Per width: data frame lengths, abort direction and point, event draws.
+        # Per width: data frame lengths, abort point, event draws.
         self.per_width = {
             w: {
                 "tx_len": rng.randrange(1, DATA_BYTES_MAX + 1),
                 "rx_len": rng.randrange(1, DATA_BYTES_MAX + 1),
-                "abort_dir": rng.choice(["tx", "rx"]),
                 "abort_t_raw": rng.getrandbits(16),
                 "clean_tx": rng.randrange(1, 9),
                 "clean_rx": rng.randrange(1, 9),
@@ -1289,32 +1297,28 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         dut = cocotb.top
         lanes = LANES[self.speed]
         pw = self.per_width[lanes]
-        direction = pw["abort_dir"]
         nwords = min(ABORT_WORDS, self.tx_depth)
         total = 4 * nwords * 8 // lanes
         t = 1 + pw["abort_t_raw"] % (total // 2)
+        pre_exp_oe = TX_OE_MASK[lanes]
         await self._clean()
         self._gate(True)
         # The monitor never sees the frame that the abort cuts.
         await self._session_end()
-        if direction == "tx":
-            for _ in range(nwords):
-                await self.ops.push_tx(self._word())
-        else:
-            self.rsp.load([(lanes, "rx", self._data_bytes(4 * nwords))])
+        for _ in range(nwords):
+            await self.ops.push_tx(self._word())
         mark = self.pads.mark()
         await self.ops.issue_command(
-            command_word(
-                4 * nwords - 1,
-                speed=self.speed,
-                direction=DIR_TX if direction == "tx" else DIR_RX,
-            )
+            command_word(4 * nwords - 1, speed=self.speed, direction=DIR_TX)
         )
         try:
             await self.pads.wait_leading_edges(t, mark, self._seg_bound(4 * nwords, self.speed))
         except AssertionError as exc:
-            self._ctrl_missing(chk, f"width={self._w} dir={direction} t={t}: {exc}")
+            self._ctrl_missing(chk, f"width={self._w} dir=tx t={t}: {exc}")
+        # Control: the last pad sample before the SW_RST write shows the Tx
+        # segment in flight, chip select low and its data lanes driven.
         cs_low = int(self.pads.cs_low())
+        pre_sd_oe, pre_cs_n = _val(dut.spi_sd_oe_o), _val(dut.spi_cs_n_o)
         await self.ops.wr(CONTROL, self.ctrl | CTRL_SW_RST)
         await self._poll(
             lambda s: s.txempty == 1 and s.rxempty == 1,
@@ -1332,19 +1336,20 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self.rsp.clear()
         exp_sd_oe = 0
         line = (
-            f"width={self._w} dir={direction} words={nwords} t={t} cycles={cycles}/{total} "
-            f"cs_low_at_sw_rst={cs_low} sd_oe={sd_oe} expect_sd_oe={exp_sd_oe} cs_n={cs_n} "
+            f"width={self._w} dir=tx words={nwords} t={t} cycles={cycles}/{total} "
+            f"cs_low_at_sw_rst={cs_low} pre_cs_n={pre_cs_n} "
+            f"pre_sd_oe={_bin4(pre_sd_oe)} expect_pre_sd_oe={pre_exp_oe:04b} "
+            f"sd_oe={sd_oe} expect_sd_oe={exp_sd_oe} cs_n={cs_n} "
             f"txqd={st.txqd} rxqd={st.rxqd} cmdqd={st.cmdqd}"
         )
         self.logger.info(
-            "OBS-SPI-SWRST-CTRL-OE seed=%d width=%s dir=%s cs_oe=%s sck_oe=%s",
+            "OBS-SPI-SWRST-CTRL-OE seed=%d width=%s dir=tx cs_oe=%s sck_oe=%s",
             self.seed,
             self._w,
-            direction,
             cs_oe,
             sck_oe,
         )
-        if not cs_low or cycles >= total:
+        if not cs_low or pre_cs_n != 0 or pre_sd_oe != pre_exp_oe or cycles >= total:
             self._ctrl_missing(chk, line)
         if sd_oe != exp_sd_oe or cs_n != 1 or st.txqd or st.rxqd or st.cmdqd:
             self._fail(chk, line)

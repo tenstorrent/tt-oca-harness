@@ -673,7 +673,8 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
                 self._fail("CHK-HS-LANE-RX", line)
             self._pass("CHK-HS-LANE-RX", line)
             # MUTATION hook (step 14, item 11d): for lanes == 2 register
-            # ``delivered[1:]``; the x2 expectation shifts and CHK-SPI-SB-RX fails.
+            # ``delivered`` with one byte flipped (XOR 0xFF); the byte count
+            # stays the same, so CHK-SPI-SB-RX fails on the x2 byte compare.
             self._expect_rx(opcode, lanes, delivered, want=len(data), label=f"lane_x{lanes}")
         close_graded_window(self.logger)
 
