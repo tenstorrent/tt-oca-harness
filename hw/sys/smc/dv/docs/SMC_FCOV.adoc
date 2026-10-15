@@ -78,6 +78,16 @@ coverage set measures and what a closure reading compares against. The VCS
 policy, `cov/config/vcs/coverage_policy.toml`, names the exclusion files the
 report applies and grades no floor either.
 
+The VCS headline is urg's default SCORE: the plain mean of the line,
+condition, toggle, FSM, branch, assertion and covergroup percentages after
+the exclusion files apply. Assertion coverage stays in that mean. SEP drops
+it at report time because its assertions are negative controls that legal
+stimulus never satisfies; the SMC assertions are interface and register
+contract checks that the hosted leaves do exercise, and the fault-injection
+checks that no leaf can satisfy leave through `smc_assert_exclusions.el`
+rather than through the metric list. A quoted SMC SCORE therefore names
+seven families; quote the SEP SCORE with its six.
+
 Do not mix line coverage with the Phase 1 points: the line population of this
 DUT would mask them.
 
