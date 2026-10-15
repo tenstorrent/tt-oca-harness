@@ -269,6 +269,7 @@ feature rows.
 |`smc_filter_config_field_sweep_test` |Every FILTER_CONFIG field cycled to all-ones and all-zeros on all 32 entries, then the write-once lock set and the locked entry shown to refuse further configuration writes with DECERR.
 |`smc_filter_lock_window_test` |Two FILTER_CONFIG writes queued directly behind the write that locks filter 15 of each bank are answered DECERR and the entry reads its reset word plus `locked`.
 |`smc_filter_region_span_test` |A filter region spanning two granules on every outbound entry, with one of them enabled and enforced against a DMA copy.
+|`smc_filter_remap_bitwalk_test` |A one and a zero walked across every bit of START_ADDR and END_ADDR on all 32 filter entries and of REGION_START and REGION_END on all 8 alias-remap regions, each register read back after every write, and every mailbox aperture driven with a walking-one byte strobe and its share of the 255 non-empty strobe patterns, the paired READ_DATA returning the strobed bytes alone.
 |`smc_dma_decouple_rw_test` |DMA transfers with CONFIG.DECOUPLE_RW set -- a scatter and a gather -- and two descriptors queued back to back.
 |`smc_gpio_data_ctrl_field_test` |Each software-writable DATA_CTRL field of one idle GPIO instance driven on its own, with the pad's output enable measured at 0 after every write.
 |`smc_alias_remap_region_attrs_test` |One alias-remap region marked cacheable and valid over an empty window, with both bits held across a write of the other half of the register.
@@ -10066,6 +10067,45 @@ Drive `smc_filter_region_span_test_seq`. Each checker below is a named compare t
 |===
 
 *Pass Criteria*: `CHK-FILTER-REGION-ENFORCED`, `CHK-FILTER-REGION-SPAN` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-326-smc_filter_remap_bitwalk_test]]
+===== 326 `smc_filter_remap_bitwalk_test`
+
+*Source Module*: `smc_filter_remap_bitwalk_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN); the generated IP-XACT register map for every address, field and reset
+
+*Objective*: Walk a one and a zero across every software-writable bit of the filter and alias-remap address registers and every mailbox write strobe, reading each register back against the contract its RDL states.
+
+*Test Coverage*:
+
+* The filter and remap leaves program a few fixed regions (`smc_filter_region_span_test`, `smc_dma_sanity_test`, `smc_remap_cla_test`), so most bits of `START_ADDR`, `END_ADDR`, `REGION_START` and `REGION_END` only ever hold their reset. This leaf gives every one of those bits a one and a zero on every entry, with a readback after each write.
+* **Filter address registers.** `filter_ctrl.rdl` makes both fields `hw = rw` and states the write-back rule: the rounded pair is written back "only when both land in the same granule; otherwise readback returns the programmed values". Every entry is read at its `FILTER_CONFIG` reset first -- disabled, `allow_burst` clear, so the granule is 2^`data_bus_width` bytes -- and the two registers of an entry are walked together, one carrying the one and the other the zero, so the pair never shares a granule and each readback is required to be the programmed word. A disabled entry matches nothing, so the fabric this leaf's own accesses cross stays usable while the range is an arbitrary pair; the rounding case is `smc_filter_region_span_test`.
+* **Remap table.** `alias_remap.rdl` gives `start_addr` and `end_addr` bits [55:12] as `sw = rw; hw = r` storage with no side effect, so the expected readback is the written word masked to the field, the low twelve bits and the top byte reading zero. `REGION_ATTRS.valid` is read clear on every region before its bounds move.
+* **Mailbox data and strobes.** `axil_mailbox.rdl` makes `WRITE_DATA` `sw = w; onwrite = wuser` and `READ_DATA` `sw = r; onread = ruser`, and `axil_mailbox_smc_wrap.rdl` says the two apertures of a pair share one FIFO, "data written through WRITE_DATA in one aperture is what READ_DATA in the other aperture returns". Each of the 64 apertures takes a walking-one strobe over its eight byte lanes and four of the 256 strobe patterns, so every pattern but the empty one is driven once across the block; the AXI master refuses an empty strobe. The paired readback must carry the written byte on every strobed lane and zero on every other lane, which is what tells a strobe the mailbox honoured from one it ignored.
+* Every address comes from the generated maps, each instance cross-checked between `smc_addr.h` and `smc_reg.py`, and every field position, width, reset and access type from the IP-XACT export. Every readback carries its expected word into the scoreboard, and the leaf requires the scoreboard to have booked one exact compare per such read.
+* Every filter entry and remap region is restored to its RDL reset and read back. Every mailbox `ERROR_FLAGS` register is read clear, the sticky threshold interrupts the pushes raised are acknowledged through `IRQS` and read clear, and `mailbox_interrupts` must be quiet.
+
+*Test Procedure*:
+
+[arabic]
+. For each of the 16 inbound and 16 outbound filter entries: read `FILTER_CONFIG` against its reset word; for each of the 56 address bits write `START_ADDR` with that bit alone set and `END_ADDR` with that bit alone clear, read both back exactly, then the other way round and read both back; write both registers' reset words and read them back.
+. For each of the 8 alias-remap regions: read `REGION_ATTRS` and require `valid` clear; for each of the 44 writable bits walk `REGION_START` and `REGION_END` the same way, reading each back as the written word masked to the field; restore both and read them back.
+. For each of the 64 mailbox apertures: for each walking-one strobe and each of the aperture's four shared patterns, write `WRITE_DATA` with a distinct 64-bit word under that strobe and read the paired aperture's `READ_DATA` against the word masked to the strobed lanes. Then read every `ERROR_FLAGS` as zero, acknowledge every `IRQS` and read it back as zero, and require `mailbox_interrupts` to be zero.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FILTER-ADDR-BITWALK` |On all 32 filter entries a one and a zero walked across all 56 bits of START_ADDR and END_ADDR, each pair reading back as programmed because its two words never share a granule, with FILTER_CONFIG at reset throughout and every entry restored to its RDL reset and read back
+|`CHK-REMAP-REGION-BITWALK` |On all 8 alias-remap regions a one and a zero walked across all 44 writable bits of REGION_START and REGION_END, each reading back the written word with the unimplemented bits clear, valid read clear first and both bounds restored and read back
+|`CHK-MAILBOX-STROBE-WALK` |Over the 64 mailbox apertures a walking-one byte strobe on each and every non-empty strobe pattern once across the block, every paired READ_DATA returning the written byte on each strobed lane and zero elsewhere, every ERROR_FLAGS read clear and mailbox_interrupts quiet
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
