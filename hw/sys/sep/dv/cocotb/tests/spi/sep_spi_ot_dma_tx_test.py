@@ -8,17 +8,27 @@ handshake) -> OT SPI host TX FIFO -> flash: the OT SPI TX watermark drives
 lsio_trigger, which refills the TX FIFO from SRAM a 16-byte chunk at a time. RX is
 held quiescent so the single lsio_trigger (= tx_wm | rx_wm) is TX-watermark-driven.
 
-The DMA feeds a real flash PAGE PROGRAM stream (opcode 0x02 + 24-bit addr + data) from SRAM;
+The DMA feeds a real flash program stream (opcode + 24-bit addr + data) from SRAM;
 the firmware then reads the flash back over SPI and value-checks it; and an
 independent cocotb BFM golden confirms the flash memory == the SRAM source. Distinct
 from `sep_spi_ot_dma_rx_test` (RX direction) -- reuses that test's lsio_trigger /
 DMA hardware-handshake bring-up.
 
+Each case programs at one lane width: PAGE PROGRAM 0x02 (one standard TX segment)
+or QUAD PAGE PROGRAM 0x32 (opcode and address in a standard TX segment with CS
+held, then the data in a quad TX segment). Every run has at least one case of
+each. The flash model has no dual program, so x2 TX data is graded elsewhere.
+The flash model sits on all four data lanes (``mode="quad_io"``, ``dq_out`` =
+``spi_sd_o``, ``dq_in`` = ``spi_sd_i``) and the testlist passes
+``+sep_spi_four_lane``.
+
 Randomization ([RAND-REP], single source of truth): SepSpiDmaTxCfg walks all
 required discrete DMA length / trigger cells in one run (nwords={7,11,15}, all
-multi-chunk transfers) and randomizes only legal page-aligned flash addresses and
-payload words from the runner seed. The resolved table is patched into the
-firmware g_spi3_params block in the staged DTCM image and logged.
+multi-chunk transfers) and randomizes legal page-aligned flash addresses, payload
+words and the program opcode of each case from the runner seed: one case takes
+0x02, one takes 0x32, and the third is drawn; the seed shuffles the order. The
+resolved table is patched into the firmware g_spi3_params block in the staged
+DTCM image and logged.
 
 Checks:
   firmware self-check (each logs a PASS line):
@@ -31,19 +41,24 @@ Checks:
                     hardware handshake is off); sep_dma_basic_test covers that status.
     CHK-SPI-IDLE  : OT SPI reaches idle, ERROR_STATUS==0.
     CHK-DMA-TX    : flash read-back == the DMA-fed data (SRAM->DMA->TXFIFO->flash),
-                    and the device accepted each PAGE PROGRAM (its frame ended on a
-                    byte boundary).
+                    and the device accepted each program (its frame ended on a
+                    byte boundary). One PASS line per case names its opcode,
+                    width and byte count; the leaf requires them in case order.
     CHK-NONVAC    : the programmed data differs from the erased 0xFF (data landed).
-    CHK-ERR-OVERFLOW : a TXDATA write past STATUS.TXFULL latches exactly
+    CHK-ERR-OVERFLOW : ERROR_STATUS.OVERFLOW is still clear when STATUS.TXFULL
+                    first reads 1, and the next TXDATA write latches exactly
                     ERROR_STATUS.OVERFLOW; CTRL.SW_RST + W1C releases the host and
                     a flash RDSR round trip proves it runs again. This is the TX
                     flow-control edge the watermark-paced DMA never reaches, so
                     nothing else in the test proves the host reports it.
   cocotb golden cross-check:
     BFM golden (logged as "SPI DMA-TX breadth GOLDEN PASS"): the BFM saw at least
-                      _BREADTH_FLOOR WREN and PAGE PROGRAM transactions, one PAGE
-                      PROGRAM at each random addr with that case's data, and BFM
-                      memory == the SRAM source pattern.
+                      _BREADTH_FLOOR WREN and program transactions, one program
+                      with the case's opcode at each random addr with that case's
+                      data, and BFM memory == the SRAM source pattern.
+    CHK-SPI-SB-TX   : per case, the SRAM source bytes equal the monitor's wire
+                      decode at the case's lane width and the flash record's
+                      ``data_in``.
     CHK-MULTICHUNK  : the TX watermark paced every DMA transfer. A watch-only
                       probe samples the DMA input trigger and the SPI TX FIFO depth
                       (TXQD) on each clock while DMA STATUS.busy is set. Per case,
@@ -62,6 +77,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -72,6 +88,7 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_log_error_counter import attach_error_counter
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spi_lane_responder import spi_lane_fcov
 from env.sep_spi_scoreboard import SepSpiScoreboard
 from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from ocah_spi_vip import OcahSpiFlash
@@ -88,6 +105,7 @@ _MAX_RUN_CYCLES = 3_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
 _BANNER = "SEP SPI OT DMA TX test"
+_TEST = "sep_spi_ot_dma_tx_test"
 
 _PARAM_MAGIC = 0x5A11D00E  # mirror g_spi3_params[0] in spi_ot_dma_tx_test.c
 _PAGE_SIZE = 256
@@ -114,6 +132,16 @@ _PACED_TXQD_MAX = _TX_WATERMARK_WORDS - 1 + _DMA_CHUNK_BYTES // 4
 # _LEGAL_NWORDS: a stimulus that shrinks to a single-chunk transfer fails this
 # instead of quietly shrinking the pacing claim.
 _MIN_TRIGGERS = 2
+# Program opcodes and their data lanes (fw/drivers/sep_spi.h SEP_SPI_OP_PP/_QPP).
+_PROGRAM_LANES = {0x02: 1, 0x32: 4}
+_FW_TX_LINE = re.compile(
+    r"CHK-DMA-TX PASS: .*? op=0x([0-9a-f]{8}) width=x(\d) bytes=0x([0-9a-f]{8})"
+)
+_FW_OVERFLOW_TOKEN = "CHK-ERR-OVERFLOW PASS: OVERFLOW clear at STATUS.TXFULL"
+
+# Scratch-mutation hook (False in the committed leaf): drop the last byte of the
+# expected TX bytes of the first x4 program case.
+MUT_DROP_X4_TX_BYTE = False
 
 
 @dataclass(frozen=True)
@@ -124,14 +152,23 @@ class SepSpiDmaTxCase:
     addr: int
     nwords: int
     data: list[int]
+    opcode: int
+
+    @property
+    def lanes(self) -> int:
+        return _PROGRAM_LANES[self.opcode]
 
     @property
     def chunks(self) -> int:
         total_bytes = (1 + self.nwords) * 4
         return (total_bytes + 15) // 16
 
+    def source(self) -> bytes:
+        """The data bytes in wire order: least significant byte of each word first."""
+        return b"".join(w.to_bytes(4, "little") for w in self.data)
+
     def param_words(self) -> list[int]:
-        return [self.addr, self.nwords] + self.data + [0] * (_MAX_WORDS - self.nwords)
+        return [self.addr, self.nwords, self.opcode] + self.data + [0] * (_MAX_WORDS - self.nwords)
 
 
 @dataclass
@@ -160,8 +197,11 @@ class SepSpiDmaTxCfg:
     def from_seed(cls, seed: int) -> "SepSpiDmaTxCfg":
         rng = SepSeededRng(seed)
         page_indices = rng.sample(range(_FLASH_PAGES), len(_LEGAL_NWORDS))
+        # Every run programs at x1 and at x4; the third case draws its width.
+        opcodes = [0x02, 0x32, rng.choice(tuple(_PROGRAM_LANES))]
+        rng.shuffle(opcodes)
         cases = []
-        for idx, (nwords, page_idx) in enumerate(zip(_LEGAL_NWORDS, page_indices)):
+        for idx, (nwords, page_idx, opcode) in enumerate(zip(_LEGAL_NWORDS, page_indices, opcodes)):
             data = [rng.getrandbits(32) for _ in range(nwords)]
             if all(word == 0xFFFF_FFFF for word in data):
                 data[0] = 0
@@ -171,6 +211,7 @@ class SepSpiDmaTxCfg:
                     addr=page_idx * _PAGE_SIZE,
                     nwords=nwords,
                     data=data,
+                    opcode=opcode,
                 )
             )
         return cls(seed=seed, cases=cases)
@@ -205,8 +246,11 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
         )
         for case in cfg.cases:
             self.logger.info(
-                "SPI DMA-TX breadth RAND-REP case[%d]: addr=0x%06x nwords=%d chunks=%d data=%s",
+                "SPI DMA-TX breadth RAND-REP case[%d]: op=0x%02x width=x%d addr=0x%06x "
+                "nwords=%d chunks=%d data=%s",
                 case.idx,
+                case.opcode,
+                case.lanes,
                 case.addr,
                 case.nwords,
                 case.chunks,
@@ -216,12 +260,18 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
+        if "sep_spi_four_lane" not in cocotb.plusargs:
+            raise AssertionError(
+                "sep_spi_ot_dma_tx_test needs +sep_spi_four_lane: the flash model answers "
+                "on spi_sd_i, which the host reads only with that plusarg"
+            )
         logging.getLogger("sep_spi3_flash").setLevel(logging.DEBUG)
         flash = OcahSpiFlash(
             dut.spi_cs_n_o,
             dut.spi_sck_o,
-            mosi=dut.spi_mosi_o,
-            miso=dut.spi_miso_i,
+            dq_out=dut.spi_sd_o,
+            dq_in=dut.spi_sd_i,
+            mode="quad_io",
             name="sep_spi3_flash",
             verbose=True,
         )
@@ -248,11 +298,19 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
                 progress_every=_PROGRESS_EVERY,
             )
             self._golden_check(flash, cfg, cases)
+            self._firmware_check(cfg, cases)
+            dropped = False
             for case in cases:
                 # The SPI host sends the least significant byte of each TXDATA word
                 # first (ByteOrder 1, the OpenTitan default the wrapper keeps).
-                source = b"".join(w.to_bytes(4, "little") for w in case.data)
-                sb.expect_tx(case.addr, source, label=f"case[{case.idx}]")
+                source = case.source()
+                if MUT_DROP_X4_TX_BYTE and case.lanes == 4 and not dropped:
+                    source, dropped = source[:-1], True
+                sb.expect_tx(
+                    case.addr,
+                    source,
+                    label=f"case[{case.idx}] op=0x{case.opcode:02x} width=x{case.lanes}",
+                )
             self._pacing_check(windows, cases)
             assert not bfm_errors.records, (
                 f"SPI-BFM FAIL: the flash model logged {len(bfm_errors.records)} error(s): "
@@ -262,6 +320,38 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             await flash.stop()
         await wire.finish(self.logger, seed=self.random_seed(), flash=flash)
         sb.finish()
+        # FCOV records only after every check above passed.
+        for case in cases:
+            await spi_lane_fcov(_TEST, "data", lanes=case.lanes, rx=False)
+
+    def _firmware_check(self, cfg, cases) -> None:
+        """One CHK-DMA-TX PASS line per case, in case order, and the TXFULL overflow check."""
+        console = self.sb.console_text()
+        seen = [
+            (int(op, 16), int(width), int(nbytes, 16))
+            for op, width, nbytes in _FW_TX_LINE.findall(console)
+        ]
+        want = [(c.opcode, c.lanes, c.nwords * 4) for c in cases]
+        if seen != want:
+            raise AssertionError(
+                f"CHK-DMA-TX FAIL seed={cfg.seed}: firmware PASS lines {seen} != cases "
+                f"{want}. Console was:\n{console}"
+            )
+        for case in cases:
+            self.logger.info(
+                "CHK-DMA-TX PASS seed=%d case[%d] op=0x%02x width=x%d bytes=%d "
+                "(firmware read-back compare)",
+                cfg.seed,
+                case.idx,
+                case.opcode,
+                case.lanes,
+                case.nwords * 4,
+            )
+        if _FW_OVERFLOW_TOKEN not in console:
+            raise AssertionError(
+                f"CHK-ERR-OVERFLOW FAIL seed={cfg.seed}: firmware console has no "
+                f"{_FW_OVERFLOW_TOKEN!r} line. Console was:\n{console}"
+            )
 
     @staticmethod
     async def _watch_dma_pacing(dut, windows: list[_DmaTxWindow]) -> None:
@@ -342,7 +432,7 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             len(txns),
             [f"0x{o:02x}" for o in opcodes],
         )
-        pp_txns = [t for t in txns if t.get("opcode") == 0x02]
+        pp_txns = [t for t in txns if t.get("opcode") in _PROGRAM_LANES]
         wren_count = opcodes.count(0x06)
         # Floor against a literal, not against len(cases): `cases` is built from
         # _LEGAL_NWORDS, so comparing the observed traffic to its length moves
@@ -360,19 +450,21 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             )
 
         for case in cases:
-            exp = b"".join(w.to_bytes(4, "little") for w in case.data)
+            exp = case.source()
             match = next(
                 (
                     t
                     for t in pp_txns
-                    if t.get("addr") == case.addr and bytes(t.get("data_in") or b"") == exp
+                    if t.get("opcode") == case.opcode
+                    and t.get("addr") == case.addr
+                    and bytes(t.get("data_in") or b"") == exp
                 ),
                 None,
             )
             if match is None:
                 raise AssertionError(
-                    f"SPI DMA-TX breadth golden case[{case.idx}]: missing PP addr=0x{case.addr:06x} "
-                    f"data={exp.hex()}"
+                    f"SPI DMA-TX breadth golden case[{case.idx}]: missing program "
+                    f"op=0x{case.opcode:02x} addr=0x{case.addr:06x} data={exp.hex()}"
                 )
             if not match.get("ok"):
                 raise AssertionError(
@@ -385,9 +477,11 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
                     f"SPI DMA-TX breadth golden case[{case.idx}]: BFM mem {mem.hex()} != source {exp.hex()}"
                 )
             self.logger.info(
-                "SPI DMA-TX breadth GOLDEN PASS case[%d]: DMA-fed PP@0x%06x %dB reached flash "
-                "(BFM mem == SRAM source, chunks=%d)",
+                "SPI DMA-TX breadth GOLDEN PASS case[%d]: DMA-fed op=0x%02x width=x%d "
+                "@0x%06x %dB reached flash (BFM mem == SRAM source, chunks=%d)",
                 case.idx,
+                case.opcode,
+                case.lanes,
                 case.addr,
                 case.nwords * 4,
                 case.chunks,

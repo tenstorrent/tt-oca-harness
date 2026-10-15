@@ -7322,6 +7322,170 @@ module sep_fcov (
   end
 
   // =====================================================================
+  // SPI lane and output-enable groups (docs/SEP_FCOV.adoc, SPI lane and
+  // output-enable groups). VCS only.
+  //
+  // SOURCE. A leaf writes one record into the spi_ln_* variables through
+  // the u_sep_fcov handle after a graded data, OE, trigger, abort or chain
+  // check passes, and then adds 1 to spi_ln_seq
+  // (cocotb/env/sep_spi_lane_responder.py, spi_lane_fcov). The block below
+  // samples the record once on the first clock that sees a new spi_ln_seq.
+  // The leaf waits two clocks before the next record. These variables drive
+  // nothing.
+  //
+  // GATE. A record samples only for the owner codes of its group: the
+  // record carries the code of the test that graded it (spi_ln_owner).
+  // =====================================================================
+  int unsigned spi_ln_owner = FcovOwnNone;  // owner code of the test that graded the record
+  // 1 data frame, 2 lane opcode, 3 OE window, 4 trigger cell, 5 abort, 6 chain.
+  bit [2:0] spi_ln_kind = 3'd0;
+  bit [1:0] spi_ln_width = 2'd0;  // COMMAND.SPEED of the graded segment: 0 x1, 1 x2, 2 x4
+  bit spi_ln_dir = 1'b0;  // 0 TX, 1 RX
+  bit [7:0] spi_ln_opcode = 8'h00;  // flash command byte (kind 2)
+  bit [1:0] spi_ln_oe_win = 2'd0;  // 0 cold reset, 1 OUTPUT_EN = 0, 2 CS high, 3 CS low (kind 3)
+  bit spi_ln_abort = 1'b0;  // 0 CONTROL.SW_RST, 1 rst_ni (kind 5)
+  bit spi_ln_chain = 1'b0;  // 0 same width, 1 width changes (kind 6)
+  int unsigned spi_ln_seq = 0;  // sample strobe: the leaf adds 1 per record
+  int unsigned spi_ln_seq_q = 0;
+
+  localparam bit [2:0] SpiLnData = 3'd1;
+  localparam bit [2:0] SpiLnOpcode = 3'd2;
+  localparam bit [2:0] SpiLnOeWin = 3'd3;
+  localparam bit [2:0] SpiLnTrigger = 3'd4;
+  localparam bit [2:0] SpiLnAbort = 3'd5;
+  localparam bit [2:0] SpiLnChain = 3'd6;
+
+  // Test index of a data record: 0 pad speed/direction matrix, 1 pad timing,
+  // 2 FIFO stall/watermark, 3 DMA handshake, 4 OT DMA RX, 5 OT flash command,
+  // 6 OT DMA TX, 7 any other owner (not a bin).
+  function automatic logic [2:0] spi_ln_test(input int unsigned own);
+    case (own)
+      FcovOwnSepSpiPadSpeedDirMatrixTest: return 3'd0;
+      FcovOwnSepSpiPadTimingCfgRandTest: return 3'd1;
+      FcovOwnSepSpiFifoStallWatermarkRandTest: return 3'd2;
+      FcovOwnSepSpiDmaHandshakeRandTest: return 3'd3;
+      FcovOwnSepSpiOtDmaRxTest: return 3'd4;
+      FcovOwnSepSpiOtFlashCmdRandTest: return 3'd5;
+      FcovOwnSepSpiOtDmaTxTest: return 3'd6;
+      default: return 3'd7;
+    endcase
+  endfunction
+
+  // Lane width x direction x test of a frame whose data check passed.
+  covergroup sep_spi_lane_data_cg with function sample (
+      logic [2:0] test, logic [1:0] width, logic dir, logic v
+  );
+    option.per_instance = 1;
+    option.name = "sep_spi_lane_data_cg";
+    cp_test: coverpoint test iff (v) {
+      bins pad_speed_dir_matrix = {3'd0};
+      bins pad_timing_cfg = {3'd1};
+      bins fifo_stall_watermark = {3'd2};
+      bins dma_handshake = {3'd3};
+      bins ot_dma_rx = {3'd4};
+      bins ot_flash_cmd = {3'd5};
+      bins ot_dma_tx = {3'd6};
+    }
+    cp_width: coverpoint width iff (v) {bins x1 = {2'd0}; bins x2 = {2'd1}; bins x4 = {2'd2};}
+    cp_dir: coverpoint dir iff (v) {bins tx = {1'b0}; bins rx = {1'b1};}
+    // The DMA handshake and OT DMA RX legs grade read data only. The OT DMA
+    // TX leg programs at x1 and x4 (no dual program command) and grades no
+    // read data.
+    x_width_dir_test: cross cp_width, cp_dir, cp_test iff (v) {
+      ignore_bins dma_handshake_tx = binsof (cp_test.dma_handshake) && binsof (cp_dir.tx);
+      ignore_bins ot_dma_rx_tx = binsof (cp_test.ot_dma_rx) && binsof (cp_dir.tx);
+      ignore_bins ot_dma_tx_x2 = binsof (cp_test.ot_dma_tx) && binsof (cp_width.x2);
+      ignore_bins ot_dma_tx_rx = binsof (cp_test.ot_dma_tx) && binsof (cp_dir.rx);
+    }
+  endgroup
+
+  // Lane flash command whose data check passed (OT flash command leaf).
+  covergroup sep_spi_lane_opcode_cg with function sample (logic [7:0] op, logic v);
+    option.per_instance = 1;
+    option.name = "sep_spi_lane_opcode_cg";
+    cp_lane_opcode: coverpoint op iff (v) {
+      bins dual_output_read = {8'h3B};
+      bins quad_output_read = {8'h6B};
+      bins dual_io_read = {8'hBB};
+      bins quad_io_read = {8'hEB};
+      bins quad_page_program = {8'h32};
+    }
+  endgroup
+
+  // Output-enable rule window whose check passed (pad OE rules leaf),
+  // sampled at the end of the graded window.
+  covergroup sep_spi_lane_oe_win_cg with function sample (logic [1:0] win, logic v);
+    option.per_instance = 1;
+    option.name = "sep_spi_lane_oe_win_cg";
+    cp_oe_window: coverpoint win iff (v) {
+      bins cold_reset = {2'd0};
+      bins output_en_off = {2'd1};
+      bins cs_high = {2'd2};
+      bins cs_low = {2'd3};
+    }
+  endgroup
+
+  // DMA trigger cell RXQD == RX_WATERMARK whose check passed (DMA handshake
+  // leaf).
+  covergroup sep_spi_lane_trigger_cg with function sample (logic hit, logic v);
+    option.per_instance = 1;
+    option.name = "sep_spi_lane_trigger_cg";
+    cp_rxqd_eq_rx_watermark: coverpoint hit iff (v) {bins rxqd_eq_rx_watermark = {1'b1};}
+  endgroup
+
+  // Abort kind x lane width of the aborted segment (CONTROL.SW_RST in the
+  // FIFO stall/watermark leaf, rst_ni in the cold reset leaf), and the
+  // CSAAT chain width pattern (pad speed/direction matrix leaf).
+  covergroup sep_spi_lane_abort_chain_cg with function sample (
+      logic abort, logic [1:0] width, logic abort_v, logic chain, logic chain_v
+  );
+    option.per_instance = 1;
+    option.name = "sep_spi_lane_abort_chain_cg";
+    cp_abort_kind: coverpoint abort iff (abort_v) {bins sw_rst = {1'b0}; bins rst_ni = {1'b1};}
+    cp_abort_width: coverpoint width iff (abort_v) {
+      bins x1 = {2'd0}; bins x2 = {2'd1}; bins x4 = {2'd2};
+    }
+    x_abort_width: cross cp_abort_kind, cp_abort_width iff (abort_v);
+    cp_chain_width: coverpoint chain iff (chain_v) {
+      bins same_width = {1'b0}; bins width_changes = {1'b1};
+    }
+  endgroup
+
+  sep_spi_lane_data_cg        u_sep_spi_lane_data_cg        = new();
+  sep_spi_lane_opcode_cg      u_sep_spi_lane_opcode_cg      = new();
+  sep_spi_lane_oe_win_cg      u_sep_spi_lane_oe_win_cg      = new();
+  sep_spi_lane_trigger_cg     u_sep_spi_lane_trigger_cg     = new();
+  sep_spi_lane_abort_chain_cg u_sep_spi_lane_abort_chain_cg = new();
+
+  wire [2:0] spi_ln_t = spi_ln_test(spi_ln_owner);
+  // Owner gate of each group.
+  wire spi_ln_data_v = (spi_ln_kind == SpiLnData) && (spi_ln_t != 3'd7);
+  wire spi_ln_op_v = (spi_ln_kind == SpiLnOpcode) &&
+      (spi_ln_owner == FcovOwnSepSpiOtFlashCmdRandTest);
+  wire spi_ln_oe_v = (spi_ln_kind == SpiLnOeWin) && (spi_ln_owner == FcovOwnSepSpiPadOeRulesTest);
+  wire spi_ln_trig_v = (spi_ln_kind == SpiLnTrigger) &&
+      (spi_ln_owner == FcovOwnSepSpiDmaHandshakeRandTest);
+  wire spi_ln_abort_own = spi_ln_abort ? (spi_ln_owner == FcovOwnSepSpiColdResetValuesRandTest) :
+      (spi_ln_owner == FcovOwnSepSpiFifoStallWatermarkRandTest);
+  wire spi_ln_abort_v = (spi_ln_kind == SpiLnAbort) && spi_ln_abort_own;
+  wire spi_ln_chain_v = (spi_ln_kind == SpiLnChain) &&
+      (spi_ln_owner == FcovOwnSepSpiPadSpeedDirMatrixTest);
+
+  // Not gated on reset: the cold reset and rst_ni records come after the
+  // graded window.
+  always @(posedge clk_i) begin
+    spi_ln_seq_q <= spi_ln_seq;
+    if (spi_ln_seq != spi_ln_seq_q) begin
+      u_sep_spi_lane_data_cg.sample(spi_ln_t, spi_ln_width, spi_ln_dir, spi_ln_data_v);
+      u_sep_spi_lane_opcode_cg.sample(spi_ln_opcode, spi_ln_op_v);
+      u_sep_spi_lane_oe_win_cg.sample(spi_ln_oe_win, spi_ln_oe_v);
+      u_sep_spi_lane_trigger_cg.sample(1'b1, spi_ln_trig_v);
+      u_sep_spi_lane_abort_chain_cg.sample(spi_ln_abort, spi_ln_width, spi_ln_abort_v, spi_ln_chain,
+                                           spi_ln_chain_v);
+    end
+  end
+
+  // =====================================================================
   // Mailbox, IRQ and PIC groups (docs/SEP_FCOV.adoc, mailbox, IRQ and PIC
   // groups). VCS only.
   //

@@ -10,11 +10,15 @@
 //
 // cocotb owns the scenario table (g_spi3_params, located by SPI3_PARAM_MAGIC):
 // one boot walks the required transfer lengths, while the seed selects legal
-// flash addresses and data.
+// flash addresses, data and the program opcode of each case. A page program
+// (0x02) sends the whole stream on one lane. A quad page program (0x32) sends
+// the opcode and address on one lane with CS held, then the data on four
+// lanes; the DMA stream is the same, and each segment takes its own words.
 //
-// After the sweep, one TX FIFO write past full, which the paced DMA never
-// reaches, must latch only the overflow error; software reset plus an error
-// clear must then release the host for a real flash transfer.
+// After the sweep, the TX FIFO is filled until STATUS.TXFULL: the overflow
+// error must still be clear there, and one write past full must then latch only
+// the overflow error; software reset plus an error clear must then release the
+// host for a real flash transfer.
 //
 // main returns the error count; crt0.s reports PASS/FAIL. Each checker logs a
 // PASS line.
@@ -31,19 +35,13 @@
     ((1u << SECURE_DMA__HANDSHAKE_INTR_ENABLE__MASK_bp) & \
      SECURE_DMA__HANDSHAKE_INTR_ENABLE__MASK_bm)
 
-#define TIMEOUT 200000
+#define TIMEOUT SEP_SPI_TIMEOUT
 #define DMA_POLL_LIM 200000
 #define MAX_WORDS 16
 #define MAX_CASES 3
-#define PARAM_STRIDE (2 + MAX_WORDS)
+#define PARAM_STRIDE (3 + MAX_WORDS)
 #define TX_WATERMARK 4 // words; the watermark fires while the TX FIFO holds fewer
 #define DMA_CHUNK 16   // bytes (= TX_WATERMARK words) per refill
-
-#define FLASH_CMD_WREN 0x06u
-#define FLASH_CMD_PP 0x02u
-#define FLASH_CMD_READ 0x03u
-#define FLASH_CMD_RDSR 0x05u
-#define FLASH_SR_WIP (1u << 0)
 
 // SRAM staging for the DMA source: the page program header, then the data words.
 #define SRC_STAGING_OFF 0x5000u
@@ -52,13 +50,15 @@
 #define SPI3_PARAM_MAGIC 0x5A11D00Eu // lets cocotb locate the scenario block
 
 // Scenario block. [0]=magic, [1]=case count, then each case is:
-// [addr, nword count, data[0..MAX_WORDS-1]]. Volatile so cocotb-patched
-// values are not folded. Defaults walk the same directed length cells.
+// [addr, nword count, program opcode (0x02 or 0x32), data[0..MAX_WORDS-1]].
+// Volatile so cocotb-patched values are not folded. Defaults walk the same
+// directed length cells, at both program widths.
 volatile uint32_t g_spi3_params[2 + MAX_CASES * PARAM_STRIDE] = {
     SPI3_PARAM_MAGIC,
     3u,
     0x001000u,
     7u,
+    SEP_SPI_OP_PP,
     0xC0DE0001u,
     0xC0DE0002u,
     0xC0DE0003u,
@@ -77,6 +77,7 @@ volatile uint32_t g_spi3_params[2 + MAX_CASES * PARAM_STRIDE] = {
     0,
     0x002000u,
     11u,
+    SEP_SPI_OP_QPP,
     0xD0DE0001u,
     0xD0DE0002u,
     0xD0DE0003u,
@@ -95,6 +96,7 @@ volatile uint32_t g_spi3_params[2 + MAX_CASES * PARAM_STRIDE] = {
     0,
     0x003000u,
     15u,
+    SEP_SPI_OP_PP,
     0xE0DE0001u,
     0xE0DE0002u,
     0xE0DE0003u,
@@ -113,68 +115,23 @@ volatile uint32_t g_spi3_params[2 + MAX_CASES * PARAM_STRIDE] = {
     0,
 };
 
-static uint32_t pack_hdr(uint32_t opcode, uint32_t addr) {
-    return (opcode & 0xFF) | (((addr >> 16) & 0xFF) << 8) | (((addr >> 8) & 0xFF) << 16) |
-           (((addr >> 0) & 0xFF) << 24);
-}
-
-// The command length field encodes the byte count minus one.
-static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
-    uint32_t v =
-        ((direction << SPI_CONTROLLER__COMMAND__DIRECTION_bp) &
-         SPI_CONTROLLER__COMMAND__DIRECTION_bm) |
-        (((len_bytes - 1) << SPI_CONTROLLER__COMMAND__LEN_bp) & SPI_CONTROLLER__COMMAND__LEN_bm);
-    if (csaat) v |= SPI_CONTROLLER__COMMAND__CSAAT_bm;
-    return v;
-}
-
 static void spi_init(void) {
     // RX stays quiescent; the TX watermark drives the DMA refill trigger.
-    spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
-           (TX_WATERMARK << SPI_CONTROLLER__CONTROL__TX_WATERMARK_bp) |
-               (1u << SPI_CONTROLLER__CONTROL__RX_WATERMARK_bp) |
-               SPI_CONTROLLER__CONTROL__SPIEN_bm | SPI_CONTROLLER__CONTROL__OUTPUT_EN_bm);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    sep_spi_host_init((TX_WATERMARK << SPI_CONTROLLER__CONTROL__TX_WATERMARK_bp) |
+                      (1u << SPI_CONTROLLER__CONTROL__RX_WATERMARK_bp));
     spi_wr(SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, SPI_CONTROLLER__EVENT_ENABLE__TXWM_bm);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
 }
 
-static int flash_wren(void) {
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_WREN);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
-    return spi_wait_idle(TIMEOUT);
-}
-
-/* Returns the flash status byte, or 0xFF on timeout or an empty RX FIFO. */
-static uint8_t flash_read_status(void) {
-    if (spi_wait_ready(TIMEOUT)) return 0xFFu;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_RDSR);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // hold CS
-    if (spi_wait_ready(TIMEOUT)) return 0xFFu;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 1, 0));
-    if (spi_wait_idle(TIMEOUT)) return 0xFFu;
-    if (((spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) & SPI_CONTROLLER__STATUS__RXQD_bm) >>
-         SPI_CONTROLLER__STATUS__RXQD_bp) < 1u)
-        return 0xFFu;
-    return (uint8_t)(spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)) & 0xFFu);
-}
-
-/* Waits for the flash to finish a page program; fails on 0xFF or timeout. */
+// Waits for the flash to finish a page program; prints a FAIL line when the
+// status read fails or WIP stays set.
 static int flash_wait_wip_clear(void) {
-    for (int i = 0; i < TIMEOUT; i++) {
-        uint8_t sr = flash_read_status();
-        if (sr == 0xFFu) {
-            sep_mbx_puts("FAIL: RDSR 0xFF while polling WIP (no flash model)\n");
-            return -1;
-        }
-        if (!(sr & FLASH_SR_WIP)) {
-            return 0;
-        }
+    int rc = sep_spi_flash_wait_wip_clear();
+    if (rc == -3) {
+        sep_mbx_puts("FAIL: timeout waiting for WIP=0 after PAGE PROGRAM\n");
+    } else if (rc) {
+        sep_mbx_puts("FAIL: RDSR failed while polling WIP (no flash model)\n");
     }
-    sep_mbx_puts("FAIL: timeout waiting for WIP=0 after PAGE PROGRAM\n");
-    return -1;
+    return rc;
 }
 
 // CHK-TRIGGER: the TX watermark status, which sources the DMA trigger, tracks
@@ -244,21 +201,6 @@ static int chk_trigger(void) {
     return err;
 }
 
-// Read nwords back from flash with a standard read.
-static int flash_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_READ, addr));
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_TX, 4, 1)); // command + address, hold CS
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0)); // RX, release CS
-    if (spi_wait_idle(TIMEOUT)) return -1;
-    for (uint32_t i = 0; i < nwords; i++)
-        out[i] = spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
-    return 0;
-}
-
 // Arm the Secure DMA in hardware-handshake mode: the source walks SRAM, the
 // destination stays on the SPI TX FIFO, and each watermark trigger moves a chunk.
 static void dma_arm_tx(uint32_t src, uint32_t total_bytes) {
@@ -286,7 +228,8 @@ static void dma_arm_tx(uint32_t src, uint32_t total_bytes) {
                    SECURE_DMA__CONTROL__HARDWARE_HANDSHAKE_ENABLE_bm | SEP_DMA_OPCODE_COPY);
 }
 
-static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, uint32_t nwords) {
+static int run_case(uint32_t case_idx, uint32_t addr, uint32_t opcode, volatile uint32_t *data,
+                    uint32_t nwords) {
     int errors = 0;
     uint32_t rd[MAX_WORDS];
 
@@ -294,17 +237,24 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
         sep_mbx_puts("FAIL: bad nwords\n");
         return 1;
     }
+    if (opcode != SEP_SPI_OP_PP && opcode != SEP_SPI_OP_QPP) {
+        sep_mbx_puts("FAIL: bad program opcode\n");
+        return 1;
+    }
+    uint32_t lanes = sep_spi_flash_data_lanes(opcode);
     sep_mbx_puts("SCENARIO case=");
     sep_mbx_puthex(case_idx);
     sep_mbx_puts(" addr=");
     sep_mbx_puthex(addr);
     sep_mbx_puts(" nwords=");
     sep_mbx_puthex(nwords);
+    sep_mbx_puts(" op=");
+    sep_mbx_puthex(opcode);
     sep_mbx_putc('\n');
 
     // Stage the DMA source in SRAM: the page program header, then the data words.
     volatile uint32_t *src = (volatile uint32_t *)SRC_BASE;
-    src[0] = pack_hdr(FLASH_CMD_PP, addr);
+    src[0] = sep_spi_pack_hdr(opcode, addr);
     for (uint32_t i = 0; i < nwords; i++) src[1 + i] = data[i];
     __asm__ volatile("fence" ::: "memory");
     uint32_t total_bytes = (1u + nwords) * 4u; // header word + data words
@@ -319,7 +269,7 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
     spi_init();
 
     // Write enable directly, then send the page program through the DMA.
-    if (flash_wren()) {
+    if (sep_spi_flash_wren()) {
         sep_mbx_puts("FAIL: WREN timeout\n");
         return 1;
     }
@@ -328,9 +278,23 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
         return 1;
     }
 
-    // Issue the TX command before starting the DMA: the host stalls for TX data
-    // and the DMA feeds it on each watermark trigger.
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, total_bytes, 0));
+    // Issue the TX commands before starting the DMA: the host stalls for TX data
+    // and the DMA feeds it on each watermark trigger. A quad program takes the
+    // header word in a standard segment with CS held, then the data words in a
+    // quad segment.
+    if (opcode == SEP_SPI_OP_PP) {
+        spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+               sep_spi_cmd_word(SPI_CMD_DIR_TX, total_bytes, 0, SPI_CMD_SPEED_STD));
+    } else {
+        spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+               sep_spi_cmd_word(SPI_CMD_DIR_TX, 4, 1, SPI_CMD_SPEED_STD));
+        if (spi_wait_ready(TIMEOUT)) {
+            sep_mbx_puts("FAIL: SPI not ready for the quad data segment\n");
+            return 1;
+        }
+        spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+               sep_spi_cmd_word(SPI_CMD_DIR_TX, nwords * 4u, 0, SPI_CMD_SPEED_QUAD));
+    }
     dma_arm_tx(SRC_BASE, total_bytes);
 
     // --- CHK-DMA-DONE: the handshake transfer completes without error ---
@@ -402,7 +366,7 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
     }
 
     // --- CHK-DMA-TX: read the flash back -> it equals the DMA-fed data ---
-    if (flash_read(addr, rd, nwords)) {
+    if (sep_spi_flash_read(SEP_SPI_OP_READ, addr, rd, nwords)) {
         sep_mbx_puts("FAIL: flash READ timeout\n");
         return errors + 1;
     }
@@ -425,7 +389,13 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
     }
     if (data_ok) {
         sep_mbx_puts("CHK-DMA-TX PASS: flash content == SRAM source "
-                     "(SRAM->DMA->TXFIFO->flash)\n");
+                     "(SRAM->DMA->TXFIFO->flash) op=");
+        sep_mbx_puthex(opcode);
+        sep_mbx_puts(" width=x");
+        sep_mbx_putc((char)('0' + lanes));
+        sep_mbx_puts(" bytes=");
+        sep_mbx_puthex(nwords * 4u);
+        sep_mbx_putc('\n');
     }
     // --- CHK-NONVAC: the flash returned real content, not erased 0xFF ---
     if (data_ok && any_nonerased) {
@@ -463,9 +433,19 @@ static int chk_err_overflow(void) {
         sep_mbx_puts(" TXDATA writes\n");
         return err + 1;
     }
+    // At STATUS.TXFULL every write so far fit in the FIFO, so the overflow
+    // error must still be clear: a host that latches it one write early fails.
+    uint32_t es_full = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     sep_mbx_puts("CHK-ERR-OVERFLOW TXFULL after writes=");
     sep_mbx_puthex(writes);
+    sep_mbx_puts(" ERROR_STATUS at TXFULL=");
+    sep_mbx_puthex(es_full);
     sep_mbx_putc('\n');
+    if (es_full & SPI_CONTROLLER__ERROR_STATUS__OVERFLOW_bm) {
+        sep_mbx_puts("FAIL: CHK-ERR-OVERFLOW ERROR_STATUS.OVERFLOW set at TXFULL, before "
+                     "any write past full\n");
+        err++;
+    }
 
     // The error status is clean here (CHK-SPI-IDLE checked it per case), so the
     // one write past full is the only thing that can set a bit.
@@ -509,17 +489,17 @@ static int chk_err_overflow(void) {
     }
 
     // A released host completes a real status read; a host still held returns
-    // nothing and the helper reports 0xFF.
-    uint8_t sr = flash_read_status();
-    if (sr == 0xFFu) {
-        sep_mbx_puts("FAIL: CHK-ERR-OVERFLOW RDSR returned 0xFF after recovery; the "
+    // nothing and the status read fails.
+    uint8_t sr = 0;
+    if (sep_spi_flash_rdsr(&sr)) {
+        sep_mbx_puts("FAIL: CHK-ERR-OVERFLOW RDSR failed after recovery; the "
                      "host did not resume\n");
         err++;
     }
     if (err == 0) {
-        sep_mbx_puts("CHK-ERR-OVERFLOW PASS: a TXDATA write past STATUS.TXFULL latched "
-                     "only ERROR_STATUS.OVERFLOW, W1C released it, and the host ran a "
-                     "flash RDSR again\n");
+        sep_mbx_puts("CHK-ERR-OVERFLOW PASS: OVERFLOW clear at STATUS.TXFULL, a TXDATA "
+                     "write past full latched only ERROR_STATUS.OVERFLOW, W1C released "
+                     "it, and the host ran a flash RDSR again\n");
     }
     return err;
 }
@@ -557,8 +537,9 @@ int main(void) {
         uint32_t base = 2u + c * PARAM_STRIDE;
         uint32_t addr = g_spi3_params[base];
         uint32_t nwords = g_spi3_params[base + 1u];
-        volatile uint32_t *data = &g_spi3_params[base + 2u];
-        errors += run_case(c, addr, data, nwords);
+        uint32_t opcode = g_spi3_params[base + 2u];
+        volatile uint32_t *data = &g_spi3_params[base + 3u];
+        errors += run_case(c, addr, opcode, data, nwords);
     }
 
     // Last: the TX-FIFO flow-control error edge the paced DMA never reaches.
