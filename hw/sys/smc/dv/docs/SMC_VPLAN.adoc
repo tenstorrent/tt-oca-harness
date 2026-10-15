@@ -454,6 +454,7 @@ feature rows.
 |`smc_external_window_pad_ctrl_decode_test` |The five mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
 |`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL full sweep over every external GPIO_CTRL entry (65).
 |`smc_gpio_filter_access_sep_test` |GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
+|`smc_gpio_intf_data_ctrl_write_sweep_test` |Every software-writable DATA_CTRL field written on all 65 GPIO_INTF instances, with the pad driven both ways through all four interrupt types and the instance's own interrupt bit and `pad2core` checked.
 |`smc_gpio_intf_full_sweep_test` |GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
 |`smc_gpio_intf_regblock_sweep_test` |GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER cycled to all-ones and all-zeros on all 65 instances, with an AxPROT allow and deny leg on each.
 |`smc_gpio_irq_active_test` |Run GPIO CSR plus IRQ-control decode precheck.
@@ -9370,6 +9371,41 @@ Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named com
 |===
 
 *Pass Criteria*: `CHK-GPIO-INTF-ACCESS-FILTER-DENY`, `CHK-GPIO-INTF-ACCESS-FILTER-SWEEP`, `CHK-GPIO-INTF-DATA-CTRL-ENABLE-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-326-smc_gpio_intf_data_ctrl_write_sweep_test]]
+===== 326 `smc_gpio_intf_data_ctrl_write_sweep_test`
+
+*Source Module*: `smc_gpio_intf_data_ctrl_write_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); bench pad drive through `tb_gpio_ext_drive_*` and, on the pads `tb_top.sv` drives for a protocol VIP, the bench input that owns the pad
+
+*Objective*: Write every software-writable DATA_CTRL field on all 65 GPIO_INTF instances and drive each pad both ways through all four interrupt types.
+
+*Test Coverage*:
+
+* This leaf writes `DATA_CTRL` on every instance: `lsio_select` on its own, then `core2pad`, `enable_rx_tx` (receiver only), `interface_enable`, `lsio_disable` and `interrupt_enable` with each `interrupt_type` value, and the reset word last.
+* Every readback after the reset read is a fully predicted word. `lsio_enable` is recorded at the reset read, must read the same under `lsio_select` (the software select ranks below the hardware request), 0 under `lsio_disable` on every pad, and the recorded value again after the restore. `pad2core` must read 0 while the register does not own the receiver and the driven pad level while it does.
+* Under register control the pad is driven from the bench: the active-high and active-low level types must follow the pad both ways and hold, the rising and falling edge types must pulse once on their edge and then clear with the pad held, a cleared `interrupt_enable` must keep the interrupt clear while the active-low level is active, and the next write that sets it must raise the interrupt. Every poll reads the per-instance `tb_gpio_interrupt` vector and requires that instance's bit alone, so an interrupt on any other instance fails the leaf.
+* `pad2core_en_o` must carry the receiver enable, `core2pad_o` the `core2pad` field and `core2pad_en_o` 0 on the instance under test: the register samples the pad and never drives it.
+* The set of fields the leaf writes is compared against the generated contract, so a regenerated map that adds or removes a software-writable field stops the leaf.
+
+*Test Procedure*:
+
+Drive `smc_gpio_intf_data_ctrl_write_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP` |All 65 DATA_CTRL instances read their RDL reset, carried `lsio_select` alone and then every other software-writable field with each `interrupt_type` value, matched the predicted word including `lsio_enable` and `pad2core` after every write, and returned to that reset; the scoreboard booked an exact compare for every predicted readback
+|`CHK-GPIO-INTF-IRQ-TYPE-SWEEP` |On each of the 65 instances the interrupt bit of that instance alone followed the pad both ways as active-high and as active-low level, pulsed once on the rising edge and once on the falling edge, stayed clear with `interrupt_enable` clear while the active-low level was active, and rose when the next write set `interrupt_enable`
+|`CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` |On each of the 65 instances under register control `DATA_CTRL.pad2core` read the bench-driven pad level both ways, `pad2core_en_o` carried the receiver enable, `core2pad_o` carried the `core2pad` field and `core2pad_en_o` stayed 0
+|===
+
+*Pass Criteria*: `CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP`, `CHK-GPIO-INTF-IRQ-TYPE-SWEEP`, `CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
