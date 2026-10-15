@@ -7195,7 +7195,7 @@ to p and the seeded read words returned.
 * After an alias remap hit (`fabric.adoc` Alias Remapping, `alias_remap.rdl`): region 6 over
 0x0203_0000..0x0203_1000 with `REGION_ATTRS` 0x8000_0000_0010_0000 moves a prot 0b101 write at
 0x0203_0040 to 0x0213_0040 with `awprot` still 0b101.
-* `fabric.adoc` (Privilege-Controlled Remapping, Outbound Traffic Flow; source ID by traffic path
+* `fabric.adoc` (Output Remapping, Outbound Traffic Flow; source ID by traffic path
 table): each remap sets its own AxUSER source ID and the table names `SMC_ID` for the direct path,
 `MMODE_ID` through the M-mode remap and `OTHER_ID` through the Xvisor remap. The numeric values are
 not stated in the documents, so the leaf prints the `awuser` and `aruser` of
