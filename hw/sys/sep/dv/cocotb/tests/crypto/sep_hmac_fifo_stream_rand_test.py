@@ -10,7 +10,7 @@ runs the same plan shape in drawn orders:
                       plain SHA-2 or HMAC and the write mode drawn per cell
     3 stalled legs    one per write mode (burst of back-to-back single-beat writes, single
                       writes with a drawn gap, single-byte writes): the FIFO fills under the
-                      drain stall, one more beat is held, the stall is released, the
+                      drain stall, a later beat is held, the stall is released, the
                       1000-byte message completes
     2 fifo_empty legs a FIFO that was full, and a FIFO that never reaches full
     1 wipe leg        ``WIPE_SECRET`` overwrites the digest and the secret key
@@ -30,8 +30,11 @@ Checkers:
   CHK-HMAC-STATUS        on every ``STATUS`` sample ``fifo_empty`` = 1 iff ``fifo_depth`` = 0,
                          ``fifo_full`` = 1 implies ``fifo_empty`` = 0, and no not-full sample
                          reports a depth above a full sample of the seed
-  CHK-HMAC-BACKPRESSURE  a beat into a full FIFO gets no write response for 16 times the clean
-                         write latency, and completes OKAY after the stall is released
+  CHK-HMAC-BACKPRESSURE-HOLD
+                         with the drain stall held and ``fifo_full`` read 1, one of the next
+                         ``BP_BEAT_BOUND`` beats gets no write response for 16 times the clean
+                         write latency; after the release every beat completes OKAY and the
+                         digest equals the golden of the whole message
   CHK-HMAC-MSG           the digest equals the software golden of the whole message
   CHK-HMAC-FIFOEMPTY     ``INTR_STATE.fifo_empty`` reads 1 after a full FIFO drains and 0 for a
                          FIFO that was never full, both before ``hash_process``
@@ -40,10 +43,13 @@ Checkers:
 
 The measurement run of each stalled leg counts the writes until a ``STATUS`` read after each
 write shows ``fifo_full`` = 1 (N). The graded run posts N writes, reads ``fifo_full`` = 1 and
-holds write N+1, the first write into a FIFO that reads full: the register text states that
-data written to the FIFO whilst it is full is back-pressured (``hmac.adoc``:159). The
-measurement run then issues up to ``PROBE_EXTRA_MAX`` more writes with the stall held and
-logs how many complete; that count is not graded.
+issues the next beats one at a time until one is held. The register text states that data
+written to the FIFO whilst it is full is back-pressured (``hmac.adoc``:159), but a byte packer
+sits in front of the FIFO and the text does not state which write is held. The index of the
+held beat is therefore log-only (``OBS-BLOCKED CHK-HMAC-BACKPRESSURE`` and
+``OBS-HMAC-BP-HOLD-BEAT``); the graded part is a hold within ``BP_BEAT_BOUND`` beats and no
+lost data. The measurement run issues up to ``PROBE_EXTRA_MAX`` more writes with the stall
+held and logs how many complete; that count is not graded.
 
 Controls: ``CTRL-HMAC-STALL-FULL`` (a stalled leg reads ``fifo_full`` = 1),
 ``CTRL-HMAC-BP-CLEAN`` (a beat into a FIFO that is not full completes), ``CTRL-HMAC-LENGTHS``
@@ -51,7 +57,8 @@ Controls: ``CTRL-HMAC-STALL-FULL`` (a stalled leg reads ``fifo_full`` = 1),
 depth at full), ``CTRL-HMAC-WIPE-PRE`` (DIGEST before the wipe equals the golden and differs
 from w). Log-only: ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text gives only its
 reset value), ``OBS-HMAC-STALL-N`` (N and the count of writes that the measurement run
-completes with the stall held).
+completes with the stall held), ``OBS-HMAC-BP-HOLD-BEAT`` (index of the held beat, beats
+accepted after ``fifo_full`` reads 1, ``no_resp_clk``, ``hold_clk``).
 """
 
 from __future__ import annotations
@@ -131,6 +138,9 @@ DRAIN_BOUND = 50_000
 RESET_BOUND = 2_000
 CLEAN_BOUND = 2_000  # clocks for one beat into a FIFO that is not full
 PROBE_EXTRA_MAX = 8  # log-only writes after fifo_full reads 1 in the measurement run
+# Most beats issued after fifo_full reads 1 before one must be held. The register text gives
+# no packer capacity, so this is a generous fixed bound, logged as bound=.
+BP_BEAT_BOUND = 16
 
 
 def legal_key_bits(sha: int) -> list[int]:
@@ -289,7 +299,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
 
     required_evidence = (
         "CHK-HMAC-STATUS",
-        "CHK-HMAC-BACKPRESSURE",
+        "CHK-HMAC-BACKPRESSURE-HOLD",
         "CHK-HMAC-MSG",
         "CHK-HMAC-FIFOEMPTY",
         "CHK-HMAC-WIPE",
@@ -641,7 +651,9 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         self._open()
         await self._setup_stalled(leg.h)
         ch = chunks(leg.msg, leg.mode)
-        assert len(ch) > n + 1, f"message of {len(ch)} writes cannot hold {n} + 1 writes"
+        assert len(ch) > n + BP_BEAT_BOUND, (
+            f"message of {len(ch)} writes cannot hold {n} + {BP_BEAT_BOUND} writes"
+        )
         # Clean write: the FIFO is empty, so the beat completes OKAY within
         # CLEAN_BOUND clocks. A beat that is held or refused here leaves the
         # held-beat check below without its control.
@@ -676,47 +688,87 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         st = await self._status("stalled")
         self.chk.ctrl("HMAC-STALL-FULL", st["full"] == 1, mode=leg.mode, writes=n, run="leg")
 
-        # Held beat: write N+1, the first write after STATUS reads fifo_full = 1. No other
-        # access may go on the host path during the hold.
+        # Hold window: with the stall held and fifo_full read 1, issue the next beats one at a
+        # time. A beat with no write response for `hold` clocks is the held beat. The byte
+        # packer in front of the FIFO can accept beats after fifo_full reads 1, and the register
+        # text (hmac.adoc:159) does not state how many, so the index of the held beat is
+        # log-only; the graded part is that a beat is held within BP_BEAT_BOUND beats. No other
+        # access goes on the host path during a hold.
         hold = 16 * t_clean
-        task, seq, cap, t0 = await self._held_write(*ch[n])
-        await ClockCycles(dut.clk_i, hold)
-        no_resp = not cap.done() and not task.done()
+        accepted: list[str] = []
+        held = None
+        no_resp_clk = None
+        idx = n
+        while idx < n + BP_BEAT_BOUND:
+            task, seq, cap, t0 = await self._held_write(*ch[idx])
+            await ClockCycles(dut.clk_i, hold)
+            if not cap.done() and not task.done():
+                held = (task, seq, cap, t0)
+                no_resp_clk = hold
+                break
+            await self._wait_task(task, hold)
+            t_resp = take_handshake(cap)
+            no_resp_clk = None if t_resp is None else round((t_resp - t0) / self._period_ps)
+            accepted.append("OKAY" if seq.resp_ok else f"code{seq.resp_code}")
+            idx += 1
         dut.hmac_fifo_drain_stall_i.value = 0
-        bound = 64 * t_clean
-        answered = await self._wait_task(task, bound)
-        t_resp = take_handshake(cap)
-        resp_clk = None if t_resp is None else round((t_resp - t0) / self._period_ps)
-        if not answered:
-            self.chk.ok(
-                "HMAC-BACKPRESSURE",
-                False,
-                mode=leg.mode,
-                reason="timeout",
-                bound=bound,
-                clean_clk=t_clean,
-            )
-            raise AssertionError(
-                "held MSG_FIFO beat never answered after the stall release; the single host "
-                "path is blocked, so the leaf stops"
-            )
-        self.chk.ok(
+        self.chk.blocked(
             "HMAC-BACKPRESSURE",
-            no_resp and seq.resp_ok,
-            mode=leg.mode,
-            full=st["full"],
-            beat=n + 1,
-            no_resp_clk=hold if no_resp else resp_clk,
-            hold_clk=hold,
-            resp_clk=resp_clk,
-            clean_clk=t_clean,
-            resp_after_release="OKAY" if seq.resp_ok else f"code{seq.resp_code}",
+            reason="hmac.adoc:159 does not state which write after fifo_full = 1 is held; "
+            "a byte packer sits in front of the FIFO",
         )
+        self.chk.obs(
+            "HMAC-BP-HOLD-BEAT",
+            mode=leg.mode,
+            n_full=n,
+            hold_beat=idx + 1 if held is not None else "none",
+            accepted_after_full=len(accepted),
+            no_resp_clk=no_resp_clk if no_resp_clk is not None else "none",
+            hold_clk=hold,
+        )
+        held_resp = "none"
+        if held is not None:
+            task, seq, cap, t0 = held
+            bound = 64 * t_clean
+            if not await self._wait_task(task, bound):
+                self.chk.ok(
+                    "HMAC-BACKPRESSURE-HOLD",
+                    False,
+                    mode=leg.mode,
+                    reason="timeout",
+                    bound=bound,
+                    clean_clk=t_clean,
+                )
+                raise AssertionError(
+                    "held MSG_FIFO beat never answered after the stall release; the single "
+                    "host path is blocked, so the leaf stops"
+                )
+            take_handshake(cap)
+            held_resp = "OKAY" if seq.resp_ok else f"code{seq.resp_code}"
+            idx += 1
 
-        await self._write_msg(ch[n + 1 :], leg.mode, leg.gap, leg.rb, "drain")
+        await self._write_msg(ch[idx:], leg.mode, leg.gap, leg.rb, "drain")
         await self._drain(DRAIN_BOUND, "HMAC-STATUS")
         digest = await self._finish(leg.h.sha, "HMAC-MSG")
         self._grade_msg(leg.h, leg.msg, leg.mode, digest)
+        golden = golden_words(
+            leg.h.sha, leg.h.hmac_en, KEY_ROWS[leg.h.key_row], leg.h.key_bits, leg.msg
+        )
+        no_loss = digest == golden
+        accepted_ok = all(r == "OKAY" for r in accepted)
+        self.chk.ok(
+            "HMAC-BACKPRESSURE-HOLD",
+            held is not None and held_resp == "OKAY" and accepted_ok and no_loss,
+            mode=leg.mode,
+            full=st["full"],
+            held=int(held is not None),
+            bound=BP_BEAT_BOUND,
+            hold_clk=hold,
+            clean_clk=t_clean,
+            accepted_resp=",".join(accepted) or "none",
+            held_resp_after_release=held_resp,
+            **{"digest==golden": int(no_loss)},
+        )
 
     async def _fe_full_leg(self, leg: FeLeg) -> int | None:
         dut = self.dut
