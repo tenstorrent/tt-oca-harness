@@ -168,7 +168,9 @@ flash = OcahSpiFlash(
 
 Frame record keys: `opcode` (the command byte; -1 when no complete byte
 arrived), `addr`, `data_out` (complete bytes the controller sampled from the
-device), `data_in` (complete payload bytes the device received), `ok` (the
+device; for `OcahSepSpiFlash`, a response byte with a bit slot in which the
+controller still drove DQ0 is not sent in full, so it and the rest of the
+response are not in `data_out`, and `contended_bits` counts those slots), `data_in` (complete payload bytes the device received), `ok` (the
 device accepted the frame), `reason`, `input_clocks` (SCK clocks the device
 sampled as controller input: the whole frame for a command without a response
 phase, the command, address and dummy phases for one with a response phase),

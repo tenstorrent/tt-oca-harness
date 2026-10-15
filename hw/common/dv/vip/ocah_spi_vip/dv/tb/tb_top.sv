@@ -32,6 +32,8 @@ module ocah_spi_vip_tb_top;
   logic spi_miso;
   // Monitor-only tap: the flash device's MISO drive enable.
   logic spi_miso_oe;
+  // Controller DQ output enables (active low) for OcahSepSpiFlash; cocotb-owned.
+  logic [7:0] spi_dq_oe_n;
   // Four-lane link: the controller engine drives lanes, their output enables
   // and the chip-select/clock enables; the flash device drives spi4_sd_in.
   logic       spi4_cs_n;
