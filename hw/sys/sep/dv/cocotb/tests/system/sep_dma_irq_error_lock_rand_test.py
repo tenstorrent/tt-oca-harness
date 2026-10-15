@@ -90,6 +90,7 @@ from env.sep_field_compare import field_compare
 from env.sep_lcc_golden import LC_PROD
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 from seq_lib.sep_dma_ops import (
     _D,
     CHUNK_DATA_SIZE,
@@ -119,10 +120,10 @@ from seq_lib.sep_dma_ops import (
 
 TEST = "sep_dma_irq_error_lock_rand_test"
 
-# SEP SRAM (memory_map.adoc): the DMA enabled range and the home of every buffer.
-SRAM_BASE = 0x1000_0000
-SRAM_LIMIT = 0x1003_FFFF
-SRAM_SIZE = SRAM_LIMIT - SRAM_BASE + 1
+# SEP SRAM (generated memory map): the DMA enabled range and the home of every buffer.
+SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
+SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
+SRAM_LIMIT = SRAM_BASE + SRAM_SIZE - 1
 ASID_SEP = asid_word(7, 7)
 
 EVENTS = ("done", "chunk", "error")
