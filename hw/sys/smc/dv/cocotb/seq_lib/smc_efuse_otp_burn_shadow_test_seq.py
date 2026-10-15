@@ -5,20 +5,20 @@
 MODEL-BACKED, DECLARED. `tb_efuse_otp_word0` / `tb_efuse_programmed_word0` tap
 the adopter-supplied simulation stand-in for the foundry OTP macro,
 `hw/ip/efuse/dv/models/efuse_bank_model.sv`, instantiated at
-`hw/top/smc_ip_integration.sv:147-160`. Its set-once behaviour is `onwrite =
-woset` in `hw/ip/efuse/dv/models/regs/efuse_bank.rdl`, a register file no other module in
-`hw/` instantiates, and its program-failure injection
-(`efuse_bank_model.sv:107-120`) is a `+smc_efuse_prog_fail_count` plusarg with no
+`hw/top/smc_ip_integration.sv`. Its set-once behaviour is `onwrite = woset` in
+`hw/ip/efuse/dv/models/regs/efuse_bank.rdl`, a register file no other module
+in `hw/` instantiates, and its program-failure injection (in
+`efuse_bank_model.sv`) is a `+smc_efuse_prog_fail_count` plusarg with no
 silicon counterpart. Nothing observed on those two probes is evidence that a
 fuse burns in silicon.
 
 DEFENDS (real DUT RTL):
   * Real fuse sense completes without `+skip_fuse_sense`, and the SMC_EFUSE_MAP
-    window serves the sensed word over SEP_IN AXI (`efuse_shadow_regs.sv:674-679`,
-    loaded by the sense FSM at `efuse_shadow_regs.sv:512-540`).
+    window serves the sensed word over SEP_IN AXI (`efuse_shadow_regs.sv`, loaded
+    by its sense FSM).
   * The eFuse interface controller issues a PROGRAM command, latches the
     readback comparison result and reports it in `PROGRAM_STATUS`
-    (`efuse_interface_shim.sv:433` -> `efuse_program_interface.sv:160`), with
+    (`efuse_interface_shim.sv` -> `efuse_program_interface.sv`), with
     both polarities observed: set on the injected failure, clear on the clean
     program.
   * `EFUSE_STATUS.efuse_sense_done` mirrors the sense handshake.
@@ -45,10 +45,10 @@ from .smc_efuse_vip_utils import efuse_preload_word_at
 EFUSE_STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
 EFUSE_PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
 # Addressed and NAMED by the same generated symbol. At this offset the shadow
-# block serves raw shadow word 0 (`efuse_shadow_regs.sv:674-679` returns
+# block serves raw shadow word 0 (`efuse_shadow_regs.sv` returns
 # `shadow_efuse.values[paddr>>2]` for the whole map window) rather than the
-# lock fields the register name implies, which is why the value read back is
-# fuse content and not the register's 0x0 reset.
+# lock fields the register name implies, so the value read back is fuse content
+# and not the register's 0x0 reset.
 SMC_EFUSE_MAP_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 
 # Word 0 of the preload asset the bank model $readmemh's at time 0, derived from

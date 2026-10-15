@@ -158,7 +158,8 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 name = "sep_reset_mid_transfer_recovery_test"
 module = "system.sep_reset_mid_transfer_recovery_test"
 seed = 1
-reseed = 2
+# No reseed: every probe, operation and offset runs every seed; the seed selects only
+# data values.
 timeout_sec = 5400
 tags = ["reset", "fabric", "efuse", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -383,7 +384,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_axi_strobe_window_test"
 module = "system.sep_axi_strobe_window_test"
 seed = 1
-reseed = 3
+# No reseed: every AxSIZE and lane offset runs every seed; the seed selects only data.
 timeout_sec = 1800
 tags = ["fabric", "axi", "strobe", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -408,7 +409,8 @@ args = ["+skip_fuse_sense"]
 name = "sep_axi_partial_lane_read_test"
 module = "system.sep_axi_partial_lane_read_test"
 seed = 1
-reseed = 3
+# No reseed: every slice and ARSIZE cell runs every seed; the seed selects only order,
+# address and data.
 timeout_sec = 1800
 tags = ["fabric", "axi", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -488,3 +490,296 @@ tags = ["fabric", "axi", "protocol", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
+# Fabric and remap tests.
+
+[[tests]]
+# Inbound global-to-local rebase, the filter-first order, the window edges and the crossbar limit. Real PROD fuse sense: the inbound filter is active.
+name = "sep_fabric_inbound_rebase_test"
+module = "system.sep_fabric_inbound_rebase_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "rebase", "inbound_filter", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Filter match, priority, source ID, default deny and granule rules on both filter instances. RANDCFG and RAND-REP legs. Real PROD fuse sense.
+name = "sep_fabric_filter_match_priority_rand_test"
+module = "system.sep_fabric_filter_match_priority_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["fabric", "inbound_filter", "outbound_filter", "security", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Outbound route of the SMU aperture and the AP and STEE regions, AxPROT and AxUSER at the outbound port, and the outbound filter with the inbound filter bypassed. Real PROD fuse sense.
+name = "sep_fabric_outbound_route_attr_test"
+module = "system.sep_fabric_outbound_route_attr_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["fabric", "remap", "outbound_filter", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Local-master alias remap: region boundary classes, the AxCACHE override and the valid gate. RANDCFG.
+name = "sep_fabric_alias_remap_attr_rand_test"
+module = "system.sep_fabric_alias_remap_attr_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["fabric", "alias", "remap", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# SMC aperture route through BH-SMC: the aperture edges, the word above the top and the first-match order. The seed draws the aperture.
+name = "sep_fabric_smc_route_test"
+module = "system.sep_fabric_smc_route_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "smc", "route", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# AXI Extension port window for the LSU and the System Interface, the eFuse shim window and the SI bursts. Real PROD fuse sense.
+name = "sep_fabric_extension_port_window_test"
+module = "system.sep_fabric_extension_port_window_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "extension", "inbound_filter", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Response code and data of every graded address-map row cell, the OTBN AxCACHE cells and the crypto-region burst refusal. Real PROD fuse sense.
+name = "sep_fabric_row_response_matrix_test"
+module = "system.sep_fabric_row_response_matrix_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["fabric", "decode", "memory_map", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Secure DMA copy and hash matrix: widths, address modes, chunks, beat shape on the DMA master and the destination image. The seed draws the transfer.
+name = "sep_dma_transfer_matrix_rand_test"
+module = "system.sep_dma_transfer_matrix_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["dma", "transfer", "hash", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Secure DMA interrupts, configuration errors and a non-zero ADDR_HI from a cold reset. Real PROD fuse sense: the leaf pulses rst_ni.
+name = "sep_dma_irq_error_lock_rand_test"
+module = "system.sep_dma_irq_error_lock_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["dma", "irq", "error", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Secure DMA ABORT at a drawn phase, the quiet bus after the abort and the next clean transfer. Real PROD fuse sense: the leaf pulses rst_ni.
+name = "sep_dma_abort_recovery_rand_test"
+module = "system.sep_dma_abort_recovery_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["dma", "abort", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Secure DMA zero fill (OPCODE 4): the image and beats per destination mode and width, the erase window on every beat, the opcode and handshake errors, and abort. The seed draws the transfers.
+name = "sep_dma_zero_fill_rand_test"
+module = "system.sep_dma_zero_fill_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["dma", "zero", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Secure DMA zero fill continued by GO=1 with INITIAL_TRANSFER=0: the range bound at LIMIT, the locked range and the handshake rule hold for the continuation. Directed.
+name = "sep_dma_zero_fill_continuation_test"
+module = "system.sep_dma_zero_fill_continuation_test"
+seed = 1
+timeout_sec = 3600
+tags = ["dma", "zero", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+# Mailbox, IRQ and PIC (docs/SEP_VPLAN.adoc, docs/test_contracts/mailbox_irq_pic.adoc).
+
+[[tests]]
+# Paired mailbox FIFOs on all eight mailboxes against a golden queue model: thresholds and their clamp, flush kinds, the threshold alias, the IRQEN gate, the acknowledge and the 16 lines. The seed draws the mailbox order, thresholds, widths and flush kinds.
+name = "sep_mailbox_fifo_model_rand_test"
+module = "system.sep_mailbox_fifo_model_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 7200
+tags = ["mailbox", "fifo", "irq", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Mailbox access errors on both ports of the eight mailboxes: empty read, full write, read-only write, aperture hole and wrapper tail, the error flags, the WRITE_DATA read and the error cause on the line. The seed draws the extra injections, offsets and live values.
+name = "sep_mailbox_access_error_inject_test"
+module = "system.sep_mailbox_access_error_inject_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["mailbox", "error", "irq", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Mailbox consequence of the inbound filter verdict: ISS, STEE and Regular entries, the mailbox with no entry, isolation between mailboxes and the entry lock at the aperture. The seed draws the type map, source IDs and NS values.
+name = "sep_mailbox_filter_type_matrix_test"
+module = "system.sep_mailbox_filter_type_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["mailbox", "filter", "irq", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Every mailbox accepts an inbound write after DEMOTE_1 sets SEP_DBG in PROD, with the entry, the line and the data at the mailbox endpoint. Real PROD fuse sense, one seed: the life-cycle path has one legal sequence.
+name = "sep_mailbox_debug_bypass_test"
+module = "system.sep_mailbox_debug_bypass_test"
+seed = 1
+timeout_sec = 3600
+tags = ["mailbox", "filter", "lifecycle", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# SEP reset in the middle of a mailbox push, pop or IRQS write: all 16 apertures, the 16 lines and the ISS source ID after the reset, and the mailbox after it. The seed draws the reset cell and the pre-reset state.
+name = "sep_mailbox_reset_clear_test"
+module = "system.sep_mailbox_reset_clear_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["mailbox", "reset", "irq", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Peripheral bridge and DMA fault latches: multi-block set, the clear matrix and mask clears, re-trigger, the clear register reads, the DMA host-path fault on a source read and the same-cycle fault and clear. The seed draws the block orders, holes and clear masks.
+name = "sep_cpu_bridge_fault_matrix_rand_test"
+module = "system.sep_cpu_bridge_fault_matrix_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fault", "irq", "dma", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# The SEP_CPU_CTRL timeout registers hold a written 1, and a real stall of each block path sets no TIMEOUT_INTERRUPT bit, raises no PIC source and aborts no access. The seed draws the arming order and the block order.
+name = "sep_cpu_ctrl_timeout_inert_rand_test"
+module = "system.sep_cpu_ctrl_timeout_inert_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["timeout", "irq", "fabric", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# sep_reset_n releases synchronously to clk_i, the watchdog timer-domain reset releases
+# synchronized to clk_wdt_i, and the watchdog and wakeup control registers hold their
+# reset values after a cold reset.
+name = "sep_cold_reset_phase_test"
+module = "system.sep_cold_reset_phase_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["reset", "clock", "wdt", "system", "subsystem"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# While test_en_i is high, scan_rst_ni replaces the SEP and watchdog reset synchronizer
+# outputs, the scan bypass muxes and the Key Manager reset conditioner outputs. With
+# test_en_i low it has no effect.
+name = "sep_scan_reset_override_test"
+module = "system.sep_scan_reset_override_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["reset", "dft", "scan", "system", "subsystem"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+sep_edn_jtag_reset_waive"]
+
+[[tests]]
+# SEP_CPU_CTRL version ID, NMI vector lock, read-only status and write-only timeout
+# registers, and the scratch bank field layout for every write order and shape.
+name = "sep_cpu_ctrl_reg_shape_test"
+module = "system.sep_cpu_ctrl_reg_shape_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["cpu_ctrl", "csr", "scratch", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# REFERENCE_COUNTER, the watchdog and the wakeup timer count as the register description
+# states, the watchdog registers answer on either lane, and only a cold reset sets
+# WDOG_REGWEN again.
+name = "sep_timer_clock_contract_test"
+module = "system.sep_timer_clock_contract_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+sep_edn_jtag_reset_waive"]
+
+[[tests]]
+# The same leaf on the full-CPU model, where the dbg_rstb_i cell of the WDOG_REGWEN hold
+# check runs; it fails without the full CPU on VCS.
+name = "sep_timer_clock_contract_test_dbg"
+module = "system.sep_timer_clock_contract_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem"]
+run_modes = ["no_cpu"]
+tools = ["vcs"]
+target = "default"
+args = ["+skip_fuse_sense", "+sep_edn_jtag_reset_waive", "+sep_require_full_cpu"]

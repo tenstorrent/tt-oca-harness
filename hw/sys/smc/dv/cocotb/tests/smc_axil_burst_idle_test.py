@@ -32,9 +32,9 @@ class smc_axil_burst_idle_test(smc_base_test):
     # Positive control for `tb_axil_external_active`, the one AXI-Lite activity
     # probe on this burst's proof path without one elsewhere (the eFuse-bank and
     # any-master probes are covered by the sequence's own prover, and
-    # `tb_axil_dtp_csr_active` is unbackable in this TB -- tb_top.sv:1119 ties
+    # `tb_axil_dtp_csr_active` cannot be driven in this TB -- tb_top.sv ties
     # `axil_dtp_csr_resp = '0'` -- so the scoreboard books it OBSERVED-ONLY and
-    # never exact-compares it) ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+    # never exact-compares it).
     probe_positive_controls = ("axil_external_active",)
 
     async def run_scenario(self) -> None:

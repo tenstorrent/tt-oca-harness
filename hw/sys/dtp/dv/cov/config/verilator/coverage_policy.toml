@@ -1,12 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# DTP Verilator coverage policy: hole dispositions for the functional
-# coverage points collected by the cov/sv modules. It sets no
-# [[thresholds]]: the runner reports the family figures, a run's status
-# comes from its tests, and DTP_FCOV.adoc states the targets the figures
-# are read against.
+# DTP Verilator coverage policy for the database that `dtp_cov_scope.vlt`
+# scopes at compile time (`[coverage.verilator]` in dtp_sim_cfg.toml). A
+# [[holes]] entry records the structural reason an uncovered point cannot
+# fire; an uncovered point without one is reported unclassified. It sets no
+# [[thresholds]]: the runner reports the family figures, a run's status comes
+# from its tests, and DTP_FCOV.adoc states the targets the figures are read
+# against.
 
 schema_version = 1
 dut = "dtp"
-scope_epoch = "dtp-fcov-v1"
+scope_epoch = "dtp-fcov-v2"

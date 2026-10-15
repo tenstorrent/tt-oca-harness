@@ -19,7 +19,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_cla_action_test(smu_base_test):
-    """CLA custom, cross-trigger and clock-halt actions; no Force."""
+    """CLA custom, cross-trigger and clock-halt actions."""
 
     use_shared_env = True
 

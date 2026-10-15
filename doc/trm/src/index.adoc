@@ -11,7 +11,7 @@ endif::[]
 :sectanchors:
 :sectlinks:
 :sectnums:
-:sectnumlevels: 11
+:sectnumlevels: 4
 :xrefstyle: short
 :block-catalog:
 :source-highlighter: highlight.js
@@ -38,7 +38,7 @@ ifdef::backend-html5[]
 xref:ocah-home::index.adoc[Home].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-home/latest/index.html[the OCAH documentation home page].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-home/latest/index.html[the OCAH documentation home page].
 endif::backend-pdf[]
 
 ifdef::backend-html5[]
@@ -67,7 +67,6 @@ endif::release[]
 ** xref:smn.adoc[System Management Network (SMN)]
 ** xref:aou.adoc[AXI-over-UCIe Bridge (AoU)]
 * xref:ip-reference.adoc[IP Reference] - Reference documentation for reusable IP blocks
-* xref:dashboard.adoc[Verification Dashboard]
 * Appendices
 ** xref:register-field-access.adoc[Register Field Access Notation] - How to read the Access column of the generated register and field tables
 ** xref:referenced-documents.adoc[Referenced Documents] - Specifications and external design documentation cited throughout this manual

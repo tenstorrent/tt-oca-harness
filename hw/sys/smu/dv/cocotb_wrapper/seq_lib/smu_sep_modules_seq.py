@@ -3,9 +3,9 @@
 """Real SEP DV module-matrix firmware under the OSS SMU wrapper.
 
 Boots hw/sys/sep/dv/fw/tests/sep_smu_modules. The image walks the SEP module
-touch-points its stage mask enables -- AES, HMAC and KMAC in this build -- and
-parks in a per-stage terminal loop, so the verdict names the module that failed
-rather than just reporting "firmware did not pass".
+touch-points its stage mask enables and parks in a per-stage terminal loop, so
+the verdict names the module that failed rather than just reporting "firmware
+did not pass".
 
 The stage mask is compile-time, and the linker garbage-collects the loops for
 disabled stages. The test therefore derives the watch set from the symbol table

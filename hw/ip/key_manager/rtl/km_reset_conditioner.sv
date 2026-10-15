@@ -25,8 +25,10 @@
 //
 // DFT: scan_rst_ni / scanmode_i bypass both output paths consistently.
 
+`include "ocah_registers.svh"
+
 module km_reset_conditioner
-  import prim_mubi_pkg::*;
+  import prim_mubi_pkg::mubi4_t;
 #(
   parameter int unsigned MIN_RESET_CYCLES = 10  // Minimum warm reset hold in clk_i cycles after the
                                                 // trigger releases; must be at least 2.
@@ -46,6 +48,7 @@ module km_reset_conditioner
 );
 
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   //=========================================================================
   // Local Parameters
@@ -113,13 +116,7 @@ module km_reset_conditioner
   // immediately when cold reset fires (satisfies WarmAssertedWhenCold_A).
   // DFT: when scan mode is active, bypass with scan_rst_ni.
   logic warm_hold_active_q;
-  always_ff @(posedge clk_i or negedge rst_cold_aasd_no) begin
-    if (!rst_cold_aasd_no) begin
-      warm_hold_active_q <= 1'b1;
-    end else begin
-      warm_hold_active_q <= warm_hold_active | warm_trigger;
-    end
-  end
+  `OCAH_FF(warm_hold_active_q, warm_hold_active | warm_trigger, 1'b1, clk_i, rst_cold_aasd_no)
 
   logic warm_rst_n;
   assign warm_rst_n = ~warm_hold_active_q;
@@ -127,7 +124,7 @@ module km_reset_conditioner
   prim_rst_mux2_hf_n u_warm_rst_scan_mux (
     .rst0_ni (warm_rst_n),
     .rst1_ni (scan_rst_ni),
-    .sel_i   (mubi4_test_true_strict(scanmode_i)),
+    .sel_i   (prim_mubi_pkg::mubi4_test_true_strict(scanmode_i)),
     .rst_no  (rst_warm_sync_no)
   );
 
@@ -135,11 +132,11 @@ module km_reset_conditioner
   // Assertions
   //=========================================================================
 
-  `OCAH_OT_ASSERT_INIT(MinResetCyclesValid_A, MIN_RESET_CYCLES >= 2)
+  `OCAH_ASSERT_STATIC(MinResetCyclesValid_A, MIN_RESET_CYCLES >= 2)
 
   // Warm reset must always be asserted when cold reset is asserted.
   `OCAH_OT_ASSERT(WarmAssertedWhenCold_A, !rst_cold_aasd_no |-> !rst_warm_sync_no, clk_i,
-                  !rst_cold_aasd_no || mubi4_test_true_strict(scanmode_i))
+                  !rst_cold_aasd_no || prim_mubi_pkg::mubi4_test_true_strict(scanmode_i))
 
 endmodule : km_reset_conditioner
 

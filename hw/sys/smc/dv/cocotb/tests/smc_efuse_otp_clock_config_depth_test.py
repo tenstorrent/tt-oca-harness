@@ -46,11 +46,10 @@ class smc_efuse_otp_clock_config_depth_test(smc_base_test):
             min_csr_accesses=10,
             csr_accesses=seq.accesses,
             proxy=False,
-            # What is checked: the clock-gate RW depth
-            # (write/masked-readback/restore) and the eFuse-bank idle claim,
-            # backed by a same-run positive control. The CHIP_CONFIG CHIP_ID /
-            # LC_STATE reads are observed-only, not
-            # "fuse-derived semantics checked".
+            # The CHIP_CONFIG CHIP_ID / LC_STATE reads are observed-only; the
+            # checked items are the clock-gate RW depth
+            # (write/masked-readback/restore) and the eFuse-bank idle claim with
+            # its same-run positive control.
             details=(
                 "SMC_BASE_CONFIG CLOCK_GATE_CONTROL RW depth (pattern under "
                 "mask 0x1FFF + restore) checked; CHIP_CONFIG VERSION_LO/HI "

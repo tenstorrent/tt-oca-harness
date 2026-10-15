@@ -238,7 +238,8 @@ class smu_smc_mailbox_int_test_seq:
         )
         self._log(f"COVERAGE SMC-MBX-IRQ-EXT.S2 cells: width={self.NUM_MAILBOXES}")
 
-        # Lifecycle (card non-null): set → observed → cleared → checked_cleared
+        # Lifecycle stamps set -> observed -> cleared -> checked_cleared; the order
+        # check after S3 fails on a missing or reordered stamp.
         self._mark_lifecycle(
             "set",
             "assert observation for SMC-MBX-IRQ-EXT.S2 "

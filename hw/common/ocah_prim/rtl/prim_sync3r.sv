@@ -8,6 +8,8 @@
 // synthesis connects d_i to the cells directly.
 // rst_ni clears every stage to 0 asynchronously.
 
+`include "ocah_registers.svh"
+
 module prim_sync3r #(
   parameter int unsigned WIDTH = 1  // Number of independent bits synchronized.
 ) (
@@ -26,13 +28,7 @@ module prim_sync3r #(
   // cell does not expose.
   logic [WIDTH-1:0] first_stage_q;
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      first_stage_q <= '0;
-    end else begin
-      first_stage_q <= d_del;
-    end
-  end
+  `OCAH_FF(first_stage_q, d_del, '0, clk_i, rst_ni)
 
   prim_cdc_rand_delay #(
     .DataWidth(WIDTH)

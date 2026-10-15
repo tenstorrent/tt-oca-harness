@@ -6,7 +6,7 @@
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 // - Tobias Senti <tsenti@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Implementing the AXI4 read task in the iDMA transport layer.
 module idma_axi_read #(

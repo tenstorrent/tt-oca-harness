@@ -2,6 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Each covered IP interrupt sets only its own aggregator bit, and bridge faults set [40]/[42].
 
+OCAH provenance: ``sep_irq_ip_to_aggregator_test`` and
+``sep_irq_ip_to_aggregator_test_seq`` check each IP interrupt's aggregator-bit
+mapping.
+
 no_cpu: with the CPU held off, the host injects each covered IP interrupt via its real
 INTR_TEST register and proves it propagates to the mapped bit of the
 sep_internal_interrupts aggregate vector that feeds the VeeR PIC -- exercising the IP

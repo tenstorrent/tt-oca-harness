@@ -23,8 +23,9 @@ models, tool-selected stubs, supplemental sources, and testbench top. AoU's DV
 environment is maintained in its vendor folder, so it is not provided at the
 OCAH level.
 The synthesis lists use Bender's `synth` view and retain every `+define+`
-line it emits. The emulation lists select the same files as the
-`synth` view but define `EMULATION` instead of `SYNTHESIS`; the two defines are
+line it emits. The emulation lists select the `synth` view's files plus the
+generic prim cells that synthesis replaces with technology cells, and define
+`EMULATION` instead of `SYNTHESIS`; the two defines are
 mutually exclusive. Sources guarded by `ifndef SYNTHESIS`, such as vendor
 assertion macros, therefore stay compiled in the emulation view.
 

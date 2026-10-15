@@ -5,8 +5,8 @@
 // a plain 6-bit IR load followed by a DR scan of `width` bits shifting
 // `shift_value` in (zero by default, which catches unwanted R/W side
 // effects), returning the masked capture. Started by
-// dtp_base_test_seq::read_tdr(). The cocotb twin is
-// seq_lib/dtp_jtag_read_tdr_seq.py.
+// dtp_base_test_seq::read_tdr(). The cocotb realization is
+// dtp_base_test_seq.read_tdr.
 
 class dtp_jtag_read_tdr_seq extends dtp_jtag_op_seq;
   `uvm_object_utils(dtp_jtag_read_tdr_seq)

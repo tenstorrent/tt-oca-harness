@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Format-queue shapes of the I2C0 controller that no leaf had written.
+"""Six format-queue shapes of the I2C0 controller.
 
 A NACK allowed by NAKOK, two transactions queued together, a park that
 continues, a NACK left pending across a disable, controller-mode loopback and

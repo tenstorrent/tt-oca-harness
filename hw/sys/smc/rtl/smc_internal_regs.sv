@@ -181,6 +181,12 @@ module smc_internal_regs #(
   output logic [19:0] hang_det_data_accel_threshold_o,  // Stall cycles after which the
                                                         // data-accelerator AXI hang detector
                                                         // fires.
+  input  logic        hang_det_sys_axi_irq_i,  // System AXI hang detector interrupt, for
+                                               // HANG_DET_SYS_AXI_CTRL.irq.
+  input  logic        hang_det_sep_axi_irq_i,  // SEP AXI hang detector interrupt, for
+                                               // HANG_DET_SEP_AXI_CTRL.irq.
+  input  logic        hang_det_data_accel_irq_i,  // Data-accelerator AXI hang detector
+                                                  // interrupt, for HANG_DET_DATA_ACCEL_CTRL.irq.
 
   output logic                                             cla_interrupt_o,  // Debug interrupt raised by
                                                                              // a CLA external action.
@@ -1118,7 +1124,10 @@ module smc_internal_regs #(
     .hang_det_data_accel_enable_o    (hang_det_data_accel_enable_o),
     .hang_det_data_accel_irq_en_o    (hang_det_data_accel_irq_en_o),
     .hang_det_data_accel_irq_test_o  (hang_det_data_accel_irq_test_o),
-    .hang_det_data_accel_threshold_o (hang_det_data_accel_threshold_o)
+    .hang_det_data_accel_threshold_o (hang_det_data_accel_threshold_o),
+    .hang_det_sys_axi_irq_i          (hang_det_sys_axi_irq_i),
+    .hang_det_sep_axi_irq_i          (hang_det_sep_axi_irq_i),
+    .hang_det_data_accel_irq_i       (hang_det_data_accel_irq_i)
   );
 
 endmodule

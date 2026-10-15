@@ -158,13 +158,11 @@ _PROTOCOL_VIP_TESTS = {
 #     the sha256 of the model artifact, of the resolved elaboration-dependency
 #     list, and of the compile filelist the simulator was invoked with;
 #   * the sha256 of the bench code under hw/sys/smc/dv/cocotb.
-# If any of it cannot be determined the test FAILS -- a placeholder would be
-# worse than nothing, because it would make an un-attributable run look
-# attributed. A dirty tree fails too, unless SMC_DV_ALLOW_DIRTY=1 is exported
-# or the test sets `require_clean_tree = False`, and a stale model fails
-# unless SMC_DV_ALLOW_STALE_MODEL=1 is exported; the line then carries
-# `dirty_allowed=true` / `model_stale_allowed=true`, so such a log can never
-# pass as evidence unnoticed.
+# If any of it cannot be determined the test FAILS. A dirty tree fails too,
+# unless SMC_DV_ALLOW_DIRTY=1 is exported or the test sets
+# `require_clean_tree = False`, and a stale model fails unless
+# SMC_DV_ALLOW_STALE_MODEL=1 is exported; the line then carries
+# `dirty_allowed=true` / `model_stale_allowed=true`.
 _SIM_CFG_REL = Path("hw") / "sys" / "smc" / "dv" / "smc_sim_cfg.toml"
 _DV_REL = Path("hw") / "sys" / "smc" / "dv"
 _BENCH_REL = _DV_REL / "cocotb"
@@ -213,9 +211,8 @@ _MODEL_ARTIFACTS: dict[str, tuple[str, str | None, str | None]] = {
 _SNAPSHOT_CONTENT_SUFFIXES = frozenset({".pak", ".so", ".lnx86"})
 
 # A simulator reports the name of its executable, which is not always the tool
-# key above: Xcelium runs as `xmsim`. Map the reported names onto keys instead of
-# loosening the substring match below, so a simulator nobody has registered still
-# fails rather than resolving to whichever key happens to share a few letters.
+# key above: Xcelium runs as `xmsim`. The reported names map onto keys here; a
+# simulator with no entry fails rather than matching a key by substring.
 _SIM_NAME_ALIASES: dict[str, str] = {
     "xmsim": "xcelium",
     "ncsim": "xcelium",
@@ -1016,26 +1013,21 @@ class _EvidenceRecorder:
     BASE_IDS = frozenset({"CHK-BUILD-MODEL-IDENTITY"})
     BASE_PREFIXES = ("CHK-PROBE-",)
 
-    # Leaves that emit no CHK-* line of their own, with the channel each one
-    # grades through instead. Every entry is a LOGGING gap, not a verification
-    # gap: each grades through sequence-level asserts, the scoreboard's
-    # ``expected=`` compares, or a protocol-VIP record with a stimulus floor,
-    # and none is a clean exit that checks nothing. Naming them is what lets the
-    # gate below be unconditional for every other leaf.
+    # Leaves allowed to emit no CHK-* line of their own, with the channel each
+    # one grades through instead: sequence-level asserts, the scoreboard's
+    # ``expected=`` compares, or a protocol-VIP record with a stimulus floor.
+    # Naming them lets the gate below be unconditional for every other leaf.
     #
-    # owner: SMC DV. opened: 2026-09-13, from the leaves that emitted no token
-    # of their own at introduction. review_date: NO_OWN_EVIDENCE_REVIEW_DATE.
-    # Closes when empty. Keys must stay inside NO_OWN_EVIDENCE_CEILING (the
-    # set at introduction); a new name fails the run. To remove an entry, make
-    # the check that already runs log a ``CHK-<ID>:`` line where it happens --
-    # in the sequence, not here.
+    # Keys must stay inside NO_OWN_EVIDENCE_CEILING; a new name fails the run.
+    # To remove an entry, make the check that already runs log a ``CHK-<ID>:``
+    # line where it happens, in the sequence.
     NO_OWN_EVIDENCE: dict[str, str] = {}
 
     # Past this date, ``_finalize_evidence`` warns on every run while the set is
     # non-empty. Move it only after re-reading each entry that remains.
     NO_OWN_EVIDENCE_REVIEW_DATE = "2026-10-15"
 
-    # Set at introduction. ``NO_OWN_EVIDENCE`` may lose keys, never gain them.
+    # ``NO_OWN_EVIDENCE`` may lose keys, never gain them.
     NO_OWN_EVIDENCE_CEILING = frozenset(
         {
             "smc_dma_sanity_test",
@@ -1210,30 +1202,20 @@ class smc_base_test(uvm_test):
         when the measured count falls short.
 
         It is **mandatory** for a scenario-recorded item (``auto_evidence`` left
-        False). Without a floor every assert the scoreboard applies to the
-        record reduces to a constant (``N >= 0``), yet the item is still logged
-        as "protocol VIP check #k", books a ``protocol_vip`` coverage bin, and
-        can single-handedly satisfy ``check_phase``'s minimum-activity gate --
-        i.e. a record that cannot fail presented as a check
-        (``[NO-ALWAYS-PASS-CHECKER]`` / ``[NO-ZERO-ACTIVITY-PASS]``). Omitting
-        it raises here, and the scoreboard refuses the item independently.
+        False): omitting it raises here, and the scoreboard refuses the item
+        independently.
 
         The floor must be an independent constant written out at the call site,
         **not** read back from the sequence's own counter: a floor that shrinks
         with the sequence cannot catch a sequence that silently stops short.
 
         Non-CSR fabric traffic (JTAG-AXI writes and reads, output-fabric beats)
-        is reported separately from ``csr_accesses`` so it is never mislabelled
-        as CSR traffic, with its own ``min_fabric_accesses`` floor and a
-        ``fabric_access_label`` naming what it is. **The observed count is
-        measured here, not passed in**: it is read from the scoreboard's per-bus
-        tally for ``fabric_bus`` (``SmcScoreboard.axi_accesses_by_bus``, stamped
-        by the driver that completed each access). A call site that passes the
-        floor constant as its own observation makes the scoreboard's
-        ``fabric_accesses >= min_fabric_accesses`` assert a constant relation
-        (``C >= C``) while the kept log advertises a measured-vs-minimum compare
-        (``[NO-ALWAYS-PASS-CHECKER]``); measuring it here means no call site can
-        reintroduce that shape.
+        is reported separately from ``csr_accesses``, with its own
+        ``min_fabric_accesses`` floor and a ``fabric_access_label`` naming what
+        it is. **The observed count is measured here, not passed in**: it is
+        read from the scoreboard's per-bus tally for ``fabric_bus``
+        (``SmcScoreboard.axi_accesses_by_bus``, stamped by the driver that
+        completed each access).
 
         ``fabric_accesses`` is consequently an *optional exact expectation*, not
         the observation: when given, the measured count must equal it exactly, so
@@ -1241,11 +1223,7 @@ class smc_base_test(uvm_test):
         expectation-vs-measurement compare instead of a tautology.
 
         ``timeouts`` defaults to **None** = "not measured on this path" and
-        prints as ``n/a``. Printing 0 for an unmeasured counter manufactures a
-        clean-looking statistic and makes the scoreboard's
-        ``timeouts <= csr_accesses`` relation a second constant, so a literal 0
-        must be passed explicitly and only by a path that really measured zero
-        timeouts (``[EXACT-EXPECTATION]``).
+        prints as ``n/a``; pass 0 only from a path that measured zero timeouts.
         """
         if auto_evidence:
             # An auto stamp is booked in the scoreboard's activity bin, never as
@@ -1424,9 +1402,8 @@ class smc_base_test(uvm_test):
             dut.tb_spi_dq_oe_n.value = 0xFF
             if hasattr(dut, "tb_spi_miso_ext"):
                 dut.tb_spi_miso_ext.value = 0
-        # Telemetry ATB (U4-6): every lifted receiver idles quiet, receiver 0
-        # with AFREADY high. These are the values the tie-offs they replaced
-        # presented, so a test that drives none of them is unaffected.
+        # Telemetry ATB: every receiver idles quiet, receiver 0 with AFREADY
+        # high, so a test that drives none of them sees idle inputs.
         if hasattr(dut, "tb_telemetry0_atvalid"):
             dut.tb_telemetry0_atdata.value = 0
             dut.tb_telemetry0_atid.value = 0
@@ -1508,12 +1485,8 @@ class smc_base_test(uvm_test):
     async def _await_cold_reset_release(self) -> int:
         """Bounded wait until the cold reset chain is observed released.
 
-        Bring-up is not gated by a bare
-        ``ClockCycles(clk_ref_i, post_reset_settle_cycles)``: a magic count
-        passes on luck of sim timing and silently lets every later SAMPLE run
-        against a still-asserted reset chain ([NO-BLIND-DELAY-SYNC]). Expiry
-        here is a testcase failure with last-state diagnostics
-        ([TIMEOUT-MUST-FAIL]). Returns the number of ``clk_ref_i`` cycles waited.
+        Expiry raises with the last observed state. Returns the number of
+        ``clk_ref_i`` cycles waited.
         """
         dut = cocotb.top
         bound = max(self.cfg.post_reset_settle_cycles, 2000)
@@ -1574,12 +1547,10 @@ class smc_base_test(uvm_test):
         # Prefer the per-test class attribute; fall back to the name map.
         kind = self.protocol_vip_kind or _PROTOCOL_VIP_TESTS.get(test_name)
         if getattr(self, "auto_protocol_vip", True) and kind is not None:
-            # Auto stamp, NOT evidence of protocol behaviour. It carries only
-            # measured numbers (the SYS-AXI transaction count the scoreboard
-            # observed), declares `auto_evidence=True` so the scoreboard books
-            # it as an activity stamp in its own coverage bin rather than a
-            # check, and reports timeouts as "not measured". A stamp with a
-            # canned count could not fail ([NO-ALWAYS-PASS-CHECKER]).
+            # Auto stamp, not evidence of protocol behaviour: `auto_evidence=True`
+            # books it in the scoreboard's activity bin, never as a check.
+            # The count is the scoreboard's own SYS-AXI tally, and
+            # `timeouts=None` prints as "not measured".
             #
             # A scenario that wants a real protocol VIP record sets
             # `auto_protocol_vip = False` and calls record_protocol_vip() with

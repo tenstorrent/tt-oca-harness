@@ -3,8 +3,9 @@
 """Write every read-only MMR of the DFD blocks and require the write to be ignored.
 
 Writes every register of the `cla`, `dst`, `dst_sink` and `funnel` sub-blocks
-that the generated map gives no software-writable field (35 in the current map), with the CLA disarmed, and holds
-each one that reads the same value twice running to returning it again.
+that the generated map gives no software-writable field, with the CLA
+disarmed, and holds each one that reads the same value twice running to
+returning it again.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from smc_base_test import smc_base_test
 # sequence that silently stopped issuing accesses.
 #
 #   the CDbgClaCtrlStatus disarmed precheck                                   1
-#   35 read-only registers in the current map, 4 accesses each: the settle
+#   35 read-only registers, 4 accesses each: the settle
 #     read, the before read, the write, and the read after it               140
 #                                                                         ------
 #                                                                            141

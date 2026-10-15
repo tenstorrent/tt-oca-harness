@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared SEP_IN AXI decode probes for the address-map testcases.
 
-Three probe shapes, each fail-capable on its own:
+Probe shapes, each fail-capable on its own:
 
 * ``read_reset`` -- an exact compare of a register against its generated
   reset value. Only registers whose reset is non-zero, or which sit next to a
@@ -33,7 +33,6 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 AXI_RESP_OKAY = 0
@@ -41,8 +40,8 @@ AXI_RESP_DECERR = 3
 
 # The probed word inside the adopter external window: the port may carry the
 # full local address or the window offset, so both are compared on the window
-# bits above the byte lane.
-_EXTERNAL_WORD_MASK = (smc_addr("SMC_TOP_SMC_EXTERNAL_SIZE") - 1) & ~0x3
+# bits above the byte lane of the 4 MiB window (smc_pkg::SmcExternalWindowSize).
+_EXTERNAL_WORD_MASK = (0x40_0000 - 1) & ~0x3
 
 # Cycles the external-window activity sampler keeps running after the access
 # completes, so a request that is still being drained is not missed.
@@ -50,7 +49,7 @@ _EXTERNAL_DRAIN_CYCLES = 8
 
 
 class SmcDecodeProbeSeq(SmcCsrSeq):
-    """CSR sequence base with the three decode probe shapes and a cell ledger."""
+    """CSR sequence base with the decode probe shapes and a cell ledger."""
 
     def __init__(self, name: str) -> None:
         super().__init__(name)

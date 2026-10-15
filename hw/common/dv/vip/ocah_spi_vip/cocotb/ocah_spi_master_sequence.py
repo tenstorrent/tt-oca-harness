@@ -14,8 +14,10 @@ The sequence has no SV-UVM twin: the package ships the cocotb realization only.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from .ocah_spi_flash_checker import OcahSpiFlashChecker
-from .ocah_spi_master_bfm import OcahSpiMasterBfm
+from .ocah_spi_master_bfm import OcahSpiMasterBfm, OcahSpiMasterBfmError
 from .ocah_spi_types import OcahSpiOpcode
 
 __all__ = ["OcahSpiMasterSequence"]
@@ -79,14 +81,33 @@ class OcahSpiMasterSequence:
         dummy_bytes: int = 0,
         tx: bytes = b"",
         rx_len: int = 0,
+        tail_bits: int = 0,
+        require_drive: bool = True,
     ) -> bytes:
-        """One frame of any opcode; the response is kept under that opcode."""
+        """One frame of any opcode; the response is kept under that opcode.
+
+        ``require_drive=False`` is for a frame the device must not answer
+        (see ``OcahSpiMasterBfm.transfer``).
+        """
         data = await self.bfm.transfer(
-            opcode, addr=addr, dummy_bytes=dummy_bytes, tx=tx, rx_len=rx_len
+            opcode,
+            addr=addr,
+            dummy_bytes=dummy_bytes,
+            tx=tx,
+            rx_len=rx_len,
+            tail_bits=tail_bits,
+            require_drive=require_drive,
         )
         if rx_len:
             self._record(int(opcode), data)
         return data
+
+    async def raw_frame(self, bits: Sequence[int]) -> list[int]:
+        """One chip-select frame of exactly ``bits`` on MOSI; returns the MISO bits.
+
+        The frame is not recorded as a response: it may end in any phase.
+        """
+        return await self.bfm.raw_frame(bits)
 
     # ------------------------------------------------------------------
     # Host-side observations
@@ -97,9 +118,17 @@ class OcahSpiMasterSequence:
         return list(self._responses.get(int(opcode), []))
 
     def check_host_responses(self) -> None:
-        """Pair every recorded response with the device's record through the checker."""
+        """Pair every recorded response with the device's record through the checker.
+
+        Raises ``OcahSpiMasterBfmError`` when no response was recorded, so a
+        run whose reads never completed cannot pass this call.
+        """
         if self.checker is None:
             raise ValueError("check_host_responses() needs a checker")
+        if not self._responses:
+            raise OcahSpiMasterBfmError(
+                "check_host_responses(): the controller recorded no response to compare"
+            )
         for opcode, observed in self._responses.items():
             self.checker.check_host_responses(opcode, observed)
 

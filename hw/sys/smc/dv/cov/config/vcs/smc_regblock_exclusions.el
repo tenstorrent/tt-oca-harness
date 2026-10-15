@@ -23,7 +23,7 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "2347466248 1735571216"
+CHECKSUM: "1642113637 1735571216"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: avsbus_controller
 Condition 81 "3153649340" "(hwif_out.AVS_CMD.req && hwif_out.AVS_CMD.req_is_wr) 1 -1" (2 "10")
@@ -274,7 +274,7 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "1584876630 2977940430"
+CHECKSUM: "3413393998 2977940430"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: i2c_core
 Condition 23 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
@@ -494,9 +494,10 @@ Branch 142 "4143980261" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 144 "3094198831" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 206 "163551211" "(~arst_n)" (2) "(~arst_n) 0,0"
 
-CHECKSUM: "628509044 3938785771"
+CHECKSUM: "2605830346 3938785771"
 ANNOTATION: "SMC-REGBLOCK-A4-READNEVERERRORS: in this block reg_re and reg_we are mutually exclusive, wr_err is gated on reg_we and addrmiss requires that no address hit, so a read that hits an address always sees reg_error low and the crossed term cannot occur."
 MODULE: idma_reg64_2d_reg_top
+Condition 138 "250880070" "(addr_hit[1] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 Condition 139 "4149940944" "(addr_hit[2] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 Condition 140 "2155151428" "(addr_hit[3] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 Condition 141 "3745726092" "(addr_hit[4] & reg_re & ((!reg_error))) 1 -1" (3 "110")
@@ -643,7 +644,7 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "486155753 504970378"
+CHECKSUM: "62697152 504970378"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
@@ -873,7 +874,7 @@ Branch 4 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 Branch 11 "1764768895" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 13 "2429376722" "(~arst_n)" (2) "(~arst_n) 0,0"
 
-CHECKSUM: "716831743 656965095"
+CHECKSUM: "3897359831 656965095"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: uart_core
 Condition 50 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
@@ -917,14 +918,14 @@ Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[0].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[1].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -940,7 +941,7 @@ Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[2].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -956,7 +957,7 @@ Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[3].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -972,7 +973,7 @@ Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[4].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -988,7 +989,7 @@ Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[5].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1004,7 +1005,7 @@ Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[6].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1020,7 +1021,7 @@ Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[7].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1031,7 +1032,7 @@ Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[0].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1044,7 +1045,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[10].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1072,7 +1073,7 @@ Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[11].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1100,7 +1101,7 @@ Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[12].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1128,7 +1129,7 @@ Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[13].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1156,7 +1157,7 @@ Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[14].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1184,7 +1185,7 @@ Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[15].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1212,7 +1213,7 @@ Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[1].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1227,7 +1228,7 @@ Condition 48 "3440117280" "(decoded_reg_strb.END_ADDR && decoded_req_is_wr) 1 -1
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[2].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1242,7 +1243,7 @@ Condition 48 "3440117280" "(decoded_reg_strb.END_ADDR && decoded_req_is_wr) 1 -1
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[3].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1257,7 +1258,7 @@ Condition 48 "3440117280" "(decoded_reg_strb.END_ADDR && decoded_req_is_wr) 1 -1
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[4].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1285,7 +1286,7 @@ Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[5].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1313,7 +1314,7 @@ Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[6].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1341,7 +1342,7 @@ Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[7].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1369,7 +1370,7 @@ Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[8].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1397,7 +1398,7 @@ Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[9].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1425,7 +1426,7 @@ Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[0].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
@@ -1435,7 +1436,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[1].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1450,7 +1451,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[2].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1470,7 +1471,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[3].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1490,7 +1491,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[4].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1510,7 +1511,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[5].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1530,7 +1531,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[6].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1550,7 +1551,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[7].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1570,7 +1571,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[0].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1580,7 +1581,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[10].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1593,7 +1594,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[11].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1606,7 +1607,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[12].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1619,7 +1620,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[13].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1632,7 +1633,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[14].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1643,7 +1644,7 @@ Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[15].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1656,7 +1657,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[1].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1669,7 +1670,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[2].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1682,7 +1683,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[3].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1695,7 +1696,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[4].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1708,7 +1709,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[5].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1721,7 +1722,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[6].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1734,7 +1735,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[7].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1747,7 +1748,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[8].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1760,7 +1761,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[9].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1773,7 +1774,7 @@ Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[0].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1788,7 +1789,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[1].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1808,7 +1809,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[2].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1828,7 +1829,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[3].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1848,7 +1849,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[4].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1868,7 +1869,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[5].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1888,7 +1889,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[6].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1908,7 +1909,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[7].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1928,7 +1929,7 @@ Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1059230947 1317082537"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer.u_zeroer_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -1936,7 +1937,7 @@ Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "3896755233 3909592511"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_avsbus_controller_reg_inst
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "612230268" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (1 "00")
 Condition 32 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
 Condition 70 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
@@ -1959,7 +1960,7 @@ Condition 145 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11"
 
 CHECKSUM: "3452964890 3380696541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2073,14 +2074,6 @@ Condition 430 "1064505780" "(field_storage.CONTROLLER_EVENTS.ARBITRATION_LOST.va
 Condition 430 "1064505780" "(field_storage.CONTROLLER_EVENTS.ARBITRATION_LOST.value & ( ~ (decoded_wr_data[3] & decoded_wr_biten[3]) )) 1 -1" (2 "10")
 Condition 432 "1802705221" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (1 "01")
 Condition 432 "1802705221" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
-Condition 438 "1617170265" "(field_storage.TARGET_EVENTS.BUS_TIMEOUT.value & ( ~ (decoded_wr_data[1] & decoded_wr_biten[1]) )) 1 -1" (2 "10")
-Condition 440 "3170630447" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 442 "2422795410" "(field_storage.TARGET_EVENTS.ARBITRATION_LOST.value & ( ~ (decoded_wr_data[2] & decoded_wr_biten[2]) )) 1 -1" (2 "10")
-Condition 444 "1513541481" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 446 "3515160092" "(field_storage.TARGET_EVENTS.START_DETECT.value & ( ~ (decoded_wr_data[3] & decoded_wr_biten[3]) )) 1 -1" (2 "10")
-Condition 448 "2545097252" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
-Condition 450 "3702327324" "(field_storage.TARGET_EVENTS.STOP_DETECT.value & ( ~ (decoded_wr_data[4] & decoded_wr_biten[4]) )) 1 -1" (2 "10")
-Condition 452 "2691227685" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 482 "2483617820" "(rd_mux_addr == 8'h80) 1 -1" (2 "1")
 Condition 484 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 484 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
@@ -2109,7 +2102,7 @@ Condition 495 "2778477252" "(((|field_storage.TARGET_EVENTS.TX_PENDING.value)) |
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[0].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
@@ -2121,7 +2114,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[10].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2184,7 +2177,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[11].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2247,7 +2240,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[12].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2310,7 +2303,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[13].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2373,7 +2366,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[14].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2436,7 +2429,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[15].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2499,7 +2492,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[16].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2562,7 +2555,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[17].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2625,7 +2618,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[18].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2688,7 +2681,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[19].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2751,7 +2744,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[1].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2777,7 +2770,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[20].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2840,7 +2833,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[21].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2903,7 +2896,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[22].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -2966,7 +2959,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[23].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3029,7 +3022,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[24].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3092,7 +3085,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[25].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3155,7 +3148,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[26].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3218,7 +3211,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[27].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3281,7 +3274,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[28].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3344,7 +3337,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[29].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3407,7 +3400,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[2].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3433,7 +3426,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[30].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3496,7 +3489,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[31].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3559,7 +3552,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[32].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3622,7 +3615,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[33].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3685,7 +3678,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[34].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3748,7 +3741,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[35].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3811,7 +3804,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[36].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3874,7 +3867,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[37].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3901,7 +3894,7 @@ Condition 38 "124944398" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (3 
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[38].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3933,7 +3926,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[39].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -3965,7 +3958,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[3].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4028,7 +4021,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[40].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4060,7 +4053,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[41].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4092,7 +4085,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[42].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4124,7 +4117,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[43].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4156,7 +4149,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[44].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4188,7 +4181,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[45].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4220,7 +4213,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[46].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4252,7 +4245,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[47].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4284,7 +4277,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[48].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4316,7 +4309,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[49].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4379,7 +4372,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[4].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4442,7 +4435,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[50].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4505,7 +4498,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[51].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4568,7 +4561,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[52].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4594,7 +4587,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[53].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4657,7 +4650,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[54].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4720,7 +4713,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[55].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4783,7 +4776,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[56].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4846,7 +4839,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[57].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4909,7 +4902,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[58].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -4972,7 +4965,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[59].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5035,7 +5028,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[5].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5098,7 +5091,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[60].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5109,7 +5102,7 @@ Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[61].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5172,7 +5165,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5235,7 +5228,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[63].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5298,7 +5291,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[64].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5329,7 +5322,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[6].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5392,7 +5385,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[7].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5455,7 +5448,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[8].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5481,7 +5474,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[9].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5544,7 +5537,7 @@ Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -
 
 CHECKSUM: "2231104132 1067758899"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[0].u_telemetry_receiver.u_telemetry_receiver_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
@@ -5560,7 +5553,7 @@ Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "
 
 CHECKSUM: "2231104132 1067758899"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver.u_telemetry_receiver_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5590,7 +5583,7 @@ Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "
 
 CHECKSUM: "2231104132 1067758899"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver.u_telemetry_receiver_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5620,7 +5613,7 @@ Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "
 
 CHECKSUM: "2278098036 84113796"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5634,7 +5627,7 @@ Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "
 
 CHECKSUM: "902851981 1889139731"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5642,7 +5635,7 @@ Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "8204497 4290674178"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5674,7 +5667,7 @@ Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is
 
 CHECKSUM: "1638888483 3918030293"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (3 "11")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -5712,7 +5705,7 @@ Condition 51 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "0
 
 CHECKSUM: "2439670790 1423410759"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5723,7 +5716,7 @@ Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 
 CHECKSUM: "2278098036 84113796"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5743,7 +5736,7 @@ Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "
 
 CHECKSUM: "902851981 1889139731"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5754,7 +5747,7 @@ Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "8204497 4290674178"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5797,7 +5790,7 @@ Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is
 
 CHECKSUM: "1638888483 3918030293"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (3 "11")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -5838,7 +5831,7 @@ Condition 51 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "0
 
 CHECKSUM: "2439670790 1423410759"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (3 "11")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -5860,7 +5853,7 @@ Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 
 CHECKSUM: "2278098036 84113796"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5881,7 +5874,7 @@ Condition 93 "2166278152" "(((|field_storage.INTR_STATUS.LOG_FETCH_ERR.value)) |
 
 CHECKSUM: "902851981 1889139731"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5892,7 +5885,7 @@ Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "8204497 4290674178"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -5936,7 +5929,7 @@ Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is
 
 CHECKSUM: "1638888483 3918030293"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (3 "11")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -5977,7 +5970,7 @@ Condition 51 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "0
 
 CHECKSUM: "2439670790 1423410759"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (3 "11")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -5999,7 +5992,7 @@ Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 
 CHECKSUM: "2278098036 84113796"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -6020,7 +6013,7 @@ Condition 93 "2166278152" "(((|field_storage.INTR_STATUS.LOG_FETCH_ERR.value)) |
 
 CHECKSUM: "902851981 1889139731"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -6031,7 +6024,7 @@ Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "8204497 4290674178"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
@@ -6075,7 +6068,7 @@ Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is
 
 CHECKSUM: "1638888483 3918030293"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (3 "11")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -6116,7 +6109,7 @@ Condition 51 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "0
 
 CHECKSUM: "2439670790 1423410759"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (3 "11")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -6138,59 +6131,59 @@ Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1845094762 2497126651"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_straps_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[0].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[1].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[2].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[3].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[4].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[5].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[6].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[7].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[0].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[10].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
@@ -6199,7 +6192,7 @@ Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_add
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[11].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
@@ -6208,7 +6201,7 @@ Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_add
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[12].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
@@ -6217,7 +6210,7 @@ Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_add
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[13].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
@@ -6226,7 +6219,7 @@ Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_add
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[14].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
@@ -6235,7 +6228,7 @@ Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_add
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[15].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
@@ -6244,28 +6237,28 @@ Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_add
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[1].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[2].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[3].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[4].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
@@ -6274,7 +6267,7 @@ Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_add
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[5].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
@@ -6283,7 +6276,7 @@ Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_add
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[6].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
@@ -6292,7 +6285,7 @@ Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_add
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[7].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
@@ -6301,7 +6294,7 @@ Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_add
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[8].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
@@ -6310,7 +6303,7 @@ Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_add
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[9].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 143 "2679245510" "next_c = ((field_storage.START_ADDR.start_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
 Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~decoded_wr_biten[55:0])) | (decoded_wr_data[55:0] & decoded_wr_biten[55:0]));"
@@ -6319,202 +6312,202 @@ Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_add
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[0].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[1].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[2].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[3].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[4].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[5].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[6].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[7].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[0].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[10].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[11].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[12].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[13].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[14].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[15].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[1].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[2].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[3].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[4].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[5].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[6].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[7].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[8].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1147255362 2772554739"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[9].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[0].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[1].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[2].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[3].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[4].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[5].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[6].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[7].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1059230947 2284202446"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer.u_zeroer_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "3452964890 903339650"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 954 "2554105993" "next_c = ((field_storage.TARGET_NACK_COUNT.TARGET_NACK_COUNT.value & (~decoded_wr_biten[7:0])) | (decoded_wr_data[7:0] & decoded_wr_biten[7:0]));"
 Block 958 "3245580573" "next_c = 8'hff;"
@@ -6530,17 +6523,17 @@ Block 1206 "1044664420" "readback_data_var[0] = hwif_in.SMBUS_STATUS.SMBSUS.next
 
 CHECKSUM: "3929405118 707642691"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.u_i2c_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[0].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[10].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6559,7 +6552,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[11].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6578,7 +6571,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[12].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6597,7 +6590,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[13].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6616,7 +6609,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[14].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6635,7 +6628,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[15].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6654,7 +6647,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[16].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6673,7 +6666,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[17].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6692,7 +6685,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[18].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6711,7 +6704,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[19].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6730,12 +6723,12 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[1].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[20].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6754,7 +6747,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[21].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6773,7 +6766,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[22].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6792,7 +6785,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[23].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6811,7 +6804,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[24].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6830,7 +6823,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[25].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6849,7 +6842,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[26].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6868,7 +6861,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[27].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6887,7 +6880,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[28].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6906,7 +6899,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[29].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6925,12 +6918,12 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[2].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[30].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6949,7 +6942,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[31].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6968,7 +6961,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[32].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -6987,7 +6980,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[33].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7006,7 +6999,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[34].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7025,7 +7018,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[35].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7044,7 +7037,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[36].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7063,22 +7056,22 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[37].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[38].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[39].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[3].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7097,52 +7090,52 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[40].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[41].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[42].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[43].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[44].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[45].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[46].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[47].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[48].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[49].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7161,7 +7154,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[4].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7180,7 +7173,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[50].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7199,7 +7192,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[51].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7218,12 +7211,12 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[52].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[53].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7242,7 +7235,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[54].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7261,7 +7254,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[55].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7280,7 +7273,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[56].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7299,7 +7292,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[57].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7318,7 +7311,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[58].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7337,7 +7330,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[59].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7356,7 +7349,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[5].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7375,12 +7368,12 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[60].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[61].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7399,7 +7392,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7418,7 +7411,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[63].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7437,12 +7430,12 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[64].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[6].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7461,7 +7454,7 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[7].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7480,12 +7473,12 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[8].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "274773119 941798160"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[9].u_gpio_interface.u_gpio_intf_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 71 "589610414" "next_c = ((field_storage.DATA_CTRL.core2pad.value & (~decoded_wr_biten[0])) | (decoded_wr_data[0] & decoded_wr_biten[0]));"
 Block 77 "4091642010" "field_storage.DATA_CTRL.core2pad.value <= field_combo.DATA_CTRL.core2pad.next;"
@@ -7504,41 +7497,41 @@ Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_co
 
 CHECKSUM: "2231104132 1355226369"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[0].u_telemetry_receiver.u_telemetry_receiver_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "2231104132 1355226369"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver.u_telemetry_receiver_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 94 "935732731" "next_c = '0;"
 Block 181 "1232499426" "readback_data_var[31:0] = hwif_in.TELEMETRY_COUNTER[i0].COUNTER.next;"
 
 CHECKSUM: "2231104132 1355226369"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver.u_telemetry_receiver_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 94 "935732731" "next_c = '0;"
 Block 181 "1232499426" "readback_data_var[31:0] = hwif_in.TELEMETRY_COUNTER[i0].COUNTER.next;"
 
 CHECKSUM: "2278098036 1267560476"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "902851981 3186259801"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "8204497 930279896"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1638888483 2986629353"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
 Block 7 "551694626" "axil_arvalid <= '1;"
 Block 29 "1115428250" "cpuif_req = '1;"
@@ -7552,22 +7545,22 @@ Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "2439670790 25316389"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "2278098036 1267560476"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "902851981 3186259801"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "8204497 930279896"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 242 "236095624" "next_c = '1;"
 Block 253 "1373107836" "next_c = '1;"
@@ -7575,7 +7568,7 @@ Block 275 "1279213479" "next_c = '1;"
 
 CHECKSUM: "1638888483 2986629353"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
 Block 7 "551694626" "axil_arvalid <= '1;"
 Block 29 "1115428250" "cpuif_req = '1;"
@@ -7589,7 +7582,7 @@ Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "2439670790 25316389"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
 Block 7 "551694626" "axil_arvalid <= '1;"
 Block 29 "823432019" "cpuif_req = '1;"
@@ -7603,17 +7596,17 @@ Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "2278098036 1267560476"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "902851981 3186259801"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "8204497 930279896"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 242 "236095624" "next_c = '1;"
 Block 253 "1373107836" "next_c = '1;"
@@ -7622,7 +7615,7 @@ Block 275 "1279213479" "next_c = '1;"
 
 CHECKSUM: "1638888483 2986629353"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
 Block 7 "551694626" "axil_arvalid <= '1;"
 Block 29 "1115428250" "cpuif_req = '1;"
@@ -7636,7 +7629,7 @@ Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "2439670790 25316389"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
 Block 7 "551694626" "axil_arvalid <= '1;"
 Block 29 "823432019" "cpuif_req = '1;"
@@ -7650,17 +7643,17 @@ Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "2278098036 1267560476"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "902851981 3186259801"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "8204497 930279896"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 242 "236095624" "next_c = '1;"
 Block 253 "1373107836" "next_c = '1;"
@@ -7669,7 +7662,7 @@ Block 275 "1279213479" "next_c = '1;"
 
 CHECKSUM: "1638888483 2986629353"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
 Block 7 "551694626" "axil_arvalid <= '1;"
 Block 29 "1115428250" "cpuif_req = '1;"
@@ -7683,7 +7676,7 @@ Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "2439670790 25316389"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
 Block 7 "551694626" "axil_arvalid <= '1;"
 Block 29 "823432019" "cpuif_req = '1;"
@@ -7697,12 +7690,12 @@ Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1845094762 2182253585"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_straps_reg
-ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
+ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[0].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -7730,7 +7723,7 @@ Toggle hwif_out.REGION.region_start.start_addr.value [0] "logic hwif_out.REGION.
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[1].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -7755,7 +7748,7 @@ Toggle hwif_out.REGION.region_start.start_addr.value [7:1] "logic hwif_out.REGIO
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[2].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -7783,7 +7776,7 @@ Toggle hwif_out.REGION.region_start.start_addr.value [0] "logic hwif_out.REGION.
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[3].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -7808,7 +7801,7 @@ Toggle hwif_out.REGION.region_start.start_addr.value [7:2] "logic hwif_out.REGIO
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[4].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -7836,7 +7829,7 @@ Toggle hwif_out.REGION.region_start.start_addr.value [1:0] "logic hwif_out.REGIO
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[5].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -7865,7 +7858,7 @@ Toggle hwif_out.REGION.region_start.start_addr.value [1] "logic hwif_out.REGION.
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[6].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -7893,7 +7886,7 @@ Toggle hwif_out.REGION.region_start.start_addr.value [0] "logic hwif_out.REGION.
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[7].u_smc_alias_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -7921,7 +7914,7 @@ Toggle hwif_out.REGION.region_start.start_addr.value [7:3] "logic hwif_out.REGIO
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[0].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -7946,7 +7939,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[10].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -7975,7 +7968,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[11].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8004,7 +7997,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[12].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8033,7 +8026,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[13].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8062,7 +8055,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[14].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8091,7 +8084,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[15].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8120,7 +8113,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[1].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8150,7 +8143,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[2].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8180,7 +8173,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[3].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8210,7 +8203,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[4].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8239,7 +8232,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[5].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8268,7 +8261,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[6].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8297,7 +8290,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[7].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8326,7 +8319,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[8].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8355,7 +8348,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[9].u_inbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [4:3] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
@@ -8384,7 +8377,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[0].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wdata [62:26] "net s_axil_wdata[63:0]"
@@ -8406,7 +8399,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [21:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[1].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8433,7 +8426,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[2].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8458,7 +8451,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [12:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[3].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8481,7 +8474,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[4].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8504,7 +8497,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [13:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[5].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8529,7 +8522,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[6].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8552,7 +8545,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [12:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[7].u_smc_mmode_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8575,7 +8568,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[0].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
@@ -8618,7 +8611,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[10].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8648,7 +8641,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[11].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8678,7 +8671,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[12].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8708,7 +8701,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[13].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8738,7 +8731,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[14].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -8771,7 +8764,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[15].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8801,7 +8794,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[1].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8835,7 +8828,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[2].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8865,7 +8858,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[3].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8895,7 +8888,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[4].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8925,7 +8918,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[5].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8955,7 +8948,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[6].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -8985,7 +8978,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[7].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -9015,7 +9008,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[8].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -9045,7 +9038,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[9].u_outbound_filter_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -9075,7 +9068,7 @@ Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.lo
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[0].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -9115,7 +9108,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[1].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -9155,7 +9148,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[2].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -9195,7 +9188,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[3].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -9235,7 +9228,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[4].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -9277,7 +9270,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[5].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -9317,7 +9310,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[6].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -9357,7 +9350,7 @@ Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.r
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[7].u_smc_xvisor_remap_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [2:0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -9395,9 +9388,9 @@ Toggle hwif_out.REGION.region_attrs.offset.value [21] "logic hwif_out.REGION.reg
 Toggle hwif_out.REGION.region_attrs.offset.value [19:16] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
-CHECKSUM: "486155753 1454068545"
+CHECKSUM: "62697152 4010233410"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_base_config_wrap.u_smc_base_config_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[6:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -9426,7 +9419,7 @@ Toggle hwif_out.GLOBAL_BASE.base.value [29:0] "logic hwif_out.GLOBAL_BASE.base.v
 
 CHECKSUM: "3363015095 11353493"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfx_ctrl_status_wrap.u_dfx_ctrl_status_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -9443,7 +9436,7 @@ Toggle hwif_in.STATUS_SMU.mem_repair_done.next "logic hwif_in.STATUS_SMU.mem_rep
 
 CHECKSUM: "2949011289 1417411540"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.u_cpu_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[9:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -9472,157 +9465,154 @@ Toggle hwif_in.WB_PC_CORE3[0].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[0].pc.n
 Toggle hwif_in.WB_PC_CORE3[0].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[0].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[0].pc.next [0] "logic hwif_in.WB_PC_CORE3[0].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE3[0].pc.next [13] "logic hwif_in.WB_PC_CORE3[0].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[0].pc.next [11] "logic hwif_in.WB_PC_CORE3[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[1].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[1].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[1].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[1].pc.next [0] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[1].pc.next [17] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE3[1].pc.next [13] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[1].pc.next [11] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[2].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[2].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[2].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[2].pc.next [0] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[2].pc.next [17] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE3[2].pc.next [13] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[2].pc.next [11] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[3].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[3].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[3].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[3].pc.next [0] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[3].pc.next [17] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE3[3].pc.next [13] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[3].pc.next [11] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[4].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[4].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE3[4].pc.next [16:13] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE3[4].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[4].pc.next [0] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[4].pc.next [17] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[4].pc.next [11] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[5].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[5].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE3[5].pc.next [16:13] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE3[5].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[5].pc.next [0] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[5].pc.next [17] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE3[5].pc.next [13] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[5].pc.next [11] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[6].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[6].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE3[6].pc.next [16:13] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE3[6].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[6].pc.next [0] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[6].pc.next [17] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE3[6].pc.next [13] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[6].pc.next [11] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[7].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[7].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE3[7].pc.next [16:13] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE3[7].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[7].pc.next [0] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[7].pc.next [31:30] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[7].pc.next [18:17] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE3[7].pc.next [13] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[7].pc.next [11] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[0].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[0].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[0].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[0].pc.next [0] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE2[0].pc.next [13] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[0].pc.next [11] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[1].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[1].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[1].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[1].pc.next [0] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[1].pc.next [17] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE2[1].pc.next [13] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[1].pc.next [11] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[2].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[2].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[2].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[2].pc.next [0] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[2].pc.next [17] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE2[2].pc.next [13] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[2].pc.next [11] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[3].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[3].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[3].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[3].pc.next [0] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[3].pc.next [17] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE2[3].pc.next [13] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[3].pc.next [11] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[4].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[4].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE2[4].pc.next [16:13] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE2[4].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[4].pc.next [0] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[4].pc.next [17] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[4].pc.next [11] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[5].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[5].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE2[5].pc.next [16:13] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE2[5].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[5].pc.next [0] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[5].pc.next [17] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE2[5].pc.next [13] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[5].pc.next [11] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[6].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[6].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE2[6].pc.next [16:13] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE2[6].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[6].pc.next [0] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[6].pc.next [17] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE2[6].pc.next [13] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[6].pc.next [11] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[7].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[7].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE2[7].pc.next [16:13] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE2[7].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[7].pc.next [0] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[7].pc.next [31:30] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[7].pc.next [18:17] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE2[7].pc.next [13] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[7].pc.next [11] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[0].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[0].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[0].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[0].pc.next [0] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE1[0].pc.next [13] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[0].pc.next [11] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[1].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[1].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[1].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[1].pc.next [0] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[1].pc.next [17] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE1[1].pc.next [13] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[1].pc.next [11] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[2].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[2].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[2].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[2].pc.next [0] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[2].pc.next [17] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE1[2].pc.next [13] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[2].pc.next [11] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[3].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[3].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[3].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[3].pc.next [0] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[3].pc.next [17] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE1[3].pc.next [13] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[3].pc.next [11] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[4].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[4].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE1[4].pc.next [16:13] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE1[4].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[4].pc.next [0] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[4].pc.next [17] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[4].pc.next [11] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[5].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[5].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE1[5].pc.next [16:13] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE1[5].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[5].pc.next [0] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[5].pc.next [17] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE1[5].pc.next [13] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[5].pc.next [11] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[6].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[6].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE1[6].pc.next [16:13] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE1[6].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[6].pc.next [0] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[6].pc.next [17] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE1[6].pc.next [13] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[6].pc.next [11] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[7].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[7].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE1[7].pc.next [16:13] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE1[7].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[7].pc.next [0] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[7].pc.next [31:30] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[7].pc.next [18:17] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE1[7].pc.next [13] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[7].pc.next [11] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE0[0].pc.next [57:32] "logic hwif_in.WB_PC_CORE0[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE0[0].pc.next [29:19] "logic hwif_in.WB_PC_CORE0[0].pc.next[57:0]"
@@ -9712,10 +9702,9 @@ Toggle hwif_out.SCRATCH[2].data.value [31] "logic hwif_out.SCRATCH[2].data.value
 Toggle hwif_out.SCRATCH[2].data.value [6] "logic hwif_out.SCRATCH[2].data.value[31:0]"
 Toggle hwif_out.SCRATCH[2].data.value [4:3] "logic hwif_out.SCRATCH[2].data.value[31:0]"
 Toggle hwif_out.SCRATCH[3].data.value [31] "logic hwif_out.SCRATCH[3].data.value[31:0]"
-Toggle 1to0 hwif_out.SCRATCH[3].data.value [29] "logic hwif_out.SCRATCH[3].data.value[31:0]"
 Toggle 1to0 hwif_out.SCRATCH[3].data.value [24] "logic hwif_out.SCRATCH[3].data.value[31:0]"
-Toggle 1to0 hwif_out.SCRATCH[3].data.value [17] "logic hwif_out.SCRATCH[3].data.value[31:0]"
-Toggle 1to0 hwif_out.SCRATCH[3].data.value [12:11] "logic hwif_out.SCRATCH[3].data.value[31:0]"
+Toggle 1to0 hwif_out.SCRATCH[3].data.value [20] "logic hwif_out.SCRATCH[3].data.value[31:0]"
+Toggle 1to0 hwif_out.SCRATCH[3].data.value [14:10] "logic hwif_out.SCRATCH[3].data.value[31:0]"
 Toggle 1to0 hwif_out.SCRATCH[3].data.value [4] "logic hwif_out.SCRATCH[3].data.value[31:0]"
 Toggle 1to0 hwif_out.SCRATCH[3].data.value [0] "logic hwif_out.SCRATCH[3].data.value[31:0]"
 Toggle hwif_out.SCRATCH[4].data.value [31] "logic hwif_out.SCRATCH[4].data.value[31:0]"
@@ -9867,7 +9856,7 @@ Toggle 1to0 hwif_out.RESET_VECTOR[3].vector.value [17] "logic hwif_out.RESET_VEC
 
 CHECKSUM: "3452964890 1419707144"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
 Toggle 1to0 s_axil_awprot [1] "net s_axil_awprot[2:0]"
@@ -9886,7 +9875,7 @@ Toggle hwif_out.TARGET_ACK_CTRL.NBYTES.value [8:2] "logic hwif_out.TARGET_ACK_CT
 
 CHECKSUM: "3452964890 1419707144"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
 Toggle 1to0 s_axil_awprot [1] "net s_axil_awprot[2:0]"
@@ -9920,9 +9909,10 @@ Toggle hwif_out.SMBUS_CTRL.SMBALERT.value "logic hwif_out.SMBUS_CTRL.SMBALERT.va
 
 CHECKSUM: "3929405118 973666922"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.u_i2c_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
+Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
 Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [31:9] "logic s_axil_rdata[31:0]"
@@ -9932,7 +9922,7 @@ Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
 CHECKSUM: "3705669176 786261837"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller.u_efuse_interface_ctrl_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_apb_pprot [2] "net s_apb_pprot[2:0]"
 Toggle s_apb_pprot [0] "net s_apb_pprot[2:0]"
 Toggle s_apb_paddr [1:0] "net s_apb_paddr[4:0]"
@@ -9960,7 +9950,7 @@ Toggle hwif_in.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error.next "logic 
 
 CHECKSUM: "3619095557 4264359562"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.u_smc_chip_config_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
@@ -9975,7 +9965,7 @@ Toggle hwif_in.CHIP_ID.chip_id.next "logic hwif_in.CHIP_ID.chip_id.next[31:0]"
 
 CHECKSUM: "346538436 3233800566"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.u_smc_ndm_reset_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[3:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
@@ -9988,7 +9978,7 @@ Toggle hwif_in.NDMRESET_REQUEST.ndmreset_request.next [31:4] "logic hwif_in.NDMR
 
 CHECKSUM: "3502264770 1350281502"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.u_smc_scratch_reg_cold
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
@@ -9999,7 +9989,7 @@ Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
 CHECKSUM: "3502264770 1350281502"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.u_smc_scratch_reg_cold_warm
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[4:0]"
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_wready "logic s_axil_wready"
@@ -10011,7 +10001,7 @@ Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
 CHECKSUM: "1251971546 306831124"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_reset_unit_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[7:0]"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
@@ -10123,7 +10113,7 @@ Toggle 1to0 hwif_out.SS_CONFIG_LOCK.config_lock.value [1] "logic hwif_out.SS_CON
 
 CHECKSUM: "3416439943 1716376841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_system_timer_octs.u_reg
-ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle 1to0 s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle 1to0 s_axil_arprot [2] "net s_axil_arprot[2:0]"

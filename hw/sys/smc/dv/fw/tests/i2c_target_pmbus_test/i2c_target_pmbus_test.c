@@ -18,9 +18,8 @@
  * The model implements a PMBus subset (PMBus Power System Mgmt Protocol Spec
  * Part II, Rev 1.3.1, Table 31-1). WRITE_PROTECT either disables all writes
  * except to WRITE_PROTECT itself or enables writes to all commands, so this
- * model rejects CLEAR_FAULTS while protection is on. Whether this device
- * should exempt CLEAR_FAULTS is an open design decision, so the sequence only
- * exercises CLEAR_FAULTS with protection off.
+ * model rejects CLEAR_FAULTS while protection is on, and the sequence
+ * exercises CLEAR_FAULTS only with protection off.
  *
  * scratch[2] is the virtual console (simputs) and must not be reused here;
  * publish() defines the record layout the VIP reads.
@@ -177,8 +176,7 @@ static void publish(uint32_t framing_any, bool data_bearing, uint32_t framing_da
  * selects which register the Read transfer immediately after it will fetch. */
 static void handle_command_phase(uint8_t cmd) {
     if (cmd == PMBUS_CMD_CLEAR_FAULTS) {
-        /* Send Byte. Subject to WRITE_PROTECT like any other write; see the
-         * note in the file header about why no exemption is assumed. */
+        /* Send Byte: subject to WRITE_PROTECT like any other write. */
         if (g_write_protect != PMBUS_WP_NONE) {
             g_blocked_writes++;
         } else {

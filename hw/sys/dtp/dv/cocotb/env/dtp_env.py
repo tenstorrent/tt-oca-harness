@@ -1,12 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DTP UVM environment: agents, the primary-TAP scan builder, reference models, scoreboards."""
+"""DTP environment: agents, the primary-TAP scan builder, reference models, scoreboards.
+
+Builds the JTAG, bridge-port, XTRIG and downstream-STAP agents, the scan
+builder that reconstructs primary-TAP scans from the pins, one reference model
+per scoreboard feature, the always-on ``DtpScoreboard`` and the opt-in shared
+AXI scoreboard, and wires every monitor and reference-model stream in
+``connect_phase``. The SV-UVM twin is ``dtp_env``.
+"""
 
 from __future__ import annotations
 
 from pyuvm import ConfigDB, uvm_env
 
-from .dtp_axi_agent import PORT_MONITOR_NAMES, DtpAxiAgent
+from .dtp_axi_agent import DtpAxiAgent
 from .dtp_axi_scoreboard import DtpAxiScoreboard
 from .dtp_bypass_ref_model import DtpBypassRefModel
 from .dtp_idcode_ref_model import DtpIdcodeRefModel
@@ -23,13 +30,18 @@ from .dtp_types import (
     DTP_FEATURE_JTAG2AXI_STATUS,
     DTP_FEATURE_XTRIG_CSR,
     DTP_FEATURE_XTRIG_DECODE,
+    JTAG2AXI_TARGETS,
 )
 from .dtp_xtrig_agent import DtpXtrigAgent
 from .dtp_xtrig_csr_ref_model import DtpXtrigCsrRefModel
 from .dtp_xtrig_decode_ref_model import DtpXtrigDecodeRefModel
 
+__all__ = ["DtpEnv"]
+
 
 class DtpEnv(uvm_env):
+    """The DTP agents, reference models and scoreboards, and their connections."""
+
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.jtag_agent = DtpJtagAgent("jtag_agent", self)
@@ -86,7 +98,8 @@ class DtpEnv(uvm_env):
         events.connect(status.event_export)
         status.expected_ap.connect(sb.expected_export(DTP_FEATURE_JTAG2AXI_STATUS))
         scans.connect(sb.observed_export(DTP_FEATURE_JTAG2AXI_STATUS))
-        for target, source in PORT_MONITOR_NAMES.items():
+        for target, target_cfg in JTAG2AXI_TARGETS.items():
+            source = target_cfg.monitor_name
             req.bind_port(target, source)
             status.bind_port(target, source)
             sb.bind_port(target, source)

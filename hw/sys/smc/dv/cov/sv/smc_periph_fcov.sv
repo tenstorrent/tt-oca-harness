@@ -4,10 +4,7 @@
 // SMC peripheral functional coverage: the `i2c_state`, `gpio_state` and
 // `irq_state` intent of SMC_FCOV.adoc as native cover-property points.
 //
-// SMC_FCOV.adoc records all three Python bins saturating at unique=1 for want
-// of an active driver. The tuples are not mirrored here: a bin that can only
-// take one value raises the `user` percentage without proving anything. Each
-// observable is its own point, so an undriven source stays a named,
+// Each observable is its own point, so an undriven source stays a named,
 // individually reportable hole the coverage policy can carry with evidence.
 //
 // One instance in the shared tb_top serves both flows. Every port is a
@@ -231,9 +228,7 @@ module smc_periph_fcov #(
   `OCAH_FCOV_COVER(c_gpio_boot_stall_pad_low, gpio_pad57_low_e, clk_periph_i, in_reset)
 
   // ------------------------------------------------------------------
-  // Interrupts. One point per source: the `irq_state` 3-tuple cannot say
-  // which of its members fired, and the sources outside that tuple were
-  // not represented at all.
+  // Interrupts. One point per source.
   // ------------------------------------------------------------------
   wire irq_sync_e = (sync_irq_i === 1'b1);
   wire irq_gpio_e = (gpio_irq_any_i === 1'b1);

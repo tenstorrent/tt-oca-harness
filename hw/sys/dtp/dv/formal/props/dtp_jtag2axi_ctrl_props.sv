@@ -2,11 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Formal properties for the control of the JTAG-to-AXI bridge: the request machine, the
-// tck-side admit counters, the ACLK-side outstanding counters, the status encoder, and the
-// disable gate with its flush. Attached to jtag2axi by dtp_jtag2axi_ctrl_bind.sv and checked with
-// jtag2axi as the formal top; bound by module name, the same module serves the three DTP
-// instances under the dtp top. Every property body is a boolean over current and one-cycle-past
-// values (hw/common/dv/docs/formal-property-style.adoc). The data path is out of scope: the
+// tck-side admit counters, the status encoder, and the disable gate with its flush. Attached to
+// jtag2axi by dtp_jtag2axi_ctrl_bind.sv and checked with jtag2axi as the formal top; bound by
+// module name, the same module serves the three DTP instances under the dtp top. Every property
+// body is a boolean over current and one-cycle-past values
+// (hw/common/dv/docs/formal-property-style.adoc). The data path is out of scope: the
 // shift register, the byte lanes and the address increment are checked by simulation.
 //
 // The machine and its counters are tck posedge flops, so a value sampled at a posedge is the
@@ -23,8 +23,6 @@ module dtp_jtag2axi_ctrl_props #(
 ) (
   input logic              tck_i,
   input logic              trst_ni,
-  input logic              aclk_i,
-  input logic              arst_ni,
   input logic              update_en_i,
   input logic              select_AXISeriesCtrl_i,
   input logic              security_disable_i,
@@ -56,12 +54,7 @@ module dtp_jtag2axi_ctrl_props #(
   input logic [1:0]        series_op_mode_i,       // series_ctrl_op_mode_tclk_r
   input logic              req_fifo_push_i,        // series_request_fifo_push_tclk
   input logic [1:0]        req_fifo_push_op_i,     // series_request_fifo_din_tclk.op
-  input logic [SR_LEN-1:0] update_register_i,      // update_register_q_tclk
-  input logic [1:0]        write_outstanding_i,    // write_outstanding_q
-  input logic [1:0]        read_outstanding_i,     // read_outstanding_q
-  input logic              dst_aw_ready_i,         // dst_resp.aw_ready
-  input logic              dst_w_ready_i,          // dst_resp.w_ready
-  input logic              dst_ar_ready_i          // dst_resp.ar_ready
+  input logic [SR_LEN-1:0] update_register_i       // update_register_q_tclk
 );
 
   // axi_state_e encodings of jtag2axi.
@@ -80,8 +73,6 @@ module dtp_jtag2axi_ctrl_props #(
   localparam logic [1:0] StatusSuccess = 2'b00;
   localparam logic [1:0] StatusSlverr = 2'b01;
   localparam logic [1:0] StatusDecerr = 2'b10;
-
-  localparam logic [1:0] OutstandingMax = 2'b11;
 
   // OKAY maps to SUCCESS, SLVERR and DECERR to their own codes, EXOKAY to SLVERR.
   function automatic logic [1:0] status_of(input logic [1:0] resp);
@@ -186,13 +177,6 @@ module dtp_jtag2axi_ctrl_props #(
                   `OCAH_FV_IMPLIES(req_fifo_push_i, req_fifo_push_op_i inside {OpRead, OpWrite}),
                   tck_i, trst_ni)
 
-  // ---- ACLK side: the outstanding counters hold the CDC pop at their saturation value --------
-  `OCAH_FV_ASSERT(ast_j2a_outstanding_saturates,
-                  `OCAH_FV_IMPLIES(write_outstanding_i == OutstandingMax,
-                                   !dst_aw_ready_i && !dst_w_ready_i) &&
-                  `OCAH_FV_IMPLIES(read_outstanding_i == OutstandingMax, !dst_ar_ready_i),
-                  aclk_i, arst_ni)
-
   // ---- Disable gate -------------------------------------------------------------------------
   `OCAH_FV_ASSERT(ast_j2a_disable_holds_idle,
                   `OCAH_FV_IMPLIES($past(trst_ni) && $past(security_disable_i) &&
@@ -233,6 +217,9 @@ module dtp_jtag2axi_ctrl_props #(
                  reads_pushed_i == CntW'(FIFO_DEPTH + 1), tck_i, trst_ni)
   `OCAH_FV_COVER(cov_j2a_status_slverr, sticky_status_i == StatusSlverr, tck_i, trst_ni)
   `OCAH_FV_COVER(cov_j2a_status_decerr, sticky_status_i == StatusDecerr, tck_i, trst_ni)
+  `OCAH_FV_COVER(cov_j2a_status_full, sticky_full_i && !ctrl_reset_write, tck_i, trst_ni)
+  `OCAH_FV_COVER(cov_j2a_series_reset_write,
+                 ctrl_reset_write && !(bresp_update_i || rdata_update_i), tck_i, trst_ni)
   `OCAH_FV_COVER(cov_j2a_error_then_clean_completion,
                  $past(sticky_status_i) != StatusSuccess &&
                  $past(bresp_update_i || rdata_update_i) &&

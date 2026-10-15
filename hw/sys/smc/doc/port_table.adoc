@@ -81,7 +81,7 @@ endif::backend-html5[]
 |`ss_config_o` |`logic` |Output |`[31:0]` |Subsystem configuration output. |Reset Unit → 32 subsystems |N/A
 |`ss_reset_ctrl_o` |`smc_reset_unit_pkg::reset_ctrl_t` |Output |`[31:0]` |Subsystem reset control output array. |Reset Unit → 32 subsystems |N/A
 |`sync_irq_o` |`logic` |Output |1 |Software-controlled global synchronisation bit (`SYNC_REG.sync` in the reset unit). Not an interrupt aggregate output. |Reset unit → External |N/A
-|`gpio_interrupt_o` |`logic` |Output |`[NumGpioWraps-1:0]` |Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Software reads GPIO status registers to identify the interrupt source. Already OR-reduced into `peripheral_interrupts_o[30:29]` internally. |`smc_padring` → external consumers |N/A, leave floating if unused
+|`gpio_interrupt_o` |`logic` |Output |`[NumGpioWraps-1:0]` |Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Software reads GPIO status registers to identify the interrupt source. Already OR-reduced into `peripheral_interrupts_o[29:28]` internally. |`smc_padring` → external consumers |N/A, leave floating if unused
 |`uart_interrupt_o` |`logic` |Output |`[NumUart-1:0]` |Raw UART interrupt outputs, one bit per UART instance, in the peripheral clock domain. Already aggregated into `peripheral_interrupts_o[21:18]` internally via CDC. |`uart_wrap` → external consumers |N/A, leave floating if unused
 |`smc_rom_intf_req_o` |`rom_req_t` |Output |- |ROM memory interface request. Width depends on CPU cluster configuration |CPU cluster → Boot ROM |N/A
 |`smc_rom_intf_rsp_i` |`rom_rsp_t` |Input |- |ROM memory interface response. Width depends on CPU cluster configuration |Boot ROM → CPU cluster |N/A
@@ -97,7 +97,7 @@ endif::backend-html5[]
 |`smc_l1_dcache_data_intf_rsp_i` |`l1_dcache_data_rsp_t` |Input |`[NumDcacheDataBanks-1:0]` |L1 D-cache data interface responses. Width depends on CPU cluster configuration |L1 D-cache data banks → CPU cluster |N/A
 |`smc_disable_sram_auto_init_i` |`logic` |Input |1 |Disable SRAM automatic initialization. |Control logic → CPU cluster |1'b0
 |`smc_init_mem_done_o` |`logic` |Output |1 |Memory initialization completion signal. |CPU cluster → Control logic |N/A
-|`chiplet_is_primary_i` |`logic` |Input |1 |Chiplet is primary signal. Used for System Timer OCTS |GPIO Padring Straps (strap 25) → SMC |N/A
+|`chiplet_is_primary_i` |`logic` |Input |1 |Chiplet is primary signal. Used for System Timer OCTS |`PRIMARY_CHIPLET` configuration strap (`STRAPS_LO[25]`) |N/A
 |`timer_count_o` |`logic` |Output |`[63:0]` |64-bit system timer count output for Open Chiplet Time Synchronization (OCTS). |System Timer OCTS → External systems |N/A
 |`jtag_reset_ctrl_i` |`smc_pkg::jtag_smc_reset_ctrl_t` |Input |- |Typed reset-override control struct carrying all SMC reset override enables and active-low values. Driven by DTP via JTAG IC_RESET. Tie all enables to 0 when not used. |DTP → SMC reset unit |All enables 0
 |`cla_gpio_enable_o` |`logic` |Output |1 |CLA GPIO enable output. |DFD controller → CLA |N/A

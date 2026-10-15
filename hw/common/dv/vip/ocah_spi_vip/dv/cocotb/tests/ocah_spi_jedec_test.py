@@ -85,7 +85,7 @@ async def ocah_spi_jedec_test(dut) -> None:
         probe.jedec_id = JEDEC_ID ^ 0x01
         probe.replay(records)
 
-    rejected = rejects("jedec", harness.flash, _replay_with_wrong_id)
+    rejected = rejects("jedec", harness.flash, _replay_with_wrong_id, check_id="CHK-SPI-JEDEC-ID")
     checker.expect_true(
         "CHK-SPI-NEG-JEDEC", rejected, context="a different expected identifier must be rejected"
     )

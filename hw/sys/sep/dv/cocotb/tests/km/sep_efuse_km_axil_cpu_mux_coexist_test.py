@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """EL2 and KM traffic share the eFuse AXI-Lite mux: neither starves, and no read is corrupted.
 
+OCAH provenance: ``sep_efuse_km_axil_cpu_mux_coexist_test`` checks concurrent
+EL2 and Key Manager access through the eFuse AXI-Lite mux.
+
 Two CPUs contend at the SEP eFuse AXI-lite mux ``u_km_efuse_axi_lite_mux``:
 
   * the VeeR EL2 host boots ``km_efuse_coexist``: it reads the sensed CHIPLET_UID, releases

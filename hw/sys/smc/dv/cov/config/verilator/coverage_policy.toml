@@ -35,26 +35,24 @@
 # (hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml) set none: the runner
 # reports every family's raw and effective figure, a run's status comes from
 # its tests, and SMC_FCOV.adoc states the targets the figures are read
-# against. A line, branch or expression floor would fail a run on a number
-# rather than on a fact, over families that still hold unclassified vendor and
-# generated-CPU points `smc_cov_scope.vlt` cannot drop.
+# against. The line, branch and expression families hold unclassified vendor
+# and generated-CPU points that `smc_cov_scope.vlt` cannot drop.
 #
-# The coverage set is `--items hosted fw`, 294 of the 299 leaves in the
-# package regression `all`. It leaves out the three `sanity` leaves, which
-# elaborate a second build target that the coverage merge cannot combine with
-# `default`, and the two MMIO isolate-flush leaves
-# (`smc_cpu_mmio_read_wedge_test`, `smc_cpu_mmio_write_wedge_test`), which are
-# in `all` and in none of `hosted`, `fw` or `sanity`. SEP names its coverage set
-# the same way, `all` less `rom_fw`. `hosted` alone is the
+# The coverage set is `--items hosted fw`: the package regression `all` less
+# the three `sanity` leaves, which elaborate a second build target that the
+# coverage merge cannot combine with `default`, and the two MMIO isolate-flush
+# leaves (`smc_cpu_mmio_read_wedge_test`, `smc_cpu_mmio_write_wedge_test`),
+# which are in `all` and in none of `hosted`, `fw` or `sanity`. SEP names its
+# coverage set the same way, `all` less `rom_fw`. `hosted` alone is the
 # toolchain-free CI tier; the fw leaves carry the PLIC, I2C, UART and OCTS
 # stimulus that no hosted leaf drives.
 #
-# Measured on `--items hosted fw` (294 leaves, Verilator 5.050): line 97.83,
-# branch 92.58, expression 92.54, user 453 of 453. Those are the targets
-# SMC_FCOV.adoc reads the figures against, not gates. Every collected `user`
-# point is hit by an enrolled leaf; a point this bench cannot legally reach
-# is not collected (see the Phase 2 list in SMC_FCOV.adoc) rather than
-# waived here, so this file carries no `[[holes]]`.
+# No code-metric family carries a floor: line, branch and expression are
+# targets, read from the run SMC_FCOV.adoc names in "Owning tests, measured"
+# (its commit and simulator). Every collected `user` point is hit by an
+# enrolled leaf; a point this bench cannot legally reach is not collected (see
+# the Phase 2 list in SMC_FCOV.adoc) rather than waived here, so this file
+# carries no `[[holes]]`.
 #
 # Hole categories a row may carry:
 #   missing_stimulus  no enrolled test drives the condition; the rationale

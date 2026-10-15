@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// XTRIG CSR and AXI-Lite channel-shape scenarios — the SV analogue of the
-// CSR/AXI scenario set in the cocotb dtp_xtrig_base_test_seq. One
-// parameterized sequence, dispatched on `scenario`:
+// XTRIG CSR and AXI-Lite channel-shape scenarios. The cocotb twin is
+// seq_lib/dtp_xtrig_csr_test_seq.py. One parameterized sequence, dispatched
+// on `scenario`:
 //
 //   reg_stall        accepted-path CSR writes/reads with quiet cross-trigger
-//                    pins and advancing request-activity counters (the local
-//                    regblock stall path is structurally unreachable), then
-//                    two control routes that move every quiet observable
+//                    pins and advancing request-activity counters, with no
+//                    demux stall while one access is in flight
+//                    (axi_outstanding drives the stall), then two control
+//                    routes that move every quiet observable
 //   ctp_csr_sweep    full-word CTP config and stretch patterns (all-ones and
 //                    inverted patterns drive the reserved bits, which read
 //                    back 0), every byte strobe over a nonzero base, a
@@ -114,7 +115,7 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     bit [31:0] arvalid0 = xtrig_pin("xtrig_axil_arvalid_count");
     int unsigned ints[$], ctps[$];
     bit [31:0] control_outputs;
-    `uvm_info(get_type_name(), "XTRIG accepted-path CSR access and stall rationale", UVM_LOW)
+    `uvm_info(get_type_name(), "XTRIG accepted-path CSR access", UVM_LOW)
     require_pulse_mode_lanes("run_reg_stall");
     // Seeded per-pass control ports.
     pick_distinct(XtrigNumIntCt, 3, ints);
@@ -174,12 +175,7 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     base[3] = pack_ctp_config(CtpModeP2p, 1'b1, 1'b1);
     // Seeded per-pass order and an extra random stretch value: the sweep
     // stays exhaustive while each loop exercises different write orders.
-    for (int unsigned i = 3; i > 0; i--) begin
-      int unsigned j = $urandom_range(i);
-      bit [31:0] tmp = base[i];
-      base[i] = base[j];
-      base[j] = tmp;
-    end
+    base.shuffle();
     // Reserved bits are driven to 1 by the all-ones and inverted patterns
     // and must read back 0 (full-word compare).
     foreach (base[i]) config_patterns.push_back(base[i]);
@@ -187,9 +183,7 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     foreach (base[i]) config_patterns.push_back(~base[i]);
     stretch_patterns = {32'h0, 32'h1, 32'h55AA, 32'hFFFF, 32'(16'($urandom)), FullWord, ~32'h55AA};
     for (int unsigned ctp_idx = 0; ctp_idx < XtrigNumCtp; ctp_idx++) begin
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: CTP[%0d] CSR sweep", ctp_idx + 1, XtrigNumCtp, ctp_idx),
-                UVM_LOW)
+      log_iteration(ctp_idx + 1, XtrigNumCtp, $sformatf("CTP[%0d] CSR sweep", ctp_idx));
       // The neighbour holds seeded nonzero words the sweep does not end on,
       // so a write that also lands in the neighbour leaves another value
       // there.
@@ -212,8 +206,8 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
       check_evidence(ChkCsr, $sformatf("ctp%0d.neighbor_no_alias.stretch", ctp_idx),
                      64'(observed & CtpStretchMask), 64'(nbr_stretch), nbr_ctx);
     end
-    `uvm_info(get_type_name(),
-              "Step route: one programmed CTP routes a stretched pulse after the sweep", UVM_LOW)
+    `uvm_info(get_type_name(), "One programmed CTP routes a stretched pulse after the sweep",
+              UVM_LOW)
     clear_xtrig();
     verify_wire_or_pulse($urandom_range(XtrigNumCtp - 1), $urandom_range(XtrigNumIntCt - 1),
                          16'($urandom_range(14, 1)), 1'b0, "ctp_csr_sweep.route");
@@ -315,9 +309,7 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
       ~random_mask
     };
     for (int unsigned src_idx = 0; src_idx < XtrigNumCtmPorts; src_idx++) begin
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: CT_SRC[%0d] CSR sweep", src_idx + 1, XtrigNumCtmPorts, src_idx),
-                UVM_LOW)
+      log_iteration(src_idx + 1, XtrigNumCtmPorts, $sformatf("CT_SRC[%0d] CSR sweep", src_idx));
       foreach (patterns[pat_idx])
       write_read_check(ctm_config_addr(src_idx), patterns[pat_idx],
                        patterns[pat_idx] & CtmSelectMask, 4'hF, FullWord, $sformatf(
@@ -353,10 +345,9 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
       check_evidence(ChkCsr, {name, ".rresp"}, 64'(res.worst_resp()), 64'(OCAH_AXI_RESP_DECERR),
                      ctx);
     end
-    `uvm_info(
-        get_type_name(),
-        "Step route: two swept output registers route a selected input and ignore an unselected one",
-        UVM_LOW)
+    `uvm_info(get_type_name(),
+              "Two swept output registers route a selected input and ignore an unselected one",
+              UVM_LOW)
     pick_distinct(XtrigNumCtmPorts, 2, outputs);
     foreach (outputs[k])
       verify_swept_select(outputs[k], random_mask, $sformatf("ctm_csr_sweep.route%0d", k));
@@ -474,9 +465,7 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     pick_distinct(XtrigNumCtp, 2, picks);
     data_a = pack_ctp_config($urandom_range(1), bit'($urandom_range(1)));
     data_b = pack_ctp_config($urandom_range(1), bit'($urandom_range(1)));
-    `uvm_info(get_type_name(),
-              "Step 1: AW-first pair to two CTP ports: the second AW waits behind the pending W",
-              UVM_LOW)
+    log_step("1", "AW-first pair to two CTP ports: the second AW waits behind the pending W");
     run_write_pair(ctp_config_addr(picks[0]), data_a, ctp_config_addr(picks[1]), data_b, first,
                    second, .w_valid_delay($urandom_range(8, 4)),
                    .b_ready_delay($urandom_range(4, 1)), .label("demux_aw_lock.ctp_pair"));
@@ -486,9 +475,7 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     csr_read(ctp_config_addr(picks[1]), observed, "demux_aw_lock.ctp_b.readback");
     check_evidence(ChkAxil, "demux_aw_lock.ctp_b.readback", 64'(observed & CtpConfigMask),
                    64'(data_b & CtpConfigMask));
-    `uvm_info(get_type_name(),
-              "Step 2: W-first pair to a CTM register and an unmapped word: responses in order",
-              UVM_LOW)
+    log_step("2", "W-first pair to a CTM register and an unmapped word: responses in order");
     select_port = $urandom_range(XtrigNumCtmPorts - 1);
     select = $urandom_range(CtmSelectMask, 1);
     unmapped = XtrigUnmappedBase + $urandom_range('h3F) * 4;
@@ -706,8 +693,8 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     foreach (counters[i]) delta[counters[i]] = xtrig_pin(counters[i]) - start_count[counters[i]];
     vip_stall = '{result.aw_stall_cycles, result.w_stall_cycles, result.ar_stall_cycles};
     foreach (op_results[i]) begin
-      if (i > 0) resps = {resps, ", "};
-      resps = {resps, $sformatf("%0d", op_results[i].worst_resp())};
+      ocah_axi_resp_e resp = op_results[i].worst_resp();
+      resps = {resps, (i > 0) ? ", " : "", resp.name()};
     end
     `uvm_info(get_type_name(),
               $sformatf("%s %0d accesses b_hold=%0d r_hold=%0d resp=[%s] aw/w/ar stall=%0d/%0d/%0d",

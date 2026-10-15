@@ -10,8 +10,6 @@ bind jtag2axi dtp_jtag2axi_ctrl_props #(
 ) u_dtp_jtag2axi_ctrl_props (
   .tck_i                  (tck_i),
   .trst_ni                (trst_ni),
-  .aclk_i                 (aclk_i),
-  .arst_ni                (arst_ni),
   .update_en_i            (update_en_i),
   .select_AXISeriesCtrl_i (select_AXISeriesCtrl_i),
   .security_disable_i     (security_disable_i),
@@ -43,10 +41,5 @@ bind jtag2axi dtp_jtag2axi_ctrl_props #(
   .series_op_mode_i       (series_ctrl_op_mode_tclk_r),
   .req_fifo_push_i        (series_request_fifo_push_tclk),
   .req_fifo_push_op_i     (series_request_fifo_din_tclk.op),
-  .update_register_i      (update_register_q_tclk),
-  .write_outstanding_i    (write_outstanding_q),
-  .read_outstanding_i     (read_outstanding_q),
-  .dst_aw_ready_i         (dst_resp.aw_ready),
-  .dst_w_ready_i          (dst_resp.w_ready),
-  .dst_ar_ready_i         (dst_resp.ar_ready)
+  .update_register_i      (update_register_q_tclk)
 );

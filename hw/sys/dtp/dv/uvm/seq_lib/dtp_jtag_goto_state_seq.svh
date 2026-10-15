@@ -4,7 +4,7 @@
 // Reusable JTAG operation: navigate the TAP from the tracked state to a
 // target state along the shortest TMS path (VIP goto_state, TDI = 0); a
 // no-op when already there. Started by dtp_base_test_seq::goto_state(). The
-// cocotb twin is seq_lib/dtp_jtag_goto_state_seq.py.
+// cocotb realization is dtp_jtag_base_test_seq.goto_tap_state.
 
 class dtp_jtag_goto_state_seq extends dtp_jtag_op_seq;
   `uvm_object_utils(dtp_jtag_goto_state_seq)

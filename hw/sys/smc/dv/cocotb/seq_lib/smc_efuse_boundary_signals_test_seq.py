@@ -7,22 +7,22 @@ Expected-value provenance:
 * ``LOCKS`` -- read from ``hw/sys/smc/dv/assets/smc_efuse_default.hex`` at run
   time via ``efuse_preload_word_at`` rather than a hand-transcribed literal,
   which cannot detect the asset and the model disagreeing. That asset is what
-  ``efuse_bank_model.sv:140-160`` ``$readmemh``s under the bench-wide
-  ``+smc_efuse_hex`` (``smc_sim_cfg.toml:132-134``), so this leg's proof class
+  ``efuse_bank_model.sv`` ``$readmemh``s under the bench-wide
+  ``+smc_efuse_hex`` (``smc_sim_cfg.toml``), so this leg's proof class
   is **transport** (the map returns the sensed word), not fuse programming
   ([NO-UNJUSTIFIED-PRELOAD]).
 * ``EFUSE_PROGRAM_INTERFACE_READ_DATA`` -- the generated RDL reset
   ``EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset``
-  (``hw/ip/efuse/regs/gen/c/efuse_interface_ctrl.h:153``); no program read-back
+  (``hw/ip/efuse/regs/gen/c/efuse_interface_ctrl.h``); no program read-back
   has been issued in this testcase, so the register must still hold it. That
   reset is ``0x0`` and the field is ``sw = r``, so this compare is a
   transport/decode probe and **not** a liveness proof: a dead or unmapped
   window satisfies it equally. Since the field is driven only in the program
   FSM's ``ST_CAPTURE_DATA`` state ("Hardware debug only",
-  ``efuse_interface_ctrl.rdl:158``), which this testcase never enters, no
+  ``efuse_interface_ctrl.rdl``), which this testcase never enters, no
   distinguishing value can be placed in it. Block liveness is instead proven
   on the writable sibling ``EFUSE_READ_REQ_TIMEOUT`` @0x14 (``sw=rw``,
-  ``rdl:180``, non-zero reset ``0x800000``) by a reset read plus a
+  non-zero reset ``0x800000``) by a reset read plus a
   write/read-back/restore in the same run ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
 * ``SCRATCH_COLD_WARM_0`` -- its own reset value 0, backed in the same run by a
   write/read-back positive control proving the register can hold a one
@@ -44,12 +44,11 @@ PROG_IF_RD = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ
 PROG_IF_RD_RESET = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset"
 )
-# `PROG_IF_RD` is `sw = r; hw = w` (efuse_interface_ctrl.rdl:160-163) with a
-# generated reset of 0x0, so an `expected=PROG_IF_RD_RESET` compare is also
-# satisfied by a dead or unmapped register; the module docstring gives the
-# provenance. Block liveness is proven on the writable sibling
-# EFUSE_READ_REQ_TIMEOUT @0x14 (`sw=rw`, rdl:180, non-zero reset)
-# ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+# `PROG_IF_RD` is `sw = r; hw = w` (efuse_interface_ctrl.rdl) with a generated
+# reset of 0x0, so an `expected=PROG_IF_RD_RESET` compare is also satisfied by
+# a dead or unmapped register; the module docstring gives the provenance.
+# Block liveness is proven on the writable sibling EFUSE_READ_REQ_TIMEOUT @0x14
+# (`sw=rw`, non-zero reset) ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
 READ_REQ_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
 READ_REQ_TMO_CYCLES_RESET = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_reset"

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS U7-3 / P2-9: CPU JTAG DMI dmstatus smoke."""
+"""SMC OSS CPU JTAG DMI dmstatus smoke."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_jtag_dmi_smoke_test(smc_base_test):
-    """U7-3: DTMCS + DMI read dmstatus.version==2 after dmactive."""
+    """DTMCS + DMI read dmstatus.version==2 after dmactive."""
 
     required_evidence = ("CHK-JTAG-DMI-SMOKE",)
     min_evidence = 1

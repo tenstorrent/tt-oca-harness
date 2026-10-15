@@ -177,7 +177,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-software-reset[software reset section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-software-reset[software reset section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-software-reset[software reset section]
 endif::backend-pdf[]
 of the Programmer's Guide covers both requests. None is needed: the Key Manager
 CPU is the only master on its key and eFuse paths and completes each access
@@ -217,7 +217,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-trng-recovery[TRNG recovery sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-trng-recovery[TRNG recovery sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-trng-recovery[TRNG recovery sequence]
 endif::backend-pdf[]
 in the Programmer's Guide gives the firmware steps around this reset.
 

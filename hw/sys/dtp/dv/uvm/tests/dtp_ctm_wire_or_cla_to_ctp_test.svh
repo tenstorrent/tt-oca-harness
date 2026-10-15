@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_ctm_wire_or_cla_to_ctp_test — seeded cla_to_ctp wire-OR route plus a two-source overlap onto one shared destination
-// (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass floor).
+// dtp_ctm_wire_or_cla_to_ctp_test — seeded cla_to_ctp wire-OR route plus a
+// two-source overlap onto one shared destination (looped runner with per-pass
+// CHK-XTRIG-* evidence).
 
 class dtp_ctm_wire_or_cla_to_ctp_test extends dtp_xtrig_base_test;
   `uvm_component_utils(dtp_ctm_wire_or_cla_to_ctp_test)

@@ -1,13 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Single-SPI Mode-0 controller engine for benches that have no SPI host IP.
+"""Single-SPI controller engine for benches that have no SPI host IP.
 
-``OcahSpiMasterBfm`` drives chip-select, clock, and MOSI and samples MISO on
-the rising clock edge, one frame per command: opcode, optional address,
-optional dummy bytes, payload bytes, then ``rx_len`` response bytes with MOSI
-held low. It is the master-side twin of the ``OcahSpiFlash`` device and the
-engine behind ``OcahSpiMasterSequence``. Non-UVM benches may use it directly;
-tests go through the sequence.
+``OcahSpiMasterBfm`` drives chip-select, clock, and MOSI and samples MISO, one
+frame per command: opcode, optional address, optional dummy bytes, payload
+bytes, then ``rx_len`` response bytes with MOSI held low. ``tail_bits`` (0 to
+7) clocks that many bits of a further byte after the payload, so a test can end
+a frame off a byte boundary. It is the master-side twin of the ``OcahSpiFlash``
+device and the engine behind ``OcahSpiMasterSequence``. Non-UVM benches may use
+it directly; tests go through the sequence.
+
+The SPI mode defaults to Mode 0 (``cpol=0, cpha=0``): MOSI changes on the
+falling edge and is sampled on the rising edge. ``set_mode`` selects any of
+the four modes; ``OcahSpiFlash`` answers Mode 0 only. ``raw_frame`` clocks an
+exact bit list in one chip-select frame, so a test can end a frame at any bit
+of any phase, and ``drive`` sets the pins directly for wire-level stimulus.
 
 The engine has no SV-UVM twin: the package ships the cocotb realization only.
 """
@@ -15,13 +22,19 @@ The engine has no SV-UVM twin: the package ships the cocotb realization only.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from typing import Any, Final
 
 from cocotb.triggers import Timer
 
 from .ocah_spi_types import OcahSpiOpcode
 
-__all__ = ["OcahSpiMasterBfm"]
+__all__ = ["OcahSpiMasterBfm", "OcahSpiMasterBfmError"]
+
+
+class OcahSpiMasterBfmError(AssertionError):
+    """The controller sampled a response bit the device did not drive."""
+
 
 _DEFAULT_HALF_PERIOD_NS = 10
 _TIME_UNIT: Final = "ns"
@@ -40,6 +53,14 @@ class OcahSpiMasterBfm:
         name: str = "OcahSpiMasterBfm",
         half_period_ns: int = _DEFAULT_HALF_PERIOD_NS,
         addr_bytes: int = 3,
+        cpol: int = 0,
+        cpha: int = 0,
+        sd_out: Any = None,
+        sd_oe: Any = None,
+        sd_in: Any = None,
+        cs_oe: Any = None,
+        sck_oe: Any = None,
+        miso_oe: Any = None,
     ) -> None:
         self.name = name
         self.log = logging.getLogger(name)
@@ -47,8 +68,23 @@ class OcahSpiMasterBfm:
         self._sclk = sclk
         self._mosi = mosi
         self._miso = miso
+        self._sd_out = sd_out
+        self._sd_oe = sd_oe
+        self._sd_in = sd_in
+        self._cs_oe = cs_oe
+        self._sck_oe = sck_oe
+        self._miso_oe = miso_oe
+        if miso_oe is not None and sd_out is not None:
+            raise ValueError(
+                f"{name}: miso_oe is sampled on the single-lane MISO path only; "
+                "a four-lane binding cannot grade it"
+            )
+        # Device MISO drive enable at each single-lane sample of the last frame.
+        self.last_drive_enables: list[int | None] = []
         self.half_period_ns = half_period_ns
         self.addr_bytes = addr_bytes
+        self.cpol = cpol & 1
+        self.cpha = cpha & 1
         self.frames = 0
         self.bytes_tx = 0
         self.bytes_rx = 0
@@ -65,10 +101,62 @@ class OcahSpiMasterBfm:
         )
 
     def init_signals(self) -> None:
-        """Idle the bus: chip-select high, clock and MOSI low."""
+        """Idle the bus: chip-select high, clock at the CPOL level, MOSI low."""
         self._cs_n.value = 1
-        self._sclk.value = 0
-        self._mosi.value = 0
+        self._sclk.value = self.cpol
+        if self._mosi is not None:
+            self._mosi.value = 0
+        for handle, value in (
+            (self._sd_out, 0),
+            (self._sd_oe, 0),
+            (self._cs_oe, 1),
+            (self._sck_oe, 1),
+        ):
+            if handle is not None:
+                handle.value = value
+
+    def set_mode(self, cpol: int, cpha: int) -> None:
+        """SPI mode of the next frames; the clock moves to the new idle level at once."""
+        self.cpol = cpol & 1
+        self.cpha = cpha & 1
+        self._sclk.value = self.cpol
+
+    async def drive(
+        self,
+        *,
+        cs_n: Any = None,
+        sclk: Any = None,
+        mosi: Any = None,
+        hold_ns: int | None = None,
+    ) -> None:
+        """Set the given pins in one time step, then wait ``hold_ns`` (default a half period).
+
+        A value may be anything the handle accepts, ``"x"`` or ``"z"``
+        included; a pin given as ``None`` keeps its value.
+        """
+        mosi_handle = self._mosi if self._mosi is not None else self._sd_out
+        for handle, value in ((self._cs_n, cs_n), (self._sclk, sclk), (mosi_handle, mosi)):
+            if value is not None:
+                handle.value = _pin_value(handle, value)
+        await Timer(self.half_period_ns if hold_ns is None else hold_ns, _TIME_UNIT)
+
+    async def raw_frame(self, bits: Sequence[int]) -> list[int]:
+        """One chip-select frame that clocks exactly ``bits`` on MOSI; returns the MISO bits.
+
+        With ``miso_oe`` bound, ``last_drive_enables`` holds the device's
+        MISO drive enable at each of those samples.
+        """
+        self.last_drive_enables = []
+        self._cs_n.value = 0
+        await Timer(self.half_period_ns, _TIME_UNIT)
+        received = [await self._clock_bit(int(bit) & 0x1) for bit in bits]
+        await Timer(self.half_period_ns, _TIME_UNIT)
+        self._release_lanes()
+        self._cs_n.value = 1
+        await Timer(self.half_period_ns, _TIME_UNIT)
+        self.frames += 1
+        self.log.debug("%s: raw frame bits=%d", self.name, len(bits))
+        return received
 
     # ------------------------------------------------------------------
     # Frame-level operation
@@ -82,13 +170,25 @@ class OcahSpiMasterBfm:
         dummy_bytes: int = 0,
         tx: bytes = b"",
         rx_len: int = 0,
+        tail_bits: int = 0,
+        require_drive: bool = True,
     ) -> bytes:
-        """One frame: opcode, address, dummies, payload out, then ``rx_len`` bytes in."""
+        """One frame: opcode, address, dummies, payload out, ``rx_len`` bytes in, then ``tail_bits`` bits.
+
+        With ``miso_oe`` bound and ``require_drive``, every received bit must
+        be sampled with the device's MISO drive enable high; otherwise the
+        frame raises ``OcahSpiMasterBfmError``. ``require_drive=False`` is for
+        a frame the device must not answer; the caller grades
+        ``last_drive_enables``.
+        """
+        if not 0 <= tail_bits < 8:
+            raise ValueError(f"{self.name}: tail_bits={tail_bits} is outside 0..7")
         header = bytearray([int(opcode) & 0xFF])
         if addr is not None:
             header += int(addr).to_bytes(self.addr_bytes, "big")
         header += bytes(dummy_bytes)
         header += bytes(tx)
+        self.last_drive_enables = []
         self._cs_n.value = 0
         await Timer(self.half_period_ns, _TIME_UNIT)
         for value in header:
@@ -96,12 +196,23 @@ class OcahSpiMasterBfm:
         received = bytearray()
         for _ in range(rx_len):
             received.append(await self._shift_byte(0))
+        rx_enables = self.last_drive_enables[8 * len(header) : 8 * (len(header) + rx_len)]
+        await self._shift_bits(0, tail_bits)
         await Timer(self.half_period_ns, _TIME_UNIT)
+        self._release_lanes()
         self._cs_n.value = 1
         await Timer(self.half_period_ns, _TIME_UNIT)
         self.frames += 1
         self.bytes_tx += len(header)
         self.bytes_rx += rx_len
+        undriven = sum(1 for enable in rx_enables if enable != 1)
+        if require_drive and self._miso_oe is not None and rx_len:
+            if len(rx_enables) != 8 * rx_len or undriven:
+                raise OcahSpiMasterBfmError(
+                    f"{self.name}: opcode 0x{int(opcode) & 0xFF:02x} received {undriven} of "
+                    f"{8 * rx_len} response bit(s) with the device MISO drive enable low "
+                    f"(enable samples={len(rx_enables)})"
+                )
         self.log.debug(
             "%s: frame opcode=0x%02x header=%d B rx=%d B", self.name, opcode, len(header), rx_len
         )
@@ -143,16 +254,141 @@ class OcahSpiMasterBfm:
         return await self.transfer(OcahSpiOpcode.FAST_READ, addr=addr, dummy_bytes=1, rx_len=length)
 
     # ------------------------------------------------------------------
-    # Bit timing (Mode 0: data changes on the falling edge, samples on the rising edge)
+    # Bit timing: MOSI changes on the shift edge and is sampled on the other
     # ------------------------------------------------------------------
 
     async def _shift_byte(self, value: int) -> int:
+        return await self._shift_bits(value, 8)
+
+    async def _shift_bits(self, value: int, count: int) -> int:
+        """Shift the top ``count`` bits of the byte ``value``, MSB first."""
         received = 0
-        for bit_index in range(7, -1, -1):
-            self._mosi.value = (value >> bit_index) & 0x1
-            await Timer(self.half_period_ns, _TIME_UNIT)
-            self._sclk.value = 1
-            await Timer(self.half_period_ns, _TIME_UNIT)
-            received = (received << 1) | (int(self._miso.value) & 0x1)
-            self._sclk.value = 0
+        for bit_index in range(7, 7 - count, -1):
+            received = (received << 1) | await self._clock_bit((value >> bit_index) & 0x1)
         return received
+
+    async def _clock_bit(self, bit: int) -> int:
+        """One single-lane SCK cycle; returns the bit from the device.
+
+        With the four-lane handles, lane 0 carries the bit out (output enable
+        on lane 0 only) and lane 1 carries the bit in.
+        """
+        if self._sd_out is None:
+            return await self._clock(bit, None)
+        return (await self._clock(bit & 1, 0b0001) >> 1) & 1
+
+    def _release_lanes(self) -> None:
+        """Turn every data lane output enable off; called before chip select rises."""
+        if self._sd_oe is not None:
+            self._sd_oe.value = 0
+
+    async def _clock(self, value: int, oe: int | None) -> int:
+        """One SCK cycle that leaves and returns to the CPOL level; returns the input sample.
+
+        CPHA 0: the output is set half a period before the leading edge, and
+        the input is sampled at the leading edge. CPHA 1: the output is set on
+        the leading edge, and the input is sampled at the trailing edge. Each
+        sample is taken in the time step of its edge, before the clock moves.
+        ``oe`` None drives MOSI; otherwise ``value`` goes on the four lanes
+        with output enables ``oe`` and the four input lanes are sampled.
+        """
+        active = 1 - self.cpol
+
+        def put() -> None:
+            if oe is None:
+                self._mosi.value = value
+            else:
+                self._sd_oe.value = oe
+                self._sd_out.value = value & oe
+
+        def get() -> int:
+            if oe is None:
+                if self._miso_oe is not None:
+                    enable = self._miso_oe.value
+                    self.last_drive_enables.append(
+                        int(enable) & 1 if enable.is_resolvable else None
+                    )
+                return int(self._miso.value) & 0x1
+            return int(self._sd_in.value) & 0xF
+
+        if self.cpha == 0:
+            put()
+            await Timer(self.half_period_ns, _TIME_UNIT)
+            received = get()
+            self._sclk.value = active
+            await Timer(self.half_period_ns, _TIME_UNIT)
+            self._sclk.value = self.cpol
+        else:
+            self._sclk.value = active
+            put()
+            await Timer(self.half_period_ns, _TIME_UNIT)
+            received = get()
+            self._sclk.value = self.cpol
+            await Timer(self.half_period_ns, _TIME_UNIT)
+        return received
+
+    async def lane_frame(self, segments: Sequence[tuple[int, str, Any]]) -> list[bytes]:
+        """One chip-select frame of command segments on the four lanes.
+
+        Each segment is ``(lanes, kind, arg)``: ``lanes`` 1, 2 or 4; ``kind``
+        ``"tx"`` with ``arg`` the bytes to send, ``"rx"`` with ``arg`` the byte
+        count to receive, ``"dummy"`` with ``arg`` the clock count, or
+        ``"clocks"`` with ``arg`` the lane values of each clock, driven with
+        the segment's lanes enabled (a frame that ends inside a byte). Bytes
+        go out most significant bits first, the least significant bit of each
+        pair or nibble on lane 0. A single-lane segment keeps lane 0 driven;
+        a dual or quad receive or dummy segment drives no lane. Returns the
+        bytes of each receive segment.
+        """
+        if self._sd_out is None:
+            raise ValueError(f"{self.name}: lane_frame() needs the four-lane handles")
+        received: list[bytes] = []
+        self._cs_n.value = 0
+        await Timer(self.half_period_ns, _TIME_UNIT)
+        for lanes, kind, arg in segments:
+            if lanes not in (1, 2, 4):
+                raise ValueError(f"{self.name}: lanes={lanes} is not 1, 2 or 4")
+            mask = (1 << lanes) - 1
+            idle_oe = 0b0001 if lanes == 1 else 0
+            if kind == "tx":
+                for byte_val in bytes(arg):
+                    for shift in range(8 - lanes, -1, -lanes):
+                        await self._clock((byte_val >> shift) & mask, mask)
+            elif kind == "rx":
+                data = bytearray()
+                for _ in range(int(arg)):
+                    byte_val = 0
+                    for _ in range(8 // lanes):
+                        sample = await self._clock(0, idle_oe)
+                        bits = (sample >> 1) & 1 if lanes == 1 else sample & mask
+                        byte_val = (byte_val << lanes) | bits
+                    data.append(byte_val)
+                received.append(bytes(data))
+            elif kind == "clocks":
+                for value in arg:
+                    await self._clock(int(value) & mask, mask)
+            elif kind == "dummy":
+                for _ in range(int(arg)):
+                    await self._clock(0, idle_oe)
+            else:
+                raise ValueError(f"{self.name}: segment kind {kind!r}")
+        await Timer(self.half_period_ns, _TIME_UNIT)
+        self._release_lanes()
+        self._cs_n.value = 1
+        await Timer(self.half_period_ns, _TIME_UNIT)
+        self.frames += 1
+        return received
+
+
+def _pin_value(handle: Any, value: Any) -> Any:
+    """``value`` as the handle takes it; ``"x"``/``"z"`` become a one-bit logic value."""
+    if isinstance(value, str):
+        try:
+            from cocotb.types import Logic  # cocotb 2.x
+
+            return Logic(value)
+        except ImportError:  # cocotb 1.x
+            from cocotb.binary import BinaryValue
+
+            return BinaryValue(value.lower(), n_bits=len(handle))
+    return value

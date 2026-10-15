@@ -13,7 +13,6 @@
 
 package smc_periph_axi_lite_xbar_pkg;
 
-  import axi_pkg::*;
 
   // ===========================================================================
   // Fabric Parameters

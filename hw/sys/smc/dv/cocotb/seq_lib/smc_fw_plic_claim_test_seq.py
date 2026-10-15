@@ -8,7 +8,7 @@ enables it, publishes an arm word, and parks in `wfi`. Its handler calls
 `test_pass(0)`.
 
 What ties the verdict to source 1 is the registration, not the ID compare
-inside the handler. `riscv_plic0.c:106-107` dispatches `metal_exint_table[idx]`
+inside the handler. `riscv_plic0.c` dispatches `metal_exint_table[idx]`
 where `idx` is the value the PLIC's claim register returned, and
 `plic_sanity.c` registers a handler at one index only; every other source
 reaches `__metal_plic0_default_handler`, which posts no verdict. So the pass

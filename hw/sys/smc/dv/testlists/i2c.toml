@@ -18,7 +18,7 @@ timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 
-# BFM rebuild of commercial smc_i2c_p0_rdwr (I2C0↔I2C1).
+# I2C0↔I2C1 controller read/write on the shared pad bus.
 # Requires tb_top +smc_i2c_shared_bus.
 [[tests]]
 name = "smc_i2c_p0_rdwr_test"
@@ -29,7 +29,7 @@ tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# BFM rebuild of commercial smc_i2c_p0_nack (allow-path + VIP NACK legs).
+# Controller allow path plus NACK legs driven by the VIP target.
 [[tests]]
 name = "smc_i2c_p0_nack_test"
 module = "smc_i2c_p0_nack_test"
@@ -59,7 +59,7 @@ tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# Stretch-timeout observation (commercial timeout body).
+# Stretch-timeout observation.
 [[tests]]
 name = "smc_i2c_p0_timeout_test"
 module = "smc_i2c_p0_timeout_test"
@@ -98,10 +98,25 @@ tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# CSR-only FMT/TX full+empty and RX/ACQ empty (commercial i2c_fifo_full).
+[[tests]]
+name = "smc_i2c_reg_access_class_test"
+module = "smc_i2c_reg_access_class_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
 [[tests]]
 name = "smc_i2c_event_retain_test"
 module = "smc_i2c_event_retain_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_ctrl_role_gate_test"
+module = "smc_i2c_ctrl_role_gate_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "i2c"]
@@ -123,6 +138,8 @@ timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 
+# CSR-only FMT/TX full+empty and RX/ACQ empty STATUS flags; smc_fw_i2c_fifo_full_test
+# fills the same FIFOs by real transfers.
 [[tests]]
 name = "smc_i2c_fifo_full_test"
 module = "smc_i2c_fifo_full_test"
@@ -131,7 +148,7 @@ timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 
-# DUT-internal SMBALERT + ARA + SMBSUS (commercial smbus_alert_suspend).
+# DUT-internal SMBALERT + ARA + SMBSUS.
 [[tests]]
 name = "smc_smbus_alert_suspend_test"
 module = "smc_smbus_alert_suspend_test"
@@ -141,7 +158,7 @@ tags = ["ci", "i2c", "smbus"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# VIP ARA + external SMBSUS# into I2C0 target (commercial target_smbus).
+# VIP ARA + external SMBSUS# into the I2C0 target.
 [[tests]]
 name = "smc_i2c_target_smbus_test"
 module = "smc_i2c_target_smbus_test"
@@ -468,6 +485,162 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_i2c_controller_exits_test"
 module = "smc_i2c_controller_exits_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_fmtrst_repro_test"
+module = "smc_i2c_fmtrst_repro_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "i2c", "repro"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_smbus_alert_irq_route_test"
+module = "smc_smbus_alert_irq_route_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c_clock_gate_response_test"
+module = "smc_i2c_clock_gate_response_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_ctrl_nack_modes_test"
+module = "smc_i2c_ctrl_nack_modes_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_pad_override_test"
+module = "smc_i2c_pad_override_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_smbus_alert_self_clear_test"
+module = "smc_smbus_alert_self_clear_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_target_tx_read_test"
+module = "smc_i2c_target_tx_read_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_ctrl_xinst_events_test"
+module = "smc_i2c_ctrl_xinst_events_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c_intr_test_state_test"
+module = "smc_i2c_intr_test_state_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_ctrl_intr_w1c_test"
+module = "smc_i2c_ctrl_intr_w1c_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_target_addr_gate_test"
+module = "smc_i2c_target_addr_gate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_intr_output_path_test"
+module = "smc_i2c_intr_output_path_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_ctrl_wire_frames_test"
+module = "smc_i2c_ctrl_wire_frames_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_window_decode_test"
+module = "smc_i2c_window_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_target_bus_symbol_test"
+module = "smc_i2c_target_bus_symbol_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_smbus_pmbus_linear11_read_test"
+module = "smc_smbus_pmbus_linear11_read_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_target_instance_pair_test"
+module = "smc_i2c_target_instance_pair_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+
+[[tests]]
+name = "smc_smbus_alert_instance_isolation_test"
+module = "smc_smbus_alert_instance_isolation_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_target_event_flags_test"
+module = "smc_i2c_target_event_flags_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "i2c"]

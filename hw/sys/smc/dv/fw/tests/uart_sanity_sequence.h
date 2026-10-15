@@ -35,7 +35,7 @@ int uart_sanity_sequence(int hartid) {
     uart_log_engine_ctrl__CTRL_t uart_enables;
     uart_enables.w = read_reg(
         UART_CTRL_ADDR(0)); // fine to use UART0 since all will be the same default val out of reset
-    uart_enables.f.UART_EN = 0x1; // enable uart device
+    uart_enables.f.UART_EN = 0x1;
 
     // Enable all 4 UARTs; the transfer below uses two controller/target pairs.
     uint32_t num_uarts = 4;
@@ -76,7 +76,7 @@ int uart_sanity_sequence(int hartid) {
 
         mcr.w = read_reg(uart_base_addr + UART_SUBREG_OFFSET(MCR)); // read MCR default
         mcr.f.RTS = 0x1;
-        write_reg(uart_base_addr + UART_SUBREG_OFFSET(MCR), mcr.w); // MCR setup
+        write_reg(uart_base_addr + UART_SUBREG_OFFSET(MCR), mcr.w);
 
         lcr.w = read_reg(uart_base_addr + UART_SUBREG_OFFSET(LCR)); // read LCR default
         lcr.f.DLAB = 0x1;
@@ -145,15 +145,14 @@ int uart_sanity_sequence(int hartid) {
 
         IIR_status = 0x0000;
 
-        write_reg(ctrlr_addr_indexed + UART_SUBREG_OFFSET(RBR), send_data[i]); // write data
+        write_reg(ctrlr_addr_indexed + UART_SUBREG_OFFSET(RBR), send_data[i]);
 
         do {
             IIR_status = read_reg(tgt_addr_indexed + UART_SUBREG_OFFSET(IIR));
         } while ((IIR_status & 0xf) != 0x4);
 
-        unsigned char receive_data =
-            read_reg(tgt_addr_indexed + UART_SUBREG_OFFSET(RBR)); // read data
-        write_scratch(i, receive_data);                           // write received byte to scratch
+        unsigned char receive_data = read_reg(tgt_addr_indexed + UART_SUBREG_OFFSET(RBR));
+        write_scratch(i, receive_data);
 
         simputshex32("receive_data = ", receive_data);
         simputshex32("send_data = ", send_data[i]);

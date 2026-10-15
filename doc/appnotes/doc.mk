@@ -51,7 +51,7 @@ ocah-doc-appnotes-pdf: ocah-doc-appnotes-setup
 	@echo "Building Application Notes PDF documentation (asciidoctor-pdf)"
 	@mkdir -p "$(OCAH_APPNOTES_BUILD)/latex"
 	@rm -rf "$(OCAH_APPNOTES_SRC)/assets" && ln -s ../assets "$(OCAH_APPNOTES_SRC)/assets"
-	@cd "$(OCAH_APPNOTES_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
+	@cd "$(OCAH_APPNOTES_DIR)" && env $(OCAH_DOC_PDF_LOCALE) "$(OCAH_ASCIIDOCTOR_PDF)" \
 		$(OCAH_ASCIIDOCTOR_PDF_DIAGRAM_ARGS) \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \

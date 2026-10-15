@@ -51,10 +51,9 @@ class smc_scratch_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi
     sync_cold_reset();
     if (!smc_is_scratch_csr_access(t, warm)) return;
     word_addr = smc_csr_word_addr(t.address);
-    // The un-written baseline is the register's GENERATED reset value, not a
-    // literal zero: with a literal here this model would assume the same
-    // constant the sequence expects, and the scratch_csr feature would stop
-    // being an independent source for the idle and cleared claims.
+    // An un-written register predicts the generated reset value, so the
+    // scratch_csr expectation for idle and cleared registers comes from the
+    // RDL rather than from the constant the sequence drives.
     shadow    = m_scratch_shadow.exists(word_addr) ? m_scratch_shadow[word_addr] :
         32'(SCRATCH_SCRATCH_REG_DEFAULT);
     if (t.direction == OCAH_AXI_DIR_WRITE) begin

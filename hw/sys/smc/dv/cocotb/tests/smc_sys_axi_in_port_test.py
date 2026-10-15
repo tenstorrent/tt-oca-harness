@@ -2,12 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """sys_axi_in accepts a read and a write into a local register through the inbound filter.
 
-Closes SMC-FAB-EXTPORT.S1 (port_table.adoc: sys_axi_in_req_i; fabric.adoc:
-Inbound Filtering): inbound entry 0 is programmed over SEP_IN to admit, then
-the SYS_IN port reads a register with a non-zero generated reset and writes a
-scratch word that both ports read back; the SYS_IN access count is measured
-by the scoreboard, not declared. SMC-FAB-EXTPORT.S5 is left open because no
-inbound port is tied off in this bench.
+Inbound entry 0 is programmed over SEP_IN to admit (fabric.adoc, Inbound
+Filtering; port_table.adoc, sys_axi_in_req_i), then the SYS_IN port reads a
+register with a non-zero generated reset and writes a scratch word that both
+ports read back; the SYS_IN access count is measured by the scoreboard, not
+declared. No inbound port is tied off in this bench, so the tied-off case is
+not covered here.
 
 Run:
     CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smc \\

@@ -69,7 +69,6 @@ package dtp_env_pkg;
   `include "dtp_jtag_scan_builder.svh"
   `include "dtp_scan_window_monitor.svh"
   `include "dtp_axi_port_history.svh"
-  `include "dtp_axi_slave_driver.svh"
   `include "dtp_scoreboard.svh"
   `include "dtp_env.svh"
 

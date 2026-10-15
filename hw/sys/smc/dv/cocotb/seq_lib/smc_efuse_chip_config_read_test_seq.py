@@ -9,12 +9,10 @@ from .smc_csr_field_catalog import misc_wrap_reset
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import prove_efuse_bank_axil_activity
 
-# VERSION_LO=CHIP_CONFIG_VERSION_LO reset from the generated header / VERSION_HI=0 / CHIP_ID=0 / all trace to
-# chip_config.rdl reset constants (identical on Verilator and VCS) -> G3
-# spec-anchored decode + reset-value check. LC_STATE is left decode-only
-# (expected=None): it is simulator-divergent in the OSS bench (Verilator's
-# efuse model presents 0xF0 while VCS reads 0x0), so no single value assertion
-# holds on both.
+# VERSION_LO, VERSION_HI and CHIP_ID carry their chip_config.rdl reset constants
+# (from the generated header) as exact expectations, identical on Verilator and
+# VCS. LC_STATE is left decode-only (expected=None): Verilator's efuse model
+# presents 0xF0 while VCS reads 0x0, so no single value assertion holds on both.
 #
 # Each register is addressed by its own generated symbol: several expectations
 # are 0, which is also what unmapped space returns, so a wrong offset would pass
@@ -32,7 +30,7 @@ CHIP_CONFIG_EFUSE_READS = [
 
 
 class smc_efuse_chip_config_read_test_seq(SmcCsrSeq):
-    """Use chip-config fields as the OSS-safe eFuse observable surface."""
+    """Use chip-config fields as the eFuse observable surface."""
 
     def __init__(self, name: str = "smc_efuse_chip_config_read_test_seq") -> None:
         super().__init__(name)

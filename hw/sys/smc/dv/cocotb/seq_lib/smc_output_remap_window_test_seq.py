@@ -10,7 +10,7 @@ offset is the window's generated base (`SMC_TOP_MMODE_REGION_BASE_ADDR`,
 `SMC_TOP_XVISOR_REGION_BASE_ADDR`) less the SMC register window base, and the
 size is the generated `*_REGION_SIZE`. With the reset bases, the local copies sit
 just above the SMC's own 16 MB aperture. So an inbound master that addresses
-them is sent out, and no leaf had sent anything there.
+them is sent out.
 
 `output_remap.rdl` describes an entry as an `offset` that replaces the upper bits
 of the address when the entry's `valid` bit is set. The entry is selected by the

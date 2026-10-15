@@ -29,7 +29,7 @@ In most cases documentation it is built in two formats:
 
 Material intended only to be viewed via the website will not be built as downloadable PDFs
 
-Documents are published in GitHub Pages at [https://tenstorrent.github.io/tt-oca-harness/](https://tenstorrent.github.io/tt-oca-harness/)
+Documents are published in GitHub Pages at [https://docs.tenstorrent.com/tt-oca-harness/](https://docs.tenstorrent.com/tt-oca-harness/)
 
 Downloadable PDFs are also accessible from the above location.
 
@@ -61,6 +61,9 @@ End each block reference with "Memory Map and Register Reference", containing
 and peripheral register ownership distinct.
 
 `tools/doc/block_catalog.rb` numbers and indexes blocks across the PDF book.
+The PDF numbers sections four levels deep, down to each subsystem chapter;
+`tools/doc/section_xref_numbering.rb` makes a cross-reference to a deeper
+section render its title instead of a number the heading does not show.
 The Antora extensions `tools/doc/block-captions.js` and
 `tools/doc/block-indexes.js` number blocks within each TRM topic and assemble
 the HTML indexes. Keep these extensions enabled in both the standalone and
@@ -76,7 +79,7 @@ The CI process deploys to the published site on all pushes to `main` (see `.gith
 
 Documentation may also be built locally for development. Follow the instructions xref:setup.adoc#package-dependencies[here] to install Asciidoctor and Antora.
 
-Alternatively, to avoid the need to install local tools, the toolchain is available as container images - install `podman` or `docker` as described xref:setup.adoc#container-engine-setup[here].
+Alternatively, to avoid the need to install local tools, the toolchain is available as container images - set it up as described in the xref:setup.adoc#quick-start[container quick start].
 
 The two commands below may be executed from the root of the checked out repository.
 They generate the built material in subfolders under each book.

@@ -3,8 +3,8 @@
 """SMC OSS NDM-reset / DFX-debug diagnostic CSR smoke.
 
 No ECC, DBS or RAS-bank register is read by this testcase -- none of those
-surfaces exists at the SMC CSR boundary. The testcase name does not describe
-the surface; see the sequence docstring for what is actually addressed.
+surfaces exists at the SMC CSR boundary; see the sequence docstring for what is
+addressed.
 """
 
 from __future__ import annotations

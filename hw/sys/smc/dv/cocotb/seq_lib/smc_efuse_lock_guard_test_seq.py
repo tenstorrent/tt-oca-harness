@@ -11,10 +11,9 @@ whichever is more restrictive, and a locked access is answered rather than
 executed -- the write does not land, and the read does not disclose.
 
 `smc_efuse_locked_access_interrupt_test` drives that path on
-`JTAG_PUBLIC_IDENTITY`, but it needs its own preload asset and is held out of
-the regression, so in the scheduled run nothing establishes a software lock at
-all. This leaf does it from the CSR side alone, on the default eFuse image, and
-checks the guard's answer rather than any state change.
+`JTAG_PUBLIC_IDENTITY` with its own preload asset. This leaf establishes a
+software lock from the CSR side alone, on the default eFuse image, and checks
+the guard's answer rather than any state change.
 
 Three fields, each taken through the same four steps, and the first step is the
 live control for the two that follow:
@@ -38,8 +37,9 @@ The fields are the first two SPARE entries and the OCCP transport timeout,
 whose locks the default image leaves clear -- the sequence reads `LOCKS` first
 and fails if any of the six bits it is about to set is already set, so it never
 mistakes a pre-set lock for one it established. `SMC_CONFIG` and
-`JTAG_PUBLIC_IDENTITY` are deliberately left alone: the first carries boot
-configuration other logic reads, and the second is the held-out leaf's subject.
+`JTAG_PUBLIC_IDENTITY` are left alone: the first carries boot configuration
+other logic reads, and the second is the subject of
+`smc_efuse_locked_access_interrupt_test`.
 
 A software lock is cleared only by reset, so this leaf leaves all six bits set
 and is terminal for those three fields. Nothing else in the run reads them.

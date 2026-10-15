@@ -96,6 +96,8 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
 
   protected task run_stap_select(int unsigned stap);
     sep_lifecycle_ctrl_pkg::dbg_disable_t gate = stap_gate_mask(stap);
+    dtp_dbg_path_e gate_path = dtp_stap_dbg_path(stap);
+    string disable_field = gate_path.name();
     string prefix = stap_prefix(stap);
     string trst_n = {prefix, "_trst_n"};
     string watch[$], gated_watch[$];
@@ -127,7 +129,8 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
       v_recover = random_pattern(tdr.width);
     end
 
-    // Step 1: configure and select via composed TAP_3DCR scans.
+    log_step("1", $sformatf("Configure and select %s via composed TAP_3DCR scans", stap_name(stap)
+             ));
     stap_chain_flush({stap_name(stap), ".flush"});
     configure_stap(stap, '0, {stap_name(stap), ".select"});
     start_scan_window(watch);
@@ -143,10 +146,11 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
       ds_write_and_readback(stap, v_select, '0, {stap_name(stap), ".selected_tdr"});
     end
 
-    // Step 2: assert exactly the port's disable — forwarding stops and
-    // a randomized deselecting 3DCR update attempt is ignored.
-    // Step 1 leaves the device in Run-Test/Idle, in lockstep with the PTAP,
-    // so the park has to move it into Test-Logic-Reset.
+    // A randomized deselecting 3DCR update attempt is ignored. Step 1 leaves
+    // the device in Run-Test/Idle, in lockstep with the PTAP, so the park has
+    // to move it into Test-Logic-Reset.
+    log_step("2", $sformatf(
+             "Assert exactly %s: forwarding stops, gated update is ignored", disable_field));
     if (downstream)
       void'(m_stap_ds_seq[stap].check_state(
           OCAH_JTAG_RUN_TEST_IDLE, {stap_name(stap), ".pre_gate"}, "CHK-DS-PARKED-TLR"
@@ -185,8 +189,8 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
       ));
     end
 
-    // Step 3: clear the disable without reset — selection resumes from
-    // stored state.
+    log_step("3", $sformatf(
+             "Clear %s without reset: selection resumes from stored state", disable_field));
     enable_all_debug();
     if (downstream) settle_stap_release();
     start_scan_window(watch);
@@ -203,8 +207,9 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
       stap_ds_read_tdr(stap, '0, {stap_name(stap), ".resume_tdr"}, "CHK-DS-TDR-RESUME");
     end
 
-    // Step 4: with the disable re-asserted, an unrelated STAP stays
-    // usable.
+    log_step(
+        "4", $sformatf(
+        "With %s re-asserted, unrelated STAP %s stays usable", disable_field, stap_name(neighbor)));
     set_dbg_disable_full(gate);
     iso_sib.delete();
     iso_sib[stap]     = 1;
@@ -233,7 +238,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
           0, StapDsTdrName, {stap_name(stap), ".isolation"}
       ));
 
-    // Step 5: full recovery with a fresh configuration.
+    log_step("5", $sformatf("Full recovery: fresh configuration after clearing %s", disable_field));
     enable_all_debug();
     if (downstream) settle_stap_release();
     stap_chain_flush({stap_name(stap), ".recover_flush"});
@@ -276,7 +281,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
             "extended STAP scan interface: host segment=0x%02h marker=0x%04h gate config_hold=%0d",
             segment, marker, gate_hold), UVM_LOW)
 
-    // Step 1: PTAP_3DCR.SELECT=1, the host segment returns the chain.
+    log_step("1", "PTAP_3DCR.SELECT=1: the host segment returns the chain");
     stap_chain_flush("ext.flush");
     stap_chain_write('0, 1, 1, no_sib, no_pl, "ext.enable", unused, '0, segment);
     start_scan_window(controls);
@@ -285,15 +290,13 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     check_stap_chain_readback(captured, '0, "ext.enabled_readback");
     check_stap_chain_marker(captured, marker, '0, "ext.enabled_marker");
 
-    // Step 2: PTAP_3DCR.SELECT=0, TDO carries the PTAP 3DCR and the controls
-    // stay quiet.
+    log_step("2", "PTAP_3DCR.SELECT=0: TDO carries the PTAP 3DCR, the controls stay quiet");
     stap_chain_write('0, 0, -1, no_sib, no_pl, "ext.deselect", unused);
     start_scan_window(controls);
     read_ptap_3dcr_deselected(marker, "ext.deselected_readback");
     check_scan_window(controls, none, "ext.deselected_window");
 
-    // Step 3: stap_host gated, the controls stay quiet and scan-in is
-    // bypassed.
+    log_step("3", "stap_host gated: the controls stay quiet and scan-in is bypassed");
     stap_chain_write('0, 1, int'(gate_hold), no_sib, no_pl, "ext.gate_enable", unused);
     set_dbg_disable_full(gate);
     start_scan_window(controls);
@@ -302,8 +305,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     check_stap_chain_readback(captured, gate, "ext.gated_readback");
     check_stap_chain_marker(captured, marker, gate, "ext.gated_marker");
 
-    // Step 4: stap_host released without reset, the segment returns its
-    // value.
+    log_step("4", "stap_host released without reset: the segment returns its value");
     enable_all_debug();
     start_scan_window(controls);
     stap_chain_maintain('0, "ext.recover_observe", captured, marker);
@@ -357,24 +359,27 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
   protected task run_config_hold();
     int unsigned staps[$] = {0, 1, 2, 3};
     `uvm_info(get_type_name(), "PTAP/STAP CONFIG_HOLD across Test-Logic-Reset and TRST", UVM_LOW)
-    shuffle(staps);
+    staps.shuffle();
     foreach (staps[i]) begin
       // Seeded per-pass order: each self-contained sub-case starts from a
       // flushed chain, so each loop proves a different sequencing of
       // preserve/clear behavior.
       int unsigned cases[$] = {0, 1, 2, 3};
-      shuffle(cases);
-      `uvm_info(
-          get_type_name(), $sformatf(
-          "Iteration %0d/%0d: STAP %s cases=%p", i + 1, staps.size(), stap_name(staps[i]), cases),
-          UVM_LOW)
+      cases.shuffle();
+      log_iteration(i + 1, staps.size(), $sformatf("STAP %s cases=%p", stap_name(staps[i]), cases));
+      // Case k: CONFIG_HOLD = !k[0], then TRST when k[1] is set, else TLR.
       foreach (cases[c]) begin
-        case (cases[c])
-          0:       config_hold_case(.stap(staps[i]), .hold(1'b1), .use_trst(1'b0));
-          1:       config_hold_case(.stap(staps[i]), .hold(1'b0), .use_trst(1'b0));
-          2:       config_hold_case(.stap(staps[i]), .hold(1'b1), .use_trst(1'b1));
-          default: config_hold_case(.stap(staps[i]), .hold(1'b0), .use_trst(1'b1));
-        endcase
+        bit hold = !cases[c][0];
+        bit use_trst = cases[c][1];
+        log_step($sformatf("%0d", c + 1), $sformatf(
+                 "STAP %s: CONFIG_HOLD=%0d, then %s, then read back",
+                 stap_name(
+                     staps[i]
+                 ),
+                 hold,
+                 use_trst ? "trst" : "tlr"
+                 ));
+        config_hold_case(.stap(staps[i]), .hold(hold), .use_trst(use_trst));
       end
     end
   endtask
@@ -421,20 +426,22 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     `uvm_info(get_type_name(), "STAP TMS_HOLD parked polarity", UVM_LOW)
     // Seeded per-pass STAP and polarity order: each loop walks the ports
     // and the two parked polarities differently.
-    shuffle(staps);
+    staps.shuffle();
     foreach (staps[i]) begin
       int unsigned polarities[$] = {1, 0};
-      shuffle(polarities);
-      `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: STAP %s tms_hold order=%p",
-                i + 1,
-                staps.size(),
-                stap_name(
-                    staps[i]
-                ),
-                polarities
-                ), UVM_LOW)
-      foreach (polarities[p]) tms_hold_case(staps[i], bit'(polarities[p]));
+      polarities.shuffle();
+      log_iteration(i + 1, staps.size(), $sformatf(
+                    "STAP %s tms_hold order=%p", stap_name(staps[i]), polarities));
+      foreach (polarities[p]) begin
+        log_step($sformatf("%0d", p + 1), $sformatf(
+                 "STAP %s: select (forwarding), deselect with TMS_HOLD=%0d",
+                 stap_name(
+                     staps[i]
+                 ),
+                 polarities[p]
+                 ));
+        tms_hold_case(staps[i], bit'(polarities[p]));
+      end
     end
     payload_sweep();
   endtask
@@ -461,7 +468,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
       stap_forwarding_watch(s, watch);
       dtp_dbg_path_set(gate, dtp_stap_dbg_path(s));
     end
-    shuffle(rounds);
+    rounds.shuffle();
     `uvm_info(get_type_name(), $sformatf("STAP 3DCR payload sweep, round order %p", rounds),
               UVM_LOW)
     stap_chain_flush("sweep.flush");
@@ -472,8 +479,8 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
         bit [2:0] payload = 3'((rounds[i] + s) % 8);
         payloads[s] = '{payload[0], payload[1], payload[2]};
       end
-      `uvm_info(get_type_name(), $sformatf(
-                "Step %0d: STAP 3DCR payloads %p, enabled then gated", i + 1, payloads), UVM_LOW)
+      log_step($sformatf("%0d", i + 1), $sformatf(
+               "STAP 3DCR payloads %p, enabled then gated", payloads));
       stap_chain_write('0, -1, -1, no_sib, payloads, {ctx, ".write"}, unused);
       start_scan_window(watch);
       stap_chain_maintain('0, {ctx, ".observe"}, captured);
@@ -519,11 +526,14 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     end
     stap_chain_flush("hold.flush");
     start_scan_window(watch);
+    log_step("1", $sformatf("IDCODE DR scans of %p bits", widths));
     load_ir(6'(IDCODE_INSTR));
     foreach (widths[i]) shift_dr(bit_mask(widths[i]), widths[i], unused);
+    log_step("2", $sformatf("BYPASS IR and DR scans of all ones, %p bits", widths));
     ir_scan_raw(bit_mask(DtpPtapIrWidth), DtpPtapIrWidth, unused);
     foreach (widths[i]) shift_dr(bit_mask(widths[i]), widths[i], unused);
     check_scan_window(watch, none, "hold.window");
+    log_step("3", "Set the PTAP select alone, then read the chain back");
     load_ir(6'(TAP_3DCR_INSTR));
     stap_chain_write('0, 1, 0, no_sib, no_pl, "hold.select", unused);
     stap_chain_maintain('0, "hold.readback", captured);
@@ -565,8 +575,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
                 `uvm_fatal(get_type_name(), $sformatf(
                     "unknown STAP scenario %s", scenario))
     endcase
-    // Scenario-owned Shift-x exits: skip the scan-count cross-check.
-    attach_family_checker(required, 1'b0);
+    attach_scan_family_checker(required);
     attach_downstream_taps();
     enable_all_debug();
     reset_to_tlr();

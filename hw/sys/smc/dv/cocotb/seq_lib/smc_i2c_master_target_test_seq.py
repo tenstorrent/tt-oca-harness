@@ -312,8 +312,8 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         # single-frame version is the dropped STOP.
         #
         # Both frames address the same EEPROM offset with the same byte, so the
-        # payload expectation below is unchanged and the new evidence is purely
-        # the framing: two STARTs against one STOP.
+        # payload compare is the same for either frame and the framing -- two
+        # STARTs against one STOP -- is what the repeated START adds.
         for label, flags in (
             ("I2C0_FDATA_START_ADDR", I2C_FDATA_START),
             ("I2C0_FDATA_RESTART_ADDR", I2C_FDATA_START),

@@ -138,13 +138,14 @@ class smc_6agent_observability_test_seq(smc_base_test_seq):
                 f"tb_{field} = {got}, expected 0 with no interrupt source driven ({ir})"
             )
         # Idle-zero legs backed in *this* run: the three aggregates' positive
-        # controls are declared by this testcase's own
-        # `probe_positive_controls` (tests:22-29 -- `sync_irq`, `uart_irq_any`,
-        # `gpio_irq_any`), each drives the probe's real producer, requires it
-        # observed at 1 inside a bounded window and back at 0, and credits the
-        # passive liveness ledger the scoreboard consults, so the scoreboard
-        # exact-compares all three legs instead of booking them OBSERVED-ONLY
-        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). No cross-testcase delegation.
+        # controls are declared by this testcase's own `probe_positive_controls`
+        # (`sync_irq`, `uart_irq_any`, `gpio_irq_any` in
+        # smc_6agent_observability_test.py), each drives the probe's real
+        # producer, requires it observed at 1 inside a bounded window and back
+        # at 0, and credits the passive liveness ledger the scoreboard consults,
+        # so the scoreboard exact-compares all three legs instead of booking them
+        # OBSERVED-ONLY ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). No cross-testcase
+        # delegation.
         self._chk(
             "IRQ",
             "%s all read 0 with no interrupt source driven: %s",
@@ -155,8 +156,8 @@ class smc_6agent_observability_test_seq(smc_base_test_seq):
         # GPIO: a *pair* of SAMPLEs, not one, and the compare is on the raw
         # pad-bus vectors -- not on the three tb_gpio_*_any aggregates.
         #
-        # The aggregates are OR-reductions over the WHOLE pad bus (tb_top.sv
-        # :1375-1377), which also carries idle-high LSIO pads (UART TX): they
+        # The aggregates are OR-reductions over the WHOLE pad bus (tb_top.sv),
+        # which also carries idle-high LSIO pads (UART TX): they
         # read 1 from reset onward and no frontdoor stimulus can drive them to 0,
         # so they are declared in `env.smc_probe_liveness.UNBACKABLE_PROBES` and
         # `SmcScoreboard._check_gpio` REFUSES a stated `expect_` on them. And

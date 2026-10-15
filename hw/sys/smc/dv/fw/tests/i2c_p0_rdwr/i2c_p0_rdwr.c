@@ -351,7 +351,7 @@ int main(void) {
         simputs("\n");
         i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFF);
     }
-    /* Print the events as read back, not an assumed "cleared". */
+    /* The clear can leave events set; the log reports TARGET_EVENTS as read back. */
     target_events = i2c_get_target_events(TARGET_IDX);
     simputshex32("  TARGET_EVENTS after clear (sampled): ", target_events);
     simputs("\n");

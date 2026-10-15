@@ -341,7 +341,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-flr-isolation[FLR preparation and recovery sequence]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-flr-isolation[FLR preparation and recovery sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-flr-isolation[FLR preparation and recovery sequence]
 endif::backend-pdf[]
 is in the Programmer's Guide.
 
@@ -438,7 +438,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-subsystem-resets[subsystem reset sequences]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-subsystem-resets[subsystem reset sequences]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-subsystem-resets[subsystem reset sequences]
 endif::backend-pdf[]
 are in the Programmer's Guide.
 

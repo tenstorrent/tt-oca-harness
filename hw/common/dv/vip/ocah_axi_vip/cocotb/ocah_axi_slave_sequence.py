@@ -3,10 +3,11 @@
 """AXI4 slave sequence API: the test-facing surface of the responder.
 
 `OcahAxiSlaveSequence` wraps one `OcahAxiSlaveDriver` and provides the
-backdoor memory access, deterministic fault injection, and bounded
-backpressure controls tests consume. Tests configure and inspect the
-responder through this class (or the agent's ``sequence``), never through the
-raw driver; missing operations get added here first.
+backdoor memory access, deterministic fault injection, bounded backpressure,
+write order, response USER, response delay and outstanding-occupancy
+controls tests consume. Tests configure and inspect the responder through
+this class (or the agent's ``sequence``), never through the raw driver;
+missing operations get added here first.
 """
 
 from __future__ import annotations
@@ -81,9 +82,11 @@ class OcahAxiSlaveSequence:
             lines.append(f"{addr + off:08x}: " + " ".join(f"{byte:02x}" for byte in chunk))
         return "\n".join(lines)
 
-    def inject_error(self, addr: int, resp: int, *, read: bool = True, write: bool = True) -> None:
-        """Program a one-shot non-OKAY response at ``addr``."""
-        self.driver.inject_error(addr, resp, read=read, write=write)
+    def inject_error(
+        self, addr: int, resp: int, *, read: bool = True, write: bool = True, rdata: int = 0
+    ) -> None:
+        """Program a one-shot non-OKAY response at ``addr``; the errored read beat answers ``rdata``."""
+        self.driver.inject_error(addr, resp, read=read, write=write, rdata=rdata)
 
     def inject_id_corruption(
         self, *, mask: int = 0x1, read: bool = True, write: bool = True
@@ -102,6 +105,33 @@ class OcahAxiSlaveSequence:
     def disable_backpressure(self) -> None:
         """Clear all READY stall generators."""
         self.driver.disable_backpressure()
+
+    @property
+    def max_outstanding(self) -> int | None:
+        """Outstanding depth per direction, or ``None`` for one request served at a time."""
+        return self.driver.max_outstanding
+
+    def set_response_delay(
+        self, delays: int | Iterable[int], *, read: bool = True, write: bool = True
+    ) -> None:
+        """Delay each B or R response by the next value of ``delays`` cycles."""
+        self.driver.set_response_delay(delays, read=read, write=write)
+
+    def clear_response_delay(self) -> None:
+        """Send every response as soon as it is ready."""
+        self.driver.clear_response_delay()
+
+    def outstanding_peak(self) -> dict[str, int]:
+        """Most write and read transactions outstanding at once (``max_outstanding`` set)."""
+        return self.driver.outstanding_peak()
+
+    def arm_w_before_aw(self) -> None:
+        """Arm a one-shot W-before-AW order: the next write's first W beat is accepted while its AW waits."""
+        self.driver.arm_w_before_aw()
+
+    def randomize_resp_user(self, seed: int) -> None:
+        """Answer every later B and R beat with BUSER and RUSER drawn per beat from ``seed``."""
+        self.driver.randomize_resp_user(seed)
 
     def get_statistics(self) -> dict[str, int]:
         """Return wrapper-level static statistics."""

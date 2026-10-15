@@ -11,7 +11,7 @@
 // Test-Logic-Reset and clear on a TRST reset. Mirrors the cocotb
 // dtp_jtag_clamp_hold_test_seq.
 
-class dtp_jtag_clamp_hold_test_seq extends dtp_jtag_base_test_seq;
+class dtp_jtag_clamp_hold_test_seq extends dtp_debug_tdr_base_test_seq;
   `uvm_object_utils(dtp_jtag_clamp_hold_test_seq)
 
   function new(string name = "dtp_jtag_clamp_hold_test_seq");
@@ -46,19 +46,18 @@ class dtp_jtag_clamp_hold_test_seq extends dtp_jtag_base_test_seq;
     seed_scenario_rng();
     attach_family_checker(required);
 
+    log_step("1", "Reset TAP before CLAMP_HOLD sweep");
     reset_to_tlr();
 
     directed_patterns(DtpBsrModelLen, patterns);
+    log_step("2", "Loop through scan patterns and verify TMP persistence");
     foreach (patterns[p]) begin
-      `uvm_info(
-          get_type_name(), $sformatf(
-          "Iteration %0d/%0d: SAMPLE_PRELOAD pattern=0x%02h", p + 1, patterns.size(), patterns[p]),
-          UVM_LOW)
+      log_iteration(p + 1, patterns.size(), $sformatf("SAMPLE_PRELOAD pattern=0x%02h", patterns[p]
+                    ));
       check_clamp_hold_cycle(patterns[p]);
     end
 
-    // Persistence survives a TMS-driven Test-Logic-Reset; a TRST reset
-    // clears it.
+    log_step("3", "Persistence survives a TMS-driven Test-Logic-Reset; a TRST reset clears it");
     load_ir(6'(CLAMP_HOLD_INSTR));
     check_persistence("CLAMP_HOLD before Test-Logic-Reset", 1'b1);
     goto_tlr_via_tms();

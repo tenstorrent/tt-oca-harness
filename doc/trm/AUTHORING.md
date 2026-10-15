@@ -289,7 +289,7 @@ stay in the TRM.
 
 Write the pointer as a guarded link: an `xref:ocah-programmer-guide::index.adoc#<id>[...]`
 in the HTML branch and the published
-`https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#<id>`
+`https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#<id>`
 URL in the PDF branch, since the PDF build cannot resolve Antora page IDs.
 
 ---

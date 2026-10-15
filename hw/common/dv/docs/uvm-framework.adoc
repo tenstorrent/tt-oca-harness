@@ -65,10 +65,10 @@ flow:
   `<dut>_base_test_seq` extends `ocah_sequence`, `<dut>_virtual_sequencer`
   extends `ocah_sequencer`, `<dut>_scoreboard` extends `ocah_scoreboard`, and
   invariant subscribers extend `ocah_subscriber`. The library owns the seed
-  and knob accessors, the looped-scenario runner, the pass banner, and the
-  scoreboard feature registry, so a bench writes none of them. The cocotb
-  twin is the Python package `ocah_lib` under the same directory, with
-  identical basenames (`OcahTest`, `OcahSequence`, ...).
+  and knob accessors, the looped and single-pass scenario runners, the pass
+  banner, and the scoreboard feature registry, so a bench writes none of
+  them. The cocotb twin is the Python package `ocah_lib` under the same
+  directory, with identical basenames (`OcahTest`, `OcahSequence`, ...).
 . *Two configuration levels.* `<dut>_test_cfg` (extends `ocah_test_cfg`) is
   the only object the seed touches: the base test fills it from the knobs,
   seeds it, and randomizes it once (clock and protocol timing included).
@@ -180,23 +180,26 @@ path, including the manifest fragments.
 ==== Step 2: Give the shared testbench top its UVM harness block
 
 The bench's `tb_top.sv` stays the single top for both frameworks: a portless
-core instantiates the shared-VIP and DUT-local interfaces, the DUT, and the
-adapters, and both frameworks consume the same interface instances (cocotb
-through hierarchical handles, SV-UVM through `uvm_config_db`); the `UVM`
-define appends a harness block at the end of the module — clock generation,
-protocol SVA, `uvm_config_db` publication, test inclusion, and `run_test()`:
+core instantiates the shared-VIP and DUT-local interfaces, the DUT, the
+adapters, and the protocol SVA, and both frameworks consume the same interface
+instances (cocotb through hierarchical handles, SV-UVM through
+`uvm_config_db`); the `UVM` define appends a harness block at the end of the
+module — clock generation, test inclusion, `uvm_config_db` publication, and
+`run_test()`:
 
 [source,systemverilog]
 ----
+    ocah_jtag_if u_jtag_if ();
+    <dut>_tb_if  u_tb_if ();
+    // ... DUT, DUT-pin wiring, adapters, quiescent tie-offs, protocol SVA ...
+
 `ifdef UVM
     import uvm_pkg::*;
 
-    initial clk_i = 1'b0;
-    always #(u_tb_if.clk_period_ns * 0.5ns) clk_i = ~clk_i;  // period from the env cfg
-
-    ocah_jtag_if u_jtag_if ();
-    <dut>_tb_if  u_tb_if ();
-    // ... DUT-pin wiring and quiescent tie-offs ...
+    initial begin
+        wait (u_tb_if.clk_period_ns != 0);  // period from the env cfg
+        forever #(u_tb_if.clk_period_ns * 0.5ns) u_tb_if.clk = ~u_tb_if.clk;
+    end
 
     `include "<dut>_tests.sv"
 
@@ -218,11 +221,17 @@ lockstep is the failure mode both patterns exist to remove.
 ==== Step 3: Carry DUT-local controls in a TB interface
 
 `<dut>_tb_if` owns what the harness and sequences exchange outside the
-protocol VIPs: the harness clock period the env publishes from the seeded
-test cfg, test-sequenced resets, DUT observables and reset counters, checker
-enables, and typed struct stimulus (a typed struct member beats re-flattened
-per-field scalars in the UVM shape). Sequences, checkers, and the scoreboard
-reach DUT-local signals only through it. Reference:
+protocol VIPs: the system clock and the harness clock period the env
+publishes from the seeded test cfg, test-sequenced resets, DUT observables
+and reset counters, checker enables, and typed struct stimulus (a typed
+struct member beats re-flattened per-field scalars in the UVM shape). The
+harness block only inverts the clock, so declare it with its initial level
+(`logic clk = 1'b0;`). The toggle starts once the period is nonzero, so a
+period that defaults to 0 holds the clock until the env publishes the
+seeded one. A bench may split the DUT-local signals across several TB
+interfaces by domain, as DTP does with `dtp_tb_if`, `dtp_scan_if`, and
+`dtp_xtrig_if`. Sequences, checkers, and the scoreboard reach DUT-local
+signals only through those interfaces. Reference:
 `hw/sys/dtp/dv/tb/dtp_tb_if.sv`.
 
 ==== Step 4: Build the environment package

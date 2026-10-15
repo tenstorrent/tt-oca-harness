@@ -11,6 +11,7 @@
 // is_reading_o and read_target_addr_o feed the guard while a read is active.
 
 `include "prim_assert.sv"
+`include "ocah_registers.svh"
 
 module efuse_read_interface #(
   parameter type efuse_addr_t = logic,  // Fuse bit-address type.
@@ -198,27 +199,13 @@ module efuse_read_interface #(
   end
 
   // Register the state
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      read_state_q <= ST_READ_IDLE;
-      fuse_command_req_q <= FuseCommandReqDefault;
-      read_err_q <= 1'b0;
-      read_done_q <= 1'b0;
-      read_busy_q <= 1'b0;
-      read_back_data_q_n0_scan <= '0;
-
-      timeout_count_q <= 'd0;
-    end else begin
-      read_state_q <= read_state_d;
-      fuse_command_req_q <= fuse_command_req_d;
-      read_err_q <= read_err_d;
-      read_done_q <= read_done_d;
-      read_busy_q <= read_busy_d;
-      read_back_data_q_n0_scan <= read_back_data_d;
-
-      timeout_count_q <= timeout_count_d;
-    end
-  end
+  `OCAH_FF(read_state_q, read_state_d, ST_READ_IDLE, clk_i, rst_ni)
+  `OCAH_FF(fuse_command_req_q, fuse_command_req_d, FuseCommandReqDefault, clk_i, rst_ni)
+  `OCAH_FF(read_err_q, read_err_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(read_done_q, read_done_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(read_busy_q, read_busy_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(read_back_data_q_n0_scan, read_back_data_d, '0, clk_i, rst_ni)
+  `OCAH_FF(timeout_count_q, timeout_count_d, 'd0, clk_i, rst_ni)
 
   // Set-priority sticky latch: a new OOB pulse in the same cycle as a clear
   // wins (error is preserved). SW must read-then-clear.

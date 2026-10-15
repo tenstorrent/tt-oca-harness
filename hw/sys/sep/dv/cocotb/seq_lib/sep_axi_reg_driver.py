@@ -37,26 +37,34 @@ class SepAxiRegDriver:
         self.test = test
         self.log = logger if logger is not None else test.logger
 
-    async def _wr(self, addr: int, data: int) -> None:
+    async def _write_access(self, addr: int, data: int, *, size: int | None, length: int) -> None:
         seq = SepAxiAccessSeq(
             f"{self._DRIVER_TAG.lower()}_wr",
             op=SepAxiOp.WRITE,
             addr=addr,
             wdata=data,
-            size=self._AXI_SIZE,
+            length=length,
+            size=size,
         )
         await self.test.start_seq(seq)
         if not seq.resp_ok:
             raise AssertionError(f"{self._DRIVER_TAG} write @0x{addr:08x} not OKAY")
 
-    async def _rd(self, addr: int) -> int:
+    async def _read_access(self, addr: int, *, size: int | None, length: int) -> int:
         seq = SepAxiAccessSeq(
             f"{self._DRIVER_TAG.lower()}_rd",
             op=SepAxiOp.READ,
             addr=addr,
-            size=self._AXI_SIZE,
+            length=length,
+            size=size,
         )
         await self.test.start_seq(seq)
         if not seq.resp_ok:
             raise AssertionError(f"{self._DRIVER_TAG} read @0x{addr:08x} not OKAY")
         return seq.rdata
+
+    async def _wr(self, addr: int, data: int) -> None:
+        await self._write_access(addr, data, size=self._AXI_SIZE, length=4)
+
+    async def _rd(self, addr: int) -> int:
+        return await self._read_access(addr, size=self._AXI_SIZE, length=4)

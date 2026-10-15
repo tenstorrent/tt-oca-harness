@@ -32,7 +32,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-uart-flow-control[software flow control procedure]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-uart-flow-control[software flow control procedure]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-uart-flow-control[software flow control procedure]
 endif::backend-pdf[]
 is in the Programmer's Guide.
 

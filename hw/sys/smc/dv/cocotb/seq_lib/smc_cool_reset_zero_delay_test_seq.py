@@ -11,9 +11,7 @@ that "the cool reset flow requires this value to be greater than 0; a value of
 value".
 
 So the hold counter alone decides whether a cool happens, and the pre-delay
-only decides when. `smc_cool_reset_from_pcie_test` always programs a non-zero
-pre-delay, so the case this sequence drives -- pre-delay 0 with a non-zero hold
--- has never been asked of the reset unit.
+only decides when; this sequence drives pre-delay 0 with a non-zero hold.
 
 The two legs are a pair, and the first is the live control for the second: with
 both counters at their reset 0 the FLR request latches but no cool may follow,
@@ -47,8 +45,8 @@ SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADD
 
 SMC_BIT = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bm")
 
-# The pre-delay this sequence is about. 0 is the value the FSM has never been
-# given together with a hold that lets the flow start.
+# The pre-delay this sequence is about: 0, with a hold that lets the flow
+# start.
 _DELAY = 0
 # Hold long enough to be observed on the reference clock and short enough that
 # the recovery below is not a wait for nothing.

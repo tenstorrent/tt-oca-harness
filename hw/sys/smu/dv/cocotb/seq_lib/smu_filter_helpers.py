@@ -157,7 +157,7 @@ async def clear_inbound0_config(jtag, *, scoreboard: Any = None) -> None:
 
 
 async def program_outbound0_pass_all(jtag, *, scoreboard: Any = None) -> None:
-    """Program OUTBOUND0 pass-all via JTAG2AXI (best-effort under SEP=0)."""
+    """Program OUTBOUND0 START/END/CONFIG to pass all via JTAG2AXI."""
     for addr, data, name in (
         (OUTBOUND0_START, 0, "OUTBOUND0_START"),
         (OUTBOUND0_END, PASS_ALL_END, "OUTBOUND0_END"),

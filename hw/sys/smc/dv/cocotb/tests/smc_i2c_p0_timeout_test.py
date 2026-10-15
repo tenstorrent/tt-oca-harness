@@ -35,11 +35,9 @@ class smc_i2c_p0_timeout_test(smc_base_test):
             SmcProtocolVipKind.I2C,
             type(self).__name__,
             # Stimulus floor, literal here rather than read from `seq.accesses`.
-            # STIMULUS DECLARATION, not a check: the scoreboard evaluates
-            # `csr_accesses >= min_csr_accesses` against the sequence's own
-            # counter, so once the number is accurate it is `N >= N` and cannot
-            # fail ([NO-ALWAYS-PASS-CHECKER]). The fail-capable content is the
-            # sweep's `expected=` compares and the rclr two-sided read, both
+            # `csr_accesses` is the sequence's own dispatch counter, so this floor
+            # guards the stimulus shape; the DUT-facing checks are the sweep's
+            # `expected=` compares and the rclr two-sided read, both
             # scoreboard-enforced.
             min_csr_accesses=50,
             csr_accesses=seq.accesses,

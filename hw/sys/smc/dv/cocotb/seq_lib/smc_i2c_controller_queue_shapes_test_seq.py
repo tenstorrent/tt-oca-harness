@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shapes of the I2C0 controller's format queue that no leaf had written.
+"""Six shapes of the I2C0 controller's format queue.
 
-Every controller leaf queues one transaction at a time, gives it a STOP, and
-drains the receive FIFO as the read runs. Six other shapes, each a register
-sequence against the bench EEPROM target:
+Six shapes, each a register sequence against the bench EEPROM target:
 
 * **A NACK allowed.** `FDATA.NAKOK` on an address nobody answers: `i2c.rdl`
   says the controller then "will not halt, set the `CONTROLLER_EVENTS.NACK`

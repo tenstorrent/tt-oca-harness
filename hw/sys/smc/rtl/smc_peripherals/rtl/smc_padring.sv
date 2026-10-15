@@ -9,6 +9,8 @@
 // cool-reset pins; each function's enable drives the pad's LSIO select, which the gpio
 // registers can disable. The pad mapping is combinational.
 
+`include "ocah_assert.svh"
+
 module smc_padring #(
   parameter int unsigned                   MAX_TRANS                 = 1,  // Maximum outstanding
                                                                            // transactions of the
@@ -535,7 +537,7 @@ module smc_padring #(
     localparam bit InputByDefault = smc_padring_pkg::DefaultDirectionMap[i];
 
     // Assertion to protect against truncation on casts
-    `OCAH_OT_ASSERT_INIT(
+    `OCAH_ASSERT_STATIC(
         GpioIntfSizeFits_A,
         smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::AddrWidth))
 

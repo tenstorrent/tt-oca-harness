@@ -45,14 +45,4 @@ class dtp_jtag2axi_smc_otp_axi_single_write_test extends dtp_base_test;
     return "DTP_JTAG2AXI_TEST_LOOPS";
   endfunction
 
-  virtual function void plumb_scenario_seq(ocah_sequence seq);
-    dtp_jtag2axi_otp_axi_test_seq t_seq;
-    super.plumb_scenario_seq(seq);
-    if (!$cast(t_seq, seq))
-      `uvm_fatal(get_type_name(), "scenario sequence is not a dtp_jtag2axi_otp_axi_test_seq")
-    t_seq.axi_cfg       = m_env.m_smc_otp_axi_cfg;
-    t_seq.axi_evidence  = m_env.m_smc_otp_axi_env.m_checker;
-    t_seq.axi_ref_model = m_env.m_smc_otp_axi_env.m_ref_model;
-  endfunction
-
 endclass : dtp_jtag2axi_smc_otp_axi_single_write_test

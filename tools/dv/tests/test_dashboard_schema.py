@@ -194,6 +194,10 @@ RUN_METADATA_FIELDS = {
 }
 JUNIT_FIELDS = {"total", "missing"}
 DUTS = ("cross_trigger_port", "dtp", "sep", "smc")
+RUN_START = "2026-10-03T10:03:00+00:00"
+NEXT_RUN_START = "2026-10-04T10:03:00+00:00"
+COLLECTED_AT = "2026-10-04T12:00:00+00:00"
+RECOLLECTED_AT = "2026-10-05T12:00:00+00:00"
 
 
 class ContractCase(unittest.TestCase):
@@ -247,6 +251,26 @@ class NormalizedRecord(ContractCase):
             (2, 1, 1),
         )
 
+    def test_a_skipped_flow_stays_out_of_the_flow_pass_rate(self):
+        summary = make_summary(self.records(("PASS", "PASS", "SKIP")))
+        self.assertEqual(
+            summary["flows"],
+            {
+                "total": 3,
+                "passing": 2,
+                "failing": 0,
+                "skipped": 1,
+                "unknown": 0,
+                "pass_rate": 100.0,
+            },
+        )
+        self.assertEqual(make_trend_point(summary)["flow_pass_rate"], 100.0)
+
+    def test_every_flow_skipped_leaves_no_flow_pass_rate(self):
+        summary = make_summary(self.records(("SKIP", "SKIP")))
+        self.assertEqual(summary["flows"]["skipped"], 2)
+        self.assertIsNone(summary["flows"]["pass_rate"])
+
 
 class AggregateSummary(ContractCase):
     def test_summary_carries_the_documented_fields(self):
@@ -292,6 +316,26 @@ class TrendHistory(ContractCase):
         self.assertNotEqual(same, fewer)
         self.assertNotEqual(same, other_run)
         self.assertEqual(len(same), 16)
+
+    def test_identity_follows_the_run_start_not_the_collection(self):
+        def point_id(collected=COLLECTED_AT, **kwargs):
+            records = self.records(**kwargs)
+            for record in records:
+                record["generated_at"] = collected
+            return make_trend_point(make_summary(records))["id"]
+
+        run = point_id(start_time=RUN_START)
+        self.assertEqual(run, point_id(collected=RECOLLECTED_AT, start_time=RUN_START))
+        self.assertNotEqual(run, point_id(start_time=NEXT_RUN_START))
+        self.assertNotEqual(
+            point_id(run_metadata={"generated_at": RUN_START}),
+            point_id(run_metadata={"generated_at": NEXT_RUN_START}),
+        )
+
+    def test_update_keeps_two_runs_of_one_run_dir_and_revision(self):
+        first = update_history(None, make_summary(self.records(start_time=RUN_START)))
+        second = update_history(first, make_summary(self.records(start_time=NEXT_RUN_START)))
+        self.assertEqual(len(second["points"]), 2)
 
     def test_update_replaces_the_point_of_identical_inputs_only(self):
         first = update_history(None, make_summary(self.records()))

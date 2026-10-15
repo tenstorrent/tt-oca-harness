@@ -25,6 +25,14 @@ timeout_sec = 1800
 tags = ["ci", "axil"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "smc_axil_write_side_test"
+module = "smc_axil_write_side_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "axil"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "axil"
 tests = [

@@ -51,7 +51,6 @@ class smc_i2c_error_fifo_depth_test(smc_base_test):
             # completed each access, rather than `seq.accesses`, which the
             # sequence increments on dispatch regardless of what came back.
             csr_accesses=self.env.scoreboard.axi_accesses_by_bus.get("SEP_IN AXI", 0),
-            # This IS a proxy: it stands in for I2C error/FIFO-depth coverage.
             proxy=True,
             details=(
                 "PROXY for I2C error/FIFO-depth coverage: I2C0 CSR decode plus "

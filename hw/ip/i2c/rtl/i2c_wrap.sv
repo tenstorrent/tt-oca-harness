@@ -104,6 +104,7 @@ module i2c_wrap #(
 
   `include "axi/assign.svh"
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   /////////////////////////
   // Signal Declarations //
@@ -314,8 +315,8 @@ module i2c_wrap #(
   // Assertions //
   ////////////////
 
-  `OCAH_OT_ASSERT_INIT(paramCheckNumI2cs_A, NUM_I2CS > 0)
-  `OCAH_OT_ASSERT_INIT(paramCheckMaxNumI2cs_A, NUM_I2CS <= i2c_wrap_pkg::MaxNumI2cs)
+  `OCAH_ASSERT_STATIC(paramCheckNumI2cs_A, NUM_I2CS > 0)
+  `OCAH_ASSERT_STATIC(paramCheckMaxNumI2cs_A, NUM_I2CS <= i2c_wrap_pkg::MaxNumI2cs)
 
   `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
   `OCAH_OT_ASSERT_KNOWN(I2CEnKnownO_A, i2c_en_o)

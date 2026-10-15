@@ -101,16 +101,50 @@ static inline uint32_t pic_source_pending(uint32_t source_id) {
     return (word >> (source_id % 32u)) & 1u;
 }
 
+// Raw register access for leaves that grade the PIC register map. The write
+// value goes out unmasked, so a leaf can write reserved bits or all-ones where
+// its contract says so; the read returns the whole 32-bit word.
+static inline uint32_t pic_rd32(uint32_t addr) {
+    return *(volatile uint32_t *)addr;
+}
+
+static inline void pic_wr32(uint32_t addr, uint32_t value) {
+    _pic_wr(addr, value);
+}
+
+static inline uint32_t pic_read_meip(uint32_t word) {
+    return pic_rd32(SEP_TOP_PIC_MEIP_BASE_ADDR(word));
+}
+
+static inline uint32_t pic_read_mpiccfg(void) {
+    return pic_rd32(SEP_TOP_PIC_MPICCFG_BASE_ADDR);
+}
+
+// priord: 0 standard order, 1 reverse order (el2_pic.adoc, mpiccfg).
+static inline void pic_write_priord(uint32_t priord) {
+    _pic_wr(SEP_TOP_PIC_MPICCFG_BASE_ADDR, priord & EL2_PIC__MPICCFG__PRIORD_bm);
+}
+
+// meigwclr takes any value (el2_pic.adoc: "Write any value to clear").
+static inline void pic_write_meigwclr(uint32_t source_id, uint32_t value) {
+    _pic_wr(_pic_meigwclr_addr(source_id), value);
+}
+
+static inline uint32_t pic_read_meigwclr(uint32_t source_id) {
+    return pic_rd32(_pic_meigwclr_addr(source_id));
+}
+
 // Drop the PIC priority threshold/current level to 0 and enable machine
 // external interrupts (mie.meie) + global interrupts (mstatus.mie).
 #define CSR_MEIPT 0xBC9u    /* VeeR EL2 priority threshold */
 #define CSR_MEICURPL 0xBCCu /* VeeR EL2 current priority level */
+#define CSR_MEIHAP 0xFC8    /* VeeR EL2 claim id / handler address pointer */
 #define MIE_MEIE (1u << 11)
 #define MSTATUS_MIE (1u << 3)
 
 static inline void pic_enable_interrupts(void) {
-    __asm__ volatile("csrwi 0xBC9, 0"); /* CSR_MEIPT */
-    __asm__ volatile("csrwi 0xBCC, 0"); /* CSR_MEICURPL */
+    __asm__ volatile("csrwi %0, 0" ::"i"(CSR_MEIPT));
+    __asm__ volatile("csrwi %0, 0" ::"i"(CSR_MEICURPL));
     __asm__ volatile("csrs mie, %0" ::"r"(MIE_MEIE));
     __asm__ volatile("csrs mstatus, %0" ::"r"(MSTATUS_MIE));
 }

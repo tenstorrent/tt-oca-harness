@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_dbg_ctrl_clk_stop_random_clock_stop_test — directed per-request and seeded random clock-stop combinations:
-// stop_clks == jtag_clock_stop OR any CLA request
-// (looped runner with per-pass family evidence, 16-pass floor).
+// dtp_dbg_ctrl_clk_stop_random_clock_stop_test — directed per-request and
+// seeded random clock-stop combinations: stop_clks == jtag_clock_stop OR any
+// CLA request (looped runner with per-pass family evidence).
 
 class dtp_dbg_ctrl_clk_stop_random_clock_stop_test extends dtp_base_test;
   `uvm_component_utils(dtp_dbg_ctrl_clk_stop_random_clock_stop_test)

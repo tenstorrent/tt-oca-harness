@@ -11,8 +11,12 @@
 // recovered.
 //
 // The flash model starts erased and is always ready, so programs need no prior
-// erase and no check depends on a busy flash. Dual and quad lanes are not
-// modeled.
+// erase and no check depends on a busy flash.
+//
+// The lane leg then runs the dual and quad commands the parameter block lists:
+// the reads 0x3B, 0x6B, 0xBB and 0xEB, each compared word by word with the
+// block, and a quad page program 0x32, read back with 0x03 and compared with the
+// block. The flash model sits on all four data lanes for this leg.
 //
 // cocotb patches the scenario block (g_spi1_params, located by SPI1_PARAM_MAGIC)
 // per seed. The defaults are the directed scenario, so the image also runs
@@ -27,22 +31,12 @@
 #include "sep_mailbox.h"
 #include "sep_spi.h"
 
-#define TIMEOUT 200000
 #define MAX_WORDS 16
+#define LANE_MAX 5 // lane leg entries: four lane reads and one quad program
 
-#define FLASH_CMD_WREN 0x06u
-#define FLASH_CMD_WRDI 0x04u
-#define FLASH_CMD_RDSR 0x05u
-#define FLASH_CMD_RDSR2 0x35u
 // Non-zero SR2 the device model is built with. Must match status_reg2 in
 // cocotb/tests/spi/sep_spi_ot_flash_cmd_rand_test.py.
 #define FLASH_SR2_SEEDED 0x5Au
-#define FLASH_CMD_JEDEC 0x9Fu
-#define FLASH_CMD_PP 0x02u
-#define FLASH_CMD_READ 0x03u
-#define FLASH_CMD_FAST 0x0Bu
-#define FLASH_CMD_ERASE 0x20u
-#define FLASH_SR_WEL (1u << 1)
 #define FLASH_JEDEC_RX 0x0018BA20u
 
 // Reserved command speed encoding: the host must reject the segment with an
@@ -53,155 +47,32 @@
 #define SPI1_PARAM_MAGIC 0x5A11C0DEu
 
 // Scenario block. Layout: [0]=magic, [1]=flash addr, [2]=word count (1..MAX_WORDS),
-// [3 .. 3+count-1]=data words (LSB byte sent first). Volatile so the run-time
-// patched values are not folded.
-volatile uint32_t g_spi1_params[3 + MAX_WORDS] = {
+// [3 .. 3+MAX_WORDS-1]=data words (LSB byte sent first), then the lane leg:
+// [LANE_BASE]=entry count (0..LANE_MAX), and per entry [opcode, flash addr,
+// word count, data words]. A read entry holds the words the flash holds at that
+// address; the quad program entry holds the words to program. Volatile so the
+// run-time patched values are not folded. The directed defaults stage no lane
+// entry: the lane reads need the flash preload that only the cocotb test makes.
+#define LANE_BASE (3 + MAX_WORDS)
+#define LANE_STRIDE (3 + MAX_WORDS)
+volatile uint32_t g_spi1_params[LANE_BASE + 1 + LANE_MAX * LANE_STRIDE] = {
     SPI1_PARAM_MAGIC, 0x000000u, 4u, 0xA5C31234u, 0xDEADBEEFu, 0x0BADF00Du, 0xCAFEBABEu,
 };
-
-// The command length field encodes the byte count minus one.
-static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
-    uint32_t v =
-        ((direction << SPI_CONTROLLER__COMMAND__DIRECTION_bp) &
-         SPI_CONTROLLER__COMMAND__DIRECTION_bm) |
-        (((len_bytes - 1) << SPI_CONTROLLER__COMMAND__LEN_bp) & SPI_CONTROLLER__COMMAND__LEN_bm);
-    if (csaat) {
-        v |= SPI_CONTROLLER__COMMAND__CSAAT_bm;
-    }
-    return v;
-}
-
-static uint32_t pack_hdr(uint32_t opcode, uint32_t addr) {
-    // Opcode, then the 24-bit address most-significant byte first, in transmit order
-    return (opcode & 0xFF) | (((addr >> 16) & 0xFF) << 8) | (((addr >> 8) & 0xFF) << 16) |
-           (((addr >> 0) & 0xFF) << 24);
-}
-
-// No select step: the OT SPI host drives the pads directly.
-
-static void spi_init(void) {
-    spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
-           SPI_CONTROLLER__CONTROL__SPIEN_bm | SPI_CONTROLLER__CONTROL__OUTPUT_EN_bm);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
-}
-
-static int flash_wren(void) {
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_WREN);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
-    return spi_wait_idle(TIMEOUT);
-}
-
-static int flash_wrdi(void) {
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_WRDI);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
-    return spi_wait_idle(TIMEOUT);
-}
-
-static int flash_jedec(uint32_t *out) {
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_JEDEC);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1));
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 3, 0));
-    if (spi_wait_idle(TIMEOUT)) return -1;
-    *out = spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
-    return 0;
-}
-
-// Returns 0 and stores the status byte, or -1 if the controller never responded.
-// A timeout is not encoded as 0xFF: WEL is bit 1, so 0xFF would look like WEL set.
-static int flash_rdsr_checked(uint8_t *out) {
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_RDSR);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // hold CS
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_RX, 1, 0)); // RX 1 byte, release CS
-    if (spi_wait_idle(TIMEOUT)) return -1;
-    *out = (uint8_t)(spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)) & 0xFF);
-    return 0;
-}
-
-// Reads status register 2, a device register separate from status register 1.
-// Returns 0 and stores the byte, or -1 if the controller never responded.
-static int flash_rdsr2(uint8_t *out) {
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_RDSR2);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // hold CS
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 1, 0));
-    if (spi_wait_idle(TIMEOUT)) return -1;
-    *out = (uint8_t)(spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)) & 0xFF);
-    return 0;
-}
-
-static int flash_page_program(uint32_t addr, const uint32_t *data, uint32_t nwords) {
-    // Preload the whole TX phase into the FIFO, then issue one TX segment for all
-    // of it: a separate command per word stalls the host at segment boundaries.
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
-           pack_hdr(FLASH_CMD_PP, addr)); // opcode + 24-bit addr
-    for (uint32_t i = 0; i < nwords; i++) {
-        spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), data[i]); // data words, LSB-first
-    }
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 4 + nwords * 4, 0));
-    return spi_wait_idle(TIMEOUT);
-}
-
-static int flash_sector_erase(uint32_t addr) {
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_ERASE, addr));
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_TX, 4, 0)); // command + address, release CS
-    return spi_wait_idle(TIMEOUT);
-}
-
-static int flash_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_READ, addr));
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_TX, 4, 1)); // command + address, hold CS
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0)); // RX data, release CS
-    if (spi_wait_idle(TIMEOUT)) return -1;
-    for (uint32_t i = 0; i < nwords; i++) {
-        out[i] = spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
-    }
-    return 0;
-}
-
-static int flash_fast_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_FAST, addr));
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0); // dummy byte
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 5, 1));
-    if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0));
-    if (spi_wait_idle(TIMEOUT)) return -1;
-    for (uint32_t i = 0; i < nwords; i++) {
-        out[i] = spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
-    }
-    return 0;
-}
 
 // Recovers from a latched host error, which blocks further commands until
 // cleared. Software reset flushes the command queue and both FIFOs, so the
 // segment that caused the error never runs; the host must not leave reset until
-// both FIFOs report empty. Then the error latch is cleared. Returns 1 if the
-// FIFOs never report empty, else 0. *residual is the error status left
-// afterwards; 0 means the host is released.
-static int spi_err_recover(uint32_t *residual) {
+// both FIFOs report empty. Software reset clears internal state, not registers,
+// so ERROR_STATUS still holds expect_bm after it; then write-one-to-clear
+// releases the latch. Returns the number of failures. *residual is the error
+// status left afterwards; 0 means the host is released.
+static int spi_err_recover(uint32_t expect_bm, uint32_t *residual) {
     int err = 0;
     const uint32_t empty = SPI_CONTROLLER__STATUS__TXEMPTY_bm | SPI_CONTROLLER__STATUS__RXEMPTY_bm;
     uint32_t ctrl = spi_rd(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl | SPI_CONTROLLER__CONTROL__SW_RST_bm);
     uint32_t st = 0;
-    int t = TIMEOUT;
+    int t = SEP_SPI_TIMEOUT;
     while (t-- > 0) {
         st = spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if ((st & empty) == empty) break;
@@ -213,6 +84,16 @@ static int spi_err_recover(uint32_t *residual) {
         err++;
     }
     spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
+    // The write-one-to-clear below is then the only thing that can release it.
+    uint32_t held = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    if (held != expect_bm) {
+        sep_mbx_puts("FAIL: ERROR_STATUS after SW_RST=");
+        sep_mbx_puthex(held);
+        sep_mbx_puts(" exp ");
+        sep_mbx_puthex(expect_bm);
+        sep_mbx_puts(" (SW_RST clears internal state, not registers)\n");
+        err++;
+    }
     spi_wr(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
     *residual = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     return err;
@@ -232,7 +113,7 @@ static int spi_err_expect(uint32_t expect_bm) {
         err++;
     }
     uint32_t residual = 0;
-    err += spi_err_recover(&residual);
+    err += spi_err_recover(expect_bm, &residual);
     if (residual != 0) {
         sep_mbx_puts("FAIL: ERROR_STATUS did not W1C-clear, residual=");
         sep_mbx_puthex(residual);
@@ -240,6 +121,124 @@ static int spi_err_expect(uint32_t expect_bm) {
         err++;
     }
     return err;
+}
+
+// Prints the PASS line of one lane leg entry: its opcode, lane width, and the
+// words and bytes compared.
+static void lane_pass_line(const char *chk, uint32_t opcode, uint32_t lanes, uint32_t nwords) {
+    sep_mbx_puts(chk);
+    sep_mbx_puts(" PASS: op=");
+    sep_mbx_puthex(opcode);
+    sep_mbx_puts(" width=x");
+    sep_mbx_putc((char)('0' + lanes));
+    sep_mbx_puts(" words=");
+    sep_mbx_puthex(nwords);
+    sep_mbx_puts(" bytes=");
+    sep_mbx_puthex(nwords * 4u);
+    sep_mbx_putc('\n');
+}
+
+// Compares nwords read words with the expected words; prints a FAIL line per
+// mismatch and returns the mismatch count.
+static int lane_compare(const char *chk, uint32_t opcode, const uint32_t *got, const uint32_t *want,
+                        uint32_t nwords) {
+    int err = 0;
+    for (uint32_t i = 0; i < nwords; i++) {
+        if (got[i] != want[i]) {
+            sep_mbx_puts("FAIL: ");
+            sep_mbx_puts(chk);
+            sep_mbx_puts(" op=");
+            sep_mbx_puthex(opcode);
+            sep_mbx_puts(" word ");
+            sep_mbx_puthex(i);
+            sep_mbx_puts(" got ");
+            sep_mbx_puthex(got[i]);
+            sep_mbx_puts(" exp ");
+            sep_mbx_puthex(want[i]);
+            sep_mbx_putc('\n');
+            err++;
+        }
+    }
+    return err;
+}
+
+// Lane leg. CHK-SPI-LANE-READ: each dual or quad read returns, word by word, the
+// words the parameter block says the flash holds at that address.
+// CHK-SPI-LANE-PROGRAM: a quad page program followed by a standard read returns
+// the programmed words. Every entry must also leave ERROR_STATUS at 0. Returns
+// the error count.
+static int lane_leg(void) {
+    uint32_t count = g_spi1_params[LANE_BASE];
+    if (count > LANE_MAX) {
+        sep_mbx_puts("FAIL: bad lane entry count ");
+        sep_mbx_puthex(count);
+        sep_mbx_putc('\n');
+        return 1;
+    }
+    sep_mbx_puts("LANE leg entries=");
+    sep_mbx_puthex(count);
+    sep_mbx_putc('\n');
+    int errors = 0;
+    for (uint32_t e = 0; e < count; e++) {
+        uint32_t base = LANE_BASE + 1u + e * LANE_STRIDE;
+        uint32_t opcode = g_spi1_params[base];
+        uint32_t addr = g_spi1_params[base + 1u];
+        uint32_t nwords = g_spi1_params[base + 2u];
+        uint32_t lanes = sep_spi_flash_data_lanes(opcode);
+        uint32_t want[MAX_WORDS];
+        uint32_t got[MAX_WORDS];
+        if (nwords < 1 || nwords > MAX_WORDS || lanes < 2u) {
+            sep_mbx_puts("FAIL: bad lane entry op=");
+            sep_mbx_puthex(opcode);
+            sep_mbx_puts(" nwords=");
+            sep_mbx_puthex(nwords);
+            sep_mbx_putc('\n');
+            errors++;
+            continue;
+        }
+        for (uint32_t i = 0; i < nwords; i++) {
+            want[i] = g_spi1_params[base + 3u + i];
+            got[i] = ~want[i]; // a read that writes nothing cannot match
+        }
+        const char *chk = "CHK-SPI-LANE-READ";
+        int rc;
+        if (opcode == SEP_SPI_OP_QPP) {
+            chk = "CHK-SPI-LANE-PROGRAM";
+            rc = sep_spi_flash_wren();
+            if (rc == 0) rc = sep_spi_flash_program(opcode, addr, want, nwords);
+            if (rc == 0) rc = sep_spi_flash_read(SEP_SPI_OP_READ, addr, got, nwords);
+        } else {
+            rc = sep_spi_flash_read(opcode, addr, got, nwords);
+        }
+        if (rc) {
+            sep_mbx_puts("FAIL: ");
+            sep_mbx_puts(chk);
+            sep_mbx_puts(" op=");
+            sep_mbx_puthex(opcode);
+            sep_mbx_puts(" host did not complete the command, rc=");
+            sep_mbx_puthex((uint32_t)rc);
+            sep_mbx_putc('\n');
+            errors++;
+            continue;
+        }
+        int err = lane_compare(chk, opcode, got, want, nwords);
+        uint32_t es = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+        if (es != 0) {
+            sep_mbx_puts("FAIL: ");
+            sep_mbx_puts(chk);
+            sep_mbx_puts(" op=");
+            sep_mbx_puthex(opcode);
+            sep_mbx_puts(" ERROR_STATUS=");
+            sep_mbx_puthex(es);
+            sep_mbx_putc('\n');
+            err++;
+        }
+        if (err == 0) {
+            lane_pass_line(chk, opcode, lanes, nwords);
+        }
+        errors += err;
+    }
+    return errors;
 }
 
 int main(void) {
@@ -272,10 +271,10 @@ int main(void) {
     sep_mbx_puthex(nwords);
     sep_mbx_putc('\n');
 
-    spi_init();
+    sep_spi_host_init(0);
 
     uint32_t jedec = 0;
-    if (flash_jedec(&jedec)) {
+    if (sep_spi_flash_rdreg(SEP_SPI_OP_JEDEC, 3, &jedec)) {
         sep_mbx_puts("FAIL: JEDEC timeout\n");
         return errors + 1;
     }
@@ -291,28 +290,28 @@ int main(void) {
     // Write enable is clear out of reset, so set it first: otherwise the write
     // disable check would pass on a no-op.
     uint8_t sr;
-    if (flash_wren()) {
+    if (sep_spi_flash_wren()) {
         sep_mbx_puts("FAIL: WREN(rdsr) timeout\n");
         return errors + 1;
     }
-    if (flash_rdsr_checked(&sr)) {
+    if (sep_spi_flash_rdsr(&sr)) {
         sep_mbx_puts("FAIL: CHK-RDSR status read timed out after WREN\n");
         errors++;
-    } else if (!(sr & FLASH_SR_WEL)) {
+    } else if (!(sr & SEP_SPI_SR_WEL)) {
         sep_mbx_puts("FAIL: CHK-RDSR WEL not set after WREN\n");
         errors++;
     } else {
         sep_mbx_puts("CHK-RDSR PASS: opcode 0x05 saw WEL after WREN\n");
     }
 
-    if (flash_wrdi()) {
+    if (sep_spi_flash_op(SEP_SPI_OP_WRDI)) {
         sep_mbx_puts("FAIL: WRDI timeout\n");
         return errors + 1;
     }
-    if (flash_rdsr_checked(&sr)) {
+    if (sep_spi_flash_rdsr(&sr)) {
         sep_mbx_puts("FAIL: CHK-WRDI status read timed out after WRDI\n");
         errors++;
-    } else if (sr & FLASH_SR_WEL) {
+    } else if (sr & SEP_SPI_SR_WEL) {
         sep_mbx_puts("FAIL: CHK-WRDI WEL still set after WRDI\n");
         errors++;
     } else {
@@ -320,15 +319,15 @@ int main(void) {
     }
 
     // --- PROGRAM path: WREN -> PP -> READ == pattern ---
-    if (flash_wren()) {
+    if (sep_spi_flash_wren()) {
         sep_mbx_puts("FAIL: WREN timeout\n");
         return errors + 1;
     }
-    if (flash_page_program(addr, exp, nwords)) {
+    if (sep_spi_flash_program(SEP_SPI_OP_PP, addr, exp, nwords)) {
         sep_mbx_puts("FAIL: PAGE PROGRAM timeout\n");
         return errors + 1;
     }
-    if (flash_read(addr, rd, nwords)) {
+    if (sep_spi_flash_read(SEP_SPI_OP_READ, addr, rd, nwords)) {
         sep_mbx_puts("FAIL: READ timeout\n");
         return errors + 1;
     }
@@ -348,7 +347,7 @@ int main(void) {
     }
     if (prog_ok) {
         sep_mbx_puts("CHK-PROGRAM/CHK-READ PASS: PP + READ match the pattern\n");
-        if (flash_fast_read(addr, rd, nwords)) {
+        if (sep_spi_flash_read(SEP_SPI_OP_FAST, addr, rd, nwords)) {
             sep_mbx_puts("FAIL: FAST READ timeout\n");
             return errors + 1;
         }
@@ -375,15 +374,15 @@ int main(void) {
     for (uint32_t i = 0; i < nwords; i++) {
         neigh_pat[i] = exp[i] ^ 0xFFFFFFFFu;
     }
-    if (flash_wren()) {
+    if (sep_spi_flash_wren()) {
         sep_mbx_puts("FAIL: WREN(neighbour) timeout\n");
         return errors + 1;
     }
-    if (flash_page_program(neigh, neigh_pat, nwords)) {
+    if (sep_spi_flash_program(SEP_SPI_OP_PP, neigh, neigh_pat, nwords)) {
         sep_mbx_puts("FAIL: PAGE PROGRAM(neighbour) timeout\n");
         return errors + 1;
     }
-    if (flash_read(neigh, neigh_rd, nwords)) {
+    if (sep_spi_flash_read(SEP_SPI_OP_READ, neigh, neigh_rd, nwords)) {
         sep_mbx_puts("FAIL: READ(neighbour) timeout\n");
         return errors + 1;
     }
@@ -397,15 +396,15 @@ int main(void) {
     }
 
     // --- ERASE path: WREN -> ERASE -> READ == 0xFF, neighbour intact ---
-    if (flash_wren()) {
+    if (sep_spi_flash_wren()) {
         sep_mbx_puts("FAIL: WREN(erase) timeout\n");
         return errors + 1;
     }
-    if (flash_sector_erase(addr)) {
+    if (sep_spi_flash_erase(addr)) {
         sep_mbx_puts("FAIL: ERASE timeout\n");
         return errors + 1;
     }
-    if (flash_read(addr, rd, nwords)) {
+    if (sep_spi_flash_read(SEP_SPI_OP_READ, addr, rd, nwords)) {
         sep_mbx_puts("FAIL: READ(after erase) timeout\n");
         return errors + 1;
     }
@@ -423,7 +422,7 @@ int main(void) {
     }
     if (erase_ok) {
         int neigh_ok = 1;
-        if (flash_read(neigh, neigh_rd, nwords)) {
+        if (sep_spi_flash_read(SEP_SPI_OP_READ, neigh, neigh_rd, nwords)) {
             sep_mbx_puts("FAIL: READ(neighbour after erase) timeout\n");
             return errors + 1;
         }
@@ -447,10 +446,10 @@ int main(void) {
     // --- CHK-WEL-AUTOCLR: SECTOR ERASE must consume the write-enable latch ---
     // CHK-WP-PP below relies on write enable being clear.
     uint8_t sr_post;
-    if (flash_rdsr_checked(&sr_post)) {
+    if (sep_spi_flash_rdsr(&sr_post)) {
         sep_mbx_puts("FAIL: CHK-WEL-AUTOCLR status read timed out after ERASE\n");
         errors++;
-    } else if (sr_post & FLASH_SR_WEL) {
+    } else if (sr_post & SEP_SPI_SR_WEL) {
         sep_mbx_puts("FAIL: CHK-WEL-AUTOCLR WEL still set after ERASE, sr=");
         sep_mbx_puthex(sr_post);
         sep_mbx_putc('\n');
@@ -465,11 +464,11 @@ int main(void) {
     // checks that the device saw it at the expected address. The flash model
     // drops a program while write enable is clear, so the erased readback below
     // is model behaviour, not a SEP feature.
-    if (flash_page_program(addr, exp, nwords)) {
+    if (sep_spi_flash_program(SEP_SPI_OP_PP, addr, exp, nwords)) {
         sep_mbx_puts("FAIL: CHK-WP-PP unprotected PAGE PROGRAM timeout\n");
         return errors + 1;
     }
-    if (flash_read(addr, rd, nwords)) {
+    if (sep_spi_flash_read(SEP_SPI_OP_READ, addr, rd, nwords)) {
         sep_mbx_puts("FAIL: CHK-WP-PP readback timeout\n");
         return errors + 1;
     }
@@ -494,12 +493,14 @@ int main(void) {
     // With write enable set, status register 1 is non-zero, so a read aliased onto
     // status register 1 fails. The seeded non-zero status register 2 also fails an
     // RX path that returns all-zero.
-    if (flash_wren()) {
+    if (sep_spi_flash_wren()) {
         sep_mbx_puts("FAIL: WREN(rdsr2) timeout\n");
         return errors + 1;
     }
-    uint8_t sr2 = 0;
-    if (flash_rdsr2(&sr2)) {
+    uint32_t sr2_word = 0;
+    int sr2_rc = sep_spi_flash_rdreg(SEP_SPI_OP_RDSR2, 1, &sr2_word);
+    uint32_t sr2 = sr2_word & 0xFFu;
+    if (sr2_rc) {
         sep_mbx_puts("FAIL: CHK-RDSR2 status-2 read timed out\n");
         errors++;
     } else if (sr2 != FLASH_SR2_SEEDED) {
@@ -514,7 +515,7 @@ int main(void) {
         sep_mbx_puthex(sr2);
         sep_mbx_puts(", not SR1 0x02 and not an all-zero RX\n");
     }
-    if (flash_wrdi()) {
+    if (sep_spi_flash_op(SEP_SPI_OP_WRDI)) {
         sep_mbx_puts("FAIL: WRDI(rdsr2) timeout\n");
         return errors + 1;
     }
@@ -535,7 +536,7 @@ int main(void) {
     // host until software clears it, so each one must also recover.
 
     // CHK-ERR-UNDERFLOW: a read with the RX FIFO empty.
-    int rx_drain = TIMEOUT;
+    int rx_drain = SEP_SPI_TIMEOUT;
     while (rx_drain-- > 0 && (spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
                               SPI_CONTROLLER__STATUS__RXQD_bm) != 0) {
         (void)spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
@@ -556,7 +557,7 @@ int main(void) {
     // CHK-ERR-CMDINVAL: a COMMAND segment with the reserved SPEED encoding
     // (see SPI_CMD_SPEED_RESERVED).
     spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_TX, 1, 0) |
+           sep_spi_cmd_word(SPI_CMD_DIR_TX, 1, 0, SPI_CMD_SPEED_STD) |
                (SPI_CMD_SPEED_RESERVED << SPI_CONTROLLER__COMMAND__SPEED_bp));
     int ci_err = spi_err_expect(SPI_CONTROLLER__ERROR_STATUS__CMDINVAL_bm);
     errors += ci_err;
@@ -569,7 +570,8 @@ int main(void) {
     // top of the 32-bit field. The host compares the whole field, so the
     // stimulus does not assume how many chip-selects the instance decodes.
     spi_wr(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0xFFFFFFFFu);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+           sep_spi_cmd_word(SPI_CMD_DIR_TX, 1, 0, SPI_CMD_SPEED_STD));
     uint32_t csid_es = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     spi_wr(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0u); // restore before recovery
     int cs_err = 0;
@@ -582,7 +584,7 @@ int main(void) {
         cs_err++;
     }
     uint32_t csid_residual = 0;
-    cs_err += spi_err_recover(&csid_residual);
+    cs_err += spi_err_recover(SPI_CONTROLLER__ERROR_STATUS__CSIDINVAL_bm, &csid_residual);
     if (csid_residual != 0) {
         sep_mbx_puts("FAIL: CHK-ERR-CSIDINVAL ERROR_STATUS did not W1C-clear, residual=");
         sep_mbx_puthex(csid_residual);
@@ -598,7 +600,7 @@ int main(void) {
     // CHK-ERR-RECOVER: the host runs real bus traffic again after the three
     // injections; a host still held by an error returns nothing here.
     uint32_t jedec_post = 0;
-    if (flash_jedec(&jedec_post)) {
+    if (sep_spi_flash_rdreg(SEP_SPI_OP_JEDEC, 3, &jedec_post)) {
         sep_mbx_puts("FAIL: CHK-ERR-RECOVER JEDEC timeout after error injection\n");
         errors++;
     } else if ((jedec_post & 0x00FFFFFFu) != FLASH_JEDEC_RX) {
@@ -610,6 +612,9 @@ int main(void) {
         sep_mbx_puts("CHK-ERR-RECOVER PASS: READ ID 0x9F -> 0x0018ba20 again after "
                      "underflow/cmdinval/csidinval recovery\n");
     }
+
+    // --- Lane leg: dual and quad reads, quad page program ---
+    errors += lane_leg();
 
     if (errors == 0) {
         sep_mbx_puts("PASS: OT SPI flash program/read/erase/protect/error-path all OK\n");

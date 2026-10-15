@@ -28,8 +28,32 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_dfx_aperture_extent_test"
+module = "smc_dfx_aperture_extent_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "dfx"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfx_debug_ctrl_noeffect_gate_test"
+module = "smc_dfx_debug_ctrl_noeffect_gate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "dfx"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dfx_status_abort_test"
 module = "smc_dfx_status_abort_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "dfx"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfx_status_smu_pulse_reset_test"
+module = "smc_dfx_status_smu_pulse_reset_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "dfx"]
@@ -43,5 +67,18 @@ timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
 
-# Discriminator for the Xcelium SYS_OUT write hang (AW handshake, no W).
-# Run with --items smc_dbs_idle_test.
+[[tests]]
+name = "smc_dfd_csr_field_access_test"
+module = "smc_dfd_csr_field_access_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_jtag_dm_sbcs_haltsum_test"
+module = "smc_jtag_dm_sbcs_haltsum_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]

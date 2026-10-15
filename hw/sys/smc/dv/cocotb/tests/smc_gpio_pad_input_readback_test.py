@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Pad input transitions are captured in the GPIO registers on several wraps.
 
-Closes SMC-GPIO-PAD.S1 (port_table.adoc: pad2core_i, core2pad_en_o): six
+Covers pad2core_i and core2pad_en_o (hw/sys/smc/doc/port_table.adoc): six
 bonded wraps are driven low and high from the bench pad path and
 DATA_CTRL.pad2core must follow each level within a bounded number of reads;
 each wrap's TX enable must raise and release only its own core2pad_en_o bit.

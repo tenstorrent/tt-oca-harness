@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Shared by the scheduled refresh workflows. A local composite action is
+# loaded from the checked-out tree, so the caller checks out first.
+name: 'Open update pull request'
+description: 'Commit a dirty automatic-refresh tree onto its branch and open or refresh the pull request. No-op when the watched paths are clean.'
+inputs:
+  paths:
+    required: true
+    description: 'Whitespace-separated paths to inspect and stage'
+  branch:
+    required: true
+    description: 'automation/<job> branch the pull request tracks'
+  message:
+    required: true
+    description: 'Commit subject and pull request title'
+  body:
+    required: true
+    description: 'Pull request body'
+  current-message:
+    required: true
+    description: 'Printed when the watched paths are clean'
+runs:
+  using: composite
+  steps:
+    - name: Open update pull request
+      shell: bash
+      env:
+        UPDATE_PATHS: ${{ inputs.paths }}
+        UPDATE_BRANCH: ${{ inputs.branch }}
+        UPDATE_MESSAGE: ${{ inputs.message }}
+        UPDATE_BODY: ${{ inputs.body }}
+        UPDATE_CURRENT: ${{ inputs.current-message }}
+      run: |
+        set -euo pipefail
+        : "${UPDATE_PATHS:?}"
+        : "${UPDATE_BRANCH:?}"
+        : "${UPDATE_MESSAGE:?}"
+        : "${UPDATE_BODY:?}"
+        : "${UPDATE_CURRENT:?}"
+        # Paths are repository-relative and contain no whitespace.
+        read -r -a paths <<<"$UPDATE_PATHS"
+        if [ -z "$(git status --porcelain -- "${paths[@]}")" ]; then
+          echo "$UPDATE_CURRENT"
+          exit 0
+        fi
+        git fetch origin "$UPDATE_BRANCH:refs/remotes/origin/$UPDATE_BRANCH" || true
+        git switch -C "$UPDATE_BRANCH"
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add -- "${paths[@]}"
+        git commit -m "$UPDATE_MESSAGE"
+        git push --force-with-lease origin "HEAD:$UPDATE_BRANCH"
+        pr="$(gh pr list --head "$UPDATE_BRANCH" --state open --json number --jq '.[0].number')"
+        if [ -z "$pr" ]; then
+          gh pr create \
+            --base main \
+            --head "$UPDATE_BRANCH" \
+            --reviewer aottavianoTT \
+            --title "$UPDATE_MESSAGE" \
+            --body "$UPDATE_BODY"
+        else
+          gh pr edit "$pr" --add-reviewer aottavianoTT
+        fi

@@ -5,10 +5,10 @@
 `uart_core.sv` carries the received character on one of two paths, chosen by
 `FCR.FIFO_ENABLE`: through the receive FIFO, or through the receiver buffer
 register on its own. Each path has its own copy of the error flags that travel
-with a character. The FIFO path has met broken characters -- that is what
-`smc_uart_error_conditions_test` drives -- and `smc_uart_core_mode_select_test`
-sends clean characters down the register path, but nothing had ever sent a
-broken one down it.
+with a character. `smc_uart_error_conditions_test` drives broken characters
+down the FIFO path and `smc_uart_core_mode_select_test` sends clean characters
+down the register path; this sequence sends a broken character down the
+register path.
 
 Two kinds are sent, which are the two the pair of UARTs can disagree into
 existence:
@@ -25,8 +25,8 @@ the disagreement makes.
 
 The third leg is the receive trigger level, which `uart_core.sv` builds from
 `ECR.RCVR_TRIGGER_MS2B` and `FCR.RCVR_TRIGGER` together and compares against
-the depth the FIFO was built with. Every leaf so far programs a level the
-design supports; this one programs a level above the depth, where the
+the depth the FIFO was built with. The other leaves program levels the design
+supports; this one programs a level above the depth, where the
 watermark can never be reached. With the FIFOs on and a character waiting,
 `LSR.DR` has to report it while the received-data-ready interrupt stays away.
 """

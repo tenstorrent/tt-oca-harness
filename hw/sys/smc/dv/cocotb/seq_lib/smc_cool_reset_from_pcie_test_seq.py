@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """cfg_flr_pf_active_i cool reset. No Force; not rst_cool_ni. BMC/primary-chiplet not claimed.
 
-``skip_mem_repair_o`` is compared, not merely printed: ``clk_rst.adoc`` ("Memory
-Test Bypass") activates it automatically when either FLR-triggered or pin-based
+``skip_mem_repair_o`` is compared: ``clk_rst.adoc`` ("Memory Test Bypass")
+activates it automatically when either FLR-triggered or pin-based
 isolation is asserted. The isolate-request pad is driven low for the whole
 sequence so the pin source is quiet, and the output is then required to read 0
 with nothing isolating, 1 while the FLR-latched request drives ``isolate_req_o``

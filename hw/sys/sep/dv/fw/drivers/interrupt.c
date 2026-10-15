@@ -41,7 +41,7 @@ void pic_set_gateway(uint32_t source_id, uint32_t type, uint32_t polarity) {
 
 void pic_enable_source(uint32_t source_id) {
     uint32_t addr = SEP_TOP_PIC_MEIE_BASE_ADDR(source_id);
-    pic_write_reg(addr, 1);
+    pic_write_reg(addr, EL2_PIC__MEIE__INTEN_bm);
 }
 
 void pic_disable_source(uint32_t source_id) {

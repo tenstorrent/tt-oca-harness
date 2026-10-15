@@ -18,7 +18,7 @@
 // - Andreas Kurth <akurth@iis.ee.ethz.ch>
 
 `include "common_cells/assertions.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "axi/assign.svh"
 
 `ifdef QUESTA
@@ -253,7 +253,7 @@ module axi_demux_simple #(
 
     // lock the valid signal, as the selection gets pushed into the W FIFO on first assertion,
     // prevent further pushing
-    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
+    `OCAH_FFL(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
 
     if (UniqueIds) begin : gen_unique_ids_aw
       // If the `UniqueIds` parameter is set, each write transaction has an ID that is unique among
@@ -307,7 +307,7 @@ module axi_demux_simple #(
       .overflow_o ( /*not used*/          )
     );
 
-    `FFLARN(w_select_q, slv_aw_select_i, w_cnt_up, select_t'(0), clk_i, rst_ni)
+    `OCAH_FFL(w_select_q, slv_aw_select_i, w_cnt_up, select_t'(0), clk_i, rst_ni)
     assign w_select       = (|w_open) ? w_select_q : slv_aw_select_i;
     assign w_select_valid = w_cnt_up | (|w_open);
 
@@ -402,7 +402,7 @@ module axi_demux_simple #(
 
 
     // this ff is needed so that ar does not get de-asserted if an atop gets injected
-    `FFLARN(lock_ar_valid_q, lock_ar_valid_d, load_ar_lock, '0, clk_i, rst_ni)
+    `OCAH_FFL(lock_ar_valid_q, lock_ar_valid_d, load_ar_lock, '0, clk_i, rst_ni)
 
     if (UniqueIds) begin : gen_unique_ids_ar
       // If the `UniqueIds` parameter is set, each read transaction has an ID that is unique among

@@ -15,6 +15,12 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
   localparam string ChkRestore = "CHK-REGBLOCK-WIDE-RESTORE";
   localparam string ChkRestoreNonvac = "CHK-REGBLOCK-WIDE-RESTORE-NONVAC";
   localparam string ChkNoZeroerStart = "CHK-REGBLOCK-WIDE-NO-ZEROER-START";
+  localparam string ChkBusyControl = "CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL";
+  // DEST and SIZE writes and their restores are catalogued-word comparisons.
+  localparam int unsigned ControlComparisons = 4;
+  localparam int unsigned ControlFixedAccesses = 6;
+  localparam int unsigned ControlPollBound = 4096;
+  localparam bit [63:0] ControlTarget = SmcSpmBase + SmcSpmSize - SmcMemBytes;
   localparam string ChkLaneCoverage = "CHK-REGBLOCK-WIDE-LANE-COVERAGE";
   localparam string ChkScoreboard = "CHK-REGBLOCK-WIDE-SCOREBOARD";
   localparam string ChkNonvac = "CHK-NONVAC";
@@ -23,10 +29,8 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
   localparam int unsigned SafeStateReads = 5;
   // The final status read checks the Zeroer after the catalogued writes.
   localparam int unsigned FinalStateReads = 1;
-  // Baseline, full, single-byte, seeded sparse, null-strobe and restore each
-  // end in a predicted read; fixed sparse strobes add one read apiece.
-  localparam int unsigned BaseReadsPerRegister = 6;
-  // Those six reads pair with five writes; fixed sparse strobes add one pair.
+  // Six base reads and five base writes are graded per word; each fixed
+  // sparse strobe adds a write response and a predicted read.
   localparam int unsigned BaseAccessesPerRegister = 11;
   // The scenario and its lane-coverage claim require all seven selected words.
   localparam int unsigned CatalogEntries = 7;
@@ -134,17 +138,19 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
     bit [7:0] lane_coverage;
     bit [63:0] pattern;
     bit [63:0] status_word;
-    int unsigned predicted_reads;
+    int unsigned predicted_comparisons;
     int unsigned predicted_accesses = SafeStateReads + FinalStateReads;
     int unsigned compare_target;
     int unsigned mismatch_before;
     int unsigned accesses_before;
     int unsigned restore_changes;
+    bit [31:0] zeroer_samples_before;
+    bit zeroer_stayed_idle;
 
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkMemResp, ChkBaseline, ChkFullRw, ChkSingleByte, ChkSparse,
                     ChkNull, ChkRestore, ChkRestoreNonvac, ChkNoZeroerStart, ChkLaneCoverage,
-                    ChkScoreboard, ChkNonvac, ChkSbMinAct});
+                    ChkScoreboard, ChkNonvac, ChkSbMinAct, ChkBusyControl});
     smc_regblock_wide_catalog(entries);
     if (entries.size() != CatalogEntries)
       `uvm_fatal(get_type_name(), $sformatf("regblock-wide catalog has %0d entries", entries.size()
@@ -154,13 +160,14 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
       valid_sparse_strobes(entries[i].rw_lane_mask, valid);
       if (valid.size() == 0)
         `uvm_fatal(get_type_name(), {entries[i].name, " has no valid sparse strobe"})
-      predicted_reads += BaseReadsPerRegister + fixed.size();
+      predicted_comparisons += BaseAccessesPerRegister + 2 * fixed.size();
       predicted_accesses += BaseAccessesPerRegister + 2 * fixed.size();
     end
-    check_min_activity(SmcFeatureRegblockWide, predicted_reads);
+    predicted_comparisons += ControlComparisons;
+    check_min_activity(SmcFeatureRegblockWide, predicted_comparisons);
     wait_fuse_sense_done();
     mismatch_before = scoreboard.mismatch_count(SmcFeatureRegblockWide);
-    compare_target  = scoreboard.compare_count(SmcFeatureRegblockWide) + predicted_reads;
+    compare_target  = scoreboard.compare_count(SmcFeatureRegblockWide) + predicted_comparisons;
     accesses_before = mem_accesses;
 
     // The catalogued words are side-effect-free only while the Zeroer is idle and
@@ -176,6 +183,11 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
               "HANG_DET_DATA_ACCEL_CTRL");
     safe_read(SmcAliasRegionAttrsAddr, REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
               "SMC_ALIAS_REMAP_0.REGION_ATTRS");
+
+    check_evidence(ChkBaseline, "Zeroer busy tap idle", 64'(tb_vif.zeroer_busy === 1'b0), 64'h1);
+    if (tb_vif.zeroer_busy !== 1'b0)
+      `uvm_fatal(get_type_name(), "Zeroer busy tap is not idle before catalogued writes")
+    zeroer_samples_before = tb_vif.zeroer_busy_sample_count;
 
     pattern = pass_pattern();
     foreach (entries[i]) begin
@@ -236,9 +248,48 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
     end
 
     mem_read(SmcZeroerCtrlStatusAddr, status_word, "ZEROER_CTRL.CTRL_STATUS final");
-    check_evidence(ChkNoZeroerStart, "Zeroer busy",
-                   64'(status_word[ZEROER_CTRL_CTRL_STATUS_STATUS_SHIFT]), 64'h0,
-                   "DEST_ADDR and SIZE writes left the Zeroer idle");
+    zeroer_stayed_idle = tb_vif.zeroer_busy_sample_count === zeroer_samples_before &&
+                         tb_vif.zeroer_busy === 1'b0 &&
+                         !status_word[ZEROER_CTRL_CTRL_STATUS_STATUS_SHIFT];
+    check_evidence(ChkNoZeroerStart, "Zeroer idle throughout catalogued writes",
+                   64'(zeroer_stayed_idle), 64'(!env_cfg.regblock_wide_sequence_negative),
+                   $sformatf(
+                   "samples_before=%0d samples_after=%0d busy=%b status=0x%016h",
+                   zeroer_samples_before,
+                   tb_vif.zeroer_busy_sample_count,
+                   tb_vif.zeroer_busy,
+                   status_word
+                   ));
+    begin
+      logic [31:0] samples_before_control;
+      bit [63:0] control_status;
+      bit control_idle = 1'b0;
+      int unsigned control_polls = 0;
+      mem_write(SmcZeroerDestAddr, ControlTarget, "Zeroer control destination");
+      mem_write(SmcZeroerSizeAddr, SmcMemBytes, "Zeroer control size");
+      samples_before_control = tb_vif.zeroer_busy_sample_count;
+      mem_write(SmcZeroerCtrlStatusAddr, ZEROER_CTRL_CTRL_STATUS_REG_DEFAULT,
+                "Zeroer control start");
+      while (!control_idle && control_polls < ControlPollBound) begin
+        mem_read(SmcZeroerCtrlStatusAddr, control_status, "Zeroer control completion");
+        control_polls++;
+        control_idle = !control_status[ZEROER_CTRL_CTRL_STATUS_STATUS_SHIFT] &&
+                       tb_vif.zeroer_busy === 1'b0;
+      end
+      if (!control_idle) `uvm_fatal(get_type_name(), "Zeroer control command did not complete")
+      check_evidence(ChkBusyControl, "real Zeroer command raises busy samples", 64'(!$isunknown(
+                     {samples_before_control, tb_vif.zeroer_busy_sample_count}
+                     ) && tb_vif.zeroer_busy_sample_count != samples_before_control),
+                     64'(!env_cfg.regblock_wide_sequence_negative), $sformatf(
+                     "before=%0d after=%0d", samples_before_control, tb_vif.zeroer_busy_sample_count
+                     ));
+      mem_write(SmcZeroerSizeAddr, ZEROER_CTRL_SIZE_REG_DEFAULT, "Zeroer control size restore");
+      mem_write(SmcZeroerDestAddr, ZEROER_CTRL_DEST_ADDR_REG_DEFAULT,
+                "Zeroer control destination restore");
+      // The SPM model sees ingress writes, not Zeroer writes; leave the scratch word known.
+      mem_write(ControlTarget, 0, "SPM control scratch word");
+      predicted_accesses += ControlFixedAccesses + control_polls;
+    end
     check_evidence(ChkLaneCoverage, "strobed RW lanes", 64'(lane_coverage), 64'hFF,
                    "all SEP_IN byte lanes");
     check_evidence(ChkRestoreNonvac, "restores that changed an RW value", 64'(restore_changes > 0),

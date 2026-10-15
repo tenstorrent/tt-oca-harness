@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import random
 
-from env.dtp_scan_ref_model import IJTAG_INSTRUMENT_WIDTHS, DtpIjtagSibModel
+from env.dtp_ijtag_sib_model import IJTAG_INSTRUMENT_WIDTHS, DtpIjtagSibModel
 from env.dtp_types import DtpJtagInstr, DtpScanCtrlExpect
 
 from .dtp_jtag_base_test_seq import DFT_SCAN_CTRL, SCAN_CTRL_CHECK_IDS, dtp_jtag_base_test_seq

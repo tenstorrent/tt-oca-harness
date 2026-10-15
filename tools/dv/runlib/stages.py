@@ -129,9 +129,11 @@ FAILURE_BUCKET_BY_STAGE = {
 }
 
 # Env snapshots are run artifacts that may be published (dashboards, CI uploads). Redact values of
-# variables that commonly carry secrets or license-server endpoints so they never leak.
+# variables that commonly carry secrets or license-server endpoints so they never leak. PAT matches
+# only as a whole underscore-separated word, so PATH and *_PATTERN keep their values.
 REDACTED_ENV_PATTERN = re.compile(
-    r"LICENSE|LM_LICENSE|SNPSLMD|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|API_?KEY|PRIVATE_KEY|AUTH",
+    r"LICENSE|LM_LICENSE|SNPSLMD|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|API_?KEY|PRIVATE_KEY|AUTH"
+    r"|(?:^|_)PAT(?:_|$)",
     re.IGNORECASE,
 )
 

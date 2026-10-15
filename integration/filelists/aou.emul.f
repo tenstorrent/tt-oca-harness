@@ -1,3 +1,5 @@
++incdir+hw/common/assert
++incdir+hw/common/registers
 +incdir+vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep
 +incdir+vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/include
 +incdir+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl

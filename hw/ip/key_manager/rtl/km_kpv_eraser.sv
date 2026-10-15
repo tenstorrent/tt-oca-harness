@@ -17,6 +17,8 @@
 // The LFSR is seeded to all-ones on cold reset only (no warm reset); the exact seed value
 // is not security-relevant.
 
+`include "ocah_registers.svh"
+
 module km_kpv_eraser #(
   parameter int unsigned NUM_SLOTS      = 64,  // Number of key slots.
   parameter int unsigned WORDS_PER_SLOT = 16,  // Key-data words in each slot; one erase writes word
@@ -138,17 +140,9 @@ module km_kpv_eraser #(
     endcase
   end
 
-  always_ff @(posedge clk_i or negedge cold_rst_ni) begin
-    if (!cold_rst_ni) begin
-      state_q <= IDLE;
-      slot_q  <= '0;
-      word_q  <= '0;
-    end else begin
-      state_q <= state_d;
-      slot_q  <= slot_d;
-      word_q  <= word_d;
-    end
-  end
+  `OCAH_FF(state_q, state_d, IDLE, clk_i, cold_rst_ni)
+  `OCAH_FF(slot_q, slot_d, '0, clk_i, cold_rst_ni)
+  `OCAH_FF(word_q, word_d, '0, clk_i, cold_rst_ni)
 
 endmodule : km_kpv_eraser
 

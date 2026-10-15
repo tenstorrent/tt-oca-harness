@@ -6,8 +6,8 @@
 and `hw/sys/smc/doc/zeroer.adoc` describes an operation as an address phase
 followed by a data phase, repeated until the size is exhausted. Both of those
 sizes fit a single AXI4 burst -- `AxLEN` is eight bits, so a burst carries at
-most 256 transfers, which on the 64-bit output path is 0x800 bytes -- so every
-enrolled job so far has needed exactly one address phase.
+most 256 transfers, which on the 64-bit output path is 0x800 bytes -- so each
+of those jobs needs exactly one address phase.
 
 This sequence programs 0x1000 bytes, which no single AXI4 burst can carry, and
 so requires the zeroer to return from its data phase to a second address phase
@@ -23,11 +23,9 @@ The output responder's write-transaction counter is required to advance by at
 least the two bursts the size demands, and `CTRL_STATUS.STATUS` has to leave
 the level it rests at while the zeroer is idle and come back to it.
 
-Which level of `CTRL_STATUS.STATUS` means busy is not asserted here. The RDL
-describes the field as "whether zeroer has completed" while the implemented
-field is observed to read the other way round, and that disagreement is an open
-specification issue; this sequence only requires the field to follow the
-zeroer's activity, as `smc_zeroer_sanity_test` does.
+Which level of `CTRL_STATUS.STATUS` means busy is not asserted here; this
+sequence only requires the field to follow the zeroer's activity, as
+`smc_zeroer_sanity_test` does.
 
 The job is aimed at the output-fabric responder window, never at memory another
 leaf reads, and `SIZE` and `DEST_ADDR` are cleared afterwards so a later write

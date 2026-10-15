@@ -14,8 +14,10 @@
 `include "ocah_assert.svh"
 
 module smu_axi_xbar
-  import axi_pkg::*;
-  import smu_axi_xbar_pkg::*;
+  import smu_axi_xbar_pkg::axi_56_64_req_t;
+  import smu_axi_xbar_pkg::axi_56_64_resp_t;
+  import smu_axi_xbar_pkg::axi_out_req_t;
+  import smu_axi_xbar_pkg::axi_out_resp_t;
 (
   input  wire logic clk_i,                      // SMU fabric clock.
   input  wire logic rst_ni,                     // Active-low reset.
@@ -63,11 +65,11 @@ module smu_axi_xbar
   // ext_out (idx 2) has no rule: sep_out/smc_out reach it via the crossbar's
   // default master port for any address matching neither aperture. ext_in is
   // not connected to ext_out, so its unmatched accesses still decode-error.
-  addr_rule_t [NumAddrRules-1:0] addr_map;
+  smu_axi_xbar_pkg::addr_rule_t [smu_axi_xbar_pkg::NumAddrRules-1:0] addr_map;
 
   // reject when sep_region_size_i is 0 by setting to an arbitrary all 1s start and end address
-  function automatic addr_rule_t aperture_rule(int unsigned idx, logic [55:0] base,
-                                               logic [31:0] size);
+  function automatic smu_axi_xbar_pkg::addr_rule_t aperture_rule(
+      int unsigned idx, logic [55:0] base, logic [31:0] size);
     aperture_rule.idx = idx;
     if (size == '0) begin
       aperture_rule.start_addr = '1;
@@ -86,8 +88,8 @@ module smu_axi_xbar
   // =========================================================================
   // Input Adaptation to Crossbar Types
   // =========================================================================
-  xbar_slv_req_t  [2:0] xbar_slv_req;
-  xbar_slv_resp_t [2:0] xbar_slv_resp;
+  smu_axi_xbar_pkg::xbar_slv_req_t  [2:0] xbar_slv_req;
+  smu_axi_xbar_pkg::xbar_slv_resp_t [2:0] xbar_slv_resp;
 
   // Input sep_out: Direct connection (AXI4, 64-bit)
   assign xbar_slv_req[0] = sep_out_req_i;
@@ -104,27 +106,27 @@ module smu_axi_xbar
   // =========================================================================
   // Crossbar
   // =========================================================================
-  xbar_mst_req_t  [2:0] xbar_mst_req;
-  xbar_mst_resp_t [2:0] xbar_mst_resp;
+  smu_axi_xbar_pkg::xbar_mst_req_t  [2:0] xbar_mst_req;
+  smu_axi_xbar_pkg::xbar_mst_resp_t [2:0] xbar_mst_resp;
 
   axi_xbar #(
-    .Cfg          (XbarCfg),
+    .Cfg          (smu_axi_xbar_pkg::XbarCfg),
     .ATOPs        (1'b0),
-    .Connectivity (Connectivity),
-    .slv_aw_chan_t(xbar_slv_aw_chan_t),
-    .mst_aw_chan_t(xbar_mst_aw_chan_t),
-    .w_chan_t     (xbar_slv_w_chan_t),
-    .slv_b_chan_t (xbar_slv_b_chan_t),
-    .mst_b_chan_t (xbar_mst_b_chan_t),
-    .slv_ar_chan_t(xbar_slv_ar_chan_t),
-    .mst_ar_chan_t(xbar_mst_ar_chan_t),
-    .slv_r_chan_t (xbar_slv_r_chan_t),
-    .mst_r_chan_t (xbar_mst_r_chan_t),
-    .slv_req_t    (xbar_slv_req_t),
-    .slv_resp_t   (xbar_slv_resp_t),
-    .mst_req_t    (xbar_mst_req_t),
-    .mst_resp_t   (xbar_mst_resp_t),
-    .rule_t       (addr_rule_t)
+    .Connectivity (smu_axi_xbar_pkg::Connectivity),
+    .slv_aw_chan_t(smu_axi_xbar_pkg::xbar_slv_aw_chan_t),
+    .mst_aw_chan_t(smu_axi_xbar_pkg::xbar_mst_aw_chan_t),
+    .w_chan_t     (smu_axi_xbar_pkg::xbar_slv_w_chan_t),
+    .slv_b_chan_t (smu_axi_xbar_pkg::xbar_slv_b_chan_t),
+    .mst_b_chan_t (smu_axi_xbar_pkg::xbar_mst_b_chan_t),
+    .slv_ar_chan_t(smu_axi_xbar_pkg::xbar_slv_ar_chan_t),
+    .mst_ar_chan_t(smu_axi_xbar_pkg::xbar_mst_ar_chan_t),
+    .slv_r_chan_t (smu_axi_xbar_pkg::xbar_slv_r_chan_t),
+    .mst_r_chan_t (smu_axi_xbar_pkg::xbar_mst_r_chan_t),
+    .slv_req_t    (smu_axi_xbar_pkg::xbar_slv_req_t),
+    .slv_resp_t   (smu_axi_xbar_pkg::xbar_slv_resp_t),
+    .mst_req_t    (smu_axi_xbar_pkg::xbar_mst_req_t),
+    .mst_resp_t   (smu_axi_xbar_pkg::xbar_mst_resp_t),
+    .rule_t       (smu_axi_xbar_pkg::addr_rule_t)
   ) u_axi_xbar (
     .clk_i                 (clk_i),
     .rst_ni                (rst_ni),

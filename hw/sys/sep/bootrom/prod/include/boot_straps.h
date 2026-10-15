@@ -3,7 +3,7 @@
 
 // Boot strap parsing for OROM.
 //
-// Reads latched strap values from the SMC external supplementary window and
+// Reads latched strap values from the SMC external mandatory window and
 // provides structured access for boot path decisions using the addresses from
 // sep_smc_interface.h.
 //

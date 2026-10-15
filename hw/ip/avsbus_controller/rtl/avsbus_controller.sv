@@ -14,6 +14,8 @@
 
 `begin_keywords "1800-2005"
 
+`include "ocah_registers.svh"
+
 module avsbus_controller #(
   parameter int unsigned COMMAND_FIFO_DEPTH = 8,            // Depth of the AVS command FIFO.
                                                             // In entries; must be a power of two.
@@ -448,10 +450,10 @@ module avsbus_controller #(
   assign postdiv_mux_sel = R_avs_cfg_1_F_avs_clock_select[0] & ~test_en_i;
 
 
-  always_ff @(posedge apb_ref_muxed_clk) begin
-    previous_clk_divider_value_q <= R_avs_cfg_1_F_clk_divider_value_resync;
-    previous_clk_divider_duty_cycle_numerator_q <= R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync ;
-  end
+  `OCAH_FFNR(previous_clk_divider_value_q, R_avs_cfg_1_F_clk_divider_value_resync,
+             apb_ref_muxed_clk)
+  `OCAH_FFNR(previous_clk_divider_duty_cycle_numerator_q,
+             R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync, apb_ref_muxed_clk)
 
   // tt_prog_clk_div_posedge.i_update_settings needs to be pulsed initially for the divider to start working.
   // This reg indicates whether initial post-reset pulse is required:
@@ -466,15 +468,10 @@ module avsbus_controller #(
   end
 
 
-  always_ff @(posedge apb_ref_muxed_clk) begin
-    if (~reset_n_pre_div_clk_syncd) begin
-      update_clk_divider_value <= 1'b0;
-    end else begin
-      update_clk_divider_value <= (do_initial_divider_setting == 1'b1 ||
-                                    R_avs_cfg_1_F_clk_divider_value_resync != previous_clk_divider_value_q ||
-                                    R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync != previous_clk_divider_duty_cycle_numerator_q) ? 1'b1 : 1'b0 ;
-    end
-  end
+  `OCAH_FFSRN(
+      update_clk_divider_value,
+      (do_initial_divider_setting == 1'b1 || R_avs_cfg_1_F_clk_divider_value_resync != previous_clk_divider_value_q || R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync != previous_clk_divider_duty_cycle_numerator_q) ? 1'b1 : 1'b0,
+      1'b0, apb_ref_muxed_clk, reset_n_pre_div_clk_syncd)
 
 
   // AVS bus clock gate:
@@ -589,13 +586,8 @@ module avsbus_controller #(
   );
 
   // flop before re-sync'ing:
-  always_ff @(posedge avs_clk) begin
-    if (~reset_n_avs_clk_syncd) begin
-      R_avs_normal_status_F_readback_fifo_full_AVSCLK_q <= 1'b0;
-    end else begin
-      R_avs_normal_status_F_readback_fifo_full_AVSCLK_q <= R_avs_normal_status_F_readback_fifo_full_AVSCLK;
-    end
-  end
+  `OCAH_FFSRN(R_avs_normal_status_F_readback_fifo_full_AVSCLK_q,
+              R_avs_normal_status_F_readback_fifo_full_AVSCLK, 1'b0, avs_clk, reset_n_avs_clk_syncd)
 
   prim_sync3 u_slave_unresponsive_resync (
     .clk_i(clk_reg_i),
@@ -616,13 +608,7 @@ module avsbus_controller #(
   );
 
   // flop before re-sync'ing:
-  always_ff @(posedge avs_clk) begin
-    if (~reset_n_avs_clk_syncd) begin
-      push_avs_readback_en_q <= 1'b0;
-    end else begin
-      push_avs_readback_en_q <= push_avs_readback_en;
-    end
-  end
+  `OCAH_FFSRN(push_avs_readback_en_q, push_avs_readback_en, 1'b0, avs_clk, reset_n_avs_clk_syncd)
 
   prim_sync3 u_max_retries_attempted_resync (
     .clk_i(clk_reg_i),
@@ -630,13 +616,8 @@ module avsbus_controller #(
     .q_o (avs_max_retries_attempted_RS_apb_clk)
   );
   // flop before re-sync'ing:
-  always_ff @(posedge avs_clk) begin
-    if (~reset_n_avs_clk_syncd) begin
-      avs_max_retries_attempted_q <= 1'b0;
-    end else begin
-      avs_max_retries_attempted_q <= avs_max_retries_attempted;
-    end
-  end
+  `OCAH_FFSRN(avs_max_retries_attempted_q, avs_max_retries_attempted, 1'b0, avs_clk,
+              reset_n_avs_clk_syncd)
 
   // pulse resyncs from fast domain (APBCLK) to slower domain (AVSCLK):
   prim_sync3_pulse u_clear_avs_slave_int_resync (
@@ -781,10 +762,7 @@ module avsbus_controller #(
   /***********************************************************************/
 
   // FSM update state:
-  always_ff @(posedge avs_clk) begin
-    if (~reset_n_avs_clk_syncd) cur_state <= AVS_RESET;
-    else cur_state <= next_state;
-  end
+  `OCAH_FFSRN(cur_state, next_state, AVS_RESET, avs_clk, reset_n_avs_clk_syncd)
 
 
   // FSM: next_state determination:

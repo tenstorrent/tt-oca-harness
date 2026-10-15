@@ -87,12 +87,11 @@ timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
 
-# No GPIO-strap or external-interrupt testcase is enrolled here. smc_wrapper
-# declares no captured_straps_i, so the strap feature has no testcase
-# (docs/SMC_VPLAN.adoc, Known Limitations); external interrupts are
-# covered by smc_ext_interrupts_pin_test (irq.toml). ext_interrupts_i[255:1] is
-# tied to 0 in tb/tb_top.sv, so an external-interrupt testcase beyond bit 0
-# needs TB work before it can exist.
+# No GPIO-strap testcase is enrolled: smc_wrapper declares no captured_straps_i,
+# so the strap feature has no testcase (docs/SMC_VPLAN.adoc, Known Limitations).
+# External interrupts are covered from irq.toml (smc_ext_interrupts_pin_test,
+# bit 0) and by smc_fw_plic_claim_test in fw.toml, which drives bits 16:2
+# through tb_ext_interrupts_hi_i.
 
 [[tests]]
 # The default asset programs only LOCKS word 0, so every other content row of
@@ -121,9 +120,8 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
-# The read-lock precondition of this scenario is supplied by this asset (word 0
-# sets JTAG_PUBLIC_IDENTITY_READ_LOCK), so it is named here rather than inherited
-# silently from the bench-wide default in smc_sim_cfg.toml.
+# The scenario needs the read lock: word 0 of this asset sets
+# JTAG_PUBLIC_IDENTITY_READ_LOCK.
 args = [
     "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
 ]
@@ -182,3 +180,135 @@ timeout_sec = 3600
 tags = ["ci", "efuse"]
 run_modes = ["smoke"]
 args = ["+smc_efuse_hex=smc_efuse_image_random.hex"]
+
+[[tests]]
+name = "smc_efuse_map_locks_register_test"
+module = "smc_efuse_map_locks_register_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_locks_register_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_lock_field_enforce_test"
+module = "smc_efuse_map_lock_field_enforce_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_lock_field_enforce_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_sep_write_test"
+module = "smc_efuse_map_sep_write_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_sep_write_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_layout_decode_test"
+module = "smc_efuse_map_layout_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_layout_decode_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_concurrency_test"
+module = "smc_efuse_map_concurrency_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_concurrency_test.hex"]
+
+[[tests]]
+name = "smc_efuse_bank_ctrl_window_test"
+module = "smc_efuse_bank_ctrl_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_sense_sequence_test"
+module = "smc_efuse_sense_sequence_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_fuse_reset_gate_test"
+module = "smc_efuse_fuse_reset_gate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+args = ["+smc_hold_ext_boot"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_test"
+module = "smc_efuse_map_sense_image_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_zero_test"
+module = "smc_efuse_map_sense_image_zero_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_image=zero", "+smc_efuse_hex=smc_efuse_map_sense_image_zero_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_ones_test"
+module = "smc_efuse_map_sense_image_ones_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_image=ones", "+smc_efuse_hex=smc_efuse_map_sense_image_ones_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_walking_test"
+module = "smc_efuse_map_sense_image_walking_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_image=walking", "+smc_efuse_hex=smc_efuse_map_sense_image_walking_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_random_test"
+module = "smc_efuse_map_sense_image_random_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_image=random", "+smc_efuse_hex=smc_efuse_map_sense_image_random_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_unique_test"
+module = "smc_efuse_map_sense_image_unique_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_image=unique", "+smc_efuse_hex=smc_efuse_map_sense_image_unique_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_reset_persistence_test"
+module = "smc_efuse_map_reset_persistence_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_reset_persistence_test.hex"]

@@ -3,18 +3,19 @@
 """DTP primary TAP register map.
 
 One table of the TDRs the tests exercise, so the JTAG driver and the sequences
-agree on register names, sizes, and IR opcodes. The opcodes are the
-interface-unit instruction table (`hw/ip/jtag/jtag_intf_unit/doc/interface.adoc`,
-"Instruction Encodings"); the register sizes are the TDR layouts in
-`hw/ip/jtag/jtag_ptap/doc/architecture.adoc` and, for the instructions that
-document does not lay out, the interface-unit table's "Register Size" column;
-the JTAG2AXI TDR sizes derive from the bridge geometries in
-``dtp_types.JTAG2AXI_TARGETS``.
+agree on register names, sizes, and IR opcodes; ``dtp_tap_device()`` builds it
+as the shared ``OcahJtagDevice`` the JTAG master reads and writes through. The
+opcodes are the interface-unit instruction table
+(`hw/ip/jtag/jtag_intf_unit/doc/interface.adoc`, "Instruction Encodings"); the
+register sizes are the TDR layouts in `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`
+and, for the instructions that document does not lay out, the interface-unit
+table's "Register Size" column; the JTAG2AXI TDR sizes derive from the bridge
+geometries in ``dtp_types.JTAG2AXI_TARGETS``.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from ocah_jtag_vip import OcahJtagDevice
 
 from .dtp_dv_cfg import (
     DTP_BSR_ENABLE,
@@ -51,8 +52,7 @@ __all__ = [
     "DTP_JTAG2AXI_CAPS_LEN",
     "DTP_JTAG_CAPS_LEN",
     "DTP_TMP_STATUS_LEN",
-    "DtpTapDevice",
-    "DtpTapRegister",
+    "dtp_tap_device",
     "pack_jtag2axi_caps",
     "pack_jtag_caps",
     "unpack_jtag2axi_caps",
@@ -72,9 +72,9 @@ DTP_IC_RESET_LEN = (2 * DTP_IC_RESET_PORTS) + 1
 DTP_JTAG_CAPS_LEN = 60
 DTP_JTAG2AXI_CAPS_LEN = 14
 # SELECT_IJTAG: one bit per SIB of the DTP iJTAG network
-# (dtp_scan_ref_model.IJTAG_SIB_ORDER).
+# (dtp_ijtag_sib_model.IJTAG_SIB_ORDER).
 DTP_SELECT_IJTAG_MIN_LEN = 3
-# The OSS TB uses a compact local scan model for boundary-scan scenarios.
+# The bench models the boundary-scan register as an 8-bit loopback (DtpScanModel).
 DTP_BSR_MODEL_LEN = 8
 
 
@@ -152,77 +152,61 @@ DTP_EXPECTED_JTAG2AXI_CAPS: dict[str, int] = {
 }
 
 
-@dataclass(frozen=True)
-class DtpTapRegister:
-    """One TDR: its shift length in bits, IR opcode, and whether Update-DR writes it."""
-
-    width: int
-    instr: int
-    write: bool = False
+# A TDR entry: its shift length in bits, its IR opcode, and, for a register
+# Update-DR writes, True.
+_TapRegister = tuple[int, int] | tuple[int, int, bool]
 
 
-def _fixed_registers() -> dict[str, DtpTapRegister]:
+def _fixed_registers() -> dict[str, _TapRegister]:
     """TDRs whose sizes come straight from the instruction table and the PTAP layouts."""
     return {
-        "BYPASS_00": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.BYPASS_00)),
-        "IDCODE": DtpTapRegister(32, int(DtpJtagInstr.IDCODE)),
-        "RUNBIST": DtpTapRegister(DTP_BSR_MODEL_LEN, int(DtpJtagInstr.RUNBIST)),
-        "SAMPLE_PRELOAD": DtpTapRegister(
-            DTP_BSR_MODEL_LEN, int(DtpJtagInstr.SAMPLE_PRELOAD), write=True
-        ),
-        "EXTEST": DtpTapRegister(DTP_BSR_MODEL_LEN, int(DtpJtagInstr.EXTEST), write=True),
-        "EXTEST_TRAIN": DtpTapRegister(
-            DTP_BSR_MODEL_LEN, int(DtpJtagInstr.EXTEST_TRAIN), write=True
-        ),
-        "EXTEST_PULSE": DtpTapRegister(
-            DTP_BSR_MODEL_LEN, int(DtpJtagInstr.EXTEST_PULSE), write=True
-        ),
-        "CLAMP": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.CLAMP)),
-        "HIGHZ": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.HIGHZ)),
-        "INTEST": DtpTapRegister(DTP_BSR_MODEL_LEN, int(DtpJtagInstr.INTEST), write=True),
-        "CLAMP_HOLD": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.CLAMP_HOLD)),
-        "CLAMP_RELEASE": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.CLAMP_RELEASE)),
-        "TMP_STATUS": DtpTapRegister(DTP_TMP_STATUS_LEN, int(DtpJtagInstr.TMP_STATUS), write=True),
-        "IC_RESET": DtpTapRegister(DTP_IC_RESET_LEN, int(DtpJtagInstr.IC_RESET), write=True),
-        "TAP_3DCR": DtpTapRegister(DTP_TAP_3DCR_LEN, int(DtpJtagInstr.TAP_3DCR), write=True),
-        "DEBUG_CONTROL": DtpTapRegister(
-            DTP_DEBUG_CONTROL_LEN, int(DtpJtagInstr.DEBUG_CONTROL), write=True
-        ),
-        "JTAG_CAPS": DtpTapRegister(DTP_JTAG_CAPS_LEN, int(DtpJtagInstr.JTAG_CAPS)),
-        "SELECT_IJTAG": DtpTapRegister(
-            DTP_SELECT_IJTAG_MIN_LEN, int(DtpJtagInstr.SELECT_IJTAG), write=True
-        ),
-        "ZERO_LENGTH_BYPASS": DtpTapRegister(0, int(DtpJtagInstr.ZERO_LENGTH_BYPASS)),
-        "INV_BYPASS": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.INV_BYPASS)),
-        "BYPASS_3F": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.BYPASS_3F)),
+        "BYPASS_00": (DTP_BYPASS_LEN, int(DtpJtagInstr.BYPASS_00)),
+        "IDCODE": (32, int(DtpJtagInstr.IDCODE)),
+        "RUNBIST": (DTP_BSR_MODEL_LEN, int(DtpJtagInstr.RUNBIST)),
+        "SAMPLE_PRELOAD": (DTP_BSR_MODEL_LEN, int(DtpJtagInstr.SAMPLE_PRELOAD), True),
+        "EXTEST": (DTP_BSR_MODEL_LEN, int(DtpJtagInstr.EXTEST), True),
+        "EXTEST_TRAIN": (DTP_BSR_MODEL_LEN, int(DtpJtagInstr.EXTEST_TRAIN), True),
+        "EXTEST_PULSE": (DTP_BSR_MODEL_LEN, int(DtpJtagInstr.EXTEST_PULSE), True),
+        "CLAMP": (DTP_BYPASS_LEN, int(DtpJtagInstr.CLAMP)),
+        "HIGHZ": (DTP_BYPASS_LEN, int(DtpJtagInstr.HIGHZ)),
+        "INTEST": (DTP_BSR_MODEL_LEN, int(DtpJtagInstr.INTEST), True),
+        "CLAMP_HOLD": (DTP_BYPASS_LEN, int(DtpJtagInstr.CLAMP_HOLD)),
+        "CLAMP_RELEASE": (DTP_BYPASS_LEN, int(DtpJtagInstr.CLAMP_RELEASE)),
+        "TMP_STATUS": (DTP_TMP_STATUS_LEN, int(DtpJtagInstr.TMP_STATUS), True),
+        "IC_RESET": (DTP_IC_RESET_LEN, int(DtpJtagInstr.IC_RESET), True),
+        "TAP_3DCR": (DTP_TAP_3DCR_LEN, int(DtpJtagInstr.TAP_3DCR), True),
+        "DEBUG_CONTROL": (DTP_DEBUG_CONTROL_LEN, int(DtpJtagInstr.DEBUG_CONTROL), True),
+        "JTAG_CAPS": (DTP_JTAG_CAPS_LEN, int(DtpJtagInstr.JTAG_CAPS)),
+        "SELECT_IJTAG": (DTP_SELECT_IJTAG_MIN_LEN, int(DtpJtagInstr.SELECT_IJTAG), True),
+        "ZERO_LENGTH_BYPASS": (0, int(DtpJtagInstr.ZERO_LENGTH_BYPASS)),
+        "INV_BYPASS": (DTP_BYPASS_LEN, int(DtpJtagInstr.INV_BYPASS)),
+        "BYPASS_3F": (DTP_BYPASS_LEN, int(DtpJtagInstr.BYPASS_3F)),
     }
 
 
-def _jtag2axi_registers(cfg: DtpJtag2AxiTargetCfg) -> dict[str, DtpTapRegister]:
+def _jtag2axi_registers(cfg: DtpJtag2AxiTargetCfg) -> dict[str, _TapRegister]:
     """One bridge's CAPS, SINGLE_OP, and SERIES_CTRL TDRs at its geometry."""
     return {
-        cfg.caps_reg: DtpTapRegister(DTP_JTAG2AXI_CAPS_LEN, int(DtpJtagInstr[cfg.caps_reg])),
-        cfg.single_op_reg: DtpTapRegister(
-            cfg.single_op_len, int(DtpJtagInstr[cfg.single_op_reg]), write=True
-        ),
-        cfg.series_ctrl_reg: DtpTapRegister(
-            cfg.series_ctrl_len, int(DtpJtagInstr[cfg.series_ctrl_reg]), write=True
-        ),
+        cfg.caps_reg: (DTP_JTAG2AXI_CAPS_LEN, int(DtpJtagInstr[cfg.caps_reg])),
+        cfg.single_op_reg: (cfg.single_op_len, int(DtpJtagInstr[cfg.single_op_reg]), True),
+        cfg.series_ctrl_reg: (cfg.series_ctrl_len, int(DtpJtagInstr[cfg.series_ctrl_reg]), True),
     }
 
 
-class DtpTapDevice:
-    """DTP primary TAP with the TDRs exercised by the OSS tests."""
+def dtp_tap_device(idle_delay: int = 0) -> OcahJtagDevice:
+    """DTP primary TAP with the TDRs the tests exercise.
 
-    def __init__(self, idle_delay: int = 0) -> None:
-        self.name = "dtp"
-        self.idcode = DTP_DEFAULT_IDCODE
-        self.ir_len = DTP_IR_WIDTH
-        self.regs: dict[str, DtpTapRegister] = _fixed_registers()
-        for cfg in JTAG2AXI_TARGETS.values():
-            self.regs.update(_jtag2axi_registers(cfg))
-        # Idle TCK cycles after every op (JTAG2AXI CDC + AXI round trip).
-        self.idle_delay = idle_delay
-
-    def reg(self, name: str) -> DtpTapRegister:
-        return self.regs[name]
+    ``idle_delay`` is the idle TCK cycles after every register access (the
+    JTAG2AXI CDC and AXI round trip).
+    """
+    registers = _fixed_registers()
+    for cfg in JTAG2AXI_TARGETS.values():
+        registers.update(_jtag2axi_registers(cfg))
+    return OcahJtagDevice.from_registers(
+        name="dtp",
+        idcode=DTP_DEFAULT_IDCODE,
+        ir_width=DTP_IR_WIDTH,
+        registers=registers,
+        idle_delay=idle_delay,
+        add_bypass=False,
+    )

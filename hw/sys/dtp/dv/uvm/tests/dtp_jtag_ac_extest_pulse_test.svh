@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_jtag_ac_extest_pulse_test — AC EXTEST_PULSE scan-loopback checks with
-// per-pass family evidence (looped runner, 16-pass floor).
+// per-pass family evidence (looped runner).
 
 class dtp_jtag_ac_extest_pulse_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag_ac_extest_pulse_test)

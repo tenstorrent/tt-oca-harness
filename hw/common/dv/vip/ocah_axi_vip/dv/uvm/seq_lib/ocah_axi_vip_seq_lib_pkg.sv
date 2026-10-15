@@ -24,5 +24,6 @@ package ocah_axi_vip_seq_lib_pkg;
   `include "ocah_axi_pipeline_test_seq.svh"
   `include "ocah_axi_pipeline_missing_rlast_test_seq.svh"
   `include "ocah_axi_struct_bridge_test_seq.svh"
+  `include "ocah_axi_responder_ops_test_seq.svh"
 
 endpackage : ocah_axi_vip_seq_lib_pkg

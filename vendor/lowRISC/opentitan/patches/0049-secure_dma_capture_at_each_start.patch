@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# Every start, including GO with INITIAL_TRANSFER clear, captures HARDWARE_HANDSHAKE_ENABLE and
+# the enabled memory range again, so a range narrowed or locked between chunks bounds the next
+# chunk. The opcode and DIGEST_SWAP stay as captured by the first start of the transfer.
+
+diff --git a/hw/ip/dma/rtl/secure_dma.sv b/hw/ip/dma/rtl/secure_dma.sv
+index 1eadac2d99..1642d09b02 100644
+--- a/hw/ip/dma/rtl/secure_dma.sv
++++ b/hw/ip/dma/rtl/secure_dma.sv
+@@ -283,9 +283,11 @@ module secure_dma
+   // some registers already have a different REGWEN attached (range locking) or the CONTROL
+   // register, which needs to be partly writable. To lock those registers, we capture their value
+   // during the start of the operation and, later on, only use the captured value in the state
+-  // machine. The captured state is stored in control_q.
++  // machine. The captured state is stored in control_q. Every start captures the handshake enable
++  // and the enabled memory range, so a range locked between chunks bounds the next chunk. Only the
++  // first start of a transfer captures the opcode and the digest swap.
+   control_state_t control_d, control_q;
+-  logic           capture_state;
++  logic           capture_state, capture_operation;
+ 
+   // Fiddle out control bits into captured state
+   always_comb begin
+@@ -295,6 +297,10 @@ module secure_dma
+     control_d.range_valid                = reg2hw.range_valid.q;
+     control_d.enabled_memory_range_base  = reg2hw.enabled_memory_range_base.q;
+     control_d.enabled_memory_range_limit = reg2hw.enabled_memory_range_limit.q;
++    if (!capture_operation) begin
++      control_d.opcode          = control_q.opcode;
++      control_d.cfg_digest_swap = control_q.cfg_digest_swap;
++    end
+   end
+ 
+   prim_flop_en #(
+@@ -612,6 +618,7 @@ module secure_dma
+     transfer_width_d       = '0;
+     capture_return_data    = 1'b0;
+     capture_state          = 1'b0;
++    capture_operation      = 1'b0;
+ 
+     next_error   = '0;
+     capture_addr = 1'b0;
+@@ -680,12 +687,15 @@ module secure_dma
+ 
+           // Wait for `go` bit to be set to proceed with data movement
+           if (reg2hw.control.go.q || reg2hw.status.busy.q) begin
+-            // Clear the transferred bytes only on the very first iteration
++            // Capture unlocked state on every start; a roundtrip via idle keeps it
++            if (!reg2hw.status.busy.q) begin
++              capture_state = 1'b1;
++            end
++            // Clear the transferred bytes and take the operation only on the very first iteration
+             if (reg2hw.control.initial_transfer.q && !reg2hw.status.busy.q) begin
+               transfer_byte_d       = '0;
+               capture_transfer_byte = 1'b1;
+-              // Capture unlocked state when starting the transfer.
+-              capture_state = 1'b1;
++              capture_operation     = 1'b1;
+             end
+             // if not handshake start transfer
+             if (!cfg_handshake_en) begin

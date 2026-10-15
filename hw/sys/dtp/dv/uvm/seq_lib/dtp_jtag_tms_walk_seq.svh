@@ -3,8 +3,8 @@
 //
 // Reusable JTAG operation: a raw TMS/TDI walk of one TCK cycle per element
 // (VIP raw_walk) from any TAP state; a single step is a one-element walk.
-// Started by dtp_base_test_seq::step() and raw_walk(). The cocotb twin is
-// seq_lib/dtp_jtag_tms_walk_seq.py.
+// Started by dtp_base_test_seq::step() and raw_walk(). The cocotb
+// realization is dtp_base_test_seq.tms_step, one call per cycle.
 
 class dtp_jtag_tms_walk_seq extends dtp_jtag_op_seq;
   `uvm_object_utils(dtp_jtag_tms_walk_seq)

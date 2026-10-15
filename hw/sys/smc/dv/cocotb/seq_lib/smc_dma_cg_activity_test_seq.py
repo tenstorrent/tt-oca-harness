@@ -5,19 +5,15 @@ DV-CARD: SMC_DMA_CG_ACTIVITY_TEST ANCHOR: smc_dma_cg_activity_test
 
 DV-CARD: SMC_CG_P2_001 ANCHOR: smc_dma_cg_activity_test
 
-The P2 card extends this same anchor: the P1 steps and checkers in body() keep
-their evidence tokens verbatim, and the P2 extension (_p2_extension) adds the
-full-range hysteresis sweep {0,1,32,63,64} and the activity-reassert race,
-called once at the end of body(). CG_HYSTERESIS_W==6 (hw/sys/smc/doc/dma.adoc)
--- gap=64 exercises the
-field's own truncation (64 & 0x3F == 0), not a TB special case, and its
-expectation is the truncated value 0, not a `<= 63` bound that no RTL can
-violate.
+body() runs the activity steps and checkers, and ``_p2_extension``, called once
+at its end, runs the full-range hysteresis sweep {0,1,32,63,64} and the
+activity-reassert race. CG_HYSTERESIS_W is 6 (hw/sys/smc/doc/dma.adoc), so
+gap=64 exercises the field's own truncation (64 & 0x3F == 0) and its
+expectation is the truncated value 0.
 
 Sweep gaps {0, 1, 32, 63, 64} plus seed extras are all driven and all exactly
-asserted, but only {32, 63, 64} are BOOKED as covered cells: the 0..8 band is
-carried as UNPROVEN and must not be counted as covered by any closure
-report -- see P2_LOW_BAND_EXCLUSION_REASON.
+asserted; only {32, 63, 64} are booked as covered cells, and
+P2_LOW_BAND_EXCLUSION_REASON states why 0 and 1 are not.
 """
 
 from __future__ import annotations
@@ -167,22 +163,16 @@ S3_MEASURE_WINDOW = 8
 # on top of these anchors so required_cells stay closed every seed.
 P2_REQUIRED_SWEEP_GAPS = (32, 63, 64)
 
-# The cells this testcase INTENDS to book, written out as an independent
-# literal rather than derived from P2_REQUIRED_SWEEP_GAPS or from the booked
-# `cells_hit` list. This is the expected side of the booked-cell check and of
-# the SWEEP-COMPLETE fence term; deriving both sides from `cells_hit` would
-# make that comparison equal by construction ([NO-ALWAYS-PASS-CHECKER]), so a
-# silent change to the required tuple, to the sweep loop, or to the `cells_hit`
-# construction must fail here instead of quietly renaming the fence term.
+# Expected side of the booked-cell check and of the SWEEP-COMPLETE fence term:
+# an independent literal, so a change to P2_REQUIRED_SWEEP_GAPS, the sweep loop
+# or the `cells_hit` construction fails here.
 P2_GRADED_CELL_NAMES = ("hyst-gap=32", "hyst-gap=63", "hyst-gap=64")
 
 # The 0..8 hysteresis band is SWEPT at 0 and 1 and exactly asserted below, but
 # it is NOT booked as covered by this testcase's coverage artifact: the DMA
 # command never completes at legal hysteresis 0 and 1 when dma_cg_en=1, so the
-# within-1-cycle hysteresis-scaling proof holds for 9..63 only. Booking
-# `hyst-gap=0` / `hyst-gap=1` as hit here would claim coverage of a band whose
-# DUT behaviour is not established, so the two gaps stay as stimulus and as a
-# fail-capable compare.
+# within-1-cycle hysteresis-scaling proof holds for 9..63 only. The two gaps
+# stay as stimulus and as a fail-capable compare.
 P2_LOW_BAND_SWEEP_GAPS = (0, 1)
 P2_LOW_BAND_EXCLUSION_REASON = (
     "DMA command never completes at legal hysteresis 0 and 1 when "
@@ -192,7 +182,7 @@ P2_LOW_BAND_EXCLUSION_REASON = (
 )
 
 P2_NUM_RANDOM_GAPS = 3
-# Bound derivations (a bound with no derivation is an unqualified magic number).
+# Bound derivations.
 # Worst-case sweep observation window: max hysteresis 63 clk_smc_i cycles of
 # countdown + the CSR-read activity pulse and its gater-busy tail, rounded up.
 P2_SWEEP_MAX_CYCLES = 130
@@ -510,7 +500,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
     # dma_backend_busy` (hw/ip/idma_wrapper/rtl/idma_wrapper.sv); tb_top.sv
     # exposes it verbatim as tb_dma_gater_busy ("Gater busy_i ... T0 for
     # hyst measure"). A plain status *read* pulses only the AXI-to-reg
-    # bridge's busy_o (idma_frontend_wrapper.sv:169, "busy when there is an
+    # bridge's busy_o (idma_frontend_wrapper.sv, "busy when there is an
     # inflight AXI command") -- a short, frontdoor, backend-free activity
     # pulse, never a force/deposit.
 
@@ -782,9 +772,8 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             observed = self._count_consecutive_edges(timeline, t0, label)
             # One exact expectation for every gap, over-max included:
             # CG_HYSTERESIS is a 6-bit field, so gap=64 truncates to
-            # `actual_hyst == 0` and `observed <= 63` could not be violated by
-            # any RTL. The truncated value IS the expectation, so a wrap or a
-            # clamp defect fails this cell ([NO-ALWAYS-PASS-CHECKER]).
+            # `actual_hyst == 0`. The truncated value is the expectation, so a
+            # wrap or a clamp defect fails this cell.
             assert observed == actual_hyst, (
                 f"{label}: expected clock-enable deassert exactly "
                 f"{actual_hyst} cycles after the last activity de-assert, "
@@ -880,9 +869,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
 
         # OBSERVED side: the cells actually booked by the sweep, each appended
         # only after its exact deassert-cycle compare passed. EXPECTED side:
-        # the independent literal P2_GRADED_CELL_NAMES. The two are never
-        # derived from each other, so this compare is not equal by
-        # construction ([NO-ALWAYS-PASS-CHECKER]).
+        # the independent literal P2_GRADED_CELL_NAMES.
         sweep_fence = f"SWEEP-COMPLETE({len(cells_hit)}-cells)"
         assert cells_hit == list(P2_GRADED_CELL_NAMES), (
             f"P2 sweep booked {cells_hit}, expected exactly "
@@ -996,13 +983,9 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         assert resume_after_busy <= 1, (
             f"resume not within 1 cycle of frontend wakeup: delta={resume_after_busy}"
         )
-        # Free-running claim, graded at the same strength as the other three
-        # activity windows in this testcase (`edges == 0` over 16 idle cycles,
-        # per-cycle over the backend-only window, `>= IDLE_OBSERVE - 1` with
-        # gating disabled). One edge of slack covers clk_smc_i/gated-clk phase
-        # alignment at the window boundary; anything looser -- `>= 2 of 4` --
-        # is also satisfied by a clock resuming at half rate or re-gating inside
-        # the window, which is not what this token claims ([EXACT-EXPECTATION]).
+        # One edge of slack covers clk_smc_i/gated-clk phase alignment at the
+        # window boundary; a looser bound is also met by a clock resuming at
+        # half rate or re-gating inside the window ([EXACT-EXPECTATION]).
         wakeup_window = 4
         edges = await self._count_gated_rising(wakeup_window)
         assert edges >= wakeup_window - 1, (

@@ -71,6 +71,8 @@ __all__ = ["DtpScoreboard"]
 
 
 class DtpScoreboard(OcahScoreboard):
+    """The seven DTP features over their monitor and reference-model streams."""
+
     def __init__(self, name: str, parent: object) -> None:
         super().__init__(name, parent)
         self.name_tag = "dtp_scoreboard"
@@ -81,6 +83,8 @@ class DtpScoreboard(OcahScoreboard):
         # The bridge behind each port monitor (the item `source`).
         self._target_by_source: dict[str, str] = {}
         self._resets_seen = (0, 0)
+        # Predicted bridge transactions withdrawn, by cause (reset, disable).
+        self._withdrawn = {"reset": 0, "disable": 0}
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -134,6 +138,11 @@ class DtpScoreboard(OcahScoreboard):
                     0,
                     context="reference-model exceptions the monitors swallowed",
                 )
+        self.logger.info(
+            "jtag2axi_req withdrew %d prediction(s) at resets and %d behind lifecycle disables",
+            self._withdrawn["reset"],
+            self._withdrawn["disable"],
+        )
         super().check_phase()
 
     # ------------------------------------------------------------------
@@ -176,6 +185,7 @@ class DtpScoreboard(OcahScoreboard):
     # Pair verdicts.
     # ------------------------------------------------------------------
     def compare_pair(self, feature: str, observed: object, expected: object) -> None:
+        """Extract ``feature``'s observed value from its monitor item and record the verdict."""
         if feature in (DTP_FEATURE_IDCODE, DTP_FEATURE_BYPASS):
             self._compare_scan_value(feature, observed, expected)
         elif feature == DTP_FEATURE_XTRIG_CSR:
@@ -309,8 +319,9 @@ class DtpScoreboard(OcahScoreboard):
             return
         self._resets_seen = seen
         dropped = self.flush_expected(DTP_FEATURE_JTAG2AXI_REQ)
+        self._withdrawn["reset"] += dropped
         if dropped:
-            self.logger.debug("reset withdrew %d predicted bridge transaction(s)", dropped)
+            self.logger.info("reset withdrew %d predicted bridge transaction(s)", dropped)
 
     def _drop_queued_predictions(self, source: str) -> None:
         """A completion while the bridge's disable is asserted drops the requests behind it."""
@@ -318,7 +329,6 @@ class DtpScoreboard(OcahScoreboard):
         if target is None or not self.tb_if.dbg_field(JTAG2AXI_TARGETS[target].dbg_disable_bit):
             return
         dropped = self.flush_expected(DTP_FEATURE_JTAG2AXI_REQ, source)
+        self._withdrawn["disable"] += dropped
         if dropped:
-            self.logger.debug(
-                "%s: the disable dropped %d queued bridge request(s)", source, dropped
-            )
+            self.logger.info("%s: the disable dropped %d queued bridge request(s)", source, dropped)

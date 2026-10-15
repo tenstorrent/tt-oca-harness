@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import random
 
-from env.dtp_types import DtpJtagInstr, DtpTapState
-from ocah_jtag_vip import TLR_TMS_ONES
+from env.dtp_types import DtpJtagInstr
+from ocah_jtag_vip import TLR_TMS_ONES, OcahJtagState
 
 from .dtp_debug_tdr_base_test_seq import dtp_debug_tdr_base_test_seq
 
@@ -76,7 +76,7 @@ class dtp_jtag_clamp_hold_test_seq(dtp_debug_tdr_base_test_seq):
             await self.tms_expect(1)
         item = await self.sample_observables()
         checker.check_tms_ones_to_tlr(TLR_TMS_ONES, item.result, context="persistence on")
-        await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
+        await self.tms_expect(0, OcahJtagState.RUN_TEST_IDLE)
         await self.check_persistence("after five TMS-high clocks", 1)
         await self.reset_to_tlr()
         await self.check_persistence("TRST from Persistence-On", 0)

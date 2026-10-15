@@ -4,10 +4,9 @@
 
 `smc_uart_log_engine_field_sweep_test` writes the UART's software-owned
 registers, and the log-engine leaves read LSR and RBR while the engine feeds
-the transmitter. Neither drives the UART's own transmit holding register, and
-neither writes the addresses the read-only registers occupy, so the write side
-of RBR, IIR, LSR and MSR and the external-register handshake behind RBR have
-never been exercised on any wrapper.
+the transmitter. This leaf drives the UART's own transmit holding register, the
+write side of RBR, IIR, LSR and MSR, and the external-register handshake behind
+RBR.
 
 This leaf sends characters through each UART's system loopback from the CSR
 port and checks the registers that move, on all four wrappers:

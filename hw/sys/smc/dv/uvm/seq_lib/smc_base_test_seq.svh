@@ -116,7 +116,7 @@ class smc_base_test_seq extends ocah_sequence;
         $sformatf(
             {
               "feature=%s scoreboard compares=%0d after %0d completed passes, ",
-              "floor=%0d (%0d predicted reads per pass)"
+              "floor=%0d (%0d predicted comparisons per pass)"
             },
             feature,
             observed,

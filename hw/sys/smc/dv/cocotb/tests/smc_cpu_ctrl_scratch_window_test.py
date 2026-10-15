@@ -31,20 +31,15 @@ class smc_cpu_ctrl_scratch_window_test(smc_base_test):
         seq = smc_cpu_ctrl_scratch_window_test_seq("cpu_ctrl_scratch_window_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         await check_cpu_bfm_observability()
-        # This record's fail-capability comes from the byte golden, not from the
-        # access floor. `csr_accesses` is `seq.accesses`, which
-        # `assert_all_reachable(39, ...)` already pinned three lines earlier, so
-        # `csr_accesses >= min_csr_accesses` is `39 >= 39` on every run and
-        # cannot fail; changing the number does not change that
-        # ([NO-ALWAYS-PASS-CHECKER]). `record_protocol_vip` requires a
-        # scenario-recorded item to declare its stimulus floor, written out
-        # here rather than read back from the sequence.
+        # `record_protocol_vip` requires a scenario-recorded item to declare its
+        # stimulus floor; the sequence pins `seq.accesses` to 39 itself, so this
+        # record's fail-capability is the byte golden below.
         #
         # `expected_bytes` is DUMMY_ROM_0's reset word read by symbol from the
         # generated `cpu_ctrl.h`; `observed_bytes` is the word the DUT returned
         # from that register after the write probe was restored. The scoreboard
-        # compares them (env/smc_scoreboard.py:861-867), so a register that does
-        # not come back to its reset fails the record itself.
+        # compares them, so a register that does not come back to its reset
+        # fails the record itself.
         assert seq.rom0_restored is not None, "DUMMY_ROM_0 restore readback missing"
         await self.record_protocol_vip(
             SmcProtocolVipKind.CPU,

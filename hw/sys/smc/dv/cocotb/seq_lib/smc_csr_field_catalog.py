@@ -15,11 +15,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-# ``_field_mask`` is the generic "read one plain ``#define`` out of a generated
-# PeakRDL C header" accessor; ``smc_addr_map`` exposes it per block
-# (``cpu_ctrl_u32``, ``reset_unit_u32``, ...) but has no ``misc_wrap`` wrapper,
-# so the module-private helper is reused rather than a second #define parser
-# ([REUSE-AND-LAYERING]).
+# ``_field_mask`` reads one plain ``#define`` out of a generated PeakRDL C
+# header; ``smc_addr_map`` wraps it per block (``cpu_ctrl_u32``,
+# ``reset_unit_u32``, ...) and has no ``misc_wrap`` wrapper.
 from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_indexed_addr
 
 # Authoritative addressing: every catalog address below is evaluated from a
@@ -47,12 +45,11 @@ _SCRATCH_DATA_RESET = misc_wrap_reset("SCRATCH__SCRATCH__DATA_reset")
 _VERSION_LO_RESET = misc_wrap_reset("CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
 _VERSION_HI_RESET = misc_wrap_reset("CHIP_CONFIG__VERSION_HI__VERSION_HI_reset")
 # chip_config.CHIP_ID is `hw = w`: smc_misc_wrap drives it from its ``CHIP_ID``
-# module parameter (`smc_misc_wrap.sv:9,209`), so the read-back is a per-variant
-# integration constant rather than a register default that the RDL reset value
-# alone guarantees. The OSS TB leaves the parameter at its default, and the
-# generated map's reset constant is that same default -- so the compare below is
-# exact, symbol-sourced, and fails loudly (rather than silently skipping) if a
-# variant ever drives a different CHIP_ID than the map declares.
+# module parameter, so the read-back is a per-variant integration constant
+# rather than a register default that the RDL reset value alone guarantees. The
+# OSS TB leaves the parameter at its default, which is the generated map's reset
+# constant, so the compare is exact and fails on a variant that drives a
+# different CHIP_ID than the map declares.
 _CHIP_ID_RESET = misc_wrap_reset("CHIP_CONFIG__CHIP_ID__CHIP_ID_reset")
 
 
@@ -125,9 +122,8 @@ CSR_FIELD_CATALOG = {
         SmcCsrAccessKind.RO_STATIC,
         _CHIP_ID_RESET,
     ),
-    # 0xC000_2A00 is NDM_RESET.NDMRESET_REQUEST, not a "status" register: the
-    # entry carries the name of the symbol that addresses it so a logged
-    # register identity cannot drift from the address actually accessed.
+    # The entry carries the name of the symbol that addresses it, so the logged
+    # register identity cannot drift from the address accessed.
     "NDM_RESET_NDMRESET_REQUEST": SmcCsrField(
         "NDM_RESET_NDMRESET_REQUEST",
         smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR"),

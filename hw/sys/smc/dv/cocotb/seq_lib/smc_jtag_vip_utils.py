@@ -28,10 +28,8 @@ from .smc_jtag_protocol_vip import (
 DTMCS_VERSION_0_13 = 0x1
 # ``dmistat`` after a TAP reset with no DMI operation issued: 0 = no error.
 DTMCS_DMISTAT_NO_ERROR = 0x0
-# ``abits`` is fixed by the TB's own DMI scan contract, not read out of the RTL:
-# the DMI DR is {addr[abits], data[32], op[2]}, so abits = DR width - 34. Taken
-# from the VIP constant that actually shifts those scans, so a VIP change can
-# never diverge silently from the value asserted here.
+# The DMI DR is {addr[abits], data[32], op[2]}, so abits = DR width - 34, with
+# the width taken from the VIP constant that shifts those scans.
 EXPECTED_DTMCS_ABITS = _DMI_DR_WIDTH - 34
 # ``dmireset``/``dmihardreset`` are W1 (read back 0) and everything from bit 15
 # up is reserved-zero in v0.13.2, so the whole [31:15] slice must read 0.
@@ -39,10 +37,8 @@ DTMCS_RESERVED_HI_SHIFT = 15
 
 
 # --- Scan-activity floor for check_cpu_jtag_pin_vip -------------------------
-# The JTAG scans this helper drives carry their own activity floor.
-# `min_csr_accesses` cannot serve as one: it counts SEP_IN AXI CSR traffic
-# issued by an unrelated sequence, so a TAP driver that silently shifted nothing
-# would still produce a record that looked checked
+# The env's `min_csr_accesses` floor counts SEP_IN AXI CSR traffic, not TCK
+# activity, so the JTAG scans this helper drives carry their own floor
 # ([EVIDENCE-TOKEN-CONDITIONAL]).
 #
 # The observation is measured at the DUT-facing pin -- rising edges counted on

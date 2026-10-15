@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_dbg_jtag_caps_test — 60-bit JTAG_CAPS value/field compare against the OSS elaboration
-// constants, multi-read stability, and read-only write sweep
-// (looped runner with per-pass family evidence, 16-pass floor).
+// dtp_dbg_jtag_caps_test — 60-bit JTAG_CAPS value/field compare against the
+// bench configuration (dtp_dv_cfg_pkg), multi-read stability, and read-only
+// write sweep (looped runner with per-pass family evidence).
 
 class dtp_dbg_jtag_caps_test extends dtp_base_test;
   `uvm_component_utils(dtp_dbg_jtag_caps_test)

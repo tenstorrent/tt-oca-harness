@@ -37,7 +37,7 @@
 #define SMC_SRAM_END (SMC_SRAM_BASE + SMC_SRAM_SIZE)
 
 /* Ring buffers at the very end of SRAM */
-#define SEP_STATUS_BUFFER_ADDR (SMC_SRAM_END - sizeof(smc_ring_buffer_t)) /* Last 512 bytes */
+#define SEP_STATUS_BUFFER_ADDR (SMC_SRAM_END - sizeof(smc_ring_buffer_t))
 #define SMC_STATUS_BUFFER_ADDR \
     (SEP_STATUS_BUFFER_ADDR - sizeof(smc_ring_buffer_t)) /* Before SEP buffer */
 

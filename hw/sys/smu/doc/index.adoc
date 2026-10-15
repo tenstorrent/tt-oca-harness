@@ -54,8 +54,8 @@ endif::backend-pdf[]
 image::smu-composition.svg[alt="SMU composition with the optional SEP subsystem",width=100%,pdfwidth=100%]
 
 The SMU composition is shown in <<smu-composition-diagram>>.
-The dashed SEP boundary denotes the optional subsystem controlled by the
-`CFG.SEP` field. Memory capacities in the diagram describe the
+Dashed outlines mark the blocks present only when `CFG.SEP` is 1: the SEP and
+the AXI4 crossbar. Memory capacities in the diagram describe the
 illustrated configuration. Hatched blocks are future: the safety bus and the
 safety monitor, whose connections to the SEP and SMC are drawn dashed.
 
@@ -67,6 +67,11 @@ fabric between SEP, SMC, and the rest of the chiplet (reached through the
 `smu_axi_in` / `smu_axi_out` boundary pair). It is a 3×3 AXI4 crossbar with
 non-reflexive connectivity: each master can reach the other two subordinates
 but never its own inbound port.
+
+The SMU instantiates the crossbar only when `CFG.SEP` is 1. When `CFG.SEP` is
+0, AXI ID-width converters connect the SMC system AXI ports to the
+`smu_axi_in` / `smu_axi_out` pair: every SMC-initiated transaction leaves
+through `smu_axi_out`, and every `smu_axi_in` transaction targets the SMC.
 
 [[smu-crossbar-connectivity-diagram]]
 .SMU AXI crossbar connectivity

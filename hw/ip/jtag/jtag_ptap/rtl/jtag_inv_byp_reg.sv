@@ -7,7 +7,7 @@
 // scan_ctrl_i; the bit captures 0, so scan_out_o reads 1 after Capture-DR.
 
 module jtag_inv_byp_reg
-  import prim_jtag_pkg::*;
+  import prim_jtag_pkg::jtag_scan_ctrl_t;
 (
   /* verilator lint_off UNUSEDSIGNAL */
   input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.

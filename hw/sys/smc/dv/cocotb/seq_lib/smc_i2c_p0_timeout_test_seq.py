@@ -435,10 +435,11 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
                     ctrl_addr,
                     expected=I2C_CTRL_MULTI_CONTROLLER_MONITOR_EN,
                 )
-                # A truncated 20-bit implementation loads only eight cycles
-                # here. By the time a host command is queued and enabled, that
-                # counter has expired and the command is consumed. The 31-bit
-                # implementation keeps the command blocked in the format FIFO.
+                # HOST_TIMEOUT_CTRL.VAL is 31 bits wide: with bit 20 set the
+                # monitor timeout outlasts the host enable, so the queued command
+                # stays blocked in the format FIFO. A counter that truncated the
+                # value to 20 bits would load only eight cycles, expire before
+                # the command is enabled, and consume it.
                 fifo_ctrl_addr = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", idx)
                 await self.csr_write(
                     f"I2C{idx}_MONITOR_FMT_RESET",

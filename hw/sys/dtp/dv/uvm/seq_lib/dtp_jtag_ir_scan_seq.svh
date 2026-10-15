@@ -5,8 +5,8 @@
 // Run-Test/Idle back to Run-Test/Idle (VIP ir_scan), returning the captured
 // TDO. A plain PTAP instruction load is width DtpIrWidth; a composed
 // network-wide instruction scan is wider. Started by
-// dtp_base_test_seq::ir_scan(). The cocotb twin is
-// seq_lib/dtp_jtag_ir_scan_seq.py.
+// dtp_base_test_seq::ir_scan(). The cocotb realization is
+// dtp_base_test_seq.load_ir and shift_ir.
 
 class dtp_jtag_ir_scan_seq extends dtp_jtag_op_seq;
   `uvm_object_utils(dtp_jtag_ir_scan_seq)

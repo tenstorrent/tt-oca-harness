@@ -6,9 +6,10 @@ Aperture base is the ABR row of ``hw/sys/sep/doc/memory_map.adoc``.
 Register offsets come from the Caliptra ``abr_reg.rdl``. The RDL declares the
 ``MLDSA_NAME`` / ``MLDSA_VERSION`` identity words ``sw = r`` with no reset, and
 no SEP document gives their values, so this driver holds their addresses
-only. 32-bit beats (size=2) on the 64-bit port, one register per access;
-STATUS at +0x14 is an odd-word offset. ``[[abr-access-size]]`` in
-``hw/sys/sep/doc/adams_bridge.adoc`` gives the rules for other access sizes.
+only. Scalar accesses use 32-bit beats (size=2). Aligned word arrays can use
+the specified 64-bit access, which the wrapper performs as two ordered 32-bit
+register accesses. ``[[abr-access-size]]`` in
+``hw/sys/sep/doc/adams_bridge.adoc`` defines both forms.
 """
 
 from __future__ import annotations
@@ -116,7 +117,7 @@ class SepAbrKeygenCfg:
 
 
 class SepAbr(SepAxiRegDriver):
-    """32-bit ABR CSR / memory-window driver on the CPU-LSU bus."""
+    """ABR CSR / memory-window driver on the CPU-LSU bus."""
 
     _DRIVER_TAG = "ABR"
 
@@ -132,6 +133,24 @@ class SepAbr(SepAxiRegDriver):
 
     async def read_words(self, base: int, n: int) -> list[int]:
         return [await self.rd32(base + 4 * i) for i in range(n)]
+
+    async def write_word_pairs(self, base: int, words: list[int]) -> None:
+        """Write an aligned, even-length word array with specified 64-bit accesses."""
+        if base & 0x7 or len(words) & 1:
+            raise ValueError("ABR paired write needs an 8-byte-aligned base and an even word count")
+        for i in range(0, len(words), 2):
+            data = (words[i] & 0xFFFF_FFFF) | ((words[i + 1] & 0xFFFF_FFFF) << 32)
+            await self._write_access(base + 4 * i, data, size=3, length=8)
+
+    async def read_word_pairs(self, base: int, n: int) -> list[int]:
+        """Read an aligned, even-length word array with specified 64-bit accesses."""
+        if base & 0x7 or n & 1:
+            raise ValueError("ABR paired read needs an 8-byte-aligned base and an even word count")
+        words = []
+        for i in range(0, n, 2):
+            data = await self._read_access(base + 4 * i, size=3, length=8)
+            words.extend((data & 0xFFFF_FFFF, (data >> 32) & 0xFFFF_FFFF))
+        return words
 
     async def enable_notif(self) -> None:
         await self.wr32(ABR_GLOBAL_INTR_EN, INTR_GLOBAL_BOTH)

@@ -26,7 +26,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#dtp-ctn-sip-example[CTM routing that each chiplet programs]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ctn-sip-example[CTM routing that each chiplet programs]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ctn-sip-example[CTM routing that each chiplet programs]
 endif::backend-pdf[]
 for this topology.
 
@@ -230,7 +230,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#dtp-ctn-init[order in which to program the CTPs and the CTM].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ctn-init[order in which to program the CTPs and the CTM].
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ctn-init[order in which to program the CTPs and the CTM].
 endif::backend-pdf[]
 
 === Address Map

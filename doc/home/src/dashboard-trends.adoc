@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[verification-dashboard-trends]]
+= Verification Trends
+:page-aliases: ocah-docs::dashboard-trends.adoc
+:doctype: book
+
+Published regression results over time, from the trend history on the
+https://github.com/tenstorrent/tt-oca-harness/tree/dv-dashboard-data[`dv-dashboard-data`]
+branch. Choose how many runs to show, and which series each chart plots.
+
+ifdef::backend-html5[]
+++++
+<div class="dashboard">
+  <p class="dashboard-back"><a href="dashboard.html">&#8592; Back to the verification dashboard</a></p>
+
+  <div id="dashboard-status" class="dashboard-status">Loading trend data&hellip;</div>
+
+  <p class="dashboard-window">
+    <label for="dashboard-window-select">Window</label>
+    <select id="dashboard-window-select">
+      <option value="10">Last 10 runs</option>
+      <option value="30" selected>Last 30 runs</option>
+      <option value="0">All</option>
+    </select>
+  </p>
+
+  <div id="dashboard-trends" hidden>
+    <h3>Test Pass Rate</h3>
+    <p class="dashboard-window">
+      <label for="dashboard-series-tests">Series</label>
+      <select id="dashboard-series-tests"></select>
+    </p>
+    <div id="dashboard-trend-tests" class="dashboard-chart"></div>
+
+    <h3>Coverage</h3>
+    <p class="dashboard-window">
+      <label for="dashboard-series-coverage">Series</label>
+      <select id="dashboard-series-coverage"></select>
+    </p>
+    <div id="dashboard-trend-coverage" class="dashboard-chart"></div>
+
+    <h3>Failing and Flaky Tests</h3>
+    <p class="dashboard-window">
+      <label for="dashboard-series-failures">Series</label>
+      <select id="dashboard-series-failures"></select>
+    </p>
+    <div id="dashboard-trend-failures" class="dashboard-chart"></div>
+  </div>
+
+  <noscript>
+    <p class="dashboard-status dashboard-status-error">
+      This page renders live regression data with JavaScript. With scripting
+      disabled, read the published data directly from the
+      <a href="https://github.com/tenstorrent/tt-oca-harness/tree/dv-dashboard-data"><code>dv-dashboard-data</code></a>
+      branch.
+    </p>
+  </noscript>
+</div>
+<script src="../../_/js/vendor/echarts/echarts.min.js"></script>
+<script src="../../_/js/dashboard.js"></script>
+++++
+endif::[]
+
+ifndef::backend-html5[]
+[NOTE]
+====
+Verification trends render live regression data in the browser and have no
+static equivalent in this PDF. See the Verification Trends page of the
+published HTML documentation.
+====
+endif::[]

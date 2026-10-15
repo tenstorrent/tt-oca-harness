@@ -19,10 +19,10 @@
 // health-test window passes, and new entropy stops entering when MODULE_ENABLE clears or
 // the alert threshold trips.
 
+`include "ocah_registers.svh"
+
 module entropy_source
-    import entropy_source_reg_pkg::*,
-           entropy_source_pkg::*,
-           entropy_src_main_sm_pkg::*;
+    import entropy_source_pkg::NRings;
 
     `include "prim_assert.sv"
 (
@@ -121,7 +121,7 @@ module entropy_source
     logic        boot_phase_done;
     logic        alert_cntr_clr_ok_main_sm;
     logic        main_sm_alert, main_sm_idle, main_sm_err;
-    logic [StateWidth-1:0] main_sm_state;
+    logic [entropy_src_main_sm_pkg::StateWidth-1:0] main_sm_state;
 
     logic [9:0]  downsample_count;
     logic        fifo_stream_push;
@@ -194,7 +194,7 @@ module entropy_source
     logic        alert_thresh_fail;
     logic        persistent_failure;
     logic        autotune_fail;
-    entropy_source_err_bus_t err_bus;
+    entropy_source_pkg::entropy_source_err_bus_t err_bus;
 
     // SP 800-90B recommended-threshold LUT outputs (combinational).
     logic [7:0]  min_entropy_h;
@@ -694,17 +694,9 @@ module entropy_source
         endcase
     end
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-            fifo_push_stream <= '0;
-            fifo_push_count  <= 2'd0;
-            fifo_push_state  <= ST_FIFO_PUSH_IDLE;
-        end else begin
-            fifo_push_stream <= fifo_push_stream_next;
-            fifo_push_count  <= fifo_push_count_next;
-            fifo_push_state  <= fifo_push_state_next;
-        end
-    end
+    `OCAH_FF(fifo_push_stream, fifo_push_stream_next, '0, clk_i, rst_ni)
+    `OCAH_FF(fifo_push_count, fifo_push_count_next, 2'd0, clk_i, rst_ni)
+    `OCAH_FF(fifo_push_state, fifo_push_state_next, ST_FIFO_PUSH_IDLE, clk_i, rst_ni)
 
     // Guard rd_ack with rst_ni: prevents a spurious ack before reg-block initialises
     // its output struct (which would fire assert_bad_ext_rd_ack).
@@ -962,10 +954,7 @@ module entropy_source
     assign markov_lo_fail_pulse = health_status[5];
 
     // MODULE_ENABLE rising-edge detect (OpenTitan module_en_pulse).
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) module_en_q <= 1'b0;
-        else         module_en_q <= reg_out.CTRL.MODULE_ENABLE.value;
-    end
+    `OCAH_FF(module_en_q, reg_out.CTRL.MODULE_ENABLE.value, 1'b0, clk_i, rst_ni)
     assign module_en_pulse = reg_out.CTRL.MODULE_ENABLE.value && !module_en_q;
 
     assign health_test_clr  = module_en_pulse;
@@ -1086,13 +1075,7 @@ module entropy_source
     end
 
     // Register the resolved value; selector and watermark reset together.
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-            ht_watermark_num_q <= REPCNT_HI;
-        end else begin
-            ht_watermark_num_q <= ht_watermark_num_d;
-        end
-    end
+    `OCAH_FF(ht_watermark_num_q, ht_watermark_num_d, REPCNT_HI, clk_i, rst_ni)
 
     // Write back the sanitized value to the register
     assign reg_in.HT_WATERMARK_NUM.WATERMARK_NUM.next = ht_watermark_num_d;

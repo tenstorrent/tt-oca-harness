@@ -11,7 +11,7 @@ and the DQS loopback pad 54), and no select steers it.
 The sequence grades, at the SMC pad ports of smu.sv (core2pad_o,
 core2pad_en_o, pad2core_i), that the SMC SPI pins carry the host request as
 SPI_PIN_TABLE states it. SPI_PIN_TABLE is DV-owned: every row cites the spec
-file and line it comes from, never the RTL that implements it. The host side is
+file and section it comes from, never the RTL that implements it. The host side is
 read on the ports of u_sep_ot_spi_wrap, upstream of smu.sv. Facts the table
 needs and no spec states are listed in SPEC_GAPS and logged on every run.
 
@@ -73,18 +73,20 @@ HOST_CORE_PATH = HOST_PATH + ".u_spi_host"
 # ---------------------------------------------------------------------------
 # DV-owned SPI pin table. Spec sources (paths from the repository root):
 #   GPIO  doc/integrator/meta/ocah_gpio_table.csv -- the function of each GPIO pad
-#   SEP   hw/sys/sep/doc/spi.adoc -- the SEP SPI host: SCK, CS and a 4-bit
-#         bidirectional data bus (:48); quad is the widest mode, four data
-#         lines, and there is no DQS read strobe (:35-39)
+#   SEP   hw/sys/sep/doc/spi.adoc, "Features" -- the SEP SPI host: SCK, CS and
+#         a 4-bit bidirectional data bus (External signals); quad is the widest
+#         mode, four data lines, and there is no DQS read strobe (Transfer
+#         width, Transfer rate)
 #   OT    vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson
-#         -- sck, csb (one hot, active low) and sd outputs (:109-122);
-#         CONTROL.OUTPUT_EN enables the sck, csb and sd output buffers and
-#         resets to 0 (:221-225)
+#         -- sck, csb (one hot, active low) and sd outputs
+#         (available_output_list, available_inout_list); CONTROL.OUTPUT_EN
+#         enables the sck, csb and sd output buffers and resets to 0
 #   OTDOC https://opentitan.org/book/hw/ip/spi_host/index.html, the document
-#         hw/sys/sep/doc/spi.adoc:69-71 names authoritative: in standard mode
-#         SD[0] carries host-to-device data and SD[1] device-to-host data
-#   EN    doc/starting/src/guidelines.adoc:166-167 -- an active-low signal
-#         carries _n; hw/sys/smu/doc/port_table.adoc:105-108 -- pad2core_i is
+#         hw/sys/sep/doc/spi.adoc names authoritative: in standard mode SD[0]
+#         carries host-to-device data and SD[1] device-to-host data
+#   EN    doc/starting/src/guidelines.adoc, "SystemVerilog Coding Guidelines"
+#         -- an active-low signal carries _n; the pad2core_i, core2pad_o and
+#         core2pad_en_o rows of hw/sys/smu/doc/port_table.adoc -- pad2core_i is
 #         the pad input, core2pad_o the pad output, core2pad_en_o the
 #         core-to-pad path enable (no _n: active high)
 # ---------------------------------------------------------------------------
@@ -107,18 +109,18 @@ class SpiPin:
 
 
 SPI_PIN_TABLE = (
-    SpiPin(0, "SPI.DATA[0]", "sd0", "sd_oe0", 0, "GPIO :2; SEP :48"),
-    SpiPin(1, "SPI.DATA[1]", "sd1", "sd_oe1", 1, "GPIO :3; SEP :48"),
-    SpiPin(2, "SPI.DATA[2]", "sd2", "sd_oe2", 2, "GPIO :4; SEP :48"),
-    SpiPin(3, "SPI.DATA[3]", "sd3", "sd_oe3", 3, "GPIO :5; SEP :48"),
-    SpiPin(4, "SPI.DATA[4]", None, None, None, "GPIO :6; SEP :35-36"),
-    SpiPin(5, "SPI.DATA[5]", None, None, None, "GPIO :7; SEP :35-36"),
-    SpiPin(6, "SPI.DATA[6]", None, None, None, "GPIO :8; SEP :35-36"),
-    SpiPin(7, "SPI.DATA[7]", None, None, None, "GPIO :9; SEP :35-36"),
-    SpiPin(8, "SPI.CS", "cs_n", "cs_oe", None, "GPIO :10; OT :113-116"),
-    SpiPin(9, "SPI.CLK", "sck", "sck_oe", None, "GPIO :11; OT :110-112"),
-    SpiPin(10, "SPI.DQS", None, None, None, "GPIO :12; SEP :37-38"),
-    SpiPin(54, "SPI DQS Loopback", None, None, None, "GPIO :56; SEP :37-38"),
+    SpiPin(0, "SPI.DATA[0]", "sd0", "sd_oe0", 0, "GPIO; SEP External signals"),
+    SpiPin(1, "SPI.DATA[1]", "sd1", "sd_oe1", 1, "GPIO; SEP External signals"),
+    SpiPin(2, "SPI.DATA[2]", "sd2", "sd_oe2", 2, "GPIO; SEP External signals"),
+    SpiPin(3, "SPI.DATA[3]", "sd3", "sd_oe3", 3, "GPIO; SEP External signals"),
+    SpiPin(4, "SPI.DATA[4]", None, None, None, "GPIO; SEP Transfer width"),
+    SpiPin(5, "SPI.DATA[5]", None, None, None, "GPIO; SEP Transfer width"),
+    SpiPin(6, "SPI.DATA[6]", None, None, None, "GPIO; SEP Transfer width"),
+    SpiPin(7, "SPI.DATA[7]", None, None, None, "GPIO; SEP Transfer width"),
+    SpiPin(8, "SPI.CS", "cs_n", "cs_oe", None, "GPIO; OT csb"),
+    SpiPin(9, "SPI.CLK", "sck", "sck_oe", None, "GPIO; OT sck"),
+    SpiPin(10, "SPI.DQS", None, None, None, "GPIO; SEP Transfer rate"),
+    SpiPin(54, "SPI DQS Loopback", None, None, None, "GPIO; SEP Transfer rate"),
 )
 _PIN = {p.function: p.pad for p in SPI_PIN_TABLE}
 PAD_DQ = tuple(_PIN[f"SPI.DATA[{i}]"] for i in range(8))
@@ -148,17 +150,17 @@ SPEC_GAPS = (
 )
 
 # The transfer run_spi_txrx_sequence() in sep_smu_spi.c issues, in order:
-# (bytes, COMMAND.CSAAT, direction). A segment moves LEN+1 bytes (OT :443-453);
-# CSAAT=0 raises CS# at the end of the segment, CSAAT=1 holds it low (OT
-# :470-476). Every segment is standard speed (COMMAND.SPEED=0), so a byte is 8
-# SCK periods on one lane, and with CONFIGOPTS.CPOL=0 SCK idles low and emits
-# one high pulse per period (OT :352-356).
+# (bytes, COMMAND.CSAAT, direction). A segment moves LEN+1 bytes (OT
+# COMMAND.LEN); CSAAT=0 raises CS# at the end of the segment, CSAAT=1 holds it
+# low (OT COMMAND.CSAAT). Every segment is standard speed (COMMAND.SPEED=0), so
+# a byte is 8 SCK periods on one lane, and with CONFIGOPTS.CPOL=0 SCK idles low
+# and emits one high pulse per period (OT CONFIGOPTS.CPOL).
 TX = "tx"
 RX = "rx"
 FW_SEGMENTS = ((1, 0, TX), (4, 1, TX), (4, 0, RX))
 # The bytes the firmware pushes into TXDATA, in FIFO order: one byte store
-# (TXDATA takes byte enables, OT :518), then one word, whose low byte goes first
-# (STATUS.BYTEORDER=1, OT :76-82).
+# (TXDATA takes byte enables, OT TXDATA), then one word, whose low byte goes
+# first (STATUS.BYTEORDER=1, OT ByteOrder).
 FW_TXDATA_BYTES = (0x9F, *(0x0010_0003).to_bytes(4, "little"))
 BITS_PER_BYTE = 8
 
@@ -195,9 +197,9 @@ EDGE_DIRECTIONS, CS_WINDOW_RISES = _edge_plan()
 EXPECTED_SCK_RISES = len(EDGE_DIRECTIONS)
 TX_BYTES = sum(n for n, _, d in FW_SEGMENTS if d == TX)
 RX_BYTES = sum(n for n, _, d in FW_SEGMENTS if d == RX)
-# Each byte goes out MSB first (OT :521-522), and the TX segments send the FIFO
-# bytes in order. The first received byte lands in RXDATA[7:0] (OT :76-82), and
-# received bytes also go MSB first (OT :496-497).
+# Each byte goes out MSB first (OT TXDATA), and the TX segments send the FIFO
+# bytes in order. The first received byte lands in RXDATA[7:0] (OT ByteOrder),
+# and received bytes also go MSB first (OT RXDATA).
 if len(FW_TXDATA_BYTES) != TX_BYTES:
     raise AssertionError("FW_TXDATA_BYTES and the TX segment byte counts differ")
 EXPECTED_MOSI = list(FW_TXDATA_BYTES)
@@ -467,7 +469,7 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
                         }
                     )
                 # Bench SPI device, mode 0 (CPHA=0: data changes on the trailing
-                # edge and is sampled on the leading edge, OT :360-364): present
+                # edge and is sampled on the leading edge, OT CONFIGOPTS.CPHA): present
                 # the next receive bit on the SCK falling edge, and release the
                 # pad after the last receive bit.
                 if prev_sck and not sck and not cs_n:

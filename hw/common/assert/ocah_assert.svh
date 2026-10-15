@@ -22,6 +22,15 @@
   $error("%0t: (%0s:%0d) [%m] [ASSERT FAILED] %0s", $time, `__FILE__, `__LINE__, `OCAH_STRINGIFY(__name));             \
 `endif
 
+// OCAH_ASSERT_STATIC checks a constant property, such as a parameter or a $bits width, at
+// elaboration, and reports __msg when it fails. It expands to a generate block labelled __name,
+// so use it as a module item; a package needs OCAH_OT_ASSERT_STATIC_IN_PACKAGE. Unlike the
+// assertion macros below, it is compiled in for every tool and view, including Verilator and
+// synthesis.
+`define OCAH_ASSERT_STATIC(__name, __prop, __msg = "") \
+  if (!(__prop)) begin : __name                                                \
+    $error("[%s] Static assertion failed. %s", `OCAH_STRINGIFY(__name), __msg); \
+  end
 
 // The assertion macro bodies live in ocah_assert_standard_macros.svh. Each body is
 // guarded by `ifdef OCAH_INC_ASSERT, so it expands to nothing for tools that do not compile
@@ -29,7 +38,7 @@
 // also be used by RTL to conceal signal definitions used exclusively by assertions.
 // The macros that are supported include:
 // OCAH_ASSERT_I: An immediate assertion. Be aware that such assertions are susceptible to simulation glitches.
-// OCAH_ASSERT_INIT: An assertion within the initial block. This is useful for tasks like checking parameters.
+// OCAH_ASSERT_INIT: An assertion within the initial block, for values known only at time zero. Check parameters with OCAH_ASSERT_STATIC.
 // OCAH_ASSERT_FINAL: An assertion within the final block. This can be applied to ensure that queues are empty at the simulation's conclusion, all credits have been returned, and state machines are idle.
 // OCAH_ASSERT_AT_RESET: An assertion just prior to a reset. This is suitable for verifying sum-like properties that are reset. Note that if your simulation doesn’t conclude with a reset, this property won’t be checked at the simulation’s end; instead, use OCAH_ASSERT_AT_RESET_AND_FINAL if you also want the property checked at that time.
 // OCAH_ASSERT_AT_RESET_AND_FINAL: An assertion just prior to a reset and within the final block. This is useful for checking sum-like properties before every reset and at the simulation’s end.
@@ -41,7 +50,7 @@
 // OCAH_ASSUME: Assume a concurrent property.
 // OCAH_ASSUME_I: Assume an immediate property.
 
-// OCAH_DEBUG_LIVE selects the RTL debug hooks: elaboration checks, assertions, and $display /
+// OCAH_DEBUG_LIVE selects the RTL debug hooks: debug checks, assertions, and $display /
 // $error / $fatal messages. The simulation and emulation views compile them; the synthesis view
 // does not. EMULATION takes precedence over SYNTHESIS, so a compile that sets both gets the
 // emulation view.

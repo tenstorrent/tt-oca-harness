@@ -8,16 +8,13 @@ bounded handshakes and one held snapshot carry the proof (see
 
 * glitch effect -- a bounded ``WAIT_STATE`` until ``powergood_stable_o==0``,
   so a DUT that ignores ``powergood_i`` fails instead of coasting;
-* gated state -- the real evidence: while power-good is unstable, the
-  cold-stable and both primary resets must read asserted at EVERY sample of
-  the glitch window, not at one instant;
-* recovery -- a bounded ``WAIT_STATE`` on all five released observables, NOT a
-  wait for a fixed reset-chain recovery time; expiry raises with the last
-  observed state.
+* gated state -- while power-good is unstable, the cold-stable and both
+  primary resets must read asserted at every sample of the glitch window;
+* recovery -- a bounded ``WAIT_STATE`` on all five released observables;
+  expiry raises with the last observed state.
 
-The bookend ``SAMPLE``s are the weakest evidence here, not the proof. This
-exercises the SMC powergood stretcher path beyond the cold-reset single-shot
-scenario.
+This exercises the SMC powergood stretcher path beyond the cold-reset
+single-shot scenario.
 """
 
 from __future__ import annotations

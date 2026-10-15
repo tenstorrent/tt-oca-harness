@@ -21,9 +21,7 @@
 # the real setup check and mask intra-domain failures - which is why this needs
 # the group list and belongs beside the clock definitions.
 #
-# The recipes still win where they apply: they are specified on pins, this on
-# clocks, and DC/PT prefer the more specific object. Worth confirming once with
-# report_timing to a synchronizer data pin.
+# The per-instance recipes, set on pins, take precedence over this bound.
 #
 # The negative min_delay drops hold checking between async domains.
 #

@@ -26,7 +26,8 @@ class smc_gpio_intf_full_sweep_test(smc_base_test):
             SmcProtocolVipKind.GPIO_IRQ,
             type(self).__name__,
             # Directed stimulus floor: 65 GPIO_INTF DATA_CTRL accesses (one per
-            # pad entry). Literal here, not read from `seq.accesses`.
+            # pad entry); a floor taken from `seq.accesses` would shrink with a
+            # sequence that stopped issuing them.
             min_csr_accesses=65,
             csr_accesses=seq.accesses,
             proxy=False,

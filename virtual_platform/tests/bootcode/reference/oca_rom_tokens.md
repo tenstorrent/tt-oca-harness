@@ -142,7 +142,7 @@ OCA code = `OCA_BOOT_ERR_BASE (0x00030000) | oca_result_t`; `0x000301xx` are the
 | cold scratch | 0x10802000 stride 8 (0 verdict, 1 status 0x10802008, 2 console 0x10802010, 7 warm 0x10802038; scratch 7 is cleared at dispatch) |
 | SMC scratch | 0x40039080 (8/9/10/11 = C0/C8/D0/D8); 13/14 not read; 7 read back after the write |
 | MBIST/DFX | 0x4000B800 (0x112 / 0x13) |
-| straps | 0x40405800 / 0x40405804 (LO 13/19/20/21/25, HI 22/26) |
+| straps | 0x40403000 / 0x40403004 (LO 13/19/20/21/25, HI 22/26) |
 | SMC SRAM | 0x40060000, 1 MiB |
 | BL1_JUMP | 0xC0000000; may also be in SRAM when `BL1_SRAM_EXEC_ENABLE=1` (default) |
 | SEP SRAM staging | body 0x10000000, payload 0x10001000, BL1 source 0x10001000 + TOC offset, 0x3FFF8 available |

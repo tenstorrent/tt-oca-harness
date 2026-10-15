@@ -2,13 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """RDL-contract write sweep of the CLA MMR block over SEP_IN AXI.
 
-The CLA sub-block of the SMC_CLA aperture carries 113 registers. Every address,
-reset value, field position, software-access type and volatility below comes
-from the generated register map through :mod:`seq_lib.smc_cla_regmap`, which
-reads the PeakRDL IP-XACT export of ``smc_cla.rdl`` and cross-checks each
-address against the matching ``smc_reg.py`` symbol. Nothing here is a
-hand-transcribed address, mask or reset word, and the vendored RTL is not a
-source for any of them.
+Every address, reset value, field position, software-access type and volatility
+of the CLA sub-block of the SMC_CLA aperture comes from the generated register
+map through :mod:`seq_lib.smc_cla_regmap`, which reads the PeakRDL IP-XACT
+export of ``smc_cla.rdl`` and cross-checks each address against the matching
+``smc_reg.py`` symbol. Nothing here is a hand-transcribed address, mask or
+reset word, and the vendored RTL is not a source for any of them.
 
 ``smc_remap_cla_test`` reads the aperture at reset. This sequence drives the
 write side of the same contract:

@@ -27,16 +27,9 @@ _SMC_CLA_H = _REPO_ROOT / "hw" / "ip" / "dfd" / "regs" / "gen" / "c" / "smc_cla.
 _DFX_CTRL_STATUS_H = (
     _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "dfx_ctrl_status.h"
 )
-# create_reg_c_header.py output from smc.rdl for the boot ROM. It flattens the
-# blocks inside the adopter external window, which smc_addr.h keeps opaque.
-_SMC_BOOTROM_REGS_H = (
-    _REPO_ROOT / "hw" / "sys" / "smc" / "bootrom" / "prod" / "registers" / "smc_top_regs.h"
-)
 
 _DEFINE_RE = re.compile(r"^\s*#define\s+(SMC_TOP_\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$")
 _ANY_DEFINE_RE = re.compile(r"^\s*#define\s+(\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$")
-# Boot ROM style: #define NAME (0xC0400000)
-_PAREN_DEFINE_RE = re.compile(r"^\s*#define\s+(\w+)\s+\((0x[0-9A-Fa-f]+|\d+)\)\s*$")
 # Indexed: #define NAME(idx) (0xBASE + (idx * 0xSTRIDE))
 _INDEXED_RE = re.compile(
     r"^\s*#define\s+(SMC_TOP_\w+_BASE_ADDR)\(\w+\)\s+"
@@ -163,28 +156,6 @@ def c_header_u32(path: Path, symbol: str) -> int:
         return table[symbol]
     except KeyError as exc:
         raise KeyError(f"{symbol} not in {path}") from exc
-
-
-@lru_cache(maxsize=1)
-def _smc_bootrom_table() -> dict[str, int]:
-    text = _SMC_BOOTROM_REGS_H.read_text(encoding="utf-8")
-    out: dict[str, int] = {}
-    for line in text.splitlines():
-        m = _PAREN_DEFINE_RE.match(line)
-        if m:
-            out[m.group(1)] = int(m.group(2), 0)
-    if not out:
-        raise RuntimeError(f"no parenthesized #define constants parsed from {_SMC_BOOTROM_REGS_H}")
-    return out
-
-
-def smc_bootrom_addr(symbol: str) -> int:
-    """Return a flattened ``SMC_TOP_*`` absolute from the boot ROM's ``smc_top_regs.h``."""
-    table = _smc_bootrom_table()
-    try:
-        return table[symbol]
-    except KeyError as exc:
-        raise KeyError(f"{symbol} not in {_SMC_BOOTROM_REGS_H}") from exc
 
 
 def cpu_ctrl_bm(symbol: str) -> int:

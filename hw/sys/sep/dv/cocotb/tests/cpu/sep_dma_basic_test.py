@@ -2,6 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Secure DMA CSRs, address modes, widths and error legs meet their contracts on SRAM copies.
 
+OCAH provenance: ``reg_rw``, ``reg_reset``, ``cfg_regwen``, ``range_regwen``,
+``addr_fixed``, ``addr_wrap``, ``addr_combo``, ``mem_copy`` and ``err_opcode``
+check DMA CSRs, locks, address modes, widths, copies and opcode errors.
+
 The test boots the VeeR EL2 core and runs the dma_basic firmware. The firmware drives the
 Secure DMA over the CPU LSU and checks the DMA CSR and copy-datapath contracts on bare sep
 (SRAM->SRAM transfers).
@@ -101,6 +105,8 @@ class sep_dma_basic_test(sep_base_test):
     """DMA CSR, copy-mode, width and error-leg checks pass; a host-path error reaches sep_internal_interrupts[41] (PIC source 42)."""
 
     build_env = False
+    # The leaf's own graded records; the base-class records do not count.
+    required_evidence = ("CHK-HOSTINTG-PIC", "CHK-HOSTINTG-CLR", "CHK-RAND-REP")
 
     def build_phase(self) -> None:
         super().build_phase()

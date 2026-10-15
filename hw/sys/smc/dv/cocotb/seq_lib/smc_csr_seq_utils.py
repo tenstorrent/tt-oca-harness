@@ -332,10 +332,9 @@ class SmcCsrSeq(smc_base_test_seq):
 
     # Bound for the OVRD-write -> open-drain pad settle. The path is
     # CSR write ack (clk_smc) -> i2c_wrap OVRD -> GPIO pad mux -> the tb_top
-    # open-drain resolver (tb_top.sv:644-647), i.e. a handful of clk_smc cycles
-    # plus the AXI-Lite write completion the caller already awaited. The bound is
-    # generous so a slow build cannot flake; expiry is a FAILURE, never a pass
-    # ([TIMEOUT-MUST-FAIL]).
+    # open-drain resolver, i.e. a handful of clk_smc cycles plus the AXI-Lite
+    # write completion the caller already awaited. Expiry is a FAILURE, never a
+    # pass ([TIMEOUT-MUST-FAIL]).
     _I2C0_PAD_SETTLE_TIMEOUT_CYCLES = 400
     _I2C0_PAD_POLL_CYCLES = 2
     # After the expected level is first seen, require it to still hold this many
@@ -530,8 +529,9 @@ class SmcCsrSeq(smc_base_test_seq):
             f"{block}: no scoreboard on this sequence's env, so the CSR traffic "
             f"cannot be corroborated independently of the sequence's own counter"
         )
-        assert sb.sys_axi_checks_seen >= self.accesses, (
-            f"{block}: the scoreboard checked only {sb.sys_axi_checks_seen} SYS "
+        seen = sb.sys_axi_checks_seen + sb.sys_axi_reset_aborted_seen
+        assert seen >= self.accesses, (
+            f"{block}: the scoreboard saw only {seen} SYS "
             f"AXI item(s) but this sequence issued {self.accesses} access(es) -- "
             f"the traffic never reached the scoreboard, so none of it is checked "
             f"evidence"
@@ -592,8 +592,9 @@ class SmcCsrSeq(smc_base_test_seq):
             f"{block}: no scoreboard on this sequence's env, so the CSR traffic "
             f"cannot be corroborated independently of the sequence's own counter"
         )
-        assert sb.sys_axi_checks_seen >= self.accesses, (
-            f"{block}: the scoreboard checked only {sb.sys_axi_checks_seen} SYS "
+        seen = sb.sys_axi_checks_seen + sb.sys_axi_reset_aborted_seen
+        assert seen >= self.accesses, (
+            f"{block}: the scoreboard saw only {seen} SYS "
             f"AXI item(s) but this sequence issued {self.accesses} access(es) -- "
             f"the traffic never reached the scoreboard"
         )

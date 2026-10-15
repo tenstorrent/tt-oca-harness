@@ -34,14 +34,10 @@ class smc_i2c_master_target_test(smc_base_test):
             f"write={seq.dut_host_write_ok} pec={seq.dut_smbus_pec_ok} "
             f"ara={seq.dut_smbus_ara_ok}"
         )
-        # Byte verdict: owned solely by the sequence, where the bytes are
-        # measured. `assert got == bytes([_I2C_WRITE_BYTE])` (EEPROM VIP
-        # mem[0x10]) and `assert rdata == _SMBUS_ARA_REPLY` (I2C0_RDATA from the
-        # ARA responder) both run *before* the sequence returns, so a test-level
-        # `obs == exp` compare here would sit downstream of those asserts on the
-        # same constants and could not fail on any RTL ([NO-DUMMY-DEAD-CODE]).
-        # The measured values are reported below (and in `details=` on the
-        # protocol-VIP record) so the kept log carries what was read.
+        # The byte verdict is the sequence's: `assert got == bytes([_I2C_WRITE_BYTE])`
+        # (EEPROM VIP mem[0x10]) and `assert rdata == _SMBUS_ARA_REPLY` (I2C0_RDATA
+        # from the ARA responder) both run before it returns. The measured values
+        # are logged here and in `details=` so the kept log carries what was read.
         obs = seq.obs_host_write + seq.obs_smbus_ara
         self.logger.info(
             "I2C U4-2 measured bytes 0x%s (EEPROM VIP mem[0x10]=0x%s + "

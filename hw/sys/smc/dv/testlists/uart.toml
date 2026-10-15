@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 schema_version = 1
 
-# BFM rebuilds of the commercial UART depth tests.
+# UART depth tests driven from the pad BFM.
 [[tests]]
 name = "smc_uart_rbr_error_path_test"
 module = "smc_uart_rbr_error_path_test"
@@ -23,6 +23,14 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_uart_thr_paths_test"
 module = "smc_uart_thr_paths_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_fifo_control_depth_test"
+module = "smc_uart_fifo_control_depth_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "uart"]
@@ -177,5 +185,29 @@ name = "smc_uart_core_mode_select_test"
 module = "smc_uart_core_mode_select_test"
 seed = 1
 timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_reg_reset_rw_test"
+module = "smc_uart_reg_reset_rw_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_irq_thre_identify_test"
+module = "smc_uart_irq_thre_identify_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_log_engine_reg_map_test"
+module = "smc_uart_log_engine_reg_map_test"
+seed = 1
+timeout_sec = 3600
 tags = ["ci", "uart"]
 run_modes = ["smoke"]

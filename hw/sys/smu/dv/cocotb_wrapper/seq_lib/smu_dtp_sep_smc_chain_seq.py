@@ -17,15 +17,16 @@ covers the DTP gate alone. Here all three subsystems act:
 Causality comes from running the identical firmware and the identical JTAG
 operation under two eFuse images:
 
-  PROD      Table 50 lets the demote open feat_ctrl[15:0], so debug opens and
-            the read must complete and return the SMC's live scratch value.
-  PROD_END  Table 50 has no demote entry, so the same demote changes nothing,
-            debug stays disabled and the read must not reach AXI at all.
+  PROD      the per-LC-state feature control profile
+            (``hw/sys/sep/doc/lifecycle_controller.adoc``) lets the demote open
+            feat_ctrl[15:0], so debug opens and the read must complete and
+            return the SMC's live scratch value.
+  PROD_END  that profile has no demote entry, so the same demote changes
+            nothing, debug stays disabled and the read must not reach AXI at all.
 
 The SEP therefore has to actually participate: with the demote ignored, the
-chain breaks. And the returned data is compared against the testbench's own view
-of SMC scratch0 rather than a hard-coded constant, so the check follows whatever
-the SMC firmware actually wrote.
+chain breaks. The returned data is compared against the testbench's view of SMC
+scratch0, so the check follows whatever the SMC firmware wrote.
 
 The posture after the demote is compared against seq_lib.smu_lifecycle_table:
 the state comes from the shadow-preload image the entry names, and the exported
@@ -58,9 +59,7 @@ from seq_lib.wrapper_jtag import (
 
 # SMC CPU_CTRL scratch0, SMC-local. The SMC arm firmware writes its marker here,
 # so a correct read returns something the SMC put there rather than a reset value.
-SMC_SCRATCH0_ADDR = smc_indexed_addr(
-    "SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0
-)  # SMC CPU_CTRL scratch0
+SMC_SCRATCH0_ADDR = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0)
 
 PASS_SYM = "sep_smu_lcc_flow_pass_loop"
 SETTLE_CYCLES = 2000

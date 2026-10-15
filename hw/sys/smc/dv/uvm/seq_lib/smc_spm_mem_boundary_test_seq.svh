@@ -19,13 +19,11 @@
 // 64-bit single beats: a 32-bit CSR-shaped access would leave half of each
 // word untouched and could not discriminate the addresses.
 //
-// The patterns are pairwise distinct BY CONSTRUCTION and the sequence asserts
-// it rather than trusting a comment: identical patterns would make a
-// collapsed decode indistinguishable from a correct one. Each pass draws a
-// fresh pattern set from the scenario seed, so the 16 passes of one
-// simulation exercise different data (the cocotb twin uses fixed constants)
-// and each pass also re-proves that the previous pass's words were replaced
-// rather than merely re-read.
+// The patterns must be pairwise distinct: identical patterns would make a
+// collapsed decode indistinguishable from a correct one, so
+// assert_edges_discriminating() checks them each pass. Each pass draws a
+// fresh set from the scenario seed (the cocotb twin uses fixed constants), so
+// successive passes also prove the previous pass's words were replaced.
 //
 // +SMC_SPM_MEM_SCOREBOARD_NEGATIVE corrupts the reference model's prediction
 // so the run must FAIL.
@@ -57,9 +55,6 @@ class smc_spm_mem_boundary_test_seq extends smc_base_test_seq;
                             SmcSpmBase + SmcSpmSize - SmcMemBytes};
     string     names[$] = '{"SPM_LO", "SPM_LO_NEXT", "SPM_HI"};
     edges.delete();
-    // The low half is the low 32 bits of the edge's OWN address, so a
-    // mismatch names the address that produced it. Derived rather than
-    // written out: a hand-copied label drifts from the window it labels.
     foreach (addrs[i])
     edges.push_back('{names[i], addrs[i], {32'(random_pattern(32)), 32'(addrs[i])}});
   endfunction

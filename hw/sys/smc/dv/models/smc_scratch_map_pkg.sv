@@ -29,9 +29,7 @@
 //
 // smc_dual_axi_sram_probe_test cross-checks this table against front-door AXI
 // traffic (CHK-SCRATCH-BACKDOOR-DECODE): a table that disagreed with the
-// design fails that testcase instead of silently misplacing an image. A flat
-// "round-robin across all 32 banks every 64 bytes" model agrees with this
-// table only for the first 256 bytes and diverges from offset 0x100 onward.
+// design fails that testcase instead of silently misplacing an image.
 package smc_scratch_map_pkg;
 
   // spm_memory.rdl: 131072 entries x 64 bits.

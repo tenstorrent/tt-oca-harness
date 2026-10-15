@@ -48,8 +48,8 @@ waive_violation -add {SMU_RDC_CORRUPT_dtp_jtag2axi_primary_into_smc_cluster} \
 # =============================================================================
 
 waive_violation -add {SMU_SETUP_CLOCK_UNUSED_BOUNDARY_CLKS} \
-    -comment {Output-port memory-interface clocks (SMUCLK_ROM / SMUCLK_RAM* / SMUCLK_{I,D}CACHE_* / SEPCLK_PKA_*) and the SPICLK base of the GPIO SPI clocks clock no internal sequentials by construction. } \
-    -filter {(Clock:ClkName =~ "SMUCLK_*") OR (Clock:ClkName =~ "SEPCLK_*") OR (Clock:ClkName == "SPICLK")} \
+    -comment {Output-port memory-interface clocks (SMUCLK_ROM / SMUCLK_RAM* / SMUCLK_{I,D}CACHE_* / SEPCLK_PKA_*) and the SPICLK base of the GPIO SPI clocks clock no internal sequentials by construction. SEP_WDT_CLK clocks only the SEP watchdog, which the no-SEP configuration does not elaborate.} \
+    -filter {(Clock:ClkName =~ "SMUCLK_*") OR (Clock:ClkName =~ "SEPCLK_*") OR (Clock:ClkName == "SPICLK") OR (Clock:ClkName == "SEP_WDT_CLK")} \
     -app { rdc } -tag { SETUP_CLOCK_UNUSED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 # Reset-tree edges that cross a block boundary, so neither block's RESET_OVERLAP class waiver owns them.

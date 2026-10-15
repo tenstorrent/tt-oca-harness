@@ -198,93 +198,86 @@ module smc_local_fabric (
   // Verify smc_pkg types match crossbar package types
   // ===========================================================================
 
-`ifdef OCAH_DEBUG_LIVE  // elaboration-time width checks; excluded from synthesis
   // AXI64 input types (6-bit ID, 32-bit addr, 64-bit data, 12-bit user)
-  initial begin : gen_axi64_input_type_assertions
-    // input_axi (system)
-    assert ($bits(input_axi_req_i.aw.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
-    else $fatal(1, "INPUT_AXI AW ID width mismatch");
-    assert ($bits(input_axi_req_i.aw.addr) == $bits(smc_local_xbar_pkg::axi64_addr_t))
-    else $fatal(1, "INPUT_AXI AW ADDR width mismatch");
-    assert ($bits(input_axi_req_i.w.data) == $bits(smc_local_xbar_pkg::axi64_data_t))
-    else $fatal(1, "INPUT_AXI W DATA width mismatch");
-    assert ($bits(input_axi_req_i.ar.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
-    else $fatal(1, "INPUT_AXI AR ID width mismatch");
-    assert ($bits(input_axi_rsp_o.r.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
-    else $fatal(1, "INPUT_AXI R ID width mismatch");
-    assert ($bits(input_axi_rsp_o.b.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
-    else $fatal(1, "INPUT_AXI B ID width mismatch");
+  // input_axi (system)
+  `OCAH_ASSERT_STATIC(InputAxiAwIdWidth_A, $bits(input_axi_req_i.aw.id) == $bits
+                      (smc_local_xbar_pkg::axi64_id_t), "INPUT_AXI AW ID width mismatch")
+  `OCAH_ASSERT_STATIC(InputAxiAwAddrWidth_A, $bits(input_axi_req_i.aw.addr) == $bits
+                      (smc_local_xbar_pkg::axi64_addr_t), "INPUT_AXI AW ADDR width mismatch")
+  `OCAH_ASSERT_STATIC(InputAxiWDataWidth_A, $bits(input_axi_req_i.w.data) == $bits
+                      (smc_local_xbar_pkg::axi64_data_t), "INPUT_AXI W DATA width mismatch")
+  `OCAH_ASSERT_STATIC(InputAxiArIdWidth_A, $bits(input_axi_req_i.ar.id) == $bits
+                      (smc_local_xbar_pkg::axi64_id_t), "INPUT_AXI AR ID width mismatch")
+  `OCAH_ASSERT_STATIC(InputAxiRIdWidth_A, $bits(input_axi_rsp_o.r.id) == $bits
+                      (smc_local_xbar_pkg::axi64_id_t), "INPUT_AXI R ID width mismatch")
+  `OCAH_ASSERT_STATIC(InputAxiBIdWidth_A, $bits(input_axi_rsp_o.b.id) == $bits
+                      (smc_local_xbar_pkg::axi64_id_t), "INPUT_AXI B ID width mismatch")
 
-    // sep_in_axi
-    assert ($bits(sep_in_axi_req_i.aw.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
-    else $fatal(1, "SEP_IN_AXI AW ID width mismatch");
-    assert ($bits(sep_in_axi_req_i.aw.addr) == $bits(smc_local_xbar_pkg::axi64_addr_t))
-    else $fatal(1, "SEP_IN_AXI AW ADDR width mismatch");
-    assert ($bits(sep_in_axi_req_i.w.data) == $bits(smc_local_xbar_pkg::axi64_data_t))
-    else $fatal(1, "SEP_IN_AXI W DATA width mismatch");
-    assert ($bits(sep_in_axi_req_i.ar.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
-    else $fatal(1, "SEP_IN_AXI AR ID width mismatch");
-    assert ($bits(sep_in_axi_rsp_o.r.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
-    else $fatal(1, "SEP_IN_AXI R ID width mismatch");
-    assert ($bits(sep_in_axi_rsp_o.b.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
-    else $fatal(1, "SEP_IN_AXI B ID width mismatch");
+  // sep_in_axi
+  `OCAH_ASSERT_STATIC(SepInAxiAwIdWidth_A, $bits(sep_in_axi_req_i.aw.id) == $bits
+                      (smc_local_xbar_pkg::axi64_id_t), "SEP_IN_AXI AW ID width mismatch")
+  `OCAH_ASSERT_STATIC(SepInAxiAwAddrWidth_A, $bits(sep_in_axi_req_i.aw.addr) == $bits
+                      (smc_local_xbar_pkg::axi64_addr_t), "SEP_IN_AXI AW ADDR width mismatch")
+  `OCAH_ASSERT_STATIC(SepInAxiWDataWidth_A, $bits(sep_in_axi_req_i.w.data) == $bits
+                      (smc_local_xbar_pkg::axi64_data_t), "SEP_IN_AXI W DATA width mismatch")
+  `OCAH_ASSERT_STATIC(SepInAxiArIdWidth_A, $bits(sep_in_axi_req_i.ar.id) == $bits
+                      (smc_local_xbar_pkg::axi64_id_t), "SEP_IN_AXI AR ID width mismatch")
+  `OCAH_ASSERT_STATIC(SepInAxiRIdWidth_A, $bits(sep_in_axi_rsp_o.r.id) == $bits
+                      (smc_local_xbar_pkg::axi64_id_t), "SEP_IN_AXI R ID width mismatch")
+  `OCAH_ASSERT_STATIC(SepInAxiBIdWidth_A, $bits(sep_in_axi_rsp_o.b.id) == $bits
+                      (smc_local_xbar_pkg::axi64_id_t), "SEP_IN_AXI B ID width mismatch")
 
-    // local_axi
-    assert ($bits(local_axi_req_i.aw.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
-    else $fatal(1, "LOCAL_AXI AW ID width mismatch");
-    assert ($bits(local_axi_req_i.aw.addr) == $bits(smc_local_xbar_pkg::axi64_addr_t))
-    else $fatal(1, "LOCAL_AXI AW ADDR width mismatch");
-    assert ($bits(local_axi_req_i.w.data) == $bits(smc_local_xbar_pkg::axi64_data_t))
-    else $fatal(1, "LOCAL_AXI W DATA width mismatch");
-    assert ($bits(local_axi_req_i.ar.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
-    else $fatal(1, "LOCAL_AXI AR ID width mismatch");
-    assert ($bits(local_axi_rsp_o.r.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
-    else $fatal(1, "LOCAL_AXI R ID width mismatch");
-    assert ($bits(local_axi_rsp_o.b.id) == $bits(smc_local_xbar_pkg::axi64_id_t))
-    else $fatal(1, "LOCAL_AXI B ID width mismatch");
-  end
+  // local_axi
+  `OCAH_ASSERT_STATIC(LocalAxiAwIdWidth_A, $bits(local_axi_req_i.aw.id) == $bits
+                      (smc_local_xbar_pkg::axi64_id_t), "LOCAL_AXI AW ID width mismatch")
+  `OCAH_ASSERT_STATIC(LocalAxiAwAddrWidth_A, $bits(local_axi_req_i.aw.addr) == $bits
+                      (smc_local_xbar_pkg::axi64_addr_t), "LOCAL_AXI AW ADDR width mismatch")
+  `OCAH_ASSERT_STATIC(LocalAxiWDataWidth_A, $bits(local_axi_req_i.w.data) == $bits
+                      (smc_local_xbar_pkg::axi64_data_t), "LOCAL_AXI W DATA width mismatch")
+  `OCAH_ASSERT_STATIC(LocalAxiArIdWidth_A, $bits(local_axi_req_i.ar.id) == $bits
+                      (smc_local_xbar_pkg::axi64_id_t), "LOCAL_AXI AR ID width mismatch")
+  `OCAH_ASSERT_STATIC(LocalAxiRIdWidth_A, $bits(local_axi_rsp_o.r.id) == $bits
+                      (smc_local_xbar_pkg::axi64_id_t), "LOCAL_AXI R ID width mismatch")
+  `OCAH_ASSERT_STATIC(LocalAxiBIdWidth_A, $bits(local_axi_rsp_o.b.id) == $bits
+                      (smc_local_xbar_pkg::axi64_id_t), "LOCAL_AXI B ID width mismatch")
 
   // AXI64 output types (8-bit ID, 32-bit addr, 64-bit data, 12-bit user)
-  initial begin : gen_axi64_output_type_assertions
-    // front_port
-    assert ($bits(axi_front_port_req_o.aw.id) == $bits(smc_local_xbar_pkg::axi_out_id_t))
-    else $fatal(1, "FRONT_PORT AW ID width mismatch");
-    assert ($bits(axi_front_port_req_o.aw.addr) == $bits(smc_local_xbar_pkg::axi_out_addr_t))
-    else $fatal(1, "FRONT_PORT AW ADDR width mismatch");
-    assert ($bits(axi_front_port_req_o.w.data) == $bits(smc_local_xbar_pkg::axi_out_data_t))
-    else $fatal(1, "FRONT_PORT W DATA width mismatch");
-    assert ($bits(axi_front_port_req_o.ar.id) == $bits(smc_local_xbar_pkg::axi_out_id_t))
-    else $fatal(1, "FRONT_PORT AR ID width mismatch");
-    assert ($bits(axi_front_port_rsp_i.r.id) == $bits(smc_local_xbar_pkg::axi_out_id_t))
-    else $fatal(1, "FRONT_PORT R ID width mismatch");
-    assert ($bits(axi_front_port_rsp_i.b.id) == $bits(smc_local_xbar_pkg::axi_out_id_t))
-    else $fatal(1, "FRONT_PORT B ID width mismatch");
+  // front_port
+  `OCAH_ASSERT_STATIC(FrontPortAwIdWidth_A, $bits(axi_front_port_req_o.aw.id) == $bits
+                      (smc_local_xbar_pkg::axi_out_id_t), "FRONT_PORT AW ID width mismatch")
+  `OCAH_ASSERT_STATIC(FrontPortAwAddrWidth_A, $bits(axi_front_port_req_o.aw.addr) == $bits
+                      (smc_local_xbar_pkg::axi_out_addr_t), "FRONT_PORT AW ADDR width mismatch")
+  `OCAH_ASSERT_STATIC(FrontPortWDataWidth_A, $bits(axi_front_port_req_o.w.data) == $bits
+                      (smc_local_xbar_pkg::axi_out_data_t), "FRONT_PORT W DATA width mismatch")
+  `OCAH_ASSERT_STATIC(FrontPortArIdWidth_A, $bits(axi_front_port_req_o.ar.id) == $bits
+                      (smc_local_xbar_pkg::axi_out_id_t), "FRONT_PORT AR ID width mismatch")
+  `OCAH_ASSERT_STATIC(FrontPortRIdWidth_A, $bits(axi_front_port_rsp_i.r.id) == $bits
+                      (smc_local_xbar_pkg::axi_out_id_t), "FRONT_PORT R ID width mismatch")
+  `OCAH_ASSERT_STATIC(FrontPortBIdWidth_A, $bits(axi_front_port_rsp_i.b.id) == $bits
+                      (smc_local_xbar_pkg::axi_out_id_t), "FRONT_PORT B ID width mismatch")
 
-    // data_accel_ctrl
-    assert ($bits(axi_data_accel_ctrl_req_o.aw.id) == $bits(smc_local_xbar_pkg::axi_out_id_t))
-    else $fatal(1, "DATA_ACCEL_CTRL AW ID width mismatch");
-    assert ($bits(axi_data_accel_ctrl_req_o.aw.addr) == $bits(smc_local_xbar_pkg::axi_out_addr_t))
-    else $fatal(1, "DATA_ACCEL_CTRL AW ADDR width mismatch");
-    assert ($bits(axi_data_accel_ctrl_req_o.w.data) == $bits(smc_local_xbar_pkg::axi_out_data_t))
-    else $fatal(1, "DATA_ACCEL_CTRL W DATA width mismatch");
-    assert ($bits(axi_data_accel_ctrl_req_o.ar.id) == $bits(smc_local_xbar_pkg::axi_out_id_t))
-    else $fatal(1, "DATA_ACCEL_CTRL AR ID width mismatch");
-    assert ($bits(axi_data_accel_ctrl_rsp_i.r.id) == $bits(smc_local_xbar_pkg::axi_out_id_t))
-    else $fatal(1, "DATA_ACCEL_CTRL R ID width mismatch");
-    assert ($bits(axi_data_accel_ctrl_rsp_i.b.id) == $bits(smc_local_xbar_pkg::axi_out_id_t))
-    else $fatal(1, "DATA_ACCEL_CTRL B ID width mismatch");
-  end
+  // data_accel_ctrl
+  `OCAH_ASSERT_STATIC(DataAccelCtrlAwIdWidth_A, $bits(axi_data_accel_ctrl_req_o.aw.id) == $bits
+                      (smc_local_xbar_pkg::axi_out_id_t), "DATA_ACCEL_CTRL AW ID width mismatch")
+  `OCAH_ASSERT_STATIC(DataAccelCtrlAwAddrWidth_A, $bits(axi_data_accel_ctrl_req_o.aw.addr) == $bits
+                      (smc_local_xbar_pkg::axi_out_addr_t),
+                      "DATA_ACCEL_CTRL AW ADDR width mismatch")
+  `OCAH_ASSERT_STATIC(DataAccelCtrlWDataWidth_A, $bits(axi_data_accel_ctrl_req_o.w.data) == $bits
+                      (smc_local_xbar_pkg::axi_out_data_t), "DATA_ACCEL_CTRL W DATA width mismatch")
+  `OCAH_ASSERT_STATIC(DataAccelCtrlArIdWidth_A, $bits(axi_data_accel_ctrl_req_o.ar.id) == $bits
+                      (smc_local_xbar_pkg::axi_out_id_t), "DATA_ACCEL_CTRL AR ID width mismatch")
+  `OCAH_ASSERT_STATIC(DataAccelCtrlRIdWidth_A, $bits(axi_data_accel_ctrl_rsp_i.r.id) == $bits
+                      (smc_local_xbar_pkg::axi_out_id_t), "DATA_ACCEL_CTRL R ID width mismatch")
+  `OCAH_ASSERT_STATIC(DataAccelCtrlBIdWidth_A, $bits(axi_data_accel_ctrl_rsp_i.b.id) == $bits
+                      (smc_local_xbar_pkg::axi_out_id_t), "DATA_ACCEL_CTRL B ID width mismatch")
 
   // APB32 types
-  initial begin : gen_apb32_type_assertions
-    // smc_dfd_reg
-    assert ($bits(apb_smc_dfd_reg_req_o.paddr) == $bits(smc_local_xbar_pkg::apb32_addr_t))
-    else $fatal(1, "APB_SMC_DFD_REG PADDR width mismatch");
-    assert ($bits(apb_smc_dfd_reg_req_o.pwdata) == $bits(smc_local_xbar_pkg::apb32_data_t))
-    else $fatal(1, "APB_SMC_DFD_REG PWDATA width mismatch");
-    assert ($bits(apb_smc_dfd_reg_resp_i.prdata) == $bits(smc_local_xbar_pkg::apb32_data_t))
-    else $fatal(1, "APB_SMC_DFD_REG PRDATA width mismatch");
-  end
-`endif  // OCAH_DEBUG_LIVE
+  // smc_dfd_reg
+  `OCAH_ASSERT_STATIC(ApbSmcDfdRegPaddrWidth_A, $bits(apb_smc_dfd_reg_req_o.paddr) == $bits
+                      (smc_local_xbar_pkg::apb32_addr_t), "APB_SMC_DFD_REG PADDR width mismatch")
+  `OCAH_ASSERT_STATIC(ApbSmcDfdRegPwdataWidth_A, $bits(apb_smc_dfd_reg_req_o.pwdata) == $bits
+                      (smc_local_xbar_pkg::apb32_data_t), "APB_SMC_DFD_REG PWDATA width mismatch")
+  `OCAH_ASSERT_STATIC(ApbSmcDfdRegPrdataWidth_A, $bits(apb_smc_dfd_reg_resp_i.prdata) == $bits
+                      (smc_local_xbar_pkg::apb32_data_t), "APB_SMC_DFD_REG PRDATA width mismatch")
 
 endmodule

@@ -83,13 +83,17 @@
 `SMC_TB_OUT(logic, tb_i3c0_sda)
 `SMC_TB_OUT(logic, tb_i3c0_scl_dut_low)
 `SMC_TB_OUT(logic, tb_i3c0_sda_dut_low)
+// Completed CSR accesses at each I3C core's AXI-Lite port, after the wrapper's
+// instance decode: R handshakes and B handshakes, 32 bits per instance.
+`SMC_TB_OUT(logic [smc_config_pkg::NumI3c*32-1:0], tb_i3c_csr_read_count)
+`SMC_TB_OUT(logic [smc_config_pkg::NumI3c*32-1:0], tb_i3c_csr_write_count)
 `SMC_TB_IN(logic, tb_cpu_jtag_tck)
 `SMC_TB_IN(logic, tb_cpu_jtag_tms)
 `SMC_TB_IN(logic, tb_cpu_jtag_tdi)
 `SMC_TB_IN(logic, tb_cpu_jtag_reset)
 `SMC_TB_OUT(logic, tb_cpu_jtag_tdo)
 
-// UART0 pad-level split-port for the P2 Phase A UART loopback:
+// UART0 pad-level split port for the UART loopback leaves:
 //   Uart0RxPad (external drive -> DUT input)
 //   Uart0TxPad (DUT output -> external observe)
 `SMC_TB_IN(logic, tb_uart0_rx_ext_drive)
@@ -101,11 +105,10 @@
 `SMC_TB_OUT(logic, tb_uart0_tx_ready)
 `SMC_TB_OUT(logic, tb_uart0_log_write_stalled)
 
-// Telemetry ATB pad lift (U4-6). Cocotb drives beats into telemetry_at*_i per
-// receiver. Every stimulus entry here idles at the value the tie-off it
-// replaced presented (atdata/atid 0, atvalid 0, afready 1), so a test that
-// touches none of them sees the bench it saw before the lift. AFVALID/AFREADY
-// stay lifted for receiver 0 only: the flush handshake is not part of what the
+// Telemetry ATB pads (U4-6). Cocotb drives beats into telemetry_at*_i per
+// receiver. Each stimulus entry idles at atdata/atid 0, atvalid 0, afready 1,
+// so a test that touches none of them sees idle ATB ports. AFVALID/AFREADY are
+// lifted for receiver 0 only: the flush handshake is not part of what the
 // per-receiver decode legs drive.
 `SMC_TB_IN(logic [7:0], tb_telemetry0_atdata)
 `SMC_TB_IN(logic [6:0], tb_telemetry0_atid)
@@ -210,6 +213,10 @@
 `SMC_TB_IN(logic [31:0], tb_ss_reset_complete)
 // SS0 warm_reset_n from ss_reset_ctrl_o[0] (SW SS_WARM_RESET_N bit 0).
 `SMC_TB_OUT(logic, tb_ss0_warm_reset_n)
+// Every subsystem's cold_reset_n / warm_reset_n from ss_reset_ctrl_o[31:0],
+// after the JTAG override muxes.
+`SMC_TB_OUT(logic [31:0], tb_ss_cold_reset_n)
+`SMC_TB_OUT(logic [31:0], tb_ss_warm_reset_n)
 // Packed jtag_smc_reset_ctrl_t (ovrd[135:68]|val[67:0]). Idle 0.
 // Unique vs boot-stall JTAG ovrd and vs rst_cool_ni / cfg_flr_pf_active_i.
 `SMC_TB_IN(logic [$bits(jtag_smc_reset_ctrl_t)-1:0], tb_jtag_reset_ctrl)
@@ -612,9 +619,8 @@
 `SMC_TB_IN(logic, ej_axi_rready)
 
 // ------------------------------------------------------------------
-// P1 interrupt-vector observability. The interrupt chapters name a bit index
-// per source, and nothing published the vectors those indices live in: the
-// per-source scalars above are hand-picked slices. These are the whole buses.
+// Interrupt vectors as whole buses. The interrupt chapters name a bit index per
+// source; the per-source scalars above are hand-picked slices of these.
 // ------------------------------------------------------------------
 `SMC_TB_OUT(logic [smc_4core_cpu_pkg::NumCpuInterrupts-1:0], tb_cpu_interrupts)
 `SMC_TB_OUT(logic [31:0], tb_peripheral_interrupts)

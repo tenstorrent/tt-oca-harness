@@ -24,9 +24,12 @@
 // The SRAM must return rvalid at least one cycle after accepting a read: the response is
 // descrambled and parity-checked with the address and strobes captured at the accept.
 
+`include "ocah_registers.svh"
+
 module km_sram_interface
-  import km_intf_pkg::*;
-  import scrambler_pkg::*;
+  import km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH;
+  import km_intf_pkg::km_sram_mem_req_t;
+  import km_intf_pkg::km_sram_mem_rsp_t;
 #(
   parameter int unsigned SRAM_ADDR_WIDTH = KM_SRAM_MEM_ADDR_WIDTH,                   // SRAM word-address width;
                                                                                      // must be 13 to match
@@ -102,7 +105,7 @@ module km_sram_interface
   localparam int unsigned SramLockRegionAddrW = $clog2(SRAM_NUM_LOCK_REGIONS);
   // Word-address bits consumed by one write-lock region.
   localparam int unsigned SramLockRegionWordW = $clog2(
-      km_intf_pkg::SramLockRegionBytes / (KM_MEM_DATA_WIDTH / 8)
+      km_intf_pkg::SramLockRegionBytes / (km_intf_pkg::KM_MEM_DATA_WIDTH / 8)
   );
   logic [SramLockRegionAddrW-1:0] write_region;
   assign write_region = (word_addr >> SramLockRegionWordW);
@@ -173,17 +176,8 @@ module km_sram_interface
     end
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      read_pending_addr_q  <= '0;
-      read_pending_rstrb_q <= '0;
-    end else begin
-      if (read_accept) begin
-        read_pending_addr_q  <= req_addr_for_scrambler;
-        read_pending_rstrb_q <= req_rstrb_for_scrambler;
-      end
-    end
-  end
+  `OCAH_FFL(read_pending_addr_q, req_addr_for_scrambler, read_accept, '0, clk_i, rst_ni)
+  `OCAH_FFL(read_pending_rstrb_q, req_rstrb_for_scrambler, read_accept, '0, clk_i, rst_ni)
 
   ////////////////////////////////////////////////////////////////////////////
   // Scrambler Instantiation

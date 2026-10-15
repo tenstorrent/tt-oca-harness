@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_xtrig_axi_outstanding_test — bursts of reads and of writes in flight with the responses held
-// stall the CSR port and reach every crossbar subordinate, a write, a read and a second write to
-// one CTP engage the demux AW lock, and every access answers DECERR exactly when its word is
-// unmapped (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass floor).
+// dtp_xtrig_axi_outstanding_test — bursts of reads and of writes in flight with the responses
+// held stall the CSR port and reach every crossbar subordinate, a write, a read and a second write
+// to one CTP engage the demux AW lock, and every access answers DECERR exactly when its word is
+// unmapped (looped runner with per-pass CHK-XTRIG-* evidence).
 
 class dtp_xtrig_axi_outstanding_test extends dtp_xtrig_base_test;
   `uvm_component_utils(dtp_xtrig_axi_outstanding_test)

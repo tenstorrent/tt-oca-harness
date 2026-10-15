@@ -14,14 +14,10 @@ STUB:DECLARED
   site: tb_top jtag_bsr_host_scan_in_i <- jtag_bsr_host_scan_out_o
   length: DTP_BSR_MODEL_LEN (compact 8-bit model)
   scope: TB EXTEST DR path only — NOT LIVE pad BSR / SEP STAP proof
-  real-path: needs a pad-BSR / STAP model
 
 Patterns whose retimed expectation is all-zero are forbidden: the JTAG driver's
 _logic_int maps X/Z TDO to 0, which would make an all-zero expect can't-fail.
 Nonzero expectations remain sensitive to stuck-0 / unresolved TDO.
-
-All TAP driving goes through the VIP sequence API (OcahJtagMasterSequence); the raw
-driver built by make_smu_jtag_tap is wrapped, never called directly here.
 """
 
 from __future__ import annotations

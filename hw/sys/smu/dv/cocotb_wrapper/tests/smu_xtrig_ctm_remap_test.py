@@ -100,8 +100,6 @@ class smu_xtrig_ctm_remap_test(smu_base_test):
                 trace.append(_u8(dut.xtrig_ctm_dst_ack, "xtrig_ctm_dst_ack"))
                 await RisingEdge(dut.clk_smu_i)
             held = [v & HANDSHAKE_LANE for v in trace[ACK_SETTLE:]]
-            # Report the first offender rather than a bare mismatch, so a
-            # regression says which cycle broke the hold.
             bad = next((v for v in held if v != want_ack7), want_ack7)
             sb.expect_eq(
                 f"dst_req pat={pat:#x} ack[7] settles to {want_ack7 >> 7} within "

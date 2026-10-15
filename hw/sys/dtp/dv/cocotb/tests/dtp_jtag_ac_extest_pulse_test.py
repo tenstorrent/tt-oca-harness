@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP EXTEST_PULSE instruction test."""
 
+from __future__ import annotations
+
 import pyuvm
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_jtag_ac_extest_pulse_test_seq import dtp_jtag_ac_extest_pulse_test_seq
@@ -9,7 +11,7 @@ from seq_lib.dtp_jtag_ac_extest_pulse_test_seq import dtp_jtag_ac_extest_pulse_t
 
 @pyuvm.test()
 class dtp_jtag_ac_extest_pulse_test(dtp_base_test):
-    """Run the DTP VPLAN EXTEST_PULSE scenario."""
+    """EXTEST_PULSE selects the chain and strobes run_test_idle in Run-Test/Idle."""
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

@@ -10,7 +10,7 @@ exported TAP state.
 
 from __future__ import annotations
 
-from env.dtp_jtag_bypass_model import DtpBypassRefModel, DtpBypassSuiteCfg
+from env.dtp_jtag_bypass_model import DtpBypassSuiteCfg, DtpJtagBypassModel
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 
@@ -21,7 +21,7 @@ class dtp_jtag_bypass_test_seq(dtp_jtag_base_test_seq):
     async def body(self) -> None:
         seed = self.scenario_seed
         suite = DtpBypassSuiteCfg.from_seed(seed, random_count=self.random_count)
-        model = DtpBypassRefModel()
+        model = DtpJtagBypassModel()
         checker = await self.attach_family_checker(
             {
                 "CHK-BYPASS-00",
@@ -41,8 +41,10 @@ class dtp_jtag_bypass_test_seq(dtp_jtag_base_test_seq):
             len(suite.cases),
             sorted({f"0x{case.instruction:02x}" for case in suite.cases}),
         )
+        self.log_step(1, "Reset TAP")
         await self.reset_to_tlr()
 
+        self.log_step(2, "Both BYPASS encodings: TDO is TDI one TCK late for every pattern")
         delayed_observations = 0
         observed_opcodes: set[int] = set()
         observed_patterns: set[int] = set()

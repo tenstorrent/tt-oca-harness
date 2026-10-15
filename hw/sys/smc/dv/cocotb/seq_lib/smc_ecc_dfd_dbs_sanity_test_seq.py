@@ -62,7 +62,7 @@ def ndmreset_cluster_count_wr_pattern(observed: int) -> int:
     return (observed ^ _CLUSTER_COUNT_MASK) & _CLUSTER_COUNT_MASK
 
 
-# ``DFX_DEBUG_BUS_MUX`` is a 64-bit register -- ``dfx_ctrl_status.rdl:116-118``
+# ``DFX_DEBUG_BUS_MUX`` is a 64-bit register -- ``dfx_ctrl_status.rdl``
 # declares ``reg DEBUG_BUS_MUX { regwidth = 0x40; }`` with fields running to
 # ``Muxselseg7[63:58]``. It is read 8 bytes wide so the whole declared reset is
 # compared; a 4-byte read leaves ``Muxselseg2[33:28]``..``Muxselseg7`` unsampled.

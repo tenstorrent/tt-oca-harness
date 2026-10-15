@@ -76,9 +76,9 @@ class smc_fw_i2c_target_sanity_test_seq(smc_fw_i2c_pair_test_seq):
     """Boot the target-sanity image and play the illegal-STOP host for S6."""
 
     tag = "I2C-TARGET-SANITY"
-    # PASS landed 2.76 ms after release in the reference run (~5500 polls at a
-    # 5 ns clk_smc_i): S1..S5 at standard-mode bus speed, then the bench host's
-    # read in S6. 50_000 is ~9x that.
+    # The image reaches PASS ~2.76 ms after release (~5500 polls at a 5 ns
+    # clk_smc_i): S1..S5 at standard-mode bus speed, then the bench host's read
+    # in S6. 50_000 is ~9x that.
     poll_iterations = 50_000
     floors = (
         WireFloor(TARGET_ADDR0, None, min_frames=2),

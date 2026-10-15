@@ -26,11 +26,11 @@ class DtpXtrigCsrModel:
     def clear(self) -> None:
         self._shadow.clear()
 
-    def write(self, addr: int, data: int, wstrb: int, mask: int, reset_value: int) -> None:
+    def write(self, addr: int, data: int, *, wstrb: int, mask: int, reset_value: int) -> None:
         """An OKAY write: merge the strobed bytes into the shadow under the mask."""
-        current = self.read(addr, mask, reset_value)
+        current = self.read(addr, mask=mask, reset_value=reset_value)
         self._shadow[xtrig_csr_word(addr)] = apply_wstrb(current, data, wstrb) & mask
 
-    def read(self, addr: int, mask: int, reset_value: int) -> int:
+    def read(self, addr: int, *, mask: int, reset_value: int) -> int:
         """Expected readback: the shadow, or the register's reset value."""
         return self._shadow.get(xtrig_csr_word(addr), reset_value) & mask

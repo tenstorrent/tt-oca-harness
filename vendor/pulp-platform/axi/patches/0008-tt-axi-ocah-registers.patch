@@ -1,0 +1,823 @@
+diff --git a/src/axi5_lite_demux.sv b/src/axi5_lite_demux.sv
+index b4f37a94..a56f844e 100644
+--- a/src/axi5_lite_demux.sv
++++ b/src/axi5_lite_demux.sv
+@@ -12,7 +12,7 @@
+ // - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
+ // - Andreas Kurth <akurth@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ `ifdef QUESTA
+ // Derive `TARGET_VSIM`, which is used for tool-specific workarounds in this file, from `QUESTA`,
+@@ -273,7 +273,7 @@ module axi5_lite_demux #(
+ 
+     // lock the valid signal, as the selection gets pushed into the W FIFO on first assertion,
+     // prevent further pushing
+-    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
++    `OCAH_FFL(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
+ 
+     fifo_v3 #(
+       .FALL_THROUGH( FallThrough ),
+diff --git a/src/axi5_lite_demux_brcst.sv b/src/axi5_lite_demux_brcst.sv
+index f7d965fd..619a92cc 100644
+--- a/src/axi5_lite_demux_brcst.sv
++++ b/src/axi5_lite_demux_brcst.sv
+@@ -12,7 +12,7 @@
+ // - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
+ // - Andreas Kurth <akurth@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ `ifdef QUESTA
+ // Derive `TARGET_VSIM`, which is used for tool-specific workarounds in this file, from `QUESTA`,
+@@ -210,13 +210,13 @@ module axi5_lite_demux_brcst #(
+ 
+     typedef enum logic [2:0] {IDLE, REQ, LOCK, BREQ, BLOCK2, BLOCK1} state_e;
+     state_e state, n_state;
+-    `FFLARN(state, n_state, 1'b1, IDLE, clk_i, rst_ni)
++    `OCAH_FFL(state, n_state, 1'b1, IDLE, clk_i, rst_ni)
+ 
+     logic locked_idx;
+ 
+     logic [NoMstPorts-1:0] A_d, A_q, A_en;
+     for (genvar i = 0; i < NoMstPorts; i++) begin : gen_A_mask
+-      `FFLARN(A_q[i], A_d[i], A_en[i], 1'b1, clk_i, rst_ni)
++      `OCAH_FFL(A_q[i], A_d[i], A_en[i], 1'b1, clk_i, rst_ni)
+     end
+ 
+     `ifdef TARGET_VSIM
+@@ -414,13 +414,13 @@ module axi5_lite_demux_brcst #(
+     //--------------------------------------
+ 
+     state_e wstate, n_wstate;
+-    `FFLARN(wstate, n_wstate, 1'b1, IDLE, clk_i, rst_ni)
++    `OCAH_FFL(wstate, n_wstate, 1'b1, IDLE, clk_i, rst_ni)
+ 
+     logic locked_widx;
+ 
+     logic [NoMstPorts-1:0] B_d, B_q, B_en;
+     for (genvar i = 0; i < NoMstPorts; i++) begin : gen_B_mask
+-      `FFLARN(B_q[i], B_d[i], B_en[i], 1'b1, clk_i, rst_ni)
++      `OCAH_FFL(B_q[i], B_d[i], B_en[i], 1'b1, clk_i, rst_ni)
+     end
+ 
+     spill_register #(
+diff --git a/src/axi5_lite_mux.sv b/src/axi5_lite_mux.sv
+index c44ccb62..c51ee1ac 100644
+--- a/src/axi5_lite_mux.sv
++++ b/src/axi5_lite_mux.sv
+@@ -18,7 +18,7 @@
+ //                        sent back in order.
+ 
+ // register macros
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ module axi5_lite_mux #(
+   // AXI4-Lite parameter and channel types
+@@ -266,7 +266,7 @@ module axi5_lite_mux #(
+       end
+     end
+ 
+-    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
++    `OCAH_FFL(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
+ 
+     fifo_v3 #(
+       .FALL_THROUGH ( FallThrough ),
+diff --git a/src/axi5_lite_mux_brcst.sv b/src/axi5_lite_mux_brcst.sv
+index 4bfec1d9..e306701a 100644
+--- a/src/axi5_lite_mux_brcst.sv
++++ b/src/axi5_lite_mux_brcst.sv
+@@ -18,7 +18,7 @@
+ //                        sent back in order.
+ 
+ // register macros
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ module axi5_lite_mux_brcst #(
+   // AXI4-Lite parameter and channel types
+@@ -60,7 +60,7 @@ module axi5_lite_mux_brcst #(
+ 
+   logic brcst_wr_rsp_disable_dly;// delay brcst_wr_rsp_disable to match timing
+   if (SpillB)    
+-  `FFLARN(brcst_wr_rsp_disable_dly, brcst_wr_rsp_disable, 1'b1, '0, clk_i, rst_ni)
++  `OCAH_FFL(brcst_wr_rsp_disable_dly, brcst_wr_rsp_disable, 1'b1, '0, clk_i, rst_ni)
+   else 
+   assign brcst_wr_rsp_disable_dly = brcst_wr_rsp_disable;
+ 
+@@ -285,7 +285,7 @@ module axi5_lite_mux_brcst #(
+       end
+     end
+ 
+-    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
++    `OCAH_FFL(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
+ 
+     fifo_v3 #(
+       .FALL_THROUGH ( FallThrough ),
+diff --git a/src/axi_burst_splitter_gran.sv b/src/axi_burst_splitter_gran.sv
+index bb124378..fea52dc0 100644
+--- a/src/axi_burst_splitter_gran.sv
++++ b/src/axi_burst_splitter_gran.sv
+@@ -8,7 +8,7 @@
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ 
+ `include "axi/typedef.svh"
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Split AXI4 bursts into single-beat transactions.
+ ///
+@@ -390,12 +390,12 @@ module axi_burst_splitter_gran #(
+   // --------------------------------------------------
+   // Flip-Flops
+   // --------------------------------------------------
+-  `FFARN(b_err_q, b_err_d, 1'b0, clk_i, rst_ni)
+-  `FFARN(b_state_q, b_state_d, BReady, clk_i, rst_ni)
+-  `FFARN(r_last_q, r_last_d, 1'b0, clk_i, rst_ni)
+-  `FFARN(r_state_q, r_state_d, RFeedthrough, clk_i, rst_ni)
+-  `FFARN(w_len_q, w_len_d, 8'h00, clk_i, rst_ni)
+-  `FFARN(w_len_vld_q, w_len_vld_d, 1'b0, clk_i, rst_ni)
++  `OCAH_FF(b_err_q, b_err_d, 1'b0, clk_i, rst_ni)
++  `OCAH_FF(b_state_q, b_state_d, BReady, clk_i, rst_ni)
++  `OCAH_FF(r_last_q, r_last_d, 1'b0, clk_i, rst_ni)
++  `OCAH_FF(r_state_q, r_state_d, RFeedthrough, clk_i, rst_ni)
++  `OCAH_FF(w_len_q, w_len_d, 8'h00, clk_i, rst_ni)
++  `OCAH_FF(w_len_vld_q, w_len_vld_d, 1'b0, clk_i, rst_ni)
+ 
+   // --------------------------------------------------
+   // Assumptions and assertions
+@@ -578,9 +578,9 @@ module axi_burst_splitter_gran_ax_chan #(
+   end
+ 
+   // registers
+-  `FFARN(ax_q, ax_d, '0, clk_i, rst_ni)
+-  `FFARN(state_q, state_d, Idle, clk_i, rst_ni)
+-  `FFARN(num_beats_q, num_beats_d, 9'h000, clk_i, rst_ni)
++  `OCAH_FF(ax_q, ax_d, '0, clk_i, rst_ni)
++  `OCAH_FF(state_q, state_d, Idle, clk_i, rst_ni)
++  `OCAH_FF(num_beats_q, num_beats_d, 9'h000, clk_i, rst_ni)
+ endmodule
+ 
+ 
+@@ -737,7 +737,7 @@ module axi_burst_splitter_gran_counters #(
+   end
+ 
+   // registers
+-  `FFARN(err_q, err_d, '0, clk_i, rst_ni)
++  `OCAH_FF(err_q, err_d, '0, clk_i, rst_ni)
+ 
+   `ifndef VERILATOR
+   // pragma translate_off
+diff --git a/src/axi_burst_unwrap.sv b/src/axi_burst_unwrap.sv
+index 70f8cc9e..dc2d655f 100644
+--- a/src/axi_burst_unwrap.sv
++++ b/src/axi_burst_unwrap.sv
+@@ -15,7 +15,7 @@
+ // - Nils Wistoff <nwistoff@iis.ee.ethz.ch>
+ 
+ `include "axi/typedef.svh"
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Splits wrapping AXI4 bursts into incremental bursts.
+ ///
+@@ -353,12 +353,12 @@ module axi_burst_unwrap #(
+   // --------------------------------------------------
+   // Flip-Flops
+   // --------------------------------------------------
+-  `FFARN(b_err_q, b_err_d, 1'b0, clk_i, rst_ni)
+-  `FFARN(b_state_q, b_state_d, BReady, clk_i, rst_ni)
+-  `FFARN(r_last_q, r_last_d, 1'b0, clk_i, rst_ni)
+-  `FFARN(r_state_q, r_state_d, RFeedthrough, clk_i, rst_ni)
+-  `FFARN(w_last_q, w_last_d, 1'b0, clk_i, rst_ni)
+-  `FFARN(w_state_q, w_state_d, WReady, clk_i, rst_ni)
++  `OCAH_FF(b_err_q, b_err_d, 1'b0, clk_i, rst_ni)
++  `OCAH_FF(b_state_q, b_state_d, BReady, clk_i, rst_ni)
++  `OCAH_FF(r_last_q, r_last_d, 1'b0, clk_i, rst_ni)
++  `OCAH_FF(r_state_q, r_state_d, RFeedthrough, clk_i, rst_ni)
++  `OCAH_FF(w_last_q, w_last_d, 1'b0, clk_i, rst_ni)
++  `OCAH_FF(w_state_q, w_state_d, WReady, clk_i, rst_ni)
+ 
+   // --------------------------------------------------
+   // Assumptions and assertions
+@@ -533,8 +533,8 @@ module axi_burst_unwrap_ax_chan #(
+   end
+ 
+   // registers
+-  `FFARN(ax_q, ax_d, '0, clk_i, rst_ni)
+-  `FFARN(state_q, state_d, Idle, clk_i, rst_ni)
++  `OCAH_FF(ax_q, ax_d, '0, clk_i, rst_ni)
++  `OCAH_FF(state_q, state_d, Idle, clk_i, rst_ni)
+ endmodule
+ 
+ /// Internal module of [`axi_burst_splitter`](module.axi_burst_splitter) to order transactions.
+@@ -649,6 +649,6 @@ module axi_burst_counters #(
+   end
+ 
+   // registers
+-  `FFARN(err_q, err_d, '0, clk_i, rst_ni)
++  `OCAH_FF(err_q, err_d, '0, clk_i, rst_ni)
+ 
+ endmodule
+diff --git a/src/axi_demux.sv b/src/axi_demux.sv
+index 5a73e04f..3fb0cf40 100644
+--- a/src/axi_demux.sv
++++ b/src/axi_demux.sv
+@@ -15,7 +15,7 @@
+ // - Andreas Kurth <akurth@iis.ee.ethz.ch>
+ 
+ `include "common_cells/assertions.svh"
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ `ifdef QUESTA
+ // Derive `TARGET_VSIM`, which is used for tool-specific workarounds in this file, from `QUESTA`,
+diff --git a/src/axi_demux_id_counters.sv b/src/axi_demux_id_counters.sv
+index 028f2a89..c00bdf93 100644
+--- a/src/axi_demux_id_counters.sv
++++ b/src/axi_demux_id_counters.sv
+@@ -14,7 +14,7 @@
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ // - Andreas Kurth <akurth@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ module axi_demux_id_counters #(
+   // the lower bits of the AXI ID that should be considered, results in 2**AXI_ID_BITS counters
+@@ -128,7 +128,7 @@ module axi_demux_id_counters #(
+     assign cnt_full[i] = overflow | (&in_flight);
+ 
+     // holds the selection signal for this id
+-    `FFLARN(mst_select_q[i], push_mst_select_i, push_en[i], '0, clk_i, rst_ni)
++    `OCAH_FFL(mst_select_q[i], push_mst_select_i, push_en[i], '0, clk_i, rst_ni)
+ 
+ // pragma translate_off
+ `ifndef VERILATOR
+diff --git a/src/axi_demux_simple.sv b/src/axi_demux_simple.sv
+index 5dcf7503..2a9b9096 100644
+--- a/src/axi_demux_simple.sv
++++ b/src/axi_demux_simple.sv
+@@ -18,7 +18,7 @@
+ // - Andreas Kurth <akurth@iis.ee.ethz.ch>
+ 
+ `include "common_cells/assertions.svh"
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "axi/assign.svh"
+ 
+ `ifdef QUESTA
+@@ -253,7 +253,7 @@ module axi_demux_simple #(
+ 
+     // lock the valid signal, as the selection gets pushed into the W FIFO on first assertion,
+     // prevent further pushing
+-    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
++    `OCAH_FFL(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
+ 
+     if (UniqueIds) begin : gen_unique_ids_aw
+       // If the `UniqueIds` parameter is set, each write transaction has an ID that is unique among
+@@ -307,7 +307,7 @@ module axi_demux_simple #(
+       .overflow_o ( /*not used*/          )
+     );
+ 
+-    `FFLARN(w_select_q, slv_aw_select_i, w_cnt_up, select_t'(0), clk_i, rst_ni)
++    `OCAH_FFL(w_select_q, slv_aw_select_i, w_cnt_up, select_t'(0), clk_i, rst_ni)
+     assign w_select       = (|w_open) ? w_select_q : slv_aw_select_i;
+     assign w_select_valid = w_cnt_up | (|w_open);
+ 
+@@ -402,7 +402,7 @@ module axi_demux_simple #(
+ 
+ 
+     // this ff is needed so that ar does not get de-asserted if an atop gets injected
+-    `FFLARN(lock_ar_valid_q, lock_ar_valid_d, load_ar_lock, '0, clk_i, rst_ni)
++    `OCAH_FFL(lock_ar_valid_q, lock_ar_valid_d, load_ar_lock, '0, clk_i, rst_ni)
+ 
+     if (UniqueIds) begin : gen_unique_ids_ar
+       // If the `UniqueIds` parameter is set, each read transaction has an ID that is unique among
+diff --git a/src/axi_fifo_delay_dyn.sv b/src/axi_fifo_delay_dyn.sv
+index c06db637..c7e85834 100644
+--- a/src/axi_fifo_delay_dyn.sv
++++ b/src/axi_fifo_delay_dyn.sv
+@@ -11,7 +11,7 @@
+ // Authors:
+ // - Enrico Zelioli <ezelioli@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ `include "axi/typedef.svh"
+ `include "axi/assign.svh"
+ 
+@@ -300,7 +300,7 @@ module stream_fifo_delay_dyn #(
+   logic fifo_dead_full, fifo_dead_empty, fifo_dead_push, fifo_dead_pop;
+   logic fifo_data_full, fifo_data_empty, fifo_data_push, fifo_data_pop;
+ 
+-  `FF(ready_count_q, ready_count_d, '0, clk_i, rst_ni)
++  `OCAH_FF(ready_count_q, ready_count_d, '0, clk_i, rst_ni)
+ 
+   always_comb begin
+     ready_count_d = ready_count_q;
+diff --git a/src/axi_id_remap.sv b/src/axi_id_remap.sv
+index 86eaa79c..1842abde 100644
+--- a/src/axi_id_remap.sv
++++ b/src/axi_id_remap.sv
+@@ -14,7 +14,7 @@
+ // - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
+ // - Florian Zaruba <zarubaf@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Remap AXI IDs from wide IDs at the slave port to narrower IDs at the master port.
+ ///
+@@ -345,10 +345,10 @@ module axi_id_remap #(
+   end
+ 
+   // Registers
+-  `FFARN(ar_id_q, ar_id_d, '0, clk_i, rst_ni)
+-  `FFARN(ar_prio_q, ar_prio_d, 1'b0, clk_i, rst_ni)
+-  `FFARN(aw_id_q, aw_id_d, '0, clk_i, rst_ni)
+-  `FFARN(state_q, state_d, Ready, clk_i, rst_ni)
++  `OCAH_FF(ar_id_q, ar_id_d, '0, clk_i, rst_ni)
++  `OCAH_FF(ar_prio_q, ar_prio_d, 1'b0, clk_i, rst_ni)
++  `OCAH_FF(aw_id_q, aw_id_d, '0, clk_i, rst_ni)
++  `OCAH_FF(state_q, state_d, Ready, clk_i, rst_ni)
+ 
+   // pragma translate_off
+   `ifndef VERILATOR
+@@ -549,7 +549,7 @@ module axi_id_remap_table #(
+   end
+ 
+   // Registers
+-  `FFARN(table_q, table_d, '0, clk_i, rst_ni)
++  `OCAH_FF(table_q, table_d, '0, clk_i, rst_ni)
+ 
+   // Assertions
+   // pragma translate_off
+diff --git a/src/axi_inval_filter.sv b/src/axi_inval_filter.sv
+index 272f9043..308265ec 100644
+--- a/src/axi_inval_filter.sv
++++ b/src/axi_inval_filter.sv
+@@ -39,7 +39,7 @@ module axi_inval_filter #(
+ 
+   // Includes
+   `include "axi/typedef.svh"
+-  `include "common_cells/registers.svh"
++  `include "ocah_registers.svh"
+ 
+   // AW FIFO
+   logic     aw_fifo_full, aw_fifo_empty;
+diff --git a/src/axi_isolate.sv b/src/axi_isolate.sv
+index 2e654dc7..1a1ec12a 100644
+--- a/src/axi_isolate.sv
++++ b/src/axi_isolate.sv
+@@ -14,7 +14,7 @@
+ // - Andreas Kurth <akurth@iis.ee.ethz.ch>
+ 
+ `include "axi/typedef.svh"
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// This module can isolate the AXI4+ATOPs bus on the master port from the slave port.  When the
+ /// isolation is not active, the two ports are directly connected.
+@@ -274,11 +274,11 @@ module axi_isolate_inner #(
+   cnt_t pending_ar_d,  pending_ar_q;
+   logic update_ar_cnt;
+ 
+-  `FFLARN(pending_aw_q, pending_aw_d, update_aw_cnt, '0, clk_i, rst_ni)
+-  `FFLARN(pending_w_q, pending_w_d, update_w_cnt, '0, clk_i, rst_ni)
+-  `FFLARN(pending_ar_q, pending_ar_d, update_ar_cnt, '0, clk_i, rst_ni)
+-  `FFLARN(state_aw_q, state_aw_d, update_aw_state, Isolate, clk_i, rst_ni)
+-  `FFLARN(state_ar_q, state_ar_d, update_ar_state, Isolate, clk_i, rst_ni)
++  `OCAH_FFL(pending_aw_q, pending_aw_d, update_aw_cnt, '0, clk_i, rst_ni)
++  `OCAH_FFL(pending_w_q, pending_w_d, update_w_cnt, '0, clk_i, rst_ni)
++  `OCAH_FFL(pending_ar_q, pending_ar_d, update_ar_cnt, '0, clk_i, rst_ni)
++  `OCAH_FFL(state_aw_q, state_aw_d, update_aw_state, Isolate, clk_i, rst_ni)
++  `OCAH_FFL(state_ar_q, state_ar_d, update_ar_state, Isolate, clk_i, rst_ni)
+ 
+   // Delay a channel's flush while VALID is held without READY.
+   logic flush_aw_ok, flush_w_ok, flush_ar_ok;
+diff --git a/src/axi_lite_demux.sv b/src/axi_lite_demux.sv
+index fea44e4f..8cb3491b 100644
+--- a/src/axi_lite_demux.sv
++++ b/src/axi_lite_demux.sv
+@@ -12,7 +12,7 @@
+ // - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
+ // - Andreas Kurth <akurth@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ `ifdef QUESTA
+ // Derive `TARGET_VSIM`, which is used for tool-specific workarounds in this file, from `QUESTA`,
+@@ -265,7 +265,7 @@ module axi_lite_demux #(
+ 
+     // lock the valid signal, as the selection gets pushed into the W FIFO on first assertion,
+     // prevent further pushing
+-    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
++    `OCAH_FFL(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
+ 
+     fifo_v3 #(
+       .FALL_THROUGH( FallThrough ),
+diff --git a/src/axi_lite_dw_converter.sv b/src/axi_lite_dw_converter.sv
+index 139c2d31..f48ea1d0 100644
+--- a/src/axi_lite_dw_converter.sv
++++ b/src/axi_lite_dw_converter.sv
+@@ -58,7 +58,7 @@
+ ///
+ /// The module will be in this mode if `AxiSlvPortDataWidth == AxiMstPortDataWidth`.
+ /// Here the module passes through the slave port to the master port.
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ module axi_lite_dw_converter #(
+   /// AXI4-Lite address width of the ports.
+   parameter int unsigned AxiAddrWidth        = 32'd0,
+@@ -160,7 +160,7 @@ module axi_lite_dw_converter #(
+ 
+     assign aw_sel_load = mst_req_o.aw_valid & mst_res_i.aw_ready;
+     assign aw_sel_d    = sel_t'(aw_sel_q + 1'b1);
+-    `FFLARN(aw_sel_q, aw_sel_d, aw_sel_load, '0, clk_i, rst_ni)
++    `OCAH_FFL(aw_sel_q, aw_sel_d, aw_sel_load, '0, clk_i, rst_ni)
+ 
+     // Input spill register of the W channel.
+     axi_lite_slv_w_t w_chan_spill;
+@@ -193,7 +193,7 @@ module axi_lite_dw_converter #(
+ 
+     assign w_sel_load = mst_req_o.w_valid & mst_res_i.w_ready;
+     assign w_sel_d    = sel_t'(w_sel_q + 1'b1);
+-    `FFLARN(w_sel_q, w_sel_d, w_sel_load, '0, clk_i, rst_ni)
++    `OCAH_FFL(w_sel_q, w_sel_d, w_sel_load, '0, clk_i, rst_ni)
+ 
+     // B response aggregation
+     // Slave port B output is the aggregated error of the last few B responses.
+@@ -216,8 +216,8 @@ module axi_lite_dw_converter #(
+     assign b_sel_d     = sel_t'(b_sel_q + 1'b1);
+     assign b_resp_d    = (&b_sel_q) ? axi_pkg::RESP_OKAY : (b_resp_q | mst_res_i.b.resp);
+     assign b_resp_load = mst_res_i.b_valid & mst_req_o.b_ready;
+-    `FFLARN(b_sel_q, b_sel_d, b_resp_load, '0, clk_i, rst_ni)
+-    `FFLARN(b_resp_q, b_resp_d, b_resp_load, axi_pkg::RESP_OKAY, clk_i, rst_ni)
++    `OCAH_FFL(b_sel_q, b_sel_d, b_resp_load, '0, clk_i, rst_ni)
++    `OCAH_FFL(b_resp_q, b_resp_d, b_resp_load, axi_pkg::RESP_OKAY, clk_i, rst_ni)
+ 
+     // Read channels.
+     // Input spill register of the AW channel.
+@@ -251,7 +251,7 @@ module axi_lite_dw_converter #(
+ 
+     assign ar_sel_load = mst_req_o.ar_valid & mst_res_i.ar_ready;
+     assign ar_sel_d    = sel_t'(ar_sel_q + 1'b1);
+-    `FFLARN(ar_sel_q, ar_sel_d, ar_sel_load, '0, clk_i, rst_ni)
++    `OCAH_FFL(ar_sel_q, ar_sel_d, ar_sel_load, '0, clk_i, rst_ni)
+ 
+     // Responses have to be aggregated, one FF less, as the last data is feed directly through.
+     sel_t                                 r_sel_q,        r_sel_d;
+@@ -260,11 +260,11 @@ module axi_lite_dw_converter #(
+     logic            [DownsizeFactor-2:0] r_chan_mst_load;
+     for (genvar i = 0; unsigned'(i) < (DownsizeFactor-1); i++) begin : gen_r_chan_ff
+       assign r_chan_mst_load[i] = (sel_t'(i) == r_sel_q) & mst_res_i.r_valid & mst_req_o.r_ready;
+-      `FFLARN(r_chan_mst_q[i], mst_res_i.r, r_chan_mst_load[i], axi_lite_mst_r_t'{default: '0}, clk_i, rst_ni)
++      `OCAH_FFL(r_chan_mst_q[i], mst_res_i.r, r_chan_mst_load[i], axi_lite_mst_r_t'{default: '0}, clk_i, rst_ni)
+     end
+     assign r_sel_load = mst_res_i.r_valid & mst_req_o.r_ready;
+     assign r_sel_d    = sel_t'(r_sel_q + 1'b1);
+-    `FFLARN(r_sel_q, r_sel_d, r_sel_load, '0, clk_i, rst_ni)
++    `OCAH_FFL(r_sel_q, r_sel_d, r_sel_load, '0, clk_i, rst_ni)
+ 
+     always_comb begin : proc_r_chan_oup
+       slv_res_o.r = axi_lite_slv_r_t'{
+@@ -332,7 +332,7 @@ module axi_lite_dw_converter #(
+       end
+     end
+     assign lock_aw_d = ~lock_aw_q;
+-    `FFLARN(lock_aw_q, lock_aw_d, load_aw_lock, 1'b0, clk_i, rst_ni)
++    `OCAH_FFL(lock_aw_q, lock_aw_d, load_aw_lock, 1'b0, clk_i, rst_ni)
+ 
+     // The selection comes from part of the AW address.
+     assign aw_sel = sel_t'(slv_req_i.aw.addr >> SelOffset);
+@@ -414,7 +414,7 @@ module axi_lite_dw_converter #(
+       end
+     end
+     assign lock_ar_d = ~lock_ar_q;
+-    `FFLARN(lock_ar_q, lock_ar_d, load_ar_lock, 1'b0, clk_i, rst_ni)
++    `OCAH_FFL(lock_ar_q, lock_ar_d, load_ar_lock, 1'b0, clk_i, rst_ni)
+ 
+     // The selection comes from part of the AW address.
+     assign ar_sel = sel_t'(slv_req_i.ar.addr >> SelOffset);
+diff --git a/src/axi_lite_from_mem.sv b/src/axi_lite_from_mem.sv
+index 93375e7f..4b004d73 100644
+--- a/src/axi_lite_from_mem.sv
++++ b/src/axi_lite_from_mem.sv
+@@ -89,7 +89,7 @@ module axi_lite_from_mem #(
+   /// AXI4-Lite master port, response input.
+   input axi_rsp_t axi_rsp_i
+ );
+-  `include "common_cells/registers.svh"
++  `include "ocah_registers.svh"
+ 
+   // Response FIFO control signals.
+   logic fifo_full, fifo_empty;
+@@ -170,8 +170,8 @@ module axi_lite_from_mem #(
+     end
+   end
+ 
+-  `FFARN(aw_sent_q, aw_sent_d, 1'b0, clk_i, rst_ni)
+-  `FFARN(w_sent_q, w_sent_d, 1'b0, clk_i, rst_ni)
++  `OCAH_FF(aw_sent_q, aw_sent_d, 1'b0, clk_i, rst_ni)
++  `OCAH_FF(w_sent_q, w_sent_d, 1'b0, clk_i, rst_ni)
+ 
+   // Select which response should be forwarded. `1` write response, `0` read response.
+   logic rsp_sel;
+diff --git a/src/axi_lite_isolate.sv b/src/axi_lite_isolate.sv
+index bce2a31c..628d62b0 100644
+--- a/src/axi_lite_isolate.sv
++++ b/src/axi_lite_isolate.sv
+@@ -5,7 +5,7 @@
+ // Licensed under the Solderpad Hardware License, Version 0.51.
+ 
+ `include "axi/typedef.svh"
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// AXI4-Lite variant of `axi_isolate`: isolates the master port from the slave port.  When the
+ /// isolation is not active, the two ports are directly connected.
+@@ -196,9 +196,9 @@ module axi_lite_isolate #(
+       end
+     end
+ 
+-    `FFARN(aw_wait_q, aw_wait_d, 1'b0, clk_i, rst_ni)
+-    `FFARN(w_wait_q, w_wait_d, 1'b0, clk_i, rst_ni)
+-    `FFARN(ar_wait_q, ar_wait_d, 1'b0, clk_i, rst_ni)
++    `OCAH_FF(aw_wait_q, aw_wait_d, 1'b0, clk_i, rst_ni)
++    `OCAH_FF(w_wait_q, w_wait_d, 1'b0, clk_i, rst_ni)
++    `OCAH_FF(ar_wait_q, ar_wait_d, 1'b0, clk_i, rst_ni)
+   end else begin : g_passthrough
+     assign demux_req[0] = slv_req_i;
+     assign slv_resp_o   = demux_rsp[0];
+@@ -207,11 +207,11 @@ module axi_lite_isolate #(
+     assign demux_rsp[1] = '0;
+   end
+ 
+-  `FFLARN(pending_aw_q, pending_aw_d, update_aw_cnt, '0, clk_i, rst_ni)
+-  `FFLARN(pending_w_q, pending_w_d, update_w_cnt, '0, clk_i, rst_ni)
+-  `FFLARN(pending_ar_q, pending_ar_d, update_ar_cnt, '0, clk_i, rst_ni)
+-  `FFLARN(state_aw_q, state_aw_d, update_aw_state, Isolate, clk_i, rst_ni)
+-  `FFLARN(state_ar_q, state_ar_d, update_ar_state, Isolate, clk_i, rst_ni)
++  `OCAH_FFL(pending_aw_q, pending_aw_d, update_aw_cnt, '0, clk_i, rst_ni)
++  `OCAH_FFL(pending_w_q, pending_w_d, update_w_cnt, '0, clk_i, rst_ni)
++  `OCAH_FFL(pending_ar_q, pending_ar_d, update_ar_cnt, '0, clk_i, rst_ni)
++  `OCAH_FFL(state_aw_q, state_aw_d, update_aw_state, Isolate, clk_i, rst_ni)
++  `OCAH_FFL(state_ar_q, state_ar_d, update_ar_state, Isolate, clk_i, rst_ni)
+ 
+   // Update counters
+   always_comb begin
+diff --git a/src/axi_lite_lfsr.sv b/src/axi_lite_lfsr.sv
+index 7d4710d5..dc68b551 100644
+--- a/src/axi_lite_lfsr.sv
++++ b/src/axi_lite_lfsr.sv
+@@ -11,7 +11,7 @@
+ // Authors:
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// AXI4 Lite LFSR Subordinate device. Responds with a pseudo random answer. Serial interface to
+ /// set the internal state.
+@@ -220,6 +220,6 @@ module axi_opt_lfsr #(
+     assign data_o     = reg_q;
+ 
+     // state
+-    `FFL(reg_q, reg_d, en_i | ser_en_i, '1, clk_i, rst_ni)
++    `OCAH_FFL(reg_q, reg_d, en_i | ser_en_i, '1, clk_i, rst_ni)
+ 
+ endmodule : axi_opt_lfsr
+diff --git a/src/axi_lite_mailbox.sv b/src/axi_lite_mailbox.sv
+index 13d0785c..fe222817 100644
+--- a/src/axi_lite_mailbox.sv
++++ b/src/axi_lite_mailbox.sv
+@@ -16,7 +16,7 @@
+ //              See `doc/axi_lite_mailbox.md` for the documentation, including the definition
+ //              of parameters and ports.
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ module axi_lite_mailbox #(
+   parameter int unsigned MailboxDepth = 32'd0,
+@@ -181,7 +181,7 @@ module axi_lite_mailbox #(
+         end
+       end
+ 
+-      `FFLARN(irq_q, irq_d, update_irq, '0, clk_i, rst_ni)
++      `OCAH_FFL(irq_q, irq_d, update_irq, '0, clk_i, rst_ni)
+     end else begin : gen_irq_level
+       assign irq_o[i] = (IrqActHigh) ? slv_irq[i] : ~slv_irq[i];
+     end
+@@ -292,11 +292,11 @@ module axi_lite_mailbox_slave #(
+   logic       update_regs;        // register enable signal
+ 
+   // register instantiation
+-  `FFLARN(error_q, error_d, update_regs, '0, clk_i, rst_ni)
+-  `FFLARN(wirqt_q, wirqt_d, update_regs, '0, clk_i, rst_ni)
+-  `FFLARN(rirqt_q, rirqt_d, update_regs, '0, clk_i, rst_ni)
+-  `FFLARN(irqs_q, irqs_d, update_regs, '0, clk_i, rst_ni)
+-  `FFLARN(irqen_q, irqen_d, update_regs, '0, clk_i, rst_ni)
++  `OCAH_FFL(error_q, error_d, update_regs, '0, clk_i, rst_ni)
++  `OCAH_FFL(wirqt_q, wirqt_d, update_regs, '0, clk_i, rst_ni)
++  `OCAH_FFL(rirqt_q, rirqt_d, update_regs, '0, clk_i, rst_ni)
++  `OCAH_FFL(irqs_q, irqs_d, update_regs, '0, clk_i, rst_ni)
++  `OCAH_FFL(irqen_q, irqen_d, update_regs, '0, clk_i, rst_ni)
+ 
+   // Mailbox FIFO data assignments
+   for (genvar i = 0; i < (AxiDataWidth/8); i++) begin : gen_w_mbox_data
+diff --git a/src/axi_lite_mux.sv b/src/axi_lite_mux.sv
+index ac8693fd..7d4e9307 100644
+--- a/src/axi_lite_mux.sv
++++ b/src/axi_lite_mux.sv
+@@ -18,7 +18,7 @@
+ //                        sent back in order.
+ 
+ // register macros
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ module axi_lite_mux #(
+   // AXI4-Lite parameter and channel types
+@@ -247,7 +247,7 @@ module axi_lite_mux #(
+       end
+     end
+ 
+-    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
++    `OCAH_FFL(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
+ 
+     fifo_v3 #(
+       .FALL_THROUGH ( FallThrough ),
+diff --git a/src/axi_lite_regs.sv b/src/axi_lite_regs.sv
+index 392bd17f..d4f99ba9 100644
+--- a/src/axi_lite_regs.sv
++++ b/src/axi_lite_regs.sv
+@@ -13,7 +13,7 @@
+ // - Andreas Kurth <akurth@iis.ee.ethz.ch>
+ 
+ `include "axi/typedef.svh"
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// AXI4-Lite registers with optional read-only and protection features.
+ ///
+@@ -313,7 +313,7 @@ module axi_lite_regs #(
+ 
+   // Register array mapping, even read only register can be loaded over `reg_load_i`.
+   for (genvar i = 0; i < RegNumBytes; i++) begin : gen_rw_regs
+-    `FFLARN(reg_q[i], reg_d[i], reg_update[i], RegRstVal[i], clk_i, rst_ni)
++    `OCAH_FFL(reg_q[i], reg_d[i], reg_update[i], RegRstVal[i], clk_i, rst_ni)
+     assign reg_q_o[i] = reg_q[i];
+   end
+ 
+diff --git a/src/axi_lite_to_apb.sv b/src/axi_lite_to_apb.sv
+index 4d58d0c4..2a0bb95b 100644
+--- a/src/axi_lite_to_apb.sv
++++ b/src/axi_lite_to_apb.sv
+@@ -45,7 +45,7 @@
+ // routes the response depending on the `apb_req.psel` bit and `apb_req.pwrite` either to the
+ // AXI4Lite B channel for writes and to the R channel for reads.
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ module axi_lite_to_apb #(
+   parameter int unsigned NoApbSlaves = 32'd1,  // Number of connected APB slaves
+@@ -360,7 +360,7 @@ module axi_lite_to_apb #(
+     endcase
+   end
+ 
+-  `FFLARN(apb_state_q, apb_state_d, apb_update, Setup, clk_i, rst_ni)
++  `OCAH_FFL(apb_state_q, apb_state_d, apb_update, Setup, clk_i, rst_ni)
+ 
+   // parameter check
+   // pragma translate_off
+diff --git a/src/axi_mux.sv b/src/axi_mux.sv
+index 5e577594..487a20da 100644
+--- a/src/axi_mux.sv
++++ b/src/axi_mux.sv
+@@ -23,7 +23,7 @@
+ 
+ // register macros
+ `include "common_cells/assertions.svh"
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ module axi_mux #(
+   // AXI parameter and channel types
+@@ -312,7 +312,7 @@ module axi_mux #(
+       end
+     end
+ 
+-    `FFLARN(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
++    `OCAH_FFL(lock_aw_valid_q, lock_aw_valid_d, load_aw_lock, '0, clk_i, rst_ni)
+ 
+     fifo_v3 #(
+       .FALL_THROUGH ( FallThrough ),
+diff --git a/src/axi_serializer.sv b/src/axi_serializer.sv
+index 317faa06..253f7fa6 100644
+--- a/src/axi_serializer.sv
++++ b/src/axi_serializer.sv
+@@ -12,7 +12,7 @@
+ // - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
+ // - Andreas Kurth <akurth@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ 
+ /// Serialize all AXI transactions to a single ID (zero).
+ ///
+@@ -186,7 +186,7 @@ module axi_serializer #(
+   // Assign as this condition is needed in FSM
+   assign wr_fifo_pop = slv_resp_o.b_valid & slv_req_i.b_ready;
+ 
+-  `FFARN(state_q, state_d, AtopIdle, clk_i, rst_ni)
++  `OCAH_FF(state_q, state_d, AtopIdle, clk_i, rst_ni)
+ 
+ // pragma translate_off
+ `ifndef VERILATOR
+diff --git a/src/axi_to_detailed_mem.sv b/src/axi_to_detailed_mem.sv
+index da516938..2ef3982b 100644
+--- a/src/axi_to_detailed_mem.sv
++++ b/src/axi_to_detailed_mem.sv
+@@ -12,7 +12,7 @@
+ // - Michael Rogenmoser <michaero@iis.ee.ethz.ch>
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ /// AXI4+ATOP slave module which translates AXI bursts into a memory stream.
+ /// If both read and write channels of the AXI4+ATOP are active, both will have an
+ /// utilization of 50%.
+@@ -555,14 +555,14 @@ module axi_to_detailed_mem #(
+   };
+ 
+   // Registers
+-  `FFARN(meta_sel_q, meta_sel_d, 1'b0, clk_i, rst_ni)
+-  `FFARN(sel_lock_q, sel_lock_d, 1'b0, clk_i, rst_ni)
+-  `FFARN(rd_meta_q, rd_meta_d, meta_t'{default: '0}, clk_i, rst_ni)
+-  `FFARN(wr_meta_q, wr_meta_d, meta_t'{default: '0}, clk_i, rst_ni)
+-  `FFARN(r_cnt_q, r_cnt_d, '0, clk_i, rst_ni)
+-  `FFARN(w_cnt_q, w_cnt_d, '0, clk_i, rst_ni)
+-  `FFARN(collect_b_err_q, collect_b_err_d, '0, clk_i, rst_ni)
+-  `FFARN(collect_b_exokay_q, collect_b_exokay_d, 1'b1, clk_i, rst_ni)
++  `OCAH_FF(meta_sel_q, meta_sel_d, 1'b0, clk_i, rst_ni)
++  `OCAH_FF(sel_lock_q, sel_lock_d, 1'b0, clk_i, rst_ni)
++  `OCAH_FF(rd_meta_q, rd_meta_d, meta_t'{default: '0}, clk_i, rst_ni)
++  `OCAH_FF(wr_meta_q, wr_meta_d, meta_t'{default: '0}, clk_i, rst_ni)
++  `OCAH_FF(r_cnt_q, r_cnt_d, '0, clk_i, rst_ni)
++  `OCAH_FF(w_cnt_q, w_cnt_d, '0, clk_i, rst_ni)
++  `OCAH_FF(collect_b_err_q, collect_b_err_d, '0, clk_i, rst_ni)
++  `OCAH_FF(collect_b_exokay_q, collect_b_exokay_d, 1'b1, clk_i, rst_ni)
+ 
+   // Assertions
+   // pragma translate_off
+@@ -864,7 +864,7 @@ module mem_stream_to_banks_detailed #(
+     assign mem_req_valid = req_i & cnt_req_ready;
+ 
+     // Register
+-    `FFARN(cnt_q, cnt_d, '0, clk_i, rst_ni)
++    `OCAH_FF(cnt_q, cnt_d, '0, clk_i, rst_ni)
+   end
+ 
+   // Handle requests.
+diff --git a/src/axi_to_mem.sv b/src/axi_to_mem.sv
+index 37992d44..4ae682b1 100644
+--- a/src/axi_to_mem.sv
++++ b/src/axi_to_mem.sv
+@@ -12,7 +12,7 @@
+ // - Michael Rogenmoser <michaero@iis.ee.ethz.ch>
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ /// AXI4+ATOP slave module which translates AXI bursts into a memory stream.
+ /// If both read and write channels of the AXI4+ATOP are active, both will have an
+ /// utilization of 50%.
+diff --git a/src/axi_zero_mem.sv b/src/axi_zero_mem.sv
+index 1cb48b27..30aea437 100644
+--- a/src/axi_zero_mem.sv
++++ b/src/axi_zero_mem.sv
+@@ -13,7 +13,7 @@
+ // - Gianna Paulin <pauling@iis.ee.ethz.ch>
+ // - Thomas Benz <tbenz@iis.ee.ethz.ch>
+ 
+-`include "common_cells/registers.svh"
++`include "ocah_registers.svh"
+ /// AXI4+ATOP slave module which translates AXI bursts into a memory stream
+ /// which behaves as a memory containing only `0` data which cannot be
+ /// overwritten by `write` operations.
+@@ -99,6 +99,6 @@ module axi_zero_mem #(
+   assign zero_mem_gnt = zero_mem_req;
+   assign zero_mem_valid_req_d = zero_mem_gnt & zero_mem_req;
+ 
+-  `FF(zero_mem_valid_req_q, zero_mem_valid_req_d, '0, clk_i, rst_ni)
++  `OCAH_FF(zero_mem_valid_req_q, zero_mem_valid_req_d, '0, clk_i, rst_ni)
+ 
+ endmodule

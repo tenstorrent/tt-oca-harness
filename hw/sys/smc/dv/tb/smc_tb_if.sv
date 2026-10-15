@@ -32,6 +32,13 @@ interface smc_tb_if;
   logic rst_primary_smc_clk_n;
   logic rst_wdt_smc_clk_n;
 
+  // CPU-cluster boundary state; cluster accesses wait for isolation to clear.
+  logic cpu_cluster_isolate;
+
+  // Count clock samples whose busy value is not known zero.
+  logic zeroer_busy;
+  logic [31:0] zeroer_busy_sample_count;
+
   // eFuse sense done and the warm-domain release it gates (driven by the
   // DUT top): warm-domain CSRs answer only after rst_warm_smc_clk_n rises.
   logic fuse_sense_done;

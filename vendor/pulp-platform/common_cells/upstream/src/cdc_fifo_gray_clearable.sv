@@ -95,7 +95,7 @@
 /// -hierarchical -filter async] \ -through [get_pins -hierarchical -filter
 /// async] ```
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 
 (* no_ungroup *)
@@ -294,7 +294,7 @@ module cdc_fifo_gray_src_clearable #(
     data_d                          = data_q;
     data_d[wptr_bin[LOG_DEPTH-1:0]] = src_data_i;
   end
-  `FFLARN(data_q, data_d, src_valid_i & src_ready_o, '0, src_clk_i, src_rst_ni)
+  `OCAH_FFL(data_q, data_d, src_valid_i & src_ready_o, '0, src_clk_i, src_rst_ni)
 
   // Read pointer.
   for (genvar i = 0; i < PtrWidth; i++) begin : gen_sync
@@ -311,7 +311,7 @@ module cdc_fifo_gray_src_clearable #(
   assign wptr_next = wptr_bin+1;
   gray_to_binary #(PtrWidth) i_wptr_g2b (.A(wptr_q), .Z(wptr_bin));
   binary_to_gray #(PtrWidth) i_wptr_b2g (.A(wptr_next), .Z(wptr_d));
-  `FFLARNC(wptr_q, wptr_d, src_valid_i & src_ready_o, src_clear_i, '0, src_clk_i, src_rst_ni)
+  `OCAH_FFLARNC(wptr_q, wptr_d, src_valid_i & src_ready_o, src_clear_i, '0, src_clk_i, src_rst_ni)
   assign async_wptr_o = wptr_q;
 
   // The pointers into the FIFO are one bit wider than the actual address into
@@ -355,7 +355,7 @@ module cdc_fifo_gray_dst_clearable #(
   assign rptr_next = rptr_bin+1;
   gray_to_binary #(PtrWidth) i_rptr_g2b (.A(rptr_q), .Z(rptr_bin));
   binary_to_gray #(PtrWidth) i_rptr_b2g (.A(rptr_next), .Z(rptr_d));
-  `FFLARNC(rptr_q, rptr_d, dst_valid & dst_ready, dst_clear_i, '0, dst_clk_i, dst_rst_ni)
+  `OCAH_FFLARNC(rptr_q, rptr_d, dst_valid & dst_ready, dst_clear_i, '0, dst_clk_i, dst_rst_ni)
   assign async_rptr_o = rptr_q;
 
   // Write pointer.

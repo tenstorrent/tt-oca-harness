@@ -122,7 +122,8 @@ name = "sep_km_command_set_rand_test"
 module = "km.sep_km_command_set_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-reseed = 3
+# No reseed: every run walks both key sizes and every command. The sideload KATs fill
+# the four classic transfer cells; the seed adds one refused dest and two undefined IDs.
 # Wall budget covers VCS with coverage: rom_main + entropy + the shredded-engine
 # refuse window. CLI --timeout overrides this value.
 timeout_sec = 7200
@@ -202,7 +203,8 @@ name = "sep_km_sideload_share_walk_test"
 module = "km.sep_km_sideload_share_walk_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-reseed = 3
+# No reseed: every run walks all eight destinations through both rounds; the seed
+# selects only key and data words.
 timeout_sec = 14400
 tags = ["km", "sideload", "abr", "aes", "hmac", "kmac", "otbn", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
@@ -215,7 +217,7 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 name = "sep_km_mailbox_protocol_rand_test"
 module = "km.sep_km_mailbox_protocol_rand_test"
 seed = 1
-reseed = 3
+# No reseed: the FIFO walk is fixed; the seed selects only the fill words.
 timeout_sec = 1800
 tags = ["km", "mailbox", "subsystem"]
 run_modes = ["no_cpu"]
@@ -229,7 +231,7 @@ name = "sep_km_crc_pcpi_kat_test"
 module = "km.sep_km_crc_pcpi_kat_test"
 firmware = { name = "km_rom_crc", mode = "km_rom_blob" }
 seed = 1
-reseed = 3
+# No reseed: every run walks all three modes; the seed selects only operand values.
 timeout_sec = 1800
 tags = ["km", "crc", "pcpi", "subsystem"]
 run_modes = ["no_cpu"]
@@ -271,7 +273,7 @@ name = "sep_km_otp_shim_unreachable_test"
 module = "km.sep_km_otp_shim_unreachable_test"
 firmware = { name = "km_rom_bus_err", mode = "km_rom_blob" }
 seed = 1
-reseed = 3
+# No reseed: the KM ROM accesses are fixed; the seed selects only the host shim value.
 timeout_sec = 1800
 tags = ["km", "otp", "efuse", "bus_error", "subsystem"]
 run_modes = ["no_cpu"]

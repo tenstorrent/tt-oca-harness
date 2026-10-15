@@ -28,7 +28,8 @@
 // alone; both fields moving in one update can pulse a reset neither source is asserting.
 
 module jtag_ic_reset_reg
-  import prim_jtag_pkg::*;
+  import prim_jtag_pkg::jtag_scan_ctrl_t;
+  import prim_jtag_pkg::jtag_tap_ctrl_t;
 #(
   parameter int unsigned NUM_IC_RESET_PORTS = 3  // Number of IC reset ports.
 ) (

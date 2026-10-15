@@ -52,7 +52,7 @@ timeout_sec = 1800
 tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
-# BFM rebuild of gpio_filter_access_sep (ACCESS_FILTER AxPROT allow/deny).
+# ACCESS_FILTER AxPROT allow/deny on the GPIO window.
 [[tests]]
 name = "smc_gpio_filter_access_sep_test"
 module = "smc_gpio_filter_access_sep_test"
@@ -71,6 +71,14 @@ timeout_sec = 1800
 tags = ["ci", "gpio"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "smc_gpio_irq_or_test"
+module = "smc_gpio_irq_or_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "gpio"
 tests = [
@@ -83,6 +91,7 @@ tests = [
     "smc_gpio_p0_mux_test",
     "smc_gpio_filter_access_sep_test",
     "smc_gpio_irq_mask_deassert_test",
+    "smc_gpio_intf_data_ctrl_write_sweep_test",
 ]
 
 [[tests]]
@@ -128,6 +137,78 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_gpio_intf_regblock_sweep_test"
 module = "smc_gpio_intf_regblock_sweep_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_ext_extra_decode_test"
+module = "smc_gpio_ext_extra_decode_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_intf_reset_writeback_test"
+module = "smc_gpio_intf_reset_writeback_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_data_ctrl_enable_fields_test"
+module = "smc_gpio_data_ctrl_enable_fields_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_filter_reg_fields_test"
+module = "smc_gpio_filter_reg_fields_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_data_ctrl_ro_status_test"
+module = "smc_gpio_data_ctrl_ro_status_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_rst_primary_test"
+module = "smc_gpio_rst_primary_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_intf_decode_map_test"
+module = "smc_gpio_intf_decode_map_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_data_ctrl_rw_values_test"
+module = "smc_gpio_data_ctrl_rw_values_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_intf_data_ctrl_write_sweep_test"
+module = "smc_gpio_intf_data_ctrl_write_sweep_test"
 seed = 1
 timeout_sec = 3600
 tags = ["ci", "gpio"]

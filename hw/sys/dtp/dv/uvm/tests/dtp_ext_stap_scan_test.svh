@@ -5,8 +5,7 @@
 // tb_top host segment behind it, follows the PTAP 3DCR select: its controls
 // pulse and the segment returns the chain; under the stap_host disable the
 // controls stay quiet and the last STAP's scan-out returns instead; both
-// recover without reset (looped runner with per-pass family evidence,
-// 16-pass floor).
+// recover without reset (looped runner with per-pass family evidence).
 
 class dtp_ext_stap_scan_test extends dtp_base_test;
   `uvm_component_utils(dtp_ext_stap_scan_test)

@@ -13,7 +13,7 @@
 // - Andreas Kurth <akurth@iis.ee.ethz.ch>
 
 `include "axi/typedef.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// AXI4-Lite registers with optional read-only and protection features.
 ///
@@ -313,7 +313,7 @@ module axi_lite_regs #(
 
   // Register array mapping, even read only register can be loaded over `reg_load_i`.
   for (genvar i = 0; i < RegNumBytes; i++) begin : gen_rw_regs
-    `FFLARN(reg_q[i], reg_d[i], reg_update[i], RegRstVal[i], clk_i, rst_ni)
+    `OCAH_FFL(reg_q[i], reg_d[i], reg_update[i], RegRstVal[i], clk_i, rst_ni)
     assign reg_q_o[i] = reg_q[i];
   end
 

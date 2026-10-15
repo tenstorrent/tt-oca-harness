@@ -5,8 +5,7 @@
 `system_timer_octs.rdl` describes `CREDIT_EXPIRED.MAX_CYCLES_EXPIRED` as the
 maximum number of clock cycles since a count credit expired, on a secondary
 only: a secondary that has not received a credit pulse in a while shows a high
-value. "To reset the value of this register, write anything to it." No leaf
-had written it; the external-stall leaf only reads it.
+value. "To reset the value of this register, write anything to it."
 
 The timer is strapped SECONDARY and given a sync and two credits, as
 `smc_octs_dual_sync_test` does, and then no more credits. The register has to

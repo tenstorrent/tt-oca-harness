@@ -41,9 +41,8 @@ class smc_sideband_protocol_smoke_test(smc_base_test):
     )
     min_evidence = 8
 
-    # No AUTO-COVERAGE-STAMP: this scenario records its own protocol VIP item
-    # from measured counts below, so the base-test activity stamp would only add
-    # a second, weaker record of the same traffic.
+    # This scenario records its own protocol VIP item from the measured counts
+    # below, so the base-test activity stamp is off.
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -53,10 +52,9 @@ class smc_sideband_protocol_smoke_test(smc_base_test):
             SmcProtocolVipKind.SIDEBAND,
             type(self).__name__,
             csr_accesses=seq.accesses,
-            # No timeout statistic is published: every access in this sequence
-            # leaves `allow_timeout` False, so the driver raises on expiry and
-            # `seq.timeouts` can only ever be 0 here. Reporting that structural
-            # zero would advertise a measurement that was never taken.
+            # Every access in this sequence leaves `allow_timeout` False, so the
+            # driver raises on expiry and `seq.timeouts` is a structural 0, not a
+            # measurement.
             timeouts=None,
             min_csr_accesses=SIDEBAND_MIN_CSR_ACCESSES,
             details=(

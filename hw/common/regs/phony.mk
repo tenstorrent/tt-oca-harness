@@ -99,11 +99,11 @@ endif
 .PHONY: ocah-regen-dfd-rdl
 ocah-regen-dfd-rdl: | $(OCAH_REG_UV_PREREQ)
 	cd "$(OCAH_ROOT)" && "$(OCAH_REG_PYTHON)" tools/regs/dfd_yaml_rdl.py \
-		$(if $(CHECK),--check,--write)
+		$(if $(filter 1,$(CHECK)),--check,--write)
 
 .PHONY: ocah-regen-vendor-rdl
 ocah-regen-vendor-rdl: | $(OCAH_REG_UV_PREREQ)
-ifeq ($(CHECK),)
+ifeq ($(filter 1,$(CHECK)),)
 	@$(foreach e,$(OCAH_SELECTED_VENDOR_HJSON_RDLS),\
 		echo "Exporting HJSON register description to RDL: $(call ocah_vhr_rdl,$(e))"; \
 		$(call ocah_vendor_hjson_rdl_regen,$(e)); )

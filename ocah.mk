@@ -64,7 +64,7 @@ OCAH_PHONY += ocah-submodules-init
 ## @param CHECK=1 Report stale filelists and fail instead of rewriting.
 .PHONY: ocah-update-integration-filelists
 ocah-update-integration-filelists:
-	@cd "$(OCAH_ROOT)" && python3 scripts/update_integration_filelists.py $(if $(CHECK),--check)
+	@cd "$(OCAH_ROOT)" && python3 scripts/update_integration_filelists.py $(if $(filter 1,$(CHECK)),--check)
 
 OCAH_PHONY += ocah-update-integration-filelists
 
@@ -82,6 +82,7 @@ include $(OCAH_ROOT)/flows/lint/verilator.mk
 include $(OCAH_ROOT)/flows/lint/verible.mk
 include $(OCAH_ROOT)/flows/lint/sv-comments.mk
 include $(OCAH_ROOT)/flows/lint/sv-enums.mk
+include $(OCAH_ROOT)/flows/lint/bender-sources.mk
 include $(OCAH_ROOT)/flows/lint/clang-format.mk
 include $(OCAH_ROOT)/flows/lint/ruff.mk
 include $(OCAH_ROOT)/flows/lint/mypy.mk
@@ -96,6 +97,7 @@ include $(OCAH_ROOT)/flows/lint/pre-commit.mk
 include $(OCAH_ROOT)/flows/lint/tclint.mk
 include $(OCAH_ROOT)/flows/lint/nix-fmt.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
+include $(OCAH_ROOT)/flows/emul/vivado/vivado.mk
 
 HELP_TITLE = "OCAH Make Targets"
 HELP_DESCRIPTION = "Regeneration and helper targets for the OCA Harness repository"

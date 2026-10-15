@@ -22,9 +22,8 @@ class smc_reference_counter_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_reference_counter_test_seq("ref_count_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # Re-derive the verdict from the measured numbers rather than from a
-        # flag the sequence set itself: if the compare in body() is ever
-        # demoted to a log line, this still fails.
+        # The verdict rests on the measured counter and edge values, independent
+        # of any flag the sequence set.
         assert None not in (seq.c0, seq.c1, seq.ref_edges_lo, seq.ref_edges_hi), (
             "REFERENCE_COUNTER samples or the clk_ref_i edge measurement were "
             f"never taken: c0={seq.c0} c1={seq.c1} lo={seq.ref_edges_lo} "

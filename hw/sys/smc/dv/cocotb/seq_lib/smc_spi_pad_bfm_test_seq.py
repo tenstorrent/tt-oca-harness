@@ -85,7 +85,7 @@ class smc_spi_pad_bfm_test_seq(smc_base_test_seq):
             mode="single",
             jedec_id=SPI_JEDEC_ID,
         )
-        # U2-4: in-process preload (same path as +spi_flash_preload).
+        # In-process preload, the same path +spi_flash_preload takes.
         _PRELOAD = bytes([0xDE, 0xAD, 0xBE, 0xEF])
         flash.preload(_PRELOAD)
         flash.init_signals()
@@ -125,7 +125,7 @@ class smc_spi_pad_bfm_test_seq(smc_base_test_seq):
         )
         self.observed_bytes = bytes([b0, b1, b2])
 
-        # U2-4: READ 0x03 @0 proves preload path (same as +spi_flash_preload).
+        # READ 0x03 @0 returns the preload, the same path +spi_flash_preload takes.
         dut.tb_spi_dq_oe_n.value = 0xFE
         dut.tb_spi_cs_n.value = 0
         await Timer(SPI_HALF_PERIOD_NS, unit="ns")

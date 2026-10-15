@@ -3,26 +3,23 @@
 """Shared base for the SMC reset / reset-CSR sequence family.
 
 Every sequence that drives ``rst_cold_ni`` / ``rst_cool_ni`` / ``powergood_i``
-and observes the five ``RESET_SAMPLE_FIELDS`` needs the same four primitives, so
-they are defined here once instead of being copy-pasted per sequence:
+and observes the five ``RESET_SAMPLE_FIELDS`` does so through these four primitives:
 
 * ``_send`` -- build one ``SmcResetItem``, validate the keyword names, dispatch.
 * ``_wait_state`` / ``_wait_released`` -- bounded ``WAIT_STATE`` handshakes
   carrying exact expected levels; expiry raises in the scoreboard with the last
-  observed state ([TIMEOUT-MUST-FAIL] / [NO-BLIND-DELAY-SYNC]).
+  observed state.
 * ``_raw_after`` -- one expectation-carrying snapshot, ``cycles`` ``clk_ref_i``
   edges after the caller's stimulus.
 * ``_hold_raw`` -- the same expectations at **every** sample of a window, which
   is what proves "still asserted while the pin is held": a single instantaneous
   sample passes for a DUT that releases the reset anywhere else inside the
-  driven hold ([EXACT-EXPECTATION]).
+  driven hold.
 
 The keyword guard: ``_send`` applies the expectations with ``setattr``, so a
-mistyped ``expect_*`` would silently become a non-check instead of a compare
-([NO-ALWAYS-PASS-CHECKER]). ``_SEND_KEYS`` is derived from
-``RESET_SAMPLE_FIELDS`` so it tracks the item definition, and any keyword
-outside it (plus ``expect_left_stable`` / ``timeout_ref_cycles``) raises
-([REUSE-AND-LAYERING]).
+mistyped ``expect_*`` would silently become a non-check instead of a compare.
+``_SEND_KEYS`` is derived from ``RESET_SAMPLE_FIELDS`` so it tracks the item definition, and
+any keyword outside it (plus ``expect_left_stable`` / ``timeout_ref_cycles``) raises.
 
 Sequences whose reset items travel on a *different* sequencer than the one they
 were started on (the CSR-across-reset sequences run on the SEP_IN AXI
@@ -171,15 +168,18 @@ class SmcResetSeqBase(smc_base_test_seq):
         )
         assert hold >= 1, f"_hold_raw({label!r}) needs a non-empty window"
         last = None
+        sent = 0
         for _ in range(hold):
             await ClockCycles(cocotb.top.clk_ref_i, 1)
             last = await self._send(SmcResetOp.RAW_SAMPLE, **expects)
+            sent += 1
+        last.hold_samples = sent
         cocotb.log.info(
             "CHK-MID-ASSERT-HOLD: %s stayed in the expected state at all %d "
             "checked clk_ref_i samples after the assert handshake matched; "
             "last %s",
             label,
-            hold,
+            sent,
             last,
         )
         self._timeout_paths.append(

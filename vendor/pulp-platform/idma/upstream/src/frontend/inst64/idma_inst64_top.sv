@@ -5,7 +5,7 @@
 // Authors:
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 `include "idma/typedef.svh"
 `include "idma/tracer.svh"
@@ -525,7 +525,7 @@ module idma_inst64_top #(
     //--------------------------------------
     // State
     //--------------------------------------
-    `FF(idma_fe_req_q, idma_fe_req_d, '0)
+    `OCAH_FF(idma_fe_req_q, idma_fe_req_d, '0, clk_i, rst_ni)
 
 
     //--------------------------------------

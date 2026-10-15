@@ -11,10 +11,10 @@ and in the shadow register, with no torn value in between. The OTP status seen
 at that first capture is logged so a run in which the op was still BUSY is
 visible in the record.
 
-The `_race_` in the name is historical. The concurrency case it suggests needs
-a second master independent of this TAP, which the wrapper's product interfaces
-do not provide; it is carried as a waived row in
-``hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc``. SEP=1, no Force.
+The concurrency the name suggests needs a second master independent of this
+TAP, which the wrapper's product interfaces do not provide; that case is a
+waived row in ``hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc``. SEP=1, no
+Force.
 """
 
 from __future__ import annotations

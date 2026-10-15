@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The register blocks of the SMC peripherals no leaf writes.
+"""The register blocks of the remaining SMC peripherals.
 
 `smc_rdl_field_sweep_test` owns the software-owned blocks of the SMC core and
 `smc_gpio_intf_regblock_sweep_test`, `smc_filter_config_field_sweep_test`,
 `smc_i2c_intr_reg_sweep_test` and `smc_uart_log_engine_field_sweep_test` own
-four peripheral blocks. The rest of the peripherals have never had a write:
+four peripheral blocks. This leaf sweeps the remaining peripheral blocks:
 the AVSBus controller, the three telemetry receivers, the OCTS system timer,
 the eFuse interface controller, the DMA controller's configuration and the
 four log engines' region and enable registers.
@@ -96,10 +96,9 @@ _SINGLE: tuple[tuple[str, frozenset[str]], ...] = (
 # half-register one. Its fields are still driven both ways.
 _WORD_ONLY: tuple[str, ...] = ("dma_ctrl/CONFIG",)
 
-# EFUSE_INTERFACE_CTRL_STATUS is the one register of the block no leaf reaches:
-# its four state fields are `sw = r; hw = w` and its three clears are
-# `singlepulse`, so the half-register cycle has nothing to drive. Every mask
-# here comes from the generated `efuse_interface_ctrl.h`.
+# EFUSE_INTERFACE_CTRL_STATUS: its four state fields are `sw = r; hw = w` and
+# its three clears are `singlepulse`, so the half-register cycle has nothing to
+# drive. Every mask here comes from the generated `efuse_interface_ctrl.h`.
 _EFUSE_STATUS = "efuse_interface_ctrl/EFUSE_INTERFACE_CTRL_STATUS"
 _EFUSE_STATUS_SYM = "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__{field}_bm"
 _EFUSE_CLEARS = (

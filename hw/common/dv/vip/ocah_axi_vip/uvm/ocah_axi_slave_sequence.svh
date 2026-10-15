@@ -77,10 +77,12 @@ class ocah_axi_slave_sequence extends uvm_object;
   // Deterministic fault controls (one-shot, beat-aligned).
   // ------------------------------------------------------------------
 
+  // Arm a one-shot non-OKAY response; the errored read beat answers `rdata`
+  // as its RDATA word.
   function void inject_error(bit [63:0] addr, ocah_axi_resp_e resp, bit for_read = 1'b1,
-                             bit for_write = 1'b1);
+                             bit for_write = 1'b1, bit [63:0] rdata = '0);
     check_bound();
-    responder.cfg.inject_error(addr, resp, for_read, for_write);
+    responder.cfg.inject_error(addr, resp, for_read, for_write, rdata);
   endfunction
 
   // Arm one-shot response-ID corruption: the next selected transaction
@@ -122,6 +124,24 @@ class ocah_axi_slave_sequence extends uvm_object;
   function void disable_backpressure();
     check_bound();
     responder.cfg.disable_backpressure();
+  endfunction
+
+  // ------------------------------------------------------------------
+  // Write order and response USER.
+  // ------------------------------------------------------------------
+
+  // Arm a one-shot W-before-AW order: the next write's first W beat is
+  // accepted while its AW waits. Arm it while the write channels are idle.
+  function void arm_w_before_aw();
+    check_bound();
+    responder.cfg.arm_w_before_aw();
+  endfunction
+
+  // Answer every later B and R beat with BUSER and RUSER drawn per beat
+  // from a stream seeded by `seed` (AXI4 only); zero until called.
+  function void randomize_resp_user(int unsigned seed);
+    check_bound();
+    responder.cfg.randomize_resp_user(seed);
   endfunction
 
   // ------------------------------------------------------------------

@@ -11,7 +11,7 @@
 //
 // Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 
 /// A register with handshakes that completely cuts any combinatorial paths
@@ -79,12 +79,12 @@ module isochronous_spill_register #(
     /// empty, otherwise it is full.
     logic [1:0] rd_pointer_q, wr_pointer_q;
     // Advance write pointer if we pushed a new item into the FIFO. (Source clock domain)
-    `FFLARN(wr_pointer_q, wr_pointer_q+1, (src_valid_i && src_ready_o), '0, src_clk_i, src_rst_ni)
+    `OCAH_FFL(wr_pointer_q, wr_pointer_q+1, (src_valid_i && src_ready_o), '0, src_clk_i, src_rst_ni)
     // Advance read pointer if downstream consumed an item. (Destination clock domain)
-    `FFLARN(rd_pointer_q, rd_pointer_q+1, (dst_valid_o && dst_ready_i), '0, dst_clk_i, dst_rst_ni)
+    `OCAH_FFL(rd_pointer_q, rd_pointer_q+1, (dst_valid_o && dst_ready_i), '0, dst_clk_i, dst_rst_ni)
 
     T [1:0] mem_d, mem_q;
-    `FFL(mem_q, mem_d, (src_valid_i && src_ready_o), '0, src_clk_i, src_rst_ni)
+    `OCAH_FFL(mem_q, mem_d, (src_valid_i && src_ready_o), '0, src_clk_i, src_rst_ni)
     always_comb begin
       mem_d = mem_q;
       mem_d[wr_pointer_q[0]] = src_data_i;

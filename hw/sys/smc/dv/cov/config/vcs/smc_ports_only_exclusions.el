@@ -15,13 +15,13 @@
 
 CHECKSUM: "2884589361 570709842"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_clk_gate
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1064322695" "(en[0] | ((~rst_n)) | force_en | hyst_on[0]) 1 -1" (1 "0000")
 Condition 1 "1064322695" "(en[0] | ((~rst_n)) | force_en | hyst_on[0]) 1 -1" (4 "0100")
 
 CHECKSUM: "724319045 3392260149"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "1736850090" "(time_match_event & ClactrlstatusMmr.EnableEap) 1 -1" (2 "10")
 Condition 4 "1736850090" "(time_match_event & ClactrlstatusMmr.EnableEap) 1 -1" (3 "11")
 Condition 9 "221502022" "(gen_timestamp_sync_scheme_0.timestamp_load ? 1'b0 : ClatimestampconfigMmr.Resync) 1 -1" (2 "1")
@@ -33,48 +33,48 @@ Condition 60 "2354949710" "(gen_timestamp_sync_scheme_0.timestamp_resync && xtri
 
 CHECKSUM: "1977138259 497414737"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaEventGen.gen_cla_arithmetic_compare[0].cla_arithmetic_compare_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "1450259898" "(((~below_compare_int)) | compare_equal) 1 -1" (2 "01")
 
 CHECKSUM: "1977138259 497414737"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaEventGen.gen_cla_arithmetic_compare[1].cla_arithmetic_compare_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "1450259898" "(((~below_compare_int)) | compare_equal) 1 -1" (2 "01")
 
 CHECKSUM: "1977138259 497414737"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaEventGen.gen_cla_arithmetic_compare[2].cla_arithmetic_compare_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "1450259898" "(((~below_compare_int)) | compare_equal) 1 -1" (2 "01")
 
 CHECKSUM: "1977138259 497414737"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaEventGen.gen_cla_arithmetic_compare[3].cla_arithmetic_compare_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "1450259898" "(((~below_compare_int)) | compare_equal) 1 -1" (2 "01")
 
 CHECKSUM: "1104308719 2265874512"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaEventGen.gen_cla_counter[1].cla_counter_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "729879400" "((reset_counter == 1'b1) ? ({COUNTER_WIDTH {1'b0}}) : ((current_counter + 1'b1))) 1 -1" (2 "1")
 Condition 7 "1028325844" "(reset_counter == 1'b1) 1 -1" (2 "1")
 Condition 8 "503101556" "(cla_counter_controls.clear_ctr == 1'b1) 1 -1" (2 "1")
 
 CHECKSUM: "1104308719 2265874512"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaEventGen.gen_cla_counter[2].cla_counter_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "729879400" "((reset_counter == 1'b1) ? ({COUNTER_WIDTH {1'b0}}) : ((current_counter + 1'b1))) 1 -1" (2 "1")
 Condition 7 "1028325844" "(reset_counter == 1'b1) 1 -1" (2 "1")
 Condition 8 "503101556" "(cla_counter_controls.clear_ctr == 1'b1) 1 -1" (2 "1")
 
 CHECKSUM: "1104308719 2265874512"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaEventGen.gen_cla_counter[3].cla_counter_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "729879400" "((reset_counter == 1'b1) ? ({COUNTER_WIDTH {1'b0}}) : ((current_counter + 1'b1))) 1 -1" (2 "1")
 Condition 7 "1028325844" "(reset_counter == 1'b1) 1 -1" (2 "1")
 Condition 8 "503101556" "(cla_counter_controls.clear_ctr == 1'b1) 1 -1" (2 "1")
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[0].cla_node_eap_set_inst.gen_cla_node_eap_inst[0].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (2 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (3 "11")
@@ -85,7 +85,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[0].cla_node_eap_set_inst.gen_cla_node_eap_inst[1].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "1030296218" "((next_node_action_bus[cla_pkg::ACTION_DEBUG_INTERRUPT] == 1'b1) && (current_node_id == 2'(MY_NODE_ID)) && (enable_eap == 1'b1)) 1 -1" (3 "110")
 Condition 9 "403635085" "((eap_logic_operation_result == 1'b1) && (current_node_id == 2'(MY_NODE_ID)) && (enable_eap == 1'b1)) 1 -1" (3 "110")
 Condition 14 "4154550413" "(NodeEapMmr.CustomAction1Enable || NodeEapMmr.CustomAction0Enable) 1 -1" (2 "01")
@@ -94,7 +94,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[0].cla_node_eap_set_inst.gen_cla_node_eap_inst[2].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (2 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (3 "11")
@@ -109,7 +109,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[0].cla_node_eap_set_inst.gen_cla_node_eap_inst[3].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (2 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (3 "11")
@@ -124,7 +124,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[1].cla_node_eap_set_inst.gen_cla_node_eap_inst[0].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (2 "01")
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (3 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
@@ -141,7 +141,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[1].cla_node_eap_set_inst.gen_cla_node_eap_inst[1].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (2 "01")
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (3 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
@@ -159,7 +159,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[1].cla_node_eap_set_inst.gen_cla_node_eap_inst[2].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (2 "01")
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (3 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
@@ -177,7 +177,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[1].cla_node_eap_set_inst.gen_cla_node_eap_inst[3].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (2 "01")
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (3 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
@@ -195,7 +195,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[2].cla_node_eap_set_inst.gen_cla_node_eap_inst[0].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (2 "01")
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (3 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
@@ -212,7 +212,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[2].cla_node_eap_set_inst.gen_cla_node_eap_inst[1].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (2 "01")
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (3 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
@@ -230,7 +230,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[2].cla_node_eap_set_inst.gen_cla_node_eap_inst[2].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (2 "01")
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (3 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
@@ -248,7 +248,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[2].cla_node_eap_set_inst.gen_cla_node_eap_inst[3].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (2 "01")
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (3 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
@@ -266,7 +266,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[3].cla_node_eap_set_inst.gen_cla_node_eap_inst[0].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (2 "01")
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (3 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
@@ -284,7 +284,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[3].cla_node_eap_set_inst.gen_cla_node_eap_inst[1].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (2 "01")
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (3 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
@@ -303,7 +303,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[3].cla_node_eap_set_inst.gen_cla_node_eap_inst[2].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (2 "01")
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (3 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
@@ -322,7 +322,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "1071030063 2651064629"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[3].cla_node_eap_set_inst.gen_cla_node_eap_inst[3].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (2 "01")
 Condition 1 "1033832183" "(event_type0_status_in_event_bus | event_type1_status_in_event_bus) 1 -1" (3 "10")
 Condition 2 "3909964376" "(event_type0_status_in_event_bus & event_type1_status_in_event_bus) 1 -1" (1 "01")
@@ -341,7 +341,7 @@ Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1
 
 CHECKSUM: "2078871858 2490058488"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].u_mux_sel.debug_bus_mux
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "1416939164" "((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == '0)) 1 -1" (2 "1-")
 Condition 7 "198242192" "((enable_mode_d2 != 2'b11) ? (((0 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[0]))) 1 -1" (1 "0")
 Condition 7 "198242192" "((enable_mode_d2 != 2'b11) ? (((0 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[0]))) 1 -1" (2 "1")
@@ -365,7 +365,7 @@ Condition 32 "1450639908" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
 
 CHECKSUM: "2746040415 2271697718"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 2 "2321781715" "(dst_inst[0].sdtrig_dst_trace_start & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable) 1 -1" (3 "11")
 Condition 4 "3950667315" "(dst_inst[0].sdtrig_dst_trace_stop & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable) 1 -1" (3 "11")
 Condition 7 "2549274228" "(dst_inst[0].trig_control_e == TRIG_TRACE_ON) 1 -1" (2 "1")
@@ -373,12 +373,12 @@ Condition 8 "2297543608" "(dst_inst[0].trig_control_e == TRIG_TRACE_OFF) 1 -1" (
 
 CHECKSUM: "2480363511 1038873943"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_gen
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 23 "1651327698" "(((~trace_stop_from_hw_flush)) & trace_stop_from_hw_flush_d1) 1 -1" (1 "01")
 
 CHECKSUM: "243658460 2303570125"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_gen.vlt_packet_compression
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 24 "314633241" "(((!requested_packet_space_granted)) | ts_packet_enable | incoming_packet) 1 -1" (3 "010")
 Condition 26 "1603643397" "(incoming_packet | retry_data_packet_tx) 1 -1" (2 "01")
 Condition 28 "1510768139" "(incoming_packet | retry_data_packet_tx | retry_ts_packet_tx) 1 -1" (1 "000")
@@ -387,7 +387,7 @@ Condition 28 "1510768139" "(incoming_packet | retry_data_packet_tx | retry_ts_pa
 
 CHECKSUM: "3775597833 2443394120"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.accumulator_instance.gen_accumulator_bank_instance[0].accumulator_bank_instance
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target_write_byte_boundary_crosses_bank_range || target_write_byte_wraparound) 1 -1" (2 "001")
 Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target_write_byte_boundary_crosses_bank_range || target_write_byte_wraparound) 1 -1" (3 "010")
 Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target_write_byte_boundary_crosses_bank_range || target_write_byte_wraparound) 1 -1" (4 "100")
@@ -401,7 +401,7 @@ Condition 9 "1194554766" "((write_byte_boundary <= 6'(WRITE_BYTE_POINTER_RANGE_S
 
 CHECKSUM: "3775597833 2443394120"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.accumulator_instance.gen_accumulator_bank_instance[1].accumulator_bank_instance
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target_write_byte_boundary_crosses_bank_range || target_write_byte_wraparound) 1 -1" (3 "010")
 Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target_write_byte_boundary_crosses_bank_range || target_write_byte_wraparound) 1 -1" (4 "100")
 Condition 2 "1798022461" "(target_write_byte_boundary_above_range || target_write_byte_wraparound) 1 -1" (3 "10")
@@ -414,7 +414,7 @@ Condition 9 "1194554766" "((write_byte_boundary <= 6'(WRITE_BYTE_POINTER_RANGE_S
 
 CHECKSUM: "3001181867 1671278051"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (1 "011111")
 Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (2 "101111")
 Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (4 "111011")
@@ -428,7 +428,7 @@ Condition 34 "544945129" "((Trramstartlow_Warl_Check_ANY | Trramlimitlow_Warl_Ch
 
 CHECKSUM: "3897059503 4287847881"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
 Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
 Condition 15 "3029970163" "((reg_write & reg_wr_strb[1] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER0CFG)) | ClaMmrCdbgclacounter0CfgWr.UpperCounterWrEn) 1 -1" (1 "00")
@@ -502,14 +502,14 @@ Condition 1465 "3962544059" "(MMR_CDbgTimestampCapture_F_Timestamp_WrEn ? MMR_CD
 
 CHECKSUM: "1876497610 1878539093"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.dst_csr_gen_blk.dst_csr_inst[0].u_dst_mmr
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
 Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
 Condition 21 "2049624858" "(MMR_Trdstcontrol_F_Trdstempty_WrEn ? MMR_Trdstcontrol_F_Trdstempty_Data : MMR_Trdstcontrol_F_Trdstempty_Data_prev) 1 -1" (1 "0")
 
 CHECKSUM: "1453354636 2637439043"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.dst_sink_csr_gen_blk.u_dst_sink_mmr
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
 Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
 Condition 12 "2884869490" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_TRDSTRAMCONTROL)) | DstSinkMmrTrdstramcontrolWr.TrdstramstoponwrapWrEn) 1 -1" (2 "01")
@@ -524,7 +524,7 @@ Condition 94 "465082857" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_T
 
 CHECKSUM: "4117541145 44057898"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.funnel_mmr_gen_blk.u_funnel_mmr
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
 Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
 Condition 9 "2106129299" "(MMR_Trfunnelcontrol_F_Trfunnelempty_WrEn ? MMR_Trfunnelcontrol_F_Trfunnelempty_Data : MMR_Trfunnelcontrol_F_Trfunnelempty_Data_prev) 1 -1" (2 "1")
@@ -534,7 +534,7 @@ Condition 27 "1085791224" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_
 
 CHECKSUM: "3532153177 2090497106"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.gen_apb_inf_blk.u_apb2mmr
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2974504196" "(psel && penable && ( ~ ((paddr_base >= 23'(BASE_ADDR)) && (paddr_base < 23'(MMR_END_ADDR))) )) 1 -1" (1 "011")
 Condition 1 "2974504196" "(psel && penable && ( ~ ((paddr_base >= 23'(BASE_ADDR)) && (paddr_base < 23'(MMR_END_ADDR))) )) 1 -1" (2 "101")
 Condition 1 "2974504196" "(psel && penable && ( ~ ((paddr_base >= 23'(BASE_ADDR)) && (paddr_base < 23'(MMR_END_ADDR))) )) 1 -1" (4 "111")
@@ -547,16 +547,16 @@ Condition 6 "2679841428" "(psel && penable && pready && (rsp_err || decode_miss)
 Condition 6 "2679841428" "(psel && penable && pready && (rsp_err || decode_miss)) 1 -1" (5 "1111")
 Condition 7 "4224431006" "(rsp_err || decode_miss) 1 -1" (2 "01")
 
-CHECKSUM: "4226918805 2330986106"
+CHECKSUM: "3744376380 2330986106"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.tnif_wrapper.tnif_gen_blk[0].i_tnif
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "3193926140" "((ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) ? (prev_gnt == tnifState_e'(DST_GNT)) : 1'b1) 1 -1" (2 "1")
 Condition 9 "4289729232" "(prev_gnt == tnifState_e'(DST_GNT)) 1 -1" (2 "1")
 Condition 18 "191604408" "((prev_gnt inside {NTR_GNT}) ? DST_GNT : NTR_GNT) 1 -1" (1 "0")
 
 CHECKSUM: "3354362860 3417673543"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (1 "011")
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (2 "101")
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (3 "110")
@@ -934,13 +934,21 @@ Condition 494 "518791383" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplo
 Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (2 "101")
 Condition 504 "1454566499" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (2 "01")
 Condition 504 "1454566499" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (3 "10")
+Condition 513 "3615367999" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(0 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(0 / 2)])) & ((~TrdstMemRamRdEn_TS2[0])) & ((~TrdstMemRdBufferVld_TS3[0])) & ((~TrdstMemRdBufferVld_TS4[0])) & ((~TrdstMemRdBufferVld_TS5[0])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (1 "011111111")
 Condition 513 "3615367999" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(0 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(0 / 2)])) & ((~TrdstMemRamRdEn_TS2[0])) & ((~TrdstMemRdBufferVld_TS3[0])) & ((~TrdstMemRdBufferVld_TS4[0])) & ((~TrdstMemRdBufferVld_TS5[0])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
+Condition 514 "4190099991" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(1 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(1 / 2)])) & ((~TrdstMemRamRdEn_TS2[1])) & ((~TrdstMemRdBufferVld_TS3[1])) & ((~TrdstMemRdBufferVld_TS4[1])) & ((~TrdstMemRdBufferVld_TS5[1])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (1 "011111111")
 Condition 514 "4190099991" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(1 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(1 / 2)])) & ((~TrdstMemRamRdEn_TS2[1])) & ((~TrdstMemRdBufferVld_TS3[1])) & ((~TrdstMemRdBufferVld_TS4[1])) & ((~TrdstMemRdBufferVld_TS5[1])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
+Condition 515 "1600252041" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(2 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(2 / 2)])) & ((~TrdstMemRamRdEn_TS2[2])) & ((~TrdstMemRdBufferVld_TS3[2])) & ((~TrdstMemRdBufferVld_TS4[2])) & ((~TrdstMemRdBufferVld_TS5[2])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (1 "011111111")
 Condition 515 "1600252041" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(2 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(2 / 2)])) & ((~TrdstMemRamRdEn_TS2[2])) & ((~TrdstMemRdBufferVld_TS3[2])) & ((~TrdstMemRdBufferVld_TS4[2])) & ((~TrdstMemRdBufferVld_TS5[2])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
+Condition 516 "1906315681" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(3 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(3 / 2)])) & ((~TrdstMemRamRdEn_TS2[3])) & ((~TrdstMemRdBufferVld_TS3[3])) & ((~TrdstMemRdBufferVld_TS4[3])) & ((~TrdstMemRdBufferVld_TS5[3])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (1 "011111111")
 Condition 516 "1906315681" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(3 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(3 / 2)])) & ((~TrdstMemRamRdEn_TS2[3])) & ((~TrdstMemRdBufferVld_TS3[3])) & ((~TrdstMemRdBufferVld_TS4[3])) & ((~TrdstMemRdBufferVld_TS5[3])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
+Condition 517 "426153571" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(4 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(4 / 2)])) & ((~TrdstMemRamRdEn_TS2[4])) & ((~TrdstMemRdBufferVld_TS3[4])) & ((~TrdstMemRdBufferVld_TS4[4])) & ((~TrdstMemRdBufferVld_TS5[4])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (1 "011111111")
 Condition 517 "426153571" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(4 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(4 / 2)])) & ((~TrdstMemRamRdEn_TS2[4])) & ((~TrdstMemRdBufferVld_TS3[4])) & ((~TrdstMemRdBufferVld_TS4[4])) & ((~TrdstMemRdBufferVld_TS5[4])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
+Condition 518 "933719883" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(5 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(5 / 2)])) & ((~TrdstMemRamRdEn_TS2[5])) & ((~TrdstMemRdBufferVld_TS3[5])) & ((~TrdstMemRdBufferVld_TS4[5])) & ((~TrdstMemRdBufferVld_TS5[5])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (1 "011111111")
 Condition 518 "933719883" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(5 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(5 / 2)])) & ((~TrdstMemRamRdEn_TS2[5])) & ((~TrdstMemRdBufferVld_TS3[5])) & ((~TrdstMemRdBufferVld_TS4[5])) & ((~TrdstMemRdBufferVld_TS5[5])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
+Condition 519 "2440650197" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(6 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(6 / 2)])) & ((~TrdstMemRamRdEn_TS2[6])) & ((~TrdstMemRdBufferVld_TS3[6])) & ((~TrdstMemRdBufferVld_TS4[6])) & ((~TrdstMemRdBufferVld_TS5[6])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (1 "011111111")
 Condition 519 "2440650197" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(6 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(6 / 2)])) & ((~TrdstMemRamRdEn_TS2[6])) & ((~TrdstMemRdBufferVld_TS3[6])) & ((~TrdstMemRdBufferVld_TS4[6])) & ((~TrdstMemRdBufferVld_TS5[6])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
+Condition 520 "3216549117" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(7 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(7 / 2)])) & ((~TrdstMemRamRdEn_TS2[7])) & ((~TrdstMemRdBufferVld_TS3[7])) & ((~TrdstMemRdBufferVld_TS4[7])) & ((~TrdstMemRdBufferVld_TS5[7])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (1 "011111111")
 Condition 520 "3216549117" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(7 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(7 / 2)])) & ((~TrdstMemRamRdEn_TS2[7])) & ((~TrdstMemRdBufferVld_TS3[7])) & ((~TrdstMemRdBufferVld_TS4[7])) & ((~TrdstMemRdBufferVld_TS5[7])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
 Condition 521 "2743047216" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(0 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(0 / 2)])) & ((~TrntrMemRamRdEn_TS2[0])) & ((~TrntrMemRdBufferVld_TS3[0])) & ((~TrntrMemRdBufferVld_TS4[0])) & ((~TrntrMemRdBufferVld_TS5[0])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (1 "011111111")
 Condition 521 "2743047216" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(0 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(0 / 2)])) & ((~TrntrMemRamRdEn_TS2[0])) & ((~TrntrMemRdBufferVld_TS3[0])) & ((~TrntrMemRdBufferVld_TS4[0])) & ((~TrntrMemRdBufferVld_TS5[0])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (2 "101111111")
@@ -1025,23 +1033,23 @@ Condition 528 "3417904114" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_s
 
 CHECKSUM: "1202387303 877334790"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrdstFlushTimeoutCntr_ANY_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrdstMemModeRamBackPressure_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (2 "10")
 
 CHECKSUM: "1202387303 877334790"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrFlushTimeoutCntr_ANY_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrFlushTimeoutDone_ANY_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
@@ -1050,7 +1058,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrFlushTimeoutStart_ANY_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
@@ -1059,7 +1067,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrMemModeRamBackPressure_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (1 "00")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
@@ -1069,7 +1077,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrMemModeRamFlush_ANY_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (3 "11")
@@ -1077,7 +1085,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[0].TrntrMemRdBufferVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
@@ -1086,7 +1094,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[1].TrntrMemRdBufferVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
@@ -1095,7 +1103,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[2].TrntrMemRdBufferVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
@@ -1104,7 +1112,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[3].TrntrMemRdBufferVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
@@ -1113,7 +1121,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[4].TrntrMemRdBufferVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
@@ -1122,7 +1130,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[5].TrntrMemRdBufferVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
@@ -1131,7 +1139,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[6].TrntrMemRdBufferVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
@@ -1140,7 +1148,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[7].TrntrMemRdBufferVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
@@ -1149,7 +1157,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_trdstcoreNewFrameStart_ANY[0].trdstcoreframefillpendingwhileoverflow_ANY_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (3 "11")
@@ -1157,7 +1165,7 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_trntrcoreNewFrameStart_ANY[0].trntrcoreframefillpendingwhileoverflow_ANY_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (1 "00")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
@@ -1167,13 +1175,13 @@ Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 877334790"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.trntrNumFramesFilledInSRAM_ANY_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
 
-CHECKSUM: "404099673 59558564"
+CHECKSUM: "1990251536 59558564"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_smem_axi_master
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "315528187" "(axi_resp_i.aw_ready & axi_resp_i.w_ready) 1 -1" (1 "01")
 Condition 1 "315528187" "(axi_resp_i.aw_ready & axi_resp_i.w_ready) 1 -1" (2 "10")
 Condition 1 "315528187" "(axi_resp_i.aw_ready & axi_resp_i.w_ready) 1 -1" (3 "11")
@@ -1184,7 +1192,7 @@ Condition 3 "31931372" "(((~axi_resp_i.aw_ready)) & axi_resp_i.w_ready) 1 -1" (3
 
 CHECKSUM: "3643492222 1006470345"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_network_inst.north_chan_gen[0].trace_hop_north_core_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "1688538490" "((tr_init_setup_cnt == (6'((NUM_UPSTREAM_REPEATERS + NUM_HOPS_TO_TAIL)) + 6'(num_disabled_cores_as_repeaters))) & ((|upstrm_tr_enabled_srcs))) 1 -1" (1 "01")
 Condition 9 "2501823884" "((num_cores_enabled == 3'h4) ? 12'b000100010001 : ((num_cores_enabled == 3'h3) ? 12'b001001001001 : ((num_cores_enabled == 3'h2) ? 12'b010101010101 : 12'b111111111111))) 1 -1" (2 "1")
 Condition 10 "4262659916" "(num_cores_enabled == 3'h4) 1 -1" (2 "1")
@@ -1199,13 +1207,13 @@ Condition 19 "2081685874" "(upstrm_tr_ntrace_flush & upstrm_tr_enabled_srcs[RELA
 
 CHECKSUM: "2393566253 4118206563"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_ref_rst_sync.u_sync_rst_n_bypass.u_mux
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (2 "001")
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
 
 CHECKSUM: "1268338199 252186440"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_backend_wrapper.gen_iDMA_to_axi_out[0].u_iDMA_backend
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "1458876250" "(r_dp_req_in_ready & ar_ready) 1 -1" (1 "01")
 Condition 5 "1129244446" "(w_dp_req_in_ready & aw_ready & w_last_ready) 1 -1" (2 "101")
 Condition 5 "1129244446" "(w_dp_req_in_ready & aw_ready & w_last_ready) 1 -1" (3 "110")
@@ -1214,23 +1222,23 @@ Condition 6 "3338036579" "(busy_o.buffer_busy | busy_o.r_dp_busy | busy_o.w_dp_b
 
 CHECKSUM: "1600696508 3952410150"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_backend_wrapper.gen_iDMA_to_axi_out[0].u_iDMA_backend.gen_hw_legalizer.i_idma_legalizer.i_read_page_splitter
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3441990763" "((page_addr_width > 4'hc) ? 'd12 : page_addr_width) 1 -1" (2 "1")
 
 CHECKSUM: "1600696508 3952410150"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_backend_wrapper.gen_iDMA_to_axi_out[0].u_iDMA_backend.gen_hw_legalizer.i_idma_legalizer.i_write_page_splitter
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3441990763" "((page_addr_width > 4'hc) ? 'd12 : page_addr_width) 1 -1" (2 "1")
 
 CHECKSUM: "957701396 3863102128"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_backend_wrapper.gen_iDMA_to_axi_out[0].u_iDMA_backend.gen_r_aw_coupler.i_idma_channel_coupler
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1572906234" "(((!aw_ready_decoupled)) & first) 1 -1" (1 "01")
 Condition 4 "2015103351" "(aw_ready_decoupled & ((!first)) & (aw_to_send_q != '0)) 1 -1" (2 "101")
 
 CHECKSUM: "4041267351 1933431332"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_backend_wrapper.gen_iDMA_to_axi_out[0].u_iDMA_backend.i_idma_transport_layer.i_idma_axi_read
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1955021477" "(read_rsp_i.r.last ? ((read_aligned_in_mask & r_last_mask)) : read_aligned_in_mask) 1 -1" (1 "0")
 Condition 4 "3669376024" "(((!read_rsp_i.r.last)) & read_rsp_i.r_valid & read_req_o.r_ready) 1 -1" (3 "110")
 Condition 5 "3690119896" "(read_rsp_i.r.last & read_rsp_i.r_valid & read_req_o.r_ready) 1 -1" (1 "011")
@@ -1239,26 +1247,27 @@ Condition 9 "177455928" "(r_dp_valid_i & r_dp_ready_i & read_rsp_i.r.last & read
 
 CHECKSUM: "2274786375 3175097258"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_backend_wrapper.gen_iDMA_to_axi_out[0].u_iDMA_backend.i_idma_transport_layer.i_idma_axi_write
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "671903146" "(w_cnt_valid_q & (w_num_beats_q == 8'b1)) 1 -1" (1 "01")
 Condition 12 "2367116148" "(w_dp_valid_i & ((buffer_out_valid_i & mask_out) == mask_out) & (buffer_out_valid_i != '0)) 1 -1" (3 "110")
 Condition 15 "724343310" "(((buffer_out_valid_i & w_first_mask) == w_first_mask) & (buffer_out_valid_i != '0)) 1 -1" (2 "10")
 
-CHECKSUM: "1334413042 1400344415"
+CHECKSUM: "1464798927 1400344415"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_frontend_wrapper
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 2 "1965931545" "(((|fe_busy)) | ((|f2m_req_valid)) | ((|me_busy))) 1 -1" (3 "010")
 Condition 3 "785205948" "(((|f2m_req_valid)) | ((|me_busy))) 1 -1" (3 "10")
 
-CHECKSUM: "722185039 1446842003"
+CHECKSUM: "2079312212 1446842003"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_frontend_wrapper.gen_axi_to_iDMA_fe[0].u_iDMA_2d_midend
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "1494341974" "(zero & nd_req_valid_i & nd_req_ready_o) 1 -1" (2 "101")
 Condition 6 "3950647113" "(last & nd_req_valid_i & burst_req_ready_i) 1 -1" (2 "101")
 
-CHECKSUM: "628509044 3938785771"
+CHECKSUM: "2605830346 3938785771"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_frontend_wrapper.gen_axi_to_iDMA_fe[0].u_iDMA_frontend.gen_core_regs[0].i_idma_reg64_2d_reg_top
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Condition 138 "250880070" "(addr_hit[1] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 Condition 139 "4149940944" "(addr_hit[2] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 Condition 140 "2155151428" "(addr_hit[3] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 Condition 141 "3745726092" "(addr_hit[4] & reg_re & ((!reg_error))) 1 -1" (3 "110")
@@ -1309,18 +1318,18 @@ Condition 185 "1262529806" "(addr_hit[48] & reg_re & ((!reg_error))) 1 -1" (3 "1
 
 CHECKSUM: "281707938 2937849244"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_frontend_wrapper.gen_axi_to_iDMA_fe[0].u_idma_transfer_id_gen
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1782633341" "(next_q == '1) 1 -1" (2 "1")
 Condition 2 "121455226" "(completed_q == '1) 1 -1" (2 "1")
 
-CHECKSUM: "134859043 2005796970"
+CHECKSUM: "1505958960 1105955355"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 5 "2491476611" "((cur_size < (axi_data_t'(AXI_STRB_WIDTH) - axi_data_t'(cur_dest_addr[(AXI_DATA_SIZE - 1):0]))) ? cur_size[(AXI_DATA_WIDTH - 1):0] : ((axi_data_t'(AXI_STRB_WIDTH) - axi_data_t'(cur_dest_addr[(AXI_DATA_SIZE - 1):0])))) 1 -1" (2 "1")
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Condition 5 "896891442" "((cur_size < (axi_data_t'(AxiStrbWidth) - axi_data_t'(cur_dest_addr[(AxiDataSize - 1):0]))) ? cur_size[(AXI_DATA_WIDTH - 1):0] : ((axi_data_t'(AxiStrbWidth) - axi_data_t'(cur_dest_addr[(AxiDataSize - 1):0])))) 1 -1" (2 "1")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[0].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1330,7 +1339,7 @@ Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (1 "0
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[0].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1341,7 +1350,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (1 "01
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[10].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1352,7 +1361,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[10].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1363,7 +1372,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[11].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1374,7 +1383,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[11].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1385,7 +1394,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[12].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1396,7 +1405,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[12].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1407,7 +1416,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[13].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1418,7 +1427,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[13].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1429,7 +1438,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[14].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1440,7 +1449,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[14].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1451,7 +1460,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[1].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1462,7 +1471,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[1].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1473,7 +1482,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[2].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1484,7 +1493,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[2].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1495,7 +1504,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[3].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1506,7 +1515,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[3].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1517,7 +1526,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[4].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1528,7 +1537,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[4].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1539,7 +1548,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[5].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1550,7 +1559,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[5].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1561,7 +1570,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[6].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1572,7 +1581,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[6].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1583,7 +1592,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[7].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1594,7 +1603,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[7].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1605,7 +1614,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[8].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1616,7 +1625,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[8].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1627,7 +1636,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[9].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1638,7 +1647,7 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[9].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
@@ -1649,24 +1658,24 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[0].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[0].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[10].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[10].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1674,14 +1683,14 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[11].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[11].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1689,14 +1698,14 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[12].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[12].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1704,14 +1713,14 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[13].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[13].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1719,14 +1728,14 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[14].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[14].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1734,20 +1743,20 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[1].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[2].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[2].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1755,14 +1764,14 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[3].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[3].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1770,14 +1779,14 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[4].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[4].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1785,14 +1794,14 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[5].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[5].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1800,14 +1809,14 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[6].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[6].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1815,14 +1824,14 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[7].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[7].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1830,14 +1839,14 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[8].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[8].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1845,28 +1854,27 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[9].u_read_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[9].u_write_traffic_filter
-ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "1036002057 3460463107"
+CHECKSUM: "46423763 3431996872"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1171358220" "(mem_init_reset_ni == 1'b0) 1 -1" (2 "1")
-Condition 7 "3550059789" "(l2_frontend_isolated & mmio_isolated) 1 -1" (2 "10")
 
 CHECKSUM: "2393566253 4118206563"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_0_debug_hartReset_0.output_chain.u_rstbypass.u_mux
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
 Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (2 "10")
 Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (3 "11")
@@ -1877,7 +1885,7 @@ Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (3 "11")
 
 CHECKSUM: "2393566253 4118206563"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_1_debug_hartReset_1.output_chain.u_rstbypass.u_mux
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
 Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (2 "10")
 Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (3 "11")
@@ -1888,7 +1896,7 @@ Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (3 "11")
 
 CHECKSUM: "2393566253 4118206563"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_2_debug_hartReset_2.output_chain.u_rstbypass.u_mux
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
 Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (2 "10")
 Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (3 "11")
@@ -1899,7 +1907,7 @@ Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (3 "11")
 
 CHECKSUM: "2393566253 4118206563"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_3_debug_hartReset_3.output_chain.u_rstbypass.u_mux
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
 Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (2 "10")
 Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (3 "11")
@@ -1908,9 +1916,14 @@ Condition 3 "2403100006" "(b0_i & b1_i) 1 -1" (3 "11")
 Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (2 "10")
 Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (3 "11")
 
+CHECKSUM: "4170504346 2505895232"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_tilelink_to_rom_memory_convert
+ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Condition 1 "2931136139" "(auto_in_a_valid && auto_in_a_ready) 1 -1" (2 "10")
+
 CHECKSUM: "3814944388 3447933561"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_avs_crc3_check_inst
-ANNOTATION: "SMC-T11-AVS-PORTS-ONLY: the AVS bus CRC units and register block is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T11-AVS-PORTS-ONLY: the AVS bus CRC units and register block is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (2 "00000000000000001")
 Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (3 "00000000000000010")
 Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (4 "00000000000000011")
@@ -4979,7 +4992,7 @@ Condition 3 "300967285" "(msg_i[31] ^ msg_i[28] ^ msg_i[27] ^ msg_i[26] ^ msg_i[
 
 CHECKSUM: "3814944388 3447933561"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_avs_crc3_generate_inst
-ANNOTATION: "SMC-T11-AVS-PORTS-ONLY: the AVS bus CRC units and register block is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T11-AVS-PORTS-ONLY: the AVS bus CRC units and register block is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (3 "00000000000000010")
 Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (5 "00000000000000100")
 Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (7 "00000000000000110")
@@ -6514,45 +6527,46 @@ Condition 3 "300967285" "(msg_i[31] ^ msg_i[28] ^ msg_i[27] ^ msg_i[26] ^ msg_i[
 Condition 3 "300967285" "(msg_i[31] ^ msg_i[28] ^ msg_i[27] ^ msg_i[26] ^ msg_i[24] ^ msg_i[21] ^ msg_i[20] ^ msg_i[19] ^ msg_i[17] ^ msg_i[14] ^ msg_i[13] ^ msg_i[12] ^ msg_i[10] ^ msg_i[7] ^ msg_i[6] ^ msg_i[5] ^ msg_i[3] ^ msg_i[0]) 1 -1" (1021 "000000001111111100")
 Condition 3 "300967285" "(msg_i[31] ^ msg_i[28] ^ msg_i[27] ^ msg_i[26] ^ msg_i[24] ^ msg_i[21] ^ msg_i[20] ^ msg_i[19] ^ msg_i[17] ^ msg_i[14] ^ msg_i[13] ^ msg_i[12] ^ msg_i[10] ^ msg_i[7] ^ msg_i[6] ^ msg_i[5] ^ msg_i[3] ^ msg_i[0]) 1 -1" (1023 "000000001111111110")
 
-CHECKSUM: "3898876563 2769723830"
+CHECKSUM: "119279593 2769723830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_cmd_async_fifo_inst
-ANNOTATION: "SMC-T10-CDC-SYNC-PORTS-ONLY: the peripheral clock-domain crossings and the synchronizer cells is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 2 "3098116734" "(wr_en_i & ((~wr_full_o))) 1 -1" (2 "10")
-Condition 4 "2759218582" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
+ANNOTATION: "SMC-T10-CDC-SYNC-PORTS-ONLY: the peripheral clock-domain crossings and the synchronizer cells is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Condition 2 "1314097942" "(wr_en_i & ((~wr_full_o))) 1 -1" (2 "10")
+Condition 4 "1384930558" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
 Condition 5 "1356758098" "(wr_en_i & ((~wr_full_o))) 1 -1" (2 "10")
 
-CHECKSUM: "3898876563 2769723830"
+CHECKSUM: "119279593 2769723830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_readasync_back_fifo_inst
-ANNOTATION: "SMC-T10-CDC-SYNC-PORTS-ONLY: the peripheral clock-domain crossings and the synchronizer cells is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 4 "2759218582" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
+ANNOTATION: "SMC-T10-CDC-SYNC-PORTS-ONLY: the peripheral clock-domain crossings and the synchronizer cells is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Condition 4 "1384930558" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
 
-CHECKSUM: "1495589902 3045344841"
+CHECKSUM: "679458402 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_bus_monitor
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 
-CHECKSUM: "4121512156 549783544"
+CHECKSUM: "2236679815 549783544"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (3 "010")
 Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (4 "100")
 Condition 37 "3850361113" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
 Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "0111")
 Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
+Condition 87 "3163058696" "(((!host_enable_i)) && trans_started) 1 -1" (3 "11")
 Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
 
-CHECKSUM: "1495589902 3045344841"
+CHECKSUM: "679458402 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_bus_monitor
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 12 "3716218854" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 Condition 22 "1286515773" "(monitor_enable && start_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 27 "3393594469" "(monitor_enable && stop_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 31 "2016545571" "(((!target_idle_i)) && bus_inactive_timeout_det) 1 -1" (1 "01")
 
-CHECKSUM: "4121512156 549783544"
+CHECKSUM: "2236679815 549783544"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "1904410187" "(fmt_byte_i == '0) 1 -1" (2 "1")
 Condition 8 "3296887397" "(pend_restart && ((!host_enable_i))) 1 -1" (2 "10")
 Condition 8 "3296887397" "(pend_restart && ((!host_enable_i))) 1 -1" (3 "11")
@@ -6659,20 +6673,21 @@ Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q ==
 Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (6 "11111")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (1 "011")
 
-CHECKSUM: "2664491312 467777835"
+CHECKSUM: "331326766 467777835"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 10 "3032809540" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
 Condition 13 "3891145760" "(bus_timeout_i && rw_bit_q) 1 -1" (3 "11")
+Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (1 "011")
 Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (3 "110")
 Condition 26 "3032809540" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
 Condition 31 "2216297856" "(((!ack_ctrl_mode_i)) || (auto_ack_cnt_i > '0)) 1 -1" (2 "01")
 Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (1 "01111")
 Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (2 "10111")
 
-CHECKSUM: "1584876630 2977940430"
+CHECKSUM: "3413393998 2977940430"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "2635010072" "(fmt_fifo_depth == 7'(CONTROLLER_TX_FIFO_DEPTH)) 1 -1" (2 "1")
 Condition 9 "2160510923" "(tx_fifo_depth == 7'(TARGET_TX_FIFO_DEPTH)) 1 -1" (2 "1")
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (2 "0001")
@@ -6688,11 +6703,6 @@ Condition 21 "2493607134" "(rx_fifo_wvalid && ((!rx_fifo_wready))) 1 -1" (3 "11"
 Condition 23 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
 Condition 24 "818086773" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|{reg_out_i.FDATA.wr_biten.NAKOK, reg_out_i.FDATA.wr_biten.RCONT, reg_out_i.FDATA.wr_biten.READB, reg_out_i.FDATA.wr_biten.STOP, reg_out_i.FDATA.wr_biten.START, reg_out_i.FDATA.wr_biten.FBYTE}))) 1 -1" (2 "101")
 Condition 24 "818086773" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|{reg_out_i.FDATA.wr_biten.NAKOK, reg_out_i.FDATA.wr_biten.RCONT, reg_out_i.FDATA.wr_biten.READB, reg_out_i.FDATA.wr_biten.STOP, reg_out_i.FDATA.wr_biten.START, reg_out_i.FDATA.wr_biten.FBYTE}))) 1 -1" (3 "110")
-Condition 25 "1393178295" "(reg_out_i.FDATA.wr_data.START && reg_out_i.FDATA.wr_biten.START) 1 -1" (2 "10")
-Condition 26 "4170824193" "(reg_out_i.FDATA.wr_data.STOP && reg_out_i.FDATA.wr_biten.STOP) 1 -1" (2 "10")
-Condition 27 "1794860990" "(reg_out_i.FDATA.wr_data.READB && reg_out_i.FDATA.wr_biten.READB) 1 -1" (2 "10")
-Condition 28 "2424853549" "(reg_out_i.FDATA.wr_data.RCONT && reg_out_i.FDATA.wr_biten.RCONT) 1 -1" (2 "10")
-Condition 29 "3573619060" "(reg_out_i.FDATA.wr_data.NAKOK && reg_out_i.FDATA.wr_biten.NAKOK) 1 -1" (2 "10")
 Condition 36 "200185853" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
 Condition 37 "3365045754" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
 Condition 40 "2297625995" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr) 1 -1" (2 "10")
@@ -6746,18 +6756,18 @@ Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | eve
 Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (8 "01000000")
 Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (9 "10000000")
 
-CHECKSUM: "1495589902 3045344841"
+CHECKSUM: "679458402 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_bus_monitor
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 12 "3716218854" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 Condition 22 "1286515773" "(monitor_enable && start_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 27 "3393594469" "(monitor_enable && stop_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 31 "2016545571" "(((!target_idle_i)) && bus_inactive_timeout_det) 1 -1" (1 "01")
 
-CHECKSUM: "4121512156 549783544"
+CHECKSUM: "2236679815 549783544"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 2 "1898423200" "(((!host_idle_o)) && ((!host_enable_i))) 1 -1" (3 "11")
 Condition 4 "1875588218" "(stretch_idle_cnt == stretch_cnt_threshold) 1 -1" (2 "1")
 Condition 5 "1904410187" "(fmt_byte_i == '0) 1 -1" (2 "1")
@@ -6873,9 +6883,9 @@ Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt 
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (3 "110")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (4 "111")
 
-CHECKSUM: "2664491312 467777835"
+CHECKSUM: "331326766 467777835"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 10 "3032809540" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
 Condition 13 "3891145760" "(bus_timeout_i && rw_bit_q) 1 -1" (3 "11")
 Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (1 "011")
@@ -6889,25 +6899,25 @@ Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_de
 Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (6 "11111")
 Condition 44 "2009201500" "(((!tx_fifo_rvalid_i)) || unhandled_tx_stretch_event_i || (acq_fifo_depth_i > 7'(1'b1))) 1 -1" (2 "001")
 
-CHECKSUM: "2469021223 3278115879"
+CHECKSUM: "3995419794 2394443816"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "1405087489" "((axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS)) 1 -1" (1 "01")
-Condition 1 "1405087489" "((axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS)) 1 -1" (2 "10")
-Condition 2 "2357600340" "((axil_req_i.ar.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS)) 1 -1" (1 "01")
-Condition 2 "2357600340" "((axil_req_i.ar.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS)) 1 -1" (2 "10")
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Condition 1 "4002909003" "((axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NumGpioWraps)) 1 -1" (1 "01")
+Condition 1 "4002909003" "((axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NumGpioWraps)) 1 -1" (2 "10")
+Condition 2 "3990162209" "((axil_req_i.ar.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NumGpioWraps)) 1 -1" (1 "01")
+Condition 2 "3990162209" "((axil_req_i.ar.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NumGpioWraps)) 1 -1" (2 "10")
 Condition 4 "4060155194" "(((~i3c_sda_oen_i[0])) | i3c_sda_pp_i[0]) 1 -1" (2 "01")
 Condition 6 "435251281" "(((~i3c_sda_oen_i[1])) | i3c_sda_pp_i[1]) 1 -1" (2 "01")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[0].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[10].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -6924,14 +6934,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[10].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[11].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -6948,14 +6958,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[11].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[12].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -6972,14 +6982,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[12].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[13].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -6996,14 +7006,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[13].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[14].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7020,14 +7030,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[14].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[15].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7044,14 +7054,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[15].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[16].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7068,14 +7078,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[16].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[17].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7092,14 +7102,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[17].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[18].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7116,14 +7126,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[18].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[19].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7140,14 +7150,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[19].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[1].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7161,14 +7171,14 @@ Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[1].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[20].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7185,14 +7195,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[20].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[21].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7209,14 +7219,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[21].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[22].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7233,14 +7243,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[22].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[23].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7257,14 +7267,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[23].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[24].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7281,14 +7291,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[24].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[25].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7305,14 +7315,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[25].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[26].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7329,14 +7339,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[26].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[27].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7355,14 +7365,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[27].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[28].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7381,14 +7391,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[28].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[29].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7407,14 +7417,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[29].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[2].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7428,14 +7438,14 @@ Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[2].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[30].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7454,14 +7464,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[30].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[31].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7480,14 +7490,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[31].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[32].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7506,14 +7516,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[32].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[33].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7532,14 +7542,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[33].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[34].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7558,14 +7568,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[34].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[35].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7584,14 +7594,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[35].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[36].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7610,14 +7620,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[36].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[37].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7630,14 +7640,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[37].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[38].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7652,14 +7662,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[38].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[39].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7674,14 +7684,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[39].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[3].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7698,14 +7708,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[3].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[40].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7720,14 +7730,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[40].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[41].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7742,14 +7752,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[41].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[42].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7764,14 +7774,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[42].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[43].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7786,14 +7796,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[43].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[44].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7808,14 +7818,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[44].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[45].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7830,14 +7840,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[45].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[46].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7852,14 +7862,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[46].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[47].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7874,14 +7884,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[47].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[48].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7896,14 +7906,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[48].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[49].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7920,14 +7930,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[49].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[4].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7944,14 +7954,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[4].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[50].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7968,14 +7978,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[50].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[51].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -7992,14 +8002,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[51].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[52].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8015,14 +8025,14 @@ Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (3 "10")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[52].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[53].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8041,14 +8051,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[53].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[54].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8065,14 +8075,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[54].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[55].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8089,14 +8099,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[55].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[56].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8113,14 +8123,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[56].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[57].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8139,14 +8149,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[57].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[58].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8165,14 +8175,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[58].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[59].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8191,14 +8201,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[59].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[5].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8215,14 +8225,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[5].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[60].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8234,14 +8244,14 @@ Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (3 "10")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[60].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[61].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8260,14 +8270,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[61].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8287,14 +8297,14 @@ Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (2 "10")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[63].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8313,14 +8323,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[63].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[64].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8339,14 +8349,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[64].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[6].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8363,14 +8373,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[6].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[7].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8387,14 +8397,14 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[7].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[8].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8408,14 +8418,14 @@ Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[8].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "2049897907 4261098035"
+CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[9].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (1 "01")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (2 "10")
 Condition 1 "3324816342" "(((!prev_pad2core)) && pad2core_synced) 1 -1" (3 "11")
@@ -8432,45 +8442,45 @@ Condition 8 "442515578" "(reg__interface_enable || reg__use_reg_rx) 1 -1" (3 "10
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (1 "01")
 Condition 9 "1123949543" "(interrupt && reg__interrupt_enable) 1 -1" (3 "11")
 
-CHECKSUM: "1653767701 3020850096"
+CHECKSUM: "1423007749 3020850096"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[9].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
-CHECKSUM: "1319975045 2692214033"
+CHECKSUM: "3049458808 806399646"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver
-ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1041394388" "(last_packet_received || assembly_buffer_full || telemetry_receiver_flush) 1 -1" (2 "001")
 Condition 1 "1041394388" "(last_packet_received || assembly_buffer_full || telemetry_receiver_flush) 1 -1" (3 "010")
 Condition 5 "2232577481" "(atready_o && atvalid_i) 1 -1" (1 "01")
-Condition 6 "3735189699" "((assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((ASSEMBLY_BUFFER_DEPTH - 1))) && telemetry_beat_received) 1 -1" (2 "10")
-Condition 6 "3735189699" "((assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((ASSEMBLY_BUFFER_DEPTH - 1))) && telemetry_beat_received) 1 -1" (3 "11")
-Condition 7 "3826461050" "(assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((ASSEMBLY_BUFFER_DEPTH - 1))) 1 -1" (2 "1")
-Condition 8 "1864189420" "(end_of_packet_q && received_telemetry_packets[(assembly_buffer_wr_ptr_q / telemetry_receiver_pkg::NUM_BEATS_PER_PACKET)].last_packet) 1 -1" (1 "01")
+Condition 6 "3642077493" "((assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((AssemblyBufferDepth - 1))) && telemetry_beat_received) 1 -1" (2 "10")
+Condition 6 "3642077493" "((assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((AssemblyBufferDepth - 1))) && telemetry_beat_received) 1 -1" (3 "11")
+Condition 7 "3757629749" "(assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((AssemblyBufferDepth - 1))) 1 -1" (2 "1")
+Condition 8 "1850510986" "(end_of_packet_q && received_telemetry_packets[(assembly_buffer_wr_ptr_q / telemetry_receiver_pkg::NumBeatsPerPacket)].last_packet) 1 -1" (1 "01")
 Condition 9 "1025567274" "(assembly_buffer_full_q && ((!last_packet_received))) 1 -1" (2 "10")
 Condition 9 "1025567274" "(assembly_buffer_full_q && ((!last_packet_received))) 1 -1" (3 "11")
-Condition 10 "327892693" "((message_buffer_wr_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 2):0] == message_buffer_rd_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 2):0]) && (message_buffer_wr_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 1)] != message_buffer_rd_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 1)])) 1 -1" (1 "01")
-Condition 10 "327892693" "((message_buffer_wr_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 2):0] == message_buffer_rd_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 2):0]) && (message_buffer_wr_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 1)] != message_buffer_rd_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 1)])) 1 -1" (3 "11")
+Condition 10 "3501675428" "((message_buffer_wr_ptr[(MessageBufferPtrWidth - 2):0] == message_buffer_rd_ptr[(MessageBufferPtrWidth - 2):0]) && (message_buffer_wr_ptr[(MessageBufferPtrWidth - 1)] != message_buffer_rd_ptr[(MessageBufferPtrWidth - 1)])) 1 -1" (1 "01")
+Condition 10 "3501675428" "((message_buffer_wr_ptr[(MessageBufferPtrWidth - 2):0] == message_buffer_rd_ptr[(MessageBufferPtrWidth - 2):0]) && (message_buffer_wr_ptr[(MessageBufferPtrWidth - 1)] != message_buffer_rd_ptr[(MessageBufferPtrWidth - 1)])) 1 -1" (3 "11")
 Condition 17 "1464904640" "(reg_out.INTR_STATUS.MISSING_LAST.value && reg_out.INTR_ENABLE.MISSING_LAST.value) 1 -1" (3 "11")
 Condition 18 "2680338554" "(buffer_threshold_intr_req && reg_out.INTR_ENABLE.BUFFER_THRESHOLD.value) 1 -1" (3 "11")
 Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (1 "01")
 Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (3 "11")
 Condition 20 "586682789" "(missing_last_event || missing_last_intr_test) 1 -1" (3 "10")
 
-CHECKSUM: "1319975045 2692214033"
+CHECKSUM: "3049458808 806399646"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver
-ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1041394388" "(last_packet_received || assembly_buffer_full || telemetry_receiver_flush) 1 -1" (2 "001")
 Condition 1 "1041394388" "(last_packet_received || assembly_buffer_full || telemetry_receiver_flush) 1 -1" (3 "010")
 Condition 5 "2232577481" "(atready_o && atvalid_i) 1 -1" (1 "01")
-Condition 6 "3735189699" "((assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((ASSEMBLY_BUFFER_DEPTH - 1))) && telemetry_beat_received) 1 -1" (2 "10")
-Condition 6 "3735189699" "((assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((ASSEMBLY_BUFFER_DEPTH - 1))) && telemetry_beat_received) 1 -1" (3 "11")
-Condition 7 "3826461050" "(assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((ASSEMBLY_BUFFER_DEPTH - 1))) 1 -1" (2 "1")
-Condition 8 "1864189420" "(end_of_packet_q && received_telemetry_packets[(assembly_buffer_wr_ptr_q / telemetry_receiver_pkg::NUM_BEATS_PER_PACKET)].last_packet) 1 -1" (1 "01")
+Condition 6 "3642077493" "((assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((AssemblyBufferDepth - 1))) && telemetry_beat_received) 1 -1" (2 "10")
+Condition 6 "3642077493" "((assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((AssemblyBufferDepth - 1))) && telemetry_beat_received) 1 -1" (3 "11")
+Condition 7 "3757629749" "(assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((AssemblyBufferDepth - 1))) 1 -1" (2 "1")
+Condition 8 "1850510986" "(end_of_packet_q && received_telemetry_packets[(assembly_buffer_wr_ptr_q / telemetry_receiver_pkg::NumBeatsPerPacket)].last_packet) 1 -1" (1 "01")
 Condition 9 "1025567274" "(assembly_buffer_full_q && ((!last_packet_received))) 1 -1" (2 "10")
 Condition 9 "1025567274" "(assembly_buffer_full_q && ((!last_packet_received))) 1 -1" (3 "11")
-Condition 10 "327892693" "((message_buffer_wr_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 2):0] == message_buffer_rd_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 2):0]) && (message_buffer_wr_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 1)] != message_buffer_rd_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 1)])) 1 -1" (1 "01")
-Condition 10 "327892693" "((message_buffer_wr_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 2):0] == message_buffer_rd_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 2):0]) && (message_buffer_wr_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 1)] != message_buffer_rd_ptr[(MESSAGE_BUFFER_PTR_WIDTH - 1)])) 1 -1" (3 "11")
+Condition 10 "3501675428" "((message_buffer_wr_ptr[(MessageBufferPtrWidth - 2):0] == message_buffer_rd_ptr[(MessageBufferPtrWidth - 2):0]) && (message_buffer_wr_ptr[(MessageBufferPtrWidth - 1)] != message_buffer_rd_ptr[(MessageBufferPtrWidth - 1)])) 1 -1" (1 "01")
+Condition 10 "3501675428" "((message_buffer_wr_ptr[(MessageBufferPtrWidth - 2):0] == message_buffer_rd_ptr[(MessageBufferPtrWidth - 2):0]) && (message_buffer_wr_ptr[(MessageBufferPtrWidth - 1)] != message_buffer_rd_ptr[(MessageBufferPtrWidth - 1)])) 1 -1" (3 "11")
 Condition 17 "1464904640" "(reg_out.INTR_STATUS.MISSING_LAST.value && reg_out.INTR_ENABLE.MISSING_LAST.value) 1 -1" (3 "11")
 Condition 18 "2680338554" "(buffer_threshold_intr_req && reg_out.INTR_ENABLE.BUFFER_THRESHOLD.value) 1 -1" (3 "11")
 Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (1 "01")
@@ -8479,27 +8489,27 @@ Condition 20 "586682789" "(missing_last_event || missing_last_intr_test) 1 -1" (
 
 CHECKSUM: "2393566253 4118206563"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.u_at_fifo_rd_rst_sync.u_sync_rst_n_bypass.u_mux
-ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (2 "001")
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
 
 CHECKSUM: "2393566253 4118206563"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.u_at_fifo_wr_rst_sync.u_sync_rst_n_bypass.u_mux
-ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (2 "001")
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
 
-CHECKSUM: "3188872617 1734903030"
+CHECKSUM: "3446341511 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (1 "01")
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (3 "11")
 Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value) 1 -1" (3 "10")
 
-CHECKSUM: "716831743 656965095"
+CHECKSUM: "3897359831 656965095"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (2 "10")
 Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (2 "10")
@@ -8509,30 +8519,29 @@ Condition 20 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (
 Condition 27 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
 Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
 Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
-Condition 38 "2929272635" "(uart_rxto_en && (rx_timeout_count_q == uart_rxto_val)) 1 -1" (1 "01")
 Condition 50 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
 Condition 51 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
 Condition 52 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
 Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
 Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
 
-CHECKSUM: "3124638153 376068046"
+CHECKSUM: "2423242514 376068046"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "4066225999" "((csr_axil_req.ar.addr >= UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR) && (csr_axil_req.ar.addr < (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR + UART_LOG_ENGINE_CTRL_REG_MAP_SIZE))) 1 -1" (3 "11")
 
-CHECKSUM: "3188872617 1734903030"
+CHECKSUM: "3446341511 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
 Condition 5 "1171761969" "(rdata_fifo_rd_valid && uart_tx_ready_i) 1 -1" (1 "01")
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (1 "01")
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (3 "11")
 Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value) 1 -1" (3 "10")
 
-CHECKSUM: "716831743 656965095"
+CHECKSUM: "3897359831 656965095"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (2 "10")
 Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (2 "10")
@@ -8567,7 +8576,7 @@ Condition 65 "615111783" "(reg_out_i.main.MSR.intr || modem_status_intr_test) 1 
 
 CHECKSUM: "1695494083 1025963123"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "2785094000" "((bit_cnt_q == frame_length) && (rx_i != 1'b0)) 1 -1" (3 "11")
 Condition 17 "3823956829" "(extra_stop_bit_i && (word_length_i != 4'd5)) 1 -1" (2 "10")
 Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? ((^rx_data_o)) : (parity_odd_i ? ((~^{rx_parity, rx_data_o})) : ((^{rx_parity, rx_data_o}))))) 1 -1" (2 "101")
@@ -8576,17 +8585,17 @@ Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? (
 
 CHECKSUM: "802650105 1094008715"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_tx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "3124638153 376068046"
+CHECKSUM: "2423242514 376068046"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "4066225999" "((csr_axil_req.ar.addr >= UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR) && (csr_axil_req.ar.addr < (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR + UART_LOG_ENGINE_CTRL_REG_MAP_SIZE))) 1 -1" (3 "11")
 
-CHECKSUM: "3188872617 1734903030"
+CHECKSUM: "3446341511 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
 Condition 5 "1171761969" "(rdata_fifo_rd_valid && uart_tx_ready_i) 1 -1" (1 "01")
 Condition 10 "3500437531" "(log_fetch_mem_resp_valid && log_fetch_mem_resp_error) 1 -1" (3 "11")
@@ -8597,9 +8606,9 @@ Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.val
 Condition 15 "2434494202" "(reg_out.INTR_STATUS.LOG_FETCH_ERR.value && reg_out.INTR_ENABLE.LOG_FETCH_ERR.value) 1 -1" (3 "11")
 Condition 16 "3705290924" "(reg_out.INTR_STATUS.LOG_WRITE_ERR.value && reg_out.INTR_ENABLE.LOG_WRITE_ERR.value) 1 -1" (3 "11")
 
-CHECKSUM: "716831743 656965095"
+CHECKSUM: "3897359831 656965095"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (2 "10")
 Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (1 "01")
@@ -8638,7 +8647,7 @@ Condition 65 "615111783" "(reg_out_i.main.MSR.intr || modem_status_intr_test) 1 
 
 CHECKSUM: "1695494083 1025963123"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "2785094000" "((bit_cnt_q == frame_length) && (rx_i != 1'b0)) 1 -1" (3 "11")
 Condition 17 "3823956829" "(extra_stop_bit_i && (word_length_i != 4'd5)) 1 -1" (2 "10")
 Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? ((^rx_data_o)) : (parity_odd_i ? ((~^{rx_parity, rx_data_o})) : ((^{rx_parity, rx_data_o}))))) 1 -1" (2 "101")
@@ -8647,21 +8656,21 @@ Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? (
 
 CHECKSUM: "802650105 1094008715"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_tx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "3124638153 376068046"
+CHECKSUM: "2423242514 376068046"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 2 "1510564319" "(GEN_LOG_ENGINE && (csr_axil_req.aw.addr >= LOG_ENGINE_REG_MAP_BASE_ADDR) && (csr_axil_req.aw.addr < (LOG_ENGINE_REG_MAP_BASE_ADDR + LOG_ENGINE_REG_MAP_SIZE))) 1 -1" (2 "-10")
 Condition 3 "3014613403" "((csr_axil_req.aw.addr >= UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR) && (csr_axil_req.aw.addr < (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR + UART_LOG_ENGINE_CTRL_REG_MAP_SIZE))) 1 -1" (2 "10")
 Condition 5 "752976802" "(GEN_LOG_ENGINE && (csr_axil_req.ar.addr >= LOG_ENGINE_REG_MAP_BASE_ADDR) && (csr_axil_req.ar.addr < (LOG_ENGINE_REG_MAP_BASE_ADDR + LOG_ENGINE_REG_MAP_SIZE))) 1 -1" (2 "-10")
 Condition 6 "4066225999" "((csr_axil_req.ar.addr >= UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR) && (csr_axil_req.ar.addr < (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR + UART_LOG_ENGINE_CTRL_REG_MAP_SIZE))) 1 -1" (2 "10")
 Condition 6 "4066225999" "((csr_axil_req.ar.addr >= UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR) && (csr_axil_req.ar.addr < (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR + UART_LOG_ENGINE_CTRL_REG_MAP_SIZE))) 1 -1" (3 "11")
 
-CHECKSUM: "3188872617 1734903030"
+CHECKSUM: "3446341511 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
 Condition 5 "1171761969" "(rdata_fifo_rd_valid && uart_tx_ready_i) 1 -1" (1 "01")
 Condition 10 "3500437531" "(log_fetch_mem_resp_valid && log_fetch_mem_resp_error) 1 -1" (3 "11")
@@ -8672,9 +8681,9 @@ Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.val
 Condition 15 "2434494202" "(reg_out.INTR_STATUS.LOG_FETCH_ERR.value && reg_out.INTR_ENABLE.LOG_FETCH_ERR.value) 1 -1" (3 "11")
 Condition 16 "3705290924" "(reg_out.INTR_STATUS.LOG_WRITE_ERR.value && reg_out.INTR_ENABLE.LOG_WRITE_ERR.value) 1 -1" (3 "11")
 
-CHECKSUM: "716831743 656965095"
+CHECKSUM: "3897359831 656965095"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (2 "10")
 Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (1 "01")
@@ -8711,19 +8720,20 @@ Condition 65 "615111783" "(reg_out_i.main.MSR.intr || modem_status_intr_test) 1 
 
 CHECKSUM: "1695494083 1025963123"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "2785094000" "((bit_cnt_q == frame_length) && (rx_i != 1'b0)) 1 -1" (3 "11")
 Condition 17 "3823956829" "(extra_stop_bit_i && (word_length_i != 4'd5)) 1 -1" (2 "10")
 Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? ((^rx_data_o)) : (parity_odd_i ? ((~^{rx_parity, rx_data_o})) : ((^{rx_parity, rx_data_o}))))) 1 -1" (4 "111")
 
 CHECKSUM: "802650105 1094008715"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_tx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "2476875544 193996585"
+CHECKSUM: "456422775 2321522201"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration
-ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Condition 2 "2939188045" "((off >= ExtPvtBase) && (off < (ExtPvtBase + ExtPvtSize))) 1 -1" (2 "10")
 Condition 6 "371092708" "(i3c_dct_mem_sink_i[0].req & ((~i3c_dct_mem_sink_i[0].write))) 1 -1" (2 "10")
 Condition 8 "1348474867" "(i3c_dct_mem_sink_i[1].req & ((~i3c_dct_mem_sink_i[1].write))) 1 -1" (2 "10")
 Condition 10 "3334913594" "(i3c_dct_mem_sink_i[2].req & ((~i3c_dct_mem_sink_i[2].write))) 1 -1" (2 "10")
@@ -8731,42 +8741,42 @@ Condition 12 "2159592749" "(i3c_dct_mem_sink_i[3].req & ((~i3c_dct_mem_sink_i[3]
 Condition 14 "702031098" "(i3c_dct_mem_sink_i[4].req & ((~i3c_dct_mem_sink_i[4].write))) 1 -1" (2 "10")
 Condition 16 "1873174509" "(i3c_dct_mem_sink_i[5].req & ((~i3c_dct_mem_sink_i[5].write))) 1 -1" (2 "10")
 
-CHECKSUM: "1114926396 1130749731"
+CHECKSUM: "2585843499 1130749731"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_efuse_interface_shim
-ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 9 "3774810071" "(apb_fuse_bank_resp_w_readback.pslverr || ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) 1 -1" (3 "10")
 Condition 12 "2953569792" "((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK)) 1 -1" (1 "00")
 Condition 18 "3037674975" "((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK)) 1 -1" (1 "00")
 
 CHECKSUM: "2948406138 4040424900"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaActionGen
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "1041975614" "self_filter[ii] = 1'b1;"
 
 CHECKSUM: "1104308719 4149225438"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaEventGen.gen_cla_counter[1].cla_counter_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "56665479" "next_state = STOP;"
 
 CHECKSUM: "1104308719 4149225438"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaEventGen.gen_cla_counter[2].cla_counter_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "56665479" "next_state = STOP;"
 
 CHECKSUM: "1104308719 4149225438"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaEventGen.gen_cla_counter[3].cla_counter_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "56665479" "next_state = STOP;"
 
 CHECKSUM: "236190842 1731354690"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.debug_signal_shift_mux_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "477797219" "debug_signals_per_lane_out[i] = debug_signals_per_lane_d2[i];"
 Block 5 "2032190033" "debug_signals_per_lane_out[i] = debug_signals_per_lane_d1[i];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[0].cla_node_eap_set_inst.gen_cla_node_eap_inst[0].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
 Block 12 "517325933" "udf_result = NodeEapMmr.Udf[5];"
 Block 13 "4214774098" "udf_result = NodeEapMmr.Udf[6];"
@@ -8774,28 +8784,28 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[0].cla_node_eap_set_inst.gen_cla_node_eap_inst[1].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 12 "517325933" "udf_result = NodeEapMmr.Udf[5];"
 Block 13 "4214774098" "udf_result = NodeEapMmr.Udf[6];"
 Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[0].cla_node_eap_set_inst.gen_cla_node_eap_inst[2].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 12 "517325933" "udf_result = NodeEapMmr.Udf[5];"
 Block 13 "4214774098" "udf_result = NodeEapMmr.Udf[6];"
 Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[0].cla_node_eap_set_inst.gen_cla_node_eap_inst[3].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 12 "517325933" "udf_result = NodeEapMmr.Udf[5];"
 Block 13 "4214774098" "udf_result = NodeEapMmr.Udf[6];"
 Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[1].cla_node_eap_set_inst.gen_cla_node_eap_inst[0].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "280003872" "udf_result = NodeEapMmr.Udf[1];"
 Block 9 "4116518943" "udf_result = NodeEapMmr.Udf[2];"
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
@@ -8806,7 +8816,7 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[1].cla_node_eap_set_inst.gen_cla_node_eap_inst[1].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "280003872" "udf_result = NodeEapMmr.Udf[1];"
 Block 9 "4116518943" "udf_result = NodeEapMmr.Udf[2];"
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
@@ -8817,7 +8827,7 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[1].cla_node_eap_set_inst.gen_cla_node_eap_inst[2].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "280003872" "udf_result = NodeEapMmr.Udf[1];"
 Block 9 "4116518943" "udf_result = NodeEapMmr.Udf[2];"
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
@@ -8828,7 +8838,7 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[1].cla_node_eap_set_inst.gen_cla_node_eap_inst[3].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "280003872" "udf_result = NodeEapMmr.Udf[1];"
 Block 9 "4116518943" "udf_result = NodeEapMmr.Udf[2];"
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
@@ -8839,7 +8849,7 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[2].cla_node_eap_set_inst.gen_cla_node_eap_inst[0].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "280003872" "udf_result = NodeEapMmr.Udf[1];"
 Block 9 "4116518943" "udf_result = NodeEapMmr.Udf[2];"
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
@@ -8850,7 +8860,7 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[2].cla_node_eap_set_inst.gen_cla_node_eap_inst[1].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "280003872" "udf_result = NodeEapMmr.Udf[1];"
 Block 9 "4116518943" "udf_result = NodeEapMmr.Udf[2];"
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
@@ -8861,7 +8871,7 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[2].cla_node_eap_set_inst.gen_cla_node_eap_inst[2].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "280003872" "udf_result = NodeEapMmr.Udf[1];"
 Block 9 "4116518943" "udf_result = NodeEapMmr.Udf[2];"
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
@@ -8872,7 +8882,7 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[2].cla_node_eap_set_inst.gen_cla_node_eap_inst[3].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "280003872" "udf_result = NodeEapMmr.Udf[1];"
 Block 9 "4116518943" "udf_result = NodeEapMmr.Udf[2];"
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
@@ -8883,7 +8893,7 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[3].cla_node_eap_set_inst.gen_cla_node_eap_inst[0].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "280003872" "udf_result = NodeEapMmr.Udf[1];"
 Block 9 "4116518943" "udf_result = NodeEapMmr.Udf[2];"
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
@@ -8894,7 +8904,7 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[3].cla_node_eap_set_inst.gen_cla_node_eap_inst[1].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "280003872" "udf_result = NodeEapMmr.Udf[1];"
 Block 9 "4116518943" "udf_result = NodeEapMmr.Udf[2];"
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
@@ -8905,7 +8915,7 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[3].cla_node_eap_set_inst.gen_cla_node_eap_inst[2].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "280003872" "udf_result = NodeEapMmr.Udf[1];"
 Block 9 "4116518943" "udf_result = NodeEapMmr.Udf[2];"
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
@@ -8916,7 +8926,7 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "1071030063 1188135541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.gen_cla_node_eap_set_inst[3].cla_node_eap_set_inst.gen_cla_node_eap_inst[3].cla_node_eap_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "280003872" "udf_result = NodeEapMmr.Udf[1];"
 Block 9 "4116518943" "udf_result = NodeEapMmr.Udf[2];"
 Block 10 "2540598213" "udf_result = NodeEapMmr.Udf[3];"
@@ -8927,7 +8937,7 @@ Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
 CHECKSUM: "2078871858 4109940310"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].u_mux_sel.debug_bus_mux
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 9 "731552736" "debug_bus[0] = ((enable_mode_d2 != 2'b11) ? ((0 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0)) : (~debug_bus_q[0]));"
 Block 19 "2293129607" "debug_bus[1] = ((enable_mode_d2 != 2'b11) ? ((1 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0)) : (~debug_bus_q[1]));"
 Block 29 "2684599869" "debug_bus[2] = ((enable_mode_d2 != 2'b11) ? ((2 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0)) : (~debug_bus_q[2]));"
@@ -8935,145 +8945,145 @@ Block 39 "53953626" "debug_bus[3] = ((enable_mode_d2 != 2'b11) ? ((3 == 0) ? 16'
 
 CHECKSUM: "3775597833 2919597303"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.accumulator_instance.gen_accumulator_bank_instance[0].accumulator_bank_instance
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "1833093374" "next_bank_status = BANK_FULL;"
 Block 11 "915310112" "next_bank_status = BANK_PARTIAL;"
 Block 15 "4164539775" "next_bank_status = bank_status;"
 
 CHECKSUM: "3775597833 2919597303"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.accumulator_instance.gen_accumulator_bank_instance[1].accumulator_bank_instance
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 11 "915310112" "next_bank_status = BANK_PARTIAL;"
 Block 15 "4164539775" "next_bank_status = bank_status;"
 
 CHECKSUM: "3897059503 2255204408"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 232 "612704942" "update_value = (old_value | op1);"
 Block 234 "2717922345" "update_value = (old_value & (~op1));"
 
 CHECKSUM: "1659362951 3889989270"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgEapStatus_F_Rsvd3116_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode0Eap0Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode0Eap1Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode0Eap2Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode0Eap3Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode1Eap0Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode1Eap1Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode1Eap2Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode1Eap3Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode2Eap0Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode2Eap1Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode2Eap2Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode3Eap0Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode3Eap1Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgTimestampCapture_F_Timestamp_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1876497610 1801488889"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.dst_csr_gen_blk.dst_csr_inst[0].u_dst_mmr
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 18 "612704942" "update_value = (old_value | op1);"
 Block 20 "2717922345" "update_value = (old_value & (~op1));"
 
 CHECKSUM: "1453354636 2473257076"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.dst_sink_csr_gen_blk.u_dst_sink_mmr
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 32 "612704942" "update_value = (old_value | op1);"
 Block 34 "2717922345" "update_value = (old_value & (~op1));"
 
 CHECKSUM: "4117541145 2457999946"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.funnel_mmr_gen_blk.u_funnel_mmr
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 16 "612704942" "update_value = (old_value | op1);"
 Block 18 "2717922345" "update_value = (old_value & (~op1));"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.funnel_mmr_gen_blk.u_funnel_mmr.MMR_Trfunnelcontrol_F_Trfunnelempty_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "4070406870 1076729275"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.i_vidtopid_ntrace_disinput
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "711496616" "VIdToPId[vid_map[i]].pid = 1'(i);"
 Block 8 "1451315343" "pid_vector[VIdToPId[k].pid] = vid_vector[k];"
 
 CHECKSUM: "3354362860 3494525935"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 37 "1254440351" "TrRamFreeWayMaskPend_ANY[TrRamPendPktRd_ANY[i].TrRamPendWayIdx_ANY] = 1'b0;"
 Block 40 "1615490008" "if ((TrRamPendPktWr_ANY[i].TrRamPendAddr_ANY == TrdstMemRamRdAddr_TS1))"
 Block 41 "3761040436" "TrdstRamPendPktInhibitRamRd_ANY[TrRamPendPktWr_ANY[i].TrRamPendWayIdx_ANY] = 1'b1;"
@@ -9086,228 +9096,228 @@ Block 50 "99144622" "TrntrRamPendPktInhibitRamRd_ANY[TrRamPendPktRd_ANY[i].TrRam
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrMemAxiWrVld_NtraceOrDst_ANY_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrMemRamRd_NtraceOrDst_ANY_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 3889989270"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrFlushTimeoutCntr_ANY_ff.u_dff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrFlushTimeoutDone_ANY_ff.u_dff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrFlushTimeoutStart_ANY_ff.u_dff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrMemAxiWrAddrWrap_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2780125675"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrMemAxiWrAddr_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 258646989"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrMemRamRdAddrFlop_ANY_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "3248835458 1547160664"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.ff_dst_framestart
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 7 "1708829174" "temp_therm = (temp_therm | req_in[(i - 1)]);"
 
 CHECKSUM: "3248835458 1547160664"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.ff_ntr_framestart
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "4242169642" "continue_flag = 1'b0;"
 Block 7 "1708829174" "temp_therm = (temp_therm | req_in[(i - 1)]);"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[0].TrRamPendPktVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 1016824011"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[0].TrRamPendPkt_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[1].TrRamPendPktVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 1016824011"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[1].TrRamPendPkt_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[2].TrRamPendPktVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 1016824011"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[2].TrRamPendPkt_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[3].TrRamPendPktVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 1016824011"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[3].TrRamPendPkt_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[4].TrRamPendPktVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 1016824011"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[4].TrRamPendPkt_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[5].TrRamPendPktVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 1016824011"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[5].TrRamPendPkt_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[6].TrRamPendPktVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 1016824011"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[6].TrRamPendPkt_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[7].TrRamPendPktVld_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 1016824011"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrRamPendPktVld_ff[7].TrRamPendPkt_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[0].TrntrMemRdBufferVld_ff.u_dff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[0].TrntrMemRdBuffer_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[1].TrntrMemRdBufferVld_ff.u_dff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[1].TrntrMemRdBuffer_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[2].TrntrMemRdBufferVld_ff.u_dff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[2].TrntrMemRdBuffer_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[3].TrntrMemRdBufferVld_ff.u_dff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[3].TrntrMemRdBuffer_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[4].TrntrMemRdBufferVld_ff.u_dff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[4].TrntrMemRdBuffer_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[5].TrntrMemRdBufferVld_ff.u_dff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[5].TrntrMemRdBuffer_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[6].TrntrMemRdBufferVld_ff.u_dff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[6].TrntrMemRdBuffer_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2118049102"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[7].TrntrMemRdBufferVld_ff.u_dff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 2158749794"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[7].TrntrMemRdBuffer_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 1137716438"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_trntrcoreNewFrameStart_ANY[0].trntrcorenextRamWpLow_ANY_ff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
 CHECKSUM: "1659362951 258646989"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.trntrNumFramesFilledInSRAM_ANY_ff.u_dff
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "2712662083" "out <= in;"
 
-CHECKSUM: "404099673 3286977692"
+CHECKSUM: "1990251536 3286977692"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_smem_axi_master
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 7 "210827862" "next_state = RESP_HANDSHAKE;"
 Block 9 "710888766" "next_state = AW_HANDSHAKE;"
 Block 11 "2830201264" "next_state = W_HANDSHAKE;"
@@ -9320,14 +9330,14 @@ Block 20 "3687762731" "next_state = AWAIT_REQUEST;"
 
 CHECKSUM: "3643492222 4258594001"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_network_inst.north_chan_gen[0].trace_hop_north_core_inst
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 3 "3544009356" "if ((~upstrm_tr_enabled_srcs[i]))"
 Block 4 "2349953980" "num_disabled_cores_as_repeaters = (num_disabled_cores_as_repeaters + 1'b1);"
 Block 5 "4215712753" "num_disabled_cores_as_repeaters = num_disabled_cores_as_repeaters;"
 
 CHECKSUM: "281707938 2547476995"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_frontend_wrapper.gen_axi_to_iDMA_fe[0].u_idma_transfer_id_gen
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 2 "173053111" "if (issue_i)"
 Block 3 "74948039" "next_d = 'h00000002;"
 Block 4 "60495598" "next_d = 'b1;"
@@ -9335,20 +9345,21 @@ Block 9 "379044390" "if (retire_i)"
 Block 10 "2836492767" "completed_d = 'h00000002;"
 Block 11 "2204045824" "completed_d = 'b1;"
 
-CHECKSUM: "1036002057 407725234"
+CHECKSUM: "46423763 3132404876"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 17 "1626659636" "if (disable_sram_auto_init_i)"
-Block 18 "2390191028" "nxt_state = MEM_ZERO_DONE;"
+ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 23 "1626659636" "if (disable_sram_auto_init_i)"
+Block 24 "2390191028" "nxt_state = MEM_ZERO_DONE;"
 
-CHECKSUM: "4121512156 1218059355"
+CHECKSUM: "2236679815 1218059355"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "623845184" "tcount_d = 14'b1;"
+Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "2664491312 3820941057"
+CHECKSUM: "331326766 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_target_fsm
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "2778305497" "tcount_d = 14'b1;"
 Block 6 "623845184" "tcount_d = 14'b1;"
 Block 101 "3275852885" "nack_transaction_d = 1'b1;"
@@ -9360,9 +9371,9 @@ Block 200 "1986623432" "state_d = WAIT_FOR_STOP;"
 Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
 Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
 
-CHECKSUM: "4121512156 1218059355"
+CHECKSUM: "2236679815 1218059355"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "623845184" "tcount_d = 14'b1;"
 Block 35 "1289397273" "unhandled_nak_cnt <= (unhandled_nak_cnt + 1'b1);"
 Block 36 "3252250877" "unhandled_nak_cnt_expired <= 1'b1;"
@@ -9410,9 +9421,9 @@ Block 275 "627521164" "state_d = IDLE;"
 Block 278 "625914487" "state_d = IDLE;"
 Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "2664491312 3820941057"
+CHECKSUM: "331326766 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "2778305497" "tcount_d = 14'b1;"
 Block 6 "623845184" "tcount_d = 14'b1;"
 Block 101 "3275852885" "nack_transaction_d = 1'b1;"
@@ -9427,9 +9438,9 @@ Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
 Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
 Block 251 "248185479" "state_d = WAIT_FOR_STOP;"
 
-CHECKSUM: "1584876630 631037930"
+CHECKSUM: "3413393998 631037930"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 19 "2351103625" "controller_tx_ready_o = 1'b0;"
 Block 21 "3785233886" "if (fmt_lt_threshold)"
 Block 22 "1968073077" "controller_tx_ready_o = 1'b1;"
@@ -9439,9 +9450,9 @@ Block 43 "351329269" "if (tx_lt_threshold)"
 Block 44 "2869887708" "target_tx_ready_o = 1'b1;"
 Block 45 "1155078305" "target_tx_ready_o = 1'b0;"
 
-CHECKSUM: "4121512156 1218059355"
+CHECKSUM: "2236679815 1218059355"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "93300480" "tcount_d = 14'(thigh_i);"
 Block 13 "623845184" "tcount_d = 14'b1;"
 Block 28 "1460411861" "stretch_predict_cnt_expired <= 1'b1;"
@@ -9488,9 +9499,9 @@ Block 275 "627521164" "state_d = IDLE;"
 Block 278 "625914487" "state_d = IDLE;"
 Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "2664491312 3820941057"
+CHECKSUM: "331326766 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "2778305497" "tcount_d = 14'b1;"
 Block 6 "623845184" "tcount_d = 14'b1;"
 Block 101 "3275852885" "nack_transaction_d = 1'b1;"
@@ -9507,656 +9518,656 @@ Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
 Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
 Block 251 "248185479" "state_d = WAIT_FOR_STOP;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[10].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[11].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[12].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[13].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[14].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[15].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[16].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[17].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[18].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[19].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[1].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[20].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[21].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[22].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[23].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[24].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[25].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[26].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[27].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[28].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[29].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[2].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[30].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[31].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[32].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[33].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[34].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[35].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[36].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[37].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[38].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[39].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[3].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[40].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[41].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[42].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[43].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[44].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[45].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[46].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[47].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[48].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[49].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[4].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[50].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[51].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[52].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "1615857977" "core2pad = lsio_core2pad_data_i;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 11 "2090541377" "core2pad_en = (~lsio_core2pad_en_ni);"
@@ -10164,93 +10175,93 @@ Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 18 "3218752382" "pad2core_en = (~lsio_pad2core_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
 Block 25 "1578817696" "lsio_pad2core_data_o = pad2core;"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[53].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[54].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[55].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[56].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[57].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[58].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "1615857977" "core2pad = lsio_core2pad_data_i;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 11 "2090541377" "core2pad_en = (~lsio_core2pad_en_ni);"
@@ -10258,17 +10269,17 @@ Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 18 "3218752382" "pad2core_en = (~lsio_pad2core_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
 Block 25 "1578817696" "lsio_pad2core_data_o = pad2core;"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[59].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "1615857977" "core2pad = lsio_core2pad_data_i;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 11 "2090541377" "core2pad_en = (~lsio_core2pad_en_ni);"
@@ -10276,43 +10287,43 @@ Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 18 "3218752382" "pad2core_en = (~lsio_pad2core_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
 Block 25 "1578817696" "lsio_pad2core_data_o = pad2core;"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[5].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[60].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "1615857977" "core2pad = lsio_core2pad_data_i;"
 Block 11 "2090541377" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 18 "3218752382" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[61].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 4 "1615857977" "core2pad = lsio_core2pad_data_i;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 11 "2090541377" "core2pad_en = (~lsio_core2pad_en_ni);"
@@ -10320,157 +10331,157 @@ Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 18 "3218752382" "pad2core_en = (~lsio_pad2core_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
 Block 25 "1578817696" "lsio_pad2core_data_o = pad2core;"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[63].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[64].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "1354159478" "core2pad = reg__core2pad;"
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 13 "2833362442" "core2pad_en = reg__enable_rx_tx[0];"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 20 "1381818540" "pad2core_en = reg__enable_rx_tx[1];"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[6].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[7].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[8].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "2049897907 1232228262"
+CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[9].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-Block 35 "4212257238" "nxt_interrupt = (!pad2core_synced);"
-Block 36 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
-Block 37 "20630914" "nxt_interrupt = 1'b1;"
-Block 38 "153155380" "nxt_interrupt = 1'b0;"
-Block 39 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
-Block 40 "1017855172" "nxt_interrupt = 1'b1;"
-Block 41 "2995392593" "nxt_interrupt = 1'b0;"
+Block 38 "4212257238" "nxt_interrupt = (!pad2core_synced);"
+Block 39 "2943513911" "if (((!prev_pad2core) && pad2core_synced))"
+Block 40 "20630914" "nxt_interrupt = 1'b1;"
+Block 41 "153155380" "nxt_interrupt = 1'b0;"
+Block 42 "1646588936" "if ((prev_pad2core && (!pad2core_synced)))"
+Block 43 "1017855172" "nxt_interrupt = 1'b1;"
+Block 44 "2995392593" "nxt_interrupt = 1'b0;"
 
-CHECKSUM: "1319975045 1665523634"
+CHECKSUM: "3049458808 1576725420"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver
-ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 24 "1460728686" "message_buffer_wr_ptr_next = message_buffer_ptr_t'(0);"
+ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 36 "1460728686" "message_buffer_wr_ptr_next = message_buffer_ptr_t'(0);"
 
-CHECKSUM: "1319975045 1665523634"
+CHECKSUM: "3049458808 1576725420"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver
-ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 24 "1460728686" "message_buffer_wr_ptr_next = message_buffer_ptr_t'(0);"
+ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 36 "1460728686" "message_buffer_wr_ptr_next = message_buffer_ptr_t'(0);"
 
-CHECKSUM: "3188872617 3243120082"
+CHECKSUM: "3446341511 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 24 "3833313036" "log_fetch_done_status_next = 1'b0;"
-Block 46 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
+Block 55 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
 
-CHECKSUM: "716831743 3052798972"
+CHECKSUM: "3897359831 3052798972"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 89 "2875201528" "rx_fifo_threshold = rx_fifo_threshold_t'(8);"
 Block 90 "1036727875" "rx_fifo_threshold = rx_fifo_threshold_t'(14);"
 
-CHECKSUM: "3124638153 4080697105"
+CHECKSUM: "2423242514 4080697105"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "3148483232" "csr_axil_ar_select = CTRL_REG_MAP;"
 
-CHECKSUM: "3188872617 3243120082"
+CHECKSUM: "3446341511 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 24 "3833313036" "log_fetch_done_status_next = 1'b0;"
-Block 46 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
+Block 55 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
 
-CHECKSUM: "716831743 3052798972"
+CHECKSUM: "3897359831 3052798972"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 60 "2883360406" "dma_mode_1_txrdy = 1'b0;"
 Block 63 "4261279834" "if ((!tx_fifo_rvalid))"
 Block 64 "1414431499" "dma_mode_1_txrdy = 1'b1;"
@@ -10492,23 +10503,23 @@ Block 130 "3619336723" "cts = 1'b0;"
 
 CHECKSUM: "1695494083 3871428551"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "2822615368" "idle_d = 1'b1;"
 
-CHECKSUM: "3124638153 4080697105"
+CHECKSUM: "2423242514 4080697105"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "3148483232" "csr_axil_ar_select = CTRL_REG_MAP;"
 
-CHECKSUM: "3188872617 3243120082"
+CHECKSUM: "3446341511 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 24 "3833313036" "log_fetch_done_status_next = 1'b0;"
-Block 46 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
+Block 55 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
 
-CHECKSUM: "716831743 3052798972"
+CHECKSUM: "3897359831 3052798972"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 60 "2883360406" "dma_mode_1_txrdy = 1'b0;"
 Block 63 "4261279834" "if ((!tx_fifo_rvalid))"
 Block 64 "1414431499" "dma_mode_1_txrdy = 1'b1;"
@@ -10529,23 +10540,23 @@ Block 130 "3619336723" "cts = 1'b0;"
 
 CHECKSUM: "1695494083 3871428551"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "2822615368" "idle_d = 1'b1;"
 
-CHECKSUM: "3124638153 4080697105"
+CHECKSUM: "2423242514 4080697105"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "3148483232" "csr_axil_ar_select = CTRL_REG_MAP;"
 
-CHECKSUM: "3188872617 3243120082"
+CHECKSUM: "3446341511 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 24 "3833313036" "log_fetch_done_status_next = 1'b0;"
-Block 46 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
+Block 55 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
 
-CHECKSUM: "716831743 3052798972"
+CHECKSUM: "3897359831 3052798972"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 60 "2883360406" "dma_mode_1_txrdy = 1'b0;"
 Block 63 "4261279834" "if ((!tx_fifo_rvalid))"
 Block 64 "1414431499" "dma_mode_1_txrdy = 1'b1;"
@@ -10566,19 +10577,19 @@ Block 130 "3619336723" "cts = 1'b0;"
 
 CHECKSUM: "1695494083 3871428551"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "2822615368" "idle_d = 1'b1;"
 
-CHECKSUM: "1114926396 1239783294"
+CHECKSUM: "2585843499 1719023781"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_efuse_interface_shim
-ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 16 "797960070" "efuse_read_state_d = ST_READ_IDLE;"
-Block 43 "740864126" "efuse_write_state_d = ST_WRITE_IDLE;"
-Block 54 "1374024879" "efuse_model_otp_req_o = 74'b0;"
+Block 52 "740864126" "efuse_write_state_d = ST_WRITE_IDLE;"
+Block 72 "1374024879" "efuse_model_otp_req_o = 74'b0;"
 
 CHECKSUM: "521771762 822323760"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_mems.u_rom_mem
-ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 6 "23675164" "$display(\"INFO: [OCAH4CORECluster_rom_ext] Loading ROM from +rom_bin64 plusarg: %s\", rom_mem_path);"
 Block 7 "2165382884" "$fclose(file_handle);"
 Block 8 "2609405983" "$error(\"ERROR: [OCAH4CORECluster_rom_ext] ROM file not found: %s\", rom_mem_path);"

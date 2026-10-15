@@ -12,7 +12,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_i2c_p0_nack_test(smc_base_test):
-    """Commercial P0 NACK: allow-path + address NACK + data NACK."""
+    """I2C0 address NACK and data NACK against the NACK slave VIP, after the I2C1 allow path."""
 
     required_evidence = (
         "CHK-I2C-P0-NACK-ALLOW",

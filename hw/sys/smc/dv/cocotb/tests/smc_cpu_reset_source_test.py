@@ -30,10 +30,9 @@ class smc_cpu_reset_source_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_cpu_reset_source_test_seq("cpu_rst_src_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # Re-derive the verdict from the measured DUT words, not from flags the
-        # sequence set itself. `CORE0_N` / `APPLIED` are the generated-header
-        # field masks the sequence addressed with, so a weakened compare inside
-        # body() still fails here.
+        # The verdict is derived from the measured DUT words with the
+        # generated-header field masks `CORE0_N` / `APPLIED`, independently of
+        # any flag the sequence set.
         samples = {
             "RESET_CTRL idle": seq.ctrl_idle,
             "RESET_CTRL asserted": seq.ctrl_asserted,

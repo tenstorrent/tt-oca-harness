@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Walk the CLA event selectors of one node over every event index.
+"""Walk the CLA event selectors of every node over every event index.
 
 Every address, field position, field width, reset value and software-access
 type comes from the generated register map through
@@ -14,15 +14,23 @@ bus, so the selector is a one-hot pick enumerated over the whole field range,
 and a pair left at its reset only ever exercises index zero.
 
 This sequence drives each of the three selectors over all 64 values its field
-offers, on every event-action pair of node 0, with the pair's relation left at
-its RDL reset so the pair activates when and only when the selected event is
-asserted. ``CDbgEapStatus`` is read after every value, so which indices carry
-a live event is measured rather than assumed, and the pair is quiesced and its
-status cleared between values so each observation stands alone.
+offers, on every event-action pair of every node, with the pair's relation
+left at its RDL reset so the pair activates when and only when the selected
+event is asserted. ``CDbgEapStatus`` is read after every value, so which
+indices carry a live event is measured rather than assumed, and the pair is
+quiesced and its status cleared between values so each observation stands
+alone.
+
+A node's pairs can only set their status while that node is current, so the
+sweep walks the nodes in order: once a node's selectors are done, one of its
+pairs is re-programmed with an event index the sweep saw live and
+``DestNode`` pointing at the next node, and ``CurrentNode`` is polled until
+the DUT reports the move. A node that never becomes current fails.
 
 The test holds the DUT to two things: every selector value is accepted and
-read back exactly, and at least one event index is seen activating a pair.
-Without the second, a selector that was wired to nothing would pass.
+read back exactly, and on every node at least one event index is seen
+activating a pair. Without the second, a selector that was wired to nothing
+would pass.
 """
 
 from __future__ import annotations
@@ -34,24 +42,28 @@ from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_dfd_trace_accumulator_fill_test_seq import dfd_register, pack_fields, reg_field
 
-# Pairs of node 0. The node walk itself is owned by
-# smc_dfd_cla_node_eap_sweep_test; this sequence stays on the node that is
-# current out of reset so every pair it drives can set its status.
-_NODE = 0
+_NODES = 4
 _EAPS = 4
 
 _SELECTORS = ("EventType0", "EventType1", "EventType2")
 
 _SETTLE_CYCLES = 8
 
+# Bounded poll of the hardware-driven CurrentNode field after a
+# destination-node change.
+_NODE_POLLS = 8
+
 
 class smc_dfd_cla_event_type_sweep_test_seq(SmcCsrSeq):
-    """Drive every event index into every event selector of node 0's pairs."""
+    """Drive every event index into every event selector of every node's pairs."""
 
     def __init__(self, name: str = "smc_dfd_cla_event_type_sweep_test_seq") -> None:
         super().__init__(name)
         self.selector_values = 0
-        self.live_events: dict[str, set[int]] = {name: set() for name in _SELECTORS}
+        self.live_events: dict[int, dict[str, set[int]]] = {
+            node: {name: set() for name in _SELECTORS} for node in range(_NODES)
+        }
+        self.node_readbacks: list[int] = []
         self.value_checks = 0
 
     # -- register helpers -------------------------------------------------
@@ -66,20 +78,29 @@ class smc_dfd_cla_event_type_sweep_test_seq(SmcCsrSeq):
     async def _write(self, reg, word: int, label: str) -> None:
         await self.csr_write(f"{self._short(reg)}:{label}", reg.addr, word, length=reg.width_bytes)
 
-    async def _clear_status(self, eap: int) -> None:
+    async def _read_current_node(self, label: str) -> int:
+        ctrl = cla_register("CDbgClaCtrlStatus")
+        current = cla_field(ctrl, "CurrentNode")
+        return ((await self._read(ctrl, label)) & current.mask) >> current.offset
+
+    async def _clear_status(self, node: int, eap: int) -> None:
         reg = cla_register("CDbgEapStatus")
-        w2c = cla_field(reg, f"Node{_NODE}Eap{eap}W2C")
-        await self._write(reg, w2c.mask, f"w2c_set{eap}")
-        await self._write(reg, 0, f"w2c_clr{eap}")
+        w2c = cla_field(reg, f"Node{node}Eap{eap}W2C")
+        await self._write(reg, w2c.mask, f"w2c_set{node}_{eap}")
+        await self._write(reg, 0, f"w2c_clr{node}_{eap}")
+
+    async def _quiesce_all(self, label: str) -> None:
+        for node in range(_NODES):
+            for eap in range(_EAPS):
+                reg = cla_register(f"CDbgNode{node}Eap{eap}")
+                await self._write(reg, reg.reset_word, label)
 
     # -- phases -----------------------------------------------------------
 
     async def _arm_cla(self) -> None:
         ctrl = cla_register("CDbgClaCtrlStatus")
         chain = cla_field(ctrl, "ClaChainLoopDelay")
-        for eap in range(_EAPS):
-            reg = cla_register(f"CDbgNode{_NODE}Eap{eap}")
-            await self._write(reg, reg.reset_word, "reset")
+        await self._quiesce_all("reset")
         await self._write(
             ctrl,
             pack_fields(
@@ -94,25 +115,23 @@ class smc_dfd_cla_event_type_sweep_test_seq(SmcCsrSeq):
             ),
             "arm",
         )
-        current = cla_field(ctrl, "CurrentNode")
-        word = await self._read(ctrl, "current")
-        node = (word & current.mask) >> current.offset
-        assert node == _NODE, (
-            f"CDbgClaCtrlStatus.CurrentNode reads {node} after the CLA was armed; this "
-            f"sequence drives node {_NODE}'s pairs and their status can only be set while "
-            f"their own node is current"
+        node = await self._read_current_node("current")
+        assert node == 0, (
+            f"CDbgClaCtrlStatus.CurrentNode reads {node} after the CLA was armed; the sweep "
+            f"starts on node 0 and a node's pairs can only set their status while their own "
+            f"node is current"
         )
         self.value_checks += 1
 
-    async def _sweep_selector(self, selector: str) -> None:
-        """Every value of one selector field, on every pair of the node."""
+    async def _sweep_selector(self, node: int, selector: str) -> None:
+        """Every value of one selector field, on every pair of one node."""
         status = cla_register("CDbgEapStatus")
         for eap in range(_EAPS):
-            reg = cla_register(f"CDbgNode{_NODE}Eap{eap}")
+            reg = cla_register(f"CDbgNode{node}Eap{eap}")
             field = cla_field(reg, selector)
-            activated = cla_field(status, f"Node{_NODE}Eap{eap}")
+            activated = cla_field(status, f"Node{node}Eap{eap}")
             for value in range(1 << field.width):
-                word = pack_fields(reg, {selector: value, "DestNode": _NODE})
+                word = pack_fields(reg, {selector: value, "DestNode": node})
                 await self._write(reg, word, f"{selector}{value}")
                 readback = await self._read(reg, f"{selector}{value}_rb")
                 assert readback & reg.rw_mask == word & reg.rw_mask, (
@@ -123,10 +142,47 @@ class smc_dfd_cla_event_type_sweep_test_seq(SmcCsrSeq):
                 self.value_checks += 1
                 await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
                 if await self._read(status, f"{selector}{value}") & activated.mask:
-                    self.live_events[selector].add(value)
+                    self.live_events[node][selector].add(value)
                     await self._write(reg, reg.reset_word, f"{selector}{value}_quiet")
-                    await self._clear_status(eap)
+                    await self._clear_status(node, eap)
             await self._write(reg, reg.reset_word, f"{selector}_quiet")
+
+    async def _sweep_node(self, node: int) -> None:
+        for selector in _SELECTORS:
+            await self._sweep_selector(node, selector)
+        assert any(self.live_events[node].values()), (
+            f"no value of any of the {len(_SELECTORS)} event selectors made the DUT set a "
+            f"pair-activation bit of node {node} over the whole field range, so nothing proves "
+            f"node {node}'s selectors reach the event bus at all rather than being write-only "
+            f"storage"
+        )
+        self.value_checks += 1
+
+    async def _move_to_node(self, node: int, target: int) -> None:
+        """Send the current node to `target` through pair 0 and a live event index."""
+        selector, values = next(
+            (name, values) for name, values in self.live_events[node].items() if values
+        )
+        reg = cla_register(f"CDbgNode{node}Eap0")
+        await self._write(
+            reg, pack_fields(reg, {selector: min(values), "DestNode": target}), "dest"
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        current = node
+        for _ in range(_NODE_POLLS):
+            current = await self._read_current_node(f"move_{node}_{target}")
+            if current == target:
+                break
+        self.node_readbacks.append(current)
+        assert current == target, (
+            f"CDbgClaCtrlStatus.CurrentNode reads {current} after node {node}'s pair 0 was "
+            f"given live event index {min(values)} on {selector} with DestNode = {target}; the "
+            f"node walk cannot reach node {target}, so its pairs would never be able to set "
+            f"their status"
+        )
+        self.value_checks += 1
+        await self._write(reg, reg.reset_word, "quiet_after_move")
+        await self._clear_status(node, 0)
 
     # -- body -------------------------------------------------------------
 
@@ -144,56 +200,57 @@ class smc_dfd_cla_event_type_sweep_test_seq(SmcCsrSeq):
 
         status = cla_register("CDbgEapStatus")
         live = 0
-        for eap in range(_EAPS):
-            live |= cla_field(status, f"Node{_NODE}Eap{eap}").mask
+        for node in range(_NODES):
+            for eap in range(_EAPS):
+                live |= cla_field(status, f"Node{node}Eap{eap}").mask
         at_reset = await self._read(status, "reset")
         assert at_reset & live == 0, (
             f"CDbgEapStatus reads 0x{at_reset:016x} before the CLA was armed; "
-            f"0x{at_reset & live:x} of node {_NODE}'s pair-status bits are already set, so a "
-            f"later activation would not be attributable to the selector this sweep programmed"
+            f"0x{at_reset & live:x} of the pair-status bits are already set, so a later "
+            f"activation would not be attributable to the selector this sweep programmed"
         )
         self.value_checks += 1
 
         await self._arm_cla()
-        for selector in _SELECTORS:
-            await self._sweep_selector(selector)
+        for node in range(_NODES):
+            await self._sweep_node(node)
+            if node + 1 < _NODES:
+                await self._move_to_node(node, node + 1)
 
-        width = cla_field(cla_register(f"CDbgNode{_NODE}Eap0"), _SELECTORS[0]).width
-        expected = len(_SELECTORS) * _EAPS * (1 << width)
+        width = cla_field(cla_register("CDbgNode0Eap0"), _SELECTORS[0]).width
+        expected = len(_SELECTORS) * _NODES * _EAPS * (1 << width)
         assert self.selector_values == expected, (
             f"the sweep drove {self.selector_values} selector values; {len(_SELECTORS)} "
-            f"selectors over {_EAPS} pairs at {1 << width} values each is {expected}"
+            f"selectors over {_NODES} nodes x {_EAPS} pairs at {1 << width} values each is "
+            f"{expected}"
         )
         cocotb.log.info(
             "CHK-CLA-EVENT-SELECT-SWEEP: each of the %d event selectors of all %d pairs of "
-            "node %d took every one of the %d values its %d-bit field offers and read back "
-            "exactly, %d writes in all; each value is one index of the CLA event bus the "
-            "selector compares against",
+            "each of the %d nodes took every one of the %d values its %d-bit field offers "
+            "and read back exactly, %d writes in all; each value is one index of the CLA "
+            "event bus the selector compares against, and CurrentNode read back %s after each "
+            "node move",
             len(_SELECTORS),
             _EAPS,
-            _NODE,
+            _NODES,
             1 << width,
             width,
             self.selector_values,
+            self.node_readbacks,
         )
 
-        seen = {name: sorted(values) for name, values in self.live_events.items() if values}
-        assert seen, (
-            f"no value of any of the {len(_SELECTORS)} event selectors made the DUT set a "
-            f"pair-activation bit over the whole {1 << width}-value range, so nothing proves "
-            f"the selectors reach the event bus at all rather than being write-only storage"
-        )
-        self.value_checks += 1
+        seen = {
+            node: {name: sorted(values) for name, values in by_selector.items() if values}
+            for node, by_selector in self.live_events.items()
+        }
         cocotb.log.info(
-            "CHK-CLA-EVENT-SELECT-LIVE: the DUT set a pair-activation bit for the event "
-            "indices %s, so the selectors pick a live event bus rather than storing a value "
-            "nothing reads; each activation was cleared through the pair's own W2C bit "
-            "before the next index was programmed",
+            "CHK-CLA-EVENT-SELECT-LIVE: on every node the DUT set a pair-activation bit for "
+            "the event indices %s, so the selectors pick a live event bus rather than storing "
+            "a value nothing reads; each activation was cleared through the pair's own W2C "
+            "bit before the next index was programmed",
             seen,
         )
 
-        for eap in range(_EAPS):
-            reg = cla_register(f"CDbgNode{_NODE}Eap{eap}")
-            await self._write(reg, reg.reset_word, "restore")
+        await self._quiesce_all("restore")
         for reg in (cla_register("CDbgClaCtrlStatus"), mux, clk):
             await self._write(reg, reg.reset_word, "restore")

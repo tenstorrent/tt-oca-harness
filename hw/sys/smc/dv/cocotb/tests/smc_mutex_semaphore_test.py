@@ -34,9 +34,8 @@ class smc_mutex_semaphore_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_mutex_semaphore_test_seq("mutex_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # Re-derive the verdict from the DUT words the sequence measured, not
-        # from booleans the sequence set itself: if a compare inside body() is
-        # ever demoted to a log line, these still fail.
+        # The verdict rests on the DUT words the sequence captured, independent
+        # of any pass flag the sequence sets itself.
         assert (seq.take, seq.deny, seq.free_after_release) == (
             MUTEX_FREE,
             MUTEX_TAKEN,

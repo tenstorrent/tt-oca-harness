@@ -6,7 +6,7 @@
 // - Samuel Riedel <sriedel@iis.ee.ethz.ch>
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Distribute DMA requests over several backends
 module idma_mp_dist_midend #(

@@ -127,6 +127,7 @@ async def ocah_spi_erase_test(dut) -> None:
             probe.replay(records[:_BLANK_ERASE_FRAMES]),
             probe.check_nonvacuous(require_program=False, require_read=False, require_erase=True),
         ),
+        check_id="CHK-SPI-NONVAC-ERASE",
     )
     checker.expect_true(
         "CHK-SPI-NEG-ERASE",

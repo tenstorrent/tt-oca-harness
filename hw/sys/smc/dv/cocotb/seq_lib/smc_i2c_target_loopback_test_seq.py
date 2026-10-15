@@ -4,7 +4,7 @@
 
 `i2c.rdl` describes `CTRL.LLPBK` in target mode as a target that "sends all
 received SDA data back out": what an external controller writes to it comes
-back on the next read. No leaf had set it with the target enabled.
+back on the next read.
 
 The loopback is driven against back-pressure. The transmit FIFO's depth is
 measured by filling it through `TXDATA` until `STATUS.TXFULL` sets; it is then

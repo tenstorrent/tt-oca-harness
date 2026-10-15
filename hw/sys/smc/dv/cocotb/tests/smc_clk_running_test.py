@@ -17,10 +17,8 @@ from smc_base_test import smc_base_test
 # Composition (smc_clk_running_test_seq): 6 output-fabric pass-all filter CSR
 # writes + 2 JTAG-AXI payload write groups + the CG-enable program/readback pair
 # + the DMA descriptor programming and trigger. The DMA-DONE completion poll adds
-# a timing-dependent remainder, so the floor sits BELOW the run-to-run minimum: a
-# floor at any one observed count could false-fail on a seed whose DONE arrives
-# on the first poll, while this floor still fails a scenario that stops issuing
-# its directed traffic.
+# a seed-dependent number of reads, so the floor sits below the smallest count
+# any seed produces.
 CLK_RUNNING_MIN_CSR_ACCESSES = 20
 
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap: EFUSE_INTERFACE + SHIM_CTRL probe."""
+"""EFUSE_INTERFACE + SHIM_CTRL probe over SEP_IN AXI."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_efuse_shim_ctrl_test(smc_base_test):
-    """P1 coverage-gap depth: EFUSE_INTERFACE + SHIM_CTRL probe."""
+    """Read EFUSE_INTERFACE_CTRL_STATUS and EFUSE_SHIM_CTRL; compare the latter to its reset."""
 
     required_evidence = ("CHK-EFUSE-SHIM-CTRL",)
     min_evidence = 1
@@ -33,7 +33,8 @@ class smc_efuse_shim_ctrl_test(smc_base_test):
             SmcProtocolVipKind.EFUSE,
             type(self).__name__,
             # Directed stimulus floor: 2 SEP_IN AXI EFUSE_INTERFACE/SHIM_CTRL
-            # probe accesses. Literal here, not read from `seq.accesses`.
+            # probe accesses; a floor taken from `seq.accesses` would shrink
+            # with a sequence that stopped issuing them.
             min_csr_accesses=2,
             # The scoreboard's own per-bus tally, stamped by the driver that
             # completed each access, rather than `seq.accesses`, which the

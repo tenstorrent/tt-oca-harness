@@ -34,9 +34,6 @@ def _avs_mdata_high() -> bool:
 async def check_sideband_observability() -> None:
     """Verify sideband IRQ/state observability remains known after CSR probes.
 
-    Shared by ``octs_sanity_test``, ``smc_avsbus_sanity_test``,
-    ``smc_avsbus_clock_config_proxy_test`` and ``smc_avsbus_status_depth_test``.
-
     ``is_resolvable`` asserts are constant-true under Verilator (a 2-state
     simulator) and carry weight only on a 4-state run (VCS / Xcelium); the
     fail-capable checks are the one-hot, quiescence and encoding compares that
@@ -76,8 +73,8 @@ async def check_sideband_observability() -> None:
         f"one-hot encoded state must have exactly one"
     )
 
-    # (2) Quiescence. None of the four callers configures or triggers an AVSBus
-    # or telemetry interrupt before this point -- they issue CSR probes only --
+    # (2) Quiescence. No caller configures or triggers an AVSBus or telemetry
+    # interrupt before this point -- callers issue CSR probes only --
     # so both aggregates must still be deasserted. A spuriously asserting IRQ
     # fails here instead of being logged and ignored.
     assert avs_irq == 0, (

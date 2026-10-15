@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: alias-remap manager scope (FAB_SMC_018 subset).
 
-SEP=1 honest scope (no sep_in / no Force):
+Scope on the SEP=1 wrapper (no sep_in, no Force):
   S3  J2A programs alias region[0], writes via alias window, proves remapped
       SPM consumer readback (jtag manager path through smc_alias_remap_wrap).
   S1  not covered: DMA data_accel observe needs DMA bring-up.

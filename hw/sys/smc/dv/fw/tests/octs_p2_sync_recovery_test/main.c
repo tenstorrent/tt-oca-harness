@@ -265,7 +265,7 @@ int main(void) {
     uint64_t recovery_range = count_after_recovery - count_recovery;
     uint32_t deviation_estimate = (recovery_range > 0) ? (uint32_t)(recovery_range & 0xFF) : 0;
 
-    write_scratch(2, 0);                                       /* Placeholder, always 0 */
+    write_scratch(2, 0);                                       /* Unused slot, reads 0 */
     write_scratch(3, (uint32_t)(count_baseline & 0xFFFFFFFF)); /* Baseline count */
     write_scratch(4, (count_after_reset == 0) ? 0 : 1);        /* Count not cleared */
     write_scratch(5, (uint32_t)(count_recovery & 0xFFFFFFFF)); /* Recovery count */

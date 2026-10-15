@@ -20,7 +20,6 @@
 
 package smu_pkg;
 
-  import dtp_pkg::*;
 
   localparam int unsigned XtrigSmcIntCtLanes = 2;
   localparam int unsigned XtrigSmcClkStopLanes = 1;

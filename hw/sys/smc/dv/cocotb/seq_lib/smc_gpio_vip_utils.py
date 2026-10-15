@@ -14,7 +14,12 @@ Public interface:
   proof is built from, published for callers that need the pad left *held* while
   they sample something else inside the asserted window (the IRQ positive
   control in ``smc_5agent_observability_test_seq``); the caller owns pad drive
-  and release (`[REUSE-AND-LAYERING]`).
+  and release.
+* :func:`await_gpio_irq_only` -- the same bounded poll on the per-instance
+  ``tb_gpio_interrupt`` vector, requiring one wrap's bit at the expected level
+  and every other bit clear.
+* :func:`drive_gpio_pad` -- drive one pad from the bench through
+  ``tb_gpio_ext_drive_*``, or release it.
 """
 
 from __future__ import annotations
@@ -40,7 +45,7 @@ def _irq_level(dut) -> int:
     The aggregate is a registered DUT output that is out of reset by the time
     the caller's CSR sequence has completed, so X/Z here is a defect, not a
     don't-care: fail with a diagnostic instead of letting ``int()`` resolve it
-    arbitrarily ([X-AWARE-CHECK]).
+    arbitrarily.
     """
     raw = dut.tb_gpio_irq_any.value
     assert raw.is_resolvable, f"tb_gpio_irq_any is not resolvable (X/Z): {raw}"
@@ -55,8 +60,8 @@ async def await_gpio_irq_level(dut, expected: int, label: str) -> int:
     held and sample other observables inside the asserted window.
 
     Returns the number of clk_smc_i cycles the level took to appear. Raises on
-    bound expiry with the last observed state (`[TIMEOUT-MUST-FAIL]`), and on
-    any X/Z seen while polling (`[X-AWARE-CHECK]`).
+    bound expiry with the last observed state, and on any X/Z seen while
+    polling.
     """
     clk = dut.clk_smc_i
     last = None
@@ -129,3 +134,56 @@ async def check_gpio0_active_low_irq() -> None:
         "CHK-GPIO-IRQ-ACTIVE-LOW: all three exact tb_gpio_irq_any legs "
         "(0 -> 1 -> 0) passed under external GPIO0 pad drive"
     )
+
+
+def gpio_irq_vector(dut) -> int:
+    """X-aware read of the per-instance ``tb_gpio_interrupt`` vector."""
+    raw = dut.tb_gpio_interrupt.value
+    assert raw.is_resolvable, f"tb_gpio_interrupt is not resolvable (X/Z): {raw}"
+    return int(raw)
+
+
+async def await_gpio_irq_only(dut, wrap: int, expected: int, label: str, hold: int = 0) -> int:
+    """Bounded poll until ``tb_gpio_interrupt`` is ``expected`` on ``wrap`` and 0 elsewhere.
+
+    A bit set on any other wrap keeps the poll waiting, so the bound expires
+    on an interrupt the wrong instance raised as well as on one that never
+    came. ``hold`` cycles re-check the vector once it matches, for a level
+    type that must persist while the pad is held; an edge type is polled with
+    no hold, once for the pulse and once for its end.
+
+    Returns the number of clk_smc_i cycles the vector took to match.
+    """
+    clk = dut.clk_smc_i
+    want = expected << wrap
+    last = None
+    for cycle in range(1, _IRQ_BOUND_CYCLES + 1):
+        await ClockCycles(clk, 1)
+        last = gpio_irq_vector(dut)
+        if last == want:
+            for held in range(1, hold + 1):
+                await ClockCycles(clk, 1)
+                now = gpio_irq_vector(dut)
+                assert now == want, (
+                    f"{label}: tb_gpio_interrupt reached 0x{want:x} after {cycle} clk_smc_i "
+                    f"cycles but read 0x{now:x} {held} cycle(s) later"
+                )
+            return cycle
+    raise AssertionError(
+        f"{label}: tb_gpio_interrupt never read 0x{want:x} within {_IRQ_BOUND_CYCLES} "
+        f"clk_smc_i cycles (last observed 0x{last:x})"
+    )
+
+
+def drive_gpio_pad(dut, wrap: int, level: int | None) -> None:
+    """Drive pad ``wrap`` to ``level`` through ``tb_gpio_ext_drive_*``; ``None`` releases it."""
+    en = int(dut.tb_gpio_ext_drive_en.value)
+    val = int(dut.tb_gpio_ext_drive_value.value)
+    mask = 1 << wrap
+    if level is None:
+        en &= ~mask
+    else:
+        en |= mask
+        val = (val | mask) if level else (val & ~mask)
+    dut.tb_gpio_ext_drive_en.value = en
+    dut.tb_gpio_ext_drive_value.value = val

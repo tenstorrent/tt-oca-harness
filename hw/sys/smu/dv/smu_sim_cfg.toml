@@ -238,18 +238,13 @@ policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.to
 # `cover property` points, and needs `-lca`. Toggle covers every net of the
 # units the scope keeps, as on the SMC scope. `-cm_noconst` and
 # `-cm_seqnoconst` leave nets a constant drives out of the toggle population,
-# as the DTP scope does. The coverage
-# database lands next to simv under the wrapper's one compile profile,
-# compile_smu_chiplet; the runner's default looks under a `default` build
-# directory this DUT never compiles into, so design_db names the database the
-# profile writes. cov/config/vcs/README.md explains the scope file and how a
-# finished run is read.
-# `smu_wrapper_cov_scope.hier` is written by the companion's gen_smu_cov_scope.py;
-# regenerate it after a build, then `--rebuild`.
+# as the DTP scope does. cov/config/vcs/README.md explains the scope file and
+# how a finished run is read.
+# `smu_wrapper_cov_scope.hier` is the compile-time instrumentation scope; a
+# change to it needs `--rebuild`.
 # Two DUTs share this dv tree, so the policy is named per DUT rather than
 # discovered at cov/config/vcs/coverage_policy.toml.
 policy_file = "hw/sys/smu/dv/cov/config/vcs/smu_wrapper_coverage_policy.toml"
-design_db = "hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb"
 compile_args = [
   "-cm",
   "line+cond+tgl+fsm+branch+assert",
@@ -295,6 +290,14 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 # model's own generators stay off.
 [frameworks.cocotb.sim]
 args = ["+pll_osc_bench"]
+
+[frameworks.cocotb.coverage.vcs]
+# The cocotb coverage database lands next to simv under the wrapper's one
+# compile profile, compile_smu_chiplet; the runner's default looks under a
+# `default` build directory this DUT never compiles into, so design_db names
+# the database the profile writes. The SV-UVM build writes its database where
+# the default design_artifact looks, so it keeps the default.
+design_db = "hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb"
 
 # Firmware/preload builds. Outputs are the staging manifest: the sim stage
 # copies each declared output into the per-test run directory, where the
@@ -769,3 +772,11 @@ build_dir = "hw/sys/smu/dv/build/uvm"
 [frameworks.uvm.targets.compile_smu_chiplet]
 description = "SMU SV-UVM view of the OSS smu_wrapper (DefaultCfg (SEP=1), real EL2 CPU)"
 build_dir = "hw/sys/smu/dv/build/uvm"
+
+[frameworks.uvm.coverage.vcs]
+# The SV-UVM view reports its coverage figures against a policy with the same
+# scope and exclusion files as the cocotb view's and no `[[thresholds]]` row:
+# a threshold rule scopes to a tool and a target, both views compile
+# compile_smu_chiplet, and the five SV-UVM leaves are not the set the cocotb
+# policy's `user` floor is written for.
+policy_file = "hw/sys/smu/dv/cov/config/vcs/smu_wrapper_uvm_coverage_policy.toml"

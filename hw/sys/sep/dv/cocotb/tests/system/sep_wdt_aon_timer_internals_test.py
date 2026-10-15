@@ -2,6 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The AON timer wakeup counter, expiry status, watchdog pet and WDOG_REGWEN lock follow the spec.
 
+OCAH provenance: ``sep_clock_uvm_aon_timer_operation_test`` checks counter
+advance and bark, ``wdt_wkup_timer_test`` checks wakeup timing,
+``wdt_cfg_lock_test`` checks ``WDOG_REGWEN``, and ``wdt_pet_reset_test`` checks
+watchdog pet.
+
 no_cpu host-AXI CSR test of the SEP WDT aon_timer internals separate from the
 bark/bite/NMI story: the WKUP (wakeup) timer + its INTR_STATE.wkup_expired RW1C
 status, the WDOG counter advance + pet, and the WDOG_REGWEN config-lock. The WKUP

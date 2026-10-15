@@ -293,7 +293,6 @@ int main(void) {
     timer_init();
     simputs("Timer initialization completed\n");
 
-    // Signal setup done to testbench
     simputs("Signaling setup complete to testbench\n");
     write_scratch(1, 0xebedebe4);
     simputs("Setup complete signal sent\n");

@@ -3,8 +3,8 @@
 """UART0 transmit-holding and receive paths that only unusual programming reaches.
 
 Every UART leaf programs a non-zero divisor before it writes `THR`, writes
-whole words, and leaves the trigger level on a documented code. Four other
-programmings, each in `MCR.LOOP` so the character comes back through UART0's
+whole words, and leaves the trigger level on a documented code. The
+programmings below, each in `MCR.LOOP` so the character comes back through UART0's
 own receiver and no pad carries it (`uart_16550_main.rdl`: "the transmitter
 is internally connected to the receiver"):
 

@@ -5,7 +5,7 @@
 // Authors:
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Synthesis wrapper for the Mempool mid-ends
 module idma_mp_midend_synth #(

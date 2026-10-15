@@ -62,7 +62,7 @@ LSR_THRE = _field_mask(_UART_H, "UART_16550_MAIN__LSR__THRE_bm")
 LSR_TEMT = _field_mask(_UART_H, "UART_16550_MAIN__LSR__TEMT_bm")
 
 # 16550 IntrID encodings, from uart_16550_main.rdl IIR.INTERRUPT_ID (the RDL
-# lists every encoding with its priority; RTL is not the source here).
+# lists every encoding with its priority).
 #   0x2 - Received Data Ready Interrupt   (priority 3)
 #   0x6 - Reception Timeout Interrupt     (priority 2)
 _INTR_ID_RDR = 0x2
@@ -96,8 +96,7 @@ _ABOVE_FIFO_DEPTH_TRIGGERS = {
 # LSR read per iteration over the SEP_IN AXI CSR path, which costs on the order
 # of 10^2 clocks; a divisor of 32 makes a character 5120 clocks, i.e. an order
 # of magnitude longer than one sample, so the transmitter is guaranteed to still
-# be busy when LSR is read. The loop remains event-based (it polls LSR.THRE) and
-# bounded, so expiry FAILS rather than being masked by a longer delay.
+# be busy when LSR is read.
 _UART_OVERSAMPLE = 16
 _CHAR_BITS_8N1 = 10
 _DLL_SLOW = 32
@@ -136,9 +135,8 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
         self.trigger_ids: dict[str, tuple[int, int, int]] = {}
 
     async def _write_fcr(self, value: int) -> None:
-        # FCR is the write-only alias of the IIR address in the 16550 map, so the
-        # label names BOTH the register written and the symbol addressed; a log
-        # line reading only "FCR" would trace to no symbol in this file.
+        # FCR is the write-only alias of the IIR address in the 16550 map; the
+        # label names both the register written and the symbol addressed.
         await self.csr_write("FCR_via_UART_IIR", UART_IIR, value)
 
     async def _fifo_set_trigger(self, trigger_cfg: int) -> None:
@@ -163,8 +161,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
         # Divisor=1 (fast loopback), 8N1, LOOP+RTS, ERBFI.
         await self.csr_write("LCR_DLAB", UART_LCR, LCR_WLS | LCR_DLAB)
         # DLL/DLH are the DLAB=1 aliases of the RBR/IER addresses; the labels
-        # name both so every register name in the kept log resolves to the
-        # symbol that addressed it.
+        # name both.
         await self.csr_write("DLL_via_UART_RBR", UART_RBR, _DLL_FAST)
         await self.csr_write("DLH_via_UART_IER", UART_IER, 0)
         await self.csr_write("LCR_8N1", UART_LCR, LCR_WLS)
@@ -318,10 +315,8 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
 
         # Slow the baud divisor so a character occupies _SLOW_CHAR_CLOCKS uart
         # clocks (see the constant's comment: 16x oversampling x 10 bit times x
-        # DLL, per uart_16550/doc/interface.adoc). The THRE==0 precondition below
-        # is still established from a DUT-reported event -- the fill loop polls
-        # LSR.THRE and raises if it never reads 0 -- the divisor only widens the
-        # transmit window so a bounded poll can land inside it.
+        # DLL, per uart_16550/doc/interface.adoc); the fill loop below polls
+        # LSR.THRE inside that window.
         await self.csr_write("LCR_DLAB_SLOW", UART_LCR, LCR_WLS | LCR_DLAB)
         await self.csr_write("DLL_SLOW_via_UART_RBR", UART_RBR, _DLL_SLOW)
         await self.csr_write("DLH_SLOW_via_UART_IER", UART_IER, 0)
@@ -373,7 +368,6 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
     async def _test_above_depth_triggers(self) -> None:
         """Unsupported thresholds 64 through 4096 never fire on a FULL 32-entry FIFO.
 
-        Sampling an empty FIFO would prove nothing: no level fires at depth 0.
         The FIFO is filled to its depth through loopback, and for every
         encoding the level is re-evaluated by popping one character and
         looping one back, so the 32nd arrival is compared against that

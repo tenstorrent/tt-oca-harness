@@ -25,7 +25,7 @@ $(OCAH_DATASHEETS_BUILD)/ocah-$(1)-datasheet.pdf: $(OCAH_DATASHEETS_SRC)/$(1).ad
 	@command -v "$(OCAH_ASCIIDOCTOR_PDF)" >/dev/null 2>&1 || { echo "error: asciidoctor-pdf not found ($(OCAH_ASCIIDOCTOR_PDF))."; echo "install asciidoctor-pdf, or run:"; echo "  ./scripts/docker-run.sh doc-pdf datasheets"; exit 1; }
 	@echo "Building $(1) datasheet PDF (asciidoctor-pdf)"
 	@mkdir -p "$(OCAH_DATASHEETS_BUILD)"
-	@cd "$(OCAH_DATASHEETS_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
+	@cd "$(OCAH_DATASHEETS_DIR)" && env $(OCAH_DOC_PDF_LOCALE) "$(OCAH_ASCIIDOCTOR_PDF)" \
 		-a pdf-theme="$(or $(wildcard $(OCAH_DATASHEETS_DIR)/$(1)-theme.yml),$(OCAH_DATASHEETS_THEME))" \
 		-o "$(OCAH_DATASHEETS_BUILD)/ocah-$(1)-datasheet.pdf" "src/$(1).adoc"
 	@$(OCAH_DATASHEET_VALIDATE) \

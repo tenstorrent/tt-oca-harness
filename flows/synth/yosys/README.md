@@ -41,12 +41,19 @@ Outputs are written below each block's
 ## Implemented scope
 
 - `yosys.mk` generates a Bender file list and dispatches synthesis per block.
+  The list adds the `synth` and `tech_<TECH>` targets, which replace the
+  behavioral prim cells with the technology's cell-level implementations
+  under [`../pdk/<tech>/prim/`](../pdk/). VeeR EL2's behavioral TCM models stay in the list until the technology has
+  SRAM macro wrappers.
 - `scripts/synth.tcl` elaborates SystemVerilog, performs generic synthesis,
   maps to the selected technology with ABC, and writes netlists and reports.
-- `scripts/readiness.tcl` provides a technology-independent structural driver
-  that rejects latches outside the modules allowlisted in the script
+- `scripts/readiness.tcl` provides a structural driver, without technology
+  mapping, that rejects latches outside the modules allowlisted in the script
   (clock gates and the retained eFuse token digest) and unresolved blackboxes.
-- `tech/ihp-sg13g2/` contains the only current technology configuration.
+  It reads the technology's Liberty files only to define the cells the prim
+  implementations instantiate.
+- [`../pdk/ihp-sg13g2/`](../pdk/ihp-sg13g2/) is the only current technology;
+  its `yosys/tech.tcl` names the Liberty files and mapping settings.
 - Block SDC files and the helpers in `flows/synth/constraints/` exist, but the
   Yosys flow does not read them.
 

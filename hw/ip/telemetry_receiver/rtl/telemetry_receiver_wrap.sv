@@ -63,6 +63,7 @@ module telemetry_receiver_wrap #(
 
   `include "axi/assign.svh"
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   /////////////////////////
   // Signal Declarations //
@@ -298,7 +299,7 @@ module telemetry_receiver_wrap #(
   // Assertions //
   ////////////////
 
-  `OCAH_OT_ASSERT_INIT(
+  `OCAH_ASSERT_STATIC(
       paramCheckNumTelemetryReceivers_A,
       NUM_TELEMETRY_RECEIVERS > 0 && NUM_TELEMETRY_RECEIVERS <= telemetry_receiver_wrap_pkg::MaxNumTelemetryReceivers)
 

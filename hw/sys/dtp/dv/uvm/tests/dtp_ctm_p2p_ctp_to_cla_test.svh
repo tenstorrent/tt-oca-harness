@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_ctm_p2p_ctp_to_cla_test — three seeded ctp_to_cla point-to-point routes with full req/ack handshakes
-// (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass floor).
+// dtp_ctm_p2p_ctp_to_cla_test — three seeded ctp_to_cla point-to-point routes
+// with full req/ack handshakes (looped runner with per-pass CHK-XTRIG-*
+// evidence).
 
 class dtp_ctm_p2p_ctp_to_cla_test extends dtp_xtrig_base_test;
   `uvm_component_utils(dtp_ctm_p2p_ctp_to_cla_test)

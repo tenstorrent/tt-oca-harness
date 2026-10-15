@@ -78,9 +78,9 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         if zeroer_en:
             nxt |= ZEROER_CG_EN
         await self.csr_write("CLOCK_GATE_CONTROL_WR", CLOCK_GATE_CONTROL, nxt, length=8)
-        # Read back: without this, a write that landed nowhere leaves the
-        # gating enables at whatever they were, and every "clock still runs"
-        # compare below then passes for the wrong reason.
+        # A write that lands nowhere leaves the gating enables unchanged, and the
+        # "clock still runs" compares below cannot tell that from a bypass; the
+        # readback is the evidence the write took.
         #
         # The scoreboard compares a whole 64-bit `expected=` word; the claim here
         # is only that the three fields this function programs took the write,
@@ -136,12 +136,10 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         # ---- S1: functional mode first, enable DMA+Zeroer gating, and OBSERVE
         # each of the three clocks actually gated off before claiming a bypass.
         #
-        # This ordering is the whole point. Asserting test_en_i first and only
-        # ever sampling "the clock still runs" passes identically on an inert
-        # gater, on a CLOCK_GATE_CONTROL write that landed nowhere, and on a
-        # real bypass -- nothing in the run distinguishes them
-        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). smc_cg_test_mode_bypass_test_seq
-        # takes the same three controls for the same reason.
+        # Each clock is observed gated off before test_en_i is asserted: an
+        # inert gater, a CLOCK_GATE_CONTROL write that landed nowhere and a real
+        # bypass all sample "the clock still runs" identically
+        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
         cg.log_step(
             "S1",
             "test_en_i=0; frontdoor CLOCK_GATE_CONTROL DMA_CG_EN=1 ZEROER_CG_EN=1 "
@@ -324,11 +322,10 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
             "S5",
             "reset released, test_en_i=0, gating re-programmed: the same three clocks must re-gate",
         )
-        # The cold reset in S3 restored CLOCK_GATE_CONTROL to its generated
+        # The cold reset in S3 returns CLOCK_GATE_CONTROL to its generated
         # reset, where both enables are 0 (smc_base_config.h:
-        # CLOCK_GATE_CONTROL__DMA_CG_EN_reset = 0x0). Re-program them before
-        # observing the re-gate: without this the gaters are correctly disabled
-        # and the bounded wait below expires against a DUT that is behaving.
+        # CLOCK_GATE_CONTROL__DMA_CG_EN_reset = 0x0), so gating is programmed
+        # again before the re-gate is observed.
         await self._program_cg(dma_en=True, zeroer_en=True)
         dma_regate_at, _ = await cg.wait_gated_off(
             dut,
@@ -347,12 +344,8 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         )
         cg.mark_fence(self.fence, "bypass-released-regated-observed")
 
-        # Order PLUS strictly increasing simulation timestamps.
-        # `assert_fence_order` alone is satisfied by construction in a
-        # straight-line body and cannot fail on any RTL -- its own docstring
-        # says so -- so a non-vacuity token resting on it certifies nothing.
-        # `assert_fence_progress` adds the DUT-time claim and returns the
-        # timestamps for the token.
+        # Fence order plus strictly increasing simulation timestamps;
+        # `assert_fence_progress` returns the timestamps for the token.
         fence_times = cg.assert_fence_progress(
             self.fence,
             [

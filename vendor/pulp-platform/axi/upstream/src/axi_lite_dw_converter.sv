@@ -58,7 +58,7 @@
 ///
 /// The module will be in this mode if `AxiSlvPortDataWidth == AxiMstPortDataWidth`.
 /// Here the module passes through the slave port to the master port.
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 module axi_lite_dw_converter #(
   /// AXI4-Lite address width of the ports.
   parameter int unsigned AxiAddrWidth        = 32'd0,
@@ -160,7 +160,7 @@ module axi_lite_dw_converter #(
 
     assign aw_sel_load = mst_req_o.aw_valid & mst_res_i.aw_ready;
     assign aw_sel_d    = sel_t'(aw_sel_q + 1'b1);
-    `FFLARN(aw_sel_q, aw_sel_d, aw_sel_load, '0, clk_i, rst_ni)
+    `OCAH_FFL(aw_sel_q, aw_sel_d, aw_sel_load, '0, clk_i, rst_ni)
 
     // Input spill register of the W channel.
     axi_lite_slv_w_t w_chan_spill;
@@ -193,7 +193,7 @@ module axi_lite_dw_converter #(
 
     assign w_sel_load = mst_req_o.w_valid & mst_res_i.w_ready;
     assign w_sel_d    = sel_t'(w_sel_q + 1'b1);
-    `FFLARN(w_sel_q, w_sel_d, w_sel_load, '0, clk_i, rst_ni)
+    `OCAH_FFL(w_sel_q, w_sel_d, w_sel_load, '0, clk_i, rst_ni)
 
     // B response aggregation
     // Slave port B output is the aggregated error of the last few B responses.
@@ -216,8 +216,8 @@ module axi_lite_dw_converter #(
     assign b_sel_d     = sel_t'(b_sel_q + 1'b1);
     assign b_resp_d    = (&b_sel_q) ? axi_pkg::RESP_OKAY : (b_resp_q | mst_res_i.b.resp);
     assign b_resp_load = mst_res_i.b_valid & mst_req_o.b_ready;
-    `FFLARN(b_sel_q, b_sel_d, b_resp_load, '0, clk_i, rst_ni)
-    `FFLARN(b_resp_q, b_resp_d, b_resp_load, axi_pkg::RESP_OKAY, clk_i, rst_ni)
+    `OCAH_FFL(b_sel_q, b_sel_d, b_resp_load, '0, clk_i, rst_ni)
+    `OCAH_FFL(b_resp_q, b_resp_d, b_resp_load, axi_pkg::RESP_OKAY, clk_i, rst_ni)
 
     // Read channels.
     // Input spill register of the AW channel.
@@ -251,7 +251,7 @@ module axi_lite_dw_converter #(
 
     assign ar_sel_load = mst_req_o.ar_valid & mst_res_i.ar_ready;
     assign ar_sel_d    = sel_t'(ar_sel_q + 1'b1);
-    `FFLARN(ar_sel_q, ar_sel_d, ar_sel_load, '0, clk_i, rst_ni)
+    `OCAH_FFL(ar_sel_q, ar_sel_d, ar_sel_load, '0, clk_i, rst_ni)
 
     // Responses have to be aggregated, one FF less, as the last data is feed directly through.
     sel_t                                 r_sel_q,        r_sel_d;
@@ -260,11 +260,11 @@ module axi_lite_dw_converter #(
     logic            [DownsizeFactor-2:0] r_chan_mst_load;
     for (genvar i = 0; unsigned'(i) < (DownsizeFactor-1); i++) begin : gen_r_chan_ff
       assign r_chan_mst_load[i] = (sel_t'(i) == r_sel_q) & mst_res_i.r_valid & mst_req_o.r_ready;
-      `FFLARN(r_chan_mst_q[i], mst_res_i.r, r_chan_mst_load[i], axi_lite_mst_r_t'{default: '0}, clk_i, rst_ni)
+      `OCAH_FFL(r_chan_mst_q[i], mst_res_i.r, r_chan_mst_load[i], axi_lite_mst_r_t'{default: '0}, clk_i, rst_ni)
     end
     assign r_sel_load = mst_res_i.r_valid & mst_req_o.r_ready;
     assign r_sel_d    = sel_t'(r_sel_q + 1'b1);
-    `FFLARN(r_sel_q, r_sel_d, r_sel_load, '0, clk_i, rst_ni)
+    `OCAH_FFL(r_sel_q, r_sel_d, r_sel_load, '0, clk_i, rst_ni)
 
     always_comb begin : proc_r_chan_oup
       slv_res_o.r = axi_lite_slv_r_t'{
@@ -332,7 +332,7 @@ module axi_lite_dw_converter #(
       end
     end
     assign lock_aw_d = ~lock_aw_q;
-    `FFLARN(lock_aw_q, lock_aw_d, load_aw_lock, 1'b0, clk_i, rst_ni)
+    `OCAH_FFL(lock_aw_q, lock_aw_d, load_aw_lock, 1'b0, clk_i, rst_ni)
 
     // The selection comes from part of the AW address.
     assign aw_sel = sel_t'(slv_req_i.aw.addr >> SelOffset);
@@ -414,7 +414,7 @@ module axi_lite_dw_converter #(
       end
     end
     assign lock_ar_d = ~lock_ar_q;
-    `FFLARN(lock_ar_q, lock_ar_d, load_ar_lock, 1'b0, clk_i, rst_ni)
+    `OCAH_FFL(lock_ar_q, lock_ar_d, load_ar_lock, 1'b0, clk_i, rst_ni)
 
     // The selection comes from part of the AW address.
     assign ar_sel = sel_t'(slv_req_i.ar.addr >> SelOffset);

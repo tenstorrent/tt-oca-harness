@@ -85,8 +85,8 @@ early_trap_vector:
     j trap_infinite_loop
 
 generic_trap_fail:
-    # Store 0xffffffff to 0xC0039080 (Embedded test fail)
-    li t5, 0xC0039080
+    # Store 0xffffffff to scratch 0 (Embedded test fail)
+    li t5, SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(0)
     li t6, 0xffffffff
     sd t6, 0(t5)
 

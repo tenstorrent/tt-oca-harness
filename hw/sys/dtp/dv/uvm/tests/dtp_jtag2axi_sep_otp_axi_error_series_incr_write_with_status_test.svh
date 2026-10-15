@@ -5,8 +5,8 @@
 // incrementing series write through the WITH_ERROR_STATUS TDR with the fault
 // armed on the middle beat. The per-beat status/increment MSB rides every
 // shift, the injected response must be classified as EXPECTED
-// (CHK-AXI-ERR-INJ), and the recovery write proves the sticky status clears
-// (CHK-AXI-WMEM against the stimulus intent).
+// (CHK-AXI-ERR-INJ), and a SINGLE_OP recovery write lands (CHK-AXI-WMEM
+// against the stimulus intent).
 
 class dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test)
@@ -50,16 +50,6 @@ class dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test extends 
 
   virtual function string group_loops_knob();
     return "DTP_JTAG2AXI_TEST_LOOPS";
-  endfunction
-
-  virtual function void plumb_scenario_seq(ocah_sequence seq);
-    dtp_jtag2axi_error_test_seq t_seq;
-    super.plumb_scenario_seq(seq);
-    if (!$cast(t_seq, seq))
-      `uvm_fatal(get_type_name(), "scenario sequence is not a dtp_jtag2axi_error_test_seq")
-    t_seq.axi_cfg       = m_env.m_sep_otp_axi_cfg;
-    t_seq.axi_evidence  = m_env.m_sep_otp_axi_env.m_checker;
-    t_seq.axi_ref_model = m_env.m_sep_otp_axi_env.m_ref_model;
   endfunction
 
 endclass : dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test

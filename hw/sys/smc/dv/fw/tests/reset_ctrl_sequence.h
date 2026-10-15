@@ -21,7 +21,7 @@ uint32_t get_exp_val_lockable_reg_write(uint32_t curr_val, uint32_t write_val, u
     uint32_t exp_val = curr_val;
     for (uint32_t bit = 0; bit < 32; bit++) {
         if ((lock_val & ((uint32_t)(0x1 << bit))) == 0) {
-            exp_val &= ~((uint32_t)(0x1 << bit)); // Clear the expected bit
+            exp_val &= ~((uint32_t)(0x1 << bit));
             exp_val |= (write_val & ((uint32_t)(0x1 << bit)));
         }
     }

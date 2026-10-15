@@ -43,6 +43,7 @@ class dtp_jtag_trst_test_seq extends dtp_jtag_base_test_seq;
                                          state.name(), instr, assert_cycles, release_cycles),
               UVM_LOW)
 
+    log_step("1", $sformatf("Park the TAP in %s with a non-IDCODE instruction", state.name()));
     reset_to_tlr();
     load_ir(instr);
     goto_state(state);
@@ -51,19 +52,17 @@ class dtp_jtag_trst_test_seq extends dtp_jtag_base_test_seq;
 
     set_trst(1'b0, assert_cycles);
     ctx = $sformatf("trst_from=%s cycles=%0d", state.name(), assert_cycles);
-    if (m_family != null) begin
-      void'(m_family.check_reset_to_tlr(
-          trst_async_state(), {"before any TCK edge ", ctx}, "CHK-TAP-TRST-ASYNC"
-      ));
-      void'(m_family.check_reset_to_tlr(
-          tb_vif.tap_state, {"after TMS-low TCK cycles under TRST ", ctx}, "CHK-TAP-TRST-TLR"
-      ));
-    end
+    log_step("2", "TRST_N low: Test-Logic-Reset before any TCK edge and under TMS low");
+    check_tap_state("CHK-TAP-TRST-ASYNC", trst_async_state(), TEST_LOGIC_RESET, {
+                    "before any TCK edge ", ctx});
+    check_tap_state("CHK-TAP-TRST-TLR", tb_vif.tap_state, TEST_LOGIC_RESET, {
+                    "after TMS-low TCK cycles under TRST ", ctx});
     check_state(TEST_LOGIC_RESET, "jtag_trst_chk", {"while TRST held ", ctx});
     set_trst(1'b1, release_cycles);
 
     // TLR -> RTI by TMS alone; the DR scan with no IR load reads the
     // register the reset selected.
+    log_step("3", "TRST_N released; Run-Test/Idle by TMS, then IDCODE with no IR load");
     step(1'b0);
     check_state(RUN_TEST_IDLE, "jtag_trst_chk", "after TLR->RTI step");
     shift_dr(64'h0, 32, idcode);

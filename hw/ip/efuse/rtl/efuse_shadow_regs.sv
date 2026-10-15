@@ -12,6 +12,8 @@
 // locked_field_access_interrupt_o reports locked-field APB hits.
 
 `include "prim_assert.sv"
+`include "ocah_assert.svh"
+`include "ocah_registers.svh"
 
 module efuse_shadow_regs
 #(
@@ -470,20 +472,10 @@ module efuse_shadow_regs
     end
 
     // Register the state
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-            efuse_sense_state_q <= ST_IDLE;
-            current_word_num_q <= '0;
-            words_received_q <= efuse_word_counter_t'(0);
-            fuse_command_req_o <= FuseCommandReqDefault;
-
-        end else begin
-            efuse_sense_state_q <= efuse_sense_state_d;
-            current_word_num_q <= current_word_num_d;
-            words_received_q <= words_received_d;
-            fuse_command_req_o <= fuse_command_req_d;
-        end
-    end
+    `OCAH_FF(efuse_sense_state_q, efuse_sense_state_d, ST_IDLE, clk_i, rst_ni)
+    `OCAH_FF(current_word_num_q, current_word_num_d, '0, clk_i, rst_ni)
+    `OCAH_FF(words_received_q, words_received_d, efuse_word_counter_t'(0), clk_i, rst_ni)
+    `OCAH_FF(fuse_command_req_o, fuse_command_req_d, FuseCommandReqDefault, clk_i, rst_ni)
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -772,13 +764,13 @@ module efuse_shadow_regs
   assign is_lc_state_access_o = is_lc_state_access;
   assign is_read_locked_o = read_locked;
 
-  `OCAH_OT_ASSERT_INIT(Class1ShadowRangesValid_A,
+  `OCAH_ASSERT_STATIC(Class1ShadowRangesValid_A,
       efuse_pkg::shadow_range_map_is_valid(CLASS1_SHADOW_RANGES, NumShadowWords))
-  `OCAH_OT_ASSERT_INIT(Class1ShadowCountFits_A,
+  `OCAH_ASSERT_STATIC(Class1ShadowCountFits_A,
       ActualNumClass1ShadowWords <= NumShadowWords)
-  `OCAH_OT_ASSERT_INIT(SecretShadowRangesValid_A,
+  `OCAH_ASSERT_STATIC(SecretShadowRangesValid_A,
       efuse_pkg::shadow_range_map_is_valid(SECRET_SHADOW_RANGES, NumShadowWords))
-  `OCAH_OT_ASSERT_INIT(NumShadowWordsFitsWordCounter_A,
+  `OCAH_ASSERT_STATIC(NumShadowWordsFitsWordCounter_A,
       $clog2(NumShadowWords + 1) <= $bits(efuse_word_counter_t))
 
   for (genvar i = 0; i < NumShadowWords; i++) begin : gen_secret_word_assert

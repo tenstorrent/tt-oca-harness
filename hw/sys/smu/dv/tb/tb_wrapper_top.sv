@@ -141,9 +141,11 @@ module smu_wrapper_uvm_top
   // ------------------------------------------------------------------
   // ESRC raw-noise force.
   // ------------------------------------------------------------------
-  // POLICY EXCEPTION. This DV root's rule is "no DUT Force" (see README); this
-  // is the single named exception, the same one hw/sys/sep/dv/tb/tb_top.sv
-  // calls "the one permitted force (raw noise at the source)".
+  // POLICY EXCEPTION. docs/SMU_VPLAN.adoc ("BFM Policy") and
+  // docs/SMU_TB_ARCH.adoc ("Stimulus Strategy") allow no force or deposit into
+  // the DUT outside the "Bench stand-ins and exceptions" section of
+  // docs/SMU_DEFERRED_DISPOSITION.adoc. This force and the LC_STATE pair fault
+  // inject below are the two declared there.
   //
   // The ESRC ring oscillators rely on `#delay` feedback, which Verilator
   // ignores, so the 12 noise lanes never toggle and no entropy is produced.
@@ -192,6 +194,37 @@ module smu_wrapper_uvm_top
     end
   end
   `undef SMU_ESRC_NOISE_FORCE
+
+  // ------------------------------------------------------------------
+  // LC_STATE pair fault inject.
+  // ------------------------------------------------------------------
+  // POLICY EXCEPTION, the second of the two the ESRC block above names.
+  //
+  // The SEP eFuse shadow regenerates {~raw, raw} from the raw nibble, so no
+  // eFuse image presents a broken pair to the SMC eFuse wrapper's decoder and
+  // lc_sigint_err_o has no frontdoor stimulus. Under +lc_sigint_inject, while
+  // lc_sigint_inject_i is high, smu's sep_lc_state -- the pair the SEP exports
+  // to the SMC eFuse wrapper and to lc_state_o -- holds the value it carried
+  // the clock before the inject with the n rail of bit 0 inverted. The two
+  // rails of bit 0 then match, which is an integrity error, and the p rails,
+  // which are the decoded state, do not move, so a response the leaf observes
+  // comes from the integrity error and not from a state change. The SEP's own
+  // decoder reads its shadow registers, not this net.
+  //
+  // Re-issued every clock because Verilator snapshots a force RHS; released
+  // when the input drops, so the legal pair returns.
+  localparam logic [7:0] LcSigintInjectFlip = 8'h10;
+  logic lc_sigint_inject_armed;
+  logic [7:0] lc_state_pre_inject;
+  initial lc_sigint_inject_armed = $test$plusargs("lc_sigint_inject") != 0;
+  always @(posedge clk_smu) begin
+    if (lc_sigint_inject_armed && lc_sigint_inject_i === 1'b1) begin
+      force u_dut.u_smu.sep_lc_state = lc_state_pre_inject ^ LcSigintInjectFlip;
+    end else begin
+      lc_state_pre_inject <= u_dut.u_smu.sep_lc_state;
+      release u_dut.u_smu.sep_lc_state;
+    end
+  end
 
   assign drbg_seed_valid_o = u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_sep_trng
         .u_drbg_s3c_scan.u_csrng_seed_adapter.seed_queue_valid_o;
@@ -483,9 +516,8 @@ module smu_wrapper_uvm_top
   //
   // Everything the crossbar does not consume is tied to its AXI reset value
   // here rather than exposed, so a sequence cannot accidentally drive a
-  // meaningless field. Bursts are supported (len/size/burst are real ports)
-  // because the ext_axi protocol's route legs are single-beat but its DECERR
-  // leg is easier to reason about with the full channel present.
+  // meaningless field. len/size/burst are real ports: the ext_axi route legs
+  // are single-beat, and the DECERR leg carries the full channel.
   assign smu_axi_in_req.aw.id     = ext_in_awid;
   assign smu_axi_in_req.aw.addr   = ext_in_awaddr;
   assign smu_axi_in_req.aw.len    = ext_in_awlen;
@@ -560,6 +592,29 @@ module smu_wrapper_uvm_top
     $asserton(0, u_dut.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.noXOnCsI);
     $asserton(0, u_dut.u_sep_ip_integration.u_sep_boot_rom.noXOnCsI);
     $asserton(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
+  end
+
+  // A JTAG sep_reset_n override resets the crypto engines without isolation,
+  // so an engine can drop an ungranted EDN request with no endpoint cancel.
+  // JTAG resets are out of scope for the cancel, so the request-hold checks
+  // report a debug-only event rather than a design gap. Scoped to the crypto
+  // EDN instance: the pool instance keeps its checks.
+  initial begin
+    if ($test$plusargs("sep_edn_jtag_reset_waive")) begin
+      $display("[tb] crypto EDN request-hold checks off (+sep_edn_jtag_reset_waive)");
+      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
+          .u_axis_edn_crypto_s3c_scan.u_arbiter.ReqStaysHighUntilGranted0_M);
+      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
+          .u_axis_edn_crypto_s3c_scan.u_arbiter.LockArbDecision_A);
+      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
+          .u_axis_edn_crypto_s3c_scan.gen_ep[0].AxisEdnReqStableUnlessEndpointCancelled_A);
+      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
+          .u_axis_edn_crypto_s3c_scan.gen_ep[1].AxisEdnReqStableUnlessEndpointCancelled_A);
+      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
+          .u_axis_edn_crypto_s3c_scan.gen_ep[2].AxisEdnReqStableUnlessEndpointCancelled_A);
+      $assertoff(0, u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
+          .u_axis_edn_crypto_s3c_scan.gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
+    end
   end
 `endif
 
@@ -979,6 +1034,23 @@ module smu_wrapper_uvm_top
     $fclose(boot_rom_fd);
     $readmemh(boot_rom_path, u_dut.u_sep_ip_integration.u_sep_boot_rom.mem);
     $display("[smu_wrapper_uvm_top] loaded SEP boot ROM from %s", boot_rom_path);
+  end
+
+  // The Key Manager ROM macro has no init-file hook. A leaf that releases
+  // km_jtag_rst_n names an image: an empty ROM returns X, and the CPU's
+  // look-ahead read takes u_km_rom.req_i to X once that reset is high.
+  string km_rom_path;
+  int    km_rom_fd;
+  initial begin
+    if ($value$plusargs("km_rom_hex=%s", km_rom_path)) begin
+      km_rom_fd = $fopen(km_rom_path, "r");
+      if (km_rom_fd == 0) begin
+        $fatal(1, "[smu_wrapper_uvm_top] +km_rom_hex=%s is not readable", km_rom_path);
+      end
+      $fclose(km_rom_fd);
+      $readmemh(km_rom_path, u_dut.u_sep_ip_integration.u_km_rom.mem);
+      $display("[smu_wrapper_uvm_top] loaded Key Manager ROM from %s", km_rom_path);
+    end
   end
 
   // ------------------------------------------------------------------
@@ -1871,6 +1943,8 @@ module smu_wrapper_uvm_top
 
   // ESRC raw noise quiet (no entropy scenario in this shape).
   assign esrc_noise_ext_i = '0;
+  // No LC_STATE pair fault.
+  assign lc_sigint_inject_i = 1'b0;
 
   // External SMN AXI4 ingress: no initiator attached, request side idle
   // (single-beat INCR shape, no valids, no readies).

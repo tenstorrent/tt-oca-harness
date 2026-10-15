@@ -56,7 +56,7 @@ ifdef::backend-html5[]
 xref:ocah-docs:sep:rom.adoc#sep-rom[SEP Boot ROM chapter]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/rom.html#sep-rom[SEP Boot ROM chapter]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/sep/rom.html#sep-rom[SEP Boot ROM chapter]
 endif::backend-pdf[]
 of the Technical Reference Manual specifies the boot flow requirements that
 this firmware implements.

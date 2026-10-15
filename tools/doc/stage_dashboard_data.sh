@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Fetch the published dashboard summary and stage a trimmed copy into a built
-# site, for doc/trm/src/dashboard.adoc to fetch at page load.
+# site, for doc/home/src/dashboard.adoc to fetch at page load.
 #
 #   stage_dashboard_data.sh              fetch only, into OCAH_DASHBOARD_DATA_DIR
 #   stage_dashboard_data.sh <site-root>  fetch if needed, then trim into the site
@@ -82,9 +82,9 @@ if [ ! -f "$summary" ]; then
   exit 0
 fi
 
-# A site carries one TRM version: latest, or the release a snapshot stamped.
-dashboard=$(find "$site/ocah-docs" -mindepth 2 -maxdepth 2 -name dashboard.html -print -quit 2>/dev/null || true)
-data="$(dirname "${dashboard:-$site/ocah-docs/latest/dashboard.html}")/data"
+# A site carries one Home version: latest, or the release a snapshot stamped.
+dashboard=$(find "$site/ocah-home" -mindepth 2 -maxdepth 2 -name dashboard.html -print -quit 2>/dev/null || true)
+data="$(dirname "${dashboard:-$site/ocah-home/latest/dashboard.html}")/data"
 mkdir -p "$data"
 python3 "$trim" summary "$summary" "$data/summary.json" --tests-out "$data/tests.json"
 if [ -f "$history" ]; then

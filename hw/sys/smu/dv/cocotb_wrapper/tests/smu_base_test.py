@@ -80,7 +80,7 @@ class _EvidenceRecorder:
         record = self._previous_factory(*args, **kwargs)
         try:
             message = record.getMessage()
-        except Exception:  # a broken format string is the caller's failure, not ours
+        except Exception:  # logging reports a bad format string at emit; the factory must not raise
             return record
         match = self._TOKEN.match(message)
         if match:
@@ -181,7 +181,6 @@ class smu_base_test(uvm_test):
             needed = self.min_jtag_smu_ratio * self.cfg.smu_clk_period_ns
             if self.cfg.jtag_period_ns < needed:
                 raised = int(-(-needed // 1))  # ceil, keeping an integer period
-                # WARNING, not INFO: the clamp is visible in every affected run's log.
                 self.logger.warning(
                     "jtag_period_ns %s -> %d to hold jtag/smu >= %s "
                     "(SMC JTAG2AXI SERIES-write clamp)",
@@ -290,6 +289,7 @@ class smu_base_test(uvm_test):
         "tb_ss_reset_incomplete",
         "tb_chiplet_secondary",
         "tb_cool_reset_pin",
+        "lc_sigint_inject_i",
         "tb_secure_tm_req",
         "tb_smc_sram_auto_init_restore",
         "tb_gpio0_drive_en",
@@ -376,6 +376,7 @@ class smu_base_test(uvm_test):
             reset_active_level=False,
             size=self.cfg.axi_out_mem_size,
             name="smu_axi_out",
+            max_outstanding=self.cfg.axi_out_max_outstanding,
         ).sequence
         # Verilator two-state simulation initializes every signal to 0, so a
         # reset input that starts low never produces the falling edge that

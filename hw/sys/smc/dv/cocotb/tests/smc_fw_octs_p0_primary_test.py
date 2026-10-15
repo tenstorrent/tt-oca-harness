@@ -21,7 +21,8 @@ Tokens: CHK-FW-OCTS-PRIMARY-BOOT, CHK-FW-OCTS-COUNT-ADVANCES, CHK-FW-OCTS-CREDIT
 Requires the staged image and a held boot:
   +smc_scratch_ram_hex=octs_p0_primary_test.ecc.hex   (bare basename; staged by c_compile)
   +smc_hold_cpu_boot
-Must NOT use +skip_fuse_sense -- see dv_policy 1.6.
+Must not use +skip_fuse_sense: a run with the fuse sense skipped is not
+evidence for the fuse-derived boot path.
 """
 
 from __future__ import annotations

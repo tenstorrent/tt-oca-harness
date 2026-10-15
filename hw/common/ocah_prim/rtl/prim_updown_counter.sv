@@ -9,6 +9,8 @@
 // commit_i freezes cnt_after_commit_o into count_o; without it the next value stays
 // speculative, so clear_i and set_i also take effect only with commit_i.
 
+`include "ocah_registers.svh"
+
 module prim_updown_counter #(
   parameter int               WIDTH       = 16,  // Counter width.
   parameter logic [WIDTH-1:0] RESET_VALUE = '0,  // Value loaded on reset or clear_i;
@@ -62,13 +64,7 @@ module prim_updown_counter #(
   assign cnt_d_committed = commit_i ? cnt_d : cnt_q;
 
   logic [WIDTH-1:0] cnt_unforced_q;
-  always_ff @(posedge clk_i) begin
-    if (!rst_ni) begin
-      cnt_unforced_q <= RESET_VALUE;
-    end else begin
-      cnt_unforced_q <= cnt_d_committed;
-    end
-  end
+  `OCAH_FFSRN(cnt_unforced_q, cnt_d_committed, RESET_VALUE, clk_i, rst_ni)
 
   assign cnt_q = cnt_unforced_q;
 

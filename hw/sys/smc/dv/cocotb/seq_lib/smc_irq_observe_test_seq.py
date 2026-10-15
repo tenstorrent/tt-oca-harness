@@ -27,10 +27,8 @@ from env.smc_probe_liveness import probe_alive, probe_evidence
 
 from .smc_base_test_seq import smc_base_test_seq
 
-# Idle expectation of each aggregate for a test that programs no interrupt
-# source: the same default `SmcIrqItem.expected()` applies when `expect_<field>`
-# is left None, restated here so the sequence-side gate names the value it
-# requires instead of re-deriving it from the item.
+# Idle level of each aggregate when no interrupt source is programmed;
+# `SmcIrqItem.expected()` applies the same value when `expect_<field>` is None.
 IRQ_IDLE_LEVEL = 0
 
 

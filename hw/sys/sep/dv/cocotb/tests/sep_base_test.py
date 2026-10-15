@@ -11,6 +11,8 @@ shadow array against that image after sense-done.
 from __future__ import annotations
 
 import hashlib
+import inspect
+import json
 import logging
 import os
 import re
@@ -98,9 +100,12 @@ class _EvidenceFilter(logging.Filter):
     _CHK = re.compile(r"\b(CHK-[A-Z0-9_-]+)\b\s*(?:\([^)]*\)\s*)?(PASS|OK)\b")
 
     # IDs excluded from `own`, which is what a floor grades; `observed` counts
-    # them. Empty, so the CHK records the base-class helpers emit
-    # (CHK-FW-IDENTITY, CHK-VERDICT, CHK-FW-CONSOLE, ...) count as the leaf's own.
-    BASE_IDS: frozenset[str] = frozenset()
+    # them. These are the records the base class emits for every firmware boot
+    # (image identity and the firmware completion verdict), so a leaf whose own
+    # checks stopped running cannot pass on the boot alone. A leaf whose graded
+    # contract is the firmware self-check names that ID in `required_evidence`;
+    # a base ID named there counts as the leaf's own.
+    BASE_IDS: frozenset[str] = frozenset({"CHK-FW-IDENTITY", "CHK-FW-CONSOLE", "CHK-VERDICT"})
 
     # Leaves allowed to pass with no own CHK record. A new entry hides a logging gap.
     NO_OWN_EVIDENCE: dict[str, str] = {}
@@ -157,7 +162,8 @@ class sep_base_test(uvm_test):
     #
     #   required_evidence -- IDs this test must emit. Missing any one fails.
     #   min_evidence      -- fewest distinct IDs of the test's OWN (IDs not in
-    #                        _EvidenceFilter.BASE_IDS). 0 disables it.
+    #                        _EvidenceFilter.BASE_IDS, plus any base ID named
+    #                        in required_evidence). 0 disables it.
     #
     # Both default to off. They tighten a leaf that already emits records; they
     # do not replace the unconditional floor in `_finalize_evidence`. A leaf
@@ -235,11 +241,40 @@ class sep_base_test(uvm_test):
         return sep_base_test.rd(sig, mask)
 
     @staticmethod
+    def full_cpu_build() -> bool:
+        """True when the build carries the full ``sep_cpu`` with the VeeR core.
+
+        The ``lsu_stub_all_live`` build replaces ``sep_cpu`` with the LSU stub, which has
+        no ``u_el2_veer_wrapper``. A build whose hierarchy does not expose the core
+        reads as not full.
+        """
+        try:
+            cocotb.top.u_dut.u_sep.u_sep_cpu.u_el2_veer_wrapper  # noqa: B018 - hierarchy probe
+        except AttributeError:
+            return False
+        return True
+
+    @staticmethod
     def _set_if_exists(dut, name: str, value: int) -> None:
+        """Idle-default drive: a pin the build does not have is skipped.
+
+        Only for idle defaults. A graded or stimulus drive uses ``_set_pin``.
+        """
         try:
             getattr(dut, name).value = value
         except AttributeError:
             pass
+
+    @staticmethod
+    def _set_pin(dut, name: str, value: int) -> None:
+        """Stimulus drive: raises when the build does not have the pin."""
+        try:
+            sig = getattr(dut, name)
+        except AttributeError as exc:
+            raise AssertionError(
+                f"PIN-DRIVE FAIL: {name} is not a port of this build; the stimulus cannot be driven"
+            ) from exc
+        sig.value = value
 
     def build_phase(self) -> None:
         require_file_plusargs(FILE_PLUSARGS)
@@ -264,16 +299,86 @@ class sep_base_test(uvm_test):
         if self.build_env:
             self.env = SepEnv("env", self)
 
-    def start_clocks(self, dut=None) -> None:
-        """Start the clocks exposed by tb_top."""
+    def start_clocks(self, dut=None, *, phases_ps: dict[str, int] | None = None) -> None:
+        """Start the clocks exposed by tb_top.
+
+        ``phases_ps`` maps a clock pin name (``clk_i``, ``clk_wdt_i``,
+        ``entropy_rosc_sample_clk_i``, ``clk_ref_i``) to a start delay in whole ps.
+        The clock pin stays at its value until the delay ends, then the clock
+        starts high. A pin that is not in the map starts at once, as with no map.
+        With no ``phases_ps`` argument the map is ``self.clock_phases_ps``, which
+        a leaf sets before a bring-up helper calls this method. Periods and phases
+        are whole ps, so every delay is exact at a 1 ps or 1 fs simulator precision.
+        """
         if dut is None:
             dut = cocotb.top
-        cocotb.start_soon(Clock(dut.clk_i, self.cfg.sys_clk_period_ns, units="ns").start())
-        cocotb.start_soon(Clock(dut.clk_wdt_i, self.cfg.wdt_clk_period_ns, units="ns").start())
-        cocotb.start_soon(
-            Clock(dut.entropy_rosc_sample_clk_i, self.cfg.entropy_clk_period_ns, units="ns").start()
-        )
-        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
+        if phases_ps is None:
+            phases_ps = getattr(self, "clock_phases_ps", None)
+        phases = dict(phases_ps or {})
+        unknown = set(phases) - set(self._clock_periods_ns())
+        if unknown:
+            raise KeyError(f"start_clocks: unknown clock pin(s) {sorted(unknown)}")
+        for name, period_ns in self._clock_periods_ns().items():
+            self._start_clock(dut, name, period_ns, phases.get(name, 0))
+
+    def _clock_periods_ns(self) -> dict[str, float]:
+        return {
+            "clk_i": self.cfg.sys_clk_period_ns,
+            "clk_wdt_i": self.cfg.wdt_clk_period_ns,
+            "entropy_rosc_sample_clk_i": self.cfg.entropy_clk_period_ns,
+            "clk_ref_i": self.cfg.ref_clk_period_ns,
+        }
+
+    @staticmethod
+    def _whole_ps(value_ns: float, what: str) -> int:
+        ps = round(value_ns * 1000)
+        if abs(value_ns * 1000 - ps) > 1e-6:
+            raise ValueError(f"{what} {value_ns} ns is not a whole number of ps")
+        return ps
+
+    def _start_clock(self, dut, name: str, period_ns: float, phase_ps: int) -> None:
+        if not hasattr(self, "_clock_drivers"):
+            self._clock_drivers = {}
+        if phase_ps != int(phase_ps) or phase_ps < 0:
+            raise ValueError(f"{name} start phase {phase_ps} is not a whole, non-negative ps")
+        period_ps = self._whole_ps(period_ns, f"{name} period")
+        clk = Clock(getattr(dut, name), period_ps, units="ps")
+        if not phase_ps:
+            task = cocotb.start_soon(clk.start())
+        else:
+
+            async def _delayed() -> None:
+                await Timer(int(phase_ps), units="ps")
+                started = clk.start()
+                # cocotb 1.x returns the clock coroutine; cocotb 2.x runs its own task.
+                if inspect.iscoroutine(started):
+                    await started
+
+            task = cocotb.start_soon(_delayed())
+        self._clock_drivers[name] = (clk, task)
+
+    def restart_clock(self, name: str, period_ns: float, phase_ps: int = 0, dut=None) -> None:
+        """Stop the clock on pin ``name`` and start it again at ``period_ns``.
+
+        The pin holds its last value for ``phase_ps`` (whole ps), then the clock
+        starts high. The other clocks keep running.
+        """
+        if dut is None:
+            dut = cocotb.top
+        clocks = getattr(self, "_clock_drivers", {})
+        if name not in clocks:
+            raise KeyError(f"restart_clock: {name} was not started by start_clocks")
+        clk, task = clocks.pop(name)
+        stop = getattr(clk, "stop", None)
+        if stop is not None:
+            try:
+                stop()
+            except RuntimeError:
+                # cocotb 2.x: the clock of a delayed start had not started yet.
+                pass
+        if not task.done():
+            task.cancel()
+        self._start_clock(dut, name, period_ns, phase_ps)
 
     def bind_smc_responder(self, dut) -> None:
         """Attach the shared AXI slave agent to the SEP->SMC boundary.
@@ -316,6 +421,7 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "rst_vec_i", rst_vec)
         self._set_if_exists(dut, "esrc_noise_ext_i", 0)
         self._set_if_exists(dut, "spi_miso_i", 1)
+        self._set_if_exists(dut, "spi_sd_i", 0)
         # TEST_EN strap / LC sigint inject default off. Tests that need either
         # polarity raise the port themselves after bring-up (or before sense).
         self._set_if_exists(dut, "test_en_strap_i", 0)
@@ -342,6 +448,28 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "token_digest_test_en_inject_i", 0)
         self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         self._set_if_exists(dut, "hmac_fifo_drain_stall_i", 0)
+        self._set_if_exists(dut, "kmac_fifo_drain_stall_i", 0)
+        # Boundary PIC input and outbound responder control: idle (0) unless a
+        # leaf drives them (docs/SEP_TB_ARCH.adoc).
+        self._set_if_exists(dut, "sep_ext_interrupts_i", 0)
+        self._set_if_exists(dut, "smn_outbound_resp_hold_i", 0)
+        self._set_if_exists(dut, "smn_outbound_rd_slverr_i", 0)
+        # DFT pins in functional mode, DMI enables off, the core TAP pins on the
+        # tb_top registers, and the TCM and ROM bit-flip injects idle
+        # (docs/SEP_TB_ARCH.adoc).
+        self._set_if_exists(dut, "test_en_i", 0)
+        self._set_if_exists(dut, "scan_rst_ni_i", 1)
+        self._set_if_exists(dut, "dmi_core_enable_i", 0)
+        self._set_if_exists(dut, "dmi_uncore_enable_i", 0)
+        self._set_if_exists(dut, "jtag_bench_own_i", 0)
+        self._set_if_exists(dut, "jtag_tck_i", 0)
+        self._set_if_exists(dut, "jtag_tms_i", 0)
+        self._set_if_exists(dut, "jtag_tdi_i", 0)
+        self._set_if_exists(dut, "jtag_trst_n_i", 0)
+        for pin in ("tcm_flip_i", "tcm_flip_addr_i", "tcm_flip_mask_i"):
+            self._set_if_exists(dut, pin, 0)
+        for pin in ("rom_flip_i", "rom_flip_index_i", "rom_flip_mask_i"):
+            self._set_if_exists(dut, pin, 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle
         # bus. Called before start_clocks. Env-built tests drive the same idle.
@@ -424,9 +552,9 @@ class sep_base_test(uvm_test):
         dut = cocotb.top
         val = 1 if hold else 0
         for eng in engines:
-            port = self._JTAG_SW_RST_HOLD.get(eng)
-            if port is not None:
-                self._set_if_exists(dut, port, val)
+            if eng not in self._JTAG_SW_RST_HOLD:
+                raise KeyError(f"no JTAG SW-reset hold pin for engine {eng!r}")
+            self._set_pin(dut, self._JTAG_SW_RST_HOLD[eng], val)
         if engines:
             self.logger.info(
                 "JTAG SW-reset hold %s -> %s",
@@ -469,7 +597,17 @@ class sep_base_test(uvm_test):
         await self.assert_cold_reset(dut)
         self._jtag_sw_rst_hold(park, True)
         self.start_clocks(dut)
-        await ClockCycles(dut.clk_i, 20)
+        # Power-on debug reset: dbg_rstb_i falls and rises while rst_ni is low.
+        # On the full-CPU build it resets the core debug module, whose dmcontrol
+        # bits gate the core reset (el2_veer.sv core_rst_l); without the edge
+        # they stay X on a four-state simulator. The stub build has no load.
+        self._set_if_exists(dut, "dbg_rstb_i", 0)
+        await ClockCycles(dut.clk_i, 10)
+        self._set_if_exists(dut, "dbg_rstb_i", 1)
+        self.logger.info(
+            "Power-on debug reset: dbg_rstb_i pulsed low for 10 clocks with rst_ni low"
+        )
+        await ClockCycles(dut.clk_i, 10)
         self.logger.info("Releasing rst_ni")
         dut.rst_ni.value = 1
         await ClockCycles(dut.clk_i, 2)
@@ -544,6 +682,14 @@ class sep_base_test(uvm_test):
             await ClockCycles(cocotb.top.clk_i, 2)
             self._jtag_sw_rst_hold(park, False)
 
+    def suppress_host_axi_transaction_info(self) -> None:
+        """Suppress per-access host AXI INFO while retaining errors and summaries."""
+        axi_driver = self.env.axi_agent.driver
+        axi_driver.logger.setLevel(logging.WARNING)
+        axi_backend = axi_driver.axi.driver.backend
+        axi_backend.read_if.log.setLevel(logging.WARNING)
+        axi_backend.write_if.log.setLevel(logging.WARNING)
+
     async def bring_up_and_wait_fuse_sense(self, *, max_cycles: int = 20_000) -> None:
         """Alias for ``bring_up_no_cpu``; both gate on real fuse-sense-done."""
         await self.bring_up_no_cpu(max_cycles=max_cycles)
@@ -567,6 +713,57 @@ class sep_base_test(uvm_test):
         dut.rst_ni.value = 1
         await self._wait_fuse_sense(max_cycles)
         self.cfg.reset_done.set()
+
+    async def pulse_rst_ni(
+        self,
+        *,
+        hold_cycles: int = 20,
+        release_bound: int = 20_000,
+        max_sense_cycles: int = 20_000,
+    ) -> dict[str, int]:
+        """Cold reset with clocks running: pulse ``rst_ni``, then wait for the SEP reset release.
+
+        Drives ``rst_ni`` low at the next ``clk_i`` rising edge (so a caller in
+        the read-only phase may call it), holds it low for ``hold_cycles``
+        clocks and releases it. Then
+        waits at most ``release_bound`` clocks for ``dbg_sep_reset_n_o`` to read
+        1 (the SEP Reset Controller release of ``sep_reset_n``), and then for
+        fuse-sense-done with the post-sense shadow compare (the ``resense``
+        rules apply: the OTP bank keeps its content across the reset). An
+        expired bound raises. Returns ``sep_reset_n_at_hold_end`` (the probe
+        level on the last clock of the hold) and ``release_clks`` (clocks from
+        the ``rst_ni`` release to the first ``dbg_sep_reset_n_o`` = 1 sample),
+        for the leaf to log or grade.
+        """
+        dut = cocotb.top
+        await RisingEdge(dut.clk_i)
+        dut.rst_ni.value = 0
+        await ClockCycles(dut.clk_i, hold_cycles)
+        await ReadOnly()
+        held = self.rd(dut.dbg_sep_reset_n_o)
+        await RisingEdge(dut.clk_i)
+        dut.rst_ni.value = 1
+        release = None
+        for cycle in range(1, release_bound + 1):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True):
+                release = cycle
+                break
+        if release is None:
+            raise AssertionError(
+                f"dbg_sep_reset_n_o did not read 1 within {release_bound} clocks after the "
+                "rst_ni release"
+            )
+        await self._wait_fuse_sense(max_sense_cycles)
+        self.cfg.reset_done.set()
+        self.logger.info(
+            "rst_ni pulse: hold=%d sep_reset_n_at_hold_end=%d release_clks=%d",
+            hold_cycles,
+            held,
+            release,
+        )
+        return {"sep_reset_n_at_hold_end": held, "release_clks": release}
 
     async def bring_up_cpu_boot(
         self,
@@ -594,7 +791,7 @@ class sep_base_test(uvm_test):
         self.drive_idle_defaults(dut, cpu_run=True, rst_vec=rst_vec)
         await self.assert_cold_reset(dut)
         # CPU boot: EL2 debug reset follows cold reset.
-        self._set_if_exists(dut, "dbg_rstb_i", 0)
+        self._set_pin(dut, "dbg_rstb_i", 0)
         self._jtag_sw_rst_hold(park, True)
         self.start_clocks(dut)
         await ClockCycles(dut.clk_i, 20)
@@ -604,7 +801,7 @@ class sep_base_test(uvm_test):
             self.logger.info("CPU boot: pre-reset hook complete")
         self.logger.info("Releasing rst_ni")
         dut.rst_ni.value = 1
-        self._set_if_exists(dut, "dbg_rstb_i", 1)
+        self._set_pin(dut, "dbg_rstb_i", 1)
         # Gate on the real fabric-release signal, then a small CPU settle margin.
         await self._wait_fuse_sense(max_cycles)
         if park and release_park:
@@ -798,9 +995,16 @@ class sep_base_test(uvm_test):
                 self.logger.info("CHK-FW-CONSOLE PASS: firmware mailbox completion with PASS magic")
         if not (sb.fw_done and sb.fw_pass):
             # Hang, no-boot, run-cycle exhaustion, or firmware FAIL: put the
-            # symbolized backtrace in the log before the scoreboard's
-            # check_phase assertion ends the run.
+            # symbolized backtrace in the log, then fail here, so no later step
+            # of the leaf runs against firmware that did not pass. A leaf that
+            # expects a refusal clears sb.expect_fw_pass and grades it itself.
             mon.dump_diagnostics(logging.ERROR)
+            if sb.expect_fw_pass:
+                raise AssertionError(
+                    f"boot poll ended without firmware PASS: done={int(sb.fw_done)} "
+                    f"pass={int(bool(sb.fw_pass))} last_cycle={cycle} "
+                    f"retired={mon.trace_count}"
+                )
 
     def select_efuse_image(
         self,
@@ -1308,16 +1512,19 @@ class sep_base_test(uvm_test):
         batch = SepEsrcFifoDrainSeq("esrc_fifo_drain")
         await self.start_seq(batch)
         if batch.words:
-            self.drbg_sb.check_fifo_frontdoor(batch.words)
+            self.drbg_sb.check_fifo_frontdoor(
+                batch.words, log_batch=getattr(self, "_drain_log_batches", True)
+            )
 
     async def _fifo_drain_loop(self) -> None:
         while not self._drain_stop:
             await self._drain_fifo_once()
             await ClockCycles(cocotb.top.clk_i, 40)
 
-    def start_fifo_drain(self) -> None:
+    def start_fifo_drain(self, *, log_batches: bool = True) -> None:
         """Fork the concurrent FIFO drain (no-op for backdoor-CHK2 configs)."""
         self._drain_stop = False
+        self._drain_log_batches = log_batches
         self._drain_task = (
             None
             if getattr(self, "entropy_cfg", None) and self.entropy_cfg.chk2_backdoor
@@ -1573,14 +1780,29 @@ class sep_base_test(uvm_test):
                         pass
                 else:
                     exe_digest = f"not-hashed(>{_SIM_BINARY_HASH_MAX_BYTES}B)"
+            # The build directory's own record (tools/dv/runlib/stages.py,
+            # build_record.json): the fingerprint of the inputs that built this
+            # binary and when it was written. git-head is the run's commit, not
+            # the commit that compiled the binary; a written-at time before the
+            # run started means the binary was reused.
+            build_fp, build_at = "none", "none"
+            try:
+                rec = json.loads((Path(exe).parent / "build_record.json").read_text())
+                build_fp = str(rec.get("fingerprint", "none"))
+                build_at = str(rec.get("written_at", "none"))
+            except (OSError, ValueError):
+                pass
             self.logger.info(
-                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d git-head=%s",
+                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d git-head=%s "
+                "build-fingerprint=%s build-written-at=%s",
                 exe,
                 exe_digest,
                 digest_src,
                 st.st_size,
                 int(st.st_mtime),
                 rev or "unknown",
+                build_fp,
+                build_at,
             )
         except (OSError, ValueError) as exc:
             # Say so rather than omit the line: a missing build identity is a
@@ -1695,12 +1917,12 @@ class sep_base_test(uvm_test):
         Runs only after run_scenario() returns normally. A test that already
         failed raised, and this must not turn that into a different complaint.
 
-        `own` excludes the IDs in ``_EvidenceFilter.BASE_IDS``. That set is empty,
-        so base-class CHK records count toward a declared floor.
+        `own` excludes the IDs in ``_EvidenceFilter.BASE_IDS`` that the leaf does
+        not name in ``required_evidence``.
         """
         seen = sorted(getattr(self, "_evidence", _EvidenceFilter()).seen)
-        own = [c for c in seen if c not in _EvidenceFilter.BASE_IDS]
         required = tuple(self.required_evidence)
+        own = [c for c in seen if c not in _EvidenceFilter.BASE_IDS or c in required]
         missing = [check_id for check_id in required if check_id not in seen]
 
         self.logger.info(
@@ -1734,9 +1956,32 @@ class sep_base_test(uvm_test):
                 + " -- the run exited cleanly without grading what it claims to grade"
             )
 
+    def result_pass(self, test: str, seed: int, checks: int, extra: str = "") -> None:
+        """Hold the ``RESULT <test> seed=<n> PASS checks=<k>`` line of the leaf.
+
+        A leaf calls this at the end of ``run_scenario``. The line is logged in
+        ``report_phase``, so it appears only after the evidence gate and every
+        component ``check_phase`` passed; a leaf that fails either one logs no
+        ``RESULT ... PASS`` line.
+        """
+        self._result_pass = (test, seed, checks, extra)
+
     async def run_phase(self) -> None:
         self.raise_objection()
         self._log_run_identity()
         await self.run_scenario()
+        # The last bus beat of a scenario can land on the clk_i edge where it
+        # returns. Leave that time step before the run ends, so that the HDL
+        # processes of the edge (the FCOV sampler among them) run.
+        await Timer(1, units="ns")
         self._finalize_evidence()
+        self._evidence_passed = True
         self.drop_objection()
+
+    def report_phase(self) -> None:
+        # pyuvm runs report_phase after check_phase of every component, and only
+        # when none of them raised.
+        held = getattr(self, "_result_pass", None)
+        if held is not None and getattr(self, "_evidence_passed", False):
+            test, seed, checks, extra = held
+            self.logger.info("RESULT %s seed=%d PASS checks=%d%s", test, seed, checks, extra)

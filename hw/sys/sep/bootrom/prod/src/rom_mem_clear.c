@@ -7,8 +7,7 @@
 // and BL1 execution:
 //   write_zeros(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, false)
 //
-// Uses a CPU word loop rather than DMA because the DMA engine is a copy
-// engine (src→dst) and does not have a dedicated "fill" mode.
+// Uses a CPU word loop, not the secure DMA zero fill.
 //
 // Controlled by SRAM_SCRUB_BYTES (build knob; 0x40000 clears all of SEP SRAM).
 // The Makefile sets the default.

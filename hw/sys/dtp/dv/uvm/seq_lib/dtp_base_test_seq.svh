@@ -6,12 +6,10 @@
 // (JTAG operations on p_sequencer.m_jtag_seqr, CSR AXI-Lite operations on
 // p_sequencer.m_xtrig_seqr in the XTRIG family, responder backdoor through
 // the slave sequences). It never touches a driver or a VIP virtual
-// interface; the written exceptions are the DTP-local TB interfaces tb_vif
-// (reset sequencing, dbg_disable stimulus, control-domain observables),
-// scan_vif (scan-network observables and downstream-TAP attach), xtrig_vif
-// (cross-trigger pins), and jtag_vif (the reset-family scenarios hold TRST
-// across TCK cycles and sample it under a power-on reset), all plumbed by
-// the base test.
+// interface; the pins it drives and samples are on the DTP-local TB
+// interfaces tb_vif (reset sequencing, dbg_disable stimulus, control-domain
+// observables), scan_vif (scan-network observables and downstream-TAP
+// attach), and xtrig_vif (cross-trigger pins), all plumbed by the base test.
 //
 // The scenario layer tracks the TAP state itself (m_tap_state) and hands it
 // to every JTAG operation, since the VIP sequence's model lives inside the
@@ -48,17 +46,15 @@ class dtp_base_test_seq extends ocah_sequence;
   virtual dtp_scan_if  scan_vif;
   virtual dtp_xtrig_if xtrig_vif;
   dtp_test_cfg         test_cfg;
-  // Plumbed by the test for scenarios that hold, sequence, or sample TRST
-  // directly (reset family). Safe alongside the VIP driver, which drives
-  // trst_n only while executing a TAP_RESET item.
-  virtual ocah_jtag_if jtag_vif;
   // Env-owned evidence and observation handles: the aggregate JTAG
   // recorder, the pin-level scan reconstruction with the DUT's Shift-x
   // episodes (a scenario clears the handle to skip scan-length evidence),
-  // and the scan-window monitor.
+  // the scan-window monitor, and the TAP FSM checker, which holds the
+  // observed TRST_N level.
   ocah_jtag_checker       evidence;
   dtp_jtag_scan_builder   scan_builder;
   dtp_scan_window_monitor scan_window;
+  dtp_tap_fsm_checker     fsm_checker;
 
   // TAP state tracked across operations (each operation re-syncs the VIP
   // model from it and hands the landing state back).
@@ -93,6 +89,15 @@ class dtp_base_test_seq extends ocah_sequence;
     run_jtag_op(op);
   endtask
 
+  // One TRST level change, then `tck_cycles` TCK cycles with TMS at `tms`.
+  task trst_op(bit asserted, int unsigned tck_cycles = 0, bit tms = 1'b1);
+    dtp_jtag_trst_seq op = dtp_jtag_trst_seq::type_id::create("trst");
+    op.asserted   = asserted;
+    op.tck_cycles = tck_cycles;
+    op.tms        = tms;
+    run_jtag_op(op);
+  endtask
+
   // One raw TCK step from any state.
   task step(bit tms, bit tdi = 1'b0);
     bit tms_bits[] = new[1];
@@ -113,19 +118,6 @@ class dtp_base_test_seq extends ocah_sequence;
     dtp_jtag_goto_state_seq op = dtp_jtag_goto_state_seq::type_id::create("goto_state");
     op.target_state = target;
     run_jtag_op(op);
-  endtask
-
-  // Walk to a seeded random state outside `exclude`.
-  task goto_random_state(output ocah_jtag_tap_state_e reached,
-                         input ocah_jtag_tap_state_e exclude[$] = {});
-    ocah_jtag_tap_state_e pool[$];
-    for (int unsigned s = 0; s < 16; s++) begin
-      ocah_jtag_tap_state_e st = ocah_jtag_tap_state_e'(s);
-      if (!(st inside {exclude})) pool.push_back(st);
-    end
-    if (pool.size() == 0) `uvm_fatal(get_type_name(), "goto_random_state: every TAP state excluded")
-    reached = pool[$urandom_range(pool.size()-1)];
-    goto_state(reached);
   endtask
 
   // Seeded random TMS walk (TDI = 0); read the landing state with
@@ -185,34 +177,37 @@ class dtp_base_test_seq extends ocah_sequence;
   // DTP-local TAP helpers and checks.
   // ------------------------------------------------------------------
 
-  // `checker_tag` because bare `checker` is an IEEE 1800 reserved word.
+  // The exported TAP state is `expected` after an operation. A mismatch
+  // records a CHK-TAP-STATE FAIL through the env recorder, beside the
+  // per-cycle records of dtp_tap_fsm_checker. `checker_tag` names the VPLAN
+  // checker (bare `checker` is an IEEE 1800 reserved word).
   function void check_state(dtp_tap_state_e expected, string checker_tag, string what);
-    if (tb_vif.tap_state !== expected)
-      `uvm_error(checker_tag, $sformatf(
-                 "%s: expected TAP state %s (0x%04h), got 0x%04h",
-                 what,
-                 expected.name(),
-                 expected,
-                 tb_vif.tap_state
-                 ))
-    else
+    string ctx;
+    if (tb_vif.tap_state === expected) begin
       `uvm_info(checker_tag, $sformatf("%s: TAP state %s as expected", what, expected.name()),
                 UVM_MEDIUM)
+      return;
+    end
+    ctx = $sformatf(
+        "%s %s expected_state=%s observed_onehot=%04h",
+        checker_tag,
+        what,
+        expected.name(),
+        tb_vif.tap_state
+    );
+    if (evidence == null) `uvm_fatal(get_type_name(), "evidence recorder not plumbed by the test")
+    void'(evidence.expect_true("CHK-TAP-STATE", tb_vif.tap_state === expected, ctx));
   endfunction
 
   // CHK-RESET-COUNT: the tb_top assertion counter of a reset this sequence
-  // drove advanced by exactly one across the pulse, so a reset claim rests
-  // on a reset that happened rather than on the checks it withdrew.
+  // drove advanced by exactly one across the pulse.
   function void check_reset_counted(string which, logic [31:0] before_count,
                                     logic [31:0] after_count, string context_s);
     string ctx = $sformatf(
         "%s before=%0d after=%0d %s", which, before_count, after_count, context_s
     );
-    if (evidence != null)
-      void'(evidence.expect_equal("CHK-RESET-COUNT", 64'(after_count - before_count), 64'd1, ctx));
-    else if (after_count !== before_count + 32'd1)
-      `uvm_error("reset_count_chk", {"reset assertion counter did not advance: ", ctx})
-    else `uvm_info("reset_count_chk", {"reset counted: ", ctx}, UVM_MEDIUM)
+    if (evidence == null) `uvm_fatal(get_type_name(), "evidence recorder not plumbed by the test")
+    void'(evidence.expect_equal("CHK-RESET-COUNT", 64'(after_count - before_count), 64'd1, ctx));
   endfunction
 
   // Power-on/system reset sequencing (DTP-local, via dtp_tb_if), the same
@@ -253,24 +248,28 @@ class dtp_base_test_seq extends ocah_sequence;
     check_state(TEST_LOGIC_RESET, "sanity_scan_path_chk", "after 5x TMS=1");
   endtask
 
-  // Hold or release TRST directly (active-low). Asserting samples the TAP
-  // state once the pin has settled and before any TCK edge (the driver
-  // idles TCK between items), then clocks TCK with TMS low, which leaves
-  // Test-Logic-Reset unless the reset holds the controller there. Releasing
-  // clocks TCK with TMS high, the Test-Logic-Reset self-loop.
+  // Hold or release TRST (active-low value). Asserting is hold_trst() after
+  // the level change. Releasing clocks TCK with TMS high, the
+  // Test-Logic-Reset self-loop.
   task set_trst(bit value, int unsigned cycles = 1);
-    if (jtag_vif == null)
-      `uvm_fatal(get_type_name(), "set_trst() needs jtag_vif plumbed by the test")
-    jtag_vif.trst_n <= value;
     if (value == 1'b0) begin
-      wait_sys_cycles(1);
-      m_trst_async_state = tb_vif.tap_state;
+      trst_op(1'b1);
+      hold_trst(cycles);
+    end else begin
+      trst_op(1'b0, (cycles > 0) ? cycles : 1);
     end
-    repeat (cycles > 0 ? cycles : 1) step(value);
-    if (value == 1'b0) begin
-      sync_model(OCAH_JTAG_TEST_LOGIC_RESET);
-      if (evidence != null) evidence.reset_model();
-    end
+  endtask
+
+  // With TRST asserted and no TCK edge since (the driver idles TCK between
+  // items): sample the TAP state once the reset has settled, then clock TCK
+  // with TMS low, which leaves Test-Logic-Reset unless the reset holds the
+  // controller there.
+  task hold_trst(int unsigned cycles);
+    wait_sys_cycles(1);
+    m_trst_async_state = tb_vif.tap_state;
+    repeat ((cycles > 0) ? cycles : 1) step(1'b0);
+    sync_model(OCAH_JTAG_TEST_LOGIC_RESET);
+    if (evidence != null) evidence.reset_model();
   endtask
 
   // The TAP state set_trst sampled under TRST_N before any TCK edge.
@@ -279,19 +278,20 @@ class dtp_base_test_seq extends ocah_sequence;
   endfunction
 
   // Hold power-on reset for `cycles` TCK periods with TRST_N untouched and
-  // TCK idle, sample the TAP state and TRST_N under the reset, then release
-  // it and idle as long again. The reset moves the TAP to Test-Logic-Reset
-  // without a TCK edge, so the tracked state follows it here.
+  // TCK idle, sample the TAP state and the observed TRST_N under the reset,
+  // then release it and idle as long again. The reset moves the TAP to
+  // Test-Logic-Reset without a TCK edge, so the tracked state follows it
+  // here.
   task pulse_por(input int unsigned cycles, output bit [15:0] state_under_por,
                  output bit trst_n_under_por);
     logic [31:0] before_count = tb_vif.por_assert_count;
     int unsigned hold = (cycles > 0) ? cycles : 1;
-    if (jtag_vif == null)
-      `uvm_fatal(get_type_name(), "pulse_por() needs jtag_vif plumbed by the test")
+    if (fsm_checker == null)
+      `uvm_fatal(get_type_name(), "pulse_por() needs fsm_checker plumbed by the test")
     tb_vif.por_rst_n <= 1'b0;
     wait_tck_periods(hold);
     state_under_por  = tb_vif.tap_state;
-    trst_n_under_por = jtag_vif.trst_n;
+    trst_n_under_por = fsm_checker.trst_n();
     tb_vif.por_rst_n <= 1'b1;
     wait_tck_periods(hold);
     check_reset_counted("por_assert_count", before_count, tb_vif.por_assert_count, $sformatf(
@@ -416,26 +416,9 @@ class dtp_base_test_seq extends ocah_sequence;
   // TDI-to-TDO delay: observed = {pattern[width-2:0], 1'b0} LSB-first.
   task check_bypass_latency(input bit [63:0] pattern, input int unsigned width,
                             output bit [63:0] observed);
-    bit [63:0] expected;
-    expected = ocah_jtag_checker::predict_bypass_tdo(pattern, width);
     shift_dr(pattern, width, observed);
-    if (evidence != null) begin
-      void'(evidence.check_bypass_latency(observed, pattern, width));
-    end else if (observed !== expected)
-      `uvm_error("sanity_bypass_latency_chk", $sformatf(
-                 "BYPASS TDI-to-TDO latency not 1 TCK: pattern=0x%016h width=%0d expected=0x%016h observed=0x%016h",
-                 pattern,
-                 width,
-                 expected,
-                 observed
-                 ))
-    else
-      `uvm_info("sanity_bypass_latency_chk", $sformatf(
-                "BYPASS 1-TCK latency OK: pattern=0x%016h width=%0d observed=0x%016h",
-                pattern,
-                width,
-                observed
-                ), UVM_MEDIUM)
+    if (evidence == null) `uvm_fatal(get_type_name(), "evidence recorder not plumbed by the test")
+    void'(evidence.check_bypass_latency(observed, pattern, width));
   endtask
 
   // ------------------------------------------------------------------

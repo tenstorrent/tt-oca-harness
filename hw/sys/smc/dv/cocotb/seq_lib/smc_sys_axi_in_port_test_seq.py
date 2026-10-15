@@ -13,7 +13,7 @@ is shown reachable from the system port and from SEP_IN. The entry is restored
 to its generated reset afterwards.
 
 The write and read channels of the port are then driven together: the filter
-decides each direction from its own request (``axi_filter_wrap.sv:211,221``,
+decides each direction from its own request (``axi_filter_wrap.sv``:
 ``isolate_write`` / ``isolate_read`` are separate terms), so an entry that
 allows both must admit a write and a read presented in the same cycle. Four
 interleaved passes go out as one outstanding group; SEP_IN reads back the write
@@ -24,8 +24,8 @@ fails on the data rather than only on the response.
 The pre-admit SYS_IN read is issued with the error response tolerated and its
 response is reported, not asserted: the specification leaves the reset state
 of the sixteen inbound entries to the chiplet integration. No inbound port is
-tied off in this bench (SEP_IN, SYS_IN and JTAG all carry agents), so the
-"unused port tied idle" cell is left open.
+tied off in this bench (SEP_IN, SYS_IN and JTAG all carry agents), so this
+bench produces no "unused port tied idle" evidence.
 """
 
 from __future__ import annotations
@@ -155,8 +155,8 @@ class _FilterWatch:
     ``axi_filter_wrap.sv`` raises ``write_filter_hit`` / ``read_filter_hit``
     from the matching entry and drives ``isolate_write`` / ``isolate_read`` from
     that entry's per-direction rule, with block-by-default when nothing matches
-    (``smc_input_fabric.sv:348``). Admitting both directions in one cycle is
-    therefore both hits set with neither isolate.
+    (``smc_input_fabric.sv`` BLOCK_BY_DEFAULT). Admitting both directions in one
+    cycle is therefore both hits set with neither isolate.
     """
 
     def __init__(self, dut) -> None:

@@ -17,7 +17,7 @@ regwidth = 64
 regwidth = 256
   [JTAG_PUBLIC_IDENTITY.fields.value]
   bits = "255:0"
-  desc = "JTAG-public identity window. Replaces the former CHIPLET_ID and PACKAGE_ID registers. Readable via JTAG in PROD and RMA_SiP states where all other eFuse fields are blocked."
+  desc = "JTAG-public identity window. Readable via JTAG in PROD and RMA_SiP states where all other eFuse fields are blocked."
 
 [I2C_I3C_ID]
 regwidth = 576

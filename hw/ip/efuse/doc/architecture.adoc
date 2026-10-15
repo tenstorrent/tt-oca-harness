@@ -33,7 +33,7 @@ ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-efuse[eFuse section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-efuse[eFuse section]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-efuse[eFuse section]
 endif::backend-pdf[]
 of the Programmer's Guide.
 

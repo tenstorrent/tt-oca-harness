@@ -7,7 +7,7 @@
 // - Tobias Senti <tsenti@ethz.ch>
 
 `include "idma/guard.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Implementing the transport layer in the iDMA backend.
 module idma_transport_layer_rw_axi #(
@@ -270,7 +270,7 @@ endmodule
 // - Tobias Senti <tsenti@ethz.ch>
 
 `include "idma/guard.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Implementing the transport layer in the iDMA backend.
 module idma_transport_layer_r_init_rw_axi #(
@@ -616,7 +616,7 @@ endmodule
 // - Tobias Senti <tsenti@ethz.ch>
 
 `include "idma/guard.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Implementing the transport layer in the iDMA backend.
 module idma_transport_layer_r_obi_w_axi #(
@@ -880,7 +880,7 @@ endmodule
 // - Tobias Senti <tsenti@ethz.ch>
 
 `include "idma/guard.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Implementing the transport layer in the iDMA backend.
 module idma_transport_layer_r_axi_w_obi #(
@@ -1144,7 +1144,7 @@ endmodule
 // - Tobias Senti <tsenti@ethz.ch>
 
 `include "idma/guard.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Implementing the transport layer in the iDMA backend.
 module idma_transport_layer_rw_axi_rw_axis #(
@@ -1686,7 +1686,7 @@ endmodule
 // - Tobias Senti <tsenti@ethz.ch>
 
 `include "idma/guard.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Implementing the transport layer in the iDMA backend.
 module idma_transport_layer_r_axi_w_axis #(
@@ -1952,7 +1952,7 @@ endmodule
 // - Tobias Senti <tsenti@ethz.ch>
 
 `include "idma/guard.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Implementing the transport layer in the iDMA backend.
 module idma_transport_layer_r_axis_w_axi #(
@@ -2216,7 +2216,7 @@ endmodule
 // - Tobias Senti <tsenti@ethz.ch>
 
 `include "idma/guard.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Implementing the transport layer in the iDMA backend.
 module idma_transport_layer_r_init_rw_obi #(
@@ -2558,7 +2558,7 @@ endmodule
 // - Tobias Senti <tsenti@ethz.ch>
 
 `include "idma/guard.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Implementing the transport layer in the iDMA backend.
 module idma_transport_layer_r_obi_rw_init_w_axi #(
@@ -3098,7 +3098,7 @@ endmodule
 // - Tobias Senti <tsenti@ethz.ch>
 
 `include "idma/guard.svh"
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// Implementing the transport layer in the iDMA backend.
 module idma_transport_layer_r_axi_rw_init_rw_obi #(
@@ -3677,7 +3677,7 @@ endmodule
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 // - Tobias Senti <tsenti@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 `include "idma/guard.svh"
 
@@ -4122,7 +4122,7 @@ endmodule
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 // - Tobias Senti <tsenti@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 `include "idma/guard.svh"
 
@@ -4595,7 +4595,7 @@ endmodule
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 // - Tobias Senti <tsenti@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 `include "idma/guard.svh"
 
@@ -5040,7 +5040,7 @@ endmodule
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 // - Tobias Senti <tsenti@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 `include "idma/guard.svh"
 
@@ -5483,7 +5483,7 @@ endmodule
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 // - Tobias Senti <tsenti@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 `include "idma/guard.svh"
 
@@ -5995,7 +5995,7 @@ endmodule
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 // - Tobias Senti <tsenti@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 `include "idma/guard.svh"
 
@@ -6439,7 +6439,7 @@ endmodule
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 // - Tobias Senti <tsenti@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 `include "idma/guard.svh"
 
@@ -6877,7 +6877,7 @@ endmodule
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 // - Tobias Senti <tsenti@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 `include "idma/guard.svh"
 
@@ -7338,7 +7338,7 @@ endmodule
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 // - Tobias Senti <tsenti@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 `include "idma/guard.svh"
 
@@ -7846,7 +7846,7 @@ endmodule
 // - Thomas Benz <tbenz@iis.ee.ethz.ch>
 // - Tobias Senti <tsenti@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 `include "common_cells/assertions.svh"
 `include "idma/guard.svh"
 

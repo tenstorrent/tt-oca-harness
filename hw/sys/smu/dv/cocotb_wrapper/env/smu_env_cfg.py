@@ -103,6 +103,9 @@ class SmuEnvCfg(uvm_object):
             user_width=12,
         )
         self.axi_out_mem_size = 1 << 56
+        # Transactions per direction the responder holds at once; None serves
+        # one request at a time.
+        self.axi_out_max_outstanding: int | None = None
         self.axi_out_mem: OcahAxiSlaveSequence | None = None
 
     def resolve_pll_timing(self) -> None:

@@ -6,6 +6,8 @@ A PAGE PROGRAM and a SECTOR ERASE issued without WRITE ENABLE, and a PAGE
 PROGRAM after WRITE ENABLE then WRITE DISABLE, are refused and leave the page
 blank; a PAGE PROGRAM after WRITE ENABLE lands and consumes the latch, so the
 program that follows without a new WRITE ENABLE is refused and the data stays.
+That refused payload is the bitwise complement of the page data, which keeps
+at least one bit set, so a device that applied it would change the page.
 The opcode sequence is exact. A probe checker handed a wrong expected sequence
 must reject it, and a probe that replays a device which programmed without
 WRITE ENABLE must reject the ordering.
@@ -64,14 +66,9 @@ EXPECTED_ORDER = [
 ]
 
 
-def _unprotected_program(flash):
-    """A device handler that programs on PAGE PROGRAM whatever the latch says."""
-
-    async def handler(opcode: int, addr: int, payload: bytes) -> None:
-        current = bytearray(flash.read_memory(addr, len(payload)))
-        flash.write_memory(addr, bytes(a & b for a, b in zip(current, payload)))
-
-    return handler
+def _accepted_program(record, payload: bytes):
+    """Return a faulty record that accepts PAGE PROGRAM with the latch clear."""
+    return {**record, "ok": True, "reason": "", "data_in": payload}
 
 
 @cocotb.test()
@@ -80,17 +77,21 @@ async def ocah_spi_ordering_test(dut) -> None:
     harness = await build_stack(dut, required_ids=REQUIRED_IDS, log=log)
     host, checker, flash = harness.host, harness.checker, harness.flash
     addr, length = random_page_span(rng)
-    data = random_payload(rng, length)
-    other = random_payload(rng, length)
+    data = bytearray(random_payload(rng, length))
+    if not any(data):
+        data[0] = 0x5A
+    data = bytes(data)
+    # The refused program clears every bit the page keeps set, and the page
+    # keeps at least one, so a device that applied it changes the page.
+    other = bytes(~value & 0xFF for value in data)
     negative = negative_armed()
     log.info("start: page addr=0x%06x len=%d, negative=%s", addr, length, negative)
 
     if negative:
         log.warning(
-            "NEGATIVE VALIDATION: the device programs without WRITE ENABLE; "
+            "NEGATIVE VALIDATION: the record accepts PAGE PROGRAM without WRITE ENABLE; "
             "CHK-SPI-WREN-ORDER must fail"
         )
-        flash.register_command_callback(OcahSpiOpcode.PAGE_PROGRAM, _unprotected_program(flash))
 
     await host.page_program(addr, data)
     blank = await host.read(addr, length)
@@ -106,7 +107,13 @@ async def ocah_spi_ordering_test(dut) -> None:
     kept = await host.read(addr, length)
     await host.read_status1()
 
-    checker.replay()
+    records = flash.get_transactions()
+    if negative:
+        first_program = next(
+            i for i, record in enumerate(records) if record["opcode"] == OcahSpiOpcode.PAGE_PROGRAM
+        )
+        records[first_program] = _accepted_program(records[first_program], data)
+    checker.replay(records)
     host.check_host_responses()
     checker.check_command_order(EXPECTED_ORDER)
     checker.expect_equal(
@@ -124,7 +131,6 @@ async def ocah_spi_ordering_test(dut) -> None:
     checker.check_memory(source=data, addr=addr, context="one accepted program")
     checker.check_nonvacuous()
 
-    records = flash.get_transactions()
     rejected_order = rejects(
         "order",
         flash,
@@ -132,17 +138,20 @@ async def ocah_spi_ordering_test(dut) -> None:
             probe.replay(records),
             probe.check_command_order(EXPECTED_ORDER[1:] + EXPECTED_ORDER[:1]),
         ),
+        check_id="CHK-SPI-CMD-ORDER",
     )
     checker.expect_true(
         "CHK-SPI-NEG-ORDER", rejected_order, context="a wrong expected sequence must be rejected"
     )
 
-    flash.register_command_callback(OcahSpiOpcode.PAGE_PROGRAM, _unprotected_program(flash))
     faulty_addr = addr ^ 0x100
     await host.page_program(faulty_addr, other)
-    flash.unregister_command_callback(OcahSpiOpcode.PAGE_PROGRAM)
     await harness.stop()
-    rejected_latch = rejects("latch", flash, lambda probe: probe.replay(flash.get_transactions()))
+    faulty_records = flash.get_transactions()
+    faulty_records[-1] = _accepted_program(faulty_records[-1], other)
+    rejected_latch = rejects(
+        "latch", flash, lambda probe: probe.replay(faulty_records), check_id="CHK-SPI-WREN-ORDER"
+    )
     checker.expect_true(
         "CHK-SPI-NEG-WEL",
         rejected_latch,

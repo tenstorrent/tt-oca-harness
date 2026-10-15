@@ -3,7 +3,7 @@
 //
 // dtp_xtrig_axi_channel_skew_read_decode_backpressure_test — a CTP register read and an unmapped
 // read under RREADY backpressure return OKAY with the written data and then DECERR, with stable
-// RDATA/RRESP (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass floor).
+// RDATA/RRESP (looped runner with per-pass CHK-XTRIG-* evidence).
 
 class dtp_xtrig_axi_channel_skew_read_decode_backpressure_test extends dtp_xtrig_base_test;
   `uvm_component_utils(dtp_xtrig_axi_channel_skew_read_decode_backpressure_test)

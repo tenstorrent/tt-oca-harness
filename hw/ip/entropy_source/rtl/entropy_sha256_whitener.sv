@@ -10,6 +10,8 @@
 // ready/valid.
 // busy_o, input_count_o, and output_count_o report hasher progress.
 
+`include "ocah_registers.svh"
+
 module entropy_sha256_whitener (
   input       logic       clk_i,        // System clock.
   input       logic       rst_ni,       // Active-low asynchronous reset.
@@ -177,23 +179,12 @@ module entropy_sha256_whitener (
   ///////////////
   // Sequential
   ///////////////
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      input_word_count_q <= 4'h0;
-      output_words_remaining_q <= 4'd0;
-      hashing_q <= 1'b0;
-      input_phase_q <= 1'b0;
-      output_buffer_q <= '{default: '0};
-      sha_hash_done_q <= 1'b0;
-    end else begin
-      input_word_count_q <= input_word_count_d;
-      output_words_remaining_q <= output_words_remaining_d;
-      hashing_q <= hashing_d;
-      input_phase_q <= input_phase_d;
-      output_buffer_q <= output_buffer_d;
-      sha_hash_done_q <= sha_hash_done;
-    end
-  end
+  `OCAH_FF(input_word_count_q, input_word_count_d, 4'h0, clk_i, rst_ni)
+  `OCAH_FF(output_words_remaining_q, output_words_remaining_d, 4'd0, clk_i, rst_ni)
+  `OCAH_FF(hashing_q, hashing_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(input_phase_q, input_phase_d, 1'b0, clk_i, rst_ni)
+  `OCAH_FF(output_buffer_q, output_buffer_d, '{default: '0}, clk_i, rst_ni)
+  `OCAH_FF(sha_hash_done_q, sha_hash_done, 1'b0, clk_i, rst_ni)
 
   ///////////
   // Output

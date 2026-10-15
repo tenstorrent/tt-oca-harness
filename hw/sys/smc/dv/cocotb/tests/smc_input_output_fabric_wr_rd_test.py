@@ -30,9 +30,7 @@ INPUT_OUTPUT_FABRIC_MIN_CSR_ACCESSES = 6
 # Independent literal floor for the non-CSR fabric traffic this scenario issues:
 # one JTAG-AXI write and one JTAG-AXI read of the output-fabric window. The
 # OBSERVED count is measured by the scoreboard's per-bus tally inside
-# record_protocol_vip (driver-stamped, one per completed access), never passed in
-# from here -- a constant used as both observation and floor would make the
-# scoreboard assert `2 >= 2` ([NO-ALWAYS-PASS-CHECKER]).
+# record_protocol_vip (driver-stamped, one per completed access).
 MIN_JTAG_AXI_ACCESSES = 2
 
 
@@ -98,21 +96,17 @@ class smc_input_output_fabric_wr_rd_test(smc_base_test):
             type(self).__name__,
             csr_accesses=cfg_seq.accesses,
             min_csr_accesses=INPUT_OUTPUT_FABRIC_MIN_CSR_ACCESSES,
-            # The two JTAG-AXI fabric accesses are reported in their own field:
-            # folded into csr_accesses they would make the record state a count
-            # of CSR traffic that never happened. The observed count is MEASURED by
-            # record_protocol_vip from the scoreboard's JTAG AXI tally; only the
-            # floor is written here, so the scoreboard's
-            # `fabric_accesses >= min_fabric_accesses` compares a measurement
-            # against an independent literal.
+            # The two JTAG-AXI fabric accesses are not CSR traffic and are
+            # reported in their own field; record_protocol_vip measures the
+            # observed count from the scoreboard's JTAG AXI tally and compares it
+            # against this floor.
             min_fabric_accesses=MIN_JTAG_AXI_ACCESSES,
             fabric_access_label="jtag_axi_accesses",
             fabric_bus="JTAG AXI",
             # Nothing on this path measures a timeout: every access runs with
             # allow_timeout False, so SmcSysAxiAgent._timed_event raises on expiry
             # and control cannot reach this record with a timeout counted.
-            # `None` renders `n/a`; printing 0 would state an unmeasured
-            # statistic in the shape of a measured one ([EXACT-EXPECTATION]).
+            # `None` renders `n/a`.
             timeouts=None,
             proxy=False,
             details=(

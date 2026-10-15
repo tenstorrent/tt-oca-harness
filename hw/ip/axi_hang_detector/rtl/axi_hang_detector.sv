@@ -17,6 +17,7 @@
 // smc_base_config register block.
 
 `include "prim_assert.sv"
+`include "ocah_assert.svh"
 
 module axi_hang_detector #(
   parameter int unsigned OUTSTANDING_TX = 6  // Max outstanding tracked by the snoop.
@@ -147,6 +148,6 @@ module axi_hang_detector #(
 
   `OCAH_OT_ASSERT_KNOWN(IrqKnownO_A, irq_o)
   `OCAH_OT_ASSERT_KNOWN(BusActiveKnownO_A, bus_active_o)
-  `OCAH_OT_ASSERT_INIT(ParamOutstandingTx_A, OUTSTANDING_TX >= 1)
+  `OCAH_ASSERT_STATIC(ParamOutstandingTx_A, OUTSTANDING_TX >= 1)
 
 endmodule

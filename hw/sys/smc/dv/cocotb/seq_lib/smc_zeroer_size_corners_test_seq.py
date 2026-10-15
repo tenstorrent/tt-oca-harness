@@ -5,8 +5,7 @@
 The RDL gives `SIZE` as "Size in bytes of zeros to write" and `DEST_ADDR` as
 the "Byte address to write zeros to", and `hw/sys/smc/doc/zeroer.adoc` lists
 unaligned start addresses and burst fragmentation at page boundaries among
-what the zeroer handles. Every enrolled zeroer job so far starts on a word,
-ends on a word, and stays inside one 4 KB page. Two jobs here do not:
+what the zeroer handles. Two jobs here sit at those edges:
 
 * **A job of zero bytes.** `CTRL_STATUS` is written, which is the trigger,
   with `SIZE` at 0. Zero bytes are to be written, so nothing may reach the

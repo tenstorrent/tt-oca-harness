@@ -50,8 +50,8 @@ EAPS_PER_NODE = 4
 # clk_smc_i cycles between arming a configuration and the first status read,
 # and the number of status reads a pair gets before it is declared not to have
 # activated. The CLA runs on its own gated clock and the EAP status is set
-# combinationally from the logic-operation result, so this is a bounded poll on
-# a hardware-driven register, not a delay standing in for a handshake.
+# combinationally from the logic-operation result, so the status register is
+# polled a bounded number of times.
 _SETTLE_CYCLES = 8
 _STATUS_POLLS = 4
 

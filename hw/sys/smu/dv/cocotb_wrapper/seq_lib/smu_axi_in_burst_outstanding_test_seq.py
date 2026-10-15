@@ -2,11 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AXI-IN depth and burst type on the inbound SMN port, through an open window.
 
-Every enrolled inbound test issues one single-beat transfer at a time and
-expects OKAY or DECERR, so the inbound port has never had more than one
-transaction in flight and has never been offered a burst type the SMC
-register path does not implement.
-
 S1: a train of reads and a train of writes, each launched without waiting for
     the one before it and with the matching response channel held back so the
     trains queue up inside the DUT. The address handshakes the port accepts

@@ -5,7 +5,7 @@
 // Authors:
 // - Axel Vanoni <axvanoni@ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "ocah_registers.svh"
 
 /// This module takes in an AXI R-channel, and reads descriptors from it.
 /// Note that an using an address width other than 64 bits will need
@@ -50,8 +50,8 @@ always_comb begin
     end
 end
 
-`FF(n_to_flush_q, n_to_flush_d, 'b0)
-`FF(engage_q, engage_d, 'b0)
+`OCAH_FF(n_to_flush_q, n_to_flush_d, 'b0, clk_i, rst_ni)
+`OCAH_FF(engage_q, engage_d, 'b0, clk_i, rst_ni)
 
 assign r_valid_o = flush ? 1'b0 : r_valid_i;
 assign r_ready_o = flush ? 1'b1 : r_ready_i;

@@ -227,7 +227,7 @@ trm)
   sed -i -E 's/#aou-73-activation-deactivation-flow\[/#aou-activation-deactivation-flow[/g' \
     "$MOD"/aou/partials/interrupts-errors.adoc "$MOD"/aou/partials/pdf/interrupts-errors.adoc
   sed -i -E -f <(aou_pg_links 'xref:ocah-programmer-guide::index.adoc') "$MOD"/aou/partials/*.adoc
-  sed -i -E -f <(aou_pg_links 'https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html') \
+  sed -i -E -f <(aou_pg_links 'https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html') \
     "$MOD"/aou/partials/pdf/*.adoc
   ;;
 integrator)

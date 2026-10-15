@@ -14,15 +14,15 @@ here is imported by generated symbol from ``efuse_interface_ctrl.h``.
 
 *Model-backed (NOT silicon-path coverage).* ``tb_efuse_programmed_word0`` is a
 TB tap on ``u_dut.u_smc_ip_integration.u_efuse_bank_model.u_efuse_bank_reg``
-(``tb/tb_top.sv:1274-1277``). SPEC declares that block a stand-in: "The eFuse
-bank model (`efuse_bank_model.sv`) is a reference, simulation-only stand-in for
-the real foundry OTP macro ... In a production integration it is replaced by the
-actual foundry macro driven by the SHIM"
-(``hw/ip/efuse/doc/architecture.adoc:163-170``), and its set-once semantics are
-``onwrite = woset`` in the DV RDL ``hw/ip/efuse/dv/models/regs/efuse_bank.rdl:14``. The
-``OTP=...`` observations below therefore show that the controller's command did
-or did not reach the bank model -- they are **not** proof that a fuse burns in
-silicon ([BEHAVIORAL-STUB-DECLARED]). Their log lines are prefixed
+(``tb/tb_top.sv``). SPEC declares that block a stand-in: "The eFuse bank model
+(`efuse_bank_model.sv`) is a reference, simulation-only stand-in for the real
+foundry OTP macro ... In a production integration it is replaced by the actual
+foundry macro driven by the SHIM" (``hw/ip/efuse/doc/architecture.adoc``, eFuse
+Bank Model), and its set-once semantics are ``onwrite = woset`` in the DV RDL
+``hw/ip/efuse/dv/models/regs/efuse_bank.rdl``. The ``OTP=...`` observations
+below therefore show that the controller's command did or did not reach the
+bank model -- they are **not** proof that a fuse burns in silicon
+([BEHAVIORAL-STUB-DECLARED]). Their log lines are prefixed
 ``MODEL-BACKED``. These legs are the only end-to-end sequencing check available
 in this bench.
 """
@@ -132,11 +132,10 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         """`read_go` with `read_enable` LOW -- the one cause the RDL sanctions.
 
         `efuse_interface_ctrl.rdl` documents READ_STATUS as "Logic error, assert
-        read_go when read is not enabled", and `efuse_read_interface.sv:109-113`
-        is the arm that implements it, resolved in `ST_READ_IDLE` before any
-        command reaches the bank model. Identical to `_read` except the command
-        word omits READ_EN, so the difference between the two is exactly the
-        quantity under test.
+        read_go when read is not enabled", and `efuse_read_interface.sv`
+        resolves that arm in `ST_READ_IDLE` before any command reaches the bank
+        model. Identical to `_read` except the command word omits READ_EN, so
+        the difference between the two is exactly the quantity under test.
         """
         await self.csr_write(f"{label}_GO", READ_CTRL, _BIT | READ_GO)
         st = await self._wait_mask(READ_CTRL, READ_DONE, f"{label}_DONE")
@@ -306,11 +305,11 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         # bit from a dead one ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
         #
         # Armed by the recovery read immediately above, which proves
-        # READ_STATUS == 0 on a *successful* read: `efuse_read_interface.sv:95`
+        # READ_STATUS == 0 on a *successful* read: `efuse_read_interface.sv`
         # defaults `read_err_d = read_err_q`, so the field holds and a stale 1
         # would otherwise satisfy this leg.
         #
-        # `efuse_interface_controller.sv:612` gates `read_enable` with
+        # `efuse_interface_controller.sv` gates `read_enable` with
         # `&& ~efuse_req_err`, so a sticky req-err reaches the same
         # `!read_enable_i` branch and would set READ_STATUS for the wrong
         # reason: STATUS is read and REQ_ERROR required clear first.
@@ -328,13 +327,11 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             f"efuse_interface_ctrl.rdl documents this as the field's cause and "
             f"efuse_read_interface.sv:109-113 implements it"
         )
-        # READ_DATA is not asserted here: the no-enable arm
-        # (`efuse_read_interface.sv:109-113`) leaves `read_back_data_d` at its
-        # `:98` hold, so the register keeps the previous successful read's word,
-        # while the OOB arm (`:114-123`) and the macro-error / secure_tm /
-        # req-err arm (`:137-142`) both clear it. Asserting either behaviour
-        # here would fail this positive control for a reason other than the
-        # property it establishes. The value is logged as an observation.
+        # READ_DATA is not asserted here: the no-enable arm of
+        # `efuse_read_interface.sv` holds `read_back_data_d`, so the register
+        # keeps the previous successful read's word, while the OOB arm and the
+        # macro-error / secure_tm / req-err arm both clear it. The value is
+        # logged as an observation.
         cocotb.log.info(
             "CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE: the SAME command word as "
             "the recovery read minus READ_ENABLE(0x%x) gives READ_CTRL=0x%x "

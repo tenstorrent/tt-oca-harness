@@ -147,7 +147,7 @@ class AXIL_MAILBOX_ERROR_reg_u(Union):
 AXIL_MAILBOX_WIRQT_REG_DEFAULT = 0x0000000000000000
 class AXIL_MAILBOX_WIRQT_reg_t(Structure):
     _fields_ = [
-        ('wirqt', c_uint8, 8),
+        ('wirqt', c_uint64, 64),
     ]
 
 AXIL_MAILBOX_WIRQT_REG_DEFAULT = 0x0000000000000000
@@ -175,7 +175,7 @@ class AXIL_MAILBOX_WIRQT_reg_u(Union):
 AXIL_MAILBOX_RIRQT_REG_DEFAULT = 0x0000000000000000
 class AXIL_MAILBOX_RIRQT_reg_t(Structure):
     _fields_ = [
-        ('rirqt', c_uint8, 8),
+        ('rirqt', c_uint64, 64),
     ]
 
 AXIL_MAILBOX_RIRQT_REG_DEFAULT = 0x0000000000000000

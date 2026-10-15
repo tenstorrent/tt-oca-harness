@@ -16,8 +16,10 @@ using a common hierarchy, described below. If the collateral inventory changes,
 run `scripts/update_integration_symlinks.py` to regenerate the index.
 
 The constraints for each system build on shared code, linked at
-`integration/constraints/shared`. This consists of four files:
+`integration/constraints/shared`. This consists of five files:
 `clock_periods.tcl` (which sets the target clock periods every block reads),
+`io_delay_budgets.tcl` (which sets the fraction of a period each kind of port
+reserves outside the block),
 `async_clock_groups.tcl` (which defines clock groups with default bounds),
 `cdc_max_delay_procs.tcl` (which defines procs for emitting CDC constraints)
 and `hier_reuse_procs.tcl` (which lets a parent replay a block's constraints
@@ -42,7 +44,8 @@ following files:
   per-instance bounds below are not masked by a false path.
 
 * `<block>_io_delays.sdc`:
-  The input and output delays on the block's ports.
+  The input and output delays on the block's ports, sized from
+  `io_delay_budgets.tcl`, which the file sources itself.
   The CDC/RDC sign-off run reads the same three files, without the max-delay
   layer below (see <<cdc-signoff-collateral,CDC/RDC sign-off collateral>>).
 

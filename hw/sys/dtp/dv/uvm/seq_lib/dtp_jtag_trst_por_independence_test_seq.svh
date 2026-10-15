@@ -62,25 +62,20 @@ class dtp_jtag_trst_por_independence_test_seq extends dtp_jtag_base_test_seq;
 
     // TRST is released by the TAP-reset op and stays deasserted for the
     // rest of the scenario.
-    `uvm_info(get_type_name(), $sformatf("Step 1: Park the TAP in %s with TRST_N released",
-                                         target.name()), UVM_LOW)
+    log_step("1", $sformatf("Park the TAP in %s with TRST_N released", target.name()));
     reset_to_tlr();
     load_ir(instr);
     goto_state(target);
     check_state(dtp_tap_state_e'(16'h1 << int'(target)), "jtag_por_chk", $sformatf(
                 "start state %s before POR", target.name()));
 
-    `uvm_info(get_type_name(), $sformatf(
-                                   "Step 2: Hold power-on reset for %0d TCK periods with TCK idle",
-                                   por_cycles), UVM_LOW)
+    log_step("2", $sformatf("Hold power-on reset for %0d TCK periods with TCK idle", por_cycles));
     pulse_por(por_cycles, state_under_por, trst_n_under_por);
-    family_check(PorCheckId, "TAP state during POR", 64'(state_under_por), 64'(TEST_LOGIC_RESET),
-                 ctx);
+    check_tap_state(PorCheckId, state_under_por, TEST_LOGIC_RESET, {"during POR ", ctx});
     family_check(PorCheckId, "TRST_N deasserted during POR", 64'(trst_n_under_por), 64'd1, ctx);
     check_state(TEST_LOGIC_RESET, "jtag_por_chk", "after POR release, before any TCK edge");
 
-    `uvm_info(get_type_name(),
-              "Step 3: TLR -> RTI by TMS, then a DR scan with no IR load reads IDCODE", UVM_LOW)
+    log_step("3", "TLR -> RTI by TMS, then a DR scan with no IR load reads IDCODE");
     step(1'b0);
     check_state(RUN_TEST_IDLE, "jtag_por_chk", "after TLR->RTI step");
     shift_dr(64'h0, 32, idcode);

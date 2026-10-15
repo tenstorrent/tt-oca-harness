@@ -129,6 +129,7 @@ async def ocah_spi_program_readback_test(dut) -> None:
             probe.replay(records),
             probe.check_memory(source=_corrupted(expected), addr=addr),
         ),
+        check_id="CHK-SPI-MEM-SOURCE",
     )
     checker.expect_true(
         "CHK-SPI-NEG-PATTERN", rejected, context="a wrong source image must be rejected"
