@@ -278,7 +278,7 @@ class OcahSpiFlashChecker:
         self.records: list[OcahSpiFlashRecord] = []
         self.opcodes: list[int] = []
         self.unsupported: list[OcahSpiFlashRecord] = []
-        self._consumed = 0
+        self._consumed: list[OcahSpiFlashRecord] = []
         self._program_count = 0
         self._program_changed = 0
         self._erase_count = 0
@@ -297,7 +297,7 @@ class OcahSpiFlashChecker:
         self.records.clear()
         self.opcodes.clear()
         self.unsupported.clear()
-        self._consumed = 0
+        self._consumed.clear()
         self._program_count = self._program_changed = 0
         self._erase_count = self._erase_flipped = 0
         self._read_count = self._nonerased_reads = 0
@@ -306,16 +306,30 @@ class OcahSpiFlashChecker:
         """Check the records added since the last call; return how many were consumed.
 
         With no argument the attached flash's history is used. Calling again
-        with a longer history continues from the last consumed record.
+        with a longer history continues from the last consumed record. Raises
+        ``ValueError`` when the history no longer starts with the records
+        already consumed (a cleared history or a differently filtered list),
+        because the records past that point would be skipped unchecked; call
+        ``clear()`` first to replay a new history.
         """
         if records is None:
             if self.flash is None:
                 raise ValueError(f"{self.name}: replay() needs records when no flash is attached")
             records = self.flash.get_transactions()
-        fresh = list(records)[self._consumed :]
+        history = [
+            rec if isinstance(rec, OcahSpiFlashRecord) else OcahSpiFlashRecord.from_mapping(rec)
+            for rec in records
+        ]
+        done = len(self._consumed)
+        if history[:done] != self._consumed:
+            raise ValueError(
+                f"{self.name}: replay() history of {len(history)} record(s) does not start with "
+                f"the {done} record(s) already consumed; call clear() to replay a new history"
+            )
+        fresh = history[done:]
         for record in fresh:
             self.check_record(record)
-        self._consumed += len(fresh)
+        self._consumed.extend(fresh)
         return len(fresh)
 
     def check_record(self, record: Mapping[str, Any] | OcahSpiFlashRecord) -> None:
@@ -493,7 +507,15 @@ class OcahSpiFlashChecker:
         programmed or erased byte; a scenario that touched nothing fails it.
         ``CHK-SPI-MEM-SOURCE`` is recorded when ``source`` is given: the model's
         bytes at ``addr`` must equal the image the scenario meant to program.
+        A call with no attached flash and no ``source`` compares nothing and
+        fails ``CHK-SPI-MEM-GOLDEN``.
         """
+        if self.flash is None and source is None:
+            return self.expect_true(
+                "CHK-SPI-MEM-GOLDEN",
+                False,
+                context=f"no flash attached and no source: nothing to compare {context}",
+            )
         passed = True
         if self.flash is not None:
             passed &= self._check_golden(context)

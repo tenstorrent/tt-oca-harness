@@ -311,7 +311,7 @@ async def ocah_spi_lanes_test(dut) -> None:
         ),
         context=f"stop() raised {stop_text!r}",
     )
-    await flash.stop()
+    await flash.stop(require_closed=True)
 
     records = flash.get_transactions()
     frames = monitor.get_transactions()

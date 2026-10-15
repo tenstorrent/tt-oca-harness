@@ -88,6 +88,7 @@ write-enable latch or memory. A refused frame changes neither.
 ``"unexpected_payload"``   WRITE ENABLE, WRITE DISABLE or SECTOR ERASE carried
                            a bit after its last command or address bit
 ``"unknown_opcode"``       command outside the supported set
+``"open_at_stop"``         still open (chip-select low) when ``stop()`` ran
 =========================  ===================================================
 
 WRITE ENABLE and WRITE DISABLE are exactly one command byte. SECTOR ERASE is
@@ -113,7 +114,9 @@ accepted.
 received, also on a refused frame.
 
 An exception inside the protocol engine is logged and kept; ``stop()`` raises
-it, so a test that stops the device fails.
+it, so a test that stops the device fails. A frame still open at ``stop()``
+is recorded as ``"open_at_stop"``, so the history shows the frame the device
+never closed; ``stop(require_closed=True)`` also raises on it.
 """
 
 import logging
@@ -121,7 +124,7 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 import cocotb
-from cocotb.triggers import FallingEdge, First, RisingEdge
+from cocotb.triggers import FallingEdge, First, RisingEdge, Timer
 
 from .ocah_spi_types import (
     LANE_OPCODES,
@@ -136,6 +139,14 @@ from .ocah_spi_types import (
 __all__ = ["OcahSpiFlash", "OcahSpiFlashError", "SpiMode"]
 
 _ADDR_MASK_24 = 0xFFFFFF
+
+
+def _cs_level(handle: Any) -> Optional[int]:
+    """Chip-select as 0 or 1; ``None`` when X/Z."""
+    value = handle.value
+    if not value.is_resolvable:
+        return None
+    return int(value) & 1
 
 
 def _cancel_task(task: Any) -> None:
@@ -318,6 +329,8 @@ class OcahSpiFlash:
         # Runtime state
         self._task: Optional[Any] = None
         self._running = False
+        # True from the chip-select fall the engine served until its record.
+        self._frame_open = False
         self._transactions: List[Dict[str, Any]] = []
         self._engine_error: Optional[BaseException] = None
         self._input_bits = 0
@@ -493,24 +506,43 @@ class OcahSpiFlash:
             self._flash_size // (1024 * 1024),
         )
 
-    async def stop(self) -> None:
+    async def stop(self, *, require_closed: bool = False) -> None:
         """Stop the flash device BFM.  The transaction history survives.
 
-        Raises ``OcahSpiFlashError`` when the protocol engine raised while it
-        ran; the first such exception is the cause.
+        A frame still open (chip-select low) has no verdict: it is recorded
+        with ``ok=False`` and ``reason="open_at_stop"``. A frame whose
+        chip-select rose in the time step of the call is closed and recorded
+        normally. Raises ``OcahSpiFlashError`` when the protocol engine raised
+        while it ran (the first such exception is the cause), and, with
+        ``require_closed=True``, when a frame was open. A caller that stops
+        the device on purpose inside a frame (a reset) leaves it False.
         """
         if not self._running:
             return
+        if self._frame_open and _cs_level(self._cs_n) == 1:
+            # Chip-select rose in this time step; let the engine record the frame.
+            await Timer(1, "step")
+        open_frame = self._frame_open or _cs_level(self._cs_n) != 1
         self._running = False
         if self._task is not None:
             _cancel_task(self._task)
             self._task = None
+        self._frame_open = False
+        if self._miso_oe is not None:
+            self._miso_oe.value = 0
+        if open_frame:
+            self._log_transaction(-1, 0, b"", b"", ok=False, reason="open_at_stop")
         self.log.info("%s: stopped (%d transactions served)", self.name, len(self._transactions))
         error, self._engine_error = self._engine_error, None
         if error is not None:
             raise OcahSpiFlashError(
                 f"{self.name}: the protocol engine raised while running: {error!r}"
             ) from error
+        if open_frame and require_closed:
+            raise OcahSpiFlashError(
+                f"{self.name}: stopped with chip-select low after {self._input_clocks} input "
+                "clock(s); the open frame has no verdict (recorded as open_at_stop)"
+            )
 
     # ------------------------------------------------------------------
     # Transaction history
@@ -556,6 +588,7 @@ class OcahSpiFlash:
             await FallingEdge(self._cs_n)
             if not self._running:
                 break
+            self._frame_open = True
             try:
                 await self._handle_transaction()
             except Exception as exc:  # noqa: BLE001
@@ -563,6 +596,7 @@ class OcahSpiFlash:
                 if self._engine_error is None:
                     self._engine_error = exc
             finally:
+                self._frame_open = False
                 if self._miso_oe is not None:
                     self._miso_oe.value = 0
 

@@ -77,6 +77,10 @@ STATUS_REG2 = 0x5A
 FLASH_SIZE = 1 << 20
 NEGATIVE_KNOB = "OCAH_SPI_SELFTEST_NEGATIVE"
 _SEED_ENV = "RANDOM_SEED"
+# Every checker grades against these constants, not against the device under
+# test, so a device that loses its configured identifier or status register 2
+# fails the identifier and status evidence.
+_CONFIG_GOLDENS = {"jedec_id": JEDEC_ID, "status_reg2": STATUS_REG2, "flash_size": FLASH_SIZE}
 _ERASED = 0xFF
 
 
@@ -94,9 +98,10 @@ class SpiHarness:
 
         The monitor's swallowed-callback count is recorded on the test's
         checker, so a subscriber exception the monitor logged cannot pass.
+        A device frame still open at stop raises.
         """
         await self.monitor.stop()
-        await self.flash.stop()
+        await self.flash.stop(require_closed=True)
         self.checker.expect_equal(
             "CHK-SPI-MON-CALLBACKS",
             self.monitor.get_statistics()["callback_errors"],
@@ -145,7 +150,11 @@ async def build_stack(
         name="harness_monitor",
     )
     checker = OcahSpiFlashChecker(
-        name="ocah_spi_harness", flash=flash, required_ids=required_ids, logger=log
+        name="ocah_spi_harness",
+        flash=flash,
+        required_ids=required_ids,
+        logger=log,
+        **_CONFIG_GOLDENS,
     )
     await flash.start()
     await monitor.start()
@@ -204,7 +213,11 @@ async def build_lane_stack(
         name="harness_lane_monitor",
     )
     checker = OcahSpiFlashChecker(
-        name="ocah_spi_harness", flash=flash, required_ids=required_ids, logger=log
+        name="ocah_spi_harness",
+        flash=flash,
+        required_ids=required_ids,
+        logger=log,
+        **_CONFIG_GOLDENS,
     )
     await flash.start()
     await monitor.start()
@@ -316,7 +329,9 @@ def rejects(
     """
     quiet = logging.getLogger(f"cocotb.tb.ocah_spi_harness.negative.{label}")
     quiet.setLevel(logging.CRITICAL)
-    probe = OcahSpiFlashChecker(name=f"negative.{label}", flash=flash, logger=quiet)
+    probe = OcahSpiFlashChecker(
+        name=f"negative.{label}", flash=flash, logger=quiet, **_CONFIG_GOLDENS
+    )
     try:
         action(probe)
     except OcahCheckerError as exc:

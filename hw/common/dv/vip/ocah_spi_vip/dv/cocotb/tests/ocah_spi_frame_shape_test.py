@@ -397,7 +397,7 @@ async def ocah_spi_frame_shape_test(dut) -> None:
     await monitor.stop()
     stop_error: BaseException | None = None
     try:
-        await flash.stop()
+        await flash.stop(require_closed=True)
     except OcahSpiFlashError as exc:
         stop_error = exc
     checker.expect_true(

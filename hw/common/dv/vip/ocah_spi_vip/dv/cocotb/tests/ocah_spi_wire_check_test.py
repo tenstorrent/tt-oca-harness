@@ -83,7 +83,7 @@ def _miso_value(handle: Any, value: Any) -> Any:
 async def ocah_spi_wire_check_test(dut) -> None:
     rng = scenario_rng("wire_check")
     harness = await build_stack(dut, required_ids=REQUIRED_IDS, log=log)
-    await harness.flash.stop()
+    await harness.flash.stop(require_closed=True)
     bfm, monitor, checker = harness.host.bfm, harness.monitor, harness.checker
     log.info("start: four_state=%s", FOUR_STATE)
 

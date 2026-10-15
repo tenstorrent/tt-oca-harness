@@ -31,6 +31,7 @@ Each completed transaction is reported as a plain dict::
         "opcode_complete": bool,   # True when at least 8 bits were observed
         "cpol":      int,          # SPI mode the frame was graded in
         "cpha":      int,
+        "raw_frame": bool,         # started under set_raw_frames(True): no oe_data
         "wire_errors": tuple,      # wire-check violations of this frame
         "beats":     tuple,        # with the four-lane taps: one
                                    # (lanes out, output enables, lanes in)
@@ -83,7 +84,9 @@ other SCK edge is the shift edge.  It grades the controller's pins:
                       payload of a command without a response, and any bit
                       after an exact command) the lanes that carry the data
                       have their output enables on; a bit sampled with its
-                      output enable off did not reach the pad
+                      output enable off did not reach the pad. Not graded on
+                      a frame that starts while ``set_raw_frames(True)`` is
+                      in effect
 ``oe_ctrl``           with ``cs_oe``/``sck_oe``: both are on at each sample
                       edge (a sample edge needs a driven chip-select low and
                       a driven clock edge; an undriven pad does not carry
@@ -106,9 +109,9 @@ an output enable is not graded.
 
 Each violation is logged and kept in the frame's ``wire_errors`` and in
 ``get_wire_errors()``.  ``stop()`` raises ``OcahSpiMonitorError`` when a wire
-check failed, a callback raised ``AssertionError``, or the monitor itself
-raised; ``get_statistics()["callback_errors"]`` counts other callback
-exceptions.
+check failed, a callback raised, or the monitor itself raised;
+``get_statistics()["callback_errors"]`` counts the callback exceptions other
+than ``AssertionError``.
 
 Usage
 -----
@@ -135,7 +138,7 @@ import logging
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import cocotb
-from cocotb.triggers import Edge, First, ReadOnly, RisingEdge
+from cocotb.triggers import Edge, First, ReadOnly, RisingEdge, Timer
 
 from .ocah_spi_types import (
     LANE_OPCODES,
@@ -288,6 +291,10 @@ class OcahSpiMonitor:
 
         self._task: Optional[Any] = None
         self._running = False
+        # True from a chip-select fall until that frame is recorded.
+        self._in_frame = False
+        # set_raw_frames(): frames that start now are not decoded for oe_data.
+        self._raw_frames = False
 
         self._stats = {
             "transactions_seen": 0,
@@ -306,8 +313,9 @@ class OcahSpiMonitor:
         Signature: ``fn(txn: dict) -> None``
 
         The ``txn`` dict is a plain-int/bytes record; see module docstring
-        for the field list.  An ``AssertionError`` from the callback makes
-        ``stop()`` raise; any other exception is logged and counted.
+        for the field list.  An exception from the callback makes ``stop()``
+        raise; an ``AssertionError`` is kept as the cause, any other exception
+        is logged and counted in ``callback_errors``.
         """
         self._callbacks.append(fn)
 
@@ -328,17 +336,34 @@ class OcahSpiMonitor:
         self._cpol = cpol & 1
         self._cpha = cpha & 1
 
+    def set_raw_frames(self, raw: bool) -> None:
+        """Whether frames that start after this call are raw segment frames.
+
+        The ``oe_data`` check decodes a frame as a flash command (command
+        byte, then address and payload driven by the controller). A raw frame
+        has no such layout: it can start with a receive or dummy segment, be
+        cut by an abort or a reset, or carry any first byte. While this is
+        set, ``oe_data`` is not graded on a new frame and its record carries
+        ``raw_frame=True``; every other wire check stays on. The caller then
+        grades the output enables per segment from ``beats``.
+        """
+        self._raw_frames = bool(raw)
+
     async def stop(self, *, min_frames: int = 1) -> None:
         """Stop monitoring; the history survives.
 
         Raises ``OcahSpiMonitorError`` when a wire check failed, a callback
-        raised ``AssertionError``, the monitor raised while it ran, chip
-        select is still low (a frame is open and would go ungraded), or fewer
-        than ``min_frames`` frames were seen (a monitor on a dead or wrong
-        chip select grades nothing).
+        raised, the monitor raised while it ran, chip select is still low (a
+        frame is open and would go ungraded), or fewer than ``min_frames``
+        frames were seen (a monitor on a dead or wrong chip select grades
+        nothing). A frame whose chip select rose in the time step of the call
+        is recorded and graded first.
         """
         if not self._running:
             return
+        if self._in_frame and _level(self._cs_n) == 1:
+            # Chip select rose in this time step; let the frame reach its record.
+            await Timer(1, "step")
         self._running = False
         open_frame = self._cs_n is not None and _level(self._cs_n) == 0
         if self._task is not None:
@@ -358,6 +383,12 @@ class OcahSpiMonitor:
             raise OcahSpiMonitorError(
                 f"{self.name}: {len(self._wire_errors)} wire-check violation(s); "
                 f"first: {self._wire_errors[0]}"
+            )
+        callback_errors = self._stats["callback_errors"]
+        if callback_errors:
+            raise OcahSpiMonitorError(
+                f"{self.name}: {callback_errors} transaction callback(s) raised; "
+                "a subscriber check did not run to its end"
             )
         if open_frame:
             raise OcahSpiMonitorError(
@@ -400,7 +431,11 @@ class OcahSpiMonitor:
                 await self._watch_idle(settled)
                 if not self._running:
                     break
-                await self._observe_transaction()
+                self._in_frame = True
+                try:
+                    await self._observe_transaction()
+                finally:
+                    self._in_frame = False
                 # It returns in the read-only phase of the chip-select rise.
                 settled = True
             except Exception as exc:  # noqa: BLE001
@@ -480,6 +515,7 @@ class OcahSpiMonitor:
         """Observe one SPI transaction from CS_N low to CS_N high."""
         start_ns = _sim_time_ns()
         cpol, cpha = self._cpol, self._cpha
+        raw_frame = self._raw_frames
         sample_level = 1 if cpol == cpha else 0
         errors: List[str] = []
         mosi_bits: List[int] = []
@@ -576,11 +612,12 @@ class OcahSpiMonitor:
         end_ns = _sim_time_ns()
 
         txn = self._decode(mosi_bits, miso_raw, start_ns, end_ns, beats)
-        if self._sd_oe is not None and self._sd_out is not None:
+        if self._sd_oe is not None and self._sd_out is not None and not raw_frame:
             self._grade_output_enables(errors, txn, beats)
         txn.update(
             cpol=cpol,
             cpha=cpha,
+            raw_frame=raw_frame,
             wire_errors=tuple(errors),
             beats=tuple(beats),
             miso_idle=miso_idle,

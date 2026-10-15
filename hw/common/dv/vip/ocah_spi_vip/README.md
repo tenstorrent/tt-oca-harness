@@ -157,7 +157,7 @@ flash = OcahSpiFlash(
 | `flash.preload(source)`             | `None`  | Load raw bytes from file path or bytes-like object; a failed `+spi_flash_preload` raises `OcahSpiFlashError` |
 | `flash.set_jedec_id(id)`            | `None`  | Override JEDEC ID at runtime |
 | `await flash.start()`               | `None`  | Start background protocol engine |
-| `await flash.stop()`                | `None`  | Stop; the transaction history survives. Raises `OcahSpiFlashError` when the protocol engine raised while it ran |
+| `await flash.stop(require_closed=False)` | `None`  | Stop; the transaction history survives. Raises `OcahSpiFlashError` when the protocol engine raised while it ran, and, with `require_closed=True`, when chip-select is still low. A frame open at stop is always recorded with `ok=False`, `reason="open_at_stop"` |
 | `flash.get_transactions()`          | `list`  | Completed frame records (below) |
 | `flash.clear_transactions()`        | `None`  | Discard history |
 | `flash.read_memory(addr, length)`   | `bytes` | Direct memory read (no SPI) |
@@ -287,7 +287,7 @@ ident = await seq.jedec_id()
 await seq.write_enable()
 await seq.page_program(0x1000, b"\x12\x34")
 data = await seq.read(0x1000, 2)
-seq.check_host_responses()        # CHK-SPI-HOST-*: the controller received what the device sent
+seq.check_host_responses()        # CHK-SPI-HOST-*: the controller received what the device sent; raises with no response
 ```
 
 | Operation | Returns | Frame |
@@ -338,6 +338,7 @@ mon = OcahSpiMonitor(
 mon.add_transaction_callback(lambda txn: print(txn))
 await mon.start()
 # ... run traffic; mon.set_mode(cpol, cpha) before the controller changes mode ...
+# ... mon.set_raw_frames(True) before frames that are not flash commands ...
 await mon.stop()                 # raises OcahSpiMonitorError on a wire-check violation
 
 txns  = mon.get_transactions()   # list of plain-int/bytes dicts
@@ -352,7 +353,7 @@ after the command, address, and dummy phases), `bit_count`, `input_bits`
 (command, address and dummy bits of a single-lane command with a response
 phase; `bit_count` otherwise), `input_clocks` (clocks of the command, address
 and dummy phases of a command with a response phase at its lane widths;
-`bit_count` otherwise), `opcode_complete`, `cpol`, `cpha`, `wire_errors`,
+`bit_count` otherwise), `opcode_complete`, `cpol`, `cpha`, `raw_frame`, `wire_errors`,
 `beats`, `miso_idle` (response lane level when chip-select fell),
 `miso_raw` (response lane level at each sample edge), `data_miso_xz`
 (indices of `data_miso` bytes with a bit sampled as X/Z, which reads as 0),
@@ -379,8 +380,19 @@ pins:
 | `xz` | At every settled time step while chip-select is low, chip-select, SCK and MOSI (with `sd_out`, every lane whose output enable is on, and the output enables) resolve to 0 or 1; one X/Z episode is one violation; while chip-select is not low (reset included) an X/Z is not graded |
 | `oe_idle` | With `sd_oe`: no data lane output enable rises, or is on at an SCK edge, while chip-select is high |
 | `oe_lanes` | With `sd_oe`: at each sample edge the data lane output enables are none, lane 0, lanes 1:0 or lanes 3:0 |
-| `oe_data` | With `sd_out` and `sd_oe`: at every sample edge of a controller-output clock (the command byte, the address, the payload of a command without a response, and any bit after WRITE ENABLE, WRITE DISABLE or SECTOR ERASE) the lanes that carry the data have their output enables on. A bit sampled with its output enable off did not reach the pad. Dummy and response clocks, and the clocks after the command byte of an unknown command, are not graded. Without `sd_oe` (a single-lane binding with no output-enable tap) the check is off |
+| `oe_data` | With `sd_out` and `sd_oe`: at every sample edge of a controller-output clock (the command byte, the address, the payload of a command without a response, and any bit after WRITE ENABLE, WRITE DISABLE or SECTOR ERASE) the lanes that carry the data have their output enables on. A bit sampled with its output enable off did not reach the pad. Dummy and response clocks, and the clocks after the command byte of an unknown command, are not graded. Without `sd_oe` (a single-lane binding with no output-enable tap) the check is off, and it is not graded on a raw frame (below) |
 | `oe_ctrl` | With `cs_oe`/`sck_oe`: both are on at each sample edge. Derived, not stated in a pin table: a sample edge needs a driven chip-select low and a driven clock edge, and an undriven pad does not carry them |
+
+`oe_data` decodes every frame as a flash command: a command byte, then the
+address and payload the controller drives. A controller that sends raw
+segment frames (a frame that starts with a receive or dummy segment, a frame
+cut by an abort or a reset, any first byte) does not follow that layout.
+`set_raw_frames(True)` marks every frame that starts after the call as raw,
+as `set_mode` does for the mode, until `set_raw_frames(False)`: `oe_data` is
+not graded on a raw frame and its record carries `raw_frame=True`. Every
+other check (`xz`, the idle checks, `mosi_edge`, `oe_idle`, `oe_lanes`,
+`oe_ctrl`) stays on. The caller then grades the output enables of each
+segment from `beats`.
 
 A data lane whose output enable is off is not graded and does not hide the
 others: the monitor resolves, compares and decodes only the enabled lanes, so
@@ -392,11 +404,12 @@ With `sd_out`, `mosi_edge` applies to every lane whose output enable is on
 before and after a change.
 
 `get_wire_errors()` lists every violation.  `stop(min_frames=1)` raises
-`OcahSpiMonitorError` after a violation, after a callback raised
-`AssertionError`, after the monitor itself raised, when chip-select is still
-low (the open frame would go ungraded), or when fewer than `min_frames`
-frames were seen; other callback exceptions are counted in
-`get_statistics()["callback_errors"]`.  `sd_oe`, `cs_oe` and `sck_oe` need
+`OcahSpiMonitorError` after a violation, after a callback raised (an
+`AssertionError` is kept as the cause; other callback exceptions are counted
+in `get_statistics()["callback_errors"]`), after the monitor itself raised,
+when chip-select is still low (the open frame would go ungraded), or when
+fewer than `min_frames` frames were seen.  A frame whose chip-select rose in
+the time step of the call is recorded and graded first.  `sd_oe`, `cs_oe` and `sck_oe` need
 `sd_out`; the constructor refuses them without it.  With `miso_oe` (the
 device's MISO drive enable) each record carries `miso_oe_raw`, the enable at
 each sample edge.
@@ -410,11 +423,13 @@ from ocah_spi_vip import OcahSpiFlashChecker, OcahSpiOpcode
 
 checker = OcahSpiFlashChecker(
     name="spi_checker",
-    flash=flash,                       # expected JEDEC ID, SR2, size, and the array to compare
+    flash=flash,                       # the array to compare; also the JEDEC ID, SR2 and size
+    jedec_id=0xEF4018,                 # unless given here: give them, so the device does not
+    status_reg2=0x5A,                  # grade its own configuration
     required_ids=("CHK-SPI-JEDEC-ID", "CHK-SPI-MEM-GOLDEN"),
 )
 # ... traffic ...
-checker.replay()                                   # device records through the reference model
+checker.replay()                                   # device records through the reference model; a later call needs the same history prefix
 checker.check_host_responses(OcahSpiOpcode.READ, host_reads)
 checker.check_command_order([OcahSpiOpcode.WRITE_ENABLE, OcahSpiOpcode.PAGE_PROGRAM, OcahSpiOpcode.READ])
 checker.check_memory(source=image, addr=0x1000)    # device array vs model; model vs the source image
@@ -440,7 +455,7 @@ rules and their identifiers:
 | `CHK-SPI-READ-DATA` | A read (READ, FAST READ, or a dual or quad read) streamed the model's bytes at that address |
 | `CHK-SPI-HOST-JEDEC`, `-STATUS`, `-READBACK` | The controller received, frame by frame, what the device sent |
 | `CHK-SPI-CMD-ORDER` | The in-scope opcode sequence equals the expected one |
-| `CHK-SPI-MEM-GOLDEN` | The device array equals the model over every programmed or erased byte |
+| `CHK-SPI-MEM-GOLDEN` | The device array equals the model over every programmed or erased byte; `check_memory()` with no attached flash and no `source` fails it |
 | `CHK-SPI-MEM-SOURCE` | The model equals the source image the scenario meant to program |
 | `CHK-SPI-NONVAC-PROGRAM` | An accepted program cleared at least one bit |
 | `CHK-SPI-NONVAC-READ` | A read returned at least one byte that is not 0xFF |

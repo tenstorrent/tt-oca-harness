@@ -4,8 +4,9 @@
 
 A leaf tells the scoreboard what it expects:
 
-* ``expect_tx(addr, data)``: a program the stimulus sent from the DUT to the
-  flash (the payload the leaf or its firmware queued);
+* ``expect_tx(addr, data, opcode=PAGE_PROGRAM)``: a program the stimulus
+  sent from the DUT to the flash (the payload the leaf or its firmware
+  queued); ``opcode`` names the program command, e.g. QUAD PAGE PROGRAM;
 * ``expect_rx(opcode, data)``: bytes the DUT delivered from a read (what the
   leaf read from RXDATA or a DMA destination);
 * ``expect_frame(mark, segments, delivered=...)``: one frame of raw command
@@ -38,8 +39,9 @@ mismatch. Receive and dummy beats are not graded for their enables.
 
 Each direction with expectations logs one line with its frame and byte
 counts; a scoreboard with no expectation at all fails. A program or read is
-matched to the first unused flash record with its opcode (and address for a
-program); a missing match fails. ``flash`` may be ``None`` for a leaf with raw
+matched to the first unused flash record with exactly its opcode (and address
+for a program), so a record of another program command does not satisfy it;
+a missing match fails. ``flash`` may be ``None`` for a leaf with raw
 frames only; a program or read expectation then fails.
 """
 
@@ -100,11 +102,25 @@ class SepSpiScoreboard:
         self._frames: list[_Frame] = []
         self._addr_bytes = flash.addr_bytes if flash is not None else 0
 
-    def expect_tx(self, addr: int, data: bytes, *, label: str = "") -> None:
-        """A program the stimulus sent: ``data`` must reach the wire and the flash at ``addr``."""
+    def expect_tx(
+        self,
+        addr: int,
+        data: bytes,
+        *,
+        label: str = "",
+        opcode: int = OcahSpiOpcode.PAGE_PROGRAM,
+    ) -> None:
+        """A program the stimulus sent: ``data`` must reach the wire and the flash at ``addr``.
+
+        Only a flash record with exactly ``opcode`` (PAGE PROGRAM by default)
+        matches.
+        """
         if not data:
             raise ValueError(f"expect_tx addr=0x{addr:06x}: a program carries at least one byte")
-        self._expects.append(_Expect("tx", None, addr, bytes(data), label))
+        fmt = command_format(int(opcode))
+        if fmt is None or fmt.response:
+            raise ValueError(f"expect_tx opcode=0x{int(opcode):02x}: not a program command")
+        self._expects.append(_Expect("tx", int(opcode), addr, bytes(data), label))
 
     def expect_rx(self, opcode: int, data: bytes, *, label: str = "") -> None:
         """Bytes the DUT delivered from a read with ``opcode``."""
@@ -238,11 +254,7 @@ class SepSpiScoreboard:
             fmt = command_format(rec["opcode"])
             if fmt is None:
                 continue
-            if (
-                exp.kind == "tx"
-                and rec["opcode"] == int(OcahSpiOpcode.PAGE_PROGRAM)
-                and rec["addr"] == exp.addr
-            ):
+            if exp.kind == "tx" and rec["opcode"] == exp.opcode and rec["addr"] == exp.addr:
                 return i
             if exp.kind == "rx" and fmt.response and rec["opcode"] == exp.opcode:
                 return i

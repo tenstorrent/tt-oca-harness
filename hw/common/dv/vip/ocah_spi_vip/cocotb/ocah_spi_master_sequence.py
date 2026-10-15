@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from .ocah_spi_flash_checker import OcahSpiFlashChecker
-from .ocah_spi_master_bfm import OcahSpiMasterBfm
+from .ocah_spi_master_bfm import OcahSpiMasterBfm, OcahSpiMasterBfmError
 from .ocah_spi_types import OcahSpiOpcode
 
 __all__ = ["OcahSpiMasterSequence"]
@@ -118,9 +118,17 @@ class OcahSpiMasterSequence:
         return list(self._responses.get(int(opcode), []))
 
     def check_host_responses(self) -> None:
-        """Pair every recorded response with the device's record through the checker."""
+        """Pair every recorded response with the device's record through the checker.
+
+        Raises ``OcahSpiMasterBfmError`` when no response was recorded, so a
+        run whose reads never completed cannot pass this call.
+        """
         if self.checker is None:
             raise ValueError("check_host_responses() needs a checker")
+        if not self._responses:
+            raise OcahSpiMasterBfmError(
+                "check_host_responses(): the controller recorded no response to compare"
+            )
         for opcode, observed in self._responses.items():
             self.checker.check_host_responses(opcode, observed)
 
