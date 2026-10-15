@@ -2622,8 +2622,8 @@ module sep_uvm_top
     // reaches noise_bit, the noise observe FIFO samples and the decorrelator of
     // the lane. The sampling flop runs on the lane's selected sample clock, so a
     // leaf that needs the value on Verilator selects the external sample clock
-    // (the ring oscillators do not toggle there). Re-issued every clock for
-    // Verilator, released when the bit drops. Default 0: no force.
+    // (the ring oscillators do not toggle there). The force is re-issued every
+    // clock and released when the bit drops. Default 0: no force.
 `define ESRC_NOISE_STUCK(i) \
     if (esrc_noise_stuck_en_i[i] === 1'b1) \
         force `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_source.noise_async = \
