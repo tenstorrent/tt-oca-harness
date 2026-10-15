@@ -272,6 +272,10 @@ Observation probe groups:
   `SHA256_STATUS` fields (`reg_in.SHA256_STATUS`) on every clock: bit 0 BUSY,
   bits 4:1 INPUT_COUNT, bits 8:5 OUTPUT_COUNT. Users: the ESRC conditioning
   entry of the crypto and entropy area.
+* ESRC decorrelator input tap (`esrc_decor_noise_o`): bit i is
+  `u_decorrelator.noise_i` of ESRC lane i, the decorrelator input bit that the
+  ESRC noise force drives. Read-only. Users: the FCOV lane-pattern and
+  byte-mask points of the ESRC entries of the crypto and entropy area.
 * ESRC noise-bit readback (`esrc_noise_bit_o`): bit i is `u_generator.noise_bit`
   of lane i, the synchronized noise-source bit that the noise observe FIFO
   samples. It shows that the ESRC noise-source stuck-at inject reached the
@@ -450,8 +454,13 @@ Observation probe groups:
   OTBN `status_q`, `software_errs_fatal_q`, `done` and `insn_cnt`; CSRNG
   application port 0 and the CSRNG and EDN `regwen_qs`; the ESRC `reg_in` and
   `reg_out` structs, state machine, failure terms, observe FIFOs, main FIFO
-  and per-lane detune. Owners: the owning tests of the crypto and entropy
-  groups.
+  and per-lane detune; the crypto entropy mux request and response
+  (`u_sep_crypto.entropy_muxed_req`, `entropy_muxed_rsp`); and, through the
+  connection block, the probes `trng_reset_active_probe_o`, `crypto_edn_*`,
+  `pool_edn_*`, `esrc_decor_bytes_o`, `esrc_decor_valid_o`,
+  `esrc_compress_vld_o`, `esrc_whiten_push_o`, `esrc_decor_noise_o` and the
+  ESRC FIFO integrity inject inputs. Owners: the owning tests of the crypto
+  and entropy groups.
 * The covergroup sampler's direct reads of the WDT bark interrupt
   (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read
   `ARSIZE` (owner `sep_axi_partial_lane_read_test`); and, for the Phase 2 SPI

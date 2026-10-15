@@ -3061,6 +3061,17 @@ module sep_uvm_top
     `ESRC_DETUNE_TAP(6);  `ESRC_DETUNE_TAP(7);  `ESRC_DETUNE_TAP(8);
     `ESRC_DETUNE_TAP(9);  `ESRC_DETUNE_TAP(10); `ESRC_DETUNE_TAP(11);
 `undef ESRC_DETUNE_TAP
+    //   * esrc_decor_noise_o[i]: the decorrelator input bit of lane i
+    //     (u_decorrelator.noise_i), the net the bench noise force drives. The
+    //     FCOV lane-pattern and byte-mask points sample it.
+`define ESRC_DECOR_NOISE_TAP(i) \
+    assign esrc_decor_noise_o[i] = \
+        `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_decorrelator.noise_i
+    `ESRC_DECOR_NOISE_TAP(0);  `ESRC_DECOR_NOISE_TAP(1);  `ESRC_DECOR_NOISE_TAP(2);
+    `ESRC_DECOR_NOISE_TAP(3);  `ESRC_DECOR_NOISE_TAP(4);  `ESRC_DECOR_NOISE_TAP(5);
+    `ESRC_DECOR_NOISE_TAP(6);  `ESRC_DECOR_NOISE_TAP(7);  `ESRC_DECOR_NOISE_TAP(8);
+    `ESRC_DECOR_NOISE_TAP(9);  `ESRC_DECOR_NOISE_TAP(10); `ESRC_DECOR_NOISE_TAP(11);
+`undef ESRC_DECOR_NOISE_TAP
     assign esrc_sha256_status_o = {`SEP_ESRC.reg_in.SHA256_STATUS.OUTPUT_COUNT.next,
                                    `SEP_ESRC.reg_in.SHA256_STATUS.INPUT_COUNT.next,
                                    `SEP_ESRC.reg_in.SHA256_STATUS.BUSY.next};
@@ -5035,7 +5046,25 @@ module sep_uvm_top
         .esrc_fifo_err_i       (`SEP_ESRC.fifo_error),
         .esrc_fifo_wptr_i      (`SEP_ESRC.fifo_wptr),
         .esrc_fifo_rptr_i      (`SEP_ESRC.fifo_rptr),
-        .esrc_detune_i         (esrc_detune_o)
+        .esrc_detune_i         (esrc_detune_o),
+        // ESRC, DRBG and external TRNG taps.
+        .trng_rst_i            (trng_reset_active_probe_o),
+        .edn_req_i             (crypto_edn_req_o),
+        .edn_fips_i            (crypto_edn_fips_o),
+        .edn_bus_i             (crypto_edn_bus_o),
+        .pool_edn_req_i        (pool_edn_req_o),
+        .pool_edn_ack_i        (pool_edn_ack_o),
+        .pool_edn_bus_i        (pool_edn_bus_o),
+        .pool_edn_fips_i       (pool_edn_fips_o),
+        .mux_req_i             (`FC_CRY.entropy_muxed_req),
+        .mux_rsp_i             (`FC_CRY.entropy_muxed_rsp),
+        .esrc_decor_bytes_i    (esrc_decor_bytes_o),
+        .esrc_decor_valid_i    (esrc_decor_valid_o),
+        .esrc_compress_vld_i   (esrc_compress_vld_o),
+        .esrc_whiten_push_i    (esrc_whiten_push_o),
+        .esrc_decor_noise_i    (esrc_decor_noise_o),
+        .esrc_par_inj_i        (esrc_fifo_parity_inject_i === 1'b1),
+        .esrc_ptr_inj_i        (esrc_fifo_ptr_inject_i === 1'b1)
     );
 `undef FC_CRY
 `undef FC_HMAC

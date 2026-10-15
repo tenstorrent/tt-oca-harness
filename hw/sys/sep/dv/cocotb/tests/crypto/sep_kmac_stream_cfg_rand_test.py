@@ -429,10 +429,19 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         ok, status, _ = await self._poll(KMAC_STATUS, _IDLE, _IDLE, t1, _OUTER_CLK)
         if not ok:
             raise AssertionError(f"warm-up: no idle within {_OUTER_CLK} clocks (0x{status:x})")
+        # The write-one clear of kmac_done (INTR_STATE RW1C), the same contract as the
+        # cell control CTRL-KMAC-SEQ. A failed clear is recorded and the leaf continues.
         await self._wr(KMAC_INTR_STATE, _DONE)
         intr = await self._rd(KMAC_INTR_STATE)
-        if intr & _DONE:
-            raise AssertionError(f"warm-up: kmac_done reads 1 after W1C (0x{intr:x})")
+        self.chk.ctrl(
+            "KMAC-SEQ",
+            not intr & _DONE,
+            phase="warm_up",
+            cmd="done",
+            expected_done_after_w1c=0,
+            done_after_w1c=_bits(intr, _DONE),
+            intr_state=f"0x{intr:08x}",
+        )
         return t_start
 
     async def _run_cell(self, seed: int, cell: Cell, window: int) -> None:

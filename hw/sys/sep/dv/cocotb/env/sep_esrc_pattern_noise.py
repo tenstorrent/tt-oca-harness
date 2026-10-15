@@ -41,6 +41,12 @@ not whole and is not compared. ``byte_control`` returns the compared and
 mismatched counts; the leaf logs ``CTRL-MISSING`` and fails on a mismatch or on
 no compare. A strobe or byte bit that resolves to X or Z fails the leaf with
 ``ESRC-NOISE-XZ FAIL``.
+
+Word marks. ``mark`` returns the current word index and ``words_since`` the
+strobes after a mark, for word-counted waits and for the strobes between a
+TRNG reset release and the clean start. ``measure_period`` returns the
+clocks of one strobe period, measured between two strobes that the task
+counted; a leaf logs it and grades nothing on it.
 """
 
 from __future__ import annotations
@@ -64,6 +70,18 @@ BIAS30_ONES = 19
 SQUARE_LENGTHS = (8, 16, 32)
 # 6-bit masks of odd weight: 32 values.
 ODD_MASKS = tuple(m for m in range(1, PERIOD) if bin(m).count("1") % 2 == 1)
+
+
+class EsrcStrobeTimeout(AssertionError):
+    """A strobe wait expired: ``missing`` of ``count`` strobes did not come in ``bound`` clocks."""
+
+    def __init__(self, count: int, missing: int, bound: int) -> None:
+        super().__init__(
+            f"ESRC-PATTERN-NOISE: {missing} of {count} strobes missing after {bound} clocks"
+        )
+        self.count = count
+        self.missing = missing
+        self.bound = bound
 
 
 class EsrcNoiseXZError(AssertionError):
@@ -188,6 +206,7 @@ class SepEsrcPatternNoise:
         )
         self.clk = 0
         self.word = 0
+        self.strobe_clk = 0
         self.patterns: list[LanePattern] = []
         self._pending: list[LanePattern] | None = None
         self._whole = False
@@ -264,6 +283,33 @@ class SepEsrcPatternNoise:
         """The 12 lane bits of the current word."""
         return self._held
 
+    def mark(self) -> int:
+        """The current word index (the strobes counted since ``start``)."""
+        return self.word
+
+    def words_since(self, mark: int) -> int:
+        """The strobes counted after ``mark``."""
+        return self.word - mark
+
+    async def measure_period(self, n: int = 8, *, bound: int) -> int:
+        """Clocks of one strobe period: the clocks from a strobe to the ``n``-th strobe after it, / ``n``.
+
+        Both strobes are clocks that the task counted, so the span is exact. Raises
+        if the span is not a whole multiple of ``n`` or a strobe is missing after
+        ``bound`` clocks.
+        """
+        if n <= 0:
+            raise ValueError("n must be positive")
+        await self.wait_words(1, bound)
+        first = self.strobe_clk
+        await self.wait_words(n, bound)
+        span = self.strobe_clk - first
+        if span % n:
+            raise AssertionError(
+                f"ESRC-PATTERN-NOISE: {n} strobe periods span {span} clocks, not a whole period"
+            )
+        return span // n
+
     async def wait_words(self, count: int, bound: int) -> int:
         """Wait for ``count`` more strobes, at most ``bound`` clocks; return the word index."""
         target = self.word + count
@@ -272,10 +318,7 @@ class SepEsrcPatternNoise:
                 return self.word
             self.life.require_running()
             await RisingEdge(self.dut.clk_i)
-        raise AssertionError(
-            f"ESRC-PATTERN-NOISE: {target - self.word} of {count} strobes missing after "
-            f"{bound} clocks"
-        )
+        raise EsrcStrobeTimeout(count, target - self.word, bound)
 
     @staticmethod
     def _bitstr(sig) -> str:
@@ -316,6 +359,7 @@ class SepEsrcPatternNoise:
             if self._check and self._whole:
                 self._compare_bytes()
             self.word += 1
+            self.strobe_clk = self.clk
             if self._pending is not None:
                 self.patterns = self._pending
                 self._pending = None

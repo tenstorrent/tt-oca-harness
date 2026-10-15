@@ -550,7 +550,30 @@ module sep_fcov (
   input wire                                esrc_fifo_err_i,
   input wire [5:0]                          esrc_fifo_wptr_i,
   input wire [5:0]                          esrc_fifo_rptr_i,
-  input wire [11:0]                         esrc_detune_i      // esrc_detune_o
+  input wire [11:0]                         esrc_detune_i,     // esrc_detune_o
+  // Crypto and entropy taps of entries 1.40 to 1.53: the TRNG reset window,
+  // the per-client crypto EDN request, data and FIPS flag, the native EDN
+  // client of the pool, the three streams after the source mux (stream 0 Key
+  // Manager, 1 crypto, 2 pool), the decorrelator bytes and strobe, the
+  // conditioner output strobe, the whitener input strobe, the decorrelator
+  // input bit of each lane and the two ESRC main-FIFO integrity injects.
+  input wire                                trng_rst_i,        // trng_reset_active_probe_o
+  input wire [3:0]                          edn_req_i,         // crypto_edn_req_o
+  input wire [3:0]                          edn_fips_i,        // crypto_edn_fips_o
+  input wire [127:0]                        edn_bus_i,         // crypto_edn_bus_o
+  input wire                                pool_edn_req_i,
+  input wire                                pool_edn_ack_i,
+  input wire [31:0]                         pool_edn_bus_i,
+  input wire                                pool_edn_fips_i,
+  input drbg_pkg::drbg_axis_req_t [2:0]     mux_req_i,         // CRY.entropy_muxed_req
+  input drbg_pkg::drbg_axis_rsp_t [2:0]     mux_rsp_i,         // CRY.entropy_muxed_rsp
+  input wire [95:0]                         esrc_decor_bytes_i,
+  input wire                                esrc_decor_valid_i,
+  input wire                                esrc_compress_vld_i,
+  input wire                                esrc_whiten_push_i,
+  input wire [11:0]                         esrc_decor_noise_i, // esrc_decor_noise_o
+  input wire                                esrc_par_inj_i,    // esrc_fifo_parity_inject_i
+  input wire                                esrc_ptr_inj_i     // esrc_fifo_ptr_inject_i
 );
 
   import sep_top_addrmap_pkg::*;
@@ -11834,6 +11857,16 @@ module sep_fcov (
     logic op_v;  // {domain, first released 0 sw 1 override, rose early}
     logic tn;
     logic tn_v;  // 0 pool OKAY, 1 external TRNG window
+    logic ce;
+    logic ce_v;  // stream 0 crypto, 1 pool: external select at the window rise
+    logic [2:0] xp;
+    logic xp_v;  // {stream, phase 0 before_clear / 1 in_clear / 2 resume}
+    logic pc_v;  // pool STATUS read in the window with fifo_level 0
+    logic ps_v;  // pool level non-zero at the window start and 0 at its end
+    logic [3:0] cc;
+    logic cc_v;  // {ack in the window, client, 0 pending in the window / 1 ack after release}
+    logic [2:0] re;
+    logic re_v;  // reset evidence kind
   } mr_crst_t;
 
   covergroup sep_crypto_reset_cg with function sample (mr_crst_t s);
@@ -11872,6 +11905,38 @@ module sep_fcov (
     }
     cp_trng_nonmember: coverpoint s.tn iff (s.tn_v) {
       bins pool_read_okay = {1'b0}; bins ext_trng_window_completes = {1'b1};
+    }
+    cp_clear_ext_sel: coverpoint s.ce iff (s.ce_v) {
+      bins crypto_external = {1'b0}; bins pool_external = {1'b1};
+    }
+    cp_xfer_phase: coverpoint s.xp iff (s.xp_v) {
+      bins crypto_before_clear = {3'b0_00};
+      bins crypto_resume = {3'b0_10};
+      bins pool_before_clear = {3'b1_00};
+      bins pool_resume = {3'b1_10};
+      illegal_bins in_clear = {3'b0_01, 3'b1_01};
+    }
+    cp_pool_in_clear: coverpoint s.pc_v iff (s.pc_v) {bins status_read_level_0 = {1'b1};}
+    cp_pool_scrub: coverpoint s.ps_v iff (s.ps_v) {bins level_scrubbed = {1'b1};}
+    // Client 0 AES, 1 KMAC, 2 OTBN RND, 3 OTBN URND.
+    cp_client_in_clear: coverpoint s.cc iff (s.cc_v) {
+      bins aes_pending = {4'b0_00_0};
+      bins aes_ack_after = {4'b0_00_1};
+      bins kmac_pending = {4'b0_01_0};
+      bins kmac_ack_after = {4'b0_01_1};
+      bins otbn_rnd_pending = {4'b0_10_0};
+      bins otbn_rnd_ack_after = {4'b0_10_1};
+      bins otbn_urnd_pending = {4'b0_11_0};
+      bins otbn_urnd_ack_after = {4'b0_11_1};
+      wildcard illegal_bins ack_in_window = {4'b1_??_?};
+    }
+    cp_reset_evidence: coverpoint s.re iff (s.re_v) {
+      bins csrng_err_code = {3'd0};
+      bins edn_err_code = {3'd1};
+      bins csrng_regwen = {3'd2};
+      bins edn_regwen = {3'd3};
+      bins esrc_regs = {3'd4};
+      bins cpu_lock_survives = {3'd5};
     }
   endgroup
 
@@ -15485,6 +15550,20 @@ module sep_fcov (
   wire cy_own_kent = (graded_owner == FcovOwnSepKmacEntropyModeRandTest);
   wire cy_own_otbn = (graded_owner == FcovOwnSepOtbnCmdStatusRandTest);
   wire cy_own_abr = (graded_owner == FcovOwnSepAbrCommandMatrixRandTest);
+  wire cy_own_eswalk = (graded_owner == FcovOwnSepEsrcCsrRwWalkRandTest);
+  wire cy_own_eshp = (graded_owner == FcovOwnSepEsrcHealthPatternRandTest);
+  wire cy_own_espa = (graded_owner == FcovOwnSepEsrcPersistentAlertRandTest);
+  wire cy_own_estune = (graded_owner == FcovOwnSepEsrcAutotuneDetuneTest);
+  wire cy_own_esboot = (graded_owner == FcovOwnSepEsrcStartupGateRandTest);
+  wire cy_own_escond = (graded_owner == FcovOwnSepEsrcConditioningMatrixRandTest);
+  wire cy_own_esfifo = (graded_owner == FcovOwnSepEsrcFifoFlowRandTest);
+  wire cy_own_esobs = (graded_owner == FcovOwnSepEsrcObserveFifoRandTest);
+  wire cy_own_dfat = (graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest);
+  wire cy_own_drw = (graded_owner == FcovOwnSepDrbgRegwenLockRandTest);
+  wire cy_own_dcmd = (graded_owner == FcovOwnSepDrbgCmdSequenceRandTest);
+  wire cy_own_xhs = (graded_owner == FcovOwnSepTrngExtStreamHandshakeRandTest);
+  wire cy_own_xrst = (graded_owner == FcovOwnSepTrngExtSinkResetRandTest);
+  wire cy_own_mix = (graded_owner == FcovOwnSepDrbgSinkMixRandTest);
 
   // Stimulus label of sep_abr_completion_cg cp_verify_outcome: the ACVP
   // reason class of the sigVer reject row that the owning leaf writes to
@@ -15789,6 +15868,8 @@ module sep_fcov (
     if (graded_owner == FcovOwnSepKmacUnsupportedCfgInjectTest) return s == 5;
     if (graded_owner == FcovOwnSepKmacStreamCfgRandTest) return s == 3;
     if (graded_owner == FcovOwnSepKmacEntropyModeRandTest) return s == 5;
+    if (graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest) return s inside {9, 11};
+    if (graded_owner == FcovOwnSepDrbgCmdSequenceRandTest) return s inside {6, 10};
     return 1'b0;
   endfunction
   // cp_hw_raise owner per source.
@@ -15802,6 +15883,8 @@ module sep_fcov (
       return (graded_owner == FcovOwnSepKmacUnsupportedCfgInjectTest) ||
           (graded_owner == FcovOwnSepKmacEntropyModeRandTest);
       12: return graded_owner == FcovOwnSepOtbnCmdStatusRandTest;
+      6, 10: return graded_owner == FcovOwnSepDrbgCmdSequenceRandTest;
+      9, 11: return graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest;
       default: return 1'b0;
     endcase
   endfunction
@@ -15819,6 +15902,10 @@ module sep_fcov (
     logic aq_v;  // 0 window ends quiet, 1 rise inside the window
     logic [1:0] fq;
     logic fq_v;  // 0 empty after full, 1 empty not full, 2 set with no full
+    logic [4:0] es;
+    logic es_v;  // {ESRC source, status, enable}
+    logic [2:0] er;
+    logic er_v;  // ESRC source raised by hardware
   } cy_intr_t;
 
   covergroup sep_crypto_intr_cg with function sample (cy_intr_t s);
@@ -15878,6 +15965,31 @@ module sep_fcov (
       bins empty_not_full = {2'd1};
       illegal_bins set_without_full = {2'd2};
     }
+    // {ESRC source[2:0], status, enable}. Source = INTR_STATUS bit / 4:
+    // 0 HEALTH_TEST_FAILED, 1 FIFO_ERROR, 2 FIFO_OVERFLOW, 3 FIFO_UNDERFLOW,
+    // 4 PERSISTENT_FAILURE, 5 AUTOTUNE_FAIL, 6 BIW_OBS_OVERFLOW,
+    // 7 NOISE_OBS_OVERFLOW. 24 cells; the (status 1, enable 0) cells are not
+    // bins (docs/SEP_FCOV.adoc, crypto and entropy Bins not graded).
+    x_esrc_status_enable: coverpoint s.es iff (s.es_v) {
+      bins health_test_failed[] = {5'b000_00, 5'b000_01, 5'b000_11};
+      bins fifo_error[] = {5'b001_00, 5'b001_01, 5'b001_11};
+      bins fifo_overflow[] = {5'b010_00, 5'b010_01, 5'b010_11};
+      bins fifo_underflow[] = {5'b011_00, 5'b011_01, 5'b011_11};
+      bins persistent_failure[] = {5'b100_00, 5'b100_01, 5'b100_11};
+      bins autotune_fail[] = {5'b101_00, 5'b101_01, 5'b101_11};
+      bins biw_obs_overflow[] = {5'b110_00, 5'b110_01, 5'b110_11};
+      bins noise_obs_overflow[] = {5'b111_00, 5'b111_01, 5'b111_11};
+    }
+    // Hardware raise of an ESRC source; FIFO_UNDERFLOW has no bin.
+    cp_esrc_raise_path: coverpoint s.er iff (s.er_v) {
+      bins health_test_failed = {3'd0};
+      bins fifo_error = {3'd1};
+      bins fifo_overflow = {3'd2};
+      bins persistent_failure = {3'd4};
+      bins autotune_fail = {3'd5};
+      bins biw_obs_overflow = {3'd6};
+      bins noise_obs_overflow = {3'd7};
+    }
   endgroup
 
   sep_crypto_intr_cg u_sep_crypto_intr_cg = new();
@@ -15906,9 +16018,17 @@ module sep_fcov (
         e.aq   = v[0];
         e.aq_v = 1'b1;
       end
-      default: begin
+      5: begin
         e.fq   = v[1:0];
         e.fq_v = 1'b1;
+      end
+      6: begin
+        e.es   = v[4:0];
+        e.es_v = 1'b1;
+      end
+      default: begin
+        e.er   = v[2:0];
+        e.er_v = 1'b1;
       end
     endcase
     u_sep_crypto_intr_cg.sample(e);
@@ -16379,6 +16499,13 @@ module sep_fcov (
   typedef struct packed {
     logic ar;
     logic ar_v;  // 0 post-lock AUX write refused, 1 REGWEN write of 1 after 0 leaves 0
+    logic [1:0] ff;
+    logic ff_v;  // {field 0 NOISE_OBS_CTRL / 1 BIW_OBS_CTRL, value at the lock}
+    logic me_v;  // MODULE_ENABLE write of 0 ignored under the lock
+    logic [1:0] cr;
+    logic cr_v;  // CSRNG: 0 CTRL refused, 1 FIPS_FORCE refused, 2 REGWEN stays 0
+    logic er;
+    logic er_v;  // EDN: 0 CTRL refused, 1 REGWEN stays 0
   } cy_lock_t;
 
   covergroup sep_crypto_reg_lock_cg with function sample (cy_lock_t s);
@@ -16387,11 +16514,28 @@ module sep_fcov (
     cp_aux_regwen: coverpoint s.ar iff (s.ar_v) {
       bins aux_write_refused = {1'b0}; bins regwen_stays_locked = {1'b1};
     }
+    x_fips_field: coverpoint s.ff iff (s.ff_v) {
+      bins noise_locked_at_0 = {2'b00};
+      bins noise_locked_at_1 = {2'b01};
+      bins biw_locked_at_0 = {2'b10};
+      bins biw_locked_at_1 = {2'b11};
+    }
+    cp_module_enable_locked: coverpoint s.me_v iff (s.me_v) {bins write_of_0_ignored = {1'b1};}
+    x_csrng_regwen: coverpoint s.cr iff (s.cr_v) {
+      bins ctrl_refused = {2'd0};
+      bins fips_force_refused = {2'd1};
+      bins regwen_stays_locked = {2'd2};
+    }
+    x_edn_regwen: coverpoint s.er iff (s.er_v) {
+      bins ctrl_refused = {1'b0}; bins regwen_stays_locked = {1'b1};
+    }
   endgroup
 
   typedef struct packed {
     logic [2:0] as;
     logic as_v;  // block 0 HMAC, 1 OTBN, 2 AES, 3 KMAC, 4 CSRNG, 5 EDN
+    logic rs;
+    logic rs_v;  // 0 set by a repeated instantiate, 1 cleared by a write of zero
   } cy_alert_t;
 
   covergroup sep_crypto_alert_cg with function sample (cy_alert_t s);
@@ -16404,6 +16548,9 @@ module sep_fcov (
       bins kmac = {3'd3};
       bins csrng = {3'd4};
       bins edn = {3'd5};
+    }
+    cp_csrng_recov_seq: coverpoint s.rs iff (s.rs_v) {
+      bins set_by_repeated_instantiate = {1'b0}; bins cleared_by_write_of_zero = {1'b1};
     }
   endgroup
 
@@ -18234,6 +18381,3048 @@ module sep_fcov (
         cy_ab_rd_m <= m;
         cy_ab_diff <= diff;
       end
+    end
+  end
+
+  // =====================================================================
+  // Crypto and entropy groups, entries 1.40 to 1.53 (docs/SEP_FCOV.adoc,
+  // crypto and entropy groups). The rules of the section of entries 1.25 to
+  // 1.39 apply: each point samples only inside the graded window of its
+  // owner (cy_own_*), a point that cannot pair its stimulus with its DUT
+  // response is dropped, and a point that grades "the interval ends with no
+  // event" samples at the clock where its observation interval ends. A
+  // stored-value point samples at the clock after a landed write to its
+  // block and at the clock where the window of its owner opens: the register
+  // holds the value while the graded stimulus runs. ESRC points sample with
+  // the TRNG domain out of reset and outside the TRNG reset window.
+  // =====================================================================
+  // Sampler wait limits (clk_i edges or decorrelator strobes). They bound
+  // how long a point waits for its outcome; they are not bins.
+  localparam int unsigned CzCmdBound = 65536;  // command completion, idle after a disable
+  localparam int unsigned CzHangHold = 8192;  // output halt hold
+  localparam int unsigned CzObsQuiet = 128;  // strobes with no observe push
+  localparam int unsigned CzTuneGap = 64;  // strobes with no toggle that end a burst
+  // CSRNG CMD_REQ instantiate with clen 0 and flag0 false: acmd 1 in bits 3:0,
+  // flag0 MuBi4False (9) in bits 11:8
+  // (vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc, CMD_REQ).
+  localparam logic [31:0] CzCsInstantiate = 32'h0000_0901;
+  localparam logic [3:0] CzMubiTrue = 4'h6;  // edn.rdl / csrng.rdl multi-bit true
+  localparam logic [3:0] CzMubiFalse = 4'h9;  // edn.rdl / csrng.rdl multi-bit false
+
+  typedef struct packed {
+    logic [1:0] dm;
+    logic dm_v;  // 0 follows mask 0, 1 follows a non-zero mask, 2 ignored under autotune
+    logic [3:0] dl;
+    logic dl_v;  // lane whose detune toggles at a failure with autotune on
+    logic [1:0] lp;
+    logic lp_v;  // window class of a lane: 0 constant 0, 1 biased high, 2 biased low
+  } cz_ngen_t;
+
+  covergroup sep_esrc_noise_gen_cg with function sample (cz_ngen_t s);
+    option.per_instance = 1;
+    option.name = "sep_esrc_noise_gen_cg";
+    cp_detune_mode: coverpoint s.dm iff (s.dm_v) {
+      bins follows_mask_zero = {2'd0};
+      bins follows_mask_nonzero = {2'd1};
+      bins ignored_under_autotune = {2'd2};
+    }
+    cp_detune_lane: coverpoint s.dl iff (s.dl_v) {bins lane[] = {[0 : 11]};}
+    cp_lane_pattern: coverpoint s.lp iff (s.lp_v) {
+      bins constant_0 = {2'd0}; bins biased_high = {2'd1}; bins biased_low = {2'd2};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic ci_v;  // COMPONENT_ID unchanged after a write of its complement
+    logic [1:0] eb;
+    logic eb_v;  // {MODULE_ENABLE, BOOT_PHASE_DONE}; 2'b00 is enable 0 with main_sm_idle 1
+    logic re;
+    logic re_v;  // 0 totals read 0 after the rise, 1 BOOT_PHASE_DONE rises later
+    logic sf;
+    logic sf_v;  // 0 failing startup window held, 1 push with BOOT_PHASE_DONE 0
+    logic [1:0] tm;
+    logic tm_v;  // fall with 0 BOOT_PHASE_DONE 0, 1 BOOT_PHASE_DONE 1, 2 failing pattern
+    logic te;
+    logic te_v;  // stored HEALTH_TEST_CTRL.ENABLE 0 value 6, 1 value 5
+    logic [1:0] wc;
+    logic wc_v;  // stored window 0 below 1024, 1 1024, 2 2048, 3 above 2048
+    logic [3:0] ts;
+    logic ts_v;  // {tester, 0 trip / 1 pass}
+    logic tl;
+    logic tl_v;  // trip at 0 a generator instance, 1 the 32-bit top instance
+    logic [1:0] tf;
+    logic tf_v;  // constant-stream failure set
+    logic dc;
+    logic dc_v;  // repetition count one window after the disable: 0 reads 0, 1 run cleared
+    logic pt_v;  // FIFO_RDATA drained with whitening on and every lane stuck at 0
+  } cz_sth_t;
+
+  covergroup sep_esrc_startup_health_cg with function sample (cz_sth_t s);
+    option.per_instance = 1;
+    option.name = "sep_esrc_startup_health_cg";
+    cp_component_id: coverpoint s.ci_v iff (s.ci_v) {bins complement_write_ignored = {1'b1};}
+    x_enable_boot: coverpoint s.eb iff (s.eb_v) {
+      bins enable1_boot0 = {2'b10}; bins enable1_boot1 = {2'b11}; bins enable0_idle = {2'b00};
+    }
+    cp_restart_edge: coverpoint s.re iff (s.re_v) {
+      bins totals_read_0 = {1'b0}; bins boot_phase_done_rises = {1'b1};
+    }
+    cp_startup_fail_hold: coverpoint s.sf iff (s.sf_v) {
+      bins failing_window_held = {1'b0}; illegal_bins push_before_boot_phase_done = {1'b1};
+    }
+    cp_toggle_moment: coverpoint s.tm iff (s.tm_v) {
+      bins boot_phase_done_0 = {2'd0};
+      bins boot_phase_done_1 = {2'd1};
+      bins failing_pattern = {2'd2};
+    }
+    cp_test_enable_set: coverpoint s.te iff (s.te_v) {
+      bins enable_6 = {1'b0}; bins enable_5 = {1'b1};
+    }
+    cp_window_class: coverpoint s.wc iff (s.wc_v) {
+      bins below_1024 = {2'd0};
+      bins size_1024 = {2'd1};
+      bins size_2048 = {2'd2};
+      bins above_2048 = {2'd3};
+    }
+    // {tester 0 repetition, 1 adaptive-proportion high, 2 adaptive-proportion
+    // low, 3 Markov high, 4 Markov low; 0 trip / 1 pass}. The pass cells of
+    // the adaptive-proportion testers are not bins (docs/SEP_FCOV.adoc,
+    // crypto and entropy Bins not graded).
+    x_tester_side: coverpoint s.ts iff (s.ts_v) {
+      bins repetition_trip = {4'b000_0};
+      bins repetition_pass = {4'b000_1};
+      bins apt_high_trip = {4'b001_0};
+      bins apt_low_trip = {4'b010_0};
+      bins markov_high_trip = {4'b011_0};
+      bins markov_high_pass = {4'b011_1};
+      bins markov_low_trip = {4'b100_0};
+      bins markov_low_pass = {4'b100_1};
+    }
+    cp_test_level: coverpoint s.tl iff (s.tl_v) {
+      bins generator_instance = {1'b0}; bins top_instance = {1'b1};
+    }
+    cp_top_failure_set: coverpoint s.tf iff (s.tf_v) {
+      bins zero_status_bits_3_5 = {2'd0};
+      bins zero_low_totals = {2'd1};
+      bins zero_health_test_failed = {2'd2};
+      bins ones_status_bit_3_apt_high_total = {2'd3};
+    }
+    // The count that a disabled repetition tester reads is not stated
+    // (docs/SEP_FCOV.adoc, cp_disable_clears; the reset value 0 of
+    // REPETITION_TEST_COUNT does not give it), and this RTL holds the cleared
+    // run at 1, so the value 0 cannot be reached: it is excluded. The graded
+    // cell is the cleared run: one window after the disable the count is
+    // below 100 and below its value at the disable.
+    cp_disable_clears: coverpoint s.dc iff (s.dc_v) {
+      bins run_cleared = {1'b1}; ignore_bins reads_zero = {1'b0};
+    }
+    cp_prestage_test: coverpoint s.pt_v iff (s.pt_v) {bins stuck_zero_drain = {1'b1};}
+  endgroup
+
+  typedef struct packed {
+    logic [5:0] gl;
+    logic gl_v;  // {kind, lane}: kind 0 bit 3 latched, 1 bit 3 cleared, 2 all lanes (lane 0 bit 0, 1 bit 4, 2 bit 5)
+    logic tf_v;  // REPCNT_TOTAL_FAILS cleared by a MODULE_ENABLE rise
+    logic [1:0] at;
+    logic at_v;  // stored ALERT_THRESHOLD 0 value 0, 1 value 4, 2 value 5, 3 value 7
+    logic [1:0] af;
+    logic af_v;  // 0 below, 1 at or above, 2 above 8 with threshold 0, 3 falls to 0
+    logic [2:0] ah;
+    logic ah_v;  // alert hang class
+    logic [2:0] au;
+    logic au_v;  // 0 autotune off, 1 autotune on, 2..4 burst 1..3, 7 another lane toggles
+    logic ff;
+    logic ff_v;  // 0 FIFO_OVERFLOW set by a push while full, 1 proper-subset clear
+    logic [1:0] fi;
+    logic fi_v;  // 0 parity, 1 pointer copy, 2 write-one clear, 3 rise with no inject
+  } cz_falt_t;
+
+  covergroup sep_esrc_fault_alert_cg with function sample (cz_falt_t s);
+    option.per_instance = 1;
+    option.name = "sep_esrc_fault_alert_cg";
+    x_gen_latch: coverpoint s.gl iff (s.gl_v) {
+      bins bit3_latched[] = {[6'b00_0000 : 6'b00_1011]};
+      bins bit3_cleared[] = {[6'b01_0000 : 6'b01_1011]};
+      bins all_lanes_bit0 = {6'b10_0000};
+      bins all_lanes_bit4 = {6'b10_0001};
+      bins all_lanes_bit5 = {6'b10_0010};
+    }
+    cp_total_fails: coverpoint s.tf_v iff (s.tf_v) {bins cleared_by_enable_rise = {1'b1};}
+    cp_alert_threshold: coverpoint s.at iff (s.at_v) {
+      bins threshold_0 = {2'd0};
+      bins threshold_4 = {2'd1};
+      bins threshold_5 = {2'd2};
+      bins threshold_7 = {2'd3};
+    }
+    cp_any_fail: coverpoint s.af iff (s.af_v) {
+      bins below_threshold = {2'd0};
+      bins at_or_above_threshold = {2'd1};
+      bins above_8_threshold_0 = {2'd2};
+      bins falls_to_0 = {2'd3};
+    }
+    cp_alert_hang: coverpoint s.ah iff (s.ah_v) {
+      bins entry = {3'd0};
+      bins no_entry_below_threshold = {3'd1};
+      bins no_entry_clean_gap = {3'd2};
+      bins no_entry_threshold_0 = {3'd3};
+      bins write_one_clear_stays_halted = {3'd4};
+      bins exit_by_module_enable = {3'd5};
+      bins exit_by_trng_reset = {3'd6};
+    }
+    cp_autotune: coverpoint s.au iff (s.au_v) {
+      bins autotune_off = {3'd0};
+      bins autotune_on = {3'd1};
+      bins burst_1 = {3'd2};
+      bins burst_2 = {3'd3};
+      bins burst_3 = {3'd4};
+      illegal_bins other_lane_toggles = {3'd7};
+    }
+    cp_fifo_flags: coverpoint s.ff iff (s.ff_v) {
+      bins overflow_set = {1'b0}; bins subset_clear = {1'b1};
+    }
+    cp_fifo_integrity: coverpoint s.fi iff (s.fi_v) {
+      bins parity_error = {2'd0};
+      bins pointer_error = {2'd1};
+      bins write_one_clear = {2'd2};
+      illegal_bins rise_without_inject = {2'd3};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic bm;
+    logic bm_v;  // stored ENTROPY_BYTE_MASK 0 0xFF, 1 partial
+    logic [1:0] pm;
+    logic pm_v;  // {BYPASS_ENTROPY_COMPRESSOR, SHA256_WHITENING_ENABLE}
+    logic [1:0] dr;
+    logic dr_v;  // stored DOWNSAMPLE_RATE 0 rate 0, 1 rate 1, 2 rate 2 to 15, 3 rate 1023
+    logic [1:0] sc;
+    logic sc_v;  // 0 OUTPUT_COUNT reaches 8, 1 falls to 0, 2 stays 0 with whitening off
+    logic [3:0] fo;
+    logic fo_v;  // FIFO occupancy and pointer event
+    logic [1:0] fc;
+    logic fc_v;  // {FIFO_CTRL.ENABLE, ENTROPY_CHURN_ENABLE}
+    logic ca_v;  // push with churn on after 32 pushes since the churn enable
+    logic [3:0] oc;
+    logic oc_v;  // {path 0 noise / 1 biw, RAW_ENABLE, after BOOT_PHASE_DONE, push}
+    logic [3:0] ol;
+    logic ol_v;  // stored LANE_SEL
+    logic of;
+    logic of_v;  // words discarded by 0 a FLUSH write, 1 a lane change
+    logic [1:0] ov;
+    logic ov_v;  // {FIFO 0 noise / 1 biw, 0 set / 1 cleared by a write of 1}
+    logic lk_v;  // noise FLUSH lowers the level under FIPS_LOCK
+  } cz_cond_t;
+
+  covergroup sep_esrc_conditioning_cg with function sample (cz_cond_t s);
+    option.per_instance = 1;
+    option.name = "sep_esrc_conditioning_cg";
+    cp_byte_mask: coverpoint s.bm iff (s.bm_v) {bins mask_ff = {1'b0}; bins mask_partial = {1'b1};}
+    x_path_matrix: coverpoint s.pm iff (s.pm_v) {
+      bins compressor_whitened = {2'b01};
+      bins compressor_raw = {2'b00};
+      bins bypass_whitened = {2'b11};
+      bins bypass_raw = {2'b10};
+    }
+    cp_downsample_rate: coverpoint s.dr iff (s.dr_v) {
+      bins rate_0 = {2'd0};
+      bins rate_1 = {2'd1};
+      bins rate_2_to_15 = {2'd2};
+      bins rate_1023 = {2'd3};
+    }
+    cp_sha_counts: coverpoint s.sc iff (s.sc_v) {
+      bins output_count_reaches_8 = {2'd0};
+      bins output_count_falls_to_0 = {2'd1};
+      bins output_count_0_whitening_off = {2'd2};
+    }
+    cp_fifo_occupancy: coverpoint s.fo iff (s.fo_v) {
+      bins level_0 = {4'd0};
+      bins level_1 = {4'd1};
+      bins level_32 = {4'd2};
+      bins level_63 = {4'd3};
+      bins level_64 = {4'd4};
+      bins wptr_wraps = {4'd5};
+      bins rptr_wraps = {4'd6};
+      bins pointers_equal_full = {4'd7};
+      bins pointers_equal_empty = {4'd8};
+    }
+    cp_fifo_ctrl: coverpoint s.fc iff (s.fc_v) {
+      bins enable1_churn0 = {2'b10};
+      bins enable0_churn0 = {2'b00};
+      bins enable1_churn1 = {2'b11};
+      bins enable0_churn1 = {2'b01};
+    }
+    cp_churn_age: coverpoint s.ca_v iff (s.ca_v) {bins push_after_32 = {1'b1};}
+    x_obs_capture: coverpoint s.oc iff (s.oc_v) {
+      bins noise_before_boot = {4'b0_1_0_1};
+      bins noise_after_boot = {4'b0_1_1_1};
+      bins biw_after_boot = {4'b1_1_1_1};
+      bins noise_off_no_push = {4'b0_0_0_0};
+      bins biw_off_no_push = {4'b1_0_0_0};
+      wildcard illegal_bins biw_push_before_boot = {4'b1_?_0_1};
+    }
+    cp_obs_lane_sel: coverpoint s.ol iff (s.ol_v) {bins lane_sel[] = {[0 : 15]};}
+    cp_obs_flush: coverpoint s.of iff (s.of_v) {
+      bins flush_write = {1'b0}; bins lane_change = {1'b1};
+    }
+    cp_obs_overflow: coverpoint s.ov iff (s.ov_v) {
+      bins noise_set = {2'b00};
+      bins noise_cleared = {2'b01};
+      bins biw_set = {2'b10};
+      bins biw_cleared = {2'b11};
+    }
+    cp_obs_lock: coverpoint s.lk_v iff (s.lk_v) {bins flush_under_lock = {1'b1};}
+  endgroup
+
+  typedef struct packed {
+    logic [5:0] es;
+    logic es_v;  // {unit 0 CSRNG / 1 EDN, ERR_CODE bit}
+    logic [1:0] fc;
+    logic fc_v;  // {unit, 0 FIFO bit / 1 state-machine bit}
+    logic [1:0] st;
+    logic st_v;  // {unit, 0 survives the write-one of the state / 1 clears at the TRNG reset}
+    logic [1:0] cf;
+    logic cf_v;  // {0 RESEED_CMD / 1 GENERATE_CMD, 0 13 words / 1 14th word}
+  } cz_derr_t;
+
+  covergroup sep_drbg_err_inject_cg with function sample (cz_derr_t s);
+    option.per_instance = 1;
+    option.name = "sep_drbg_err_inject_cg";
+    x_err_source: coverpoint s.es iff (s.es_v) {
+      bins csrng[] = {6'd0, 6'd1, 6'd20, 6'd21, 6'd22, 6'd25, 6'd26};
+      bins edn[] = {6'd32, 6'd33, 6'd52, 6'd53, 6'd54};
+    }
+    cp_fatal_consequence: coverpoint s.fc iff (s.fc_v) {
+      bins csrng_fifo_state = {2'b00};
+      bins csrng_sm_alert = {2'b01};
+      bins edn_fifo_state = {2'b10};
+      bins edn_sm_alert = {2'b11};
+    }
+    cp_sticky: coverpoint s.st iff (s.st_v) {
+      bins csrng_survives_state_clear = {2'b00};
+      bins csrng_cleared_by_trng_reset = {2'b01};
+      bins edn_survives_state_clear = {2'b10};
+      bins edn_cleared_by_trng_reset = {2'b11};
+    }
+    cp_edn_cmd_fifo: coverpoint s.cf iff (s.cf_v) {
+      bins reseed_13_no_error = {2'b00};
+      bins reseed_14th_error = {2'b01};
+      bins generate_13_no_error = {2'b10};
+      bins generate_14th_error = {2'b11};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] io;
+    logic io_v;  // 0 software port first, 1 software port repeated, 2 hardware port 0
+    logic [1:0] hs;
+    logic hs_v;  // 0 CMD_RDY before, 1 CMD_ACK after, 2 CMD_RDY after the acknowledge
+  } cz_ccmd_t;
+
+  covergroup sep_csrng_cmd_cg with function sample (cz_ccmd_t s);
+    option.per_instance = 1;
+    option.name = "sep_csrng_cmd_cg";
+    x_inst_outcome: coverpoint s.io iff (s.io_v) {
+      bins sw_first_done = {2'd0};
+      bins sw_repeated_seq_alert = {2'd1};
+      bins hw_port0_acknowledged = {2'd2};
+    }
+    cp_sw_handshake: coverpoint s.hs iff (s.hs_v) {
+      bins cmd_rdy_before = {2'd0}; bins cmd_ack_after = {2'd1}; bins cmd_rdy_after_ack = {2'd2};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] mf;
+    logic mf_v;  // {BOOT_REQ_MODE true, AUTO_REQ_MODE true} at the enable
+    logic rm;
+    logic rm_v;  // HW_CMD_STS 0 (BOOT_MODE 1, AUTO_MODE 0), 1 both 1
+    logic [1:0] sp;
+    logic sp_v;  // 0 CMD_REG_RDY before, 1 CMD_ACK after, 2 edn_cmd_req_done set
+    logic [1:0] aw;
+    logic aw_v;  // {0 RESEED_CMD / 1 GENERATE_CMD, 0 one word / 1 13 words}
+  } cz_edn_t;
+
+  covergroup sep_edn_mode_cg with function sample (cz_edn_t s);
+    option.per_instance = 1;
+    option.name = "sep_edn_mode_cg";
+    x_mode_fields: coverpoint s.mf iff (s.mf_v) {
+      bins boot_true_auto_true = {2'b11};
+      bins boot_false_auto_false = {2'b00};
+      bins boot_true_auto_false = {2'b10};
+    }
+    cp_reported_mode: coverpoint s.rm iff (s.rm_v) {
+      bins boot_only = {1'b0}; illegal_bins boot_and_auto = {1'b1};
+    }
+    cp_sw_port_hs: coverpoint s.sp iff (s.sp_v) {
+      bins cmd_reg_rdy_before = {2'd0}; bins cmd_ack_after = {2'd1}; bins cmd_req_done_set = {2'd2};
+    }
+    cp_auto_fifo_words: coverpoint s.aw iff (s.aw_v) {
+      bins reseed_1 = {2'b00};
+      bins reseed_13 = {2'b01};
+      bins generate_1 = {2'b10};
+      bins generate_13 = {2'b11};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [2:0] ss;
+    logic ss_v;  // {stream 0 km / 1 crypto / 2 pool, external}
+    logic [2:0] lo;
+    logic lo_v;  // lock order and lock behaviour
+    logic [1:0] eb;
+    logic eb_v;  // {stream 0 crypto / 1 pool, 0 full beat completes / 1 partial beat pending}
+    logic ud;
+    logic ud_v;  // stream of an unselected external beat dropped
+    logic es;
+    logic es_v;  // stream whose external ready falls and rises again
+    logic hi;
+    logic hi_v;  // stream whose internal endpoint holds its word
+    logic [1:0] pp;
+    logic pp_v;  // 0 DATA read at level 2..31, 1 at level 32, 2 feed at level 32
+    logic ei;
+    logic ei_v;  // 0 rise, 1 fall of ext_trng_irq_i followed by vector bit 16
+    logic [1:0] tu;
+    logic tu_v;  // {fips 0, stream 0 crypto / 1 pool}
+    logic [1:0] ke;
+    logic ke_v;  // 0 same data in order, 1 equal ready, 2 stream 1 or 2 word differs
+    logic [2:0] as;
+    logic as_v;  // sink 0 km, 1 aes, 2 kmac, 3 otbn_rnd, 4 otbn_urnd, 5 pool
+  } cz_dlv_t;
+
+  covergroup sep_entropy_delivery_cg with function sample (cz_dlv_t s);
+    option.per_instance = 1;
+    option.name = "sep_entropy_delivery_cg";
+    x_sel_stream: coverpoint s.ss iff (s.ss_v) {
+      bins km_internal = {3'b00_0};
+      bins km_external = {3'b00_1};
+      bins crypto_internal = {3'b01_0};
+      bins crypto_external = {3'b01_1};
+      bins pool_internal = {3'b10_0};
+      bins pool_external = {3'b10_1};
+    }
+    cp_lock_order: coverpoint s.lo iff (s.lo_v) {
+      bins lock_after_select_write = {3'd0};
+      bins lock_before_select_write = {3'd1};
+      bins lock_never_set = {3'd2};
+      bins write_0_leaves_lock = {3'd3};
+      bins select_write_ignored = {3'd4};
+      bins global_reset_clears = {3'd5};
+    }
+    x_ext_beat: coverpoint s.eb iff (s.eb_v) {
+      bins crypto_full_completes = {2'b00};
+      bins crypto_partial_pending = {2'b01};
+      bins pool_full_completes = {2'b10};
+      bins pool_partial_pending = {2'b11};
+    }
+    cp_unselected_drop: coverpoint s.ud iff (s.ud_v) {bins crypto = {1'b0}; bins pool = {1'b1};}
+    cp_ext_stall: coverpoint s.es iff (s.es_v) {bins crypto = {1'b0}; bins pool = {1'b1};}
+    cp_hold_internal: coverpoint s.hi iff (s.hi_v) {bins crypto = {1'b0}; bins pool = {1'b1};}
+    cp_pool_pop: coverpoint s.pp iff (s.pp_v) {
+      bins pop_level_2_to_31 = {2'd0}; bins pop_level_32 = {2'd1}; bins feed_level_32 = {2'd2};
+    }
+    cp_ext_irq: coverpoint s.ei iff (s.ei_v) {bins rise = {1'b0}; bins fall = {1'b1};}
+    cp_ext_tuser: coverpoint s.tu iff (s.tu_v) {
+      bins crypto_fips_1 = {2'b00};
+      bins pool_fips_1 = {2'b01};
+      illegal_bins fips_0 = {2'b10, 2'b11};
+    }
+    cp_km_ext_stream: coverpoint s.ke iff (s.ke_v) {
+      bins same_data_in_order = {2'd0};
+      bins ready_equal = {2'd1};
+      illegal_bins driven_word_on_stream_1_or_2 = {2'd2};
+    }
+    cp_active_sinks: coverpoint s.as iff (s.as_v) {
+      bins km = {3'd0};
+      bins aes = {3'd1};
+      bins kmac = {3'd2};
+      bins otbn_rnd = {3'd3};
+      bins otbn_urnd = {3'd4};
+      bins pool = {3'd5};
+    }
+  endgroup
+
+  sep_esrc_noise_gen_cg      u_sep_esrc_noise_gen_cg      = new();
+  sep_esrc_startup_health_cg u_sep_esrc_startup_health_cg = new();
+  sep_esrc_fault_alert_cg    u_sep_esrc_fault_alert_cg    = new();
+  sep_esrc_conditioning_cg   u_sep_esrc_conditioning_cg   = new();
+  sep_drbg_err_inject_cg     u_sep_drbg_err_inject_cg     = new();
+  sep_csrng_cmd_cg           u_sep_csrng_cmd_cg           = new();
+  sep_edn_mode_cg            u_sep_edn_mode_cg            = new();
+  sep_entropy_delivery_cg    u_sep_entropy_delivery_cg    = new();
+
+  // One-point sample helpers: pt selects the point, v carries its value.
+  task automatic cz_ngen(input int unsigned pt, input logic [3:0] v);
+    cz_ngen_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.dm   = v[1:0];
+        e.dm_v = 1'b1;
+      end
+      1: begin
+        e.dl   = v;
+        e.dl_v = 1'b1;
+      end
+      default: begin
+        e.lp   = v[1:0];
+        e.lp_v = 1'b1;
+      end
+    endcase
+    u_sep_esrc_noise_gen_cg.sample(e);
+  endtask
+
+  task automatic cz_sth(input int unsigned pt, input logic [3:0] v);
+    cz_sth_t e;
+    e = '0;
+    case (pt)
+      0: e.ci_v = 1'b1;
+      1: begin
+        e.eb   = v[1:0];
+        e.eb_v = 1'b1;
+      end
+      2: begin
+        e.re   = v[0];
+        e.re_v = 1'b1;
+      end
+      3: begin
+        e.sf   = v[0];
+        e.sf_v = 1'b1;
+      end
+      4: begin
+        e.tm   = v[1:0];
+        e.tm_v = 1'b1;
+      end
+      5: begin
+        e.te   = v[0];
+        e.te_v = 1'b1;
+      end
+      6: begin
+        e.wc   = v[1:0];
+        e.wc_v = 1'b1;
+      end
+      7: begin
+        e.ts   = v;
+        e.ts_v = 1'b1;
+      end
+      8: begin
+        e.tl   = v[0];
+        e.tl_v = 1'b1;
+      end
+      9: begin
+        e.tf   = v[1:0];
+        e.tf_v = 1'b1;
+      end
+      10: begin
+        e.dc   = v[0];
+        e.dc_v = 1'b1;
+      end
+      default: e.pt_v = 1'b1;
+    endcase
+    u_sep_esrc_startup_health_cg.sample(e);
+  endtask
+
+  task automatic cz_falt(input int unsigned pt, input logic [5:0] v);
+    cz_falt_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.gl   = v;
+        e.gl_v = 1'b1;
+      end
+      1: e.tf_v = 1'b1;
+      2: begin
+        e.at   = v[1:0];
+        e.at_v = 1'b1;
+      end
+      3: begin
+        e.af   = v[1:0];
+        e.af_v = 1'b1;
+      end
+      4: begin
+        e.ah   = v[2:0];
+        e.ah_v = 1'b1;
+      end
+      5: begin
+        e.au   = v[2:0];
+        e.au_v = 1'b1;
+      end
+      6: begin
+        e.ff   = v[0];
+        e.ff_v = 1'b1;
+      end
+      default: begin
+        e.fi   = v[1:0];
+        e.fi_v = 1'b1;
+      end
+    endcase
+    u_sep_esrc_fault_alert_cg.sample(e);
+  endtask
+
+  task automatic cz_cond(input int unsigned pt, input logic [3:0] v);
+    cz_cond_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.bm   = v[0];
+        e.bm_v = 1'b1;
+      end
+      1: begin
+        e.pm   = v[1:0];
+        e.pm_v = 1'b1;
+      end
+      2: begin
+        e.dr   = v[1:0];
+        e.dr_v = 1'b1;
+      end
+      3: begin
+        e.sc   = v[1:0];
+        e.sc_v = 1'b1;
+      end
+      4: begin
+        e.fo   = v;
+        e.fo_v = 1'b1;
+      end
+      5: begin
+        e.fc   = v[1:0];
+        e.fc_v = 1'b1;
+      end
+      6: e.ca_v = 1'b1;
+      7: begin
+        e.oc   = v;
+        e.oc_v = 1'b1;
+      end
+      8: begin
+        e.ol   = v;
+        e.ol_v = 1'b1;
+      end
+      9: begin
+        e.of   = v[0];
+        e.of_v = 1'b1;
+      end
+      10: begin
+        e.ov   = v[1:0];
+        e.ov_v = 1'b1;
+      end
+      default: e.lk_v = 1'b1;
+    endcase
+    u_sep_esrc_conditioning_cg.sample(e);
+  endtask
+
+  task automatic cz_derr(input int unsigned pt, input logic [5:0] v);
+    cz_derr_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.es   = v;
+        e.es_v = 1'b1;
+      end
+      1: begin
+        e.fc   = v[1:0];
+        e.fc_v = 1'b1;
+      end
+      2: begin
+        e.st   = v[1:0];
+        e.st_v = 1'b1;
+      end
+      default: begin
+        e.cf   = v[1:0];
+        e.cf_v = 1'b1;
+      end
+    endcase
+    u_sep_drbg_err_inject_cg.sample(e);
+  endtask
+
+  task automatic cz_ccmd(input int unsigned pt, input logic [1:0] v);
+    cz_ccmd_t e;
+    e = '0;
+    if (pt == 0) begin
+      e.io   = v;
+      e.io_v = 1'b1;
+    end else begin
+      e.hs   = v;
+      e.hs_v = 1'b1;
+    end
+    u_sep_csrng_cmd_cg.sample(e);
+  endtask
+
+  task automatic cz_edn(input int unsigned pt, input logic [1:0] v);
+    cz_edn_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.mf   = v;
+        e.mf_v = 1'b1;
+      end
+      1: begin
+        e.rm   = v[0];
+        e.rm_v = 1'b1;
+      end
+      2: begin
+        e.sp   = v;
+        e.sp_v = 1'b1;
+      end
+      default: begin
+        e.aw   = v;
+        e.aw_v = 1'b1;
+      end
+    endcase
+    u_sep_edn_mode_cg.sample(e);
+  endtask
+
+  task automatic cz_dlv(input int unsigned pt, input logic [2:0] v);
+    cz_dlv_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.ss   = v;
+        e.ss_v = 1'b1;
+      end
+      1: begin
+        e.lo   = v;
+        e.lo_v = 1'b1;
+      end
+      2: begin
+        e.eb   = v[1:0];
+        e.eb_v = 1'b1;
+      end
+      3: begin
+        e.ud   = v[0];
+        e.ud_v = 1'b1;
+      end
+      4: begin
+        e.es   = v[0];
+        e.es_v = 1'b1;
+      end
+      5: begin
+        e.hi   = v[0];
+        e.hi_v = 1'b1;
+      end
+      6: begin
+        e.pp   = v[1:0];
+        e.pp_v = 1'b1;
+      end
+      7: begin
+        e.ei   = v[0];
+        e.ei_v = 1'b1;
+      end
+      8: begin
+        e.tu   = v[1:0];
+        e.tu_v = 1'b1;
+      end
+      9: begin
+        e.ke   = v[1:0];
+        e.ke_v = 1'b1;
+      end
+      default: begin
+        e.as   = v;
+        e.as_v = 1'b1;
+      end
+    endcase
+    u_sep_entropy_delivery_cg.sample(e);
+  endtask
+
+  task automatic cz_crst(input int unsigned pt, input logic [3:0] v);
+    mr_crst_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.ce   = v[0];
+        e.ce_v = 1'b1;
+      end
+      1: begin
+        e.xp   = v[2:0];
+        e.xp_v = 1'b1;
+      end
+      2: e.pc_v = 1'b1;
+      3: e.ps_v = 1'b1;
+      4: begin
+        e.cc   = v;
+        e.cc_v = 1'b1;
+      end
+      default: begin
+        e.re   = v[2:0];
+        e.re_v = 1'b1;
+      end
+    endcase
+    u_sep_crypto_reset_cg.sample(e);
+  endtask
+
+  task automatic cz_lk(input int unsigned pt, input logic [1:0] v);
+    cy_lock_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.ff   = v;
+        e.ff_v = 1'b1;
+      end
+      1: e.me_v = 1'b1;
+      2: begin
+        e.cr   = v;
+        e.cr_v = 1'b1;
+      end
+      default: begin
+        e.er   = v[0];
+        e.er_v = 1'b1;
+      end
+    endcase
+    u_sep_crypto_reg_lock_cg.sample(e);
+  endtask
+
+  task automatic cz_alert(input logic v);
+    cy_alert_t e;
+    e      = '0;
+    e.rs   = v;
+    e.rs_v = 1'b1;
+    u_sep_crypto_alert_cg.sample(e);
+  endtask
+
+  // ---------------------------------------------------------------------
+  // Common events of entries 1.40 to 1.53.
+  // ---------------------------------------------------------------------
+  // Window edges of the graded-window gate.
+  int unsigned cz_owner_q = FcovOwnNone;
+  wire cz_win_open = (graded_owner != FcovOwnNone) && (graded_owner != cz_owner_q);
+  function automatic logic cz_ended(input int unsigned own);
+    return (cz_owner_q == own) && (graded_owner != own);
+  endfunction
+  // A hardware set request: the {d, de} pair of a register field, both 1.
+  function automatic logic cz_dd(input logic [1:0] p);
+    return p === 2'b11;
+  endfunction
+
+  // A completed single-beat write with any response (the read-only write of
+  // cp_component_id), and the clock after an OKAY write with its address
+  // and lane data.
+  wire cz_wr_any = !in_reset && b_hs && (aw_out_q == 4'd1) && (w_beats_q == 2'd1);
+  logic cz_w1 = 1'b0;
+  logic [31:0] cz_w1_a = '0;
+  logic [31:0] cz_w1_d = '0;
+
+  // TRNG reset window and the TRNG domain.
+  wire cz_trng = (trng_rst_i === 1'b1);
+  logic cz_trng_q = 1'b0;
+  wire cz_trng_rise = cz_trng && !cz_trng_q;
+  wire cz_trng_fall = !cz_trng && cz_trng_q;
+  wire cz_es_on = cy_ip[5] && cy_ip_q[5] && !cz_trng && !cz_trng_q;
+
+  // ESRC state.
+  wire cz_men = cy_t(esrc_reg_out_i.CTRL.MODULE_ENABLE.value);
+  wire cz_boot = cy_t(esrc_boot_done_i);
+  wire cz_idle = cy_t(esrc_sm_idle_i);
+  wire cz_lock = cy_t(esrc_reg_out_i.FIPS_LOCK.LOCK.value);
+  wire cz_atune = cy_t(esrc_reg_out_i.CTRL.AUTOTUNE_ENABLE.value);
+  wire cz_whiten = cy_t(esrc_reg_out_i.CTRL.SHA256_WHITENING_ENABLE.value);
+  wire cz_bypass = cy_t(esrc_reg_out_i.CTRL.BYPASS_ENTROPY_COMPRESSOR.value);
+  wire cz_strobe = cy_t(esrc_decor_valid_i);
+  wire cz_cvld = cy_t(esrc_compress_vld_i);
+  wire cz_wpush = cy_t(esrc_whiten_push_i);
+  wire cz_bpush = cy_t(esrc_biw_obs_push_i);
+  wire cz_npush = cy_t(esrc_noise_obs_push_i);
+  wire cz_sha_busy = cy_t(esrc_reg_in_i.SHA256_STATUS.BUSY.next);
+  wire [3:0] cz_sha_out = esrc_reg_in_i.SHA256_STATUS.OUTPUT_COUNT.next;
+  wire [7:0] cz_hts = esrc_reg_in_i.HEALTH_TEST_STATUS.HEALTH_STATUS.next;
+  wire [15:0] cz_rep_cnt = esrc_reg_in_i.REPETITION_TEST_COUNT.REPETITION_COUNT.next;
+  wire [15:0] cz_any_fail = esrc_reg_in_i.ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT.next;
+  wire [15:0] cz_thr = esrc_reg_out_i.ALERT_THRESHOLD.THRESHOLD.value;
+  wire [31:0] cz_tot_rep = esrc_reg_in_i.REPCNT_TOTAL_FAILS.FAIL_COUNT.next;
+  wire [31:0] cz_tot_ahi = esrc_reg_in_i.APT_HI_TOTAL_FAILS.FAIL_COUNT.next;
+  wire [31:0] cz_tot_alo = esrc_reg_in_i.APT_LO_TOTAL_FAILS.FAIL_COUNT.next;
+  wire [31:0] cz_tot_mhi = esrc_reg_in_i.MARKOV_HI_TOTAL_FAILS.FAIL_COUNT.next;
+  wire [31:0] cz_tot_mlo = esrc_reg_in_i.MARKOV_LO_TOTAL_FAILS.FAIL_COUNT.next;
+  wire [6:0] cz_flvl = esrc_reg_in_i.FIFO_STATUS.LEVEL.next;
+  wire [5:0] cz_fwp = esrc_reg_in_i.FIFO_STATUS.WPTR.next;
+  wire [5:0] cz_frp = esrc_reg_in_i.FIFO_STATUS.RPTR.next;
+  wire [2:0] cz_ht_en = esrc_reg_out_i.HEALTH_TEST_CTRL.ENABLE.value;
+  wire [15:0] cz_wsize = esrc_reg_out_i.HEALTH_TEST_WINDOW_SIZE.SIZE.value;
+  // RAW_ENABLE of the observe paths, [0] noise, [1] biw.
+  wire [1:0] cz_raw = {
+    cy_t(esrc_reg_out_i.BIW_OBS_CTRL.RAW_ENABLE.value),
+    cy_t(esrc_reg_out_i.NOISE_OBS_CTRL.RAW_ENABLE.value)
+  };
+  // A window of whole 64-word periods: the sampler counts it in 64-strobe blocks.
+  wire cz_wsize_ok = !$isunknown(cz_wsize) && (cz_wsize >= 16'd64) && (cz_wsize[5:0] == 6'd0);
+  wire [9:0] cz_wblocks = cz_wsize[15:6];
+  wire cz_thr_known = !$isunknown(cz_thr);
+  wire cz_rep_known = !$isunknown(cz_rep_cnt);
+  wire cz_lo_tot_known = !$isunknown({cz_tot_alo, cz_tot_mlo});
+  wire cz_hi_tot_known = !$isunknown(cz_tot_ahi);
+  wire cz_dt_known = !$isunknown(esrc_detune_i);
+
+  // INTR_STATUS, INTR_ENABLE and INTR_TEST of the eight ESRC sources;
+  // source i is register bit 4i.
+  logic [7:0] cz_ist;
+  logic [7:0] cz_ien;
+  logic [7:0] cz_itst;
+  always_comb begin
+    cz_ist = {
+      cy_t(esrc_reg_out_i.INTR_STATUS.NOISE_OBS_OVERFLOW.value),
+      cy_t(esrc_reg_out_i.INTR_STATUS.BIW_OBS_OVERFLOW.value),
+      cy_t(esrc_reg_out_i.INTR_STATUS.AUTOTUNE_FAIL.value),
+      cy_t(esrc_reg_out_i.INTR_STATUS.PERSISTENT_FAILURE.value),
+      cy_t(esrc_reg_out_i.INTR_STATUS.FIFO_UNDERFLOW.value),
+      cy_t(esrc_reg_out_i.INTR_STATUS.FIFO_OVERFLOW.value),
+      cy_t(esrc_reg_out_i.INTR_STATUS.FIFO_ERROR.value),
+      cy_t(esrc_reg_out_i.INTR_STATUS.HEALTH_TEST_FAILED.value)
+    };
+    cz_ien = {
+      cy_t(esrc_reg_out_i.INTR_ENABLE.NOISE_OBS_OVERFLOW.value),
+      cy_t(esrc_reg_out_i.INTR_ENABLE.BIW_OBS_OVERFLOW.value),
+      cy_t(esrc_reg_out_i.INTR_ENABLE.AUTOTUNE_FAIL.value),
+      cy_t(esrc_reg_out_i.INTR_ENABLE.PERSISTENT_FAILURE.value),
+      cy_t(esrc_reg_out_i.INTR_ENABLE.FIFO_UNDERFLOW.value),
+      cy_t(esrc_reg_out_i.INTR_ENABLE.FIFO_OVERFLOW.value),
+      cy_t(esrc_reg_out_i.INTR_ENABLE.FIFO_ERROR.value),
+      cy_t(esrc_reg_out_i.INTR_ENABLE.HEALTH_TEST_FAILED.value)
+    };
+    cz_itst = {
+      cy_t(esrc_reg_out_i.INTR_TEST.NOISE_OBS_OVERFLOW.value),
+      cy_t(esrc_reg_out_i.INTR_TEST.BIW_OBS_OVERFLOW.value),
+      cy_t(esrc_reg_out_i.INTR_TEST.AUTOTUNE_FAIL.value),
+      cy_t(esrc_reg_out_i.INTR_TEST.PERSISTENT_FAILURE.value),
+      cy_t(esrc_reg_out_i.INTR_TEST.FIFO_UNDERFLOW.value),
+      cy_t(esrc_reg_out_i.INTR_TEST.FIFO_OVERFLOW.value),
+      cy_t(esrc_reg_out_i.INTR_TEST.FIFO_ERROR.value),
+      cy_t(esrc_reg_out_i.INTR_TEST.HEALTH_TEST_FAILED.value)
+    };
+  end
+  logic [7:0] cz_ist_q = '0;
+  logic [7:0] cz_itst_q = '0;
+  logic [7:0] cz_itst_q2 = '0;
+  wire  [7:0] cz_itst_rec = cz_itst | cz_itst_q | cz_itst_q2;
+  wire  [7:0] cz_ist_rise = cz_ist & ~cz_ist_q;
+
+  // Health status of the 12 generators.
+  logic [7:0] cz_gst[12];
+  always_comb begin
+    cz_gst[0]  = esrc_reg_in_i.GENERATOR_0_HEALTH_STATUS.STATUS.next;
+    cz_gst[1]  = esrc_reg_in_i.GENERATOR_1_HEALTH_STATUS.STATUS.next;
+    cz_gst[2]  = esrc_reg_in_i.GENERATOR_2_HEALTH_STATUS.STATUS.next;
+    cz_gst[3]  = esrc_reg_in_i.GENERATOR_3_HEALTH_STATUS.STATUS.next;
+    cz_gst[4]  = esrc_reg_in_i.GENERATOR_4_HEALTH_STATUS.STATUS.next;
+    cz_gst[5]  = esrc_reg_in_i.GENERATOR_5_HEALTH_STATUS.STATUS.next;
+    cz_gst[6]  = esrc_reg_in_i.GENERATOR_6_HEALTH_STATUS.STATUS.next;
+    cz_gst[7]  = esrc_reg_in_i.GENERATOR_7_HEALTH_STATUS.STATUS.next;
+    cz_gst[8]  = esrc_reg_in_i.GENERATOR_8_HEALTH_STATUS.STATUS.next;
+    cz_gst[9]  = esrc_reg_in_i.GENERATOR_9_HEALTH_STATUS.STATUS.next;
+    cz_gst[10] = esrc_reg_in_i.GENERATOR_10_HEALTH_STATUS.STATUS.next;
+    cz_gst[11] = esrc_reg_in_i.GENERATOR_11_HEALTH_STATUS.STATUS.next;
+  end
+  logic [7:0] cz_gst_q[12] = '{default: '0};
+  // Lane of a GENERATOR_<n>_HEALTH_STATUS address, -1 for another address.
+  function automatic int cz_gen_lane(input logic [31:0] a);
+    case (a)
+      ENTROPY_SOURCE_GENERATOR_0_HEALTH_STATUS_REG_ADDR: return 0;
+      ENTROPY_SOURCE_GENERATOR_1_HEALTH_STATUS_REG_ADDR: return 1;
+      ENTROPY_SOURCE_GENERATOR_2_HEALTH_STATUS_REG_ADDR: return 2;
+      ENTROPY_SOURCE_GENERATOR_3_HEALTH_STATUS_REG_ADDR: return 3;
+      ENTROPY_SOURCE_GENERATOR_4_HEALTH_STATUS_REG_ADDR: return 4;
+      ENTROPY_SOURCE_GENERATOR_5_HEALTH_STATUS_REG_ADDR: return 5;
+      ENTROPY_SOURCE_GENERATOR_6_HEALTH_STATUS_REG_ADDR: return 6;
+      ENTROPY_SOURCE_GENERATOR_7_HEALTH_STATUS_REG_ADDR: return 7;
+      ENTROPY_SOURCE_GENERATOR_8_HEALTH_STATUS_REG_ADDR: return 8;
+      ENTROPY_SOURCE_GENERATOR_9_HEALTH_STATUS_REG_ADDR: return 9;
+      ENTROPY_SOURCE_GENERATOR_10_HEALTH_STATUS_REG_ADDR: return 10;
+      ENTROPY_SOURCE_GENERATOR_11_HEALTH_STATUS_REG_ADDR: return 11;
+      default: return -1;
+    endcase
+  endfunction
+
+  // Stored values at the AW handshake of the write in flight (one
+  // outstanding write: the value before the write lands).
+  logic [7:0] cz_aw_ist = '0;
+  logic [11:0] cz_aw_g3 = '0;  // bit 3 of each generator status
+  logic [15:0] cz_aw_csctrl = '0;
+  logic [2:0] cz_aw_csff = '0;
+  logic cz_aw_csrw = 1'b0;
+  logic [15:0] cz_aw_edctrl = '0;
+  logic cz_aw_edrw = 1'b0;
+  logic [2:0] cz_aw_sel = '0;
+  logic [11:0] cz_aw_detune = '0;
+  // Stored-value trigger: the clock after an OKAY write to the ESRC block,
+  // or the clock where a graded window opens.
+  logic cz_esw1 = 1'b0;
+  wire cz_sv_ev = cz_win_open || cz_esw1;
+
+  // CSRNG and EDN stored control.
+  wire [15:0] cz_csctrl = {
+    csrng_reg2hw_i.ctrl.fips_force_enable.q,
+    csrng_reg2hw_i.ctrl.read_int_state.q,
+    csrng_reg2hw_i.ctrl.sw_app_enable.q,
+    csrng_reg2hw_i.ctrl.enable.q
+  };
+  wire [15:0] cz_edctrl = {
+    edn_reg2hw_i.ctrl.cmd_fifo_rst.q,
+    edn_reg2hw_i.ctrl.auto_req_mode.q,
+    edn_reg2hw_i.ctrl.boot_req_mode.q,
+    edn_reg2hw_i.ctrl.edn_enable.q
+  };
+  localparam logic [31:0] CzCsCtrlMask = 32'(CSRNG_CTRL_ENABLE_MASK | CSRNG_CTRL_SW_APP_ENABLE_MASK |
+      CSRNG_CTRL_READ_INT_STATE_MASK | CSRNG_CTRL_FIPS_FORCE_ENABLE_MASK);
+  localparam logic [31:0] CzEdCtrlMask = 32'(EDN_CTRL_EDN_ENABLE_MASK | EDN_CTRL_BOOT_REQ_MODE_MASK |
+      EDN_CTRL_AUTO_REQ_MODE_MASK | EDN_CTRL_CMD_FIFO_RST_MASK);
+
+  // External stream select, 2-state.
+  logic [2:0] cz_sel;
+  always_comb begin
+    for (int i = 0; i < 3; i++) cz_sel[i] = (ext_trng_sel_i[i] === 1'b1);
+  end
+
+  always @(posedge clk_i) begin
+    cz_owner_q <= graded_owner;
+    cz_w1      <= wr_ev;
+    cz_w1_a    <= aw_addr_q;
+    cz_w1_d    <= wr_data;
+    cz_esw1    <= wr_ev && (blk_of(aw_addr_q) == BLK_ESRC);
+    cz_trng_q  <= cz_trng;
+    cz_ist_q   <= cz_ist;
+    cz_itst_q  <= cz_itst;
+    cz_itst_q2 <= cz_itst_q;
+    for (int j = 0; j < 12; j++) cz_gst_q[j] <= cz_gst[j];
+    if (aw_hs) begin
+      cz_aw_ist    <= cz_ist;
+      cz_aw_csctrl <= cz_csctrl;
+      cz_aw_csff   <= csrng_reg2hw_i.fips_force.q;
+      cz_aw_csrw   <= cy_t(csrng_regwen_i);
+      cz_aw_edctrl <= cz_edctrl;
+      cz_aw_edrw   <= cy_t(edn_regwen_i);
+      cz_aw_sel    <= cz_sel;
+      cz_aw_detune <= esrc_detune_i;
+      for (int j = 0; j < 12; j++) cz_aw_g3[j] <= cz_gst[j][3];
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_crypto_intr_cg: x_esrc_status_enable and cp_esrc_raise_path.
+  // ---------------------------------------------------------------------
+  wire cz_es_hw_own = cy_own_eshp || cy_own_espa || cy_own_estune || cy_own_esfifo || cy_own_esobs;
+  always @(posedge clk_i) begin
+    // One cell per source at an OKAY read of INTR_STATUS: the status bit of
+    // the read data and the stored enable bit.
+    if (rd_ev && (ar_addr_q == ENTROPY_SOURCE_INTR_STATUS_REG_ADDR) && cy_rd_known && cz_es_on &&
+        (cy_own_eswalk || cz_es_hw_own)) begin
+      for (int i = 0; i < 8; i++) cy_intr(6, 6'({3'(i), rd_data[4*i], cz_ien[i]}));
+    end
+    // A status bit that rises with no INTR_TEST write of the bit.
+    if (cz_es_on && cz_es_hw_own) begin
+      for (int i = 0; i < 8; i++) begin
+        if (cz_ist_rise[i] && !cz_itst_rec[i] && (i != 3)) cy_intr(7, 6'(i));
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_crypto_reg_lock_cg: x_fips_field (1.47), cp_module_enable_locked
+  // (1.40), x_csrng_regwen and x_edn_regwen (1.49).
+  // ---------------------------------------------------------------------
+  logic cz_lock_q = 1'b0;
+  logic [1:0] cz_ff_on = '0;  // armed after the lock, [0] noise, [1] biw
+  logic [1:0] cz_ff_raw = '0;  // RAW_ENABLE at the lock
+  logic [1:0] cz_ff_dr = '0;  // locked at 1: the level was drained to 0
+  logic [1:0] cz_ff_w1 = '0;  // locked at 0: a write of 1 landed under the lock
+  logic [1:0] cz_ff_up = '0;  // locked at 0: the level rose after that write
+  logic [6:0] cz_nlvl_q = '0;
+  logic [6:0] cz_blvl_q = '0;
+  logic cz_me_arm = 1'b0;
+  logic cz_me_bad = 1'b0;
+  always @(posedge clk_i) begin
+    logic [1:0] raw;
+    logic [6:0] lvl[2];
+    logic [6:0] lvl_q[2];
+    raw    = cz_raw;
+    lvl[0] = esrc_noise_obs_level_i;
+    lvl[1] = esrc_biw_obs_level_i;
+    lvl_q[0] = cz_nlvl_q;
+    lvl_q[1] = cz_blvl_q;
+    cz_lock_q <= cz_lock;
+    cz_nlvl_q <= esrc_noise_obs_level_i;
+    cz_blvl_q <= esrc_biw_obs_level_i;
+
+    // x_fips_field. Locked at 1: the observe level drains to 0 after the
+    // lock and rises again. Locked at 0: after a write of 1 to RAW_ENABLE
+    // under the lock, an OKAY read of the observe STATUS returns LEVEL 0 and
+    // the level has not risen since the write.
+    if (!cy_own_esobs || !cz_es_on || !cz_lock) begin
+      cz_ff_on <= '0;
+      cz_ff_dr <= '0;
+      cz_ff_w1 <= '0;
+      cz_ff_up <= '0;
+    end else if (!cz_lock_q) begin
+      cz_ff_on  <= 2'b11;
+      cz_ff_raw <= raw;
+      cz_ff_dr  <= '0;
+      cz_ff_w1  <= '0;
+      cz_ff_up  <= '0;
+    end else begin
+      for (int f = 0; f < 2; f++) begin
+        logic [31:0] ctl_a;
+        logic [31:0] ctl_m;
+        logic [31:0] sts_a;
+        logic [31:0] sts_m;
+        ctl_a = (f == 0) ? ENTROPY_SOURCE_NOISE_OBS_CTRL_REG_ADDR : ENTROPY_SOURCE_BIW_OBS_CTRL_REG_ADDR;
+        ctl_m = (f == 0) ? 32'(ENTROPY_SOURCE_NOISE_OBS_CTRL_RAW_ENABLE_MASK) :
+            32'(ENTROPY_SOURCE_BIW_OBS_CTRL_RAW_ENABLE_MASK);
+        sts_a = (f == 0) ? ENTROPY_SOURCE_NOISE_OBS_STATUS_REG_ADDR :
+            ENTROPY_SOURCE_BIW_OBS_STATUS_REG_ADDR;
+        sts_m = (f == 0) ? 32'(ENTROPY_SOURCE_NOISE_OBS_STATUS_LEVEL_MASK) :
+            32'(ENTROPY_SOURCE_BIW_OBS_STATUS_LEVEL_MASK);
+        if (cz_ff_on[f] && cz_ff_raw[f]) begin
+          if (lvl[f] == 7'd0) cz_ff_dr[f] <= 1'b1;
+          else if (cz_ff_dr[f] && (lvl_q[f] == 7'd0)) begin
+            cz_lk(0, {1'(f), 1'b1});
+            cz_ff_on[f] <= 1'b0;
+          end
+        end
+        if (cz_ff_on[f] && !cz_ff_raw[f]) begin
+          if (cz_w1 && (cz_w1_a == ctl_a) && ((cz_w1_d & ctl_m) != 32'h0) && !raw[f]) begin
+            cz_ff_w1[f] <= 1'b1;
+            cz_ff_up[f] <= 1'b0;
+          end else if (cz_ff_w1[f]) begin
+            if (lvl[f] > lvl_q[f]) cz_ff_up[f] <= 1'b1;
+            if (rd_ev && (ar_addr_q == sts_a) && cy_rd_known && ((rd_data & sts_m) == 32'h0) &&
+                !cz_ff_up[f] && !raw[f]) begin
+              cz_lk(0, {1'(f), 1'b0});
+              cz_ff_on[f] <= 1'b0;
+            end
+          end
+        end
+      end
+    end
+
+    // cp_module_enable_locked: a write of 0 to MODULE_ENABLE under the lock;
+    // the stored bit stays 1 and main_sm_idle stays 0 to the end of the
+    // observation interval (the next CTRL write, a TRNG reset or the close
+    // of the window).
+    if (cz_me_arm) begin
+      logic bad;
+      logic fin;
+      bad = cz_me_bad || cz_idle || !cz_men;
+      fin = cz_ended(FcovOwnSepEsrcCsrRwWalkRandTest);
+      fin |= cz_w1 && (cz_w1_a == ENTROPY_SOURCE_CTRL_REG_ADDR);
+      if (fin) begin
+        if (!bad) cz_lk(1, 2'd0);
+        cz_me_arm <= 1'b0;
+      end else if (cz_trng || !cy_ip[5]) begin
+        cz_me_arm <= 1'b0;
+      end
+      cz_me_bad <= bad;
+    end
+    if (cy_own_eswalk && cz_es_on && cz_w1 && (cz_w1_a == ENTROPY_SOURCE_CTRL_REG_ADDR) &&
+        ((cz_w1_d & 32'(ENTROPY_SOURCE_CTRL_MODULE_ENABLE_MASK)) == 32'h0) && cz_lock && cz_men &&
+        !cz_idle) begin
+      cz_me_arm <= 1'b1;
+      cz_me_bad <= 1'b0;
+    end
+
+    // x_csrng_regwen, x_edn_regwen: a write under REGWEN 0 whose field bits
+    // differ from the stored value leaves the stored value unchanged; a
+    // write of 1 to REGWEN after 0 leaves 0.
+    if (cy_own_drw && cz_w1 && cy_ip[5] && !cz_trng) begin
+      if ((cz_w1_a == CSRNG_CTRL_REG_ADDR) && !cz_aw_csrw &&
+          ((cz_w1_d & CzCsCtrlMask) != 32'(cz_aw_csctrl)) && (cz_csctrl == cz_aw_csctrl)) begin
+        cz_lk(2, 2'd0);
+      end
+      if ((cz_w1_a == CSRNG_FIPS_FORCE_REG_ADDR) && !cz_aw_csrw &&
+          ((cz_w1_d & 32'(CSRNG_FIPS_FORCE_FIPS_FORCE_MASK)) != 32'(cz_aw_csff)) &&
+          (csrng_reg2hw_i.fips_force.q == cz_aw_csff)) begin
+        cz_lk(2, 2'd1);
+      end
+      if ((cz_w1_a == CSRNG_REGWEN_REG_ADDR) && !cz_aw_csrw &&
+          ((cz_w1_d & 32'(CSRNG_REGWEN_REGWEN_MASK)) != 32'h0) && (csrng_regwen_i === 1'b0)) begin
+        cz_lk(2, 2'd2);
+      end
+      if ((cz_w1_a == EDN_CTRL_REG_ADDR) && !cz_aw_edrw &&
+          ((cz_w1_d & CzEdCtrlMask) != 32'(cz_aw_edctrl)) && (cz_edctrl == cz_aw_edctrl)) begin
+        cz_lk(3, 2'd0);
+      end
+      if ((cz_w1_a == EDN_REGWEN_REG_ADDR) && !cz_aw_edrw && (cz_w1_d[0] == 1'b1) &&
+          (edn_regwen_i === 1'b0)) begin
+        cz_lk(3, 2'd1);
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_crypto_alert_cg cp_csrng_recov_seq (1.50). Set: the
+  // CMD_STAGE_INVALID_CMD_SEQ_ALERT set request while the last command
+  // presented to CSRNG is an instantiate and an earlier instantiate was
+  // presented since the TRNG reset. Clear: a read of 1, a write of 0 and a
+  // read of 0 with no set request between.
+  // ---------------------------------------------------------------------
+  logic [1:0] cz_ins_n = '0;  // instantiates since the TRNG reset, saturating
+  logic cz_last_ins = 1'b0;
+  logic cz_app0_v_q = 1'b0;
+  logic cz_rs_one = 1'b0;
+  logic cz_rs_w0 = 1'b0;
+  wire cz_rs_set = cz_dd(csrng_hw2reg_i.recov_alert_sts.cmd_stage_invalid_cmd_seq_alert);
+  localparam logic [31:0] CzRsMask = 32'(CSRNG_RECOV_ALERT_STS_CMD_STAGE_INVALID_CMD_SEQ_ALERT_MASK);
+  always @(posedge clk_i) begin
+    logic app0_new;
+    logic [1:0] n;
+    logic last;
+    app0_new = cy_t(csrng_app0_req_i.csrng_req_valid) && !cz_app0_v_q;
+    cz_app0_v_q <= cy_t(csrng_app0_req_i.csrng_req_valid);
+    n    = cz_ins_n;
+    last = cz_last_ins;
+    if (wr_ev && (aw_addr_q == CSRNG_CMD_REQ_REG_ADDR)) begin
+      last = (wr_data[3:0] == 4'h1);
+      if (last && (n != 2'd3)) n = n + 2'd1;
+    end
+    if (app0_new) begin
+      last = (csrng_app0_req_i.csrng_req_bus[3:0] == 4'h1);
+      if (last && (n != 2'd3)) n = n + 2'd1;
+    end
+    if (cz_rs_set && cz_last_ins && (cz_ins_n >= 2'd2) && cy_own_dcmd) cz_alert(1'b0);
+    if (cz_trng || !cy_ip[5]) begin
+      n    = '0;
+      last = 1'b0;
+    end
+    cz_ins_n    <= n;
+    cz_last_ins <= last;
+
+    if (!cy_own_dcmd || cz_trng || cz_rs_set) begin
+      cz_rs_one <= 1'b0;
+      cz_rs_w0  <= 1'b0;
+    end else begin
+      if (wr_ev && (aw_addr_q == CSRNG_RECOV_ALERT_STS_REG_ADDR) && cz_rs_one &&
+          ((wr_data & CzRsMask) == 32'h0)) begin
+        cz_rs_w0 <= 1'b1;
+      end
+      if (rd_ev && (ar_addr_q == CSRNG_RECOV_ALERT_STS_REG_ADDR) && cy_rd_known) begin
+        if ((rd_data & CzRsMask) != 32'h0) begin
+          cz_rs_one <= 1'b1;
+          cz_rs_w0  <= 1'b0;
+        end else if (cz_rs_one && cz_rs_w0) begin
+          cz_alert(1'b1);
+          cz_rs_one <= 1'b0;
+          cz_rs_w0  <= 1'b0;
+        end
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Decorrelator-input windows (1.41, 1.45). At each decorrelator strobe
+  // the sampler takes the input bit of every lane (esrc_decor_noise_i) and
+  // counts the ones of each 64-strobe block. A window of W strobes
+  // (HEALTH_TEST_WINDOW_SIZE) is classed from the signal: every block of the
+  // window holds 0 ones (constant 0), 45 (biased high), 19 (biased low) or
+  // 64 (constant 1). A window with blocks of different counts has no class.
+  // The count restarts at a MODULE_ENABLE rise, a window size change and the
+  // TRNG reset.
+  // ---------------------------------------------------------------------
+  localparam logic [2:0] CzClsNone = 3'd0;
+  localparam logic [2:0] CzClsZero = 3'd1;
+  localparam logic [2:0] CzClsHigh = 3'd2;
+  localparam logic [2:0] CzClsLow = 3'd3;
+  localparam logic [2:0] CzClsOne = 3'd4;
+  function automatic logic [2:0] cz_cls(input logic [6:0] c);
+    case (c)
+      7'd0: return CzClsZero;
+      7'd45: return CzClsHigh;
+      7'd19: return CzClsLow;
+      7'd64: return CzClsOne;
+      default: return CzClsNone;
+    endcase
+  endfunction
+
+  longint unsigned cz_strobes = 0;  // strobes counted with the module running
+  logic [6:0] cz_ln_ones[12] = '{default: '0};
+  logic [6:0] cz_ln_first[12] = '{default: '0};
+  logic [6:0] cz_ln_last[12] = '{default: '0};  // ones of the last whole block
+  logic [11:0] cz_ln_same = '0;
+  logic [11:0] cz_ln_known = '0;  // every bit of the window was 0 or 1
+  logic [2:0] cz_ln_cls[12] = '{default: CzClsNone};
+  logic [2:0] cz_ln_cls_p[12] = '{default: CzClsNone};
+  logic [5:0] cz_blk_pos = '0;
+  logic [9:0] cz_blk_n = '0;
+  logic cz_win_done = 1'b0;  // a window ended at the last strobe
+  logic cz_men_q = 1'b0;
+  logic [15:0] cz_wsize_q = '0;
+  // Runs of strobes with every lane 0 or every lane 1, and the snapshot of
+  // the failure state at the start of each run.
+  int unsigned cz_zrun = 0;
+  int unsigned cz_orun = 0;
+  logic [7:0] cz_z_hts = '0;
+  logic cz_z_tot0 = 1'b0;  // APT_LO and MARKOV_LO totals both 0 at the run start
+  logic cz_z_htf = 1'b0;
+  logic cz_z_boot = 1'b0;
+  logic [7:0] cz_o_hts = '0;
+  logic cz_o_ahi0 = 1'b0;
+  logic cz_o_boot = 1'b0;
+  logic [2:0] cz_z_done = '0;
+  logic cz_o_done = 1'b0;
+  // Decorrelator input unchanged over the last strobes (cp_byte_mask).
+  logic [11:0] cz_ns_prev = '0;
+  int unsigned cz_ns_same = 0;
+
+  always @(posedge clk_i) begin
+    logic restart;
+    cz_win_done <= 1'b0;
+    cz_men_q    <= cz_men;
+    cz_wsize_q  <= cz_wsize;
+    restart = !cz_es_on || !cz_men || (cz_men && !cz_men_q) || (cz_wsize != cz_wsize_q) ||
+        !cz_wsize_ok;
+    if (restart) begin
+      cz_blk_pos  <= '0;
+      cz_blk_n    <= '0;
+      cz_ln_ones  <= '{default: '0};
+      cz_ln_same  <= '1;
+      cz_ln_known <= '1;
+      cz_zrun     <= 0;
+      cz_orun     <= 0;
+      cz_ns_same  <= 0;
+    end else if (cz_strobe) begin
+      logic [11:0] bits;
+      logic [11:0] known;
+      logic last_blk;
+      for (int j = 0; j < 12; j++) begin
+        bits[j]  = (esrc_decor_noise_i[j] === 1'b1);
+        known[j] = !$isunknown(esrc_decor_noise_i[j]);
+      end
+      cz_strobes <= cz_strobes + 1;
+      last_blk = (cz_blk_pos == 6'd63);
+      for (int j = 0; j < 12; j++) begin
+        logic [6:0] c;
+        logic same;
+        c = cz_ln_ones[j] + 7'(bits[j]);
+        if (last_blk) begin
+          same = (cz_blk_n == 10'd0) ? 1'b1 : (cz_ln_same[j] && (c == cz_ln_first[j]));
+          if (cz_blk_n == 10'd0) cz_ln_first[j] <= c;
+          cz_ln_last[j] <= c;
+          cz_ln_ones[j] <= '0;
+          if ((cz_blk_n + 10'd1) == cz_wblocks) begin
+            cz_ln_cls_p[j] <= cz_ln_cls[j];
+            cz_ln_cls[j] <= (same && cz_ln_known[j] && known[j]) ? cz_cls(c) : CzClsNone;
+            cz_ln_same[j] <= 1'b1;
+            cz_ln_known[j] <= 1'b1;
+          end else begin
+            cz_ln_same[j]  <= same;
+            cz_ln_known[j] <= cz_ln_known[j] && known[j];
+          end
+        end else begin
+          cz_ln_ones[j]  <= c;
+          cz_ln_known[j] <= cz_ln_known[j] && known[j];
+        end
+      end
+      cz_blk_pos <= cz_blk_pos + 6'd1;
+      if (last_blk) begin
+        if ((cz_blk_n + 10'd1) == cz_wblocks) begin
+          cz_blk_n    <= '0;
+          cz_win_done <= 1'b1;
+        end else begin
+          cz_blk_n <= cz_blk_n + 10'd1;
+        end
+      end
+      // Constant runs on all 12 lanes.
+      if ((&known) && (bits == 12'h000)) begin
+        if (cz_zrun == 0) begin
+          cz_z_hts  <= cz_hts;
+          cz_z_tot0 <= (cz_tot_alo == 32'h0) && (cz_tot_mlo == 32'h0);
+          cz_z_htf  <= cz_ist[0];
+          cz_z_boot <= cz_boot;
+          cz_z_done <= '0;
+        end
+        cz_zrun <= cz_zrun + 1;
+      end else begin
+        cz_zrun <= 0;
+      end
+      if ((&known) && (bits == 12'hFFF)) begin
+        if (cz_orun == 0) begin
+          cz_o_hts  <= cz_hts;
+          cz_o_ahi0 <= (cz_tot_ahi == 32'h0);
+          cz_o_boot <= cz_boot;
+          cz_o_done <= 1'b0;
+        end
+        cz_orun <= cz_orun + 1;
+      end else begin
+        cz_orun <= 0;
+      end
+      cz_ns_prev <= esrc_decor_noise_i;
+      cz_ns_same <= ((&known) && (esrc_decor_noise_i == cz_ns_prev)) ? cz_ns_same + 1 : 0;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_esrc_noise_gen_cg (1.41, 1.43).
+  // ---------------------------------------------------------------------
+  logic [2:0] cz_dt_wait = '0;
+  logic [11:0] cz_dt_pre = '0;
+  logic cz_atune_q = 1'b0;
+  logic [11:0] cz_detune_q = '0;
+  wire cz_dtq_known = !$isunknown(cz_detune_q);
+  always @(posedge clk_i) begin
+    cz_atune_q  <= cz_atune;
+    cz_detune_q <= esrc_detune_i;
+    // cp_detune_mode: four clocks after an OKAY write of RING_OSC_TUNE, the
+    // effective detune against the stored DETUNE mask.
+    if (cy_own_estune && cz_es_on && cz_w1 && (cz_w1_a == ENTROPY_SOURCE_RING_OSC_TUNE_REG_ADDR)) begin
+      cz_dt_wait <= 3'd4;
+      cz_dt_pre  <= cz_aw_detune;
+    end else if (cz_dt_wait != 3'd0) begin
+      if (!cy_own_estune || !cz_es_on) begin
+        cz_dt_wait <= '0;
+      end else if (cz_dt_wait == 3'd1) begin
+        logic [11:0] m;
+        m = esrc_reg_out_i.RING_OSC_TUNE.DETUNE.value;
+        cz_dt_wait <= '0;
+        if (!cz_atune && (m == 12'h000) && (esrc_detune_i === 12'h000)) cz_ngen(0, 4'd0);
+        else if (!cz_atune && (m != 12'h000) && (esrc_detune_i === m)) cz_ngen(0, 4'd1);
+        else if (cz_atune && (m != 12'h000) && (esrc_detune_i === cz_dt_pre) &&
+                 (esrc_detune_i !== m)) begin
+          cz_ngen(0, 4'd2);
+        end
+      end else begin
+        cz_dt_wait <= cz_dt_wait - 3'd1;
+      end
+    end
+    // cp_detune_lane: with AUTOTUNE_ENABLE 1 on this and the last clock, a
+    // detune bit of a lane whose generator status is set toggles.
+    if (cy_own_estune && cz_es_on && cz_atune && cz_atune_q && cz_dt_known && cz_dtq_known) begin
+      for (int j = 0; j < 12; j++) begin
+        if ((esrc_detune_i[j] != cz_detune_q[j]) && (cz_gst[j] != 8'h00)) cz_ngen(1, 4'(j));
+      end
+    end
+    // cp_lane_pattern: the class of each lane at the end of a window.
+    if (cy_own_eshp && cz_win_done) begin
+      for (int j = 0; j < 12; j++) begin
+        case (cz_ln_cls[j])
+          CzClsZero: cz_ngen(2, 4'd0);
+          CzClsHigh: cz_ngen(2, 4'd1);
+          CzClsLow: cz_ngen(2, 4'd2);
+          default: ;
+        endcase
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_esrc_startup_health_cg (1.40, 1.41, 1.42, 1.44).
+  // ---------------------------------------------------------------------
+  logic [31:0] cz_cid_rd = '0;
+  logic cz_cid_rd_v = 1'b0;
+  logic cz_cid_wr = 1'b0;
+  logic cz_boot_q = 1'b0;
+  logic cz_eb_fall = 1'b0;
+  logic cz_re_arm = 1'b0;
+  logic [6:0] cz_re_cnt = '0;
+  logic cz_re_tot = 1'b0;
+  logic cz_tf_arm = 1'b0;
+  logic [1:0] cz_tm_kind = '0;
+  logic cz_tm_arm = 1'b0;
+  int unsigned cz_tm_cnt = 0;
+  logic cz_sf_nodig = 1'b0;  // no digest in flight at the MODULE_ENABLE rise
+  logic [7:0] cz_hts_q = '0;
+  logic [2:0] cz_ht_en_q = '0;
+  logic cz_dc_arm = 1'b0;
+  logic [15:0] cz_dc_pre = '0;
+  longint unsigned cz_dc_t0 = 0;
+  localparam logic [31:0] CzCidMask = 32'(ENTROPY_SOURCE_COMPONENT_ID_NAME_MASK |
+      ENTROPY_SOURCE_COMPONENT_ID_MAJOR_VERSION_MASK | ENTROPY_SOURCE_COMPONENT_ID_MINOR_VERSION_MASK);
+  wire cz_eb_own = cy_own_eshp || cy_own_espa || cy_own_esboot;
+  wire cz_men_rise = cz_men && !cz_men_q;
+  wire cz_men_fall = !cz_men && cz_men_q;
+  wire [31:0] cz_tot_any = cz_tot_rep | cz_tot_ahi | cz_tot_alo | cz_tot_mhi | cz_tot_mlo;
+  logic [31:0] cz_tot_rep_q = '0;
+
+  always @(posedge clk_i) begin
+    cz_boot_q    <= cz_boot;
+    cz_hts_q     <= cz_hts;
+    cz_ht_en_q   <= cz_ht_en;
+    cz_tot_rep_q <= cz_tot_rep;
+
+    // cp_component_id: a read of COMPONENT_ID, a write of its complement
+    // (any response), and a read whose field bits equal the first read.
+    if (!cy_own_eswalk) begin
+      cz_cid_rd_v <= 1'b0;
+      cz_cid_wr   <= 1'b0;
+    end else begin
+      if (cz_wr_any && (aw_addr_q == ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR)) begin
+        cz_cid_wr <= cz_cid_rd_v && (wr_data == ~cz_cid_rd);
+      end
+      if (rd_ev && (ar_addr_q == ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR) && cy_rd_known) begin
+        if (cz_cid_wr && ((rd_data & CzCidMask) == (cz_cid_rd & CzCidMask))) cz_sth(0, 4'd0);
+        cz_cid_rd   <= rd_data;
+        cz_cid_rd_v <= 1'b1;
+        cz_cid_wr   <= 1'b0;
+      end
+    end
+
+    // x_enable_boot: the MODULE_ENABLE rise (with BOOT_PHASE_DONE), the
+    // BOOT_PHASE_DONE rise with MODULE_ENABLE 1, and main_sm_idle after the
+    // MODULE_ENABLE fall.
+    if (!cz_es_on || !cz_eb_own) begin
+      cz_eb_fall <= 1'b0;
+    end else begin
+      if (cz_men_rise) cz_sth(1, {2'b00, 1'b1, cz_boot});
+      if (cz_men && cz_boot && !cz_boot_q && !cz_men_rise) cz_sth(1, 4'b0011);
+      if (cz_men_fall) cz_eb_fall <= 1'b1;
+      else if (cz_men) cz_eb_fall <= 1'b0;
+      else if (cz_eb_fall && cz_idle) begin
+        cz_sth(1, 4'b0000);
+        cz_eb_fall <= 1'b0;
+      end
+    end
+
+    // cp_restart_edge and cp_total_fails: a MODULE_ENABLE rise with
+    // REPCNT_TOTAL_FAILS non-zero before it. Within CySettle clocks the five
+    // totals read 0 (REPCNT alone for cp_total_fails); BOOT_PHASE_DONE rises
+    // later with MODULE_ENABLE still 1.
+    if (!cz_es_on || !cy_own_esboot || cz_men_fall) begin
+      cz_re_arm <= 1'b0;
+      cz_tf_arm <= 1'b0;
+    end else if (cz_men_rise && (cz_tot_rep_q != 32'h0) && !$isunknown(cz_tot_rep_q)) begin
+      cz_re_arm <= 1'b1;
+      cz_tf_arm <= 1'b1;
+      cz_re_tot <= 1'b0;
+      cz_re_cnt <= '0;
+    end else begin
+      if (cz_tf_arm || (cz_re_arm && !cz_re_tot)) begin
+        if (cz_re_cnt >= 7'(CySettle)) begin
+          cz_tf_arm <= 1'b0;
+          cz_re_tot <= 1'b1;
+        end
+        cz_re_cnt <= cz_re_cnt + 7'd1;
+        if (cz_tf_arm && (cz_tot_rep == 32'h0)) begin
+          cz_falt(1, 6'd0);
+          cz_tf_arm <= 1'b0;
+        end
+        if (cz_re_arm && !cz_re_tot && (cz_tot_any == 32'h0)) begin
+          cz_sth(2, 4'd0);
+          cz_re_tot <= 1'b1;
+        end
+      end
+      if (cz_re_arm && cz_boot && !cz_boot_q) begin
+        cz_sth(2, 4'd1);
+        cz_re_arm <= 1'b0;
+      end
+    end
+
+    // cp_startup_fail_hold: a health-test failure pulse in the startup
+    // window, and (illegal) a whitener input, a BIW observe push or, with no
+    // digest in flight at the MODULE_ENABLE rise, a conditioner output with
+    // MODULE_ENABLE 1 and BOOT_PHASE_DONE 0.
+    if (cz_men_rise) cz_sf_nodig <= !cz_sha_busy && (cz_sha_out == 4'd0);
+    if (cy_own_esboot && cz_es_on && cz_men && cz_men_q && !cz_boot) begin
+      if (cy_t(esrc_ht_fail_i)) cz_sth(3, 4'd0);
+      if (cz_wpush || cz_bpush || (cz_cvld && cz_sf_nodig)) cz_sth(3, 4'd1);
+    end
+
+    // cp_toggle_moment: the class at the MODULE_ENABLE fall; main_sm_idle
+    // reads 1 within CzCmdBound clocks.
+    if (!cz_es_on || !cy_own_esboot || cz_men_rise) begin
+      cz_tm_arm <= 1'b0;
+    end else if (cz_men_fall) begin
+      cz_tm_arm  <= 1'b1;
+      cz_tm_cnt  <= 0;
+      cz_tm_kind <= ((cz_tot_rep_q != 32'h0) && !cz_boot_q) ? 2'd2 : (cz_boot_q ? 2'd1 : 2'd0);
+    end else if (cz_tm_arm) begin
+      if (cz_idle) begin
+        cz_sth(4, {2'b00, cz_tm_kind});
+        cz_tm_arm <= 1'b0;
+      end else if (cz_tm_cnt >= CzCmdBound) begin
+        cz_tm_arm <= 1'b0;
+      end
+      cz_tm_cnt <= cz_tm_cnt + 1;
+    end
+
+    // Stored-value points: cp_test_enable_set, cp_window_class.
+    if (cy_own_eshp && cz_es_on && cz_sv_ev) begin
+      if (cz_ht_en == 3'd6) cz_sth(5, 4'd0);
+      if (cz_ht_en == 3'd5) cz_sth(5, 4'd1);
+    end
+    if ((cy_own_eshp || cy_own_espa) && cz_es_on && cz_sv_ev && !$isunknown(cz_wsize)) begin
+      if (cz_wsize < 16'd1024) cz_sth(6, 4'd0);
+      else if (cz_wsize == 16'd1024) cz_sth(6, 4'd1);
+      else if (cz_wsize == 16'd2048) cz_sth(6, 4'd2);
+      else if (cz_wsize > 16'd2048) cz_sth(6, 4'd3);
+    end
+
+    // x_tester_side and cp_test_level (1.41). Trip: a generator status bit
+    // rises (bit 3 is classed high or low from the ones of the last whole
+    // 64-strobe block of the lane). Pass: two windows in a row of the same
+    // biased class end with bits 0, 4 and 5 clear and the tester enabled.
+    if (cy_own_eshp && cz_es_on) begin
+      logic gen_rise;
+      gen_rise = 1'b0;
+      for (int j = 0; j < 12; j++) begin
+        logic [7:0] r;
+        r = cz_gst[j] & ~cz_gst_q[j];
+        if (!$isunknown(cz_gst[j]) && (r != 8'h00)) begin
+          gen_rise = 1'b1;
+          if (r[0]) cz_sth(7, 4'b000_0);
+          if (r[4]) cz_sth(7, 4'b011_0);
+          if (r[5]) cz_sth(7, 4'b100_0);
+          if (r[3] && (cz_ln_last[j] > 7'd32)) cz_sth(7, 4'b001_0);
+          if (r[3] && (cz_ln_last[j] < 7'd32)) cz_sth(7, 4'b010_0);
+        end
+        if (cz_win_done && ((cz_ln_cls[j] == CzClsHigh) || (cz_ln_cls[j] == CzClsLow)) &&
+            (cz_ln_cls[j] == cz_ln_cls_p[j]) && ((cz_gst[j] & 8'h31) == 8'h00)) begin
+          if (cz_ht_en[0]) cz_sth(7, 4'b000_1);
+          if (cz_ht_en[2]) cz_sth(7, 4'b011_1);
+          if (cz_ht_en[2]) cz_sth(7, 4'b100_1);
+        end
+      end
+      if (gen_rise) cz_sth(8, 4'd0);
+      if (!$isunknown(cz_hts) && ((cz_hts[3] && !cz_hts_q[3]) || (cz_hts[5] && !cz_hts_q[5]))) begin
+        cz_sth(8, 4'd1);
+      end
+    end
+
+    // cp_top_failure_set: a run of at least one window of strobes with every
+    // lane 0 (or 1) that starts after BOOT_PHASE_DONE; the failure state was
+    // clear at the run start and is set at the sample.
+    if (cy_own_eshp && cz_es_on && cz_wsize_ok) begin
+      if (cz_z_boot && (cz_zrun >= int'(cz_wsize))) begin
+        if (!cz_z_done[0] && cz_hts[3] && cz_hts[5] && !(cz_z_hts[3] && cz_z_hts[5])) begin
+          cz_sth(9, 4'd0);
+          cz_z_done[0] <= 1'b1;
+        end
+        if (!cz_z_done[1] && cz_z_tot0 && (cz_tot_alo != 32'h0) && (cz_tot_mlo != 32'h0) &&
+            cz_lo_tot_known) begin
+          cz_sth(9, 4'd1);
+          cz_z_done[1] <= 1'b1;
+        end
+        if (!cz_z_done[2] && !cz_z_htf && cz_ist[0]) begin
+          cz_sth(9, 4'd2);
+          cz_z_done[2] <= 1'b1;
+        end
+      end
+      if (cz_o_boot && (cz_orun >= int'(cz_wsize)) && !cz_o_done && cz_o_ahi0 && cz_hts[3] &&
+          !cz_o_hts[3] && (cz_tot_ahi != 32'h0) && cz_hi_tot_known) begin
+        cz_sth(9, 4'd3);
+        cz_o_done <= 1'b1;
+      end
+    end
+
+    // cp_disable_clears: HEALTH_TEST_CTRL.ENABLE bit 0 falls while the
+    // repetition count is non-zero; one window of strobes later the count
+    // is classed.
+    if (!cy_own_eshp || !cz_es_on || cz_ht_en[0]) begin
+      cz_dc_arm <= 1'b0;
+    end else if (!cz_ht_en[0] && cz_ht_en_q[0] && (cz_rep_cnt != 16'h0) && cz_rep_known) begin
+      cz_dc_arm <= 1'b1;
+      cz_dc_pre <= cz_rep_cnt;
+      cz_dc_t0  <= cz_strobes;
+    end else if (cz_dc_arm && cz_wsize_ok && ((cz_strobes - cz_dc_t0) >= longint'(cz_wsize))) begin
+      if (cz_rep_cnt == 16'h0) cz_sth(10, 4'd0);
+      else if ((cz_rep_cnt < cz_dc_pre) && (cz_rep_cnt < 16'd100)) cz_sth(10, 4'd1);
+      cz_dc_arm <= 1'b0;
+    end
+
+    // cp_prestage_test: an OKAY FIFO_RDATA read with whitening on, every
+    // lane stuck at 0, and HEALTH_TEST_STATUS bit 0 set in this run.
+    if (cy_own_eshp && cz_es_on && rd_ev && (ar_addr_q == ENTROPY_SOURCE_FIFO_RDATA_REG_ADDR) &&
+        cz_whiten && (cz_zrun != 0) && cz_hts[0] && !cz_z_hts[0]) begin
+      cz_sth(11, 4'd0);
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_esrc_fault_alert_cg (1.40, 1.41, 1.42, 1.43, 1.44, 1.46).
+  // ---------------------------------------------------------------------
+  logic [15:0] cz_af_q = '0;
+  logic [15:0] cz_af_peak = '0;
+  logic cz_af_alert = 1'b0;
+  logic cz_af_men = 1'b0;  // MODULE_ENABLE stayed 1 since the burst start
+  longint unsigned cz_af_t_inc = 0;
+  longint unsigned cz_af_t_start = 0;
+  logic [15:0] cz_af_prev_peak = '0;
+  longint unsigned cz_af_prev_end = 0;
+  logic cz_af_prev_v = 1'b0;
+  logic cz_sm_alert_q = 1'b0;
+  logic cz_hang = 1'b0;  // AlertHang entered, no exit yet
+  logic cz_hg_arm = 1'b0;  // entry: waiting for the halt hold
+  logic cz_hg_pf = 1'b0;
+  int unsigned cz_hg_cnt = 0;
+  logic cz_wc_alert = 1'b0;  // write of 1 to MAIN_SM_STATUS.ALERT in AlertHang
+  logic cz_wc_pf = 1'b0;  // PERSISTENT_FAILURE cleared by a write of 1 in AlertHang
+  logic cz_wc_arm = 1'b0;
+  int unsigned cz_wc_cnt = 0;
+  logic cz_ex_men = 1'b0;
+  logic cz_ex_men_up = 1'b0;
+  logic cz_ex_rst = 1'b0;
+  logic [6:0] cz_flvl_q = '0;
+  // cp_autotune.
+  logic [11:0] cz_au_off = '0;
+  logic [11:0] cz_au_off_bad = '0;
+  logic [11:0] cz_au_on = '0;
+  logic [11:0] cz_au_tog = '0;
+  logic [1:0] cz_au_burst = '0;
+  longint unsigned cz_au_last_tog = 0;
+  logic cz_au_any_tog = 1'b0;
+  logic [11:0] cz_au_ill[4] = '{default: '0};
+  // cp_fifo_integrity.
+  logic cz_par_q = 1'b0;
+  logic cz_ptr_q = 1'b0;
+  logic cz_par_arm = 1'b0;
+  logic cz_ptr_arm = 1'b0;
+  logic cz_ptr_taint = 1'b0;  // from a pointer-copy inject to the next TRNG reset
+  logic [3:0] cz_par_rec = '0;
+  logic [3:0] cz_ovf_rec = '0;
+  localparam logic [31:0] CzAlertMask = 32'(ENTROPY_SOURCE_MAIN_SM_STATUS_ALERT_MASK);
+
+  always @(posedge clk_i) begin
+    logic sm_alert;
+    sm_alert = cy_t(esrc_sm_alert_i);
+    cz_sm_alert_q <= sm_alert;
+    cz_af_q       <= cz_any_fail;
+    cz_flvl_q     <= cz_flvl;
+    cz_par_q      <= esrc_par_inj_i;
+    cz_ptr_q      <= esrc_ptr_inj_i;
+    cz_par_rec    <= {cz_par_rec[2:0], esrc_par_inj_i};
+    cz_ovf_rec    <= {cz_ovf_rec[2:0], cy_t(esrc_fifo_ovf_i)};
+
+    // x_gen_latch (1.41): bit 3 latched per lane, bit 3 cleared by a write
+    // of 1 to the status of the lane, and bits 0, 4, 5 latched on all lanes.
+    if (cy_own_eshp && cz_es_on) begin
+      for (int j = 0; j < 12; j++) begin
+        if ((cz_gst[j][3] === 1'b1) && (cz_gst_q[j][3] === 1'b0)) cz_falt(0, {2'b00, 4'(j)});
+      end
+      if (cz_w1 && (cz_gen_lane(cz_w1_a) >= 0) && cz_w1_d[3]) begin
+        int j;
+        j = cz_gen_lane(cz_w1_a);
+        if (cz_aw_g3[j] && (cz_gst[j][3] === 1'b0)) cz_falt(0, {2'b01, 4'(j)});
+      end
+      for (int b = 0; b < 3; b++) begin
+        int unsigned k;
+        logic all_now;
+        logic all_q;
+        k = (b == 0) ? 0 : ((b == 1) ? 4 : 5);
+        all_now = 1'b1;
+        all_q = 1'b1;
+        for (int j = 0; j < 12; j++) begin
+          all_now &= (cz_gst[j][k] === 1'b1);
+          all_q &= (cz_gst_q[j][k] === 1'b1);
+        end
+        if (all_now && !all_q) cz_falt(0, {2'b10, 4'(b)});
+      end
+    end
+
+    // cp_alert_threshold (1.42): the stored value at the stored-value
+    // trigger and at an OKAY read of ALERT_THRESHOLD.
+    if (cy_own_espa && cz_es_on && cz_thr_known &&
+        (cz_sv_ev || (rd_ev && (ar_addr_q == ENTROPY_SOURCE_ALERT_THRESHOLD_REG_ADDR)))) begin
+      case (cz_thr)
+        16'd0: cz_falt(2, 6'd0);
+        16'd4: cz_falt(2, 6'd1);
+        16'd5: cz_falt(2, 6'd2);
+        16'd7: cz_falt(2, 6'd3);
+        default: ;
+      endcase
+    end
+
+    // cp_any_fail and the "no entry" cells of cp_alert_hang (1.42). A burst
+    // runs from an ANY_FAIL_COUNT rise from 0 to its fall to 0 with
+    // MODULE_ENABLE 1 throughout.
+    if (!cy_own_espa || !cz_es_on || $isunknown(cz_any_fail)) begin
+      cz_af_peak    <= '0;
+      cz_af_alert   <= 1'b0;
+      cz_af_men     <= 1'b0;
+      cz_af_prev_v  <= 1'b0;
+    end else begin
+      if (cz_any_fail > cz_af_q) begin
+        if (cz_thr != 16'd0) cz_falt(3, (cz_any_fail < cz_thr) ? 6'd0 : 6'd1);
+        else if ((cz_any_fail > 16'd8) && (cz_af_q <= 16'd8)) cz_falt(3, 6'd2);
+        cz_af_t_inc <= cz_strobes;
+        if (cz_af_q == 16'h0) begin
+          cz_af_peak    <= cz_any_fail;
+          cz_af_alert   <= 1'b0;
+          cz_af_men     <= cz_men;
+          cz_af_t_start <= cz_strobes;
+        end else if (cz_any_fail > cz_af_peak) begin
+          cz_af_peak <= cz_any_fail;
+        end
+      end
+      if (sm_alert && !cz_sm_alert_q) cz_af_alert <= 1'b1;
+      if (!cz_men) cz_af_men <= 1'b0;
+      if ((cz_any_fail == 16'h0) && (cz_af_q != 16'h0) && cz_af_men && cz_men && cz_wsize_ok) begin
+        if ((cz_strobes - cz_af_t_inc) <= 3 * longint'(cz_wsize)) cz_falt(3, 6'd3);
+        if (!cz_af_alert) begin
+          if (cz_thr != 16'd0) begin
+            if (cz_af_prev_v && ((cz_af_t_start - cz_af_prev_end) <= 5 * longint'(cz_wsize)) &&
+                (32'(cz_af_prev_peak) + 32'(cz_af_peak) >= 32'(cz_thr))) begin
+              cz_falt(4, 6'd2);
+            end
+            if (cz_af_peak < cz_thr) cz_falt(4, 6'd1);
+          end else if (cz_af_peak > 16'd8) begin
+            cz_falt(4, 6'd3);
+          end
+        end
+        cz_af_prev_peak <= cz_af_peak;
+        cz_af_prev_end  <= cz_strobes;
+        cz_af_prev_v    <= !cz_af_alert;
+      end
+    end
+
+    // cp_alert_hang entry and exits (1.42). AlertHang starts at the
+    // main_sm_alert rise and ends at a MODULE_ENABLE fall or a TRNG reset.
+    if (cz_trng || !cy_ip[5]) begin
+      if (cz_hang && cy_own_espa) cz_ex_rst <= 1'b1;
+      cz_hang   <= 1'b0;
+      cz_hg_arm <= 1'b0;
+      cz_wc_arm <= 1'b0;
+      cz_wc_alert <= 1'b0;
+      cz_wc_pf <= 1'b0;
+      cz_ex_men <= 1'b0;
+    end else begin
+      if (sm_alert && !cz_sm_alert_q && cz_men) begin
+        cz_hang   <= 1'b1;
+        cz_hg_arm <= cy_own_espa;
+        cz_hg_pf  <= 1'b0;
+        cz_hg_cnt <= 0;
+      end
+      // Entry: PERSISTENT_FAILURE is set, and with no digest in flight the
+      // FIFO level does not rise for CzHangHold clocks.
+      if (cz_hg_arm) begin
+        logic pf;
+        pf = cz_hg_pf || cz_ist[4];
+        cz_hg_pf <= pf;
+        if (!cy_own_espa || !cz_men || ((cz_flvl > cz_flvl_q) && !cz_sha_busy)) begin
+          cz_hg_arm <= 1'b0;
+        end else if (cz_sha_busy || (cz_sha_out != 4'd0)) begin
+          cz_hg_cnt <= 0;
+        end else if (cz_hg_cnt >= CzHangHold) begin
+          if (pf) cz_falt(4, 6'd0);
+          cz_hg_arm <= 1'b0;
+        end else begin
+          cz_hg_cnt <= cz_hg_cnt + 1;
+        end
+      end
+      // Write-one clear in AlertHang: a write of 1 to MAIN_SM_STATUS.ALERT
+      // and the PERSISTENT_FAILURE fall by a write of 1; the FIFO level then
+      // does not rise for CzHangHold clocks.
+      if (cz_hang && cy_own_espa && cz_men) begin
+        logic wa;
+        logic wp;
+        wa = cz_wc_alert || (cz_w1 && (cz_w1_a == ENTROPY_SOURCE_MAIN_SM_STATUS_REG_ADDR) &&
+            ((cz_w1_d & CzAlertMask) != 32'h0));
+        wp = (cz_wc_pf && !cz_ist[4]) || (cz_w1 && (cz_w1_a == ENTROPY_SOURCE_INTR_STATUS_REG_ADDR) &&
+            cz_w1_d[16] && cz_aw_ist[4] && !cz_ist[4]);
+        cz_wc_alert <= wa;
+        cz_wc_pf    <= wp;
+        if (wa && wp && !cz_wc_arm) begin
+          cz_wc_arm <= 1'b1;
+          cz_wc_cnt <= 0;
+        end
+        if (cz_wc_arm) begin
+          if ((cz_flvl > cz_flvl_q) || cz_ist[4]) begin
+            cz_wc_arm <= 1'b0;
+          end else if (cz_wc_cnt >= CzHangHold) begin
+            cz_falt(4, 6'd4);
+            cz_wc_arm <= 1'b0;
+          end else begin
+            cz_wc_cnt <= cz_wc_cnt + 1;
+          end
+        end
+      end else begin
+        cz_wc_arm <= 1'b0;
+      end
+      if (cz_men_fall) begin
+        cz_ex_men    <= cz_hang && cy_own_espa;
+        cz_ex_men_up <= 1'b0;
+        cz_hang      <= 1'b0;
+        cz_hg_arm    <= 1'b0;
+        cz_wc_alert  <= 1'b0;
+        cz_wc_pf     <= 1'b0;
+      end
+      if (cz_ex_men) begin
+        if (cz_men_rise) cz_ex_men_up <= 1'b1;
+        if (cz_ex_men_up && cz_men && cz_boot && !cz_boot_q) begin
+          if (cy_own_espa) cz_falt(4, 6'd5);
+          cz_ex_men <= 1'b0;
+        end
+      end
+      // Exit by TRNG reset: the first OKAY read of MAIN_SM_STATUS after the
+      // reset shows ALERT 0, with PERSISTENT_FAILURE 0.
+      if (cz_ex_rst && rd_ev && (ar_addr_q == ENTROPY_SOURCE_MAIN_SM_STATUS_REG_ADDR) &&
+          cy_rd_known) begin
+        if (((rd_data & CzAlertMask) == 32'h0) && !cz_ist[4] && cy_own_espa) cz_falt(4, 6'd6);
+        cz_ex_rst <= 1'b0;
+      end
+    end
+    if (cz_ended(FcovOwnSepEsrcPersistentAlertRandTest)) cz_ex_rst <= 1'b0;
+
+    // cp_autotune (1.43). A lane fails: its generator status rises from 0.
+    // Autotune off: at the write-one clear of that status, AUTOTUNE_FAIL
+    // stayed 0 and the detune did not change since the failure. Autotune
+    // on: AUTOTUNE_FAIL is set and the detune bit of the lane toggled. A
+    // burst is a group of toggles of the lane; a gap of CzTuneGap strobes
+    // with no toggle ends it. Illegal: with autotune on, the detune bit of a
+    // lane whose status stays 0 for four clocks after the toggle changes.
+    if (!cy_own_estune || !cz_es_on) begin
+      cz_au_off   <= '0;
+      cz_au_on    <= '0;
+      cz_au_tog   <= '0;
+      cz_au_burst <= '0;
+      cz_au_any_tog <= 1'b0;
+      cz_au_ill   <= '{default: '0};
+    end else begin
+      logic [11:0] tog;
+      tog = '0;
+      if (cz_dt_known && cz_dtq_known) tog = esrc_detune_i ^ cz_detune_q;
+      if (cz_atune && !cz_atune_q) begin
+        cz_au_burst   <= '0;
+        cz_au_any_tog <= 1'b0;
+      end
+      for (int j = 0; j < 12; j++) begin
+        logic fail;
+        fail = (cz_gst[j] != 8'h00) && (cz_gst_q[j] == 8'h00) && !$isunknown(cz_gst[j]);
+        if (fail && !cz_atune && !cz_ist[5]) begin
+          cz_au_off[j]     <= 1'b1;
+          cz_au_off_bad[j] <= 1'b0;
+        end else if (cz_au_off[j]) begin
+          if (cz_ist[5] || tog[j] || cz_atune) cz_au_off_bad[j] <= 1'b1;
+          if ((cz_gst[j] == 8'h00) && (cz_gst_q[j] != 8'h00)) begin
+            if (!cz_au_off_bad[j] && !cz_ist[5] && !tog[j]) cz_falt(5, 6'd0);
+            cz_au_off[j] <= 1'b0;
+          end
+        end
+        if (fail && cz_atune) begin
+          cz_au_on[j]  <= 1'b1;
+          cz_au_tog[j] <= 1'b0;
+        end else if (cz_au_on[j]) begin
+          logic t;
+          t = cz_au_tog[j] || (tog[j] && cz_atune_q);
+          cz_au_tog[j] <= t;
+          if (t && cz_ist[5]) begin
+            cz_falt(5, 6'd1);
+            cz_au_on[j] <= 1'b0;
+          end
+        end
+      end
+      if (cz_atune && cz_atune_q && (tog != 12'h000)) begin
+        logic new_burst;
+        new_burst = !cz_au_any_tog || ((cz_strobes - cz_au_last_tog) >= longint'(CzTuneGap));
+        cz_au_any_tog  <= 1'b1;
+        cz_au_last_tog <= cz_strobes;
+        if (new_burst && (cz_au_burst != 2'd3)) begin
+          if (cz_au_burst <= 2'd2) cz_falt(5, 6'(2 + cz_au_burst));
+          cz_au_burst <= cz_au_burst + 2'd1;
+        end
+      end
+      // Illegal: a toggle of a lane with status 0 that stays 0 for four clocks.
+      cz_au_ill[0] <= (cz_atune && cz_atune_q) ? tog : '0;
+      for (int k = 1; k < 4; k++) cz_au_ill[k] <= cz_au_ill[k-1];
+      for (int j = 0; j < 12; j++) begin
+        if (cz_au_ill[3][j] && (cz_gst[j] == 8'h00) && (cz_gst_q[j] == 8'h00)) cz_falt(5, 6'd7);
+      end
+    end
+
+    // cp_fifo_flags. Overflow (1.46): FIFO_OVERFLOW rises after an overflow
+    // push with no INTR_TEST write. Proper-subset clear (1.40): a write of 1
+    // to a subset C that holds bits 8 and 12 of the set status bits S, with
+    // C a proper subset of S, leaves exactly S & ~C.
+    if (cy_own_esfifo && cz_es_on && cz_ist_rise[2] && !cz_itst_rec[2] && (cz_ovf_rec != 4'h0)) begin
+      cz_falt(6, 6'd0);
+    end
+    if (cy_own_eswalk && cz_es_on && cz_w1 && (cz_w1_a == ENTROPY_SOURCE_INTR_STATUS_REG_ADDR)) begin
+      logic [7:0] c;
+      for (int i = 0; i < 8; i++) c[i] = cz_w1_d[4*i];
+      if (c[2] && c[3] && ((c & ~cz_aw_ist) == 8'h00) && (c != cz_aw_ist) &&
+          (cz_ist == (cz_aw_ist & ~c))) begin
+        cz_falt(6, 6'd1);
+      end
+    end
+
+    // cp_fifo_integrity (1.46). Parity: FIFO_ERROR, 0 at the inject rise,
+    // reads 1 at a FIFO_RDATA pop during the inject. Pointer: FIFO_ERROR, 0
+    // at the inject rise, rises during the inject. Write-one clear: the
+    // fall of FIFO_ERROR by a write of 1. Illegal: a rise with no inject, no
+    // INTR_TEST write, and no pointer inject since the last TRNG reset.
+    if (cz_trng || !cy_ip[5]) cz_ptr_taint <= 1'b0;
+    else if (esrc_ptr_inj_i) cz_ptr_taint <= 1'b1;
+    if (!cy_own_esfifo || !cz_es_on) begin
+      cz_par_arm <= 1'b0;
+      cz_ptr_arm <= 1'b0;
+    end else begin
+      if (esrc_par_inj_i && !cz_par_q) cz_par_arm <= !cz_ist[1];
+      if (!esrc_par_inj_i) cz_par_arm <= 1'b0;
+      if (cz_par_arm && esrc_par_inj_i && rd_ev && (ar_addr_q == ENTROPY_SOURCE_FIFO_RDATA_REG_ADDR)) begin
+        if (cz_ist[1]) cz_falt(7, 6'd0);
+        cz_par_arm <= 1'b0;
+      end
+      if (esrc_ptr_inj_i && !cz_ptr_q) cz_ptr_arm <= !cz_ist[1];
+      if (!esrc_ptr_inj_i) cz_ptr_arm <= 1'b0;
+      if (cz_ptr_arm && esrc_ptr_inj_i && cz_ist_rise[1]) begin
+        cz_falt(7, 6'd1);
+        cz_ptr_arm <= 1'b0;
+      end
+      if (cz_w1 && (cz_w1_a == ENTROPY_SOURCE_INTR_STATUS_REG_ADDR) && cz_w1_d[4] && cz_aw_ist[1] &&
+          !cz_ist[1]) begin
+        cz_falt(7, 6'd2);
+      end
+      if (cz_ist_rise[1] && !cz_itst_rec[1] && (cz_par_rec == 4'h0) && !esrc_par_inj_i &&
+          !cz_ptr_taint && !esrc_ptr_inj_i) begin
+        cz_falt(7, 6'd3);
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_esrc_conditioning_cg (1.45, 1.46, 1.47).
+  // ---------------------------------------------------------------------
+  logic cz_sc_on = 1'b0;  // whitening-off interval
+  logic cz_sc_bad = 1'b0;
+  int unsigned cz_sc_words = 0;
+  logic [3:0] cz_sha_out_q = '0;
+  logic cz_churn_q = 1'b0;
+  int unsigned cz_churn_push = 0;
+  logic cz_ca_done = 1'b0;
+  logic [5:0] cz_fwp_q = '0;
+  logic [5:0] cz_frp_q = '0;
+  logic [1:0] cz_oc_raw0 = '0;  // RAW_ENABLE 0 interval with no push, [0] noise, [1] biw
+  int unsigned cz_oc_cnt[2] = '{default: 0};
+  logic [3:0] cz_lane_eff_q = '0;
+  logic [3:0] cz_lane_eff_q2 = '0;
+  logic cz_flush_q = 1'b0;
+  logic [1:0] cz_of_pend = '0;  // {pending, kind}
+  logic cz_lk_pend = 1'b0;
+  logic [6:0] cz_of_lvl = '0;
+  localparam logic [11:0] CzBypassAll = 12'hFFF;
+  wire [7:0] cz_bmask = esrc_reg_out_i.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.value;
+  wire cz_bmask_known = !$isunknown(cz_bmask);
+  wire cz_bypass_all = (esrc_reg_out_i.DECORRELATOR_CTRL.BYPASS.value == CzBypassAll);
+  wire cz_churn = cy_t(esrc_reg_out_i.FIFO_CTRL.ENTROPY_CHURN_ENABLE.value);
+  wire cz_fen = cy_t(esrc_reg_out_i.FIFO_CTRL.ENABLE.value);
+  wire [9:0] cz_drate = esrc_reg_out_i.CTRL.DOWNSAMPLE_RATE.value;
+  wire [3:0] cz_lane_sel = esrc_reg_out_i.NOISE_OBS_CTRL.LANE_SEL.value;
+  // The effective observe lane matches the stored LANE_SEL (12 to 15 select lane 0).
+  wire cz_lane_ok = (esrc_noise_obs_lane_i === ((cz_lane_sel < 4'd12) ? cz_lane_sel : 4'd0));
+  wire cz_flush = cy_t(esrc_reg_out_i.NOISE_OBS_CTRL.FLUSH.value);
+  wire cz_nflush = cy_t(esrc_noise_obs_flush_i);
+
+  always @(posedge clk_i) begin
+    logic [1:0] raw;
+    raw = cz_raw;
+    cz_sha_out_q  <= cz_sha_out;
+    cz_churn_q    <= cz_churn;
+    cz_fwp_q      <= cz_fwp;
+    cz_frp_q      <= cz_frp;
+    cz_lane_eff_q <= esrc_noise_obs_lane_i;
+    cz_lane_eff_q2 <= cz_lane_eff_q;
+    cz_flush_q    <= cz_flush;
+
+    // cp_byte_mask (1.45): at a strobe with every lane bypassed and the
+    // lane input unchanged for four strobes, each lane byte equals its
+    // input bit in all eight bits ANDed with the stored mask.
+    if (cy_own_escond && cz_es_on && cz_men && cz_strobe && (cz_ns_same >= 4) && cz_bypass_all &&
+        cz_bmask_known) begin
+      logic ok;
+      ok = 1'b1;
+      for (int j = 0; j < 12; j++) begin
+        ok &= (esrc_decor_bytes_i[8*j+:8] === ({8{esrc_decor_noise_i[j]}} & cz_bmask));
+      end
+      if (ok && (cz_bmask == 8'hFF)) cz_cond(0, 4'd0);
+      else if (ok && (cz_bmask != 8'h00)) cz_cond(0, 4'd1);
+    end
+
+    // Stored-value points: x_path_matrix, cp_downsample_rate (1.45),
+    // cp_fifo_ctrl (1.46), cp_obs_lane_sel (1.47, with the effective lane
+    // that the observe path uses: 12 to 15 select lane 0).
+    if (cz_es_on && cz_sv_ev) begin
+      if (cy_own_escond) begin
+        cz_cond(1, {2'b00, cz_bypass, cz_whiten});
+        if (cz_bypass && !$isunknown(cz_drate)) begin
+          if (cz_drate == 10'd0) cz_cond(2, 4'd0);
+          else if (cz_drate == 10'd1) cz_cond(2, 4'd1);
+          else if (cz_drate <= 10'd15) cz_cond(2, 4'd2);
+          else if (cz_drate == 10'd1023) cz_cond(2, 4'd3);
+        end
+      end
+      if (cy_own_esfifo) cz_cond(5, {2'b00, cz_fen, cz_churn});
+      if (cy_own_esobs && cz_lane_ok) begin
+        cz_cond(8, cz_lane_sel);
+      end
+    end
+
+    // cp_sha_counts (1.45). OUTPUT_COUNT reaches 8 and falls to 0. With
+    // whitening off, the interval from a clear conditioner to the next
+    // whitening rise, TRNG reset or window close keeps OUTPUT_COUNT 0 while
+    // pass-through words leave the conditioner.
+    if (cy_own_escond && cz_es_on && !$isunknown(cz_sha_out)) begin
+      if ((cz_sha_out == 4'd8) && (cz_sha_out_q != 4'd8)) cz_cond(3, 4'd0);
+      if ((cz_sha_out == 4'd0) && (cz_sha_out_q != 4'd0)) cz_cond(3, 4'd1);
+    end
+    if (cz_sc_on) begin
+      if (cz_ended(FcovOwnSepEsrcConditioningMatrixRandTest) || cz_whiten || !cz_es_on) begin
+        if (!cz_sc_bad && (cz_sc_words != 0)) cz_cond(3, 4'd2);
+        cz_sc_on <= 1'b0;
+      end else begin
+        if (cz_sha_out != 4'd0) cz_sc_bad <= 1'b1;
+        if (cz_cvld) cz_sc_words <= cz_sc_words + 1;
+      end
+    end else if (cy_own_escond && cz_es_on && cz_men && !cz_whiten && !cz_sha_busy &&
+                 (cz_sha_out == 4'd0)) begin
+      cz_sc_on    <= 1'b1;
+      cz_sc_bad   <= 1'b0;
+      cz_sc_words <= 0;
+    end
+
+    // cp_fifo_occupancy (1.46): level and pointer events of the main FIFO.
+    if (cy_own_esfifo && cz_es_on && !$isunknown({cz_flvl, cz_fwp, cz_frp})) begin
+      if (cz_flvl != cz_flvl_q) begin
+        case (cz_flvl)
+          7'd0: cz_cond(4, 4'd0);
+          7'd1: cz_cond(4, 4'd1);
+          7'd32: cz_cond(4, 4'd2);
+          7'd63: cz_cond(4, 4'd3);
+          7'd64: cz_cond(4, 4'd4);
+          default: ;
+        endcase
+        if ((cz_flvl == 7'd64) && (cz_fwp == cz_frp)) cz_cond(4, 4'd7);
+        if ((cz_flvl == 7'd0) && (cz_fwp == cz_frp)) cz_cond(4, 4'd8);
+      end
+      if ((cz_fwp == 6'd0) && (cz_fwp_q == 6'd63)) cz_cond(4, 4'd5);
+      if ((cz_frp == 6'd0) && (cz_frp_q == 6'd63)) cz_cond(4, 4'd6);
+    end
+
+    // cp_churn_age (1.46): a push (write-pointer step) with churn on after
+    // at least 32 pushes since the churn enable.
+    if (!cz_es_on || !cz_churn) begin
+      cz_churn_push <= 0;
+      cz_ca_done    <= 1'b0;
+    end else if (cz_churn && !cz_churn_q) begin
+      cz_churn_push <= 0;
+      cz_ca_done    <= 1'b0;
+    end else if (cz_fwp != cz_fwp_q) begin
+      if ((cz_churn_push >= 32) && !cz_ca_done && cy_own_esfifo) begin
+        cz_cond(6, 4'd0);
+        cz_ca_done <= 1'b1;
+      end
+      cz_churn_push <= cz_churn_push + 1;
+    end
+
+    // x_obs_capture (1.47): {path, RAW_ENABLE, after BOOT_PHASE_DONE, push}.
+    // A push samples its cell; a RAW_ENABLE 0 interval of CzObsQuiet strobes
+    // with the module running and no push samples the no-push cell.
+    if (cy_own_esobs && cz_es_on && cz_men) begin
+      if (cz_npush) cz_cond(7, {1'b0, raw[0], cz_boot, 1'b1});
+      if (cz_bpush) cz_cond(7, {1'b1, raw[1], cz_boot, 1'b1});
+      for (int f = 0; f < 2; f++) begin
+        logic push;
+        push = (f == 0) ? cz_npush : cz_bpush;
+        if (raw[f] || push) begin
+          cz_oc_raw0[f] <= 1'b0;
+          cz_oc_cnt[f]  <= 0;
+        end else if (!cz_oc_raw0[f]) begin
+          if (cz_strobe) cz_oc_cnt[f] <= cz_oc_cnt[f] + 1;
+          if (cz_oc_cnt[f] >= CzObsQuiet) begin
+            cz_cond(7, {1'(f), 3'b000});
+            cz_oc_raw0[f] <= 1'b1;
+          end
+        end
+      end
+    end else begin
+      cz_oc_raw0 <= '0;
+      cz_oc_cnt  <= '{default: 0};
+    end
+
+    // cp_obs_flush and cp_obs_lock (1.47): a flush pulse of the noise
+    // observe FIFO with words buffered, by a FLUSH write or by a change of
+    // the effective lane; the level is lower on the next clock.
+    if (cz_of_pend[1]) begin
+      if (cy_own_esobs && (esrc_noise_obs_level_i < cz_of_lvl)) begin
+        cz_cond(9, {3'b000, cz_of_pend[0]});
+        if (cz_lk_pend && !cz_of_pend[0]) cz_cond(11, 4'd0);
+      end
+      cz_of_pend <= '0;
+      cz_lk_pend <= 1'b0;
+    end else if (cy_own_esobs && cz_es_on && cz_nflush && (cz_nlvl_q != 7'd0)) begin
+      if (cz_flush || cz_flush_q) begin
+        cz_of_pend <= 2'b10;
+        cz_lk_pend <= cz_lock;
+        cz_of_lvl  <= cz_nlvl_q;
+      end else if ((esrc_noise_obs_lane_i !== cz_lane_eff_q) ||
+                   (cz_lane_eff_q !== cz_lane_eff_q2)) begin
+        cz_of_pend <= 2'b11;
+        cz_lk_pend <= 1'b0;
+        cz_of_lvl  <= cz_nlvl_q;
+      end
+    end
+
+    // cp_obs_overflow (1.47): the overflow status of each observe FIFO
+    // rises with no INTR_TEST write, and falls by a write of 1.
+    if (cy_own_esobs && cz_es_on) begin
+      if (cz_ist_rise[7] && !cz_itst_rec[7]) cz_cond(10, 4'b0000);
+      if (cz_ist_rise[6] && !cz_itst_rec[6]) cz_cond(10, 4'b0010);
+      if (cz_w1 && (cz_w1_a == ENTROPY_SOURCE_INTR_STATUS_REG_ADDR)) begin
+        if (cz_w1_d[28] && cz_aw_ist[7] && !cz_ist[7]) cz_cond(10, 4'b0001);
+        if (cz_w1_d[24] && cz_aw_ist[6] && !cz_ist[6]) cz_cond(10, 4'b0011);
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // CSRNG and EDN error codes. A set request is the de/d pair of an
+  // ERR_CODE field; the vector carries it at the register bit of the field.
+  // ---------------------------------------------------------------------
+  longint unsigned cz_clk = 0;
+  // ERR_CODE field bits in the order of the packed hw2reg err_code pairs,
+  // pair 0 at the low end; each pair is {d, de}.
+  localparam logic [31:0] CzCsErrBits[10] = '{
+      32'(CSRNG_ERR_CODE_SFIFO_CMD_ERR_MASK),
+      32'(CSRNG_ERR_CODE_SFIFO_GENBITS_ERR_MASK),
+      32'(CSRNG_ERR_CODE_CMD_STAGE_SM_ERR_MASK),
+      32'(CSRNG_ERR_CODE_MAIN_SM_ERR_MASK),
+      32'(CSRNG_ERR_CODE_CTR_DRBG_SM_ERR_MASK),
+      32'(CSRNG_ERR_CODE_AES_CIPHER_SM_ERR_MASK),
+      32'(CSRNG_ERR_CODE_CTR_ERR_MASK),
+      32'(CSRNG_ERR_CODE_FIFO_WRITE_ERR_MASK),
+      32'(CSRNG_ERR_CODE_FIFO_READ_ERR_MASK),
+      32'(CSRNG_ERR_CODE_FIFO_STATE_ERR_MASK)
+  };
+  localparam logic [31:0] CzEdErrBits[8] = '{
+      32'(EDN_ERR_CODE_SFIFO_RESCMD_ERR_MASK),
+      32'(EDN_ERR_CODE_SFIFO_GENCMD_ERR_MASK),
+      32'(EDN_ERR_CODE_EDN_ACK_SM_ERR_MASK),
+      32'(EDN_ERR_CODE_EDN_MAIN_SM_ERR_MASK),
+      32'(EDN_ERR_CODE_EDN_CNTR_ERR_MASK),
+      32'(EDN_ERR_CODE_FIFO_WRITE_ERR_MASK),
+      32'(EDN_ERR_CODE_FIFO_READ_ERR_MASK),
+      32'(EDN_ERR_CODE_FIFO_STATE_ERR_MASK)
+  };
+  wire [19:0] cz_cs_ec = csrng_hw2reg_i.err_code;
+  wire [15:0] cz_ed_ec = edn_hw2reg_i.err_code;
+  logic [31:0] cz_err_set[2];  // 0 CSRNG, 1 EDN
+  always_comb begin
+    cz_err_set[0] = '0;
+    cz_err_set[1] = '0;
+    for (int k = 0; k < 10; k++) begin
+      if (cz_dd(cz_cs_ec[2*k+:2])) cz_err_set[0] |= CzCsErrBits[k];
+    end
+    for (int k = 0; k < 8; k++) begin
+      if (cz_dd(cz_ed_ec[2*k+:2])) cz_err_set[1] |= CzEdErrBits[k];
+    end
+  end
+  localparam logic [31:0] CzCsErrMask = 32'(CSRNG_ERR_CODE_SFIFO_CMD_ERR_MASK |
+      CSRNG_ERR_CODE_SFIFO_GENBITS_ERR_MASK | CSRNG_ERR_CODE_CMD_STAGE_SM_ERR_MASK |
+      CSRNG_ERR_CODE_MAIN_SM_ERR_MASK | CSRNG_ERR_CODE_CTR_DRBG_SM_ERR_MASK |
+      CSRNG_ERR_CODE_AES_CIPHER_SM_ERR_MASK | CSRNG_ERR_CODE_CTR_ERR_MASK |
+      CSRNG_ERR_CODE_FIFO_WRITE_ERR_MASK | CSRNG_ERR_CODE_FIFO_READ_ERR_MASK |
+      CSRNG_ERR_CODE_FIFO_STATE_ERR_MASK);
+  localparam logic [31:0] CzEdErrMask = 32'(EDN_ERR_CODE_SFIFO_RESCMD_ERR_MASK |
+      EDN_ERR_CODE_SFIFO_GENCMD_ERR_MASK | EDN_ERR_CODE_EDN_ACK_SM_ERR_MASK |
+      EDN_ERR_CODE_EDN_MAIN_SM_ERR_MASK | EDN_ERR_CODE_EDN_CNTR_ERR_MASK |
+      EDN_ERR_CODE_FIFO_WRITE_ERR_MASK | EDN_ERR_CODE_FIFO_READ_ERR_MASK |
+      EDN_ERR_CODE_FIFO_STATE_ERR_MASK);
+  // Source bits of the state-machine class of cp_fatal_consequence.
+  function automatic logic cz_sm_bit(input int unsigned u, input logic [4:0] b);
+    if (u == 0) return b inside {5'd20, 5'd21, 5'd22, 5'd25, 5'd26};
+    return b inside {5'd20, 5'd21, 5'd22};
+  endfunction
+
+  // ---------------------------------------------------------------------
+  // sep_drbg_err_inject_cg (1.48) and the error-code and REGWEN cells of
+  // sep_crypto_reset_cg cp_reset_evidence (1.48, 1.49).
+  // ---------------------------------------------------------------------
+  logic [1:0] cz_es_arm = '0;
+  logic [4:0] cz_es_idx[2] = '{default: '0};
+  int unsigned cz_es_cnt[2] = '{default: 0};
+  logic [1:0] cz_fc_arm = '0;
+  logic [1:0] cz_fc_sm = '0;
+  int unsigned cz_fc_cnt[2] = '{default: 0};
+  logic [1:0] cz_sk_rd1 = '0;  // a read of ERR_CODE showed the tested bit
+  logic [1:0] cz_sk_w1c = '0;  // then a write of 1 to the fatal state bit
+  logic [1:0] cz_rc_nz = '0;  // the last ERR_CODE read was non-zero on the field bits
+  logic [1:0] cz_rc_arm = '0;
+  logic [1:0] cz_rw0 = '0;  // the last REGWEN read was 0
+  logic [1:0] cz_rw_arm = '0;
+  // EDN command FIFOs (0 RESEED_CMD, 1 GENERATE_CMD): words written since
+  // the last EDN CTRL write or TRNG reset, and the clock of the last
+  // error-code set request of the FIFO.
+  logic [4:0] cz_ef_n[2] = '{default: '0};
+  logic [1:0] cz_ef_err = '0;
+  longint unsigned cz_ef_err_t[2] = '{default: 0};
+  logic [1:0] cz_ef13 = '0;
+  int unsigned cz_ef13_cnt[2] = '{default: 0};
+  logic [1:0] cz_ef14 = '0;
+  longint unsigned cz_ef14_t[2] = '{default: 0};
+  longint unsigned cz_v32_t = 0;
+  longint unsigned cz_aw_t = 0;
+
+  always @(posedge clk_i) begin
+    logic [1:0] tq;
+    logic [4:0] tidx[2];
+    logic [1:0] st;
+    cz_clk <= cz_clk + 1;
+    if (aw_hs) cz_aw_t <= cz_clk;
+    if (cy_vec_rise[32]) cz_v32_t <= cz_clk;
+    tq[0]   = cy_t(csrng_reg2hw_i.err_code_test.qe);
+    tq[1]   = cy_t(edn_reg2hw_i.err_code_test.qe);
+    tidx[0] = csrng_reg2hw_i.err_code_test.q;
+    tidx[1] = edn_reg2hw_i.err_code_test.q;
+    st[0]   = cy_st[9];
+    st[1]   = cy_st[11];
+
+    for (int u = 0; u < 2; u++) begin
+      logic [31:0] ec_a;
+      logic [31:0] st_a;
+      logic [31:0] st_m;
+      logic [31:0] rw_a;
+      logic [31:0] m;
+      ec_a = (u == 0) ? CSRNG_ERR_CODE_REG_ADDR : EDN_ERR_CODE_REG_ADDR;
+      st_a = (u == 0) ? CSRNG_INTR_STATE_REG_ADDR : EDN_INTR_STATE_REG_ADDR;
+      st_m = (u == 0) ? 32'(CSRNG_INTR_STATE_CS_FATAL_ERR_MASK) :
+          32'(EDN_INTR_STATE_EDN_FATAL_ERR_MASK);
+      rw_a = (u == 0) ? CSRNG_REGWEN_REG_ADDR : EDN_REGWEN_REG_ADDR;
+      m = (u == 0) ? CzCsErrMask : CzEdErrMask;
+
+      // x_err_source and cp_fatal_consequence: an ERR_CODE_TEST write of
+      // bit b, then the set request of bit b; the FIFO class sets the fatal
+      // state and the state-machine class raises vector bit 32.
+      if (!cy_own_dfat || !cy_ip[5] || cz_trng) begin
+        cz_es_arm[u] <= 1'b0;
+        cz_fc_arm[u] <= 1'b0;
+      end else if (tq[u] && !$isunknown(tidx[u])) begin
+        if (cz_err_set[u][tidx[u]]) cz_derr(0, {1'(u), tidx[u]});
+        cz_es_arm[u] <= !cz_err_set[u][tidx[u]];
+        cz_es_idx[u] <= tidx[u];
+        cz_es_cnt[u] <= 0;
+        cz_fc_arm[u] <= (tidx[u] <= 5'd1) ? !st[u] : (cz_sm_bit(u, tidx[u]) && !cy_vec[32]);
+        cz_fc_sm[u]  <= (tidx[u] > 5'd1);
+        cz_fc_cnt[u] <= 0;
+      end else begin
+        if (cz_es_arm[u]) begin
+          if (cz_err_set[u][cz_es_idx[u]]) begin
+            cz_derr(0, {1'(u), cz_es_idx[u]});
+            cz_es_arm[u] <= 1'b0;
+          end else if (cz_es_cnt[u] >= CySettle) begin
+            cz_es_arm[u] <= 1'b0;
+          end
+          cz_es_cnt[u] <= cz_es_cnt[u] + 1;
+        end
+        if (cz_fc_arm[u]) begin
+          if (!cz_fc_sm[u] && st[u]) begin
+            cz_derr(1, {4'd0, 1'(u), 1'b0});
+            cz_fc_arm[u] <= 1'b0;
+          end else if (cz_fc_sm[u] && cy_vec_rise[32]) begin
+            cz_derr(1, {4'd0, 1'(u), 1'b1});
+            cz_fc_arm[u] <= 1'b0;
+          end else if (cz_fc_cnt[u] >= CyAlertBound) begin
+            cz_fc_arm[u] <= 1'b0;
+          end
+          cz_fc_cnt[u] <= cz_fc_cnt[u] + 1;
+        end
+      end
+
+      // cp_sticky survives: a read of ERR_CODE with the tested bit set, a
+      // write of 1 to the fatal state bit, and a later read with the bit
+      // still set. The EDN bit 0 cell is not a bin.
+      if (!cy_own_dfat || !cy_ip[5] || cz_trng || (tq[u] && !$isunknown(tidx[u]))) begin
+        cz_sk_rd1[u] <= 1'b0;
+        cz_sk_w1c[u] <= 1'b0;
+      end else begin
+        if (wr_ev && (aw_addr_q == st_a) && ((wr_data & st_m) != 32'h0) && cz_sk_rd1[u]) begin
+          cz_sk_w1c[u] <= 1'b1;
+        end
+        if (rd_ev && (ar_addr_q == ec_a) && cy_rd_known) begin
+          if (rd_data[cz_es_idx[u]] && !((u == 1) && (cz_es_idx[u] == 5'd0))) begin
+            if (cz_sk_w1c[u]) begin
+              cz_derr(2, {4'd0, 1'(u), 1'b0});
+              cz_sk_w1c[u] <= 1'b0;
+            end
+            cz_sk_rd1[u] <= 1'b1;
+          end else begin
+            cz_sk_rd1[u] <= 1'b0;
+            cz_sk_w1c[u] <= 1'b0;
+          end
+        end
+      end
+
+      // cp_sticky clears at the TRNG reset and cp_reset_evidence: the last
+      // read before the reset differs from the reset value, the first read
+      // after it returns the reset value (ERR_CODE 0 on the field bits,
+      // REGWEN 1).
+      if (rd_ev && (ar_addr_q == ec_a) && cy_rd_known && !cz_trng) begin
+        if (cz_rc_arm[u]) begin
+          if ((rd_data & m) == 32'h0) begin
+            if (cy_own_dfat) cz_derr(2, {4'd0, 1'(u), 1'b1});
+            if (cy_own_dfat) cz_crst(5, 4'(u));
+          end
+          cz_rc_arm[u] <= 1'b0;
+        end
+        cz_rc_nz[u] <= ((rd_data & m) != 32'h0);
+      end
+      if (rd_ev && (ar_addr_q == rw_a) && cy_rd_known && !cz_trng) begin
+        if (cz_rw_arm[u]) begin
+          if (rd_data[0] && cy_own_drw) cz_crst(5, 4'(2 + u));
+          cz_rw_arm[u] <= 1'b0;
+        end
+        cz_rw0[u] <= !rd_data[0];
+      end
+      if (cz_trng_rise) begin
+        cz_rc_arm[u] <= cz_rc_nz[u];
+        cz_rw_arm[u] <= cz_rw0[u];
+      end
+    end
+
+    // cp_edn_cmd_fifo and cp_auto_fifo_words: words written to RESEED_CMD
+    // and GENERATE_CMD since the last EDN CTRL write or TRNG reset. One and
+    // 13 words: no error set request of the FIFO. 13 words: no error and no
+    // fatal state for CySettle clocks. 14th word: the error set request of
+    // the FIFO, the fatal state and a vector bit 32 rise, each at or after
+    // the AW handshake of that word.
+    for (int f = 0; f < 2; f++) begin
+      logic [31:0] fa;
+      logic [31:0] fm;
+      fa = (f == 0) ? EDN_RESEED_CMD_REG_ADDR : EDN_GENERATE_CMD_REG_ADDR;
+      fm = (f == 0) ? 32'(EDN_ERR_CODE_SFIFO_RESCMD_ERR_MASK) : 32'(EDN_ERR_CODE_SFIFO_GENCMD_ERR_MASK);
+      if ((cz_err_set[1] & fm) != 32'h0) begin
+        cz_ef_err[f]   <= 1'b1;
+        cz_ef_err_t[f] <= cz_clk;
+      end
+      if (cz_trng || !cy_ip[5] || (wr_ev && (aw_addr_q == EDN_CTRL_REG_ADDR))) begin
+        cz_ef_n[f]   <= '0;
+        cz_ef_err[f] <= 1'b0;
+        cz_ef13[f]   <= 1'b0;
+        cz_ef14[f]   <= 1'b0;
+      end else begin
+        if (wr_ev && (aw_addr_q == fa)) begin
+          logic [4:0] n;
+          n = (cz_ef_n[f] == 5'd31) ? 5'd31 : cz_ef_n[f] + 5'd1;
+          cz_ef_n[f] <= n;
+          if (cy_own_dfat && !cz_ef_err[f] && ((n == 5'd1) || (n == 5'd13))) begin
+            cz_edn(3, {1'(f), (n == 5'd13)});
+          end
+          if (cy_own_dfat && !cz_ef_err[f] && (n == 5'd13)) begin
+            cz_ef13[f]     <= 1'b1;
+            cz_ef13_cnt[f] <= 0;
+          end
+          if (cy_own_dfat && (n == 5'd14)) begin
+            cz_ef14[f]   <= 1'b1;
+            cz_ef14_t[f] <= cz_aw_t;
+          end
+        end
+        if (cz_ef13[f]) begin
+          if (cz_ef_err[f] || cy_st[11] || !cy_own_dfat) begin
+            cz_ef13[f] <= 1'b0;
+          end else if (cz_ef13_cnt[f] >= CySettle) begin
+            cz_derr(3, {4'd0, 1'(f), 1'b0});
+            cz_ef13[f] <= 1'b0;
+          end
+          cz_ef13_cnt[f] <= cz_ef13_cnt[f] + 1;
+        end
+        if (cz_ef14[f]) begin
+          if (cz_ef_err[f] && (cz_ef_err_t[f] >= cz_ef14_t[f]) && cy_st[11] &&
+              (cz_v32_t >= cz_ef14_t[f]) && (cz_v32_t != 0)) begin
+            if (cy_own_dfat) cz_derr(3, {4'd0, 1'(f), 1'b1});
+            cz_ef14[f] <= 1'b0;
+          end else if ((cz_clk - cz_ef14_t[f]) > longint'(CyAlertBound)) begin
+            cz_ef14[f] <= 1'b0;
+          end
+        end
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_csrng_cmd_cg and sep_edn_mode_cg (1.50).
+  // ---------------------------------------------------------------------
+  logic cz_sw_ins_ok = 1'b0;  // a software instantiate completed since the TRNG reset
+  logic [1:0] cz_io_arm = '0;  // [0] first, [1] repeated
+  int unsigned cz_io_cnt = 0;
+  logic cz_hw_arm = 1'b0;
+  int unsigned cz_hw_cnt = 0;
+  logic cz_app0_ack_q = 1'b0;
+  logic cz_app0_new_q = 1'b0;
+  logic cz_cs_rdy = 1'b0;
+  logic cz_aw_csrdy = 1'b0;
+  logic [1:0] cz_csh = '0;  // 1 waiting for CMD_ACK, 2 waiting for CMD_RDY
+  int unsigned cz_csh_cnt = 0;
+  logic cz_ed_rrdy = 1'b0;
+  logic cz_aw_edrrdy = 1'b0;
+  logic [1:0] cz_edh = '0;  // [0] waiting for CMD_ACK, [1] waiting for edn_cmd_req_done
+  int unsigned cz_edh_cnt = 0;
+  logic [3:0] cz_ed_en_q = '0;
+  logic cz_ed_boot = 1'b0;
+  logic cz_ed_auto = 1'b0;
+  wire cz_cs_done_set = cz_dd(csrng_hw2reg_i.intr_state.cs_cmd_req_done);
+  wire cz_ed_done_set = cz_dd(edn_hw2reg_i.intr_state.edn_cmd_req_done);
+  wire cz_cs_ack_set = cz_dd(csrng_hw2reg_i.sw_cmd_sts.cmd_ack);
+  wire cz_ed_ack_set = cz_dd(edn_hw2reg_i.sw_cmd_sts.cmd_ack);
+
+  always @(posedge clk_i) begin
+    logic app0_new;
+    logic [3:0] en;
+    logic [3:0] bm;
+    logic [3:0] am;
+    app0_new = cy_t(csrng_app0_req_i.csrng_req_valid) && !cz_app0_new_q;
+    cz_app0_new_q <= cy_t(csrng_app0_req_i.csrng_req_valid);
+    cz_app0_ack_q <= cy_t(csrng_app0_ack_i);
+    if (cy_t(csrng_hw2reg_i.sw_cmd_sts.cmd_rdy.de)) begin
+      cz_cs_rdy <= cy_t(csrng_hw2reg_i.sw_cmd_sts.cmd_rdy.d);
+    end
+    if (cy_t(edn_hw2reg_i.sw_cmd_sts.cmd_reg_rdy.de)) begin
+      cz_ed_rrdy <= cy_t(edn_hw2reg_i.sw_cmd_sts.cmd_reg_rdy.d);
+    end
+    if (aw_hs) begin
+      cz_aw_csrdy  <= cz_cs_rdy;
+      cz_aw_edrrdy <= cz_ed_rrdy;
+    end
+
+    // x_inst_outcome. Software port: a CMD_REQ write of the instantiate
+    // word; the first since the TRNG reset ends with the cs_cmd_req_done set
+    // request, a repeated one with the invalid-sequence alert set request.
+    // Hardware port 0: an application-0 request of the instantiate word
+    // ends with its acknowledge.
+    if (cz_trng || !cy_ip[5]) begin
+      cz_sw_ins_ok <= 1'b0;
+      cz_io_arm    <= '0;
+      cz_hw_arm    <= 1'b0;
+    end else begin
+      if (cz_io_arm[0] && cz_cs_done_set) begin
+        cz_sw_ins_ok <= 1'b1;
+        if (cy_own_dcmd) cz_ccmd(0, 2'd0);
+        cz_io_arm[0] <= 1'b0;
+      end else if (cz_io_arm[1] && cz_rs_set) begin
+        if (cy_own_dcmd) cz_ccmd(0, 2'd1);
+        cz_io_arm[1] <= 1'b0;
+      end else if ((cz_io_arm != 2'b00) && (cz_io_cnt >= CzCmdBound)) begin
+        cz_io_arm <= '0;
+      end
+      cz_io_cnt <= cz_io_cnt + 1;
+      if (wr_ev && (aw_addr_q == CSRNG_CMD_REQ_REG_ADDR)) begin
+        cz_io_cnt <= 0;
+        if (wr_data == CzCsInstantiate) cz_io_arm <= cz_sw_ins_ok ? 2'b10 : 2'b01;
+        else cz_io_arm <= '0;
+      end
+      if (cz_hw_arm && cy_t(csrng_app0_ack_i) && !cz_app0_ack_q) begin
+        if (cy_own_dcmd) cz_ccmd(0, 2'd2);
+        cz_hw_arm <= 1'b0;
+      end else if (cz_hw_arm && (cz_hw_cnt >= CzCmdBound)) begin
+        cz_hw_arm <= 1'b0;
+      end
+      cz_hw_cnt <= cz_hw_cnt + 1;
+      if (app0_new && (csrng_app0_req_i.csrng_req_bus == CzCsInstantiate)) begin
+        cz_hw_arm <= 1'b1;
+        cz_hw_cnt <= 0;
+      end
+    end
+
+    // cp_sw_handshake (CSRNG software port): CMD_RDY 1 at the AW handshake
+    // of a CMD_REQ write, the CMD_ACK set request after it, then CMD_RDY 1.
+    if (!cy_own_dcmd || cz_trng || !cy_ip[5]) begin
+      cz_csh <= '0;
+    end else begin
+      if (wr_ev && (aw_addr_q == CSRNG_CMD_REQ_REG_ADDR)) begin
+        if (cz_aw_csrdy) cz_ccmd(1, 2'd0);
+        cz_csh     <= 2'd1;
+        cz_csh_cnt <= 0;
+      end else if (cz_csh == 2'd1) begin
+        if (cz_cs_ack_set) begin
+          cz_ccmd(1, 2'd1);
+          cz_csh <= 2'd2;
+        end else if (cz_csh_cnt >= CzCmdBound) begin
+          cz_csh <= '0;
+        end
+        cz_csh_cnt <= cz_csh_cnt + 1;
+      end else if (cz_csh == 2'd2) begin
+        if (cz_cs_rdy) begin
+          cz_ccmd(1, 2'd2);
+          cz_csh <= '0;
+        end else if (cz_csh_cnt >= CzCmdBound) begin
+          cz_csh <= '0;
+        end
+        cz_csh_cnt <= cz_csh_cnt + 1;
+      end
+    end
+
+    // cp_sw_port_hs (EDN software port): CMD_REG_RDY 1 at the AW handshake
+    // of a SW_CMD_REQ write, then the CMD_ACK and edn_cmd_req_done set
+    // requests.
+    if (!cy_own_dcmd || cz_trng || !cy_ip[5]) begin
+      cz_edh <= '0;
+    end else begin
+      if (wr_ev && (aw_addr_q == EDN_SW_CMD_REQ_REG_ADDR)) begin
+        if (cz_aw_edrrdy) cz_edn(2, 2'd0);
+        cz_edh     <= 2'b11;
+        cz_edh_cnt <= 0;
+      end else if (cz_edh != 2'b00) begin
+        if (cz_edh[0] && cz_ed_ack_set) begin
+          cz_edn(2, 2'd1);
+          cz_edh[0] <= 1'b0;
+        end
+        if (cz_edh[1] && cz_ed_done_set) begin
+          cz_edn(2, 2'd2);
+          cz_edh[1] <= 1'b0;
+        end
+        if (cz_edh_cnt >= CzCmdBound) cz_edh <= '0;
+        cz_edh_cnt <= cz_edh_cnt + 1;
+      end
+    end
+
+    // x_mode_fields: the mode fields at the landed write that sets
+    // EDN_ENABLE true.
+    en = edn_reg2hw_i.ctrl.edn_enable.q;
+    bm = edn_reg2hw_i.ctrl.boot_req_mode.q;
+    am = edn_reg2hw_i.ctrl.auto_req_mode.q;
+    cz_ed_en_q <= en;
+    if (cy_own_dcmd && cy_ip[5] && !cz_trng && (en == CzMubiTrue) && (cz_ed_en_q != CzMubiTrue) &&
+        (bm inside {CzMubiTrue, CzMubiFalse}) && (am inside {CzMubiTrue, CzMubiFalse})) begin
+      cz_edn(0, {(bm == CzMubiTrue), (am == CzMubiTrue)});
+    end
+
+    // cp_reported_mode: the stored HW_CMD_STS mode pair at each landed
+    // hardware write of BOOT_MODE or AUTO_MODE.
+    if (cz_trng || !cy_ip[5]) begin
+      cz_ed_boot <= 1'b0;
+      cz_ed_auto <= 1'b0;
+    end else begin
+      logic bde;
+      logic ade;
+      logic b;
+      logic a;
+      bde = cy_t(edn_hw2reg_i.hw_cmd_sts.boot_mode.de);
+      ade = cy_t(edn_hw2reg_i.hw_cmd_sts.auto_mode.de);
+      b = bde ? cy_t(edn_hw2reg_i.hw_cmd_sts.boot_mode.d) : cz_ed_boot;
+      a = ade ? cy_t(edn_hw2reg_i.hw_cmd_sts.auto_mode.d) : cz_ed_auto;
+      cz_ed_boot <= b;
+      cz_ed_auto <= a;
+      if (cy_own_dcmd && (bde || ade) && b) cz_edn(1, {1'b0, a});
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_crypto_reset_cg (1.40, 1.51, 1.52): the TRNG reset window points
+  // and the ESRC and select-lock cells of cp_reset_evidence.
+  // ---------------------------------------------------------------------
+  // ESRC read-write fields outside the FIPS_LOCK list and outside CTRL
+  // (hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc): the register,
+  // the field bits and the reset value of each.
+  localparam int unsigned CzEsRegs = 5;
+  function automatic int cz_es_reg(input logic [31:0] a);
+    case (a)
+      ENTROPY_SOURCE_INTR_ENABLE_REG_ADDR: return 0;
+      ENTROPY_SOURCE_HEALTH_TEST_CTRL_REG_ADDR: return 1;
+      ENTROPY_SOURCE_HEALTH_TEST_WINDOW_SIZE_REG_ADDR: return 2;
+      ENTROPY_SOURCE_HT_WATERMARK_NUM_REG_ADDR: return 3;
+      ENTROPY_SOURCE_NOISE_OBS_CTRL_REG_ADDR: return 4;
+      default: return -1;
+    endcase
+  endfunction
+  function automatic logic [31:0] cz_es_mask(input int r);
+    case (r)
+      0:
+      return 32'(ENTROPY_SOURCE_INTR_ENABLE_HEALTH_TEST_FAILED_MASK |
+          ENTROPY_SOURCE_INTR_ENABLE_FIFO_ERROR_MASK | ENTROPY_SOURCE_INTR_ENABLE_FIFO_OVERFLOW_MASK |
+          ENTROPY_SOURCE_INTR_ENABLE_FIFO_UNDERFLOW_MASK |
+          ENTROPY_SOURCE_INTR_ENABLE_PERSISTENT_FAILURE_MASK |
+          ENTROPY_SOURCE_INTR_ENABLE_AUTOTUNE_FAIL_MASK |
+          ENTROPY_SOURCE_INTR_ENABLE_BIW_OBS_OVERFLOW_MASK |
+          ENTROPY_SOURCE_INTR_ENABLE_NOISE_OBS_OVERFLOW_MASK);
+      1: return 32'(ENTROPY_SOURCE_HEALTH_TEST_CTRL_ENABLE_MASK);
+      2: return 32'(ENTROPY_SOURCE_HEALTH_TEST_WINDOW_SIZE_SIZE_MASK);
+      3: return 32'(ENTROPY_SOURCE_HT_WATERMARK_NUM_WATERMARK_NUM_MASK);
+      default: return 32'(ENTROPY_SOURCE_NOISE_OBS_CTRL_LANE_SEL_MASK);
+    endcase
+  endfunction
+  function automatic logic [31:0] cz_es_rst(input int r);
+    case (r)
+      0: return 32'(ENTROPY_SOURCE_INTR_ENABLE_REG_DEFAULT);
+      1: return 32'(ENTROPY_SOURCE_HEALTH_TEST_CTRL_REG_DEFAULT);
+      2: return 32'(ENTROPY_SOURCE_HEALTH_TEST_WINDOW_SIZE_REG_DEFAULT);
+      3: return 32'(ENTROPY_SOURCE_HT_WATERMARK_NUM_REG_DEFAULT);
+      default: return 32'(ENTROPY_SOURCE_NOISE_OBS_CTRL_REG_DEFAULT);
+    endcase
+  endfunction
+  logic [CzEsRegs-1:0] cz_er_diff = '0;  // the last read differs from the reset value
+  logic cz_er_arm = 1'b0;
+  logic [CzEsRegs-1:0] cz_er_seen = '0;
+  logic [CzEsRegs-1:0] cz_er_ok = '0;
+  logic cz_lk_one = 1'b0;  // the last EXT_TRNG_SRC_SEL_LOCK read was 1
+  logic cz_lk_arm = 1'b0;
+  logic cz_pc_ar = 1'b0;  // the TRNG window was high at the AR handshake
+  logic [5:0] cz_pool_ar = '0;  // pool level at the AR handshake
+  logic cz_ps_nz = 1'b0;
+  logic [1:0] cz_xp_res = '0;  // first handshake after the window fall pending
+  logic [3:0] cz_cc_pend = '0;
+  logic [3:0] cz_cc_ack = '0;
+  logic [3:0] cz_cc_after = '0;
+  localparam logic [31:0] CzPoolLvlMask = 32'(SEP_ENTROPY_POOL_STATUS_FIFO_LEVEL_MASK);
+  localparam logic [31:0] CzSelMask = 32'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_SEL_MASK);
+  localparam logic [31:0] CzLockMask = 32'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_LOCK_MASK);
+  // Handshake after the source mux of each stream (0 Key Manager, 1 crypto,
+  // 2 pool). With the external select it is the handshake of the external port.
+  logic [2:0] cz_mhs;
+  always_comb begin
+    for (int i = 0; i < 3; i++) begin
+      cz_mhs[i] = (mux_req_i[i].tvalid === 1'b1) && (mux_rsp_i[i].tready === 1'b1);
+    end
+  end
+
+  always @(posedge clk_i) begin
+    if (ar_hs) begin
+      cz_pc_ar   <= cz_trng;
+      cz_pool_ar <= pool_level_i;
+    end
+
+    // cp_clear_ext_sel and cp_pool_scrub at the window rise; the window fall
+    // ends cp_pool_scrub and cp_client_in_clear.
+    if (cz_trng_rise) begin
+      if (cy_own_xrst && cz_sel[1]) cz_crst(0, 4'd0);
+      if (cy_own_xrst && cz_sel[2]) cz_crst(0, 4'd1);
+      cz_ps_nz <= (pool_level_i != 6'd0) && !$isunknown(pool_level_i);
+    end
+    if (cz_trng_fall) begin
+      if (cy_own_xrst && cz_ps_nz && (pool_level_i == 6'd0)) cz_crst(3, 4'd0);
+      cz_ps_nz  <= 1'b0;
+      cz_xp_res <= 2'b11;
+    end
+
+    // cp_xfer_phase: an external handshake of stream 1 or 2 with the
+    // external select; in the window (illegal), the first after the window
+    // fall (resume), or another with the window low (before_clear).
+    for (int s = 0; s < 2; s++) begin
+      if (cz_mhs[s+1] && cz_sel[s+1] && cy_own_xrst) begin
+        if (cz_trng) cz_crst(1, {1'b0, 1'(s), 2'b01});
+        else if (cz_xp_res[s]) cz_crst(1, {1'b0, 1'(s), 2'b10});
+        else cz_crst(1, {1'b0, 1'(s), 2'b00});
+      end
+      if (cz_mhs[s+1] && cz_sel[s+1] && !cz_trng) cz_xp_res[s] <= 1'b0;
+    end
+
+    // cp_pool_in_clear: a pool STATUS read issued and answered in the
+    // window, with fifo_level 0.
+    if (cy_own_xrst && rd_ev && (ar_addr_q == ENTROPY_POOL_STATUS_REG_ADDR) && cz_pc_ar && cz_trng &&
+        cy_rd_known && ((rd_data & CzPoolLvlMask) == 32'h0)) begin
+      cz_crst(2, 4'd0);
+    end
+
+    // cp_client_in_clear: a client request high at the window rise and
+    // held, with no acknowledge in the window; the acknowledge after the
+    // fall. An acknowledge in the window is illegal.
+    for (int c = 0; c < 4; c++) begin
+      logic req;
+      req = (edn_req_i[c] === 1'b1);
+      if (cz_trng_rise) begin
+        cz_cc_pend[c]  <= req;
+        cz_cc_ack[c]   <= 1'b0;
+        cz_cc_after[c] <= 1'b0;
+      end else if (cz_trng) begin
+        if (cy_ack[c]) begin
+          if (cy_own_xrst) cz_crst(4, {1'b1, 2'(c), 1'b0});
+          cz_cc_ack[c] <= 1'b1;
+        end
+        if (!req) cz_cc_pend[c] <= 1'b0;
+      end else if (cz_trng_fall) begin
+        if (cz_cc_pend[c] && !cz_cc_ack[c] && cy_own_xrst) cz_crst(4, {1'b0, 2'(c), 1'b0});
+        cz_cc_after[c] <= cz_cc_pend[c] && !cz_cc_ack[c];
+        cz_cc_pend[c]  <= 1'b0;
+      end else if (cz_cc_after[c] && cy_ack[c]) begin
+        if (cy_own_xrst) cz_crst(4, {1'b0, 2'(c), 1'b1});
+        cz_cc_after[c] <= 1'b0;
+      end
+    end
+
+    // cp_reset_evidence esrc_regs: every listed register read a value that
+    // differs from its reset value on its field bits before the TRNG reset,
+    // and its first read after the reset returns the reset value.
+    if (rd_ev && cy_rd_known && !cz_trng && (cz_es_reg(ar_addr_q) >= 0)) begin
+      int r;
+      logic [31:0] m;
+      r = cz_es_reg(ar_addr_q);
+      m = cz_es_mask(r);
+      if (cz_er_arm && !cz_er_seen[r]) begin
+        logic [CzEsRegs-1:0] seen;
+        logic [CzEsRegs-1:0] ok;
+        seen = cz_er_seen;
+        ok = cz_er_ok;
+        seen[r] = 1'b1;
+        ok[r] = ((rd_data & m) == (cz_es_rst(r) & m));
+        cz_er_seen <= seen;
+        cz_er_ok   <= ok;
+        if (&seen) begin
+          if ((&ok) && cy_own_eswalk) cz_crst(5, 4'd4);
+          cz_er_arm <= 1'b0;
+        end
+      end
+      cz_er_diff[r] <= ((rd_data & m) != (cz_es_rst(r) & m));
+    end
+    if (cz_trng_rise) begin
+      cz_er_arm  <= &cz_er_diff;
+      cz_er_seen <= '0;
+      cz_er_ok   <= '0;
+      cz_er_diff <= '0;
+    end
+
+    // cp_reset_evidence cpu_lock_survives: the lock read 1 before the TRNG
+    // reset and the first read after it returns 1.
+    if (rd_ev && cy_rd_known && !cz_trng && (ar_addr_q == SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_ADDR)) begin
+      if (cz_lk_arm) begin
+        if (((rd_data & CzLockMask) != 32'h0) && cy_own_xhs) cz_crst(5, 4'd5);
+        cz_lk_arm <= 1'b0;
+      end
+      cz_lk_one <= ((rd_data & CzLockMask) != 32'h0);
+    end
+    if (cz_trng_rise) cz_lk_arm <= cz_lk_one;
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_entropy_delivery_cg (1.51, 1.52, 1.53).
+  // ---------------------------------------------------------------------
+  wire cz_dlv_own = cy_own_xhs || cy_own_xrst || cy_own_mix;
+  // cp_lock_order state since the last global reset.
+  logic cz_lo_sel = 1'b0;  // a select write landed
+  logic cz_lo_lock = 1'b0;  // a lock write of 1
+  logic cz_lo_after = 1'b0;  // that lock write came after a landed select write
+  logic cz_lo_one = 1'b0;  // a lock read returned 1
+  logic cz_lo_w0 = 1'b0;  // then a lock write of 0
+  logic cz_lo_rst = 1'b0;  // global reset after a lock read of 1
+  logic cz_lo_rst_l0 = 1'b0;
+  logic cz_lo_rst_s7 = 1'b0;
+  logic cz_in_reset_q = 1'b0;
+  // External beats, stalls, holds and rings of external words per stream.
+  logic [1:0] cz_pp_q = '0;  // partial beat pending on the last clock, [0] crypto, [1] pool
+  logic [1:0] cz_st_arm = '0;
+  logic [1:0] cz_ho_on = '0;
+  logic [1:0] cz_ho_bad = '0;
+  logic [1:0] cz_ho_wait = '0;
+  logic [31:0] cz_ho_w[2] = '{default: '0};
+  logic [2:0] cz_sel_q = '0;
+  logic [31:0] cz_ring[2][16] = '{default: '{default: '0}};
+  logic [15:0] cz_ring_v[2] = '{default: '0};
+  logic [3:0] cz_ring_wp[2] = '{default: '0};
+  logic cz_irq_q = 1'b0;
+  logic [1:0] cz_irq_arm = '0;  // [0] rise, [1] fall waiting for vector bit 16
+  int unsigned cz_irq_cnt = 0;
+  logic cz_km_rdy_bad = 1'b0;  // external and post-mux ready differed since the select
+  logic [5:0] cz_as_done = '0;
+  logic cz_pool_ack_q = 1'b0;
+
+  function automatic logic cz_in_ring(input int s, input logic [31:0] w);
+    for (int k = 0; k < 16; k++) begin
+      if (cz_ring_v[s][k] && (cz_ring[s][k] == w)) return 1'b1;
+    end
+    return 1'b0;
+  endfunction
+
+  always @(posedge clk_i) begin
+    cz_in_reset_q <= in_reset;
+    cz_sel_q      <= cz_sel;
+    cz_irq_q      <= (ext_trng_irq_i === 1'b1);
+    cz_pool_ack_q <= (pool_edn_ack_i === 1'b1);
+
+    // x_sel_stream: one cell per stream at a landed select write (the
+    // select equals the written field on the clock after the response).
+    // The Key Manager external cell belongs to the sink-mix owner.
+    if (cz_w1 && (cz_w1_a == SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR) &&
+        (cz_sel == 3'(cz_w1_d & CzSelMask)) && !in_reset) begin
+      cz_lo_sel <= 1'b1;
+      for (int i = 0; i < 3; i++) begin
+        if (cy_own_mix || ((cy_own_xhs || cy_own_xrst) && !((i == 0) && cz_sel[0]))) begin
+          cz_dlv(0, {2'(i), cz_sel[i]});
+        end
+      end
+    end
+
+    // cp_lock_order (1.51).
+    if (in_reset && !cz_in_reset_q) begin
+      if (cy_own_xhs && !cz_lo_lock && cz_lo_sel) cz_dlv(1, 3'd2);
+      cz_lo_rst    <= cz_lo_one;
+      cz_lo_rst_l0 <= 1'b0;
+      cz_lo_rst_s7 <= 1'b0;
+      cz_lo_sel    <= 1'b0;
+      cz_lo_lock   <= 1'b0;
+      cz_lo_after  <= 1'b0;
+      cz_lo_one    <= 1'b0;
+      cz_lo_w0     <= 1'b0;
+    end else if (!in_reset) begin
+      if (cz_ended(FcovOwnSepTrngExtStreamHandshakeRandTest) && !cz_lo_lock && cz_lo_sel) begin
+        cz_dlv(1, 3'd2);
+      end
+      if (wr_ev && (aw_addr_q == SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_ADDR)) begin
+        if ((wr_data & CzLockMask) != 32'h0) begin
+          if (!cz_lo_lock) cz_lo_after <= cz_lo_sel;
+          cz_lo_lock <= 1'b1;
+        end else if (cz_lo_one) begin
+          cz_lo_w0 <= 1'b1;
+        end
+      end
+      if (cz_w1 && (cz_w1_a == SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR) && cz_lo_one &&
+          (3'(cz_w1_d & CzSelMask) != cz_aw_sel) && (cz_sel == cz_aw_sel) && cy_own_xhs) begin
+        cz_dlv(1, 3'd4);
+      end
+      if (rd_ev && cy_rd_known && (ar_addr_q == SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_ADDR)) begin
+        if ((rd_data & CzLockMask) != 32'h0) begin
+          if (!cz_lo_one && cz_lo_lock && cy_own_xhs) cz_dlv(1, cz_lo_after ? 3'd0 : 3'd1);
+          if (cz_lo_w0 && cy_own_xhs) cz_dlv(1, 3'd3);
+          cz_lo_one <= 1'b1;
+          cz_lo_w0  <= 1'b0;
+        end else if (cz_lo_rst) begin
+          cz_lo_rst_l0 <= 1'b1;
+        end
+      end
+      if (rd_ev && cy_rd_known && (ar_addr_q == SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR) && cz_lo_rst &&
+          ((rd_data & CzSelMask) == 32'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_DEFAULT))) begin
+        cz_lo_rst_s7 <= 1'b1;
+      end
+      if (cz_lo_rst && cz_lo_rst_l0 && cz_lo_rst_s7) begin
+        if (cy_own_xhs) cz_dlv(1, 3'd5);
+        cz_lo_rst <= 1'b0;
+      end
+    end
+
+    for (int s = 0; s < 2; s++) begin
+      int i;
+      logic ev;
+      logic pend;
+      i  = s + 1;
+      ev = (ext_trng_req_i[i].tvalid === 1'b1);
+      // x_ext_beat: with the external select, a full-strobe beat completes
+      // at the mux; a partial-strobe beat stays pending for two clocks.
+      pend = cz_sel[i] && ev && (ext_trng_req_i[i].tstrb != 4'hF) && (mux_rsp_i[i].tready === 1'b0);
+      if ((cy_own_xhs || cy_own_xrst) && cz_sel[i] && cz_mhs[i] && (ext_trng_req_i[i].tstrb == 4'hF)) begin
+        cz_dlv(2, {1'b0, 1'(s), 1'b0});
+      end
+      if ((cy_own_xhs || cy_own_xrst) && pend && cz_pp_q[s]) cz_dlv(2, {1'b0, 1'(s), 1'b1});
+      cz_pp_q[s] <= pend;
+
+      if (cy_own_xhs) begin
+        // cp_unselected_drop: with the internal select an external beat
+        // completes (external ready 1) and the post-mux valid stays 0.
+        if (!cz_sel[i] && ev && (ext_trng_tready_i[i] === 1'b1) && (mux_req_i[i].tvalid === 1'b0)) begin
+          cz_dlv(3, {2'b00, 1'(s)});
+        end
+        // cp_ext_stall: with the external select, ready falls with valid 1
+        // and rises again.
+        if (!cz_sel[i]) begin
+          cz_st_arm[s] <= 1'b0;
+        end else if (ev && (ext_trng_tready_i[i] === 1'b0) && !cz_st_arm[s]) begin
+          cz_st_arm[s] <= 1'b1;
+        end else if (cz_st_arm[s] && (ext_trng_tready_i[i] === 1'b1)) begin
+          cz_dlv(4, {2'b00, 1'(s)});
+          cz_st_arm[s] <= 1'b0;
+        end
+      end else begin
+        cz_st_arm[s] <= 1'b0;
+      end
+
+      // cp_hold_internal: with the external select, the internal endpoint
+      // holds valid 1 and a stable word; after the select returns, its first
+      // handshake carries that word.
+      if (!cy_own_xhs) begin
+        cz_ho_on[s]   <= 1'b0;
+        cz_ho_wait[s] <= 1'b0;
+      end else if (cz_sel[i]) begin
+        cz_ho_wait[s] <= 1'b0;
+        if (drbg_int_req_i[i].tvalid === 1'b1) begin
+          if (!cz_ho_on[s]) begin
+            cz_ho_on[s]  <= 1'b1;
+            cz_ho_bad[s] <= 1'b0;
+            cz_ho_w[s]   <= drbg_int_req_i[i].tdata;
+          end else if (drbg_int_req_i[i].tdata != cz_ho_w[s]) begin
+            cz_ho_bad[s] <= 1'b1;
+          end
+        end else if (cz_ho_on[s]) begin
+          cz_ho_bad[s] <= 1'b1;
+        end
+      end else begin
+        if (cz_ho_on[s] && cz_sel_q[i]) begin
+          cz_ho_wait[s] <= !cz_ho_bad[s];
+          cz_ho_on[s]   <= 1'b0;
+        end
+        if (cz_ho_wait[s] && cz_mhs[i]) begin
+          if (mux_req_i[i].tdata == cz_ho_w[s]) cz_dlv(5, {2'b00, 1'(s)});
+          cz_ho_wait[s] <= 1'b0;
+        end
+      end
+
+      // Ring of the last 16 external words that the mux passed on.
+      if (cz_sel[i] && cz_mhs[i]) begin
+        cz_ring[s][cz_ring_wp[s]]   <= mux_req_i[i].tdata;
+        cz_ring_v[s][cz_ring_wp[s]] <= 1'b1;
+        cz_ring_wp[s]               <= cz_ring_wp[s] + 4'd1;
+      end
+    end
+
+    // cp_ext_tuser: a word that a consuming adapter accepts and that an
+    // external beat carried has edn_fips 1 (illegal 0).
+    if (cy_own_xhs) begin
+      for (int c = 0; c < 4; c++) begin
+        if (cy_ack[c] && cz_sel[1] && cz_in_ring(0, edn_bus_i[32*c+:32])) begin
+          cz_dlv(8, {1'b0, (edn_fips_i[c] !== 1'b1), 1'b0});
+        end
+      end
+      if ((pool_edn_ack_i === 1'b1) && cz_sel[2] && cz_in_ring(1, pool_edn_bus_i)) begin
+        cz_dlv(8, {1'b0, (pool_edn_fips_i !== 1'b1), 1'b1});
+      end
+    end
+
+    // cp_pool_pop: an OKAY DATA read at a pool level of 2 to 31 or 32 at
+    // the AR handshake; a pool feed (native EDN acknowledge) at level 32.
+    if (cy_own_xhs) begin
+      if (rd_ev && (ar_addr_q == ENTROPY_POOL_DATA_REG_ADDR) && !$isunknown(cz_pool_ar)) begin
+        if ((cz_pool_ar >= 6'd2) && (cz_pool_ar <= 6'd31)) cz_dlv(6, 3'd0);
+        if (cz_pool_ar == 6'd32) cz_dlv(6, 3'd1);
+      end
+      if ((pool_edn_ack_i === 1'b1) && (pool_level_i == 6'd32)) cz_dlv(6, 3'd2);
+    end
+
+    // cp_ext_irq: vector bit 16 follows a rise or fall of ext_trng_irq_i
+    // within CySettle clocks.
+    if (!cy_own_xhs) begin
+      cz_irq_arm <= '0;
+    end else begin
+      logic irq;
+      irq = (ext_trng_irq_i === 1'b1);
+      if (irq && !cz_irq_q) begin
+        cz_irq_arm <= 2'b01;
+        cz_irq_cnt <= 0;
+      end else if (!irq && cz_irq_q) begin
+        cz_irq_arm <= 2'b10;
+        cz_irq_cnt <= 0;
+      end else if (cz_irq_arm != 2'b00) begin
+        if (cz_irq_arm[0] && irq && cy_vec[16]) begin
+          cz_dlv(7, 3'd0);
+          cz_irq_arm <= '0;
+        end else if (cz_irq_arm[1] && !irq && !cy_vec[16]) begin
+          cz_dlv(7, 3'd1);
+          cz_irq_arm <= '0;
+        end else if (cz_irq_cnt >= CySettle) begin
+          cz_irq_arm <= '0;
+        end
+        cz_irq_cnt <= cz_irq_cnt + 1;
+      end
+    end
+
+    // cp_km_ext_stream (1.53): with select bit 0 set, a beat completed at
+    // external port 0 is the Key Manager beat of the same clock with the
+    // same word, and the external ready equals the Key Manager ready on
+    // every clock since the select. Illegal: with the internal select of
+    // stream 1 or 2, a valid post-mux word differs from the endpoint word.
+    if (!cy_own_mix || !cz_sel[0]) begin
+      cz_km_rdy_bad <= 1'b0;
+    end else begin
+      logic rb;
+      rb = cz_km_rdy_bad || (ext_trng_tready_i[0] !== mux_rsp_i[0].tready);
+      cz_km_rdy_bad <= rb;
+      if ((ext_trng_req_i[0].tvalid === 1'b1) && (ext_trng_tready_i[0] === 1'b1)) begin
+        if (cz_mhs[0] && (mux_req_i[0].tdata == ext_trng_req_i[0].tdata)) cz_dlv(9, 3'd0);
+        if (!rb) cz_dlv(9, 3'd1);
+      end
+    end
+    if (cy_own_mix) begin
+      for (int i = 1; i < 3; i++) begin
+        if (!cz_sel[i] && (mux_req_i[i].tvalid === 1'b1) &&
+            (mux_req_i[i].tdata !== drbg_int_req_i[i].tdata)) begin
+          cz_dlv(9, 3'd2);
+        end
+      end
+    end
+
+    // cp_active_sinks (1.53): the first word served to each sink in a
+    // graded window.
+    if (!cy_own_mix || cz_win_open) begin
+      cz_as_done <= '0;
+    end else begin
+      logic [5:0] ev;
+      ev[0] = cz_mhs[0];
+      for (int c = 0; c < 4; c++) ev[c+1] = cy_ack[c];
+      ev[5] = (pool_edn_ack_i === 1'b1) && !cz_pool_ack_q;
+      for (int k = 0; k < 6; k++) begin
+        if (ev[k] && !cz_as_done[k]) cz_dlv(10, 3'(k));
+      end
+      cz_as_done <= cz_as_done | ev;
     end
   end
 

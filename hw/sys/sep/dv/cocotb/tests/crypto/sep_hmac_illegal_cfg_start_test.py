@@ -22,15 +22,19 @@ SHA2_None; ``INTR_STATE``:44 ``hmac_err`` RW1C; ``ERR_CODE``:171) and
 Checkers:
   CHK-HMAC-BLOCK    a blocked start sets ``hmac_err`` (read before any message write; it reads
                     0 before the start in ``CTRL-HMAC-PRESTATE``); the message and ``hash_process`` that
-                    complete a legal hash within t_clean then give no ``hmac_done`` for
-                    3 x t_clean, and DIGEST stays at D_prev (read under the restored ``CFG``
-                    of the last completed hash)
+                    complete a legal hash then give no ``hmac_done`` for the hold, and
+                    DIGEST stays at D_prev (read under the restored ``CFG`` of the last
+                    completed hash). The hold is 3 x t_worst: t_worst is the measured
+                    hash_start-to-done time of the longest hash any class can start
+                    (HMAC-SHA2_512, Key_1024, a 64-byte message), so a wrongly started
+                    engine finishes inside the hold
   CHK-HMAC-RECOVER  after the write-one clear ``hmac_err`` reads 0, and a legal HMAC hash
                     returns its golden, which differs from D_prev
 
 Controls: ``CTRL-HMAC-NOBLOCK`` (each legal class raises no error, sets ``hmac_done`` and
 returns its golden), ``CTRL-HMAC-DPREV`` (D_prev equals the golden of the last completed hash
-and is non-zero), ``CTRL-HMAC-REF`` (the reference hash returns its golden). Log-only:
+and is non-zero), ``CTRL-HMAC-REF`` (the reference hash and the worst-case hash return their
+goldens). Log-only:
 ``OBS-HMAC-ERRCODE`` (the value; the register text, hmac.adoc:171-172, states no value),
 ``OBS-HMAC-BLOCKED-MSG-RESP`` (non-OKAY responses to the message written after a blocked
 start; the register text does not state them) and
@@ -165,6 +169,8 @@ class Plan:
     seed: int
     reference: Hash
     steps: list[ClassStep] = field(default_factory=list)
+    # The longest hash any class can start: it sizes the blocked-start hold.
+    worst: Hash | None = None
 
     def summary(self) -> str:
         order = ",".join(s.name for s in self.steps)
@@ -192,9 +198,13 @@ def _golden(sha: int, hmac_en: int, key_bits: int | None, row: int | None, msg: 
     return _words(sha2_bytes(msg, sha))
 
 
-def _draw_msg(rng: SepSeededRng) -> bytes:
-    """0..64 bytes; each whole word is unique and non-zero (the MSG_FIFO write data)."""
-    n = rng.randrange(0, 65)
+MSG_MAX = 64
+
+
+def _draw_msg(rng: SepSeededRng, n: int | None = None) -> bytes:
+    """0..MSG_MAX bytes (or ``n``); each whole word is unique and non-zero (MSG_FIFO data)."""
+    if n is None:
+        n = rng.randrange(0, MSG_MAX + 1)
     words: list[int] = []
     while len(words) < (n + 3) // 4:
         w = rng.getrandbits(32)
@@ -203,10 +213,10 @@ def _draw_msg(rng: SepSeededRng) -> bytes:
     return b"".join(w.to_bytes(4, "little") for w in words)[:n]
 
 
-def _draw_hash(rng, sha, hmac_en, key_bits, *, avoid=None, nonzero=True) -> Hash:
+def _draw_hash(rng, sha, hmac_en, key_bits, *, avoid=None, nonzero=True, n=None) -> Hash:
     row = rng.randrange(len(KEY_ROWS)) if hmac_en else None
     while True:
-        msg = _draw_msg(rng)
+        msg = _draw_msg(rng, n)
         g = _golden(sha, hmac_en, key_bits, row, msg)
         if nonzero and not any(g):
             continue
@@ -260,6 +270,7 @@ def draw_plan(seed: int) -> Plan:
             step = ClassStep(name, True, digest_code, key_code, hmac_en, row, recovery=rec)
             last = rec
         plan.steps.append(step)
+    plan.worst = _draw_hash(rng, 512, 1, 1024, n=MSG_MAX)
     return plan
 
 
@@ -287,24 +298,46 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         self._dorder: str | None = None
         await self._reset_hmac(dut)
 
+        # Worst-case hash: HMAC-SHA2_512 with Key_1024 and a MSG_MAX-byte message is the
+        # longest hash a class can start (largest block, keyed, longest message). Its
+        # hash_start-to-done time exceeds the hash_process-to-done time of any started
+        # class, so 3 x t_worst is the blocked-start hold.
+        worst = plan.worst
+        assert worst is not None
+        t_worst, wdigest = await self._run_hash(worst, bound=self.REF_BOUND)
+        self.chk.ctrl(
+            "HMAC-REF",
+            t_worst is not None and self._eq(wdigest, worst.golden),
+            ref="sha512_key1024",
+            len=len(worst.msg),
+            t_clean=t_worst,
+            bound=self.REF_BOUND,
+        )
+        if t_worst is None:
+            raise AssertionError(f"HMAC worst-case hash timed out (bound={self.REF_BOUND} clocks)")
+
         # Reference hash: t_clean is the clean time of the bounds of this seed.
         ref = plan.reference
         t_clean, digest = await self._run_hash(ref, bound=self.REF_BOUND)
         self.chk.ctrl(
             "HMAC-REF",
             t_clean is not None and self._eq(digest, ref.golden),
+            ref="sha256_nokey",
             len=len(ref.msg),
             t_clean=t_clean,
             bound=self.REF_BOUND,
         )
         if t_clean is None:
             raise AssertionError(f"HMAC reference hash timed out (bound={self.REF_BOUND} clocks)")
-        self.t_clean = max(t_clean, 1)
+        self.t_clean = max(t_clean, t_worst, 1)
+        self.hold = 3 * self.t_clean
         self.hash_bound = 64 * self.t_clean
         self.logger.info(
-            "HMAC t_clean=%d clocks; blocked hold=%d; hash poll bound=%d",
+            "HMAC t_clean=%d clocks (ref=%d worst=%d); blocked hold=%d; hash poll bound=%d",
             self.t_clean,
-            3 * self.t_clean,
+            t_clean,
+            t_worst,
+            self.hold,
             self.hash_bound,
         )
         last = ref
@@ -477,7 +510,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
             await self._write_key_row(step.row)
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         t0 = self._now_clk()
-        hold = 3 * self.t_clean
+        hold = self.hold
         await ClockCycles(cocotb.top.clk_i, hold)
         # "Signalled": the error state and code, read before any message write so that
         # only the start can have set them.

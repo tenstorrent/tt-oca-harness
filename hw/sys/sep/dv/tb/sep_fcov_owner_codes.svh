@@ -30,6 +30,20 @@ localparam int unsigned FcovOwnSepKmacStreamCfgRandTest = 136;
 localparam int unsigned FcovOwnSepKmacEntropyModeRandTest = 137;
 localparam int unsigned FcovOwnSepOtbnCmdStatusRandTest = 138;
 localparam int unsigned FcovOwnSepAbrCommandMatrixRandTest = 139;
+localparam int unsigned FcovOwnSepEsrcCsrRwWalkRandTest = 140;
+localparam int unsigned FcovOwnSepEsrcHealthPatternRandTest = 141;
+localparam int unsigned FcovOwnSepEsrcPersistentAlertRandTest = 142;
+localparam int unsigned FcovOwnSepEsrcAutotuneDetuneTest = 143;
+localparam int unsigned FcovOwnSepEsrcStartupGateRandTest = 144;
+localparam int unsigned FcovOwnSepEsrcConditioningMatrixRandTest = 145;
+localparam int unsigned FcovOwnSepEsrcFifoFlowRandTest = 146;
+localparam int unsigned FcovOwnSepEsrcObserveFifoRandTest = 147;
+localparam int unsigned FcovOwnSepDrbgFatalErrInjectRandTest = 148;
+localparam int unsigned FcovOwnSepDrbgRegwenLockRandTest = 149;
+localparam int unsigned FcovOwnSepDrbgCmdSequenceRandTest = 150;
+localparam int unsigned FcovOwnSepTrngExtStreamHandshakeRandTest = 151;
+localparam int unsigned FcovOwnSepTrngExtSinkResetRandTest = 152;
+localparam int unsigned FcovOwnSepDrbgSinkMixRandTest = 153;
 
 // Fabric and remap.
 localparam int unsigned FcovOwnSepFabricInboundRebaseTest = 225;

@@ -38,7 +38,8 @@ Checkers:
                       IDLE = 1 and OUTPUT_VALID = 0 for 20 x t_blk clocks.
                       Control: four DATA_IN words start a block.
   CHK-AES-LOST        manual overwrite sets OUTPUT_LOST, DATA_OUT holds block
-                      2, a Control Register rewrite clears OUTPUT_LOST.
+                      2, OUTPUT_LOST stays 1 after the full DATA_OUT read, and a
+                      Control Register rewrite clears it.
                       Control: a read between the blocks keeps OUTPUT_LOST 0.
   CHK-AES-IDLE        IDLE reads 0 from its first fall until the OUTPUT_VALID
                       sample of each back-to-back polled block. Control: the
@@ -557,8 +558,14 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         self.chk.ok("AES-START-AUTO", not reason and bool(samples) and not bad, **fields)
 
     # --- manual leg ---------------------------------------------------------------
-    async def _manual_trial(self, *, read_between: bool) -> tuple[int, list[int] | None, int]:
-        """Returns (OUTPUT_LOST after block 2, DATA_OUT after block 2, OUTPUT_LOST after rewrite)."""
+    async def _manual_trial(self, *, read_between: bool) -> tuple[int, list[int] | None, int, int]:
+        """Returns (OUTPUT_LOST after block 2, DATA_OUT after block 2, OUTPUT_LOST after the
+        full DATA_OUT read, OUTPUT_LOST after the rewrite).
+
+        aes.adoc:184: once set, OUTPUT_LOST "remains set until AES operation is restarted by
+        re-writing the Control Register", so it reads 1 after the full DATA_OUT read and 0
+        only after the rewrite. A DUT that clears it on the DATA_OUT read fails the check.
+        """
         key = _le_words(KEY_ROWS[256][0][1])
         b1, b2 = (list(b) for b in self.plan.manual_blocks)
         ctrl = (
@@ -578,22 +585,23 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         await self._wait(ST_IDLE, ST_IDLE, self._ov_bound(), "manual_b2_idle")
         lost = int(bool(await self.aes._rd(AES_STATUS) & ST_LOST))
         data = await self._read_out()
+        lost_read = int(bool(await self.aes._rd(AES_STATUS) & ST_LOST))
         lost2 = -1
         if not read_between:
             await self._ctrl(ctrl)
             lost2 = int(bool(await self.aes._rd(AES_STATUS) & ST_LOST))
-        return lost, data, lost2
+        return lost, data, lost_read, lost2
 
     async def _manual_leg(self) -> None:
         key = _le_words(KEY_ROWS[256][0][1])
         g2 = aes_encrypt_words("ecb", key, list(self.plan.manual_blocks[1]))
         await self._pulse_aes()
         reason = ""
-        lost = lost2 = -1
+        lost = lost_read = lost2 = -1
         data: list[int] | None = None
         open_graded_window(TEST, self.logger)
         try:
-            lost, data, lost2 = await self._manual_trial(read_between=False)
+            lost, data, lost_read, lost2 = await self._manual_trial(read_between=False)
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         close_graded_window(self.logger)
@@ -601,7 +609,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         c_lost = -1
         c_data: list[int] | None = None
         try:
-            c_lost, c_data, _ = await self._manual_trial(read_between=True)
+            c_lost, c_data, _, _ = await self._manual_trial(read_between=True)
         except TrialTimeout:
             c_lost = -1
         ctrl_ok = c_lost == 0 and c_data == g2
@@ -609,6 +617,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         fields = {
             "output_lost": lost,
             "data_out==block2": int(data == g2),
+            "kept_after_read": int(lost_read == 1),
             "rewrite_clears": int(lost2 == 0),
             "ctrl_reads_between": 4,
             "ctrl_output_lost": c_lost,
@@ -616,7 +625,9 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         }
         if reason:
             fields["reason"] = reason
-        self.chk.ok("AES-LOST", lost == 1 and data == g2 and lost2 == 0, **fields)
+        self.chk.ok(
+            "AES-LOST", lost == 1 and data == g2 and lost_read == 1 and lost2 == 0, **fields
+        )
 
     # --- vector and HMAC control ------------------------------------------------------
     @staticmethod

@@ -454,3 +454,184 @@ tags = ["crypto", "abr", "mldsa", "mlkem", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# ESRC read-only registers, the restore by a TRNG reset, the MODULE_ENABLE lock and
+# INTR_STATUS.
+name = "sep_esrc_csr_rw_walk_rand_test"
+module = "crypto.sep_esrc_csr_rw_walk_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# ESRC per-lane health testers (repetition, adaptive proportion, Markov) under exact
+# lane patterns, their limits, enables and status clear, and the 32-bit tester.
+name = "sep_esrc_health_pattern_rand_test"
+module = "crypto.sep_esrc_health_pattern_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# ESRC persistent-failure threshold: trip, no trip, burst gap, disable, halt and the
+# two exits.
+name = "sep_esrc_persistent_alert_rand_test"
+module = "crypto.sep_esrc_persistent_alert_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# ESRC lane detune: the manual DETUNE mask, the auto-tune toggle and AUTOTUNE_FAIL.
+name = "sep_esrc_autotune_detune_test"
+module = "crypto.sep_esrc_autotune_detune_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# ESRC boot gate, idle hold and the restart of startup testing by MODULE_ENABLE.
+name = "sep_esrc_startup_gate_rand_test"
+module = "crypto.sep_esrc_startup_gate_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# ESRC conditioning options: lane mask, bypass packing, downsample, SHA-256 whitening
+# and pass-through.
+name = "sep_esrc_conditioning_matrix_rand_test"
+module = "crypto.sep_esrc_conditioning_matrix_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# ESRC main FIFO: fill, pops, restart, word order, churn and the parity and pointer
+# integrity errors.
+name = "sep_esrc_fifo_flow_rand_test"
+module = "crypto.sep_esrc_fifo_flow_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# ESRC noise and BIW observe FIFOs: ungated capture, lane select, packing, flush,
+# overflow and lock.
+name = "sep_esrc_observe_fifo_rand_test"
+module = "crypto.sep_esrc_observe_fifo_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Forced CSRNG and EDN errors, their interrupt and alert, and the EDN command FIFO
+# limit.
+name = "sep_drbg_fatal_err_inject_rand_test"
+module = "crypto.sep_drbg_fatal_err_inject_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# The CSRNG and EDN REGWEN lock, its RW0C behavior and its reset. VCS only: the reset
+# reads must carry no X, which only a four-state simulator shows.
+name = "sep_drbg_regwen_lock_rand_test"
+module = "crypto.sep_drbg_regwen_lock_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# EDN boot-mode precedence, the EDN and CSRNG software command handshakes and the
+# invalid command sequence alert.
+name = "sep_drbg_cmd_sequence_rand_test"
+module = "crypto.sep_drbg_cmd_sequence_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# The external TRNG stream handshake, the source select and its lock, and the pool pop.
+name = "sep_trng_ext_stream_handshake_rand_test"
+module = "crypto.sep_trng_ext_stream_handshake_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "trng", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# The TRNG reset with an external source: adapter and pool clear, traffic pause and
+# resume, and the crypto client requests pending across the clear.
+name = "sep_trng_ext_sink_reset_rand_test"
+module = "crypto.sep_trng_ext_sink_reset_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "trng", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Every entropy sink of a drawn set completes in one overlapping run, and the Key
+# Manager sampler takes the external stream when stream 0 selects it. Real fuse sense.
+name = "sep_drbg_sink_mix_rand_test"
+module = "crypto.sep_drbg_sink_mix_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 3
+timeout_sec = 7200
+tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]

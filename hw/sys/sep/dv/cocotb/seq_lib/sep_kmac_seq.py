@@ -349,9 +349,11 @@ class SepKmac(SepAxiRegDriver):
     async def _check_done_rw1c(self, tag: str) -> None:
         """CHK-DONE-RW1C: after the message is absorbed (squeeze ready) the
         INTR_STATE.kmac_done status bit must be set; write 1 to clear it and prove
-        it reads back 0. kmac_done is a sticky RW1C status bit (kmac.sv
-        prim_intr_hw), independent of INTR_ENABLE, so it latches even though the
-        no_cpu path leaves the PIC unreached."""
+        it reads back 0. kmac_done is a sticky RW1C status bit, independent of
+        INTR_ENABLE (INTR_STATE row, kmac_done[0] RW1C:
+        vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc:57;
+        integration/rdl/sep/kmac.rdl:13-18, onwrite = woclr), so it latches even
+        though the no_cpu path leaves the PIC unreached."""
         pre = await self._rd(KMAC_INTR_STATE)
         assert pre & KMAC_INTR_KMAC_DONE, (
             f"KMAC INTR_STATE.kmac_done not set after absorb [{tag}] (0x{pre:08x})"

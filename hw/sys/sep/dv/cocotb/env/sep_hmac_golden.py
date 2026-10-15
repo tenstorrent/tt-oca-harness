@@ -101,12 +101,25 @@ def hmac_or_sha_words(
 ) -> list[int]:
     """OpenTitan HMAC DIGEST words for keyed HMAC or plain SHA, any SHA-2 variant.
 
-    Returns the N valid DIGEST words (N = 8/12/16 for SHA-256/384/512). With
-    ``digest_swap=0`` (RTL default) DIGEST_0 is the most-significant word and each
-    word is big-endian, matching the engine read-back; ``digest_swap=1`` byte-
-    swaps within each word. ``key_words`` is required when ``hmac_en`` and ignored
-    for plain SHA. The key/msg byte conventions stay parameters: the SW-key path
-    pins them from the DUT rather than from this golden.
+    Returns the N valid DIGEST words (N = 8/12/16 for SHA-256/384/512). Byte order
+    of each word, from the register text:
+
+    * ``digest[511:0] = {DIGEST0, DIGEST1, ...}``
+      (vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson:468-469): DIGEST_0
+      holds the most-significant 32 bits, so with ``digest_swap=0`` (reset value)
+      word n is digest bytes 4n..4n+3 read big-endian.
+    * ``CFG.digest_swap`` = 1 converts each DIGEST word to big-endian byte order and
+      keeps DIGEST_0 as the first four bytes
+      (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc:114-117):
+      the same bytes read little-endian as a bus word.
+    * ``CFG.endian_swap`` = 0 adds each MSG_FIFO value in little-endian byte order
+      (hmac.adoc:118-120): ``msg_be=False``.
+    * ``CFG.key_swap`` = 0 is the big-endian representation of the KEY registers
+      (hmac.adoc:111-113) and ``key[1023:0] = {KEY0, ..., KEY31}`` (hmac.hjson:447):
+      ``key_be=True``; ``key_word_rev`` selects whether ``key_words`` lists KEY31 or
+      KEY0 first.
+
+    ``key_words`` is required when ``hmac_en`` and ignored for plain SHA.
     """
     msg = _words_to_bytes(msg_words, word_rev=False, big_endian=msg_be)
     if hmac_en:

@@ -158,6 +158,7 @@ def _hmac_key_regs() -> int:
 HMAC_KEY_REGS = _hmac_key_regs()
 
 WAIT_LIMIT = 20_000  # outer limit of a wait with no clean time (logged as bound=)
+ALERT_TEST_FIELDS = ("recov_ctrl_update_err", "fatal_fault")  # aes.rdl ALERT_TEST fields
 ALERT_WINDOW = 200  # clocks after the ALERT_TEST write response (outer limit, logged)
 
 
@@ -193,7 +194,7 @@ class Plan:
     aes_mode: str
     mismatch_order: tuple[tuple[int, int], ...]
     none_sha: int
-    alert_bit: int
+    alert_field: str  # an AES ALERT_TEST field name (aes.rdl ALERT_TEST)
 
     @staticmethod
     def words(row: int) -> list[int]:
@@ -205,7 +206,7 @@ class Plan:
             f"ks={KEY_ROWS[self.ks][0]} msg_len={len(self.msg)} msg={self.msg.hex()} "
             f"aes_keylen={self.aes_bits} aes_mode={self.aes_mode} "
             f"mismatch_order={','.join(f'{s}/{k}' for s, k in self.mismatch_order)} "
-            f"none_sha={self.none_sha} alert_test_bit={self.alert_bit}"
+            f"none_sha={self.none_sha} alert_test_field={self.alert_field}"
         )
 
 
@@ -240,10 +241,10 @@ def draw_plan(seed: int) -> Plan:
     order = list(MISMATCHED)
     rng.shuffle(order)
     none_sha = rng.choice((256, 384, 512))
-    alert_bit = rng.choice((0, 1))
+    alert_field = rng.choice(ALERT_TEST_FIELDS)
     return Plan(
         seed, kh, ka, kd, ks, tuple(decoy), bytes(msg), aes_bits, aes_mode, tuple(order),
-        none_sha, alert_bit,
+        none_sha, alert_field,
     )  # fmt: skip
 
 
@@ -569,13 +570,13 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
 
         await ClockCycles(cocotb.top.clk_i, 1)
         m2 = self.vec.mark()
-        await self.aes._wr(AES.addr("ALERT_TEST"), 1 << plan.alert_bit)
+        await self.aes._wr(AES.addr("ALERT_TEST"), AES.field_mask("ALERT_TEST", plan.alert_field))
         await ClockCycles(cocotb.top.clk_i, ALERT_WINDOW)
         ctrl_cycles = self.vec.high_clocks_since(m2, "alert")
         self.chk.ctrl(
             "KEYSEL-ALERT-TEST",
             ctrl_cycles > 0,
-            alert_test_bit=plan.alert_bit,
+            alert_test_field=plan.alert_field,
             ctrl_alert_cycles=ctrl_cycles,
             bound=ALERT_WINDOW,
         )

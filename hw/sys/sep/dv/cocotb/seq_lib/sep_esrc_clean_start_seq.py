@@ -24,23 +24,67 @@ generated C export), so a clean start does not clear a control the leaf set
 elsewhere unless the leaf passes it. The window must be a multiple of the
 64-word pattern period, so a window holds whole periods.
 
+The noise driver must run before the clean start: the leaf starts it with
+``balanced`` patterns before the TRNG reset release, because the health testers
+and the window counter run from the release while ``CTRL.MODULE_ENABLE`` holds
+its reset value 1 (``hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc``,
+``CTRL`` reset 0x1). ``run`` raises if the driver is not running. With
+``release_mark`` (the ``SepEsrcPatternNoise.mark`` taken at the release) ``run``
+logs the strobes from the release to the ``DECORRELATOR_CTRL`` write as
+``pre_clean_strobes`` and raises if there are more than
+``MAX_PRE_CLEAN_STROBES``.
+
 It is separate from ``SepEsrcConfigSeq`` (``sep_esrc_bringup_seq.py``), which
 ``bring_up_entropy`` uses with its own noise and limits; the two share no state.
+
+``SepEsrcLeafSetup`` is the set-up that every ESRC leaf shares around the clean
+start:
+
+* ``trng_reset``: ``SW_RESET_N`` TRNG bit 0 then 1 (``SepSwReset``), a wait for
+  ``trng_reset_active_probe_o`` = 1, then for ``trng_reset_active_probe_o`` = 0
+  and ``trng_axi_isolated_probe_o`` = 0. It returns the noise mark at the
+  release. The first release is bounded at ``TRNG_RELEASE_CAP`` clocks, every
+  later one at ``LATENCY_FACTOR`` x the first (``TRNG-RESET`` log line).
+* ``measure_period``: the strobe period p, measured once per leaf and logged
+  as ``OBS-ESRC-STROBE``.
+* ``wait_boot_done``: ``MAIN_SM_STATUS.BOOT_PHASE_DONE`` = 1 after a clean
+  start, bounded at 2W + 64 strobes (the first window after a TRNG reset can
+  be partial) times p.
+* ``bound`` / ``learn``: a latency bound of ``LATENCY_FACTOR`` x the clean time
+  of the same operation measured earlier in the leaf, or a fixed outer cap
+  before the first measurement.
+
+The first TRNG reset release and the first boot wait of a leaf are bring-up
+waits: a timeout raises ``AssertionError``. A later timeout of the same wait
+raises ``TrialTimeout`` (``env/sep_trial_wait.py``), so a leaf can fail the
+check of the trial that the set-up belongs to and go on.
 
 Usage::
 
     noise = SepEsrcPatternNoise()
     balanced = balanced_lanes(rng)           # drawn once, logged in the plan
+    noise.start(balanced)                    # before the TRNG reset release
+    ...                                      # TRNG reset release
+    mark = noise.mark()
     cs = SepEsrcCleanStart(self, noise, balanced, window=2048)
-    await cs.run()
+    await cs.run(release_mark=mark)
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
-from env.sep_esrc_pattern_noise import PERIOD, Balanced, SepEsrcPatternNoise, describe
+import cocotb
+from cocotb.triggers import NextTimeStep, ReadOnly, RisingEdge
+from env.sep_esrc_pattern_noise import (
+    PERIOD,
+    Balanced,
+    LanePattern,
+    SepEsrcPatternNoise,
+    describe,
+)
+from env.sep_trial_wait import TrialTimeout, poll_until
 from sep_reg_meta import ENTROPY_SOURCE
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -51,15 +95,30 @@ from seq_lib.sep_esrc_bringup_seq import (
     ESRC_DECORRELATOR_CTRL,
     ESRC_HEALTH_TEST_CTRL,
     ESRC_HEALTH_TEST_WINDOW_SIZE,
+    ESRC_MAIN_SM_STATUS,
     ESRC_MARKOV_TEST_PROB_THRESHOLDS,
 )
 
 DEFAULT_WINDOW = 2048
+# Strobes allowed from the TRNG reset release to the DECORRELATOR_CTRL write.
+# Each changes a health-test window count by at most one word, far inside the
+# W/4 margin of the clean limits.
+MAX_PRE_CLEAN_STROBES = 16
 CLEAN_REPETITION_LIMIT = 200
 BYPASS_ALL = (
     ENTROPY_SOURCE.fields("DECORRELATOR_CTRL")["BYPASS"]["bm"]
     >> (ENTROPY_SOURCE.fields("DECORRELATOR_CTRL")["BYPASS"]["bp"])
 )
+# Outer limit of the first TRNG reset release wait (clocks); never a contract.
+TRNG_RELEASE_CAP = 4_000
+# A latency wait is bounded at this many times its clean time in the same leaf.
+LATENCY_FACTOR = 16
+# Outer limit of the strobe-period measurement (clocks); never a contract.
+PERIOD_CAP = 10_000
+# Clocks per strobe at the reset DECORRELATOR_CTRL.SAMPLE_CLK_DIV, used only to
+# bound a wait before the leaf has measured p.
+RESET_STROBE_CLK = PERIOD
+_BOOT_DONE = ENTROPY_SOURCE.fields("MAIN_SM_STATUS")["BOOT_PHASE_DONE"]["bm"]
 _SIZE_MAX = ENTROPY_SOURCE.fields("HEALTH_TEST_WINDOW_SIZE")["SIZE"]["bm"]
 _PROB_MAX = ENTROPY_SOURCE.fields("MARKOV_TEST_PROB_THRESHOLDS")["PROB_01_THRESHOLD"]["bm"]
 
@@ -134,10 +193,25 @@ class SepEsrcCleanStart(SepAxiRegDriver):
     def _ctrl(self, module_enable: int) -> int:
         return int(ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=module_enable, **self.ctrl_fields))
 
-    async def run(self) -> CleanLimits:
-        """Run the clean start; returns the limits it wrote. Logs ``ESRC-CLEAN-START``."""
+    async def run(self, *, release_mark: int | None = None) -> CleanLimits:
+        """Run the clean start; returns the limits it wrote. Logs ``ESRC-CLEAN-START``.
+
+        Raises if the noise driver is not running, or if more than
+        ``MAX_PRE_CLEAN_STROBES`` strobes came after ``release_mark``.
+        """
+        if not self.noise.running:
+            raise AssertionError(
+                "ESRC-CLEAN-START: the noise driver is not running; start it before the "
+                "TRNG reset release"
+            )
         lim = self.limits
         await self._wr(ESRC_CTRL, self._ctrl(0))
+        pre = None if release_mark is None else self.noise.words_since(release_mark)
+        if pre is not None and pre > MAX_PRE_CLEAN_STROBES:
+            raise AssertionError(
+                f"ESRC-CLEAN-START: pre_clean_strobes={pre} after the TRNG reset release, "
+                f"more than {MAX_PRE_CLEAN_STROBES}"
+            )
         decor = {"BYPASS": BYPASS_ALL}
         if self.sample_clk_div is not None:
             decor["SAMPLE_CLK_DIV"] = self.sample_clk_div
@@ -167,16 +241,150 @@ class SepEsrcCleanStart(SepAxiRegDriver):
         await self._wr(ESRC_HEALTH_TEST_CTRL, ENTROPY_SOURCE.value("HEALTH_TEST_CTRL", **ht))
         for addr, data in self.extra_writes:
             await self._wr(addr, data)
-        if self.noise.running:
-            self.noise.set_lanes(self.balanced, immediate=True)
-        else:
-            self.noise.start(self.balanced)
+        self.noise.set_lanes(self.balanced, immediate=True)
         await self._wr(ESRC_CTRL, self._ctrl(1))
         self.log.info(
-            "ESRC-CLEAN-START %s bypass=0x%03x extra_writes=%d %s",
+            "ESRC-CLEAN-START %s bypass=0x%03x extra_writes=%d pre_clean_strobes=%s %s",
             lim.describe(),
             BYPASS_ALL,
             len(self.extra_writes),
+            "n/a" if pre is None else pre,
             describe(self.balanced),
         )
         return lim
+
+
+class SepEsrcLeafSetup:
+    """TRNG reset, strobe period, boot wait and latency bounds of one ESRC leaf.
+
+    ``test`` is the running base test (``rd`` reads a probe), ``swrst`` its
+    ``SepSwReset`` and ``noise`` its running ``SepEsrcPatternNoise``; the clock
+    count is ``noise.clk``.
+    """
+
+    def __init__(self, test, swrst, noise: SepEsrcPatternNoise, *, logger=None) -> None:
+        self.test = test
+        self.swrst = swrst
+        self.noise = noise
+        self.log = logger if logger is not None else test.logger
+        self.p: int | None = None
+        self.clean: dict[str, int] = {}
+        self.booted = False
+
+    # -- clocks and latency bounds --------------------------------------------
+    def now(self) -> int:
+        return self.noise.clk
+
+    def period(self) -> int:
+        """The measured strobe period, or ``RESET_STROBE_CLK`` before it is measured."""
+        return self.p if self.p is not None else RESET_STROBE_CLK
+
+    def bound(self, kind: str, cap: int) -> int:
+        """``LATENCY_FACTOR`` x the clean time of ``kind``, or ``cap`` before it is known."""
+        clean = self.clean.get(kind)
+        return LATENCY_FACTOR * clean if clean else cap
+
+    def learn(self, kind: str, clocks: int) -> None:
+        """Record the first (clean) time of ``kind``; later calls keep it."""
+        if kind not in self.clean:
+            self.clean[kind] = max(1, clocks)
+            self.log.info(
+                "CLEAN-TIME %s clean=%d bound=%d",
+                kind,
+                self.clean[kind],
+                LATENCY_FACTOR * self.clean[kind],
+            )
+
+    # -- waits -------------------------------------------------------------------
+    async def wait_probe(self, cond: Callable[[], bool], bound: int) -> int | None:
+        """Clocks until ``cond()`` holds on a sampled clock edge; None after ``bound``."""
+        clk = cocotb.top.clk_i
+        for n in range(1, bound + 1):
+            await RisingEdge(clk)
+            await ReadOnly()
+            if cond():
+                await NextTimeStep()
+                return n
+        await NextTimeStep()
+        return None
+
+    async def trng_reset(
+        self,
+        *,
+        balanced: Sequence[LanePattern] | None = None,
+        before_release: Callable[[], None] | None = None,
+    ) -> int:
+        """TRNG reset 0 then 1; returns the noise mark at the release.
+
+        While the reset is held no strobe comes, so ``before_release`` (for
+        example a release of the leaf's inject ports) and the pattern change to
+        ``balanced`` take effect as a whole before the first strobe.
+        """
+        dut = cocotb.top
+        await self.swrst.park("trng")
+        if (
+            await self.wait_probe(
+                lambda: self.test.rd(dut.trng_reset_active_probe_o, mask=1) == 1,
+                TRNG_RELEASE_CAP,
+            )
+            is None
+        ):
+            raise AssertionError(f"TRNG reset not active bound={TRNG_RELEASE_CAP}")
+        if before_release is not None:
+            before_release()
+        if balanced is not None:
+            self.noise.set_lanes(balanced, immediate=True)
+        mark = self.noise.mark()
+        await self.swrst.release("trng")
+        bound = self.bound("trng_release", TRNG_RELEASE_CAP)
+        took = await self.wait_probe(
+            lambda: (
+                self.test.rd(dut.trng_reset_active_probe_o, mask=1) == 0
+                and self.test.rd(dut.trng_axi_isolated_probe_o, mask=1) == 0
+            ),
+            bound,
+        )
+        if took is None:
+            if "trng_release" in self.clean:
+                raise TrialTimeout("trng_reset_release", bound)
+            raise AssertionError(f"TRNG reset release not seen bound={bound}")
+        self.learn("trng_release", took)
+        self.log.info(
+            "TRNG-RESET sw_reset_n=0x%02x clean=%d bound=%d took=%d",
+            self.swrst.value,
+            self.clean["trng_release"],
+            bound,
+            took,
+        )
+        return mark
+
+    async def measure_period(self, chk, n: int = 8, **fields) -> int:
+        """Measure p once (``n`` strobes); logs ``OBS-ESRC-STROBE``. Returns p."""
+        if self.p is None:
+            self.p = max(1, int(await self.noise.measure_period(n, bound=PERIOD_CAP)))
+            chk.obs("ESRC-STROBE", p=self.p, **fields)
+        return self.p
+
+    async def wait_boot_done(self, driver: SepAxiRegDriver, window: int) -> int:
+        """Poll ``MAIN_SM_STATUS.BOOT_PHASE_DONE`` = 1 after a clean start; returns clocks.
+
+        Bound: 2W + 64 strobes x p. A clean start passes by construction, so a
+        timeout is a set-up failure and raises.
+        """
+        bound = (2 * window + 64) * self.period()
+        t0 = self.now()
+        ok, samples = await poll_until(
+            lambda: driver._rd(ESRC_MAIN_SM_STATUS), self.now, _BOOT_DONE, _BOOT_DONE, bound
+        )
+        if not ok:
+            if self.booted:
+                raise TrialTimeout("boot_phase_done", bound)
+            raise AssertionError(
+                f"MAIN_SM_STATUS.BOOT_PHASE_DONE not 1 after the clean start bound={bound}"
+            )
+        self.booted = True
+        clocks = (samples[-1][0] if samples else self.now()) - t0
+        self.log.info(
+            "BOOT-DONE window=%d clk=%d bound=%d (2W+64 strobes x p)", window, clocks, bound
+        )
+        return clocks

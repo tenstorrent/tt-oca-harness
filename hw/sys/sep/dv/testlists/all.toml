@@ -38,7 +38,7 @@ tests = ["sep_axi_smoke_test"]
 # the size. `rom_fw` is not a member: it runs a third RTL target and states
 # firmware rather than hardware contracts. `all` is the coverage set.
 #
-# Twelve members are pinned to one simulator, so a single-simulator run of `all`
+# Thirteen members are pinned to one simulator, so a single-simulator run of `all`
 # logs the members pinned to the other simulator as skipped_wrong_tool:
 # - sep_crypto_shadow_update_err_rand_test, VCS only (crypto.toml). It grades that the
 #   reads after an AES reset carry no X, which only a four-state simulator shows.
@@ -63,8 +63,10 @@ tests = ["sep_axi_smoke_test"]
 # - sep_tcm_dma_aperture_ecc_test, VCS only on the full-CPU `default` target
 #   (memory.toml), as its run mode states. It needs the TCM controller of the
 #   full CPU, which the CPU stub does not have.
+# - sep_drbg_regwen_lock_rand_test, VCS only (crypto.toml). Its reset reads must carry
+#   no X, which only a four-state simulator shows.
 name = "all"
-expected_count = 202
+expected_count = 216
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -268,6 +270,20 @@ tests = [
     "sep_kmac_entropy_mode_rand_test",
     "sep_otbn_cmd_status_rand_test",
     "sep_abr_command_matrix_rand_test",
+    "sep_esrc_csr_rw_walk_rand_test",
+    "sep_esrc_health_pattern_rand_test",
+    "sep_esrc_persistent_alert_rand_test",
+    "sep_esrc_autotune_detune_test",
+    "sep_esrc_startup_gate_rand_test",
+    "sep_esrc_conditioning_matrix_rand_test",
+    "sep_esrc_fifo_flow_rand_test",
+    "sep_esrc_observe_fifo_rand_test",
+    "sep_drbg_fatal_err_inject_rand_test",
+    "sep_drbg_regwen_lock_rand_test",
+    "sep_drbg_cmd_sequence_rand_test",
+    "sep_trng_ext_stream_handshake_rand_test",
+    "sep_trng_ext_sink_reset_rand_test",
+    "sep_drbg_sink_mix_rand_test",
 ]
 
 [[groups]]
@@ -478,6 +494,20 @@ tests = [
     "sep_kmac_entropy_mode_rand_test",
     "sep_otbn_cmd_status_rand_test",
     "sep_abr_command_matrix_rand_test",
+    "sep_esrc_csr_rw_walk_rand_test",
+    "sep_esrc_health_pattern_rand_test",
+    "sep_esrc_persistent_alert_rand_test",
+    "sep_esrc_autotune_detune_test",
+    "sep_esrc_startup_gate_rand_test",
+    "sep_esrc_conditioning_matrix_rand_test",
+    "sep_esrc_fifo_flow_rand_test",
+    "sep_esrc_observe_fifo_rand_test",
+    "sep_drbg_fatal_err_inject_rand_test",
+    "sep_drbg_regwen_lock_rand_test",
+    "sep_drbg_cmd_sequence_rand_test",
+    "sep_trng_ext_stream_handshake_rand_test",
+    "sep_trng_ext_sink_reset_rand_test",
+    "sep_drbg_sink_mix_rand_test",
 ]
 
 [[groups]]
@@ -811,7 +841,7 @@ tests = [
 # Convenience group of the crypto and entropy tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_crypto_entropy"
-expected_count = 15
+expected_count = 29
 tests = [
     "sep_irq_ip_to_aggregator_test",
     "sep_crypto_edn_multisink_arbitration_test",
@@ -828,4 +858,18 @@ tests = [
     "sep_kmac_entropy_mode_rand_test",
     "sep_otbn_cmd_status_rand_test",
     "sep_abr_command_matrix_rand_test",
+    "sep_esrc_csr_rw_walk_rand_test",
+    "sep_esrc_health_pattern_rand_test",
+    "sep_esrc_persistent_alert_rand_test",
+    "sep_esrc_autotune_detune_test",
+    "sep_esrc_startup_gate_rand_test",
+    "sep_esrc_conditioning_matrix_rand_test",
+    "sep_esrc_fifo_flow_rand_test",
+    "sep_esrc_observe_fifo_rand_test",
+    "sep_drbg_fatal_err_inject_rand_test",
+    "sep_drbg_regwen_lock_rand_test",
+    "sep_drbg_cmd_sequence_rand_test",
+    "sep_trng_ext_stream_handshake_rand_test",
+    "sep_trng_ext_sink_reset_rand_test",
+    "sep_drbg_sink_mix_rand_test",
 ]
