@@ -452,6 +452,216 @@ Enrolled names outside this catalog:
 |smu_smc_gpio_strap_sanity_test
 |waived
 |No body. The generated SMC header carries no reset-unit straps symbol and `smc_wrapper` declares no `captured_straps_i`, so the strap feature has no testcase in this package (`hw/sys/smc/dv/testlists/efuse.toml` records the same for the SMC package). Do not re-enroll this name.
+|smc_reg_boundary_test_GROUP_1
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_2
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_3
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_4
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_5
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_6
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_7
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_8
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_9
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_10
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_11
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_12
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_13
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_14
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_15
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_16
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_17
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_18
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reg_boundary_test_GROUP_19
+|waived
+|No body; register-boundary sweep depth belongs to the SMC TB, whose `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` carries `smc_reg_boundary_test_GROUP_0` as waived. SMC fabric reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test` and `smu_dtp_jtag2axi_address_walk_test`.
+|smc_chiplet_base_test
+|waived
+|No body; a `*_base_test` is a class, not a scenario. The scenarios on this bench are the enrolled leaves of `testlists/all.toml`.
+|smc_chiplet_jtag_base_test
+|waived
+|No body; a `*_base_test` is a class, not a scenario. The scenarios on this bench are the enrolled leaves of `testlists/all.toml`.
+|smc_chiplet_reg_wr_test
+|child-TB-owned
+|No body; SMC register write depth belongs to the SMC TB. SMC fabric write reach through JTAG2AXI on the wrapper is `smu_dtp_jtag2axi_smc_rw_matrix_test`.
+|local_fabric_reg_bar_wr_test
+|waived
+|No body; `smu_fabric_reg_bar_wr_test` (fabric config CSR delivery) is the enrolled fabric BAR write on the wrapper.
+|smc_local_fabric_reg_bar_wr_rd_test
+|waived
+|No body; `smu_fabric_reg_bar_wr_test` (fabric config CSR delivery) is the enrolled fabric BAR write on the wrapper.
+|smc_local_fabric_external_reg_xbar_rd_test
+|child-TB-owned
+|No body; SMC register-crossbar depth belongs to the SMC TB. The wrapper proves address decode only, in `smu_xbar_connectivity_matrix_test` and `smu_aperture_map_walk_test`.
+|smc_local_fabric_external_reg_xbar_wr_test
+|child-TB-owned
+|No body; SMC register-crossbar depth belongs to the SMC TB. The wrapper proves address decode only, in `smu_xbar_connectivity_matrix_test` and `smu_aperture_map_walk_test`.
+|smc_local_fabric_external_reg_xbar_wr_rd_test
+|child-TB-owned
+|No body; SMC register-crossbar depth belongs to the SMC TB. The wrapper proves address decode only, in `smu_xbar_connectivity_matrix_test` and `smu_aperture_map_walk_test`.
+|smc_local_fabric_internal_reg_xbar_wr_rd_test
+|child-TB-owned
+|No body; SMC register-crossbar depth belongs to the SMC TB. The wrapper proves address decode only, in `smu_xbar_connectivity_matrix_test` and `smu_aperture_map_walk_test`.
+|smc_local_fabric_input_axi_wr_rd_test
+|child-TB-owned
+|No body; inbound write and read traffic depth belongs to the SMC TB. The wrapper proves inbound admission in `smu_axi_filter_in_instance_matrix_test` (JTAG2AXI and `s_axi`, S1 to S5).
+|smc_local_fabric_input_axi_filtering_test
+|waived
+|No body; the inbound filter is covered by `smu_axi_filter_in_instance_matrix_test`.
+|smc_local_fabric_sep_input_wr_rd_test
+|waived
+|No body; `smu_axi_in_sep_aperture_test` covers inbound SMN traffic to the SEP through the crossbar's SEP port.
+|smc_binary_loader_test
+|child-TB-owned
+|No body; binary-loader depth belongs to the SMC TB. The bench stages images through the `rom_bin64`, `rom_hex`, `smc_scratch_ram_hex`, `sep_boot_rom_hex`, `sep_itcm_hex` and `sep_dtcm_hex` plusargs of `tb/tb_wrapper_top.sv`, and `smu_smc_rom_boot_min_pass_test` is its SMC ROM boot proof.
+|smc_cpu_perf_loader_test
+|child-TB-owned
+|No body; binary-loader depth belongs to the SMC TB. The bench stages images through the `rom_bin64`, `rom_hex`, `smc_scratch_ram_hex`, `sep_boot_rom_hex`, `sep_itcm_hex` and `sep_dtcm_hex` plusargs of `tb/tb_wrapper_top.sv`, and `smu_smc_rom_boot_min_pass_test` is its SMC ROM boot proof.
+|smc_cpu_traffic_sep_axi_test
+|waived
+|No body; SMC CPU transfers into SEP SRAM over the crossbar's `smc_out`-to-`sep_in` route are carried by `smu_smc_fabric_test`.
+|smc_psyscrit_vrhot_loader_test
+|child-TB-owned
+|No body; binary-loader depth belongs to the SMC TB. The bench stages images through the `rom_bin64`, `rom_hex`, `smc_scratch_ram_hex`, `sep_boot_rom_hex`, `sep_itcm_hex` and `sep_dtcm_hex` plusargs of `tb/tb_wrapper_top.sv`, and `smu_smc_rom_boot_min_pass_test` is its SMC ROM boot proof. The scenario also needs a PVT/VRHOT model that `tb/tb_wrapper_top.sv` does not instantiate.
+|smc_rom_only_test
+|child-TB-owned
+|No body; the wrapper's SMC ROM boot proof is `smu_smc_rom_boot_min_pass_test`, which runs the checked-in ROM stub; ROM depth belongs to the SMC TB.
+|smc_rom_test_binary_loader_test
+|child-TB-owned
+|No body; binary-loader depth belongs to the SMC TB. The bench stages images through the `rom_bin64`, `rom_hex`, `smc_scratch_ram_hex`, `sep_boot_rom_hex`, `sep_itcm_hex` and `sep_dtcm_hex` plusargs of `tb/tb_wrapper_top.sv`, and `smu_smc_rom_boot_min_pass_test` is its SMC ROM boot proof.
+|smc_rom_test_master_bfm_binary_loader_test
+|child-TB-owned
+|No body; binary-loader depth belongs to the SMC TB. The bench stages images through the `rom_bin64`, `rom_hex`, `smc_scratch_ram_hex`, `sep_boot_rom_hex`, `sep_itcm_hex` and `sep_dtcm_hex` plusargs of `tb/tb_wrapper_top.sv`, and `smu_smc_rom_boot_min_pass_test` is its SMC ROM boot proof.
+|smc_rom_test_master_bfm_secure_boot_test
+|child-TB-owned
+|No body; binary-loader depth belongs to the SMC TB. The bench stages images through the `rom_bin64`, `rom_hex`, `smc_scratch_ram_hex`, `sep_boot_rom_hex`, `sep_itcm_hex` and `sep_dtcm_hex` plusargs of `tb/tb_wrapper_top.sv`, and `smu_smc_rom_boot_min_pass_test` is its SMC ROM boot proof.
+|smc_sep_load_and_run_binary_test
+|child-TB-owned
+|No body; binary-loader depth belongs to the SMC TB. The bench stages images through the `rom_bin64`, `rom_hex`, `smc_scratch_ram_hex`, `sep_boot_rom_hex`, `sep_itcm_hex` and `sep_dtcm_hex` plusargs of `tb/tb_wrapper_top.sv`, and `smu_smc_rom_boot_min_pass_test` is its SMC ROM boot proof.
+|smc_prod_rom_sanity_test_i2c1
+|child-TB-owned
+|No body; needs an I2C target VIP, which `tb/tb_wrapper_top.sv` does not instantiate. Production ROM sanity depth belongs to the SMC TB.
+|smc_basic_ijtag_test
+|waived
+|No body; `smu_dtp_scan_chain_boundary_test` walks the iJTAG SIB hosts through the bench scan cells (`CHK-SMU-IJTAG-CHAIN` in `SMU_VPLAN.adoc`).
+|smc_external_interrupts_test
+|waived
+|No body; `smu_smc_boundary_io_test` proves an external interrupt through the SMC interrupt vector and `smu_smc_boundary_lane_sweep_test` drives every lane.
+|smc_input_fabric_i3c_to_output_rd_test
+|child-TB-owned
+|No body; the open tree has no I3C initiator VIP. `smu_i3c_mem_port_connectivity_test` proves AXI4-Lite delivery to the I3C memory port only, not an I3C-initiated transaction.
+|smc_input_fabric_i3c_to_output_wr_test
+|child-TB-owned
+|No body; the open tree has no I3C initiator VIP. `smu_i3c_mem_port_connectivity_test` proves AXI4-Lite delivery to the I3C memory port only, not an I3C-initiated transaction.
+|smc_input_fabric_i3c_to_output_wr_rd_test
+|child-TB-owned
+|No body; the open tree has no I3C initiator VIP. `smu_i3c_mem_port_connectivity_test` proves AXI4-Lite delivery to the I3C memory port only, not an I3C-initiated transaction.
+|smc_mailbox_register_2_test
+|waived
+|No body; the enrolled `smu_smc_mailbox_sanity_test` and `smu_smc_mailbox_int_test` cover the SMC mailbox on the wrapper.
+|smc_mimir_pll_fuse_init_code_test
+|waived
+|No body; `hw/sys/smc/dv/models/pll_wrap.sv` is a behavioural model with no analog PLL that consumes a fuse init code. Fuse sense itself is `smu_smc_fuse_sense_sequence_test` and `smu_smc_efuse_shadow_sense_reset_test`.
+|smc_random_default_reg_rd_test
+|child-TB-owned
+|No body; SMC register default depth belongs to the SMC TB. The wrapper reaches the SMC register map through `smu_dtp_jtag2axi_address_walk_test`.
+|smc_reri_sanity_test
+|child-TB-owned
+|No body; RERI depth belongs to the SMC TB. The wrapper exposes no RERI port or observer (`tb/tb_wrapper_top.sv` has none).
+|smu_atb_telemetry_path_test
+|waived
+|No body; `smu_telemetry_atb_capture_test` covers ATB capture at the pins, with the bench as the ATB source for every receiver.
+|smu_axi_atomic_awatop_reject_test
+|waived
+|No body; `smu_axi_in_req.aw.atop` is tied to 0 in `tb/tb_wrapper_top.sv` and the package has no ATOP driver, so no ATOP transaction can reach the DUT (`SMU_VPLAN.adoc`, "F4 ATOP reject" and the `smu_axi_atomic_operation_test` card).
+|smu_axi_filter_out_rule_matrix_test
+|child-TB-owned
+|No body; outbound filter rule traffic belongs to the SMC TB. `smu_axi_filter_out_instance_matrix_test` proves outbound filter CSR decode only, not egress traffic.
+|smu_axi_priv_remap_mmode_xvisor_test
+|waived
+|No body; `smu_axi_out_addr_len_size_test` S6 covers the M-mode and Xvisor output remap region 0 (`CHK-AXIOUT-OUTPUT-REMAP`).
+|smu_axi_xbar_decode_test
+|waived
+|No body; crossbar decode is covered by `smu_xbar_connectivity_matrix_test` and `smu_aperture_map_walk_test`.
+|smu_dfd_trace_mem_sink_test
+|waived
+|No body; no enrolled wrapper leaf drives or reads the `trace_mem_req_o` / `trace_mem_resp_i` trace memory interface, and the DFD host scan chain is a bench loopback (`u_dfd_loop_cell` in `tb/tb_wrapper_top.sv`).
+|smu_dft_base_test
+|waived
+|No body; a `*_base_test` is a class, not a scenario. The bench has no DFT or scan bench: the DFT host scan chains are looped back, and the DFT boot-stall pins are `smu_dft_dtp_boot_stall_test` and `smu_dft_gpio_boot_stall_test`.
+|smu_dtp_dual_cpu_jtag2axi_series_test
+|child-TB-owned
+|No body; series-operation depth on the two CPU-side bridges belongs to the DTP and SMC TBs. The wrapper's SMC bridge card is `smu_dtp_jtag2axi_smc_rw_matrix_test` (write strobe widths), and the SEP debug module system bus is `smu_dtp_sep_dm_sba_test`.
+|smu_dtp_jtag2axi_smc_error_series_test
+|waived
+|No body; the SMC bridge error path is covered by `smu_dtp_jtag2axi_smc_error_path_test` and `smu_dtp_jtag2axi_back_to_back_error_ok_test`.
+|smu_dtp_lcc_feat_ctrl_policy_test
+|child-TB-owned
+|No body; feature-control policy depth belongs to the DTP TB. The wrapper's lifecycle decode for one state is `smu_sep_lcc_state_test_dev_test`, and `smu_sep_dbg_gating_test_dev_test` observes the JTAG2AXI launch on the debug AXI port.
+|smu_dtp_otp_sep_map_rw_test
+|waived
+|No body; the SEP OTP bridge is walked by `smu_dtp_jtag2axi_address_walk_test` (`CHK-J2A-WALK-SEP-OTP`) and written and read back by `smu_otp_bridges_under_dbg_disable_test`; the SMC eFuse map read and write is `smu_dtp_otp_smc_map_rw_test`.
+|smu_dtp_otp_sep_series_error_test
+|waived
+|No body; the series error path is carded for the SMC bridge only (`smu_dtp_otp_smc_series_error_test`). The SEP OTP bridge refusals are carded as single operations in `smu_otp_prod_error_resp_test` S2.
+|smu_dtp_pll_stop_clks_obs_test
+|waived
+|No body; clock-stop aggregation is covered by `smu_clock_stop_coordination_test`. The PLL observe leg has no model: `hw/sys/smc/dv/models/pll_wrap.sv` is behavioural, with no analog PLL.
+|smu_dtp_sep_reset_vector_tdr_test
+|child-TB-owned
+|No body; SEP STAP reset-vector and TDR depth belongs to the SEP and DTP TBs. `smu_sep_boot_health_test` observes the default boot-ROM reset vector through trace probes only and involves no TDR.
+|smu_dtp_sep_stap_payload_test
+|waived
+|No body; `smu_dtp_sep_dm_dmi_test` selects the SEP STAP through TAP_3DCR and scans the SEP TAP's `dmi` register through the spliced network.
+|smu_gpio_interrupts_undriven_test
+|waived
+|No body; `smu_smc_boundary_lane_sweep_test` (`CHK-SMU-LANE-GPIO`) checks every `gpio_interrupt_o` lane up and back down, and `smu_smc_gpio_pad_output_test` checks each pad against its own lane.
+|smu_ras_wdt_timeout_outs_test
+|waived
+|No body; no enrolled wrapper leaf observes `sep_lockstep_status_o`, the chip-level RAS aggregation output. The watchdog timeout outputs are covered by `smu_smc_wdt_boundary_timeout_test` (`CHK-SMU-WDT-SECOND`).
+|smu_sep_dbg_inbound_filter_policy_test
+|child-TB-owned
+|No body; the SEP debug inbound filter policy belongs to the SEP and DTP TBs. `smu_dtp_sep_dm_dmi_test` reaches the SEP debug module with SEP debug open, and the `smu_sep_dbg_gating_test_dev_test` card observes the SMC JTAG2AXI launch on the debug AXI port only.
+|smu_sep_entropy_rosc_clock_test
+|waived
+|No body; the sample clock `entropy_rosc_sample_clk_i` is started under `+esrc_noise_force` in `cocotb_wrapper/tests/smu_base_test.py`, which the enrolled `smu_sep_entropy_test` (group `sep_entropy`) uses; the name stays catalog-only.
+|smu_sep_trng_integration_test
+|waived
+|No body; `smu_sep_entropy_test` (group `sep_entropy`) brings up ESRC, CSRNG and EDN and proves entropy flows, and `smu_axi_in_sep_aperture_test` reaches the TRNG aperture; the name stays catalog-only.
 |===
 
 [[smu-bench-standins]]

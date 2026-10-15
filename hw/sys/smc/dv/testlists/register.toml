@@ -30,6 +30,14 @@ tags = ["ci", "axil"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_reg_island_boundary_sweep_test"
+module = "smc_reg_island_boundary_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "axil"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_rdl_field_sweep_test"
 module = "smc_rdl_field_sweep_test"
 seed = 1

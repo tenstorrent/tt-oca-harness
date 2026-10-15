@@ -37,6 +37,20 @@ UNMAPPED_TESTS: dict[str, str] = {}
 
 # testcase -> ordered checkbox contracts (FEATURE_LIST / VPLAN aligned)
 TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
+    "smu_alias_cache_reset_test": [
+        (
+            "CHK-ALIAS-RESET-TRANSPARENT",
+            "ALIAS_RESET_TRANSPARENT",
+            "with every alias region invalid the outbound address is unchanged and VERSION_LO "
+            "at the local alias reads its reset value",
+        ),
+        (
+            "CHK-ALIAS-CACHE-HIT",
+            "ALIAS_CACHE_HIT",
+            "an alias hit carries the programmed cacheable value 0..15 on AW and AR",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and AXI waits with last state"),
+    ],
     "smu_axi_alias_remap_manager_scope_test": [
         (
             "CHK-ALIAS-REMAP-SCOPE-S3",
@@ -229,6 +243,37 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "lane 0 are low, and with the enable clear lane 0 stays low under the action",
         ),
     ],
+    "smu_octs_reset_and_secondary_hold_test": [
+        (
+            "CHK-OCTSR-RESET-CSR",
+            "OCTSR_RESET_CSR",
+            "OCTS CTRL reads its RDL reset word, the seven other CSRs read 0 and STATUS.RUNNING is "
+            "0",
+        ),
+        (
+            "CHK-OCTSR-RESET-PIN",
+            "OCTSR_RESET_PIN",
+            "timer_count_o is 0 on every clk_smu sample from the bench's reset-done indication "
+            "until the START write",
+        ),
+        (
+            "CHK-OCTSR-STRAP-LOW",
+            "OCTSR_STRAP_LOW",
+            "SMC_ATTRIBUTES.chiplet_is_primary and STATUS.MODE read 1 and PRIMARY at the default "
+            "strap, and 0 and SECONDARY with the strap low",
+        ),
+        (
+            "CHK-OCTSR-SECONDARY-HOLD",
+            "OCTSR_SECONDARY_HOLD",
+            "SECONDARY ignores TIMER_START: STATUS.RUNNING 0 and timer_count_o 0 for 1024 cycles; "
+            "a PRIMARY START sets RUNNING and moves timer_count_o within 1024 cycles",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A waits and pin samplers with last state",
+        ),
+    ],
     "smu_otp_prod_error_resp_test": [
         (
             "CHK-OTP-PROD-SMC-REFUSED",
@@ -254,6 +299,34 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "an SMC OTP series read of JTAG_PUBLIC_IDENTITY with pipeline depth 3 completes "
             "with SUCCESS",
         ),
+    ],
+    "smu_lc_rma_chip_1_export_test": [
+        (
+            "CHK-LCG-RMACHIP1-LC-EXPORT",
+            "CHK-LCG-RMACHIP1-LC-EXPORT",
+            "under the RMA_CHIPLET raw 4'b0111 image lc_state_o, obs_sep_lc_state_o and "
+            "smc_lc_state_in_o each equal 0x87 on one sampled cycle",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "bounded lc_settle and dbg_settle waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<S2<S3<PASS"),
+    ],
+    "smu_lc_rma_sip_1_export_test": [
+        (
+            "CHK-LCG-RMASIP1-LC-EXPORT",
+            "CHK-LCG-RMASIP1-LC-EXPORT",
+            "under the RMA_SIP raw 4'b0011 image lc_state_o, obs_sep_lc_state_o and "
+            "smc_lc_state_in_o each equal 0xC3 on one sampled cycle",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "bounded lc_settle and dbg_settle waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<S2<S3<PASS"),
     ],
     "smu_lc_sigint_fail_closed_test": [
         (
@@ -433,6 +506,41 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "BSR_EXTEST_TDO_MATCH",
             "TB BSR scan loopback TDO (declared stub; pad BSR out of scope)",
         ),
+    ],
+    "smu_dtp_debug_control_fields_test": [
+        (
+            "CHK-DBGCTL-RESET-VALUES",
+            "CHK-DBGCTL-RESET-VALUES",
+            "DEBUG_CONTROL bits 3:0 and bit 4 read 0 after reset with every request idle",
+        ),
+        (
+            "CHK-DBGCTL-RW-BITS",
+            "CHK-DBGCTL-RW-BITS",
+            "bits 0..3 each read back the written 1 and the written 0 with the other bits 0",
+        ),
+        (
+            "CHK-DBGCTL-BIT4-READONLY",
+            "CHK-DBGCTL-BIT4-READONLY",
+            "bit 4 reads 0 on the read that follows a scan shifting 1 into it with no request, "
+            "and 1 with a lane request while 0 is shifted in",
+        ),
+        (
+            "CHK-JTAG-STOP-LATENCY",
+            "CHK-JTAG-STOP-LATENCY",
+            "dtp_stop_clks_o rises and falls within 64 clk_smu of the jtag_clock_stop TDR update",
+        ),
+        (
+            "CHK-DBGCTL-RESET-CLEARS",
+            "CHK-DBGCTL-RESET-CLEARS",
+            "jtag_clock_stop and dtp_stop_clks_o read 0 after each of TRST, Test-Logic-Reset via "
+            "TMS and power-on reset; cla_clock_stop_en is logged",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded stop-output, Update-DR and reset waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<PASS"),
     ],
     "smu_dtp_scan_chain_boundary_test": [
         (
@@ -647,6 +755,26 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "programming all 32 bits of a word reads back 0xFFFFFFFF and the next word reads 0",
         ),
     ],
+    "smu_sep_inbound_burst_extension_test": [
+        (
+            "CHK-DBG-EXT-BURST",
+            "DBG_EXT_BURST",
+            "an INCR burst at SEP-local 0x2000_1000 reaches the extension port routed on its "
+            "first address with its length, size and beats, and nothing reaches the SHIM port",
+        ),
+        (
+            "CHK-DBG-SHIM-BURST",
+            "DBG_SHIM_BURST",
+            "an INCR burst from the SHIM base carries every beat to the eFuse bank control port "
+            "at advancing addresses and none to the extension port",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded SBA/burst/beat/posture waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S5<PASS"),
+    ],
     "smu_sep_lsu_fabric_test": [
         (
             "CHK-SEP-DMI-DMSTATUS",
@@ -684,6 +812,19 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-LSU-SBA-MIX",
             "CHK-SEP-LSU-SBA-MIX",
             "system-bus accesses on each probe path complete before and after the probe runs",
+        ),
+    ],
+    "smu_sep_mailbox_sba_readback_test": [
+        (
+            "CHK-COMP-SEP-WIRQT-READBACK",
+            "COMP_SEP_WIRQT_READBACK",
+            "WIRQT of all sixteen SEP mailbox ports reads 0, then reads back a value below the "
+            "FIFO depth written over the debug system bus, with sberror 0",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded SBA and DMI waits with last state",
         ),
     ],
     "smu_sep_sba_fabric_sweep_test": [
@@ -770,6 +911,27 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "when it bites",
         ),
     ],
+    "smu_sep_stap_hold_reset_test": [
+        (
+            "CHK-DBG-STAP-TMS-HOLD",
+            "DBG_STAP_TMS_HOLD",
+            "with the SEP STAP deselected its host TMS holds the TMS-Hold value (0 and 1) with no "
+            "edges while the PTAP TMS toggles, and the scan path is the PTAP register plus the "
+            "SIB bits",
+        ),
+        (
+            "CHK-DBG-STAP-3DCR-RESET",
+            "DBG_STAP_3DCR_RESET",
+            "the SEP STAP 3DCR reads 3'b111 before a TRST pulse and 0 after it, survives "
+            "Test-Logic-Reset with Config-Hold set and clears on it with Config-Hold clear",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded posture/TMS-window/TRST waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S6<PASS"),
+    ],
     "smu_dtp_sep_dm_sba_test": [
         (
             "CHK-SEP-DMI-DMSTATUS",
@@ -835,6 +997,120 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "fabric config CSR write/readback held at every listed destination",
         ),
     ],
+    "smu_filter_cfg_register_map_test": [
+        (
+            "CHK-CFG-RESET-CONFIG",
+            "CFG_RESET_CONFIG",
+            "FILTER_CONFIG reads the reset value on all 32 entries of both instances",
+        ),
+        (
+            "CHK-CFG-RESET-RANGE",
+            "CFG_RESET_RANGE",
+            "START_ADDR reads 0x0 and END_ADDR 0x7 on all 32 entries",
+        ),
+        (
+            "CHK-CFG-RW-FIELDS",
+            "CFG_RW_FIELDS",
+            "one-hot walk of the read-write fields reads back; locked reads 1",
+        ),
+        (
+            "CHK-CFG-DBW-RO",
+            "CFG_DBW_RO",
+            "all-ones write to data_bus_width still reads the reset value",
+        ),
+        (
+            "CHK-CFG-ADDR-56",
+            "CFG_ADDR_56",
+            "START_ADDR and END_ADDR bits [55:0] store and read back a full bit walk",
+        ),
+        (
+            "CHK-CFG-ENTRY-STRIDE",
+            "CFG_ENTRY_STRIDE",
+            "unique value per entry reads back at its own 0x20-stride address only",
+        ),
+        (
+            "CHK-CFG-HALF-WORD",
+            "CFG_HALF_WORD",
+            "32-bit halves match the 64-bit value; half-only writes leave the other half",
+        ),
+        (
+            "CHK-CFG-GROUPID-RB",
+            "CFG_GROUPID_RB",
+            "group_id written 0xA reads back 0xA on both instances",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A and AXI waits with last state",
+        ),
+    ],
+    "smu_smc_unmapped_response_test": [
+        (
+            "CHK-UNMAP-BETWEEN",
+            "CHK-UNMAP-BETWEEN",
+            "between-unit ext_in reads answer DECERR/0xBADCAB1E and writes DECERR",
+        ),
+        (
+            "CHK-UNMAP-PAST-EXTENT",
+            "CHK-UNMAP-PAST-EXTENT",
+            "past-extent reads answer DECERR/0xBADCAB1E and DECERR-declared writes answer DECERR; "
+            "the writes the RDL and memmap declare SLVERR are logged and answered DECERR in this "
+            "run, a mismatch recorded for the owner",
+        ),
+        (
+            "CHK-UNMAP-MMODE-XVISOR",
+            "CHK-UNMAP-MMODE-XVISOR",
+            "M-mode and Xvisor window reads and writes from ext_in answer DECERR",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A and AXI waits with last state",
+        ),
+    ],
+    "smu_filter_lock_test": [
+        (
+            "CHK-LOCK-SET",
+            "LOCK_SET",
+            "locked reads 1 on entry 5 of both filter instances after the locking write",
+        ),
+        (
+            "CHK-LOCK-CONFIG-DECERR",
+            "LOCK_CONFIG_DECERR",
+            "FILTER_CONFIG writes to the locked entry return DECERR and the value stays",
+        ),
+        (
+            "CHK-LOCK-ADDR-DECERR",
+            "LOCK_ADDR_DECERR",
+            "START_ADDR and END_ADDR writes to the locked entry return DECERR, values unchanged",
+        ),
+        (
+            "CHK-LOCK-READBACK",
+            "LOCK_READBACK",
+            "the three locked registers read OKAY with the locked configuration",
+        ),
+        (
+            "CHK-LOCK-ISOLATION",
+            "LOCK_ISOLATION",
+            "entries 4 and 6 stay writable and read back on both instances",
+        ),
+        (
+            "CHK-LOCK-STILL-FILTERS",
+            "LOCK_STILL_FILTERS",
+            "locked inbound entry admits its page and locked outbound entry blocks its page",
+        ),
+        (
+            "CHK-LOCK-PARITY",
+            "LOCK_PARITY",
+            "response and value sequence of S2 to S6 equal on inbound and outbound",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "the bounded AXI write, read and probe wait sites each completed their declared "
+            "access count",
+        ),
+    ],
     "smu_i3c_mem_port_connectivity_test": [
         (
             "CHK-SUB-AXIL-LOCAL-S1",
@@ -884,6 +1160,109 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "JTAG_CHAIN_ENHANCED_OK",
             "all required TCK labels ran at their programmed periods",
         ),
+    ],
+    "smu_jtag_ic_reset_ext_override_test": [
+        ("CHK-ICEXT-EXT-ON", "ICEXT_EXT_ON", "enable=0 drives ovrd=1, ctrl_n follows control"),
+        ("CHK-ICEXT-EXT-OFF", "ICEXT_EXT_OFF", "enable=1 keeps ovrd=0, ctrl_n follows control"),
+        (
+            "CHK-ICEXT-EXT-INDEP",
+            "ICEXT_EXT_INDEP",
+            "single 0 and single 1 on the one external port, readback unchanged elsewhere",
+        ),
+        ("CHK-ICEXT-EXT-2STEP", "ICEXT_EXT_2STEP", "control moves val first, enable moves ovrd"),
+        (
+            "CHK-ICEXT-EXT-BOTH",
+            "ICEXT_EXT_BOTH",
+            "enable and control in one Update-DR settle to the written values",
+        ),
+        (
+            "CHK-ICEXT-EXT-UPDONLY",
+            "ICEXT_EXT_UPDONLY",
+            "outputs hold through Capture-DR, Shift-DR and Pause-DR",
+        ),
+        ("CHK-ICEXT-HOLD-1", "ICEXT_HOLD_1", "reset_hold=1: Test-Logic-Reset restores all ones"),
+        ("CHK-ICEXT-HOLD-0", "ICEXT_HOLD_0", "reset_hold=0: Test-Logic-Reset keeps the override"),
+        ("CHK-ICEXT-HOLD-TRST", "ICEXT_HOLD_TRST", "TRST_n restores every bit including hold"),
+        (
+            "CHK-ICEXT-HOLD-POR",
+            "ICEXT_HOLD_POR",
+            "power-on reset restores every bit including hold",
+        ),
+        (
+            "CHK-ICEXT-HOLD-SELF",
+            "ICEXT_HOLD_SELF",
+            "Test-Logic-Reset leaves reset_hold unchanged at 0 and at 1",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded JTAG waits with last TAP state"),
+    ],
+    "smu_jtag_ic_reset_layout_caps_test": [
+        ("CHK-ICLAY-IC-LEN", "ICLAY_IC_LEN", "163-bit marker emerges after exactly 155 TCKs"),
+        (
+            "CHK-ICLAY-IC-SLICE",
+            "ICLAY_IC_SLICE",
+            "cleared control bit lands at each slice boundary position",
+        ),
+        (
+            "CHK-ICLAY-IC-PAIR",
+            "ICLAY_IC_PAIR",
+            "reset_control is bit 2n+2 and reset_enable bit 2n+1 of the external pair",
+        ),
+        (
+            "CHK-ICLAY-IC-NAMED",
+            "ICLAY_IC_NAMED",
+            "ten named ports sit at their documented TDR positions",
+        ),
+        ("CHK-ICLAY-IC-IMG", "ICLAY_IC_IMG", "all-ones image after power-on reset and TRST_n"),
+        (
+            "CHK-ICLAY-IC-RECAP",
+            "ICLAY_IC_RECAP",
+            "recapture returns the written image, no output moves",
+        ),
+        (
+            "CHK-ICLAY-CAPS-DEF",
+            "ICLAY_CAPS_DEF",
+            "JTAG_CAPS equals the default-configuration field map",
+        ),
+        (
+            "CHK-ICLAY-CAPS-RO",
+            "ICLAY_CAPS_RO",
+            "JTAG_CAPS ignores shifted-in bits and is exactly 60 bits",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded JTAG waits with last TAP state"),
+    ],
+    "smu_jtag_trst_por_reset_test": [
+        (
+            "CHK-RSTH-POR-ONLY",
+            "RSTH_POR_ONLY",
+            "powergood_i drop holds the TAP in TLR, IR decodes IDCODE, DR scan returns IDCODE",
+        ),
+        (
+            "CHK-RSTH-TRST-ONLY",
+            "RSTH_TRST_ONLY",
+            "TRST_n low gives TLR with TCK running at TMS 0, TMS 1 and with TCK stopped",
+        ),
+        (
+            "CHK-RSTH-RST-COMB",
+            "RSTH_RST_COMB",
+            "either reset alone holds TLR across TMS-low TCKs; first TMS-low after both gives RTI",
+        ),
+        (
+            "CHK-RSTH-RST-RELEASE",
+            "RSTH_RST_RELEASE",
+            "TLR under TMS high after release, first TMS-low gives RTI, DR scan returns IDCODE",
+        ),
+        (
+            "CHK-RSTH-TLR-IDCODE",
+            "RSTH_TLR_IDCODE",
+            "TLR loads IDCODE for each of seven prior instructions",
+        ),
+        (
+            "CHK-RSTH-TDO-RST",
+            "RSTH_TDO_RST",
+            "the (jtag_tdo, jtag_tdo_oen) pair after TRST_n equals the pair after power-on reset "
+            "and after both",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded JTAG waits with last TAP state"),
     ],
     "smu_jtag_reset_override_test": [
         (
@@ -1056,6 +1435,43 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-SEP-DCCM-WRITE", "SEP_DCCM_WRITE_OK", "SEP firmware stored results into DCCM"),
         ("CHK-NONVAC", "CHK-NONVAC", "boot scoreboard verdict with the SMC arm TEST_PASS seen"),
     ],
+    "smu_smc_aperture_reset_state_test": [
+        (
+            "CHK-APRT-BASES",
+            "APRT_BASES",
+            "GLOBAL_BASE, LOCAL_BASE and REGION_SIZE read their RDL reset values over JTAG2AXI",
+        ),
+        (
+            "CHK-APRT-REGION-PIN",
+            "APRT_REGION_PIN",
+            "smc_region_size_o carries the REGION_SIZE reset value 0x0100_0000",
+        ),
+        (
+            "CHK-APRT-CLOCK-GATES",
+            "APRT_CLOCK_GATES",
+            "the five peripheral cg_en bits read 0 and cg_hysteresis reads its reset value",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+    ],
+    "smu_smc_base_config_state_test": [
+        (
+            "CHK-BOOT-BASECFG-APERTURE",
+            "BOOT_BASECFG_APERTURE",
+            "GLOBAL_BASE, LOCAL_BASE and the REGION_SIZE size field read their RDL reset values",
+        ),
+        (
+            "CHK-BOOT-BASECFG-REGION-PORT",
+            "BOOT_BASECFG_REGION_PORT",
+            "smc_region_size_o equals 0x0100_0000 and the REGION_SIZE value read over JTAG2AXI",
+        ),
+        (
+            "CHK-BOOT-BASECFG-CG-HANG",
+            "BOOT_BASECFG_CG_HANG",
+            "CLOCK_GATE_CONTROL, the three hang-detector controls and the three thresholds "
+            "read their RDL reset values",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+    ],
     "smu_smc_boundary_io_test": [
         (
             "CHK-SMU-NDMRESET-REQ",
@@ -1119,6 +1535,214 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "and back to set",
         ),
     ],
+    "smu_isolation_retention_test": [
+        (
+            "CHK-ISO-RETAIN-S1",
+            "ISO_RETAIN_S1",
+            "ISOLATE_REQ_REG, PINEN, SMC and SMCEN read their programmed values after a cool reset",
+        ),
+        (
+            "CHK-ISO-RETAIN-S2",
+            "ISO_RETAIN_S2",
+            "ISOLATE_REQ_REG, SMC and SMCEN read 0 after a cold reset with GPIO 53 low",
+        ),
+        (
+            "CHK-ISO-RETAIN-S3",
+            "ISO_RETAIN_S3",
+            "ISOLATE_REQ_PINEN_REG reads 0 after a cold reset with GPIO 53 low and keeps its "
+            "value after one with GPIO 53 high",
+        ),
+        (
+            "CHK-ISO-RETAIN-S4",
+            "ISO_RETAIN_S4",
+            "both FLR counters keep 5 and 7 across a cool reset and read 0 after a cold reset",
+        ),
+    ],
+    "smu_ndm_reset_handshake_test": [
+        (
+            "CHK-NDM-REQUEST-S1",
+            "NDM_REQUEST_S1",
+            "NDMRESET_REQUEST follows request pin 0 and pin 3 high and low",
+        ),
+        (
+            "CHK-NDM-REQUEST-S2",
+            "NDM_REQUEST_S2",
+            "NDMRESET_REQUEST reads 0xF with all four request pins high",
+        ),
+        ("CHK-NDM-REQUEST-S3", "NDM_REQUEST_S3", "NDMRESET_CLUSTER_COUNT reads 4"),
+        (
+            "CHK-NDM-REQUEST-S4",
+            "NDM_REQUEST_S4",
+            "NDMRESET_REQUEST reads 0 with all request pins low after a cold reset and follows "
+            "request pin 0 high again",
+        ),
+        (
+            "CHK-NDM-PROCESS-S1",
+            "NDM_PROCESS_S1",
+            "NDMRESET_PROCESS bit 0 and bit 3 drive only their own process lane",
+        ),
+        (
+            "CHK-NDM-PROCESS-S2",
+            "NDM_PROCESS_S2",
+            "NDMRESET_PROCESS stores 32 bits and only bits 3:0 reach the port",
+        ),
+        (
+            "CHK-NDM-PROCESS-S3",
+            "NDM_PROCESS_S3",
+            "NDMRESET_PROCESS and the process port read 0 after a cold reset",
+        ),
+    ],
+    "smu_remap_cfg_register_map_test": [
+        (
+            "CHK-ALIAS-REGS-RESET",
+            "ALIAS_REGS_RESET",
+            "all 24 alias REGION_START/END/ATTRS registers read 0 before any write",
+        ),
+        (
+            "CHK-OREMAP-REGS-RESET",
+            "OREMAP_REGS_RESET",
+            "all 16 output remap REGION_ATTRS registers read 0 before any write",
+        ),
+        (
+            "CHK-ALIAS-REGS-PLACEMENT",
+            "ALIAS_REGS_PLACEMENT",
+            "unique alias register values read back at their own address only",
+        ),
+        (
+            "CHK-OREMAP-REGS-PLACEMENT",
+            "OREMAP_REGS_PLACEMENT",
+            "unique output remap offsets read back at their own address only",
+        ),
+        (
+            "CHK-ALIAS-REGS-MASKS",
+            "ALIAS_REGS_MASKS",
+            "alias start, end, offset, cacheable and valid bits store and read back",
+        ),
+        (
+            "CHK-OREMAP-REGS-MASKS",
+            "OREMAP_REGS_MASKS",
+            "output remap offset[55:0] and valid[63] store and read back",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "every bounded AXI wait site completed its declared access count",
+        ),
+    ],
+    "smu_reset_csr_access_test": [
+        (
+            "CHK-CSR-RESET-VALUES-S2",
+            "CSR_RESET_VALUES_S2",
+            "isolation registers and both FLR counters read 0 after the bring-up cold reset",
+        ),
+        (
+            "CHK-CSR-RESET-VALUES-S3",
+            "CSR_RESET_VALUES_S3",
+            "NDMRESET_REQUEST and NDMRESET_PROCESS read 0 and NDMRESET_CLUSTER_COUNT reads 4",
+        ),
+        (
+            "CHK-CSR-RESET-VALUES-S4",
+            "CSR_RESET_VALUES_S4",
+            "SYNC_REG reads 0 and ISOLATE_REQ_VIS reads the pin level and 1 on bits 4 and 8",
+        ),
+        (
+            "CHK-CSR-ACCESS-S1",
+            "CSR_ACCESS_S1",
+            "random data reads back masked from SS_CONFIG, SS_WARM_RESET_N, NDMRESET_PROCESS "
+            "and the FLR counter",
+        ),
+        (
+            "CHK-CSR-ACCESS-S2",
+            "CSR_ACCESS_S2",
+            "read-only registers keep their value after a write of all ones",
+        ),
+        (
+            "CHK-CSR-ACCESS-S3",
+            "CSR_ACCESS_S3",
+            "defined reset-unit registers keep their value across accesses to unmapped offsets",
+        ),
+        (
+            "CHK-SYNC-IRQ-S1",
+            "SYNC_IRQ_S1",
+            "sync_irq_o follows SYNC_REG.sync written 1 then 0",
+        ),
+        (
+            "CHK-SYNC-IRQ-S2",
+            "SYNC_IRQ_S2",
+            "SYNC_REG and sync_irq_o read 0 after a primary reset",
+        ),
+    ],
+    "smu_dtp_sysreset_stop_clks_test": [
+        (
+            "CHK-DTP-SYSRESET-S1",
+            "DTP_SYSRESET_S1",
+            "dtp_stop_clks_o reads 1 with jtag_clock_stop set and 0 on every clk_smu_i edge "
+            "inside the primary reset",
+        ),
+        (
+            "CHK-DTP-SYSRESET-S2",
+            "DTP_SYSRESET_S2",
+            "dtp_stop_clks_o first reads 1 on the third clk_smu_i edge after the primary reset "
+            "releases",
+        ),
+    ],
+    "smu_smc_cold_boot_release_order_test": [
+        (
+            "CHK-BOOT-PG-HOLD",
+            "BOOT_PG_HOLD",
+            "with powergood_i low and rst_cold_ni high for 600 clk_ref the stable power-good "
+            "and the stable cold reset read 0 at every sample",
+        ),
+        (
+            "CHK-BOOT-PG-STRETCH",
+            "BOOT_PG_STRETCH",
+            "the stable power-good reads 0 for the first 32 clk_ref after powergood_i rises "
+            "and rises once",
+        ),
+        (
+            "CHK-BOOT-COLD-HELD",
+            "BOOT_COLD_HELD",
+            "the stable cold reset reads 0 at every sample from its assertion (after the "
+            "32-sample de-glitch) while rst_cold_ni is low, and stays 0 through the extension "
+            "window after the first release request",
+        ),
+        (
+            "CHK-BOOT-COLD-EXT",
+            "BOOT_COLD_EXT",
+            "the stable cold reset reads 0 for the first 255 clk_ref after the later of the "
+            "powergood_i and rst_cold_ni rises",
+        ),
+        (
+            "CHK-BOOT-COLD-REASSERT",
+            "BOOT_COLD_REASSERT",
+            "a 64-clk_ref rst_cold_ni pulse inside the extension: the stable cold reset stays "
+            "0 from the first release request through the pulse, and rises within the bound "
+            "and no earlier than 255 clk_ref after the later release",
+        ),
+        (
+            "CHK-BOOT-PRIM-SMC-ORDER",
+            "BOOT_PRIM_SMC_ORDER",
+            "rst_primary_smc_clk_n_o reads 0 at every sample while the cold reset is asserted",
+        ),
+        (
+            "CHK-BOOT-PRIM-REF-ORDER",
+            "BOOT_PRIM_REF_ORDER",
+            "rst_primary_ref_clk_no reads 0 at every sample while the cold reset is asserted "
+            "and at every clk_ref sample where the stable cold reset reads 0",
+        ),
+        (
+            "CHK-BOOT-PRIM-EDGE",
+            "BOOT_PRIM_EDGE",
+            "each primary reset has one 0 to 1 edge per boot on its destination clock and "
+            "does not read 0 afterwards",
+        ),
+        (
+            "CHK-BOOT-COLD-TO-PRIMARY",
+            "BOOT_COLD_TO_PRIMARY",
+            "each primary reset rises within its bounded wait and reads 1 at the end of each boot",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded reset-pin waits with last state"),
+    ],
     "smu_smc_cool_reset_pin_test": [
         (
             "CHK-SMU-COOL-PIN-DEGLITCH",
@@ -1141,8 +1765,76 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "its straps rise and holds when they drop again",
         ),
     ],
+    "smu_smc_cpu_ctrl_boot_state_test": [
+        (
+            "CHK-BOOT-SCRATCH0-RESET",
+            "BOOT_SCRATCH0_RESET",
+            "SCRATCH[0] bits[31:0] read 0 after boot over JTAG2AXI",
+        ),
+        (
+            "CHK-BOOT-RESET-VECTORS",
+            "BOOT_RESET_VECTORS",
+            "RESET_VECTOR[0..3] each read 0xC004_0000",
+        ),
+        (
+            "CHK-BOOT-RESET-CTRL-VALUES",
+            "BOOT_RESET_CTRL_VALUES",
+            "RESET_CTRL, CORE_RESET_PULSE_COUNT and RESET_TIMEOUT read their RDL reset values",
+        ),
+        (
+            "CHK-BOOT-WDT-TIMEOUT-RESET",
+            "BOOT_WDT_TIMEOUT_RESET",
+            "WDT_TIMEOUT reads 0x4000 and WDT_TIMEOUT_RESET reads 0",
+        ),
+        (
+            "CHK-BOOT-SCRATCH-1-15",
+            "BOOT_SCRATCH_1_15",
+            "SCRATCH[1..15] bits[31:0] read 0, upper words logged",
+        ),
+        (
+            "CHK-BOOT-ATTRIBUTES",
+            "BOOT_ATTRIBUTES",
+            "SMC_ATTRIBUTES cores, sram_size, mailboxes, mailbox depth, ext interrupts and the "
+            "primary strap decode to their documented values",
+        ),
+        (
+            "CHK-BOOT-DUMMY-ROM",
+            "BOOT_DUMMY_ROM",
+            "DUMMY_ROM_0..3 read their words and DUMMY_ROM_NULL[0..3] read 0",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+    ],
     "smu_smc_dtp_jtag2axi_smoke_test": [
         ("CHK-JTAG2AXI-SMOKE-SCRATCH", "CHK-JTAG2AXI-SMOKE-SCRATCH", "J2A scratch write/readback"),
+    ],
+    "smu_smc_mailbox_aperture_layout_test": [
+        (
+            "CHK-MBX-OFFSET-MAP",
+            "MBX_OFFSET_MAP",
+            "ten offsets of outbound mailbox 0 answer as distinct registers, WIRQT and IRQEN read "
+            "back",
+        ),
+        (
+            "CHK-MBX-STRIDE-WIRQT",
+            "MBX_STRIDE_WIRQT",
+            "WIRQT of mailbox 0, 1 and 31 at the 0x1000 stride is independent",
+        ),
+        (
+            "CHK-MBX-IRQEN-INDEP",
+            "MBX_IRQEN_INDEP",
+            "IRQEN of mailbox 0, 1 and 31 is independent",
+        ),
+        (
+            "CHK-MBX-INBOUND-INDEP",
+            "MBX_INBOUND_INDEP",
+            "inbound aperture of pair 0 at +0x800 is independent of the outbound aperture",
+        ),
+        (
+            "CHK-MBX-SMC-ATTRIBUTES",
+            "MBX_SMC_ATTRIBUTES",
+            "SMC_ATTRIBUTES reports 32 mailboxes of depth 2",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
     ],
     "smu_smc_mailbox_int_test": [
         (
@@ -1157,9 +1849,111 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_mailbox_sanity_test": [
         ("CHK-MBX-IRQEN", "SMC_MBX_CSR_OK", "outbound-0 IRQEN write/readback"),
     ],
+    "smu_smc_mailbox_status_error_test": [
+        (
+            "CHK-MBX-ERR-READ-EMPTY",
+            "MBX_ERR_READ_EMPTY",
+            "empty READ_DATA read is SLVERR with 0xFEEDDEAD, ERROR_FLAGS 0x1, IRQS bit 2 set",
+        ),
+        (
+            "CHK-MBX-STATUS-LEVELS",
+            "MBX_STATUS_LEVELS",
+            "STATUS reads 0x5 after one push and 0x7 after two (depth 2)",
+        ),
+        (
+            "CHK-MBX-ERR-WRITE-FULL",
+            "MBX_ERR_WRITE_FULL",
+            "write to the full FIFO is SLVERR, ERROR_FLAGS 0x2, IRQS bit 2 set, STATUS 0x7",
+        ),
+        (
+            "CHK-MBX-ERR-CLEAR-ON-READ",
+            "MBX_ERR_CLEAR_ON_READ",
+            "second ERROR_FLAGS read is 0 while IRQS bit 2 stays set",
+        ),
+        (
+            "CHK-MBX-ERR-IRQ-ACK",
+            "MBX_ERR_IRQ_ACK",
+            "IRQEN.eirq raises lane 0, IRQS write-one acknowledge clears bit 2 and drops lane 0",
+        ),
+        (
+            "CHK-MBX-STATUS-FLUSH",
+            "MBX_STATUS_FLUSH",
+            "wflush leaves STATUS 0x1 and the latched IRQS bit 0 set",
+        ),
+        (
+            "CHK-MBX-RO-WRITES",
+            "MBX_RO_WRITES",
+            "writes to STATUS, READ_DATA, ERROR_FLAGS and IRQP are SLVERR and change nothing",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and lane-0 waits with last state"),
+    ],
+    "smu_smc_mailbox_threshold_lane_test": [
+        (
+            "CHK-MBX-WT-LATCH-GATED",
+            "MBX_WT_LATCH_GATED",
+            "with IRQEN 0 and one word queued IRQS bit 0 and STATUS bit 2 read 1, lane 0 stays low",
+        ),
+        (
+            "CHK-MBX-IRQP-GATING",
+            "MBX_IRQP_GATING",
+            "IRQP reads 0 with IRQEN 0 and 1 after IRQEN is set, lane 0 rises",
+        ),
+        (
+            "CHK-MBX-WT-ENABLE-DROP",
+            "MBX_WT_ENABLE_DROP",
+            "clearing IRQEN drops lane 0 while STATUS bit 2 stays 1",
+        ),
+        (
+            "CHK-MBX-WT-ACK-BASELINE",
+            "MBX_WT_ACK_BASELINE",
+            "flush empties STATUS, IRQS stays latched until the write-one acknowledge drops lane 0",
+        ),
+        (
+            "CHK-MBX-WT-CLAMP",
+            "MBX_WT_CLAMP",
+            "WIRQT 5 clamps to depth - 1: one word no IRQ, two words raise lane 0",
+        ),
+        (
+            "CHK-MBX-WT-REASSERT-LOG",
+            "MBX_WT_REASSERT_LOG",
+            "acknowledge with occupancy above WIRQT observed and logged, STATUS bit 2 stays 1",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A and lane-0 waits with last state"),
+    ],
     "smu_smc_reset_ctrl_test": [
         ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "SMC primary reset released"),
         ("CHK-RST-COLD-STABLE", "RST_COLD_STABLE_1", "cold stable released"),
+    ],
+    "smu_smc_reset_unit_state_test": [
+        (
+            "CHK-BOOT-RSTUNIT-CONFIG",
+            "BOOT_RSTUNIT_CONFIG",
+            "SS_CONFIG, locks, cold reset and force read 0 and SS_WARM_RESET_N reads all ones",
+        ),
+        (
+            "CHK-BOOT-RSTUNIT-HOLDS",
+            "BOOT_RSTUNIT_HOLDS",
+            "the four hold registers read their RDL reset value 0",
+        ),
+        (
+            "CHK-BOOT-RSTUNIT-ISOLATION",
+            "BOOT_RSTUNIT_ISOLATION",
+            "the four isolation registers, the two FLR counter registers and SYNC_REG read their "
+            "RDL reset value 0",
+        ),
+        (
+            "CHK-BOOT-RSTUNIT-VIS",
+            "BOOT_RSTUNIT_VIS",
+            "ISOLATE_REQ_VIS bits 4 and 8 read their RDL reset value 1; bit 0 reads the idle pin "
+            "level 0, which differs from the RDL reset value 1 of this hardware-written field; "
+            "logged, not compared",
+        ),
+        (
+            "CHK-BOOT-RSTUNIT-IDLE-OUTPUTS",
+            "BOOT_RSTUNIT_IDLE_OUTPUTS",
+            "isolate_req_o, skip_mem_repair_o and sync_irq_o are 0 with the pins idle",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
     ],
     "smu_smc_gpio_pad_output_test": [
         (
@@ -1169,6 +1963,53 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "loops it back to its own gpio_interrupt_o lane, and transmit alone drives the pad "
             "with that lane low",
         ),
+    ],
+    "smu_smc_gpio_spi_pad_ownership_test": [
+        (
+            "CHK-DBG-GPIO-SPI-OWNED",
+            "DBG_GPIO_SPI_OWNED",
+            "pads 0-3, 8 and 9 read lsio_enable 1 and keep their level under core2pad 1 and 0",
+        ),
+        (
+            "CHK-DBG-GPIO-SPI-DISABLE",
+            "DBG_GPIO_SPI_DISABLE",
+            "lsio_disable clears lsio_enable on pads 0, 8 and 9 and the pad follows core2pad",
+        ),
+        (
+            "CHK-DBG-GPIO-SPI-UNDRIVEN",
+            "DBG_GPIO_SPI_UNDRIVEN",
+            "pads 4-7, 10 and 54 are not driven by the SPI host in either direction until "
+            "lsio_disable is set",
+        ),
+        (
+            "CHK-DBG-GPIO-SPI-PRIORITY",
+            "DBG_GPIO_SPI_PRIORITY",
+            "the same register write is ignored with lsio_disable clear and obeyed with it set",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A/AXI/settle waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S6<PASS"),
+    ],
+    "smu_smc_gpio_access_filter_test": [
+        (
+            "CHK-DBG-GPIO-FILTER-RESET",
+            "DBG_GPIO_FILTER_RESET",
+            "ACCESS_FILTER of pad 11 reads its reset value and AxPROT 0 and 7 are admitted "
+            "with both filters disabled",
+        ),
+        (
+            "CHK-DBG-GPIO-FILTER-WRITE",
+            "DBG_GPIO_FILTER_WRITE",
+            "with write_filter_enable set only AWPROT equal to awprot_requirement is admitted "
+            "and the other seven values are refused without changing the pad",
+        ),
+        (
+            "CHK-DBG-GPIO-FILTER-READ",
+            "DBG_GPIO_FILTER_READ",
+            "with read_filter_enable set only ARPROT equal to arprot_requirement returns the "
+            "DATA_CTRL value and the other seven values are refused",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A/AXI/settle waits with last state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S5<PASS"),
     ],
     "smu_smc_boundary_lane_sweep_test": [
         (
@@ -1234,6 +2075,53 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the IIR read retires it",
         ),
     ],
+    "smu_secure_tm_real_sense_window_test": [
+        (
+            "CHK-SEP-SECURE-TM-CLEAR-REAL",
+            "SEP_SECURE_TM_CLEAR_REAL",
+            "secure_tm_o latches 1 in leg 1, reads 0 under the second cold reset and stays 0 "
+            "from release to the real done rise",
+        ),
+        (
+            "CHK-SEP-SECURE-TM-NO-EARLY-FOLLOW",
+            "SEP_SECURE_TM_NO_EARLY_FOLLOW",
+            "a strap pulse between response strobes 100 and 180 and the strap at 0 after done "
+            "leave secure_tm_o at 0",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded done/reset/strobe/TAP waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S7<PASS"),
+    ],
+    "smu_sep_cold_reassert_during_sense_test": [
+        (
+            "CHK-SEP-RESET-REASSERT",
+            "SEP_RESET_REASSERT",
+            "sep_reset_n_o reads 0 on every sample while the cold reset is re-asserted after done "
+            "and after response words 0 and 128, and near 255 when that fall lands before the "
+            "256th strobe",
+        ),
+        (
+            "CHK-SEP-DONE-COLD-CLEAR",
+            "SEP_DONE_COLD_CLEAR",
+            "done reads 0 under the re-asserted cold reset and rises once, after at least 256 "
+            "response strobes, in the second sense",
+        ),
+        (
+            "CHK-SEP-SENSE-ABORT-RESTART",
+            "SEP_SENSE_ABORT_RESTART",
+            "an aborted sense leaves done at 0 with no rise and the final sense restarts and "
+            "delivers at least 256 strobes before its single done rise",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded done/strobe/cold-reset/TAP waits with last state",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S8<PASS"),
+    ],
     "smu_sep_secure_tm_test": [
         (
             "CHK-SMU-SECURE-TM",
@@ -1266,6 +2154,14 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "store landed in the CSR and not only in a testbench mirror",
         ),
     ],
+    "smu_smc_scratch_bridge_readback_test": [
+        (
+            "CHK-COMP-SCRATCH-READBACK",
+            "COMP_SCRATCH_READBACK",
+            "SCRATCH[0..15] read 0 at reset and read back the written pattern over JTAG2AXI",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+    ],
     "smu_smc_smoke_test": [
         ("CHK-SMC-ROM-READ", "SMC_ROM_READ_OK", "SMC ROM read activity observed"),
         (
@@ -1279,6 +2175,26 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "SMC firmware wrote TEST_PASS and never TEST_FAIL",
         ),
         ("CHK-NONVAC", "CHK-NONVAC", "boot scoreboard verdict on the SEP=1 wrapper"),
+    ],
+    "smu_smc_sram_init_sequence_test": [
+        (
+            "CHK-BOOT-INIT-DONE-ONCE",
+            "BOOT_INIT_DONE_ONCE",
+            "smc_init_mem_done_o rises once on the cold boot, with scratch writes above 0 at the "
+            "rise and none in the next 64 clk_smu",
+        ),
+        (
+            "CHK-BOOT-INIT-BEFORE-FETCH",
+            "BOOT_INIT_BEFORE_FETCH",
+            "smc_rom_read_count_o is 0 until the done rise and first increments after it",
+        ),
+        (
+            "CHK-BOOT-INIT-REARM",
+            "BOOT_INIT_REARM",
+            "after a second cold reset done rises once more with a write count above the count "
+            "read during the reset",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded done/ROM-read waits with last state"),
     ],
     "smu_smc_ss_reset_ctrl_sweep_test": [
         (
@@ -1335,6 +2251,30 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_wdt_timeout_irq_test": [
         ("CHK-WDT-IP0", "WDT_WDOGIP0", "WDOGIP0 sets after enable+CMP"),
     ],
+    "smu_ss_config_lane_drive_test": [
+        (
+            "CHK-COMP-SS-CONFIG-SINGLE-LANE",
+            "COMP_SS_CONFIG_SINGLE_LANE",
+            "writing SS_CONFIG = 1 << i leaves ss_config_o equal to 1 << i for each of the 32 "
+            "lanes",
+        ),
+        (
+            "CHK-COMP-SS-CONFIG-ALL-ONES-ZERO",
+            "COMP_SS_CONFIG_ALL_ONES_ZERO",
+            "all-ones then all-zeros writes drive ss_config_o to the same value and SS_CONFIG "
+            "reads 0",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A and pin waits with last state",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence S1<S2<S3<S4 with positive simulated time between steps",
+        ),
+    ],
     "smu_sys_in_filter_program_jtag_test": [
         ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "after program window OKAY"),
     ],
@@ -1383,6 +2323,57 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "request at the pin and clears the register field, and lowering it "
             "again at the wrapper pin leaves the request retired",
         ),
+    ],
+    "smu_telemetry_queue_threshold_test": [
+        (
+            "CHK-TELQ-POP-EMPTY",
+            "TELQ_POP_EMPTY",
+            "a pop on the empty queue leaves BUFFER_EMPTY set and PROBE_ID 0",
+        ),
+        (
+            "CHK-TELQ-EMPTY-FULL",
+            "TELQ_EMPTY_FULL",
+            "BUFFER_EMPTY drops after the first message and BUFFER_FULL sets only on the eighth",
+        ),
+        (
+            "CHK-TELQ-THRESHOLD-LIVE",
+            "TELQ_THRESHOLD_LIVE",
+            "INTR_STATUS.BUFFER_THRESHOLD is 0 up to three queued and 1 above the threshold",
+        ),
+        (
+            "CHK-TELQ-ORDER",
+            "TELQ_ORDER",
+            "successive pops expose probe ids 2 to 8 in arrival order, then 0 when empty",
+        ),
+        (
+            "CHK-TELQ-THRESHOLD-CLEAR",
+            "TELQ_THRESHOLD_CLEAR",
+            "a write of 1 leaves the status at 1; draining to the threshold or raising it reads 0",
+        ),
+        (
+            "CHK-TELQ-THRESHOLD-TEST",
+            "TELQ_THRESHOLD_TEST",
+            "INTR_TEST.BUFFER_THRESHOLD forces the status to 1 and releases it to 0",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A and ATB waits with last state",
+        ),
+    ],
+    "smu_telemetry_reset_state_test": [
+        (
+            "CHK-TELR-CTRL-STATUS",
+            "TELR_CTRL_STATUS",
+            "STATUS reads BUFFER_EMPTY set and BUFFER_FULL clear, and CTRL, INTR_STATUS, "
+            "INTR_ENABLE and INTR_TEST read 0, on all three receivers",
+        ),
+        (
+            "CHK-TELR-MESSAGE-ZERO",
+            "TELR_MESSAGE_ZERO",
+            "PROBE_ID, COUNTER_VLDS and the counters read 0 on the empty queue",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
     ],
     "smu_system_timer_octs_test": [
         (
@@ -1516,6 +2507,31 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-FUSE-SENSE-S2",
             "CHK-SMU-FUSE-SENSE-S2",
             "sep_fuse_sense_done_o rises once, after reset release and after SEP eFuse traffic",
+        ),
+    ],
+    "smu_smc_efuse_shadow_map_readback_test": [
+        (
+            "CHK-BOOT-SHADOW-SAMPLES",
+            "BOOT_SHADOW_SAMPLES",
+            "sampled SMC eFuse map words read over JTAG2AXI and the stream words of the same "
+            "index equal the words of the eFuse image the run loads, and the map words equal "
+            "the stream words",
+        ),
+        (
+            "CHK-BOOT-SHADOW-ELEMENTS",
+            "BOOT_SHADOW_ELEMENTS",
+            "the first word of each named smc_efuse_map element equals its word in the eFuse "
+            "image the run loads",
+        ),
+        (
+            "CHK-BOOT-SENSE-STATUS",
+            "BOOT_SENSE_STATUS",
+            "EFUSE_INTERFACE_CTRL_STATUS.efuse_sense_done reads 1 after smc_fuse_sense_done_o rose",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded sense, capture and J2A waits with last state",
         ),
     ],
     "smu_smc_efuse_shadow_sense_reset_test": [
@@ -1678,11 +2694,125 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "lane quiet",
         ),
     ],
+    "smu_xtrig_cold_reset_clears_ctn_test": [
+        (
+            "CHK-CTN-RESET-CLEARS-REGS",
+            "CHK-CTN-RESET-CLEARS-REGS",
+            "CT_SRC[0], CTP[0].CONFIG and STRETCH_MULT read their programmed values before the "
+            "cold reset and their RDL reset value 0 after it",
+        ),
+        (
+            "CHK-CTP-RESET-MID-REQUEST",
+            "CHK-CTP-RESET-MID-REQUEST",
+            "xtrig_ctp_req_out_dout_o[1] is low within 16 clk_smu of the reset and stays low, "
+            "CTP[1].STATUS reads 0 (only ACK_IN while the acknowledge is still held), from "
+            "REQ_ASSERTED and WAIT_ACK_DEASSERT",
+        ),
+        (
+            "CHK-CLKSTOP-RESET-LOW",
+            "CHK-CLKSTOP-RESET-LOW",
+            "dtp_stop_clks_o is 0 while the DTP reset is asserted with the lane request held "
+            "and on the first edge after release",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A, reset and pin waits with last state",
+        ),
+    ],
     "smu_xtrig_ctm_illegal_phase_test": [
         ("CHK-XT-ILLEGAL", "XT_ILLEGAL_PHASE", "DTP[9:2] follows abort/double-req pin patterns"),
     ],
     "smu_xtrig_ctm_remap_test": [
         ("CHK-XT-CTM-REMAP", "XT_CTM_REMAP", "product-pin CTM remap"),
+    ],
+    "smu_xtrig_ctm_select_walk_test": [
+        (
+            "CHK-CT-SRC-WALK",
+            "CHK-CT-SRC-WALK",
+            "CT_DST_SELECT[25:0] stores each walked bit and reads it back exactly",
+        ),
+        (
+            "CHK-CT-SRC-KINDS",
+            "CHK-CT-SRC-KINDS",
+            "each of the three CT_SRC index kinds reads back its walked bits and reads 0 after "
+            "the clear",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+    ],
+    "smu_xtrig_ctn_csr_rw_test": [
+        (
+            "CHK-CTP-CFG-STRETCH-RW",
+            "CHK-CTP-CFG-STRETCH-RW",
+            "port 3 CONFIG reads back 0x7 and 0x0 and STRETCH_MULT reads back 0, 1 and 0xFFFF as "
+            "written",
+        ),
+        (
+            "CHK-CTP-STATUS-WRITE-IGNORED",
+            "CHK-CTP-STATUS-WRITE-IGNORED",
+            "a STATUS write completes with success and the next read equals the read before it",
+        ),
+        (
+            "CHK-CTP-WINDOW-INDEPENDENCE",
+            "CHK-CTP-WINDOW-INDEPENDENCE",
+            "each of 16 ports reads back its own STRETCH_MULT and ports 0 and 15 their own CONFIG",
+        ),
+        (
+            "CHK-CTN-SERIALISED-ACCESS",
+            "CHK-CTN-SERIALISED-ACCESS",
+            "interleaved CT_SRC and CTP accesses over JTAG2AXI return the values last written to "
+            "each register",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+    ],
+    "smu_xtrig_ctn_reset_values_test": [
+        (
+            "CHK-CTN-CTSRC-RESET",
+            "CHK-CTN-CTSRC-RESET",
+            "all 26 CT_SRC CONFIG_0 reads succeed and return 0",
+        ),
+        (
+            "CHK-CTN-CTP-RESET",
+            "CHK-CTN-CTP-RESET",
+            "CONFIG, STATUS and STRETCH_MULT of all 16 CTPs read 0",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
+    ],
+    "smu_xtrig_ctp_status_reset_test": [
+        (
+            "CHK-STATUS-BUSY",
+            "CHK-STATUS-BUSY",
+            "STATUS.BUSY reads 1 while the request is outstanding and 0 after the handshake "
+            "completes",
+        ),
+        (
+            "CHK-STATUS-LEVELS",
+            "CHK-STATUS-LEVELS",
+            "REQ_OUT, ACK_IN, REQ_IN and ACK_OUT read 1 at INVERT 0 and 1; REQ_OUT and ACK_OUT "
+            "read 0 in wire-OR",
+        ),
+        (
+            "CHK-HS-RESET-RECOVER",
+            "CHK-HS-RESET-RECOVER",
+            "RESET drops a stuck req_out and REQ_OUT; the first trigger after RESET clears raises "
+            "it again",
+        ),
+        (
+            "CHK-HS-RESET-DISCARD",
+            "CHK-HS-RESET-DISCARD",
+            "req_out_dout[2] stays low for 64 clk_smu while a trigger arrives with RESET = 1, "
+            "and for 64 clk_smu after RESET clears with the wire released",
+        ),
+        (
+            "CHK-HS-RESET-RX",
+            "CHK-HS-RESET-RX",
+            "with RESET = 1 a request in is acknowledged and BUSY holds until it is released",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded J2A and pad waits with last state",
+        ),
     ],
 }
 

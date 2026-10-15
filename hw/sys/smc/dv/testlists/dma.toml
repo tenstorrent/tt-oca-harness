@@ -21,6 +21,22 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_dma_csr_config_test"
+module = "smc_dma_csr_config_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_backpressure_breadth_test"
+module = "smc_dma_backpressure_breadth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dma_reserved_stream_banks_test"
 module = "smc_dma_reserved_stream_banks_test"
 seed = 1
@@ -66,4 +82,100 @@ module = "smc_dma_reg_byte_enable_error_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "dma"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_resp_unchecked_test"
+module = "smc_zeroer_resp_unchecked_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_job_breadth_test"
+module = "smc_zeroer_job_breadth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_field_widths_test"
+module = "smc_dma_field_widths_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_irq_test"
+module = "smc_zeroer_irq_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_sram_init_test"
+module = "smc_zeroer_sram_init_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_linear_copy_test"
+module = "smc_dma_linear_copy_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_2d_copy_test"
+module = "smc_dma_2d_copy_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_completion_status_test"
+module = "smc_dma_completion_status_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_accel_window_decode_test"
+module = "smc_accel_window_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_zeroer_busy_outstanding_test"
+module = "smc_zeroer_busy_outstanding_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_burst_shaping_test"
+module = "smc_dma_burst_shaping_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_accel_egress_attrs_test"
+module = "smc_accel_egress_attrs_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
 run_modes = ["smoke"]

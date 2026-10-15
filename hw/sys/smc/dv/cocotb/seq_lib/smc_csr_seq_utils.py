@@ -529,8 +529,9 @@ class SmcCsrSeq(smc_base_test_seq):
             f"{block}: no scoreboard on this sequence's env, so the CSR traffic "
             f"cannot be corroborated independently of the sequence's own counter"
         )
-        assert sb.sys_axi_checks_seen >= self.accesses, (
-            f"{block}: the scoreboard checked only {sb.sys_axi_checks_seen} SYS "
+        seen = sb.sys_axi_checks_seen + sb.sys_axi_reset_aborted_seen
+        assert seen >= self.accesses, (
+            f"{block}: the scoreboard saw only {seen} SYS "
             f"AXI item(s) but this sequence issued {self.accesses} access(es) -- "
             f"the traffic never reached the scoreboard, so none of it is checked "
             f"evidence"
@@ -591,8 +592,9 @@ class SmcCsrSeq(smc_base_test_seq):
             f"{block}: no scoreboard on this sequence's env, so the CSR traffic "
             f"cannot be corroborated independently of the sequence's own counter"
         )
-        assert sb.sys_axi_checks_seen >= self.accesses, (
-            f"{block}: the scoreboard checked only {sb.sys_axi_checks_seen} SYS "
+        seen = sb.sys_axi_checks_seen + sb.sys_axi_reset_aborted_seen
+        assert seen >= self.accesses, (
+            f"{block}: the scoreboard saw only {seen} SYS "
             f"AXI item(s) but this sequence issued {self.accesses} access(es) -- "
             f"the traffic never reached the scoreboard"
         )

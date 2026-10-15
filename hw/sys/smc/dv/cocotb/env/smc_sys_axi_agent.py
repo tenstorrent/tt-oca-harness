@@ -114,6 +114,12 @@ class SmcSysAxiItem(uvm_sequence_item):
         # True states why incomplete traffic is acceptable there.
         self.allow_timeout: bool = False
         self.timed_out: bool = False
+        # Accept an access abandoned because a reset lands while it is outstanding:
+        # the transfer completes with no response, no timeout, and the driver reads
+        # rst_primary_smc_clk_no == 0 at that moment. Default False. Never covers a
+        # timeout or an error response code. `reset_aborted` records that outcome.
+        self.allow_reset_abort: bool = False
+        self.reset_aborted: bool = False
         self.timeout_ns: int | None = None
         # TB-local SmcMemoryModel golden.
         # OKAY WR with update_golden updates the model; OKAY RD with
@@ -147,6 +153,8 @@ class SmcSysAxiItem(uvm_sequence_item):
         # never sets this: the point is that the count comes from the driver that
         # completed the access, not from the test that claims to have issued it.
         self.bus_name: str = ""
+        # AXI ARID/AWID of this access. None keeps the VIP's own ID allocation.
+        self.axi_id: int | None = None
 
     @property
     def transfer_bytes(self) -> int:
@@ -160,7 +168,7 @@ class SmcSysAxiItem(uvm_sequence_item):
             f"{self.op.value} addr=0x{self.addr:014x} len={self.length} "
             f"beats={self.beats} burst={self.burst} "
             f"wdata=0x{self.wdata:x}{strb} rdata=0x{self.rdata:x} exp={exp} "
-            f"ok={self.resp_ok}"
+            f"ok={self.resp_ok} reset_aborted={self.reset_aborted}"
         )
 
 
@@ -247,6 +255,7 @@ class SmcSysAxiDriver(uvm_driver):
             await self._collect_transfer(member, event)
 
     def _start_transfer(self, item: SmcSysAxiItem):
+        id_kw = {} if item.axi_id is None else {"arid": item.axi_id}
         if item.op is SmcSysAxiOp.READ:
             return self.axi.init_read(
                 address=item.addr,
@@ -254,6 +263,7 @@ class SmcSysAxiDriver(uvm_driver):
                 size=self._axi_size(item.length),
                 burst=int(item.burst),
                 prot=int(item.prot),
+                **id_kw,
             )
         if item.op is SmcSysAxiOp.WRITE:
             if item.wstrb is not None:
@@ -264,6 +274,7 @@ class SmcSysAxiDriver(uvm_driver):
                 size=self._axi_size(item.length),
                 burst=int(item.burst),
                 prot=int(item.prot),
+                **({} if item.axi_id is None else {"awid": item.axi_id}),
             )
         raise ValueError(f"unknown SMC SYS AXI op {item.op}")
 
@@ -285,16 +296,19 @@ class SmcSysAxiDriver(uvm_driver):
             f"an explicit strobe needs a {item.length}-byte aligned address, got 0x{item.addr:x}"
         )
         transfer = (1 << item.length) - 1
-        assert 0 < item.wstrb <= transfer, (
-            f"wstrb 0x{item.wstrb:x} is empty or strobes outside the {item.length}-byte "
+        assert 0 <= item.wstrb <= transfer, (
+            f"wstrb 0x{item.wstrb:x} is negative or strobes outside the {item.length}-byte "
             f"transfer at 0x{item.addr:x}"
         )
         shift = item.addr % lanes
         data_mask = (1 << (item.length * 8)) - 1
 
         event = Event()
-        awid = wif.cur_id
-        wif.cur_id = (wif.cur_id + 1) % wif.id_count
+        if item.axi_id is None:
+            awid = wif.cur_id
+            wif.cur_id = (wif.cur_id + 1) % wif.id_count
+        else:
+            awid = item.axi_id
         aw = wif.aw_channel._transaction_obj()
         aw.awid = awid
         aw.awaddr = item.addr
@@ -331,7 +345,18 @@ class SmcSysAxiDriver(uvm_driver):
         what = item.op.value
         resp = await self._timed_event(event, item, what)
         if resp is None:
-            item.resp_ok = item.allow_timeout
+            if not item.timed_out:
+                rst = cocotb.top.rst_primary_smc_clk_no.value
+                level = int(rst) if rst.is_resolvable else None
+                item.reset_aborted = level == 0
+                self.logger.info(
+                    "%s %s 0x%014x completed with no response (rst_primary_smc_clk_no=%s)",
+                    self.bus_name,
+                    what,
+                    item.addr,
+                    level,
+                )
+            item.resp_ok = item.allow_timeout or (item.reset_aborted and item.allow_reset_abort)
             return
         item.resp_code = self._resp_code(resp)
         _raw_ok = self._resp_ok(resp)

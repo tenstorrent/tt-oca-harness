@@ -180,3 +180,135 @@ timeout_sec = 3600
 tags = ["ci", "efuse"]
 run_modes = ["smoke"]
 args = ["+smc_efuse_hex=smc_efuse_image_random.hex"]
+
+[[tests]]
+name = "smc_efuse_map_locks_register_test"
+module = "smc_efuse_map_locks_register_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_locks_register_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_lock_field_enforce_test"
+module = "smc_efuse_map_lock_field_enforce_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_lock_field_enforce_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_sep_write_test"
+module = "smc_efuse_map_sep_write_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_sep_write_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_layout_decode_test"
+module = "smc_efuse_map_layout_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_layout_decode_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_concurrency_test"
+module = "smc_efuse_map_concurrency_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_concurrency_test.hex"]
+
+[[tests]]
+name = "smc_efuse_bank_ctrl_window_test"
+module = "smc_efuse_bank_ctrl_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_sense_sequence_test"
+module = "smc_efuse_sense_sequence_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_fuse_reset_gate_test"
+module = "smc_efuse_fuse_reset_gate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+args = ["+smc_hold_ext_boot"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_test"
+module = "smc_efuse_map_sense_image_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_zero_test"
+module = "smc_efuse_map_sense_image_zero_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_image=zero", "+smc_efuse_hex=smc_efuse_map_sense_image_zero_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_ones_test"
+module = "smc_efuse_map_sense_image_ones_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_image=ones", "+smc_efuse_hex=smc_efuse_map_sense_image_ones_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_walking_test"
+module = "smc_efuse_map_sense_image_walking_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_image=walking", "+smc_efuse_hex=smc_efuse_map_sense_image_walking_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_random_test"
+module = "smc_efuse_map_sense_image_random_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_image=random", "+smc_efuse_hex=smc_efuse_map_sense_image_random_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_unique_test"
+module = "smc_efuse_map_sense_image_unique_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_image=unique", "+smc_efuse_hex=smc_efuse_map_sense_image_unique_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_reset_persistence_test"
+module = "smc_efuse_map_reset_persistence_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_reset_persistence_test.hex"]
