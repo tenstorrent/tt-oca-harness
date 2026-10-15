@@ -28277,8 +28277,8 @@ Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-326-smc_gpio_intf_data_ctrl_write_sweep_test]]
-===== 326 `smc_gpio_intf_data_ctrl_write_sweep_test`
+[[sec-327-smc_gpio_intf_data_ctrl_write_sweep_test]]
+===== 327 `smc_gpio_intf_data_ctrl_write_sweep_test`
 
 *Source Module*: `smc_gpio_intf_data_ctrl_write_sweep_test`
 
@@ -28926,8 +28926,8 @@ Drive `smc_filter_region_span_test_seq`. Each checker below is a named compare t
 
 '''''
 
-[[sec-326-smc_filter_remap_bitwalk_test]]
-===== 326 `smc_filter_remap_bitwalk_test`
+[[sec-328-smc_filter_remap_bitwalk_test]]
+===== 328 `smc_filter_remap_bitwalk_test`
 
 *Source Module*: `smc_filter_remap_bitwalk_test`
 

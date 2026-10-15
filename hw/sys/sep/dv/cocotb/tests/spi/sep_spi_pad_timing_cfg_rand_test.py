@@ -56,6 +56,7 @@ from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spi_pad_sampler import CsWindow, SepSpiPadSampler
 from sep_base_test import sep_base_test
+from sep_reg_meta import SPI_CONTROLLER
 from seq_lib.sep_spi_host_csr_seq import (
     COMMAND,
     CONTROL,
@@ -77,7 +78,12 @@ CTRL_TX_BYTES = 16
 RX_BYTES = 4
 RATIO_TX_BYTES = 4
 MAX_DOUBLINGS = 3
-CSN_MAX = 15
+# The walked CLKDIV range is a stimulus choice (0 to 15); the CSN ranges are
+# the full CONFIGOPTS field ranges from the generated register metadata.
+CLKDIV_DRAW_MAX = 15
+CSNLEAD_MAX = (1 << SPI_CONTROLLER.field_width("CONFIGOPTS", "csnlead")) - 1
+CSNTRAIL_MAX = (1 << SPI_CONTROLLER.field_width("CONFIGOPTS", "csntrail")) - 1
+CSNIDLE_MAX = (1 << SPI_CONTROLLER.field_width("CONFIGOPTS", "csnidle")) - 1
 
 # Bounds. Each expiry fails the check that the wait feeds.
 QUEUE_POLLS = 64
@@ -111,14 +117,14 @@ class Cell:
         )
 
 
-def _draw_0_15(rng: SepSeededRng) -> int:
-    """0 to 15, weighted toward 0 and 15."""
+def _draw_edge(rng: SepSeededRng, top: int) -> int:
+    """0 to top, weighted toward 0 and top."""
     roll = rng.randrange(4)
     if roll == 0:
         return 0
     if roll == 1:
-        return CSN_MAX
-    return rng.randrange(1, CSN_MAX)
+        return top
+    return rng.randrange(1, top)
 
 
 @pyuvm.test()
@@ -142,11 +148,11 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         if rng.randrange(2):
             cells.reverse()
         for c in cells:
-            c.a = _draw_0_15(rng)
-            c.lead = _draw_0_15(rng)
-            c.trail = _draw_0_15(rng)
-            c.idle = _draw_0_15(rng)
-            c.b = rng.choice([v for v in range(CSN_MAX + 1) if v != c.a])
+            c.a = _draw_edge(rng, CLKDIV_DRAW_MAX)
+            c.lead = _draw_edge(rng, CSNLEAD_MAX)
+            c.trail = _draw_edge(rng, CSNTRAIL_MAX)
+            c.idle = _draw_edge(rng, CSNIDLE_MAX)
+            c.b = rng.choice([v for v in range(CLKDIV_DRAW_MAX + 1) if v != c.a])
         self.logger.info(
             "PLAN seed=%d cells=%s",
             seed,
@@ -262,7 +268,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         # Raise CSNIDLE above the control gap.
         idle = c.idle
         if (idle + 1) * half <= g0:
-            fits = [v for v in range(CSN_MAX + 1) if (v + 1) * half > g0]
+            fits = [v for v in range(CSNIDLE_MAX + 1) if (v + 1) * half > g0]
             if not fits:
                 raise AssertionError(
                     f"CTRL-MISSING seed={seed} mode={c.mode} CHK-SPI-CSN: no CSNIDLE "
@@ -451,4 +457,4 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         missing = [x for x in self.required_evidence if x not in self.ran]
         if missing:
             raise AssertionError(f"CTRL-MISSING seed={self.seed} checks not run: {missing}")
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, len(self.ran))
+        self.result_pass(TEST, self.seed, len(self.ran))

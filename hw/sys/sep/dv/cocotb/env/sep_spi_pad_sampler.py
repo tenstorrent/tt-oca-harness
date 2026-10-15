@@ -26,6 +26,13 @@ Records:
 A chip select or sck sample that resolves to X or Z fails the leaf with
 ``SPI-PAD-XZ FAIL`` while ``xz_fail`` is set. Verilator is 2-state.
 
+Every query raises ``MonitorLifeError`` (env/sep_monitor_life.py) when the
+sampler task ended without ``stop``; a query from a mark also raises it when
+the mark is from an earlier run of the sampler. A clock-range query raises it
+when the range ends after the last sample. So no query passes on a record
+that a dead task left partial. The bounded waits, ``now`` and ``cs_low`` raise
+the same error, and ``stop`` raises it when the task ended before it.
+
 Usage::
 
     pads = SepSpiPadSampler().start()
@@ -44,6 +51,8 @@ from typing import Any
 
 import cocotb
 from cocotb.triggers import ReadOnly, RisingEdge
+from sep_monitor_life import MonitorLife
+from sep_monitor_life import MonitorLifeError as MonitorLifeError
 
 
 class SpiPadXZError(AssertionError):
@@ -124,13 +133,14 @@ class CsHighWindow:
 
 @dataclass(frozen=True)
 class PadMark:
-    """A point in the sampler record: the clock and the window counts at that clock."""
+    """A point in the sampler record: the clock, the window counts and the run epoch."""
 
     clk: int
     n_low: int
     n_high: int
     n_edges: int
     n_mosi: int
+    epoch: int | None = None
 
 
 class SepSpiPadSampler:
@@ -145,6 +155,7 @@ class SepSpiPadSampler:
         self._sck = self.dut.spi_sck_o
         self._mosi = self.dut.spi_mosi_o
         self._task: Any = None
+        self.life = MonitorLife("SPI-PAD", lambda: self.clk)
         self._idle: int | None = None
         self.clk = 0
         self.low: list[CsWindow] = []
@@ -163,13 +174,13 @@ class SepSpiPadSampler:
 
     def start(self) -> "SepSpiPadSampler":
         if self._task is None:
-            self._task = cocotb.start_soon(self._run())
+            self._task = self.life.start(self._run())
         return self
 
     async def stop(self) -> None:
-        if self._task is not None:
-            self._task.cancel()
-            self._task = None
+        """Close the run; raises ``MonitorLifeError`` if the task ended before."""
+        self._task = None
+        await self.life.stop()
 
     def clear(self) -> None:
         """Drop the record. An open window stays open from the current clock."""
@@ -186,20 +197,36 @@ class SepSpiPadSampler:
 
     def mark(self) -> PadMark:
         return PadMark(
-            self.clk, len(self.low), len(self.high), len(self.sck_edges), len(self.mosi_changes)
+            self.clk,
+            len(self.low),
+            len(self.high),
+            len(self.sck_edges),
+            len(self.mosi_changes),
+            self.life.mark_epoch(),
         )
 
     def now(self) -> int:
         """The clock index of the last sample."""
+        self.life.check()
         return self.clk
 
     def cs_low(self) -> bool:
         """True when the last sample of chip select was low."""
+        self.life.check()
         return self._cs_level == 0
+
+    def _check_range(self, c1: int) -> None:
+        self.life.check()
+        if c1 > self.clk + 1:
+            raise MonitorLifeError(
+                f"MONITOR-LIFE FAIL: SPI-PAD range ends at clock {c1} after the last "
+                f"sample (clk={self.clk})"
+            )
 
     # ---- queries ---------------------------------------------------------
     def windows_since(self, mark: PadMark, *, complete_only: bool = True) -> list[CsWindow]:
         """Chip-select-low windows that started after ``mark``."""
+        self.life.check(mark.epoch)
         return [w for w in self.low if w.start > mark.clk and (w.complete or not complete_only)]
 
     def count_windows(self, mark: PadMark) -> int:
@@ -208,6 +235,7 @@ class SepSpiPadSampler:
     def high_windows_since(
         self, mark: PadMark, *, complete_only: bool = False
     ) -> list[CsHighWindow]:
+        self.life.check(mark.epoch)
         return [
             w for w in self.high if w.start > mark.clk and (w.end is not None or not complete_only)
         ]
@@ -219,13 +247,16 @@ class SepSpiPadSampler:
 
     def sck_edges_between(self, c0: int, c1: int) -> list[tuple[int, int]]:
         """Every sck edge (clock, new level) with ``c0 <= clock < c1``."""
+        self._check_range(c1)
         return [(c, lvl) for c, lvl in self.sck_edges if c0 <= c < c1]
 
     def mosi_changes_between(self, c0: int, c1: int) -> list[int]:
+        self._check_range(c1)
         return [c for c in self.mosi_changes if c0 <= c < c1]
 
     def leading_edges_since(self, mark: PadMark) -> int:
         """Leading sck edges in every low window that is open or started after ``mark``."""
+        self.life.check(mark.epoch)
         total = 0
         for w in self.low:
             if w.end is not None and w.end <= mark.clk:
@@ -241,6 +272,7 @@ class SepSpiPadSampler:
             wins = self.windows_since(mark)
             if len(wins) >= n:
                 return wins[:n]
+            self.life.require_running()
             await RisingEdge(clk)
         raise SpiPadTimeout(
             f"SPI pads: {len(self.windows_since(mark))} of {n} chip-select-low windows "
@@ -254,6 +286,7 @@ class SepSpiPadSampler:
             got = self.leading_edges_since(mark)
             if got >= n:
                 return got
+            self.life.require_running()
             await RisingEdge(clk)
         raise SpiPadTimeout(
             f"SPI pads: {self.leading_edges_since(mark)} of {n} leading sck edges "

@@ -290,4 +290,4 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         n_host = self._chk_order()
         for rec in self.con.records("OBS-NEVER-MEIP")[:8]:
             self.logger.info("%s", rec.text)
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, seed, n_fw + n_host)
+        self.result_pass(TEST, seed, n_fw + n_host)

@@ -34,14 +34,16 @@ Stall legs, in the drawn block order:
   ``smn_outbound_axi_req_o`` (tap ``PR-OUT``).
 
 During each hold the master that does not hold reads ``TIMEOUT_INTERRUPT``
-(the SMN master through an inbound filter entry). The spec does not state that
-this read completes while the other response is held, so a read that does not
-complete in its bound prints ``OBS-TO-INERT ... status=not_sampled`` and is
-not a sample. A read that completes in the hold is a sample: it must answer
-OKAY with ``TIMEOUT_INTERRUPT`` 0, and any other response fails CHK-TO-INERT.
-The vector (``sep_internal_interrupts_probe_o``, the six
-excluded idle sources masked) is compared with the baseline at the end of the
-hold and after release.
+back to back (the SMN master through an inbound filter entry). The spec does
+not state that a read completes while the other response is held, so a hold in
+which no read completes prints ``OBS-TO-INERT ... status=not_sampled``. Each
+read that completes in the hold is a sample: it must answer OKAY with
+``TIMEOUT_INTERRUPT`` 0, and any other response fails CHK-TO-INERT. The vector
+(``sep_internal_interrupts_probe_o``, the six excluded idle sources masked) is
+sampled on every clock of the hold, with at least one sample per held clock,
+and is compared with the baseline on each sample and after release. The same
+watch samples ``timeout_interrupt_probe_o``, the read source of
+``TIMEOUT_INTERRUPT`` (the field has no storage), and every sample must be 0.
 
 Randomization (``SepSeededRng`` from the run seed): the order of the nine
 arming writes and the order of the stalled blocks. The hold length, the
@@ -51,8 +53,10 @@ Checkers:
   CHK-ARMED       the six counts not written by the open tests read 0x1.
   CHK-STALL-REAL  the stalled access gets no response during the hold and one
                   after release (one line per block and direction).
-  CHK-TO-INERT    TIMEOUT_INTERRUPT 0x0, the masked vector equal to the
-                  baseline, and the stated response of the stalled access.
+  CHK-TO-INERT    TIMEOUT_INTERRUPT 0x0 in every in-hold sample, on every
+                  clock of the hold (tap) and after release, the masked
+                  vector equal to the baseline on every clock of the hold and
+                  after release, and the stated response of the stalled access.
   CTL-ARMED       reset reads and the three registers the open tests write.
   CTL-VEC-LIVE    a mailbox push raises vector bit 0 and its release drops it.
 """
@@ -179,6 +183,62 @@ class _AliasReg(SepAxiRegDriver):
         if not fc.ok:
             raise AssertionError(f"ALIAS-READBACK FAIL: region={ALIAS_REGION} {fc.fields()}")
         self.log.info("ALIAS-READBACK LOG: region=%d %s", ALIAS_REGION, fc.fields())
+
+
+class _VecWatch:
+    """Samples the masked vector and the TIMEOUT_INTERRUPT tap on every clock of a hold.
+
+    Each sample is taken in the ReadOnly phase of a ``clk_i`` rising edge.
+    ``stop`` takes one last sample at the next rising edge, with the hold still
+    in place, and returns after that time step, so the caller can drive the
+    release. It returns the sample count, the first vector sample that differs
+    from the baseline (or reads X/Z) and the first sample of
+    ``timeout_interrupt_probe_o`` (the read source of ``TIMEOUT_INTERRUPT``)
+    that is not 0, so a one-clock pulse between end-point snapshots or between
+    two bus reads fails.
+    """
+
+    def __init__(self, base: int) -> None:
+        self.base = base
+        self.samples = 0
+        self.first_bad: tuple[int, str] | None = None
+        self.to_first_bad: tuple[int, str] | None = None
+        self._on = True
+        self._task = cocotb.start_soon(self._loop())
+
+    async def _loop(self) -> None:
+        sig = cocotb.top.sep_internal_interrupts_probe_o
+        to_tap = cocotb.top.timeout_interrupt_probe_o
+        while True:
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            self.samples += 1
+            try:
+                t = sep_base_test.rd_known(to_tap, 1) & 1
+            except Exception as exc:  # noqa: BLE001 - an X/Z sample is a deviation
+                t = None
+                if self.to_first_bad is None:
+                    self.to_first_bad = (self.samples, f"unknown:{exc}")
+            if t and self.to_first_bad is None:
+                self.to_first_bad = (self.samples, f"0x{t:x}")
+            try:
+                v = sep_base_test.rd_known(sig, VEC_GRADED) & VEC_GRADED
+            except Exception as exc:  # noqa: BLE001 - an X/Z sample is a deviation
+                if self.first_bad is None:
+                    self.first_bad = (self.samples, f"unknown:{exc}")
+                v = self.base
+            if v != self.base and self.first_bad is None:
+                self.first_bad = (self.samples, f"0x{v:011x}")
+            if not self._on:
+                return
+
+    async def stop(self) -> tuple[int, tuple[int, str] | None, tuple[int, str] | None]:
+        self._on = False
+        await self._task
+        # The last sample leaves this coroutine in ReadOnly; a write is legal
+        # again from the next time step.
+        await NextTimeStep()
+        return self.samples, self.first_bad, self.to_first_bad
 
 
 @pyuvm.test()
@@ -345,9 +405,43 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         raise KeyError(block)
 
     async def _during_read(self, ext: bool):
-        """TIMEOUT_INTERRUPT read from the master that does not hold; (task, seq)."""
-        seq = self._seq(SepAxiOp.READ, TO_INT, ext=ext)
-        return cocotb.start_soon(self._run(seq, ext)), seq
+        """Back-to-back TIMEOUT_INTERRUPT reads from the master that does not hold.
+
+        Returns (task, poll). ``poll["reads"]`` holds one
+        ``(completed_in_hold, resp, value)`` per read; the loop stops issuing once
+        ``poll["released"]`` is set, and the read in flight then completes late.
+        """
+        poll: dict = {"released": False, "reads": []}
+
+        async def _loop() -> None:
+            while not poll["released"]:
+                seq = self._seq(SepAxiOp.READ, TO_INT, ext=ext)
+                await self._run(seq, ext)
+                poll["reads"].append((not poll["released"], seq.resp_code, seq.rdata & 0xFFFF_FFFF))
+
+        return cocotb.start_soon(_loop()), poll
+
+    def _hold_samples(self, block: str, d: str, poll: dict) -> list:
+        """The reads that completed in the hold; logs OBS lines for the rest."""
+        in_hold = [r for r in poll["reads"] if r[0]]
+        if not in_hold:
+            self.logger.info(
+                "OBS-TO-INERT LOG seed=%d block=%s dir=%s sample=during_hold status=not_sampled",
+                self.c.seed,
+                block,
+                d,
+            )
+        for _, resp, v in (r for r in poll["reads"] if not r[0]):
+            self.logger.info(
+                "OBS-TO-INERT LOG seed=%d block=%s dir=%s sample=after_release_late value=0x%x "
+                "resp=%s",
+                self.c.seed,
+                block,
+                d,
+                v,
+                RESP_NAME.get(resp, resp),
+            )
+        return in_hold
 
     async def _wait_task(self, task, bound: int) -> bool:
         for _ in range(bound):
@@ -360,46 +454,56 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         self,
         block: str,
         d: str,
-        stalled,
-        during_done: bool,
-        dseq,
+        in_hold: list,
+        watch: tuple[int, tuple[int, str] | None, tuple[int, str] | None],
+        held: int,
         vec_hold: int,
         resp_txt: str,
         resp_ok: bool,
     ) -> None:
         """Grade CHK-TO-INERT.
 
-        A during-hold read that completed in the hold is a sample: it must answer
-        OKAY with ``TIMEOUT_INTERRUPT`` 0, so an aborted (non-OKAY) read fails. A
-        during-hold read that did not complete in the hold is not a sample.
+        Every read that completed in the hold is a sample: it must answer OKAY
+        with ``TIMEOUT_INTERRUPT`` 0, so an aborted (non-OKAY) read fails. The
+        vector watch must hold one sample per held clock, each equal to the
+        baseline, so a source that pulses between snapshots fails. The same
+        watch samples the read source of ``TIMEOUT_INTERRUPT`` on every clock,
+        and any sample other than 0 fails.
         """
         await ClockCycles(cocotb.top.clk_i, QUIET)
         to_after = await self._lsu_rd(TO_INT)
         vec_after = await self._vec_masked()
-        fcs = [field_compare(to_after, 0, TO_INT_FIELD)]
-        during_resp_ok = True
-        if during_done:
-            during_v = dseq.rdata & 0xFFFF_FFFF
-            during_resp_ok = dseq.resp_code == RESP_OKAY
-            fcs.append(field_compare(during_v, 0, TO_INT_FIELD))
-            during_txt = (
-                f"0x{during_v & TO_INT_FIELD:x} "
-                f"during_resp={RESP_NAME.get(dseq.resp_code, dseq.resp_code)}"
+        to_ok = field_compare(to_after, 0, TO_INT_FIELD).ok
+        bad_reads = [(resp, v) for _, resp, v in in_hold if resp != RESP_OKAY or v & TO_INT_FIELD]
+        during_txt = (
+            f"samples={len(in_hold)} bad={len(bad_reads)}"
+            + (
+                f" first_bad=0x{bad_reads[0][1]:x}/{RESP_NAME.get(bad_reads[0][0])}"
+                if bad_reads
+                else ""
             )
-        else:
-            during_txt = "not_sampled"
+            if in_hold
+            else "not_sampled"
+        )
+        w_samples, w_bad, to_bad = watch
+        vec_ok = vec_hold == self.base and vec_after == self.base and w_bad is None
         line = (
             f"block={block} dir={d} timeout_int=0x{to_after & TO_INT_FIELD:x} "
             f"during_hold={during_txt} "
-            f"vec={'baseline' if vec_hold == self.base and vec_after == self.base else 'changed'} "
+            f"vec={'baseline' if vec_ok else 'changed'} "
+            f"vec_samples={w_samples} held_clocks={held} "
+            f"vec_first_bad={'none' if w_bad is None else f'{w_bad[1]}@{w_bad[0]}'} "
+            f"to_tap_samples={w_samples} "
+            f"to_tap_first_bad={'none' if to_bad is None else f'{to_bad[1]}@{to_bad[0]}'} "
             f"vec_hold=0x{vec_hold:011x} vec_after=0x{vec_after:011x} "
             f"vec_base=0x{self.base:011x} resp={resp_txt}"
         )
         if (
-            not all(f.ok for f in fcs)
-            or not during_resp_ok
-            or vec_hold != self.base
-            or vec_after != self.base
+            not to_ok
+            or bad_reads
+            or not vec_ok
+            or to_bad is not None
+            or w_samples < held
             or not resp_ok
         ):
             self._fail("CHK-TO-INERT", line)
@@ -424,35 +528,21 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         except AssertionError as exc:
             hold.release_all()
             self._fail("CHK-STALL-REAL", f"block={block} dir={d} port={port} no held VALID: {exc}")
-        dtask, dseq = await self._during_read(not ext)
+        vw = _VecWatch(self.base)
+        dtask, poll = await self._during_read(not ext)
         await ClockCycles(cocotb.top.clk_i, HOLD)
         valid_end = int(mon.valid_waiting(ch))
-        during_ok = dtask.done()
-        if not during_ok:
-            self.logger.info(
-                "OBS-TO-INERT LOG seed=%d block=%s dir=%s sample=during_hold status=not_sampled",
-                self.c.seed,
-                block,
-                d,
-            )
         vec_hold = await self._vec_masked()
         held_clocks = mon.waiting_clocks(ch) - w0
         during_hold = mon.count(mark, ch)
+        poll["released"] = True
+        watch = await vw.stop()
         hold.release(ch)
         if not await self._wait_task(task, RELEASE_BOUND):
             self._fail("CHK-STALL-REAL", f"block={block} dir={d} no response after release")
         if not await self._wait_task(dtask, RELEASE_BOUND):
             self._fail("CHK-TO-INERT", f"block={block} dir={d} TIMEOUT_INTERRUPT read hung")
-        if not during_ok:
-            self.logger.info(
-                "OBS-TO-INERT LOG seed=%d block=%s dir=%s sample=after_release_late value=0x%x "
-                "resp=%s",
-                self.c.seed,
-                block,
-                d,
-                dseq.rdata,
-                RESP_NAME.get(dseq.resp_code),
-            )
+        in_hold = self._hold_samples(block, d, poll)
         after = mon.count(mark, ch)
         xz = len(mon.xz_beats(mark, ch))
         line = (
@@ -480,7 +570,7 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         else:
             resp_ok = seq.resp_code == RESP_OKAY and (seq.rdata & 0xFFFF_FFFF) == 0
             resp_txt = f"{RESP_NAME.get(seq.resp_code, seq.resp_code)}/data=0x{seq.rdata:x}"
-        await self._after_release(block, d, seq, during_ok, dseq, vec_hold, resp_txt, resp_ok)
+        await self._after_release(block, d, in_hold, watch, HOLD, vec_hold, resp_txt, resp_ok)
 
     async def _stall_responder(self, block: str, write: bool) -> None:
         """A stall held by the outbound responder (outbound filter, alias remap)."""
@@ -497,6 +587,8 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         for _ in range(REQ_BOUND):
             await RisingEdge(dut.clk_i)
             # The tap samples on the same edge; query once it has sampled past the mark.
+            # A tap that stopped sampling fails here, not on the request bound.
+            self.out.check_life(m_req)
             if self.out.clk <= m_req.clk:
                 continue
             req = self.out.count(m_req, "aw" if write else "ar")
@@ -505,24 +597,20 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         if not req:
             dut.smn_outbound_resp_hold_i.value = 0
             self._fail("CHK-STALL-REAL", f"block={block} dir={d} req_at_port=0")
-        dtask, dseq = await self._during_read(True)
+        vw = _VecWatch(self.base)
+        dtask, poll = await self._during_read(True)
         await ClockCycles(dut.clk_i, HOLD)
-        during_ok = dtask.done()
-        if not during_ok:
-            self.logger.info(
-                "OBS-TO-INERT LOG seed=%d block=%s dir=%s sample=during_hold status=not_sampled",
-                self.c.seed,
-                block,
-                d,
-            )
         vec_hold = await self._vec_masked()
         during_hold = self.mon_s.count(mark, ch)
         req = self.out.count(m_req, "aw" if write else "ar")
+        poll["released"] = True
+        watch = await vw.stop()
         dut.smn_outbound_resp_hold_i.value = 0
         if not await self._wait_task(task, RELEASE_BOUND):
             self._fail("CHK-STALL-REAL", f"block={block} dir={d} no response after release")
         if not await self._wait_task(dtask, RELEASE_BOUND):
             self._fail("CHK-TO-INERT", f"block={block} dir={d} TIMEOUT_INTERRUPT read hung")
+        in_hold = self._hold_samples(block, d, poll)
         after = self.mon_s.count(mark, ch)
         xz = len(self.mon_s.xz_beats(mark, ch))
         line = (
@@ -538,7 +626,7 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         else:
             resp_ok = seq.resp_code == RESP_OKAY and (seq.rdata & 0xFFFF_FFFF) == 0
             resp_txt = f"{RESP_NAME.get(seq.resp_code, seq.resp_code)}/data=0x{seq.rdata:x}"
-        await self._after_release(block, d, seq, during_ok, dseq, vec_hold, resp_txt, resp_ok)
+        await self._after_release(block, d, in_hold, watch, HOLD, vec_hold, resp_txt, resp_ok)
 
     async def _stall_dma(self) -> None:
         dut = cocotb.top
@@ -551,6 +639,8 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         for _ in range(REQ_BOUND):
             await RisingEdge(dut.clk_i)
             # The tap samples on the same edge; query once it has sampled past the mark.
+            # A tap that stopped sampling fails here, not on the request bound.
+            self.out.check_life(m_req)
             if self.out.clk <= m_req.clk:
                 continue
             req = self.out.count(m_req, "ar")
@@ -559,18 +649,15 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         if not req:
             dut.smn_outbound_resp_hold_i.value = 0
             self._fail("CHK-STALL-REAL", "block=dma dir=read req_at_port=0")
-        dtask, dseq = await self._during_read(True)
+        vw = _VecWatch(self.base)
+        dtask, poll = await self._during_read(True)
         st_hold = await self.dma.read_status()
         await ClockCycles(dut.clk_i, HOLD)
-        during_ok = dtask.done()
-        if not during_ok:
-            self.logger.info(
-                "OBS-TO-INERT LOG seed=%d block=dma dir=read sample=during_hold status=not_sampled",
-                self.c.seed,
-            )
         st_hold2 = await self.dma.read_status()
         vec_hold = await self._vec_masked()
         req = self.out.count(m_req, "ar")
+        poll["released"] = True
+        watch = await vw.stop()
         dut.smn_outbound_resp_hold_i.value = 0
         st = None
         for _ in range(DONE_POLL):
@@ -579,6 +666,7 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
                 break
         if not await self._wait_task(dtask, RELEASE_BOUND):
             self._fail("CHK-TO-INERT", "block=dma dir=read TIMEOUT_INTERRUPT read hung")
+        in_hold = self._hold_samples("dma", "read", poll)
         busy = int(bool(st_hold.raw & ST_BUSY) and bool(st_hold2.raw & ST_BUSY))
         line = (
             f"block=dma dir=read req_at_port={req} busy_during_hold={busy} "
@@ -592,9 +680,9 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         await self._after_release(
             "dma",
             "read",
-            None,
-            during_ok,
-            dseq,
+            in_hold,
+            watch,
+            HOLD,
             vec_hold,
             f"done/done={st.done}/error={st.error}",
             resp_ok,
@@ -692,6 +780,4 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         expect = {"CHK-ARMED": 1, "CHK-STALL-REAL": 13, "CHK-TO-INERT": 13}
         if self.counts != expect:
             raise AssertionError(f"CHK-COUNT FAIL seed={seed} counts={self.counts} expect={expect}")
-        self.logger.info(
-            "RESULT %s seed=%d PASS checks=%d counts=%s", TEST, seed, self.n_checks, self.counts
-        )
+        self.result_pass(TEST, seed, self.n_checks, f" counts={self.counts}")

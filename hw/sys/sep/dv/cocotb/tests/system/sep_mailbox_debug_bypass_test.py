@@ -27,9 +27,10 @@ Checks:
 
 * CTL-PROD-BLOCK (control): before the demote the two writes answer DECERR,
   leave the FIFO empty and leave the inbound line low.
-* CHK-DBG-ACCEPT: after the demote every mailbox answers OKAY, holds one
-  entry, raises its inbound line, and the popped word equals the pushed word;
-  on mailbox 3 the outbound occupancy goes from 0 to 1 across the demote.
+* CHK-DBG-ACCEPT: after the demote FEAT_CTRL reads its DEMOTE_1 golden with
+  ``SEP_DBG`` set, and every mailbox answers OKAY, holds one entry, raises
+  its inbound line, and the popped word equals the pushed word; on mailbox 3
+  the outbound occupancy goes from 0 to 1 across the demote.
 * CTL-NONVAC (control): the same mailbox 3 write answers DECERR before the
   demote and OKAY after it.
 
@@ -129,6 +130,12 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
     async def _push(self, m: int, src: int, prot1: int, word: int) -> int:
         return int(await self.ops[m].push("in", word, prot1=prot1, user=src))
 
+    async def _feat_ctrl(self) -> int:
+        """Frontdoor read of the 64-bit FEAT_CTRL; bit 0 is SEP_DBG."""
+        lo = (await self._lsu(SepAxiOp.READ, LCC_FEAT_CTRL))[1]
+        hi = (await self._lsu(SepAxiOp.READ, LCC_FEAT_CTRL + 4))[1]
+        return lo | (hi << 32)
+
     async def _bring_up(self) -> None:
         image = self.select_efuse_image(
             lc_raw=LC_PROD, fixed={"SIP_DIS": SIP_DIS, "SYS_DIS": SYS_DIS}
@@ -136,9 +143,7 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=MAX_SENSE_CYCLES)
         golden = feat_ctrl_expected(LC_PROD, SIP_DIS, SYS_DIS, demote_1=0, sec_dis=0)
-        lo = (await self._lsu(SepAxiOp.READ, LCC_FEAT_CTRL))[1]
-        hi = (await self._lsu(SepAxiOp.READ, LCC_FEAT_CTRL + 4))[1]
-        feat = lo | (hi << 32)
+        feat = await self._feat_ctrl()
         if feat != golden or feat & 1:
             self._fail(
                 "CTL-PROD-BLOCK", f"precondition feat_ctrl=0x{feat:016x} golden=0x{golden:016x}"
@@ -250,6 +255,14 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
             self._fail(
                 "CHK-DBG-ACCEPT", f"mbox=3 no OKAY within {DEMOTE_TRIES} tries after DEMOTE_1"
             )
+        # SEP_DBG is the cause of the bypass: FEAT_CTRL reads the DEMOTE_1 golden
+        # with bit 0 set before any accepted write is graded.
+        golden = feat_ctrl_expected(LC_PROD, SIP_DIS, SYS_DIS, demote_1=1, sec_dis=0)
+        feat = await self._feat_ctrl()
+        dbg = f"post-demote feat_ctrl=0x{feat:016x} golden=0x{golden:016x} sep_dbg={feat & 1}"
+        if feat != golden or not feat & 1:
+            self._fail("CHK-DBG-ACCEPT", dbg)
+        self._pass("CHK-DBG-ACCEPT", dbg)
         written |= 1 << ISS_MBOX
         probe = await self._probe()
         if probe != written:
@@ -316,4 +329,4 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
             self._pass("CHK-DBG-ACCEPT", txt)
 
         close_graded_window(self.logger)
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.n_checks)
+        self.result_pass(TEST, self.seed, self.n_checks)
