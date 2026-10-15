@@ -5,7 +5,9 @@
 Contract (``hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc``, golden lines cited
 per check; ``hw/ip/entropy_source/doc/architecture.adoc:220-223``, Reset):
   * A write of the complement of the value read to a read-only ESRC register leaves its
-    field bits unchanged (access R, for example ``COMPONENT_ID``, :91-95).
+    field bits unchanged (access R, for example ``COMPONENT_ID``, :91-95) and answers
+    OKAY or SLVERR; a DECERR means the write reached no block
+    (``hw/sys/sep/doc/crypto.adoc:174-176``).
   * A TRNG reset is a full-IP reset: every unlocked read-write field outside ``CTRL``
     reads its RDL reset value after it (architecture.adoc:220-223).
   * Once ``FIPS_LOCK.LOCK`` is set (:752), a write of ``CTRL.MODULE_ENABLE`` = 0 is
@@ -42,8 +44,8 @@ with a 0 and a 1 over the eight defined bits; T holds ``FIFO_OVERFLOW`` and
 and the clear subset C (holds bits 8 and 12, a proper subset of T).
 
 Checkers:
-  CHK-ESRC-RO       field bits after the complement write equal the first read, per
-                    written register. Control: at least one register and
+  CHK-ESRC-RO       field bits after the complement write equal the first read and
+                    the write answers OKAY or SLVERR, per written register. Control: at least one register and
                     ``COMPONENT_ID`` are written.
   CHK-ESRC-RESTORE  each restore field reads its RDL reset value after the TRNG reset;
                     VCS: no readback bit of a field is X. Control: each restore field
@@ -110,6 +112,7 @@ T_REF_WORDS = 24
 IDLE_CAP = 4_000  # outer limit of the first IDLE poll (clocks)
 DRAIN_CAP = 20_000  # outer limit of the first FIFO drain (clocks)
 RESP_NAME = {0: "okay", 1: "exokay", 2: "slverr", 3: "decerr"}
+RESP_ACCEPTED = (0, 2)  # okay, slverr
 
 
 def _addr(reg: str) -> int:
@@ -476,6 +479,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
                     "read": r3,
                     "mask": mask,
                     "unchanged": (r3 & mask) == (r1 & mask),
+                    "resp": resp,
                 }
             )
         close_graded_window(self.logger)
@@ -484,11 +488,17 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         self.chk.ctrl(
             "ESRC-RO", written >= 1 and comp, written_regs=written, component_id_written=comp
         )
+        # The register text states no response code for the write, so OKAY and SLVERR
+        # both pass. DECERR is the crypto demux answer for an access that reaches no
+        # block (hw/sys/sep/doc/crypto.adoc:174-176), and an unchanged readback after
+        # it proves nothing; any code other than OKAY or SLVERR fails.
         for r in rows:
+            resp_ok = r["resp"] in RESP_ACCEPTED
             self.chk.ok(
                 "ESRC-RO",
-                r["unchanged"],
+                r["unchanged"] and resp_ok,
                 reg=r["reg"],
+                resp=RESP_NAME.get(r["resp"], str(r["resp"])),
                 wrote=f"0x{r['wrote']:08x}",
                 read=f"0x{r['read']:08x}",
                 first=f"0x{r['first']:08x}",

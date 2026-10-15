@@ -40,6 +40,8 @@ Checkers:
                     32 bits.
   CHK-OBS-FLUSH     no word from before a FLUSH or a lane change is popped after it.
   CHK-OBS-OVERFLOW  plateau D, overflow bit 1, LEVEL D after two fill times, W1C clears.
+                    Control: the overflow bit reads 0 before the leg and 1 after
+                    the drain, before the write-one.
   CHK-OBS-LOCK      locked at 1: L + 2 words delivered, last two noise words equal the
                     lane value, FLUSH lowers LEVEL; locked at 0: LEVEL stays 0.
 Logged only: ``OBS-BLOCKED CHK-OBS-MAIN`` (no stated rule that observe capture leaves
@@ -557,14 +559,21 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, 0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
         w1c: dict[str, int] = {}
+        held: dict[str, int] = {}
         for fifo in ("noise", "biw"):
             bit = FIFOS[fifo][3]
             await self._pop_to_empty(fifo)
+            # The overflow bit is RW1C (entropy_source.adoc:134, :136): it still reads 1
+            # after the drain, so the clear below is caused by the write-one.
+            held[fifo] = int(bool(await self._rd(ESRC_INTR_STATUS) & bit))
             await self._wr(ESRC_INTR_STATUS, bit)
             w1c[fifo] = int(bool(await self._rd(ESRC_INTR_STATUS) & bit))
         close_graded_window(self.logger)
         for fifo in ("noise", "biw"):
             self.chk.ctrl("OBS-OVERFLOW", pre[fifo] == 0, fifo=fifo, overflow_before=pre[fifo])
+            self.chk.ctrl(
+                "OBS-OVERFLOW", held[fifo] == 1, fifo=fifo, overflow_before_w1c=held[fifo]
+            )
             fields = {
                 "fifo": fifo,
                 "depth": depth[fifo],

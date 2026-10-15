@@ -54,7 +54,8 @@ Checkers:
                     Control: REPCNT_TOTAL_FAILS read non-zero before.
   CHK-BOOT-TOGGLE   per drawn moment (boot, after_boot, bad_pattern): IDLE = 1
                     after the fall; after the rise every counter that read
-                    non-zero before the fall reads 0 at once, and
+                    non-zero before the fall reads 0 at once, the first
+                    MAIN_SM_STATUS read reads BOOT_PHASE_DONE 0, and
                     BOOT_PHASE_DONE returns to 1. Failures after the rise count
                     again by contract (stuck samples still in the pipeline at
                     the bad_pattern moment), so the counters at BOOT_PHASE_DONE
@@ -750,6 +751,11 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         # REPCNT_TOTAL_FAILS is read first, before the first strobe after the rise;
         # the window counters fail only at a window end, a whole window later.
         after = await self._totals()
+        # The rise restarts startup health testing (architecture.adoc:226-227), and
+        # BOOT_PHASE_DONE reports its completion (entropy_source.adoc:409), so the
+        # first MAIN_SM_STATUS read after the rise, a few register reads into a
+        # startup window, reads BOOT_PHASE_DONE = 0.
+        done_at_rise = _fld("MAIN_SM_STATUS", "BOOT_PHASE_DONE", await self._sm())
         done_ok, _ = await self._wait_done(done_bound)
         if not done_ok and not reason:
             reason = f"timeout:boot_done_again bound={done_bound}"
@@ -764,6 +770,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
             "raw_enable": raw,
             "idle_before": idle_before,
             "idle_clk": idle_clk,
+            "done_at_rise": done_at_rise,
             "boot_done_again": int(done_ok),
             "rep_before": before["rep"] if before else "na",
             "total_fails_before": self._fmt_totals(before),
@@ -774,6 +781,6 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
             fields["reason"] = reason
         self.chk.ok(
             "BOOT-TOGGLE",
-            not reason and idle_ok and done_ok and not nonzero,
+            not reason and idle_ok and done_at_rise == 0 and done_ok and not nonzero,
             **fields,
         )

@@ -51,7 +51,8 @@ the control fails.
                   tready equals ``km_entropy_tready_o`` on every clock; ``axis1``
                   and ``axis2`` carry the internal endpoint words. Control: with bit
                   0 clear the same beats see tready 1 and ``km_entropy_*`` carries
-                  the endpoint word; ``axis1`` and ``axis2`` show tvalid.
+                  the endpoint word; ``axis1`` and ``axis2`` show tvalid; with bit 0
+                  set ``km_entropy_tready_o`` reads 0 on at least one clock.
 """
 
 from __future__ import annotations
@@ -274,6 +275,7 @@ class _Acc:
         self.km_beats: list[int | None] = []
         self.ext_not_ready = 0
         self.tready_neq = 0
+        self.km_tready_low = 0
         self.km_ep_neq = 0
         self.axis_neq = [0, 0, 0]
         self.axis_valid = [0, 0, 0]
@@ -325,6 +327,8 @@ class _Acc:
                 self.km_beats.append(kd)
             if er != kr:
                 self.tready_neq += 1
+            if kr == 0:
+                self.km_tready_low += 1
             if kv == 1:
                 self.axis_valid[0] += 1
                 if _bit(iv, 0) != 1 or kd != _word(idata, 0):
@@ -696,6 +700,13 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             ctrl_axis1_valid_clk=a.axis_valid[1],
             ctrl_axis2_valid_clk=a.axis_valid[2],
         )
+        # The tready equality can catch an external tready tied high only on a
+        # clock where the Key Manager tready is 0, so the window must hold one.
+        self.chk.ctrl(
+            "MIX-EXT-KM",
+            a.km_tready_low > 0,
+            ctrl_km_tready_low_clk=a.km_tready_low,
+        )
         fields = {
             "beats": run["offered"],
             "xfers": len(a.ext_beats),
@@ -703,6 +714,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             "order_ok": int(order_ok),
             "data_ok": int(order_ok),
             "tready_eq": int(a.tready_neq == 0),
+            "km_tready_low_clk": a.km_tready_low,
             "axis1_eq": int(a.axis_neq[1] == 0),
             "axis2_eq": int(a.axis_neq[2] == 0),
             "ctrl_internal_discard": c_beats,

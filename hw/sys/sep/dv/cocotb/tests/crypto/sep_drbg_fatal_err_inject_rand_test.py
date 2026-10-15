@@ -42,7 +42,8 @@ Checkers:
   CHK-DRBG-STICKY   after a write-one clear of the state the source bit stays (all but
                     EDN 0); the FIFO-error cells read the state 0 after the clear.
   CHK-DRBG-RESET    ERR_CODE reads 0 after a TRNG reset. Control: non-zero before.
-  CHK-EDN-FIFO13    1, e and 13 words: ERR_CODE 0, INTR_STATE 0, vector bits 28 and 32 low.
+  CHK-EDN-FIFO13    after a CTRL.CMD_FIFO_RST pulse (edn.adoc:98-101),
+                    1, e and 13 words: ERR_CODE 0, INTR_STATE 0, vector bits 28 and 32 low.
   CHK-EDN-FIFO14    the 14th word: the FIFO error bit, edn_fatal_err, vector bit 28 and
                     at least one clock of vector bit 32.
 Every ERR_CODE compare uses the field bits of the register text; the Reserved
@@ -71,7 +72,6 @@ PARK = ("otbn", "aes", "hmac", "kmac", "abr")
 TRNG_RELEASE_CAP = 4_000
 LAT_FACTOR = 16
 FIFO_WORDS = 13  # edn.adoc:225, :241
-FIFO_BITS = (0, 1)
 FIFO_TRIALS = ("reseed", "generate")
 
 # Multi-bit booleans: the RDL resets EDN CTRL fields to kMultiBitBool4False (0x9);
@@ -86,9 +86,35 @@ EDN_CTRL_SW_PORT = EDN.value(
     AUTO_REQ_MODE=_MUBI_FALSE,
     CMD_FIFO_RST=_MUBI_FALSE,
 )
+EDN_CTRL_FIFO_RST = EDN.value(
+    "CTRL",
+    EDN_ENABLE=_MUBI_TRUE,
+    BOOT_REQ_MODE=_MUBI_FALSE,
+    AUTO_REQ_MODE=_MUBI_FALSE,
+    CMD_FIFO_RST=_MUBI_TRUE,
+)
+EDN_CTRL_ADDR = sym("EDN_CTRL_REG_ADDR")
 
-TYPE_BITS = 0x7 << 28  # ERR_CODE bits 28 to 30: the error type bits
-SOURCE_BITS = (1 << 28) - 1
+
+def _bits(block, *names: str) -> tuple[int, ...]:
+    """Bit positions of the named ``ERR_CODE`` fields, from the generated register map."""
+    fields = block.fields("ERR_CODE")
+    return tuple(fields[n]["bp"] for n in names)
+
+
+# ERR_CODE type bits (FIFO_WRITE_ERR, FIFO_READ_ERR, FIFO_STATE_ERR); the source
+# bits are every bit below the lowest type bit.
+_TYPE_NAMES = ("FIFO_WRITE_ERR", "FIFO_READ_ERR", "FIFO_STATE_ERR")
+TYPE_BITS = sum(1 << b for b in _bits(EDN, *_TYPE_NAMES))
+SOURCE_BITS = (1 << min(_bits(EDN, *_TYPE_NAMES))) - 1
+# Source bits per unit: the FIFO errors, and the sources that signal a fatal alert
+# (csrng.adoc:381-407; edn.adoc:309-322).
+CSRNG_FIFO_BITS = _bits(CSRNG, "SFIFO_CMD_ERR", "SFIFO_GENBITS_ERR")
+CSRNG_ALERT_BITS = _bits(
+    CSRNG, "CMD_STAGE_SM_ERR", "MAIN_SM_ERR", "CTR_DRBG_SM_ERR", "AES_CIPHER_SM_ERR", "CTR_ERR"
+)
+EDN_FIFO_BITS = _bits(EDN, "SFIFO_RESCMD_ERR", "SFIFO_GENCMD_ERR")
+EDN_ALERT_BITS = _bits(EDN, "EDN_ACK_SM_ERR", "EDN_MAIN_SM_ERR", "EDN_CNTR_ERR")
 
 
 @dataclass(frozen=True)
@@ -102,7 +128,11 @@ class Unit:
     fatal_bm: int
     vec_key: str
     alert_bits: tuple[int, ...]
-    cells: tuple[int, ...]
+    fifo_bits: tuple[int, ...]
+
+    @property
+    def cells(self) -> tuple[int, ...]:
+        return tuple(sorted(self.fifo_bits + self.alert_bits))
 
     @property
     def err_mask(self) -> int:
@@ -123,8 +153,8 @@ UNITS = {
         sym("CSRNG_INTR_ENABLE_REG_ADDR"),
         CSRNG.fields("INTR_STATE")["CS_FATAL_ERR"]["bm"],
         "cs_fatal",
-        (20, 21, 22, 25, 26),
-        (0, 1, 20, 21, 22, 25, 26),
+        CSRNG_ALERT_BITS,
+        CSRNG_FIFO_BITS,
     ),
     "edn": Unit(
         "edn",
@@ -135,8 +165,8 @@ UNITS = {
         sym("EDN_INTR_ENABLE_REG_ADDR"),
         EDN.fields("INTR_STATE")["EDN_FATAL_ERR"]["bm"],
         "edn_fatal",
-        (20, 21, 22),
-        (0, 1, 20, 21, 22),
+        EDN_ALERT_BITS,
+        EDN_FIFO_BITS,
     ),
 }
 EDN_CMD_FIFO = {
@@ -328,7 +358,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         await self._setup()
         open_graded_window(TEST, self.logger)
         vec_key = unit.vec_key
-        fifo_bit = bit in FIFO_BITS
+        fifo_bit = bit in unit.fifo_bits
         alert_src = bit in unit.alert_bits
         state_graded = unit.name == "csrng" or fifo_bit
         src = 1 << bit
@@ -441,6 +471,11 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         words = plan.words[fifo]
         e = plan.extra[fifo]
         await self._setup()
+        # CMD_FIFO_RST True clears both command FIFOs, and software returns it to its
+        # reset state before the next command word (edn.adoc:98-101), so the count
+        # below starts from an empty FIFO.
+        await self._wr(EDN_CTRL_ADDR, EDN_CTRL_FIFO_RST)
+        await self._wr(EDN_CTRL_ADDR, EDN_CTRL_SW_PORT)
         open_graded_window(TEST, self.logger)
         await self._wr(unit.intr_enable, unit.fatal_bm)
         m = self.vec.mark()

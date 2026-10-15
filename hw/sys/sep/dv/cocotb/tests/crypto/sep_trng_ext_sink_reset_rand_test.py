@@ -43,7 +43,7 @@ Checkers:
   CHK-XRST-CLIENT  before the reset each word a client accepts and each OTBN RND
                    word is a sent word; the AES and KMAC results equal the goldens.
   CHK-XRST-OTBN    per client: the request pending in the clear stays 1 with no
-                   acknowledge; after the release it is acknowledged with words sent
+                   acknowledge, and both vectors read no X/Z there; after the release it is acknowledged with words sent
                    after the clear; the results equal the goldens. Control: the
                    same client was acknowledged in the pre-reset leg.
 """
@@ -799,6 +799,9 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         post = rows[last_clear + 1 :]
         req_in = int(bool(clear) and all(_bit(r.creq, bit) == 1 for r in clear))
         ack_in = int(any(_bit(r.cack, bit) == 1 for r in clear))
+        # An X/Z on the request or acknowledge vector in the clear is not "no
+        # acknowledge": every such clock fails the check.
+        xz_in = sum(1 for r in clear if r.cack is None or r.creq is None)
         words = acked(post, bit)
         rnd_words = list(res.get("rnd_words", []))
         fresh = all(w in q and w not in self.sent_s for w in words) and all(
@@ -810,6 +813,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             "client": client,
             "req_in_clear": req_in,
             "ack_in_clear": ack_in,
+            "xz_in_clear": xz_in,
             "ack_after_release": int(len(words) >= 1),
             "words_from_post_reset": int(fresh),
             "post_words": len(words),
@@ -823,7 +827,13 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             fields["reason"] = reason
         self.chk.ok(
             "XRST-OTBN",
-            not reason and req_in and not ack_in and words and fresh and res["golden_ok"],
+            not reason
+            and req_in
+            and not ack_in
+            and xz_in == 0
+            and words
+            and fresh
+            and res["golden_ok"],
             **fields,
         )
         return False
