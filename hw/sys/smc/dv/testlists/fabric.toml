@@ -110,6 +110,16 @@ tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 
 [[tests]]
+# A one and a zero walked across every bit of the filter and remap address
+# registers and every mailbox write strobe; about 19000 SEP_IN accesses.
+name = "smc_filter_remap_bitwalk_test"
+module = "smc_filter_remap_bitwalk_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dma_decouple_rw_test"
 module = "smc_dma_decouple_rw_test"
 seed = 1
