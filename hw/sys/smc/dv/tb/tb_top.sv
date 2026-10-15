@@ -1542,6 +1542,10 @@ module smc_uvm_top
     assign tb_temp_interrupt_irq = u_dut.u_smc.u_smc_base.ext_interrupts_smc_clk[1];
     assign tb_ext_interrupt_0_sync = u_dut.u_smc.u_smc_base.ext_interrupts_smc_clk[0];
     assign tb_ss0_warm_reset_n = ss_reset_ctrl[0].warm_reset_n;
+    for (genvar ss_i = 0; ss_i < 32; ss_i++) begin : gen_tb_ss_reset_n
+        assign tb_ss_cold_reset_n[ss_i] = ss_reset_ctrl[ss_i].cold_reset_n;
+        assign tb_ss_warm_reset_n[ss_i] = ss_reset_ctrl[ss_i].warm_reset_n;
+    end
     assign tb_ndmreset_irq = u_dut.u_smc.peripheral_interrupts[11];
     assign tb_rst_cool_from_flr =
         u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.rst_cool_no;
