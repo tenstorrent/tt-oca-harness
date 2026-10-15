@@ -40,6 +40,13 @@ Checkers:
                          FIFO that was never full, both before ``hash_process``
   CHK-HMAC-WIPE          after a write of w to ``WIPE_SECRET`` every DIGEST word reads w, and
                          the next HMAC with no ``KEY`` write hashes with an all-w key
+  CHK-HMAC-NARROW-WRITE  one fixed SHA-256 message written with 8-bit writes at byte lanes
+                         1, 2 and 3 and 16-bit writes at byte lane 2 of the ``MSG_FIFO``
+                         window: every write completes OKAY and the digest equals the golden
+                         of the bytes in write order (``hmac.hjson``:526-529, ``MSG_FIFO``
+                         ``byte-write: "true"``; only address bits [1:0] matter to a write
+                         in the window). It runs once per seed, last, after an HMAC reset,
+                         with the graded FCOV window closed.
 
 The measurement run of each stalled leg counts the writes until a ``STATUS`` read after each
 write shows ``fifo_full`` = 1 (N). The graded run posts N writes, reads ``fifo_full`` = 1 and
@@ -138,6 +145,12 @@ DRAIN_BOUND = 50_000
 RESET_BOUND = 2_000
 CLEAN_BOUND = 2_000  # clocks for one beat into a FIFO that is not full
 PROBE_EXTRA_MAX = 8  # log-only writes after fifo_full reads 1 in the measurement run
+# Fixed narrow-lane message of CHK-HMAC-NARROW-WRITE: (byte lane, width in bytes) per write
+# and the value of each write. The bytes join the message in write order, each value in
+# little-endian byte order (endian_swap = 0).
+NARROW_WRITES = ((1, 1), (2, 1), (3, 1), (2, 2), (1, 1), (3, 1), (2, 2), (3, 1))
+NARROW_VALUES = (0xA1, 0xB2, 0xC3, 0xE5D4, 0xF6, 0x17, 0x3928, 0x4A)
+AXSIZE = {1: 0, 2: 1, 4: 2}
 # Most beats issued after fifo_full reads 1 before one must be held. The register text gives
 # no packer capacity, so this is a generous fixed bound, logged as bound=.
 BP_BEAT_BOUND = 16
@@ -303,6 +316,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         "CHK-HMAC-MSG",
         "CHK-HMAC-FIFOEMPTY",
         "CHK-HMAC-WIPE",
+        "CHK-HMAC-NARROW-WRITE",
     )
 
     async def run_scenario(self) -> None:
@@ -382,7 +396,65 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
 
         await self._reset_hmac()
         close_graded_window(self.logger)
+        await self._narrow_write_leg()
         self.chk.finish()
+
+    async def _narrow_write_leg(self) -> None:
+        """CHK-HMAC-NARROW-WRITE: the fixed message at byte lanes 1 to 3, plain SHA-256.
+
+        The graded FCOV window stays closed. A bounded wait that expires is a FAIL of this
+        check, then an HMAC reset.
+        """
+        msg = b"".join(v.to_bytes(w, "little") for (_, w), v in zip(NARROW_WRITES, NARROW_VALUES))
+        golden = golden_words(256, False, KEY_ROWS[0], None, msg)
+        tag = dict(
+            sha=256,
+            len=len(msg),
+            lanes_widths=",".join(f"{lane}/{w}" for lane, w in NARROW_WRITES),
+        )
+        await self._reset_hmac()
+        await self._wr(HMAC.addr("CFG"), build_cfg(hmac_en=False, sha_bits=256, key_bits=None))
+        await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
+        refused: list[str] = []
+        for (lane, width), value in zip(NARROW_WRITES, NARROW_VALUES):
+            seq = SepAxiAccessSeq(
+                "hmac_msg_narrow_wr",
+                op=SepAxiOp.WRITE,
+                addr=HMAC_MSG_FIFO + lane,
+                wdata=value,
+                length=width,
+                size=AXSIZE[width],
+                # The check grades the response of each write.
+                allow_unverified_write_resp=True,
+            )
+            await self.start_seq(seq)
+            if not seq.resp_ok:
+                refused.append(f"{lane}/{width}/{seq.resp_code}")
+        await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
+        t0 = self._now_clk()
+        done = False
+        while True:
+            if await self._rd(HMAC_INTR_STATE) & HMAC_INTR_DONE:
+                done = True
+                break
+            if self._now_clk() - t0 > DONE_BOUND:
+                break
+            await ClockCycles(self.dut.clk_i, 10)
+        got = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(len(golden))] if done else []
+        match = got == golden
+        self.chk.ok(
+            "HMAC-NARROW-WRITE",
+            done and not refused and match,
+            **tag,
+            writes=len(NARROW_WRITES),
+            all_okay=int(not refused),
+            refused_lane_width_resp=",".join(refused) or "-",
+            digest_eq_golden=int(match),
+            digest0=f"0x{got[0]:08x}" if got else "none",
+            golden0=f"0x{golden[0]:08x}",
+            **({} if done else {"reason": "timeout", "bound": DONE_BOUND}),
+        )
+        await self._reset_hmac()
 
     # ------------------------------------------------------------------ helpers
 

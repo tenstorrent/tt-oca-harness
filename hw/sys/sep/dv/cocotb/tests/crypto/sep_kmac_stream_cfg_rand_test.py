@@ -245,7 +245,7 @@ def _bits(v: int, m: int) -> int:
 
 
 class CellTimeout(Exception):
-    """A bounded wait of a cell expired; the owning check already logged FAIL."""
+    """A cell cannot go on; the owning check or control already logged FAIL or CTRL-MISSING."""
 
 
 @pyuvm.test()
@@ -641,12 +641,14 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             ctrl_process_squeeze=ctrl_process_squeeze,
             ctrl_done_idle=int(done_idle),
         )
+        # Steps 12 and 15: the write-one clear of kmac_done (INTR_STATE RW1C) reads 0.
         self.chk.ctrl(
             "KMAC-SEQ",
-            ctrl_process_squeeze == 1 and done_idle,
+            ctrl_process_squeeze == 1 and done_idle and done_after == 0 and cleared,
             **tag,
             ctrl_process_squeeze=ctrl_process_squeeze,
             ctrl_done_idle=int(done_idle),
+            done_after_w1c=done_after,
             done_cleared=int(cleared),
         )
         if not done_idle or not cleared or not run_ok:

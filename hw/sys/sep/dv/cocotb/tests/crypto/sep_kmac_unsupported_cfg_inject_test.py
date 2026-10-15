@@ -9,8 +9,8 @@ hashing starts. ``CFG_SHADOWED.en_unsupported_modestrength`` (lines 112-118):
 with the bit clear KMAC does not propagate ``CMD.start`` to the SHA3 engine;
 with the bit set it moves forward. ``CMD.err_processed`` (lines 195-197) lets
 the state machine return to its reset state. ``ERR_CODE`` (lines 343-345) is 0
-at reset and holds the cause after ``kmac_err``; its value is logged and only
-"non-zero" is graded. Mode and command codes come from
+at reset and holds the cause after ``kmac_err``; the register text states no
+value after an error, so the code is logged only and its reset value 0 is graded. Mode and command codes come from
 ``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson``.
 
 The 20 cells are mode {SHAKE, cSHAKE} x strength {128, 224, 256, 384, 512} x
@@ -21,7 +21,7 @@ and a legal SHA3-256 hash of a drawn message.
 
 Checkers:
   CHK-KMAC-UNSUP     en bit 0, unsupported strength: after CMD.start kmac_err=1,
-                     sha3_idle=1, sha3_absorb=0, kmac_done=0 and ERR_CODE != 0;
+                     sha3_idle=1, sha3_absorb=0 and kmac_done=0;
                      STATUS still idle and not absorbing after a hold of t_clean.
                      kmac_err and ERR_CODE read 0 before the start.
   CHK-KMAC-UNSUP-EN  en bit 1, unsupported strength: STATUS.sha3_absorb=1 after
@@ -331,8 +331,6 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
                 and _bits(status2, _IDLE) == 1
                 and absorb == 0
                 and _bits(intr1, _DONE) == 0
-                and code1 != 0
-                and code2 != 0
             )
             self.chk.ok(
                 "KMAC-UNSUP",
@@ -344,14 +342,17 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
                 absorb=absorb,
                 idle=_bits(status1, _IDLE) & _bits(status2, _IDLE),
                 done=_bits(intr1, _DONE),
-                err_code_nonzero=int(code1 != 0 and code2 != 0),
                 err_clk=err_clk,
                 hold_clk=hold_clk,
                 status=f"0x{status1 & _STAGE_MASK:x}/0x{status2 & _STAGE_MASK:x}",
                 intr_rsvd=f"0x{intr1 & ~_INTR_MASK & 0xFFFF_FFFF:x}",
             )
             self.chk.obs(
-                "KMAC-ERRCODE", seed=seed, mode=mode, kstrength=strength, err_code=f"0x{code1:x}"
+                "KMAC-ERRCODE",
+                seed=seed,
+                mode=mode,
+                kstrength=strength,
+                err_code=f"0x{code1:x}/0x{code2:x}",
             )
             await self._recover(seed, mode, strength, msg)
         return absorb_of

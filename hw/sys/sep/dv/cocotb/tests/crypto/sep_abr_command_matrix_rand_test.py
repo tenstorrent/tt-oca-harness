@@ -29,7 +29,11 @@ Checkers:
                     a combined cell also holds VALID=1.
   CHK-ABR-REARM     after a combined cell, ZEROIZE or an ABR reset gives
                     READY=1; after ZEROIZE every secret output window that held
-                    a non-zero word reads 0.
+                    a non-zero word reads 0. The ML-KEM KEYGEN+DECAPS cell grades
+                    the wipe: its ZEROIZE leg needs at least one window that held a
+                    non-zero word, else the check fails. ML-DSA KEYGEN+SIGN fills no
+                    secret output window, so its ZEROIZE leg grades READY and logs
+                    the wipe part as ``OBS-BLOCKED`` when every window is empty.
   CHK-ABR-ORDER     the single-step result equals its ACVP vector whatever ran
                     before it.
   CHK-ABR-TAMPER    for the drawn reject case ``MLDSA_VERIFY_RES`` differs from
@@ -44,7 +48,8 @@ names only ``VALID`` and ``READY``. CHK-ABR-COMBO and CHK-ABR-PARK carry it in
 an ``obs_error`` field.
 
 Controls: ``CTRL-ABR-PARK`` (READY reads 1 after the re-arm of the
-single-step cell), ``CTRL-ABR-TAMPER`` (the ACVP accept case gives c~),
+single-step cell), ``CTRL-ABR-VALID-PRE`` (VALID reads 0 at the READY read
+before each command write, so the VALID wait sees the VALID of that command), ``CTRL-ABR-TAMPER`` (the ACVP accept case gives c~),
 ``CTRL-ABR-KEM-FLIP`` (the valid decapsulation case gives its K).
 ``CTRL-ABR-SECRET-PRE`` logs which secret windows held a non-zero word before a
 ZEROIZE; a window that held none logs ``OBS-ABR-SECRET-EMPTY`` and is not
@@ -353,8 +358,17 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
         Returns ``(STATUS, "")`` at the first read with VALID or ERROR set, or
         ``(None, reason)`` when a bounded wait expired.
         """
-        if await self._wait_ready(blk) is None:
+        st_pre = await self._wait_ready(blk)
+        if st_pre is None:
             return None, f"ready_timeout bound={READY_POLLS}x{READY_GAP}"
+        self.chk.ctrl(
+            "ABR-VALID-PRE",
+            not st_pre & blk.valid,
+            block=blk.name,
+            cmd=f"0x{cmd:x}",
+            valid=int(bool(st_pre & blk.valid)),
+            ready=int(bool(st_pre & blk.ready)),
+        )
         for addr, words in inputs:
             await self.abr.write_words(addr, list(words))
         await self.abr.wr32(blk.ctrl, cmd)
@@ -523,22 +537,30 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
             return
         live = []
         states = []
+        graded = 0
         for name, words in post.items():
             if not any(pre[name]):
                 self.chk.obs("ABR-SECRET-EMPTY", cell=cell, window=name)
                 states.append(f"{name}:empty")
                 continue
+            graded += 1
             nz = [i for i, w in enumerate(words) if w]
             states.append(f"{name}:{'0' if not nz else 'live'}")
             if nz:
                 live.append(f"{name}@{nz[0]}=0x{words[nz[0]]:08x}")
+        # The KEM cell outputs DECAPS_KEY and SHARED_KEY, so its leg must grade a window.
+        min_graded = 1 if cell == "kem_keygen_decaps" else 0
+        if graded == 0 and min_graded == 0:
+            self.chk.blocked("ABR-REARM", f"secret_wipe_{cell}_fills_no_secret_window")
         self.chk.ok(
             "ABR-REARM",
-            not live,
+            not live and graded >= min_graded,
             cell=cell,
             via=via,
             ready=1,
             secret_window=",".join(states),
+            graded_windows=graded,
+            min_graded=min_graded,
             live=",".join(live) or "none",
         )
 

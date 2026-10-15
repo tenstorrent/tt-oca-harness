@@ -20,8 +20,8 @@ SHA2_None; ``INTR_STATE``:44 ``hmac_err`` RW1C; ``ERR_CODE``:171) and
 :329-331 Key_None blocks a keyed start and does not block ``hmac_en`` = 0).
 
 Checkers:
-  CHK-HMAC-BLOCK    a blocked start sets ``hmac_err`` and makes ``ERR_CODE`` non-zero (both
-                    read before any message write); the message and ``hash_process`` that
+  CHK-HMAC-BLOCK    a blocked start sets ``hmac_err`` (read before any message write; it reads
+                    0 before the start in ``CTRL-HMAC-PRESTATE``); the message and ``hash_process`` that
                     complete a legal hash within t_clean then give no ``hmac_done`` for
                     3 x t_clean, and DIGEST stays at D_prev (read under the restored ``CFG``
                     of the last completed hash)
@@ -31,11 +31,16 @@ Checkers:
 Controls: ``CTRL-HMAC-NOBLOCK`` (each legal class raises no error, sets ``hmac_done`` and
 returns its golden), ``CTRL-HMAC-DPREV`` (D_prev equals the golden of the last completed hash
 and is non-zero), ``CTRL-HMAC-REF`` (the reference hash returns its golden). Log-only:
-``OBS-HMAC-ERRCODE`` (the value; the specification does not list the codes),
+``OBS-HMAC-ERRCODE`` (the value; the register text, hmac.adoc:171-172, states no value),
 ``OBS-HMAC-BLOCKED-MSG-RESP`` (non-OKAY responses to the message written after a blocked
 start; the register text does not state them) and
 ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text does not state its value after a
-blocked start).
+blocked start), ``OBS-HMAC-DIGEST-ORDER`` (the byte order inside a DIGEST word).
+
+DIGEST byte order: hmac.adoc:114 (``CFG.digest_swap``) states a byte swap, and no register text
+states the byte order inside a DIGEST word at ``digest_swap`` = 0. A readback equals its golden
+when every word is the big-endian ("be") or every word is the little-endian ("le") read of
+digest bytes 4n..4n+3, and every readback of the seed uses the order of the first one.
 """
 
 from __future__ import annotations
@@ -108,8 +113,21 @@ def _row_words(row: int) -> list[int]:
 
 
 def _words(raw: bytes) -> tuple[int, ...]:
-    """DIGEST words at digest_swap = 0: DIGEST_0 is the big-endian read of bytes 0..3."""
+    """Big-endian reads of digest bytes 4n..4n+3 (the "be" candidate order)."""
     return tuple(int.from_bytes(raw[i : i + 4], "big") for i in range(0, len(raw), 4))
+
+
+def _bswap32(w: int) -> int:
+    return int.from_bytes((w & 0xFFFF_FFFF).to_bytes(4, "little"), "big")
+
+
+def _order_of(got: tuple[int, ...], golden: tuple[int, ...]) -> str | None:
+    """Return "be" or "le" when ``got`` equals ``golden`` in that in-word byte order."""
+    if tuple(got) == tuple(golden):
+        return "be"
+    if tuple(got) == tuple(_bswap32(w) for w in golden):
+        return "le"
+    return None
 
 
 @dataclass(frozen=True)
@@ -266,6 +284,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         await self.swrst.release()
         self.logger.info("CTRL-HMAC-BASELINE seed=%d sw_reset_n=0x%02x", seed, SW_RESET_BASELINE)
         self._period_ps = round(self.cfg.sys_clk_period_ns * 1000)
+        self._dorder: str | None = None
         await self._reset_hmac(dut)
 
         # Reference hash: t_clean is the clean time of the bounds of this seed.
@@ -273,7 +292,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         t_clean, digest = await self._run_hash(ref, bound=self.REF_BOUND)
         self.chk.ctrl(
             "HMAC-REF",
-            t_clean is not None and digest == ref.golden,
+            t_clean is not None and self._eq(digest, ref.golden),
             len=len(ref.msg),
             t_clean=t_clean,
             bound=self.REF_BOUND,
@@ -298,7 +317,17 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
                 last = await self._legal_class(step)
 
         close_graded_window(self.logger)
+        self.chk.obs("HMAC-DIGEST-ORDER", dswap0=self._dorder or "-")
         self.chk.finish()
+
+    def _eq(self, got: tuple[int, ...], golden: tuple[int, ...]) -> bool:
+        """``got`` equals ``golden`` in the DIGEST byte order of the seed (first match sets it)."""
+        order = _order_of(got, golden)
+        if order is None:
+            return False
+        if self._dorder is None:
+            self._dorder = order
+        return order == self._dorder
 
     # Outer limit of the clean-time measurement only; never a contract.
     REF_BOUND = 20_000
@@ -434,7 +463,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         d_prev = await self._read_digest(last.sha)
         self.chk.ctrl(
             "HMAC-DPREV",
-            d_prev == last.golden and any(d_prev),
+            self._eq(d_prev, last.golden) and any(d_prev),
             **{"class": step.name},
             d_prev=f"0x{d_prev[0]:08x}",
             golden=f"0x{last.golden[0]:08x}",
@@ -472,7 +501,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         unchanged = int(digest == d_prev)
         self.chk.ok(
             "HMAC-BLOCK",
-            err == 1 and done == 0 and unchanged == 1 and err_code != 0,
+            err == 1 and done == 0 and unchanged == 1,
             **{"class": step.name},
             digest=f"0b{step.digest_code:04b}",
             keylen=f"0b{step.key_code:06b}",
@@ -482,7 +511,6 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
             digest_unchanged=unchanged,
             d_prev=f"0x{d_prev[0]:08x}",
             digest0=f"0x{digest[0]:08x}",
-            err_code_nonzero=int(err_code != 0),
             msg_len=len(rec.msg),
             process_written=1,
             window_clk=window_clk,
@@ -504,14 +532,15 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         close_graded_window(self.logger)
         t_rec, rdigest = await self._run_hash(rec, bound=self.hash_bound)
         err_cleared = int(not (intr2 & HMAC_INTR_ERR))
+        rec_eq = self._eq(rdigest, rec.golden)
         self.chk.ok(
             "HMAC-RECOVER",
-            err_cleared == 1 and t_rec is not None and rdigest == rec.golden and rdigest != d_prev,
+            err_cleared == 1 and t_rec is not None and rec_eq and rdigest != d_prev,
             **{"class": step.name},
             err_cleared=err_cleared,
             sha=rec.sha,
             klen=rec.key_bits,
-            digest_eq_golden=int(rdigest == rec.golden),
+            digest_eq_golden=int(rec_eq),
             digest_changed=int(rdigest != d_prev),
             t_done=t_rec if t_rec is not None else "timeout",
             bound=self.hash_bound,
@@ -525,16 +554,17 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         assert h is not None
         t_done, digest = await self._run_hash(h, bound=self.hash_bound)
         intr = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
+        eq = self._eq(digest, h.golden)
         self.chk.ctrl(
             "HMAC-NOBLOCK",
-            t_done is not None and digest == h.golden and not (intr & HMAC_INTR_ERR),
+            t_done is not None and eq and not (intr & HMAC_INTR_ERR),
             **{"class": step.name},
             digest=h.sha,
             keylen=h.key_bits if h.key_bits is not None else "none",
             hmac_en=h.hmac_en,
             err=int(bool(intr & HMAC_INTR_ERR)),
             done=int(t_done is not None),
-            digest_eq_golden=int(digest == h.golden),
+            digest_eq_golden=int(eq),
             bound=self.hash_bound,
         )
         if t_done is None:

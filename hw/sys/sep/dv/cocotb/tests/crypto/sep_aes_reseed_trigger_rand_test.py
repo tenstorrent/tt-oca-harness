@@ -23,19 +23,25 @@ its reset value for the whole leaf.
 Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): the multi-hot invalid rate, the order of the five rate runs, the
 block count N (129 to 300), the order of the two clear trials, the rate of the
-trigger leg, the key row and the plaintexts. All five rate runs use the same
+trigger leg, the key row, the plaintexts and the reload key row of the key clear
+(a different row). All five rate runs use the same
 key and the same plaintexts, so only the rate differs between them.
 
 Checkers:
   CHK-AES-RESEED-RATE     count(PER_1) > count(PER_64) > count(PER_8K) over N blocks
                           (rises of ``crypto_edn_ack_o[0]``).
-  CHK-AES-RESEED-INVALID  3'b000 and the multi-hot value each count above PER_64.
+  CHK-AES-RESEED-INVALID  3'b000 and the multi-hot value each map to PER_1
+                          (aes.adoc:109): each count equals count(PER_1) of the
+                          same key and plaintexts. Control: each count is above
+                          count(PER_64).
   CHK-AES-RESEED-TRIG     no acknowledge in 4 x t_r clocks after a TRIGGER write
                           of 0 on an idle unit. Control: a PRNG_RESEED write is
                           acknowledged in a window of the same length.
-  CHK-AES-CLEAR-KEY       after KEY_IV_DATA_IN_CLEAR and a reload, the
-                          ciphertext equals the golden. Control: the IV read
-                          before the clear equals the written IV.
+  CHK-AES-CLEAR-KEY       after KEY_IV_DATA_IN_CLEAR and a reload of a key row
+                          that differs from the key loaded before the clear,
+                          the ciphertext equals the golden of the reloaded key.
+                          Control: the IV read before the clear equals the
+                          written IV.
   CHK-AES-RATE-CT         every block of the five rate runs equals the golden.
 The value of DATA_OUT after DATA_OUT_CLEAR has no stated value: the leaf logs
 ``OBS-BLOCKED CHK-AES-CLEAR-OUT`` and ``OBS-AES-CLEAR-OUT`` and grades nothing
@@ -118,10 +124,15 @@ class Plan:
     key_row: int
     pts: tuple[tuple[int, ...], ...]
     p_clear: tuple[int, ...]
+    reload_row: int
 
     @property
     def key(self) -> list[int]:
         return _le_words(KEY_ROWS[self.key_row][1])
+
+    @property
+    def reload_key(self) -> list[int]:
+        return _le_words(KEY_ROWS[self.reload_row][1])
 
     def rate_value(self, run: str) -> int:
         if run == "zero":
@@ -135,7 +146,8 @@ class Plan:
             f"multi=0b{self.multi:03b} order={','.join(self.order)} n={self.n_blocks} "
             f"clear_order={','.join(self.clear_order)} trig_rate={self.trig_rate} "
             f"key_row={KEY_ROWS[self.key_row][0]} pt0={[hex(w) for w in self.pts[0]]} "
-            f"p_clear={[hex(w) for w in self.p_clear]}"
+            f"p_clear={[hex(w) for w in self.p_clear]} "
+            f"reload_row={KEY_ROWS[self.reload_row][0]}"
         )
 
 
@@ -164,8 +176,20 @@ def draw_plan(seed: int) -> Plan:
     words = _unique_words(rng, 4 * n_blocks, used)
     pts = tuple(tuple(words[4 * i : 4 * i + 4]) for i in range(n_blocks))
     p_clear = tuple(_unique_words(rng, 4, used))
+    reload_row = rng.choice(
+        [i for i in range(len(KEY_ROWS)) if KEY_ROWS[i][1] != KEY_ROWS[key_row][1]]
+    )
     return Plan(
-        seed, multi, tuple(order), n_blocks, tuple(clear_order), trig_rate, key_row, pts, p_clear
+        seed,
+        multi,
+        tuple(order),
+        n_blocks,
+        tuple(clear_order),
+        trig_rate,
+        key_row,
+        pts,
+        p_clear,
+        reload_row,
     )
 
 
@@ -343,12 +367,21 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
         )
         for run in ("zero", "multi"):
             v = c.get(run)
-            self.chk.ctrl("AES-RESEED-INVALID", b is not None and a is not None, run=run, c_per64=b)
-            self.chk.ok(
+            # aes.adoc:109: 3'b000 and multi-hot values map to PER_1. The five runs share
+            # key and plaintexts, so a mapped run gives the count of the PER_1 run.
+            self.chk.ctrl(
                 "AES-RESEED-INVALID",
                 v is not None and b is not None and v > b,
+                run=run,
+                c=v,
+                c_per64=b,
+            )
+            self.chk.ok(
+                "AES-RESEED-INVALID",
+                v is not None and a is not None and v == a,
                 value=f"0b{self.plan.rate_value(run):03b}",
                 c=v,
+                c_per1=a,
                 c_per64=b,
             )
 
@@ -428,8 +461,12 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
     async def _clear_key_trial(self) -> None:
         plan = self.plan
         key = plan.key
+        reload_key = plan.reload_key
         iv = _le_words(IV_ROW)
-        golden = aes_encrypt_words("ecb", key, list(plan.p_clear))
+        # The golden of the reloaded key differs from that of the key before the clear, so
+        # a DUT that keeps the old key fails the compare.
+        golden = aes_encrypt_words("ecb", reload_key, list(plan.p_clear))
+        assert golden != aes_encrypt_words("ecb", key, list(plan.p_clear)), "reload key golden"
         await self._pulse_aes()
         open_graded_window(TEST, self.logger)
         iv_before: list[int] | None = None
@@ -446,7 +483,7 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
             await ClockCycles(cocotb.top.clk_i, CLEAR_WAIT_FACTOR * (self.t_blk or 1))
             await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_key_iv_clear")
             iv_after = await self._read_iv()
-            await self.aes.write_key(key)
+            await self.aes.write_key(reload_key)
             await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_reload")
             await self._write_iv(iv)
             await self.aes._wr(AES_TRIGGER, AES_TRIGGER_DATA_OUT_CLEAR)
@@ -464,7 +501,12 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
             iv_before="0x" + "".join(f"{w:08x}" for w in reversed(iv_before or [])),
             iv_after="0x" + "".join(f"{w:08x}" for w in reversed(iv_after or [])),
         )
-        fields = {"reload_ct==golden": int(ct == golden), "ctrl_iv_read_equal": int(iv_ok)}
+        fields = {
+            "reload_ct==golden": int(ct == golden),
+            "ctrl_iv_read_equal": int(iv_ok),
+            "key_row": KEY_ROWS[plan.key_row][0],
+            "reload_row": KEY_ROWS[plan.reload_row][0],
+        }
         if reason:
             fields["reason"] = reason
         self.chk.ok("AES-CLEAR-KEY", ct == golden, **fields)

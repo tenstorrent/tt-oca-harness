@@ -57,8 +57,11 @@ is not AES+KMAC. Each member runs alone first (CTRL-CONC-CLEAN, golden compare a
 clean busy time t_op), then all members of the group run as concurrent tasks on the
 CPU-LSU master with distinct non-zero AXI IDs and drawn start skews, in the drawn
 start order with OTBN last. HMAC and KMAC hold their process write, and AES holds
-two blocks with DATA_OUT unread (a stall), until every member is started, so the
-busy windows of every pair overlap by construction. In a group
+two blocks with DATA_OUT unread (a stall), until every member is started. A busy
+window runs from the start write response to the last status read that shows busy
+(CTRL-CONC-OVERLAP takes it from DUT status reads only; the process write response of
+HMAC and KMAC is logged as OBS-CONC-PROCESS-WRITE). The PLAN and LEG lines log the
+effective start order. In a group
 without an HMAC member, HMAC holds a finished SHA-256 digest (the bystander) and a
 further task reads its DIGEST words while the peers run. The EDN words acked on
 crypto_edn_ack_o[3:0] are counted from the first word of the run against the
@@ -443,6 +446,12 @@ class LegGroup:
     def has_bystander(self) -> bool:
         return self.bystander_msg is not None
 
+    @property
+    def start_order(self) -> list[str]:
+        """The effective start order: the drawn order with OTBN moved last."""
+        rest = [e for e in self.order if e != "otbn"]
+        return rest + (["otbn"] if "otbn" in self.members else [])
+
 
 def _draw_op(rng: SepSeededRng, eng: str):
     if eng == "hmac":
@@ -582,6 +591,8 @@ class _TaskResult:
     # Origin of the poll bound; -1 counts it from start_clk. A held member
     # counts it from the release of the hold.
     poll_from: int = -1
+    # Response of the HMAC/KMAC process write; logged only, never a window end.
+    process_clk: int = -1
 
     @property
     def poll_origin(self) -> int:
@@ -596,9 +607,8 @@ class _LegMember:
     """Configure and run of one engine; ``run`` returns a ``_TaskResult``.
 
     ``bound`` is the clock limit of the run, counted from the start write
-    response. The busy window ends at the last status read that shows busy, or
-    at the last write of the operation when that write is later (the engine is
-    busy while it takes the message), so a short operation still has a window.
+    response. The busy window ends at the last status read that shows busy; no
+    host write ends a window, so a member with no busy read has an empty window.
     """
 
     status_addr = 0
@@ -648,7 +658,7 @@ class LegHmac(_LegAccess, SepHmac, _LegMember):
         if not await self._hold(res, hold):
             return res
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
-        res.busy_end_clk = self.last_resp_clk
+        res.process_clk = self.last_resp_clk
         # hmac.hjson INTR_STATE.hmac_done: HMAC/SHA-2 has completed. A read with
         # hmac_done = 0 shows busy.
         if await self._leg_poll(res, bound, lambda v: v & HMAC_INTR_DONE) is None:
@@ -751,7 +761,7 @@ class LegKmac(_LegAccess, SepKmac, _LegMember):
         if not await self._hold(res, hold):
             return res
         await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
-        res.busy_end_clk = self.last_resp_clk
+        res.process_clk = self.last_resp_clk
         # kmac.hjson STATUS.sha3_squeeze: a read with sha3_squeeze = 0 shows busy.
         if await self._leg_poll(res, bound, lambda v: v & KMAC_STATUS_SQUEEZE) is None:
             return res
@@ -1197,8 +1207,8 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
 
         # Start order: the drawn order, with OTBN last. OTBN cannot be held
         # busy by the host, so it starts once every other member is started and
-        # held, and each pair overlaps by construction (see _member).
-        order = [e for e in g.order if e != "otbn"] + (["otbn"] if "otbn" in g.members else [])
+        # held (see _member).
+        order = g.start_order
         # Skews: drawn after the clean runs, from the plan generator, 0 to half
         # the shortest clean busy time of the group.
         min_t = min(t for t, _w in clean.values())
@@ -1230,8 +1240,8 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         # of e ends without a start. ``held`` is set once every member except
         # OTBN is started; ``release`` once every member is started. HMAC and
         # KMAC keep their process write, and AES its DATA_OUT read, behind the
-        # release, so each of them is busy from its start to after the latest
-        # start of the group: every pair overlaps by construction.
+        # release, so each of them stays busy past the latest start of the group.
+        # CTRL-CONC-OVERLAP measures the overlap from DUT busy status reads.
         started = {eng: Event() for eng in order}
         held = Event()
         release = Event()
@@ -1295,6 +1305,16 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         for eng in g.members:
             drivers[eng].record = None
 
+        for eng in g.members:
+            if results[eng].process_clk >= 0:
+                chk.obs(
+                    "CONC-PROCESS-WRITE",
+                    group=g.name,
+                    engine=eng,
+                    start_clk=results[eng].start_clk,
+                    process_clk=results[eng].process_clk,
+                    busy_end_clk=results[eng].busy_end_clk,
+                )
         for a, b in combinations(g.members, 2):
             ra, rb = results[a], results[b]
             overlap = max(
@@ -1369,11 +1389,11 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         groups, rng = draw_plan(seed)
         for g in groups:
             self.logger.info(
-                "PLAN seed=%d group=%s members=%s order=%s bystander=%d ops=[%s]",
+                "PLAN seed=%d group=%s members=%s start_order=%s bystander=%d ops=[%s]",
                 seed,
                 g.name,
                 ",".join(g.members),
-                ",".join(g.order),
+                ",".join(g.start_order),
                 int(g.has_bystander),
                 " ".join(g.ops[e].desc() for e in g.members),
             )

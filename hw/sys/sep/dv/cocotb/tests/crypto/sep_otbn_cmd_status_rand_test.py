@@ -70,6 +70,7 @@ from env.sep_edge_timer import SepEdgeTimer
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_rv32_asm import ZERO, add
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import ot_rdl_table_code
 from sep_base_test import sep_base_test
 from sep_reg_meta import OTBN
 from seq_lib.sep_otbn_compute_seq import OPS, golden_result, otbn_compute_prog
@@ -78,17 +79,22 @@ from seq_lib.sep_sw_reset_seq import SepSwReset
 
 TEST = "sep_otbn_cmd_status_rand_test"
 
-# Codes of otbn.adoc CMD (:79-81) and STATUS (:113-118).
-CMD_EXECUTE = 0xD8
-CMD_SEC_WIPE_DMEM = 0xC3
-CMD_SEC_WIPE_IMEM = 0x1E
+# Codes of otbn.adoc CMD (:79-81) and STATUS (:113-118), from the value tables of the
+# otbn.rdl field descriptions; the STATUS reset value from the generated register map.
+CMD_EXECUTE = ot_rdl_table_code("otbn", "CMD", "EXECUTE")
+CMD_SEC_WIPE_DMEM = ot_rdl_table_code("otbn", "CMD", "SEC_WIPE_DMEM")
+CMD_SEC_WIPE_IMEM = ot_rdl_table_code("otbn", "CMD", "SEC_WIPE_IMEM")
 COMMANDS = (CMD_EXECUTE, CMD_SEC_WIPE_DMEM, CMD_SEC_WIPE_IMEM)
-ST_IDLE = 0x00
-ST_BUSY = {CMD_EXECUTE: 0x01, CMD_SEC_WIPE_DMEM: 0x02, CMD_SEC_WIPE_IMEM: 0x03}
-ST_BUSY_EXECUTE = 0x01
-ST_SEC_WIPE_INT = 0x04
-ST_LOCKED = 0xFF
-ST_RESET = ST_SEC_WIPE_INT  # STATUS reset value 0x4 (otbn.adoc:106)
+ST_IDLE = ot_rdl_table_code("otbn", "STATUS", "IDLE")
+ST_BUSY_EXECUTE = ot_rdl_table_code("otbn", "STATUS", "BUSY_EXECUTE")
+ST_BUSY = {
+    CMD_EXECUTE: ST_BUSY_EXECUTE,
+    CMD_SEC_WIPE_DMEM: ot_rdl_table_code("otbn", "STATUS", "BUSY_SEC_WIPE_DMEM"),
+    CMD_SEC_WIPE_IMEM: ot_rdl_table_code("otbn", "STATUS", "BUSY_SEC_WIPE_IMEM"),
+}
+ST_SEC_WIPE_INT = ot_rdl_table_code("otbn", "STATUS", "BUSY_SEC_WIPE_INT")
+ST_LOCKED = ot_rdl_table_code("otbn", "STATUS", "LOCKED")
+ST_RESET = OTBN.reset32("STATUS")  # otbn.adoc:106
 
 A_INTR_STATE = OTBN.addr("INTR_STATE")
 A_INTR_ENABLE = OTBN.addr("INTR_ENABLE")
@@ -564,6 +570,9 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                     rose = 0
                 state_en = await self._rd(A_INTR_STATE, M_DONE)
                 vec_en = self._line()
+                # The line equals done AND enable at every sample: no fall from the
+                # enable write to the W1C write while both bits are 1.
+                falls = self.irq.fall_clks_since(m2, "done")
                 await self._wr(A_INTR_STATE, M_DONE)
                 st_clr = await self._rd(A_INTR_STATE, M_DONE)
                 vec_clr = await self._line_settle()
@@ -575,6 +584,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                     and rose == 1
                     and state_en == 1
                     and vec_en == 1
+                    and not falls
                     and st_clr == 0
                     and vec_clr == 0
                 )
@@ -584,6 +594,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                     seed=seed,
                     via="cmd",
                     enable=0,
+                    vec29_falls_before_w1c=len(falls),
                     state=done,
                     vec29_high_clk=high,
                     window_clk=win,
@@ -603,6 +614,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 rose = int(rise_clk is not None)
                 in_order = int(rose == 1 and last0 is not None and rise_clk >= last0.clk)
                 vec_en = self._line()
+                # No fall from the rise to the W1C write while done and enable are both 1.
+                falls = self.irq.fall_clks_since(mark, "done")
                 await self._wr(A_INTR_STATE, M_DONE)
                 st_clr = await self._rd(A_INTR_STATE, M_DONE)
                 vec_clr = await self._line_settle()
@@ -613,6 +626,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                     and rose == 1
                     and in_order == 1
                     and vec_en == 1
+                    and not falls
                     and st_clr == 0
                     and vec_clr == 0
                 )
@@ -629,6 +643,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                     cmd_clk=mark.clk,
                     rise_after_done0=in_order,
                     vec29=vec_en,
+                    vec29_falls_before_w1c=len(falls),
                     then_w1c_state=st_clr,
                     w1c_vec29=vec_clr,
                     pre_state=st0,
@@ -651,6 +666,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             rose = 1
         except AssertionError:
             rose = 0
+        # No fall from the enable write to the enable-0 write while both bits are 1.
+        on_falls = self.irq.fall_clks_since(m_on, "done")
         await self._wr(A_INTR_ENABLE, 0)
         try:
             await self.irq.wait_level(0, _LINE_BOUND_CLK, "done")
@@ -661,7 +678,13 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         st_clr = await self._rd(A_INTR_STATE, M_DONE)
         vec_clr = await self._line_settle()
         cond = (
-            st_set == 1 and high == 0 and rose == 1 and fell == 1 and st_clr == 0 and vec_clr == 0
+            st_set == 1
+            and high == 0
+            and rose == 1
+            and not on_falls
+            and fell == 1
+            and st_clr == 0
+            and vec_clr == 0
         )
         self.chk.ok(
             "OTBN-DONE-LINE",
@@ -674,6 +697,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             window_clk=win,
             then_enable=1,
             vec29_rose=rose,
+            vec29_falls_while_enabled=len(on_falls),
             then_enable0_vec29_fell=fell,
             then_w1c_enable0_state=st_clr,
             w1c_vec29=vec_clr,
@@ -687,16 +711,18 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             c_rose = 1
         except AssertionError:
             c_rose = 0
+        c_falls = self.irq.fall_clks_since(m_c, "done")
         await self._wr(A_INTR_STATE, M_DONE)
         await self._rd(A_INTR_STATE, M_DONE)
         c_clr = await self._line_settle()
         self.chk.ctrl(
             "OTBN-DONE-LINE",
-            c_rose == 1 and c_clr == 0,
+            c_rose == 1 and not c_falls and c_clr == 0,
             seed=seed,
             via="test",
             enable=1,
             vec29_rose=c_rose,
+            vec29_falls_before_w1c=len(c_falls),
             w1c_vec29=c_clr,
         )
         await self._wr(A_INTR_ENABLE, 0)

@@ -142,7 +142,20 @@ ST_ERR = AES.field_mask("STATUS", "alert_recov_ctrl_update_err") | AES.field_mas
 )
 HMAC_DIGEST_0 = sym("HMAC_DIGEST_0__REG_ADDR")
 HMAC_KEY_0 = sym("HMAC_KEY_0__REG_ADDR")
-HMAC_KEY_REGS = 32
+
+
+def _hmac_key_regs() -> int:
+    """Count of the HMAC KEY multireg registers in the generated register map."""
+    n = 0
+    while True:
+        try:
+            sym(f"HMAC_KEY_{n}__REG_ADDR")
+        except KeyError:
+            return n
+        n += 1
+
+
+HMAC_KEY_REGS = _hmac_key_regs()
 
 WAIT_LIMIT = 20_000  # outer limit of a wait with no clean time (logged as bound=)
 ALERT_WINDOW = 200  # clocks after the ALERT_TEST write response (outer limit, logged)
@@ -454,7 +467,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         """Key_None with hmac_en = 1; returns the hmac_err value seen (or -1)."""
         sha = self.plan.none_sha
         cfg = build_cfg(hmac_en=False, sha_bits=sha) | HMAC.field_mask("CFG", "hmac_en")
-        assert (cfg >> HMAC.field_lsb("CFG", "key_length")) & 0x3F == 0, "Key_None field not 0"
+        assert cfg & HMAC.field_mask("CFG", "key_length") == 0, "Key_None field not 0"
         err = -1
         unchanged = 0
         reason = ""

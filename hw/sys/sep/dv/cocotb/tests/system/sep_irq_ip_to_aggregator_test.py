@@ -108,6 +108,14 @@ from seq_lib.sep_irq_aggregator_seq import (
 from seq_lib.sep_irq_fanin_seq import FANIN_SOURCES
 from seq_lib.sep_sw_reset_seq import SepSwReset
 
+
+def _baseline_x_field() -> str:
+    """The X state of the baseline read: "0" on a 4-state simulator, where a read with an X
+    or Z bit raises in the AXI master; "n/a" on Verilator, which is 2-state and checks nothing.
+    """
+    return "n/a" if "verilator" in str(getattr(cocotb, "SIM_NAME", "") or "").lower() else "0"
+
+
 # Clocks an Event source must keep its aggregate bit at 1 after INTR_TEST=0
 # and before the W1C. Every Status source in this bench must drop inside it.
 _STICKY_HOLD = 32
@@ -751,7 +759,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             vec=self.vec.level(src.name),
             others_unchanged=int(others_ok),
             baseline_ok=int(base_ok),
-            baseline_x=0,
+            baseline_x=_baseline_x_field(),
             undriven=f"0x{st & ~drv:x}",
             hold=hold,
             w1c="n/a",
