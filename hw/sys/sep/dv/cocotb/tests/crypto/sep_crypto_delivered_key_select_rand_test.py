@@ -18,8 +18,11 @@ Modifications; ``hw/sys/sep/doc/crypto.adoc``, Key Manager Key Delivery;
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense with a PROD image,
 ``+esrc_noise_force`` and the Key Manager firmware image of the open Key
-Manager sideload tests. The Key Manager, TRNG and AES run; HMAC is released
-before the key transfers; OTBN, KMAC and ABR stay in reset.
+Manager sideload tests. The Key Manager, TRNG, AES and ABR run; HMAC is
+released before the key transfers; OTBN and KMAC stay in reset. ABR stays out
+of reset because the Key Manager boot clears the ABR key interface
+(``hw/ip/key_manager/approm/prod/drivers/rom_boot.c``); with ABR held in
+reset that access ends the boot with an AXI slave-error fault.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): the table rows of the delivered HMAC key K_h, the delivered AES key
@@ -247,7 +250,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         dut = cocotb.top
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD: the KM reads OTP at boot
         self.write_efuse_image(image)
-        await self.bring_up_no_cpu(park=("otbn", "hmac", "kmac", "abr"))
+        await self.bring_up_no_cpu(park=("otbn", "hmac", "kmac"))
         await self.bring_up_entropy(strict=True, score_km="observe", score_sinks={"aes": "observe"})
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()

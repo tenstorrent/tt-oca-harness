@@ -287,8 +287,14 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         if not ok:
             raise AssertionError(f"KMAC not idle after reset (STATUS=0x{status:08x})")
 
-    async def _write_msg(self, cell: Cell) -> None:
-        """The message writes of ``cell``: each at its byte lane, AxSIZE of its width."""
+    async def _write_msg(self, cell: Cell) -> list[str]:
+        """The message writes of ``cell``: each at its byte lane, AxSIZE of its width.
+
+        kmac.hjson lines 1052-1058: software writes bytes or words to any
+        address of the ``MSG_FIFO`` window. Returns ``lane/width/resp`` of
+        each write that does not complete OKAY; the caller grades them.
+        """
+        refused: list[str] = []
         for (lane, width), value in zip(cell.writes, cell.values):
             seq = SepAxiAccessSeq(
                 "kmac_msg_wr",
@@ -300,7 +306,8 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             )
             await self.start_seq(seq)
             if not seq.resp_ok:
-                raise AssertionError(f"KMAC MSG_FIFO write lane={lane} width={width} not OKAY")
+                refused.append(f"{lane}/{width}/{seq.resp_code}")
+        return refused
 
     async def _read_state(self, nwords: int) -> list[int]:
         return await self.kmac.read_digest(nwords)
@@ -465,8 +472,20 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         )
         self.chk.ctrl("KMAC-REGWEN", c_live, **tag, idle_cfg_readback=f"0x{c_read:08x}")
 
-        # Step 9: the message in the drawn widths.
-        await self._write_msg(cell)
+        # Step 9: the message in the drawn widths. Every write must complete
+        # OKAY; a refused write is a CHK-KMAC-DIGEST FAIL, and the digest below
+        # is still graded.
+        refused = await self._write_msg(cell)
+        if refused:
+            self.chk.ok(
+                "KMAC-DIGEST",
+                False,
+                **tag,
+                reason="msg_write_resp",
+                writes=len(cell.writes),
+                refused=len(refused),
+                lane_width_resp=",".join(refused[:4]),
+            )
 
         # Steps 10-11: process, squeeze, then kmac_done and the line rise.
         mark = self.vec.mark()

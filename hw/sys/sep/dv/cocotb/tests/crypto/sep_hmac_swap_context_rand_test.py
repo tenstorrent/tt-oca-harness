@@ -4,7 +4,7 @@
 
 RAND-REP, no_cpu (``lsu_stub_all_live``, ``+skip_fuse_sense``). The leaf drives the
 HMAC engine over the CPU-LSU master. Every ``CFG`` write sets ``hmac_en`` = 0 and
-``sha_en`` = 1, except the ``sha_en`` clear.
+``sha_en`` = 1, except the ``sha_en`` clear and the context switch below.
 
 Contracts (spec text, not RTL):
 
@@ -19,6 +19,11 @@ Contracts (spec text, not RTL):
   to save, and software writes them while the engine is idle; ``CMD.hash_continue``
   hashes on from them (hmac.adoc:141, :161;
   vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson:365-366, :372, :386).
+  The context switch follows the OpenTitan HMAC programmer's guide that
+  doc/programmer/src/sep-programming.adoc:848-849 names: write whole blocks, then
+  ``hash_stop``; wait for ``hmac_done``; save DIGEST and MSG_LENGTH; clear
+  ``sha_en``; before the restore ``sha_en`` reads 0; write ``CFG``, DIGEST and
+  MSG_LENGTH; set ``sha_en``; write ``hash_continue``.
 * ``sha_en`` = 0 clears the digest (hmac.adoc:128).
 * A completed hash sets ``INTR_STATE.hmac_done`` (hmac.adoc:51); with
   ``INTR_ENABLE.hmac_done`` set (hmac.adoc:63) vector bit 17 rises, because bit i of
@@ -627,16 +632,15 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
 
                 await self._end_hash(_process, owner="HMAC-CTX", bound=bound, tag=tag)
                 break
-            await self._write_fifo(writes[:-1])
+            # Context-switch steps 2-3: the whole blocks of the part, then hash_stop.
+            await self._write_fifo(writes)
             done_before = (await self._rd(HMAC_INTR_STATE)) & HMAC_INTR_DONE
             self.chk.ctrl(
                 "HMAC-STOP-PRE", done_before == 0, tag=tag, part=i, done_before=done_before
             )
-            tail = writes[-1:]
 
-            async def _stop(tail=tail) -> None:
+            async def _stop() -> None:
                 await self._wr(HMAC_CMD, HMAC_CMD_HASH_STOP)
-                await self._write_fifo(tail)
 
             await self._end_hash(_stop, owner="HMAC-STOP", bound=bound, tag=f"{tag}-part{i}")
             t_idle = await self._poll(HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, bound)
@@ -655,18 +659,32 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
                 bound=bound,
                 t_single=t_single,
             )
+            # Step 4: save the context. Step 5: sha_en = 0 clears the digest.
             saved = await self._read_digest(CTX_DIGEST_WORDS)
             len_lo = await self._rd(HMAC_MSG_LENGTH_LOWER)
             len_hi = await self._rd(HMAC_MSG_LENGTH_UPPER)
+            await self._wr(HMAC_CFG, cfg & ~HMAC_CFG_SHA_EN)
             if trip.interleave:
                 await self._unrelated(trip, cfg, saved, tag, i)
             if await self._poll(HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, bound) is None:
                 self.chk.ok("HMAC-CTX", False, tag=tag, part=i, reason="timeout", bound=bound)
                 raise _TrialAbort
+            # Step 7: sha_en reads 0 before the restore.
+            cfg_pre = await self._rd(HMAC_CFG)
+            self.chk.ctrl(
+                "HMAC-CTX-RESTORE-PRE",
+                not cfg_pre & HMAC_CFG_SHA_EN,
+                tag=tag,
+                part=i,
+                cfg=f"0x{cfg_pre:08x}",
+            )
+            # Step 8: CFG, DIGEST and MSG_LENGTH. Step 9: sha_en = 1.
+            await self._wr(HMAC_CFG, cfg & ~HMAC_CFG_SHA_EN)
             for k, w in enumerate(saved):
                 await self._wr(HMAC_DIGEST_0 + 4 * k, w)
             await self._wr(HMAC_MSG_LENGTH_LOWER, len_lo)
             await self._wr(HMAC_MSG_LENGTH_UPPER, len_hi)
+            await self._wr(HMAC_CFG, cfg)
 
         got = await self._read_digest(n)
         bad = [k for k in range(n) if got[k] != single[k] or got[k] != golden[k]]
@@ -692,6 +710,7 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
         """An unrelated plain hash with the same CFG between two parts, window closed."""
         n = HMAC_DIGEST_WORDS[trip.sha]
         self._window(False)
+        await self._wr(HMAC_CFG, cfg)
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         await self._write_fifo(_word_writes(trip.unrelated))
 
@@ -705,4 +724,6 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
         exp = _digest_words(sha2_bytes(trip.unrelated, trip.sha), trip.sha, 0)
         self.chk.ctrl("HMAC-CTX-UNRELATED", got == exp, tag=tag, part=part, len=len(trip.unrelated))
         self.chk.obs("HMAC-CTX-CHANGED", tag=tag, part=part, changed=int(got != saved[:n]))
+        # The unrelated stream ends with its own sha_en clear (context-switch step 6).
+        await self._wr(HMAC_CFG, cfg & ~HMAC_CFG_SHA_EN)
         self._window(True)

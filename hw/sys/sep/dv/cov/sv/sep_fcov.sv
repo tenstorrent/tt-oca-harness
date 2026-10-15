@@ -15771,7 +15771,7 @@ module sep_fcov (
     return !(s inside {1, 4, 12});
   endfunction
 
-  // x_line_gate owner per cell (fcov_area sep_crypto_intr_cg owner column).
+  // x_line_gate owner per cell (docs/SEP_FCOV.adoc, sep_crypto_intr_cg owner column).
   // hw: the state bit was set by a hardware event, not by INTR_TEST.
   function automatic logic cy_lg_ok(input int unsigned s, input logic st, input logic en,
                                     input logic hw);
@@ -15824,7 +15824,7 @@ module sep_fcov (
   covergroup sep_crypto_intr_cg with function sample (cy_intr_t s);
     option.per_instance = 1;
     option.name = "sep_crypto_intr_cg";
-    // {source[3:0], state, enable}: 38 cells (fcov_area, Bins not graded).
+    // {source[3:0], state, enable}: 38 cells (docs/SEP_FCOV.adoc; Bins not graded).
     x_line_gate: coverpoint s.lg iff (s.lg_v) {
       bins hmac_done[] = {6'b0000_00, 6'b0000_01, 6'b0000_10, 6'b0000_11};
       bins hmac_fifo_empty[] = {6'b0001_10, 6'b0001_11};

@@ -511,7 +511,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
                     **fields,
                     window_clk=window,
                     absorb=int(absorbs > 0),
-                    behaviour="locked" if behaviour_ok else "late_write_taken",
+                    behaviour="locked" if behaviour_ok else "absorb_without_seed",
                 )
             else:
                 absorb = await self._poll(ST_ABSORB, BOUND_CLK)

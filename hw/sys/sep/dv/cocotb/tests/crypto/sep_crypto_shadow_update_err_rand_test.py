@@ -573,6 +573,10 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
                 **{"digest==golden": int(digest == kmac_family_words(**cfg.golden_kwargs()))},
             )
         except AssertionError as exc:
+            # Only a bounded wait of the helper ends here. A helper check of the
+            # DUT (the kmac_done write-one clear) is not caught and fails the leaf.
+            if "timeout" not in str(exc):
+                raise
             self.chk.obs("SHADOW-KMAC", reg="kmac_cfg", step="recovery", reason=str(exc)[:80])
         await self._kmac_pair_obs("kmac_cfg", KMAC_CFG_SHADOWED, a, a, plan.gaps["kmac_eq"], c_err)
         t1, t2 = plan.thr

@@ -298,8 +298,8 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         t1_ps = get_sim_time("ps")
         await vec.stop()
         changes, pool, xs = self._vector_changes(vec, s0, t0_ps, t1_ps)
-        seen = await self._hmac_control()
-        self.chk.ctrl("AES-NOIRQ", seen, ctrl_hmac_done_seen=int(seen))
+        seen, why = await self._hmac_control()
+        self.chk.ctrl("AES-NOIRQ", seen, ctrl_hmac_done_seen=int(seen), helper=why)
         self.chk.obs("POOL-VEC", bit36_changes=pool[0], bit37_changes=pool[1])
         self.chk.ok(
             "AES-NOIRQ",
@@ -637,19 +637,25 @@ class sep_aes_stream_status_rand_test(sep_base_test):
             prev = c.value
         return changes, pool, xs
 
-    async def _hmac_control(self) -> bool:
-        """One plain SHA-256 with hmac_done enabled; vector bit 17 must rise."""
+    async def _hmac_control(self) -> tuple[bool, str]:
+        """One plain SHA-256 with hmac_done enabled; vector bit 17 must rise.
+
+        Returns (control seen, reason). A helper that raises (a bounded wait or
+        its done write-one-clear check) makes the control absent, so the
+        failure is recorded and not hidden.
+        """
         watch = SepBitWatch(
             cocotb.top.sep_internal_interrupts_probe_o, {"hmac_done": HMAC_DONE_BIT}, name="vec17"
         ).start()
         await ClockCycles(cocotb.top.clk_i, 1)
         mark = watch.mark()
+        reason = "-"
         try:
             await self.hmac.configure_sha256()
             await self.hmac.run_sha256(list(self.plan.hmac_msg))
         except AssertionError as exc:
-            self.logger.info("HMAC control did not complete: %s", exc)
+            reason = str(exc)[:80]
         await ClockCycles(cocotb.top.clk_i, 1)
         seen = watch.rose_since(mark, "hmac_done")
         await watch.stop()
-        return seen
+        return seen and reason == "-", reason

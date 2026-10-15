@@ -125,6 +125,7 @@ KEY_ROWS: tuple[tuple[int, ...], ...] = tuple(
 DONE_BOUND = 200_000
 DRAIN_BOUND = 50_000
 RESET_BOUND = 2_000
+CLEAN_BOUND = 2_000  # clocks for one beat into a FIFO that is not full
 PROBE_EXTRA_MAX = 8
 
 
@@ -633,9 +634,33 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         await self._setup_stalled(leg.h)
         ch = chunks(leg.msg, leg.mode)
         assert len(ch) > n + 1, f"message of {len(ch)} writes cannot hold {n} + 1 writes"
-        # Clean write: the FIFO is empty, so the beat completes.
-        t_clean = await self._timed_write(*ch[0])
-        self.chk.ctrl("HMAC-BP-CLEAN", True, mode=leg.mode, clean_clk=t_clean)
+        # Clean write: the FIFO is empty, so the beat completes OKAY within
+        # CLEAN_BOUND clocks. A beat that is held or refused here leaves the
+        # held-beat check below without its control.
+        task, seq, cap, t0 = await self._held_write(*ch[0])
+        answered = await self._wait_task(task, CLEAN_BOUND)
+        t_resp = take_handshake(cap)
+        clean_ok = answered and t_resp is not None and seq.resp_ok
+        t_clean = (
+            max(1, round((t_resp - t0) / self._period_ps)) if t_resp is not None else CLEAN_BOUND
+        )
+        self.chk.ctrl(
+            "HMAC-BP-CLEAN",
+            clean_ok,
+            mode=leg.mode,
+            clean_clk=t_clean if t_resp is not None else "none",
+            bound=CLEAN_BOUND,
+            resp="OKAY" if seq.resp_ok else f"code{seq.resp_code}",
+        )
+        if not clean_ok:
+            dut.hmac_fifo_drain_stall_i.value = 0
+            if not answered and not await self._wait_task(task, DRAIN_BOUND):
+                raise AssertionError(
+                    "clean MSG_FIFO beat never answered; the single host path is blocked, "
+                    "so the leaf stops"
+                )
+            await self._reset_hmac()
+            return
         for i in range(1, n):
             await self._wr_chunk(*ch[i])
             if leg.mode == "gap" and leg.gap:

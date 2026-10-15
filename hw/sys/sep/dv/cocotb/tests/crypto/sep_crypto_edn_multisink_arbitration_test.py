@@ -593,7 +593,7 @@ class _LegMember:
 
     status_addr = 0
 
-    async def _poll(self, res: _TaskResult, bound: int, done) -> int | None:
+    async def _leg_poll(self, res: _TaskResult, bound: int, done) -> int | None:
         """Read the status register until ``done(value)``; None on timeout."""
         while True:
             value = await self._rd(self.status_addr)
@@ -625,7 +625,7 @@ class LegHmac(_LegAccess, SepHmac, _LegMember):
         res.busy_end_clk = self.last_resp_clk
         # hmac.hjson INTR_STATE.hmac_done: HMAC/SHA-2 has completed. A read with
         # hmac_done = 0 shows busy.
-        if await self._poll(res, bound, lambda v: v & HMAC_INTR_DONE) is None:
+        if await self._leg_poll(res, bound, lambda v: v & HMAC_INTR_DONE) is None:
             return res
         n = len(op.golden())
         res.result = [await self._rd(HMAC_DIGEST_0 + i * 4) for i in range(n)]
@@ -705,7 +705,7 @@ class LegKmac(_LegAccess, SepKmac, _LegMember):
         await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
         res.busy_end_clk = self.last_resp_clk
         # kmac.hjson STATUS.sha3_squeeze: a read with sha3_squeeze = 0 shows busy.
-        if await self._poll(res, bound, lambda v: v & KMAC_STATUS_SQUEEZE) is None:
+        if await self._leg_poll(res, bound, lambda v: v & KMAC_STATUS_SQUEEZE) is None:
             return res
         digest = []
         for i in range(op.out_bytes // 4):
@@ -714,7 +714,9 @@ class LegKmac(_LegAccess, SepKmac, _LegMember):
             digest.append((s0 ^ s1) & 0xFFFF_FFFF)
         # kmac.hjson CMD.done: the engine goes back to idle.
         await self._wr(KMAC_CMD, KMAC_CMD_DONE)
-        await self._poll(_TaskResult(start_clk=self.clk()), bound, lambda v: v & KMAC_STATUS_IDLE)
+        await self._leg_poll(
+            _TaskResult(start_clk=self.clk()), bound, lambda v: v & KMAC_STATUS_IDLE
+        )
         res.result = digest
         return res
 
@@ -736,7 +738,7 @@ class LegOtbn(_LegAccess, SepOtbn, _LegMember):
         await self._wr(OTBN_ADDR_CMD, OTBN_CMD_EXECUTE)
         res.start_clk = res.busy_end_clk = self.last_resp_clk
         on_start(res.start_clk)
-        if await self._poll(res, bound, lambda v: v == OTBN_STATUS_IDLE) is None:
+        if await self._leg_poll(res, bound, lambda v: v == OTBN_STATUS_IDLE) is None:
             return res
         res.err_bits = await self.read_errbits()
         res.result = [await self.read_dmem(8)]
@@ -1086,7 +1088,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         await drv.write_bytes(HMAC_MSG_FIFO, g.bystander_msg)
         await drv._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
         poll = _TaskResult(start_clk=self._leg_clk())
-        if await drv._poll(poll, _BYSTANDER_DONE_CLK, lambda v: v & HMAC_INTR_DONE) is None:
+        if await drv._leg_poll(poll, _BYSTANDER_DONE_CLK, lambda v: v & HMAC_INTR_DONE) is None:
             raise AssertionError(
                 f"bystander SHA-256 in group {g.name} set no hmac_done within "
                 f"{_BYSTANDER_DONE_CLK} clocks"
