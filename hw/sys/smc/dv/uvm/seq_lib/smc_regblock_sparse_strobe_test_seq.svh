@@ -15,6 +15,12 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
   localparam string ChkRestore = "CHK-REGBLOCK-WIDE-RESTORE";
   localparam string ChkRestoreNonvac = "CHK-REGBLOCK-WIDE-RESTORE-NONVAC";
   localparam string ChkNoZeroerStart = "CHK-REGBLOCK-WIDE-NO-ZEROER-START";
+  localparam string ChkBusyControl = "CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL";
+  // DEST and SIZE writes and their restores are catalogued-word comparisons.
+  localparam int unsigned ControlComparisons = 4;
+  localparam int unsigned ControlFixedAccesses = 6;
+  localparam int unsigned ControlPollBound = 4096;
+  localparam bit [63:0] ControlTarget = SmcSpmBase + SmcSpmSize - SmcMemBytes;
   localparam string ChkLaneCoverage = "CHK-REGBLOCK-WIDE-LANE-COVERAGE";
   localparam string ChkScoreboard = "CHK-REGBLOCK-WIDE-SCOREBOARD";
   localparam string ChkNonvac = "CHK-NONVAC";
@@ -144,7 +150,7 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkMemResp, ChkBaseline, ChkFullRw, ChkSingleByte, ChkSparse,
                     ChkNull, ChkRestore, ChkRestoreNonvac, ChkNoZeroerStart, ChkLaneCoverage,
-                    ChkScoreboard, ChkNonvac, ChkSbMinAct});
+                    ChkScoreboard, ChkNonvac, ChkSbMinAct, ChkBusyControl});
     smc_regblock_wide_catalog(entries);
     if (entries.size() != CatalogEntries)
       `uvm_fatal(get_type_name(), $sformatf("regblock-wide catalog has %0d entries", entries.size()
@@ -157,6 +163,7 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
       predicted_comparisons += BaseAccessesPerRegister + 2 * fixed.size();
       predicted_accesses += BaseAccessesPerRegister + 2 * fixed.size();
     end
+    predicted_comparisons += ControlComparisons;
     check_min_activity(SmcFeatureRegblockWide, predicted_comparisons);
     wait_fuse_sense_done();
     mismatch_before = scoreboard.mismatch_count(SmcFeatureRegblockWide);
@@ -253,6 +260,36 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
                    tb_vif.zeroer_busy,
                    status_word
                    ));
+    begin
+      logic [31:0] samples_before_control;
+      bit [63:0] control_status;
+      bit control_idle = 1'b0;
+      int unsigned control_polls = 0;
+      mem_write(SmcZeroerDestAddr, ControlTarget, "Zeroer control destination");
+      mem_write(SmcZeroerSizeAddr, SmcMemBytes, "Zeroer control size");
+      samples_before_control = tb_vif.zeroer_busy_sample_count;
+      mem_write(SmcZeroerCtrlStatusAddr, ZEROER_CTRL_CTRL_STATUS_REG_DEFAULT,
+                "Zeroer control start");
+      while (!control_idle && control_polls < ControlPollBound) begin
+        mem_read(SmcZeroerCtrlStatusAddr, control_status, "Zeroer control completion");
+        control_polls++;
+        control_idle = !control_status[ZEROER_CTRL_CTRL_STATUS_STATUS_SHIFT] &&
+                       tb_vif.zeroer_busy === 1'b0;
+      end
+      if (!control_idle) `uvm_fatal(get_type_name(), "Zeroer control command did not complete")
+      check_evidence(ChkBusyControl, "real Zeroer command raises busy samples", 64'(!$isunknown(
+                     {samples_before_control, tb_vif.zeroer_busy_sample_count}
+                     ) && tb_vif.zeroer_busy_sample_count != samples_before_control),
+                     64'(!env_cfg.regblock_wide_sequence_negative), $sformatf(
+                     "before=%0d after=%0d", samples_before_control, tb_vif.zeroer_busy_sample_count
+                     ));
+      mem_write(SmcZeroerSizeAddr, ZEROER_CTRL_SIZE_REG_DEFAULT, "Zeroer control size restore");
+      mem_write(SmcZeroerDestAddr, ZEROER_CTRL_DEST_ADDR_REG_DEFAULT,
+                "Zeroer control destination restore");
+      // The SPM model sees ingress writes, not Zeroer writes; leave the scratch word known.
+      mem_write(ControlTarget, 0, "SPM control scratch word");
+      predicted_accesses += ControlFixedAccesses + control_polls;
+    end
     check_evidence(ChkLaneCoverage, "strobed RW lanes", 64'(lane_coverage), 64'hFF,
                    "all SEP_IN byte lanes");
     check_evidence(ChkRestoreNonvac, "restores that changed an RW value", 64'(restore_changes > 0),

@@ -24,6 +24,7 @@ from cocotb.triggers import ClockCycles
 
 from .smc_addr_map import gpio_intf_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_gpio_vip_utils import drive_gpio_pad
 from .smc_pad_table import pad_function, pad_index
 from .smc_probe_positive_control import _pad_vec
 
@@ -80,19 +81,6 @@ class smc_gpio_pad_input_readback_test_seq(SmcCsrSeq):
     def _data_ctrl(wrap: int) -> int:
         return smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", wrap)
 
-    @staticmethod
-    def _drive(dut, wrap: int, level: int | None) -> None:
-        en = int(dut.tb_gpio_ext_drive_en.value)
-        val = int(dut.tb_gpio_ext_drive_value.value)
-        mask = 1 << wrap
-        if level is None:
-            en &= ~mask
-        else:
-            en |= mask
-            val = (val | mask) if level else (val & ~mask)
-        dut.tb_gpio_ext_drive_en.value = en
-        dut.tb_gpio_ext_drive_value.value = val
-
     async def _await_pad2core(self, wrap: int, want: int) -> int:
         addr = self._data_ctrl(wrap)
         last = None
@@ -138,13 +126,13 @@ class smc_gpio_pad_input_readback_test_seq(SmcCsrSeq):
                 f"register-controlled input wrap in this bench"
             )
             await self.csr_write(f"GPIO{wrap}_DATA_CTRL_INPUT", addr, DATA_CTRL_REG_INPUT)
-            self._drive(dut, wrap, 0)
+            drive_gpio_pad(dut, wrap, 0)
             await self._await_pad2core(wrap, 0)
-            self._drive(dut, wrap, 1)
+            drive_gpio_pad(dut, wrap, 1)
             await self._await_pad2core(wrap, 1)
-            self._drive(dut, wrap, 0)
+            drive_gpio_pad(dut, wrap, 0)
             await self._await_pad2core(wrap, 0)
-            self._drive(dut, wrap, None)
+            drive_gpio_pad(dut, wrap, None)
 
             await self.csr_write(f"GPIO{wrap}_DATA_CTRL_OUTPUT", addr, DATA_CTRL_REG_OUTPUT_HIGH)
             rise = await self._await_oe(dut, wrap, 1, base_en, mask)

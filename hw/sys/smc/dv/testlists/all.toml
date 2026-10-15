@@ -56,7 +56,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 499
+expected_count = 502
 tests = [
     "smc_dfd_csr_field_access_test",
     "smc_dfx_aperture_extent_test",
@@ -251,6 +251,7 @@ tests = [
     "smc_filter_lock_window_test",
     "smc_filter_multi_entry_test",
     "smc_filter_region_span_test",
+    "smc_filter_remap_bitwalk_test",
     "smc_flr_sanity_test",
     "smc_fw_hello_world_multicore_test",
     "smc_fw_hello_world_test",
@@ -271,6 +272,7 @@ tests = [
     "smc_gpio_ctrl_full_sweep_test",
     "smc_gpio_data_ctrl_field_test",
     "smc_gpio_filter_access_sep_test",
+    "smc_gpio_intf_data_ctrl_write_sweep_test",
     "smc_gpio_intf_full_sweep_test",
     "smc_gpio_intf_regblock_sweep_test",
     "smc_gpio_irq_active_test",
@@ -352,6 +354,7 @@ tests = [
     "smc_jtag_dm_sbcs_haltsum_test",
     "smc_jtag_dmi_smoke_test",
     "smc_jtag_reset_ctrl_test",
+    "smc_jtag_reset_ovrd_walk_test",
     "smc_jtag_reset_proxy_test",
     "smc_local_fabric_csr_depth_test",
     "smc_log_engine_abort_test",
@@ -566,7 +569,7 @@ name = "hosted"
 # RISC-V toolchain; the per-PR gate stays on the 3-leaf `smoke`. Guarded by
 # expected_count so a leaf cannot join `all` and silently miss the hosted set.
 # The two MMIO isolate-flush leaves stay out: they build mmio_wedge.
-expected_count = 482
+expected_count = 485
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -699,11 +702,13 @@ tests = [
     "smc_filter_lock_window_test",
     "smc_filter_multi_entry_test",
     "smc_filter_region_span_test",
+    "smc_filter_remap_bitwalk_test",
     "smc_flr_sanity_test",
     "smc_gpio_boot_stall_test",
     "smc_gpio_ctrl_full_sweep_test",
     "smc_gpio_data_ctrl_field_test",
     "smc_gpio_filter_access_sep_test",
+    "smc_gpio_intf_data_ctrl_write_sweep_test",
     "smc_gpio_intf_full_sweep_test",
     "smc_gpio_intf_regblock_sweep_test",
     "smc_gpio_irq_active_test",
@@ -783,6 +788,7 @@ tests = [
     "smc_jtag_dm_cmderr_command_test",
     "smc_jtag_dmi_smoke_test",
     "smc_jtag_reset_ctrl_test",
+    "smc_jtag_reset_ovrd_walk_test",
     "smc_jtag_reset_proxy_test",
     "smc_local_fabric_csr_depth_test",
     "smc_log_engine_abort_test",

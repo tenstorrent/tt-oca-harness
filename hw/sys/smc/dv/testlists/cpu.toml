@@ -271,7 +271,7 @@ run_modes = ["smoke"]
 name = "smc_dfd_cla_event_type_sweep_test"
 module = "smc_dfd_cla_event_type_sweep_test"
 seed = 1
-timeout_sec = 1800
+timeout_sec = 3600
 tags = ["ci"]
 run_modes = ["smoke"]
 

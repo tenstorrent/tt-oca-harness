@@ -337,6 +337,7 @@ single-byte writes.
 |`smc_filter_config_field_sweep_test` |Every FILTER_CONFIG field cycled to all-ones and all-zeros on all 32 entries, then the write-once lock set and the locked entry shown to refuse further configuration writes with DECERR.
 |`smc_filter_lock_window_test` |Two FILTER_CONFIG writes queued directly behind the write that locks filter 15 of each bank are answered DECERR and the entry reads its reset word plus `locked`.
 |`smc_filter_region_span_test` |A filter region spanning two granules on every outbound entry, with one of them enabled and enforced against a DMA copy.
+|`smc_filter_remap_bitwalk_test` |A one and a zero walked across every bit of START_ADDR and END_ADDR on all 32 filter entries and of REGION_START and REGION_END on all 8 alias-remap regions, each register read back after every write, and every mailbox aperture driven with a walking-one byte strobe and its share of the 255 non-empty strobe patterns, the paired READ_DATA returning the strobed bytes alone.
 |`smc_dma_decouple_rw_test` |DMA transfers with CONFIG.DECOUPLE_RW set -- a scatter and a gather -- and two descriptors queued back to back.
 |`smc_gpio_data_ctrl_field_test` |Each software-writable DATA_CTRL field of one idle GPIO instance driven on its own, with the pad's output enable measured at 0 after every write.
 |`smc_alias_remap_region_attrs_test` |One alias-remap region marked cacheable and valid over an empty window, with both bits held across a write of the other half of the register.
@@ -469,6 +470,7 @@ bases, and the last register of five units answers over SEP_IN at `LOCAL_BASE`.
 |`smc_irq_during_powergood_glitch_test` |SMC OSS PyUVM IRQ-during-powergood-glitch test.
 |`smc_jtag_boot_stall_sanity_test` |JTAG boot-stall override clears sticky while pad 57 is held.
 |`smc_jtag_reset_ctrl_test` |Struct pin mux; not boot-stall JTAG, FLR, or rst_cool_ni proxy.
+|`smc_jtag_reset_ovrd_walk_test` |Every override mux smc_jtag_reset_ctrl_test leaves idle, through its reset pin.
 |`smc_jtag_reset_proxy_test` |Run JTAG-adjacent CSR health checks across an observed cool reset, plus CPU JTAG pin checks.
 |`smc_mixed_boot_stall_test` |GPIO gates fuse_reset; JTAG ovrd releases; val=1 cannot re-stall.
 |`smc_multi_reset_csr_persistence_test` |Run CSR access/persistence checks around a public cool reset pulse.
@@ -607,7 +609,7 @@ clk_ref_i cycles at two reference periods.
 |`smc_dfd_trace_vlt_format_test` |The trace path run in XOR plus VLT compression on a moving payload and two frame lengths.
 |`smc_dfd_trace_xor_format_test` |The trace path run in XOR compression on a moving payload and two frame lengths.
 |`smc_dfd_trace_sink_window_test` |The trace stream blocked at the funnel, released, and taken into two sink window sizes.
-|`smc_dfd_cla_event_type_sweep_test` |Every event index driven into all three event selectors of each of node 0's event-action pairs.
+|`smc_dfd_cla_event_type_sweep_test` |Every event index driven into all three event selectors of every event-action pair of every node, with the node walk reaching all four nodes.
 |`smc_dfd_trace_sink_readout_test` |The captured trace read back out of the sink RAM, with both sink modes and the deactivation edge.
 |`smc_dfd_sink_mmr_sweep_test` |Every register of the DST, sink and funnel MMR sub-blocks written against its generated RDL contract and restored.
 |`smc_dfd_ro_mmr_write_test` |Every read-only DFD MMR written, with the write required to be ignored.
@@ -676,6 +678,7 @@ clk_ref_i cycles at two reference periods.
 |`smc_external_window_pad_ctrl_decode_test` |The five mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
 |`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL full sweep over every external GPIO_CTRL entry (65).
 |`smc_gpio_filter_access_sep_test` |GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
+|`smc_gpio_intf_data_ctrl_write_sweep_test` |Every software-writable DATA_CTRL field written on all 65 GPIO_INTF instances, with the pad driven both ways through all four interrupt types and the instance's own interrupt bit and `pad2core` checked.
 |`smc_gpio_intf_full_sweep_test` |GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
 |`smc_gpio_intf_regblock_sweep_test` |GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER cycled to all-ones and all-zeros on all 65 instances, with an AxPROT allow and deny leg on each.
 |`smc_gpio_irq_active_test` |Run GPIO CSR plus IRQ-control decode precheck.
@@ -1286,8 +1289,8 @@ Drive `smc_register_sanity_test_seq`. Each checker below is a named compare the 
 *Pass Criteria*: `CHK-CSR-SCRATCH-RW-RESTORE` holds after its compares: every SEP_IN read carries the value it must return (RDL reset, written pattern, restored reset; five accesses per register), the scoreboard fails the run on a mismatch, and the sequence asserts the access count against the register list. The seven `SV-UVM shape only` rows are that shape's checkers and are listed for it; they do not close this card's Pass Criteria. Enrolled in: `all`, `hosted`, `smoke`.
 '''''
 
-[[sec-376-smc_reg_island_boundary_sweep_test]]
-===== 376 `smc_reg_island_boundary_sweep_test`
+[[sec-327-smc_reg_island_boundary_sweep_test]]
+===== 327 `smc_reg_island_boundary_sweep_test`
 
 *Source Module*: `smc_reg_island_boundary_sweep_test`
 
@@ -1884,8 +1887,8 @@ Drive `smc_periph_cg_access_error_test_seq` on the SEP_IN AXI sequencer: save CL
 *Pass Criteria*: all six checkers hold and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-377-smc_avsbus_pad_enable_test]]
-===== 377 `smc_avsbus_pad_enable_test`
+[[sec-328-smc_avsbus_pad_enable_test]]
+===== 328 `smc_avsbus_pad_enable_test`
 
 *Source Module*: `smc_avsbus_pad_enable_test`
 
@@ -1956,8 +1959,8 @@ enables are reported only. Enrolled in: `all`, `power`.
 
 '''''
 
-[[sec-378-smc_avsbus_resync_force_test]]
-===== 378 `smc_avsbus_resync_force_test`
+[[sec-329-smc_avsbus_resync_force_test]]
+===== 329 `smc_avsbus_resync_force_test`
 
 *Source Module*: `smc_avsbus_resync_force_test`
 
@@ -2051,8 +2054,8 @@ is limited to one or two episodes). Enrolled in: `all`, `power`.
 
 '''''
 
-[[sec-379-smc_avsbus_resync_timing_test]]
-===== 379 `smc_avsbus_resync_timing_test`
+[[sec-330-smc_avsbus_resync_timing_test]]
+===== 330 `smc_avsbus_resync_timing_test`
 
 *Source Module*: `smc_avsbus_resync_timing_test`
 
@@ -2168,8 +2171,8 @@ Enrolled in: `all`, `power`.
 
 '''''
 
-[[sec-380-smc_octs_csr_access_test]]
-===== 380 `smc_octs_csr_access_test`
+[[sec-331-smc_octs_csr_access_test]]
+===== 331 `smc_octs_csr_access_test`
 
 *Source Module*: `smc_octs_csr_access_test`
 
@@ -2260,8 +2263,8 @@ read-only writes and the data and responses past the map are reported only. Enro
 
 '''''
 
-[[sec-381-smc_octs_primary_count_test]]
-===== 381 `smc_octs_primary_count_test`
+[[sec-332-smc_octs_primary_count_test]]
+===== 332 `smc_octs_primary_count_test`
 
 *Source Module*: `smc_octs_primary_count_test`
 
@@ -2369,8 +2372,8 @@ first-rise `RUNNING` value and the `STATUS` reads at the wrap are reported only.
 
 '''''
 
-[[sec-382-smc_telemetry_address_map_test]]
-===== 382 `smc_telemetry_address_map_test`
+[[sec-333-smc_telemetry_address_map_test]]
+===== 333 `smc_telemetry_address_map_test`
 
 *Source Module*: `smc_telemetry_address_map_test`
 
@@ -2466,8 +2469,8 @@ unbacked responses and data are reported only. Enrolled in: `all`, `power`.
 
 '''''
 
-[[sec-383-smc_telemetry_ctrl_access_test]]
-===== 383 `smc_telemetry_ctrl_access_test`
+[[sec-334-smc_telemetry_ctrl_access_test]]
+===== 334 `smc_telemetry_ctrl_access_test`
 
 *Source Module*: `smc_telemetry_ctrl_access_test`
 
@@ -2564,8 +2567,8 @@ Enrolled in: `all`, `power`.
 
 '''''
 
-[[sec-384-smc_telemetry_irq_aggregate_test]]
-===== 384 `smc_telemetry_irq_aggregate_test`
+[[sec-335-smc_telemetry_irq_aggregate_test]]
+===== 335 `smc_telemetry_irq_aggregate_test`
 
 *Source Module*: `smc_telemetry_irq_aggregate_test`
 
@@ -2652,8 +2655,8 @@ vector change and the packet count to `MISSING_LAST` are reported only. Enrolled
 
 '''''
 
-[[sec-385-smc_telemetry_receiver_isolation_test]]
-===== 385 `smc_telemetry_receiver_isolation_test`
+[[sec-336-smc_telemetry_receiver_isolation_test]]
+===== 336 `smc_telemetry_receiver_isolation_test`
 
 *Source Module*: `smc_telemetry_receiver_isolation_test`
 
@@ -2735,8 +2738,8 @@ values and the transmitter flush pin presence are reported only. Enrolled in: `a
 
 '''''
 
-[[sec-386-smc_telemetry_rx_flush_test]]
-===== 386 `smc_telemetry_rx_flush_test`
+[[sec-337-smc_telemetry_rx_flush_test]]
+===== 337 `smc_telemetry_rx_flush_test`
 
 *Source Module*: `smc_telemetry_rx_flush_test`
 
@@ -2844,8 +2847,8 @@ MISSING_LAST interrupt untouched.
 
 '''''
 
-[[sec-387-smc_telemetry_tx_flush_test]]
-===== 387 `smc_telemetry_tx_flush_test`
+[[sec-338-smc_telemetry_tx_flush_test]]
+===== 338 `smc_telemetry_tx_flush_test`
 
 *Source Module*: `smc_telemetry_tx_flush_test`
 
@@ -2936,8 +2939,8 @@ and the rewrite rise count are reported only. Enrolled in: `all`, `power`.
 
 '''''
 
-[[sec-388-smc_wdt_count_feed_test]]
-===== 388 `smc_wdt_count_feed_test`
+[[sec-339-smc_wdt_count_feed_test]]
+===== 339 `smc_wdt_count_feed_test`
 
 *Source Module*: `smc_wdt_count_feed_test`
 
@@ -3047,8 +3050,8 @@ hold-phase accesses are reported only. Enrolled in: `all`, `power`.
 
 '''''
 
-[[sec-389-smc_wdt_ip0_clear_test]]
-===== 389 `smc_wdt_ip0_clear_test`
+[[sec-340-smc_wdt_ip0_clear_test]]
+===== 340 `smc_wdt_ip0_clear_test`
 
 *Source Module*: `smc_wdt_ip0_clear_test`
 
@@ -3136,8 +3139,8 @@ is reported only. Enrolled in: `all`, `power`.
 
 '''''
 
-[[sec-390-smc_wdt_irq_source_ids_test]]
-===== 390 `smc_wdt_irq_source_ids_test`
+[[sec-341-smc_wdt_irq_source_ids_test]]
+===== 341 `smc_wdt_irq_source_ids_test`
 
 *Source Module*: `smc_wdt_irq_source_ids_test`
 
@@ -3212,8 +3215,8 @@ count during the SEP indication and the post-clear levels are reported only. Enr
 
 '''''
 
-[[sec-391-smc_wdt_key_relock_test]]
-===== 391 `smc_wdt_key_relock_test`
+[[sec-342-smc_wdt_key_relock_test]]
+===== 342 `smc_wdt_key_relock_test`
 
 *Source Module*: `smc_wdt_key_relock_test`
 
@@ -3312,8 +3315,8 @@ Enrolled in: `all`, `power`.
 
 '''''
 
-[[sec-392-smc_wdt_register_map_test]]
-===== 392 `smc_wdt_register_map_test`
+[[sec-343-smc_wdt_register_map_test]]
+===== 343 `smc_wdt_register_map_test`
 
 *Source Module*: `smc_wdt_register_map_test`
 
@@ -3409,8 +3412,8 @@ write is reported only. Enrolled in: `all`, `power`.
 
 '''''
 
-[[sec-393-smc_wdt_scale_zerocmp_test]]
-===== 393 `smc_wdt_scale_zerocmp_test`
+[[sec-344-smc_wdt_scale_zerocmp_test]]
+===== 344 `smc_wdt_scale_zerocmp_test`
 
 *Source Module*: `smc_wdt_scale_zerocmp_test`
 
@@ -3501,8 +3504,8 @@ values, the `COUNT` maxima and the reads after `CMP` 0 are reported only. Enroll
 
 '''''
 
-[[sec-394-smc_wdt_write_width_test]]
-===== 394 `smc_wdt_write_width_test`
+[[sec-345-smc_wdt_write_width_test]]
+===== 345 `smc_wdt_write_width_test`
 
 *Source Module*: `smc_wdt_write_width_test`
 
@@ -3601,8 +3604,8 @@ single-byte writes.
 
 '''''
 
-[[sec-395-smc_accel_egress_attrs_test]]
-===== 395 `smc_accel_egress_attrs_test`
+[[sec-346-smc_accel_egress_attrs_test]]
+===== 346 `smc_accel_egress_attrs_test`
 
 *Source Module*: `smc_accel_egress_attrs_test`
 
@@ -3682,8 +3685,8 @@ encodings and the protection and user values are reported only. Enrolled in: `al
 
 '''''
 
-[[sec-396-smc_accel_window_decode_test]]
-===== 396 `smc_accel_window_decode_test`
+[[sec-347-smc_accel_window_decode_test]]
+===== 347 `smc_accel_window_decode_test`
 
 *Source Module*: `smc_accel_window_decode_test`
 
@@ -3786,8 +3789,8 @@ write effects are reported only. Enrolled in: `all`, `dma`.
 
 '''''
 
-[[sec-397-smc_dma_2d_copy_test]]
-===== 397 `smc_dma_2d_copy_test`
+[[sec-348-smc_dma_2d_copy_test]]
+===== 348 `smc_dma_2d_copy_test`
 
 *Source Module*: `smc_dma_2d_copy_test`
 
@@ -3889,8 +3892,8 @@ short-stride and overlap cases and the 2^56 address behaviour are reported only.
 
 '''''
 
-[[sec-398-smc_dma_backpressure_breadth_test]]
-===== 398 `smc_dma_backpressure_breadth_test`
+[[sec-349-smc_dma_backpressure_breadth_test]]
+===== 349 `smc_dma_backpressure_breadth_test`
 
 *Source Module*: `smc_dma_backpressure_breadth_test`
 
@@ -3981,8 +3984,8 @@ maximum are reported. Enrolled in: `all`, `dma`.
 
 '''''
 
-[[sec-399-smc_dma_burst_shaping_test]]
-===== 399 `smc_dma_burst_shaping_test`
+[[sec-350-smc_dma_burst_shaping_test]]
+===== 350 `smc_dma_burst_shaping_test`
 
 *Source Module*: `smc_dma_burst_shaping_test`
 
@@ -4091,8 +4094,8 @@ AR and AW burst obeys the limit of its `CONFIG` mode. Enrolled in: `all`, `dma`.
 
 '''''
 
-[[sec-400-smc_dma_completion_status_test]]
-===== 400 `smc_dma_completion_status_test`
+[[sec-351-smc_dma_completion_status_test]]
+===== 351 `smc_dma_completion_status_test`
 
 *Source Module*: `smc_dma_completion_status_test`
 
@@ -4180,8 +4183,8 @@ reported only. Enrolled in: `all`, `dma`.
 
 '''''
 
-[[sec-401-smc_dma_csr_config_test]]
-===== 401 `smc_dma_csr_config_test`
+[[sec-352-smc_dma_csr_config_test]]
+===== 352 `smc_dma_csr_config_test`
 
 *Source Module*: `smc_dma_csr_config_test`
 
@@ -4264,8 +4267,8 @@ configuration survives them, and the global alias reads and writes reach the sam
 
 '''''
 
-[[sec-402-smc_dma_field_widths_test]]
-===== 402 `smc_dma_field_widths_test`
+[[sec-353-smc_dma_field_widths_test]]
+===== 353 `smc_dma_field_widths_test`
 
 *Source Module*: `smc_dma_field_widths_test`
 
@@ -4348,8 +4351,8 @@ OKAY, and the issued AR and AW addresses equal the programmed effective addresse
 
 '''''
 
-[[sec-403-smc_dma_linear_copy_test]]
-===== 403 `smc_dma_linear_copy_test`
+[[sec-354-smc_dma_linear_copy_test]]
+===== 354 `smc_dma_linear_copy_test`
 
 *Source Module*: `smc_dma_linear_copy_test`
 
@@ -4439,8 +4442,8 @@ non-equal-address copies are reported only. Enrolled in: `all`, `dma`.
 
 '''''
 
-[[sec-404-smc_zeroer_busy_outstanding_test]]
-===== 404 `smc_zeroer_busy_outstanding_test`
+[[sec-355-smc_zeroer_busy_outstanding_test]]
+===== 355 `smc_zeroer_busy_outstanding_test`
 
 *Source Module*: `smc_zeroer_busy_outstanding_test`
 
@@ -4562,8 +4565,8 @@ order. The maximum outstanding counts and the timeout indication fields are repo
 
 '''''
 
-[[sec-405-smc_zeroer_irq_test]]
-===== 405 `smc_zeroer_irq_test`
+[[sec-356-smc_zeroer_irq_test]]
+===== 356 `smc_zeroer_irq_test`
 
 *Source Module*: `smc_zeroer_irq_test`
 
@@ -4657,8 +4660,8 @@ reported only. Enrolled in: `all`, `dma`.
 
 '''''
 
-[[sec-406-smc_zeroer_job_breadth_test]]
-===== 406 `smc_zeroer_job_breadth_test`
+[[sec-357-smc_zeroer_job_breadth_test]]
+===== 357 `smc_zeroer_job_breadth_test`
 
 *Source Module*: `smc_zeroer_job_breadth_test`
 
@@ -4744,8 +4747,8 @@ the aligned job shows the expected AW and W beats. Enrolled in: `all`, `dma`.
 
 '''''
 
-[[sec-407-smc_zeroer_resp_unchecked_test]]
-===== 407 `smc_zeroer_resp_unchecked_test`
+[[sec-358-smc_zeroer_resp_unchecked_test]]
+===== 358 `smc_zeroer_resp_unchecked_test`
 
 *Source Module*: `smc_zeroer_resp_unchecked_test`
 
@@ -4835,8 +4838,8 @@ errored bursts and the mixed-job interrupt count are reported only. Enrolled in:
 
 '''''
 
-[[sec-408-smc_zeroer_sram_init_test]]
-===== 408 `smc_zeroer_sram_init_test`
+[[sec-359-smc_zeroer_sram_init_test]]
+===== 359 `smc_zeroer_sram_init_test`
 
 *Source Module*: `smc_zeroer_sram_init_test`
 
@@ -5844,8 +5847,8 @@ Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: swe
 
 '''''
 
-[[sec-449-smc_filter_lock_scope_test]]
-===== 449 `smc_filter_lock_scope_test`
+[[sec-360-smc_filter_lock_scope_test]]
+===== 360 `smc_filter_lock_scope_test`
 
 *Source Module*: `smc_filter_lock_scope_test`
 
@@ -5964,8 +5967,8 @@ in: `all`, `fabric`.
 
 '''''
 
-[[sec-450-smc_filter_range_granule_test]]
-===== 450 `smc_filter_range_granule_test`
+[[sec-361-smc_filter_range_granule_test]]
+===== 361 `smc_filter_range_granule_test`
 
 *Source Module*: `smc_filter_range_granule_test`
 
@@ -6057,8 +6060,8 @@ printed after all 94 accesses. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-451-smc_filter_reset_word_test]]
-===== 451 `smc_filter_reset_word_test`
+[[sec-362-smc_filter_reset_word_test]]
+===== 362 `smc_filter_reset_word_test`
 
 *Source Module*: `smc_filter_reset_word_test`
 
@@ -6161,8 +6164,8 @@ accesses. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-452-smc_infilt_addr_burst_match_test]]
-===== 452 `smc_infilt_addr_burst_match_test`
+[[sec-363-smc_infilt_addr_burst_match_test]]
+===== 363 `smc_infilt_addr_burst_match_test`
 
 *Source Module*: `smc_infilt_addr_burst_match_test`
 
@@ -6275,8 +6278,8 @@ read and not compared. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after th
 
 '''''
 
-[[sec-453-smc_infilt_attr_match_test]]
-===== 453 `smc_infilt_attr_match_test`
+[[sec-364-smc_infilt_attr_match_test]]
+===== 364 `smc_infilt_attr_match_test`
 
 *Source Module*: `smc_infilt_attr_match_test`
 
@@ -6381,8 +6384,8 @@ in: `all`, `fabric`.
 
 '''''
 
-[[sec-454-smc_infilt_default_liveness_test]]
-===== 454 `smc_infilt_default_liveness_test`
+[[sec-365-smc_infilt_default_liveness_test]]
+===== 365 `smc_infilt_default_liveness_test`
 
 *Source Module*: `smc_infilt_default_liveness_test`
 
@@ -6509,8 +6512,8 @@ accesses of the run are all issued and every group completes inside its bound. `
 
 '''''
 
-[[sec-455-smc_infilt_priority_deny_test]]
-===== 455 `smc_infilt_priority_deny_test`
+[[sec-366-smc_infilt_priority_deny_test]]
+===== 366 `smc_infilt_priority_deny_test`
 
 *Source Module*: `smc_infilt_priority_deny_test`
 
@@ -6629,8 +6632,8 @@ with the denied words unchanged, and the admitted accesses return their seeds. `
 
 '''''
 
-[[sec-456-smc_outfilt_addr_match_test]]
-===== 456 `smc_outfilt_addr_match_test`
+[[sec-367-smc_outfilt_addr_match_test]]
+===== 367 `smc_outfilt_addr_match_test`
 
 *Source Module*: `smc_outfilt_addr_match_test`
 
@@ -6737,8 +6740,8 @@ after both access floors. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-457-smc_outfilt_attr_match_test]]
-===== 457 `smc_outfilt_attr_match_test`
+[[sec-368-smc_outfilt_attr_match_test]]
+===== 368 `smc_outfilt_attr_match_test`
 
 *Source Module*: `smc_outfilt_attr_match_test`
 
@@ -6865,8 +6868,8 @@ valid, and every unmatched write is OKAY, lands each beat and presents its drive
 
 '''''
 
-[[sec-458-smc_outfilt_deny_concurrency_test]]
-===== 458 `smc_outfilt_deny_concurrency_test`
+[[sec-369-smc_outfilt_deny_concurrency_test]]
+===== 369 `smc_outfilt_deny_concurrency_test`
 
 *Source Module*: `smc_outfilt_deny_concurrency_test`
 
@@ -6985,8 +6988,8 @@ while a denial is answered, and the twelve reconfigured writes never go from DEC
 
 '''''
 
-[[sec-459-smc_outfilt_priority_perm_test]]
-===== 459 `smc_outfilt_priority_perm_test`
+[[sec-370-smc_outfilt_priority_perm_test]]
+===== 370 `smc_outfilt_priority_perm_test`
 
 *Source Module*: `smc_outfilt_priority_perm_test`
 
@@ -7102,8 +7105,8 @@ after both exact access counts. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-460-smc_outremap_prot_srcid_test]]
-===== 460 `smc_outremap_prot_srcid_test`
+[[sec-371-smc_outremap_prot_srcid_test]]
+===== 371 `smc_outremap_prot_srcid_test`
 
 *Source Module*: `smc_outremap_prot_srcid_test`
 
@@ -7214,8 +7217,8 @@ was measured and are held only to resolvability and constancy per path. `CHK-NON
 
 '''''
 
-[[sec-461-smc_outremap_window_translate_test]]
-===== 461 `smc_outremap_window_translate_test`
+[[sec-372-smc_outremap_window_translate_test]]
+===== 372 `smc_outremap_window_translate_test`
 
 *Source Module*: `smc_outremap_window_translate_test`
 
@@ -7331,8 +7334,8 @@ Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-462-smc_alias_remap_attr_test]]
-===== 462 `smc_alias_remap_attr_test`
+[[sec-373-smc_alias_remap_attr_test]]
+===== 373 `smc_alias_remap_attr_test`
 
 *Source Module*: `smc_alias_remap_attr_test`
 
@@ -7451,8 +7454,8 @@ cacheable-0 value without comparing it. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-463-smc_alias_remap_translate_test]]
-===== 463 `smc_alias_remap_translate_test`
+[[sec-374-smc_alias_remap_translate_test]]
+===== 374 `smc_alias_remap_translate_test`
 
 *Source Module*: `smc_alias_remap_translate_test`
 
@@ -7582,8 +7585,8 @@ a fixed expected value. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-464-smc_axi_inbound_ports_burst_test]]
-===== 464 `smc_axi_inbound_ports_burst_test`
+[[sec-375-smc_axi_inbound_ports_burst_test]]
+===== 375 `smc_axi_inbound_ports_burst_test`
 
 *Source Module*: `smc_axi_inbound_ports_burst_test`
 
@@ -7692,8 +7695,8 @@ Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-465-smc_ext_window_routing_test]]
-===== 465 `smc_ext_window_routing_test`
+[[sec-376-smc_ext_window_routing_test]]
+===== 376 `smc_ext_window_routing_test`
 
 *Source Module*: `smc_ext_window_routing_test`
 
@@ -7815,8 +7818,8 @@ without an expected value. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-466-smc_gap_decode_response_test]]
-===== 466 `smc_gap_decode_response_test`
+[[sec-377-smc_gap_decode_response_test]]
+===== 377 `smc_gap_decode_response_test`
 
 *Source Module*: `smc_gap_decode_response_test`
 
@@ -7932,8 +7935,8 @@ with an expected code. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-467-smc_inbound_concurrency_limits_test]]
-===== 467 `smc_inbound_concurrency_limits_test`
+[[sec-378-smc_inbound_concurrency_limits_test]]
+===== 378 `smc_inbound_concurrency_limits_test`
 
 *Source Module*: `smc_inbound_concurrency_limits_test`
 
@@ -8049,8 +8052,8 @@ an expected count. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-468-smc_inbound_outside_window_decerr_test]]
-===== 468 `smc_inbound_outside_window_decerr_test`
+[[sec-379-smc_inbound_outside_window_decerr_test]]
+===== 379 `smc_inbound_outside_window_decerr_test`
 
 *Source Module*: `smc_inbound_outside_window_decerr_test`
 
@@ -8154,8 +8157,8 @@ data are recorded without an expected value. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-469-smc_inbound_window_port_matrix_test]]
-===== 469 `smc_inbound_window_port_matrix_test`
+[[sec-380-smc_inbound_window_port_matrix_test]]
+===== 380 `smc_inbound_window_port_matrix_test`
 
 *Source Module*: `smc_inbound_window_port_matrix_test`
 
@@ -8269,8 +8272,8 @@ recorded without an expected value. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-470-smc_instance_storage_isolation_test]]
-===== 470 `smc_instance_storage_isolation_test`
+[[sec-381-smc_instance_storage_isolation_test]]
+===== 381 `smc_instance_storage_isolation_test`
 
 *Source Module*: `smc_instance_storage_isolation_test`
 
@@ -8372,8 +8375,8 @@ scoreboard counting at least as many on each port as the sequence issued. Enroll
 
 '''''
 
-[[sec-471-smc_invalid_probe_recovery_test]]
-===== 471 `smc_invalid_probe_recovery_test`
+[[sec-382-smc_invalid_probe_recovery_test]]
+===== 382 `smc_invalid_probe_recovery_test`
 
 *Source Module*: `smc_invalid_probe_recovery_test`
 
@@ -8468,8 +8471,8 @@ inside the guard, and at least 406 accesses are issued. The probe read data of t
 
 '''''
 
-[[sec-472-smc_outstage_order_test]]
-===== 472 `smc_outstage_order_test`
+[[sec-383-smc_outstage_order_test]]
+===== 383 `smc_outstage_order_test`
 
 *Source Module*: `smc_outstage_order_test`
 
@@ -8599,8 +8602,8 @@ in: `all`, `fabric`.
 
 '''''
 
-[[sec-473-smc_region_gated_units_decode_test]]
-===== 473 `smc_region_gated_units_decode_test`
+[[sec-384-smc_region_gated_units_decode_test]]
+===== 384 `smc_region_gated_units_decode_test`
 
 *Source Module*: `smc_region_gated_units_decode_test`
 
@@ -8719,8 +8722,8 @@ responses and the undeclared reset values are recorded without an expected value
 
 '''''
 
-[[sec-474-smc_region_zero_reset_recovery_test]]
-===== 474 `smc_region_zero_reset_recovery_test`
+[[sec-385-smc_region_zero_reset_recovery_test]]
+===== 385 `smc_region_zero_reset_recovery_test`
 
 *Source Module*: `smc_region_zero_reset_recovery_test`
 
@@ -8847,8 +8850,8 @@ the re-issued address are recorded without an expected value. Enrolled in: `all`
 
 '''''
 
-[[sec-475-smc_xbar_outstanding_limits_test]]
-===== 475 `smc_xbar_outstanding_limits_test`
+[[sec-386-smc_xbar_outstanding_limits_test]]
+===== 386 `smc_xbar_outstanding_limits_test`
 
 *Source Module*: `smc_xbar_outstanding_limits_test`
 
@@ -8948,8 +8951,8 @@ stall cycles around each limit are recorded without an expected count. Enrolled 
 
 '''''
 
-[[sec-476-smc_axi_channel_timing_ports_test]]
-===== 476 `smc_axi_channel_timing_ports_test`
+[[sec-387-smc_axi_channel_timing_ports_test]]
+===== 387 `smc_axi_channel_timing_ports_test`
 
 *Source Module*: `smc_axi_channel_timing_ports_test`
 
@@ -9079,8 +9082,8 @@ scoreboard. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-477-smc_axi_contested_ports_test]]
-===== 477 `smc_axi_contested_ports_test`
+[[sec-388-smc_axi_contested_ports_test]]
+===== 388 `smc_axi_contested_ports_test`
 
 *Source Module*: `smc_axi_contested_ports_test`
 
@@ -9190,8 +9193,8 @@ and the requests behind it all answer, the local read of the local-and-global pa
 
 '''''
 
-[[sec-478-smc_axil_write_side_test]]
-===== 478 `smc_axil_write_side_test`
+[[sec-389-smc_axil_write_side_test]]
+===== 389 `smc_axil_write_side_test`
 
 *Source Module*: `smc_axil_write_side_test`
 
@@ -9304,8 +9307,8 @@ writes, and exactly 36 SEP_IN accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-479-smc_clock_gated_window_slverr_test]]
-===== 479 `smc_clock_gated_window_slverr_test`
+[[sec-390-smc_clock_gated_window_slverr_test]]
+===== 390 `smc_clock_gated_window_slverr_test`
 
 *Source Module*: `smc_clock_gated_window_slverr_test`
 
@@ -9404,8 +9407,8 @@ Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-480-smc_cpuif_ro_wo_edge_test]]
-===== 480 `smc_cpuif_ro_wo_edge_test`
+[[sec-391-smc_cpuif_ro_wo_edge_test]]
+===== 391 `smc_cpuif_ro_wo_edge_test`
 
 *Source Module*: `smc_cpuif_ro_wo_edge_test`
 
@@ -9493,8 +9496,8 @@ edge accesses, and exactly 18 accesses are issued. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-481-smc_dma_traffic_shape_test]]
-===== 481 `smc_dma_traffic_shape_test`
+[[sec-392-smc_dma_traffic_shape_test]]
+===== 392 `smc_dma_traffic_shape_test`
 
 *Source Module*: `smc_dma_traffic_shape_test`
 
@@ -9593,8 +9596,8 @@ are issued. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-482-smc_past_extent_decerr_units_test]]
-===== 482 `smc_past_extent_decerr_units_test`
+[[sec-393-smc_past_extent_decerr_units_test]]
+===== 393 `smc_past_extent_decerr_units_test`
 
 *Source Module*: `smc_past_extent_decerr_units_test`
 
@@ -9678,8 +9681,8 @@ holds its value across the writes, and exactly 48 accesses are issued. Enrolled 
 
 '''''
 
-[[sec-483-smc_past_extent_slverr_units_test]]
-===== 483 `smc_past_extent_slverr_units_test`
+[[sec-394-smc_past_extent_slverr_units_test]]
+===== 394 `smc_past_extent_slverr_units_test`
 
 *Source Module*: `smc_past_extent_slverr_units_test`
 
@@ -9800,8 +9803,8 @@ reads OKAY, and exactly 133 accesses are issued. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-484-smc_sys_out_path_responder_control_test]]
-===== 484 `smc_sys_out_path_responder_control_test`
+[[sec-395-smc_sys_out_path_responder_control_test]]
+===== 395 `smc_sys_out_path_responder_control_test`
 
 *Source Module*: `smc_sys_out_path_responder_control_test`
 
@@ -9944,8 +9947,8 @@ X/Z, and 26 JTAG, 1 SYS_IN and 12 SEP_IN accesses are booked. Enrolled in: `all`
 
 '''''
 
-[[sec-485-smc_unit_base_register_port_matrix_test]]
-===== 485 `smc_unit_base_register_port_matrix_test`
+[[sec-396-smc_unit_base_register_port_matrix_test]]
+===== 396 `smc_unit_base_register_port_matrix_test`
 
 *Source Module*: `smc_unit_base_register_port_matrix_test`
 
@@ -10091,8 +10094,8 @@ least 190 accesses are issued. Enrolled in: `all`, `fabric`.
 
 '''''
 
-[[sec-486-smc_unit_extent_register_decode_test]]
-===== 486 `smc_unit_extent_register_decode_test`
+[[sec-397-smc_unit_extent_register_decode_test]]
+===== 397 `smc_unit_extent_register_decode_test`
 
 *Source Module*: `smc_unit_extent_register_decode_test`
 
@@ -11148,8 +11151,52 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 
 '''''
 
-[[sec-326-smc_ndm_process_extra_bits_test]]
-===== 326 `smc_ndm_process_extra_bits_test`
+[[sec-326-smc_jtag_reset_ovrd_walk_test]]
+===== 326 `smc_jtag_reset_ovrd_walk_test`
+
+*Source Module*: `smc_jtag_reset_ovrd_walk_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN); `tb_jtag_reset_ctrl` drives the packed `jtag_reset_ctrl_i`; `tb_ss_cold_reset_n` / `tb_ss_warm_reset_n` publish every subsystem's `ss_reset_ctrl_o` cold and warm reset
+
+*Objective*: Every override mux smc_jtag_reset_ctrl_test leaves idle, through its reset pin.
+
+*Test Coverage*:
+
+* `smc_jtag_reset_ctrl_test` drives the cool override, the warm override released and the subsystem-0 warm override of `jtag_reset_ctrl_i`. The other 65 override muxes of the reset unit -- `ss_warm_reset_n[1..31]`, `ss_cold_reset_n[0..31]`, `fuse_reset_n` and `cold_reset_n` -- never see their select active there, and the warm mux never sees val=0. This leaf takes each one through ovrd=1/val=0, ovrd=1/val=1, ovrd=0/val=1 and idle with the overridden reset released by its source, and through ovrd=1/val=1 with the source asserting it where the bench can arrange that, so each mux input and the select exercise the mux in every combination the override can reach.
+* Per-subsystem legs are observed on `ss_reset_ctrl_o[i]` after the mux. The walked pin must move while the other 31 pins of the same vector hold their level, which fails on a wrong bit position in the DV-owned slice table, a swapped ovrd/val half or an override that reaches a neighbour. `SS_WARM_RESET_N` resets released, so the warm walk runs first against the reset value and then with the register asserting one subsystem at a time; `SS_COLD_RESET_N` resets asserted, so the cold walk runs first against the reset value and then with the register written all ones. Both registers are read unchanged across each walk, so the overrides do not write them, and both are restored.
+* The warm and fuse legs assert the warm reset alone: `tb_rst_warm_smc_clk_n` drops while `rst_primary_smc_clk_no`, `rst_cool_no` and the delayed `fuse_reset_n` from the eFuse controller stay released, so the override acts downstream of fuse sensing. `SCRATCH_COLD_WARM_0` clears and `SCRATCH_COLD_0` keeps its pattern after each.
+* The cold leg comes last because it resets the whole SMC: `rst_cold_stable_ref_clk_no`, the primary and the warm reset assert with `powergood_stable_o` held and every reset source idle (`rst_cold_ni`, `rst_cool_ni`, `powergood_i`, `cfg_flr_pf_active_i`, `sep_wdt_reset_n_i`). After the override releases, the eFuse controller re-senses and holds the warm reset; the fuse override at val=1 releases the warm reset while `tb_fuse_sense_done` and the delayed `fuse_reset_n` are still 0, and is dropped once the sense completes. `SS_COLD_RESET_N` returns to its reset value on the pins, and `SCRATCH_COLD_0` reads 0 and takes a pattern again.
+* The cold mux is not asked to release a cold reset the pin asserts: the bench models clocked from `rst_cold_ni` would reset while the SMC kept running. Not DTP `IC_RESET`, the boot-stall JTAG override or any reset the pins drive.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, drive the packed override to 0 and require both subsystem vectors at their register reset values, the top-level resets released and every reset source idle.
+. For `ss_warm_reset_n[1..31]`: ovrd=1/val=0 drops that pin with the other 31 held 1; ovrd=1/val=1 returns it; ovrd=0/val=1 and then 0 hold the vector released. Then for `ss_warm_reset_n[0..31]`: write `SS_WARM_RESET_N` with that bit clear, require the pin low, ovrd=1/val=1 must raise it, ovrd=0 must drop it again; restore the register.
+. For `ss_cold_reset_n[0..31]` at the register reset: ovrd=1/val=1 raises only that pin and ovrd=0 drops it. Write `SS_COLD_RESET_N` all ones and repeat the released walk of step 2 over `ss_cold_reset_n[0..31]`; read the register unchanged and restore it, requiring the pins to follow.
+. Write patterns to `SCRATCH_COLD_0` and `SCRATCH_COLD_WARM_0`. Warm ovrd=1/val=0 must drop the SMC-clock warm reset with the primary reset, `rst_cool_no` and the delayed `fuse_reset_n` held 1; val=1 and the release must return it. Read the warm scratch cleared and the cold scratch kept. Rewrite the warm scratch and repeat with the fuse override.
+. Cold ovrd=1/val=0 must take `rst_cold_stable_ref_clk_no`, the primary and the warm reset low with `powergood_stable_o` held 1; val=1 must release the chain and the override is then dropped. Once the primary reset returns, fuse ovrd=1/val=1 must release the warm reset before the sense completes; wait for the sense, drop the override, then read both scratch registers cleared and write the cold scratch again.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-JTAG-OVRD-WALK-IDLE` |Packed override 0: both subsystem vectors read their register resets, the primary, warm and cool resets are released and every reset source is idle
+|`CHK-JTAG-OVRD-WALK-SS-WARM` |Each `ss_warm_reset_n[1..31]` went 1→0→1 through its own override with the other 31 pins held 1 and `SS_WARM_RESET_N` unchanged; with the register asserting one subsystem at a time, each `ss_warm_reset_n[0..31]` went 0→1→0 through ovrd=1/val=1; the register was restored and the pins followed
+|`CHK-JTAG-OVRD-WALK-SS-COLD` |At the register reset each `ss_cold_reset_n[0..31]` went 0→1→0 through ovrd=1/val=1 alone; with `SS_COLD_RESET_N` written all ones each went 1→0→1 through its own override with the other 31 pins held 1; the register read unchanged and the pins followed its restore
+|`CHK-JTAG-OVRD-WALK-WARM` |The warm override asserted and released only the warm reset; `SCRATCH_COLD_WARM_0` cleared and `SCRATCH_COLD_0` kept its pattern
+|`CHK-JTAG-OVRD-WALK-FUSE` |The fuse override asserted and released only the warm reset; `SCRATCH_COLD_WARM_0` cleared and `SCRATCH_COLD_0` kept its pattern
+|`CHK-JTAG-OVRD-WALK-COLD` |The cold override took the cold chain, primary and warm resets low with `powergood_stable_o` and every source idle; after release the fuse override released the warm reset before the fuse sense finished, the chain, sense and subsystem cold pins recovered, `SCRATCH_COLD_0` read 0 and accepted a pattern again
+|`CHK-JTAG-OVRD-WALK-BASIC` |Ledger line: all five legs completed
+|===
+
+*Pass Criteria*: `CHK-JTAG-OVRD-WALK-BASIC`, `CHK-JTAG-OVRD-WALK-COLD`, `CHK-JTAG-OVRD-WALK-FUSE`, `CHK-JTAG-OVRD-WALK-IDLE`, `CHK-JTAG-OVRD-WALK-SS-COLD`, `CHK-JTAG-OVRD-WALK-SS-WARM`, `CHK-JTAG-OVRD-WALK-WARM` hold after their compares; every bounded poll expires into a failure naming the pin and its last level. Enrolled in: `all`, `hosted`, `reset`.
+
+'''''
+
+[[sec-398-smc_ndm_process_extra_bits_test]]
+===== 398 `smc_ndm_process_extra_bits_test`
 
 *Source Module*: `smc_ndm_process_extra_bits_test`
 
@@ -11214,8 +11261,8 @@ all-ones leg, and the leaf takes exactly 64 samples in each. Enrolled in:
 
 '''''
 
-[[sec-327-smc_reset_pin_deglitch_test]]
-===== 327 `smc_reset_pin_deglitch_test`
+[[sec-399-smc_reset_pin_deglitch_test]]
+===== 399 `smc_reset_pin_deglitch_test`
 
 *Source Module*: `smc_reset_pin_deglitch_test`
 
@@ -11288,8 +11335,8 @@ four reset `WAIT_STATE` checks. Enrolled in: `all`.
 
 '''''
 
-[[sec-328-smc_reset_sync_async_assert_test]]
-===== 328 `smc_reset_sync_async_assert_test`
+[[sec-400-smc_reset_sync_async_assert_test]]
+===== 400 `smc_reset_sync_async_assert_test`
 
 *Source Module*: `smc_reset_sync_async_assert_test`
 
@@ -11377,8 +11424,8 @@ at least two reset `WAIT_STATE` checks. Enrolled in: `all`.
 
 '''''
 
-[[sec-329-smc_scratch_banks_test]]
-===== 329 `smc_scratch_banks_test`
+[[sec-401-smc_scratch_banks_test]]
+===== 401 `smc_scratch_banks_test`
 
 *Source Module*: `smc_scratch_banks_test`
 
@@ -11440,8 +11487,8 @@ its shadow, and the leaf issues exactly 592 SEP_IN accesses. Enrolled in: `all`.
 
 '''''
 
-[[sec-330-smc_sync_reg_irq_test]]
-===== 330 `smc_sync_reg_irq_test`
+[[sec-402-smc_sync_reg_irq_test]]
+===== 402 `smc_sync_reg_irq_test`
 
 *Source Module*: `smc_sync_reg_irq_test`
 
@@ -12395,8 +12442,8 @@ Drive `smc_clock_domain_connectivity_test_seq` on the SEP_IN AXI sequencer: unga
 
 '''''
 
-[[sec-360-smc_avs_cfg_csr_cdc_test]]
-===== 360 `smc_avs_cfg_csr_cdc_test`
+[[sec-403-smc_avs_cfg_csr_cdc_test]]
+===== 403 `smc_avs_cfg_csr_cdc_test`
 
 *Source Module*: `smc_avs_cfg_csr_cdc_test`
 
@@ -12501,8 +12548,8 @@ the unallocated `AVS_CFG_1` bits are not claimed. Enrolled in: `all`.
 
 '''''
 
-[[sec-361-smc_avs_clock_select_test]]
-===== 361 `smc_avs_clock_select_test`
+[[sec-404-smc_avs_clock_select_test]]
+===== 404 `smc_avs_clock_select_test`
 
 *Source Module*: `smc_avs_clock_select_test`
 
@@ -12581,8 +12628,8 @@ fraction are not claimed. `AVS_CFG_1` is not restored at the end of the test. En
 
 '''''
 
-[[sec-362-smc_cg_ctrl_reg_access_test]]
-===== 362 `smc_cg_ctrl_reg_access_test`
+[[sec-405-smc_cg_ctrl_reg_access_test]]
+===== 405 `smc_cg_ctrl_reg_access_test`
 
 *Source Module*: `smc_cg_ctrl_reg_access_test`
 
@@ -12674,8 +12721,8 @@ reserved-bit and narrow-access values. Enrolled in: `all`.
 
 '''''
 
-[[sec-363-smc_clk_ratio_base_config_test]]
-===== 363 `smc_clk_ratio_base_config_test`
+[[sec-406-smc_clk_ratio_base_config_test]]
+===== 406 `smc_clk_ratio_base_config_test`
 
 *Source Module*: `smc_clk_ratio_base_config_test`
 
@@ -12740,8 +12787,8 @@ printed at the end. The response code of the `LOCAL_BASE` write is not claimed. 
 
 '''''
 
-[[sec-364-smc_clk_ratio_handshake_stall_test]]
-===== 364 `smc_clk_ratio_handshake_stall_test`
+[[sec-407-smc_clk_ratio_handshake_stall_test]]
+===== 407 `smc_clk_ratio_handshake_stall_test`
 
 *Source Module*: `smc_clk_ratio_handshake_stall_test`
 
@@ -12819,8 +12866,8 @@ bound is claimed for the peripheral accesses; the cycle counts are printed only.
 
 '''''
 
-[[sec-365-smc_clk_ratio_order_per_id_test]]
-===== 365 `smc_clk_ratio_order_per_id_test`
+[[sec-408-smc_clk_ratio_order_per_id_test]]
+===== 408 `smc_clk_ratio_order_per_id_test`
 
 *Source Module*: `smc_clk_ratio_order_per_id_test`
 
@@ -12902,8 +12949,8 @@ order within one ID is not claimed: it is printed only, and the multiset of resp
 compared. Enrolled in: `all`.
 '''''
 
-[[sec-366-smc_clk_ratio_resp_once_test]]
-===== 366 `smc_clk_ratio_resp_once_test`
+[[sec-409-smc_clk_ratio_resp_once_test]]
+===== 409 `smc_clk_ratio_resp_once_test`
 
 *Source Module*: `smc_clk_ratio_resp_once_test`
 
@@ -12980,8 +13027,8 @@ compare.
 their compares, with `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` printed at the end. Enrolled in: `all`.
 '''''
 
-[[sec-367-smc_clk_ratio_scratch_test]]
-===== 367 `smc_clk_ratio_scratch_test`
+[[sec-410-smc_clk_ratio_scratch_test]]
+===== 410 `smc_clk_ratio_scratch_test`
 
 *Source Module*: `smc_clk_ratio_scratch_test`
 
@@ -13040,8 +13087,8 @@ after their compares, with `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` printed at the e
 compare cannot fail on an unknown value under a two-state simulator. Enrolled in: `all`.
 '''''
 
-[[sec-368-smc_clk_relation_regxbar_test]]
-===== 368 `smc_clk_relation_regxbar_test`
+[[sec-411-smc_clk_relation_regxbar_test]]
+===== 411 `smc_clk_relation_regxbar_test`
 
 *Source Module*: `smc_clk_relation_regxbar_test`
 
@@ -13141,8 +13188,8 @@ returning its own expected word in issue order, with no response lost or duplica
 
 '''''
 
-[[sec-369-smc_octs_clk_rate_test]]
-===== 369 `smc_octs_clk_rate_test`
+[[sec-412-smc_octs_clk_rate_test]]
+===== 412 `smc_octs_clk_rate_test`
 
 *Source Module*: `smc_octs_clk_rate_test`
 
@@ -13237,8 +13284,8 @@ in: `all`.
 
 '''''
 
-[[sec-370-smc_periph_cg_window_extent_test]]
-===== 370 `smc_periph_cg_window_extent_test`
+[[sec-413-smc_periph_cg_window_extent_test]]
+===== 413 `smc_periph_cg_window_extent_test`
 
 *Source Module*: `smc_periph_cg_window_extent_test`
 
@@ -13322,8 +13369,8 @@ AVSBus pad activity. Enrolled in: `all`.
 
 '''''
 
-[[sec-371-smc_periph_floor_roundtrip_test]]
-===== 371 `smc_periph_floor_roundtrip_test`
+[[sec-414-smc_periph_floor_roundtrip_test]]
+===== 414 `smc_periph_floor_roundtrip_test`
 
 *Source Module*: `smc_periph_floor_roundtrip_test`
 
@@ -13385,8 +13432,8 @@ that expiry raises an assertion; the line is a record, not a compare.
 periph5 and periph3 cells. Enrolled in: `all`.
 '''''
 
-[[sec-372-smc_ref_reset_cycles_test]]
-===== 372 `smc_ref_reset_cycles_test`
+[[sec-415-smc_ref_reset_cycles_test]]
+===== 415 `smc_ref_reset_cycles_test`
 
 *Source Module*: `smc_ref_reset_cycles_test`
 
@@ -14020,8 +14067,8 @@ Drive `smc_occp_sanity_secure_error_test_seq`. Each checker below is a named com
 *Pass Criteria*: `CHK-OCCP-SECURE-ERROR-RECOVERY` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-409-smc_beu_csr_access_test]]
-===== 409 `smc_beu_csr_access_test`
+[[sec-416-smc_beu_csr_access_test]]
+===== 416 `smc_beu_csr_access_test`
 
 *Source Module*: `smc_beu_csr_access_test`
 
@@ -14120,8 +14167,8 @@ overlap of at least two outstanding accesses, DECERR after each group, `REGION_S
 
 '''''
 
-[[sec-410-smc_beu_register_test]]
-===== 410 `smc_beu_register_test`
+[[sec-417-smc_beu_register_test]]
+===== 417 `smc_beu_register_test`
 
 *Source Module*: `smc_beu_register_test`
 
@@ -14203,8 +14250,8 @@ PHYS_ADDR reset reads are recorded without comparison.
 
 '''''
 
-[[sec-411-smc_clint_register_test]]
-===== 411 `smc_clint_register_test`
+[[sec-418-smc_clint_register_test]]
+===== 418 `smc_clint_register_test`
 
 *Source Module*: `smc_clint_register_test`
 
@@ -14283,8 +14330,8 @@ reflected-offset figures are recorded without comparison.
 
 '''''
 
-[[sec-412-smc_cpu_boot_regs_read_test]]
-===== 412 `smc_cpu_boot_regs_read_test`
+[[sec-419-smc_cpu_boot_regs_read_test]]
+===== 419 `smc_cpu_boot_regs_read_test`
 
 *Source Module*: `smc_cpu_boot_regs_read_test`
 
@@ -14371,8 +14418,8 @@ response other than OKAY or EXOKAY, the burst data are recorded without comparis
 
 '''''
 
-[[sec-413-smc_cpu_boot_release_sequence_test]]
-===== 413 `smc_cpu_boot_release_sequence_test`
+[[sec-420-smc_cpu_boot_release_sequence_test]]
+===== 420 `smc_cpu_boot_release_sequence_test`
 
 *Source Module*: `smc_cpu_boot_release_sequence_test`
 
@@ -14471,8 +14518,8 @@ the isolate delay are recorded without comparison. The run requires `+smc_hold_e
 
 '''''
 
-[[sec-414-smc_cpu_ctrl_access_rules_test]]
-===== 414 `smc_cpu_ctrl_access_rules_test`
+[[sec-421-smc_cpu_ctrl_access_rules_test]]
+===== 421 `smc_cpu_ctrl_access_rules_test`
 
 *Source Module*: `smc_cpu_ctrl_access_rules_test`
 
@@ -14548,8 +14595,8 @@ read-back and the AxPROT responses are recorded without comparison.
 
 '''''
 
-[[sec-415-smc_cpu_ctrl_dummy_rom_test]]
-===== 415 `smc_cpu_ctrl_dummy_rom_test`
+[[sec-422-smc_cpu_ctrl_dummy_rom_test]]
+===== 422 `smc_cpu_ctrl_dummy_rom_test`
 
 *Source Module*: `smc_cpu_ctrl_dummy_rom_test`
 
@@ -14603,8 +14650,8 @@ restored, and all accesses answered OKAY.
 
 '''''
 
-[[sec-416-smc_cpu_ctrl_mutex_all_test]]
-===== 416 `smc_cpu_ctrl_mutex_all_test`
+[[sec-423-smc_cpu_ctrl_mutex_all_test]]
+===== 423 `smc_cpu_ctrl_mutex_all_test`
 
 *Source Module*: `smc_cpu_ctrl_mutex_all_test`
 
@@ -14674,8 +14721,8 @@ grouped and stalled reads keep their order, and every mutex ends free.
 
 '''''
 
-[[sec-417-smc_cpu_ctrl_scratch_all_test]]
-===== 417 `smc_cpu_ctrl_scratch_all_test`
+[[sec-424-smc_cpu_ctrl_scratch_all_test]]
+===== 424 `smc_cpu_ctrl_scratch_all_test`
 
 *Source Module*: `smc_cpu_ctrl_scratch_all_test`
 
@@ -14733,8 +14780,8 @@ patterns read back in both orders, only the written entry changes during the wal
 patterns are exact and every entry is restored.
 '''''
 
-[[sec-418-smc_cpu_ctrl_sema_test]]
-===== 418 `smc_cpu_ctrl_sema_test`
+[[sec-425-smc_cpu_ctrl_sema_test]]
+===== 425 `smc_cpu_ctrl_sema_test`
 
 *Source Module*: `smc_cpu_ctrl_sema_test`
 
@@ -14808,8 +14855,8 @@ over-maximum and upper-bit results are recorded without comparison.
 
 '''''
 
-[[sec-419-smc_cpu_ctrl_wb_pc_test]]
-===== 419 `smc_cpu_ctrl_wb_pc_test`
+[[sec-426-smc_cpu_ctrl_wb_pc_test]]
+===== 426 `smc_cpu_ctrl_wb_pc_test`
 
 *Source Module*: `smc_cpu_ctrl_wb_pc_test`
 
@@ -14859,8 +14906,8 @@ recorded without comparison.
 
 '''''
 
-[[sec-420-smc_cpu_ctrl_wdt_regs_test]]
-===== 420 `smc_cpu_ctrl_wdt_regs_test`
+[[sec-427-smc_cpu_ctrl_wdt_regs_test]]
+===== 427 `smc_cpu_ctrl_wdt_regs_test`
 
 *Source Module*: `smc_cpu_ctrl_wdt_regs_test`
 
@@ -14917,8 +14964,8 @@ writes. The immediate pulse read-back and the TEST_CTRL value are recorded witho
 
 '''''
 
-[[sec-421-smc_ext_window_aperture_test]]
-===== 421 `smc_ext_window_aperture_test`
+[[sec-428-smc_ext_window_aperture_test]]
+===== 428 `smc_ext_window_aperture_test`
 
 *Source Module*: `smc_ext_window_aperture_test`
 
@@ -15006,8 +15053,8 @@ terminator response and data are recorded without comparison.
 
 '''''
 
-[[sec-422-smc_flr_isolation_sources_test]]
-===== 422 `smc_flr_isolation_sources_test`
+[[sec-429-smc_flr_isolation_sources_test]]
+===== 429 `smc_flr_isolation_sources_test`
 
 *Source Module*: `smc_flr_isolation_sources_test`
 
@@ -15102,8 +15149,8 @@ without comparison.
 
 '''''
 
-[[sec-423-smc_plic_register_test]]
-===== 423 `smc_plic_register_test`
+[[sec-430-smc_plic_register_test]]
+===== 430 `smc_plic_register_test`
 
 *Source Module*: `smc_plic_register_test`
 
@@ -15188,8 +15235,8 @@ PRIORITY and THRESHOLD and the pending content are recorded without comparison.
 
 '''''
 
-[[sec-424-smc_spm_aperture_region_size_test]]
-===== 424 `smc_spm_aperture_region_size_test`
+[[sec-431-smc_spm_aperture_region_size_test]]
+===== 431 `smc_spm_aperture_region_size_test`
 
 *Source Module*: `smc_spm_aperture_region_size_test`
 
@@ -15797,12 +15844,13 @@ Drive `smc_dfd_trace_sink_window_test_seq`. Each checker below is a named compar
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: Every event index driven into all three event selectors of each of node 0's event-action pairs.
+*Objective*: Every event index driven into all three event selectors of every event-action pair of every node, with the node walk reaching all four nodes.
 
 *Test Coverage*:
 
-* `EventType0`, `EventType1` and `EventType2` of each of node 0's four `CDbgNode0Eap<m>` pairs, each selector driven over all 64 values of its six-bit field: 768 selector values in all. Each value is one index of the CLA event bus the selector compares against, so a pair left at its reset only ever exercises index zero.
+* `EventType0`, `EventType1` and `EventType2` of each of the four `CDbgNode<n>Eap<m>` pairs of each of the four nodes, each selector driven over all 64 values of its six-bit field: 3072 selector values in all. Each value is one index of the CLA event bus the selector compares against, so a pair left at its reset only ever exercises index zero.
 * The pair's relation is left at its RDL reset, so a pair activates when and only when the selected event is asserted, and `CDbgEapStatus` is read after every value with the pair quiesced and its status cleared between values.
+* A node's pairs can only set their status while that node is current, so after each node's sweep one of its pairs is re-programmed with an event index seen live and `DestNode` naming the next node, and `CurrentNode` is polled until the DUT reports the move.
 
 *Test Procedure*:
 
@@ -15814,8 +15862,8 @@ Drive `smc_dfd_cla_event_type_sweep_test_seq`. Each checker below is a named com
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CLA-EVENT-SELECT-SWEEP` |All three selectors of all four pairs took every one of the 64 values their field offers and read back exactly; a value the register does not accept fails it
-|`CHK-CLA-EVENT-SELECT-LIVE` |The DUT set a pair-activation bit for at least one event index, so the selectors pick a live event bus rather than storing a value nothing reads; a sweep in which no index ever activates fails it
+|`CHK-CLA-EVENT-SELECT-SWEEP` |All three selectors of all four pairs of all four nodes took every one of the 64 values their field offers and read back exactly, with `CurrentNode` reporting each node in turn; a value the register does not accept, or a node the walk never reaches, fails it
+|`CHK-CLA-EVENT-SELECT-LIVE` |On every node the DUT set a pair-activation bit for at least one event index, so the selectors pick a live event bus rather than storing a value nothing reads; a node on which no index ever activates fails it
 |===
 
 
@@ -16252,8 +16300,8 @@ Drive `smc_dfd_trace_writeout_phase_test_seq`. Each checker below is a named com
 *Pass Criteria*: `CHK-DST-PHASE-ACTIONS`, `CHK-DST-PHASE-FLUSH`, `CHK-DST-PHASE-WRITEOUT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-425-smc_dfd_csr_field_access_test]]
-===== 425 `smc_dfd_csr_field_access_test`
+[[sec-432-smc_dfd_csr_field_access_test]]
+===== 432 `smc_dfd_csr_field_access_test`
 
 *Source Module*: `smc_dfd_csr_field_access_test`
 
@@ -16348,8 +16396,8 @@ sequence assert holds. Enrolled in: `all`.
 
 '''''
 
-[[sec-426-smc_dfx_aperture_extent_test]]
-===== 426 `smc_dfx_aperture_extent_test`
+[[sec-433-smc_dfx_aperture_extent_test]]
+===== 433 `smc_dfx_aperture_extent_test`
 
 *Source Module*: `smc_dfx_aperture_extent_test`
 
@@ -16438,8 +16486,8 @@ compares OKAY, 0x0 (`memory_map.adoc`); `CHK-NONVAC` and
 
 '''''
 
-[[sec-427-smc_dfx_debug_bus_mux_storage_test]]
-===== 427 `smc_dfx_debug_bus_mux_storage_test`
+[[sec-434-smc_dfx_debug_bus_mux_storage_test]]
+===== 434 `smc_dfx_debug_bus_mux_storage_test`
 
 *Source Module*: `smc_dfx_debug_bus_mux_storage_test`
 
@@ -16518,8 +16566,8 @@ on expiry with the last observed access
 
 '''''
 
-[[sec-428-smc_dfx_debug_ctrl_noeffect_gate_test]]
-===== 428 `smc_dfx_debug_ctrl_noeffect_gate_test`
+[[sec-435-smc_dfx_debug_ctrl_noeffect_gate_test]]
+===== 435 `smc_dfx_debug_ctrl_noeffect_gate_test`
 
 *Source Module*: `smc_dfx_debug_ctrl_noeffect_gate_test`
 
@@ -16616,8 +16664,8 @@ measured leg; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence asser
 
 '''''
 
-[[sec-429-smc_dfx_debug_ctrl_storage_test]]
-===== 429 `smc_dfx_debug_ctrl_storage_test`
+[[sec-436-smc_dfx_debug_ctrl_storage_test]]
+===== 436 `smc_dfx_debug_ctrl_storage_test`
 
 *Source Module*: `smc_dfx_debug_ctrl_storage_test`
 
@@ -16694,8 +16742,8 @@ once its accesses completed, the readbacks printed (the specification does not s
 
 '''''
 
-[[sec-430-smc_dfx_status_smu_pulse_reset_test]]
-===== 430 `smc_dfx_status_smu_pulse_reset_test`
+[[sec-437-smc_dfx_status_smu_pulse_reset_test]]
+===== 437 `smc_dfx_status_smu_pulse_reset_test`
 
 *Source Module*: `smc_dfx_status_smu_pulse_reset_test`
 
@@ -16811,8 +16859,8 @@ holds. Enrolled in: `all`.
 
 '''''
 
-[[sec-431-smc_jtag_dm_sbcs_haltsum_test]]
-===== 431 `smc_jtag_dm_sbcs_haltsum_test`
+[[sec-438-smc_jtag_dm_sbcs_haltsum_test]]
+===== 438 `smc_jtag_dm_sbcs_haltsum_test`
 
 *Source Module*: `smc_jtag_dm_sbcs_haltsum_test`
 
@@ -17610,8 +17658,8 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 *Pass Criteria*: `CHK-EFUSE-IMG-IMAGE`, `CHK-EFUSE-IMG-LOCKS-SET-ONLY`, `CHK-EFUSE-IMG-RESENSE`, `CHK-EFUSE-IMG-SCOREBOARD`, `CHK-EFUSE-IMG-SENSE`, `CHK-EFUSE-IMG-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-341-smc_efuse_bank_ctrl_window_test]]
-===== 341 `smc_efuse_bank_ctrl_window_test`
+[[sec-439-smc_efuse_bank_ctrl_window_test]]
+===== 439 `smc_efuse_bank_ctrl_window_test`
 
 *Source Module*: `smc_efuse_bank_ctrl_window_test`
 
@@ -17707,8 +17755,8 @@ inside its bound. The re-sense delay is recorded only. Enrolled in: `all`.
 
 '''''
 
-[[sec-342-smc_efuse_fuse_reset_gate_test]]
-===== 342 `smc_efuse_fuse_reset_gate_test`
+[[sec-440-smc_efuse_fuse_reset_gate_test]]
+===== 440 `smc_efuse_fuse_reset_gate_test`
 
 *Source Module*: `smc_efuse_fuse_reset_gate_test`
 
@@ -17806,8 +17854,8 @@ only. Enrolled in: `all`.
 
 '''''
 
-[[sec-343-smc_efuse_map_concurrency_test]]
-===== 343 `smc_efuse_map_concurrency_test`
+[[sec-441-smc_efuse_map_concurrency_test]]
+===== 441 `smc_efuse_map_concurrency_test`
 
 *Source Module*: `smc_efuse_map_concurrency_test`
 
@@ -17899,8 +17947,8 @@ the accepted depth are recorded only. Enrolled in: `all`.
 
 '''''
 
-[[sec-344-smc_efuse_map_layout_decode_test]]
-===== 344 `smc_efuse_map_layout_decode_test`
+[[sec-442-smc_efuse_map_layout_decode_test]]
+===== 442 `smc_efuse_map_layout_decode_test`
 
 *Source Module*: `smc_efuse_map_layout_decode_test`
 
@@ -18004,8 +18052,8 @@ the past-extent range are not asserted. Enrolled in: `all`.
 
 '''''
 
-[[sec-345-smc_efuse_map_lock_field_enforce_test]]
-===== 345 `smc_efuse_map_lock_field_enforce_test`
+[[sec-443-smc_efuse_map_lock_field_enforce_test]]
+===== 443 `smc_efuse_map_lock_field_enforce_test`
 
 *Source Module*: `smc_efuse_map_lock_field_enforce_test`
 
@@ -18101,8 +18149,8 @@ not asserted. Enrolled in: `all`.
 
 '''''
 
-[[sec-346-smc_efuse_map_locks_register_test]]
-===== 346 `smc_efuse_map_locks_register_test`
+[[sec-444-smc_efuse_map_locks_register_test]]
+===== 444 `smc_efuse_map_locks_register_test`
 
 *Source Module*: `smc_efuse_map_locks_register_test`
 
@@ -18200,8 +18248,8 @@ asserted. Enrolled in: `all`.
 
 '''''
 
-[[sec-347-smc_efuse_map_reset_persistence_test]]
-===== 347 `smc_efuse_map_reset_persistence_test`
+[[sec-445-smc_efuse_map_reset_persistence_test]]
+===== 445 `smc_efuse_map_reset_persistence_test`
 
 *Source Module*: `smc_efuse_map_reset_persistence_test`
 
@@ -18310,8 +18358,8 @@ outcome are recorded only. Enrolled in: `all`.
 
 '''''
 
-[[sec-348-smc_efuse_map_sense_image_test]]
-===== 348 `smc_efuse_map_sense_image_test`
+[[sec-446-smc_efuse_map_sense_image_test]]
+===== 446 `smc_efuse_map_sense_image_test`
 
 *Source Module*: `smc_efuse_map_sense_image_test`
 
@@ -18401,8 +18449,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-349-smc_efuse_map_sep_write_test]]
-===== 349 `smc_efuse_map_sep_write_test`
+[[sec-447-smc_efuse_map_sep_write_test]]
+===== 447 `smc_efuse_map_sep_write_test`
 
 *Source Module*: `smc_efuse_map_sep_write_test`
 
@@ -18496,8 +18544,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-350-smc_efuse_sense_sequence_test]]
-===== 350 `smc_efuse_sense_sequence_test`
+[[sec-448-smc_efuse_sense_sequence_test]]
+===== 448 `smc_efuse_sense_sequence_test`
 
 *Source Module*: `smc_efuse_sense_sequence_test`
 
@@ -19031,8 +19079,8 @@ Drive `smc_gpio_pad_input_readback_test_seq` on the SEP_IN AXI sequencer. Per wr
 
 '''''
 
-[[sec-351-smc_gpio_data_ctrl_enable_fields_test]]
-===== 351 `smc_gpio_data_ctrl_enable_fields_test`
+[[sec-449-smc_gpio_data_ctrl_enable_fields_test]]
+===== 449 `smc_gpio_data_ctrl_enable_fields_test`
 
 *Source Module*: `smc_gpio_data_ctrl_enable_fields_test`
 
@@ -19095,8 +19143,8 @@ values in both write orders. Enrolled in: `all`.
 
 '''''
 
-[[sec-352-smc_gpio_data_ctrl_ro_status_test]]
-===== 352 `smc_gpio_data_ctrl_ro_status_test`
+[[sec-450-smc_gpio_data_ctrl_ro_status_test]]
+===== 450 `smc_gpio_data_ctrl_ro_status_test`
 
 *Source Module*: `smc_gpio_data_ctrl_ro_status_test`
 
@@ -19179,8 +19227,8 @@ recorded only. Enrolled in: `all`.
 
 '''''
 
-[[sec-353-smc_gpio_data_ctrl_rw_values_test]]
-===== 353 `smc_gpio_data_ctrl_rw_values_test`
+[[sec-451-smc_gpio_data_ctrl_rw_values_test]]
+===== 451 `smc_gpio_data_ctrl_rw_values_test`
 
 *Source Module*: `smc_gpio_data_ctrl_rw_values_test`
 
@@ -19256,8 +19304,8 @@ register returns to its reset value after each phase. Enrolled in: `all`.
 
 '''''
 
-[[sec-354-smc_gpio_ext_extra_decode_test]]
-===== 354 `smc_gpio_ext_extra_decode_test`
+[[sec-452-smc_gpio_ext_extra_decode_test]]
+===== 452 `smc_gpio_ext_extra_decode_test`
 
 *Source Module*: `smc_gpio_ext_extra_decode_test`
 
@@ -19336,8 +19384,8 @@ read data returned with DECERR is recorded only. Enrolled in: `all`.
 
 '''''
 
-[[sec-355-smc_gpio_filter_reg_fields_test]]
-===== 355 `smc_gpio_filter_reg_fields_test`
+[[sec-453-smc_gpio_filter_reg_fields_test]]
+===== 453 `smc_gpio_filter_reg_fields_test`
 
 *Source Module*: `smc_gpio_filter_reg_fields_test`
 
@@ -19402,8 +19450,8 @@ set and clear of the two enable bits reads back exactly, and the register ends a
 
 '''''
 
-[[sec-356-smc_gpio_intf_decode_map_test]]
-===== 356 `smc_gpio_intf_decode_map_test`
+[[sec-454-smc_gpio_intf_decode_map_test]]
+===== 454 `smc_gpio_intf_decode_map_test`
 
 *Source Module*: `smc_gpio_intf_decode_map_test`
 
@@ -19487,8 +19535,8 @@ addresses. Enrolled in: `all`.
 
 '''''
 
-[[sec-357-smc_gpio_intf_reset_writeback_test]]
-===== 357 `smc_gpio_intf_reset_writeback_test`
+[[sec-455-smc_gpio_intf_reset_writeback_test]]
+===== 455 `smc_gpio_intf_reset_writeback_test`
 
 *Source Module*: `smc_gpio_intf_reset_writeback_test`
 
@@ -19542,8 +19590,8 @@ registers after the write-back. Enrolled in: `all`.
 
 '''''
 
-[[sec-358-smc_gpio_irq_or_test]]
-===== 358 `smc_gpio_irq_or_test`
+[[sec-456-smc_gpio_irq_or_test]]
+===== 456 `smc_gpio_irq_or_test`
 
 *Source Module*: `smc_gpio_irq_or_test`
 
@@ -19634,8 +19682,8 @@ within the 64-cycle bounds. The absolute edge pulse width is recorded only. Enro
 
 '''''
 
-[[sec-359-smc_gpio_rst_primary_test]]
-===== 359 `smc_gpio_rst_primary_test`
+[[sec-457-smc_gpio_rst_primary_test]]
+===== 457 `smc_gpio_rst_primary_test`
 
 *Source Module*: `smc_gpio_rst_primary_test`
 
@@ -20036,8 +20084,8 @@ Drive `smc_temp_interrupt_test_seq`. Each checker below is a named compare the D
 
 '''''
 
-[[sec-432-smc_ext_irq_hold_release_test]]
-===== 432 `smc_ext_irq_hold_release_test`
+[[sec-458-smc_ext_irq_hold_release_test]]
+===== 458 `smc_ext_irq_hold_release_test`
 
 *Source Module*: `smc_ext_irq_hold_release_test`
 
@@ -20103,8 +20151,8 @@ access, the scratch read, is issued and answers OKAY. Enrolled in: `all`.
 
 '''''
 
-[[sec-433-smc_ext_irq_low_bits_test]]
-===== 433 `smc_ext_irq_low_bits_test`
+[[sec-459-smc_ext_irq_low_bits_test]]
+===== 459 `smc_ext_irq_low_bits_test`
 
 *Source Module*: `smc_ext_irq_low_bits_test`
 
@@ -20173,8 +20221,8 @@ access is issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-434-smc_ext_irq_pulse_sampling_test]]
-===== 434 `smc_ext_irq_pulse_sampling_test`
+[[sec-460-smc_ext_irq_pulse_sampling_test]]
+===== 460 `smc_ext_irq_pulse_sampling_test`
 
 *Source Module*: `smc_ext_irq_pulse_sampling_test`
 
@@ -20245,8 +20293,8 @@ complete and at least one SEP_IN access is issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-435-smc_hang_data_timeout_window_test]]
-===== 435 `smc_hang_data_timeout_window_test`
+[[sec-461-smc_hang_data_timeout_window_test]]
+===== 461 `smc_hang_data_timeout_window_test`
 
 *Source Module*: `smc_hang_data_timeout_window_test`
 
@@ -20336,8 +20384,8 @@ complete and at least 60 SEP_IN accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-436-smc_hang_irq_or_matrix_test]]
-===== 436 `smc_hang_irq_or_matrix_test`
+[[sec-462-smc_hang_irq_or_matrix_test]]
+===== 462 `smc_hang_irq_or_matrix_test`
 
 *Source Module*: `smc_hang_irq_or_matrix_test`
 
@@ -20408,8 +20456,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-437-smc_hang_sep_drop_controls_test]]
-===== 437 `smc_hang_sep_drop_controls_test`
+[[sec-463-smc_hang_sep_drop_controls_test]]
+===== 463 `smc_hang_sep_drop_controls_test`
 
 *Source Module*: `smc_hang_sep_drop_controls_test`
 
@@ -20504,8 +20552,8 @@ phases complete and at least 11 SEP_IN accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-438-smc_hang_sep_threshold_test]]
-===== 438 `smc_hang_sep_threshold_test`
+[[sec-464-smc_hang_sep_threshold_test]]
+===== 464 `smc_hang_sep_threshold_test`
 
 *Source Module*: `smc_hang_sep_threshold_test`
 
@@ -20596,8 +20644,8 @@ accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-439-smc_hang_sep_timeout_window_test]]
-===== 439 `smc_hang_sep_timeout_window_test`
+[[sec-465-smc_hang_sep_timeout_window_test]]
+===== 465 `smc_hang_sep_timeout_window_test`
 
 *Source Module*: `smc_hang_sep_timeout_window_test`
 
@@ -20689,8 +20737,8 @@ are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-440-smc_hang_sys_timeout_window_test]]
-===== 440 `smc_hang_sys_timeout_window_test`
+[[sec-466-smc_hang_sys_timeout_window_test]]
+===== 466 `smc_hang_sys_timeout_window_test`
 
 *Source Module*: `smc_hang_sys_timeout_window_test`
 
@@ -20781,8 +20829,8 @@ complete and at least 19 SEP_IN accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-441-smc_irq_csr_readback_test]]
-===== 441 `smc_irq_csr_readback_test`
+[[sec-467-smc_irq_csr_readback_test]]
+===== 467 `smc_irq_csr_readback_test`
 
 *Source Module*: `smc_irq_csr_readback_test`
 
@@ -20855,8 +20903,8 @@ appear in order; `CHK-TIMEOUT-PATHS` only logs the bounded waits. Seven phases c
 80 SEP_IN accesses are issued. Enrolled in: `all`.
 '''''
 
-[[sec-442-smc_irq_reserved_idle_zero_test]]
-===== 442 `smc_irq_reserved_idle_zero_test`
+[[sec-468-smc_irq_reserved_idle_zero_test]]
+===== 468 `smc_irq_reserved_idle_zero_test`
 
 *Source Module*: `smc_irq_reserved_idle_zero_test`
 
@@ -20916,8 +20964,8 @@ complete and at least one SEP_IN access is issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-443-smc_irq_vector_assembly_test]]
-===== 443 `smc_irq_vector_assembly_test`
+[[sec-469-smc_irq_vector_assembly_test]]
+===== 469 `smc_irq_vector_assembly_test`
 
 *Source Module*: `smc_irq_vector_assembly_test`
 
@@ -21005,8 +21053,8 @@ waits. At least 27 SEP_IN accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-444-smc_mbx_inbound_irq_vector_test]]
-===== 444 `smc_mbx_inbound_irq_vector_test`
+[[sec-470-smc_mbx_inbound_irq_vector_test]]
+===== 470 `smc_mbx_inbound_irq_vector_test`
 
 *Source Module*: `smc_mbx_inbound_irq_vector_test`
 
@@ -21071,8 +21119,8 @@ SEP_IN accesses are issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-445-smc_ndm_irq_or_test]]
-===== 445 `smc_ndm_irq_or_test`
+[[sec-471-smc_ndm_irq_or_test]]
+===== 471 `smc_ndm_irq_or_test`
 
 *Source Module*: `smc_ndm_irq_or_test`
 
@@ -21138,8 +21186,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-446-smc_sep_mbx_irq_vector_test]]
-===== 446 `smc_sep_mbx_irq_vector_test`
+[[sec-472-smc_sep_mbx_irq_vector_test]]
+===== 472 `smc_sep_mbx_irq_vector_test`
 
 *Source Module*: `smc_sep_mbx_irq_vector_test`
 
@@ -21209,8 +21257,8 @@ access is issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-447-smc_sep_wdt_irq_level_test]]
-===== 447 `smc_sep_wdt_irq_level_test`
+[[sec-473-smc_sep_wdt_irq_level_test]]
+===== 473 `smc_sep_wdt_irq_level_test`
 
 *Source Module*: `smc_sep_wdt_irq_level_test`
 
@@ -21279,8 +21327,8 @@ is issued. Enrolled in: `all`.
 
 '''''
 
-[[sec-448-smc_sync_irq_isolation_test]]
-===== 448 `smc_sync_irq_isolation_test`
+[[sec-474-smc_sync_irq_isolation_test]]
+===== 474 `smc_sync_irq_isolation_test`
 
 *Source Module*: `smc_sync_irq_isolation_test`
 
@@ -22033,8 +22081,8 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 
 '''''
 
-[[sec-487-smc_i2c_clock_gate_response_test]]
-===== 487 `smc_i2c_clock_gate_response_test`
+[[sec-475-smc_i2c_clock_gate_response_test]]
+===== 475 `smc_i2c_clock_gate_response_test`
 
 *Source Module*: `smc_i2c_clock_gate_response_test`
 
@@ -22129,8 +22177,8 @@ gating; `CHK-I2C-GATE-GAP-OBS`, `CHK-I2C-GATE-IRQ-OBS` (gated levels) and
 
 '''''
 
-[[sec-488-smc_i2c_ctrl_intr_w1c_test]]
-===== 488 `smc_i2c_ctrl_intr_w1c_test`
+[[sec-476-smc_i2c_ctrl_intr_w1c_test]]
+===== 476 `smc_i2c_ctrl_intr_w1c_test`
 
 *Source Module*: `smc_i2c_ctrl_intr_w1c_test`
 
@@ -22222,8 +22270,8 @@ assert holds; `CHK-CMDC-RS-OBS` records the counts without an expected value. En
 
 '''''
 
-[[sec-489-smc_i2c_ctrl_nack_modes_test]]
-===== 489 `smc_i2c_ctrl_nack_modes_test`
+[[sec-477-smc_i2c_ctrl_nack_modes_test]]
+===== 477 `smc_i2c_ctrl_nack_modes_test`
 
 *Source Module*: `smc_i2c_ctrl_nack_modes_test`
 
@@ -22331,8 +22379,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-490-smc_i2c_ctrl_role_gate_test]]
-===== 490 `smc_i2c_ctrl_role_gate_test`
+[[sec-478-smc_i2c_ctrl_role_gate_test]]
+===== 478 `smc_i2c_ctrl_role_gate_test`
 
 *Source Module*: `smc_i2c_ctrl_role_gate_test`
 
@@ -22421,8 +22469,8 @@ in: `all`.
 
 '''''
 
-[[sec-491-smc_i2c_ctrl_wire_frames_test]]
-===== 491 `smc_i2c_ctrl_wire_frames_test`
+[[sec-479-smc_i2c_ctrl_wire_frames_test]]
+===== 479 `smc_i2c_ctrl_wire_frames_test`
 
 *Source Module*: `smc_i2c_ctrl_wire_frames_test`
 
@@ -22517,8 +22565,8 @@ fails with the last observed state; the line lists each bound and last state.
 
 '''''
 
-[[sec-492-smc_i2c_ctrl_xinst_events_test]]
-===== 492 `smc_i2c_ctrl_xinst_events_test`
+[[sec-480-smc_i2c_ctrl_xinst_events_test]]
+===== 480 `smc_i2c_ctrl_xinst_events_test`
 
 *Source Module*: `smc_i2c_ctrl_xinst_events_test`
 
@@ -22613,8 +22661,8 @@ measurements only. Enrolled in: `all`.
 
 '''''
 
-[[sec-493-smc_i2c_fmtrst_repro_test]]
-===== 493 `smc_i2c_fmtrst_repro_test`
+[[sec-481-smc_i2c_fmtrst_repro_test]]
+===== 481 `smc_i2c_fmtrst_repro_test`
 
 *Source Module*: `smc_i2c_fmtrst_repro_test`
 
@@ -22701,8 +22749,8 @@ measurements only and carry no pass or fail from their values. Enrolled in: `all
 
 '''''
 
-[[sec-494-smc_i2c_intr_output_path_test]]
-===== 494 `smc_i2c_intr_output_path_test`
+[[sec-482-smc_i2c_intr_output_path_test]]
+===== 482 `smc_i2c_intr_output_path_test`
 
 *Source Module*: `smc_i2c_intr_output_path_test`
 
@@ -22811,8 +22859,8 @@ only, the last also requiring the CPU bit to rise and fall within its bound. Enr
 
 '''''
 
-[[sec-495-smc_i2c_intr_test_state_test]]
-===== 495 `smc_i2c_intr_test_state_test`
+[[sec-483-smc_i2c_intr_test_state_test]]
+===== 483 `smc_i2c_intr_test_state_test`
 
 *Source Module*: `smc_i2c_intr_test_state_test`
 
@@ -22904,8 +22952,8 @@ lines have been printed.
 
 '''''
 
-[[sec-496-smc_i2c_pad_override_test]]
-===== 496 `smc_i2c_pad_override_test`
+[[sec-484-smc_i2c_pad_override_test]]
+===== 484 `smc_i2c_pad_override_test`
 
 *Source Module*: `smc_i2c_pad_override_test`
 
@@ -22986,8 +23034,8 @@ probes and the disabled-leg pull probes match the compares above; the pad levels
 
 '''''
 
-[[sec-497-smc_i2c_reg_access_class_test]]
-===== 497 `smc_i2c_reg_access_class_test`
+[[sec-485-smc_i2c_reg_access_class_test]]
+===== 485 `smc_i2c_reg_access_class_test`
 
 *Source Module*: `smc_i2c_reg_access_class_test`
 
@@ -23100,8 +23148,8 @@ only. Enrolled in: `all`.
 
 '''''
 
-[[sec-498-smc_i2c_target_addr_gate_test]]
-===== 498 `smc_i2c_target_addr_gate_test`
+[[sec-486-smc_i2c_target_addr_gate_test]]
+===== 486 `smc_i2c_target_addr_gate_test`
 
 *Source Module*: `smc_i2c_target_addr_gate_test`
 
@@ -23210,8 +23258,8 @@ fails with the last observed state; the line lists each bound and last state.
 
 '''''
 
-[[sec-499-smc_i2c_target_bus_symbol_test]]
-===== 499 `smc_i2c_target_bus_symbol_test`
+[[sec-487-smc_i2c_target_bus_symbol_test]]
+===== 487 `smc_i2c_target_bus_symbol_test`
 
 *Source Module*: `smc_i2c_target_bus_symbol_test`
 
@@ -23324,8 +23372,8 @@ measurements only. Enrolled in: `all`.
 
 '''''
 
-[[sec-500-smc_i2c_target_event_flags_test]]
-===== 500 `smc_i2c_target_event_flags_test`
+[[sec-488-smc_i2c_target_event_flags_test]]
+===== 488 `smc_i2c_target_event_flags_test`
 
 *Source Module*: `smc_i2c_target_event_flags_test`
 
@@ -23394,8 +23442,8 @@ holds; `CHK-I2C-TGT-FLAG-DISABLE-RETAIN-OBS` records measurements only. Enrolled
 
 '''''
 
-[[sec-501-smc_i2c_target_instance_pair_test]]
-===== 501 `smc_i2c_target_instance_pair_test`
+[[sec-489-smc_i2c_target_instance_pair_test]]
+===== 489 `smc_i2c_target_instance_pair_test`
 
 *Source Module*: `smc_i2c_target_instance_pair_test`
 
@@ -23520,8 +23568,8 @@ checkers record measurements only; `CHK-TIMEOUT-PATHS` lists the bounded waits. 
 
 '''''
 
-[[sec-502-smc_i2c_target_tx_read_test]]
-===== 502 `smc_i2c_target_tx_read_test`
+[[sec-490-smc_i2c_target_tx_read_test]]
+===== 490 `smc_i2c_target_tx_read_test`
 
 *Source Module*: `smc_i2c_target_tx_read_test`
 
@@ -23636,8 +23684,8 @@ and `CHK-I2C-TGT-TX-SW-RACE-LOG` record measurements only. Enrolled in: `all`.
 
 '''''
 
-[[sec-503-smc_i2c_window_decode_test]]
-===== 503 `smc_i2c_window_decode_test`
+[[sec-491-smc_i2c_window_decode_test]]
+===== 491 `smc_i2c_window_decode_test`
 
 *Source Module*: `smc_i2c_window_decode_test`
 
@@ -23743,8 +23791,8 @@ and every sequence assert holds; `CHK-I2C-RESERVED-OBS` and the printed legs of
 
 '''''
 
-[[sec-504-smc_smbus_alert_instance_isolation_test]]
-===== 504 `smc_smbus_alert_instance_isolation_test`
+[[sec-492-smc_smbus_alert_instance_isolation_test]]
+===== 492 `smc_smbus_alert_instance_isolation_test`
 
 *Source Module*: `smc_smbus_alert_instance_isolation_test`
 
@@ -23807,8 +23855,8 @@ cleared instance's `INTR_STATE.SMBALERT` reading records a measurement only. Enr
 
 '''''
 
-[[sec-505-smc_smbus_alert_irq_route_test]]
-===== 505 `smc_smbus_alert_irq_route_test`
+[[sec-493-smc_smbus_alert_irq_route_test]]
+===== 493 `smc_smbus_alert_irq_route_test`
 
 *Source Module*: `smc_smbus_alert_irq_route_test`
 
@@ -23882,8 +23930,8 @@ assert holds; `CHK-IRQ-LATENCY-LOG` records measurements only. Enrolled in: `all
 
 '''''
 
-[[sec-506-smc_smbus_alert_self_clear_test]]
-===== 506 `smc_smbus_alert_self_clear_test`
+[[sec-494-smc_smbus_alert_self_clear_test]]
+===== 494 `smc_smbus_alert_self_clear_test`
 
 *Source Module*: `smc_smbus_alert_self_clear_test`
 
@@ -23948,8 +23996,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-507-smc_smbus_pmbus_linear11_read_test]]
-===== 507 `smc_smbus_pmbus_linear11_read_test`
+[[sec-495-smc_smbus_pmbus_linear11_read_test]]
+===== 495 `smc_smbus_pmbus_linear11_read_test`
 
 *Source Module*: `smc_smbus_pmbus_linear11_read_test`
 
@@ -24065,8 +24113,8 @@ Drive `smc_i3c_to_fabric_test_seq`. Each checker below is a named compare the DU
 *Pass Criteria*: `CHK-I3C-CLOCK-GATE-RW`, `CHK-I3C0-HC-CONTROL-BUS-ENABLE`, `CHK-I3C0-HCI-VERSION` hold after their compares. The four external pull-low steps are driven with the core enabled and their pad levels and resolvability are recorded, not claimed: no positive control exists for the DUT-drive nets in this bench, and resolvability cannot fail on the two-state simulator the `hosted` run uses. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-373-smc_i3c_clock_gate_window_test]]
-===== 373 `smc_i3c_clock_gate_window_test`
+[[sec-496-smc_i3c_clock_gate_window_test]]
+===== 496 `smc_i3c_clock_gate_window_test`
 
 *Source Module*: `smc_i3c_clock_gate_window_test`
 
@@ -24184,8 +24232,8 @@ end. Enrolled in: `all`; also listed in `fabric.toml`
 (tags `ci`, `fabric`).
 '''''
 
-[[sec-374-smc_i3c_csr_sweep_core_test]]
-===== 374 `smc_i3c_csr_sweep_core_test`
+[[sec-497-smc_i3c_csr_sweep_core_test]]
+===== 497 `smc_i3c_csr_sweep_core_test`
 
 *Source Module*: `smc_i3c_csr_sweep_core_test`
 
@@ -24287,8 +24335,8 @@ unknown value under a two-state simulator. Enrolled in: `all`; also listed in `f
 
 '''''
 
-[[sec-375-smc_i3c_csr_sweep_ext_test]]
-===== 375 `smc_i3c_csr_sweep_ext_test`
+[[sec-498-smc_i3c_csr_sweep_ext_test]]
+===== 498 `smc_i3c_csr_sweep_ext_test`
 
 *Source Module*: `smc_i3c_csr_sweep_ext_test`
 
@@ -24680,8 +24728,8 @@ Drive `smc_mailbox_multi_instance_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-MAILBOX-CHANNEL-VECTOR` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-335-smc_mailbox_access_error_test]]
-===== 335 `smc_mailbox_access_error_test`
+[[sec-499-smc_mailbox_access_error_test]]
+===== 499 `smc_mailbox_access_error_test`
 
 *Source Module*: `smc_mailbox_access_error_test`
 
@@ -24824,8 +24872,8 @@ part of the claim. Enrolled in: `all`.
 
 '''''
 
-[[sec-336-smc_mailbox_flush_status_test]]
-===== 336 `smc_mailbox_flush_status_test`
+[[sec-500-smc_mailbox_flush_status_test]]
+===== 500 `smc_mailbox_flush_status_test`
 
 *Source Module*: `smc_mailbox_flush_status_test`
 
@@ -24970,8 +25018,8 @@ part of the claim. Enrolled in: `all`.
 
 '''''
 
-[[sec-337-smc_mailbox_irq_ack_output_test]]
-===== 337 `smc_mailbox_irq_ack_output_test`
+[[sec-501-smc_mailbox_irq_ack_output_test]]
+===== 501 `smc_mailbox_irq_ack_output_test`
 
 *Source Module*: `smc_mailbox_irq_ack_output_test`
 
@@ -25138,8 +25186,8 @@ Enrolled in: `all`.
 
 '''''
 
-[[sec-338-smc_mailbox_pair_datapath_test]]
-===== 338 `smc_mailbox_pair_datapath_test`
+[[sec-502-smc_mailbox_pair_datapath_test]]
+===== 502 `smc_mailbox_pair_datapath_test`
 
 *Source Module*: `smc_mailbox_pair_datapath_test`
 
@@ -25262,8 +25310,8 @@ the claim. Enrolled in: `all`.
 
 '''''
 
-[[sec-339-smc_mailbox_register_map_reset_test]]
-===== 339 `smc_mailbox_register_map_reset_test`
+[[sec-503-smc_mailbox_register_map_reset_test]]
+===== 503 `smc_mailbox_register_map_reset_test`
 
 *Source Module*: `smc_mailbox_register_map_reset_test`
 
@@ -25424,8 +25472,8 @@ claim. Enrolled in: `all`.
 
 '''''
 
-[[sec-340-smc_mailbox_threshold_irqs_test]]
-===== 340 `smc_mailbox_threshold_irqs_test`
+[[sec-504-smc_mailbox_threshold_irqs_test]]
+===== 504 `smc_mailbox_threshold_irqs_test`
 
 *Source Module*: `smc_mailbox_threshold_irqs_test`
 
@@ -25958,8 +26006,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-331-smc_uart_fifo_control_depth_test]]
-===== 331 `smc_uart_fifo_control_depth_test`
+[[sec-505-smc_uart_fifo_control_depth_test]]
+===== 505 `smc_uart_fifo_control_depth_test`
 
 *Source Module*: `smc_uart_fifo_control_depth_test`
 
@@ -26096,8 +26144,8 @@ in: `all`.
 
 '''''
 
-[[sec-332-smc_uart_irq_thre_identify_test]]
-===== 332 `smc_uart_irq_thre_identify_test`
+[[sec-506-smc_uart_irq_thre_identify_test]]
+===== 506 `smc_uart_irq_thre_identify_test`
 
 *Source Module*: `smc_uart_irq_thre_identify_test`
 
@@ -26218,8 +26266,8 @@ claim. Enrolled in: `all`.
 
 '''''
 
-[[sec-333-smc_uart_log_engine_reg_map_test]]
-===== 333 `smc_uart_log_engine_reg_map_test`
+[[sec-507-smc_uart_log_engine_reg_map_test]]
+===== 507 `smc_uart_log_engine_reg_map_test`
 
 *Source Module*: `smc_uart_log_engine_reg_map_test`
 
@@ -26347,8 +26395,8 @@ bench. The `INTR_TEST` response and data, and partial-strobe writes, are not par
 
 '''''
 
-[[sec-334-smc_uart_reg_reset_rw_test]]
-===== 334 `smc_uart_reg_reset_rw_test`
+[[sec-508-smc_uart_reg_reset_rw_test]]
+===== 508 `smc_uart_reg_reset_rw_test`
 
 *Source Module*: `smc_uart_reg_reset_rw_test`
 
@@ -27272,6 +27320,41 @@ Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-326-smc_gpio_intf_data_ctrl_write_sweep_test]]
+===== 326 `smc_gpio_intf_data_ctrl_write_sweep_test`
+
+*Source Module*: `smc_gpio_intf_data_ctrl_write_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); bench pad drive through `tb_gpio_ext_drive_*` and, on the pads `tb_top.sv` drives for a protocol VIP, the bench input that owns the pad
+
+*Objective*: Write every software-writable DATA_CTRL field on all 65 GPIO_INTF instances and drive each pad both ways through all four interrupt types.
+
+*Test Coverage*:
+
+* This leaf writes `DATA_CTRL` on every instance: `lsio_select` on its own, then `core2pad`, `enable_rx_tx` (receiver only), `interface_enable`, `lsio_disable` and `interrupt_enable` with each `interrupt_type` value, and the reset word last.
+* Every readback after the reset read is a fully predicted word. `lsio_enable` is recorded at the reset read, must read the same under `lsio_select` (the software select ranks below the hardware request), 0 under `lsio_disable` on every pad, and the recorded value again after the restore. `pad2core` must read 0 while the register does not own the receiver and the driven pad level while it does.
+* Under register control the pad is driven from the bench: the active-high and active-low level types must follow the pad both ways and hold, the rising and falling edge types must pulse once on their edge and then clear with the pad held, a cleared `interrupt_enable` must keep the interrupt clear while the active-low level is active, and the next write that sets it must raise the interrupt. Every poll reads the per-instance `tb_gpio_interrupt` vector and requires that instance's bit alone, so an interrupt on any other instance fails the leaf.
+* `pad2core_en_o` must carry the receiver enable, `core2pad_o` the `core2pad` field and `core2pad_en_o` 0 on the instance under test: the register samples the pad and never drives it.
+* The set of fields the leaf writes is compared against the generated contract, so a regenerated map that adds or removes a software-writable field stops the leaf.
+
+*Test Procedure*:
+
+Drive `smc_gpio_intf_data_ctrl_write_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP` |All 65 DATA_CTRL instances read their RDL reset, carried `lsio_select` alone and then every other software-writable field with each `interrupt_type` value, matched the predicted word including `lsio_enable` and `pad2core` after every write, and returned to that reset; the scoreboard booked an exact compare for every predicted readback
+|`CHK-GPIO-INTF-IRQ-TYPE-SWEEP` |On each of the 65 instances the interrupt bit of that instance alone followed the pad both ways as active-high and as active-low level, pulsed once on the rising edge and once on the falling edge, stayed clear with `interrupt_enable` clear while the active-low level was active, and rose when the next write set `interrupt_enable`
+|`CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` |On each of the 65 instances under register control `DATA_CTRL.pad2core` read the bench-driven pad level both ways, `pad2core_en_o` carried the receiver enable, `core2pad_o` carried the `core2pad` field and `core2pad_en_o` stayed 0
+|===
+
+*Pass Criteria*: `CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP`, `CHK-GPIO-INTF-IRQ-TYPE-SWEEP`, `CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 [[sec-199-smc_filter_config_field_sweep_test]]
 ===== 199 `smc_filter_config_field_sweep_test`
 
@@ -27883,6 +27966,45 @@ Drive `smc_filter_region_span_test_seq`. Each checker below is a named compare t
 |===
 
 *Pass Criteria*: `CHK-FILTER-REGION-ENFORCED`, `CHK-FILTER-REGION-SPAN` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-326-smc_filter_remap_bitwalk_test]]
+===== 326 `smc_filter_remap_bitwalk_test`
+
+*Source Module*: `smc_filter_remap_bitwalk_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN); the generated IP-XACT register map for every address, field and reset
+
+*Objective*: Walk a one and a zero across every software-writable bit of the filter and alias-remap address registers and every mailbox write strobe, reading each register back against the contract its RDL states.
+
+*Test Coverage*:
+
+* The filter and remap leaves program a few fixed regions (`smc_filter_region_span_test`, `smc_dma_sanity_test`, `smc_remap_cla_test`), so most bits of `START_ADDR`, `END_ADDR`, `REGION_START` and `REGION_END` only ever hold their reset. This leaf gives every one of those bits a one and a zero on every entry, with a readback after each write.
+* **Filter address registers.** `filter_ctrl.rdl` makes both fields `hw = rw` and states the write-back rule: the rounded pair is written back "only when both land in the same granule; otherwise readback returns the programmed values". Every entry is read at its `FILTER_CONFIG` reset first -- disabled, `allow_burst` clear, so the granule is 2^`data_bus_width` bytes -- and the two registers of an entry are walked together, one carrying the one and the other the zero, so the pair never shares a granule and each readback is required to be the programmed word. A disabled entry matches nothing, so the fabric this leaf's own accesses cross stays usable while the range is an arbitrary pair; the rounding case is `smc_filter_region_span_test`.
+* **Remap table.** `alias_remap.rdl` gives `start_addr` and `end_addr` bits [55:12] as `sw = rw; hw = r` storage with no side effect, so the expected readback is the written word masked to the field, the low twelve bits and the top byte reading zero. `REGION_ATTRS.valid` is read clear on every region before its bounds move.
+* **Mailbox data and strobes.** `axil_mailbox.rdl` makes `WRITE_DATA` `sw = w; onwrite = wuser` and `READ_DATA` `sw = r; onread = ruser`, and `axil_mailbox_smc_wrap.rdl` says the two apertures of a pair share one FIFO, "data written through WRITE_DATA in one aperture is what READ_DATA in the other aperture returns". Each of the 64 apertures takes a walking-one strobe over its eight byte lanes and four of the 256 strobe patterns, so every pattern but the empty one is driven once across the block; the AXI master refuses an empty strobe. The paired readback must carry the written byte on every strobed lane and zero on every other lane, which is what tells a strobe the mailbox honoured from one it ignored.
+* Every address comes from the generated maps, each instance cross-checked between `smc_addr.h` and `smc_reg.py`, and every field position, width, reset and access type from the IP-XACT export. Every readback carries its expected word into the scoreboard, and the leaf requires the scoreboard to have booked one exact compare per such read.
+* Every filter entry and remap region is restored to its RDL reset and read back. Every mailbox `ERROR_FLAGS` register is read clear, the sticky threshold interrupts the pushes raised are acknowledged through `IRQS` and read clear, and `mailbox_interrupts` must be quiet.
+
+*Test Procedure*:
+
+[arabic]
+. For each of the 16 inbound and 16 outbound filter entries: read `FILTER_CONFIG` against its reset word; for each of the 56 address bits write `START_ADDR` with that bit alone set and `END_ADDR` with that bit alone clear, read both back exactly, then the other way round and read both back; write both registers' reset words and read them back.
+. For each of the 8 alias-remap regions: read `REGION_ATTRS` and require `valid` clear; for each of the 44 writable bits walk `REGION_START` and `REGION_END` the same way, reading each back as the written word masked to the field; restore both and read them back.
+. For each of the 64 mailbox apertures: for each walking-one strobe and each of the aperture's four shared patterns, write `WRITE_DATA` with a distinct 64-bit word under that strobe and read the paired aperture's `READ_DATA` against the word masked to the strobed lanes. Then read every `ERROR_FLAGS` as zero, acknowledge every `IRQS` and read it back as zero, and require `mailbox_interrupts` to be zero.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FILTER-ADDR-BITWALK` |On all 32 filter entries a one and a zero walked across all 56 bits of START_ADDR and END_ADDR, each pair reading back as programmed because its two words never share a granule, with FILTER_CONFIG at reset throughout and every entry restored to its RDL reset and read back
+|`CHK-REMAP-REGION-BITWALK` |On all 8 alias-remap regions a one and a zero walked across all 44 writable bits of REGION_START and REGION_END, each reading back the written word with the unimplemented bits clear, valid read clear first and both bounds restored and read back
+|`CHK-MAILBOX-STROBE-WALK` |Over the 64 mailbox apertures a walking-one byte strobe on each and every non-empty strobe pattern once across the block, every paired READ_DATA returning the written byte on each strobed lane and zero elsewhere, every ERROR_FLAGS read clear and mailbox_interrupts quiet
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -30894,7 +31016,9 @@ the first write. The sequence applies the full, single-byte, sparse, null and
 restore operations to each catalogued word, requires no Zeroer busy or unknown
 value sampled on a rising SMC clock edge from before the first catalogued
 operation through the final status read, checks Zeroer state and lane
-coverage, waits with a bound for all predicted comparisons, then checks
+coverage, runs a real one-word Zeroer command to SPM after the no-start check
+and requires the busy sample count to increase, waits with a bound for all
+predicted comparisons, then checks
 scoreboard results and access counts.
 
 *Checkers*:
@@ -30910,6 +31034,7 @@ scoreboard results and access counts.
 |`CHK-REGBLOCK-WIDE-RESTORE` |Each word reads its reset value after the restore write
 |`CHK-REGBLOCK-WIDE-RESTORE-NONVAC` |At least one restore per pass changes an RW value
 |`CHK-REGBLOCK-WIDE-NO-ZEROER-START` |No rising SMC clock edge samples busy or X/Z during the catalogued operations; the busy tap and final `CTRL_STATUS.STATUS` are idle
+|`CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL` |A real one-word Zeroer START changes the known busy sample count in the same pass
 |`CHK-REGBLOCK-WIDE-LANE-COVERAGE` |All eight SEP_IN byte lanes were strobed
 |`CHK-SB-REGBLOCK-WIDE` |Each catalogued read and write returns OKAY; each read also matches the passive model's predicted 64-bit value
 |`CHK-REGBLOCK-WIDE-SCOREBOARD` |Every predicted read and write was compared with no new mismatch
@@ -30921,6 +31046,11 @@ scoreboard results and access counts.
 
 The claim covers the seven selected words under the safe-state preconditions.
 The busy observation is clock-sampled; it does not grade sub-cycle glitches.
+After the absence check, a bounded positive control uses the last aligned SPM
+word as scratch. No CPU or other initiator may use that word during the pass.
+It is left zero through a SEP_IN write that also updates the SPM model; its
+initial SRAM contents are not read or restored. DEST_ADDR and SIZE return to
+their reset values. The control does not grade the Zeroer's zeroed payload.
 It excludes registers whose writes change decode, gating, reset, lock or other
 operational state. `RESET_VECTOR_0` through `RESET_VECTOR_3` are excluded
 because a later core reset that does not also assert warm reset can consume a
@@ -30933,14 +31063,21 @@ handles a real error response; the error-read path has no directed run here.
 *Pass Criteria*: all checks hold on every pass;
 `+SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE` must fail `regblock_wide`
 comparisons. `+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
-full-write and no-start expectations and must fail seven
+full-write, no-start and busy-control expectations and must fail seven
 `CHK-REGBLOCK-WIDE-FULL-RW` records and one
-`CHK-REGBLOCK-WIDE-NO-ZEROER-START` record per pass (eight failures per pass),
+`CHK-REGBLOCK-WIDE-NO-ZEROER-START` record and one
+`CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL` record per pass (nine failures per pass),
 while the scoreboard records no mismatch.
 `+SMC_REGBLOCK_WIDE_RESPONSE_NEGATIVE`, used alone, changes only predicted
 write responses to SLVERR and must fail every catalogued write comparison and
-no read comparison: 50 write mismatches per pass (35 base writes and 15 fixed
-sparse writes).
+no read comparison: 54 write mismatches per pass (35 base writes, 15 fixed
+sparse writes and four positive-control writes).
+The positive run requires 111 comparisons per pass (57 reads and 54 writes).
+With 16 passes, the sequence negative requires 144 checker failures and the
+response negative requires 864 write mismatches. A separate local mutation
+holding the busy tap or sample counter at zero must fail the busy-control
+check even with the sequence negative disabled. Control completion and
+safe-state prerequisites are outside the expectation-inverting negative.
 The sequence and end-of-run scoreboard summary also report those mismatches.
 Enrolled only in `csr_uvm_extended`, outside `all`, `hosted` and `ci`;
 run on demand. This card records what a run must show, not a pass.

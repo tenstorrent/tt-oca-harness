@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Walk the CLA event selectors of one node over every event index.
+"""Walk the CLA event selectors of every node over every event index.
 
 Drives `EventType0`, `EventType1` and `EventType2` over all 64 values of their
-fields on each of node 0's four event-action pairs, with the relation left at
-its RDL reset so a pair activates only when the selected event is asserted,
-and reads `CDbgEapStatus` after every value.
+fields on each of the four event-action pairs of each of the four nodes, with
+the relation left at its RDL reset so a pair activates only when the selected
+event is asserted, and reads `CDbgEapStatus` after every value. The walk moves
+from one node to the next through a pair programmed with a live event index.
 """
 
 from __future__ import annotations
@@ -18,23 +19,25 @@ from smc_base_test import smc_base_test
 # Directed stimulus floor, written out here rather than read back from
 # `seq.accesses`: a floor derived from the sequence's own counter shrinks with a
 # sequence that silently stopped issuing accesses. An activation adds a quiesce
-# write and three W2C accesses, so this is the count with none observed.
+# write and two W2C writes, so this is the count with none observed beyond the
+# three the node walk needs.
 #
 #   DEBUG_CTRL force_clk_en write                                             1
 #   64 values of the 6-bit Dbmid field, normal debug mode                    64
 #   CDbgEapStatus reset read                                                  1
-#   CLA arm: 4 pair reset writes, the control write, the CurrentNode read      6
-#   3 selectors x 4 pairs x 64 values x (write, readback, status read)      2304
-#   4 per-pair quiesce writes per selector                                   12
-#   restore: 4 pairs, CLA control, DEBUG_BUS_MUX, DEBUG_CTRL                  7
+#   CLA arm: 16 pair reset writes, the control write, the CurrentNode read   18
+#   4 nodes x 3 selectors x 4 pairs x 64 values x (write, readback, status) 9216
+#   4 nodes x 3 selectors x 4 per-pair quiesce writes                        48
+#   3 node moves x (dest write, CurrentNode read, quiesce write, 2 W2C)      15
+#   restore: 16 pairs, CLA control, DEBUG_BUS_MUX, DEBUG_CTRL                19
 #                                                                         ------
-#                                                                           2395
-CLA_EVENT_TYPE_MIN_CSR_ACCESSES = 2395
+#                                                                           9382
+CLA_EVENT_TYPE_MIN_CSR_ACCESSES = 9382
 
 
 @pyuvm.test()
 class smc_dfd_cla_event_type_sweep_test(smc_base_test):
-    """Drive every event index into every event selector of node 0's pairs."""
+    """Drive every event index into every event selector of every node's pairs."""
 
     required_evidence = (
         "CHK-CLA-EVENT-SELECT-LIVE",
@@ -54,7 +57,13 @@ class smc_dfd_cla_event_type_sweep_test(smc_base_test):
             min_csr_accesses=CLA_EVENT_TYPE_MIN_CSR_ACCESSES,
             proxy=False,
             details=(
-                f"{seq.selector_values} selector values driven, live event indices "
-                + ", ".join(f"{name}:{sorted(v)}" for name, v in seq.live_events.items() if v)
+                f"{seq.selector_values} selector values driven over nodes "
+                f"{seq.nodes_visited}, live event indices "
+                + ", ".join(
+                    f"node{node}.{name}:{sorted(v)}"
+                    for node, by_selector in seq.live_events.items()
+                    for name, v in by_selector.items()
+                    if v
+                )
             ),
         )
