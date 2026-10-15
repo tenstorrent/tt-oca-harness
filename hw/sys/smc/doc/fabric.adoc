@@ -382,8 +382,14 @@ endif::backend-html5[]
 [[smc-fabric-privilege-controlled-remapping]]
 === Output Remapping
 
-The output remaps let the SMC issue a request as if one of the application
-processor (AP) software worlds had issued it. Each remap translates the request
+The application processor (AP) is the host CPU of a system that integrates
+one, such as a CPU chiplet. Its software runs in two worlds: machine-mode
+firmware, and the Xvisor hypervisor with its guests. The output remaps serve
+such a system, letting the SMC do work for an AP world, such as reaching memory
+the AP shares; in a system without an AP, the SMC has no use for them.
+
+The output remaps let the SMC issue a request as if one of those AP worlds had
+issued it. Each remap translates the request
 through its window's programmed regions and gives it that world's source ID, so
 destination filters grant it exactly what they grant that world.
 

@@ -25,11 +25,19 @@ until programmed, so local resources are reached at their local alias addresses
 (SMC `0xC000_0000`) until then. Program the range, offset and AxCACHE of each
 region before relying on its translation or cacheability.
 
-The SMC output fabric has separate M-mode and Xvisor remap regions. A request
-through the M-mode window goes out as the AP machine-mode firmware, with source
-ID `MMODE`; a request through the Xvisor window goes out as the AP hypervisor
-and its guests, with source ID `OTHERS`; any other request goes out as the SMC.
-The address window selects this, not the privilege mode of the issuing hart.
+In a system that integrates an application processor (AP), the SMC output
+fabric's M-mode and Xvisor remap regions let SMC firmware do work for the AP's
+software. A request through the M-mode window goes out as the AP machine-mode
+firmware, with source ID `MMODE`; a request through the Xvisor window goes out
+as the AP hypervisor and its guests, with source ID `OTHERS`; any other request
+goes out as the SMC. The address window selects this, not the privilege mode of
+the issuing hart. The TRM describes the
+ifdef::backend-html5[]
+xref:ocah-docs:smc:fabric.adoc#smc-fabric-privilege-controlled-remapping[SMC output remapping].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/smc/fabric.html#smc-fabric-privilege-controlled-remapping[SMC output remapping].
+endif::backend-pdf[]
 A region with `REGION_ATTRS.valid` clear passes accesses through unchanged; set
 `valid` once its offset is programmed to remap through it.
 
