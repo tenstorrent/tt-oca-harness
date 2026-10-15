@@ -1160,6 +1160,9 @@ class sep_cpu_reset_retention_test(sep_base_test):
         cpu = self.taps.resets["sep_cpu_reset_n"]
         aw = b_clk = b_resp = c_fall = None
         for _ in range(2 * WRITE_BOUND):
+            # Query the channel monitor only after it has sampled past the mark.
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
             if aw is None:
                 got = self._aw_after(cm)
                 aw = got[0] if got else None
@@ -1186,8 +1189,6 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 # A B before any CPU-reset fall is final: a later fall cannot make it late.
                 if b_clk is not None:
                     break
-            await RisingEdge(dut.clk_i)
-            await ReadOnly()
         if aw is None:
             outcome = "no_aw"
         elif b_clk is not None:
