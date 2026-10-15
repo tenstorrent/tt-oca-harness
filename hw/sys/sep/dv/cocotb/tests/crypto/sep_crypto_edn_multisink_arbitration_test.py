@@ -55,7 +55,10 @@ Four-engine concurrency leg (runs after CHK-MEMBERSHIP, on the same entropy stac
 three groups per seed -- HMAC+AES+KMAC+OTBN, AES+KMAC+OTBN, and one drawn pair that
 is not AES+KMAC. Each member runs alone first (CTRL-CONC-CLEAN, golden compare and
 clean busy time t_op), then all members of the group run as concurrent tasks on the
-CPU-LSU master with distinct non-zero AXI IDs and drawn start skews. In a group
+CPU-LSU master with distinct non-zero AXI IDs and drawn start skews, in the drawn
+start order with OTBN last. HMAC and KMAC hold their process write, and AES holds
+two blocks with DATA_OUT unread (a stall), until every member is started, so the
+busy windows of every pair overlap by construction. In a group
 without an HMAC member, HMAC holds a finished SHA-256 digest (the bystander) and a
 further task reads its DIGEST words while the peers run. The EDN words acked on
 crypto_edn_ack_o[3:0] are counted from the first word of the run against the
@@ -78,7 +81,7 @@ from itertools import combinations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, Event, RisingEdge
+from cocotb.triggers import ClockCycles, Event, First, RisingEdge
 from env.sep_aes_golden import aes256_ecb_encrypt_words, aes_encrypt_words
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
@@ -576,6 +579,13 @@ class _TaskResult:
     result: list[int] = field(default_factory=list)
     timeout: bool = False
     err_bits: int = 0
+    # Origin of the poll bound; -1 counts it from start_clk. A held member
+    # counts it from the release of the hold.
+    poll_from: int = -1
+
+    @property
+    def poll_origin(self) -> int:
+        return self.poll_from if self.poll_from >= 0 else self.start_clk
 
     @property
     def busy_clk(self) -> int:
@@ -593,6 +603,19 @@ class _LegMember:
 
     status_addr = 0
 
+    async def _hold(self, res: _TaskResult, hold) -> bool:
+        """Wait for the group release ``hold`` (an awaitable factory or None).
+
+        False marks a timeout of the hold. The poll bound counts from the release.
+        """
+        if hold is None:
+            return True
+        if not await hold():
+            res.timeout = True
+            return False
+        res.poll_from = self.clk()
+        return True
+
     async def _leg_poll(self, res: _TaskResult, bound: int, done) -> int | None:
         """Read the status register until ``done(value)``; None on timeout."""
         while True:
@@ -600,7 +623,7 @@ class _LegMember:
             if done(value):
                 return value
             res.busy_end_clk = max(res.busy_end_clk, self.last_resp_clk)
-            if self.clk() - res.start_clk > bound:
+            if self.clk() - res.poll_origin > bound:
                 res.timeout = True
                 return None
             await ClockCycles(cocotb.top.clk_i, _POLL_GAP_CLK)
@@ -615,12 +638,15 @@ class LegHmac(_LegAccess, SepHmac, _LegMember):
         await self.write_key(_hmac_key_words(op.key_row))
         return await self._rd(HMAC_CFG)
 
-    async def run_op(self, op: HmacOp, bound: int, on_start) -> _TaskResult:
+    async def run_op(self, op: HmacOp, bound: int, on_start, hold=None) -> _TaskResult:
         res = _TaskResult()
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         res.start_clk = res.busy_end_clk = self.last_resp_clk
         on_start(res.start_clk)
         await self.write_bytes(HMAC_MSG_FIFO, op.msg)
+        # The digest needs hash_process, so the engine stays busy over the hold.
+        if not await self._hold(res, hold):
+            return res
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
         res.busy_end_clk = self.last_resp_clk
         # hmac.hjson INTR_STATE.hmac_done: HMAC/SHA-2 has completed. A read with
@@ -642,7 +668,14 @@ class LegAes(_LegAccess, SepAes, _LegMember):
         await self.load_key_iv(op.key_words(), op.iv_words())
         return await self._rd(AES_CTRL_SHADOWED)
 
-    async def run_op(self, op: AesOp, bound: int, on_start) -> _TaskResult:
+    async def run_op(self, op: AesOp, bound: int, on_start, hold=None) -> _TaskResult:
+        """Blocks one ahead: block k + 1 is in DATA_IN while block k waits in DATA_OUT.
+
+        With two blocks written and DATA_OUT unread, the AES stalls until
+        DATA_OUT is read, and ``STATUS.IDLE`` reads 0 while it is stalled
+        (aes.hjson ``STATUS.IDLE`` and ``STATUS.STALL``), so it stays busy over
+        the hold. ``op`` has at least two blocks (``AesOp.min_blocks``).
+        """
         res = _TaskResult()
         idle = 1 << AES_STATUS_IDLE
 
@@ -659,24 +692,35 @@ class LegAes(_LegAccess, SepAes, _LegMember):
                     _busy(v)
                 if v & (1 << bit):
                     return True
-                origin = res.start_clk if res.start_clk >= 0 else t_begin
+                origin = res.poll_origin if res.start_clk >= 0 else t_begin
                 if self.clk() - origin > bound:
                     res.timeout = True
                     return False
                 await ClockCycles(cocotb.top.clk_i, _POLL_GAP_CLK)
 
-        out: list[int] = []
-        for blk in range(op.count()):
+        async def _put(blk: int) -> bool:
             if not await _wait_bit(AES_STATUS_INPUT_READY):
-                return res
+                return False
             for i, word in enumerate(op.pt[4 * blk : 4 * blk + 4]):
                 await self._wr(AES_DATA_IN_0 + i * 4, word)
-            if blk == 0:
-                res.start_clk = res.busy_end_clk = self.last_resp_clk
-                on_start(res.start_clk)
+            return True
+
+        n = op.count()
+        out: list[int] = []
+        if not await _put(0):
+            return res
+        res.start_clk = res.busy_end_clk = self.last_resp_clk
+        on_start(res.start_clk)
+        if not await _put(1):
+            return res
+        if not await self._hold(res, hold):
+            return res
+        for blk in range(n):
             if not await _wait_bit(AES_STATUS_OUTPUT_VALID):
                 return res
             out += await self.read_data_out()
+            if blk + 2 < n and not await _put(blk + 2):
+                return res
         if not await _wait_bit(AES_STATUS_IDLE):
             return res
         res.result = out
@@ -696,12 +740,16 @@ class LegKmac(_LegAccess, SepKmac, _LegMember):
         await self._wait_idle("leg-pre-start")
         return await self._rd(KMAC_CFG_SHADOWED)
 
-    async def run_op(self, op: KmacOp, bound: int, on_start) -> _TaskResult:
+    async def run_op(self, op: KmacOp, bound: int, on_start, hold=None) -> _TaskResult:
         res = _TaskResult()
         await self._wr(KMAC_CMD, KMAC_CMD_START)
         res.start_clk = res.busy_end_clk = self.last_resp_clk
         on_start(res.start_clk)
         await self.write_bytes(KMAC_MSG_FIFO, op.msg)
+        # kmac.hjson CMD.process: the engine stays in absorb until process, so
+        # it stays busy over the hold.
+        if not await self._hold(res, hold):
+            return res
         await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
         res.busy_end_clk = self.last_resp_clk
         # kmac.hjson STATUS.sha3_squeeze: a read with sha3_squeeze = 0 shows busy.
@@ -733,7 +781,7 @@ class LegOtbn(_LegAccess, SepOtbn, _LegMember):
         await self.write_dmem(8, op.golden()[0] ^ 0xFFFF_FFFF)
         return await self.read_dmem(8)
 
-    async def run_op(self, op: OtbnOp, bound: int, on_start) -> _TaskResult:
+    async def run_op(self, op: OtbnOp, bound: int, on_start, hold=None) -> _TaskResult:
         res = _TaskResult()
         await self._wr(OTBN_ADDR_CMD, OTBN_CMD_EXECUTE)
         res.start_clk = res.busy_end_clk = self.last_resp_clk
@@ -1147,16 +1195,21 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
                 _EDN_BUDGET_WORDS,
             )
 
+        # Start order: the drawn order, with OTBN last. OTBN cannot be held
+        # busy by the host, so it starts once every other member is started and
+        # held, and each pair overlaps by construction (see _member).
+        order = [e for e in g.order if e != "otbn"] + (["otbn"] if "otbn" in g.members else [])
         # Skews: drawn after the clean runs, from the plan generator, 0 to half
         # the shortest clean busy time of the group.
         min_t = min(t for t, _w in clean.values())
-        skew = {g.order[0]: 0}
-        for eng in g.order[1:]:
+        skew = {order[0]: 0}
+        for eng in order[1:]:
             skew[eng] = rng.randrange(0, min_t // 2 + 1)
         self.logger.info(
-            "LEG group=%s skews %s min_t_op=%d",
+            "LEG group=%s start_order=%s skews %s min_t_op=%d",
             g.name,
-            " ".join(f"{e}={skew[e]}" for e in g.order),
+            ",".join(order),
+            " ".join(f"{e}={skew[e]}" for e in order),
             min_t,
         )
 
@@ -1173,22 +1226,50 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
             drivers[eng].record = records[eng]
         first = Event()
         first_clk = [0]
+        # started[e] is set at the start write response of e, or when the task
+        # of e ends without a start. ``held`` is set once every member except
+        # OTBN is started; ``release`` once every member is started. HMAC and
+        # KMAC keep their process write, and AES its DATA_OUT read, behind the
+        # release, so each of them is busy from its start to after the latest
+        # start of the group: every pair overlaps by construction.
+        started = {eng: Event() for eng in order}
+        held = Event()
+        release = Event()
+        # Bound of every hold: the longest member bound of the group. A hold
+        # timeout is a member timeout and fails CHK-CONC-RESULT.
+        hold_bound = max(8 * max(clean[e][0], 1) + skew[e] for e in order)
 
-        def _first_started(clk: int) -> None:
+        def _mark(eng: str, clk: int) -> None:
             if not first.is_set():
                 first_clk[0] = clk
                 first.set()
+            started[eng].set()
+            if all(started[e].is_set() for e in order if e != "otbn"):
+                held.set()
+            if all(ev.is_set() for ev in started.values()):
+                release.set()
+
+        async def _bounded(ev: Event) -> bool:
+            if ev.is_set():
+                return True
+            await First(ev.wait(), ClockCycles(dut.clk_i, hold_bound))
+            return ev.is_set()
 
         async def _member(eng: str) -> _TaskResult:
-            on_start = _first_started if eng == g.order[0] else (lambda _clk: None)
-            if eng != g.order[0]:
+            if eng != order[0]:
                 await first.wait()
                 while self._leg_clk() < first_clk[0] + skew[eng]:
                     await RisingEdge(dut.clk_i)
+            if eng == "otbn" and not await _bounded(held):
+                res = _TaskResult(timeout=True)
+                _mark(eng, self._leg_clk())
+                return res
             bound = 8 * max(clean[eng][0], 1) + skew[eng]
-            res = await drivers[eng].run_op(ops[eng], bound, on_start)
-            # Releases the other members when the first one ends before its start write.
-            _first_started(self._leg_clk())
+            res = await drivers[eng].run_op(
+                ops[eng], bound, lambda clk: _mark(eng, clk), hold=lambda: _bounded(release)
+            )
+            # Releases the other members when this one ends before its start write.
+            _mark(eng, self._leg_clk())
             return res
 
         reads: list[tuple[int, int, int, bool]] = []
@@ -1205,9 +1286,9 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
                 await ClockCycles(dut.clk_i, _BYSTANDER_GAP_CLK)
             by.record = None
 
-        tasks = {eng: cocotb.start_soon(_member(eng)) for eng in g.order}
+        tasks = {eng: cocotb.start_soon(_member(eng)) for eng in order}
         by_task = cocotb.start_soon(_bystander_reads()) if g.has_bystander else None
-        results = {eng: await tasks[eng] for eng in g.order}
+        results = {eng: await tasks[eng] for eng in order}
         stop.set()
         if by_task is not None:
             await by_task

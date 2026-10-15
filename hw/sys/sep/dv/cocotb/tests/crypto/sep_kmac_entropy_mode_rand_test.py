@@ -28,8 +28,9 @@ does not answer, which is the starvation of the timer leg.
 
 Checkers:
   CHK-KMAC-SWSEED          six seeds -> absorb in bound; SHA3-256 == golden.
-  CHK-KMAC-SWSEED-NEG      five or zero seeds -> absorb 0 at every read of the window.
-  CHK-KMAC-MODE-LOCK       reset mode 0; a late write changes only the readback.
+  CHK-KMAC-MODE-LOCK       reset mode 0; a late write changes only the readback;
+                           with EDN locked, the late write to sw leaves the
+                           start in EDN mode (absorb and SHA3-256 == golden).
   CHK-KMAC-TIMER           kmac_err, ERR_CODE != 0, no acknowledge; error time
                            T < 2T per prescaler and P > 0 per wait timer.
   CHK-KMAC-TIMER0          wait timer 0 -> no kmac_err, ERR_CODE 0, request pending.
@@ -37,6 +38,14 @@ Checkers:
                            entropy_req, which adds an acknowledge.
   CHK-KMAC-AUTORESEED      threshold R, M hashes -> acknowledge >= 1, counter < M.
   CHK-KMAC-AUTORESEED-OFF  threshold 0, M hashes -> no acknowledge, counter == M.
+
+Log-only (``OBS-BLOCKED``): CHK-KMAC-SWSEED-NEG (five or zero seeds -> no
+absorb) and the absorb part of the sw-locked CHK-KMAC-MODE-LOCK leg. The
+seed gate text (``kmac.hjson`` ``ENTROPY_SEED``: "Only after that, the module
+can start processing commands") does not state whether a start before six
+seeds is refused or only gives no digest, and the register text SEP uses
+(``kmac.adoc`` ``ENTROPY_SEED``) does not carry it. These legs log the
+observed absorb, the seed count and ``kmac_err`` as ``OBS`` lines.
 
 Observables: KMAC register readback over the CPU-LSU master,
 ``crypto_edn_req_o[1]`` and ``crypto_edn_ack_o[1]`` (client 1 is KMAC,
@@ -139,6 +148,8 @@ WIN_FLOOR = 64  # clocks; floor of a window built from a short reference
 POLL_EVERY = 4  # clocks between STATUS polls
 BOUND_CLK = 60_000  # outer limit of a start, squeeze, idle, seeding or request wait
 LEGS = ("seed_count", "mode_lock", "timer", "counter", "reseed")
+# The seed gate does not state whether a start before six seeds is refused.
+SEED_GATE_BLOCKED = "sw_start_before_six_seeds_not_stated"
 
 
 @dataclass(frozen=True)
@@ -276,7 +287,6 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
 
     required_evidence = (
         "CHK-KMAC-SWSEED",
-        "CHK-KMAC-SWSEED-NEG",
         "CHK-KMAC-MODE-LOCK",
         "CHK-KMAC-TIMER",
         "CHK-KMAC-TIMER0",
@@ -455,28 +465,26 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         return max(WIN_MULT * self.t_ctrl, WIN_FLOOR)
 
     async def _leg_seed_count(self) -> None:
-        self.chk.ctrl("KMAC-SWSEED-NEG", self.t_ctrl is not None, ref="t_ctrl", t_ctrl=self.t_ctrl)
+        self.chk.blocked("KMAC-SWSEED-NEG", SEED_GATE_BLOCKED)
         window = self._neg_window()
+        # Log-only leg: the graded FCOV window stays closed.
         for count in self.plan.seed_counts:
             await self._reset_kmac()
-            self._open()
             await self.kmac.program(entropy_mode="sw", keyed=False)
             for word in SEED_ROW[:count]:
                 await self.kmac.seed(word)
             await self.kmac.cmd(KMAC_CMD_START)
             reads, absorbs = await self._hold_no_absorb(window)
             intr = await self.kmac.read(KMAC_INTR_STATE)
-            self.chk.ok(
+            self.chk.obs(
                 "KMAC-SWSEED-NEG",
-                absorbs == 0 and reads > 0,
-                seeds=count,
+                seeds_written=count,
                 window_clk=window,
                 reads=reads,
+                absorb_reads=absorbs,
                 absorb=int(absorbs > 0),
                 ctrl_absorb_clk=self.t_ctrl,
-            )
-            self.chk.obs(
-                "KMAC-SWSEED-ERR", seeds=count, kmac_err=int(bool(intr & KMAC_INTR_KMAC_ERR))
+                kmac_err=int(bool(intr & KMAC_INTR_KMAC_ERR)),
             )
             self._close()
         await self._reset_kmac()
@@ -502,16 +510,19 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             )
             regs_ok = reset_mode == ENTROPY_MODE["idle"] and readback == ENTROPY_MODE[late]
             if locked == "sw":
+                self.chk.ok("KMAC-MODE-LOCK", regs_ok, **fields, part="readback")
+                self.chk.blocked("KMAC-MODE-LOCK", SEED_GATE_BLOCKED)
                 window = self._neg_window()
                 reads, absorbs = await self._hold_no_absorb(window)
-                behaviour_ok = absorbs == 0 and reads > 0
-                self.chk.ok(
-                    "KMAC-MODE-LOCK",
-                    regs_ok and behaviour_ok,
-                    **fields,
+                intr = await self.kmac.read(KMAC_INTR_STATE)
+                self.chk.obs(
+                    "KMAC-MODE-LOCK-SW",
+                    seeds_written=0,
                     window_clk=window,
+                    reads=reads,
+                    absorb_reads=absorbs,
                     absorb=int(absorbs > 0),
-                    behaviour="locked" if behaviour_ok else "absorb_without_seed",
+                    kmac_err=int(bool(intr & KMAC_INTR_KMAC_ERR)),
                 )
             else:
                 absorb = await self._poll(ST_ABSORB, BOUND_CLK)

@@ -16474,7 +16474,12 @@ module sep_fcov (
       bins timer_expires_prescaler_n = {2'b11};
     }
     cp_sw_seed_count: coverpoint s.sc iff (s.sc_v) {
-      bins seeds0_no_absorb = {2'd0}; bins seeds5_no_absorb = {2'd1}; bins seeds6_absorb = {2'd2};
+      // 0 and 5 seeds: the KMAC register text does not state whether CMD.start is
+      // refused before six ENTROPY_SEED writes, so the leaf logs these legs only
+      // (ungraded in docs/SEP_FCOV.adoc).
+      ignore_bins seeds0_no_absorb = {2'd0};
+      ignore_bins seeds5_no_absorb = {2'd1};
+      bins seeds6_absorb = {2'd2};
     }
     cp_hash_cnt: coverpoint s.hc iff (s.hc_v) {
       bins rises_by_one = {2'd0};

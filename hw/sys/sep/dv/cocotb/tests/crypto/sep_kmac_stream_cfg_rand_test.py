@@ -39,6 +39,18 @@ Checkers:
   CHK-KMAC-REGWEN     CFG_REGWEN 1 in the idle window, 0 in absorb; a double
                       write of CFG_SHADOWED in absorb leaves it at C. Control:
                       the idle write reads back C.
+  CHK-KMAC-NARROW-WRITE  one fixed SHA3-256 message written with 8-bit and
+                      16-bit writes at byte lanes 1 to 3 of MSG_FIFO: every
+                      write completes OKAY and the digest equals the golden of
+                      the bytes in write order (kmac.hjson lines 1052-1058:
+                      software writes bytes or words to any address of the
+                      window; the low 12 address bits are ignored). It runs
+                      once per seed after the cells, with the graded FCOV
+                      window closed.
+
+The cells write each message beat at byte lane 0 of ``MSG_FIFO`` in the drawn
+width, so the cell checks grade the stages, endianness, corners and lock on
+their own; the byte-lane placement is graded only by CHK-KMAC-NARROW-WRITE.
 
 Observations: ``OBS-KMAC-DONE-FALL`` logs bit 20 after the write-one clear.
 
@@ -117,8 +129,13 @@ _PAIRS = (
 _LEN_CORNERS = (-1, 0, 1)
 _CELLS = tuple((m, s, d) for m, s in _PAIRS for d in _LEN_CORNERS)
 
-# Write widths in bytes (32, 16 and 8 bit), naturally aligned.
+# Write widths in bytes (32, 16 and 8 bit). A cell write is at byte lane 0,
+# which is naturally aligned for every width.
 _WIDTHS = (4, 2, 1)
+# The fixed narrow-lane message: (byte lane, width) of each write, in order,
+# with 8-bit writes at lanes 1, 2, 3 and 16-bit writes at lane 2.
+_NARROW_WRITES = ((1, 1), (2, 1), (3, 1), (2, 2), (1, 1), (3, 1), (2, 2), (3, 1))
+_NARROW_VALUES = (0xA1, 0xB2, 0xC3, 0xE5D4, 0xF6, 0x17, 0x3928, 0x4A)
 _AXSIZE = {1: 0, 2: 1, 4: 2}
 
 _IDLE_MULT = 4
@@ -168,8 +185,8 @@ def _draw_writes(
     values: list[int] = []
     pos = 0
     while pos < nbytes:
-        lane = pos % 4
-        allowed = [w for w in _WIDTHS if lane % w == 0 and w <= nbytes - pos]
+        lane = 0
+        allowed = [w for w in _WIDTHS if w <= nbytes - pos]
         width = rng.choice(allowed)
         # The bytes of one multi-byte write differ from each other, so a byte
         # reorder changes the message.
@@ -238,6 +255,7 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         "CHK-KMAC-IDLE",
         "CHK-KMAC-DONE-LINE",
         "CHK-KMAC-REGWEN",
+        "CHK-KMAC-NARROW-WRITE",
     )
 
     # --- clocks and register access -----------------------------------------
@@ -288,14 +306,20 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             raise AssertionError(f"KMAC not idle after reset (STATUS=0x{status:08x})")
 
     async def _write_msg(self, cell: Cell) -> list[str]:
-        """The message writes of ``cell``: each at its byte lane, AxSIZE of its width.
+        """The message writes of ``cell``."""
+        return await self._write_beats(cell.writes, cell.values)
+
+    async def _write_beats(
+        self, writes: tuple[tuple[int, int], ...], values: tuple[int, ...]
+    ) -> list[str]:
+        """Each write at its byte lane of ``MSG_FIFO``, AxSIZE of its width.
 
         kmac.hjson lines 1052-1058: software writes bytes or words to any
         address of the ``MSG_FIFO`` window. Returns ``lane/width/resp`` of
         each write that does not complete OKAY; the caller grades them.
         """
         refused: list[str] = []
-        for (lane, width), value in zip(cell.writes, cell.values):
+        for (lane, width), value in zip(writes, values):
             seq = SepAxiAccessSeq(
                 "kmac_msg_wr",
                 op=SepAxiOp.WRITE,
@@ -354,6 +378,8 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
                 await self._reset_kmac()
                 open_graded_window(TEST)
         close_graded_window()
+
+        await self._narrow_lane_leg(seed)
 
         await self.vec.stop()
         await self.stop_fifo_drain()
@@ -643,3 +669,47 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             squeeze=squeeze,
         )
         return False
+
+    async def _narrow_lane_leg(self, seed: int) -> None:
+        """CHK-KMAC-NARROW-WRITE: the fixed message at byte lanes 1 to 3, SHA3-256.
+
+        The graded FCOV window stays closed. Each bounded wait that expires is
+        a FAIL of this check, then a KMAC reset.
+        """
+        msg = b"".join(v.to_bytes(w, "little") for (_, w), v in zip(_NARROW_WRITES, _NARROW_VALUES))
+        golden = _words(sha3(msg, 256), 0)
+        tag = dict(
+            seed=seed,
+            mode="sha3",
+            strength=256,
+            len=len(msg),
+            lanes_widths=",".join(f"{lane}/{w}" for lane, w in _NARROW_WRITES),
+        )
+        await self._reset_kmac()
+        await self._write_cfg(_cfg_word("sha3", 256))
+        t0 = self._now_clk()
+        await self._wr(KMAC_CMD, KMAC_CMD_START)
+        ok, status, _ = await self._poll(KMAC_STATUS, _ABSORB, _ABSORB, t0, _OUTER_CLK)
+        if not ok:
+            self.chk.ok("KMAC-NARROW-WRITE", False, **tag, reason="start_timeout", bound=_OUTER_CLK)
+            await self._reset_kmac()
+            return
+        refused = await self._write_beats(_NARROW_WRITES, _NARROW_VALUES)
+        t1 = self._now_clk()
+        await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
+        ok, status, _ = await self._poll(KMAC_STATUS, _SQUEEZE, _SQUEEZE, t1, _OUTER_CLK)
+        got = await self._read_state(len(golden)) if ok else []
+        match = got == golden
+        self.chk.ok(
+            "KMAC-NARROW-WRITE",
+            ok and not refused and match,
+            **tag,
+            writes=len(_NARROW_WRITES),
+            all_okay=int(not refused),
+            refused_lane_width_resp=",".join(refused) or "-",
+            digest_eq_golden=int(match),
+            digest0=f"0x{got[0]:08x}" if got else "none",
+            golden0=f"0x{golden[0]:08x}",
+            **({} if ok else {"reason": "squeeze_timeout", "bound": _OUTER_CLK}),
+        )
+        await self._reset_kmac()
