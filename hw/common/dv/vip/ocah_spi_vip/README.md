@@ -298,8 +298,14 @@ seq.check_host_responses()        # CHK-SPI-HOST-*: the controller received what
 | `page_program(addr, data)` | `None` | 0x02, address, payload |
 | `sector_erase(addr)` | `None` | 0x20, address |
 | `read(addr, n)`, `fast_read(addr, n)` | `bytes` | 0x03 / 0x0B (one dummy byte), address, `n` response bytes |
-| `raw_command(opcode, *, addr, dummy_bytes, tx, rx_len, tail_bits)` | `bytes` | Any opcode, for out-of-scope probes; `tail_bits` (0 to 7) ends the frame that many bits into a further byte |
-| `raw_frame(bits)` | `list[int]` | One frame of exactly these MOSI bits; it may end in any phase. Returns the MISO bits |
+| `raw_command(opcode, *, addr, dummy_bytes, tx, rx_len, tail_bits, require_drive=True)` | `bytes` | Any opcode, for out-of-scope probes; `tail_bits` (0 to 7) ends the frame that many bits into a further byte; `require_drive=False` for a frame the device must not answer |
+| `raw_frame(bits)` | `list[int]` | One frame of exactly these MOSI bits; it may end in any phase. Returns the MISO bits; `bfm.last_drive_enables` holds the device drive enable at each of them |
+
+With `miso_oe` (the device's MISO drive enable) given to `OcahSpiMasterBfm`,
+every single-lane response bit a frame receives must be sampled with the
+enable high; otherwise the frame raises `OcahSpiMasterBfmError` after chip
+select rises, so a byte the device did not drive is never returned as
+received.
 | `bfm.lane_frame(segments)` | `list[bytes]` | Four-lane handles only. One frame of `(lanes, kind, arg)` segments: `lanes` 1, 2 or 4; `kind` `"tx"` (bytes to send), `"rx"` (byte count to receive), `"dummy"` (clock count) or `"clocks"` (per-clock lane values, driven with the segment's lanes enabled, for a frame that ends inside a byte). A single-lane segment keeps lane 0 driven; a dual or quad receive or dummy segment drives no lane. Bytes go most significant bits first, the least significant bit of each pair or nibble on lane 0. Returns the bytes of each receive segment |
 | `responses(opcode)` | `list[bytes]` | Every response the controller received for that opcode |
 

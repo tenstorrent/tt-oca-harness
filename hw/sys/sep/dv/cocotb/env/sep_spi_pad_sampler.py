@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Per-core-clock sampler of the SPI host pad ports.
 
-Reads ``spi_cs_n_o``, ``spi_sck_o`` and ``spi_mosi_o`` of ``tb_top`` (the
-approved SPI host pad ports, docs/SEP_TB_ARCH.adoc) on every rising edge of
+Reads ``spi_cs_n_o``, ``spi_sck_o``, ``spi_mosi_o`` and lane 0 of
+``spi_sd_oe_o`` of ``tb_top`` (the approved SPI host pad ports and monitor
+taps, docs/SEP_TB_ARCH.adoc) on every rising edge of
 ``clk_i``, in the read-only phase, and drives nothing. Clock ``n`` is the n-th
 sampled edge after ``start``; every time value here is a clock index, so every
 time relation is in core clocks.
@@ -12,7 +13,11 @@ Records:
 
 * chip-select-low windows (``CsWindow``): the clock of the first low sample
   (``start``) and of the first high sample after it (``end``); the sck level at
-  ``start``; every sck edge as (clock, new level); every ``spi_mosi_o`` change.
+  ``start``; every sck edge as (clock, new level); every ``spi_mosi_o`` change,
+  also split by the lane 0 output enable sampled on the same clock
+  (``mosi_changes_oe_on`` / ``mosi_changes_oe_off``; an X/Z enable counts as
+  off). A change with the enable off is a core value that does not reach the
+  pad.
   A leading edge is an sck edge that leaves the idle level. The idle level is
   the value given to ``set_idle_level`` (the CPOL that the leaf wrote) or,
   when none is given, the sck level at ``start``. ``lead`` is the clocks from
@@ -64,6 +69,8 @@ class CsWindow:
     end: int | None = None
     edges: list[tuple[int, int]] = field(default_factory=list)
     mosi_changes: list[int] = field(default_factory=list)
+    mosi_changes_oe_on: list[int] = field(default_factory=list)
+    mosi_changes_oe_off: list[int] = field(default_factory=list)
     # Clocks in the window on which spi_mosi_o was X or Z. A change count
     # over such a window is incomplete, so a check on MOSI changes needs 0.
     mosi_xz: int = 0
@@ -144,6 +151,7 @@ class SepSpiPadSampler:
         self._cs = self.dut.spi_cs_n_o
         self._sck = self.dut.spi_sck_o
         self._mosi = self.dut.spi_mosi_o
+        self._sd_oe = self.dut.spi_sd_oe_o
         self._task: Any = None
         self._idle: int | None = None
         self.clk = 0
@@ -312,6 +320,11 @@ class SepSpiPadSampler:
                 self.mosi_changes.append(now)
                 if cs == 0 and self.low:
                     self.low[-1].mosi_changes.append(now)
+                    oe = self._sd_oe.value
+                    if oe.is_resolvable and int(oe) & 1:
+                        self.low[-1].mosi_changes_oe_on.append(now)
+                    else:
+                        self.low[-1].mosi_changes_oe_off.append(now)
             self._sck_level = sck
             if mosi is not None:
                 self._mosi_level = mosi

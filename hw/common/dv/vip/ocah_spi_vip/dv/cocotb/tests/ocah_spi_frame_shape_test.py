@@ -28,7 +28,9 @@ exact: WRITE ENABLE sets and WRITE DISABLE clears the latch
 to 0xFF and consumes the latch (``CHK-SPI-SHAPE-ERASE-CTRL``).
 ``CHK-SPI-READ-ABORT``: READ JEDEC ID, READ STATUS REGISTER 1, READ and FAST
 READ ended at every bit of their first output bytes are accepted with the
-complete bytes sent and no state change.
+complete bytes sent and no state change; the complete bytes the controller
+sampled on MISO equal the expected stream, and the device's MISO drive
+enable was high at every output bit the controller sampled.
 
 ``CHK-SPI-LEDGER`` matches every device record against the monitor's frames.
 The checker replays the frames the device accepted (``CHK-SPI-FRAME-SHAPE``
@@ -140,13 +142,27 @@ async def ocah_spi_frame_shape_test(dut) -> None:
     def digest() -> str:
         return hashlib.sha256(flash.read_memory(target, 2 * SECTOR_SIZE)).hexdigest()[:16]
 
+    host_bits: list[int] = []
+    host_enables: list[int | None] = []
+
     async def frame(bits: list[int]) -> dict:
         before = len(flash.get_transactions())
-        await host.raw_frame(bits)
+        host_bits[:] = await host.raw_frame(bits)
+        host_enables[:] = host.bfm.last_drive_enables
         records = flash.get_transactions()[before:]
         if len(records) != 1:
             raise AssertionError(f"one frame gave {len(records)} device records")
         return dict(records[0])
+
+    def host_view(skip: int, outputs: int) -> tuple[bytes, bool]:
+        """The complete bytes the controller sampled after ``skip`` input bits, and
+        whether the device drove every one of its ``outputs`` output bits."""
+        out = host_bits[skip : skip + outputs]
+        whole = bytes(
+            int("".join(str(b) for b in out[i : i + 8]), 2) for i in range(0, len(out) - 7, 8)
+        )
+        enables = host_enables[skip : skip + outputs]
+        return whole, len(enables) == outputs and all(e == 1 for e in enables)
 
     async def refuse_walk(check_id: str, cases: list[tuple[str, int, list[int], str]], latch: bool):
         """Each case: label, opcode, bits, reason. Every frame is refused with no state change."""
@@ -328,9 +344,22 @@ async def ocah_spi_frame_shape_test(dut) -> None:
     ):
         for o in range(outputs + 1):
             rec = await frame(bits_of(head) + [0] * o)
-            aborts_observed.append((f"{name}o{o}", *_record_view(rec)))
+            aborts_observed.append(
+                (f"{name}o{o}", *_record_view(rec), *host_view(8 * len(head), o))
+            )
             aborts_expected.append(
-                (f"{name}o{o}", opcode, True, "", 8 * len(head), 0, 0, stream[: o // 8])
+                (
+                    f"{name}o{o}",
+                    opcode,
+                    True,
+                    "",
+                    8 * len(head),
+                    0,
+                    0,
+                    stream[: o // 8],
+                    stream[: o // 8],
+                    True,
+                )
             )
     checker.expect_equal(
         "CHK-SPI-READ-ABORT",

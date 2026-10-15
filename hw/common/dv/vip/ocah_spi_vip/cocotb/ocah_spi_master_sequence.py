@@ -82,10 +82,21 @@ class OcahSpiMasterSequence:
         tx: bytes = b"",
         rx_len: int = 0,
         tail_bits: int = 0,
+        require_drive: bool = True,
     ) -> bytes:
-        """One frame of any opcode; the response is kept under that opcode."""
+        """One frame of any opcode; the response is kept under that opcode.
+
+        ``require_drive=False`` is for a frame the device must not answer
+        (see ``OcahSpiMasterBfm.transfer``).
+        """
         data = await self.bfm.transfer(
-            opcode, addr=addr, dummy_bytes=dummy_bytes, tx=tx, rx_len=rx_len, tail_bits=tail_bits
+            opcode,
+            addr=addr,
+            dummy_bytes=dummy_bytes,
+            tx=tx,
+            rx_len=rx_len,
+            tail_bits=tail_bits,
+            require_drive=require_drive,
         )
         if rx_len:
             self._record(int(opcode), data)

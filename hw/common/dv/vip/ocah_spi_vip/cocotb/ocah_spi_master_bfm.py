@@ -29,7 +29,12 @@ from cocotb.triggers import Timer
 
 from .ocah_spi_types import OcahSpiOpcode
 
-__all__ = ["OcahSpiMasterBfm"]
+__all__ = ["OcahSpiMasterBfm", "OcahSpiMasterBfmError"]
+
+
+class OcahSpiMasterBfmError(AssertionError):
+    """The controller sampled a response bit the device did not drive."""
+
 
 _DEFAULT_HALF_PERIOD_NS = 10
 _TIME_UNIT: Final = "ns"
@@ -55,6 +60,7 @@ class OcahSpiMasterBfm:
         sd_in: Any = None,
         cs_oe: Any = None,
         sck_oe: Any = None,
+        miso_oe: Any = None,
     ) -> None:
         self.name = name
         self.log = logging.getLogger(name)
@@ -67,6 +73,9 @@ class OcahSpiMasterBfm:
         self._sd_in = sd_in
         self._cs_oe = cs_oe
         self._sck_oe = sck_oe
+        self._miso_oe = miso_oe
+        # Device MISO drive enable at each single-lane sample of the last frame.
+        self.last_drive_enables: list[int | None] = []
         self.half_period_ns = half_period_ns
         self.addr_bytes = addr_bytes
         self.cpol = cpol & 1
@@ -127,7 +136,12 @@ class OcahSpiMasterBfm:
         await Timer(self.half_period_ns if hold_ns is None else hold_ns, _TIME_UNIT)
 
     async def raw_frame(self, bits: Sequence[int]) -> list[int]:
-        """One chip-select frame that clocks exactly ``bits`` on MOSI; returns the MISO bits."""
+        """One chip-select frame that clocks exactly ``bits`` on MOSI; returns the MISO bits.
+
+        With ``miso_oe`` bound, ``last_drive_enables`` holds the device's
+        MISO drive enable at each of those samples.
+        """
+        self.last_drive_enables = []
         self._cs_n.value = 0
         await Timer(self.half_period_ns, _TIME_UNIT)
         received = [await self._clock_bit(int(bit) & 0x1) for bit in bits]
@@ -152,8 +166,16 @@ class OcahSpiMasterBfm:
         tx: bytes = b"",
         rx_len: int = 0,
         tail_bits: int = 0,
+        require_drive: bool = True,
     ) -> bytes:
-        """One frame: opcode, address, dummies, payload out, ``rx_len`` bytes in, then ``tail_bits`` bits."""
+        """One frame: opcode, address, dummies, payload out, ``rx_len`` bytes in, then ``tail_bits`` bits.
+
+        With ``miso_oe`` bound and ``require_drive``, every received bit must
+        be sampled with the device's MISO drive enable high; otherwise the
+        frame raises ``OcahSpiMasterBfmError``. ``require_drive=False`` is for
+        a frame the device must not answer; the caller grades
+        ``last_drive_enables``.
+        """
         if not 0 <= tail_bits < 8:
             raise ValueError(f"{self.name}: tail_bits={tail_bits} is outside 0..7")
         header = bytearray([int(opcode) & 0xFF])
@@ -161,6 +183,7 @@ class OcahSpiMasterBfm:
             header += int(addr).to_bytes(self.addr_bytes, "big")
         header += bytes(dummy_bytes)
         header += bytes(tx)
+        self.last_drive_enables = []
         self._cs_n.value = 0
         await Timer(self.half_period_ns, _TIME_UNIT)
         for value in header:
@@ -168,6 +191,7 @@ class OcahSpiMasterBfm:
         received = bytearray()
         for _ in range(rx_len):
             received.append(await self._shift_byte(0))
+        rx_enables = self.last_drive_enables[8 * len(header) : 8 * (len(header) + rx_len)]
         await self._shift_bits(0, tail_bits)
         await Timer(self.half_period_ns, _TIME_UNIT)
         self._release_lanes()
@@ -176,6 +200,12 @@ class OcahSpiMasterBfm:
         self.frames += 1
         self.bytes_tx += len(header)
         self.bytes_rx += rx_len
+        undriven = sum(1 for enable in rx_enables if enable != 1)
+        if require_drive and self._miso_oe is not None and undriven:
+            raise OcahSpiMasterBfmError(
+                f"{self.name}: opcode 0x{int(opcode) & 0xFF:02x} received {undriven} of "
+                f"{8 * rx_len} response bit(s) with the device MISO drive enable low"
+            )
         self.log.debug(
             "%s: frame opcode=0x%02x header=%d B rx=%d B", self.name, opcode, len(header), rx_len
         )
@@ -266,6 +296,11 @@ class OcahSpiMasterBfm:
 
         def get() -> int:
             if oe is None:
+                if self._miso_oe is not None:
+                    enable = self._miso_oe.value
+                    self.last_drive_enables.append(
+                        int(enable) & 1 if enable.is_resolvable else None
+                    )
                 return int(self._miso.value) & 0x1
             return int(self._sd_in.value) & 0xF
 

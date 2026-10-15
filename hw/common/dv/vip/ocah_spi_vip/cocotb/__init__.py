@@ -71,7 +71,7 @@ See ``examples/`` for annotated usage snippets.
 from .ocah_sep_spi_flash import OcahSepSpiFlash, OcahSepSpiFlashError
 from .ocah_spi_flash import OcahSpiFlash, OcahSpiFlashError
 from .ocah_spi_flash_checker import OcahSpiFlashChecker, OcahSpiFlashRecord, OcahSpiFlashRefModel
-from .ocah_spi_master_bfm import OcahSpiMasterBfm
+from .ocah_spi_master_bfm import OcahSpiMasterBfm, OcahSpiMasterBfmError
 from .ocah_spi_master_sequence import OcahSpiMasterSequence
 from .ocah_spi_monitor import OcahSpiMonitor, OcahSpiMonitorError
 from .ocah_spi_types import (
@@ -96,6 +96,7 @@ __all__ = [
     "OcahSepSpiFlash",
     # Controller side
     "OcahSpiMasterBfm",
+    "OcahSpiMasterBfmError",
     "OcahSpiMasterSequence",
     # Passive monitor
     "OcahSpiMonitor",

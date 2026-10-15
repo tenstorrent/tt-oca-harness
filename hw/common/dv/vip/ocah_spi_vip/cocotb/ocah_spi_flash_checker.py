@@ -689,9 +689,13 @@ class OcahSpiFlashChecker:
                 rec.reason not in _PROGRAM_SHAPE_REASONS
                 and (
                     not rec.ok
-                    or self._expected_clocks(
-                        rec,
-                        8 * (1 + self.addr_bytes) + _clocks_per_byte(rec.opcode) * len(rec.data_in),
+                    or (
+                        len(rec.data_in) > 0
+                        and self._expected_clocks(
+                            rec,
+                            8 * (1 + self.addr_bytes)
+                            + _clocks_per_byte(rec.opcode) * len(rec.data_in),
+                        )
                     )
                 ),
                 context=(

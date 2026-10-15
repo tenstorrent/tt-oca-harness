@@ -129,7 +129,11 @@ async def build_stack(
         flash.preload(preload)
     flash.init_signals()
     bfm = OcahSpiMasterBfm.from_prefix(
-        dut, PREFIX, name="harness_host", half_period_ns=HALF_PERIOD_NS
+        dut,
+        PREFIX,
+        name="harness_host",
+        half_period_ns=HALF_PERIOD_NS,
+        miso_oe=dut.spi_miso_oe,
     )
     bfm.init_signals()
     monitor = OcahSpiMonitor(

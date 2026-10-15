@@ -60,8 +60,10 @@ async def ocah_spi_unsupported_test(dut) -> None:
     await host.write_enable()
     await host.page_program(addr, data)
     await host.read(addr, length)
-    await host.raw_command(READ_SFDP, addr=addr, dummy_bytes=1, rx_len=4)
-    await host.raw_command(READ_UNIQUE_ID, addr=addr, dummy_bytes=1, rx_len=4)
+    # The device must not answer these: the drive enable is graded by
+    # CHK-SPI-UNSUPPORTED, not by the controller's receive.
+    await host.raw_command(READ_SFDP, addr=addr, dummy_bytes=1, rx_len=4, require_drive=False)
+    await host.raw_command(READ_UNIQUE_ID, addr=addr, dummy_bytes=1, rx_len=4, require_drive=False)
     await host.write_enable()
     await host.raw_command(BLOCK_ERASE_64K, addr=addr)
     await host.write_enable()

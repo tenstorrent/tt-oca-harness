@@ -38,8 +38,10 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   clocks; the spec states all three as minimum bounds. Control: the idle
   minimum is above g0 of the control pair.
 * CHK-SPI-CPHA: at CLKDIV 1 or more every Tx data change after the first bit
-  lies in the half sck period that starts at the stated edge. Control: at least
-  two such changes. The cell CPHA=1 with FULLCYC=1 logs ``OBS-SPI-CPHA`` and is
+  lies in the half sck period that starts at the stated edge. A change counts
+  only with the lane 0 output enable on; a ``spi_mosi_o`` change in the graded
+  Tx window with the enable off fails, since it does not reach the pad.
+  Control: at least two counted changes. The cell CPHA=1 with FULLCYC=1 logs ``OBS-SPI-CPHA`` and is
   not graded. The second cell inverts the CPHA of the first, so each seed has
   one CPHA=0 cell that is graded.
 
@@ -213,13 +215,13 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
 
     @staticmethod
     def _cpha_split(win: CsWindow, cpha: int) -> tuple[int, int, int]:
-        """Data changes after the first bit: (in stated half, in other half, exempt)."""
+        """Lane 0 enabled data changes after the first bit: (stated half, other half, exempt)."""
         edges = win.edges
         if not edges:
-            return 0, 0, len(win.mosi_changes)
+            return 0, 0, len(win.mosi_changes_oe_on)
         first = edges[0][0]
         stated = other = exempt = 0
-        for c in win.mosi_changes:
+        for c in win.mosi_changes_oe_on:
             if c < first:
                 exempt += 1
                 continue
@@ -400,9 +402,9 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             line = (
                 f"seed={seed} cpha={c.cpha} clkdiv={div} edge={edge} in_stated_half={stated} "
                 f"in_other_half={other} exempt_first={exempt} mosi_xz={run.mosi_xz} "
-                f"mode={c.mode}"
+                f"changes_oe_off={len(run.mosi_changes_oe_off)} mode={c.mode}"
             )
-            if run.mosi_xz:
+            if run.mosi_xz or run.mosi_changes_oe_off:
                 raise AssertionError(f"CHK-SPI-CPHA FAIL {line}")
             if stated + other < 2:
                 raise AssertionError(f"CTRL-MISSING CHK-SPI-CPHA {line}")
