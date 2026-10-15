@@ -138,6 +138,7 @@ flash = OcahSpiFlash(
     sclk     = dut.spi_sclk,   # serial clock (DUT → flash)
     mosi     = dut.spi_mosi,   # required for mode="single"
     miso     = dut.spi_miso,   # required for mode="single"
+    miso_oe  = dut.spi_miso_oe, # optional: device MISO drive enable (single)
     # OR for quad/octal:
     # dq_out = dut.spi_dq_out,  # DQ bus driven by DUT
     # dq_in  = dut.spi_dq_in,   # DQ bus driven by flash BFM
@@ -153,7 +154,7 @@ flash = OcahSpiFlash(
 | Method                              | Returns | Notes |
 |-------------------------------------|---------|-------|
 | `flash.init_signals()`              | `None`  | Drive MISO / DQ to idle; call before first clock edge |
-| `flash.preload(source)`             | `None`  | Load raw bytes from file path or bytes-like object |
+| `flash.preload(source)`             | `None`  | Load raw bytes from file path or bytes-like object; a failed `+spi_flash_preload` raises `OcahSpiFlashError` |
 | `flash.set_jedec_id(id)`            | `None`  | Override JEDEC ID at runtime |
 | `await flash.start()`               | `None`  | Start background protocol engine |
 | `await flash.stop()`                | `None`  | Stop; the transaction history survives. Raises `OcahSpiFlashError` when the protocol engine raised while it ran |
@@ -336,7 +337,8 @@ stats = mon.get_statistics()
 mon.clear_history()
 ```
 
-Transaction record keys: `opcode`, `addr`, `has_addr`, `data_mosi` (payload
+Transaction record keys: `opcode`, `addr` (from complete address bytes; 0
+otherwise), `has_addr`, `addr_complete`, `data_mosi` (payload
 bytes after the address, PAGE PROGRAM only), `data_miso` (response bytes
 after the command, address, and dummy phases), `bit_count`, `input_bits`
 (command, address and dummy bits of a single-lane command with a response
@@ -375,10 +377,15 @@ pins:
 With `sd_out`, `mosi_edge` applies to every lane whose output enable is on
 before and after a change.
 
-`get_wire_errors()` lists every violation.  `stop()` raises
+`get_wire_errors()` lists every violation.  `stop(min_frames=1)` raises
 `OcahSpiMonitorError` after a violation, after a callback raised
-`AssertionError`, or after the monitor itself raised; other callback
-exceptions are counted in `get_statistics()["callback_errors"]`.
+`AssertionError`, after the monitor itself raised, when chip-select is still
+low (the open frame would go ungraded), or when fewer than `min_frames`
+frames were seen; other callback exceptions are counted in
+`get_statistics()["callback_errors"]`.  `sd_oe`, `cs_oe` and `sck_oe` need
+`sd_out`; the constructor refuses them without it.  With `miso_oe` (the
+device's MISO drive enable) each record carries `miso_oe_raw`, the enable at
+each sample edge.
 
 ---
 
@@ -423,7 +430,7 @@ rules and their identifiers:
 | `CHK-SPI-NONVAC-PROGRAM` | An accepted program cleared at least one bit |
 | `CHK-SPI-NONVAC-READ` | A read returned at least one byte that is not 0xFF |
 | `CHK-SPI-NONVAC-ERASE` | An accepted erase returned at least one programmed byte to 0xFF |
-| `CHK-SPI-UNSUPPORTED` | `check_unsupported(expected, frames=monitor_frames)`: the out-of-scope opcodes seen are exactly the expected ones, each one is recorded as not accepted, and in the monitor frame of each one the response lane resolved and held its level from the chip-select fall at every sample edge (the device drove no response) |
+| `CHK-SPI-UNSUPPORTED` | `check_unsupported(expected, frames=monitor_frames)`: the out-of-scope opcodes seen are exactly the expected ones, each one is recorded as not accepted, and in the monitor frame of each one the device's MISO drive enable (`miso_oe`, tapped by the monitor) was low at every sample edge and the response lane resolved and held its level from the chip-select fall (the device drove no response). A response that streams the idle level still raises the drive enable; a frame without the drive-enable tap fails |
 
 `finalize()` fails on any failed record, any required identifier never
 recorded, or zero records.  With `raise_on_error=True` (the default) the

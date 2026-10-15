@@ -16,6 +16,8 @@ Each completed transaction is reported as a plain dict::
         "opcode":    int,          # 8-bit command byte
         "addr":      int,          # decoded address (0 if no address)
         "has_addr":  bool,         # True if command carries an address
+        "addr_complete": bool,     # True when every address bit arrived;
+                                   # addr is 0 otherwise
         "data_mosi": bytes,        # complete payload bytes on MOSI/DQ0 after the address (PAGE PROGRAM)
         "data_miso": bytes,        # complete response bytes on MISO/DQ0 after the command, address, and dummy phases
         "data_miso_xz": tuple,     # indices of data_miso bytes with a bit sampled as X/Z
@@ -35,6 +37,8 @@ Each completed transaction is reported as a plain dict::
                                    # per sample edge, None for X/Z
         "miso_idle": int or None,  # response lane level when chip-select fell, None for X/Z
         "miso_raw":  tuple,        # response lane level at each sample edge, None for X/Z
+        "miso_oe_raw": tuple,      # with miso_oe: device drive enable at each
+                                   # sample edge, None for X/Z; empty otherwise
         "start_ns":  float or None,
         "end_ns":    float or None,
     }
@@ -214,7 +218,11 @@ class OcahSpiMonitor:
         checks run.
     cs_oe, sck_oe : cocotb handle, optional
         Output enables of chip select and clock; checked while chip select
-        is low.
+        is low. ``sd_oe``, ``cs_oe`` and ``sck_oe`` need ``sd_out``: their
+        checks run at the four-lane sample edges.
+    miso_oe : cocotb handle, optional
+        The device's MISO drive enable, recorded per sample edge in
+        ``miso_oe_raw``; not graded by the monitor.
     max_history : int
         Maximum number of transactions retained in history.  Default 2000.
     verbose : bool
@@ -238,6 +246,7 @@ class OcahSpiMonitor:
         sd_in=None,
         cs_oe=None,
         sck_oe=None,
+        miso_oe=None,
         max_history: int = 2000,
         verbose: bool = False,
     ):
@@ -253,6 +262,12 @@ class OcahSpiMonitor:
         self._sd_in = sd_in
         self._cs_oe = cs_oe
         self._sck_oe = sck_oe
+        self._miso_oe = miso_oe
+        if sd_out is None and (sd_oe is not None or cs_oe is not None or sck_oe is not None):
+            raise ValueError(
+                f"{name}: sd_oe, cs_oe and sck_oe are graded at the four-lane sample edges "
+                "and need sd_out"
+            )
 
         self._addr_bytes = addr_bytes
         self._fast_read_dummies = fast_read_dummies
@@ -309,22 +324,27 @@ class OcahSpiMonitor:
         self._cpol = cpol & 1
         self._cpha = cpha & 1
 
-    async def stop(self) -> None:
+    async def stop(self, *, min_frames: int = 1) -> None:
         """Stop monitoring; the history survives.
 
         Raises ``OcahSpiMonitorError`` when a wire check failed, a callback
-        raised ``AssertionError``, or the monitor raised while it ran.
+        raised ``AssertionError``, the monitor raised while it ran, chip
+        select is still low (a frame is open and would go ungraded), or fewer
+        than ``min_frames`` frames were seen (a monitor on a dead or wrong
+        chip select grades nothing).
         """
         if not self._running:
             return
         self._running = False
+        open_frame = self._cs_n is not None and _level(self._cs_n) == 0
         if self._task is not None:
             _cancel_task(self._task)
             self._task = None
+        seen = self._stats["transactions_seen"]
         self.log.info(
             "%s: stopped (transactions=%d wire_errors=%d)",
             self.name,
-            self._stats["transactions_seen"],
+            seen,
             len(self._wire_errors),
         )
         error, self._error = self._error, None
@@ -334,6 +354,14 @@ class OcahSpiMonitor:
             raise OcahSpiMonitorError(
                 f"{self.name}: {len(self._wire_errors)} wire-check violation(s); "
                 f"first: {self._wire_errors[0]}"
+            )
+        if open_frame:
+            raise OcahSpiMonitorError(
+                f"{self.name}: stopped with chip-select low; the open frame is not graded"
+            )
+        if seen < min_frames:
+            raise OcahSpiMonitorError(
+                f"{self.name}: saw {seen} frame(s), fewer than min_frames={min_frames}"
             )
 
     # ------------------------------------------------------------------
@@ -453,6 +481,7 @@ class OcahSpiMonitor:
         mosi_bits: List[int] = []
         beats: List[Tuple[Optional[int], Optional[int], Optional[int]]] = []
         miso_raw: List[Optional[int]] = []
+        miso_oe_raw: List[Optional[int]] = []
         miso_idle = self._miso_level()
 
         sck_prev = _level(self._sclk)
@@ -502,6 +531,8 @@ class OcahSpiMonitor:
                         )
                     self._sample_edge(errors, now, mosi_bits, beats)
                     miso_raw.append(self._miso_level())
+                    if self._miso_oe is not None:
+                        miso_oe_raw.append(_level(self._miso_oe))
                 elif pending is not None:
                     changed, sampled, half = pending
                     if half is None or now - sampled <= 1.5 * half:
@@ -550,6 +581,7 @@ class OcahSpiMonitor:
             beats=tuple(beats),
             miso_idle=miso_idle,
             miso_raw=tuple(miso_raw),
+            miso_oe_raw=tuple(miso_oe_raw),
         )
         self._history.append(txn)
         if len(self._history) > self._max_history:
@@ -718,9 +750,11 @@ class OcahSpiMonitor:
         has_addr = opcode in _ADDR_COMMANDS
         addr = 0
 
-        if has_addr and len(mosi_bytes) > 1:
-            for i in range(1, min(1 + self._addr_bytes, len(mosi_bytes))):
-                addr = (addr << 8) | mosi_bytes[i]
+        # The address comes from complete address bytes only.
+        addr_complete = has_addr and len(mosi_whole) >= 1 + self._addr_bytes
+        if addr_complete:
+            for i in range(1, 1 + self._addr_bytes):
+                addr = (addr << 8) | mosi_whole[i]
 
         # The response phase starts after the opcode, the address bytes of an
         # addressed command, and the dummy bytes of a FAST READ.
@@ -746,11 +780,15 @@ class OcahSpiMonitor:
         )
         if complete and opcode in LANE_OPCODES and beats and fmt is not None:
             has_addr, addr, data_mosi, data_miso, data_miso_xz = self._decode_lanes(fmt, beats)
+            addr_complete = has_addr and len(beats) >= 8 + (8 * self._addr_bytes) // max(
+                1, fmt.addr_lanes
+            )
 
         return {
             "opcode": opcode,
             "addr": addr,
             "has_addr": has_addr,
+            "addr_complete": addr_complete,
             "data_mosi": data_mosi,
             "data_miso": data_miso,
             "data_miso_xz": data_miso_xz,

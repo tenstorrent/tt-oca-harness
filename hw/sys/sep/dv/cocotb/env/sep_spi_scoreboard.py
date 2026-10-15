@@ -250,7 +250,8 @@ def _wire_data(
     """The monitor's decode of a frame's data phase at the command's lane width.
 
     ``None`` when a bit of the first ``limit`` bytes (all bytes by default)
-    was sampled as X/Z.
+    was sampled as X/Z, or, for a payload decoded from the lanes, was sampled
+    with its lane output enable off.
     """
     if frame is None:
         return b""
@@ -258,7 +259,7 @@ def _wire_data(
     if fmt is None:
         return b""
     beats = frame.get("beats") or ()
-    if fmt.data_lanes == 1 or not beats:
+    if not beats or (response and fmt.data_lanes == 1):
         if response and any(limit is None or i < limit for i in frame.get("data_miso_xz", ())):
             return None
         return bytes(frame["data_miso"] if response else frame["data_mosi"])
@@ -275,9 +276,13 @@ def _segment_clocks(segment: tuple[int, str, Any]) -> int:
 def _decode(beats: Sequence[tuple], field_index: int, lanes: int, shift: int) -> bytes | None:
     """Bytes of ``beats`` on ``lanes`` lanes of one beat field, lane ``shift`` first.
 
-    ``None`` when the field is X/Z at one of the beats.
+    ``None`` when the field is X/Z at one of the beats, or, for the controller
+    output field, when a lane that carries the data has its output enable off.
     """
     if any(beat[field_index] is None for beat in beats):
+        return None
+    mask = (1 << lanes) - 1
+    if field_index == 0 and any(beat[1] is None or beat[1] & mask != mask for beat in beats):
         return None
     values = [beat[field_index] >> shift for beat in beats]
     return bytes(lanes_to_bytes(values, lanes)[0])

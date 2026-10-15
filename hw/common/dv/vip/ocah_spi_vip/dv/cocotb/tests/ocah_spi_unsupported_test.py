@@ -8,8 +8,9 @@ frames. The device drains each without a response, the erase attempts leave
 the page intact, the monitor decodes them as unknown with empty data fields,
 and the checker counts them as unsupported: the in-scope opcode sequence and
 the memory evidence exclude them, and ``CHK-SPI-UNSUPPORTED`` names exactly
-the opcodes seen and grades, from the monitor's MISO samples, that the
-response lane held its level through each of those frames.
+the opcodes seen and grades, from the monitor's samples, that the device's
+MISO drive enable stayed low and the response lane held its level through
+each of those frames.
 """
 
 from __future__ import annotations

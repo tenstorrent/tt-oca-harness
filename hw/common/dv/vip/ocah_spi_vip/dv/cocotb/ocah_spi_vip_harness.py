@@ -3,7 +3,8 @@
 """Shared setup for the SPI VIP wire-harness selftests.
 
 One single-SPI connection exists in ``tb_top.sv`` (``spi_cs_n``, ``spi_sclk``,
-``spi_mosi``, ``spi_miso``). The shared controller engine
+``spi_mosi``, ``spi_miso``, and ``spi_miso_oe``, the device's MISO drive
+enable that the monitor taps). The shared controller engine
 (``OcahSpiMasterBfm`` behind ``OcahSpiMasterSequence``) drives chip-select,
 clock, and MOSI and samples MISO; the shared flash device (``OcahSpiFlash``)
 samples the same nets and drives MISO. ``OcahSpiMonitor`` listens on the
@@ -118,6 +119,7 @@ async def build_stack(
         dut.spi_sclk,
         mosi=dut.spi_mosi,
         miso=dut.spi_miso,
+        miso_oe=dut.spi_miso_oe,
         name="harness_flash",
         jedec_id=JEDEC_ID,
         flash_size=FLASH_SIZE,
@@ -131,7 +133,12 @@ async def build_stack(
     )
     bfm.init_signals()
     monitor = OcahSpiMonitor(
-        dut.spi_cs_n, dut.spi_sclk, mosi=dut.spi_mosi, miso=dut.spi_miso, name="harness_monitor"
+        dut.spi_cs_n,
+        dut.spi_sclk,
+        mosi=dut.spi_mosi,
+        miso=dut.spi_miso,
+        miso_oe=dut.spi_miso_oe,
+        name="harness_monitor",
     )
     checker = OcahSpiFlashChecker(
         name="ocah_spi_harness", flash=flash, required_ids=required_ids, logger=log

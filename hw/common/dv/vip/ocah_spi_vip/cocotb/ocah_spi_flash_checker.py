@@ -7,7 +7,14 @@ from the commands the device recorded on the wire: an accepted PAGE PROGRAM
 clears bits inside one page, an accepted SECTOR ERASE returns one 4 KiB sector
 to 0xFF, WRITE ENABLE and WRITE DISABLE move the latch, and a program or erase
 consumes it. The model never reads the device's array, so a device that stores
-or streams the wrong bytes disagrees with it.
+or streams the wrong bytes disagrees with it. The model takes each address and
+payload as the device recorded it: ``CHK-SPI-MEM-GOLDEN`` and
+``CHK-SPI-READ-DATA`` grade the device's storage against its own record, not
+against what the controller meant to send. A "stored what was sent" claim
+needs ``check_memory(source=...)`` (``CHK-SPI-MEM-SOURCE``) or an independent
+payload check. The records carry no controller output enable; that bits
+reached the pads is the ``oe_data`` check of an ``OcahSpiMonitor`` bound with
+``sd_out`` and ``sd_oe``, stopped before the verdict.
 
 ``OcahSpiFlashChecker`` replays the device records through the model and
 emits one ``CHK-SPI-*`` record per rule through ``ocah_checker.OcahChecker``:
@@ -49,7 +56,10 @@ command byte (``opcode`` -1) is not an opcode: it fails
 the shape rules also compare that count with the command's length at its lane
 widths, so a device that accepts a frame with extra clocks fails them.
 ``finalize()`` prints the opcode tally and fails on any failed
-or missing record. The checker has no SV-UVM twin: the package ships the
+or missing record. A per-record rule writes no record for a frame it cannot
+judge (no JEDEC ID configured, or a response frame with no complete output
+byte), so a caller that relies on a rule lists its identifier in
+``required_ids``. The checker has no SV-UVM twin: the package ships the
 cocotb realization only.
 """
 
@@ -399,11 +409,16 @@ class OcahSpiFlashChecker:
         sent = [rec.data_out for rec in self.records if rec.opcode == int(opcode)]
         received = [bytes(item) for item in observed]
         label = f"{opcode_name(int(opcode))} frames={len(sent)} host_frames={len(received)}"
-        if not received:
+        compared = sum(len(item) for item in received)
+        if not received or not compared:
             return self.expect_true(
-                resolved, False, context=f"{label} no host observation {context}"
+                resolved,
+                False,
+                context=f"{label} host_bytes={compared} no host byte to compare {context}",
             )
-        return self.expect_equal(resolved, received, sent, context=f"{label} {context}")
+        return self.expect_equal(
+            resolved, received, sent, context=f"{label} host_bytes={compared} {context}"
+        )
 
     def check_ledger(
         self,
@@ -438,6 +453,12 @@ class OcahSpiFlashChecker:
             (i for i, (got, want) in enumerate(zip(device, wire)) if got != want),
             min(len(device), len(wire)),
         )
+        if not wire:
+            return self.expect_true(
+                "CHK-SPI-LEDGER",
+                False,
+                context=f"device_frames={len(device)} monitor_frames=0 no frame {context}",
+            )
         return self.expect_equal(
             "CHK-SPI-LEDGER",
             device,
@@ -532,11 +553,15 @@ class OcahSpiFlashChecker:
     ) -> bool:
         """The out-of-scope opcodes seen are exactly ``expected`` and drew no response.
 
-        ``frames`` are the monitor's frames of the same bus. The device drew
-        no response when, in the monitor frame of each out-of-scope opcode,
-        the response lane resolved and held its level from the chip-select
-        fall at every sample edge: what the controller sampled, not the
-        device's own record.
+        ``frames`` are the monitor's frames of the same bus, with the
+        device's MISO drive enable tapped (``miso_oe``). The device drew no
+        response when, in the monitor frame of each out-of-scope opcode, its
+        drive enable was low at every sample edge and the response lane
+        resolved and held its level from the chip-select fall: what the wire
+        showed, not the device's own record. A response that streams the idle
+        level still raises the drive enable, so it fails. Frames without the
+        drive-enable tap fail: the line level alone cannot tell silence from
+        such a response.
         """
         seen = sorted(rec.opcode for rec in self.unsupported)
         wanted = sorted(int(op) & 0xFF for op in expected)
@@ -551,8 +576,11 @@ class OcahSpiFlashChecker:
             for frame in on_wire
             if frame["miso_idle"] is None
             or any(level != frame["miso_idle"] for level in frame["miso_raw"])
+            or len(frame["miso_oe_raw"]) != len(frame["miso_raw"])
+            or any(enable != 0 for enable in frame["miso_oe_raw"])
         ]
         samples = sum(len(frame["miso_raw"]) for frame in on_wire)
+        enable_samples = sum(len(frame["miso_oe_raw"]) for frame in on_wire)
         silent = len(on_wire) == len(seen) and samples > 0 and not driven
         return self.expect_true(
             "CHK-SPI-UNSUPPORTED",
@@ -560,7 +588,8 @@ class OcahSpiFlashChecker:
             context=(
                 f"seen={[f'0x{op:02x}' for op in seen]} "
                 f"expected={[f'0x{op:02x}' for op in wanted]} refused={refused} "
-                f"wire_frames={len(on_wire)} miso_samples={samples} driven={driven} {context}"
+                f"wire_frames={len(on_wire)} miso_samples={samples} "
+                f"drive_enable_samples={enable_samples} driven={driven} {context}"
             ),
         )
 

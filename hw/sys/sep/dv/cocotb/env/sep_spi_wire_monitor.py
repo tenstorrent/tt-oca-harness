@@ -16,11 +16,14 @@ violation (SCK off its CPOL level at a chip-select edge or while chip select is
 high, a driven lane changing on a sample edge or before the next shift edge,
 X/Z, a data lane output enable on while chip select is high or in a pattern
 other than none, lane 0, lanes 1:0 or lanes 3:0, the chip-select or clock
-output enable off while chip select is low; the rules of
+output enable off while chip select is low, a command, address or program
+payload bit sampled with its lane output enable off; the rules of
 doc/integrator/src/smu-sep.adoc, "SEP SPI Host Pin Assignment", where the
-last one is derived: an undriven SPI.CS sits at the pad pull, so a low chip
-select and its clock edges reach the device only while driven). It
-then fails a mode the leaf lists with no graded frame, and logs::
+chip-select and clock enable rule is derived: an undriven SPI.CS sits at the
+pad pull, so a low chip select and its clock edges reach the device only
+while driven), when chip select is still low, or when it saw no frame. It
+then fails an empty mode list and a mode the leaf lists with no graded
+frame, and logs::
 
     CHK-SPI-WIRE PASS seed=<n> frames=<n> per_mode=<mode>:<frames>,...
 
@@ -86,8 +89,14 @@ class SepSpiWireMonitor:
         await self.monitor.stop()
         per_mode = ",".join(f"{p}{h}:{n}" for (p, h), n in sorted(self.tally.items()))
         line = f"seed={seed} frames={sum(self.tally.values())} per_mode={per_mode or '-'}"
+        programmed = {(p & 1, h & 1) for p, h in modes}
+        if not programmed or not sum(self.tally.values()):
+            raise AssertionError(
+                f"CHK-SPI-WIRE FAIL {line} programmed_modes={sorted(programmed)}: "
+                "no mode or no frame to grade"
+            )
         graded = {mode for mode, count in self.tally.items() if count}
-        ungraded = sorted({(p & 1, h & 1) for p, h in modes} - graded)
+        ungraded = sorted(programmed - graded)
         if ungraded:
             raise AssertionError(
                 f"CHK-SPI-WIRE FAIL {line} programmed_modes_without_frames={ungraded}"

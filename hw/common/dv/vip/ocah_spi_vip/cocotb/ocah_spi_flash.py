@@ -194,6 +194,12 @@ class OcahSpiFlash:
 
     The protocol engine is built on cocotb triggers alone.
 
+    The device takes no controller output enable: it samples MOSI/DQ as it
+    finds it, so ``data_in`` and the programmed memory show what the
+    controller core shifted, not that it reached the pads. That proof is the
+    ``oe_data`` wire check of an ``OcahSpiMonitor`` bound with ``sd_out`` and
+    ``sd_oe`` over the same frames and stopped before the verdict.
+
     Parameters
     ----------
     cs_n : cocotb handle
@@ -206,6 +212,11 @@ class OcahSpiFlash:
     miso : cocotb handle, optional
         Master-in slave-out (DQ1 output from flash to controller).  Required
         for ``mode="single"``.
+    miso_oe : cocotb handle, optional
+        Device-side MISO drive enable (``mode="single"``): high from the
+        first response bit the device drives until chip select rises, low
+        otherwise. A monitor tap of it shows whether the device answered a
+        frame, whatever level it drove.
     dq_out : cocotb handle, optional
         Multi-bit output from controller to flash (DQ bus, driven by DUT).
         Used for quad/octal modes.
@@ -241,6 +252,7 @@ class OcahSpiFlash:
         miso=None,
         dq_out=None,
         dq_in=None,
+        miso_oe=None,
         name: str = "OcahSpiFlash",
         mode: str = "single",
         jedec_id: int = 0x20BA18,
@@ -257,6 +269,7 @@ class OcahSpiFlash:
         self._sclk = sclk
         self._mosi = mosi
         self._miso = miso
+        self._miso_oe = miso_oe
         self._dq_out = dq_out
         self._dq_in = dq_in
 
@@ -350,10 +363,10 @@ class OcahSpiFlash:
         if preload_env:
             try:
                 self.preload(preload_env)
-            except Exception as exc:  # noqa: BLE001
-                self.log.warning(
-                    "%s: +spi_flash_preload=%s failed: %s", self.name, preload_env, exc
-                )
+            except Exception as exc:
+                raise OcahSpiFlashError(
+                    f"{self.name}: +spi_flash_preload={preload_env} failed: {exc}"
+                ) from exc
 
     # ------------------------------------------------------------------
     # Public configuration API
@@ -433,6 +446,8 @@ class OcahSpiFlash:
         if self._mode == SpiMode.SINGLE:
             if self._miso is not None:
                 self._miso.value = 0
+            if self._miso_oe is not None:
+                self._miso_oe.value = 0
         else:
             if self._dq_in is not None:
                 self._dq_in.value = 0
@@ -529,6 +544,9 @@ class OcahSpiFlash:
                 self.log.error("%s: exception in transaction handler: %s", self.name, exc)
                 if self._engine_error is None:
                     self._engine_error = exc
+            finally:
+                if self._miso_oe is not None:
+                    self._miso_oe.value = 0
 
     async def _handle_transaction(self) -> None:
         """Handle a single SPI transaction (CS low to CS high)."""
@@ -801,6 +819,8 @@ class OcahSpiFlash:
             bit = (byte_val >> bit_idx) & 0x1
             if self._mode == SpiMode.SINGLE:
                 self._miso.value = bit
+                if self._miso_oe is not None:
+                    self._miso_oe.value = 1
             elif self._mode == SpiMode.QUAD_IO:
                 self._dq_in.value = bit << 1  # standard mode: lane 1 to the controller
             else:
