@@ -766,6 +766,8 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
         await FallingEdge(dut.clk_i)
         stop[0] = True
         await task
+        # The sampler ends in ReadOnly; leave it before the caller drives a pin.
+        await FallingEdge(dut.clk_i)
         return samples, released
 
     async def _trst_leg(self) -> None:
