@@ -105,6 +105,11 @@ OP_CAP = 400_000
 TRIAL_REPEATS = 4
 STATUS_AGREE_READS = 64
 WORD_POOL = 20_000
+# Pool-path settle: no stream-2 transfer (port or post-mux) and no pool EDN
+# acknowledge for this many clocks before a graded STATUS read. A pool word takes
+# about 4 clocks from the adapter to the pool (stage FIFO, endpoint, EDN handshake);
+# the window is 16 x that. A word that lands later shows as a level mismatch.
+POOL_QUIET = 64
 
 
 def _le_words(data: bytes) -> list[int]:
@@ -246,6 +251,8 @@ class _Trace:
         self.recording = False
         self.ext_xfers = [0, 0, 0]
         self.stall = [0, 0, 0]
+        # Clocks since the last stream-2 transfer or pool EDN acknowledge.
+        self.pool_quiet = 0
         self.life = MonitorLife("EXT-SINK-RESET-TRACE", lambda: self.clk)
 
     def start(self) -> "_Trace":
@@ -284,6 +291,12 @@ class _Trace:
                     self.stall[i] += 1
                 else:
                     self.stall[i] = 0
+            pool_event = (
+                (_bit(ev, 2) == 1 and _bit(er, 2) == 1)
+                or (_known(d.axis2_tvalid_o) == 1 and _known(d.axis2_tready_o) == 1)
+                or _known(d.pool_edn_ack_o) != 0
+            )
+            self.pool_quiet = 0 if pool_event else self.pool_quiet + 1
             if self.recording:
                 self.rows.append(
                     Row(
@@ -429,6 +442,11 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         await RisingEdge(dut.clk_i)
 
     async def _status_settled(self) -> int:
+        """STATUS after the pool path is quiet (``POOL_QUIET`` clocks with no stream-2
+        transfer and no pool acknowledge, bound ``SETTLE_CAP``), then until two
+        consecutive reads agree. A path that never goes quiet leaves the last level to
+        the caller's compare."""
+        await self._until(lambda: self.trace.pool_quiet >= POOL_QUIET, SETTLE_CAP)
         prev = -1
         for _ in range(STATUS_AGREE_READS):
             lvl = pool_level(await self.pool.status())

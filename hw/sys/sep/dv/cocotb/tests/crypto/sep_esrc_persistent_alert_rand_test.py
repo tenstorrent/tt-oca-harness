@@ -32,8 +32,12 @@ threshold, and the masks and the permutation of ``balanced``.
 Checkers:
   CHK-PF-RESET    ALERT_THRESHOLD reads 0x4 after a TRNG reset that follows a
                   write of 7. Control: it read 7 before the reset.
-  CHK-PF-TRIP     T_d: after a burst of T + 1 windows, ALERT = PF = 1 and
-                  ANY_FAIL_COUNT >= T at the first poll with ALERT = 1.
+  CHK-PF-TRIP     T_d: stuck noise until ALERT reads 1, at most T + 1 windows
+                  of words plus one window: ALERT = PF = 1 and ANY_FAIL_COUNT
+                  reads exactly T at the first poll with ALERT = 1, so a trip
+                  one window early or late fails. The polls are back to back,
+                  a few clocks apart, and a window is at least 256 strobes, so
+                  the count cannot move between the trip and that read.
                   Control: the trip at T = 3.
   CHK-PF-NOTRIP   a burst of T - 2 windows: ALERT = PF = 0 at every poll;
                   ANY_FAIL_COUNT reads 0 within two clean windows. Control: the
@@ -50,7 +54,7 @@ Checkers:
                   (BOOT_PHASE_DONE = 1, LEVEL rises); the reset clears both bits.
                   Control: both bits read 1 before the clear and the reset.
 The burst of exactly T windows is logged as ``OBS-PF`` only; vector bit 15 of
-``sep_internal_interrupts_probe_o`` is logged as ``OBS-pic16``.
+``sep_internal_interrupts_probe_o`` is logged as ``OBS-PIC16``.
 """
 
 from __future__ import annotations
@@ -103,7 +107,6 @@ WINDOWS = (256, 512)
 GAPS = (2, 3, 4)
 DISABLE_WINDOWS = 10
 STREAM_STROBES = 24  # three digests of 8 words (architecture.adoc:142)
-ALERT_EXTRA_WINDOWS = 3  # alert wait after the T + 1 burst, in whole windows
 
 
 def _fm(reg: str, field: str) -> tuple[int, int]:
@@ -404,9 +407,11 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
 
     # --- noise schedule ----------------------------------------------------------------
     async def _schedule(self, segs: list[tuple[list, int]], win: int) -> None:
+        """Drive each segment for its words; then ``balanced`` from the next strobe."""
         for pats, words in segs:
             self.noise.set_lanes(pats)
             await self.noise.wait_words(words, self._word_bound(words, win))
+        self.noise.set_lanes(list(self.plan.balanced))
 
     def _burst_segs(self, windows: int, win: int, tail_words: int = 0) -> list[tuple[list, int]]:
         segs = [(STUCK0, windows * win), (STUCK1, 1)]
@@ -479,13 +484,17 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         }
 
     async def _trip(self, thr: int, win: int) -> dict:
-        """Stuck0 for at least T + 1 windows and until ALERT reads 1; then clean noise."""
+        """Stuck0 for at least T + 1 windows and until ALERT reads 1; then clean noise.
+
+        The first window of the burst can be partial, so T whole failing windows end
+        within T + 1 windows of words; the bound adds one window.
+        """
         self.noise.byte_check(True)
         c0, mm0 = self.noise.byte_control()
         self.noise.set_lanes(STUCK0)
         m = self.noise.mark()
         min_words = (thr + 1) * win
-        bound = self._word_bound(min_words + ALERT_EXTRA_WINDOWS * win, win)
+        bound = self._word_bound(min_words, win)
         t0 = self._now()
         any_fail = None
         alert_word = None
@@ -531,13 +540,14 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         await self._wr(ESRC_ALERT_THRESHOLD, ENTROPY_SOURCE.value("ALERT_THRESHOLD", THRESHOLD=7))
         before = await self._rd(ESRC_ALERT_THRESHOLD)
         self.chk.ctrl("PF-RESET", before & THR_FIELDS == 7, before=f"0x{before & THR_FIELDS:x}")
-        open_graded_window(TEST, self.logger)
         try:
             await self._trng_reset()
         except TrialTimeout as exc:
-            close_graded_window(self.logger)
             self.chk.ok("PF-RESET", False, reason=f"timeout:{exc.what}", bound=exc.bound)
             return
+        # The graded window opens after the reset: the stored 7 of the control write
+        # is never sampled; the stored-value sample and this read see the reset value.
+        open_graded_window(TEST, self.logger)
         after = await self._rd(ESRC_ALERT_THRESHOLD)
         close_graded_window(self.logger)
         self.chk.ok(
@@ -621,7 +631,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         res = await self._trip(thr, win)
         pic = self._pic16()
-        self.chk.obs("pic16", value=pic, thr=thr)
+        self.chk.obs("PIC16", value=pic, thr=thr)
         if not res["alert"]:
             close_graded_window(self.logger)
             self.chk.ok("PF-HALT", False, thr=thr, reason="timeout:alert", bound=res["bound"])
@@ -872,6 +882,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             "win": plan.window[plan.t_d],
             "failing_windows": res.get("failing_windows"),
             "any_fail": any_fail,
+            "expect_any_fail": plan.t_d,
+            "alert_at_word": res.get("alert_at_word"),
             "alert": res.get("alert"),
             "pf": res.get("pf"),
             "ctrl_thr3_trip": int(ctrl_ok),
@@ -881,10 +893,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             fields["bound"] = res.get("bound")
         self.chk.ok(
             "PF-TRIP",
-            bool(res.get("alert"))
-            and bool(res.get("pf"))
-            and any_fail is not None
-            and any_fail >= plan.t_d,
+            bool(res.get("alert")) and bool(res.get("pf")) and any_fail == plan.t_d,
             **fields,
         )
         d = self.disable_result or {}

@@ -37,7 +37,8 @@ Checkers:
                  ``HW_CMD_STS`` read with ``BOOT_MODE`` = 1 has ``AUTO_MODE`` = 0,
                  within 16 x the reference boot time t0.
   CHK-EDN-SW-HS  ``CMD_REG_RDY`` and ``CMD_RDY`` 1 before the command; ``CMD_ACK``
-                 and ``CMD_RDY`` 1 after it; ``edn_cmd_req_done`` 1; vector bit 27 1.
+                 and ``CMD_RDY`` 1 after it; ``edn_cmd_req_done`` and vector bit 27
+                 read 0 before the command, and 1 (a rise of bit 27) after it.
   CHK-EDN-INVSEQ the second instantiate through EDN sets CSRNG bit 14 and a write
                  of 0 clears it. Control: bit 14 reads 0 after the first command.
   CHK-CSRNG-SW   the same handshake for the CSRNG software instance (vector bit
@@ -234,9 +235,8 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         return samples[-1][0] - t0, samples[-1][1]
 
     async def _wait_vec(self, mark, bit: str, bound: int) -> int:
-        """Clocks from ``mark`` to the first sample of the vector bit at 1."""
-        if self.vec.level(bit) == 1:
-            return 0
+        """Clocks from ``mark`` to the first rise of the vector bit after it. The caller
+        reads the bit as 0 at the mark, so only a 0 -> 1 change counts."""
         rise = await self.vec.wait_rise(mark, bound, bit)
         return rise - mark.clk
 
@@ -336,6 +336,11 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         rdy_mask = ED_STS_REG_RDY | ED_STS_RDY
         hs = {"cmd_reg_rdy": 0, "cmd_rdy": 0, "ack_done": 0, "rdy_done": 0, "edn_done": 0}
         hs.update({"enable": enable, "vec27": 0})
+        # Before the command: edn_cmd_req_done (W1C) and vector bit 27 read 0, so the
+        # rise after the command is a change the command causes.
+        await r._wr(EDN_INTR_STATE, ED_DONE)
+        hs["edn_done_pre0"] = int(not await r._rd(EDN_INTR_STATE) & ED_DONE)
+        hs["vec27_pre0"] = int(self.vec.level("edn_done") == 0)
         reason = ""
         t_cmd = None
         try:
@@ -343,6 +348,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             hs["cmd_reg_rdy"] = int(bool(pre & ED_STS_REG_RDY))
             hs["cmd_rdy"] = int(bool(pre & ED_STS_RDY))
             t_wr = self._now()
+            m = self.vec.mark()
             await r._wr(EDN_SW_CMD_REQ, CMD_INSTANTIATE)
             ack0 = await r._rd(EDN_SW_CMD_STS)
             self.chk.obs("EDN-ACK0", ack_first_read=int(bool(ack0 & ED_STS_ACK)))
@@ -351,7 +357,6 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             t_cmd = max(self._now() - t_wr, 1)
             hs["ack_done"] = int(bool(done & ED_STS_ACK))
             hs["rdy_done"] = int(bool(done & ED_STS_RDY))
-            m = self.vec.mark()
             state = await r._rd(EDN_INTR_STATE)
             hs["edn_done"] = int(bool(state & ED_DONE))
             vclk = await self._wait_vec(m, "edn_done", VEC_CAP)
@@ -380,6 +385,8 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                     "edn_done",
                     "enable",
                     "vec27",
+                    "edn_done_pre0",
+                    "vec27_pre0",
                 )
             ),
             **hs,
@@ -441,6 +448,11 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         await r._wr(CSRNG_INTR_ENABLE, CS_DONE)
         enable = int(bool(await r._rd(CSRNG_INTR_ENABLE) & CS_DONE))
         hs = {"cmd_rdy": 0, "ack": 0, "rdy_done": 0, "done": 0, "enable": enable, "vec23": 0}
+        # Before the command: cs_cmd_req_done (W1C) and vector bit 23 read 0, so the
+        # rise after the command is a change the command causes.
+        await r._wr(CSRNG_INTR_STATE, CS_DONE)
+        hs["done_pre0"] = int(not await r._rd(CSRNG_INTR_STATE) & CS_DONE)
+        hs["vec23_pre0"] = int(self.vec.level("cs_done") == 0)
         reason = ""
         first = 1
         invseq = 0
@@ -449,6 +461,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             _, pre = await self._wait(CSRNG_SW_CMD_STS, CS_STS_RDY, CS_STS_RDY, FIRST_CAP, "rdy")
             hs["cmd_rdy"] = int(bool(pre & CS_STS_RDY))
             t_wr = self._now()
+            m = self.vec.mark()
             await r._wr(CSRNG_CMD_REQ, CMD_INSTANTIATE)
             ack0 = await r._rd(CSRNG_SW_CMD_STS)
             self.chk.obs("CSRNG-ACK0", ack_first_read=int(bool(ack0 & CS_STS_ACK)))
@@ -457,7 +470,6 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             t_cmd = max(self._now() - t_wr, 1)
             hs["ack"] = int(bool(done & CS_STS_ACK))
             hs["rdy_done"] = int(bool(done & CS_STS_RDY))
-            m = self.vec.mark()
             state = await r._rd(CSRNG_INTR_STATE)
             hs["done"] = int(bool(state & CS_DONE))
             hs["vec_clk"] = await self._wait_vec(m, "cs_done", VEC_CAP)
@@ -490,6 +502,17 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         if reason:
             hs["reason"] = reason
         ok = not reason and all(
-            hs[k] == 1 for k in ("cmd_rdy", "ack", "rdy_done", "done", "enable", "vec23", "invseq")
+            hs[k] == 1
+            for k in (
+                "cmd_rdy",
+                "ack",
+                "rdy_done",
+                "done",
+                "enable",
+                "vec23",
+                "invseq",
+                "done_pre0",
+                "vec23_pre0",
+            )
         )
         self.chk.ok("CSRNG-SW", ok and first == 0 and cleared == 1, **hs)

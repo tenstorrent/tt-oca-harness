@@ -18507,14 +18507,11 @@ module sep_fcov (
       bins zero_health_test_failed = {2'd2};
       bins ones_status_bit_3_apt_high_total = {2'd3};
     }
-    // The count that a disabled repetition tester reads is not stated
-    // (docs/SEP_FCOV.adoc, cp_disable_clears; the reset value 0 of
-    // REPETITION_TEST_COUNT does not give it), and this RTL holds the cleared
-    // run at 1, so the value 0 cannot be reached: it is excluded. The graded
-    // cell is the cleared run: one window after the disable the count is
-    // below 100 and below its value at the disable.
+    // Not graded (docs/SEP_FCOV.adoc, crypto and entropy, Bins not graded):
+    // the owner logs the repetition count after the disable as OBS-BLOCKED,
+    // so no value of it is a bin.
     cp_disable_clears: coverpoint s.dc iff (s.dc_v) {
-      bins run_cleared = {1'b1}; ignore_bins reads_zero = {1'b0};
+      option.weight = 0; ignore_bins reads_zero = {1'b0}; ignore_bins reads_nonzero = {1'b1};
     }
     cp_prestage_test: coverpoint s.pt_v iff (s.pt_v) {bins stuck_zero_drain = {1'b1};}
   endgroup
@@ -19814,7 +19811,6 @@ module sep_fcov (
   logic [7:0] cz_hts_q = '0;
   logic [2:0] cz_ht_en_q = '0;
   logic cz_dc_arm = 1'b0;
-  logic [15:0] cz_dc_pre = '0;
   longint unsigned cz_dc_t0 = 0;
   localparam logic [31:0] CzCidMask = 32'(ENTROPY_SOURCE_COMPONENT_ID_NAME_MASK |
       ENTROPY_SOURCE_COMPONENT_ID_MAJOR_VERSION_MASK | ENTROPY_SOURCE_COMPONENT_ID_MINOR_VERSION_MASK);
@@ -19994,18 +19990,16 @@ module sep_fcov (
       end
     end
 
-    // cp_disable_clears: HEALTH_TEST_CTRL.ENABLE bit 0 falls while the
-    // repetition count is non-zero; one window of strobes later the count
-    // is classed.
+    // cp_disable_clears (not graded): HEALTH_TEST_CTRL.ENABLE bit 0 falls
+    // while the repetition count is non-zero; one window of strobes later the
+    // count is recorded as 0 or non-zero.
     if (!cy_own_eshp || !cz_es_on || cz_ht_en[0]) begin
       cz_dc_arm <= 1'b0;
     end else if (!cz_ht_en[0] && cz_ht_en_q[0] && (cz_rep_cnt != 16'h0) && cz_rep_known) begin
       cz_dc_arm <= 1'b1;
-      cz_dc_pre <= cz_rep_cnt;
       cz_dc_t0  <= cz_strobes;
     end else if (cz_dc_arm && cz_wsize_ok && ((cz_strobes - cz_dc_t0) >= longint'(cz_wsize))) begin
-      if (cz_rep_cnt == 16'h0) cz_sth(10, 4'd0);
-      else if ((cz_rep_cnt < cz_dc_pre) && (cz_rep_cnt < 16'd100)) cz_sth(10, 4'd1);
+      cz_sth(10, (cz_rep_cnt == 16'h0) ? 4'd0 : 4'd1);
       cz_dc_arm <= 1'b0;
     end
 

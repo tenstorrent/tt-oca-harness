@@ -53,8 +53,12 @@ Checkers:
                     fall reads 0 at once, and BOOT_PHASE_DONE returns to 1.
                     Control: REPCNT_TOTAL_FAILS read non-zero before.
   CHK-BOOT-TOGGLE   per drawn moment (boot, after_boot, bad_pattern): IDLE = 1
-                    after the fall; after the rise BOOT_PHASE_DONE = 1 and every
-                    counter that read non-zero before the fall reads 0.
+                    after the fall; after the rise every counter that read
+                    non-zero before the fall reads 0 at once, and
+                    BOOT_PHASE_DONE returns to 1. Failures after the rise count
+                    again by contract (stuck samples still in the pipeline at
+                    the bad_pattern moment), so the counters at BOOT_PHASE_DONE
+                    are logged as OBS-BOOT-COUNTERS only.
                     Control: IDLE 0 before the fall; the boot moment reads
                     BOOT_PHASE_DONE 0 last; bad_pattern reads REPCNT above 0.
 Every bound is a multiple of a clean time of the same seed and is logged.
@@ -699,10 +703,16 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         # MODULE_ENABLE = 0: the immediate change returns every lane to balanced.
         self.noise.set_lanes(list(plan.balanced), immediate=True)
         await self._enable(1)
+        # REPCNT_TOTAL_FAILS is read first, before the first strobe after the rise;
+        # the window counters fail only at a window end, a whole window later.
+        after = await self._totals()
         done_ok, _ = await self._wait_done(done_bound)
         if not done_ok and not reason:
             reason = f"timeout:boot_done_again bound={done_bound}"
-        after = await self._totals()
+        at_done = await self._totals()
+        self.chk.obs(
+            "BOOT-COUNTERS", leg=f"toggle_{moment}", at_boot_done=self._fmt_totals(at_done)
+        )
         self._bytes_end(f"toggle_{moment}", base)
         nonzero = [k for k, _ in TOTALS if before and before[k] and after[k]]
         fields = {

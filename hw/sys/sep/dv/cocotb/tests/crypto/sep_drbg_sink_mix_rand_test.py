@@ -90,7 +90,13 @@ OTHERS = SINKS[1:]
 CLIENT_BIT = {"aes": 0, "kmac": 1, "otbn_rnd": 2, "otbn_urnd": 3}
 # Engines of SW_RESET_N per sink; the pool and the sampler have none here.
 ENGINE = {"aes": "aes", "kmac": "kmac", "otbn_rnd": "otbn", "otbn_urnd": "otbn"}
-ALL_ENGINES = ("otbn", "aes", "hmac", "kmac", "abr")
+# Engines the leaf may park: the Key Manager firmware writes ABR registers at boot
+# (``hw/ip/key_manager/approm/prod/drivers/rom_boot.c``, the ML-KEM shared-key IRQ
+# enable), and an access to a domain held in reset completes with SLVERR
+# (``hw/sys/sep/doc/reset_controller.adoc``, Isolation and Reset Sequencing), which the
+# firmware reports as an unrecoverable fault instead of RESP_KM_READY. ABR stays
+# released in both runs.
+PARKABLE = ("otbn", "aes", "hmac", "kmac")
 CSR_RND = 0xFC0
 CSR_URND = 0xFC1
 # Key Manager key size of one generate (8 words; ``key_generate`` takes size - 1).
@@ -335,7 +341,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD: KM reads OTP at boot
         self.write_efuse_image(image)
         engines = {ENGINE[s] for s in plan.sinks if s in ENGINE}
-        park = tuple(e for e in ALL_ENGINES if e not in engines)
+        park = tuple(e for e in PARKABLE if e not in engines)
         await self.bring_up_no_cpu(park=park)
         self.logger.info("PLAN seed=%d %s", seed, plan.describe())
         self.chk = SepChkLog(self, TEST, seed)
@@ -521,6 +527,8 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             res = results.get(unit, {})
             st = stat[s]
             done = unit not in errors and bool(res.get("done"))
+            # AES ciphertext and KMAC digests of the overlapped run equal their goldens.
+            golden_ok = unit not in ("aes", "kmac") or res.get("result==golden") == 1
             need = plan.counts["km"] if s == "km" else 1
             fields = {
                 "sink": s,
@@ -529,24 +537,25 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
                 "count": plan.counts[s],
                 "done": int(done),
             }
-            if "result==golden" in res:
-                fields["result==golden"] = res["result==golden"]
+            if unit in ("aes", "kmac"):
+                fields["result==golden"] = res.get("result==golden", "na")
             if unit in errors:
                 fields["reason"] = errors[unit]
-            self.chk.ok("MIX-SINK", done and st.acks >= need, **fields)
+            self.chk.ok("MIX-SINK", done and golden_ok and st.acks >= need, **fields)
         await self._end_run()
 
     # --- external Key Manager run --------------------------------------------------------
     async def _external_run(self) -> None:
         plan = self.plan
         dut = cocotb.top
-        # Second run of the same firmware: every engine held, only the KM released.
-        self._jtag_sw_rst_hold(ALL_ENGINES, True)
+        # Second run of the same firmware: every crypto sink engine held; the KM and
+        # ABR (which the KM boot writes) released.
+        self._jtag_sw_rst_hold(PARKABLE, True)
         await self.pulse_rst_ni()
         self.swrst.value = SW_RESET_N_RESET_DEFAULT
-        await self.swrst.park(*ALL_ENGINES)
+        await self.swrst.park(*PARKABLE)
         await ClockCycles(dut.clk_i, 2)
-        self._jtag_sw_rst_hold(ALL_ENGINES, False)
+        self._jtag_sw_rst_hold(PARKABLE, False)
         await self._boot()
         self.ext = SepExtTrngStream(dut, logger=self.logger).start(streams=(0,))
         self._wi = 0

@@ -96,6 +96,11 @@ TRNG_RESET_CAP = 4_000
 SETTLE_CAP = 20_000
 DRAIN_WINDOW = 4_000
 STATUS_AGREE_READS = 64
+# Pool-path settle: no stream-2 transfer (port or post-mux) and no pool EDN
+# acknowledge for this many clocks before a graded STATUS read. A pool word takes
+# about 4 clocks from the adapter to the pool (stage FIFO, endpoint, EDN handshake);
+# the window is 16 x that. A word that lands later shows as a level mismatch.
+POOL_QUIET = 64
 STREAMS = (0, 1, 2)
 
 
@@ -279,6 +284,8 @@ class _Trace:
         self.recording = False
         self.ext_xfers = [0, 0, 0]
         self.stall = [0, 0, 0]
+        # Clocks since the last stream-2 transfer or pool EDN acknowledge.
+        self.pool_quiet = 0
         self.life = MonitorLife("EXT-STREAM-TRACE", lambda: self.clk)
         d = dut
         self._post = (
@@ -321,6 +328,12 @@ class _Trace:
                     self.stall[i] += 1
                 else:
                     self.stall[i] = 0
+            pool_event = (
+                (_bit(ev, 2) == 1 and _bit(er, 2) == 1)
+                or (_known(d.axis2_tvalid_o) == 1 and _known(d.axis2_tready_o) == 1)
+                or _known(d.pool_edn_ack_o) != 0
+            )
+            self.pool_quiet = 0 if pool_event else self.pool_quiet + 1
             if not self.recording:
                 continue
             self.rows.append(
@@ -352,6 +365,15 @@ def ext_xfers(rows: list[Row], i: int) -> list[int | None]:
 def post_xfers(rows: list[Row], i: int) -> list[int | None]:
     """Words that complete at the post-mux probe of stream i."""
     return [r.pd[i] for r in rows if r.pv[i] == 1 and r.pr[i] == 1]
+
+
+def _final_stall(rows: list[Row], i: int, min_len: int) -> int | None:
+    """Index of the first row of the trailing run of rows where stream i has tvalid 1
+    and tready 0, or None when that run is shorter than ``min_len``."""
+    k = len(rows)
+    while k > 0 and _bit(rows[k - 1].ev, i) == 1 and _bit(rows[k - 1].er, i) == 0:
+        k -= 1
+    return k if len(rows) - k >= min_len else None
 
 
 # ----------------------------------------------------------------------------- leaf
@@ -487,14 +509,17 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         return n
 
     async def _status_settled(self) -> tuple[int, int]:
-        """STATUS until two consecutive reads agree. Returns (level, reads); reads is
-        -1 when no two consecutive reads agreed within the bound (the last level is
-        returned and the caller's compare grades it)."""
+        """STATUS after the pool path is quiet (``POOL_QUIET`` clocks with no stream-2
+        transfer and no pool acknowledge, bound ``SETTLE_CAP``), then until two
+        consecutive reads agree. Returns (level, reads); reads is -1 when the path
+        never went quiet or no two consecutive reads agreed within the bound (the last
+        level is returned and the caller's compare grades it)."""
+        quiet = await self._until(lambda: self.trace.pool_quiet >= POOL_QUIET, SETTLE_CAP)
         prev = -1
         for n in range(1, STATUS_AGREE_READS + 1):
             lvl = pool_level(await self.pool.status())
             if lvl == prev:
-                return lvl, n
+                return lvl, (n if quiet is not None else -1)
             prev = lvl
         return prev, -1
 
@@ -656,7 +681,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         reaches the post-mux probe and fifo_level does not change."""
         i = sp.stream
         sel = sp.s & ~sp.bit
-        lvl0 = pool_level(await self.pool.status()) if i == 2 else 0
+        lvl0 = (await self._status_settled())[0] if i == 2 else 0
         open_graded_window(TEST, self.logger)
         got = await self._sel(sel)
         self.trace.begin()
@@ -666,7 +691,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         rows = self.trace.end()
         close_graded_window(self.logger)
         await self._drop_source(i)
-        lvl1 = pool_level(await self.pool.status()) if i == 2 else 0
+        lvl1 = (await self._status_settled())[0] if i == 2 else 0
         tready_low = sum(1 for r in rows if _bit(r.er, i) != 1)
         post = post_xfers(rows, i)
         ctrl = self.xfer_seen.get(i, 0)
@@ -778,10 +803,11 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         )
         await self._drop_source(*STREAMS)
         for j in graded:
-            fall = next(
-                (k for k, r in enumerate(rows) if _bit(r.ev, j) == 1 and _bit(r.er, j) == 0),
-                None,
-            )
+            # The fall is the start of the stall that ends the leg: the last run of
+            # clocks with tvalid 1 and tready 0 that reaches the end of the record and
+            # lasts at least H clocks. Shorter stalls before it are the adapter staging
+            # FIFO filling faster than the sink drains it.
+            fall = _final_stall(rows, j, h)
             accepted = len(ext_xfers(rows[:fall] if fall is not None else rows, j))
             low = sum(1 for r in rows if _bit(r.ev, j) == 1 and _bit(r.er, j) == 0)
             first_ok = accepted >= 1
@@ -797,6 +823,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
                 "tready_low_cycles": low,
                 "accepted": accepted,
                 "ncal": accepted,
+                "final_stall_clk": len(rows) - fall if fall is not None else "na",
                 "rise_after_drain": rise[j],
             }
             if n is None:

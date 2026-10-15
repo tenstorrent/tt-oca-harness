@@ -660,12 +660,16 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         t0 = self._now()
         m = self.stream.mark()
         t_cap = 1024 * self.p
-        while self.stream.high_clocks_since(m) < T_REF_WORDS:
+        # The level read takes clocks, so the watcher has a sample after the mark at
+        # the first count.
+        while True:
             if self._now() - t0 > t_cap:
                 raise AssertionError(f"{TEST}: {T_REF_WORDS} stream words not seen bound={t_cap}")
             lvl = await self._level()
             for _ in range(lvl):
                 await self._rd("FIFO_RDATA")
+            if self.stream.high_clocks_since(m) >= T_REF_WORDS:
+                break
         t_ref = max(1, self._now() - t0)
         self.logger.info("T-REF clk=%d words=%d bound=%d", t_ref, T_REF_WORDS, t_cap)
         return t_ref

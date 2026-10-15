@@ -35,7 +35,8 @@ trials, the extra word count e (2 to 12) of each FIFO and the test data words.
 
 Checkers:
   CHK-DRBG-ERRCODE  the forced bit sets; the fatal state is 1 (CSRNG all, EDN 0 and 1)
-                    and reaches the vector bit. Control: ERR_CODE and state 0 before.
+                    and the vector bit reads 0 after the enable write and rises after
+                    the ERR_CODE_TEST write. Control: ERR_CODE and state 0 before.
   CHK-DRBG-ALERT    vector bit 32 is high for at least one clock after the write and
                     0 before it, for the fatal-alert sources.
   CHK-DRBG-STICKY   after a write-one clear of the state the source bit stays (all but
@@ -338,6 +339,9 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         await self._wr(unit.intr_enable, unit.fatal_bm)
         pre_alert_clocks = self.vec.high_clocks_since(m_watch, "alert")
         pre_level = self.vec.level("alert")
+        # The vector bit of the unit reads 0 with the fatal enable set and the state
+        # clear, so a rise after the forced error is a change the error causes.
+        vec_pre = self.vec.level(vec_key)
         m_err = self.vec.mark()
         await self._wr(unit.err_code_test, unit.block.value("ERR_CODE_TEST", ERR_CODE_TEST=bit))
         set_ok, err, bound = await self._wait_err_bit(unit, src)
@@ -345,6 +349,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         en = await self._rd(unit.intr_enable)
         fatal_state = int(bool(st & unit.fatal_bm))
         vec_level = self.vec.level(vec_key)
+        vec_rose = int(self.vec.rises_since(m_err, vec_key) >= 1)
         other = err & unit.err_mask & SOURCE_BITS & ~src
         typ = err & unit.err_mask & TYPE_BITS
 
@@ -367,11 +372,16 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             "fatal_state": fatal_state,
             "enable": int(bool(en & unit.fatal_bm)),
             "vec": vec_level,
+            "vec_pre": vec_pre,
+            "vec_rose": vec_rose,
             "state_graded": int(state_graded),
         }
         if not set_ok:
             fields["reason"] = f"timeout:err_code bound={bound}"
-        graded = set_ok and (not state_graded or (fatal_state == 1 and vec_level == 1))
+        graded = set_ok and (
+            not state_graded
+            or (fatal_state == 1 and vec_pre == 0 and vec_rose == 1 and vec_level == 1)
+        )
         self.chk.ok("DRBG-ERRCODE", graded, **fields)
 
         # Sticky leg (step 8).
