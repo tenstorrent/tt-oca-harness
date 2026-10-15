@@ -1208,7 +1208,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, ocah_spi_vip, SPI pad ports, lane and output-enable taps (approved)
-|Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. Each cell runs at a drawn lane width, and its Tx and Rx data are graded byte for byte on the lanes. Each cell has exactly the frames it registered, and each Rx segment delivers exactly its RXDATA words. The Tx data edge is not graded in the cell CPHA=1 with FULLCYC=1, because `spi_controller.adoc` (CONFIGOPTS) gives that cell a shift edge that differs from the general CPHA text; the CPHA=1 edge closes on a merge of regressions. At CPHA=0 and x1, x2 and x4 on every seed, an Rx segment from a late responder reads the seeded bytes with FULLCYC=1 and one beat late with FULLCYC=0 (control), so the FULLCYC sampling point is graded; at CPHA=1 it is not. CSNLEAD and CSNTRAIL are graded as minimum bounds and their excess is logged.
+|Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. Each cell runs at a drawn lane width, and its Tx and Rx data are graded byte for byte on the lanes. Each cell has exactly the frames it registered, and each Rx segment delivers exactly its RXDATA words. The Tx data edge is not graded in the cell CPHA=1 with FULLCYC=1, because `spi_controller.adoc` (CONFIGOPTS) gives that cell a shift edge that differs from the general CPHA text; the CPHA=1 edge closes on a merge of regressions. At CPHA=0 and x1, x2 and x4 on every seed, an Rx segment from a late responder reads the seeded bytes with FULLCYC=1 and one beat late with FULLCYC=0 (control), so the FULLCYC sampling point is graded; at CPHA=1 it is not. CSNLEAD, CSNTRAIL and CSNIDLE are graded as the minimum bounds the OpenTitan theory of operation states, and their margin is logged.
 |<<sep_spi_fifo_stall_watermark_rand_test,`sep_spi_fifo_stall_watermark_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
@@ -1233,7 +1233,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |-
 |-
-|States what the SPI tests grade at x1, x2 and x4 at the SEP boundary, and names the open items: the reset value of STATUS.BYTEORDER, the FIFO depths, the FULLCYC sampling point at CPHA=1 and exact CSNLEAD and CSNTRAIL values, and code coverage. Octal, DDR, DQS and SPI.DATA[4-7] are not functions of the SEP host and are outside the statement.
+|States what the SPI tests grade at x1, x2 and x4 at the SEP boundary, and names the open items: the reset value of STATUS.BYTEORDER, the FIFO depths, the FULLCYC sampling point at CPHA=1, and code coverage. Octal, DDR, DQS and SPI.DATA[4-7] are not functions of the SEP host and are outside the statement.
 |<<sep_dma_transfer_matrix_rand_test,`sep_dma_transfer_matrix_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense

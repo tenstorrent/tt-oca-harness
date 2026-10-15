@@ -49,8 +49,8 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
 * CHK-SPI-RATIO: period_a*(b+1) equals period_b*(a+1).
 * CHK-SPI-CSN: lead and trail of each graded transaction are at least
   (CSNLEAD+1) and (CSNTRAIL+1) times (CLKDIV+1) clocks, and the chip-select-high
-  gap at least max(CSNIDLE, 1) times (CLKDIV+1) (the register text gives the
-  idle minimum as CSNIDLE half cycles, one at 0). The chip-select and clock
+  gap at least (CSNIDLE+1) times (CLKDIV+1): the OpenTitan spi_host theory of
+  operation states all three as minimum bounds that FSM delays may exceed. The chip-select and clock
   output enables in the frames and the gap are logged (``OBS-SPI-CTRL-OE``).
   Control: the idle minimum is above g0 of the control pair.
   ``OBS-SPI-CSN-EXACT`` logs the lead and trail excess over each minimum
@@ -442,19 +442,18 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             [w.fmt() for w in cwins],
         )
 
-        # Raise CSNIDLE above the control gap. The register text gives the
-        # minimum as CSNIDLE half sck cycles and one half cycle at 0, so the
-        # bound that holds under that text is max(CSNIDLE, 1) half cycles.
+        # Raise CSNIDLE above the control gap. Chip select stays high for at
+        # least CSNIDLE+1 half sck cycles (spi_host theory of operation).
         idle = c.idle
-        if max(idle, 1) * half <= g0:
-            fits = [v for v in range(CSNIDLE_MAX + 1) if max(v, 1) * half > g0]
+        if (idle + 1) * half <= g0:
+            fits = [v for v in range(CSNIDLE_MAX + 1) if (v + 1) * half > g0]
             if not fits:
                 raise AssertionError(
                     f"CTRL-MISSING seed={seed} mode={c.mode} CHK-SPI-CSN: no CSNIDLE "
                     f"gives a minimum above control_gap={g0} at clkdiv={c.a}"
                 )
             idle = fits[0]
-        idle_min = max(idle, 1) * half
+        idle_min = (idle + 1) * half
         self.logger.info(
             "DRAW seed=%d mode=%s csnidle_drawn=%d csnidle_graded=%d min=%d control_gap=%d",
             seed,
@@ -560,10 +559,10 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         csn_fail = None
         if ok:
             self.logger.info("CHK-SPI-CSN PASS %s", line)
-            # The register text does not say whether CSNLEAD and CSNTRAIL are
-            # exact, nor whether the CSNIDLE minimum is CSNIDLE or CSNIDLE+1 half
-            # cycles, nor the chip-select and clock enables in these windows;
-            # each is logged, not graded.
+            # CSNLEAD, CSNTRAIL and CSNIDLE are minimum bounds that FSM delays
+            # may exceed (spi_host theory of operation); the excess is logged.
+            # No source states the chip-select and clock enables in these
+            # windows; they are logged, not graded.
             self.logger.info(
                 "OBS-SPI-CSN-EXACT seed=%d mode=%s clkdiv=%d half=%d lead_excess=%d,%d "
                 "trail_excess=%d,%d idle_gap=%d csnidle_plus_one=%d width=x%d",
