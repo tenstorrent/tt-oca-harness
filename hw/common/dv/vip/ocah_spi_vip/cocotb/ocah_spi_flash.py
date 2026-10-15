@@ -16,6 +16,16 @@ Supported commands
   0x04 — WRITE DISABLE
   0x02 — PAGE PROGRAM
   0x20 — SECTOR ERASE (4 KB)
+  0x3B — DUAL OUTPUT READ         (1-1-2, 8 dummy clocks)       mode "quad_io" only
+  0x6B — QUAD OUTPUT READ         (1-1-4, 8 dummy clocks)       mode "quad_io" only
+  0xBB — DUAL I/O READ            (1-2-2, 4 dummy clocks)       mode "quad_io" only
+  0xEB — QUAD I/O READ            (1-4-4, 6 dummy clocks)       mode "quad_io" only
+  0x32 — QUAD PAGE PROGRAM        (1-1-4)                       mode "quad_io" only
+
+The lane widths and dummy clocks come from ``command_format()``
+(``ocah_spi_types``). On a dual or quad phase the most significant bits go
+first, and the least significant bit of each pair or nibble is on lane 0. On
+the other bindings the five lane commands are refused as ``unknown_opcode``.
 
 Out of scope
 ------------
@@ -29,6 +39,8 @@ Mode mapping
   "single" — CS_N, SCK, MOSI (DQ0 out), MISO (DQ1 in)
   "quad"   — CS_N, SCK, DQ[3:0] bidirectional
   "octal"  — CS_N, SCK, DQ[7:0] bidirectional  (single-bit data timing; see below)
+  "quad_io" — CS_N, SCK, dq_out[3:0] and dq_in[3:0]; single-lane phases use
+             lane 0 from the controller and lane 1 to the controller
 
 The model is deterministic by default.  All memory is initialised to 0xFF
 (erased state).  The device is instant-ready: the BUSY bit of status register
@@ -36,31 +48,75 @@ The model is deterministic by default.  All memory is initialised to 0xFF
 
 Transaction records
 -------------------
-``get_transactions()`` returns one dict per chip-select frame::
+``get_transactions()`` returns one dict per chip-select frame, malformed
+frames included::
 
     {
-        "opcode":   int,    # command byte
-        "addr":     int,    # decoded address (0 when the command has none)
-        "data_out": bytes,  # bytes the device sent, complete bytes only
-        "data_in":  bytes,  # complete payload bytes the device received
-        "ok":       bool,   # True when the command was in scope and accepted
-        "reason":   str,    # "" | "wel_clear" | "partial_byte" | "unknown_opcode"
+        "opcode":     int,    # command byte; -1 when no complete byte arrived
+        "addr":       int,    # decoded address (0 when the command has none
+                              # or the address is incomplete)
+        "data_out":   bytes,  # bytes the device sent, complete bytes only
+        "data_in":    bytes,  # complete payload bytes the device received
+        "ok":         bool,   # True when the command was in scope and accepted
+        "reason":     str,    # see below; "" when accepted
+        "input_bits": int,    # controller-output bits sampled as input
+        "input_clocks": int,  # SCK clocks sampled as input (any lane width)
+        "tail_bits":  int,    # input bits after the last complete input byte
     }
 
-A PAGE PROGRAM or SECTOR ERASE issued with the write-enable latch clear is
-refused: the address is decoded and recorded, no payload is taken, memory is
-unchanged, and the record carries ``ok=False, reason="wel_clear"``.
+``input_clocks`` counts every clock the device sampled as controller input:
+the whole frame for a command without a response phase, and the command,
+address and dummy phases for one with a response phase. ``input_bits`` counts
+the bits those clocks carried; the dummy clocks of a dual or quad read carry
+none. On a single-lane frame the two counts are equal.
 
-Chip-select must rise on a byte boundary of a PAGE PROGRAM payload sent with
-the latch set. A frame that ends 1 to 7 bits into a payload byte is refused,
-also when a registered callback handles PAGE PROGRAM: the callback is not
-called, memory and the write-enable latch are unchanged, ``data_in`` holds the
-complete payload bytes, and the record carries
-``ok=False, reason="partial_byte"``. A frame refused for a clear latch is not
-graded for its byte boundary.
+Frame acceptance
+----------------
+The device takes the whole controller-output frame before it changes the
+write-enable latch or memory. A refused frame changes neither.
+
+=========================  ===================================================
+``reason``                 the frame
+=========================  ===================================================
+``"partial_opcode"``       ended 1 to 7 bits into the command byte
+``"partial_address"``      ended before the last address bit
+``"partial_dummy"``        a read with dummy clocks ended before the last one
+``"wel_clear"``            a program or SECTOR ERASE with the latch clear
+``"partial_byte"``         a program or a callback frame ended inside a
+                           payload byte
+``"no_payload"``           a program carried no payload byte
+``"unexpected_payload"``   WRITE ENABLE, WRITE DISABLE or SECTOR ERASE carried
+                           a bit after its last command or address bit
+``"unknown_opcode"``       command outside the supported set
+``"open_at_stop"``         still open (chip-select low) when ``stop()`` ran
+=========================  ===================================================
+
+WRITE ENABLE and WRITE DISABLE are exactly one command byte. SECTOR ERASE is
+one command byte and exactly ``addr_bytes`` address bytes. PAGE PROGRAM is one
+command byte, ``addr_bytes`` address bytes and at least one complete payload
+byte. A PAGE PROGRAM or SECTOR ERASE with the latch clear is refused as
+``wel_clear`` whatever its length: the address is decoded when complete, no
+payload is taken, and the frame is not graded for its shape.
+
+A registered callback runs only on a frame with a complete command byte,
+``addr_bytes`` complete address bytes and a payload that ends on a byte
+boundary. PAGE PROGRAM handled by a callback also keeps the write-enable gate
+and needs at least one payload byte.
+
+QUAD PAGE PROGRAM follows the PAGE PROGRAM rules with a four-lane payload.
+
+A read (READ, FAST READ, the dual and quad reads, JEDEC ID, status) is graded for its command, address
+and dummy phases only. Once the device drives its response, chip-select may
+rise at any bit: ``data_out`` holds the complete bytes sent and the frame is
+accepted.
 
 ``ok`` alone tells whether the device accepted a frame. ``data_in`` is what it
 received, also on a refused frame.
+
+An exception inside the protocol engine is logged and kept; ``stop()`` raises
+it, so a test that stops the device fails. A frame still open at ``stop()``
+is recorded as ``"open_at_stop"``, so the history shows the frame the device
+never closed; ``stop(require_closed=True)`` also raises on it.
 """
 
 import logging
@@ -68,13 +124,29 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 import cocotb
-from cocotb.triggers import FallingEdge, First, RisingEdge
+from cocotb.triggers import FallingEdge, First, RisingEdge, Timer
 
-from .ocah_spi_types import PAGE_SIZE, SECTOR_SIZE, SR1_WEL, OcahSpiOpcode, SpiMode
+from .ocah_spi_types import (
+    LANE_OPCODES,
+    PAGE_SIZE,
+    SECTOR_SIZE,
+    SR1_WEL,
+    OcahSpiOpcode,
+    SpiMode,
+    command_format,
+)
 
 __all__ = ["OcahSpiFlash", "OcahSpiFlashError", "SpiMode"]
 
 _ADDR_MASK_24 = 0xFFFFFF
+
+
+def _cs_level(handle: Any) -> Optional[int]:
+    """Chip-select as 0 or 1; ``None`` when X/Z."""
+    value = handle.value
+    if not value.is_resolvable:
+        return None
+    return int(value) & 1
 
 
 def _cancel_task(task: Any) -> None:
@@ -103,9 +175,42 @@ class _CsDeasserted(OcahSpiFlashError):
         self.bits = bits
 
 
+class _Refused(Exception):
+    """A frame the device refuses; the handler records ``reason`` and returns."""
+
+    def __init__(self, reason: str, *, addr: int = 0, data_in: bytes = b"") -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.addr = addr
+        self.data_in = data_in
+
+
+def _opcode_label(opcode: int) -> str:
+    """``0xNN`` for a command byte, ``partial`` for the no-byte sentinel."""
+    return "partial" if opcode < 0 else f"0x{opcode:02X}"
+
+
 # ---------------------------------------------------------------------------
 # Main flash device BFM
 # ---------------------------------------------------------------------------
+
+
+def _sampled_lanes(sig, mask: int) -> int:
+    """The lanes of ``sig`` selected by ``mask``; an X/Z on one of them raises ``ValueError``.
+
+    The device resolves only the lanes it samples, so an X/Z on a lane it
+    does not use is ignored.
+    """
+    text = str(sig.value)
+    width = len(text)
+    value = 0
+    for i, ch in enumerate(text):
+        bit = width - 1 - i
+        if (mask >> bit) & 1:
+            if ch not in "01":
+                raise ValueError(f"sampled lane {bit} of {text!r} is not 0 or 1")
+            value |= int(ch) << bit
+    return value
 
 
 class OcahSpiFlash:
@@ -117,6 +222,12 @@ class OcahSpiFlash:
     back on MISO/DQ.
 
     The protocol engine is built on cocotb triggers alone.
+
+    The device takes no controller output enable: it samples MOSI/DQ as it
+    finds it, so ``data_in`` and the programmed memory show what the
+    controller core shifted, not that it reached the pads. That proof is the
+    ``oe_data`` wire check of an ``OcahSpiMonitor`` bound with ``sd_out`` and
+    ``sd_oe`` over the same frames and stopped before the verdict.
 
     Parameters
     ----------
@@ -130,6 +241,11 @@ class OcahSpiFlash:
     miso : cocotb handle, optional
         Master-in slave-out (DQ1 output from flash to controller).  Required
         for ``mode="single"``.
+    miso_oe : cocotb handle, optional
+        Device-side MISO drive enable (``mode="single"``): high from the
+        first response bit the device drives until chip select rises, low
+        otherwise. A monitor tap of it shows whether the device answered a
+        frame, whatever level it drove.
     dq_out : cocotb handle, optional
         Multi-bit output from controller to flash (DQ bus, driven by DUT).
         Used for quad/octal modes.
@@ -165,6 +281,7 @@ class OcahSpiFlash:
         miso=None,
         dq_out=None,
         dq_in=None,
+        miso_oe=None,
         name: str = "OcahSpiFlash",
         mode: str = "single",
         jedec_id: int = 0x20BA18,
@@ -181,13 +298,16 @@ class OcahSpiFlash:
         self._sclk = sclk
         self._mosi = mosi
         self._miso = miso
+        self._miso_oe = miso_oe
         self._dq_out = dq_out
         self._dq_in = dq_in
 
         self._mode = SpiMode(mode)
         if self._mode == SpiMode.SINGLE and (mosi is None or miso is None):
             raise OcahSpiFlashError(f"{name}: mode='single' requires mosi and miso handles")
-        if self._mode in (SpiMode.QUAD, SpiMode.OCTAL) and (dq_out is None or dq_in is None):
+        if self._mode in (SpiMode.QUAD, SpiMode.OCTAL, SpiMode.QUAD_IO) and (
+            dq_out is None or dq_in is None
+        ):
             raise OcahSpiFlashError(f"{name}: mode='{mode}' requires dq_out and dq_in handles")
 
         self._jedec_id = jedec_id & _ADDR_MASK_24
@@ -209,7 +329,12 @@ class OcahSpiFlash:
         # Runtime state
         self._task: Optional[Any] = None
         self._running = False
+        # True from the chip-select fall the engine served until its record.
+        self._frame_open = False
         self._transactions: List[Dict[str, Any]] = []
+        self._engine_error: Optional[BaseException] = None
+        self._input_bits = 0
+        self._input_clocks = 0
 
         self._apply_plusargs()
 
@@ -269,10 +394,10 @@ class OcahSpiFlash:
         if preload_env:
             try:
                 self.preload(preload_env)
-            except Exception as exc:  # noqa: BLE001
-                self.log.warning(
-                    "%s: +spi_flash_preload=%s failed: %s", self.name, preload_env, exc
-                )
+            except Exception as exc:
+                raise OcahSpiFlashError(
+                    f"{self.name}: +spi_flash_preload={preload_env} failed: {exc}"
+                ) from exc
 
     # ------------------------------------------------------------------
     # Public configuration API
@@ -328,9 +453,10 @@ class OcahSpiFlash:
             8-bit command opcode.
         fn : callable
             Async coroutine: ``async def handler(opcode, addr, data_in)``
-            that returns ``bytes`` to transmit back, or ``None``. PAGE PROGRAM
-            requires the write-enable latch and a byte-complete frame before
-            the handler runs.
+            that returns ``bytes`` to transmit back, or ``None``. The handler
+            runs only after a frame with a complete command byte, complete
+            address and byte-complete payload; PAGE PROGRAM also needs the
+            write-enable latch and at least one payload byte.
         """
         self._cmd_callbacks[opcode & 0xFF] = fn
 
@@ -351,6 +477,8 @@ class OcahSpiFlash:
         if self._mode == SpiMode.SINGLE:
             if self._miso is not None:
                 self._miso.value = 0
+            if self._miso_oe is not None:
+                self._miso_oe.value = 0
         else:
             if self._dq_in is not None:
                 self._dq_in.value = 0
@@ -378,15 +506,43 @@ class OcahSpiFlash:
             self._flash_size // (1024 * 1024),
         )
 
-    async def stop(self) -> None:
-        """Stop the flash device BFM.  The transaction history survives."""
+    async def stop(self, *, require_closed: bool = False) -> None:
+        """Stop the flash device BFM.  The transaction history survives.
+
+        A frame still open (chip-select low) has no verdict: it is recorded
+        with ``ok=False`` and ``reason="open_at_stop"``. A frame whose
+        chip-select rose in the time step of the call is closed and recorded
+        normally. Raises ``OcahSpiFlashError`` when the protocol engine raised
+        while it ran (the first such exception is the cause), and, with
+        ``require_closed=True``, when a frame was open. A caller that stops
+        the device on purpose inside a frame (a reset) leaves it False.
+        """
         if not self._running:
             return
+        if self._frame_open and _cs_level(self._cs_n) == 1:
+            # Chip-select rose in this time step; let the engine record the frame.
+            await Timer(1, "step")
+        open_frame = self._frame_open or _cs_level(self._cs_n) != 1
         self._running = False
         if self._task is not None:
             _cancel_task(self._task)
             self._task = None
+        self._frame_open = False
+        if self._miso_oe is not None:
+            self._miso_oe.value = 0
+        if open_frame:
+            self._log_transaction(-1, 0, b"", b"", ok=False, reason="open_at_stop")
         self.log.info("%s: stopped (%d transactions served)", self.name, len(self._transactions))
+        error, self._engine_error = self._engine_error, None
+        if error is not None:
+            raise OcahSpiFlashError(
+                f"{self.name}: the protocol engine raised while running: {error!r}"
+            ) from error
+        if open_frame and require_closed:
+            raise OcahSpiFlashError(
+                f"{self.name}: stopped with chip-select low after {self._input_clocks} input "
+                "clock(s); the open frame has no verdict (recorded as open_at_stop)"
+            )
 
     # ------------------------------------------------------------------
     # Transaction history
@@ -432,16 +588,48 @@ class OcahSpiFlash:
             await FallingEdge(self._cs_n)
             if not self._running:
                 break
+            self._frame_open = True
             try:
                 await self._handle_transaction()
             except Exception as exc:  # noqa: BLE001
                 self.log.error("%s: exception in transaction handler: %s", self.name, exc)
+                if self._engine_error is None:
+                    self._engine_error = exc
+            finally:
+                self._frame_open = False
+                if self._miso_oe is not None:
+                    self._miso_oe.value = 0
 
     async def _handle_transaction(self) -> None:
         """Handle a single SPI transaction (CS low to CS high)."""
-        opcode = await self._recv_byte_single()
+        self._input_bits = 0
+        self._input_clocks = 0
+        try:
+            opcode = await self._recv_byte_single()
+        except _CsDeasserted as exc:
+            self.log.warning(
+                "%s: frame ended %d bit(s) into the command byte — refused", self.name, exc.bits
+            )
+            self._log_transaction(-1, 0, b"", b"", ok=False, reason="partial_opcode")
+            return
+        try:
+            await self._dispatch(opcode)
+        except _Refused as refused:
+            self.log.warning(
+                "%s: opcode %s refused: %s (input_bits=%d)",
+                self.name,
+                _opcode_label(opcode),
+                refused.reason,
+                self._input_bits,
+            )
+            self._log_transaction(
+                opcode, refused.addr, b"", refused.data_in, ok=False, reason=refused.reason
+            )
+
+    async def _dispatch(self, opcode: int) -> None:
+        """Run one command after its command byte; raise ``_Refused`` to refuse the frame."""
         addr = 0
-        rx_data: bytearray = bytearray()
+        rx_data: bytes = b""
         tx_data: bytes = b""
         ok = True
         reason = ""
@@ -451,30 +639,21 @@ class OcahSpiFlash:
 
         # PAGE PROGRAM always observes the write-enable gate, including callback overrides.
         if opcode == OcahSpiOpcode.PAGE_PROGRAM and not self._wel:
-            self.log.warning("%s: PAGE PROGRAM while WEL=0 — ignored", self.name)
-            addr = await self._recv_addr_lenient()
-            await self._drain_to_cs_high()
-            self._log_transaction(opcode, addr, b"", b"", ok=False, reason="wel_clear")
-            return
+            addr, _, _ = await self._recv_write_frame(graded=False)
+            raise _Refused("wel_clear", addr=addr)
 
         # Check for registered callback override.
         if opcode in self._cmd_callbacks:
-            addr = await self._recv_addr() if self._addr_bytes > 0 else 0
-            payload, tail_bits = await self._recv_remaining()
-            if opcode == OcahSpiOpcode.PAGE_PROGRAM and tail_bits:
-                self.log.warning(
-                    "%s: PAGE PROGRAM ended %d bit(s) into a payload byte — ignored",
-                    self.name,
-                    tail_bits,
-                )
-                self._log_transaction(opcode, addr, b"", payload, ok=False, reason="partial_byte")
-                return
+            addr, payload, tail_bits = await self._recv_write_frame()
+            if tail_bits:
+                raise _Refused("partial_byte", addr=addr, data_in=payload)
+            if opcode == OcahSpiOpcode.PAGE_PROGRAM and not payload:
+                raise _Refused("no_payload", addr=addr)
             result = await self._cmd_callbacks[opcode](opcode, addr, payload)
             if opcode == OcahSpiOpcode.PAGE_PROGRAM:
                 self._wel = False
-            if result:
-                await self._send_bytes(result)
-            self._log_transaction(opcode, addr, result or b"", payload)
+            sent = await self._send_bytes(result) if result else b""
+            self._log_transaction(opcode, addr, sent, payload)
             return
 
         # --- JEDEC ID ---
@@ -486,83 +665,114 @@ class OcahSpiFlash:
                     (self._jedec_id) & 0xFF,
                 ]
             )
-            await self._send_bytes_active(jedec_bytes)
-            tx_data = jedec_bytes
+            tx_data = await self._send_bytes_active(jedec_bytes)
 
         # --- READ STATUS REGISTER 1 ---
         elif opcode == OcahSpiOpcode.READ_SR1:
-            sr1_val = self.status_reg1
-            await self._send_bytes_active(bytes([sr1_val]))
-            tx_data = bytes([sr1_val])
+            tx_data = await self._send_bytes_active(bytes([self.status_reg1]))
 
         # --- READ STATUS REGISTER 2 ---
         elif opcode == OcahSpiOpcode.READ_SR2:
-            await self._send_bytes_active(bytes([self._sr2]))
-            tx_data = bytes([self._sr2])
+            tx_data = await self._send_bytes_active(bytes([self._sr2]))
 
-        # --- WRITE ENABLE ---
-        elif opcode == OcahSpiOpcode.WRITE_ENABLE:
-            self._wel = True
-            self.log.debug("%s: WRITE ENABLE set", self.name)
-
-        # --- WRITE DISABLE ---
-        elif opcode == OcahSpiOpcode.WRITE_DISABLE:
-            self._wel = False
-            self.log.debug("%s: WRITE DISABLE set", self.name)
+        # --- WRITE ENABLE / WRITE DISABLE: exactly one command byte ---
+        elif opcode in (OcahSpiOpcode.WRITE_ENABLE, OcahSpiOpcode.WRITE_DISABLE):
+            extra, tail_bits = await self._recv_remaining()
+            if extra or tail_bits:
+                raise _Refused("unexpected_payload")
+            self._wel = opcode == OcahSpiOpcode.WRITE_ENABLE
+            self.log.debug("%s: write-enable latch %s", self.name, "set" if self._wel else "clear")
 
         # --- READ (slow, 1-1-1) ---
         elif opcode == OcahSpiOpcode.READ:
-            addr = await self._recv_addr()
+            addr = await self._recv_read_addr()
             tx_data = await self._do_read(addr)
 
         # --- FAST READ (1-1-1 + 8-bit dummy) ---
         elif opcode == OcahSpiOpcode.FAST_READ:
-            addr = await self._recv_addr()
-            await self._recv_byte_single()  # consume 8 dummy bits
+            addr = await self._recv_read_addr()
+            try:
+                await self._recv_byte_single()  # consume 8 dummy bits
+            except _CsDeasserted:
+                raise _Refused("partial_dummy", addr=addr) from None
             tx_data = await self._do_read(addr)
 
-        # --- PAGE PROGRAM ---
+        # --- PAGE PROGRAM: command, address, at least one payload byte ---
         elif opcode == OcahSpiOpcode.PAGE_PROGRAM:
-            addr = await self._recv_addr()
-            rx_data, tail_bits = await self._recv_remaining()
+            addr, rx_data, tail_bits = await self._recv_write_frame()
             if tail_bits:
-                self.log.warning(
-                    "%s: PAGE PROGRAM ended %d bit(s) into a payload byte — ignored",
-                    self.name,
-                    tail_bits,
-                )
-                ok, reason = False, "partial_byte"
-            else:
-                self._do_page_program(addr, rx_data)
-                self._wel = False
+                raise _Refused("partial_byte", addr=addr, data_in=rx_data)
+            if not rx_data:
+                raise _Refused("no_payload", addr=addr)
+            self._do_page_program(addr, rx_data)
+            self._wel = False
 
-        # --- SECTOR ERASE (4 KB) ---
+        # --- SECTOR ERASE (4 KB): command and exactly addr_bytes address bytes ---
         elif opcode == OcahSpiOpcode.SECTOR_ERASE:
             if not self._wel:
-                self.log.warning("%s: SECTOR ERASE while WEL=0 — ignored", self.name)
-                addr = await self._recv_addr_lenient()
-                await self._drain_to_cs_high()
-                ok, reason = False, "wel_clear"
-            else:
-                addr = await self._recv_addr()
-                self._do_sector_erase(addr)
-                self._wel = False
+                addr, _, _ = await self._recv_write_frame(graded=False)
+                raise _Refused("wel_clear", addr=addr)
+            addr, trailing, tail_bits = await self._recv_write_frame()
+            if trailing or tail_bits:
+                raise _Refused("unexpected_payload", addr=addr)
+            self._do_sector_erase(addr)
+            self._wel = False
+
+        # --- Dual and quad commands (four-lane binding only) ---
+        elif opcode in LANE_OPCODES and self._mode == SpiMode.QUAD_IO:
+            addr, tx_data, rx_data = await self._lane_command(opcode)
 
         else:
             self.log.warning(
                 "%s: unknown opcode 0x%02X — draining to CS deassert", self.name, opcode
             )
-            await self._drain_to_cs_high()
+            await self._recv_remaining()
             ok, reason = False, "unknown_opcode"
 
-        self._log_transaction(opcode, addr, tx_data, bytes(rx_data), ok=ok, reason=reason)
+        self._log_transaction(opcode, addr, tx_data, rx_data, ok=ok, reason=reason)
 
     # ------------------------------------------------------------------
     # Flash operation helpers
     # ------------------------------------------------------------------
 
-    async def _do_read(self, addr: int) -> bytes:
-        """Stream memory to MISO until CS deasserts; return the complete bytes sent.
+    async def _lane_command(self, opcode: int) -> tuple[int, bytes, bytes]:
+        """Run a dual or quad command; return (address, bytes sent, payload taken).
+
+        The address phase runs at the format's address width, then the dummy
+        clocks, then the data phase at its width. The same refusal rules as
+        the single-lane commands apply phase by phase.
+        """
+        fmt = command_format(opcode)
+        assert fmt is not None
+        if not fmt.response:
+            # QUAD PAGE PROGRAM: the write-enable gate first, then the shape rules.
+            if not self._wel:
+                await self._recv_remaining()
+                raise _Refused("wel_clear")
+            addr = await self._recv_read_addr()
+            payload, tail_bits = await self._recv_remaining(fmt.data_lanes)
+            if tail_bits:
+                raise _Refused("partial_byte", addr=addr, data_in=bytes(payload))
+            if not payload:
+                raise _Refused("no_payload", addr=addr)
+            self._do_page_program(addr, bytes(payload))
+            self._wel = False
+            return addr, b"", bytes(payload)
+        try:
+            addr = 0
+            for _ in range(self._addr_bytes):
+                addr = (addr << 8) | await self._recv_byte_lanes(fmt.addr_lanes)
+        except _CsDeasserted:
+            raise _Refused("partial_address") from None
+        for _ in range(fmt.dummy_clocks):
+            await First(RisingEdge(self._sclk), RisingEdge(self._cs_n))
+            if int(self._cs_n.value) != 0:
+                raise _Refused("partial_dummy", addr=addr)
+            self._input_clocks += 1
+        return addr, await self._do_read(addr, fmt.data_lanes), b""
+
+    async def _do_read(self, addr: int, lanes: int = 1) -> bytes:
+        """Stream memory to the controller until CS deasserts; return the complete bytes sent.
 
         The byte in flight when chip-select rises is not part of the record:
         the controller clocked none or only some of its bits.
@@ -573,13 +783,17 @@ class OcahSpiFlash:
                 byte_val = 0xFF
             else:
                 byte_val = self._mem[addr]
-            if not await self._send_byte_single(byte_val):
+            if lanes == 1:
+                sent = await self._send_byte_single(byte_val)
+            else:
+                sent = await self._send_byte_lanes(byte_val, lanes)
+            if not sent:
                 break
             out.append(byte_val)
             addr = (addr + 1) & _ADDR_MASK_24
         return bytes(out)
 
-    def _do_page_program(self, addr: int, data: bytearray) -> None:
+    def _do_page_program(self, addr: int, data: bytes) -> None:
         """Program bytes into flash, respecting page-program OR semantics."""
         page_base = addr & ~(PAGE_SIZE - 1)
         page_off = addr & (PAGE_SIZE - 1)
@@ -618,8 +832,27 @@ class OcahSpiFlash:
             if int(self._cs_n.value) != 0:
                 raise _CsDeasserted(f"{self.name}: CS deasserted during byte receive", bits)
             mosi_sig = self._mosi if self._mode == SpiMode.SINGLE else self._dq_out
-            bit = int(mosi_sig.value) & 0x1
+            bit = _sampled_lanes(mosi_sig, 0x1)
             byte_val = (byte_val << 1) | bit
+            self._input_bits += 1
+            self._input_clocks += 1
+        return byte_val
+
+    async def _recv_byte_lanes(self, lanes: int) -> int:
+        """Receive one byte on ``lanes`` lanes of ``dq_out``, most significant bits first."""
+        if lanes == 1:
+            return await self._recv_byte_single()
+        byte_val = 0
+        mask = (1 << lanes) - 1
+        for clocks in range(8 // lanes):
+            await First(RisingEdge(self._sclk), RisingEdge(self._cs_n))
+            if int(self._cs_n.value) != 0:
+                raise _CsDeasserted(
+                    f"{self.name}: CS deasserted during byte receive", clocks * lanes
+                )
+            byte_val = (byte_val << lanes) | _sampled_lanes(self._dq_out, mask)
+            self._input_bits += lanes
+            self._input_clocks += 1
         return byte_val
 
     async def _send_byte_single(self, byte_val: int) -> bool:
@@ -628,28 +861,60 @@ class OcahSpiFlash:
         Races each clock edge against CS deassertion: after the controller
         clocks in the final RX byte it stops the clock and raises CS, so
         waiting on ``FallingEdge(sclk)`` alone would block forever. Returns
-        True when all eight bits were driven, False when CS deasserted first.
+        True when the controller sampled all eight bits (the rising edge after
+        the last one), False when CS deasserted first.
         """
         for bit_idx in range(7, -1, -1):
             await First(FallingEdge(self._sclk), RisingEdge(self._cs_n))
             if int(self._cs_n.value) != 0:
                 return False
             bit = (byte_val >> bit_idx) & 0x1
-            miso_sig = self._miso if self._mode == SpiMode.SINGLE else self._dq_in
-            miso_sig.value = bit
-        return True
+            if self._mode == SpiMode.SINGLE:
+                self._miso.value = bit
+                if self._miso_oe is not None:
+                    self._miso_oe.value = 1
+            elif self._mode == SpiMode.QUAD_IO:
+                self._dq_in.value = bit << 1  # standard mode: lane 1 to the controller
+            else:
+                self._dq_in.value = bit
+        return await self._last_bit_sampled()
 
-    async def _send_bytes(self, data: bytes) -> None:
-        """Send all bytes and wait for CS to deassert."""
+    async def _send_byte_lanes(self, byte_val: int, lanes: int) -> bool:
+        """Send one byte on ``lanes`` lanes of ``dq_in``, most significant bits first.
+
+        Each falling SCK edge drives the next ``lanes`` bits, the least
+        significant of them on lane 0. Returns True when the controller
+        sampled the last group.
+        """
+        mask = (1 << lanes) - 1
+        for shift in range(8 - lanes, -1, -lanes):
+            await First(FallingEdge(self._sclk), RisingEdge(self._cs_n))
+            if int(self._cs_n.value) != 0:
+                return False
+            self._dq_in.value = (byte_val >> shift) & mask
+        return await self._last_bit_sampled()
+
+    async def _last_bit_sampled(self) -> bool:
+        """Wait for the sample edge of the bit just driven; False when CS rises first."""
+        await First(RisingEdge(self._sclk), RisingEdge(self._cs_n))
+        return int(self._cs_n.value) == 0
+
+    async def _send_bytes(self, data: bytes) -> bytes:
+        """Send bytes until chip-select rises; return the bytes sent in full."""
+        sent = bytearray()
         for byte_val in data:
             if int(self._cs_n.value) != 0:
-                return
-            await self._send_byte_single(byte_val)
+                break
+            if not await self._send_byte_single(byte_val):
+                break
+            sent.append(byte_val)
+        return bytes(sent)
 
-    async def _send_bytes_active(self, data: bytes) -> None:
-        """Send all bytes, then drain remaining clocks until CS deasserts."""
-        await self._send_bytes(data)
+    async def _send_bytes_active(self, data: bytes) -> bytes:
+        """Send bytes, then drain remaining clocks until CS deasserts; return the bytes sent in full."""
+        sent = await self._send_bytes(data)
         await self._drain_to_cs_high()
+        return sent
 
     async def _recv_addr(self) -> int:
         """Receive addr_bytes bytes and assemble into an integer address."""
@@ -659,15 +924,31 @@ class OcahSpiFlash:
             addr = (addr << 8) | byte_val
         return addr
 
-    async def _recv_addr_lenient(self) -> int:
-        """Address of a refused command; 0 when the controller ended the frame early."""
+    async def _recv_read_addr(self) -> int:
+        """Address of a read; the frame is refused as ``partial_address`` when it ends early."""
         try:
             return await self._recv_addr()
-        except OcahSpiFlashError:
-            return 0
+        except _CsDeasserted:
+            raise _Refused("partial_address") from None
 
-    async def _recv_remaining(self) -> tuple[bytearray, int]:
-        """Receive bytes until CS deasserts.
+    async def _recv_write_frame(self, *, graded: bool = True) -> tuple[int, bytes, int]:
+        """Take the rest of a write frame up to chip-select rise.
+
+        Returns the address, the complete payload bytes after it, and the bits
+        of the byte chip-select ended. A frame shorter than the address is
+        refused as ``partial_address`` when ``graded``; otherwise its address
+        reads as 0 and its payload as empty.
+        """
+        rest, tail_bits = await self._recv_remaining()
+        if len(rest) < self._addr_bytes:
+            if graded:
+                raise _Refused("partial_address")
+            return 0, b"", 0
+        addr = int.from_bytes(rest[: self._addr_bytes], "big")
+        return addr, bytes(rest[self._addr_bytes :]), tail_bits
+
+    async def _recv_remaining(self, lanes: int = 1) -> tuple[bytearray, int]:
+        """Receive bytes on ``lanes`` lanes until CS deasserts.
 
         Returns the complete bytes and the count of bits (0 to 7) sampled in
         the byte that chip-select ended.
@@ -675,7 +956,7 @@ class OcahSpiFlash:
         buf: bytearray = bytearray()
         while int(self._cs_n.value) == 0:
             try:
-                byte_val = await self._recv_byte_single()
+                byte_val = await self._recv_byte_lanes(lanes)
                 buf.append(byte_val)
             except _CsDeasserted as exc:
                 return buf, exc.bits
@@ -691,8 +972,10 @@ class OcahSpiFlash:
     # ------------------------------------------------------------------
     # mode="quad" and mode="octal" bind the DQ bus but run the single-bit
     # engine: the command byte, the address bytes, and the data phase all use
-    # DQ0 (bit 0 of dq_out / dq_in), one bit per SCK. Multi-bit data lanes
-    # and the bidirectional bus turnaround are not modeled.
+    # DQ0 (bit 0 of dq_out / dq_in), one bit per SCK.
+    # mode="quad_io" binds four lanes: single-lane phases take lane 0 of
+    # dq_out and drive lane 1 of dq_in; the dual and quad commands of
+    # LANE_OPCODES run their phases on two or four lanes.
 
     # ------------------------------------------------------------------
     # Internal bookkeeping
@@ -716,13 +999,16 @@ class OcahSpiFlash:
             "data_in": bytes(data_in),  # complete payload bytes received from the controller
             "ok": ok,
             "reason": reason,
+            "input_bits": self._input_bits,
+            "input_clocks": self._input_clocks,
+            "tail_bits": self._input_bits % 8,
         }
         self._transactions.append(rec)
         if self._verbose:
             self.log.debug(
-                "%s: txn opcode=0x%02X addr=0x%06X out=%d B in=%d B ok=%s%s",
+                "%s: txn opcode=%s addr=0x%06X out=%d B in=%d B ok=%s%s",
                 self.name,
-                opcode,
+                _opcode_label(opcode),
                 addr,
                 len(data_out),
                 len(data_in),

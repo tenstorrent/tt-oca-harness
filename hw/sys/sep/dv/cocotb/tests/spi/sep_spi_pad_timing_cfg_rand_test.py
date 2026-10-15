@@ -20,22 +20,30 @@ is active, CSNIDLE=0) that gives the natural chip-select gap g0, raises CSNIDLE
 until its minimum is above g0, runs the graded pair, then a ratio leg of two
 4-byte Tx segments at CLKDIV a and b. A test-side sampler
 (``env/sep_spi_pad_sampler.py``) reads ``spi_sck_o``, ``spi_cs_n_o`` and
-``spi_mosi_o`` on each core clock. No responder is attached.
+``spi_mosi_o`` on each core clock. No responder is attached. The shared SPI
+monitor (``env/sep_spi_wire_monitor.py``) grades the same pads in the mode of
+each cell: SCK at CPOL at every chip-select edge and while chip select is high,
+MOSI never changing on a sample edge or between a sample edge and the next
+shift edge, and no X/Z (``CHK-SPI-WIRE``, both cells' modes with graded frames).
 
 Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
 
-* CHK-SPI-IDLE-LEVEL: sck sits at CPOL in every chip-select-high window of the
-  graded pair that starts after the first transaction ends. Control: sck
+* CHK-SPI-IDLE-LEVEL: sck sits at CPOL, with the clock output enable on, in
+  every chip-select-high window of the graded pair that starts after the first
+  transaction ends. Control: sck
   toggles in the chip-select-low windows of the same pair.
 * CHK-SPI-PERIOD: every sck period of the graded pair is 2*(CLKDIV+1) clocks.
 * CHK-SPI-RATIO: period_a*(b+1) equals period_b*(a+1).
 * CHK-SPI-CSN: lead, trail and chip-select-high gap of each graded transaction
   are at least (CSNLEAD+1), (CSNTRAIL+1) and (CSNIDLE+1) times (CLKDIV+1)
-  clocks; the spec states all three as minimum bounds. Control: the idle
+  clocks; the spec states all three as minimum bounds. The chip-select and
+  clock output enables are on through both frames and the gap. Control: the idle
   minimum is above g0 of the control pair.
 * CHK-SPI-CPHA: at CLKDIV 1 or more every Tx data change after the first bit
-  lies in the half sck period that starts at the stated edge. Control: at least
-  two such changes. The cell CPHA=1 with FULLCYC=1 logs ``OBS-SPI-CPHA`` and is
+  lies in the half sck period that starts at the stated edge. A change counts
+  only with the lane 0 output enable on; a ``spi_mosi_o`` change in the graded
+  Tx window with the enable off fails, since it does not reach the pad.
+  Control: at least two counted changes. The cell CPHA=1 with FULLCYC=1 logs ``OBS-SPI-CPHA`` and is
   not graded. The second cell inverts the CPHA of the first, so each seed has
   one CPHA=0 cell that is graded.
 
@@ -50,11 +58,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import cocotb
 import pyuvm
 from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spi_pad_sampler import CsWindow, SepSpiPadSampler
+from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from sep_base_test import sep_base_test
 from sep_reg_meta import SPI_CONTROLLER
 from seq_lib.sep_spi_host_csr_seq import (
@@ -213,13 +223,13 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
 
     @staticmethod
     def _cpha_split(win: CsWindow, cpha: int) -> tuple[int, int, int]:
-        """Data changes after the first bit: (in stated half, in other half, exempt)."""
+        """Lane 0 enabled data changes after the first bit: (stated half, other half, exempt)."""
         edges = win.edges
         if not edges:
-            return 0, 0, len(win.mosi_changes)
+            return 0, 0, len(win.mosi_changes_oe_on)
         first = edges[0][0]
         stated = other = exempt = 0
-        for c in win.mosi_changes:
+        for c in win.mosi_changes_oe_on:
             if c < first:
                 exempt += 1
                 continue
@@ -236,6 +246,8 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         seed = self.seed
         pads = self.pads
         half = c.a + 1
+        # Every CONFIGOPTS write of the cell carries this CPOL and CPHA.
+        self.wire.set_mode(c.cpol, c.cpha)
 
         # Control pair: CSNIDLE=0, window closed.
         close_graded_window(self.logger)
@@ -302,17 +314,18 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         levels = set().union(*(h.sck_levels for h in highs)) if highs else set()
         toggles = (w1.toggles, w2.toggles)
 
+        sck_oe_off = sum(h.sck_oe_off for h in highs)
         line = (
             f"seed={seed} mode={c.mode} cpol={c.cpol} level={sorted(levels)} "
-            f"windows={len(highs)} control_toggles={min(toggles)}"
+            f"windows={len(highs)} control_toggles={min(toggles)} sck_oe_off={sck_oe_off}"
         )
         if min(toggles) < 1:
             raise AssertionError(f"CTRL-MISSING CHK-SPI-IDLE-LEVEL {line}")
-        if len(highs) < 2 or levels != {c.cpol}:
+        if len(highs) < 2 or levels != {c.cpol} or sck_oe_off:
             raise AssertionError(f"CHK-SPI-IDLE-LEVEL FAIL {line}")
         self.logger.info(
             "CHK-SPI-IDLE-LEVEL PASS seed=%d cpol=%d level=%d windows=%d control_toggles=%d "
-            "mode=%s",
+            "sck_oe_off=0 mode=%s",
             seed,
             c.cpol,
             c.cpol,
@@ -345,13 +358,21 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         exp_lead = (c.lead + 1) * half
         exp_trail = (c.trail + 1) * half
         gap = w2.start - w1.end
+        # The lead, trail and gap are pad timing only while the host drives
+        # chip select and the clock: both output enables on in both frames
+        # and in the gap between them.
+        gap_wins = [h for h in highs if h.start == w1.end and h.end == w2.start]
+        oe_off = sum(w.cs_oe_off + w.sck_oe_off for w in (w1, w2, *gap_wins))
         line = (
             f"seed={seed} clkdiv={c.a} lead={w1.lead},{w2.lead}/{exp_lead} "
             f"trail={w1.trail},{w2.trail}/{exp_trail} idle_gap={gap} min={idle_min} "
-            f"control_gap={g0} csnlead={c.lead} csntrail={c.trail} csnidle={idle} mode={c.mode}"
+            f"control_gap={g0} csnlead={c.lead} csntrail={c.trail} csnidle={idle} "
+            f"gap_windows={len(gap_wins)} cs_sck_oe_off={oe_off} mode={c.mode}"
         )
         ok = (
-            min(w1.lead, w2.lead) >= exp_lead
+            len(gap_wins) == 1
+            and not oe_off
+            and min(w1.lead, w2.lead) >= exp_lead
             and min(w1.trail, w2.trail) >= exp_trail
             and gap >= idle_min
             and idle_min > g0
@@ -398,9 +419,9 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             line = (
                 f"seed={seed} cpha={c.cpha} clkdiv={div} edge={edge} in_stated_half={stated} "
                 f"in_other_half={other} exempt_first={exempt} mosi_xz={run.mosi_xz} "
-                f"mode={c.mode}"
+                f"changes_oe_off={len(run.mosi_changes_oe_off)} mode={c.mode}"
             )
-            if run.mosi_xz:
+            if run.mosi_xz or run.mosi_changes_oe_off:
                 raise AssertionError(f"CHK-SPI-CPHA FAIL {line}")
             if stated + other < 2:
                 raise AssertionError(f"CTRL-MISSING CHK-SPI-CPHA {line}")
@@ -429,6 +450,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         try:
             await self.bring_up_no_cpu()
             self.suppress_host_axi_transaction_info()
+            self.wire = await SepSpiWireMonitor(cocotb.top).start()
             self.pads = SepSpiPadSampler()
             self.pads.start()
             self.ops = SepSpiHostOps(self, clock=self.pads.now)
@@ -451,6 +473,9 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             for c in cells:
                 await self._mode_cell(c)
             await self.pads.stop()
+            await self.wire.finish(
+                self.logger, seed=self.seed, modes=[(c.cpol, c.cpha) for c in cells]
+            )
         finally:
             close_graded_window()
 

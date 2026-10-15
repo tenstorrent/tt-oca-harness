@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The OT SPI host drives the exact flash command sequence, and program, erase and read land.
 
-OCAH provenance: ``spi_ot_flash_write_read_test`` checks flash program and
-read, and ``spi_ot_flash_sector_erase_test`` checks sector erase.
-
 A cpu-firmware test, randomized ([RAND-REP]). It boots the VeeR EL2 core and runs the
 spi_ot_flash_cmd firmware, which drives the OT SPI host (@ 0x10B0_0000) against the
 OcahSpiFlash BFM:
@@ -83,6 +80,8 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_log_error_counter import attach_error_counter
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spi_scoreboard import SepSpiScoreboard
+from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
@@ -248,9 +247,13 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             verbose=True,
         )
         # BFM memory inits to 0xFF (erased); the firmware programs + verifies.
-        # The BFM logs and drops a frame whose handler raised; such an error
-        # fails the leaf.
+        # An error inside the BFM fails the leaf through the error counter and
+        # flash.stop(); a frame the BFM refused for its shape, a wire-check
+        # violation, or a frame missing from the BFM records fails it through
+        # the wire monitor.
         bfm_errors = attach_error_counter(flash.log)
+        wire = await SepSpiWireMonitor(dut).start()
+        sb = SepSpiScoreboard(wire, flash, self.logger, seed=self.random_seed())
         await flash.start()
         dtcm_hex, cfg = self._stage_dtcm()
         try:
@@ -265,12 +268,18 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 progress_every=_PROGRESS_EVERY,
             )
             self._golden_check(flash, cfg)
+            if cfg is not None:
+                sb.expect_tx(cfg.addr, cfg.pp_bytes(), label="primary program")
+                sb.expect_tx(cfg.neigh_addr, cfg.neigh_bytes(), label="neighbour program")
             assert not bfm_errors.records, (
                 f"SPI-BFM FAIL: the flash model logged {len(bfm_errors.records)} error(s): "
                 f"{bfm_errors.records[:3]}"
             )
         finally:
             await flash.stop()
+        await wire.finish(self.logger, seed=self.random_seed(), flash=flash)
+        if cfg is not None:
+            sb.finish()
 
     def _golden_check(self, flash, cfg) -> None:
         """Independent BFM-side golden: confirm the random program/erase actually

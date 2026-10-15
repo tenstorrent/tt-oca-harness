@@ -151,27 +151,6 @@ class Seg:
         return f"s{self.speed}d{self.direction}L{self.len_field}c{self.csaat}"
 
 
-class _RxResponder(OcahSpiFlash):
-    """``OcahSpiFlash`` that streams its memory on every frame that starts with READ.
-
-    A frame shorter than the opcode byte (a short dummy segment, a quad segment
-    of one byte) ends quietly: it is recorded as a short frame. Any other
-    exception of a frame is kept in ``faults``; the leaf fails on it after
-    ``stop``, because the base engine only logs it.
-    """
-
-    faults: list[BaseException]
-
-    async def _handle_transaction(self) -> None:
-        try:
-            await super()._handle_transaction()
-        except OcahSpiFlashError:
-            self._log_transaction(0, 0, b"", b"", ok=False, reason="short_frame")
-        except Exception as exc:
-            self.faults.append(exc)
-            raise
-
-
 async def _absorb(opcode, addr, payload):
     """Frame of any opcode other than READ: take the bytes, return nothing."""
     return None
@@ -652,7 +631,9 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         close_graded_window()
 
         dut = cocotb.top
-        flash = _RxResponder(
+        # Streams its memory on every frame that starts with READ; a frame
+        # shorter than the opcode byte is recorded as refused.
+        flash = OcahSpiFlash(
             dut.spi_cs_n_o,
             dut.spi_sck_o,
             mosi=dut.spi_mosi_o,
@@ -660,7 +641,6 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             addr_bytes=0,
             name="sep_spi_rx_responder",
         )
-        flash.faults = []
         flash.preload(self.responder)
         for op in range(256):
             if op != RESPONDER_READ:
@@ -707,13 +687,15 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             await self.pads.stop()
         finally:
             close_graded_window()
-            await flash.stop()
-
-        if flash.faults:
-            raise AssertionError(
-                f"MONITOR-LIFE FAIL seed={self.seed} responder frame raised "
-                f"{len(flash.faults)} time(s): {flash.faults[0]!r}"
-            )
+            # stop() raises when a responder frame raised inside the protocol
+            # engine; a frame shorter than the opcode byte is a recorded
+            # refusal, not an exception.
+            try:
+                await flash.stop()
+            except OcahSpiFlashError as exc:
+                raise AssertionError(
+                    f"MONITOR-LIFE FAIL seed={self.seed} responder frame raised: {exc!r}"
+                ) from exc
         frames = flash.get_transactions()
         self.logger.info(
             "OBS-SPI-RESPONDER seed=%d frames=%d read_frames=%d bytes_out=%d",

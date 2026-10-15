@@ -53,7 +53,7 @@ sense path and the shadow are graded by the eFuse and LCC tests, which run
 without the plusarg.
 
 |Scope
-|The `+skip_fuse_sense` entry in the testlist `args` of these twenty-five tests:
+|The `+skip_fuse_sense` entry in the testlist `args` of these twenty-seven tests:
 `sep_fabric_alias_remap_attr_rand_test`, `sep_fabric_smc_route_test`,
 `sep_dma_transfer_matrix_rand_test`, `sep_mailbox_fifo_model_rand_test`,
 `sep_mailbox_access_error_inject_test`, `sep_mailbox_filter_type_matrix_test`,
@@ -68,7 +68,8 @@ without the plusarg.
 (`testlists/cpu.toml`);
 `sep_spi_ot_dma_tx_test`, `sep_spi_ot_flash_cmd_rand_test`,
 `sep_spi_pad_speed_dir_matrix_test`, `sep_spi_pad_timing_cfg_rand_test`,
-`sep_spi_fifo_stall_watermark_rand_test`, `sep_spi_ot_host_csr_irq_rand_test`
+`sep_spi_fifo_stall_watermark_rand_test`, `sep_spi_ot_host_csr_irq_rand_test`,
+`sep_spi_flash_jedec_smoke_test`, `sep_spi_ot_dma_rx_test`
 (`testlists/spi.toml`).
 |===
 

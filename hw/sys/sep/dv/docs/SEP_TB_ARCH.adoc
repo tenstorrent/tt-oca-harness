@@ -46,7 +46,7 @@ xref:SEP_VPLAN.adoc#sep-dv-verification-plan[SEP_VPLAN].
 |SEP Interface |Preferred VIP |Modeling Approach |Notes
 |CPU-LSU AXI (no_cpu) |`ocah_axi_vip` via `SepAxiAgent` (`s_axi`) |Unified OCAH BFM |Primary stimulus; no inbound filter on this path
 |SMN-inbound AXI |Second `SepAxiAgent` (`m_axi`) |Unified OCAH BFM |Real DUT inbound port; traverses inbound filter (block-by-default)
-|SPI flash pads |`ocah_spi_vip` `OcahSpiFlash` |Unified OCAH BFM |Pads are scalar ports on `tb_top`
+|SPI flash pads |`ocah_spi_vip` `OcahSpiFlash`, `OcahSpiMonitor` |Unified OCAH BFM |Pads are scalar and four-lane vector ports on `tb_top`
 |JTAG (eFuse mux path) |`ocah_axi_vip` AXI-Lite master on the OTP JTAG2AXIL port (`j_axi_*`) |Unified OCAH BFM |eFuse JTAG–AXI-Lite coexistence tests
 |Entropy raw noise |`esrc_noise_ext_i` + Python goldens |DUT-local |Deterministic noise shared with the decorrelator golden
 |eFuse / OTP |Generic OSS eFuse bank model |Shared OSS model |No foundry OTP macros; staged via `+sep_efuse_hex`
@@ -139,7 +139,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`, `clk_ref_i`. `sep_base_test.start_clocks` takes an optional start delay per clock (`phases_ns`, or `clock_phases_ns` set by the leaf before bring-up), and `restart_clock` restarts one clock at a new period and start delay
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
-|SPI host pads |Scalar MISO/MOSI/SCK/CS ports for `OcahSpiFlash`
+|SPI host pads |Scalar ports for `OcahSpiFlash` and `OcahSpiMonitor`: `spi_cs_n_o`, `spi_sck_o`, `spi_mosi_o` (`sep_io_spi_req_o.sd[0]`) and `spi_miso_i` (`sep_io_spi_rsp_i.sd[1]`). Monitor-only taps of the DUT output struct `sep_io_spi_req_o`: `spi_sd_o[3:0]` (`sd`), `spi_sd_oe_o[3:0]` (`sd_oe`), `spi_cs_oe_o` (`cs_oe`) and `spi_sck_oe_o` (`sck_oe`); `env/sep_spi_wire_monitor.py` attaches them to `OcahSpiMonitor`, which grades the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment"). SEP top-port drive: `spi_sd_i[3:0]` drives all four response lanes of `sep_io_spi_rsp_i.sd` in a run with `+sep_spi_four_lane`; otherwise lane 1 is `spi_miso_i` and lanes 0, 2 and 3 are 0. `sep_base_test` holds `spi_sd_i` at 0. Monitor-only tap `spi_sd_rsp_o[3:0]`: the four lanes the DUT receives, which `env/sep_spi_wire_monitor.py` gives the monitor as its input lanes.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
@@ -791,7 +791,12 @@ with `+sep_efuse_prog_fail_count`, `+sep_efuse_prog_fail_percent`, and
 ==== OpenTitan SPI host
 
 Internal to the wrapper; its pads come out as scalar cocotb ports in `tb_top.sv`
-so tests can attach the Apache-2.0 `OcahSpiFlash` Python BFM.
+so tests can attach the Apache-2.0 `OcahSpiFlash` Python BFM. The four data
+lanes, their output enables and the chip-select and clock output enables come
+out as monitor-only taps; see the SPI host pads row in <<sep-hdl-top>>.
+`env/sep_spi_scoreboard.py` compares the bytes a leaf expects with the
+monitor's wire decode and the flash records, or, for a frame of raw command
+segments, with the wire decode of each segment at its lane width.
 
 ==== TB shims
 

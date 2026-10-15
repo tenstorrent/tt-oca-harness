@@ -386,7 +386,7 @@ not grade that rejection.
 
 *Source Module*: `sep_spi_flash_jedec_smoke_test`
 
-*BFM / Model*: ocah_axi_vip, ocah_spi_vip
+*BFM / Model*: ocah_axi_vip, ocah_spi_vip (`OcahSpiFlash` on the SPI pad ports, and `OcahSpiMonitor` on the same ports through `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py`)
 
 *Objective*: Proves the OpenTitan SPI host controller is configured, clocks a real command out, and receives a real reply.
 
@@ -411,11 +411,19 @@ not grade that rejection.
 |Every read beat returns `OKAY` and no access decodes to `DECERR`. The cited tally covers read beats only — write responses are counted but their code is inspected for `DECERR` alone, so an `SLVERR` on a write would leave that line unchanged. Write responses are enforced separately, by the scoreboard line quoted under CHK-NONVAC.
 |CHK-NONVAC
 |The scoreboard performed a non-zero number of checks.
+|CHK-SPI-WIRE
+|The shared SPI monitor grades the pad ports in SPI Mode 0 on every frame: SCK is at the CPOL level at each chip-select edge and moves only to that level while chip select is high; MOSI does not change on a sample edge, nor after a sample edge and before the next shift edge; no graded pin resolves to X or Z. The monitor also grades the monitor-only taps `spi_sd_o`, `spi_sd_oe_o`, `spi_cs_oe_o` and `spi_sck_oe_o` against the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment": lane n drives `sd[n]` with output enable `sd_oe[n]`, chip select and clock have `cs_oe` and `sck_oe`, and the host drives a data lane only while chip select is asserted): no data lane output enable rises, or is on at an SCK edge, while chip select is high (`oe_idle`); at each sample edge the data lane output enables are none, lane 0, lanes 1:0 or lanes 3:0 (`oe_lanes`); and the chip-select and clock output enables are on at each sample edge (`oe_ctrl`). The MOSI edge and X/Z rules apply to every data lane whose output enable is on. A host that drives a data lane while chip select is high, enables another lane pattern, or turns off the chip-select or clock output enable in a frame fails. At least one Mode 0 frame is graded.
+|CHK-SPI-FRAME-SHAPE
+|The flash model refuses no frame for its shape (`FRAME_SHAPE_REASONS`, `hw/common/dv/vip/ocah_spi_vip/README.md`): no frame ends inside the command byte, the address, the dummy phase or a payload byte, every PAGE PROGRAM carries a payload byte, and no WRITE ENABLE, WRITE DISABLE or SECTOR ERASE carries a bit after its last command or address bit.
+|CHK-SPI-LEDGER
+|The flash model records and the monitor frames match one for one, in order, with the same command byte and the same input clock count.
+|CHK-SPI-SB-RX
+|The SPI data scoreboard (`hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py`) compares three copies of the identifier byte for byte: the three bytes the DUT delivered in RXDATA (the first received byte in the least significant byte, ByteOrder 1), the first three bytes of the flash record's `data_out` for the READ JEDEC ID frame, and the first three bytes of the monitor's own decode of the response phase on the pads. The monitor frame is the one at the position of the flash record (CHK-SPI-LEDGER lines the two lists up). A receive path that drops, reorders or corrupts a byte, or that delivers the bytes in the opposite order, fails; so does a run with no READ JEDEC ID record. Evidence: one `SPI-SB RX` line with the expected, wire and device bytes, and `CHK-SPI-SB-RX PASS seed=<n> frames=1 bytes=3`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-JEDEC` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`), covers CHK-JEDEC-ID. CHK-RESP and CHK-NONVAC are enforced by the shared scoreboard.
+*Evidence*: one aggregate record, `CHK-JEDEC` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`), covers CHK-JEDEC-ID. CHK-RESP and CHK-NONVAC are enforced by the shared scoreboard. `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py` logs `CHK-SPI-WIRE PASS` and `CHK-SPI-FRAME-SHAPE PASS` lines and the `CHK-SPI-LEDGER` checker record. `hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py` logs `CHK-SPI-SB-RX PASS`.
 
 '''''
 

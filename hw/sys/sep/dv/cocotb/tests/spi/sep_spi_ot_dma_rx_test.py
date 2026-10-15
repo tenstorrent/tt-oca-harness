@@ -21,6 +21,7 @@ from pathlib import Path
 import cocotb
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
@@ -64,6 +65,7 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
         )
         # Preload the known pattern the firmware reads back and value-checks.
         flash.write_memory(0, bytes([_RX_PATTERN]) * _RX_SIZE)
+        wire = await SepSpiWireMonitor(dut).start()
         await flash.start()
         try:
             # Override the boot scoreboard's expected banner here (after its own
@@ -114,3 +116,4 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
             # neither is evidence.
         finally:
             await flash.stop()
+        await wire.finish(self.logger, seed=self.random_seed(), flash=flash)

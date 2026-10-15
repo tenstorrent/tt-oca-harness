@@ -1071,7 +1071,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._set_ev(pass_ev)
         await self.ops.wr(
             CONTROL,
-            _CTRL_BASE & ~CTRL_RX_WM | (tx_wm << _CTRL_TX_WM_LSB) | (rx_wm << _CTRL_RX_WM_LSB),
+            _CTRL_BASE & ~CTRL_RX_WM
+            | (tx_wm << _CTRL_TX_WM_LSB)
+            | ((rx_wm << _CTRL_RX_WM_LSB) & CTRL_RX_WM),
         )
         for w in range(words):
             await self.ops.push_tx(0x1100_0000 | w)

@@ -2,8 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Per-core-clock sampler of the SPI host pad ports.
 
-Reads ``spi_cs_n_o``, ``spi_sck_o`` and ``spi_mosi_o`` of ``tb_top`` (the
-approved SPI host pad ports, docs/SEP_TB_ARCH.adoc) on every rising edge of
+Reads ``spi_cs_n_o``, ``spi_sck_o``, ``spi_mosi_o``, lane 0 of
+``spi_sd_oe_o``, ``spi_cs_oe_o`` and ``spi_sck_oe_o`` of ``tb_top`` (the
+approved SPI host pad ports and monitor taps, docs/SEP_TB_ARCH.adoc) on every
+rising edge of
 ``clk_i``, in the read-only phase, and drives nothing. Clock ``n`` is the n-th
 sampled edge after ``start``; every time value here is a clock index, so every
 time relation is in core clocks.
@@ -12,7 +14,11 @@ Records:
 
 * chip-select-low windows (``CsWindow``): the clock of the first low sample
   (``start``) and of the first high sample after it (``end``); the sck level at
-  ``start``; every sck edge as (clock, new level); every ``spi_mosi_o`` change.
+  ``start``; every sck edge as (clock, new level); every ``spi_mosi_o`` change,
+  also split by the lane 0 output enable sampled on the same clock
+  (``mosi_changes_oe_on`` / ``mosi_changes_oe_off``; an X/Z enable counts as
+  off). A change with the enable off is a core value that does not reach the
+  pad.
   A leading edge is an sck edge that leaves the idle level. The idle level is
   the value given to ``set_idle_level`` (the CPOL that the leaf wrote) or,
   when none is given, the sck level at ``start``. ``lead`` is the clocks from
@@ -21,7 +27,18 @@ Records:
   edges.
 * chip-select-high windows (``CsHighWindow``): the start and end clocks and the
   set of sck levels sampled in the window.
+* for both kinds of window, ``cs_oe_off`` and ``sck_oe_off``: the clocks on
+  which the chip-select or clock output enable was off (or X/Z), so the pad
+  did not carry the sampled level from the host.
 * every sck edge and every mosi change of the run, chip select high or low.
+
+A window query (``windows_since``, ``count_windows``, ``gaps_since``,
+``high_windows_since``, ``leading_edges_since`` and the bounded waits) given
+``require_oe=True``, or run on a sampler built with ``require_oe=True``,
+raises ``SpiPadOeError`` when a window it reads has a clock with the
+chip-select or clock output enable off: its levels and edges did not reach
+the pad. The default is ``False``; the caller then grades ``cs_oe_off`` and
+``sck_oe_off`` itself.
 
 A chip select or sck sample that resolves to X or Z fails the leaf with
 ``SPI-PAD-XZ FAIL`` while ``xz_fail`` is set. Verilator is 2-state.
@@ -55,12 +72,22 @@ from sep_monitor_life import MonitorLife
 from sep_monitor_life import MonitorLifeError as MonitorLifeError
 
 
+def _on(sig) -> bool:
+    """True when a one-bit enable resolves to 1."""
+    v = sig.value
+    return bool(v.is_resolvable and int(v) & 1)
+
+
 class SpiPadXZError(AssertionError):
     """A chip select or sck sample resolved to X or Z."""
 
 
 class SpiPadTimeout(AssertionError):
     """A bounded wait on the pad sampler expired."""
+
+
+class SpiPadOeError(AssertionError):
+    """A graded window had a clock with the chip-select or clock output enable off."""
 
 
 @dataclass
@@ -73,9 +100,13 @@ class CsWindow:
     end: int | None = None
     edges: list[tuple[int, int]] = field(default_factory=list)
     mosi_changes: list[int] = field(default_factory=list)
+    mosi_changes_oe_on: list[int] = field(default_factory=list)
+    mosi_changes_oe_off: list[int] = field(default_factory=list)
     # Clocks in the window on which spi_mosi_o was X or Z. A change count
     # over such a window is incomplete, so a check on MOSI changes needs 0.
     mosi_xz: int = 0
+    cs_oe_off: int = 0
+    sck_oe_off: int = 0
 
     @property
     def complete(self) -> bool:
@@ -129,6 +160,8 @@ class CsHighWindow:
     end: int | None = None
     sck_levels: set[int] = field(default_factory=set)
     sck_toggles: int = 0
+    cs_oe_off: int = 0
+    sck_oe_off: int = 0
 
 
 @dataclass(frozen=True)
@@ -146,14 +179,26 @@ class PadMark:
 class SepSpiPadSampler:
     """Samples the SPI host pads on each ``clk_i`` rising edge until stopped."""
 
-    def __init__(self, dut=None, *, xz_fail: bool = True, keep_edges: bool = True) -> None:
+    def __init__(
+        self,
+        dut=None,
+        *,
+        xz_fail: bool = True,
+        keep_edges: bool = True,
+        require_oe: bool = False,
+    ) -> None:
         self.dut: Any = dut if dut is not None else cocotb.top
         self.xz_fail = xz_fail
+        # The default of every window query's require_oe.
+        self.require_oe = require_oe
         # False keeps only per-window edges; the run-wide edge list stays empty.
         self.keep_edges = keep_edges
         self._cs = self.dut.spi_cs_n_o
         self._sck = self.dut.spi_sck_o
         self._mosi = self.dut.spi_mosi_o
+        self._sd_oe = self.dut.spi_sd_oe_o
+        self._cs_oe = self.dut.spi_cs_oe_o
+        self._sck_oe = self.dut.spi_sck_oe_o
         self._task: Any = None
         self.life = MonitorLife("SPI-PAD", lambda: self.clk)
         self._idle: int | None = None
@@ -224,25 +269,46 @@ class SepSpiPadSampler:
             )
 
     # ---- queries ---------------------------------------------------------
-    def windows_since(self, mark: PadMark, *, complete_only: bool = True) -> list[CsWindow]:
+    def _gate_oe(self, wins: list, what: str, require_oe: bool | None) -> None:
+        """Raise ``SpiPadOeError`` when a window has an output-enable-off clock."""
+        if not (self.require_oe if require_oe is None else require_oe):
+            return
+        off = [
+            (w.start, w.end, w.cs_oe_off, w.sck_oe_off) for w in wins if w.cs_oe_off or w.sck_oe_off
+        ]
+        if off:
+            msg = (
+                f"SPI-PAD-OE FAIL: {len(off)} {what} window(s) with the chip-select or clock "
+                f"output enable off; first (start, end, cs_oe_off, sck_oe_off)={off[0]}"
+            )
+            self.log.error(msg)
+            raise SpiPadOeError(msg)
+
+    def windows_since(
+        self, mark: PadMark, *, complete_only: bool = True, require_oe: bool | None = None
+    ) -> list[CsWindow]:
         """Chip-select-low windows that started after ``mark``."""
         self.life.check(mark.epoch)
-        return [w for w in self.low if w.start > mark.clk and (w.complete or not complete_only)]
+        wins = [w for w in self.low if w.start > mark.clk and (w.complete or not complete_only)]
+        self._gate_oe(wins, "chip-select-low", require_oe)
+        return wins
 
-    def count_windows(self, mark: PadMark) -> int:
-        return len(self.windows_since(mark))
+    def count_windows(self, mark: PadMark, *, require_oe: bool | None = None) -> int:
+        return len(self.windows_since(mark, require_oe=require_oe))
 
     def high_windows_since(
-        self, mark: PadMark, *, complete_only: bool = False
+        self, mark: PadMark, *, complete_only: bool = False, require_oe: bool | None = None
     ) -> list[CsHighWindow]:
         self.life.check(mark.epoch)
-        return [
+        wins = [
             w for w in self.high if w.start > mark.clk and (w.end is not None or not complete_only)
         ]
+        self._gate_oe(wins, "chip-select-high", require_oe)
+        return wins
 
-    def gaps_since(self, mark: PadMark) -> list[int]:
+    def gaps_since(self, mark: PadMark, *, require_oe: bool | None = None) -> list[int]:
         """Chip-select-high clocks between neighbouring low windows after ``mark``."""
-        wins = self.windows_since(mark)
+        wins = self.windows_since(mark, require_oe=require_oe)
         return [b.start - a.end for a, b in zip(wins, wins[1:]) if a.end is not None]
 
     def sck_edges_between(self, c0: int, c1: int) -> list[tuple[int, int]]:
@@ -254,42 +320,52 @@ class SepSpiPadSampler:
         self._check_range(c1)
         return [c for c in self.mosi_changes if c0 <= c < c1]
 
-    def leading_edges_since(self, mark: PadMark) -> int:
+    def leading_edges_since(self, mark: PadMark, *, require_oe: bool | None = None) -> int:
         """Leading sck edges in every low window that is open or started after ``mark``."""
         self.life.check(mark.epoch)
         total = 0
+        counted = []
         for w in self.low:
             if w.end is not None and w.end <= mark.clk:
                 continue
-            total += sum(1 for c in w.leading_edge_clks if c > mark.clk)
+            edges = sum(1 for c in w.leading_edge_clks if c > mark.clk)
+            if edges:
+                counted.append(w)
+            total += edges
+        self._gate_oe(counted, "chip-select-low", require_oe)
         return total
 
     # ---- bounded waits ---------------------------------------------------
-    async def wait_windows(self, n: int, mark: PadMark, bound: int) -> list[CsWindow]:
+    async def wait_windows(
+        self, n: int, mark: PadMark, bound: int, *, require_oe: bool | None = None
+    ) -> list[CsWindow]:
         """Wait at most ``bound`` clocks for ``n`` complete low windows after ``mark``."""
         clk = self.dut.clk_i
         for _ in range(bound + 1):
-            wins = self.windows_since(mark)
+            wins = self.windows_since(mark, require_oe=False)
             if len(wins) >= n:
+                self._gate_oe(wins[:n], "chip-select-low", require_oe)
                 return wins[:n]
             self.life.require_running()
             await RisingEdge(clk)
         raise SpiPadTimeout(
-            f"SPI pads: {len(self.windows_since(mark))} of {n} chip-select-low windows "
+            f"SPI pads: {len(self.windows_since(mark, require_oe=False))} of {n} chip-select-low windows "
             f"complete within {bound} clocks after clock {mark.clk}"
         )
 
-    async def wait_leading_edges(self, n: int, mark: PadMark, bound: int) -> int:
+    async def wait_leading_edges(
+        self, n: int, mark: PadMark, bound: int, *, require_oe: bool | None = None
+    ) -> int:
         """Wait at most ``bound`` clocks for ``n`` leading sck edges after ``mark``."""
         clk = self.dut.clk_i
         for _ in range(bound + 1):
-            got = self.leading_edges_since(mark)
+            got = self.leading_edges_since(mark, require_oe=False)
             if got >= n:
-                return got
+                return self.leading_edges_since(mark, require_oe=require_oe)
             self.life.require_running()
             await RisingEdge(clk)
         raise SpiPadTimeout(
-            f"SPI pads: {self.leading_edges_since(mark)} of {n} leading sck edges "
+            f"SPI pads: {self.leading_edges_since(mark, require_oe=False)} of {n} leading sck edges "
             f"within {bound} clocks after clock {mark.clk}"
         )
 
@@ -339,12 +415,21 @@ class SepSpiPadSampler:
                     self.high[-1].sck_toggles += 1
             if cs == 1 and self.high:
                 self.high[-1].sck_levels.add(sck)
+            win = self.low[-1] if cs == 0 and self.low else self.high[-1] if self.high else None
+            if win is not None:
+                win.cs_oe_off += 0 if _on(self._cs_oe) else 1
+                win.sck_oe_off += 0 if _on(self._sck_oe) else 1
             if mosi is None and cs == 0 and self.low:
                 self.low[-1].mosi_xz += 1
             if mosi is not None and self._mosi_level is not None and mosi != self._mosi_level:
                 self.mosi_changes.append(now)
                 if cs == 0 and self.low:
                     self.low[-1].mosi_changes.append(now)
+                    oe = self._sd_oe.value
+                    if oe.is_resolvable and int(oe) & 1:
+                        self.low[-1].mosi_changes_oe_on.append(now)
+                    else:
+                        self.low[-1].mosi_changes_oe_off.append(now)
             self._sck_level = sck
             if mosi is not None:
                 self._mosi_level = mosi

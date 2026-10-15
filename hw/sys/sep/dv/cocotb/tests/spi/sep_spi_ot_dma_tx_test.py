@@ -2,9 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SRAM data reaches the flash through the Secure DMA and SPI TX FIFO, paced by the TX watermark.
 
-OCAH provenance: ``spi_ot_dma_tx_test`` checks the raw SRAM-to-SPI byte
-stream, DMA done, and no error.
-
 SPI DMA-TX breadth: the TX complement of
 `sep_spi_ot_dma_rx_test` (SPI RX FIFO -> DMA -> SRAM). Here SRAM -> Secure DMA (hardware
 handshake) -> OT SPI host TX FIFO -> flash: the OT SPI TX watermark drives
@@ -75,6 +72,8 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_log_error_counter import attach_error_counter
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spi_scoreboard import SepSpiScoreboard
+from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
@@ -226,9 +225,13 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             name="sep_spi3_flash",
             verbose=True,
         )
-        # The BFM logs and drops a frame whose handler raised; such an error
-        # fails the leaf.
+        # An error inside the BFM fails the leaf through the error counter and
+        # flash.stop(); a frame the BFM refused for its shape, a wire-check
+        # violation, or a frame missing from the BFM records fails it through
+        # the wire monitor.
         bfm_errors = attach_error_counter(flash.log)
+        wire = await SepSpiWireMonitor(dut).start()
+        sb = SepSpiScoreboard(wire, flash, self.logger, seed=self.random_seed())
         await flash.start()
         windows: list[_DmaTxWindow] = []
         cocotb.start_soon(self._watch_dma_pacing(dut, windows))
@@ -245,6 +248,11 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
                 progress_every=_PROGRESS_EVERY,
             )
             self._golden_check(flash, cfg, cases)
+            for case in cases:
+                # The SPI host sends the least significant byte of each TXDATA word
+                # first (ByteOrder 1, the OpenTitan default the wrapper keeps).
+                source = b"".join(w.to_bytes(4, "little") for w in case.data)
+                sb.expect_tx(case.addr, source, label=f"case[{case.idx}]")
             self._pacing_check(windows, cases)
             assert not bfm_errors.records, (
                 f"SPI-BFM FAIL: the flash model logged {len(bfm_errors.records)} error(s): "
@@ -252,6 +260,8 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             )
         finally:
             await flash.stop()
+        await wire.finish(self.logger, seed=self.random_seed(), flash=flash)
+        sb.finish()
 
     @staticmethod
     async def _watch_dma_pacing(dut, windows: list[_DmaTxWindow]) -> None:

@@ -558,6 +558,8 @@ module sep_uvm_top
     // (the vendored VeeR tap has no reset-vector TDR).
     // ------------------------------------------------------------------
     sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_w;
+    bit         spi_four_lane_q;
+    logic [3:0] spi_rsp_sd_w;
     // The irq field of the SPI request, selected by name, so a leaf that
     // samples it does not depend on the struct layout.
     logic sep_io_spi_irq_w;
@@ -704,11 +706,11 @@ module sep_uvm_top
         .lcc_demote_state_1_o         (lcc_demote_state_1_probe_o),
         .lcc_demote_state_2_o         (lcc_demote_state_2_probe_o),
 
-        // SPI: quad-lane struct boundary, bridged below to the
-        // single-lane pad ports (sck/cs_n from req; MOSI = sd[0] out;
-        // MISO returns on rsp.sd[1]).
+        // SPI: quad-lane struct boundary, bridged below to the pad ports
+        // (sck/cs_n from req; MOSI = sd[0] out; MISO returns on rsp.sd[1];
+        // spi_sd_o/spi_sd_oe_o and spi_sd_i carry all four lanes).
         .sep_io_spi_req_o             (sep_io_spi_req_w),
-        .sep_io_spi_rsp_i             ('{sd: {2'b00, spi_miso_i, 1'b0}}),
+        .sep_io_spi_rsp_i             ('{sd: spi_rsp_sd_w}),
 
         // Wrapper status/debug outputs. Unconnected ports have no consumer
         // in this TB; the rest are real DUT outputs brought to tb ports.
@@ -758,6 +760,16 @@ module sep_uvm_top
     assign spi_sck_o  = sep_io_spi_req_w.sck;
     assign spi_cs_n_o = sep_io_spi_req_w.cs_n;
     assign spi_mosi_o = sep_io_spi_req_w.sd[0];
+    assign spi_sd_o     = sep_io_spi_req_w.sd;
+    assign spi_sd_oe_o  = sep_io_spi_req_w.sd_oe;
+    assign spi_cs_oe_o  = sep_io_spi_req_w.cs_oe;
+    assign spi_sck_oe_o = sep_io_spi_req_w.sck_oe;
+    // Response lanes: in a run with +sep_spi_four_lane all four lanes follow
+    // spi_sd_i; otherwise lane 1 is spi_miso_i and lanes 0, 2 and 3 read 0.
+    // spi_sd_rsp_o is a monitor-only copy of the lanes the DUT receives.
+    initial spi_four_lane_q = $test$plusargs("sep_spi_four_lane");
+    assign spi_rsp_sd_w = spi_four_lane_q ? spi_sd_i : {2'b00, spi_miso_i, 1'b0};
+    assign spi_sd_rsp_o = spi_rsp_sd_w;
 
     // ------------------------------------------------------------------
     // SEP->SMC external AXI responder (real-ROM boot only).
@@ -3488,6 +3500,7 @@ module sep_uvm_top
     assign tcm_load_i               = 1'b0;
     assign esrc_noise_ext_i         = '0;
     assign spi_miso_i               = 1'b1;
+    assign spi_sd_i                 = 4'h0;
     assign test_en_i                = 1'b0;
     assign scan_rst_ni_i            = 1'b1;
     assign dmi_core_enable_i        = 1'b0;
