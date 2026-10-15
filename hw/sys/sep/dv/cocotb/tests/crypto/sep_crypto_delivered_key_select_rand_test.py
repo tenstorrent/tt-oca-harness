@@ -51,6 +51,13 @@ Checkers:
                             (sideload = 1, AES_256) uses K_a.
 The digest of a mismatched length above 128 bits has no stated value; its
 comparisons are logged as ``OBS-KEYSEL-MISMATCH``.
+
+DIGEST byte order: the register text settles the register order (DIGEST_0 holds
+digest bytes 0..3) and the ``digest_swap`` swap (``hmac.adoc``:116-117), not the
+byte order of a word at ``digest_swap`` = 0. Every HMAC golden compare accepts the
+big-endian or the little-endian read of each word, with one order for every
+readback of the seed (``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order is
+logged as ``OBS-HMAC-DIGEST-ORDER``.
 """
 
 from __future__ import annotations
@@ -72,7 +79,7 @@ from env.sep_crypto_kat_rows import (
     SP800_38A_PT_BLOCK1,
 )
 from env.sep_fcov_gate import close_graded_window, open_graded_window
-from env.sep_hmac_golden import hmac_sha2_bytes
+from env.sep_hmac_golden import SepDigestOrder, digest_order, hmac_sha2_bytes
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_trial_wait import TrialTimeout
 from sep_base_test import sep_base_test
@@ -176,9 +183,11 @@ def _sw_key_bytes(words: list[int]) -> bytes:
     return b"".join((w & 0xFFFF_FFFF).to_bytes(4, "big") for w in words)
 
 
-def hmac_golden(key: bytes, msg: bytes, sha: int) -> list[int]:
+def hmac_golden(key: bytes, msg: bytes, sha: int) -> bytes:
+    """HMAC digest bytes; a DIGEST readback is graded against it with ``SepDigestOrder``."""
     out = hmac_sha2_bytes(key, msg, sha)
-    return [int.from_bytes(out[4 * i : 4 * i + 4], "big") for i in range(HMAC_DIGEST_WORDS[sha])]
+    assert len(out) == 4 * HMAC_DIGEST_WORDS[sha]
+    return out
 
 
 @dataclass(frozen=True)
@@ -275,6 +284,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         self.logger.info("PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
+        self.dorder = SepDigestOrder()
         self.km = SepKmMailbox(self)
         self.hmac = SepHmac(self)
         self.aes = SepAes(self)
@@ -299,13 +309,14 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         g_ka_ecb = aes_encrypt_words("ecb", ka, _le_words(AES_PT))
         h_two = await self._hmac_try(256, 256)
         a_two = await self._aes_sideload_block()
+        h_two_ok, _ = self.dorder.match(h_two, g_kh[256])
         self.chk.ok(
             "KEYSEL-TWO",
-            rc_h == 0 and rc_a == 0 and h_two == g_kh[256] and a_two == g_ka_ecb,
+            rc_h == 0 and rc_a == 0 and h_two_ok and a_two == g_ka_ecb,
             rc_hmac=rc_h,
             rc_aes=rc_a,
             **{
-                "hmac==golden_kh": int(h_two == g_kh[256]),
+                "hmac==golden_kh": int(h_two_ok),
                 "aes==golden_ka": int(a_two == g_ka_ecb),
             },
         )
@@ -318,6 +329,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             self.chk.ok("KEYSEL-HMAC-MISMATCH", line.pop("_ok"), **line)
 
         await self._aes_legs(ka)
+        self.chk.obs("HMAC-DIGEST-ORDER", **self.dorder.fields())
         close_graded_window(self.logger)
 
         await self.km.check_outbound_empty("EOT")
@@ -387,7 +399,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             self.logger.info("HMAC run sha=%d keylen=%d: %s", sha, keylen, exc)
             return None
 
-    async def _matched_cells(self, g_kh: dict[int, list[int]]) -> dict[int, list[int] | None]:
+    async def _matched_cells(self, g_kh: dict[int, bytes]) -> dict[int, list[int] | None]:
         decoy = list(self.plan.decoy)
         out: dict[int, list[int] | None] = {}
         for sha, keylen in MATCHED:
@@ -395,26 +407,28 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             out[sha] = d
             g_decoy = hmac_golden(_sw_key_bytes(decoy[:8]), self.plan.msg, sha)
             assert g_decoy != g_kh[sha], "decoy golden equals the delivered-key golden"
+            hit, _ = self.dorder.match(d, g_kh[sha])
             self.chk.ok(
                 "KEYSEL-HMAC-MATCH",
-                d == g_kh[sha],
+                hit,
                 sha=sha,
                 keylen=keylen,
                 **{
-                    "digest==golden_kh": int(d == g_kh[sha]),
-                    "digest==golden_decoy": int(d == g_decoy),
+                    "digest==golden_kh": int(hit),
+                    "digest==golden_decoy": int(digest_order(d, g_decoy) is not None),
                 },
             )
         close_graded_window(self.logger)
         sha, keylen = MATCHED_CTRL
         d = await self._hmac_try(sha, keylen)
         out[sha] = d
+        hit, _ = self.dorder.match(d, g_kh[sha])
         self.chk.ctrl(
             "KEYSEL-256",
-            d == g_kh[sha],
+            hit,
             sha=sha,
             keylen=keylen,
-            **{"digest==golden_kh": int(d == g_kh[sha])},
+            **{"digest==golden_kh": int(hit)},
         )
         open_graded_window(TEST, self.logger)
         return out
@@ -444,7 +458,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             ok = not reason and repeat and err == 0
             if keylen == 128:
                 g = hmac_golden(top128, self.plan.msg, sha)
-                hit = bool(runs) and runs[0] == g
+                hit = bool(runs) and self.dorder.match(runs[0], g)[0]
                 line["digest==golden_kh128"] = int(hit)
                 ok = ok and hit
             else:
@@ -456,7 +470,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
                         sha=sha,
                         keylen=keylen,
                         eq_matched=int(runs[0] == matched.get(sha)),
-                        eq_decoy=int(runs[0] == g_decoy),
+                        eq_decoy=int(digest_order(runs[0], g_decoy) is not None),
                     )
             if reason:
                 line["reason"] = reason

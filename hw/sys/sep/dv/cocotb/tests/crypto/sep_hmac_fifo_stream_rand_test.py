@@ -58,6 +58,14 @@ held beat is therefore log-only (``OBS-BLOCKED CHK-HMAC-BACKPRESSURE`` and
 lost data. The measurement run issues up to ``PROBE_EXTRA_MAX`` more writes with the stall
 held and logs how many complete; that count is not graded.
 
+DIGEST byte order: the register text settles the register order (DIGEST_0 holds digest bytes
+0..3) and the ``digest_swap`` swap (``hmac.adoc``:116-117), not the byte order of a word at
+``digest_swap`` = 0. Every digest-to-golden compare of the leaf accepts the big-endian or the
+little-endian read of each word, with one order for every readback of the seed
+(``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order is logged as
+``OBS-HMAC-DIGEST-ORDER``. The all-w DIGEST read of CHK-HMAC-WIPE compares register words with
+the written register value w and does not depend on the digest byte order.
+
 Controls: ``CTRL-HMAC-STALL-FULL`` (a stalled leg reads ``fifo_full`` = 1),
 ``CTRL-HMAC-BP-CLEAN`` (a beat into a FIFO that is not full completes), ``CTRL-HMAC-LENGTHS``
 (every length cell ran), ``CTRL-HMAC-FE-DEPTH`` (the not-full leg writes fewer words than the
@@ -80,7 +88,7 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_crypto_kat_rows import RFC4231_KEYS
 from env.sep_fcov_gate import close_graded_window, open_graded_window
-from env.sep_hmac_golden import hmac_sha2_bytes, sha2_bytes
+from env.sep_hmac_golden import SepDigestOrder, digest_words, hmac_sha2_bytes, sha2_bytes
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import HMAC
@@ -160,15 +168,16 @@ def legal_key_bits(sha: int) -> list[int]:
     return [k for k in HMAC_KEY_LENGTH if (sha, k) not in HMAC_ILLEGAL_KEYED]
 
 
-def golden_words(sha: int, hmac_en: bool, key_words, key_bits: int | None, msg: bytes) -> list[int]:
-    """DIGEST words of the hash at ``digest_swap`` = 0: big-endian reads of the digest bytes."""
+def golden_digest(sha: int, hmac_en: bool, key_words, key_bits: int | None, msg: bytes) -> bytes:
+    """Digest bytes of the hash; a DIGEST readback is graded with ``SepDigestOrder``."""
     if hmac_en:
         assert key_bits is not None
         key = b"".join(w.to_bytes(4, "big") for w in key_words[: key_bits // 32])
         out = hmac_sha2_bytes(key, msg, sha)
     else:
         out = sha2_bytes(msg, sha)
-    return [int.from_bytes(out[i : i + 4], "big") for i in range(0, HMAC_DIGEST_WORDS[sha] * 4, 4)]
+    assert len(out) == HMAC_DIGEST_WORDS[sha] * 4
+    return out
 
 
 def chunks(msg: bytes, mode: str) -> list[tuple[int, int]]:
@@ -288,7 +297,8 @@ def draw_plan(seed: int) -> Plan:
     wh = _draw_hash(rng, hmac_en=True)
     msg1 = _unique_msg(rng, rng.randrange(1, 257))
     msg2 = _unique_msg(rng, rng.randrange(1, 257))
-    d1 = golden_words(wh.sha, True, KEY_ROWS[wh.key_row], wh.key_bits, msg1)
+    g1 = golden_digest(wh.sha, True, KEY_ROWS[wh.key_row], wh.key_bits, msg1)
+    d1 = digest_words(g1, "be") + digest_words(g1, "le")
     while True:
         w = int.from_bytes(bytes(rng.sample(range(256), 4)), "big")
         if w not in d1:
@@ -323,6 +333,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         seed = self.random_seed()
         plan = draw_plan(seed)
         self.chk = SepChkLog(self, TEST, seed)
+        self.dorder = SepDigestOrder()
         self.logger.info(
             "PLAN seed=%d cells=[%s] stalled=[%s] fe_full=%s fe_notfull=%s wipe=%s/w=0x%08x/"
             "len1=%d/len2=%d",
@@ -397,6 +408,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         await self._reset_hmac()
         close_graded_window(self.logger)
         await self._narrow_write_leg()
+        self.chk.obs("HMAC-DIGEST-ORDER", **self.dorder.fields())
         self.chk.finish()
 
     async def _narrow_write_leg(self) -> None:
@@ -406,7 +418,8 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         check, then an HMAC reset.
         """
         msg = b"".join(v.to_bytes(w, "little") for (_, w), v in zip(NARROW_WRITES, NARROW_VALUES))
-        golden = golden_words(256, False, KEY_ROWS[0], None, msg)
+        golden = golden_digest(256, False, KEY_ROWS[0], None, msg)
+        n_words = len(golden) // 4
         tag = dict(
             sha=256,
             len=len(msg),
@@ -440,8 +453,8 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             if self._now_clk() - t0 > DONE_BOUND:
                 break
             await ClockCycles(self.dut.clk_i, 10)
-        got = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(len(golden))] if done else []
-        match = got == golden
+        got = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n_words)] if done else []
+        match = bool(got) and self.dorder.match(got, golden)[0]
         self.chk.ok(
             "HMAC-NARROW-WRITE",
             done and not refused and match,
@@ -451,7 +464,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             refused_lane_width_resp=",".join(refused) or "-",
             digest_eq_golden=int(match),
             digest0=f"0x{got[0]:08x}" if got else "none",
-            golden0=f"0x{golden[0]:08x}",
+            golden0=f"0x{self.dorder.expected(golden)[0]:08x}",
             **({} if done else {"reason": "timeout", "bound": DONE_BOUND}),
         )
         await self._reset_hmac()
@@ -600,8 +613,8 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         return digest
 
     def _grade_msg(self, h: Hash, msg: bytes, mode: str, digest: list[int]) -> None:
-        golden = golden_words(h.sha, h.hmac_en, KEY_ROWS[h.key_row], h.key_bits, msg)
-        ok = digest == golden
+        golden = golden_digest(h.sha, h.hmac_en, KEY_ROWS[h.key_row], h.key_bits, msg)
+        ok, _ = self.dorder.match(digest, golden)
         self.chk.ok(
             "HMAC-MSG",
             ok,
@@ -612,7 +625,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             key_bits=h.key_bits,
             **{"digest==golden": int(ok)},
             digest0=f"0x{digest[0]:08x}",
-            golden0=f"0x{golden[0]:08x}",
+            golden0=f"0x{self.dorder.expected(golden)[0]:08x}",
         )
 
     async def _drain(self, bound: int, owner: str) -> int:
@@ -823,10 +836,10 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         await self._drain(DRAIN_BOUND, "HMAC-STATUS")
         digest = await self._finish(leg.h.sha, "HMAC-MSG")
         self._grade_msg(leg.h, leg.msg, leg.mode, digest)
-        golden = golden_words(
+        golden = golden_digest(
             leg.h.sha, leg.h.hmac_en, KEY_ROWS[leg.h.key_row], leg.h.key_bits, leg.msg
         )
-        no_loss = digest == golden
+        no_loss, _ = self.dorder.match(digest, golden)
         accepted_ok = all(r == "OKAY" for r in accepted)
         self.chk.ok(
             "HMAC-BACKPRESSURE-HOLD",
@@ -911,12 +924,13 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         await self._write_msg(chunks(leg.msg1, "burst"), "burst", 0, 8, "run")
         d1 = await self._finish(h.sha, "HMAC-WIPE")
         self._grade_msg(h, leg.msg1, "burst", d1)
-        g1 = golden_words(h.sha, True, KEY_ROWS[h.key_row], h.key_bits, leg.msg1)
+        g1 = golden_digest(h.sha, True, KEY_ROWS[h.key_row], h.key_bits, leg.msg1)
+        d1_ok, _ = self.dorder.match(d1, g1)
         self.chk.ctrl(
             "HMAC-WIPE-PRE",
-            d1 == g1 and leg.w not in d1,
+            d1_ok and leg.w not in d1,
             w=f"0x{leg.w:08x}",
-            digest_eq_golden=int(d1 == g1),
+            digest_eq_golden=int(d1_ok),
         )
 
         # hmac.hjson:420-425: the value overwrites the secret key and the digest; a 64-bit
@@ -932,8 +946,8 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         await self._write_msg(chunks(leg.msg2, "burst"), "burst", 0, 8, "run")
         d2 = await self._finish(h.sha, "HMAC-WIPE")
-        g2 = golden_words(h.sha, True, [leg.w] * 32, h.key_bits, leg.msg2)
-        key_ok = d2 == g2
+        g2 = golden_digest(h.sha, True, [leg.w] * 32, h.key_bits, leg.msg2)
+        key_ok, _ = self.dorder.match(d2, g2)
         self.chk.ok(
             "HMAC-WIPE",
             digest_all_w and key_ok,

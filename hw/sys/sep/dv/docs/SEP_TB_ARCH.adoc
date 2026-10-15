@@ -271,7 +271,7 @@ Observation probe groups:
 * ESRC SHA-256 status tap (`esrc_sha256_status_o`): the next value of the
   `SHA256_STATUS` fields (`reg_in.SHA256_STATUS`) on every clock: bit 0 BUSY,
   bits 4:1 INPUT_COUNT, bits 8:5 OUTPUT_COUNT. Users: the ESRC conditioning
-  entry of the crypto and entropy area.
+  and health-pattern entries of the crypto and entropy area.
 * ESRC decorrelator input tap (`esrc_decor_noise_o`): bit i is
   `u_decorrelator.noise_i` of ESRC lane i, the decorrelator input bit that the
   ESRC noise force drives. Read-only. Users: the FCOV lane-pattern and
@@ -565,7 +565,9 @@ Exceptions (a closed set):
   The force targets those nets only. `STATUS`, `INTR_STATE` and the
   interrupt lines the checkers read stay frontdoor. Owners:
   `sep_rom_hmac_fifo_stall_terminal_test` (HMAC),
-  `sep_pic_pending_map_walk_rand_test` (HMAC and KMAC, CHK-FIFO-EMPTY).
+  `sep_pic_pending_map_walk_rand_test` (HMAC and KMAC, CHK-FIFO-EMPTY),
+  `sep_hmac_fifo_stream_rand_test` (HMAC, CHK-HMAC-BACKPRESSURE-HOLD and the
+  FIFO-full cells).
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *TCM bit-flip* — stored-bit error inject on the ICCM and DCCM macro arrays,

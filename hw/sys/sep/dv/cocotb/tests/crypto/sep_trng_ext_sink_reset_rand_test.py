@@ -503,6 +503,13 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         words = await self.otbn.read_dmem_words(0, reads) if rnd else []
         return {"result": words, "golden_ok": True, "rnd_words": words}
 
+    async def _op_caught(self, client: str, **kw) -> dict:
+        """``_op`` in a forked task: a client error is returned for the check to grade."""
+        try:
+            return await self._op(client, **kw)
+        except AssertionError as exc:
+            return {"result": [], "golden_ok": False, "error": str(exc)}
+
     async def _client_leg(self) -> None:
         """CHK-XRST-CLIENT: every accepted word and every OTBN RND word is a sent word;
         the AES ciphertext and the KMAC digest equal their goldens."""
@@ -554,6 +561,14 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
                 t_offer = self.trace.clk
                 self.ext.send(2, [a])
                 if not await self._settle(2, 1, SETTLE_CAP):
+                    if k == 0 and t_xfer is None:
+                        # The first fill beat after a clear fall is the resume the
+                        # check names; a stall there is graded, not raised.
+                        self.chk.ok(
+                            "XRST-RESUME", False, stream=2, phase="fill", resumed_clk="na",
+                            internal_init=0, reason=f"timeout:resume bound={SETTLE_CAP}",
+                        )  # fmt: skip
+                        return
                     raise AssertionError(f"pool fill beat of pair {k} not taken in {SETTLE_CAP}")
                 if t_xfer is None:
                     t_xfer = max(1, self.trace.clk - t_offer)
@@ -604,7 +619,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         # Step 6: one pool STATUS read issued and answered inside the clear.
         req_in = self.rd(dut.trng_reset_active_probe_o, allow_unknown=True)
         t_req = self.trace.clk
-        read = cocotb.start_soon(self.pool.access(POOL_STATUS))
+        read = cocotb.start_soon(self.pool.access(POOL_STATUS, allow_timeout=True))
         await self._until(lambda: read.done(), SETTLE_CAP)
         resp_in = int(read.done()) and self.rd(dut.trng_reset_active_probe_o, allow_unknown=True)
         read_clk = self.trace.clk - t_req
@@ -641,14 +656,23 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         # CHK-XRST-POOL
         level_in_clear = pool_level(seq.rdata)
         self.chk.ctrl("XRST-POOL", level_before == plan.n_fill, level_before=level_before)
+        pool_fields = {
+            "level_before": level_before, "level_in_clear": level_in_clear,
+            "resp": "OKAY" if seq.resp_code == RESP_OKAY else seq.resp_code,
+            "req_in_window": req_in, "resp_in_window": resp_in, "read_clk": read_clk,
+            "window_clk": sum(1 for r in rows if r.ta == 1),
+        }  # fmt: skip
+        if seq.timed_out:
+            pool_fields["reason"] = "timeout:read"
         self.chk.ok(
             "XRST-POOL",
-            seq.resp_code == RESP_OKAY and level_in_clear == 0 and req_in == 1 and resp_in == 1,
-            level_before=level_before, level_in_clear=level_in_clear,
-            resp="OKAY" if seq.resp_code == RESP_OKAY else seq.resp_code,
-            req_in_window=req_in, resp_in_window=resp_in, read_clk=read_clk,
-            window_clk=sum(1 for r in rows if r.ta == 1),
-        )  # fmt: skip
+            not seq.timed_out
+            and seq.resp_code == RESP_OKAY
+            and level_in_clear == 0
+            and req_in == 1
+            and resp_in == 1,
+            **pool_fields,
+        )
         # CHK-XRST-PAUSE and CHK-XRST-RESUME, per active stream.
         first_clear = next((k for k, r in enumerate(rows) if r.ta == 1), None)
         last_clear = max((k for k, r in enumerate(rows) if r.ta == 1), default=None)
@@ -731,7 +755,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             self._start_feeder(1, s_trial, pace.allow)
             self._feeders.append(pace.start())
         self.trace.begin()
-        task = cocotb.start_soon(self._op(client, entropy_req=client == "kmac"))
+        task = cocotb.start_soon(self._op_caught(client, entropy_req=client == "kmac"))
         n = await self._until(
             lambda: self.rd(dut.crypto_edn_req_o, allow_unknown=True) >> bit & 1, SETTLE_CAP
         )
@@ -790,10 +814,9 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             reason = f"timeout:client_done bound={OP_CAP}"
             _kill(task)
         else:
-            try:
-                res = task.result()
-            except AssertionError as exc:
-                reason = f"client_error:{exc}"
+            res = task.result()
+            if "error" in res:
+                reason = f"client_error:{res['error']}"
         clear = [r for r in rows if r.ta == 1]
         last_clear = max((k for k, r in enumerate(rows) if r.ta == 1), default=len(rows) - 1)
         post = rows[last_clear + 1 :]

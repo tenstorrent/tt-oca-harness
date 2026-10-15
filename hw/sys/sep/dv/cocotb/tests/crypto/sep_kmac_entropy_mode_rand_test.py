@@ -34,8 +34,13 @@ Checkers:
                            gives >= 1 acknowledge on ``crypto_edn_ack_o[1]``
                            (kmac.adoc ``CFG_SHADOWED``:142, ``CMD``:199), and
                            the same window with no command gives none.
-  CHK-KMAC-TIMER           kmac_err, ERR_CODE != 0, no acknowledge; error time
-                           T < 2T per prescaler and P > 0 per wait timer.
+  CHK-KMAC-TIMER           kmac_err (INTR_STATE bit and PIC vector bit 22),
+                           no acknowledge; error time T < 2T per prescaler and
+                           P > 0 per wait timer. ``CTRL-KMAC-TIMER-PRESTATE``
+                           reads kmac_err 0 and ERR_CODE at its reset value 0
+                           before each run. The register text does not state an
+                           ERR_CODE value for the timer expiry, so the code is
+                           logged as ``OBS-KMAC-TIMER-ERRCODE`` and not graded.
   CHK-KMAC-TIMER0          wait timer 0 -> no kmac_err, ERR_CODE 0, request pending.
   CHK-KMAC-HASHCNT         counter 1..N, 0 after hash_cnt_clr, 1, 0 after
                            entropy_req, which adds an acknowledge.
@@ -586,6 +591,14 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         await self.kmac._wr(KMAC_INTR_ENABLE, KMAC_INTR_KMAC_ERR)
         pre_intr = await self.kmac.read(KMAC_INTR_STATE) & KMAC_INTR_KMAC_ERR
         pre_code = await self.kmac.read(KMAC_ERR_CODE) & ERR_CODE_MASK
+        self.chk.ctrl(
+            "KMAC-TIMER-PRESTATE",
+            pre_intr == 0 and pre_code == 0,
+            wt=wait_timer,
+            p=prescaler,
+            kmac_err=int(bool(pre_intr)),
+            err_code=f"0x{pre_code:x}",
+        )
         await self.kmac.set_period(wait_timer=wait_timer, prescaler=prescaler)
         req_m, ack_m, err_m = self.w_req.mark(), self.w_ack.mark(), self.w_vec.mark()
         await self.kmac.program(entropy_mode="edn", keyed=False)
@@ -632,7 +645,6 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
                 and run["pre_err"] == 0
                 and run["pre_code"] == 0
                 and run["err"] == 1
-                and run["code"] != 0
                 and run["acks"] == 0
             )
 
@@ -654,9 +666,13 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             p=self.plan.p,
             p0_err_clk=clks(p0),
             p_err_clk=clks(pp),
-            err_code_nonzero=int(all(r.get("code", 0) != 0 for r in p0 + pp)),
             acks=sum(r["acks"] for r in p0 + pp),
             reason="ok" if all_clean else "timeout_or_no_error",
+        )
+        self.chk.obs(
+            "KMAC-TIMER-ERRCODE",
+            p0_code=",".join(f"0x{r['code']:x}" if "code" in r else "na" for r in p0),
+            p_code=",".join(f"0x{r['code']:x}" if "code" in r else "na" for r in pp),
         )
 
     async def _timer0(self, prescaler: int, ctrl: dict) -> None:

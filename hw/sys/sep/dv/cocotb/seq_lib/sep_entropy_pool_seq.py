@@ -131,6 +131,8 @@ class SepEntropyPool(SepAxiRegDriver):
     """64-bit beats on the pool aperture; ESRC_CTRL writes stay 32-bit.
 
     ``nbytes=4`` issues one 32-bit beat (AxSIZE=2) at ``addr`` instead.
+    ``allow_timeout=True`` on a read returns the sequence with ``timed_out`` set
+    and ``resp_code`` -1 when the read does not answer, for the caller to grade.
     """
 
     _DRIVER_TAG = "POOL"
@@ -143,6 +145,7 @@ class SepEntropyPool(SepAxiRegDriver):
         wdata: int = 0,
         expect_error: bool = False,
         nbytes: int = 8,
+        allow_timeout: bool = False,
     ) -> SepAxiAccessSeq:
         if nbytes not in (4, 8):
             raise ValueError(f"pool access is 4 or 8 bytes, not {nbytes}")
@@ -154,6 +157,7 @@ class SepEntropyPool(SepAxiRegDriver):
             length=nbytes,
             size=None if nbytes == 8 else 2,
             expect_error=expect_error,
+            allow_timeout=allow_timeout,
         )
         await self.test.start_seq(seq)
         return seq

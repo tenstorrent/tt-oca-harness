@@ -72,6 +72,11 @@ generate budget of the open boot Generate (CTRL-CONC-BUDGET).
                    member and CTRL-CONC-OVERLAP > 0 for every pair of the group.
   CHK-CONC-HOLD    every bystander DIGEST read equals the bystander golden; control:
                    at least one read completes while a peer is busy.
+An HMAC DIGEST readback (member and bystander) equals its golden when every word is the
+big-endian or every word is the little-endian read of digest bytes 4n..4n+3, with one
+order for every readback of the leg (env/sep_hmac_golden.py SepDigestOrder): the register
+text settles the register order and the digest_swap swap (hmac.adoc:116-117), not the byte
+order at digest_swap = 0. The order is logged as OBS-HMAC-DIGEST-ORDER.
 The specification implies the independence of the engines (separate host paths,
 hw/sys/sep/doc/crypto.adoc; per-domain resets, hw/sys/sep/doc/reset_controller.adoc)
 and states no direct rule, so both checks grade the implied contract.
@@ -99,7 +104,7 @@ from env.sep_crypto_kat_rows import (
     SP800_38A_CTR_COUNTER,
 )
 from env.sep_fcov_gate import close_graded_window, open_graded_window
-from env.sep_hmac_golden import hmac_sha2_bytes, sha2_bytes
+from env.sep_hmac_golden import SepDigestOrder, hmac_sha2_bytes, sha2_bytes
 from env.sep_kmac_golden import kmac_family_words, sha3, shake
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -338,9 +343,13 @@ class HmacOp:
 
     eng = "hmac"
 
-    def golden(self) -> list[int]:
+    def digest(self) -> bytes:
         key = _HMAC_KEY_ROWS[self.key_row].ljust(128, b"\x00")[: self.key_bits // 8]
-        return _digest_words_be(hmac_sha2_bytes(key, self.msg, self.sha_bits))
+        return hmac_sha2_bytes(key, self.msg, self.sha_bits)
+
+    def golden(self) -> list[int]:
+        """Big-endian word reads of the digest; the readback is graded with ``SepDigestOrder``."""
+        return _digest_words_be(self.digest())
 
     def count(self) -> int:
         return len(self.msg)
@@ -1124,7 +1133,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
                 f"clean run of {eng} in group {g.name} showed no end within {_CLEAN_RUN_CLK} clocks"
             )
         words = self._edn_words() - w_before
-        golden_ok = res.result == op.golden() and res.err_bits == 0
+        golden_ok = self._result_ok(eng, op, res.result) and res.err_bits == 0
         chk.ctrl(
             "CONC-CLEAN",
             golden_ok,
@@ -1138,8 +1147,18 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         await self._reset_one(eng, drv)
         return res.busy_clk, words
 
+    def _result_ok(self, eng: str, op, result) -> bool:
+        """Member result == golden; an HMAC digest in the DIGEST byte order of the leg."""
+        if eng == "hmac":
+            return self._dorder.match(result, op.digest())[0]
+        return result == op.golden()
+
+    def _golden0(self, eng: str, op) -> int:
+        return self._dorder.expected(op.digest())[0] if eng == "hmac" else op.golden()[0]
+
     async def _bystander_job(self, chk, g: LegGroup, drv) -> list[int]:
-        """Finished plain SHA-256 in an idle HMAC; returns the bystander golden."""
+        """Finished plain SHA-256 in an idle HMAC; returns the bystander golden words in the
+        DIGEST byte order of the leg."""
         await self._reset_one("hmac", drv)
         await drv._wr(HMAC_CFG, build_cfg(hmac_en=False, sha_bits=256))
         await drv._wr(HMAC_CMD, HMAC_CMD_HASH_START)
@@ -1152,10 +1171,12 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
                 f"{_BYSTANDER_DONE_CLK} clocks"
             )
         digest = [await drv._rd(HMAC_DIGEST_0 + i * 4) for i in range(8)]
-        golden = _digest_words_be(sha2_bytes(g.bystander_msg, 256))
+        raw = sha2_bytes(g.bystander_msg, 256)
+        hit, _ = self._dorder.match(digest, raw)
+        golden = self._dorder.expected(raw)
         chk.ctrl(
             "CONC-BYSTANDER",
-            digest == golden,
+            hit,
             group=g.name,
             digest0=f"0x{digest[0]:08x}",
             golden0=f"0x{golden[0]:08x}",
@@ -1336,8 +1357,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
 
         for eng in g.order:
             res = results[eng]
-            golden = ops[eng].golden()
-            golden_ok = res.result == golden and res.err_bits == 0
+            golden_ok = self._result_ok(eng, ops[eng], res.result) and res.err_bits == 0
             bad = [f"{op}@0x{addr:08x}" for op, addr, ok in records[eng] if not ok]
             chk.ok(
                 "CONC-RESULT",
@@ -1352,7 +1372,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
                 busy_clk=res.busy_clk,
                 err_bits=f"0x{res.err_bits:x}",
                 result0=f"0x{res.result[0]:08x}" if res.result else "none",
-                golden0=f"0x{golden[0]:08x}",
+                golden0=f"0x{self._golden0(eng, ops[eng]):08x}",
                 not_okay=",".join(bad[:4]) or "-",
             )
 
@@ -1386,6 +1406,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         """HMAC, KMAC, AES and OTBN in overlap each return their own golden."""
         seed = self.random_seed()
         chk = SepChkLog(self, _TEST_NAME, seed)
+        self._dorder = SepDigestOrder()
         groups, rng = draw_plan(seed)
         for g in groups:
             self.logger.info(
@@ -1415,4 +1436,5 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         close_graded_window(self.logger)
         total = self._edn_words()
         chk.ctrl("CONC-BUDGET", total <= _EDN_BUDGET_WORDS, total=total, budget=_EDN_BUDGET_WORDS)
+        chk.obs("HMAC-DIGEST-ORDER", **self._dorder.fields())
         chk.finish()
