@@ -382,15 +382,24 @@ endif::backend-html5[]
 [[smc-fabric-privilege-controlled-remapping]]
 === Output Remapping
 
-The output remaps let the SMC act on behalf of the application processor (AP).
-A request to the M-mode or Xvisor window is translated through that window's
-programmed regions and carries the source ID of the AP world it serves: the AP
-machine-mode firmware or the AP hypervisor and its guests
-(<<smc-source-id-by-traffic-path-table>>).
+The output remaps let the SMC issue a request as if one of the application
+processor (AP) software worlds had issued it. Each remap translates the request
+through its window's programmed regions and gives it that world's source ID, so
+destination filters grant it exactly what they grant that world.
 
-M-mode and Xvisor name those AP worlds, not SMC privilege modes. The address
-window alone selects the remap and the source ID; the privilege mode of the
-issuing SMC hart does not, and AxPROT, including NS, passes unchanged.
+M-mode remap:: A request to the M-mode window goes out as the AP machine-mode
+firmware, with source ID `MMODE_ID`. It reaches what the AP machine-mode
+firmware may reach, including assets reserved to it.
+Xvisor remap:: A request to the Xvisor window goes out as the AP hypervisor
+(Xvisor) and its guests, with source ID `OTHER_ID`. It reaches only what that
+AP software may reach.
+Direct path:: Any other request goes out as the SMC itself, with source ID
+`SMC_ID`, untranslated.
+
+M-mode and Xvisor name AP worlds, not SMC privilege modes: SMC firmware runs in
+machine mode whichever window it uses. The address window alone selects the
+remap and the source ID; the privilege mode of the issuing SMC hart does not,
+and AxPROT, including NS, passes unchanged.
 
 == Filtering and Protection
 
