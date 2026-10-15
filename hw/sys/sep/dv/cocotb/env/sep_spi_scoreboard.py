@@ -31,6 +31,11 @@ pad taps, so neither the flash model nor the leaf supplies them:
   rx bytes. A lane-1 segment decodes lane 0 out and lane 1 in; a 2- or 4-lane
   segment decodes its low lanes, the least significant on lane 0.
 
+A transmit decode (the TX payload from the lanes, and every tx segment) also
+needs each beat's data lane output enables to equal the segment's lanes
+exactly (x1 0001, x2 0011, x4 1111); a beat with another pattern is a
+mismatch. Receive and dummy beats are not graded for their enables.
+
 Each direction with expectations logs one line with its frame and byte
 counts; a scoreboard with no expectation at all fails. A program or read is
 matched to the first unused flash record with its opcode (and address for a
@@ -251,7 +256,7 @@ def _wire_data(
 
     ``None`` when a bit of the first ``limit`` bytes (all bytes by default)
     was sampled as X/Z, or, for a payload decoded from the lanes, was sampled
-    with its lane output enable off.
+    with data lane output enables other than exactly its lanes.
     """
     if frame is None:
         return b""
@@ -277,12 +282,14 @@ def _decode(beats: Sequence[tuple], field_index: int, lanes: int, shift: int) ->
     """Bytes of ``beats`` on ``lanes`` lanes of one beat field, lane ``shift`` first.
 
     ``None`` when the field is X/Z at one of the beats, or, for the controller
-    output field, when a lane that carries the data has its output enable off.
+    output field, when a beat's data lane output enables are not exactly the
+    segment's lanes (x1 0001, x2 0011, x4 1111). Receive fields are not graded
+    for their enables.
     """
     if any(beat[field_index] is None for beat in beats):
         return None
     mask = (1 << lanes) - 1
-    if field_index == 0 and any(beat[1] is None or beat[1] & mask != mask for beat in beats):
+    if field_index == 0 and any(beat[1] != mask for beat in beats):
         return None
     values = [beat[field_index] >> shift for beat in beats]
     return bytes(lanes_to_bytes(values, lanes)[0])
