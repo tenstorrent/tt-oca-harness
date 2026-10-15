@@ -69,6 +69,9 @@ NUM_STREAMS = 3
 WORD_BITS = 32
 STRB_BITS = 4
 STRB_ALL = (1 << STRB_BITS) - 1
+# The driver task clears a source-reset request on the next rising edge; the
+# bound leaves margin for the edge ordering between the caller and the task.
+_SRC_RESET_BOUND = 4
 
 
 class ExtTrngDriveError(AssertionError):
@@ -196,15 +199,23 @@ class SepExtTrngStream:
 
     async def source_reset(self, stream: int) -> int:
         """Reset the source of ``stream``: on the next rising edge drop its held beat
-        and its queue. Returns the number of beats dropped; logs ``EXT-SRC-RESET``."""
+        and its queue. Returns the number of beats dropped; logs ``EXT-SRC-RESET``.
+        Raises ``ValueError`` for a stream that is not driven and ``TimeoutError``
+        if the reset does not complete within ``_SRC_RESET_BOUND`` clocks."""
         self._check_stream(stream)
+        if stream not in self.enabled:
+            raise ValueError(f"stream {stream} is not driven (start(streams=...))")
         self.life.require_running()
         s = self._s[stream]
         s.reset_req = True
-        while s.reset_req:
+        for _ in range(_SRC_RESET_BOUND):
             self.life.require_running()
             await RisingEdge(self.dut.clk_i)
-        return s.dropped
+            if not s.reset_req:
+                return s.dropped
+        raise TimeoutError(
+            f"EXT-SRC-RESET stream {stream} did not complete within {_SRC_RESET_BOUND} clocks"
+        )
 
     async def wait_sent(self, stream: int, bound: int) -> int:
         """Wait at most ``bound`` clocks until ``stream`` has no pending beat; return the clock."""

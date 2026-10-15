@@ -24,8 +24,8 @@ generated C export), so a clean start does not clear a control the leaf set
 elsewhere unless the leaf passes it. The window must be a multiple of the
 64-word pattern period, so a window holds whole periods.
 
-This is a new sequence beside ``SepEsrcConfigSeq`` (``sep_esrc_bringup_seq.py``),
-which ``bring_up_entropy`` uses with its own noise and limits.
+It is separate from ``SepEsrcConfigSeq`` (``sep_esrc_bringup_seq.py``), which
+``bring_up_entropy`` uses with its own noise and limits; the two share no state.
 
 Usage::
 
