@@ -24,19 +24,27 @@ Store-response contract. The CPU LSU passes the AXI B response of a store to the
 VeeR EL2 Programmer's Reference Manual (linked from ``hw/sys/sep/doc/cpu.adoc``) states that a
 store that ends with a bus error is reported as an imprecise non-maskable interrupt with
 ``mcause`` = 0xF000_0000 (store bus error), that ``mdseac`` captures the address of the store
-and stays locked until software writes ``mdeau``. This test grades, from the firmware records:
-  CHK-STORE-ERR-NMI  for each of DECERR and SLVERR: exactly one NMI, ``mcause`` = 0xF000_0000,
-                     and ``mdseac`` = the store address, which also equals the address the
-                     testbench derives from the register map. A store that completes with no
-                     NMI reports nmi=0 and fails; a wrong ``mcause`` or ``mdseac`` fails.
-                     Targets: ``hw/sys/sep/regs/sep.rdl`` (reset-controller aperture: DECERR
-                     write response past its one register) and
+and stays locked until software writes ``mdeau``. The B response of each store is read on the
+PR-LSU-XBAR tap (``env/sep_fabric_tap.py``, the LSU demux port to the local crossbar): the
+tap runs from the CPU release to the firmware verdict, and each B is paired with its AW by
+AXI ID in issue order. A store is found by the 64-bit word of its address (the LSU aligns
+AWADDR to 8 bytes outside side-effect regions). This test grades, from the firmware records and the tap:
+  CHK-STORE-ERR-NMI  for each of DECERR and SLVERR: exactly one AW to the store word on
+                     the tap, its B response equal to the kind (DECERR = 0b11, SLVERR =
+                     0b10), exactly one NMI, ``mcause`` = 0xF000_0000, and ``mdseac`` = the
+                     store address, which also equals the address the testbench derives
+                     from the register map. A missing AW or B, a wrong BRESP, a store that
+                     completes with no NMI (nmi=0), or a wrong ``mcause`` or ``mdseac``
+                     fails. Targets: ``hw/sys/sep/regs/sep.rdl`` (reset-controller aperture:
+                     DECERR write response past its one register) and
                      ``hw/sys/sep/doc/entropy_pool.adoc`` (a write to any offset ends with
                      BRESP=SLVERR).
-  CHK-STORE-OK-QUIET the OKAY store and its restore raise no NMI in the same wait an error
-                     store gets, and the written value, which differs from the reset value,
-                     reads back, so the store reached the register. Control: the two
-                     error stores of CHK-STORE-ERR-NMI raise their NMI in that wait.
+  CHK-STORE-OK-QUIET the OKAY store and its restore (the two AWs to the OKAY word after
+                     the SLVERR store) each end with BRESP = OKAY (0b00) on the tap and raise
+                     no NMI in the same wait an error store gets, and the written value,
+                     which differs from the reset value, reads back, so the store reached
+                     the register. Control: the two error stores of CHK-STORE-ERR-NMI raise
+                     their NMI in that wait.
 
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``. OTBN/AES/HMAC/KMAC are
 JTAG-held across ``rst_ni`` release and fuse sense so they raise no crypto ``edn_req`` while the
@@ -54,6 +62,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_fabric_tap import SepFabricTap, TapBeat
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N
@@ -100,6 +109,8 @@ _STORE_ERR_ADDR = {
 if _STORE_ERR_ADDR["DECERR"] < _RESET_CTRL_END:
     raise RuntimeError("the DECERR store address is inside the reset-controller register map")
 _OKAY_ADDR = sym("OTBN_INTR_ENABLE_REG_ADDR")
+# AXI BRESP codes (AMBA AXI, BRESP encoding).
+_BRESP = {"OKAY": 0b00, "SLVERR": 0b10, "DECERR": 0b11}
 _STORE_ERR_RE = re.compile(
     r"CHK-STORE-ERR-NMI REC resp=(\w+) addr=0x([0-9a-f]{8}) nmi=0x([0-9a-f]{8}) "
     r"mcause=0x([0-9a-f]{8}) mdseac=0x([0-9a-f]{8})"
@@ -126,11 +137,15 @@ class sep_reset_wdt_sanity_test(sep_base_test):
     async def run_scenario(self) -> None:
         self.sb.expected_line = _BANNER
 
+        lsu_tap = SepFabricTap("PR-LSU-XBAR")
+
         async def _bite_idle() -> None:
             assert self.rd_known(cocotb.top.wdt_timer_rst_req_o) == 0, (
                 "CHK-BITE FAIL: wdt_timer_rst_req_o asserted before firmware "
                 "enabled the WDT, so a later 1 cannot be attributed to BITE"
             )
+            # The CPU is released; the tap records every LSU access of the firmware.
+            lsu_tap.start()
 
         await self.boot_firmware(
             self.sb,
@@ -144,6 +159,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             release_park=True,
             after_bring_up_hook=_bite_idle,
         )
+        await lsu_tap.stop()
 
         # The firmware scores the reset_ctrl legs into its own error count, and the
         # PASS magic alone cannot say which of them ran: an image without a leg
@@ -155,7 +171,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             f"bus-error count was not checked. Console was:\n{console}"
         )
         self.logger.info("CHK-BADADDR PASS: firmware reported the bad-address NMI count == 2")
-        self._grade_store_responses(console)
+        self._grade_store_responses(console, lsu_tap)
         wired = [ip for ip in _RESET_WIRE_IPS if f"{ip} reset wire OK" in console]
         assert len(wired) == len(_RESET_WIRE_IPS), (
             f"firmware console reports a reset wire for {sorted(wired)}, expected all "
@@ -215,8 +231,45 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             "CHK-BITE PASS: wdt_timer_rst_req_o asserted -> WDT BITE reset request observed"
         )
 
-    def _grade_store_responses(self, console: str) -> None:
-        """Grade the firmware store-response records against the store golden."""
+    @staticmethod
+    def _write_pairs(tap: SepFabricTap) -> list[tuple[TapBeat, TapBeat | None]]:
+        """Every AW of the tap with its B (None when no B came), paired by AXI ID in order."""
+        open_aw: dict[int | None, list[int]] = {}
+        pairs: list[list] = []
+        for beat in tap.since(0):
+            if beat.ch == "aw":
+                open_aw.setdefault(beat.id, []).append(len(pairs))
+                pairs.append([beat, None])
+            elif beat.ch == "b":
+                queue = open_aw.get(beat.id)
+                if not queue:
+                    raise AssertionError(
+                        f"PR-LSU-XBAR B with id={beat.id} at {beat.t_ps} ps has no open AW"
+                    )
+                pairs[queue.pop(0)][1] = beat
+        return [(aw, b) for aw, b in pairs]
+
+    @staticmethod
+    def _to(pairs: list[tuple[TapBeat, TapBeat | None]], addr: int) -> list:
+        """The pairs whose AW is in the 64-bit word of ``addr``.
+
+        The LSU drives AWADDR aligned to 8 bytes outside side-effect regions
+        (``el2_lsu_bus_buffer.sv``, ``lsu_axi_awaddr``).
+        """
+        return [p for p in pairs if p[0].addr is not None and (p[0].addr & ~7) == (addr & ~7)]
+
+    @staticmethod
+    def _bresp_text(pairs: list[tuple[TapBeat, TapBeat | None]]) -> str:
+        """``awaddr/bresp`` of each pair; ``none`` for a missing B, ``X`` for an unknown one."""
+        return ",".join(
+            f"0x{aw.addr:08x}/"
+            + ("none" if b is None else ("X" if b.resp is None else f"0b{b.resp:02b}"))
+            for aw, b in pairs
+        )
+
+    def _grade_store_responses(self, console: str, tap: SepFabricTap) -> None:
+        """Grade the firmware store-response records and the bus B responses."""
+        pairs = self._write_pairs(tap)
         recs = [m.groups() for m in _STORE_ERR_RE.finditer(console)]
         kinds = sorted(r[0] for r in recs)
         assert kinds == sorted(_STORE_ERR_ADDR), (
@@ -229,12 +282,22 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             mcause, mdseac = int(mcause_s, 16), int(mdseac_s, 16)
             want = _STORE_ERR_ADDR[kind]
             err_nmis[kind] = nmi
+            hits = self._to(pairs, want)
+            bresp = hits[0][1].resp if len(hits) == 1 and hits[0][1] is not None else None
             line = (
-                f"resp={kind} addr=0x{addr:08x} nmi={nmi} mcause=0x{mcause:08x} "
-                f"mdseac=0x{mdseac:08x} expected addr=0x{want:08x} nmi=1 "
-                f"mcause=0x{_MCAUSE_STORE_BUS_ERR:08x} mdseac=0x{want:08x}"
+                f"resp={kind} addr=0x{addr:08x} aw_count={len(hits)} "
+                f"aw/bresp={self._bresp_text(hits) or 'none'} nmi={nmi} mcause=0x{mcause:08x} "
+                f"mdseac=0x{mdseac:08x} expected addr=0x{want:08x} aw_count=1 "
+                f"bresp=0b{_BRESP[kind]:02b} nmi=1 mcause=0x{_MCAUSE_STORE_BUS_ERR:08x} "
+                f"mdseac=0x{want:08x}"
             )
-            ok = addr == want and nmi == 1 and mcause == _MCAUSE_STORE_BUS_ERR and mdseac == want
+            ok = (
+                addr == want
+                and bresp == _BRESP[kind]
+                and nmi == 1
+                and mcause == _MCAUSE_STORE_BUS_ERR
+                and mdseac == want
+            )
             if not ok:
                 self.logger.error("CHK-STORE-ERR-NMI FAIL: %s", line)
                 raise AssertionError(f"CHK-STORE-ERR-NMI FAIL: {line}")
@@ -246,13 +309,26 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             f"Console was:\n{console}"
         )
         addr, wrote, rb, restored, nmi = (int(x, 16) for x in oks[0])
+        # The OKAY leg runs after the SLVERR store; earlier writes to the same
+        # register belong to the reset-wire legs.
+        slv = [p[0].seq for p in self._to(pairs, _STORE_ERR_ADDR["SLVERR"])]
+        ok_hits = [p for p in self._to(pairs, _OKAY_ADDR) if slv and p[0].seq > slv[-1]]
+        ok_bresp = [None if b is None else b.resp for _, b in ok_hits]
         line = (
             f"addr=0x{addr:08x} wrote=0x{wrote:08x} readback=0x{rb:08x} "
-            f"restored=0x{restored:08x} nmi={nmi} expected addr=0x{_OKAY_ADDR:08x} nmi=0 "
+            f"restored=0x{restored:08x} aw_count={len(ok_hits)} "
+            f"aw/bresp={self._bresp_text(ok_hits) or 'none'} nmi={nmi} expected "
+            f"addr=0x{_OKAY_ADDR:08x} aw_count=2 bresp=0b00,0b00 nmi=0 "
             f"readback=wrote restored!=wrote control_err_store_nmis="
             + ",".join(f"{k}:{v}" for k, v in sorted(err_nmis.items()))
         )
-        ok = addr == _OKAY_ADDR and nmi == 0 and rb == wrote and restored != wrote
+        ok = (
+            addr == _OKAY_ADDR
+            and ok_bresp == [_BRESP["OKAY"]] * 2
+            and nmi == 0
+            and rb == wrote
+            and restored != wrote
+        )
         if not ok:
             self.logger.error("CHK-STORE-OK-QUIET FAIL: %s", line)
             raise AssertionError(f"CHK-STORE-OK-QUIET FAIL: {line}")

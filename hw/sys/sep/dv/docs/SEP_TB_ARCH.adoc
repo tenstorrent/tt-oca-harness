@@ -191,7 +191,11 @@ Observation probe groups:
 * Reset and clock taps: `aon_rst_n_probe_o`, the watchdog timer-domain reset
   (`u_sep_wdt_wrap.rst_wdt_n`, `rst_aon_ni` of the AON timer); owners
   `sep_cold_reset_phase_test`, `sep_ip_reset_override_matrix_test`,
-  `sep_scan_reset_override_test`. `mpc_run_sync_probe_o`, the output of the
+  `sep_scan_reset_override_test`. `jtag_sep_reset_n_ovrd_probe_o`, the
+  `sep_reset_n` override select on the SEP input port
+  (`u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd`), the value SEP receives
+  after the pin-or-TDR mux; owner `sep_ip_reset_override_matrix_test`.
+  `mpc_run_sync_probe_o`, the output of the
   CPU run-request synchronizer (`u_sep_cpu.mpc_reset_run_req_sync`), tied to 0
   on the CPU stub build; owner `sep_cpu_reset_retention_test`.
   `dbg_rst_l_probe_o`, the debug reset input of the core wrapper
@@ -317,7 +321,8 @@ Observation probe groups:
    demux ports to the ROM mux and to the local crossbar (`sep.sv`
    `lsu_rom_axi_req` and `lsu_xbar_axi_req`, with their responses): AW and AR
    address, ID, AxLEN, AxSIZE; W strobe and last; B and R response. Owners:
-   `sep_boot_rom_aperture_sweep_test`, `sep_cpu_demux_unmapped_fetch_test`.
+   `sep_boot_rom_aperture_sweep_test`, `sep_cpu_demux_unmapped_fetch_test`,
+   `sep_reset_wdt_sanity_test` (PR-LSU-XBAR B response of its stores).
 ** PR-XBAR-TCM (`pr_xbar_tcm_*`): the local crossbar `cpu_tcm` target, the
    DMA path into the core DMA slave port, same fields with a 6-bit ID. The
    VPLAN names this tap `xbar_tcm_req` and `cpu_tcm_axi_resp`; no net is
