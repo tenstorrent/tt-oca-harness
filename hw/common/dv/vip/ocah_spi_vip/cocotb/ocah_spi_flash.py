@@ -184,6 +184,24 @@ def _opcode_label(opcode: int) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _sampled_lanes(sig, mask: int) -> int:
+    """The lanes of ``sig`` selected by ``mask``; an X/Z on one of them raises ``ValueError``.
+
+    The device resolves only the lanes it samples, so an X/Z on a lane it
+    does not use is ignored.
+    """
+    text = str(sig.value)
+    width = len(text)
+    value = 0
+    for i, ch in enumerate(text):
+        bit = width - 1 - i
+        if (mask >> bit) & 1:
+            if ch not in "01":
+                raise ValueError(f"sampled lane {bit} of {text!r} is not 0 or 1")
+            value |= int(ch) << bit
+    return value
+
+
 class OcahSpiFlash:
     """
     OCAH-stable NOR-flash device BFM.
@@ -780,7 +798,7 @@ class OcahSpiFlash:
             if int(self._cs_n.value) != 0:
                 raise _CsDeasserted(f"{self.name}: CS deasserted during byte receive", bits)
             mosi_sig = self._mosi if self._mode == SpiMode.SINGLE else self._dq_out
-            bit = int(mosi_sig.value) & 0x1
+            bit = _sampled_lanes(mosi_sig, 0x1)
             byte_val = (byte_val << 1) | bit
             self._input_bits += 1
             self._input_clocks += 1
@@ -798,7 +816,7 @@ class OcahSpiFlash:
                 raise _CsDeasserted(
                     f"{self.name}: CS deasserted during byte receive", clocks * lanes
                 )
-            byte_val = (byte_val << lanes) | (int(self._dq_out.value) & mask)
+            byte_val = (byte_val << lanes) | _sampled_lanes(self._dq_out, mask)
             self._input_bits += lanes
             self._input_clocks += 1
         return byte_val
