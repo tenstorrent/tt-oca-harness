@@ -17,7 +17,16 @@ shape shows a broken path and is never dropped.
 they raise ``TapIdleError`` when the tap took no sample after the mark (a mark
 from :meth:`SepMbxWords.mark`; with no mark, when the tap never sampled), so an
 absence or a count cannot pass on a tap that was not started or was stopped
-before the stimulus. ``wait`` raises when its bound expires.
+before the stimulus. They raise ``MonitorLifeError`` when the tap task ended
+without ``stop``, or when the mark is from an earlier run of the tap.
+
+After the tap is stopped, its record is final: an AW without its W, or a W
+without its AW, fails the query instead of being dropped.
+
+``step`` returns after the tap sampled the next ``clk_i`` edge, and raises
+unless the tap is running. ``wait`` checks the record after each of its
+``bound`` steps, so a store on the last edge counts, and raises when the bound
+expires.
 
 Usage::
 
@@ -32,7 +41,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import NextTimeStep, RisingEdge
+
+from env.sep_fabric_tap import TapIdleError
 
 
 @dataclass(frozen=True)
@@ -44,13 +55,15 @@ class MbxRec:
 
 
 class MbxMark(int):
-    """A record index that also carries the sampled clock count of the tap at the mark."""
+    """A record index that also carries the sampled clock count and run epoch of the tap."""
 
     clk: int
+    epoch: int
 
-    def __new__(cls, index: int, clk: int) -> "MbxMark":
+    def __new__(cls, index: int, clk: int, epoch: int) -> "MbxMark":
         obj = super().__new__(cls, index)
         obj.clk = clk
+        obj.epoch = epoch
         return obj
 
 
@@ -66,7 +79,8 @@ class SepMbxWords:
         self._ws: list = []
 
     def _guard(self, after: int) -> None:
-        # A plain index carries no clock count: the tap must have sampled at all.
+        # A plain index carries no clock count or epoch: the tap must have
+        # sampled at all. A mark adds its clock count and run epoch.
         self.tap._require_sampled(after)
 
     def records(self) -> list[MbxRec]:
@@ -82,6 +96,11 @@ class SepMbxWords:
             elif b.ch == "w":
                 self._ws.append(b)
         self._scan = len(beats)
+        if self._stopped() and len(self._aws) != len(self._ws):
+            raise AssertionError(
+                f"MBX FAIL: stopped PR-OUT record has {len(self._aws)} AW and "
+                f"{len(self._ws)} W handshakes"
+            )
         while len(self._recs) < min(len(self._aws), len(self._ws)):
             i = len(self._recs)
             aw, w = self._aws[i], self._ws[i]
@@ -97,8 +116,27 @@ class SepMbxWords:
             self._recs.append(MbxRec(i, off, val, w.t_ps))
         return self._recs
 
+    def _stopped(self) -> bool:
+        """True when the last run of the tap was closed by ``stop``."""
+        runs = self.tap.life.runs
+        return bool(runs) and runs[-1].end == "stopped"
+
     def mark(self) -> MbxMark:
-        return MbxMark(len(self._decode()), self.tap.clk)
+        return MbxMark(len(self._decode()), self.tap.clk, self.tap.life.mark_epoch())
+
+    async def step(self) -> None:
+        """Return after the tap sampled the next ``clk_i`` edge; raises unless it runs."""
+        self.tap.life.require_running()
+        clk0 = self.tap.clk
+        await RisingEdge(cocotb.top.clk_i)
+        # The tap samples the edge in its ReadOnly phase; the next time step
+        # follows it.
+        await NextTimeStep()
+        self.tap.life.require_running()
+        if self.tap.clk <= clk0:
+            raise TapIdleError(
+                f"MBX FAIL: {self.tap.name} took no sample of the edge (clk={self.tap.clk})"
+            )
 
     def since(self, after: int = 0, off: int | None = None) -> list[MbxRec]:
         """The records after ``after``; raises ``TapIdleError`` if the tap took no sample after it."""
@@ -117,15 +155,17 @@ class SepMbxWords:
         self, off: int, bound: int, *, after: int = 0, val: int | None = None, what: str = ""
     ) -> MbxRec:
         """The first record at ``off`` (and ``val``) after ``after``, within ``bound`` clocks."""
-        clk = cocotb.top.clk_i
+        self.tap.life.require_running()
+        self.tap.check_life(after)
         pos = after
-        for _ in range(bound):
+        for n in range(bound + 1):
             recs = self._decode()
             for r in recs[pos:]:
                 if r.off == off and (val is None or r.val == val):
                     return r
             pos = max(pos, len(recs))
-            await RisingEdge(clk)
+            if n < bound:
+                await self.step()
         raise AssertionError(
             f"{what or 'MBX'}: no mailbox store at +0x{off:x}"
             + ("" if val is None else f" value 0x{val:08x}")

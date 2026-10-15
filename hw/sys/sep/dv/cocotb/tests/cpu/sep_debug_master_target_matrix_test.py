@@ -736,6 +736,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             )
         close_graded_window(self.logger)
         await self.sb_tap.stop()
+        await self.lx_tap.stop()
         await self.din_tap.stop()
         await self.dout_tap.stop()
 

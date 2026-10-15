@@ -657,5 +657,6 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
 
         self.sampler.stop()
         await self.tcm_tap.stop()
+        await self.xbar_tap.stop()
         self.logger.info("OBS-TCM-COPIES: %d secure DMA copies", self.n_copies)
         self.result_pass(TEST, seed, self.n_checks)

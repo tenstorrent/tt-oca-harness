@@ -75,7 +75,7 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from cocotb.triggers import ClockCycles, Timer
 from env.sep_fabric_common import RESP_DECERR
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -623,7 +623,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         """The done record; a fail record or the bound ends the leaf."""
         names = {v: k for k, v in OFF.items()}
         mrac_seen = False
-        for cyc in range(DONE_BOUND):
+        for cyc in range(DONE_BOUND + 1):
             mrac = None if mrac_seen else self.mbx.find(OFF["MRAC"])
             if mrac is not None:
                 mrac_seen = True
@@ -655,7 +655,8 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
                     len(recs),
                     ",".join(f"{names.get(r.off, hex(r.off))}=0x{r.val:x}" for r in recs[-4:]),
                 )
-            await RisingEdge(cocotb.top.clk_i)
+            if cyc < DONE_BOUND:
+                await self.mbx.step()
         recs = self.mbx.records()
         raise AssertionError(
             f"no done record within {DONE_BOUND} clk_i cycles; last records "
@@ -666,8 +667,9 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         """Open or close the graded window on each gate record of the routine."""
         seen = 0
         while True:
-            await RisingEdge(cocotb.top.clk_i)
-            # Beats of the previous edge are recorded; a write is legal here.
+            await self.mbx.step()
+            # The tap sampled this edge; the gate written in this time step
+            # reaches the sampler at the next edge.
             recs = self.mbx.since(seen, OFF["GATE"])
             seen = self.mbx.mark()
             for r in recs:

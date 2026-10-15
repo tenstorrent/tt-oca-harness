@@ -631,6 +631,8 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             close_graded_window(self.logger)
             for t in self.taps:
                 await t.stop()
+        # The stopped PR-OUT record pairs every AW with one W.
+        self.mbx.records()
         if self.failures:
             raise AssertionError("; ".join(self.failures))
         self.result_pass(TEST, self.random_seed(), self.n_checks)
