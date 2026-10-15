@@ -64,7 +64,7 @@ from cocotb.triggers import RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_fabric_tap import SepFabricTap, TapBeat
 from sep_base_test import sep_base_test
-from sep_reg_meta import sym
+from sep_reg_meta import OTBN, sym
 from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -109,6 +109,8 @@ _STORE_ERR_ADDR = {
 if _STORE_ERR_ADDR["DECERR"] < _RESET_CTRL_END:
     raise RuntimeError("the DECERR store address is inside the reset-controller register map")
 _OKAY_ADDR = sym("OTBN_INTR_ENABLE_REG_ADDR")
+# The value the restore store writes: the RDL reset of OTBN INTR_ENABLE.
+_OKAY_RESET = OTBN.reset("INTR_ENABLE")
 # AXI BRESP codes (AMBA AXI, BRESP encoding).
 _BRESP = {"OKAY": 0b00, "SLVERR": 0b10, "DECERR": 0b11}
 _STORE_ERR_RE = re.compile(
@@ -319,15 +321,16 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             f"restored=0x{restored:08x} aw_count={len(ok_hits)} "
             f"aw/bresp={self._bresp_text(ok_hits) or 'none'} nmi={nmi} expected "
             f"addr=0x{_OKAY_ADDR:08x} aw_count=2 bresp=0b00,0b00 nmi=0 "
-            f"readback=wrote restored!=wrote control_err_store_nmis="
-            + ",".join(f"{k}:{v}" for k, v in sorted(err_nmis.items()))
+            f"readback=wrote restored=0x{_OKAY_RESET:08x} (RDL reset, differs from wrote) "
+            f"control_err_store_nmis=" + ",".join(f"{k}:{v}" for k, v in sorted(err_nmis.items()))
         )
         ok = (
             addr == _OKAY_ADDR
             and ok_bresp == [_BRESP["OKAY"]] * 2
             and nmi == 0
             and rb == wrote
-            and restored != wrote
+            and restored == _OKAY_RESET
+            and wrote != _OKAY_RESET
         )
         if not ok:
             self.logger.error("CHK-STORE-OK-QUIET FAIL: %s", line)
