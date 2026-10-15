@@ -283,7 +283,7 @@ async def check_output_responder_delta(
 
     Poll-until-condition on the real observables instead of a fixed settle:
     expiry raises with the last observed state ([TIMEOUT-MUST-FAIL]), and every
-    sample is X-aware ([X-AWARE-CHECK]) so a non-resolvable net is reported by
+    sample is X-aware, so a non-resolvable net is reported by
     name rather than silently resolved by ``int()``.
 
     ``exact_writes`` (default ``True``) makes the write counter an exact
