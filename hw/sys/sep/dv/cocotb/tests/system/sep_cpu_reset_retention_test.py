@@ -935,6 +935,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 # legs keep their evidence; the leaf fails after the last leg.
                 self.late_b.append(msg)
             late = not cut["ok"]
+            if cut["outcome"] == "dropped":
+                self._reset_cpu_master(f"overlap run={n}")
             h = cut["aw"]
             fall = self.taps.ip_rst[IPRST[d]].fall_clks_since(m[f"ip_rst_{IPRST[d]}"])[0]
             low = self.pins[run.cls].fall_clks_since(mp)
@@ -1118,6 +1120,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 "reached the CPU port on or after the reset assertion) next_write=not_reached"
             )
         await FallingEdge(dut.clk_i)
+        if outcome == "dropped":
+            self._reset_cpu_master("in-flight leg")
         nxt, _ = await self._bus_write(sw_now & SW_FIELDS)
         if late:
             self.logger.info("OBS-WDT-INFLIGHT-NEXT: next_write=%s", nxt)
@@ -1128,6 +1132,26 @@ class sep_cpu_reset_retention_test(sep_base_test):
             "CHK-WDT-INFLIGHT",
             reset_seen and drained_ok and nxt == "OKAY",
             f"{where} late_response=0 next_write={nxt} bound={WRITE_BOUND}",
+        )
+
+    def _reset_cpu_master(self, where: str) -> None:
+        """Reset the write side of the stand-in CPU master after a dropped B.
+
+        The stand-in master is reset by ``rst_ni`` only, while the CPU it stands
+        in for is reset by ``sep_cpu_reset_n``, which clears the CPU's open
+        writes. After the CPU reset cut a write and its B stayed absent for the
+        whole bound, the master still holds that write open on its ID, and it
+        would complete it with the B of the next write of the same ID. This
+        clears the open writes (``assert_reset`` of the write interface), as
+        the CPU reset does. It runs only after a dropped B: a late B is graded
+        first and then completes the open write as it is.
+        """
+        wr = self.env.axi_agent.driver.axi.driver.backend.write_if
+        wr.assert_reset()
+        self.logger.info(
+            "OBS-MASTER-RESET: %s the CPU reset dropped the B of an open write; "
+            "the stand-in master write state is cleared",
+            where,
         )
 
     async def _bus_write(self, value: int) -> tuple[str, int | None]:
@@ -1340,6 +1364,18 @@ class sep_cpu_reset_retention_test(sep_base_test):
         # read a value other than their RDL reset before the reset.
         await self.dma.wr(CONTROL_ADDR, control_word(initial=1))
         await self.dma.wr(INTR_TEST_ADDR, INTR_TEST_MASK)
+        # Both bus-error latches set before the reset (the step 4 error injection: a
+        # read of the DMA hole and of the drawn peripheral hole, each SLVERR), so the
+        # zero read after the reset shows the reset clears them.
+        lat = self.plan.latch
+        for addr, what in ((DMA_HOLE, "DMA"), (PERIPH_HOLE[lat], lat)):
+            seq = await self._acc(SepAxiOp.READ, addr)
+            if seq.resp_code != RESP_SLVERR:
+                raise AssertionError(
+                    f"cold leg: {what} hole read resp={RESP_NAME.get(seq.resp_code)}"
+                )
+        dst_pre = await self._rd(DMA_STATUS_ADDR)
+        pst_pre = await self._rd(PERIPH_STATUS_ADDR)
         pre: dict[str, int] = {}
         for r in DMA_REGS:
             if r.name in ("STATUS", "INTR_STATE"):
@@ -1362,14 +1398,22 @@ class sep_cpu_reset_retention_test(sep_base_test):
         ):
             if (got & msk) == (rst & msk):
                 at_default.append(f"{name}=0x{got:x}")
+        for name, got, bit in (
+            ("DMA_BUS_ERR_STATUS", dst_pre, DMA_REG_PATH_BIT),
+            ("PERIPH_BUS_ERR_STATUS", pst_pre, PERIPH_BIT[lat]),
+        ):
+            if not got & bit:
+                at_default.append(f"{name}=0x{got:x}")
         # Every register the cold reset grades must read a value other than its RDL
         # reset first, or a missing reset could not show.
         self._ctl(
             "CTL-COLD-ARMED",
             not at_default,
-            f"registers={len(armed_pre) + 2} at_rdl_default={at_default or 'none'} "
+            f"registers={len(armed_pre) + 4} at_rdl_default={at_default or 'none'} "
             f"CONTROL_pre=0x{ctl_pre & CONTROL_RD_MASK:08x} "
-            f"INTR_STATE_pre=0x{intr_pre & INTR_STATE_MASK:x}",
+            f"INTR_STATE_pre=0x{intr_pre & INTR_STATE_MASK:x} "
+            f"DMA_BUS_ERR_STATUS_pre=0x{dst_pre & DMA_ST_MASK:02x} "
+            f"PERIPH_BUS_ERR_STATUS_pre=0x{pst_pre & PERIPH_MASK:02x} latch={lat}",
         )
         await self.dma.go()
         t_go = self.clk
@@ -1404,6 +1448,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
             "armed_pre": armed_pre,
             "intr_pre": intr_pre,
             "ctl_pre": ctl_pre,
+            "dst_pre": dst_pre,
+            "pst_pre": pst_pre,
         }
 
     async def _after_cold(self, c: dict) -> None:
@@ -1467,7 +1513,9 @@ class sep_cpu_reset_retention_test(sep_base_test):
             "CHK-DMA-COLDRST",
             ok,
             f"delay={self.copy_delay} regs={len(graded)} unmoved_logged={len(unmoved)} "
-            f"mismatch={len(mism)} bus_err_status=0x{dst_st & DMA_ST_MASK:02x} "
+            f"mismatch={len(mism)} bus_err_status_pre=0x{c['dst_pre'] & DMA_ST_MASK:02x} "
+            f"bus_err_status=0x{dst_st & DMA_ST_MASK:02x} "
+            f"periph_status_pre=0x{c['pst_pre'] & PERIPH_MASK:02x} "
             f"periph_latch={self.plan.latch} periph_status=0x{pst & PERIPH_MASK:02x} "
             f"SW_RESET_N=0x{swv & SW_FIELDS:02x} dest_graded={int(dest_graded)} "
             f"dest_unchanged_after_reset={int(unchanged) if dest_graded else 'na'} "
