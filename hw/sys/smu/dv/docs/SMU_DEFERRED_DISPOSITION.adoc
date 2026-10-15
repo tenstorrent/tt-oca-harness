@@ -877,7 +877,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |Why the real path cannot be used
 |The product `prim_sync2` / `prim_sync3` start with X on the first stage and the wrapper port exposes no `rst_ni` to clear it, so on a four-state view the X persists into every consumer; the stand-ins add `initial '0` on each stage and change nothing else about the pipe.
 |Scope
-|`smu_sim_cfg.toml` `[build].stubs` lists `hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv` and `prim_sync3.sv`; the runner emits them ahead of the Bender filelist so Verilator's first-definition-wins picks them, and drops them on VCS. Every leaf compiles them in. Downstream observes on this bench: `obs_powergood_stable_o`, `obs_powergood_stable_low_seen_o`, the reset-release observes of `smu_smc_reset_ctrl_test` and `smu_ext_boot_seq_gate_test`, and the boot-stall gate of the five boot-stall leaves. No control run with the product cells has been made on this composition. The entry closes when `[build].stubs` no longer lists the two files and the same observes pass on the product cells.
+|`smu_sim_cfg.toml` `[build].stubs` lists `hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv` and `prim_sync3.sv`; the runner emits them ahead of the Bender filelist so Verilator's first-definition-wins picks them, and drops them on VCS. Every leaf compiles them in. Downstream observes on this bench: `obs_powergood_stable_o`, `obs_powergood_stable_low_seen_o`, the reset-release observes of `smu_smc_reset_ctrl_test` and `smu_ext_boot_seq_gate_test`, and the boot-stall gate of the five boot-stall leaves. The entry closes when `[build].stubs` no longer lists the two files and the same observes pass on the product cells.
 |===
 
 === eFuse models in the product composition
