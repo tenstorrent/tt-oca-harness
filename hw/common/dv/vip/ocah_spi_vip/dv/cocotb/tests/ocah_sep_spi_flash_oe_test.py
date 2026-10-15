@@ -12,8 +12,11 @@ counts the slots.
   returns it to the controller, the record's ``data_out`` equals it and
   ``contended_bits`` stays 0.
 * CHK-SEP-FLASH-OE-CONTEND: with DQ0 driven by the controller through the
-  response, the record's ``data_out`` is empty and ``contended_bits`` is 8
-  (the first response byte). A model that records the byte as sent fails.
+  response, the record's ``data_out`` is empty, ``contended_bits`` is 8 (the
+  first response byte), and the model leaves the wire alone: with a sentinel 1
+  on ``spi_miso`` the controller reads all-ones bytes. The preload's first
+  byte is 0x00, so a model that still drives the lane changes it. A model that
+  records the byte as sent, or drives a contended slot, fails.
 * CHK-SEP-FLASH-OE-RECOVER: a READ with DQ0 released after that returns the
   preload again.
 * CHK-SEP-FLASH-OE-PARTIAL: a READ frame that ends inside the first response
@@ -58,7 +61,8 @@ async def ocah_sep_spi_flash_oe_test(dut) -> None:
     rng = scenario_rng("sep_flash_oe")
     cocotb.start_soon(Clock(dut.clk, CLK_PERIOD_NS, "ns").start())
     dut.spi_dq_oe_n.value = DQ_RELEASED
-    preload = bytes(rng.randint(0, 255) for _ in range(rng.randint(4, 8)))
+    # Byte 0 is 0x00, so a driven contended slot shows on the wire (sentinel 1).
+    preload = bytes([0x00]) + bytes(rng.randint(0, 255) for _ in range(rng.randint(3, 7)))
     flash = OcahSepSpiFlash(
         dut.spi_cs_n,
         dut.spi_sclk,
@@ -89,13 +93,15 @@ async def ocah_sep_spi_flash_oe_test(dut) -> None:
     log.info("CHK-SEP-FLASH-OE-FREE PASS %s", line)
 
     dut.spi_dq_oe_n.value = DQ0_DRIVEN
+    dut.spi_miso.value = 1  # sentinel: only a driving model changes it
     got, rec = await _read(flash, bfm, n)
     dut.spi_dq_oe_n.value = DQ_RELEASED
     line = (
         f"bytes={n} data_out={bytes(rec['data_out']).hex() or '-'} "
-        f"contended_bits={flash.contended_bits} expect_contended_bits=8"
+        f"contended_bits={flash.contended_bits} expect_contended_bits=8 "
+        f"host={got.hex()} expect_host={'ff' * n}"
     )
-    if bytes(rec["data_out"]) or flash.contended_bits != 8:
+    if bytes(rec["data_out"]) or flash.contended_bits != 8 or got != b"\xff" * n:
         raise AssertionError(f"CHK-SEP-FLASH-OE-CONTEND FAIL {line}")
     log.info("CHK-SEP-FLASH-OE-CONTEND PASS %s", line)
 
