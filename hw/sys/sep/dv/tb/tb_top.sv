@@ -1734,6 +1734,9 @@ module sep_uvm_top
     // Watchdog timer-domain reset and the two Key Manager reset conditioner
     // outputs. Read-only XMRs.
     assign aon_rst_n_probe_o = `SEP_CORE.u_sep_wdt_wrap.rst_wdt_n;
+    // sep_reset_n override select on the SEP input port. Read-only XMR.
+    assign jtag_sep_reset_n_ovrd_probe_o =
+        `SEP_CORE.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd;
     assign km_cond_rst_probe_o = {
         `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.rst_cold_aasd_n,
         `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.rst_warm_sync_n

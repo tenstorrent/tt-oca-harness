@@ -39,9 +39,13 @@ Checks:
   CHK-TRST-SCOPE     : during each TAP reset the ``sep_reset_n`` and
                        ``sep_cpu_reset_n`` taps stay high, the routine reports
                        two more passes with all four compares true and
-                       ``scratch_cold_probe_o`` word 0 does not change. Control:
-                       the CPU reset that follows clears the warm scratch word,
-                       keeps the cold one and moves the ``sep_cpu_reset_n`` tap.
+                       ``scratch_cold_probe_o`` word 0 does not change. With
+                       real fuse sense ``sep_fuse_sense_done_o`` also stays
+                       high on every sample. Control: the CPU reset that
+                       follows clears the warm scratch word, keeps the cold one
+                       and moves the ``sep_cpu_reset_n`` tap; with real fuse
+                       sense the second cold reset drops
+                       ``sep_fuse_sense_done_o``.
   CHK-NO-EARLY-RETIRE: no trace beat while the ``sep_cpu_reset_n`` tap is low,
                        in every cold reset and every CPU reset of the leaf.
   CHK-NO-EARLY-FETCH : no ``rom_req`` or ``ifu_req`` request while the
@@ -107,7 +111,18 @@ values, ``enable`` 0), so the six registers are plain read-write storage
 write-only, ``WKUP_CTRL`` and ``WDOG_CTRL`` start the counters,
 ``WDOG_REGWEN``, ``INTR_STATE`` and ``WKUP_CAUSE`` clear on write.
 
-cpu run mode (real core), ``+skip_fuse_sense``; Verilator and VCS.
+Fuse sense. The leaf reads the mode from the run: with ``+skip_fuse_sense``
+the RTL skips the sense, ``sep_fuse_sense_done_o`` carries no sensed state and
+is logged, not graded (``OBS-TRST-SCOPE-SENSE``). Without it the leaf stages
+the ``+sep_efuse_preload`` image (required), real sense runs at every cold
+reset, the leaf fails unless ``sep_fuse_sense_done_o`` reads 1 before the
+second cold reset, and CHK-TRST-SCOPE grades the port. The TAP reset reaches
+only the VeeR debug TAP (``hw/sys/sep/doc/reset_controller.adoc``, SEP Reset
+Controller), and fuse-sense done is in the cold reset domain
+(``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture).
+
+cpu run mode (real core); one testlist entry with ``+skip_fuse_sense`` and one
+with real fuse sense of a PROD image; Verilator and VCS.
 """
 
 from __future__ import annotations
@@ -222,6 +237,8 @@ W_OBS = 10_000  # clk_i cycles from the sep_cpu_reset_n rise: first retire and m
 RST_HOLD = 20  # clk_i cycles of each rst_ni and wdt_rst_ni pulse
 PASS_BOUND = 400_000  # clk_i cycles for one routine pass record
 RISE_BOUND = 20_000  # clk_i cycles from a reset release to the sep_cpu_reset_n rise
+# The same bound when real fuse sense runs between the release and the rise.
+RISE_BOUND_SENSE = 200_000
 B_BOUND = 2_000  # clk_i cycles for the write responses of the outbound stores
 QUIET = 8  # clk_i cycles after the last write response before a CPU reset
 SPIN = 400  # spin-loop iterations after each routine pass
@@ -467,6 +484,8 @@ class _Epoch:
     start_clk: int
     tap_low: int = 0
     sep_low: int = 0
+    # Samples with sep_fuse_sense_done_o not 1 (0, X or Z).
+    sense_low: int = 0
     rise_clk: int | None = None
     first_retire: tuple[int, int] | None = None
     retired_in_window: int = 0
@@ -486,6 +505,8 @@ class _Scope:
     samples: int = 0
     sep_low: int = 0
     cpu_low: int = 0
+    # Samples with sep_fuse_sense_done_o not 1 (0, X or Z).
+    sense_low: int = 0
 
 
 @dataclass
@@ -534,7 +555,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             W_OBS,
             RST_HOLD,
             PASS_BOUND,
-            RISE_BOUND,
+            self.rise_bound,
             QUIET,
             SPIN,
             ROUTINE,
@@ -614,6 +635,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             prev_rst, prev_wdt = rst, wdt
             cpu_tap = self.rd(dut.sep_cpu_reset_n_o)
             sep_tap = self.rd(dut.dbg_sep_reset_n_o)
+            sense = self._rd_or_none(dut.sep_fuse_sense_done_o)
             tv = self.rd(dut.cpu_trace_valid_o)
             pc = self.rd(dut.cpu_trace_addr_o) if tv else None
             rom_req = self.rd(dut.pr_rom_req_o)
@@ -622,6 +644,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 self.scope.samples += 1
                 self.scope.sep_low += sep_tap == 0
                 self.scope.cpu_low += cpu_tap == 0
+                self.scope.sense_low += sense != 1
             if not self.epochs:
                 continue
             ep = self.epochs[-1]
@@ -635,6 +658,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 ep.rise_clk = self.clk
             if sep_tap == 0:
                 ep.sep_low += 1
+            if sense != 1:
+                ep.sense_low += 1
             if ep.rise_clk is not None and cpu_tap:
                 if tv:
                     if ep.first_retire is None:
@@ -775,12 +800,14 @@ class sep_cpu_reset_entry_test(sep_base_test):
         marker must fall within W_obs clk_i cycles of the tap rise.
         """
         dut = cocotb.top
-        for _ in range(RISE_BOUND):
+        for _ in range(self.rise_bound):
             if ep.rise_clk is not None:
                 break
             await RisingEdge(dut.clk_i)
         else:
-            raise AssertionError(f"{what}: sep_cpu_reset_n tap did not rise in {RISE_BOUND} cycles")
+            raise AssertionError(
+                f"{what}: sep_cpu_reset_n tap did not rise in {self.rise_bound} cycles"
+            )
         while ep.first_retire is None and self.clk - ep.rise_clk < W_OBS:
             await RisingEdge(dut.clk_i)
         marker = None
@@ -1011,6 +1038,24 @@ class sep_cpu_reset_entry_test(sep_base_test):
             "CHK-RSTVEC-TAPRST", f"via={via} tdr={tdr} ", ep, pc, marker, DEFAULT_RESET_PC, "M_ROM"
         )
         warm_cleared = int(entry[1] == WARM_RESET and entry[0] == V_COLD and ep.tap_low > 0)
+        if self.real_sense:
+            sense_ok = scope.sense_low == 0 and self.control_sense_low > 0
+            sense_text = (
+                f" sense=real sep_fuse_sense_done_low={scope.sense_low} "
+                f"control_cold_sense_done_low={self.control_sense_low}"
+            )
+        else:
+            sense_ok = True
+            sense_text = " sense=skipped"
+            self.logger.info(
+                "OBS-TRST-SCOPE-SENSE LOG via=%s tdr=%s sep_fuse_sense_done_low=%d of %d "
+                "(not graded: +skip_fuse_sense skips the sense, so the port carries no "
+                "sensed state)",
+                via,
+                tdr,
+                scope.sense_low,
+                scope.samples,
+            )
         ok = (
             scope.sep_low == 0
             and scope.cpu_low == 0
@@ -1019,6 +1064,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             and probe0 == probe1 == V_COLD
             and warm_cleared == 1
             and self.control_sep_low > 0
+            and sense_ok
         )
         self._grade(
             "CHK-TRST-SCOPE",
@@ -1028,7 +1074,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
             f"control_warm_cleared={warm_cleared} samples={scope.samples} "
             f"passes={start.val}->{p1.val}->{p2.val} probe0=0x{probe0:08x}->0x{probe1:08x} "
             f"entry_cold=0x{entry[0]:08x} entry_warm=0x{entry[1]:08x} "
-            f"cpu_tap_low={ep.tap_low} control_sep_reset_low={self.control_sep_low}",
+            f"cpu_tap_low={ep.tap_low} control_sep_reset_low={self.control_sep_low}"
+            f"{sense_text}",
         )
         return mark
 
@@ -1046,6 +1093,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self.out_tap = SepFabricTap("PR-OUT")
         self.rsp_tap = SepFabricTap("PR-OUT-RSP")
         self.tap_base: dict[str, tuple[int, int]] = {}
+        self._fuse_mode()
         self._draw()
         self.required_evidence = (
             "CHK-RSTVEC-DEFAULT",
@@ -1074,8 +1122,17 @@ class sep_cpu_reset_entry_test(sep_base_test):
             self.rd(dut.jtag_tck_i),
             self.rd(dut.jtag_tms_i),
         )
+        await self._sense_done_before_cold2()
         ep, mark = await self._cold_pulse()
         await self._run_req_leg(ep, mark, 0, "cold2")
+        # A cold reset from a sensed state drops fuse-sense done (real sense).
+        self.control_sense_low = ep.sense_low
+        self.logger.info(
+            "CTL-COLD-SENSE: cold2 sep_fuse_sense_done_low=%d sep_reset_n_low=%d sense=%s",
+            ep.sense_low,
+            ep.sep_low,
+            "real" if self.real_sense else "skipped",
+        )
         ep, mark = await self._cold_pulse()
         pc, marker, _ = await self._entry(ep, mark, "cold3")
         self._grade_vector(
@@ -1119,6 +1176,42 @@ class sep_cpu_reset_entry_test(sep_base_test):
         if self.failures:
             raise AssertionError("; ".join(self.failures))
         self.result_pass(TEST, self.random_seed(), self.n_checks)
+
+    def _fuse_mode(self) -> None:
+        """Read the fuse-sense mode of the run; stage the preload image for real sense."""
+        self.real_sense = "skip_fuse_sense" not in cocotb.plusargs
+        self.rise_bound = RISE_BOUND_SENSE if self.real_sense else RISE_BOUND
+        self.control_sense_low = 0
+        if not self.real_sense:
+            self.logger.info("CFG fuse sense skipped (+skip_fuse_sense) rise_bound=%d", RISE_BOUND)
+            return
+        if "sep_efuse_preload" not in cocotb.plusargs:
+            raise AssertionError(
+                "real fuse sense needs +sep_efuse_preload; a drawn image is not a fixed run mode"
+            )
+        image = self.select_efuse_image()
+        self.write_efuse_image(image)
+        self.logger.info(
+            "CFG fuse sense real lc_raw=0x%x rise_bound=%d", image.lc_raw(), RISE_BOUND_SENSE
+        )
+
+    async def _sense_done_before_cold2(self) -> None:
+        """Real sense: fuse-sense done reads 1 after the first boot, then the shadow matches."""
+        dut = cocotb.top
+        await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        sense = self._rd_or_none(dut.sep_fuse_sense_done_o)
+        await RisingEdge(dut.clk_i)
+        if not self.real_sense:
+            self.logger.info("CFG sep_fuse_sense_done_o=%s before cold2 (sense skipped)", sense)
+            return
+        if sense != 1:
+            raise AssertionError(
+                f"real fuse sense did not complete: sep_fuse_sense_done_o={sense} after the "
+                "first boot, so the TAP reset scope cannot grade it"
+            )
+        self._check_efuse_shadow_after_sense()
+        self.logger.info("CTL-SENSE-DONE: sep_fuse_sense_done_o=1 before cold2 (real sense)")
 
     async def _jtag_legs(self) -> None:
         dut = cocotb.top

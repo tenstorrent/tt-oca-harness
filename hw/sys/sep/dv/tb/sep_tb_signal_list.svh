@@ -575,6 +575,10 @@
 // Watchdog timer-domain reset (u_sep_wdt_wrap.rst_wdt_n, rst_aon_ni of the AON
 // timer).
 `SEP_TB_OUT(logic, aon_rst_n_probe_o)
+// sep_reset_n override select at the SEP boundary
+// (u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd): the value SEP receives
+// after the pin-or-TDR mux.
+`SEP_TB_OUT(logic, jtag_sep_reset_n_ovrd_probe_o)
 // Output of the CPU run-request synchronizer (u_sep_cpu.mpc_reset_run_req_sync).
 // Tied to 0 on the CPU stub build.
 `SEP_TB_OUT(logic, mpc_run_sync_probe_o)

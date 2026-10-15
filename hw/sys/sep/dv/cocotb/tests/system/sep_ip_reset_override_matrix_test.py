@@ -24,14 +24,17 @@ walking-zero enable vectors E, each with V all 0 and V all 1, and 8 drawn
 ``SW_RESET_N`` = 0x00. A pulse leg drives ``wdt_rst_ni_i`` under two overrides,
 a priority leg releases the software bit and the override in both orders on
 OTBN, AES, HMAC and KMAC, and a ``sep_reset_n`` leg forces the SEP reset low
-with ``rst_ni`` high. A last ``rst_ni`` pulse is the control of the
-``sep_fuse_sense_done_o`` and ``aon_rst_n`` checks.
+with ``rst_ni`` high. An ``rst_ni`` pulse is the control of the
+``sep_fuse_sense_done_o`` and ``aon_rst_n`` checks. A last TRST leg pulses the
+PTAP TRST of the IC_RESET TDR after fuse sense, first with the override idle
+(logged only), then with the ``sep_reset_n`` override applied (graded).
 
 Probes. Approved: ``ip_rst_n[6:1]`` (``*_gated_rst_n_probe_o``),
 ``dbg_sep_reset_n_o``, ``sep_cpu_reset_n_o``, ``sep_fuse_sense_done_o``.
 Observation taps: the isolate-complete vector ``crypto_isolated_probe_o`` (the
-host-path bits of every domain, read through ``env/sep_reset_taps.py``) and
-``aon_rst_n_probe_o``. Engine probe registers:
+host-path bits of every domain, read through ``env/sep_reset_taps.py``),
+``aon_rst_n_probe_o`` and ``jtag_sep_reset_n_ovrd_probe_o`` (the ``sep_reset_n``
+override select on the SEP input port). Engine probe registers:
 ``seq_lib/sep_reset_mid_transfer_seq.PROBES`` (OTBN ``LOAD_CHECKSUM``, AES
 ``CTRL_AUX_SHADOWED``, HMAC ``INTR_ENABLE``, KMAC ``ENTROPY_PERIOD``, CSRNG
 ``INTR_ENABLE`` for TRNG, Adams Bridge ``notif_cmd_done_intr_count_r``) and SPI
@@ -59,10 +62,29 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     ``SRC_ADDR_LO`` and the engine probes read their RDL default.
   CHK-OVR-SENSE     ``sep_fuse_sense_done_o`` is high on every cycle of the
                     ``sep_reset_n`` override. Control: the ``rst_ni`` pulse drops it.
+  CHK-OVR-TRST      after fuse sense, with the ``sep_reset_n`` override applied
+                    (tap low), a TRST pulse of the IC_RESET TDR clears the TDR:
+                    the override select at the SEP input goes from 1 to 0 inside
+                    the window, the ``sep_reset_n`` tap is low at the TRST fall
+                    and high at the end of the hold, and
+                    ``sep_fuse_sense_done_o`` is high on every cycle from before
+                    the TRST to the end of the hold. The IC_RESET TDR is outside
+                    SEP; a TRST reaches SEP only through the override inputs.
+                    TRST drives the PTAP to Test-Logic-Reset and clears every
+                    TDR (``hw/sys/dtp/doc/clk_rst.adoc``, Reset Architecture);
+                    the eFuse release is before the override
+                    (``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture), so the
+                    override and its release do not touch fuse sense. The idle
+                    TDR leg logs ``OBS-OVR-TRST-IDLE`` only: there the TDR holds
+                    its reset value and no SEP input changes.
 
 Environment choices (logged): the settle of 4 ``clk_i`` cycles after each
-Update-DR (the override passes a two-flop synchronizer), and the bounds of
-every wait.
+Update-DR (the override passes a two-flop synchronizer), the 4 ``clk_i`` cycles
+sampled before the TRST fall, the TRST hold of 64 ``clk_i`` cycles after the
+TRST release, and the bounds of every wait. The hold
+covers the eFuse release synchronizer and the two-flop ``sep_reset_n``
+synchronizer behind the override (a few cycles each) with a wide margin, so a
+TRST effect that reaches the tap through them lands inside the graded window.
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense of the committed
 default image (``+sep_efuse_preload``), ``+sep_edn_jtag_reset_waive``. Four
@@ -116,6 +138,11 @@ TAP_BOUND = 2_000  # clk_i cycles for a tap to reach a level
 ISO_BOUND = 2_000  # clk_i cycles for the isolate-complete bits of a domain
 SEPRST_BOUND = 2_000  # clk_i cycles for sep_reset_n to read 1 after the override
 RST_NI_HOLD = 16  # rst_ni control pulse, clk_i cycles (at least 8)
+# Graded clk_i cycles after the TRST release: two synchronizer chains of a few
+# cycles each (eFuse release, sep_reset_n) with a wide margin.
+TRST_HOLD = 64
+# Graded clk_i cycles before the TRST fall, with the override still applied.
+PRE_TRST = 4
 # aon_rst_n release after rst_ni: 16 clk_wdt_i periods of 5000 ns, plus one, in
 # clk_i cycles of 1.25 ns.
 AON_BOUND = 17 * 4_000
@@ -192,6 +219,8 @@ class Plan:
         self.pulse_d0, self.pulse_d1 = d0, d1
         self.wdt_width = rng.randrange(2, 33)
         self.lines.append(f"DRAW pulse_leg v0_dom={d0} v1_dom={d1} wdt_width={self.wdt_width}")
+        self.trst_width = rng.randrange(8, 65)
+        self.lines.append(f"DRAW trst_width={self.trst_width} clk_i cycles")
 
 
 @pyuvm.test()
@@ -207,6 +236,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
         "CHK-OVR-AND",
         "CHK-OVR-DOMAIN",
         "CHK-OVR-SENSE",
+        "CHK-OVR-TRST",
     )
 
     # ---- log helpers --------------------------------------------------------
@@ -322,13 +352,14 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
             self.logger.info(line)
         self.logger.info(
             "ENV settle=%d tap_bound=%d iso_bound=%d seprst_bound=%d rst_ni_hold=%d "
-            "aon_bound=%d (clk_i cycles)",
+            "aon_bound=%d trst_hold=%d (clk_i cycles)",
             SETTLE,
             TAP_BOUND,
             ISO_BOUND,
             SEPRST_BOUND,
             RST_NI_HOLD,
             AON_BOUND,
+            TRST_HOLD,
         )
 
         # Step 1: real fuse sense of the staged image.
@@ -372,6 +403,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
             await self._seprst_leg()
             await self._gate(False)
             await self._rst_ni_control()
+            await self._trst_leg()
         finally:
             await self._gate(False)
             await self.taps.stop()
@@ -706,6 +738,127 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
                 n_ok == len(regs),
                 f"event={ev} sep_reset_n_domain_reset={n_ok}/{len(regs)}",
             )
+
+    # ---- step 10: PTAP TRST of the IC_RESET TDR ------------------------------
+    async def _trst_window(self, what: str) -> tuple[list[tuple[int, int, int, int]], int, int]:
+        """Sample PRE_TRST cycles, pulse TRST, and sample through the pulse and TRST_HOLD.
+
+        Returns the samples (``dbg_sep_reset_n_o``, ``sep_fuse_sense_done_o``, TRST
+        pin, ``sep_reset_n`` override select at the SEP input), the index of the
+        first sample with TRST driven, and the index of the first sample after the
+        release.
+        """
+        dut = cocotb.top
+        samples: list[tuple[int, int, int, int]] = []
+        stop = [False]
+
+        async def sampler() -> None:
+            while not stop[0]:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                samples.append(
+                    (
+                        self.rd_known(dut.dbg_sep_reset_n_o),
+                        self.rd_known(dut.sep_fuse_sense_done_o),
+                        self.rd_known(dut.jtag_ic_reset_trst_n_i),
+                        self.rd_known(dut.jtag_sep_reset_n_ovrd_probe_o),
+                    )
+                )
+
+        await FallingEdge(dut.clk_i)
+        task = cocotb.start_soon(sampler())
+        await self._cycles(PRE_TRST)
+        await FallingEdge(dut.clk_i)
+        start = len(samples)
+        low_ps = int(round(self.plan.trst_width * self.cfg.sys_clk_period_ns * 1000))
+        self.logger.info(
+            "TRST %s width=%d clk_i cycles (%d ps)", what, self.plan.trst_width, low_ps
+        )
+        await self.tdr.trst_pulse(low_ps)
+        await FallingEdge(dut.clk_i)
+        released = len(samples)
+        await self._cycles(TRST_HOLD)
+        await FallingEdge(dut.clk_i)
+        stop[0] = True
+        await task
+        # The sampler ends in ReadOnly; leave it before the caller drives a pin.
+        await FallingEdge(dut.clk_i)
+        trst_low = sum(1 for x in samples if x[2] == 0)
+        hold = len(samples) - released
+        if start != PRE_TRST or trst_low == 0 or hold < TRST_HOLD:
+            raise AssertionError(
+                f"TRST window {what}: pre_trst_samples={start} trst_low_cycles={trst_low} "
+                f"hold_cycles={hold} (need {PRE_TRST}, >0 and >={TRST_HOLD}); the pulse "
+                f"is not inside the sampled window"
+            )
+        return samples, start, released
+
+    async def _trst_leg(self) -> None:
+        """TRST after fuse sense: idle override logged, applied override graded."""
+        dut = cocotb.top
+        await self.sense.wait_level(1, TAP_BOUND)
+        await self.taps.resets["sep_reset_n"].wait_level(1, TAP_BOUND)
+        await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        pre = (
+            self.rd_known(dut.sep_fuse_sense_done_o),
+            self.rd_known(dut.dbg_sep_reset_n_o),
+            self.rd_known(dut.jtag_sep_reset_n_ovrd_probe_o),
+        )
+        await FallingEdge(dut.clk_i)
+        if pre != (1, 1, 0):
+            raise AssertionError(
+                f"TRST leg precondition: sep_fuse_sense_done_o={pre[0]} "
+                f"dbg_sep_reset_n_o={pre[1]} sep_reset_n_ovrd={pre[2]}, expected 1, 1 "
+                f"and 0 with the override idle"
+            )
+        # Idle TDR: the TDR holds its reset value, so TRST changes no SEP input.
+        # Logged only.
+        idle, _, _ = await self._trst_window("override idle")
+        self.logger.info(
+            "OBS-OVR-TRST-IDLE LOG: sep_reset_n_ovrd values=%s sep_fuse_sense_done_o_low=%d "
+            "dbg_sep_reset_n_o_low=%d over %d cycles; the TDR holds its reset value, so "
+            "no SEP input changes (not graded)",
+            sorted({x[3] for x in idle}),
+            sum(1 for x in idle if x[1] == 0),
+            sum(1 for x in idle if x[0] == 0),
+            len(idle),
+        )
+
+        # Graded: the TDR forces sep_reset_n low, then TRST clears the TDR, so the
+        # override select at the SEP input falls and the override releases.
+        tap = self.taps.resets["sep_reset_n"]
+        await self._shift(
+            tdr_word(apply=(SEP_RESET_PORT,), hold=(SEP_RESET_PORT,)),
+            "TRST sep_reset_n override",
+        )
+        await tap.wait_level(0, TAP_BOUND)
+        await self._cycles(TRST_HOLD)
+        win, start, released = await self._trst_window("override applied")
+        before, after = win[:start], win[start:]
+        sense_low = sum(1 for x in win if x[1] == 0)
+        trst_low = sum(1 for x in win if x[2] == 0)
+        tap_low_at_start = int(all(x[0] == 0 for x in before) and after[0][0] == 0)
+        tap_high_at_end = int(win[-1][0] == 1)
+        ovrd_before = int(all(x[3] == 1 for x in before))
+        fall = next((i for i, x in enumerate(after) if x[3] == 0), None)
+        ovrd_fell = int(fall is not None and all(x[3] == 0 for x in after[fall:]))
+        self._chk(
+            "CHK-OVR-TRST",
+            sense_low == 0
+            and tap_low_at_start == 1
+            and tap_high_at_end == 1
+            and ovrd_before == 1
+            and ovrd_fell == 1,
+            f"override applied: sep_fuse_sense_done_o_low={sense_low} over {len(win)} "
+            f"cycles (pre_trst={start} trst_low_cycles={trst_low} "
+            f"hold_cycles={len(win) - released}) dbg_sep_reset_n_o low_at_trst={tap_low_at_start} "
+            f"high_at_end={tap_high_at_end} sep_reset_n_ovrd 1_before_trst={ovrd_before} "
+            f"fell_to_0={ovrd_fell} (trst_cycle={fall if fall is not None else -1})",
+        )
+        await tap.wait_level(1, SEPRST_BOUND)
+        for d in DOMS:
+            await self._wait_tap(d, 1, "TRST release")
 
     # ---- step 9: rst_ni control ---------------------------------------------
     async def _rst_ni_control(self) -> None:
