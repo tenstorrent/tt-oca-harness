@@ -316,6 +316,7 @@ feature rows.
 |`smc_irq_during_powergood_glitch_test` |SMC OSS PyUVM IRQ-during-powergood-glitch test.
 |`smc_jtag_boot_stall_sanity_test` |JTAG boot-stall override clears sticky while pad 57 is held.
 |`smc_jtag_reset_ctrl_test` |Struct pin mux; not boot-stall JTAG, FLR, or rst_cool_ni proxy.
+|`smc_jtag_reset_ovrd_walk_test` |Every override mux smc_jtag_reset_ctrl_test leaves idle, through its reset pin.
 |`smc_jtag_reset_proxy_test` |Run JTAG-adjacent CSR health checks across an observed cool reset, plus CPU JTAG pin checks.
 |`smc_mixed_boot_stall_test` |GPIO gates fuse_reset; JTAG ovrd releases; val=1 cannot re-stall.
 |`smc_multi_reset_csr_persistence_test` |Run CSR access/persistence checks around a public cool reset pulse.
@@ -3272,6 +3273,50 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 |===
 
 *Pass Criteria*: the two outputs assert in the same `clk_ref_i`-anchored instant, each releases on a rising edge of its own clock, the reference release is a whole number of reference periods after the anchor, both stage counts are at least two, and the scoreboard books at least two reset `WAIT_STATE` checks. `rst_primary_periph_clk_no` is not part of the claim. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-326-smc_jtag_reset_ovrd_walk_test]]
+===== 326 `smc_jtag_reset_ovrd_walk_test`
+
+*Source Module*: `smc_jtag_reset_ovrd_walk_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN); `tb_jtag_reset_ctrl` drives the packed `jtag_reset_ctrl_i`; `tb_ss_cold_reset_n` / `tb_ss_warm_reset_n` publish every subsystem's `ss_reset_ctrl_o` cold and warm reset
+
+*Objective*: Every override mux smc_jtag_reset_ctrl_test leaves idle, through its reset pin.
+
+*Test Coverage*:
+
+* `smc_jtag_reset_ctrl_test` drives the cool override, the warm override released and the subsystem-0 warm override of `jtag_reset_ctrl_i`. The other 65 override muxes of the reset unit -- `ss_warm_reset_n[1..31]`, `ss_cold_reset_n[0..31]`, `fuse_reset_n` and `cold_reset_n` -- never see their select active there, and the warm mux never sees val=0. This leaf takes each one through ovrd=1/val=0, ovrd=1/val=1, ovrd=0/val=1 and idle with the overridden reset released by its source, and through ovrd=1/val=1 with the source asserting it where the bench can arrange that, so each mux input and the select exercise the mux in every combination the override can reach.
+* Per-subsystem legs are observed on `ss_reset_ctrl_o[i]` after the mux. The walked pin must move while the other 31 pins of the same vector hold their level, which fails on a wrong bit position in the DV-owned slice table, a swapped ovrd/val half or an override that reaches a neighbour. `SS_WARM_RESET_N` resets released, so the warm walk runs first against the reset value and then with the register asserting one subsystem at a time; `SS_COLD_RESET_N` resets asserted, so the cold walk runs first against the reset value and then with the register written all ones. Both registers are read unchanged across each walk, so the overrides do not write them, and both are restored.
+* The warm and fuse legs assert the warm reset alone: `tb_rst_warm_smc_clk_n` drops while `rst_primary_smc_clk_no`, `rst_cool_no` and the delayed `fuse_reset_n` from the eFuse controller stay released, so the override acts downstream of fuse sensing. `SCRATCH_COLD_WARM_0` clears and `SCRATCH_COLD_0` keeps its pattern after each.
+* The cold leg comes last because it resets the whole SMC: `rst_cold_stable_ref_clk_no`, the primary and the warm reset assert with `powergood_stable_o` held and every reset source idle (`rst_cold_ni`, `rst_cool_ni`, `powergood_i`, `cfg_flr_pf_active_i`, `sep_wdt_reset_n_i`). After the override releases, the eFuse controller re-senses and holds the warm reset; the fuse override at val=1 releases the warm reset while `tb_fuse_sense_done` and the delayed `fuse_reset_n` are still 0, and is dropped once the sense completes. `SS_COLD_RESET_N` returns to its reset value on the pins, and `SCRATCH_COLD_0` reads 0 and takes a pattern again.
+* The cold mux is not asked to release a cold reset the pin asserts: the bench models clocked from `rst_cold_ni` would reset while the SMC kept running. Not DTP `IC_RESET`, the boot-stall JTAG override or any reset the pins drive.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, drive the packed override to 0 and require both subsystem vectors at their register reset values, the top-level resets released and every reset source idle.
+. For `ss_warm_reset_n[1..31]`: ovrd=1/val=0 drops that pin with the other 31 held 1; ovrd=1/val=1 returns it; ovrd=0/val=1 and then 0 hold the vector released. Then for `ss_warm_reset_n[0..31]`: write `SS_WARM_RESET_N` with that bit clear, require the pin low, ovrd=1/val=1 must raise it, ovrd=0 must drop it again; restore the register.
+. For `ss_cold_reset_n[0..31]` at the register reset: ovrd=1/val=1 raises only that pin and ovrd=0 drops it. Write `SS_COLD_RESET_N` all ones and repeat the released walk of step 2 over `ss_cold_reset_n[0..31]`; read the register unchanged and restore it, requiring the pins to follow.
+. Write patterns to `SCRATCH_COLD_0` and `SCRATCH_COLD_WARM_0`. Warm ovrd=1/val=0 must drop the SMC-clock warm reset with the primary reset, `rst_cool_no` and the delayed `fuse_reset_n` held 1; val=1 and the release must return it. Read the warm scratch cleared and the cold scratch kept. Rewrite the warm scratch and repeat with the fuse override.
+. Cold ovrd=1/val=0 must take `rst_cold_stable_ref_clk_no`, the primary and the warm reset low with `powergood_stable_o` held 1; val=1 must release the chain and the override is then dropped. Once the primary reset returns, fuse ovrd=1/val=1 must release the warm reset before the sense completes; wait for the sense, drop the override, then read both scratch registers cleared and write the cold scratch again.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-JTAG-OVRD-WALK-IDLE` |Packed override 0: both subsystem vectors read their register resets, the primary, warm and cool resets are released and every reset source is idle
+|`CHK-JTAG-OVRD-WALK-SS-WARM` |Each `ss_warm_reset_n[1..31]` went 1→0→1 through its own override with the other 31 pins held 1 and `SS_WARM_RESET_N` unchanged; with the register asserting one subsystem at a time, each `ss_warm_reset_n[0..31]` went 0→1→0 through ovrd=1/val=1; the register was restored and the pins followed
+|`CHK-JTAG-OVRD-WALK-SS-COLD` |At the register reset each `ss_cold_reset_n[0..31]` went 0→1→0 through ovrd=1/val=1 alone; with `SS_COLD_RESET_N` written all ones each went 1→0→1 through its own override with the other 31 pins held 1; the register read unchanged and the pins followed its restore
+|`CHK-JTAG-OVRD-WALK-WARM` |The warm override asserted and released only the warm reset; `SCRATCH_COLD_WARM_0` cleared and `SCRATCH_COLD_0` kept its pattern
+|`CHK-JTAG-OVRD-WALK-FUSE` |The fuse override asserted and released only the warm reset; `SCRATCH_COLD_WARM_0` cleared and `SCRATCH_COLD_0` kept its pattern
+|`CHK-JTAG-OVRD-WALK-COLD` |The cold override took the cold chain, primary and warm resets low with `powergood_stable_o` and every source idle; after release the fuse override released the warm reset before the fuse sense finished, the chain, sense and subsystem cold pins recovered, `SCRATCH_COLD_0` read 0 and accepted a pattern again
+|`CHK-JTAG-OVRD-WALK-BASIC` |Ledger line: all five legs completed
+|===
+
+*Pass Criteria*: `CHK-JTAG-OVRD-WALK-BASIC`, `CHK-JTAG-OVRD-WALK-COLD`, `CHK-JTAG-OVRD-WALK-FUSE`, `CHK-JTAG-OVRD-WALK-IDLE`, `CHK-JTAG-OVRD-WALK-SS-COLD`, `CHK-JTAG-OVRD-WALK-SS-WARM`, `CHK-JTAG-OVRD-WALK-WARM` hold after their compares; every bounded poll expires into a failure naming the pin and its last level. Enrolled in: `all`, `hosted`, `reset`.
 
 '''''
 

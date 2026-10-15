@@ -213,6 +213,10 @@
 `SMC_TB_IN(logic [31:0], tb_ss_reset_complete)
 // SS0 warm_reset_n from ss_reset_ctrl_o[0] (SW SS_WARM_RESET_N bit 0).
 `SMC_TB_OUT(logic, tb_ss0_warm_reset_n)
+// Every subsystem's cold_reset_n / warm_reset_n from ss_reset_ctrl_o[31:0],
+// after the JTAG override muxes.
+`SMC_TB_OUT(logic [31:0], tb_ss_cold_reset_n)
+`SMC_TB_OUT(logic [31:0], tb_ss_warm_reset_n)
 // Packed jtag_smc_reset_ctrl_t (ovrd[135:68]|val[67:0]). Idle 0.
 // Unique vs boot-stall JTAG ovrd and vs rst_cool_ni / cfg_flr_pf_active_i.
 `SMC_TB_IN(logic [$bits(jtag_smc_reset_ctrl_t)-1:0], tb_jtag_reset_ctrl)
