@@ -1267,6 +1267,8 @@ module sep_fcov (
   wire own_dma_irq = (graded_owner == FcovOwnSepDmaIrqErrorLockRandTest);
   wire own_dma_abort = (graded_owner == FcovOwnSepDmaAbortRecoveryRandTest);
   wire own_dma_zero = (graded_owner == FcovOwnSepDmaZeroFillRandTest);
+  wire own_dma_zcont = (graded_owner == FcovOwnSepDmaZeroFillContinuationTest);
+  wire own_dma_ztcm = (graded_owner == FcovOwnSepDmaZeroTest);
   wire own_spi_dma_hs = (graded_owner == FcovOwnSepSpiDmaHandshakeRandTest);
 
   // --- Register access helpers ------------------------------------------
@@ -3994,6 +3996,52 @@ module sep_fcov (
     end
   end
 
+  // --- CPU store bus error -----------------------------------------------
+  // A CPU LSU store whose B response is SLVERR or DECERR, then a taken NMI
+  // whose mcause holds the store-bus-error cause (VeeR EL2 Programmer's
+  // Reference Manual, linked from hw/sys/sep/doc/cpu.adoc: NMI mcause
+  // 0xF000_0000). The cell records the response kind of the store. The NMI
+  // window is a choice of the environment; mcause is read one clk_i edge
+  // after the take, when the trap has written it.
+  localparam logic [31:0] StErrMcause = 32'hF000_0000;
+  localparam int unsigned StErrNmiWin = 64;  // clk_i edges from the error B to the NMI take
+  localparam logic [1:0] StErrSlverr = 2'b10;
+  localparam logic [1:0] StErrDecerr = 2'b11;
+
+  covergroup sep_store_bus_error_cg with function sample (logic [1:0] resp);
+    option.per_instance = 1;
+    option.name = "sep_store_bus_error_cg";
+    cp_store_err_nmi: coverpoint resp {bins slverr = {StErrSlverr}; bins decerr = {StErrDecerr};}
+  endgroup
+  sep_store_bus_error_cg u_sep_store_bus_error_cg = new();
+
+  logic [1:0] st_err_kind_q = 2'b00;
+  int unsigned st_err_age_q = 0;  // 0: no error store waits for its NMI
+  logic st_take_nmi_q = 1'b0;
+  logic st_cause_due_q = 1'b0;  // the NMI was taken at the previous edge
+  wire st_take_nmi_rise = (tlu_take_nmi_i === 1'b1) && !st_take_nmi_q;
+  always @(posedge clk_i) begin
+    st_take_nmi_q <= (tlu_take_nmi_i === 1'b1);
+    if (in_reset) begin
+      st_err_age_q   <= 0;
+      st_cause_due_q <= 1'b0;
+    end else begin
+      if (st_cause_due_q && (tlu_mcause_i == StErrMcause))
+        u_sep_store_bus_error_cg.sample(st_err_kind_q);
+      // The bark interrupt is the other NMI source (sep.sv nmi_int_i); an NMI
+      // taken while it is high is not scored.
+      st_cause_due_q <= st_take_nmi_rise && (st_err_age_q != 0) && (wdt_bark_irq_i !== 1'b1);
+      if (b_hs && ((lsu_b_resp_i == StErrSlverr) || (lsu_b_resp_i == StErrDecerr))) begin
+        st_err_kind_q <= lsu_b_resp_i;
+        st_err_age_q  <= 1;
+      end else if (st_take_nmi_rise || (st_err_age_q == StErrNmiWin)) begin
+        st_err_age_q <= 0;
+      end else if (st_err_age_q != 0) begin
+        st_err_age_q <= st_err_age_q + 1;
+      end
+    end
+  end
+
   // =====================================================================
   // Fabric and remap groups (docs/SEP_FCOV.adoc, fabric and remap groups).
   // VCS only, like the rest of this module.
@@ -4906,7 +4954,9 @@ module sep_fcov (
       logic own_smc_cfg,
       logic smc_ready,
       logic [3:0] attr,
-      logic own_attr
+      logic own_attr,
+      logic [2:0] hibit,
+      logic own_hibit
   );
     option.per_instance = 1;
     option.name = "sep_fabric_outbound_route_cg";
@@ -4951,6 +5001,18 @@ module sep_fcov (
       bins smu_user_kept = {4'd9};
       bins dma_smu_user_zero = {4'd10};
     }
+    // {class 0 AP with output address bit 55 set, 1 STEE with bit 55 clear,
+    // AxPROT[1], dir}: AxPROT leaves the port as issued.
+    cp_out_hibit: coverpoint hibit iff (own_hibit) {
+      bins ap_b55_prot1_0_r = {3'b0_0_0};
+      bins ap_b55_prot1_0_w = {3'b0_0_1};
+      bins ap_b55_prot1_1_r = {3'b0_1_0};
+      bins ap_b55_prot1_1_w = {3'b0_1_1};
+      bins stee_prot1_0_r = {3'b1_0_0};
+      bins stee_prot1_0_w = {3'b1_0_1};
+      bins stee_prot1_1_r = {3'b1_1_0};
+      bins stee_prot1_1_w = {3'b1_1_1};
+    }
   endgroup
 
   // ---------------------------------------------------------------------
@@ -4974,7 +5036,9 @@ module sep_fcov (
       logic [2:0] offx,
       logic own_al,
       logic [4:0] twin,
-      logic own_twin_s
+      logic own_twin_s,
+      logic [4:0] moved,
+      logic moved_v
   );
     option.per_instance = 1;
     option.name = "sep_remap_alias_cg";
@@ -5015,6 +5079,14 @@ module sep_fcov (
     // {class, form}: class 1 scratch, 2 aes_word, 3 sys_csr, 4 spi_word,
     // 5 esrc_word, 6 sram_start, 7 sram_end, 8 ext_top (DMA); form 0
     // direct, 1 alias.
+    // {class, dir} of an alias-form CPU LSU access while SEP_LOCAL_BASE_ADDR
+    // holds a value other than its reset value: class as cp_local_alias_twin,
+    // dir 0 read 1 write.
+    cp_local_alias_moved: coverpoint moved iff (moved_v) {
+      bins scratch_alias_rd = {5'b0001_0};
+      bins scratch_alias_wr = {5'b0001_1};
+      bins spi_word_alias_rd = {5'b0100_0};
+    }
     cp_local_alias_twin: coverpoint twin iff (own_twin_s) {
       bins scratch_direct = {5'b0001_0};
       bins scratch_alias = {5'b0001_1};
@@ -6005,25 +6077,27 @@ module sep_fcov (
                                                 ((c == 3'd1) && (smu_base_i == FSmuResetBase) && (smu_size_i == FSmuResetSize))
                 ? ((oa[55:3] == smu_base_i[55:3]) ? 2'd1 :
                    (oa[55:3] == (smu_base_i + smu_size_i - 56'd1) >> 3) ? 2'd2 : 2'd0) : 2'd0,
-                                                own_route, 4'd0, 1'b0, 1'b0, 4'd0, 1'b0);
+                                                own_route, 4'd0, 1'b0, 1'b0, 4'd0, 1'b0, 3'd0,
+                                                1'b0);
           at = 4'd0;
           if ((c inside {3'd1, 3'd3, 3'd4}) && (op == t.prot) && (t.init == INIT_LSU)) begin
             at = (c == 3'd1) ? 4'd1 : (c == 3'd3) ? 4'd3 : 4'd5;
             at = at + 4'(op[1]);
-            u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, at,
-                                                  own_route);
+            u_sep_fabric_outbound_route_cg.sample(
+                4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, at, own_route, {(c == 3'd4), op[1], w},
+                own_route && (c != 3'd1) && (oa[55] == (c == 3'd3)));
           end
           if ((c inside {3'd3, 3'd4}) && (t.init == INIT_LSU) && (t.user[3:0] != 4'd0) && (ou == 12'd0)) begin
             u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0,
-                                                  (c == 3'd3) ? 4'd7 : 4'd8, own_route);
+                                                  (c == 3'd3) ? 4'd7 : 4'd8, own_route, 3'd0, 1'b0);
           end
           if ((c == 3'd1) && (t.init == INIT_LSU) && (t.user != 12'd0) && (ou == t.user)) begin
             u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, 4'd9,
-                                                  own_route);
+                                                  own_route, 3'd0, 1'b0);
           end
           if ((c == 3'd1) && (t.init == INIT_DMA) && (ou == 12'd0)) begin
             u_sep_fabric_outbound_route_cg.sample(4'd0, 1'b0, 2'd0, 1'b0, 4'd0, 1'b0, 1'b0, 4'd10,
-                                                  own_dma);
+                                                  own_dma, 3'd0, 1'b0);
           end
           if (c inside {3'd3, 3'd4}) begin
             logic [3:0] rg;
@@ -6056,7 +6130,7 @@ module sep_fcov (
         end
         u_sep_fabric_outbound_route_cg.sample(
             (smc_wr_cls == 3'd5 || smc_rd_cls == 3'd5) ? {3'd5, w} : 4'd0, own_smc, 2'd0, 1'b0, sc,
-            own_smc, (smc_fuse_done_i === 1'b1), 4'd0, 1'b0);
+            own_smc, (smc_fuse_done_i === 1'b1), 4'd0, 1'b0, 3'd0, 1'b0);
         if (t.init == INIT_DMA) begin
           logic [11:0] su;
           logic [7:0]  sl;
@@ -6110,9 +6184,9 @@ module sep_fcov (
         oc = w ? alias_out_req_i.aw.cache : alias_out_req_i.ar.cache;
         ar = al_eval(ia, ic, oa, oc, w);
         u_sep_remap_alias_cg.sample(ar.boundary, ar.cache_ovr, ar.vgate, ar.offx, own_alias, 5'd0,
-                                    1'b0);
+                                    1'b0, 5'd0, 1'b0);
         if (al_vgate_cache(ia, ic, oa, oc)) begin
-          u_sep_remap_alias_cg.sample(4'd0, 3'd0, 2'd3, 3'd0, own_alias, 5'd0, 1'b0);
+          u_sep_remap_alias_cg.sample(4'd0, 3'd0, 2'd3, 3'd0, own_alias, 5'd0, 1'b0, 5'd0, 1'b0);
         end
       end
       // CPU LSU alias twin (real CPU only): the raw and translated request.
@@ -6128,7 +6202,10 @@ module sep_fcov (
           tc = twin_class(xa);
           fm = alias_form(ra, xa);
           if ((tc != 4'd0) && (fm != 2'd2)) begin
-            u_sep_remap_alias_cg.sample(4'd0, 3'd0, 2'd0, 3'd0, 1'b0, {tc, fm[0]}, own_twin);
+            u_sep_remap_alias_cg.sample(4'd0, 3'd0, 2'd0, 3'd0, 1'b0, {tc, fm[0]}, own_twin, {tc, w
+                                        },
+                                        own_twin && (fm == 2'd1) && (local_base_i[31:0] !=
+                                        32'(SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_DEFAULT)));
           end
         end
       end
@@ -6150,7 +6227,8 @@ module sep_fcov (
         if ((side != 2'd0) && (fm != 2'd2))
           u_sep_dma_endpoint_cg.sample(4'd0, {fm[0], side}, 2'd0, own_dma, 3'd0, 1'b0, 2'd0, 1'b0);
         if (w && (fm == 2'd1) && ({xa[31:3], 3'b000} == FExtTopWord)) begin
-          u_sep_remap_alias_cg.sample(4'd0, 3'd0, 2'd0, 3'd0, 1'b0, {4'd8, 1'b1}, own_dma);
+          u_sep_remap_alias_cg.sample(4'd0, 3'd0, 2'd0, 3'd0, 1'b0, {4'd8, 1'b1}, own_dma, 5'd0,
+                                      1'b0);
         end
       end
       if (dma_run_end && dma_src_v_q && dma_dst_v_q) begin
@@ -6771,7 +6849,7 @@ module sep_fcov (
   endgroup
 
   covergroup sep_dma_config_fault_cg with function sample (
-      logic [1:0] sz, logic sz_v, logic hw, logic hw_v
+      logic [1:0] sz, logic sz_v, logic hw, logic hw_v, logic [1:0] ah, logic ah_v
   );
     option.per_instance = 1;
     option.name = "sep_dma_config_fault_cg";
@@ -6780,6 +6858,13 @@ module sep_fcov (
       bins total_zero = {2'd0}; bins chunk_zero = {2'd1}; bins both_zero = {2'd2};
     }
     cp_hash_width_fault: coverpoint hw iff (hw_v) {bins enc0 = {1'b0}; bins enc1 = {1'b1};}
+    // {side 0 SRC_ADDR_HI 1 DST_ADDR_HI, a write address landed in the LO
+    // destination}, scored at the first DONE or ERROR rise after the GO.
+    cp_addr_hi_nonzero: coverpoint ah iff (ah_v) {
+      bins src_hi_no_lo_write = {2'b0_0};
+      bins dst_hi_no_lo_write = {2'b1_0};
+      illegal_bins lo_write = {2'b0_1, 2'b1_1};
+    }
   endgroup
 
   covergroup sep_dma_error_terminal_cg with function sample (logic ea_v, logic ao_v, logic aq_v);
@@ -6807,7 +6892,15 @@ module sep_fcov (
   wire dz_opc_err = (dma_err_code_i[SECURE_DMA_ERROR_CODE_OPCODE_ERROR_SHIFT] === 1'b1);
 
   covergroup sep_dma_zero_cg with function sample (
-      logic [1:0] dst_mode, logic [1:0] width, logic go_v, logic [1:0] outcome, logic out_v
+      logic [1:0] dst_mode,
+      logic [1:0] width,
+      logic go_v,
+      logic [1:0] outcome,
+      logic out_v,
+      logic [1:0] cont,
+      logic cont_v,
+      logic [1:0] tcm,
+      logic tcm_v
   );
     option.per_instance = 1;
     option.name = "sep_dma_zero_cg";
@@ -6822,6 +6915,23 @@ module sep_fcov (
       bins window_error = {2'd1};
       bins opcode_error = {2'd2};
       bins aborted = {2'd3};
+    }
+    // A continuation (GO with INITIAL_TRANSFER 0) of a zero fill, at its first
+    // DONE or ERROR rise: 0 no write outside BASE..LIMIT, handshake off, range
+    // unlocked; 1 handshake on, ERROR_CODE OPCODE_ERROR alone; 2 range
+    // locked, ERROR_CODE DST_ADDR_ERROR alone; 3 a write outside BASE..LIMIT,
+    // or an end that matches no cell.
+    cp_cont_outcome: coverpoint cont iff (cont_v) {
+      bins no_write_past_limit = {2'd0};
+      bins handshake_opcode_error = {2'd1};
+      bins locked_dst_addr_error = {2'd2};
+      illegal_bins write_outside_range = {2'd3};
+    }
+    // A zero fill into a CPU TCM through the core DMA slave port, at its first
+    // DONE or ERROR rise: 0 DCCM DONE, 1 ICCM DONE, 2 ICCM at 2-byte width
+    // with ERROR_CODE BUS_ERROR.
+    cp_tcm_outcome: coverpoint tcm iff (tcm_v) {
+      bins dccm_done = {2'd0}; bins iccm_done = {2'd1}; bins iccm_w2_bus_error = {2'd2};
     }
   endgroup
 
@@ -6889,6 +6999,123 @@ module sep_fcov (
   sep_dma_error_terminal_cg  u_sep_dma_error_terminal_cg  = new();
   sep_dma_zero_cg            u_sep_dma_zero_cg            = new();
   sep_dma_containment_cg     u_sep_dma_containment_cg     = new();
+
+  // cp_cont_outcome and cp_tcm_outcome of sep_dma_zero_cg. A continuation is
+  // a GO with INITIAL_TRANSFER 0 while the last initial GO carried OPCODE
+  // ZERO. The TCM class comes from DST_ADDR_LO at the initial GO.
+  localparam logic [7:0] DzDstOnly = 8'(1) << SECURE_DMA_ERROR_CODE_DST_ADDR_ERROR_SHIFT;
+  localparam logic [7:0] DzOpcOnly = 8'(1) << SECURE_DMA_ERROR_CODE_OPCODE_ERROR_SHIFT;
+  logic dc_on_q;
+  logic dc_hs_q, dc_lock_q, dc_out_q, dc_done_q, dc_err_q;
+  logic dt_on_q;
+  logic [1:0] dt_cls_q;  // 0 DCCM, 1 ICCM, 2 other
+  logic dt_w2_q;
+  wire dc_aw = (dma_raw_req_i.aw_valid === 1'b1) && (dma_resp_i.aw_ready === 1'b1);
+  wire dc_out_now = dc_aw && ((dma_raw_req_i.aw.addr < d_base_now) ||
+                              (dma_raw_req_i.aw.addr > d_limit_now));
+  wire dc_end = (d_done && !dc_done_q) || (d_err && !dc_err_q);
+  // cp_cont_outcome cell at the end of a continuation.
+  wire [1:0] dc_cell = (dc_out_q || dc_out_now) ? 2'd3 :
+      (dc_hs_q && d_err && (dma_err_code_i == DzOpcOnly) && !dc_aw) ? 2'd1 :
+      (dc_lock_q && d_err && (dma_err_code_i == DzDstOnly)) ? 2'd2 :
+      (!dc_hs_q && !dc_lock_q) ? 2'd0 : 2'd3;
+  function automatic logic [1:0] dz_tcm(input logic [31:0] a);
+    if ((a >= 32'(SEP_DCCM_MEM_BASE_ADDR)) &&
+        (a < 32'(SEP_DCCM_MEM_BASE_ADDR) + 32'(SEP_DCCM_MEM_SIZE)))
+      return 2'd0;
+    if ((a >= 32'(SEP_ICCM_MEM_BASE_ADDR)) &&
+        (a < 32'(SEP_ICCM_MEM_BASE_ADDR) + 32'(SEP_ICCM_MEM_SIZE)))
+      return 2'd1;
+    return 2'd2;
+  endfunction
+  always_ff @(posedge clk_i) begin
+    dc_done_q <= d_done;
+    dc_err_q  <= d_err;
+    if (in_reset) begin
+      dc_on_q <= 1'b0;
+      dt_on_q <= 1'b0;
+    end else begin
+      if (d_go && !dg_init && dz_on_q && own_dma_zcont) begin
+        dc_on_q   <= 1'b1;
+        dc_hs_q   <= dg_hs;
+        dc_lock_q <= (d_regwen != 4'h6);
+        dc_out_q  <= 1'b0;
+      end else if (dc_on_q) begin
+        if (dc_out_now) dc_out_q <= 1'b1;
+        if (dc_end) begin
+          u_sep_dma_zero_cg.sample(2'd0, 2'd0, 1'b0, 2'd0, 1'b0, dc_cell, 1'b1, 2'd0, 1'b0);
+          dc_on_q <= 1'b0;
+        end
+      end
+      if (d_go && dg_init) begin
+        dt_on_q  <= own_dma_ztcm && (dg_op == DmaOpZero);
+        dt_cls_q <= dz_tcm(dma_reg2hw_i.dst_addr_lo.q);
+        dt_w2_q  <= (dma_reg2hw_i.transfer_width.q == 2'd1);
+      end else if (dt_on_q && dc_end) begin
+        if ((dt_cls_q == 2'd0) && d_done && !d_err)
+          u_sep_dma_zero_cg.sample(2'd0, 2'd0, 1'b0, 2'd0, 1'b0, 2'd0, 1'b0, 2'd0, 1'b1);
+        if ((dt_cls_q == 2'd1) && d_done && !d_err && !dt_w2_q)
+          u_sep_dma_zero_cg.sample(2'd0, 2'd0, 1'b0, 2'd0, 1'b0, 2'd0, 1'b0, 2'd1, 1'b1);
+        if ((dt_cls_q == 2'd1) && d_err && dt_w2_q &&
+            (dma_err_code_i[SECURE_DMA_ERROR_CODE_BUS_ERROR_SHIFT] === 1'b1))
+          u_sep_dma_zero_cg.sample(2'd0, 2'd0, 1'b0, 2'd0, 1'b0, 2'd0, 1'b0, 2'd2, 1'b1);
+        dt_on_q <= 1'b0;
+      end
+    end
+  end
+
+  // cp_addr_hi_nonzero: an initial copy GO with exactly one of SRC_ADDR_HI
+  // and DST_ADDR_HI non-zero. A DMA write address (before the DMA window
+  // remap) in [DST_ADDR_LO, DST_ADDR_LO + TOTAL_DATA_SIZE) between the CONTROL
+  // write and the first DONE or ERROR rise marks a write to the 32-bit LO
+  // destination. The copy can end before the CONTROL write completes on the
+  // bus, so the span starts at the AW of that write and the GO is decoded at
+  // its B.
+  logic dh_on_q, dh_pre_q;
+  logic dh_dst_q, dh_wrote_q, dh_ended_q, dh_done_q, dh_err_q;
+  wire [31:0] dh_src_hi = dma_reg2hw_i.src_addr_hi.q;
+  wire [31:0] dh_dst_hi = dma_reg2hw_i.dst_addr_hi.q;
+  wire [31:0] dh_lo = dma_reg2hw_i.dst_addr_lo.q;
+  wire [31:0] dh_end = dma_reg2hw_i.dst_addr_lo.q + dma_reg2hw_i.total_data_size.q;
+  wire dh_aw = (dma_raw_req_i.aw_valid === 1'b1) && (dma_resp_i.aw_ready === 1'b1) &&
+      (dma_raw_req_i.aw.addr >= dh_lo) && (dma_raw_req_i.aw.addr < dh_end);
+  wire dh_rise = (d_done && !dh_done_q) || (d_err && !dh_err_q);
+  // With STATUS.BUSY low at the CONTROL write, a later DONE or ERROR rise
+  // belongs to the copy that write starts.
+  wire dh_ctrl_aw = aw_hs && (lsu_aw_addr_i[31:3] == DmaControl[31:3]) && !d_busy;
+  wire dh_cell = own_dma_irq && (dg_op == DmaOpCopy) && ((dh_src_hi != 0) != (dh_dst_hi != 0));
+  always_ff @(posedge clk_i) begin
+    dh_done_q <= d_done;
+    dh_err_q  <= d_err;
+    if (in_reset) begin
+      dh_on_q  <= 1'b0;
+      dh_pre_q <= 1'b0;
+    end else begin
+      if (dh_ctrl_aw) begin
+        dh_pre_q   <= 1'b1;
+        dh_ended_q <= 1'b0;
+        dh_wrote_q <= 1'b0;
+      end else if (dh_pre_q || dh_on_q) begin
+        if (dh_aw) dh_wrote_q <= 1'b1;
+        if (dh_rise) dh_ended_q <= 1'b1;
+      end
+      if (d_go && dg_init) begin
+        dh_pre_q <= 1'b0;
+        dh_dst_q <= (dh_dst_hi != 0);
+        if (dh_cell && dh_pre_q && (dh_ended_q || dh_rise)) begin
+          u_sep_dma_config_fault_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, {
+                                           (dh_dst_hi != 0), dh_wrote_q || dh_aw}, 1'b1);
+          dh_on_q <= 1'b0;
+        end else begin
+          dh_on_q <= dh_cell && dh_pre_q;
+        end
+      end else if (dh_on_q && dh_rise) begin
+        u_sep_dma_config_fault_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, {dh_dst_q, dh_wrote_q || dh_aw},
+                                         1'b1);
+        dh_on_q <= 1'b0;
+      end
+    end
+  end
 
   // --- SPI and DMA sampling ----------------------------------------------
   // LEN class of a segment: 0 len0, 1 sub_word, 2 max, 3 word_multiple,
@@ -7272,17 +7499,18 @@ module sep_fcov (
       // ---- DMA faults, errors and abort ----
       if (d_size_err && !size_err_q)
         u_sep_dma_config_fault_cg.sample(szk_q, own_dma_irq && szk_v_q, hwf_q,
-                                         own_dma_irq && hwf_v_q);
+                                         own_dma_irq && hwf_v_q, 2'd0, 1'b0);
       if (ea_v_q && d_err && d_ist_err) u_sep_dma_error_terminal_cg.sample(own_dma_irq, 1'b0, 1'b0);
       if (d_aborted && !aborted_q) u_sep_dma_error_terminal_cg.sample(1'b0, own_dma_abort, 1'b0);
       if (ab_on_q && aborted_q && !d_aborted && !ab_after_q && !dm_ar && !dm_aw)
         u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, own_dma_abort);
       if (d_go && dg_init && (dg_op == DmaOpZero))
-        u_sep_dma_zero_cg.sample({d_dinc_q, d_dwrap_q}, d_width_q, own_dma_zero, 2'd0, 1'b0);
+        u_sep_dma_zero_cg.sample({d_dinc_q, d_dwrap_q}, d_width_q, own_dma_zero, 2'd0, 1'b0, 2'd0,
+                                 1'b0, 2'd0, 1'b0);
       if (dz_done || dz_aborted || (dz_err && (dz_dst_err || dz_opc_err)))
         u_sep_dma_zero_cg.sample(2'd0, 2'd0, 1'b0,
                                  dz_aborted ? 2'd3 : (dz_done ? 2'd0 : (dz_opc_err ? 2'd2 : 2'd1)),
-                                 own_dma_zero);
+                                 own_dma_zero, 2'd0, 1'b0, 2'd0, 1'b0);
       // An ABORT while the DMA is busy; one before the start or after the end is not a phase.
       if (d_abort && !abort_q && d_busy)
         u_sep_dma_xfer_rand_cg.sample(6'd0, 1'b0, 5'd0, 1'b0, 2'd0, 1'b0, abort_cls(
@@ -11370,6 +11598,8 @@ module sep_fcov (
     logic pv_v;  // {pulse class, position}
     logic [3:0] on;
     logic on_v;  // {domain, rises}
+    logic [1:0] sd;
+    logic sd_v;  // {route 0 jtag_trst_ni 1 Test-Logic-Reset, fuse-sense done kept}
   } mr_scope_t;
 
   covergroup sep_reset_scope_retention_cg with function sample (mr_scope_t s);
@@ -11453,6 +11683,12 @@ module sep_fcov (
       bins trng = {4'b100_0};
       bins abr = {4'b101_0};
       illegal_bins isolated_under_override = {4'b000_1, 4'b001_1, 4'b010_1, 4'b011_1, 4'b100_1, 4'b101_1};
+    }
+    // {route 0 jtag_trst_ni 1 Test-Logic-Reset, sep_fuse_sense_done_o stayed 1}.
+    cp_tap_reset_sense_done: coverpoint s.sd iff (s.sd_v) {
+      bins trst_kept = {2'b0_1};
+      bins tlr_kept = {2'b1_1};
+      illegal_bins sense_done_dropped = {2'b0_0, 2'b1_0};
     }
   endgroup
 
@@ -11912,6 +12148,47 @@ module sep_fcov (
       end
       if ((nx != TapTlr) && (mr_tap == TapTlr) && mr_own_entry) mr_se(3'd5, 1'b1);
       mr_tap <= nx;
+    end
+  end
+
+  // cp_tap_reset_sense_done: sep_fuse_sense_done_o over each TAP reset of the
+  // owner, with real fuse sense and the port high when the reset starts. A
+  // jtag_trst_ni reset spans its low pulse and MrTsdWin clk_i edges after the
+  // rise; a Test-Logic-Reset entry with jtag_trst_ni high spans MrTsdWin
+  // edges. The window is a choice of the environment.
+  localparam int unsigned MrTsdWin = 64;
+  int unsigned mr_tsd_tlr_seen = 0;
+  logic mr_tsd_on = 1'b0;
+  logic mr_tsd_tlr = 1'b0;  // route of the open reset: 0 jtag_trst_ni, 1 Test-Logic-Reset
+  logic mr_tsd_drop = 1'b0;
+  int unsigned mr_tsd_cnt = 0;  // edges after the end of the pulse; 0 while it lasts
+  always @(posedge clk_i) begin
+    mr_tsd_tlr_seen <= mr_tlr_ev;
+    if (!mr_tsd_on) begin
+      if (mr_own_entry && !skip_fuse_sense_q && mr_fuse && !in_reset &&
+          (mr_trst_fall || (mr_trst && (mr_tlr_ev != mr_tsd_tlr_seen)))) begin
+        mr_tsd_on   <= 1'b1;
+        mr_tsd_tlr  <= !mr_trst_fall;
+        mr_tsd_drop <= 1'b0;
+        mr_tsd_cnt  <= mr_trst_fall ? 0 : 1;
+      end
+    end else if (in_reset) begin
+      // A cold reset in the span is not a TAP reset; the span is dropped.
+      mr_tsd_on <= 1'b0;
+    end else begin
+      if (!mr_fuse) mr_tsd_drop <= 1'b1;
+      if (mr_tsd_cnt == 0) begin
+        if (mr_trst_rise) mr_tsd_cnt <= 1;
+      end else if (mr_tsd_cnt == MrTsdWin) begin
+        mr_scope_t e;
+        e      = '0;
+        e.sd   = {mr_tsd_tlr, !(mr_tsd_drop || !mr_fuse)};
+        e.sd_v = 1'b1;
+        u_sep_reset_scope_retention_cg.sample(e);
+        mr_tsd_on <= 1'b0;
+      end else begin
+        mr_tsd_cnt <= mr_tsd_cnt + 1;
+      end
     end
   end
 

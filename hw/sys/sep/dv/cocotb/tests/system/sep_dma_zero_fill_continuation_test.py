@@ -8,13 +8,13 @@ fill (OPCODE 4) and then continues it with a CONTROL write of GO=1 and
 INITIAL_TRANSFER=0. The range and handshake rules of the zero fill have no
 condition on INITIAL_TRANSFER, so they hold for the continuation too:
 
-* ``hw/sys/sep/doc/dma.adoc:86-92``: the fill writes only inside
+* ``hw/sys/sep/doc/dma.adoc``, Zero Fill: the fill writes only inside
   ENABLED_MEMORY_RANGE_BASE to ENABLED_MEMORY_RANGE_LIMIT inclusive, and the
   engine checks each write before it issues it, so the bound holds across
   chunks. The first write that would leave the range is not issued, and the
   fill stops with STATUS.ERROR and ERROR_CODE.DST_ADDR_ERROR. Locking the range
   with RANGE_REGWEN fixes the erase window until reset.
-* ``hw/sys/sep/doc/dma.adoc:97-99``: with HARDWARE_HANDSHAKE_ENABLE set, a zero
+* ``hw/sys/sep/doc/dma.adoc``, Zero Fill: with HARDWARE_HANDSHAKE_ENABLE set, a zero
   fill ends in ERROR_CODE.OPCODE_ERROR when the first trigger arrives.
 
 Legs, in this order (the lock leg is last because the lock holds until reset):
@@ -78,6 +78,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_bit_watch import SepBitWatch
 from env.sep_dma_tap import DmaTapEvents, SepDmaTap
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from sep_reg_meta import SPI_CONTROLLER, sym
 from seq_lib.sep_dma_ops import (
@@ -232,6 +233,7 @@ class sep_dma_zero_fill_continuation_test(sep_base_test):
             await self._leg_hs(SRAM_BASE + 0x3000)
             await self._leg_lock(SRAM_BASE + 0x4000)
         finally:
+            close_graded_window(self.logger)
             for w in (self.tap, self.trigger):
                 await w.stop()
         n_want = 3 + 1 + 1
@@ -282,6 +284,8 @@ class sep_dma_zero_fill_continuation_test(sep_base_test):
         # Continuation: GO=1, INITIAL_TRANSFER=0, no other register write.
         await ops.clean_state()
         m = self.tap.mark()
+        # Graded: the continuation (sep_dma_zero_cg.cp_cont_outcome).
+        open_graded_window(TEST, self.logger)
         await self._go(initial=0)
         await ClockCycles(cocotb.top.clk_i, SETTLE)
         # The engine holds BUSY=1 in its error state until the ERROR W1C.
@@ -289,6 +293,7 @@ class sep_dma_zero_fill_continuation_test(sep_base_test):
             lambda s: bool(not s.busy or s.error), "BUSY=0 or ERROR after GO-only"
         )
         ec = await self._ec()
+        close_graded_window(self.logger)
         beats = self._beats(f"{tag}.cont", self.tap.since(m))
         out = sorted(a for a in self._bytes_written(beats) if not base <= a <= limit)
         img = await self.mem.read(lo, nwords)
@@ -330,9 +335,11 @@ class sep_dma_zero_fill_continuation_test(sep_base_test):
         # Continuation: HARDWARE_HANDSHAKE_ENABLE=1, INITIAL_TRANSFER=0, GO=1.
         m = self.tap.mark()
         trig = self.trigger.level()
+        open_graded_window(TEST, self.logger)
         await self._go(hs=1, initial=0)
         st = await self._wait(lambda s: bool(s.done or s.error), "DONE or ERROR after HS GO-only")
         ec = await self._ec()
+        close_graded_window(self.logger)
         await ClockCycles(cocotb.top.clk_i, 50)
         beats = self._beats("H.cont", self.tap.since(m))
         self._ctrl("H.trigger_at_go", trig == 1, f"trigger_at_go={trig}")
@@ -390,9 +397,11 @@ class sep_dma_zero_fill_continuation_test(sep_base_test):
 
         # Continuation: GO=1, INITIAL_TRANSFER=0.
         m = self.tap.mark()
+        open_graded_window(TEST, self.logger)
         await self._go(initial=0)
         st = await self._wait(lambda s: bool(s.done or s.error), "DONE or ERROR after GO-only")
         ec = await self._ec()
+        close_graded_window(self.logger)
         await ClockCycles(cocotb.top.clk_i, 50)
         beats = self._beats("L.cont", self.tap.since(m))
         out = sorted(a for a in self._bytes_written(beats) if not base <= a <= narrow_limit)
