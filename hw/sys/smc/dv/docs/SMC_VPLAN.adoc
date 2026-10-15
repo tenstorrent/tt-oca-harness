@@ -239,12 +239,12 @@ extent and its declared error response past it.
 |`smc_dma_reg_byte_enable_error_test` |Every writable DMA register refuses a two-byte write that omits lanes its PERMIT mask requires, and reads back unchanged.
 |`smc_dma_reserved_stream_banks_test` |All sixteen DMA stream banks decode with `NUM_CTRL_STREAMS = 1`; reserved banks read their `dma.adoc` value and launch nothing.
 |`smc_dma_sanity_test` |Run DMA copy over output-fabric payload bytes and check the model.
-|`smc_octs_dual_sync_test` |U4-5: SECONDARY pad inject + PRIMARY sync/credit pad edges.
+|`smc_octs_dual_sync_test` |SECONDARY pad inject + PRIMARY sync/credit pad edges.
 |`smc_octs_sanity_test` |AVSBus status-CSR decode plus the sideband observability probe, a recorded SUBSTITUTE for a pad-level OCTS checker; touches no OCTS register or pad.
 |`smc_periph_cg_access_error_test` |Each CLOCK_GATE_CONTROL peripheral enable (AVSBus, I2C, UART, telemetry, I3C) set in turn: the gated window answers SLVERR with 0xBADCAB1E on read and SLVERR on write, and its recorded word again once ungated.
 |`smc_sideband_protocol_smoke_test` |Run the AVSBus sideband CSR representative precheck.
 |`smc_telemetry_atb_capture_test` |One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
-|`smc_telemetry_receiver_csr_test` |U4-6: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
+|`smc_telemetry_receiver_csr_test` |TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
 |`smc_wdt_key_csr_test` |WDT writes are gated by the KEY magic value, COUNT_HI re-locks, and narrow writes are dropped, proven per core.
 |`smc_wdt_timeout_pin_test` |A programmed first timeout raises `smc_wdt_first_timeout_o`; uncleared, the second timeout raises `smc_wdt_second_timeout_o` and the warm reset follows.
 |`smc_zeroer_dma_timeout_test` |Run zeroer over output-fabric payload bytes and check the model.
@@ -459,7 +459,7 @@ bases, and the last register of five units answers over SEP_IN at `LOCAL_BASE`.
 |`smc_reset_sync_edge_test` |Synchronized primary resets assert asynchronously anchored on `clk_ref_i` and release synchronously to each output target clock.
 |`smc_reset_unit_lock_test` |SS_COLD_RESET_LOCK and SS_CONFIG_LOCK are write-one-to-set and mask the registers they guard.
 |`smc_cold_reset_repeated_test` |Run the SMC OSS repeated cold-reset re-assert scenario.
-|`smc_cold_reset_test` |Run the SMC OSS cold-reset / POR / cool SMC_001 scenario.
+|`smc_cold_reset_test` |Run the SMC OSS cold-reset / POR / cool scenario.
 |`smc_cool_reset_from_pcie_test` |FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o.
 |`smc_cool_reset_zero_delay_test` |FLR cool reset with the pre-reset delay at 0: no cool while the hold counter is 0, cool inside the synchroniser allowance once it is not.
 |`smc_cool_reset_x_cold_reset_test` |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
@@ -605,7 +605,7 @@ in clk_ref_i cycles at two reference periods, in the ref4 cell (clk_ref_i / clk_
 |`smc_regblock_partial_write_test` |Byte writes that must hold a set field on another lane, W1C events that must survive a write of zero, and writes of zero into a trigger and two status registers.
 |`smc_cpu_ctrl_scratch_window_test` |Run CPU scratch-window write/readback/restore checks.
 |`smc_cpu_ecc_lint_pint_depth_test` |Run NDM-reset and DFX debug CSR reads as the bounded CPU ECC LINT/PINT diagnostic.
-|`smc_cpu_firmware_boot_test` |SMC_002: ROM boot to PASS magic with exact CHK evidence.
+|`smc_cpu_firmware_boot_test` |ROM boot to the PASS magic with exact CHK evidence.
 |`smc_cpu_l2_read_wedge_test` |Force-mode timeout flush recovers an L2 read drain while SEP_IN holds R.
 |`smc_cpu_l2_write_wedge_test` |Force-mode timeout flush recovers an L2 write drain and absorbs late W beats.
 |`smc_cpu_mmio_read_wedge_test` |Force-mode timeout flush absorbs a withheld SYS_OUT R and firmware repeats the read.
@@ -667,7 +667,7 @@ in clk_ref_i cycles at two reference periods, in the ref4 cell (clk_ref_i / clk_
 |`smc_dfx_status_abort_test` |mem_repair_abort / mbist_abort → STATUS_SMU sticky bits.
 |`smc_ijtag_basic_test` |Run the SMC OSS iJTAG-adjacent CSR and CPU JTAG pin scenario.
 |`smc_jtag_dm_cmderr_command_test` |Debug Module `command` writes over the DMI while `abstractcs.cmderr` is nonzero: the stored command is replaced, a Quick Access write replaces cmderr 4 with 2, and nothing executes.
-|`smc_jtag_dmi_smoke_test` |U7-3: DTMCS + DMI read dmstatus.version==2 after dmactive.
+|`smc_jtag_dmi_smoke_test` |DTMCS, then a DMI read of `dmstatus.version` == 2 after `dmactive`.
 |`smc_dfd_csr_field_access_test` |DST field and scratch storage and same-offset block independence.
 |`smc_dfx_aperture_extent_test` |`dfx_ctrl` addresses, DECERR past the extent and the gap at 0xC.
 |`smc_dfx_debug_bus_mux_storage_test` |Every `DEBUG_BUS_MUX` field stored and read back exactly.
@@ -792,7 +792,7 @@ recorded.
 |Testcase |Objective
 |`smc_i2c_error_fifo_depth_test` |PROXY -- run I2C CSR decode plus SCL/SDA pin override depth checks.
 |`smc_i2c_fifo_full_test` |FMT/TX full+empty and RX/ACQ empty STATUS (CSR-only).
-|`smc_i2c_master_target_test` |U4-2: OVRD + DUT host write + SMBus PEC write + ARA read on pads.
+|`smc_i2c_master_target_test` |OVRD + DUT host write + SMBus PEC write + ARA read on pads.
 |`smc_i2c_intr_reg_sweep_test` |I2C interrupt and event registers cycled on all three instances, with the INTR_TEST to INTR_STATE round trip and the two unread read-mux rows.
 |`smc_i2c_config_regblock_sweep_test` |I2C configuration registers -- control, timing, FIFO thresholds, timeouts, target identity, override and SMBus control -- cycled on all three instances with both engines held disabled.
 |`smc_i2c_fifo_reset_pulse_test` |The four singlepulse I2C FIFO resets pulsed on all three instances against a measured fill level in the two FIFOs software can fill.
@@ -807,7 +807,7 @@ recorded.
 |`smc_i2c_p0_rdwr_test` |Internal dual-controller write/read proof.
 |`smc_i2c_p0_stretch_test` |I2C0 target TX clock stretch and recovery on the shared I2C pads: an I2C1 host READ stalls on TX_PENDING until TXDATA is supplied, then completes with that byte.
 |`smc_i2c_p0_timeout_test` |I2C1 stretch timeout measured against an I2C0 target proven live on the same shared bus.
-|`smc_i2c_p1_rdwr_protocol_test` |U4-2 alias: DUT I2C0 host write proof (same sequence as master_target).
+|`smc_i2c_p1_rdwr_protocol_test` |Alias of `smc_i2c_master_target_test`: DUT I2C0 host write proof over the same sequence.
 |`smc_i2c_controller_sda_interference_test` |SDA pulled low under a transmitting I2C controller, on all three instances.
 |`smc_i2c_bus_monitor_idle_test` |The I2C bus monitor's idle-with-SCL-high state entered and left on every instance, witnessed by the host-timeout interrupt.
 |`smc_i2c_target_acq_stretch_test` |The I2C0 target holds SCL low once its acquisition FIFO has no room, and releases it when software drains ACQDATA.
@@ -816,10 +816,10 @@ recorded.
 |`smc_i2c_target_bus_timeout_test` |The programmable bus timeout expiring at every slot of an addressed target transaction, and against the target's own stretch, on all three instances.
 |`smc_i2c_target_multi_instance_stretch_test` |I2C1 and I2C2 as targets: the transmit path, an unmatched address, and both the transmit-FIFO and acquisition-FIFO stretches.
 |`smc_i2c_target_smbus_test` |VIP ARA + external SMBSUS# into DUT I2C0 SMBus target.
-|`smc_smbus_alert_ara_test` |U4-2: DUT SMBALERT# pad39 + VIP ARA @0x0C (TB CSR stands in for FW).
+|`smc_smbus_alert_ara_test` |DUT SMBALERT# pad39 + VIP ARA @0x0C (TB CSR stands in for FW).
 |`smc_smbus_alert_suspend_test` |I2C0 target SMBALERT + I2C1 ARA/IRQ + SMBSUS sideband.
-|`smc_smbus_hostnotify_test` |U4-2: VIP master Host Notify -> DUT target ACQDATA.
-|`smc_smbus_pmbus_test` |P2-A / P2-11: SMBus ARA + PEC + PMBus Linear11 proof.
+|`smc_smbus_hostnotify_test` |VIP master Host Notify -> DUT target ACQDATA.
+|`smc_smbus_pmbus_test` |SMBus ARA + PEC + PMBus Linear11 proof.
 |`smc_i2c_clock_gate_response_test` |While `i2c_cg_en` is set every I2C window read answers SLVERR
 with 0xBADCAB1E, and after it is cleared the window answers OKAY with every register and event kept.
 |`smc_i2c_ctrl_intr_w1c_test` |Instance 0 `CMD_COMPLETE`, `SDA_UNSTABLE` and `SCL_INTERFERENCE` are
@@ -924,7 +924,7 @@ reset, access type and write-one-to-clear behaviour in each instance.
 [cols="2,3",options="header",]
 |===
 |Testcase |Objective
-|`smc_spi_pad_bfm_test` |U2-2: JEDEC 0x9F via TB SPI host on tb_spi_* + OcahSepSpiFlash MISO.
+|`smc_spi_pad_bfm_test` |JEDEC 0x9F via TB SPI host on tb_spi_* + OcahSepSpiFlash MISO.
 |===
 
 ==== UART
@@ -943,7 +943,7 @@ reset, access type and write-one-to-clear behaviour in each instance.
 |`smc_log_engine_transfer_test` |A real log-engine transfer on all four wrapper instances: four logs fetched from the SPM log region and written to the wrapper UART in loopback, read back byte for byte.
 |`smc_uart_log_engine_field_sweep_test` |UART, divisor-latch and log-engine registers cycled on all four wrapper instances, including the 16 LOG_CTRL elements read back co-resident.
 |`smc_uart_log_engine_reg_rw_test` |Run UART/log-engine register write/readback/restore checks.
-|`smc_uart_loopback_test` |U4-1: AXI-program UART0 THR and capture the byte on pad12 TX.
+|`smc_uart_loopback_test` |AXI-program UART0 THR and capture the byte on pad12 TX.
 |`smc_uart_sanity_test` |UART pad-cross byte exchange on pairs 0→3 and 1→2.
 |`smc_uart_spi_log_engine_test` |Run the UART/log-engine representative CSR precheck.
 |`smc_uart_fifo_control_depth_test` |UART0 FIFO enable change, depth, trigger fields and read order.
@@ -1599,7 +1599,7 @@ Drive `smc_dma_sanity_test_seq`. Each checker below is a named compare the DUT c
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: U4-5: SECONDARY pad inject + PRIMARY sync/credit pad edges.
+*Objective*: SECONDARY pad inject + PRIMARY sync/credit pad edges.
 
 *Test Coverage*:
 
@@ -1699,7 +1699,7 @@ Drive `smc_sideband_protocol_smoke_test_seq`. Each checker below is a named comp
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: U4-6: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
+*Objective*: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
 
 *Test Coverage*:
 
@@ -5342,7 +5342,7 @@ Drive `smc_local_fabric_csr_depth_test_seq`. Each checker below is a named compa
 
 *Test Coverage*:
 
-* SMC OSS U1-2/U1-3/U6-2: SYS_OUT error responses through the slave agent's one-shot faults.
+* SYS_OUT error responses through the slave agent's one-shot faults.
 * The outbound fabric is a conduit: an error the subordinate raises is the subordinate's verdict, and the fabric's obligation is to hand the requesting manager the same encoding, neither downgraded nor swallowed. Each injected code is observed on the SYS_OUT wire by the passive monitor and required of the manager, so a fabric that rewrote it fails.
 * The response code is an exact expectation on each access, so a DECERR is not satisfied by a SLVERR.
 * The errored accesses leave the stored word untouched, and the OKAY write/read pair that follows on the same address shows no error state was latched.
@@ -10429,7 +10429,7 @@ Drive `smc_cold_reset_repeated_test_seq`. Each checker below is a named compare 
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP)
 
-*Objective*: Run the SMC OSS cold-reset / POR / cool SMC_001 scenario.
+*Objective*: Run the SMC OSS cold-reset / POR / cool scenario.
 
 *Test Coverage*:
 
@@ -12329,11 +12329,11 @@ Drive `smc_i2c_cg_sanity_test_seq`. Each checker below is a named compare the DU
 
 *BFM / Model*: ocah_axi_vip (AXI), `SmcJtagAxiAgent` (JTAG-AXI bench agent over the `tb_top` JTAG-AXI bridge)
 
-*Objective*: P0 bring-up LIVE gate-disabled free-run plus the P1 module-gating / enable-threshold checks.
+*Objective*: LIVE gate-disabled free-run plus the module-gating and enable-threshold checks.
 
 *Test Coverage*:
 
-* Also emits the P1 evidence tokens `CHK-MODULE-GATING` and `CHK-ENABLE-THRESHOLD`.
+* Also emits the evidence tokens `CHK-MODULE-GATING` and `CHK-ENABLE-THRESHOLD`.
 
 *Test Procedure*:
 
@@ -14751,7 +14751,7 @@ replaced rather than merely re-read. Under `--framework uvm` the governing check
 
 * OTP PROGRAM failure injection (secure programming error), via `+smc_efuse_prog_fail_count`.
 * DEFENDS: on the injected-failure burn the eFuse controller still reaches PROGRAM_DONE (bounded poll, expiry fails), and the subsequent recovery burn really does sticky-OR bit0 of word0 through the unmodified data path. The signature positive gate reads CHIP_CONFIG / EFUSE_MAP word0 against their expected values.
-* DOES NOT DEFEND, model-backed: "the failing burn left the OTP word unchanged" is *not DUT-earned*. `hw/ip/efuse/dv/models/efuse_bank_model.sv:120` drives the macro as `.s_apb_pwdata(prog_fail_act ? 32'h0 : apb_req_i.pwdata)`, so on the failing write the DV model substitutes 0 for whatever the controller put on the bus and the word cannot change whatever the controller does. The compare stands as a consistency check on the injection hook only. Same tap as testcase 95, which already carries this disclaimer.
+* DOES NOT DEFEND, model-backed: "the failing burn left the OTP word unchanged" is *not DUT-earned*. `hw/ip/efuse/dv/models/efuse_bank_model.sv` drives the macro as `.s_apb_pwdata(prog_fail_act ? 32'h0 : apb_req_i.pwdata)`, so on the failing write the DV model substitutes 0 for whatever the controller put on the bus and the word cannot change whatever the controller does. The compare stands as a consistency check on the injection hook only. Same tap as testcase 95, which already carries this disclaimer.
 * GAP: the fail path is DUT-observable only if the model rejects the burn at the APB handshake (`pslverr`, macro write suppressed) instead of rewriting the data; the model is shared between the SEP and SMC benches.
 * No mismatched signature is injected -- no write, plusarg, image variant or force on the proof path produces one, and the only `+smc_efuse_hex` image's word 0 *is* the golden. The positive gate is what runs.
 
@@ -16048,7 +16048,7 @@ in-flight window response are recorded without comparison.
 
 *Test Coverage*:
 
-* P0 alias of the DBS/DFD/ECC diagnostic precheck; drives `smc_ecc_dfd_dbs_sanity_test_seq`.
+* Alias of the DBS/DFD/ECC diagnostic precheck; drives `smc_ecc_dfd_dbs_sanity_test_seq`.
 
 *Test Procedure*:
 
@@ -16844,7 +16844,7 @@ Drive `smc_dfd_cla_snapshot_capture_test_seq`. Each checker below is a named com
 |`CHK-CLA-SNAPSHOT-CAPTURE` |After each pair acted, its `Lo` snapshot left its RDL reset and all sixteen read the same value, the content of a bus that holds still; the `Hi` halves stayed at their reset. A `Lo` snapshot at its reset, two pairs that disagree, or a `Hi` half that moves fails it
 |===
 
-*Known limitation*: the `Hi` halves of the snapshot registers cannot be written at all in this configuration. `smc_dfd_wrap.sv:141` passes `DEBUG_SIGNAL_WIDTH` of 64, `core_logic_analyzer.sv:166` makes `DBG_SIGNAL_CONFIG` the comparison of that against 128, and the generate at `core_logic_analyzer.sv:556` that drives the `Hi` write enables is therefore not elaborated.
+*Known limitation*: the `Hi` halves of the snapshot registers cannot be written at all in this configuration. `smc_dfd_wrap.sv` passes `DEBUG_SIGNAL_WIDTH` of 64, `core_logic_analyzer.sv` makes `DBG_SIGNAL_CONFIG` the comparison of that against 128, and the generate in `core_logic_analyzer.sv` that drives the `Hi` write enables is therefore not elaborated.
 
 
 *Pass Criteria*: `CHK-CLA-SNAPSHOT-CAPTURE`, `CHK-CLA-SNAPSHOT-DRIVE`, `CHK-CLA-SNAPSHOT-RESET` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
@@ -18111,7 +18111,7 @@ records that.
 *Test Coverage*:
 
 * The sweep reads LOCKS lo/hi, `JTAG_PUBLIC_IDENTITY`, `SMC_CONFIG`, `OCCP_TRANSPORT_TIMEOUT`, all nine `I2C_I3C_ID` entries, and SPARE[0:1] -- every region that has both a generated base address and a generated `*_READ_LOCK` bit, plus LOCKS itself.
-* readable words -- `efuse_preload_word_at(addr)` parses `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time and indexes it by `(addr - SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR)/4`, the same word ordering `efuse_bank_model.sv:140-160` uses. Regenerating the asset moves the expectation with it instead of leaving a stale literal asserting a false identity.
+* readable words -- `efuse_preload_word_at(addr)` parses `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time and indexes it by `(addr - SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR)/4`, the same word ordering `efuse_bank_model.sv` uses. Regenerating the asset moves the expectation with it instead of leaving a stale literal asserting a false identity.
 * read-locked words -- `efuse_map_read_locked()` reads the `*_READ_LOCK` bit out of the *preloaded* `LOCKS` word using the generated bit position from `regs/gen/c/blocks/smc_efuse_map.h`; SPEC then fixes the data a blocked read returns: "When a request is blocked, the error slave returns an error response with data value `0xbadcab1e`" (`architecture.adoc:297-299`), and `lock[0] = 1` is "read-locked" (`architecture.adoc:198`).
 
 *Test Procedure*:
@@ -18142,8 +18142,8 @@ Drive `smc_efuse_map_read_test_seq`. Each checker below is a named compare the D
 
 *Test Coverage*:
 
-* `LOCKS` -- read from `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time via `efuse_preload_word_at` rather than a hand-transcribed literal, which cannot detect the asset and the model disagreeing. That asset is what `efuse_bank_model.sv:140-160` `$readmemh`s under the bench-wide `+smc_efuse_hex` (`smc_sim_cfg.toml:386` and `:392`), so this leg's proof class is **transport** (the map returns the sensed word), not fuse programming ([NO-UNJUSTIFIED-PRELOAD]).
-* `EFUSE_PROGRAM_INTERFACE_READ_DATA` -- the generated RDL reset `EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset` (`hw/ip/efuse/regs/gen/c/efuse_interface_ctrl.h:153`); no program read-back has been issued in this testcase, so the register must still hold it. That reset is `0x0` and the field is `sw = r`, so this compare is a transport/decode probe and **not** a liveness proof: a dead or unmapped window satisfies it equally. Since the field is driven only in the program FSM's `ST_CAPTURE_DATA` state ("Hardware debug only", `efuse_interface_ctrl.rdl:158`), which this testcase never enters, no distinguishing value can be placed in it. Block liveness is instead proven on the writable sibling `EFUSE_READ_REQ_TIMEOUT` @0x14 (`sw=rw`, `rdl:180`, non-zero reset `0x800000`) by a reset read plus a write/read-back/restore in the same run ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+* `LOCKS` -- read from `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time via `efuse_preload_word_at` rather than a hand-transcribed literal, which cannot detect the asset and the model disagreeing. That asset is what `efuse_bank_model.sv` `$readmemh`s under the bench-wide `+smc_efuse_hex` (`smc_sim_cfg.toml`), so this leg's proof class is **transport** (the map returns the sensed word), not fuse programming ([NO-UNJUSTIFIED-PRELOAD]).
+* `EFUSE_PROGRAM_INTERFACE_READ_DATA` -- the generated RDL reset `EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset` (`hw/ip/efuse/regs/gen/c/efuse_interface_ctrl.h`); no program read-back has been issued in this testcase, so the register must still hold it. That reset is `0x0` and the field is `sw = r`, so this compare is a transport/decode probe and **not** a liveness proof: a dead or unmapped window satisfies it equally. Since the field is driven only in the program FSM's `ST_CAPTURE_DATA` state ("Hardware debug only", `efuse_interface_ctrl.rdl`), which this testcase never enters, no distinguishing value can be placed in it. Block liveness is instead proven on the writable sibling `EFUSE_READ_REQ_TIMEOUT` @0x14 (`sw=rw`, `rdl:180`, non-zero reset `0x800000`) by a reset read plus a write/read-back/restore in the same run ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
 * `SCRATCH_COLD_WARM_0` -- its own reset value 0, backed in the same run by a write/read-back positive control proving the register can hold a one ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
 
 *Test Procedure*:
@@ -18219,8 +18219,8 @@ Drive `smc_efuse_locked_access_interrupt_test_seq`. Each checker below is a name
 
 *Test Coverage*:
 
-* Real fuse sense completes without `+skip_fuse_sense`, and the SMC_EFUSE_MAP window serves the sensed word over SEP_IN AXI (`efuse_shadow_regs.sv:674-679`, loaded by the sense FSM at `efuse_shadow_regs.sv:512-540`).
-* The eFuse interface controller issues a PROGRAM command, latches the readback comparison result and reports it in `PROGRAM_STATUS` (`efuse_interface_shim.sv:433` -> `efuse_program_interface.sv:160`), with both polarities observed: set on the injected failure, clear on the clean program.
+* Real fuse sense completes without `+skip_fuse_sense`, and the SMC_EFUSE_MAP window serves the sensed word over SEP_IN AXI (`efuse_shadow_regs.sv`, loaded by the sense FSM).
+* The eFuse interface controller issues a PROGRAM command, latches the readback comparison result and reports it in `PROGRAM_STATUS` (`efuse_interface_shim.sv` -> `efuse_program_interface.sv`), with both polarities observed: set on the injected failure, clear on the clean program.
 * `EFUSE_STATUS.efuse_sense_done` mirrors the sense handshake.
 * The bank model's storage is unchanged by a fail-injected program and sticky-ORs one bit on a successful one. This shows the controller's command reached the bank; it says nothing about fuse physics.
 * Foundry OTP macro analog timing / voltage.
@@ -20948,7 +20948,6 @@ Drive `smc_hang_detector_timeout_test_seq`. Each checker below is a named compar
 
 *Test Coverage*:
 
-* Sequence for smc_irq_multi_sample_test.
 * Takes three IRQ observer samples separated by a fixed gap and, at the end, consumes the collected items: the count must match the stimulus actually issued, every sample must be resolvable, and the three aggregate readings must be identical across the gaps (idle stability).
 * The collected list is consumed, not only collected: otherwise the only fail path would be the shared scoreboard's per-item idle checks ([NO-DUMMY-DEAD-CODE]).
 
@@ -22505,7 +22504,6 @@ Drive `smc_i2c_multi_instance_test_seq`. Each checker below is a named compare t
 
 *Test Coverage*:
 
-* Sequence for smc_i2c_multi_sample_test.
 * Three back-to-back I2C observation samples at fixed cycle intervals to verify the clock-gate enable and i2c_debug bus stay stable over time post-reset.
 * Two gates make those stability legs evidence rather than bookkeeping: the scoreboard's typed `i2c_samples_seen` delta must equal the number of SAMPLEs dispatched (a mis-bound analysis port would otherwise leave every scoreboard compare vacuous), and `tb_i2c_cg_en` must carry a same-run liveness credit (a dead net is perfectly stable, which is exactly the property the stability legs claim to catch).
 
@@ -25491,7 +25489,7 @@ Drive `smc_mailbox_event_irq_test_seq`. Each checker below is a named compare th
 
 *Test Coverage*:
 
-* The seven readable registers of each port, checked against `axil_mailbox.rdl:214-224` rather than trusted as a list: STATUS +0x010, ERROR_FLAGS +0x018, WIRQT +0x020, RIRQT +0x028, IRQS +0x030 (write-1-to-clear), IRQEN +0x038, IRQP +0x040 (`irqs_q & irqen_q`, read-only derived).
+* The seven readable registers of each port, checked against `axil_mailbox.rdl` rather than trusted as a list: STATUS +0x010, ERROR_FLAGS +0x018, WIRQT +0x020, RIRQT +0x028, IRQS +0x030 (write-1-to-clear), IRQEN +0x038, IRQP +0x040 (`irqs_q & irqen_q`, read-only derived).
 * Three of the ten registers per port are out, each for a stated reason. WRITE_DATA +0x000 and READ_DATA +0x008 are omitted because a read pops the paired port's FIFO, which is state this sweep must not disturb. CTRL +0x048 is `sw = w` flush strobes with nothing to read; its effect is covered by `smc_mailbox_flush_test`.
 * Both ports, and the swept set **derived from the generated map** rather than listed: `_swept_fields` enumerates every `SMC_MAILBOX_<port>_MAILBOX_0_*_REG_OFFSET` symbol in `regs/gen/py/smc_reg.py` and removes the three that cannot be read. A hand-maintained list cannot guard itself -- an access count computed from the list the loop walks matches for any list content -- so deriving it from the map is what makes the anti-shrink claim true rather than circular.
 
@@ -25563,7 +25561,7 @@ Drive `smc_mailbox_event_irq_test_seq`. Each checker below is a named compare th
 
 *Test Coverage*:
 
-* P0 alias of the mailbox CSR precheck; drives `smc_mailbox_irq_test_seq`.
+* Alias of the mailbox CSR precheck; drives `smc_mailbox_irq_test_seq`.
 
 *Test Procedure*:
 
@@ -29596,7 +29594,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 * The address phase, which `smc_i2c_target_acq_stretch_test` does not reach: that leaf fills the FIFO part-way through a transfer, so the target stretches at a data byte. Holding the address phase needs the FIFO to still be out of room when a new address arrives, which only a repeated START can arrange -- a STOP would end the transfer and let software drain at leisure.
 * Both settings of `CTRL.NACK_ADDR_AFTER_TIMEOUT`, which `i2c.rdl` gives as ACK the address byte even if a stretch timeout occurs (`0`, for SMBus) or NACK it (`1`). The two settings take the target down different paths to the same hold, and in both the transfer has to complete once the FIFO is drained.
-* A third leg where the repeated START asks the target to *transmit*. `TARGET_EVENTS.TX_PENDING` is not raised on this path and the leg does not look for it: `i2c_core.sv:1062` gates the event on `event_read_cmd_received`, which `i2c_target_fsm.sv` emits from `ADDR_ACK_HOLD` only on the branch where the address phase did *not* stretch. The register's own contract is checked in `smc_i2c_target_nack_timeout_test`, on a read whose address phase was acknowledged normally. The target leaves the address-phase stretch into the transmit stretch rather than into byte acquisition, and stays there until software supplies a byte: the drain alone does not release it, and the leg requires that.
+* A third leg where the repeated START asks the target to *transmit*. `TARGET_EVENTS.TX_PENDING` is not raised on this path and the leg does not look for it: `i2c_core.sv` gates the event on `event_read_cmd_received`, which `i2c_target_fsm.sv` emits from `ADDR_ACK_HOLD` only on the branch where the address phase did *not* stretch. The register's own contract is checked in `smc_i2c_target_nack_timeout_test`, on a read whose address phase was acknowledged normally. The target leaves the address-phase stretch into the transmit stretch rather than into byte acquisition, and stays there until software supplies a byte: the drain alone does not release it, and the leg requires that.
 * One instance per entry. Filling an acquisition FIFO byte by byte is most of the leaf's time, so three of them in one simulation run past the time a single run is given; the instance is a parameter of the sequence and the package carries an entry for each, this one for I2C0 and cards 242 and 243 for I2C1 and I2C2. Only I2C0 has pads of its own on the bench bus, so the other two are reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
 * No stretch timeout is enabled in either leg, so a drain by software is the only thing that can release the hold. A leg that passed without the drain would be a different mechanism.
 * `CTRL.ACQ_START_STOP_EN` is set, so the acquired stream carries its own framing and the repeated START arrives as an `ACQDATA.SIGNAL` of `RESTART` after every byte written before it. The STOP entry is matched on its signal alone, since the RDL defines no byte for it.
@@ -30255,9 +30253,9 @@ Drive `smc_cpuif_wrong_direction_test_seq`. Each checker below is a named compar
 
 *Test Coverage*:
 
-* Arbitration loss as a target. `i2c_core.sv:623` detects it as the target transmitting while the SDA it released reads low with SCL high. The transmit FIFO holds all ones, so every bit the target sends is released, and a second driver pulls SDA low inside the SCL high window of the second data bit, counted in SCL rises from the START so the pull lands in the same bit every run. The SDA level just before the pull is required to be a one, so the conflict is measured rather than assumed.
-* `TIMING3.THD_DAT` is raised to twenty core clocks for that leg. The pull is also an SDA edge with SCL high, which the bus monitor takes for a START once it has lasted `THD_DAT`, and the target's override block (`i2c_target_fsm.sv:1028`) gives a START priority over arbitration loss. Twenty core clocks is still well inside the START the bench issues itself.
-* A bus timeout while the target has a read to answer. `TIMEOUT_CTRL` is armed in bus mode, the target acknowledges its read address, and the bench holds SCL low for several times the limit. `i2c_target_fsm.sv:652` records it as a bus timeout on a read.
+* Arbitration loss as a target. `i2c_core.sv` detects it as the target transmitting while the SDA it released reads low with SCL high. The transmit FIFO holds all ones, so every bit the target sends is released, and a second driver pulls SDA low inside the SCL high window of the second data bit, counted in SCL rises from the START so the pull lands in the same bit every run. The SDA level just before the pull is required to be a one, so the conflict is measured rather than assumed.
+* `TIMING3.THD_DAT` is raised to twenty core clocks for that leg. The pull is also an SDA edge with SCL high, which the bus monitor takes for a START once it has lasted `THD_DAT`, and the target's override block (`i2c_target_fsm.sv`) gives a START priority over arbitration loss. Twenty core clocks is still well inside the START the bench issues itself.
+* A bus timeout while the target has a read to answer. `TIMEOUT_CTRL` is armed in bus mode, the target acknowledges its read address, and the bench holds SCL low for several times the limit. `i2c_target_fsm.sv` records it as a bus timeout on a read.
 * Both flags are then checked as a register: a word of zeros over the set bit and a word of ones that strobes only the top byte lane of `TARGET_EVENTS`, so the lane carrying the bit is disabled while carrying a one, must both leave it set, and only a written one clears it. `TARGET_NACK_COUNT` is the second witness for arbitration loss, since the target refuses the transaction on the same edge and counts it once.
 
 *Test Procedure*:
@@ -30841,7 +30839,7 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 
 * `LOG_REGION_ADDR` points at the refusing address and one `LOG_CTRL` element asks for a log. `INTR_STATUS.LOG_FETCH_ERR` must set and `LOG_WRITE_ERR` must not.
 * `INTR_ENABLE.LOG_FETCH_ERR` is set. The wrapper's interrupt line must be low before the error and high after it. The status bit must then clear on its written one, and the line must drop. The line also carries the 16550's interrupt, so the UART is set up with its interrupts disabled.
-* The error does not stop the engine: the fetched word is still handed to the write side and the log runs to its end, and only then does the engine clear the element's `LOG_CTRL` length, which retires its arbiter request. The leaf waits for that hardware clear, reads all eight bytes of the log back from the looped-back UART (`LSR.TEMT` reports the transmitter empty before the receiver has the last byte, so the drain runs on the count and then requires the transmitter idle), and only then disables the engine. Disabling the engine or zeroing the length first withdraws a request the arbiter has not granted, which the vendored `prim_arbiter_tree` forbids (`ReqStaysHighUntilGranted0_M` and `LockArbDecision_A`, `prim_arbiter_tree.sv:237,240`); a simulator that evaluates those assertions fails the run.
+* The error does not stop the engine: the fetched word is still handed to the write side and the log runs to its end, and only then does the engine clear the element's `LOG_CTRL` length, which retires its arbiter request. The leaf waits for that hardware clear, reads all eight bytes of the log back from the looped-back UART (`LSR.TEMT` reports the transmitter empty before the receiver has the last byte, so the drain runs on the count and then requires the transmitter idle), and only then disables the engine. Disabling the engine or zeroing the length first withdraws a request the arbiter has not granted, which the vendored `prim_arbiter_tree` forbids (`ReqStaysHighUntilGranted0_M` and `LockArbDecision_A`, `prim_arbiter_tree.sv`); a simulator that evaluates those assertions fails the run.
 * A starved write side. The engine fetches one word at a time into a FIFO that runs ahead of the UART, so from local memory the next word is always waiting when a word's last byte leaves. A sixteen-byte log is placed in the output-fabric window, and the output responder's R channel is held once the first fetch has returned. The engine writes that word's eight bytes and then waits for a word its FIFO does not have. When all eight bytes have come back through the loopback, exactly one fetch may have returned. The hold is then released, and all sixteen bytes must arrive in order with no error status.
 * `LOG_WRITE_ERR` has no bus to come from. The engine's write port reaches only its own wrapper's UART register blocks (`uart_log_engine_wrap.sv`), which answer every address without error. Its status is set instead through `INTR_TEST` (`sw = w`, `singlepulse`), with only `INTR_ENABLE.LOG_WRITE_ERR` set. The status must set alone, the interrupt line must rise, and the written one must clear the status and drop the line.
 
@@ -31642,7 +31640,7 @@ name is not protocol proof. OUT rows live in <<smc-deferred-disposition>>.
 |DTP CSR on `smc_wrapper` |idle port; no terminator |— |NO
 |PLL/PVT adopter wrap |none; `smc_pll_*` / `smc_pvt_*` are dispositioned in <<smc-deferred-disposition>> |OKAY+0 placeholder wraps |NO
 |GPIO / I2C SAMPLE observe |`smc_gpio_observe_test`, `smc_i2c_cg_sanity_test` |in `hosted`, not `smoke` |NO (SAMPLE-only)
-|UART/SPI loopback, ROM boot |P2 / firmware groups |not canonical |NO — UART/ROM intake
+|UART/SPI loopback, ROM boot |none; ROM boot runs under `occp_rom` without feature credit |not canonical |NO
 |Ext-AXI / CPU traffic |`smc_cpu_traffic_*`, `smc_external_test` (force-driven bodies) |OUT |NO
 |===
 
@@ -31714,7 +31712,7 @@ in <<smc-deferred-disposition>>.
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
 |The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. The measurement is recorded against `smc_cluster_plic_csr_test` in <<smc-deferred-disposition>>; the four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
 |Verilator does not implement SV covergroups |The covergroups under `ifndef VERILATOR` in `cov/sv/` are the VCS `group` metric; on Verilator, functional coverage is the `cov/sv` cover properties in the `user` family |See `SMC_FCOV.adoc`
-|`ISOLATE_REQ_SMC_REG` clears its FLR-latched request on any write with a byte enable anywhere in the register, whatever the data (`smc_cool_reset_wrap.sv:272-276`), where `reset_unit.rdl:130-135` makes the request a `sw = rw` field at bit 0 |`smc_isolate_req_smc_lane_test` shows it: a one-byte write of 0 at byte 1 clears the request. The leaf runs weekly in `rtl_issue` under `expect_fail` |Qualify the clear by bit 0's byte enable and a written 0; the leaf then moves to its feature testlist with the `ci` tag
+|`ISOLATE_REQ_SMC_REG` clears its FLR-latched request on any write with a byte enable anywhere in the register, whatever the data (`smc_cool_reset_wrap.sv`), where `reset_unit.rdl` makes the request a `sw = rw` field at bit 0 |`smc_isolate_req_smc_lane_test` shows it: a one-byte write of 0 at byte 1 clears the request. The leaf runs weekly in `rtl_issue` under `expect_fail` |Qualify the clear by bit 0's byte enable and a written 0; the leaf then moves to its feature testlist with the `ci` tag
 |`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |The stimulus is a testbench force, not a product-port access. The leaf runs in `all` and `hosted` and scores the DUT's reaction over the CSRs, so its PASS is evidence for the fail-closed behaviour and not for the reachability of an illegal encoding from any port |Reach an illegal encoding from a product port, or accept the force as the only stimulus for this property, recorded here
 |The test modules the retired-module table in <<smc-deferred-disposition>> lists are out of the tree |Their blockers are outside the test: adopter placeholder PLL/PVT RTL, a wrapper pin that does not exist, an idle DTP boundary, a PLIC aperture SEP_IN cannot write, a CLINT window SEP_IN cannot reach, TB glue, or a pad-level VIP the bench lacks. The retired-module table in <<smc-deferred-disposition>> names the blocker per row |Clear the blocker named in the row; the module is restored from git history
 |The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window -- the OTP bank itself, as distinct from the eFuse-shim CSR window `smc_efuse_chip_config_read_test_seq` reads over SEP_IN and the JTAG access-control path `smc_efuse_jtag_lc_access_matrix_test` drives. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB
@@ -31771,10 +31769,10 @@ the wrong reason.
 
 *Test Coverage*:
 
-* `reset_unit.rdl:130-135` makes `isolate_req_smc_reg` a single `sw = rw` field at bit 0, set by hardware when `cfg_flr_pf_active` rises and de-asserted by software. A write that does not select its byte lane cannot change it, and a write of 1 keeps it at 1.
+* `reset_unit.rdl` makes `isolate_req_smc_reg` a single `sw = rw` field at bit 0, set by hardware when `cfg_flr_pf_active` rises and de-asserted by software. A write that does not select its byte lane cannot change it, and a write of 1 keeps it at 1.
 * Arm leg: with the FLR counters at their reset value of 0, raising `cfg_flr_pf_active` sets the request without starting the cool-reset sequence, and bit 0 must read 1.
 * Defect leg: a one-byte write of 0 at byte 1 must leave the request reading 1, and then a write of 1 to bit 0 must leave it reading 1.
-* On this RTL the first write clears the request. `smc_cool_reset_wrap.sv:272-276` clears it on `isolate_req_smc_reg_wr_en && (|hwif_out.ISOLATE_REQ_SMC_REG.wr_biten)`, the byte enables of the whole external register, and ignores the write data.
+* On this RTL the first write clears the request. `smc_cool_reset_wrap.sv` clears it on `isolate_req_smc_reg_wr_en && (|hwif_out.ISOLATE_REQ_SMC_REG.wr_biten)`, the byte enables of the whole external register, and ignores the write data.
 
 *Test Procedure*:
 
@@ -32372,7 +32370,7 @@ the row.
 |Tie-off |Value |Behaviour made unreachable |Tests whose claims would change |Control / closes when
 |`sep_security_disable_i` (`tb_top.sv`, both `smc_wrapper` instances)
 |`1'b0`
-|The eFuse sense bypass (`hw/ip/efuse/doc/architecture.adoc`, "Security Disable Bypass Mechanism"). On the product the pin is the SEP `security_disable_o` token-match result (`sep.sv`, wired through `smu.sv`); inside SMC it reaches only `smc_efuse_wrapper` -> `efuse_interface_controller.security_disable_i`. SMC builds the controller with `HAS_LC_STATE=0` (`smc_efuse_wrapper.sv`), so the bypass takes the non-LC branch: the controller drives `shadow_regs_o` from the shadow registers whenever fuse sensing has finished or the pin is high, and drives all zeros otherwise (`efuse_interface_controller.sv:449`); its command mux routes the shadow-register sense FSM to the bank only while sensing is not done and the pin is low (`efuse_interface_controller.sv:759`). With the pin at 1 the FSM's reads are never routed, so `fuse_sense_done` never rises, the shadow registers keep their all-zero reset value and are exposed unsensed, and `fuse_reset_n` -- and with it `rst_warm` (`smc_reset_ctrl.sv:135`) -- never release: the warm domain never leaves reset. With the pin at 0 every run senses the bank, which is what the product does on a chip whose SEC_DIS token did not match.
+|The eFuse sense bypass (`hw/ip/efuse/doc/architecture.adoc`, "Security Disable Bypass Mechanism"). On the product the pin is the SEP `security_disable_o` token-match result (`sep.sv`, wired through `smu.sv`); inside SMC it reaches only `smc_efuse_wrapper` -> `efuse_interface_controller.security_disable_i`. SMC builds the controller with `HAS_LC_STATE=0` (`smc_efuse_wrapper.sv`), so the bypass takes the non-LC branch: the controller drives `shadow_regs_o` from the shadow registers whenever fuse sensing has finished or the pin is high, and drives all zeros otherwise (`efuse_interface_controller.sv`); its command mux routes the shadow-register sense FSM to the bank only while sensing is not done and the pin is low (`efuse_interface_controller.sv`). With the pin at 1 the FSM's reads are never routed, so `fuse_sense_done` never rises, the shadow registers keep their all-zero reset value and are exposed unsensed, and `fuse_reset_n` -- and with it `rst_warm` (`smc_reset_ctrl.sv`) -- never release: the warm domain never leaves reset. With the pin at 0 every run senses the bank, which is what the product does on a chip whose SEC_DIS token did not match.
 |None of the enrolled claims: no leaf claims the bypass, and every eFuse leaf proves the sensed path, which is the path a 0 selects. Were the pin driven to 1 for a run, every sequence that calls `wait_fuse_sense_done` (40 sequence files under `cocotb/seq_lib/`; `smc_base_test_seq.py` defines the method and each leaf that needs the warm domain calls it itself) would time out on `tb_fuse_sense_done`, and every warm-domain CSR access would hang with no ready.
 |Positive control: a leaf that drives the pin to 1 and requires `fuse_sense_done` to stay 0 while the shadow-register window still answers. It must stay in the cold domain: the eFuse controller sits under `rst_primary`, ahead of `rst_warm`, so its shadow reads through the eFuse CSR window -- over the OTP JTAG AXI-Lite port or the fabric path -- are the only thing that answers under bypass; nothing in the warm domain does. It needs a driven pin (a bench input in `smc_tb_signal_list.svh`, idle 0) in place of the constant. Closes when that leaf is enrolled, or when SEP-integrated signoff (SMU with SEP=1) is accepted as the only place the token-match path is exercised and that acceptance is recorded here.
 |===
@@ -33257,7 +33255,7 @@ and no DV workflow builds firmware, so every firmware leaf below, each of
 which runs a `c_compile` stage, is run on demand with the toolchain image
 `scripts/docker-run.sh` provides. The `smc_ref_clock_timer_rate_test`
 row is held out for a different reason: it fails the comparison it was written
-to make, and waits on a ruling.
+to make; its *Closes when* cell names the ruling that closes it.
 
 [cols="2,1,3,3",options="header"]
 |===
