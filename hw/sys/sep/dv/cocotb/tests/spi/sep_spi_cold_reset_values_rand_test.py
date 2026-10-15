@@ -269,6 +269,9 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         self.pads = SepSpiPadSampler().start()
         self.ops = SepSpiHostOps(self, clock=self.pads.now)
         self.wire = SepSpiWireMonitor(cocotb.top)
+        # Every frame here is a raw segment frame, not a flash command; the
+        # command-format oe_data check does not apply to it.
+        self.wire.monitor.set_raw_frames(True)
         try:
             await self._run(draw)
             await self.wire.finish(self.logger, seed=self.seed)

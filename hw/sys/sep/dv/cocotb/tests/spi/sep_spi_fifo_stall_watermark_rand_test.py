@@ -506,6 +506,9 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self.pads.set_idle_level(0)
         self.ops = SepSpiHostOps(self, clock=self.pads.now)
         self.wire = SepSpiWireMonitor(cocotb.top)
+        # Every frame here is a raw segment frame, not a flash command; the
+        # command-format oe_data check does not apply to it.
+        self.wire.monitor.set_raw_frames(True)
         self.rsp = await SepSpiLaneResponder(cocotb.top).start()
         self._marks = set()
         self._sess_open = False

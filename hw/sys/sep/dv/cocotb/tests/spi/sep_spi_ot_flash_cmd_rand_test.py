@@ -398,7 +398,9 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 for entry in cfg.lanes:
                     label = f"lane op=0x{entry.opcode:02x} width=x{entry.lanes}"
                     if entry.is_program:
-                        sb.expect_tx(entry.addr, entry.data_bytes(), label=label)
+                        sb.expect_tx(
+                            entry.addr, entry.data_bytes(), label=label, opcode=entry.opcode
+                        )
                     else:
                         sb.expect_rx(entry.opcode, entry.data_bytes(), label=label)
                 self._lane_fw_check(cfg)

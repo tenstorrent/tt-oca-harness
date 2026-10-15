@@ -640,7 +640,11 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         try:
             await self.bring_up_no_cpu()
             self.suppress_host_axi_transaction_info()
-            self.wire = await SepSpiWireMonitor(cocotb.top).start()
+            self.wire = SepSpiWireMonitor(cocotb.top)
+            # Every frame here is a raw segment frame, not a flash command; the
+            # command-format oe_data check does not apply to it.
+            self.wire.monitor.set_raw_frames(True)
+            await self.wire.start()
             self.rsp = await SepSpiLaneResponder(cocotb.top).start()
             self.pads = SepSpiPadSampler()
             self.pads.start()

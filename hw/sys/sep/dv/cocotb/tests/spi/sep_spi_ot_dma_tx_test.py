@@ -310,6 +310,7 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
                     case.addr,
                     source,
                     label=f"case[{case.idx}] op=0x{case.opcode:02x} width=x{case.lanes}",
+                    opcode=case.opcode,
                 )
             self._pacing_check(windows, cases)
             assert not bfm_errors.records, (

@@ -968,6 +968,9 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         dut = cocotb.top
         self.rsp = SepSpiLaneResponder(dut)
         self.wire = SepSpiWireMonitor(dut, name="sep_spi_matrix_wire")
+        # Every frame here is a raw segment frame, not a flash command; the
+        # command-format oe_data check does not apply to it.
+        self.wire.monitor.set_raw_frames(True)
         try:
             await self.bring_up_no_cpu()
             self.suppress_host_axi_transaction_info()
