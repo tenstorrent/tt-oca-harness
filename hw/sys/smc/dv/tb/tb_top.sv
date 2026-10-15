@@ -477,6 +477,34 @@ module smc_uvm_top
     end
 `endif
 
+    // assert_bad_ext_{rd,wr}_ack: the PeakRDL blocks with external registers
+    // (cpu_ctrl, reset_unit, system_timer_octs) check their ack strobes as
+    // simple immediate asserts in the else arm of `if (~arst_n)`. The first
+    // clk_sys edge is at time 0, before the reset tree has resolved, so
+    // arst_n is X, the else arm runs, and each assert fails once on X
+    // operands in every simulation. $assertoff does not reach simple
+    // immediate asserts, so this uses $assertcontrol (control 4 = off,
+    // 3 = on; assertion type 2 = simple immediate; directive 1 = assert)
+    // on the three register-block instances until cold reset has released
+    // and one SMC clock edge has passed. The off call and the first clock
+    // edge are both active at time 0; VCS orders the initial first. VCS
+    // only: the Xcelium build has no coverage configuration and keeps the
+    // time-0 failures.
+`ifdef VCS
+    initial begin
+        $assertcontrol(4, 2, 1, 0,
+            u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.u_cpu_ctrl_reg,
+            u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_reset_unit_reg,
+            u_dut.u_smc.u_smc_peripherals.u_system_timer_octs.u_reg);
+        wait (rst_cold_n_int === 1'b1);
+        @(posedge clk_smc);
+        $assertcontrol(3, 2, 1, 0,
+            u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.u_cpu_ctrl_reg,
+            u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_reset_unit_reg,
+            u_dut.u_smc.u_smc_peripherals.u_system_timer_octs.u_reg);
+    end
+`endif
+
     // The force-mode CPU reset withdraws the R beat the CPU is presenting to
     // the front-port demux without `ready`
     // (cocotb/seq_lib/README_cpu_isolate_flush.md), and the R arbiter's
