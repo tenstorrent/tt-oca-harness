@@ -1226,7 +1226,8 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         r = self.rx_depth
         n_tx = 1 + pw["ev_tx_n_raw"] % min(EVENT_TX_WORDS_MAX, self.tx_depth)  # 1 .. 8
         k_tx = 1 + pw["ev_tx_k_raw"] % n_tx  # 1 .. n_tx
-        k_rx = pw["ev_rx_k_raw"] % (r - 1)  # 0 .. R-2
+        # RX_WATERMARK 0 gives RXWM=1 at RXQD=0, so k_rx starts at 1.
+        k_rx = 1 + pw["ev_rx_k_raw"] % (r - 1)  # 1 .. R-1
         n_rx = k_rx + 1 + pw["ev_rx_n_raw"] % (r - k_rx)  # k_rx+1 .. R
         for enabled in (1, 0):
             await self._event_tx(chk, n_tx, k_tx, enabled)
