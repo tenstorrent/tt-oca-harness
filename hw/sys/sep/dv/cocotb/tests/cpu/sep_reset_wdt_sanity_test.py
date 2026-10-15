@@ -253,8 +253,8 @@ class sep_reset_wdt_sanity_test(sep_base_test):
     def _to(pairs: list[tuple[TapBeat, TapBeat | None]], addr: int) -> list:
         """The pairs whose AW is in the 64-bit word of ``addr``.
 
-        The LSU drives AWADDR aligned to 8 bytes outside side-effect regions
-        (``el2_lsu_bus_buffer.sv``, ``lsu_axi_awaddr``).
+        The LSU AXI port is 64 bits wide, so the match is on the 64-bit
+        word of ``addr``, not on its exact byte address.
         """
         return [p for p in pairs if p[0].addr is not None and (p[0].addr & ~7) == (addr & ~7)]
 
