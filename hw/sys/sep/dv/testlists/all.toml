@@ -62,7 +62,7 @@ tests = ["sep_axi_smoke_test"]
 #   (memory.toml), as its run mode states. It needs the TCM controller of the
 #   full CPU, which the CPU stub does not have.
 name = "all"
-expected_count = 188
+expected_count = 189
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
