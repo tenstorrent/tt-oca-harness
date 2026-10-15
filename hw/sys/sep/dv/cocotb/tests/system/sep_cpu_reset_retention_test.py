@@ -516,6 +516,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         self.agg: dict[str, str] = {}
         self.ovl_dbg: list[str] = []
         self.late_b: list[str] = []
+        self.cpurst_dbg: list[str] = []
         self.cpu_rst = {"wdt_events": 0, "low": 0, "sep_high": True}
         try:
             await RisingEdge(dut.clk_i)
@@ -544,6 +545,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 await self._dbg_sync_leg()
                 for line in self.ovl_dbg:
                     self._chk("CHK-OVL", True, line)
+                for line in self.cpurst_dbg:
+                    self._chk("CHK-DMA-CPURST", True, line)
                 for key in ("DBG",):
                     self._chk("CHK-RETAIN", True, self.retain[key])
                     self._chk("CHK-AGG-SURVIVE", True, self.agg[key])
@@ -1332,15 +1335,18 @@ class sep_cpu_reset_retention_test(sep_base_test):
             and pin_fall == 1
             and (cpu_low > 0 or cls == "DBG")
         )
-        self._chk(
-            "CHK-DMA-CPURST",
-            bool(ok),
+        line = (
             f"pulse={cls} mode={mode} pin_fall={pin_fall} cpu_rst_pulse={int(cpu_low > 0)} "
             f"busy_after_pulse={busy_after} "
             f"done={st.done} error={st.error} regs_kept={int(regs_ok)} RANGE_REGWEN=0x{lk:x} "
             f"mem_mismatch={mism} bus_err_status=0x{dst_st:x} periph_status=0x{pst:x} "
-            f"delay={self.copy_delay if mode == 'RUNNING' else 'na'}",
+            f"delay={self.copy_delay if mode == 'RUNNING' else 'na'}"
         )
+        if ok and cls == "DBG":
+            # The DBG half takes credit only after CHK-DBG-SYNC passes.
+            self.cpurst_dbg.append(line)
+        else:
+            self._chk("CHK-DMA-CPURST", bool(ok), line)
         await self.dma.wr(st_addr, ST_DONE | ST_CHUNK_DONE)
 
     # ---- step 9: cold-reset leg ---------------------------------------------------
