@@ -8,7 +8,14 @@ OcahSpiFlash BFM:
 
     WREN -> PAGE PROGRAM -> READ + verify == pattern ->
     WREN -> SECTOR ERASE -> READ + verify == 0xFF, ERROR_STATUS == 0 throughout,
-    then the write-protect / RDSR2 breadth and the ERROR_STATUS injections.
+    then the write-protect / RDSR2 breadth and the ERROR_STATUS injections,
+    then the lane leg: the dual and quad reads 0x3B, 0x6B, 0xBB and 0xEB and the
+    quad page program 0x32.
+
+The flash model sits on all four data lanes (``mode="quad_io"``, ``dq_out`` =
+``spi_sd_o``, ``dq_in`` = ``spi_sd_i``); the testlist passes
+``+sep_spi_four_lane`` so the host receives every lane from ``spi_sd_i``. The
+standard-mode commands use lane 0 out and lane 1 in, as before.
 
 cpu-firmware mode (not no_cpu): the firmware runs the multi-command SPI flash
 sequence, as in `sep_spi_ot_dma_rx_test`.
@@ -20,7 +27,13 @@ Randomization (this test is the single source of randomness):
   the staged DTCM image at the firmware's SPI1_PARAM_MAGIC sentinel. The same
   compiled firmware image therefore covers every seed; running multiple seeds
   exercises different addresses/lengths/sectors/data. Pass +spi1_directed to skip
-  patching and run the firmware's committed directed defaults.
+  patching and run the firmware's committed directed defaults (no lane leg).
+  The lane leg draws, per seed, the order of its five commands, a distinct
+  sector in 32..4095 for each (outside the sectors of the standard leg), a page
+  in that sector, a word count (1..16) and the data words. The first byte of
+  each range is the entry index, so no range is erased (0xFF) and no two ranges
+  start with the same byte. The leaf preloads each read range into the flash
+  model before the firmware starts.
 
 Checks:
   firmware self-check (each logs a positive PASS line):
@@ -46,6 +59,11 @@ Checks:
                            clears it.
     CHK-ERR-RECOVER      : JEDEC works again afterwards, so the host was really
                            released rather than left disabled by a stuck latch.
+    CHK-SPI-LANE-READ    : each dual or quad read (0x3B, 0x6B, 0xBB, 0xEB)
+                           returns, word by word, the seeded words the leaf
+                           preloaded at its address, and ERROR_STATUS stays 0.
+    CHK-SPI-LANE-PROGRAM : the quad page program (0x32), read back with 0x03,
+                           returns the seeded words, and ERROR_STATUS stays 0.
   cocotb golden cross-check (independent of the firmware readback):
     - exactly the BFM-visible opcode sequence (JEDEC, WREN, RDSR, WRDI, RDSR,
       primary program/read, FAST_READ, neighbour program/read, erase, primary read,
@@ -60,6 +78,13 @@ Checks:
       of CHK-WP-PP that SEP can fail.
     - device-model self-check (no SEP feature credit): the model took no payload
       from the WEL-clear PAGE PROGRAM, and its stored array at addr is still 0xFF.
+  cocotb lane checks:
+    CHK-SPI-SB-TX / CHK-SPI-SB-RX : the scoreboard compares the 0x32 payload,
+                           each lane read and the x1 primary READ (0x03) with
+                           the seeded bytes, the monitor's wire decode at the
+                           command's lane width, and the flash record.
+    CHK-SPI-LANE-FW      : the firmware console holds exactly one PASS line per
+                           lane entry, with its opcode, width and word count.
 
 main() returns the error count; fw/startup/crt0.s emits PASS (0xCAFEBABE) / FAIL
 (0xDEADBEEF) magic, which the boot scoreboard gates on (+ banner + ICCM exec).
@@ -71,15 +96,18 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
 import cocotb
 import pyuvm
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_log_error_counter import attach_error_counter
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spi_lane_responder import spi_lane_fcov
 from env.sep_spi_scoreboard import SepSpiScoreboard
 from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from ocah_spi_vip import OcahSpiFlash
@@ -107,6 +135,59 @@ _SR2_SEED = 0x5A
 _MAX_WORDS = 16
 _PAGE_SIZE = 256
 _SECTOR_SIZE = 4096
+_TEST = "sep_spi_ot_flash_cmd_rand_test"
+
+# Lane leg. Opcodes mirror SEP_SPI_OP_* in fw/drivers/sep_spi.h; the data width
+# of each comes from its command format (1-1-2, 1-1-4, 1-2-2, 1-4-4, 1-1-4).
+_LANE_READS = {0x3B: 2, 0x6B: 4, 0xBB: 2, 0xEB: 4}
+_LANE_PROGRAM = 0x32
+_LANE_MAX = 5  # LANE_MAX in the firmware
+# Sectors of the lane leg: above the standard leg's sectors (1..31 and their
+# neighbours), inside the 16 MiB flash model.
+_LANE_SECTORS = range(32, 4096)
+_LANE_LINE = re.compile(
+    r"(CHK-SPI-LANE-(?:READ|PROGRAM)) PASS: op=0x([0-9a-f]{8}) width=x(\d) "
+    r"words=0x([0-9a-f]{8}) bytes=0x([0-9a-f]{8})"
+)
+
+# Scratch-mutation hooks (None/False in the committed leaf). MUT_FLIP_OPCODE set
+# to one lane read opcode flips one flash byte of that read's range before the
+# firmware starts. MUT_FLIP_AFTER_PROGRAM flips one flash byte of the quad
+# program range once the 0x32 record appears, before the firmware reads it back.
+MUT_FLIP_OPCODE: int | None = None
+MUT_FLIP_AFTER_PROGRAM = False
+
+
+@dataclass(frozen=True)
+class SepSpiLaneEntry:
+    """One lane leg command: a dual/quad read of preloaded words, or a quad program."""
+
+    opcode: int
+    addr: int
+    data: list[int]
+
+    @property
+    def lanes(self) -> int:
+        return 4 if self.opcode == _LANE_PROGRAM else _LANE_READS[self.opcode]
+
+    @property
+    def is_program(self) -> bool:
+        return self.opcode == _LANE_PROGRAM
+
+    def data_bytes(self) -> bytes:
+        """The words as the flash holds them: least significant byte first (ByteOrder 1)."""
+        return b"".join(w.to_bytes(4, "little") for w in self.data)
+
+    def param_words(self) -> list[int]:
+        return (
+            [self.opcode, self.addr, len(self.data)]
+            + self.data
+            + [0] * (_MAX_WORDS - len(self.data))
+        )
+
+    def ops(self) -> list[int]:
+        """Flash opcodes this entry puts on the bus, in order."""
+        return [0x06, _LANE_PROGRAM, 0x03] if self.is_program else [self.opcode]
 
 
 @dataclass(frozen=True)
@@ -122,6 +203,7 @@ class SepSpiFlashCmdCfg:
     seed: int
     addr: int
     data: list[int]
+    lanes: tuple[SepSpiLaneEntry, ...] = ()
 
     # BFM opcode order the firmware must drive (bare class attr, not a field):
     # JEDEC, WREN, RDSR, WRDI, RDSR, then WREN/PP/READ (primary), FAST_READ,
@@ -182,15 +264,44 @@ class SepSpiFlashCmdCfg:
         addr = sector * _SECTOR_SIZE + page * _PAGE_SIZE
         nwords = rng.randrange(1, _MAX_WORDS + 1)
         data = [rng.getrandbits(32) for _ in range(nwords)]
-        return cls(seed=seed, addr=addr, data=list(data))
+        opcodes = [*_LANE_READS, _LANE_PROGRAM]
+        rng.shuffle(opcodes)
+        sectors = rng.sample(_LANE_SECTORS, len(opcodes))
+        lanes = []
+        for idx, (opcode, lane_sector) in enumerate(zip(opcodes, sectors)):
+            lane_page = rng.randrange(0, _SECTOR_SIZE // _PAGE_SIZE)
+            words = [rng.getrandbits(32) for _ in range(rng.randrange(1, _MAX_WORDS + 1))]
+            # The first byte is the entry index: never 0xFF, and unique per range.
+            words[0] = (words[0] & ~0xFF) | idx
+            lanes.append(
+                SepSpiLaneEntry(
+                    opcode=opcode,
+                    addr=lane_sector * _SECTOR_SIZE + lane_page * _PAGE_SIZE,
+                    data=words,
+                )
+            )
+        return cls(seed=seed, addr=addr, data=list(data), lanes=tuple(lanes))
 
     @property
     def nwords(self) -> int:
         return len(self.data)
 
     def param_words(self) -> list[int]:
-        """Firmware g_spi1_params block: [magic, addr, nwords, *data]."""
-        return [_PARAM_MAGIC, self.addr, self.nwords] + self.data
+        """Firmware g_spi1_params block: [magic, addr, nwords, data[16], lane count,
+        lane entries]."""
+        words = [_PARAM_MAGIC, self.addr, self.nwords] + self.data
+        words += [0] * (_MAX_WORDS - self.nwords)
+        words.append(len(self.lanes))
+        for entry in self.lanes:
+            words += entry.param_words()
+        return words
+
+    def expected_ops(self) -> list[int]:
+        """EXPECTED_OPS, then the opcodes of the lane leg in firmware order."""
+        ops = list(self.EXPECTED_OPS)
+        for entry in self.lanes:
+            ops += entry.ops()
+        return ops
 
     def pp_bytes(self) -> bytes:
         """Expected PAGE PROGRAM payload (little-endian) the BFM must observe."""
@@ -199,7 +310,7 @@ class SepSpiFlashCmdCfg:
 
 @pyuvm.test()
 class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
-    """The BFM sees exactly EXPECTED_OPS, and the program, erase and protect results match."""
+    """The BFM sees the expected opcode order; program, erase, protect and lane results match."""
 
     build_env = False
     # The leaf's own graded records; the base-class records do not count.
@@ -232,16 +343,22 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
+        if "sep_spi_four_lane" not in cocotb.plusargs:
+            raise AssertionError(
+                "sep_spi_ot_flash_cmd_rand_test needs +sep_spi_four_lane: the flash model "
+                "answers on spi_sd_i, which the host reads only with that plusarg"
+            )
         logging.getLogger("sep_spi1_flash").setLevel(logging.DEBUG)
         flash = OcahSpiFlash(
             dut.spi_cs_n_o,
             dut.spi_sck_o,
-            mosi=dut.spi_mosi_o,
-            miso=dut.spi_miso_i,
+            dq_out=dut.spi_sd_o,
+            dq_in=dut.spi_sd_i,
+            mode="quad_io",
             name="sep_spi1_flash",
             # Non-zero, and distinct from the 0x02 that SR1 reads
             # with WEL set. CHK-RDSR2 in the firmware compares against this exact
-            # value (FLASH_SR2_SEEDED), so a stuck-low MISO returning 0x00 fails
+            # value (FLASH_SR2_SEEDED), so a stuck-low lane 1 returning 0x00 fails
             # the check instead of passing it.
             status_reg2=_SR2_SEED,
             verbose=True,
@@ -256,6 +373,10 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         sb = SepSpiScoreboard(wire, flash, self.logger, seed=self.random_seed())
         await flash.start()
         dtcm_hex, cfg = self._stage_dtcm()
+        if cfg is not None:
+            self._preload_lane_reads(flash, cfg)
+        if MUT_FLIP_AFTER_PROGRAM and cfg is not None:
+            cocotb.start_soon(self._flip_after_program(dut, flash, cfg))
         try:
             self.sb.expected_line = _BANNER
             await self.boot_firmware(
@@ -271,6 +392,25 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             if cfg is not None:
                 sb.expect_tx(cfg.addr, cfg.pp_bytes(), label="primary program")
                 sb.expect_tx(cfg.neigh_addr, cfg.neigh_bytes(), label="neighbour program")
+                # The first 0x03 record in device order is the primary READ that
+                # follows the primary program; it returns the programmed words.
+                sb.expect_rx(
+                    0x03, cfg.pp_bytes(), source="fw:CHK-READ", label="primary read width=x1"
+                )
+                for entry in cfg.lanes:
+                    label = f"lane op=0x{entry.opcode:02x} width=x{entry.lanes}"
+                    if entry.is_program:
+                        sb.expect_tx(
+                            entry.addr, entry.data_bytes(), label=label, opcode=entry.opcode
+                        )
+                    else:
+                        sb.expect_rx(
+                            entry.opcode,
+                            entry.data_bytes(),
+                            source="fw:CHK-SPI-LANE-READ",
+                            label=label,
+                        )
+                self._lane_fw_check(cfg)
             assert not bfm_errors.records, (
                 f"SPI-BFM FAIL: the flash model logged {len(bfm_errors.records)} error(s): "
                 f"{bfm_errors.records[:3]}"
@@ -280,6 +420,81 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         await wire.finish(self.logger, seed=self.random_seed(), flash=flash)
         if cfg is not None:
             sb.finish()
+            # FCOV records only after every lane check above passed.
+            await spi_lane_fcov(_TEST, "data", lanes=1, rx=False)
+            await spi_lane_fcov(_TEST, "data", lanes=1, rx=True)
+            for entry in cfg.lanes:
+                await spi_lane_fcov(_TEST, "opcode", lanes=entry.lanes, opcode=entry.opcode)
+                await spi_lane_fcov(_TEST, "data", lanes=entry.lanes, rx=not entry.is_program)
+
+    def _preload_lane_reads(self, flash, cfg) -> None:
+        """Write the seeded words of each lane read range into the flash model."""
+        for entry in cfg.lanes:
+            if entry.is_program:
+                continue
+            flash.write_memory(entry.addr, entry.data_bytes())
+            if MUT_FLIP_OPCODE == entry.opcode:
+                flash.write_memory(entry.addr, bytes([entry.data_bytes()[0] ^ 0x01]))
+                self.logger.info(
+                    "MUTATION flipped flash byte 0x%06x of op=0x%02x", entry.addr, entry.opcode
+                )
+            self.logger.info(
+                "SPI lane leg preload op=0x%02x width=x%d addr=0x%06x words=%d data=%s",
+                entry.opcode,
+                entry.lanes,
+                entry.addr,
+                len(entry.data),
+                [f"0x{w:08x}" for w in entry.data],
+            )
+
+    async def _flip_after_program(self, dut, flash, cfg) -> None:
+        """Mutation hook: flip one byte of the quad program range once it is programmed."""
+        entry = next(e for e in cfg.lanes if e.is_program)
+        while not any(t.get("opcode") == _LANE_PROGRAM for t in flash.get_transactions()):
+            await RisingEdge(dut.spi_cs_n_o)
+            await ClockCycles(dut.clk_i, 2)
+        byte = flash.read_memory(entry.addr, 1)[0]
+        flash.write_memory(entry.addr, bytes([byte ^ 0x01]))
+        self.logger.info("MUTATION flipped flash byte 0x%06x after the 0x32 record", entry.addr)
+
+    def _lane_fw_check(self, cfg) -> None:
+        """CHK-SPI-LANE-FW: one firmware PASS line per lane entry, with its width and words."""
+        console = self.sb.console_text()
+        seen = [
+            (chk, int(op, 16), int(width), int(words, 16), int(nbytes, 16))
+            for chk, op, width, words, nbytes in _LANE_LINE.findall(console)
+        ]
+        want = [
+            (
+                "CHK-SPI-LANE-PROGRAM" if e.is_program else "CHK-SPI-LANE-READ",
+                e.opcode,
+                e.lanes,
+                len(e.data),
+                4 * len(e.data),
+            )
+            for e in cfg.lanes
+        ]
+        if seen != want:
+            raise AssertionError(
+                f"CHK-SPI-LANE-FW FAIL seed={cfg.seed}: firmware lane PASS lines {seen} "
+                f"!= expected {want}. Console was:\n{console}"
+            )
+        for chk, opcode, lanes, words, nbytes in seen:
+            self.logger.info(
+                "%s PASS seed=%d op=0x%02x width=x%d words=%d bytes=%d (firmware word compare)",
+                chk,
+                cfg.seed,
+                opcode,
+                lanes,
+                words,
+                nbytes,
+            )
+        self.logger.info(
+            "CHK-SPI-LANE-FW PASS seed=%d entries=%d order=%s",
+            cfg.seed,
+            len(seen),
+            [f"0x{e.opcode:02x}" for e in cfg.lanes],
+        )
 
     def _golden_check(self, flash, cfg) -> None:
         """Independent BFM-side golden: confirm the random program/erase actually
@@ -298,11 +513,11 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             return
 
         opcodes = [t.get("opcode") for t in txns]
-        if opcodes != cfg.EXPECTED_OPS:
+        if opcodes != cfg.expected_ops():
             self.logger.error(
                 "SPI flash command breadth GOLDEN FAIL: opcode order %s != %s",
                 [f"0x{o:02x}" for o in opcodes],
-                [f"0x{o:02x}" for o in cfg.EXPECTED_OPS],
+                [f"0x{o:02x}" for o in cfg.expected_ops()],
             )
             raise AssertionError("SPI flash command breadth golden: unexpected BFM opcode sequence")
 
@@ -432,9 +647,10 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             cfg.addr,
             cfg.nwords * 4,
             cfg.neigh_addr,
-            [f"0x{o:02x}" for o in cfg.EXPECTED_OPS],
+            [f"0x{o:02x}" for o in cfg.expected_ops()],
         )
         self.logger.info(
             "CHK-RAND-REP PASS: walked BFM-visible opcodes "
-            "JEDEC/WREN/RDSR/RDSR2/WRDI/PP/READ/FAST/ERASE (dual/quad not walked)"
+            "JEDEC/WREN/RDSR/RDSR2/WRDI/PP/READ/FAST/ERASE and the lane leg %s",
+            [f"0x{e.opcode:02x}" for e in cfg.lanes],
         )

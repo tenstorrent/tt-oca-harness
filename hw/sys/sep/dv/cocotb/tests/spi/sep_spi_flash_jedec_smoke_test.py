@@ -52,7 +52,7 @@ class sep_spi_flash_jedec_smoke_test(sep_base_test):
             self.logger.info("CHK-JEDEC PASS: opcode=0x9F rxdata=0x%08x", seq.rxdata)
             # RXDATA holds the first received byte in its least significant byte
             # (ByteOrder 1); the three identifier bytes are the delivered data.
-            sb.expect_rx(0x9F, seq.rxdata.to_bytes(4, "little")[:3], label="RXDATA")
+            sb.expect_rx(0x9F, seq.rxdata.to_bytes(4, "little")[:3], source="dut", label="RXDATA")
         finally:
             await flash.stop()
         await wire.finish(self.logger, seed=self.random_seed(), flash=flash)

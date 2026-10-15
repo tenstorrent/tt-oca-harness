@@ -13,7 +13,8 @@ values are 0 for INTR_STATE, INTR_ENABLE, CONFIGOPTS, CSID, ERROR_STATUS and
 EVENT_ENABLE, 0x7F for CONTROL (RX_WATERMARK) and 0x1F for ERROR_ENABLE; every
 expected value comes from the generated register export.
 
-Trials, both on every seed:
+Trials, on every seed: one idle trial, then one midseg trial at each lane
+width x1, x2 and x4 (COMMAND.SPEED 0, 1, 2), in a seeded order.
 
 * idle: CMDINVAL is injected (COMMAND with SPEED=3), so ERROR_STATUS and
   INTR_STATE.ERROR are set, and drawn non-reset values are armed in the other
@@ -21,12 +22,14 @@ Trials, both on every seed:
 * midseg: INTR_STATE.ERROR is set by INTR_TEST and drawn values are armed in
   INTR_ENABLE, CONTROL, CONFIGOPTS, ERROR_ENABLE and EVENT_ENABLE. CSID stays
   0 (the only valid chip select) and ERROR_STATUS stays 0. The TX FIFO holds
-  the segment words plus 1 to 4 extra words, a Tx segment starts, and
-  ``rst_ni`` asserts after a drawn number of sck cycles with chip select low.
+  the segment words plus 1 to 4 extra words, a Tx segment starts at the width
+  of the trial, and ``rst_ni`` asserts after a drawn number of sck cycles with
+  chip select low.
 
 After each reset the leaf waits for ``dbg_sep_reset_n_o`` (inside
 ``sep_base_test.pulse_rst_ni``), reads the eight registers, then runs one clean
-dummy command and grades its sck cycle count and ERROR_STATUS.
+dummy command and grades its sck cycle count and ERROR_STATUS. After a midseg
+reset a clean Tx command of seeded bytes at the width of the trial follows.
 
 Checks:
   CHK-SPI-COLDRST  per trial: every register equals its reset value on its RDL
@@ -34,29 +37,58 @@ Checks:
                    ERROR_STATUS 0. Controls: each armed register held a
                    non-reset value (``nonreset``), and in the midseg trial
                    ``spi_cs_n_o`` is low when ``rst_ni`` asserts; a control
-                   that does not hold logs CTRL-MISSING and fails.
+                   that does not hold logs CTRL-MISSING and fails. A midseg
+                   line carries ``width=`` and the Tx byte count of the clean
+                   data command; the idle line carries ``width=-``.
+  CHK-SPI-OE-RESET per midseg trial: every sample of the cold-reset window reads
+                   ``spi_cs_oe_o``, ``spi_sck_oe_o`` and ``spi_sd_oe_o`` all 0,
+                   with no X or Z (``doc/integrator/src/smu-sep.adoc``, "SEP
+                   SPI Host Pin Assignment": no pad is driven until
+                   CONTROL.OUTPUT_EN; CONTROL.OUTPUT_EN resets to 0). The
+                   window opens at the first clock with the SEP reset asserted
+                   (``dbg_sep_reset_n_o`` = 0) and closes when the release and
+                   fuse sense are done, before the first register write.
+                   Controls: the last sample before ``rst_ni`` falls reads chip
+                   select low with ``spi_cs_oe_o``, ``spi_sck_oe_o`` and
+                   ``spi_sd_oe_o[0]`` = 1, and the window has samples.
+  CHK-SPI-SB-FRAME (``env/sep_spi_scoreboard.py``, one scoreboard per midseg
+                   trial): the clean dummy command has LEN+1 sample edges, and
+                   the clean Tx command at the width of the trial puts its
+                   queued bytes on the wire (``ByteOrder = 1``: the first byte
+                   on the wire is TXDATA[7:0]; most significant bits first; in
+                   x2 and x4 the least significant bit of each pair or nibble
+                   on ``sd[0]``). The shared SPI monitor
+                   (``env/sep_spi_wire_monitor.py``) runs only from the first
+                   CONTROL write after the release to the end of the clean
+                   commands, so it never sees the frame the reset cuts.
 
 Probes: register frontdoor over ``s_axi``; pads ``spi_cs_n_o`` and
-``spi_sck_o`` (``env/sep_spi_pad_sampler.py``); ``dbg_sep_reset_n_o``.
+``spi_sck_o`` (``env/sep_spi_pad_sampler.py``); ``dbg_sep_reset_n_o``; the
+output-enable taps ``spi_cs_oe_o``, ``spi_sck_oe_o``, ``spi_sd_oe_o`` and the
+lane taps of ``tb_top`` (docs/SEP_TB_ARCH.adoc).
 
 Run mode: no_cpu (``lsu_stub_all_live``) with real fuse sense of the committed
 default image; VCS only, because the leaf reads state after reset. The graded
-window is open across both graded ``rst_ni`` pulses. RAND-REP: the ``rst_ni``
-point, the armed values, the segment length and the extra TX words come from
-``SepSeededRng`` and the run seed.
+window is open across every graded ``rst_ni`` pulse. RAND-REP: the width
+order, the ``rst_ni`` point, the armed values, the segment length, the extra
+TX words and the clean command bytes come from ``SepSeededRng`` and the run
+seed.
 """
 
 from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_reg_meta import SPI_CONTROLLER
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spi_lane_responder import pack_tx_words, spi_lane_fcov
 from env.sep_spi_pad_sampler import SepSpiPadSampler
+from env.sep_spi_scoreboard import SepSpiScoreboard
+from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from sep_base_test import _DEFAULT_EFUSE_PRELOAD, sep_base_test
 from seq_lib.sep_spi_host_csr_seq import (
     CONTROL,
@@ -100,6 +132,10 @@ _CTRL_RX_WM_RESET = (RESET_VALUES["CONTROL"][1] & _R.field_mask("CONTROL", "rx_w
 )
 _ERR_EN_RESET = RESET_VALUES["ERROR_ENABLE"][1]
 _CMD_SPEED_RESERVED = 3
+# COMMAND.SPEED per lane width.
+_SPEED = {1: 0, 2: 1, 4: 2}
+# Byte count of the clean Tx command after a midseg reset: 1 to this value.
+_DATA_BYTES_MAX = 16
 
 # Bounds, in clk_i cycles or STATUS reads; each fails the check it feeds.
 _SEG_BOUND_CLKS = 200_000
@@ -107,11 +143,94 @@ _POLL_READS = 64
 _RELEASE_BOUND = 20_000
 
 
+def _val(sig) -> int | None:
+    v = sig.value
+    return int(v) if v.is_resolvable else None
+
+
+class _ResetOeWindow:
+    """Per-clock sampler of the SPI output enables across one ``rst_ni`` pulse.
+
+    Each rising edge of ``clk_i``, in the read-only phase, it reads ``rst_ni``,
+    ``dbg_sep_reset_n_o``, ``spi_cs_n_o`` and the output-enable taps. It keeps
+    the last sample before ``rst_ni`` falls (``pre``) and grades every sample
+    from the first one with ``dbg_sep_reset_n_o`` = 0 until ``stop``. It
+    drives nothing.
+    """
+
+    def __init__(self) -> None:
+        self.pre: tuple | None = None
+        self.samples = 0
+        self.violations = 0
+        self.xz = 0
+        self.lag = 0
+        self.first: list[str] = []
+        self._state = "armed"
+        self._last: tuple | None = None
+        self._task = None
+
+    def start(self) -> _ResetOeWindow:
+        self._task = cocotb.start_soon(self._run())
+        return self
+
+    async def stop(self) -> None:
+        if self._task is not None:
+            self._task.cancel()
+            self._task = None
+
+    async def _run(self) -> None:
+        dut = cocotb.top
+        clk = 0
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            clk += 1
+            oe = (_val(dut.spi_cs_oe_o), _val(dut.spi_sck_oe_o), _val(dut.spi_sd_oe_o))
+            sample = (_val(dut.rst_ni), _val(dut.dbg_sep_reset_n_o), _val(dut.spi_cs_n_o), *oe)
+            if self._state == "armed" and sample[0] == 0:
+                self.pre = self._last
+                self._state = "lag"
+            if self._state == "lag":
+                if sample[1] == 0:
+                    self._state = "window"
+                else:
+                    self.lag += 1
+            if self._state == "window":
+                self.samples += 1
+                if None in oe:
+                    self.xz += 1
+                if oe != (0, 0, 0):
+                    self.violations += 1
+                    if len(self.first) < 4:
+                        self.first.append(f"clk{clk}:cs_oe={oe[0]} sck_oe={oe[1]} sd_oe={oe[2]}")
+            self._last = sample
+
+    def line(self) -> str:
+        pre = self.pre
+        return (
+            f"window_samples={self.samples} violations={self.violations} xz={self.xz} "
+            f"first={'|'.join(self.first) or '-'} lag_samples={self.lag} "
+            f"pre_reset_cs_n={pre[2] if pre else '-'} pre_cs_oe={pre[3] if pre else '-'} "
+            f"pre_sck_oe={pre[4] if pre else '-'} pre_sd_oe={pre[5] if pre else '-'}"
+        )
+
+    def live_before(self) -> bool:
+        """Control: chip select low and cs, sck and lane 0 driven just before rst_ni fell."""
+        pre = self.pre
+        return (
+            pre is not None
+            and pre[2] == 0
+            and pre[3] == 1
+            and pre[4] == 1
+            and bool((pre[5] or 0) & 1)
+        )
+
+
 @pyuvm.test()
 class sep_spi_cold_reset_values_rand_test(sep_base_test):
     """Every readable SPI host register returns to reset after rst_ni, idle and mid-segment."""
 
-    required_evidence = ("CHK-SPI-COLDRST",)
+    required_evidence = ("CHK-SPI-COLDRST", "CHK-SPI-OE-RESET", "CHK-SPI-SB-FRAME")
 
     async def run_scenario(self) -> None:
         self.seed = self.random_seed()
@@ -119,30 +238,43 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         rng = SepSeededRng(self.seed)
         draw = self._draw(rng)
         self.logger.info(
-            "PLAN %s seed=%d trials=idle,midseg regs=%d tool=vcs fuse=real",
+            "PLAN %s seed=%d trials=idle,%s regs=%d tool=vcs fuse=real",
             TEST,
             self.seed,
+            ",".join(f"midseg_x{t['width']}" for t in draw["midseg"]),
             len(_REGS),
         )
         self.logger.info(
-            "DRAW seed=%d idle_arm={%s} midseg_arm={%s} m=%d extra=%d t=%d "
-            "clean_len={idle:%d,midseg:%d}",
+            "DRAW seed=%d idle_arm={%s} clean_len=%d",
             self.seed,
             " ".join(f"{k}=0x{v:08x}" for k, v in draw["idle"].items()),
-            " ".join(f"{k}=0x{v:08x}" for k, v in draw["midseg"].items()),
-            draw["m"],
-            draw["extra"],
-            draw["t"],
-            draw["clean_len"][0],
-            draw["clean_len"][1],
+            draw["idle_clean_len"],
         )
+        for t in draw["midseg"]:
+            self.logger.info(
+                "DRAW seed=%d trial=midseg width=x%d arm={%s} m=%d extra=%d t=%d clean_len=%d "
+                "data_bytes=%d",
+                self.seed,
+                t["width"],
+                " ".join(f"{k}=0x{v:08x}" for k, v in t["arm"].items()),
+                t["m"],
+                t["extra"],
+                t["t"],
+                t["clean_len"],
+                len(t["data"]),
+            )
 
         self.write_efuse_image(SepEfuseImage().load(_DEFAULT_EFUSE_PRELOAD))
         await self.bring_up_no_cpu()
         self.pads = SepSpiPadSampler().start()
         self.ops = SepSpiHostOps(self, clock=self.pads.now)
+        self.wire = SepSpiWireMonitor(cocotb.top)
+        # Every frame here is a raw segment frame, not a flash command; the
+        # command-format oe_data check does not apply to it.
+        self.wire.monitor.set_raw_frames(True)
         try:
             await self._run(draw)
+            await self.wire.finish(self.logger, seed=self.seed)
         finally:
             close_graded_window(self.logger)
             await self.pads.stop()
@@ -181,23 +313,34 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
             "ERROR_ENABLE": rng.randrange(0, _ERR_EN_RESET),
             "EVENT_ENABLE": rng.randrange(1, 64),
         }
-        midseg = {
-            "INTR_ENABLE": rng.randrange(1, 4),
-            "CONTROL": self._control(rng),
-            "CONFIGOPTS": self._configopts(rng),
-            "ERROR_ENABLE": rng.randrange(0, _ERR_EN_RESET),
-            "EVENT_ENABLE": rng.randrange(1, 64),
-        }
-        m = rng.randrange(1, 5)
-        return {
-            "idle": idle,
-            "midseg": midseg,
-            "m": m,
-            "extra": rng.randrange(1, 5),
-            # The segment runs 8 sck cycles per byte, 4 bytes per word.
-            "t": rng.randrange(1, (32 * m) // 2 + 1),
-            "clean_len": (rng.randrange(0, 32), rng.randrange(0, 32)),
-        }
+        idle_clean_len = rng.randrange(0, 32)
+        widths = [1, 2, 4]
+        rng.shuffle(widths)
+        midseg = []
+        for width in widths:
+            arm = {
+                "INTR_ENABLE": rng.randrange(1, 4),
+                "CONTROL": self._control(rng),
+                "CONFIGOPTS": self._configopts(rng),
+                "ERROR_ENABLE": rng.randrange(0, _ERR_EN_RESET),
+                "EVENT_ENABLE": rng.randrange(1, 64),
+            }
+            m = rng.randrange(1, 5)
+            midseg.append(
+                {
+                    "width": width,
+                    "arm": arm,
+                    "m": m,
+                    "extra": rng.randrange(1, 5),
+                    # The segment runs 8 / width sck cycles per byte, 4 bytes per word.
+                    "t": rng.randrange(1, (32 * m // width) // 2 + 1),
+                    "clean_len": rng.randrange(0, 32),
+                    "data": bytes(
+                        rng.getrandbits(8) for _ in range(rng.randrange(1, _DATA_BYTES_MAX + 1))
+                    ),
+                }
+            )
+        return {"idle": idle, "idle_clean_len": idle_clean_len, "midseg": midseg}
 
     # ---- helpers ----------------------------------------------------------
     def _fail(self, chk: str, msg: str) -> None:
@@ -236,9 +379,17 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
                 return
         self._fail("CHK-SPI-COLDRST", "dbg_sep_reset_n_o did not read 1 after bring-up")
 
-    async def _clean_command(self, len_field: int) -> tuple[int, int]:
-        """CONTROL SPIEN=1 OUTPUT_EN=1, one dummy command; returns (sck cycles, ERROR_STATUS)."""
+    async def _clean_command(
+        self, len_field: int, *, start_monitor: bool = False
+    ) -> tuple[int, int]:
+        """CONTROL SPIEN=1 OUTPUT_EN=1, one dummy command; returns (sck cycles, ERROR_STATUS).
+
+        With ``start_monitor`` the wire monitor starts right after the CONTROL
+        write (CONFIGOPTS is at reset: Mode 0).
+        """
         await self.ops.wr(CONTROL, CTRL_RESET | CTRL_SPIEN | CTRL_OUTPUT_EN)
+        if start_monitor:
+            await self.wire.monitor.start()
         self.pads.set_idle_level(0)
         mark = self.pads.mark()
         await self.ops.issue_command(command_word(len_field, direction=DIR_DUMMY))
@@ -254,6 +405,9 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         cs_low: int,
         clean: tuple[int, int],
         clean_len: int,
+        *,
+        width: str = "-",
+        data_bytes: int = 0,
     ) -> None:
         nonreset = [n for n in armed if (before[n] ^ _REGS[n][1]) & _REGS[n][2]]
         for name, (_, rst, mask) in _REGS.items():
@@ -270,7 +424,8 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         cycles, err = clean
         exp_cycles = clean_len + 1
         line = (
-            f"trial={trial} cs_low_at_reset={cs_low} regs={len(_REGS)} "
+            f"trial={trial} width={width} data_bytes={data_bytes} "
+            f"cs_low_at_reset={cs_low} regs={len(_REGS)} "
             f"nonreset={len(nonreset)} mismatch={len(mismatch)} "
             f"clean_cmd={int(cycles == exp_cycles and err == 0)} "
             f"clean_cycles={cycles}/{exp_cycles} clean_err_status=0x{err:02x}"
@@ -305,13 +460,19 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         rst = await self.pulse_rst_ni(release_bound=_RELEASE_BOUND)
         after = await self._read_regs()
         self.logger.info("COLDRST-RST LOG seed=%d trial=idle %s", self.seed, rst)
-        clean = await self._clean_command(draw["clean_len"][0])
-        self._grade("idle", before, armed, after, 0, clean, draw["clean_len"][0])
+        clean = await self._clean_command(draw["idle_clean_len"])
+        self._grade("idle", before, armed, after, 0, clean, draw["idle_clean_len"])
 
-        # Trial 2, midseg: six registers armed, rst_ni inside a Tx segment.
+        # Trials 2 to 4, midseg: one per lane width, in the drawn order.
+        for trial in draw["midseg"]:
+            await self._midseg(trial)
+
+    async def _midseg(self, d: dict) -> None:
+        """Six registers armed, rst_ni inside a Tx segment at the width of the trial."""
+        width = d["width"]
         await self.ops.wr(INTR_TEST, INTR_ERROR)
         await self._poll_reg(INTR_STATE, INTR_ERROR, "INTR_STATE.ERROR=1 after INTR_TEST")
-        await self._arm(draw["midseg"])
+        await self._arm(d["arm"])
         before = await self._read_regs()
         not_armed = [n for n in _MIDSEG_ARMED if not (before[n] ^ _REGS[n][1]) & _REGS[n][2]]
         if not_armed:
@@ -321,30 +482,86 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
                 f"trial=midseg CSID=0x{before['CSID']:08x} "
                 f"ERROR_STATUS=0x{before['ERROR_STATUS']:08x} before the segment"
             )
-        m, extra = draw["m"], draw["extra"]
+        m, extra = d["m"], d["extra"]
         for i in range(m + extra):
             st = await self.ops.read_status()
             if st.txfull:
-                self._ctrl_missing(f"trial=midseg TXFULL=1 before word {i} of {m + extra}")
+                self._ctrl_missing(
+                    f"trial=midseg width=x{width} TXFULL=1 before word {i} of {m + extra}"
+                )
             await self.ops.wr(TXDATA, 0xC0DE_0000 | i)
-        cpol = (draw["midseg"]["CONFIGOPTS"] >> _R.field_lsb("CONFIGOPTS", "cpol")) & 1
+        cpol = (d["arm"]["CONFIGOPTS"] >> _R.field_lsb("CONFIGOPTS", "cpol")) & 1
         self.pads.set_idle_level(cpol)
         mark = self.pads.mark()
-        await self.ops.issue_command(command_word(4 * m - 1, direction=DIR_TX))
-        edges = await self.pads.wait_leading_edges(draw["t"], mark, _SEG_BOUND_CLKS)
+        await self.ops.issue_command(command_word(4 * m - 1, speed=_SPEED[width], direction=DIR_TX))
+        edges = await self.pads.wait_leading_edges(d["t"], mark, _SEG_BOUND_CLKS)
         cs_low = int(self.pads.cs_low())
         self.logger.info(
-            "COLDRST-POINT LOG seed=%d t=%d edges=%d cs_low=%d clk=%d",
+            "COLDRST-POINT LOG seed=%d width=x%d t=%d edges=%d cs_low=%d clk=%d",
             self.seed,
-            draw["t"],
+            width,
+            d["t"],
             edges,
             cs_low,
             self.pads.now(),
         )
         if not cs_low:
-            self._ctrl_missing(f"trial=midseg spi_cs_n_o high at the rst_ni point t={draw['t']}")
-        rst = await self.pulse_rst_ni(release_bound=_RELEASE_BOUND)
+            self._ctrl_missing(
+                f"trial=midseg width=x{width} spi_cs_n_o high at the rst_ni point t={d['t']}"
+            )
+        oe = _ResetOeWindow().start()
+        # The sampler holds a sample from before the rst_ni fall.
+        await ClockCycles(cocotb.top.clk_i, 2)
+        try:
+            rst = await self.pulse_rst_ni(release_bound=_RELEASE_BOUND)
+        finally:
+            await oe.stop()
+        self._grade_oe_reset(width, oe, rst)
         after = await self._read_regs()
-        self.logger.info("COLDRST-RST LOG seed=%d trial=midseg %s", self.seed, rst)
-        clean = await self._clean_command(draw["clean_len"][1])
-        self._grade("midseg", before, _MIDSEG_ARMED, after, cs_low, clean, draw["clean_len"][1])
+        self.logger.info("COLDRST-RST LOG seed=%d trial=midseg width=x%d %s", self.seed, width, rst)
+
+        # Clean commands after the release, with the monitor and a scoreboard.
+        sb = SepSpiScoreboard(self.wire, None, self.logger, seed=self.seed)
+        dmark = len(self.wire.monitor.get_transactions())
+        clean = await self._clean_command(d["clean_len"], start_monitor=True)
+        sb.expect_frame(
+            dmark, [(1, "dummy", d["clean_len"] + 1)], label=f"trial=midseg width=x{width} dummy"
+        )
+        data = d["data"]
+        for word in pack_tx_words(data):
+            await self.ops.push_tx(word)
+        fmark = sb.frame_mark()
+        cmark = self.pads.mark()
+        await self.ops.issue_command(
+            command_word(len(data) - 1, speed=_SPEED[width], direction=DIR_TX)
+        )
+        await self.ops.wait_segment_done(self.pads, cmark, bound_clks=_SEG_BOUND_CLKS)
+        sb.expect_frame(
+            fmark, [(width, "tx", data)], label=f"trial=midseg width=x{width} after_rst_ni"
+        )
+        await self.wire.monitor.stop()
+        sb.finish()
+        self._grade(
+            "midseg",
+            before,
+            _MIDSEG_ARMED,
+            after,
+            cs_low,
+            clean,
+            d["clean_len"],
+            width=f"x{width}",
+            data_bytes=len(data),
+        )
+        await spi_lane_fcov(TEST, "abort", lanes=width, abort=1)
+
+    def _grade_oe_reset(self, width: int, oe: _ResetOeWindow, rst: dict[str, int]) -> None:
+        """CHK-SPI-OE-RESET: no SPI pad driven in the cold-reset window."""
+        line = (
+            f"trial=midseg width=x{width} {oe.line()} "
+            f"sep_reset_n_at_hold_end={rst['sep_reset_n_at_hold_end']}"
+        )
+        if not oe.live_before() or oe.samples == 0 or rst["sep_reset_n_at_hold_end"] != 0:
+            self._ctrl_missing(f"CHK-SPI-OE-RESET {line}")
+        if oe.violations or oe.xz:
+            self._fail("CHK-SPI-OE-RESET", line)
+        self.logger.info("CHK-SPI-OE-RESET PASS seed=%d %s", self.seed, line)

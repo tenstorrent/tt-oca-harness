@@ -15,8 +15,8 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # OT SPI flash command breadth from CPU firmware. RAND-REP: seeded flash address, word
-# count and data; +spi1_directed pins the directed defaults. Dual/quad paths are not
-# walked: the leaf binds the flash model in single mode.
+# count and data; +spi1_directed pins the directed defaults. A lane leg runs the dual and
+# quad commands (0x3B, 0x6B, 0xBB, 0xEB, 0x32) on the flash model bound to all four lanes.
 name = "sep_spi_ot_flash_cmd_rand_test"
 module = "spi.sep_spi_ot_flash_cmd_rand_test"
 firmware = "spi_ot_flash_cmd_test"
@@ -25,7 +25,7 @@ reseed = 3
 timeout_sec = 3600
 tags = ["boot", "cpu", "spi", "flash", "subsystem"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_spi_four_lane"]
 
 [[tests]]
 # OT SPI host control plane (CSRs, interrupts, ERROR_STATUS W1C, TX watermark, SPIEN gate),
@@ -48,7 +48,7 @@ seed = 1
 timeout_sec = 3600
 tags = ["boot", "spi", "dma", "subsystem"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_spi_four_lane"]
 
 [[tests]]
 # SRAM -> Secure DMA (TX-watermark handshake) -> SPI TXFIFO -> flash page program, read back
@@ -62,10 +62,10 @@ seed = 1
 timeout_sec = 3600
 tags = ["boot", "cpu", "spi", "dma", "subsystem"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_spi_four_lane"]
 
 [[tests]]
-# SPI host COMMAND speed and direction cells at the pads: sck edges, Rx word count, dummy cycles, CSAAT chains and the illegal cells. The seed draws the cell order and the long dummy leg.
+# SPI host COMMAND speed and direction cells at the pads: lane data and output enables per segment, sck edges, Rx word count, dummy cycles, CSAAT chains and the illegal cells. The seed draws the cell order, the data and the long dummy leg.
 name = "sep_spi_pad_speed_dir_matrix_test"
 module = "spi.sep_spi_pad_speed_dir_matrix_test"
 seed = 1
@@ -74,7 +74,7 @@ timeout_sec = 7200
 tags = ["spi", "pad", "command", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_spi_four_lane"]
 
 [[tests]]
 # SPI host CONFIGOPTS timing at the pads: sck idle level, period, CS lead, trail and idle, and the CPHA data edge. The seed draws the configuration.
@@ -86,7 +86,7 @@ timeout_sec = 3600
 tags = ["spi", "pad", "timing", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_spi_four_lane"]
 
 [[tests]]
 # SPI host FIFO stalls, watermarks and queue depths in STATUS. The seed draws the watermarks and the word counts.
@@ -98,7 +98,7 @@ timeout_sec = 3600
 tags = ["spi", "fifo", "status", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_spi_four_lane"]
 
 [[tests]]
 # SPI host register values after a cold rst_ni, idle and mid-segment. Real PROD fuse sense: the leaf pulses rst_ni. VCS only: the leaf reads state after reset.
@@ -120,5 +120,17 @@ seed = 1
 reseed = 3
 timeout_sec = 3600
 tags = ["spi", "dma", "handshake", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+sep_spi_four_lane"]
+
+[[tests]]
+# SPI pad output enables: none driven in the cold-reset window or while CONTROL.OUTPUT_EN is 0, data lanes driven only while chip select is low, chip-select and clock enables on while chip select is low. Real PROD fuse sense: the leaf pulses rst_ni.
+name = "sep_spi_pad_oe_rules_test"
+module = "spi.sep_spi_pad_oe_rules_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["spi", "pad", "reset", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"

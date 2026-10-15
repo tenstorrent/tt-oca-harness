@@ -7,8 +7,13 @@ A leaf tells the scoreboard what it expects:
 * ``expect_tx(addr, data, opcode=PAGE_PROGRAM)``: a program the stimulus
   sent from the DUT to the flash (the payload the leaf or its firmware
   queued); ``opcode`` names the program command, e.g. QUAD PAGE PROGRAM;
-* ``expect_rx(opcode, data)``: bytes the DUT delivered from a read (what the
-  leaf read from RXDATA or a DMA destination);
+* ``expect_rx(opcode, data, source=...)``: the bytes of a read.
+  ``source="dut"``: ``data`` is what the DUT delivered (what the leaf read
+  from RXDATA or a DMA destination), so the DUT side is graded here.
+  ``source="fw:<CHK id>"``: ``data`` is the golden, and the named firmware
+  check compares the words the DUT delivered with the same golden; the leaf
+  must also require that firmware PASS line. ``source`` is required, so every
+  caller states which side it graded;
 * ``expect_frame(mark, segments, delivered=...)``: one frame of raw command
   segments with no flash command behind it. ``mark`` is ``frame_mark()``
   taken before the leaf issued the frame; each segment is ``(lanes, "tx",
@@ -48,6 +53,7 @@ frames only; a program or read expectation then fails.
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -122,9 +128,13 @@ class SepSpiScoreboard:
             raise ValueError(f"expect_tx opcode=0x{int(opcode):02x}: not a program command")
         self._expects.append(_Expect("tx", int(opcode), addr, bytes(data), label))
 
-    def expect_rx(self, opcode: int, data: bytes, *, label: str = "") -> None:
-        """Bytes the DUT delivered from a read with ``opcode``."""
-        self._expects.append(_Expect("rx", int(opcode), None, bytes(data), label))
+    def expect_rx(self, opcode: int, data: bytes, *, source: str, label: str = "") -> None:
+        """Bytes of a read with ``opcode``; ``source`` is ``"dut"`` or ``"fw:<CHK id>"``."""
+        if source != "dut" and not re.fullmatch(r"fw:CHK-[A-Z0-9-]+", source):
+            raise ValueError(f"expect_rx source={source!r}: 'dut' or 'fw:<CHK id>'")
+        tag = f"source={source}"
+        full = f"{label} {tag}" if label else tag
+        self._expects.append(_Expect("rx", int(opcode), None, bytes(data), full))
 
     def frame_mark(self) -> int:
         """Index the next monitor frame will take; pass it to ``expect_frame``."""

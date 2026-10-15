@@ -148,6 +148,8 @@ class OcahSepSpiFlash(OcahSpiFlash):
             )
 
         self._dq_oe_n = dq_oe_n
+        # Bit slots of a response byte the controller still drove on DQ0.
+        self.contended_bits = 0
         self._rebar_o = rebar_o
         self._rebar_i = rebar_i
 
@@ -182,12 +184,12 @@ class OcahSepSpiFlash(OcahSpiFlash):
             self._rebar_task = cocotb.start_soon(self._rebar_monitor())
             self.log.info("%s: REBAR monitor started", self.name)
 
-    async def stop(self) -> None:
-        """Stop the SEP flash BFM."""
+    async def stop(self, *, require_closed: bool = False) -> None:
+        """Stop the SEP flash BFM; ``require_closed`` as in ``OcahSpiFlash.stop``."""
         if self._rebar_task is not None:
             _cancel_task(self._rebar_task)
             self._rebar_task = None
-        await super().stop()
+        await super().stop(require_closed=require_closed)
 
     # ------------------------------------------------------------------
     # REBAR monitor
@@ -227,20 +229,27 @@ class OcahSepSpiFlash(OcahSpiFlash):
 
         If ``dq_oe_n`` is not connected, DQ is driven unconditionally
         (same as base class behaviour).  Returns True when the controller
-        sampled all eight bit slots, False when chip-select rose first.
+        sampled all eight bit slots and this model drove every one of them;
+        False when chip-select rose first or the controller still drove DQ0
+        in a bit slot. A byte with a bit the model did not drive is not sent
+        in full, so it is not part of ``data_out``; ``contended_bits`` counts
+        those bit slots.
         """
         sclk = self._sclk
         cs_n = self._cs_n
+        contended = 0
 
         for bit_idx in range(7, -1, -1):
             await First(FallingEdge(sclk), RisingEdge(cs_n))
             if int(cs_n.value) != 0:
+                self.contended_bits += contended
                 return False
 
             if self._dq_oe_n is not None:
                 oe_val = int(self._dq_oe_n.value)
                 # oe_val bit 0 corresponds to DQ0.  Low = controller driving.
                 if not (oe_val & 0x1):
+                    contended += 1
                     continue
 
             bit = (byte_val >> bit_idx) & 0x1
@@ -248,4 +257,8 @@ class OcahSepSpiFlash(OcahSpiFlash):
             dq_in = self._dq_in if self._dq_in is not None else self._miso
             if dq_in is not None:
                 dq_in.value = bit
-        return await self._last_bit_sampled()
+        sampled = await self._last_bit_sampled()
+        if contended:
+            self.contended_bits += contended
+            return False
+        return sampled

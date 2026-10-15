@@ -62,7 +62,7 @@ tests = ["sep_axi_smoke_test"]
 #   (memory.toml), as its run mode states. It needs the TCM controller of the
 #   full CPU, which the CPU stub does not have.
 name = "all"
-expected_count = 187
+expected_count = 188
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -208,6 +208,7 @@ tests = [
     "sep_cpu_lsu_alias_window_twin_test",
     "sep_fabric_dma_endpoint_matrix_test",
     "sep_spi_pad_speed_dir_matrix_test",
+    "sep_spi_pad_oe_rules_test",
     "sep_spi_pad_timing_cfg_rand_test",
     "sep_spi_fifo_stall_watermark_rand_test",
     "sep_spi_cold_reset_values_rand_test",
@@ -419,6 +420,7 @@ tests = [
     "sep_fabric_extension_port_window_test",
     "sep_fabric_row_response_matrix_test",
     "sep_spi_pad_speed_dir_matrix_test",
+    "sep_spi_pad_oe_rules_test",
     "sep_spi_pad_timing_cfg_rand_test",
     "sep_spi_fifo_stall_watermark_rand_test",
     "sep_spi_cold_reset_values_rand_test",
@@ -755,4 +757,21 @@ tests = [
     "sep_cpu_demux_unmapped_fetch_test",
     "sep_tcm_ecc_cpu_trap_test",
     "sep_cpu_isa_pmp_csr_test",
+]
+
+[[groups]]
+# Convenience group of the SPI lane-data and output-enable tests.
+# The `all`, `cpu_stub` and `cpu` groups hold the same tests.
+name = "phase3_spi_lanes"
+expected_count = 9
+tests = [
+    "sep_spi_pad_speed_dir_matrix_test",
+    "sep_spi_pad_timing_cfg_rand_test",
+    "sep_spi_fifo_stall_watermark_rand_test",
+    "sep_spi_dma_handshake_rand_test",
+    "sep_spi_ot_dma_rx_test",
+    "sep_spi_pad_oe_rules_test",
+    "sep_spi_ot_flash_cmd_rand_test",
+    "sep_spi_ot_dma_tx_test",
+    "sep_spi_cold_reset_values_rand_test",
 ]
