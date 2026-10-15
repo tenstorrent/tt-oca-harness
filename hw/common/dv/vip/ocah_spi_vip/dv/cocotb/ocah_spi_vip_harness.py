@@ -29,9 +29,9 @@ plain cocotb tests without a base test class.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
-import random
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any
@@ -64,6 +64,7 @@ __all__ = [
     "random_page_span",
     "random_payload",
     "rejects",
+    "ScenarioRng",
     "scenario_rng",
 ]
 
@@ -207,9 +208,63 @@ def base_seed() -> int:
     return int(os.environ.get(_SEED_ENV, "1"), 0)
 
 
-def scenario_rng(label: str) -> random.Random:
+class ScenarioRng:
+    """Seed-reproducible stimulus stream: SHA-256 in counter mode over the seed.
+
+    A failing selftest replays with the same seed, so the stimulus is a pure
+    function of it, stable across hosts and Python versions. It is not a
+    CSPRNG: the stream is predictable from the seed by design. Never use it
+    for a key, token, nonce, or any value that leaves the simulation.
+    """
+
+    def __init__(self, seed: int) -> None:
+        self._seed = int(seed) & 0xFFFF_FFFF_FFFF_FFFF
+        self._counter = 0
+        self._buf = b""
+
+    def randbytes(self, n: int) -> bytes:
+        """``n`` bytes of the stream."""
+        while len(self._buf) < n:
+            self._buf += hashlib.sha256(
+                self._seed.to_bytes(8, "little") + self._counter.to_bytes(8, "little")
+            ).digest()
+            self._counter += 1
+        out, self._buf = self._buf[:n], self._buf[n:]
+        return out
+
+    def getrandbits(self, k: int) -> int:
+        """``k`` bits of the stream."""
+        if k <= 0:
+            raise ValueError("getrandbits: k must be positive")
+        return int.from_bytes(self.randbytes((k + 7) // 8), "little") & ((1 << k) - 1)
+
+    def randrange(self, start: int, stop: int | None = None) -> int:
+        """Uniform in ``[start, stop)``, or ``[0, start)`` with one argument; no modulo bias."""
+        if stop is None:
+            start, stop = 0, start
+        width = stop - start
+        if width <= 0:
+            raise ValueError(f"randrange: empty range [{start}, {stop})")
+        bits = (width - 1).bit_length() or 1
+        while True:
+            value = self.getrandbits(bits)
+            if value < width:
+                return start + value
+
+    def randint(self, low: int, high: int) -> int:
+        """Uniform in ``[low, high]``."""
+        return self.randrange(low, high + 1)
+
+    def choice(self, seq):
+        """One element of ``seq``."""
+        if not seq:
+            raise IndexError("choice: empty sequence")
+        return seq[self.randrange(len(seq))]
+
+
+def scenario_rng(label: str) -> ScenarioRng:
     """Seeded stream for one scenario, salted by ``label``."""
-    return random.Random(OcahRng.salted_seed(base_seed(), label))
+    return ScenarioRng(OcahRng.salted_seed(base_seed(), label))
 
 
 def negative_armed() -> bool:
@@ -217,7 +272,7 @@ def negative_armed() -> bool:
     return bool(OcahKnobs.is_set(NEGATIVE_KNOB))
 
 
-def random_page_span(rng: random.Random, *, max_len: int = 64) -> tuple[int, int]:
+def random_page_span(rng: ScenarioRng, *, max_len: int = 64) -> tuple[int, int]:
     """A random ``(addr, length)`` that stays inside one page of one sector."""
     length = rng.randint(1, max_len)
     sector = rng.randrange(0, FLASH_SIZE // SECTOR_SIZE)
@@ -226,7 +281,7 @@ def random_page_span(rng: random.Random, *, max_len: int = 64) -> tuple[int, int
     return sector * SECTOR_SIZE + page * PAGE_SIZE + offset, length
 
 
-def random_payload(rng: random.Random, length: int) -> bytes:
+def random_payload(rng: ScenarioRng, length: int) -> bytes:
     """``length`` random bytes with at least one bit clear, so a program changes the array."""
     data = bytearray(rng.randbytes(length))
     if all(value == _ERASED for value in data):
