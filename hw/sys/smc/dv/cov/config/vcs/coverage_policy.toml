@@ -105,6 +105,28 @@ path = "smc_reviewed_field_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 
+# The prim_count fault-check assertions of the I2C cores and the UARTs, class
+# FPV-SECCM, whose antecedent rises only on an injected fault; README.md,
+# "Exclusion files". Only an assertion the graded run attempts with no real
+# success is written, so the file is regenerated from each graded run.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_assert_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# Toggle rows of the tie classes HIER-COPY and AXI-SIDEBAND-CONST,
+# instance-scoped; README.md, "Exclusion files" and "Toggle granularity". Only the points the graded run leaves
+# uncovered and no other list excludes are written, so the file is regenerated
+# from each graded run.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_tie_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
 # The code-coverage points a formal unreachability analysis over the `hosted fw`
 # regression's merged coverage database proves no stimulus reaches in the
 # bench's environment (SMC_FCOV.adoc, Unreachability exclusion list); URG
