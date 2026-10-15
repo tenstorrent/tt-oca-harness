@@ -25,8 +25,11 @@ until programmed, so local resources are reached at their local alias addresses
 (SMC `0xC000_0000`) until then. Program the range, offset and AxCACHE of each
 region before relying on its translation or cacheability.
 
-The SMC output fabric has separate Machine-mode and Xvisor remap regions,
-selected by the address window a request targets rather than by its privilege.
+The SMC output fabric has separate M-mode and Xvisor remap regions, through
+which SMC firmware acts for the AP machine-mode firmware or the AP hypervisor.
+The address window a request targets selects the remap and its source ID,
+`MMODE` or `OTHERS`; the privilege mode of the issuing hart does not, and
+traffic outside both windows carries the SMC source ID.
 A region with `REGION_ATTRS.valid` clear passes accesses through unchanged; set
 `valid` once its offset is programmed to remap through it.
 
