@@ -402,7 +402,7 @@ feature rows.
 |`smc_dfd_trace_vlt_format_test` |The trace path run in XOR plus VLT compression on a moving payload and two frame lengths.
 |`smc_dfd_trace_xor_format_test` |The trace path run in XOR compression on a moving payload and two frame lengths.
 |`smc_dfd_trace_sink_window_test` |The trace stream blocked at the funnel, released, and taken into two sink window sizes.
-|`smc_dfd_cla_event_type_sweep_test` |Every event index driven into all three event selectors of each of node 0's event-action pairs.
+|`smc_dfd_cla_event_type_sweep_test` |Every event index driven into all three event selectors of every event-action pair of every node, with the node walk reaching all four nodes.
 |`smc_dfd_trace_sink_readout_test` |The captured trace read back out of the sink RAM, with both sink modes and the deactivation edge.
 |`smc_dfd_sink_mmr_sweep_test` |Every register of the DST, sink and funnel MMR sub-blocks written against its generated RDL contract and restored.
 |`smc_dfd_ro_mmr_write_test` |Every read-only DFD MMR written, with the write required to be ignored.
@@ -5235,12 +5235,13 @@ Drive `smc_dfd_trace_sink_window_test_seq`. Each checker below is a named compar
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: Every event index driven into all three event selectors of each of node 0's event-action pairs.
+*Objective*: Every event index driven into all three event selectors of every event-action pair of every node, with the node walk reaching all four nodes.
 
 *Test Coverage*:
 
-* `EventType0`, `EventType1` and `EventType2` of each of node 0's four `CDbgNode0Eap<m>` pairs, each selector driven over all 64 values of its six-bit field: 768 selector values in all. Each value is one index of the CLA event bus the selector compares against, so a pair left at its reset only ever exercises index zero.
+* `EventType0`, `EventType1` and `EventType2` of each of the four `CDbgNode<n>Eap<m>` pairs of each of the four nodes, each selector driven over all 64 values of its six-bit field: 3072 selector values in all. Each value is one index of the CLA event bus the selector compares against, so a pair left at its reset only ever exercises index zero.
 * The pair's relation is left at its RDL reset, so a pair activates when and only when the selected event is asserted, and `CDbgEapStatus` is read after every value with the pair quiesced and its status cleared between values.
+* A node's pairs can only set their status while that node is current, so after each node's sweep one of its pairs is re-programmed with an event index seen live and `DestNode` naming the next node, and `CurrentNode` is polled until the DUT reports the move.
 
 *Test Procedure*:
 
@@ -5252,8 +5253,8 @@ Drive `smc_dfd_cla_event_type_sweep_test_seq`. Each checker below is a named com
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CLA-EVENT-SELECT-SWEEP` |All three selectors of all four pairs took every one of the 64 values their field offers and read back exactly; a value the register does not accept fails it
-|`CHK-CLA-EVENT-SELECT-LIVE` |The DUT set a pair-activation bit for at least one event index, so the selectors pick a live event bus rather than storing a value nothing reads; a sweep in which no index ever activates fails it
+|`CHK-CLA-EVENT-SELECT-SWEEP` |All three selectors of all four pairs of all four nodes took every one of the 64 values their field offers and read back exactly, with `CurrentNode` reporting each node in turn; a value the register does not accept, or a node the walk never reaches, fails it
+|`CHK-CLA-EVENT-SELECT-LIVE` |On every node the DUT set a pair-activation bit for at least one event index, so the selectors pick a live event bus rather than storing a value nothing reads; a node on which no index ever activates fails it
 |===
 
 
