@@ -131,7 +131,13 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |SEP->SMC AXI |`rom_boot` target: `ocah_axi_struct_bridge` places the wrapper's `sep_ext_to_smc_axi` struct port on `u_smc_axi_if` and the shared `OcahAxiSlaveAgent` answers it. `env/sep_smc_mem.py` holds the geometry and preloads the scratch, status, strap, and manifest+BL1 image words from the testlist plusargs; the SMC address-decode check counts accesses outside the generated map. Every other target answers the port through the BH-SMC responder `u_smc_route_mem` (`tb/sep_smc_route_mem.sv`), which is idle unless BH-SMC is enabled; the decode check is not compiled there.
 |BH-SMC: SMC aperture inputs and SMC responder |Added hook (top-port drive) on every target without `SEP_SMC_MEM_MODEL`. `tb_top` drives `smc_global_base_addr_i` and `smc_region_size_i` from `bh_smc_base_i` and `bh_smc_size_i` when the leaf sets `bh_smc_en_i` to 1 before it releases reset (`env/sep_bh_smc.py`), or else from `+sep_smc_aperture_base=<hex>` and `+sep_smc_aperture_size=<hex>`; with neither, both inputs are 0. While the hook is on, `u_smc_route_mem` answers `sep_ext_to_smc_axi_resp_i`: OKAY with the request ID, one burst per channel in flight, written bytes stored and returned, and `{~a, a}` (`a` the low 32 bits of the 8-byte-aligned address) for a word no write touched. Owners: `sep_fabric_smc_route_test` (leaf drive), `sep_fabric_dma_endpoint_matrix_test` (plusargs).
 |Boundary PIC input |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `sep_ext_interrupts_i` (`extintsrc_req_i` of `sep`, the PIC sources above 43) from the TB input of the same name, which is 0 unless a leaf drives it. Owner: `sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN).
-|Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`
+|DFT pins |Added hook (top-port drive). `tb_top` drives the `sep` inputs `test_en_i` and `scan_rst_ni` from the TB inputs `test_en_i` and `scan_rst_ni_i`. A value of `test_en_i` other than 1 drives 0 and a value of `scan_rst_ni_i` other than 0 drives 1, so a leaf that does not drive them keeps the functional mode. Owner: `sep_scan_reset_override_test`.
+|DMI enables |Added hook (top-port drive). `tb_top` drives the `sep` inputs `dmi_core_enable_i` and `dmi_uncore_enable_i` (wrapper ports `dmi_core_enable`, `dmi_uncore_enable`) from the TB inputs of the same name; a value other than 1 drives 0. `dmi_uncore_rdata` is held at 0. Owner: `sep_debug_master_target_matrix_test`.
+|Core JTAG TAP pins |Added hook (top-port drive). With `jtag_bench_own_i` = 1 the TB inputs `jtag_tck_i`, `jtag_tms_i`, `jtag_tdi_i` and `jtag_trst_n_i` drive the core TAP, and cocotb shifts it (`env/sep_jtag_dmi.py` on `OcahJtagMasterDriver`). Any other value keeps the pins on the `tb_top` registers that the `+cpu_boot` reset-vector TDR task drives. TRST of those registers starts high and falls at 1 ps, so the TAP and its reset-vector TDR take their reset values on a four-state simulator, and stays low outside that task. Owners: `sep_cpu_reset_entry_test`, `sep_debug_master_target_matrix_test`.
+|JTAG reset overrides and IC_RESET TDR |Existing bench hook. The TB inputs `jtag_<ip>_rst_hold_i` (OTBN, AES, HMAC, KMAC, TRNG, Adams Bridge), `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` drive the override and value fields of `jtag_sep_reset_ctrl_i` while `jtag_ic_reset_tdr_en_i` is 0. With `jtag_ic_reset_tdr_en_i` = 1 the IC_RESET TDR `jtag_ic_reset_reg` of `tb_top` drives every field, shifted through the `jtag_ic_reset_*` inputs by `env/sep_ic_reset_tdr.py`. Users: `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`.
+|Reset vector |Existing bench hook. `rst_vec_i` drives the wrapper input `rst_vec`, which `sep_wrapper` does not connect further. At a non-zero value under `+cpu_boot`, `tb_top` also shifts the value into the reset-vector TDR (IR 0x18) while `rst_ni` is low. User: `sep_cpu_reset_entry_test`.
+|Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`.
+|Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`, `clk_ref_i`. `sep_base_test.start_clocks` takes an optional start delay per clock (`phases_ns`, or `clock_phases_ns` set by the leaf before bring-up), and `restart_clock` restarts one clock at a new period and start delay
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
 |SPI host pads |Scalar MISO/MOSI/SCK/CS ports for `OcahSpiFlash`
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
@@ -157,7 +163,61 @@ Observation probe groups:
   the eFuse SHIM `efuse_debug_bus_o`.
 * Crypto reset-sequencer probes (`*_gated_rst_n_probe_o`,
   `*_isolated_probe_o`, `*_host_isolate_req_probe_o`,
-  `trng_reset_active_probe_o`).
+  `trng_reset_active_probe_o`). `km_gated_rst_n_probe_o` is the Key Manager
+  warm reset, bit `km` of `sep_crypto_gated_rst_no` (`ip_rst_n[0]`, KM-RST, of
+  the VPLAN bench index). `crypto_isolate_req_probe_o` and
+  `crypto_isolated_probe_o` are the 14-bit isolate request and
+  isolate-complete vectors at the crypto AXI interconnect (`sep.sv` nets
+  `sep_crypto_isolate_req` and `sep_crypto_isolated`). Bit x of each vector is
+  VPLAN bench isolate stage x: 0 `host_otbn`, 1 `host_aes`, 2 `host_hmac`,
+  3 `host_kmac`, 4 `host_abr`, 5 `trng_entropy_source`, 6 `trng_csrng`,
+  7 `trng_edn`, 8 `km_otbn`, 9 `km_aes`, 10 `km_hmac`, 11 `km_kmac`,
+  12 `km_abr`, 13 `km_efuse`. `tb_top` assigns each bit from the isolate
+  struct field of that name, so the RTL field order does not reach a test; the
+  same table is in `env/sep_reset_taps.py` and the FCOV isolate sets. Owners of the KM reset and the two vectors:
+  `sep_cpu_reset_retention_test`, `sep_sw_reset_isolation_matrix_test`,
+  `sep_ip_reset_override_matrix_test`.
+* Isolate-stage slave-side taps: `iso_slv_aw_hs_probe_o`,
+  `iso_slv_ar_hs_probe_o`, `iso_slv_b_hs_probe_o`, `iso_slv_r_hs_probe_o`
+  (one bit per isolate stage, valid and ready on the same clock) and
+  `iso_slv_bresp_probe_o`, `iso_slv_rresp_probe_o` (two bits per stage, stage i
+  at `[2i+1:2i]`), read from the `slv_req_i` and `slv_resp_o` ports of the 14
+  isolate units of `sep_crypto_axi_interconnect.sv` (`u_*_host_isolate`,
+  `u_*_key_isolate`, `u_km_efuse_isolate`), bit x the bench isolate stage x
+  as in `crypto_isolated_probe_o`. They show when a stage accepts a transaction and
+  when it returns the response, the point where the specification drains a
+  domain before its reset. No frontdoor shows the stage side of the fabric.
+  Owner `sep_sw_reset_isolation_matrix_test`.
+* Reset and clock taps: `aon_rst_n_probe_o`, the watchdog timer-domain reset
+  (`u_sep_wdt_wrap.rst_wdt_n`, `rst_aon_ni` of the AON timer); owners
+  `sep_cold_reset_phase_test`, `sep_ip_reset_override_matrix_test`,
+  `sep_scan_reset_override_test`. `mpc_run_sync_probe_o`, the output of the
+  CPU run-request synchronizer (`u_sep_cpu.mpc_reset_run_req_sync`), tied to 0
+  on the CPU stub build; owner `sep_cpu_reset_retention_test`.
+  `dbg_rst_l_probe_o`, the debug reset input of the core wrapper
+  (`u_sep_cpu.u_el2_veer_wrapper.dbg_rst_l`), tied to 1 on the CPU stub
+  build; owner `sep_timer_clock_contract_test`, which reads it only on the
+  VCS full-CPU leaf.
+* `TIMEOUT_INTERRUPT` read-source tap (`timeout_interrupt_probe_o`): the
+  hardware input `sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.reserved.next` of
+  the `SEP_CPU_CTRL` register block in `u_sep_system_csr`. The field has no
+  storage (sw=r, hw=w), so this is the value a read returns on that clock. No
+  frontdoor shows the level between two bus reads. Owner:
+  `sep_cpu_ctrl_timeout_inert_rand_test` (CHK-TO-INERT).
+  `km_cond_rst_probe_o`, the two Key Manager reset conditioner outputs (bit 1
+  `rst_cold_aasd_n`, bit 0 `rst_warm_sync_n` of `u_key_manager_s3c_scan`);
+  owner `sep_scan_reset_override_test`.
+* Core JTAG and DMI outputs: `jtag_tdo_o` (core TAP TDO), `dmi_uncore_en_o`
+  and `dmi_uncore_wr_en_o` (wrapper ports `dmi_uncore_en`,
+  `dmi_uncore_wr_en`). Owner: `sep_debug_master_target_matrix_test`.
+* Test-pin walk (read-only): the leaf reads, through the cocotb hierarchy
+  handle, the `test_en_i` and `test_i` inputs of the consumers of the `sep`
+  input `test_en_i`: the clock gater `u_sep_dma_wrap.u_secure_dma.dma_clk_gate`
+  and the AXI cells with a `test_i` input in `sep_cpu.sv`, `sep.sv`,
+  `sep_crypto.sv`, `sep_crypto_axi_interconnect.sv` and `sep_wdt_wrap.sv`. It
+  drives nothing and adds no port. The VCS cocotb build has
+  `-debug_access+all`, which gives the read access; the leaf runs on VCS
+  only. Owner: `sep_scan_reset_override_test`.
 * EDN and entropy-AXIS handshake probes (`crypto_edn_*`, `pool_edn_*`,
   `km_entropy_*`, `axis1_*`, `axis2_*`, `entropy_pool_packer_depth_o`).
 * RMA-SIP token-digest latch probes (`token_digest_*`).
@@ -205,7 +265,8 @@ Observation probe groups:
    address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxSIZE, AxBURST and W beats.
    Owners: `sep_fabric_outbound_route_attr_test`,
    `sep_fabric_filter_match_priority_rand_test`,
-   `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`.
+   `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`,
+   `sep_cpu_demux_unmapped_fetch_test`.
    Its replies (monitor PR-OUT-RSP): B (`resp`, `id`) and R (`resp`, `id`,
    `last`) on `smn_outbound_axi_resp_i`, with READY from the request net.
    Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST),
@@ -218,14 +279,60 @@ Observation probe groups:
    `u_dut.axi_extension_axi_resp`, with READY from the request net. Owners:
    `sep_fabric_extension_port_window_test`,
    `sep_fabric_filter_match_priority_rand_test`,
-   `sep_fabric_dma_endpoint_matrix_test`.
+   `sep_fabric_dma_endpoint_matrix_test`,
+   `sep_cpu_demux_unmapped_fetch_test`.
 ** PR-SRAM (`pr_sram_*`) and PR-ROM (`pr_rom_*`): the SRAM and boot ROM macro
    requests (wrapper nets `u_dut.sep_sram_req`, `u_dut.sep_boot_rom_req`):
    request, grant, address, write enable, write data, strobe, read valid and
-   read data. Owners: `sep_cpu_lsu_alias_window_twin_test`,
-   `sep_fabric_inbound_rebase_test` and
-   `sep_fabric_filter_match_priority_rand_test` (PR-SRAM);
-   `sep_fabric_dma_endpoint_matrix_test` (PR-ROM).
+   read data. PR-ROM also carries the macro side of the ROM interface shim
+   (`pr_rom_macro_*`: `rom_macro_req`, `rom_macro_addr`, the 64-bit word
+   index, and `rom_macro_rdata` of `sep_ip_integration`; monitor PR-ROM-MACRO).
+   The PR-SRAM address (`pr_sram_addr_o`) is the byte offset of the request
+   from the SRAM base `SEP_SRAM_MEM_BASE_ADDR`, not the bus address; a check
+   compares it at 8-byte word granularity, the width of one SRAM word.
+   Owners: `sep_cpu_lsu_alias_window_twin_test`,
+   `sep_fabric_inbound_rebase_test`,
+   `sep_fabric_filter_match_priority_rand_test`,
+   `sep_sram_axi_shape_matrix_test` and
+   `sep_cpu_demux_unmapped_fetch_test` (PR-SRAM);
+   `sep_fabric_dma_endpoint_matrix_test`, `sep_cpu_reset_entry_test`,
+   `sep_boot_rom_aperture_sweep_test` and
+   `sep_cpu_demux_unmapped_fetch_test` (PR-ROM).
+** PR-TCM (`pr_tcm_*`): the ICCM and DCCM macro request (wrapper net
+   `u_dut.sep_cpu_tcm_req`: clock enables, write enables, bank row addresses,
+   write data and write ECC) and response (`u_dut.sep_cpu_tcm_rsp`: read data
+   and ECC), bank 0 in the low bits. Owners:
+   `sep_tcm_dma_aperture_ecc_test`, `sep_cpu_demux_unmapped_fetch_test`.
+** PR-IFU (`pr_ifu_*`): the IFU request after its local alias remap and
+   before the IFU demux (`u_sep_cpu.ifu_axi_req`: AR address, ID, AxLEN,
+   AxSIZE) and the response the demux returns (R `resp`, `id`, `last`,
+   DECERR of the error responder included); tied to 0 on the CPU stub build.
+   Owners: `sep_cpu_reset_entry_test`, `sep_cpu_demux_unmapped_fetch_test`.
+** PR-IFU-XBAR (`pr_ifu_xbar_*`): the IFU demux port to the local crossbar
+   (`sep.sv` `ifu_sram_axi_req`, with its response): AR address, ID, AxLEN,
+   AxSIZE and R `resp`, `id`, `last`. Every IFU fetch that the demux sends
+   toward the crossbar crosses this port; tied to 0 on the CPU stub build.
+   Owner: `sep_cpu_demux_unmapped_fetch_test`.
+** PR-LSU-ROM (`pr_lsu_rom_*`) and PR-LSU-XBAR (`pr_lsu_xbar_*`): the LSU
+   demux ports to the ROM mux and to the local crossbar (`sep.sv`
+   `lsu_rom_axi_req` and `lsu_xbar_axi_req`, with their responses): AW and AR
+   address, ID, AxLEN, AxSIZE; W strobe and last; B and R response. Owners:
+   `sep_boot_rom_aperture_sweep_test`, `sep_cpu_demux_unmapped_fetch_test`.
+** PR-XBAR-TCM (`pr_xbar_tcm_*`): the local crossbar `cpu_tcm` target, the
+   DMA path into the core DMA slave port, same fields with a 6-bit ID. The
+   VPLAN names this tap `xbar_tcm_req` and `cpu_tcm_axi_resp`; no net is
+   named `xbar_tcm_req`, and the tap reads the `sep.sv` nets
+   `cpu_tcm_axi_req` and `cpu_tcm_axi_resp`. Owners:
+   `sep_cpu_demux_unmapped_fetch_test`, `sep_tcm_dma_aperture_ecc_test`.
+** PR-DBG-SB (`pr_dbg_sb_*`): the debug-module system-bus master after its
+   local alias remap (`sep.sv` `dbg_axi_req` and `dbg_axi_resp`): the PR-LSU
+   fields plus W and R data. Owner: `sep_debug_master_target_matrix_test`.
+** PR-DBG-IN (`pr_dbg_in_*`) and PR-DBG-OUT (`pr_dbg_out_*`): the
+   debug-module system-bus request at the input and at the output of the
+   debug local alias remap (`sep_cpu.sv` `u_dbg_local_alias_remap`, nets
+   `dbg_axi_req_raw` and `dbg_axi_req_o` with the AW and AR ready of their
+   responses): AW and AR valid, ready and address; tied to 0 on the CPU stub
+   build. Owner: `sep_debug_master_target_matrix_test`.
 ** PR-DMACSR (`pr_dmacsr_*`): the request at the DMA CSR target port
    (`dma_csr_req`), AW and AR address. Owner:
    `sep_fabric_dma_endpoint_matrix_test`.
@@ -280,6 +387,23 @@ Observation probe groups:
   (`u_sep_system_peripherals.mailbox_axil_req` and `mailbox_axil_resp`) and
   the inbound filter (`u_sep_system_peripherals.u_inbound_filter`). Owners: the owning tests of
   the mailbox, IRQ and PIC groups.
+* Memory aperture, CPU ECC and CPU debug FCOV sampler taps (`cov/sv/sep_fcov.sv`,
+  memory, boot, reset groups): read-only references from the `u_sep_fcov`
+  connection block to the trap unit (`veer.dec.tlu`: `mcause`, `mscause`,
+  `mdccmect`, `miccmect`, `mdccme_ce_req`, `miccme_ce_req`, `ce_int`,
+  `wr_mdccmect_r`, `wr_miccmect_r` and `dec_csr_wrdata_r[31:27]`), the LSU
+  M-stage packet and address (`veer.lsu`: `lsu_pkt_m` and `lsu_addr_m`), the DTM
+  output of `u_el2_veer_wrapper` (`dmi_en`, `dmi_addr`, `dmi_wr_en`), the
+  `sep.sv` nets `cpu_tcm_axi_req` and `cpu_tcm_axi_resp`, `ifu_rom_axi_req`,
+  `ifu_sram_axi_req`, `lsu_rom_axi_req` and `lsu_xbar_axi_req` with their
+  responses, and `nmi_vec`, and the wrapper nets `u_dut.sep_sram_req` and
+  `u_dut.sep_sram_rsp`; the core taps are tied to 0 on the CPU stub build. The
+  sampler also reads the probes PR-TCM, PR-IFU and PR-ROM-MACRO, the CPU trace
+  ports, `ext_debug_bus_o[367:364]`, the DMI enables and the uncore DMI
+  outputs. Owners: `sep_boot_rom_aperture_sweep_test`,
+  `sep_sram_axi_shape_matrix_test`, `sep_tcm_dma_aperture_ecc_test`,
+  `sep_tcm_ecc_cpu_trap_test`, `sep_cpu_demux_unmapped_fetch_test`,
+  `sep_debug_master_target_matrix_test`, `sep_cpu_isa_pmp_csr_test`.
 * The covergroup sampler's direct reads of the WDT bark interrupt
   (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read
   `ARSIZE` (owner `sep_axi_partial_lane_read_test`); and, for the Phase 2 SPI
@@ -342,6 +466,27 @@ Exceptions (a closed set):
   `sep_pic_pending_map_walk_rand_test` (HMAC and KMAC, CHK-FIFO-EMPTY).
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
+* *TCM bit-flip* — stored-bit error inject on the ICCM and DCCM macro arrays,
+  outside `sep`, behind `sep_cpu_tcm_rsp_i`. A rising edge of `tcm_flip_i`
+  XORs `tcm_flip_mask_i` into the stored 39-bit word (bits 31:0 data, 38:32
+  ECC) that holds byte address `tcm_flip_addr_i`, with the bank and row map of
+  the `tcm_load_i` image load. `+sep_tcm_flip_list=<file>` applies a list of
+  flips after each `tcm_load_i` load, so a firmware leg starts with the errors
+  in place. Software cannot store a word with a wrong ECC, so a stored-bit
+  error has no frontdoor. The response, the counters and the trap state the
+  checkers read are not forced. Driver: `env/sep_tcm_flip.py`. Owners:
+  `sep_tcm_dma_aperture_ecc_test`, `sep_tcm_ecc_cpu_trap_test`.
+* *Single-beat WRAP inject* — `+sep_axi_wrap_len1_inject` lets a master drive
+  a WRAP burst with AxLEN = 0, which AXI4 does not allow. The `ocah_axi_sva`
+  checker of `m_axi` and of `s_axi` sees AxBURST = INCR on such an AW or AR, so
+  it tracks the request as a single-beat burst and checks every other rule; the
+  DUT gets the WRAP burst. The SRAM response and the read-back the checkers read
+  are not forced. Owner: `sep_sram_axi_shape_matrix_test`.
+* *ROM bit-flip* — stored-bit error inject on the boot ROM macro array,
+  outside `sep`, behind `sep_boot_rom_rsp_i`. A rising edge of `rom_flip_i`
+  XORs `rom_flip_mask_i` into the stored 64-bit word `rom_flip_index_i`. The
+  ROM has no write path, so a changed stored bit has no frontdoor. Driver:
+  `env/sep_rom_image.py`. Owner: `sep_boot_rom_aperture_sweep_test`.
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for
   scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate,
   `drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o` at each DUT lane
@@ -396,7 +541,9 @@ Exceptions (a closed set):
   isolation and to place a read inside the drain window. `SW_RESET_N` holds the
   request but not the sequencer state, so none of these has a frontdoor. Used by
   the crypto reset-isolation, TRNG reset-recovery, KM isolate-termination and
-  ABR tests.
+  ABR tests. The Key Manager warm reset `km_gated_rst_n_probe_o` and the full
+  14-bit vectors `crypto_isolate_req_probe_o` and `crypto_isolated_probe_o`
+  are the same class; their owners are in the observation-probe list.
 * *Adams Bridge ML-KEM seed Z probe* — `abr_mlkem_seed_z_probe_o` is a
   read-only XMR of the Z words the engine holds for ML-KEM KEYGEN. The
   encapsulation key depends on D only, software cannot read Z back, and after a

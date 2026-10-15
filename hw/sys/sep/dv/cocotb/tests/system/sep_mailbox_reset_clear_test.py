@@ -69,6 +69,7 @@ from seq_lib.sep_fabric_csr_bank_seq import F_ALLOW_NS, F_ENTRY_ENABLED, F_SRC_I
 from seq_lib.sep_fabric_filter_bank_seq import SRC_ID_MASK, SepFilterBank
 from seq_lib.sep_inbound_filter_rule_seq import FILTER_LOCKED_HI_BIT, SepInboundFilter
 from seq_lib.sep_mailbox_iface_seq import SepMbox
+from seq_lib.sep_mailbox_walk_seq import inbound_last
 from seq_lib.sep_mbox_port_ops import (
     MAILBOX_COUNT,
     REG_OFFSETS,
@@ -251,7 +252,7 @@ class sep_mailbox_reset_clear_test(sep_base_test):
             FILTER_ENTRY,
             FilterEntry(
                 start=base,
-                end=base + 0x7FF,
+                end=inbound_last(c.filt_m),
                 enabled=True,
                 read_allowed=True,
                 write_allowed=True,
@@ -612,4 +613,4 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         await self._post()
         close_graded_window(self.logger)
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, seed, self.n_checks)
+        self.result_pass(TEST, seed, self.n_checks)

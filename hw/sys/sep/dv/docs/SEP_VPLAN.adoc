@@ -1120,7 +1120,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|Proves that the mailbox has no qualification of its own: writes that PROD blocks are accepted and interrupt on all eight mailboxes after `SEP_DBG` bypasses the inbound filter. The PROD block and the demote pair are controls.
+|Proves that the mailbox has no qualification of its own: writes that PROD blocks are accepted and interrupt on all eight mailboxes after `SEP_DBG` bypasses the inbound filter, with `FEAT_CTRL` read back as `SEP_DBG` set before the accepted writes are graded. The PROD block and the demote pair are controls.
 |<<sep_mailbox_reset_clear_test,`sep_mailbox_reset_clear_test`>>
 |3
 |no_cpu, +skip_fuse_sense
@@ -1135,7 +1135,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu with external SMN master, real PROD fuse sense
 |ocah_axi_vip, CPU FW
-|Proves that an external read or write to any PIC address answers DECERR and changes no PIC register, in both the default-block and the open-window filter regime. The default-block control holds with the sensed LC state PROD and `SEP_DBG` off, read from the DUT.
+|Proves that an external read or write to each sampled PIC address answers DECERR and changes no PIC register, in both the default-block and the open-window filter regime. The sampled addresses are the first, a drawn interior and the last register of each PIC group, a drawn hole and a drawn past-extent address; the drawn addresses change with the seed. The default-block control holds with the sensed LC state PROD and `SEP_DBG` off, read from the DUT.
 |<<sep_pic_priority_gate_rand_test,`sep_pic_priority_gate_rand_test`>>
 |3
 |cpu, +skip_fuse_sense
@@ -1145,7 +1145,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, +skip_fuse_sense, +esrc_noise_force
 |CPU FW, PIC pending-map golden
-|Proves that each source sets only its own pending bit in `meip`, that the 11 crypto alert channels raise source 33, and that level and edge gateways follow the `meigwctrl` and `meigwclr` text. Tied-off and slotless cases move nothing. Also proves that one asserted boundary input bit shows as one pending source above 43 and drops on release. The alert index leg samples `crypto_alert_pulse_probe_o`, an observation tap the test adds to the SEP_TB_ARCH observation-probe list. The boundary input leg drives `sep_ext_interrupts_i`, a top-port drive the test adds to `docs/SEP_TB_ARCH.adoc`.
+|Proves that each of the 24 driven map sources (1 to 8, 12, 14, 18 to 30 and 33) sets only its own pending bit in `meip`, that the 11 crypto alert channels raise source 33, and that level and edge gateways follow the `meigwctrl` and `meigwclr` text. Tied-off and slotless cases move nothing. Also proves that one asserted boundary input bit shows as one pending source above 43 and drops on release. The alert index leg samples `crypto_alert_pulse_probe_o`, an observation tap the test adds to the SEP_TB_ARCH observation-probe list. The boundary input leg drives `sep_ext_interrupts_i`, a top-port drive the test adds to `docs/SEP_TB_ARCH.adoc`.
 |<<sep_cpu_bridge_fault_matrix_rand_test,`sep_cpu_bridge_fault_matrix_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
@@ -1154,8 +1154,8 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |<<sep_cpu_ctrl_timeout_inert_rand_test,`sep_cpu_ctrl_timeout_inert_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
-|ocah_axi_vip; outbound responder hold (error inject)
-|Proves that the reserved timeout registers stay inert under a real stall of each block path: `TIMEOUT_INTERRUPT` reads 0 and no PIC source rises. The outbound filter, alias remap and DMA stalls hold the response in the outbound responder, an error inject the test adds to `docs/SEP_TB_ARCH.adoc`. The entropy write and entropy read stalls hold the CPU-LSU response of an access to the entropy pool `STATUS` register.
+|ocah_axi_vip; outbound responder hold (error inject); `timeout_interrupt_probe_o` (observation tap)
+|Proves that the reserved timeout registers stay inert under a real stall of each block path: `TIMEOUT_INTERRUPT` reads 0 on every clock of the stall and no PIC source rises. The outbound filter, alias remap and DMA stalls hold the response in the outbound responder, an error inject the test adds to `docs/SEP_TB_ARCH.adoc`. The entropy write and entropy read stalls hold the CPU-LSU response of an access to the entropy pool `STATUS` register.
 |<<sep_nmi_vector_bark_rand_test,`sep_nmi_vector_bark_rand_test`>>
 |3
 |cpu, +skip_fuse_sense
@@ -1208,7 +1208,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, SPI pad ports (approved)
-|Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. The FULLCYC sampling point is not graded.
+|Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. The Tx data edge is not graded in the cell CPHA=1 with FULLCYC=1, because `spi_controller.adoc` (CONFIGOPTS) gives that cell a shift edge that differs from the general CPHA text; the CPHA=1 edge closes on a merge of regressions. The FULLCYC sampling point is not graded.
 |<<sep_spi_fifo_stall_watermark_rand_test,`sep_spi_fifo_stall_watermark_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
@@ -1223,12 +1223,12 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real fuse sense (VCS only)
 |ocah_axi_vip, `spi_cs_n_o` and `dbg_sep_reset_n_o` (approved)
-|Proves that rst_ni returns every readable SPI register except STATUS to its reset value from armed non-reset values, also in the middle of a segment.
+|Proves that rst_ni returns every readable SPI register except STATUS to its reset value from armed non-reset values with the host idle, and returns the six armed registers other than CSID and ERROR_STATUS to their reset values in the middle of a segment.
 |<<sep_dma_transfer_matrix_rand_test,`sep_dma_transfer_matrix_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, `dma_busy_probe_o` and `sep_internal_interrupts_probe_o` (approved); `dma_axi_req_probe_o`, `dma_status_probe_o` (observation taps)
-|Proves that all 16 source and destination address-mode cells, each at a drawn width, give the stated destination image, that sizes up to 16 KB complete with DONE and GO auto-clear, that a transfer exactly on the range edges completes, and that SHA-256, SHA-384 and SHA-512 digests, SHA2_DIGEST_VALID and DIGEST_SWAP follow the register text. It also proves single-beat DMA transactions, the beat addresses, the CHUNK_DONE rises and their hardware clear, and the DONE rise after the last B response.
+|Proves that all 16 source and destination address-mode cells, each at a drawn width, give the stated destination image, that sizes up to 16 KB complete with DONE and GO auto-clear, that a transfer exactly on the range edges completes, and that SHA-256, SHA-384 and SHA-512 digests, SHA2_DIGEST_VALID and DIGEST_SWAP follow the register text. It also proves single-beat DMA transactions, the beat addresses (the full AxADDR at width 4; at widths 1 and 2 AxADDR[31:2] and the WSTRB byte lanes of each write beat, with AxADDR[1:0] logged only), the CHUNK_DONE rises and their hardware clear, and the DONE rise after the last B response.
 |<<sep_dma_irq_error_lock_rand_test,`sep_dma_irq_error_lock_rand_test`>>
 |3
 |no_cpu, real fuse sense
@@ -1345,7 +1345,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |no_cpu, skip-sense plusarg
 |Reset taps, DMA copy model, fault-latch and register retention model, `mpc_run_sync` observation tap
-|Proves that a `wdt_rst_ni` pulse keeps software reset requests, fault status and DMA and SPI state, also against a pending `SW_RESET_N` sequence and a running DMA copy. Proves that a cold reset clears the same state. The `dbg_rstb_i` sequence runs the same legs, and the run-request synchronizer leg shows that the pulse reaches the debug domain. Extends the open CPU-reset and scratch tests with the retention and overlap cells only. The watchdog registers are graded in `sep_timer_clock_contract_test`.
+|Proves that a `wdt_rst_ni` pulse keeps software reset requests, fault status and DMA and SPI state, also against a pending `SW_RESET_N` sequence and a running DMA copy. Proves that a cold reset clears the same state. On the full-CPU leaf a `dbg_rstb_i` pulse runs the same sequence, overlap and DMA legs (a running and an idle copy), and the run-request synchronizer leg shows that the pulse reaches the debug domain. Extends the open CPU-reset and scratch tests with the retention and overlap cells only. The watchdog registers are graded in `sep_timer_clock_contract_test`.
 
 |<<sep_sw_reset_isolation_matrix_test,`sep_sw_reset_isolation_matrix_test`>>
 |3
@@ -1363,7 +1363,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |no_cpu, VCS only
 |`test_en_i` and `scan_rst_ni` top-port drives (added hook), reset taps, scan-net walk
-|Proves that with `test_en_i` high `scan_rst_ni` replaces the SEP reset nets, that with `test_en_i` low it has no effect, that every clock-gater test pin and AXI cell test input follows `test_en_i`, and that `test_en_i` is independent of the `SECURE_TM` strap.
+|Proves that with `test_en_i` high `scan_rst_ni` replaces the SEP reset nets, that with `test_en_i` low it has no effect, and that `secure_tm_o` does not follow `test_en_i`. The clock-gater test pins and AXI cell test inputs are logged only (the `test_en_i` consumer set is a Blocked feature).
 
 |<<sep_cpu_reset_entry_test,`sep_cpu_reset_entry_test`>>
 |3
@@ -1386,8 +1386,8 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |<<sep_timer_clock_contract_test,`sep_timer_clock_contract_test`>>
 |3
 |no_cpu
-|LSU master, `clk_i`, `clk_ref_i` and `clk_wdt_i` drive, timer register model
-|Proves that `REFERENCE_COUNTER` advances at the `clk_ref_i` rate and restarts from zero after a cold reset, that the watchdog bark and bite follow their thresholds in order and `INTR_TEST` forces the bark, and that the wakeup threshold and count work across the 32-bit boundary. Proves that the watchdog registers answer on both lanes with their access type. Owns the watchdog threshold and `WDOG_REGWEN.regwen` contract across every reset event: `regwen` clears once, the thresholds keep their values over a `wdt_rst_ni` pulse, a `dbg_rstb_i` pulse, a software engine reset and a `sep_reset_n` override, and all return to their defaults only at a cold reset. Extends the open timer tests with those cells only.
+|LSU master, `clk_i`, `clk_ref_i` and `clk_wdt_i` drive, timer register model, `dbg_rst_l_probe_o` (observation tap)
+|Proves that `REFERENCE_COUNTER` advances at the `clk_ref_i` rate and restarts from zero after a cold reset, that the watchdog bark and bite follow their thresholds in order and `INTR_TEST` forces the bark, and that the wakeup threshold and count work across the 32-bit boundary. Proves that 11 watchdog registers, each on the lane that its offset selects, answer four patterns with their access type. Owns the watchdog threshold and `WDOG_REGWEN.regwen` contract across every reset event: `regwen` clears once, the thresholds keep their values over a `wdt_rst_ni` pulse, a `dbg_rstb_i` pulse, a software engine reset and a `sep_reset_n` override, and all return to their defaults only at a cold reset. Extends the open timer tests with those cells only.
 
 |<<sep_boot_rom_aperture_sweep_test,`sep_boot_rom_aperture_sweep_test`>>
 |3
@@ -1429,7 +1429,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |cpu
 |CPU firmware, CPU trace port, architectural instruction table
-|Proves that the core runs RV32IMC with Zba, Zbb, Zbc and Zbe enabled and that Zbs is illegal, that the 16 PMP address entries do not alias, that `mrac` grants no permission, and that the trace port matches `minstret`. Extends the open ROM and trace tests with those cells only.
+|Proves that the core executes M, C, Zba, Zbb and Zbc instructions and that Zbs is illegal (Zbe is enabled but not executed: the specification gives no Zbe encodings), that the 16 PMP address entries do not alias, that `mrac` grants no permission, and that the trace port matches `minstret`. Extends the open ROM and trace tests with those cells only.
 |===
 
 [[sep-vplan-summary-6]]
@@ -1986,18 +1986,27 @@ N * ln(N) / (d * reseed) regressions. The seed count of an entry stays small
 (3 or 4) and is not raised to fill cells; an entry that runs more seeds states
 the reason.
 
-*Testlist entries.* A Phase 3 test has one testlist entry. One entry on
-`lsu_stub_all_live` gives a Verilator leaf on that build and a VCS leaf on
-`--target default`, so a test that grades some checks on one simulator only
+*Testlist entries.* A Phase 3 test has one testlist entry. Each entry runs on
+its testlist target, so a test that grades some checks on one simulator only
 splits them inside its one entry, and the leaf selects them from the simulator.
+Full-CPU legs of a `no_cpu` test run in a dedicated full-CPU entry
+(`target = "default"`, `+sep_require_full_cpu`, which fails a leaf on a CPU-stub
+build), and the leaf selects them from the build it runs on. A VCS `--cov` run
+uses `--target default` for every entry.
 A second entry exists only when the run mode differs in a way that one entry
-cannot carry: a time-0 bench plusarg that the prestage hook cannot set, or a
-different run mode (`cpu` and `no_cpu`). No entry exists to pin a cell (no
+cannot carry: a time-0 bench plusarg that the prestage hook cannot set, a
+different run mode (`cpu` and `no_cpu`), or a full-CPU leg. No entry exists to pin a cell (no
 per-cell variant, no cell or field plusarg). The tests with a second entry are
 5.13 `sep_boot_release_terms_test`, whose entry
 `sep_boot_release_terms_test_smc_hold` adds the bench plusarg
 `+sep_smc_fuse_sense_hold`; 5.28 `sep_debug_master_target_matrix_test`, which
-has one `cpu` entry and one `no_cpu` entry of the one module; and 7.28
+has one `cpu` entry and one `no_cpu` entry
+(`sep_debug_master_target_matrix_test_sba`, on `target = "default"`) of the one
+module; 5.15 `sep_cpu_reset_retention_test`, 5.20
+`sep_secure_tm_strap_sampling_test` and 5.22 `sep_timer_clock_contract_test`,
+whose full-CPU entries `sep_cpu_reset_retention_test_dbg`,
+`sep_secure_tm_strap_sampling_test_dbg` and `sep_timer_clock_contract_test_dbg`
+run the `dbg_rstb_i` legs on VCS; and 7.28
 `sep_km_fault_inject_rand_test`, which has one entry for each of its two
 preloaded `rom_main` builds (HOST and HOST-UNREC, set by the t=0 plusarg
 `+km_rom_hex`). An extension leg runs in the testlist entry of its
@@ -2014,7 +2023,9 @@ testlist entry whose leaf drives the `sep_reset_n` override (on the bench pins
 TDR) or a per-IP hold `jtag_<ip>_rst_hold_i` adds `+sep_edn_jtag_reset_waive`.
 The plusarg turns off only the crypto EDN arbiter and adapter request-hold
 assertions (`tb/tb_top.sv`), and `tb_top` logs that it is set. The Phase 3
-entries that add it are 5.17, 5.20, 5.22 and 6.29.
+entries that add it are 5.17, 5.18, 5.20, 5.22 and 6.29. Entry 5.18 adds it
+because the scan reset asserts the same crypto engine resets without the
+isolation sequence.
 
 A test with two classes uses two of the three classes on different legs: a
 drawn configuration for one leg and a matrix point for another, or a directed
@@ -2697,7 +2708,7 @@ the test does.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Local address below `0x1_0000_0000` outside the SMC, SMU, AP and STEE windows
 |Where does an address such as `0x0000_0000` to `0x0FFF_FFFF` go? Local requests in that class are logged and not graded. No address separates a moved SMU aperture from a fixed one, so no leaf writes `SMU_GLOBAL_BASE_ADDR` or `SMU_REGION_SIZE`.
-|`sep_fabric_smc_route_test` (CHK-SMC-STATIC-ROW) grades the word above the SMC aperture top in configuration A (`0x4100_0000`): the output fabric returns an address outside every outbound window to the peripheral crossbar (`fabric.adoc`, output fabric), which answers DECERR at or above `0x4000_0000`, so the request answers DECERR with PR-OUT and PR-SMC silent.
+|`sep_fabric_smc_route_test` (CHK-SMC-STATIC-ROW) grades the word above the SMC aperture top in configuration A (`0x4100_0000`): the output fabric returns an address outside every outbound window to the peripheral crossbar (`fabric.adoc`, output fabric), which answers DECERR at or above `0x4000_0000`, so the request answers DECERR with PR-OUT and PR-SMC silent. `sep_debug_master_target_matrix_test` logs the debug-master response at the reset alias and at B - 8 after a move of `SEP_LOCAL_BASE_ADDR` as `OBS-ALIAS-OUTSIDE`.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Burst to a register region outside the crypto region
 |What does a burst to a register region outside the crypto region return? Bursts to register regions are not driven, so the burst-to-single conversion beyond two beats stays ungraded.
@@ -2749,7 +2760,7 @@ the test does.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Zero fill of unstrobed lanes with non-zero data
 |The specification states that unstrobed bytes are pushed as zero (`hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc`, "Paired FIFOs"). A check can fail only if a master drives non-zero data on the unstrobed lanes, and the open AXI VIP drives them to zero. Which master drives them?
-|`sep_mailbox_fifo_model_rand_test` pushes partial strobes and does not grade zero fill
+|`sep_mailbox_fifo_model_rand_test` pushes partial strobes and grades the popped data, but not the zero fill of unstrobed lanes that carry non-zero data
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Running priority, claim and complete, nesting
 |Does the PIC have a running-priority threshold, a claim and complete register, or a nesting rule? (`hw/sys/sep/doc/interrupts.adoc`, "Software Handling" says "and related registers"; `el2_pic.adoc` lists none.)
@@ -2900,8 +2911,8 @@ the test does.
 |Graded leg: Multi-chunk legs accept both readings and log `go_writes` (`sep_dma_transfer_matrix_rand_test`)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |AxSIZE of a narrow DMA transaction
-|Does the TL-UL to AXI4 path set AxSIZE to the TL-UL size (1, 2 or 4 bytes) or to the bus width with narrow strobes (`dma.adoc`, overview; `fabric.adoc`, Top Level AXI4)?
-|Graded leg: WSTRB popcount, read address step and beat count. AxSIZE is logged only
+|Does the TL-UL to AXI4 path set AxSIZE to the TL-UL size (1, 2 or 4 bytes) or to the bus width with narrow strobes, and which AxADDR[1:0] does a 1-byte or 2-byte transaction carry (`dma.adoc`, overview; `fabric.adoc`, Top Level AXI4)?
+|Graded leg: WSTRB popcount and lanes, AxADDR[31:2], read address step and beat count (`sep_dma_transfer_matrix_rand_test`). AxSIZE and the AxADDR[1:0] of a 1-byte or 2-byte transaction are logged only
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA STATUS clear against BUSY set
 |In which order do the clear of `STATUS.DONE` and the set of `STATUS.BUSY` happen at the start of a transfer, and the clear of `STATUS.SHA2_DIGEST_VALID` and the set of `STATUS.BUSY`? (`secure_dma.adoc`, STATUS, CONTROL.GO.)
@@ -3019,9 +3030,9 @@ the test does.
 |What does `dmi_active_o` indicate: a per-access activity pulse, or a debug-module-active level such as `dmactive`? (`hw/sys/sep/doc/port_table.adoc` gives only "DMI active indicator".)
 |`sep_debug_master_target_matrix_test` does not grade it
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
-|Isolated-read data placement
-|For 1-, 2- and 8-byte reads in an isolated window, which lane or bytes carry 0x1501A7ED? (`hw/sys/sep/doc/reset_controller.adoc` gives the value only.)
-|`sep_sw_reset_isolation_matrix_test` grades SLVERR for every size and the data on 4-byte reads only. `sep_cpu_reset_retention_test` grades a 4-byte isolated read of HMAC (SLVERR, 0x1501A7ED)
+|`test_en_i` consumers
+|Which clock-gater test ports and AXI cell test inputs must `test_en_i` reach? The design ties some of them to 0. (`hw/sys/sep/doc/port_table.adoc` states only that `test_en_i` drives clock-gater test ports and AXI cell test inputs, and names none of them.)
+|`sep_scan_reset_override_test` logs the hierarchy walk as `OBS-TEST-EN-PINS` and `OBS-STRAP-PINS` and grades no test pin
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`pmpaddr` implementation
 |What is the implemented `pmpaddr` width and granularity? (`hw/sys/sep/doc/cpu.adoc`, Processor Core, states only 16 entries with Smepmp.)
@@ -3896,8 +3907,8 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>; <<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Secure scan chain command admission
 |-
-|PERMANENT-HOLE (Memory, boot, reset); ADD-PORT (eFuse, lifecycle)
-|Command admission on the secure scan chain belongs to the adopter DFT integration (`hw/sys/sep/doc/test_mode.adoc`, Protection While Active). The RTL simulation has no scan chain. Needs a port that reports the admitted command class and `secure_tm` at the secure-chain DFT controller.
+|PERMANENT-HOLE
+|Command admission on the secure scan chain belongs to the adopter DFT integration (`hw/sys/sep/doc/test_mode.adoc`, Protection While Active). The RTL simulation has no scan chain, so no OCAH port can report the admitted command class or `secure_tm`.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`SECURE_TM` protection outputs
 |-
@@ -4011,8 +4022,8 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Secure chain test and dump command admission
 |-
-|ADD-PORT
-|Needs the same port as secure scan chain command admission.
+|PERMANENT-HOLE
+|Admission belongs to the adopter DFT integration (`hw/sys/sep/doc/test_mode.adoc`, Protection While Active). The RTL simulation has no scan chain, so no OCAH port can report the command class, as for secure scan chain command admission.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |General scan chain admission
 |-
@@ -4041,8 +4052,8 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Scan test versus dump operation class
 |-
-|ADD-PORT
-|Needs the same port as secure scan chain command admission.
+|PERMANENT-HOLE
+|Admission belongs to the adopter DFT integration (`hw/sys/sep/doc/test_mode.adoc`, Protection While Active). The RTL simulation has no scan chain, so no OCAH port can report the command class, as for secure scan chain command admission.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Program and read commands that reach the bank port after the guard
 |The command at `efuse_shim_command_req_o` after the guard
@@ -4375,7 +4386,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`ifu_req` and `ifu_rsp`
 |Read-only tap
 |The post-demux IFU port: fetch targets and DECERR answer.
-|`sep_cpu_reset_entry_test` (CHK-NO-EARLY-FETCH), `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-DECERR, CHK-IFU-NEVER)
+|`sep_cpu_reset_entry_test` (CHK-NO-EARLY-FETCH, and the first fetch address of CHK-RSTVEC-DEFAULT, CHK-RSTVEC, CHK-RSTVEC-PERSIST and CHK-RSTVEC-TAPRST), `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-DECERR, CHK-IFU-NEVER)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`lsu_rom_req`, `lsu_xbar_req` and `lsu_xbar_rsp`
 |Read-only tap
@@ -4384,13 +4395,23 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`xbar_tcm_req` and `cpu_tcm_axi_resp`
 |Read-only tap
-|The crossbar `cpu_tcm` target: the DMA path into the TCM, used as a control.
-|`sep_cpu_demux_unmapped_fetch_test` (CHK-CORE-PATH-XBAR)
+|The crossbar `cpu_tcm` target: the DMA path into the TCM, used as a control and as the response anchor of a DMA read of a TCM word.
+|`sep_cpu_demux_unmapped_fetch_test` (CHK-CORE-PATH-XBAR), `sep_tcm_dma_aperture_ecc_test` (CHK-TCM-DBE)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`dbg_sb_req` and `dbg_sb_rsp`
 |Read-only tap
-|The system-bus master port of the debug module: ID bits and beat shape.
-|`sep_debug_master_target_matrix_test` (CHK-DBG-SBA)
+|The system-bus master port of the debug module: ID bits, AxSIZE, AxLEN, W strobes and beat shape.
+|`sep_debug_master_target_matrix_test` (CHK-DBG-SBA), `sep_cpu_reset_entry_test` (CHK-WDT-STORE-RESP)
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|PR-DBG-IN and PR-DBG-OUT
+|Read-only tap
+|The debug-module system-bus request at the input and at the output of the debug local alias remap (`u_dbg_local_alias_remap`): AW and AR valid, ready and address. Tied to 0 on the CPU-stub build.
+|`sep_debug_master_target_matrix_test` (CHK-DBG-ALIAS-MOVE, CHK-DBG-ALIAS-OLD, CHK-DBG-ALIAS-BELOW)
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|Isolate-stage slave-side taps
+|Read-only tap
+|The accepted transactions and the responses at the slave side of each of the 14 isolate stages of the crypto AXI interconnect (`iso_slv_{aw,ar,b,r}_hs_probe_o`, `iso_slv_{b,r}resp_probe_o`).
+|`sep_sw_reset_isolation_matrix_test` (CHK-ISO-DRAIN)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`dmi_uncore_en_o`, `dmi_uncore_wr_en_o`, `jtag_tdo_o`
 |Read-only tap
@@ -4400,7 +4421,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Clock-gater test pins and AXI cell test inputs
 |Read-only tap
 |The test pins found by a hierarchy walk.
-|`sep_scan_reset_override_test` (CHK-TEST-EN-PINS)
+|`sep_scan_reset_override_test` (logged as `OBS-TEST-EN-PINS` and `OBS-STRAP-PINS`, not graded)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Memory, boot and reset FCOV sampler nets
 |Sampler taps
@@ -4569,13 +4590,19 @@ use it" names the entries whose checks need the hook.
 |Top-port drive
 |Debug-module stimulus. `tb_top.sv` ties both to 0.
 |`dmi_core_enable_i`, `dmi_uncore_enable_i`
-|`sep_debug_master_target_matrix_test`
+|`sep_debug_master_target_matrix_test`, `sep_cpu_reset_entry_test` (CHK-WDT-STORE-RESP)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`jtag_tck_i`, `jtag_tms_i`, `jtag_tdi_i`, `jtag_trst_ni` as bench inputs and a DTM shifter
 |Top-port drive
 |The reset-vector TDR, the TAP reset and the debug module. `tb_top.sv` keeps the pins in internal registers.
 |`jtag_tck_i`, `jtag_tms_i`, `jtag_tdi_i`, `jtag_trst_ni`
-|`sep_cpu_reset_entry_test`, `sep_debug_master_target_matrix_test`
+|`sep_cpu_reset_entry_test`, `sep_debug_master_target_matrix_test`, `sep_boot_rom_aperture_sweep_test` and `sep_cpu_demux_unmapped_fetch_test` (the power-on `jtag_trst_ni` pulse)
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|`+sep_axi_wrap_len1_inject`
+|Error inject
+|Lets a master drive a WRAP burst with AxLEN = 0, which AXI4 does not allow; the `ocah_axi_sva` checkers track it as a single-beat burst.
+|The `m_axi` and `s_axi` request of the bench masters
+|`sep_sram_axi_shape_matrix_test` (CHK-SRAM-SINGLE)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |TCM bit-flip hook
 |Error inject
@@ -4623,7 +4650,7 @@ use it" names the entries whose checks need the hook.
 |Existing bench hook
 |Turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override (<<sep-vplan-phase3-edn-waiver>>).
 |The assertion control of `tb_top`
-|`sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`
+|`sep_ip_reset_override_matrix_test`, `sep_scan_reset_override_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`jtag_id_i` drive
 |Top-port drive

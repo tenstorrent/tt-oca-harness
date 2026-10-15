@@ -155,14 +155,21 @@ class _RxResponder(OcahSpiFlash):
     """``OcahSpiFlash`` that streams its memory on every frame that starts with READ.
 
     A frame shorter than the opcode byte (a short dummy segment, a quad segment
-    of one byte) ends quietly: it is recorded as a short frame.
+    of one byte) ends quietly: it is recorded as a short frame. Any other
+    exception of a frame is kept in ``faults``; the leaf fails on it after
+    ``stop``, because the base engine only logs it.
     """
+
+    faults: list[BaseException]
 
     async def _handle_transaction(self) -> None:
         try:
             await super()._handle_transaction()
         except OcahSpiFlashError:
             self._log_transaction(0, 0, b"", b"", ok=False, reason="short_frame")
+        except Exception as exc:
+            self.faults.append(exc)
+            raise
 
 
 async def _absorb(opcode, addr, payload):
@@ -653,6 +660,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             addr_bytes=0,
             name="sep_spi_rx_responder",
         )
+        flash.faults = []
         flash.preload(self.responder)
         for op in range(256):
             if op != RESPONDER_READ:
@@ -701,6 +709,11 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             close_graded_window()
             await flash.stop()
 
+        if flash.faults:
+            raise AssertionError(
+                f"MONITOR-LIFE FAIL seed={self.seed} responder frame raised "
+                f"{len(flash.faults)} time(s): {flash.faults[0]!r}"
+            )
         frames = flash.get_transactions()
         self.logger.info(
             "OBS-SPI-RESPONDER seed=%d frames=%d read_frames=%d bytes_out=%d",
@@ -712,4 +725,4 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         missing = [c for c in self.required_evidence if c not in self.ran]
         if missing:
             raise AssertionError(f"CTRL-MISSING seed={self.seed} checks not run: {missing}")
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, len(self.ran))
+        self.result_pass(TEST, self.seed, len(self.ran))

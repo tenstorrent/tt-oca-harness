@@ -628,7 +628,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             await self.busy.stop()
             if getattr(self, "irq", None) is not None:
                 await self.irq.stop()
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, self.k)
+        self.result_pass(TEST, self.seed, self.k)
 
     async def _setup(self) -> None:
         """Step 2: wide range, ADDR_SPACE_ID, ADDR_HI, STATUS clear, chunk-done interrupt."""

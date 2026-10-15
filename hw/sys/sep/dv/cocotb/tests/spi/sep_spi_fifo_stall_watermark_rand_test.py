@@ -327,7 +327,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         qd.update(await self._rx_full_idle_leg())
         self._flag_pairs(qd)
         self._gate(False)
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, 5)
+        self.result_pass(TEST, self.seed, 5)
 
     # ---- step 3 -------------------------------------------------------
     async def _find_tx_depth(self) -> int:
