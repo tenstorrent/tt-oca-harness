@@ -171,15 +171,36 @@ class SepResetLandWatch:
     a write) shows valid and ready high, so the DUT takes that beat on edge
     ``anchor + 1``. ``resp`` is the cycle on which the probe ID's R or B beat
     shows valid and ready high, taken on edge ``resp + 1``.
+
+    A W beat carries no ID, so the watch takes the W of the probe write by its
+    content and its place: a single last beat whose strobe is the 32-bit lane of
+    ``addr`` and whose lane data is ``value``, after the W beats of every other
+    AW that the pins showed before the probe AW (AXI4 write data follows AW
+    order). The probe AW matches ``PROBE_ID`` and ``addr``. A W beat of another
+    write in flight therefore does not move ``anchor``.
     """
 
     op: str
+    addr: int | None = None
+    value: int | None = None
     anchor: int | None = None
     resp: int | None = None
     resp_code: int | None = None
     aw_at: int | None = None
     w_at: int | None = None
+    aw_other: int = 0
+    w_other: int = 0
     stale: list[tuple[str, int]] = field(default_factory=list)
+
+    def _probe_w(self, top) -> bool:
+        """The W beat on the pins is the probe write beat (content; place checked by the caller)."""
+        if self.addr is None or self.value is None:
+            raise ValueError("a write watch needs the probe address and value")
+        lane = (self.addr >> 2) & 1
+        strb, data = _id(top.s_axi_wstrb), _id(top.s_axi_wdata)
+        if strb is None or data is None or not _hi(top.s_axi_wlast):
+            return False
+        return strb == 0xF << (4 * lane) and (data >> (32 * lane)) & 0xFFFF_FFFF == self.value
 
     def sample(self, cycle: int) -> None:
         top = cocotb.top
@@ -196,15 +217,16 @@ class SepResetLandWatch:
                     self.resp = cycle
                     self.resp_code = _id(top.s_axi_rresp)
         else:
-            if (
-                _hi(top.s_axi_awvalid)
-                and _hi(top.s_axi_awready)
-                and _id(top.s_axi_awid) == PROBE_ID
-            ):
-                if self.aw_at is None:
+            if _hi(top.s_axi_awvalid) and _hi(top.s_axi_awready) and self.aw_at is None:
+                if _id(top.s_axi_awid) == PROBE_ID and _id(top.s_axi_awaddr) == self.addr:
                     self.aw_at = cycle
+                else:
+                    self.aw_other += 1
             if _hi(top.s_axi_wvalid) and _hi(top.s_axi_wready) and self.w_at is None:
-                self.w_at = cycle
+                if self.w_other >= self.aw_other and self._probe_w(top):
+                    self.w_at = cycle
+                elif _hi(top.s_axi_wlast):
+                    self.w_other += 1
             if self.anchor is None and self.aw_at is not None and self.w_at is not None:
                 self.anchor = max(self.aw_at, self.w_at)
             if _hi(top.s_axi_bvalid) and _hi(top.s_axi_bready) and _id(top.s_axi_bid) == PROBE_ID:
@@ -270,7 +292,7 @@ class SepResetProbeDriver(SepAxiRegDriver):
         ``rst_ni`` there.
         """
         top = cocotb.top
-        watch = SepResetLandWatch(op)
+        watch = SepResetLandWatch(op, addr=probe.addr, value=value & 0xFFFF_FFFF)
         ev = self.issue(probe, op, value)
         for cycle in range(1, PROBE_TIMEOUT_CYCLES + 1):
             await RisingEdge(top.clk_i)

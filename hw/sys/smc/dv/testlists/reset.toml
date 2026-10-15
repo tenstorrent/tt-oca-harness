@@ -135,6 +135,16 @@ timeout_sec = 1800
 tags = ["ci", "reset", "jtag_reset_ctrl"]
 run_modes = ["smoke"]
 
+# BFM: the fuse, cold and per-subsystem jtag_reset_ctrl_i override muxes
+# smc_jtag_reset_ctrl_test leaves idle.
+[[tests]]
+name = "smc_jtag_reset_ovrd_walk_test"
+module = "smc_jtag_reset_ovrd_walk_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "jtag_reset_ctrl"]
+run_modes = ["smoke"]
+
 # BFM: FLR cool × rst_cold_ni (cold wins). Not rst_cool_ni / BMC Force.
 [[tests]]
 name = "smc_cool_reset_x_cold_reset_test"
@@ -200,6 +210,7 @@ tests = [
     "smc_cool_reset_from_pcie_test",
     "smc_ss_reset_complete_test",
     "smc_jtag_reset_ctrl_test",
+    "smc_jtag_reset_ovrd_walk_test",
     "smc_cool_reset_x_cold_reset_test",
 ]
 

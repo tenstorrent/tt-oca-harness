@@ -8,7 +8,8 @@
 // run seed and patches them into g_prm. Each leg starts with an M line
 // (sep_console_rec.h); each check prints one CHK line:
 //
-//   CHK-RESET   every PIC field reads 0 before the first PIC write
+//   CHK-RESET   every PIC field reads its RDL reset value before the first PIC
+//               write
 //   CHK-HOLE    a hole or past-extent access reads 0, traps nothing and lands in
 //               no armed decoded register
 //   CHK-RW      each implemented field holds the written value
@@ -66,6 +67,15 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define GW_BM (EL2_PIC__MEIGWCTRL__POLARITY_bm | EL2_PIC__MEIGWCTRL__IRQ_TYPE_bm)
 #define GWCLR_BM EL2_PIC__MEIGWCLR__CLEAR_bm
 #define CFG_BM EL2_PIC__MPICCFG__PRIORD_bm
+// Reset value of each register, from the generated RDL field resets.
+#define MEIPL_RST (EL2_PIC__MEIPL__INTPRIORITY_reset << EL2_PIC__MEIPL__INTPRIORITY_bp)
+#define MEIE_RST (EL2_PIC__MEIE__INTEN_reset << EL2_PIC__MEIE__INTEN_bp)
+#define GW_RST \
+    ((EL2_PIC__MEIGWCTRL__POLARITY_reset << EL2_PIC__MEIGWCTRL__POLARITY_bp) | \
+     (EL2_PIC__MEIGWCTRL__IRQ_TYPE_reset << EL2_PIC__MEIGWCTRL__IRQ_TYPE_bp))
+#define GWCLR_RST (EL2_PIC__MEIGWCLR__CLEAR_reset << EL2_PIC__MEIGWCLR__CLEAR_bp)
+#define CFG_RST (EL2_PIC__MPICCFG__PRIORD_reset << EL2_PIC__MPICCFG__PRIORD_bp)
+#define MEIP_RST (EL2_PIC__MEIP__INTPEND_reset << EL2_PIC__MEIP__INTPEND_bp)
 // meigwctrl cells: level active low (polarity 1, irq_type 0) and edge active
 // high (polarity 0, irq_type 1).
 #define GW_LEVEL_LOW EL2_PIC__MEIGWCTRL__POLARITY_bm
@@ -74,7 +84,6 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define MBOX0_OUT_READ_DATA SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR
 #define MBOX0_OUT_STATUS SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR
 #define SRC_CTRL 1u
-#define CSR_MEIHAP 0xFC8
 
 static const char *const k_grp[3] = {"meipl", "meie", "meigwctrl"};
 
@@ -228,10 +237,14 @@ void __attribute__((interrupt("machine"))) ctrl_isr(void) {
     }
 }
 
-static void rd_field(uint32_t addr, uint32_t mask, uint32_t *val, uint32_t *rsvd) {
+// Reads one register: ORs its field bits into *val and its other bits into
+// *rsvd, and counts it in *bad when its field bits differ from exp.
+static void rd_field(uint32_t addr, uint32_t mask, uint32_t exp, uint32_t *val, uint32_t *rsvd,
+                     uint32_t *bad) {
     uint32_t r = pic_rd32(addr);
     *val |= r & mask;
     *rsvd |= r & ~mask;
+    *bad += (r & mask) != (exp & mask);
 }
 
 static void chk_end(int pass) {
@@ -244,46 +257,55 @@ static void chk_end(int pass) {
 // ---- step 2: reset reads ----
 static void leg_reset(uint32_t ne) {
     static const uint32_t gmask[4] = {MEIPL_BM, MEIE_BM, GW_BM, GWCLR_BM};
+    static const uint32_t gexp[4] = {MEIPL_RST, MEIE_RST, GW_RST, GWCLR_RST};
     static const char *const gname[4] = {"meipl", "meie", "meigwctrl", "meigwclr"};
-    uint32_t val[4] = {0, 0, 0, 0}, rsvd[4] = {0, 0, 0, 0};
+    uint32_t val[4] = {0, 0, 0, 0}, rsvd[4] = {0, 0, 0, 0}, bad[4] = {0, 0, 0, 0};
     for (uint32_t g = 0; g < 4u; g++) {
         for (uint32_t i = 0; i < ne; i++) {
             uint32_t n = g_prm[P_ENT + i];
             uint32_t a =
                 g == 0u ? a_meipl(n) : (g == 1u ? a_meie(n) : (g == 2u ? a_gw(n) : a_gwclr(n)));
-            rd_field(a, gmask[g], &val[g], &rsvd[g]);
+            rd_field(a, gmask[g], gexp[g], &val[g], &rsvd[g], &bad[g]);
         }
     }
-    uint32_t cval = 0, crsvd = 0;
-    rd_field(SEP_TOP_PIC_MPICCFG_BASE_ADDR, CFG_BM, &cval, &crsvd);
+    uint32_t cval = 0, crsvd = 0, cbad = 0;
+    rd_field(SEP_TOP_PIC_MPICCFG_BASE_ADDR, CFG_BM, CFG_RST, &cval, &crsvd, &cbad);
     uint32_t meip[8];
-    uint32_t pval = 0;
+    uint32_t pval = 0, pbad = 0;
     for (uint32_t w = 0; w < 8u; w++) {
         meip[w] = pic_read_meip(w);
-        pval |= meip[w] & ~g_prm[P_IDLE + w];
+        uint32_t graded = EL2_PIC__MEIP__INTPEND_bm & ~g_prm[P_IDLE + w];
+        pval |= meip[w] & graded;
+        pbad += (meip[w] & graded) != (MEIP_RST & graded);
     }
     for (uint32_t g = 0; g < 4u; g++) {
-        rec_chk("RESET", val[g] == 0u);
+        rec_chk("RESET", bad[g] == 0u);
         rec_str("group", gname[g]);
         rec_num("n", ne);
+        rec_num("bad", bad[g]);
+        rec_hex("exp", gexp[g]);
         rec_hex("val", val[g]);
         rec_hex("rsvd", rsvd[g]);
         rec_hex("mask", gmask[g]);
-        chk_end(val[g] == 0u);
+        chk_end(bad[g] == 0u);
     }
-    rec_chk("RESET", cval == 0u);
+    rec_chk("RESET", cbad == 0u);
     rec_str("group", "mpiccfg");
     rec_num("n", 1u);
+    rec_num("bad", cbad);
+    rec_hex("exp", CFG_RST);
     rec_hex("val", cval);
     rec_hex("rsvd", crsvd);
     rec_hex("mask", CFG_BM);
-    chk_end(cval == 0u);
-    rec_chk("RESET", pval == 0u);
+    chk_end(cbad == 0u);
+    rec_chk("RESET", pbad == 0u);
     rec_str("group", "meip");
     rec_num("n", 8u);
+    rec_num("bad", pbad);
+    rec_hex("exp", MEIP_RST);
     rec_hex("val", pval);
     rec_hex("idle_masked", 1u);
-    chk_end(pval == 0u);
+    chk_end(pbad == 0u);
     rec_obs("IDLE-UNSTATED");
     rec_num("src13", (meip[0] >> 13) & 1u);
     rec_num("src15", (meip[0] >> 15) & 1u);
@@ -371,10 +393,13 @@ static void leg_hole(void) {
 }
 
 // ---- step 4: array corner ----
+// A cell with ``with_inv`` first wrote ``mask`` and read it back as ``raw_inv``; the
+// cell passes only when that read-back holds every implemented bit, so a field that
+// ignores writes cannot pass a drawn 0 by reading its reset value.
 static void rw_line(const char *grp, uint32_t src, uint32_t wr, uint32_t raw, uint32_t mask,
-                    int with_src) {
+                    int with_src, int with_inv, uint32_t raw_inv) {
     uint32_t rd = raw & mask;
-    int pass = rd == wr;
+    int pass = rd == wr && (!with_inv || (raw_inv & mask) == mask);
     rec_chk("RW", pass);
     rec_str("group", grp);
     if (with_src) {
@@ -385,6 +410,10 @@ static void rw_line(const char *grp, uint32_t src, uint32_t wr, uint32_t raw, ui
     rec_hex("raw", raw);
     rec_hex("rsvd", raw & ~mask);
     rec_hex("mask", mask);
+    if (with_inv) {
+        rec_hex("inv", mask);
+        rec_hex("raw_inv", raw_inv);
+    }
     chk_end(pass);
 }
 
@@ -396,23 +425,26 @@ static void leg_array(uint32_t ne) {
             uint32_t g = (go >> (4u * s)) & 0xFu;
             uint32_t m = m_grp(g);
             uint32_t v = v_grp(g, i) & m;
-            // The field holds 0 here; a drawn 0 first takes the inverse, so the
-            // read-back always differs from the value before the write.
-            if (v == 0u) {
+            // The field holds 0 here; a drawn 0 first takes the inverse and reads
+            // it back, so each graded read-back differs from the value before it.
+            int inv = v == 0u;
+            uint32_t raw_inv = 0u;
+            if (inv) {
                 pic_wr32(a_grp(g, n), m);
+                raw_inv = pic_rd32(a_grp(g, n));
             }
             pic_wr32(a_grp(g, n), v);
             uint32_t raw = pic_rd32(a_grp(g, n));
-            rw_line(k_grp[g], n, v, raw, m, 1);
+            rw_line(k_grp[g], n, v, raw, m, 1, inv, raw_inv);
         }
         pic_wr32(a_meipl(n), 0u);
         pic_wr32(a_meie(n), 0u);
         pic_wr32(a_gw(n), 0u);
     }
     pic_wr32(SEP_TOP_PIC_MPICCFG_BASE_ADDR, 1u);
-    rw_line("mpiccfg", 0u, 1u, pic_read_mpiccfg(), CFG_BM, 0);
+    rw_line("mpiccfg", 0u, 1u, pic_read_mpiccfg(), CFG_BM, 0, 0, 0u);
     pic_wr32(SEP_TOP_PIC_MPICCFG_BASE_ADDR, 0u);
-    rw_line("mpiccfg", 0u, 0u, pic_read_mpiccfg(), CFG_BM, 0);
+    rw_line("mpiccfg", 0u, 0u, pic_read_mpiccfg(), CFG_BM, 0, 0, 0u);
 }
 
 // ---- step 5: entry 0 corner ----

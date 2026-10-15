@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""An external access through the inbound port to any PIC address answers DECERR and changes no PIC register.
+"""An external access through the inbound port to each sampled PIC address answers DECERR and changes no PIC register.
 
 Firmware ``pic_external_access_refuse_test`` arms distinct non-zero values in
 the PIC (``mpiccfg.priord`` 1; ``meipl`` 7, 9, 11, ``meie`` 1 and
@@ -29,14 +29,19 @@ Checks:
                   bit 0 (``lcc_feat_ctrl_probe_o``, ``SEP_DBG``) is 0.
 * CHK-CPU-READ    (control, firmware) every armed register reads non-zero and
                   ``meip[0]`` bit 1 reads 1 before the external accesses.
-* CHK-DECERR      every external read and write to a PIC address answers
-                  DECERR in both regimes; in regime B the ``PIC-WINDOW``
+* CHK-DECERR      every external read and write to a sampled PIC target
+                  answers DECERR in both regimes; in regime B the ``PIC-WINDOW``
                   read-back of both window entries equals the programmed
                   START_ADDR, END_ADDR and FILTER_CONFIG field bits.
 * CHK-NO-LEAK     an external read of an armed register does not return the
                   armed value.
 * CHK-LANDED      (firmware) after the last access every armed register reads
-                  its armed value and ``meip[0]`` bit 1 still reads 1.
+                  its armed value, ``meip[0]`` bit 1 still reads 1, and every
+                  PIC register (``mpiccfg``, every ``meipl``, ``meie``,
+                  ``meigwctrl`` and ``meigwclr`` entry and every ``meip`` word,
+                  the excluded idle bits masked) reads the value the firmware
+                  read before the first external access. A write that a bad
+                  decode or a hole alias lands in any PIC register fails it.
 * CHK-WINDOW-LIVE (control) the completion word to the open mailbox 7 window
                   answers OKAY in both regimes.
 * CHK-WINDOW      the completion of the last PIC access, then the second
@@ -61,7 +66,7 @@ from env.sep_axi_monitor import SepAxiMonitor
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_decode_resp import sep_map_row
 from env.sep_dtcm_param_patch import patch_param_block
-from env.sep_efuse_image import LC_WORD_IDX
+from env.sep_efuse_image import LC_FIELD_MASK, LC_RAW_WIDTH, LC_WORD_IDX, lc_encode
 from env.sep_fw_console import SepFwConsole, parse_kv
 from env.sep_lcc_golden import LC_PROD, lc_state_name
 from env.sep_pic_map import EXCLUDED_IDLE_SOURCES, meip_idle_mask_words, meip_words
@@ -104,6 +109,8 @@ MEIGWCLR0 = sym("PIC_MEIGWCLR_0__REG_ADDR")
 N_ENTRY = sep_addr_define("SEP_TOP_PIC_MEIPL_NUM")
 N_MEIP = sep_addr_define("SEP_TOP_PIC_MEIP_NUM")
 WORD = sym("PIC_MEIPL_1__REG_ADDR") - MEIPL0
+# The parameter block carries one idle mask word per meip word (firmware P_IDLE).
+assert len(meip_idle_mask_words()) == N_MEIP
 for _arr in ("MEIE", "MEIGWCTRL", "MEIGWCLR"):
     assert sep_addr_define(f"SEP_TOP_PIC_{_arr}_NUM") == N_ENTRY, _arr
 for _arr in ("MEIP", "MEIE", "MEIGWCTRL", "MEIGWCLR"):
@@ -242,7 +249,7 @@ class RefuseCfg:
             self.past,
             *packed,
             self.rw_first,
-            meip_idle_mask_words()[0],
+            *meip_idle_mask_words(),
             CW["A"],
             CW["B"],
             PIC_END,
@@ -261,7 +268,7 @@ class Access:
 
 @pyuvm.test()
 class sep_pic_external_access_refuse_test(sep_base_test):
-    """External reads and writes to every PIC target answer DECERR and land nowhere."""
+    """External reads and writes to each sampled PIC target answer DECERR and land nowhere."""
 
     required_evidence = (
         "CHK-DBG-OFF",
@@ -351,16 +358,25 @@ class sep_pic_external_access_refuse_test(sep_base_test):
     def _check_dbg_off(self) -> None:
         """CHK-DBG-OFF: the DUT holds PROD with SEP_DBG off before the regime A accesses."""
         dut = self.dut
-        lc_mask = 0xF << (32 * LC_WORD_IDX)
-        lc = self.rd_known(dut.efuse_shadow_probe_o, lc_mask) >> (32 * LC_WORD_IDX)
+        # The whole differential LC_STATE field ({~raw, raw}), from the generated
+        # field mask: a wrong upper half is not PROD.
+        lc_lsb = (LC_FIELD_MASK & -LC_FIELD_MASK).bit_length() - 1
+        lc_shift = 32 * LC_WORD_IDX + lc_lsb
+        lc_field_mask = LC_FIELD_MASK >> lc_lsb
+        lc_field = (
+            self.rd_known(dut.efuse_shadow_probe_o, lc_field_mask << lc_shift) >> lc_shift
+        ) & lc_field_mask
+        lc = lc_field & ((1 << LC_RAW_WIDTH) - 1)
+        lc_prod = lc_encode(LC_PROD)
         sec_dis = self.rd_known(dut.lcc_security_disable_probe_o) & 0x1
         feat = self.rd_known(dut.lcc_feat_ctrl_probe_o)
         sep_dbg = feat & 0x1
         line = (
-            f"seed={self.rc.seed} lc={lc_state_name(lc)} lc_raw=0x{lc:x} sec_dis={sec_dis} "
+            f"seed={self.rc.seed} lc={lc_state_name(lc)} lc_raw=0x{lc:x} "
+            f"lc_field=0x{lc_field:x}/0x{lc_prod:x} sec_dis={sec_dis} "
             f"feat_ctrl=0x{feat:016x} sep_debug={sep_dbg} clk={self.con.clk}"
         )
-        assert lc == LC_PROD and sec_dis == 0 and sep_dbg == 0, f"CHK-DBG-OFF FAIL {line}"
+        assert lc_field == lc_prod and sec_dis == 0 and sep_dbg == 0, f"CHK-DBG-OFF FAIL {line}"
         self.logger.info("CHK-DBG-OFF PASS %s", line)
         self.dbg_off_checked = True
 
@@ -526,4 +542,4 @@ class sep_pic_external_access_refuse_test(sep_base_test):
         self.con.relay_chk()
         self.con.require_counts({"CHK-CPU-READ": 1, "CHK-LANDED": 1})
         self._grade()
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", _TEST, c.seed, 7)
+        self.result_pass(_TEST, c.seed, 7)

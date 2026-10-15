@@ -269,6 +269,7 @@ feature rows.
 |`smc_filter_config_field_sweep_test` |Every FILTER_CONFIG field cycled to all-ones and all-zeros on all 32 entries, then the write-once lock set and the locked entry shown to refuse further configuration writes with DECERR.
 |`smc_filter_lock_window_test` |Two FILTER_CONFIG writes queued directly behind the write that locks filter 15 of each bank are answered DECERR and the entry reads its reset word plus `locked`.
 |`smc_filter_region_span_test` |A filter region spanning two granules on every outbound entry, with one of them enabled and enforced against a DMA copy.
+|`smc_filter_remap_bitwalk_test` |A one and a zero walked across every bit of START_ADDR and END_ADDR on all 32 filter entries and of REGION_START and REGION_END on all 8 alias-remap regions, each register read back after every write, and every mailbox aperture driven with a walking-one byte strobe and its share of the 255 non-empty strobe patterns, the paired READ_DATA returning the strobed bytes alone.
 |`smc_dma_decouple_rw_test` |DMA transfers with CONFIG.DECOUPLE_RW set -- a scatter and a gather -- and two descriptors queued back to back.
 |`smc_gpio_data_ctrl_field_test` |Each software-writable DATA_CTRL field of one idle GPIO instance driven on its own, with the pad's output enable measured at 0 after every write.
 |`smc_alias_remap_region_attrs_test` |One alias-remap region marked cacheable and valid over an empty window, with both bits held across a write of the other half of the register.
@@ -316,6 +317,7 @@ feature rows.
 |`smc_irq_during_powergood_glitch_test` |SMC OSS PyUVM IRQ-during-powergood-glitch test.
 |`smc_jtag_boot_stall_sanity_test` |JTAG boot-stall override clears sticky while pad 57 is held.
 |`smc_jtag_reset_ctrl_test` |Struct pin mux; not boot-stall JTAG, FLR, or rst_cool_ni proxy.
+|`smc_jtag_reset_ovrd_walk_test` |Every override mux smc_jtag_reset_ctrl_test leaves idle, through its reset pin.
 |`smc_jtag_reset_proxy_test` |Run JTAG-adjacent CSR health checks across an observed cool reset, plus CPU JTAG pin checks.
 |`smc_mixed_boot_stall_test` |GPIO gates fuse_reset; JTAG ovrd releases; val=1 cannot re-stall.
 |`smc_multi_reset_csr_persistence_test` |Run CSR access/persistence checks around a public cool reset pulse.
@@ -402,7 +404,7 @@ feature rows.
 |`smc_dfd_trace_vlt_format_test` |The trace path run in XOR plus VLT compression on a moving payload and two frame lengths.
 |`smc_dfd_trace_xor_format_test` |The trace path run in XOR compression on a moving payload and two frame lengths.
 |`smc_dfd_trace_sink_window_test` |The trace stream blocked at the funnel, released, and taken into two sink window sizes.
-|`smc_dfd_cla_event_type_sweep_test` |Every event index driven into all three event selectors of each of node 0's event-action pairs.
+|`smc_dfd_cla_event_type_sweep_test` |Every event index driven into all three event selectors of every event-action pair of every node, with the node walk reaching all four nodes.
 |`smc_dfd_trace_sink_readout_test` |The captured trace read back out of the sink RAM, with both sink modes and the deactivation edge.
 |`smc_dfd_sink_mmr_sweep_test` |Every register of the DST, sink and funnel MMR sub-blocks written against its generated RDL contract and restored.
 |`smc_dfd_ro_mmr_write_test` |Every read-only DFD MMR written, with the write required to be ignored.
@@ -454,6 +456,7 @@ feature rows.
 |`smc_external_window_pad_ctrl_decode_test` |The five mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
 |`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL full sweep over every external GPIO_CTRL entry (65).
 |`smc_gpio_filter_access_sep_test` |GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
+|`smc_gpio_intf_data_ctrl_write_sweep_test` |Every software-writable DATA_CTRL field written on all 65 GPIO_INTF instances, with the pad driven both ways through all four interrupt types and the instance's own interrupt bit and `pad2core` checked.
 |`smc_gpio_intf_full_sweep_test` |GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
 |`smc_gpio_intf_regblock_sweep_test` |GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER cycled to all-ones and all-zeros on all 65 instances, with an AxPROT allow and deny leg on each.
 |`smc_gpio_irq_active_test` |Run GPIO CSR plus IRQ-control decode precheck.
@@ -3275,6 +3278,50 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 
 '''''
 
+[[sec-326-smc_jtag_reset_ovrd_walk_test]]
+===== 326 `smc_jtag_reset_ovrd_walk_test`
+
+*Source Module*: `smc_jtag_reset_ovrd_walk_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN); `tb_jtag_reset_ctrl` drives the packed `jtag_reset_ctrl_i`; `tb_ss_cold_reset_n` / `tb_ss_warm_reset_n` publish every subsystem's `ss_reset_ctrl_o` cold and warm reset
+
+*Objective*: Every override mux smc_jtag_reset_ctrl_test leaves idle, through its reset pin.
+
+*Test Coverage*:
+
+* `smc_jtag_reset_ctrl_test` drives the cool override, the warm override released and the subsystem-0 warm override of `jtag_reset_ctrl_i`. The other 65 override muxes of the reset unit -- `ss_warm_reset_n[1..31]`, `ss_cold_reset_n[0..31]`, `fuse_reset_n` and `cold_reset_n` -- never see their select active there, and the warm mux never sees val=0. This leaf takes each one through ovrd=1/val=0, ovrd=1/val=1, ovrd=0/val=1 and idle with the overridden reset released by its source, and through ovrd=1/val=1 with the source asserting it where the bench can arrange that, so each mux input and the select exercise the mux in every combination the override can reach.
+* Per-subsystem legs are observed on `ss_reset_ctrl_o[i]` after the mux. The walked pin must move while the other 31 pins of the same vector hold their level, which fails on a wrong bit position in the DV-owned slice table, a swapped ovrd/val half or an override that reaches a neighbour. `SS_WARM_RESET_N` resets released, so the warm walk runs first against the reset value and then with the register asserting one subsystem at a time; `SS_COLD_RESET_N` resets asserted, so the cold walk runs first against the reset value and then with the register written all ones. Both registers are read unchanged across each walk, so the overrides do not write them, and both are restored.
+* The warm and fuse legs assert the warm reset alone: `tb_rst_warm_smc_clk_n` drops while `rst_primary_smc_clk_no`, `rst_cool_no` and the delayed `fuse_reset_n` from the eFuse controller stay released, so the override acts downstream of fuse sensing. `SCRATCH_COLD_WARM_0` clears and `SCRATCH_COLD_0` keeps its pattern after each.
+* The cold leg comes last because it resets the whole SMC: `rst_cold_stable_ref_clk_no`, the primary and the warm reset assert with `powergood_stable_o` held and every reset source idle (`rst_cold_ni`, `rst_cool_ni`, `powergood_i`, `cfg_flr_pf_active_i`, `sep_wdt_reset_n_i`). After the override releases, the eFuse controller re-senses and holds the warm reset; the fuse override at val=1 releases the warm reset while `tb_fuse_sense_done` and the delayed `fuse_reset_n` are still 0, and is dropped once the sense completes. `SS_COLD_RESET_N` returns to its reset value on the pins, and `SCRATCH_COLD_0` reads 0 and takes a pattern again.
+* The cold mux is not asked to release a cold reset the pin asserts: the bench models clocked from `rst_cold_ni` would reset while the SMC kept running. Not DTP `IC_RESET`, the boot-stall JTAG override or any reset the pins drive.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, drive the packed override to 0 and require both subsystem vectors at their register reset values, the top-level resets released and every reset source idle.
+. For `ss_warm_reset_n[1..31]`: ovrd=1/val=0 drops that pin with the other 31 held 1; ovrd=1/val=1 returns it; ovrd=0/val=1 and then 0 hold the vector released. Then for `ss_warm_reset_n[0..31]`: write `SS_WARM_RESET_N` with that bit clear, require the pin low, ovrd=1/val=1 must raise it, ovrd=0 must drop it again; restore the register.
+. For `ss_cold_reset_n[0..31]` at the register reset: ovrd=1/val=1 raises only that pin and ovrd=0 drops it. Write `SS_COLD_RESET_N` all ones and repeat the released walk of step 2 over `ss_cold_reset_n[0..31]`; read the register unchanged and restore it, requiring the pins to follow.
+. Write patterns to `SCRATCH_COLD_0` and `SCRATCH_COLD_WARM_0`. Warm ovrd=1/val=0 must drop the SMC-clock warm reset with the primary reset, `rst_cool_no` and the delayed `fuse_reset_n` held 1; val=1 and the release must return it. Read the warm scratch cleared and the cold scratch kept. Rewrite the warm scratch and repeat with the fuse override.
+. Cold ovrd=1/val=0 must take `rst_cold_stable_ref_clk_no`, the primary and the warm reset low with `powergood_stable_o` held 1; val=1 must release the chain and the override is then dropped. Once the primary reset returns, fuse ovrd=1/val=1 must release the warm reset before the sense completes; wait for the sense, drop the override, then read both scratch registers cleared and write the cold scratch again.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-JTAG-OVRD-WALK-IDLE` |Packed override 0: both subsystem vectors read their register resets, the primary, warm and cool resets are released and every reset source is idle
+|`CHK-JTAG-OVRD-WALK-SS-WARM` |Each `ss_warm_reset_n[1..31]` went 1→0→1 through its own override with the other 31 pins held 1 and `SS_WARM_RESET_N` unchanged; with the register asserting one subsystem at a time, each `ss_warm_reset_n[0..31]` went 0→1→0 through ovrd=1/val=1; the register was restored and the pins followed
+|`CHK-JTAG-OVRD-WALK-SS-COLD` |At the register reset each `ss_cold_reset_n[0..31]` went 0→1→0 through ovrd=1/val=1 alone; with `SS_COLD_RESET_N` written all ones each went 1→0→1 through its own override with the other 31 pins held 1; the register read unchanged and the pins followed its restore
+|`CHK-JTAG-OVRD-WALK-WARM` |The warm override asserted and released only the warm reset; `SCRATCH_COLD_WARM_0` cleared and `SCRATCH_COLD_0` kept its pattern
+|`CHK-JTAG-OVRD-WALK-FUSE` |The fuse override asserted and released only the warm reset; `SCRATCH_COLD_WARM_0` cleared and `SCRATCH_COLD_0` kept its pattern
+|`CHK-JTAG-OVRD-WALK-COLD` |The cold override took the cold chain, primary and warm resets low with `powergood_stable_o` and every source idle; after release the fuse override released the warm reset before the fuse sense finished, the chain, sense and subsystem cold pins recovered, `SCRATCH_COLD_0` read 0 and accepted a pattern again
+|`CHK-JTAG-OVRD-WALK-BASIC` |Ledger line: all five legs completed
+|===
+
+*Pass Criteria*: `CHK-JTAG-OVRD-WALK-BASIC`, `CHK-JTAG-OVRD-WALK-COLD`, `CHK-JTAG-OVRD-WALK-FUSE`, `CHK-JTAG-OVRD-WALK-IDLE`, `CHK-JTAG-OVRD-WALK-SS-COLD`, `CHK-JTAG-OVRD-WALK-SS-WARM`, `CHK-JTAG-OVRD-WALK-WARM` hold after their compares; every bounded poll expires into a failure naming the pin and its last level. Enrolled in: `all`, `hosted`, `reset`.
+
+'''''
+
 
 ==== CLOCK
 
@@ -5235,12 +5282,13 @@ Drive `smc_dfd_trace_sink_window_test_seq`. Each checker below is a named compar
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: Every event index driven into all three event selectors of each of node 0's event-action pairs.
+*Objective*: Every event index driven into all three event selectors of every event-action pair of every node, with the node walk reaching all four nodes.
 
 *Test Coverage*:
 
-* `EventType0`, `EventType1` and `EventType2` of each of node 0's four `CDbgNode0Eap<m>` pairs, each selector driven over all 64 values of its six-bit field: 768 selector values in all. Each value is one index of the CLA event bus the selector compares against, so a pair left at its reset only ever exercises index zero.
+* `EventType0`, `EventType1` and `EventType2` of each of the four `CDbgNode<n>Eap<m>` pairs of each of the four nodes, each selector driven over all 64 values of its six-bit field: 3072 selector values in all. Each value is one index of the CLA event bus the selector compares against, so a pair left at its reset only ever exercises index zero.
 * The pair's relation is left at its RDL reset, so a pair activates when and only when the selected event is asserted, and `CDbgEapStatus` is read after every value with the pair quiesced and its status cleared between values.
+* A node's pairs can only set their status while that node is current, so after each node's sweep one of its pairs is re-programmed with an event index seen live and `DestNode` naming the next node, and `CurrentNode` is polled until the DUT reports the move.
 
 *Test Procedure*:
 
@@ -5252,8 +5300,8 @@ Drive `smc_dfd_cla_event_type_sweep_test_seq`. Each checker below is a named com
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CLA-EVENT-SELECT-SWEEP` |All three selectors of all four pairs took every one of the 64 values their field offers and read back exactly; a value the register does not accept fails it
-|`CHK-CLA-EVENT-SELECT-LIVE` |The DUT set a pair-activation bit for at least one event index, so the selectors pick a live event bus rather than storing a value nothing reads; a sweep in which no index ever activates fails it
+|`CHK-CLA-EVENT-SELECT-SWEEP` |All three selectors of all four pairs of all four nodes took every one of the 64 values their field offers and read back exactly, with `CurrentNode` reporting each node in turn; a value the register does not accept, or a node the walk never reaches, fails it
+|`CHK-CLA-EVENT-SELECT-LIVE` |On every node the DUT set a pair-activation bit for at least one event index, so the selectors pick a live event bus rather than storing a value nothing reads; a node on which no index ever activates fails it
 |===
 
 
@@ -9373,6 +9421,41 @@ Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-327-smc_gpio_intf_data_ctrl_write_sweep_test]]
+===== 327 `smc_gpio_intf_data_ctrl_write_sweep_test`
+
+*Source Module*: `smc_gpio_intf_data_ctrl_write_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); bench pad drive through `tb_gpio_ext_drive_*` and, on the pads `tb_top.sv` drives for a protocol VIP, the bench input that owns the pad
+
+*Objective*: Write every software-writable DATA_CTRL field on all 65 GPIO_INTF instances and drive each pad both ways through all four interrupt types.
+
+*Test Coverage*:
+
+* This leaf writes `DATA_CTRL` on every instance: `lsio_select` on its own, then `core2pad`, `enable_rx_tx` (receiver only), `interface_enable`, `lsio_disable` and `interrupt_enable` with each `interrupt_type` value, and the reset word last.
+* Every readback after the reset read is a fully predicted word. `lsio_enable` is recorded at the reset read, must read the same under `lsio_select` (the software select ranks below the hardware request), 0 under `lsio_disable` on every pad, and the recorded value again after the restore. `pad2core` must read 0 while the register does not own the receiver and the driven pad level while it does.
+* Under register control the pad is driven from the bench: the active-high and active-low level types must follow the pad both ways and hold, the rising and falling edge types must pulse once on their edge and then clear with the pad held, a cleared `interrupt_enable` must keep the interrupt clear while the active-low level is active, and the next write that sets it must raise the interrupt. Every poll reads the per-instance `tb_gpio_interrupt` vector and requires that instance's bit alone, so an interrupt on any other instance fails the leaf.
+* `pad2core_en_o` must carry the receiver enable, `core2pad_o` the `core2pad` field and `core2pad_en_o` 0 on the instance under test: the register samples the pad and never drives it.
+* The set of fields the leaf writes is compared against the generated contract, so a regenerated map that adds or removes a software-writable field stops the leaf.
+
+*Test Procedure*:
+
+Drive `smc_gpio_intf_data_ctrl_write_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP` |All 65 DATA_CTRL instances read their RDL reset, carried `lsio_select` alone and then every other software-writable field with each `interrupt_type` value, matched the predicted word including `lsio_enable` and `pad2core` after every write, and returned to that reset; the scoreboard booked an exact compare for every predicted readback
+|`CHK-GPIO-INTF-IRQ-TYPE-SWEEP` |On each of the 65 instances the interrupt bit of that instance alone followed the pad both ways as active-high and as active-low level, pulsed once on the rising edge and once on the falling edge, stayed clear with `interrupt_enable` clear while the active-low level was active, and rose when the next write set `interrupt_enable`
+|`CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` |On each of the 65 instances under register control `DATA_CTRL.pad2core` read the bench-driven pad level both ways, `pad2core_en_o` carried the receiver enable, `core2pad_o` carried the `core2pad` field and `core2pad_en_o` stayed 0
+|===
+
+*Pass Criteria*: `CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP`, `CHK-GPIO-INTF-IRQ-TYPE-SWEEP`, `CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 [[sec-199-smc_filter_config_field_sweep_test]]
 ===== 199 `smc_filter_config_field_sweep_test`
 
@@ -9984,6 +10067,45 @@ Drive `smc_filter_region_span_test_seq`. Each checker below is a named compare t
 |===
 
 *Pass Criteria*: `CHK-FILTER-REGION-ENFORCED`, `CHK-FILTER-REGION-SPAN` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-328-smc_filter_remap_bitwalk_test]]
+===== 328 `smc_filter_remap_bitwalk_test`
+
+*Source Module*: `smc_filter_remap_bitwalk_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN); the generated IP-XACT register map for every address, field and reset
+
+*Objective*: Walk a one and a zero across every software-writable bit of the filter and alias-remap address registers and every mailbox write strobe, reading each register back against the contract its RDL states.
+
+*Test Coverage*:
+
+* The filter and remap leaves program a few fixed regions (`smc_filter_region_span_test`, `smc_dma_sanity_test`, `smc_remap_cla_test`), so most bits of `START_ADDR`, `END_ADDR`, `REGION_START` and `REGION_END` only ever hold their reset. This leaf gives every one of those bits a one and a zero on every entry, with a readback after each write.
+* **Filter address registers.** `filter_ctrl.rdl` makes both fields `hw = rw` and states the write-back rule: the rounded pair is written back "only when both land in the same granule; otherwise readback returns the programmed values". Every entry is read at its `FILTER_CONFIG` reset first -- disabled, `allow_burst` clear, so the granule is 2^`data_bus_width` bytes -- and the two registers of an entry are walked together, one carrying the one and the other the zero, so the pair never shares a granule and each readback is required to be the programmed word. A disabled entry matches nothing, so the fabric this leaf's own accesses cross stays usable while the range is an arbitrary pair; the rounding case is `smc_filter_region_span_test`.
+* **Remap table.** `alias_remap.rdl` gives `start_addr` and `end_addr` bits [55:12] as `sw = rw; hw = r` storage with no side effect, so the expected readback is the written word masked to the field, the low twelve bits and the top byte reading zero. `REGION_ATTRS.valid` is read clear on every region before its bounds move.
+* **Mailbox data and strobes.** `axil_mailbox.rdl` makes `WRITE_DATA` `sw = w; onwrite = wuser` and `READ_DATA` `sw = r; onread = ruser`, and `axil_mailbox_smc_wrap.rdl` says the two apertures of a pair share one FIFO, "data written through WRITE_DATA in one aperture is what READ_DATA in the other aperture returns". Each of the 64 apertures takes a walking-one strobe over its eight byte lanes and four of the 256 strobe patterns, so every pattern but the empty one is driven once across the block; the AXI master refuses an empty strobe. The paired readback must carry the written byte on every strobed lane and zero on every other lane, which is what tells a strobe the mailbox honoured from one it ignored.
+* Every address comes from the generated maps, each instance cross-checked between `smc_addr.h` and `smc_reg.py`, and every field position, width, reset and access type from the IP-XACT export. Every readback carries its expected word into the scoreboard, and the leaf requires the scoreboard to have booked one exact compare per such read.
+* Every filter entry and remap region is restored to its RDL reset and read back. Every mailbox `ERROR_FLAGS` register is read clear, the sticky threshold interrupts the pushes raised are acknowledged through `IRQS` and read clear, and `mailbox_interrupts` must be quiet.
+
+*Test Procedure*:
+
+[arabic]
+. For each of the 16 inbound and 16 outbound filter entries: read `FILTER_CONFIG` against its reset word; for each of the 56 address bits write `START_ADDR` with that bit alone set and `END_ADDR` with that bit alone clear, read both back exactly, then the other way round and read both back; write both registers' reset words and read them back.
+. For each of the 8 alias-remap regions: read `REGION_ATTRS` and require `valid` clear; for each of the 44 writable bits walk `REGION_START` and `REGION_END` the same way, reading each back as the written word masked to the field; restore both and read them back.
+. For each of the 64 mailbox apertures: for each walking-one strobe and each of the aperture's four shared patterns, write `WRITE_DATA` with a distinct 64-bit word under that strobe and read the paired aperture's `READ_DATA` against the word masked to the strobed lanes. Then read every `ERROR_FLAGS` as zero, acknowledge every `IRQS` and read it back as zero, and require `mailbox_interrupts` to be zero.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FILTER-ADDR-BITWALK` |On all 32 filter entries a one and a zero walked across all 56 bits of START_ADDR and END_ADDR, each pair reading back as programmed because its two words never share a granule, with FILTER_CONFIG at reset throughout and every entry restored to its RDL reset and read back
+|`CHK-REMAP-REGION-BITWALK` |On all 8 alias-remap regions a one and a zero walked across all 44 writable bits of REGION_START and REGION_END, each reading back the written word with the unimplemented bits clear, valid read clear first and both bounds restored and read back
+|`CHK-MAILBOX-STROBE-WALK` |Over the 64 mailbox apertures a walking-one byte strobe on each and every non-empty strobe pattern once across the block, every paired READ_DATA returning the written byte on each strobed lane and zero elsewhere, every ERROR_FLAGS read clear and mailbox_interrupts quiet
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -12995,7 +13117,9 @@ the first write. The sequence applies the full, single-byte, sparse, null and
 restore operations to each catalogued word, requires no Zeroer busy or unknown
 value sampled on a rising SMC clock edge from before the first catalogued
 operation through the final status read, checks Zeroer state and lane
-coverage, waits with a bound for all predicted comparisons, then checks
+coverage, runs a real one-word Zeroer command to SPM after the no-start check
+and requires the busy sample count to increase, waits with a bound for all
+predicted comparisons, then checks
 scoreboard results and access counts.
 
 *Checkers*:
@@ -13011,6 +13135,7 @@ scoreboard results and access counts.
 |`CHK-REGBLOCK-WIDE-RESTORE` |Each word reads its reset value after the restore write
 |`CHK-REGBLOCK-WIDE-RESTORE-NONVAC` |At least one restore per pass changes an RW value
 |`CHK-REGBLOCK-WIDE-NO-ZEROER-START` |No rising SMC clock edge samples busy or X/Z during the catalogued operations; the busy tap and final `CTRL_STATUS.STATUS` are idle
+|`CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL` |A real one-word Zeroer START changes the known busy sample count in the same pass
 |`CHK-REGBLOCK-WIDE-LANE-COVERAGE` |All eight SEP_IN byte lanes were strobed
 |`CHK-SB-REGBLOCK-WIDE` |Each catalogued read and write returns OKAY; each read also matches the passive model's predicted 64-bit value
 |`CHK-REGBLOCK-WIDE-SCOREBOARD` |Every predicted read and write was compared with no new mismatch
@@ -13022,6 +13147,11 @@ scoreboard results and access counts.
 
 The claim covers the seven selected words under the safe-state preconditions.
 The busy observation is clock-sampled; it does not grade sub-cycle glitches.
+After the absence check, a bounded positive control uses the last aligned SPM
+word as scratch. No CPU or other initiator may use that word during the pass.
+It is left zero through a SEP_IN write that also updates the SPM model; its
+initial SRAM contents are not read or restored. DEST_ADDR and SIZE return to
+their reset values. The control does not grade the Zeroer's zeroed payload.
 It excludes registers whose writes change decode, gating, reset, lock or other
 operational state. `RESET_VECTOR_0` through `RESET_VECTOR_3` are excluded
 because a later core reset that does not also assert warm reset can consume a
@@ -13034,14 +13164,21 @@ handles a real error response; the error-read path has no directed run here.
 *Pass Criteria*: all checks hold on every pass;
 `+SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE` must fail `regblock_wide`
 comparisons. `+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
-full-write and no-start expectations and must fail seven
+full-write, no-start and busy-control expectations and must fail seven
 `CHK-REGBLOCK-WIDE-FULL-RW` records and one
-`CHK-REGBLOCK-WIDE-NO-ZEROER-START` record per pass (eight failures per pass),
+`CHK-REGBLOCK-WIDE-NO-ZEROER-START` record and one
+`CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL` record per pass (nine failures per pass),
 while the scoreboard records no mismatch.
 `+SMC_REGBLOCK_WIDE_RESPONSE_NEGATIVE`, used alone, changes only predicted
 write responses to SLVERR and must fail every catalogued write comparison and
-no read comparison: 50 write mismatches per pass (35 base writes and 15 fixed
-sparse writes).
+no read comparison: 54 write mismatches per pass (35 base writes, 15 fixed
+sparse writes and four positive-control writes).
+The positive run requires 111 comparisons per pass (57 reads and 54 writes).
+With 16 passes, the sequence negative requires 144 checker failures and the
+response negative requires 864 write mismatches. A separate local mutation
+holding the busy tap or sample counter at zero must fail the busy-control
+check even with the sequence negative disabled. Control completion and
+safe-state prerequisites are outside the expectation-inverting negative.
 The sequence and end-of-run scoreboard summary also report those mismatches.
 Enrolled only in `csr_uvm_extended`, outside `all`, `hosted` and `ci`;
 run on demand. This card records what a run must show, not a pass.

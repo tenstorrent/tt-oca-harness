@@ -886,6 +886,4 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         await self.pulses.stop()
         await self.out.stop()
         await self.out_rsp.stop()
-        self.logger.info(
-            "RESULT %s seed=%d PASS checks=%d counts=%s", TEST, seed, self.n_checks, self.counts
-        )
+        self.result_pass(TEST, seed, self.n_checks, f" counts={self.counts}")

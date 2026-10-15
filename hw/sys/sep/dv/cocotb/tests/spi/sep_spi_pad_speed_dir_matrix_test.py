@@ -60,7 +60,7 @@ from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_win
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spi_pad_sampler import SepSpiPadSampler
-from ocah_spi_vip import OcahSpiFlash
+from ocah_spi_vip import OcahSpiFlash, OcahSpiFlashError
 from sep_base_test import sep_base_test
 from seq_lib.sep_spi_host_csr_seq import (
     COMMAND,
@@ -687,8 +687,15 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             await self.pads.stop()
         finally:
             close_graded_window()
-            await flash.stop()
-
+            # stop() raises when a responder frame raised inside the protocol
+            # engine; a frame shorter than the opcode byte is a recorded
+            # refusal, not an exception.
+            try:
+                await flash.stop()
+            except OcahSpiFlashError as exc:
+                raise AssertionError(
+                    f"MONITOR-LIFE FAIL seed={self.seed} responder frame raised: {exc!r}"
+                ) from exc
         frames = flash.get_transactions()
         self.logger.info(
             "OBS-SPI-RESPONDER seed=%d frames=%d read_frames=%d bytes_out=%d",
@@ -700,4 +707,4 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         missing = [c for c in self.required_evidence if c not in self.ran]
         if missing:
             raise AssertionError(f"CTRL-MISSING seed={self.seed} checks not run: {missing}")
-        self.logger.info("RESULT %s seed=%d PASS checks=%d", TEST, self.seed, len(self.ran))
+        self.result_pass(TEST, self.seed, len(self.ran))
