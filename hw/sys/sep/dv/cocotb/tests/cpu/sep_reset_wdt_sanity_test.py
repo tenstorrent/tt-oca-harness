@@ -11,10 +11,32 @@ The reset_wdt_sanity firmware:
     probe is writable again after release;
   * checks that a write and a read to an unmapped fabric gap each raise a D-bus-error NMI
     (count == 2);
+  * stores to a target that answers DECERR (the reset-controller gap) and to one that answers
+    SLVERR (the read-only entropy pool), and reports the NMI count, ``mcause`` and ``mdseac`` of
+    each; then stores to an OKAY register (OTBN ``INTR_ENABLE``) and restores it, and reports
+    the NMI count and the readback;
   * exercises WDT bark -> NMI, pet, disable-freeze and re-bark, then lets the WDT run to BITE.
 
 fw/startup/crt0.s emits PASS/FAIL magic from main()'s return code. After PASS the test also
 observes the BITE reset request on the ``sep`` output ``wdt_timer_rst_req_o``.
+
+Store-response contract. The CPU LSU passes the AXI B response of a store to the core. The
+VeeR EL2 Programmer's Reference Manual (linked from ``hw/sys/sep/doc/cpu.adoc``) states that a
+store that ends with a bus error is reported as an imprecise non-maskable interrupt with
+``mcause`` = 0xF000_0000 (store bus error), that ``mdseac`` captures the address of the store
+and stays locked until software writes ``mdeau``. This test grades, from the firmware records:
+  CHK-STORE-ERR-NMI  for each of DECERR and SLVERR: exactly one NMI, ``mcause`` = 0xF000_0000,
+                     and ``mdseac`` = the store address, which also equals the address the
+                     testbench derives from the register map. A store that completes with no
+                     NMI reports nmi=0 and fails; a wrong ``mcause`` or ``mdseac`` fails.
+                     Targets: ``hw/sys/sep/regs/sep.rdl`` (reset-controller aperture: DECERR
+                     write response past its one register) and
+                     ``hw/sys/sep/doc/entropy_pool.adoc`` (a write to any offset ends with
+                     BRESP=SLVERR).
+  CHK-STORE-OK-QUIET the OKAY store and its restore raise no NMI in the same wait an error
+                     store gets, and the written value, which differs from the reset value,
+                     reads back, so the store reached the register. Control: the two
+                     error stores of CHK-STORE-ERR-NMI raise their NMI in that wait.
 
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``. OTBN/AES/HMAC/KMAC are
 JTAG-held across ``rst_ni`` release and fuse sense so they raise no crypto ``edn_req`` while the
@@ -34,6 +56,7 @@ from cocotb.triggers import RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
+from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "reset_wdt_sanity_test")
@@ -60,6 +83,31 @@ _WIRE_LINE_RE = re.compile(
 # release, reads back its non-reset value.
 _WRITABLE_SUFFIX = " reset wire OK, writable after release"
 _BANNER = "SEP reset+WDT sanity test"
+
+# Store-response legs. VeeR EL2 Programmer's Reference Manual (linked from
+# hw/sys/sep/doc/cpu.adoc), non-maskable interrupt mcause values: 0xF000_0000 is
+# a store bus error.
+_MCAUSE_STORE_BUS_ERR = 0xF000_0000
+# Store address of each error-response leg, from the register map: the word past
+# the reset-controller register (its aperture answers DECERR past the register,
+# hw/sys/sep/regs/sep.rdl) and the entropy pool STATUS register (any write is
+# SLVERR, hw/sys/sep/doc/entropy_pool.adoc).
+_RESET_CTRL_END = sym("SEP_RESET_CTRL_REG_MAP_BASE_ADDR") + sym("SEP_RESET_CTRL_REG_MAP_SIZE")
+_STORE_ERR_ADDR = {
+    "DECERR": SEP_RESET_CTRL_SW_RESET_N + 0x8,
+    "SLVERR": sym("ENTROPY_POOL_STATUS_REG_ADDR"),
+}
+if _STORE_ERR_ADDR["DECERR"] < _RESET_CTRL_END:
+    raise RuntimeError("the DECERR store address is inside the reset-controller register map")
+_OKAY_ADDR = sym("OTBN_INTR_ENABLE_REG_ADDR")
+_STORE_ERR_RE = re.compile(
+    r"CHK-STORE-ERR-NMI REC resp=(\w+) addr=0x([0-9a-f]{8}) nmi=0x([0-9a-f]{8}) "
+    r"mcause=0x([0-9a-f]{8}) mdseac=0x([0-9a-f]{8})"
+)
+_STORE_OK_RE = re.compile(
+    r"CHK-STORE-OK-QUIET REC addr=0x([0-9a-f]{8}) wrote=0x([0-9a-f]{8}) "
+    r"readback=0x([0-9a-f]{8}) restored=0x([0-9a-f]{8}) nmi=0x([0-9a-f]{8})"
+)
 # After the firmware PASSes (2nd bark), the WDT runs on to BITE. At ~5 us/tick and
 # a few ticks of bark->bite margin, give generous headroom for the reset request.
 _BITE_POLL_CYCLES = 40_000
@@ -107,6 +155,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             f"bus-error count was not checked. Console was:\n{console}"
         )
         self.logger.info("CHK-BADADDR PASS: firmware reported the bad-address NMI count == 2")
+        self._grade_store_responses(console)
         wired = [ip for ip in _RESET_WIRE_IPS if f"{ip} reset wire OK" in console]
         assert len(wired) == len(_RESET_WIRE_IPS), (
             f"firmware console reports a reset wire for {sorted(wired)}, expected all "
@@ -165,3 +214,46 @@ class sep_reset_wdt_sanity_test(sep_base_test):
         self.logger.info(
             "CHK-BITE PASS: wdt_timer_rst_req_o asserted -> WDT BITE reset request observed"
         )
+
+    def _grade_store_responses(self, console: str) -> None:
+        """Grade the firmware store-response records against the store golden."""
+        recs = [m.groups() for m in _STORE_ERR_RE.finditer(console)]
+        kinds = sorted(r[0] for r in recs)
+        assert kinds == sorted(_STORE_ERR_ADDR), (
+            f"CHK-STORE-ERR-NMI FAIL: firmware store records {kinds}, expected one each of "
+            f"{sorted(_STORE_ERR_ADDR)}. Console was:\n{console}"
+        )
+        err_nmis = {}
+        for kind, addr_s, nmi_s, mcause_s, mdseac_s in recs:
+            addr, nmi = int(addr_s, 16), int(nmi_s, 16)
+            mcause, mdseac = int(mcause_s, 16), int(mdseac_s, 16)
+            want = _STORE_ERR_ADDR[kind]
+            err_nmis[kind] = nmi
+            line = (
+                f"resp={kind} addr=0x{addr:08x} nmi={nmi} mcause=0x{mcause:08x} "
+                f"mdseac=0x{mdseac:08x} expected addr=0x{want:08x} nmi=1 "
+                f"mcause=0x{_MCAUSE_STORE_BUS_ERR:08x} mdseac=0x{want:08x}"
+            )
+            ok = addr == want and nmi == 1 and mcause == _MCAUSE_STORE_BUS_ERR and mdseac == want
+            if not ok:
+                self.logger.error("CHK-STORE-ERR-NMI FAIL: %s", line)
+                raise AssertionError(f"CHK-STORE-ERR-NMI FAIL: {line}")
+            self.logger.info("CHK-STORE-ERR-NMI PASS: %s", line)
+
+        oks = [m.groups() for m in _STORE_OK_RE.finditer(console)]
+        assert len(oks) == 1, (
+            f"CHK-STORE-OK-QUIET FAIL: {len(oks)} OKAY-store records, expected 1. "
+            f"Console was:\n{console}"
+        )
+        addr, wrote, rb, restored, nmi = (int(x, 16) for x in oks[0])
+        line = (
+            f"addr=0x{addr:08x} wrote=0x{wrote:08x} readback=0x{rb:08x} "
+            f"restored=0x{restored:08x} nmi={nmi} expected addr=0x{_OKAY_ADDR:08x} nmi=0 "
+            f"readback=wrote restored!=wrote control_err_store_nmis="
+            + ",".join(f"{k}:{v}" for k, v in sorted(err_nmis.items()))
+        )
+        ok = addr == _OKAY_ADDR and nmi == 0 and rb == wrote and restored != wrote
+        if not ok:
+            self.logger.error("CHK-STORE-OK-QUIET FAIL: %s", line)
+            raise AssertionError(f"CHK-STORE-OK-QUIET FAIL: {line}")
+        self.logger.info("CHK-STORE-OK-QUIET PASS: %s", line)

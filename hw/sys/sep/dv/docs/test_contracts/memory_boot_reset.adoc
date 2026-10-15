@@ -116,15 +116,17 @@ reaches its wait before the interrupt fires.
 
 *BFM / Model*: ocah_axi_vip, CPU FW, `tb/sep_outbound_mbx.sv` (console + verdict mailbox; OKAY / zero read data for any address)
 
-*Objective*: Proves in one firmware boot the software reset register default and per-domain wiring, two bus-error interrupts, watchdog bark, pet and re-bark, and the bite reset request at the SEP output pin.
+*Objective*: Proves in one firmware boot the software reset register default and per-domain wiring, two bus-error interrupts, the store-bus-error interrupt with its `mcause` and `mdseac` for a DECERR and a SLVERR store and no interrupt for an OKAY store, watchdog bark, pet and re-bark, and the bite reset request at the SEP output pin.
 
-*Test Coverage*: Software reset register default and per-domain wiring, two bus-error interrupts, watchdog bark/pet/re-bark, and the bite request at the SEP output pin. Reset generation and return are owned by the integrating reset controller outside this DUT.
+*Test Coverage*: Software reset register default and per-domain wiring, two bus-error interrupts, the CPU store response (DECERR and SLVERR raise the store-bus-error interrupt, OKAY raises none), watchdog bark/pet/re-bark, and the bite request at the SEP output pin. Reset generation and return are owned by the integrating reset controller outside this DUT.
 
 *Test Procedure*:
 
 [arabic]
 . Check the software reset register default, which is `0x7E`: the Key Manager is held and OTBN, AES, HMAC, KMAC, the TRNG and Adams Bridge come up released. JTAG-holds OTBN/AES/HMAC/KMAC across `rst_ni` release and fuse sense so they never raise crypto `edn_req` while the fabric is opening, then releases them. The TRNG is not parked, because it supplies entropy rather than requesting it. The firmware then probes each per-IP reset wire, including the shared TRNG bit: assert the bit, confirm the register goes to its reset value, release, confirm it is writable again.
-. Perform a bad write and a bad read of the unmapped gap, with settling in between; expect two bus-error interrupts.
+. Perform a bad write and a bad read of the unmapped gap, with settling in between; expect two bus-error interrupts. The NMI handler records `mcause` and `mdseac` of each bus-error interrupt and writes `mdeau` to unlock `mdseac` before it returns. The firmware reports the interrupt count, `mcause` and `mdseac` of the bad write (a DECERR store: the reset-controller aperture answers DECERR past its one register, `hw/sys/sep/regs/sep.rdl`).
+. Store to the entropy pool `STATUS` register (a write to any offset ends with `BRESP=SLVERR`, `hw/sys/sep/doc/entropy_pool.adoc`, Access Policy) and report the interrupt count, `mcause` and `mdseac` the same way. Each error store waits for its interrupt for a bounded number of polls, then settles, so a second interrupt for the same store is also counted.
+. Store a non-reset value to the OTBN `INTR_ENABLE` register (OKAY), wait the same bounded window, read it back, restore the reset value and wait again. Report the interrupt count over both stores, the readback and the restored value.
 . Configure the watchdog with small bark and bite thresholds; enable.
 . On the first bark the handler clears and disables. After one settle window of 40000 core cycles (`mcycle`, ten watchdog ticks at the bench clocks) for the disable to cross the register CDC, confirm the count reads the same non-zero value before and after one more window, pet returns it to zero, and it still reads zero after one more window.
 . Re-enable; confirm a second bark, then let it run on to bite.
@@ -136,6 +138,10 @@ reaches its wait before the interrupt fires.
 |Checker |Contract
 |CHK-BADADDR
 |Accesses to the unmapped gap raise exactly two bus-error interrupts.
+|CHK-STORE-ERR-NMI
+|A CPU store whose B response is DECERR (the reset-controller gap) or SLVERR (the entropy pool) raises exactly one non-maskable interrupt with `mcause` = `0xF000_0000` (store bus error) and `mdseac` = the store address (VeeR EL2 Programmer's Reference Manual, linked from `hw/sys/sep/doc/cpu.adoc`: non-maskable interrupt `mcause` values, `mdseac` and its `mdeau` unlock). The testbench grades one record per response kind against the address it derives from the register map and the `mcause` constant. A store that completes with no interrupt, a second interrupt, a load-error `mcause` or a wrong `mdseac` fails. Anchor: the CPU CSR values the handler reads. Control: `mdseac` equal to the store address shows the store reached the fabric and its error came back.
+|CHK-STORE-OK-QUIET
+|A CPU store that gets OKAY (OTBN `INTR_ENABLE`) and the store that restores the register raise no interrupt in the same bounded wait that an error store gets, the written non-reset value reads back, and the restored value differs from it. A DUT that raises the store-bus-error interrupt for every store, or drops the OKAY store, fails. Control: the two error stores of CHK-STORE-ERR-NMI raise their interrupt in that wait.
 |CHK-WDT-NMI
 |The first bark delivers an interrupt and the handler runs.
 |CHK-WDT-CLEAR
