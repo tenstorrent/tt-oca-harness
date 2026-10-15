@@ -802,7 +802,7 @@ doc_pdf() {
     make "$pdf_target"
 }
 
-# doc_stage: add PDFs + .nojekyll on top of the already-built combined
+# doc_stage: add PDFs on top of the already-built combined
 # Antora output. No Docker/Make/Node involved --
 # this is just file copying, so it doesn't need a container at all, and
 # avoids re-triggering the Node-based HTML build a second time.
@@ -823,7 +823,6 @@ doc_stage() {
   fi
 
   mkdir -p "$ROOT/$ghpages_dir/downloads"
-  touch "$ROOT/$ghpages_dir/.nojekyll"
 
   if [[ -f "$ROOT/$trm_pdf_dir/$trm_pdf" ]]; then
     cp "$ROOT/$trm_pdf_dir/$trm_pdf" "$ROOT/$ghpages_dir/downloads/"
