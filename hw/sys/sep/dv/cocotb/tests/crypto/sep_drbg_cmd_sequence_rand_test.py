@@ -16,8 +16,10 @@ bit N - 1):
   * The CSRNG software instance follows the same handshake (``CMD_RDY``,
     ``CMD_ACK``, ``INTR_STATE.cs_cmd_req_done``).
   * An instantiate (0x901, the RDL reset value of ``BOOT_INS_CMD``) sent to an
-    instantiated state is ignored and sets ``RECOV_ALERT_STS`` bit 14
-    (``CMD_STAGE_INVALID_CMD_SEQ_ALERT``); a write of 0 clears it.
+    instantiated state sets ``RECOV_ALERT_STS`` bit 14
+    (``CMD_STAGE_INVALID_CMD_SEQ_ALERT``); a write of 0 clears it. The text
+    also says the command "is ignored and CSRNG continues to operate"; it gives
+    no register value that shows this, so the leaf does not grade it.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. Baseline ``SW_RESET_N`` = 0x20 (TRNG released; the Key

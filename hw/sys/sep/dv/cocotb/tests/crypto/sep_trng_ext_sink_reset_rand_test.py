@@ -43,9 +43,14 @@ Checkers:
   CHK-XRST-CLIENT  before the reset each word a client accepts and each OTBN RND
                    word is a sent word; the AES and KMAC results equal the goldens.
   CHK-XRST-OTBN    per client: the request pending in the clear stays 1 with no
-                   acknowledge, and both vectors read no X/Z there; after the release it is acknowledged with words sent
-                   after the clear; the results equal the goldens. Control: the
-                   same client was acknowledged in the pre-reset leg.
+                   acknowledge while the driver holds a stream-1 beat (tvalid = 1),
+                   and both vectors read no X/Z there; after the release it is
+                   acknowledged with words sent after the clear; no client accepts
+                   a word buffered in the adapter before the set-up clear; the
+                   results equal the goldens. Controls: the same client was
+                   acknowledged in the pre-reset leg, the held beat shows on at
+                   least one clock of the clear, and at least one stale word is
+                   buffered at the set-up clear.
 """
 
 from __future__ import annotations
@@ -110,6 +115,12 @@ WORD_POOL = 20_000
 # about 4 clocks from the adapter to the pool (stage FIFO, endpoint, EDN handshake);
 # the window is 16 x that. A word that lands later shows as a level mismatch.
 POOL_QUIET = 64
+# Stale words offered to the empty crypto adapter before the set-up clear of each
+# consumer trial, and the clocks allowed for them to reach the staging FIFO.
+STALE_WORDS = 4
+STALE_SETTLE = 64
+# Clocks from the rise of the probe until the held stream-1 beat shows on the port.
+HOLD_SHOW_CAP = 16
 
 
 def _le_words(data: bytes) -> list[int]:
@@ -741,7 +752,23 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         dut = cocotb.top
         bit = CLIENT_BIT[client]
         await self._silence(1)
+        # Set-up clear with stale words in the adapter: a first TRNG reset empties the
+        # adapter, then STALE_WORDS beats go to the staging FIFO while the clients are
+        # idle; a word that no client takes stays buffered until the set-up clear. No
+        # client may accept one of them after the rise of the probe.
         await self._trng_reset()
+        stale: set[int] = set()
+        self.trace.begin()
+        for _ in range(STALE_WORDS):
+            w = self._next_word()
+            stale.add(w)
+            self.ext.send(1, [w])
+        await self._until(lambda: self.ext.pending(1) == 0, STALE_SETTLE)
+        await ClockCycles(dut.clk_i, STALE_SETTLE)
+        await self._silence(1)
+        self.sent_s |= stale
+        await self._trng_reset()
+        setup_rows = self.trace.end()
         s_trial: set[int] = set()
         urnd_first: list[str] = []
         if client == "otbn_rnd":
@@ -787,13 +814,30 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         served = any(_bit(r.cack, bit) == 1 for r in rows_pre[req_k:]) or (
             _bit(rows_pre[-1].creq, bit) != 1 if rows_pre else True
         )
+        # The source's own reset with the sink reset drops a beat still held from
+        # before the rise; one post-clear word Q then stays offered (tvalid = 1)
+        # across the clear, so the gated acknowledge faces a word the adapter could
+        # deliver.
+        q: set[int] = set()
+        if self.ext.pending(1):
+            await self.ext.source_reset(1)
+        w = self._next_word()
+        q.add(w)
+        self.ext.send(1, [w])
+        await self._until(
+            lambda: (
+                bool(self.trace.rows)
+                and self.trace.rows[-1].ta == 1
+                and _bit(self.trace.rows[-1].ev, 1) == 1
+            ),
+            HOLD_SHOW_CAP,
+        )
         await RisingEdge(dut.clk_i)
         await ClockCycles(dut.clk_i, max(1, plan.extra_hold))
         await self.swrst.release("trng")
         await self._wait_probe(0, "trng reset fall")
         await RisingEdge(dut.clk_i)
         close_graded_window(self.logger)
-        q: set[int] = set()
         self._start_feeder(1, q)
         t_end = None
         for _ in range(OP_CAP):
@@ -803,10 +847,28 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             await RisingEdge(dut.clk_i)
         rows = self.trace.end()
         await self._stop_feeders()
+        # Stale words: buffered = stale beats that reached the adapter minus stale
+        # words a client took before the set-up clear; served = stale words any
+        # client accepts from the rise of the set-up clear to the end of the trial.
+        rise = next((k for k, r in enumerate(setup_rows) if r.ta == 1), len(setup_rows))
+        before_rise = setup_rows[:rise]
+        stale_in = sum(1 for r in xfers(before_rise, 1) if _word(r.ed, 1) in stale)
+        taken = [w for c in range(len(CLIENTS)) for w in acked(before_rise, c)]
+        stale_buffered = stale_in - sum(1 for w in taken if w in stale)
+        later = setup_rows[rise:] + rows
+        stale_served = sum(
+            1 for c in range(len(CLIENTS)) for w in acked(later, c) if w in stale
+        )  # fmt: skip
         if served:
             self.chk.obs("XRST-SERVED", client=client, attempt=attempt, done=int(t_end is not None))
             if t_end is None:
                 _kill(task)
+            if stale_served:
+                self.chk.ok(
+                    "XRST-OTBN", False, client=client, stale_buffered=stale_buffered,
+                    stale_served=stale_served, attempt=attempt, reason="stale_word_served",
+                )  # fmt: skip
+                return False
             return True
         reason = ""
         res: dict = {"result": [], "golden_ok": False}
@@ -825,6 +887,8 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         # An X/Z on the request or acknowledge vector in the clear is not "no
         # acknowledge": every such clock fails the check.
         xz_in = sum(1 for r in clear if r.cack is None or r.creq is None)
+        # Clocks of the clear with the held stream-1 beat offered (tvalid = 1).
+        tvalid_in = sum(1 for r in clear if _bit(r.ev, 1) == 1)
         words = acked(post, bit)
         rnd_words = list(res.get("rnd_words", []))
         fresh = all(w in q and w not in self.sent_s for w in words) and all(
@@ -832,11 +896,18 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         )
         ctrl = self.ack_before.get(client, 0)
         self.chk.ctrl("XRST-OTBN", ctrl >= 1, client=client, ctrl_ack_before=int(ctrl >= 1))
+        self.chk.ctrl("XRST-OTBN", tvalid_in >= 1, client=client, tvalid_in_clear=tvalid_in)
+        self.chk.ctrl(
+            "XRST-OTBN", stale_buffered >= 1, client=client, stale_buffered=stale_buffered
+        )
         fields = {
             "client": client,
             "req_in_clear": req_in,
             "ack_in_clear": ack_in,
+            "tvalid_in_clear": tvalid_in,
             "xz_in_clear": xz_in,
+            "stale_buffered": stale_buffered,
+            "stale_served": stale_served,
             "ack_after_release": int(len(words) >= 1),
             "words_from_post_reset": int(fresh),
             "post_words": len(words),
@@ -853,7 +924,10 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             not reason
             and req_in
             and not ack_in
+            and tvalid_in >= 1
             and xz_in == 0
+            and stale_buffered >= 1
+            and stale_served == 0
             and words
             and fresh
             and res["golden_ok"],

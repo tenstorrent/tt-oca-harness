@@ -48,8 +48,9 @@ Checkers:
                     the write answers OKAY or SLVERR, per written register. Control: at least one register and
                     ``COMPONENT_ID`` are written.
   CHK-ESRC-RESTORE  each restore field reads its RDL reset value after the TRNG reset;
-                    VCS: no readback bit of a field is X. Control: each restore field
-                    reads its written v1 before the reset.
+                    VCS: no readback bit of a field is X. Control: the walked restore
+                    fields are exactly the 12 the contract names (``CONTRACT_RESTORE``)
+                    and each reads its written v1 before the reset.
   CHK-LOCK-MEN      locked trial: ``IDLE`` = 0 and ``LEVEL`` > 0 within 2 t_ref after a
                     drain and the write of 0. Control: the unlocked trial of the same
                     seed reads ``IDLE`` = 1 and an empty FIFO for 2 t_ref after
@@ -101,6 +102,26 @@ LOCK_PHRASE = "FIPS_LOCK.LOCK prevents software changes"
 # lock register. NOISE_OBS_CTRL.FLUSH is a pulse field, so it is not read-write.
 DATA_PORTS = frozenset({"FIFO_RDATA", "BIW_OBS_RDATA", "NOISE_OBS_RDATA"})
 NOT_WALKED = DATA_PORTS | {"INTR_TEST", "FIPS_LOCK", "CTRL"}
+# The restore fields the contract names (Test Procedure step 1), by RDL register and field
+# name (``hw/ip/entropy_source/regs/entropy_source.rdl``: INTR_ENABLE :168-210,
+# HEALTH_TEST_CTRL :309, HEALTH_TEST_WINDOW_SIZE :325, HT_WATERMARK_NUM :799,
+# NOISE_OBS_CTRL :1028). The run-time walk must give exactly this set.
+CONTRACT_RESTORE = frozenset(
+    {
+        ("INTR_ENABLE", "HEALTH_TEST_FAILED"),
+        ("INTR_ENABLE", "FIFO_ERROR"),
+        ("INTR_ENABLE", "FIFO_OVERFLOW"),
+        ("INTR_ENABLE", "FIFO_UNDERFLOW"),
+        ("INTR_ENABLE", "PERSISTENT_FAILURE"),
+        ("INTR_ENABLE", "AUTOTUNE_FAIL"),
+        ("INTR_ENABLE", "BIW_OBS_OVERFLOW"),
+        ("INTR_ENABLE", "NOISE_OBS_OVERFLOW"),
+        ("HEALTH_TEST_CTRL", "ENABLE"),
+        ("HEALTH_TEST_WINDOW_SIZE", "SIZE"),
+        ("HT_WATERMARK_NUM", "WATERMARK_NUM"),
+        ("NOISE_OBS_CTRL", "LANE_SEL"),
+    }
+)
 # Restore-value draws with a stated legal range (contract, Randomization).
 V1_RANGE = {
     ("HT_WATERMARK_NUM", "WATERMARK_NUM"): (1, 5),
@@ -684,16 +705,24 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             for f in plan.restore
             if post[f.name] != f.reset
         ]
+        walked = {(f.reg, f.field) for f in plan.restore}
+        missing = sorted(f"{r}.{f}" for r, f in CONTRACT_RESTORE - walked)
+        extra = sorted(f"{r}.{f}" for r, f in walked - CONTRACT_RESTORE)
+        set_ok = not missing and not extra and len(plan.restore) == len(CONTRACT_RESTORE)
         self.chk.ctrl(
             "ESRC-RESTORE",
-            not pre_bad,
+            not pre_bad and set_ok,
             fields=len(plan.restore),
+            expected_fields=len(CONTRACT_RESTORE),
+            missing=",".join(missing) or "none",
+            extra=",".join(extra) or "none",
             pre_mismatch=",".join(pre_bad) or "none",
         )
         self.chk.ok(
             "ESRC-RESTORE",
-            not post_bad and x_regs == 0,
+            not post_bad and x_regs == 0 and set_ok,
             fields=len(plan.restore),
+            expected_fields=len(CONTRACT_RESTORE),
             pre="v1",
             post="reset",
             mismatches=len(post_bad),

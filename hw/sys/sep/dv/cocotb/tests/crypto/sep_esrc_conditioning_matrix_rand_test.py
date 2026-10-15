@@ -57,8 +57,15 @@ Checkers:
                        is in processing or output, so every block completed in the span
                        gave all its 8 words in the span. Control: at least one digest
                        (8 output words) and 16 input words in the span.
-  CHK-COND-SHA-COUNT   the SHA-256 status tap shows OUTPUT_COUNT 8 and then 0 in the
-                       whitened window and 0 on every clock of the pass-through window.
+  CHK-COND-SHA-COUNT   OUTPUT_COUNT "reports 8 when a digest becomes available,
+                       decrements through 0 as words are accepted, and remains 0 while
+                       idle or bypassed" (entropy_source.adoc:206). In the whitened
+                       window every OUTPUT_COUNT step of the status tap is -1 on a clock
+                       after a FIFO word (``esrc_compress_vld_o``, no backpressure,
+                       architecture.adoc:148), and a step without a word is only the
+                       0 -> 8 of a new digest; each run from 8 holds exactly 8 steps
+                       and ends at 0, and at least one run completes. In the
+                       pass-through window OUTPUT_COUNT is 0 on every clock.
   CHK-COND-PASSTHRU    every FIFO word == BIW observe word i + d at one d in 0..8.
 Logged only: ``OBS-BLOCKED CHK-COND-HT-OFF`` (the 32-bit health test with the
 compressor bypassed has no single stated behaviour) and ``OBS-BLOCKED
@@ -705,17 +712,30 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         outs = [_get(v, "SHA256_STATUS", "OUTPUT_COUNT") for v in out_reads]
         self.chk.obs("COND-PASSTHRU-OUTCOUNT", reads=len(outs), nonzero=sum(1 for o in outs if o))
 
-        self.chk.ctrl("COND-SHA-COUNT", biw > 0, biw_words=biw)
+        walk = white.output_count_walk()
+        runs = walk["runs"]
+        errors = walk["errors"]
+        self.chk.ctrl(
+            "COND-SHA-COUNT", biw > 0 and walk["steps"] > 0, biw_words=biw, steps=walk["steps"]
+        )
         self.chk.ok(
             "COND-SHA-COUNT",
-            white.saw8
-            and white.zero_after_8
+            not errors
+            and len(runs) >= 1
+            and all(r == DIGEST_WORDS for r in runs)
             and white.out_max == DIGEST_WORDS
             and pass_tap.out_max == 0
             and pass_tap.clocks > 0,
+            steps=walk["steps"],
+            runs_complete=len(runs),
+            min_runs=1,
+            run_steps=runs,
+            expected_run_steps=DIGEST_WORDS,
+            open_run_steps=walk["open_run_steps"],
+            step_errors=len(errors),
+            first_errors=errors[:4],
             out_count_max=white.out_max,
             out_count_end=white.out_last,
-            returned_to_0=white.zero_after_8,
             biw_words=biw,
             bypass_out_count_max=pass_tap.out_max,
             bypass_clocks=pass_tap.clocks,

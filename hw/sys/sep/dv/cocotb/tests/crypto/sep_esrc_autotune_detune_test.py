@@ -37,7 +37,13 @@ Checkers:
                     to the end of its gap. Controls: a failure-leg burst toggles
                     probe bit k, and the off-leg burst latches status k bit 0.
   CHK-TUNE-IGNORED  with autotune on and clean noise the probe keeps p0 after
-                    DETUNE = m3 and after DETUNE = m3c.
+                    DETUNE = m3 and after DETUNE = m3c, and the edge record
+                    shows zero probe changes from the p0 sample to the end of
+                    the leg (count logged). Control: the leg lasts at least as
+                    long as the latest first toggle of bit k after a burst
+                    start (CHK-TUNE-TOGGLE), so a tune state machine that
+                    toggles with no failure at the failing-noise rate changes
+                    the probe in this leg.
   CHK-TUNE-AUTO     after each of three autotune bursts, AUTOTUNE_FAIL = 1 and
                     status k bit 0 = 1; both read 0 before each burst (control).
   CHK-TUNE-TOGGLE   in each autotune burst and its gap probe bit k changes at
@@ -216,6 +222,8 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         await self.setup.wait_boot_done(self.esrc, plan.window)
 
         self.timer = SepEdgeTimer(dut.esrc_detune_o, name="esrc_detune_o").start()
+        # Time from each autotune burst start to the first change of probe bit k.
+        self.first_toggle_ps: list[int] = []
         open_graded_window(TEST, self.logger)
 
         manual = await self._manual_leg()
@@ -364,6 +372,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         out: dict = {"reason": ""}
         await self._write_autotune(1)
         p0 = await self._probe()
+        t_p0 = _now_ps()
         probes = []
         try:
             for mask in (self.plan.m3, self.plan.m3c):
@@ -372,7 +381,9 @@ class sep_esrc_autotune_detune_test(sep_base_test):
                 probes.append(await self._probe())
         except TrialTimeout as exc:
             out["reason"] = f"timeout:{exc.what} bound={exc.bound}"
-        out.update(p0=p0, probes=probes)
+        t_end = _now_ps()
+        changes = [c for c in self.timer.since(t_p0, until_ps=t_end) if c.t_ps > t_p0]
+        out.update(p0=p0, probes=probes, changes=len(changes), span_ps=t_end - t_p0)
         return out
 
     async def _auto_burst(self, i: int) -> int | None:
@@ -395,9 +406,12 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             self.chk.ok("TUNE-AUTO", False, lane=k, burst=i + 1, reason=reason)
             await self._clear_status(clear_autotune=True)
             return None
-        toggles = len(self.timer.rises(t0, until_ps=t1, bit=k)) + len(
-            self.timer.falls(t0, until_ps=t1, bit=k)
+        edges = sorted(
+            self.timer.rises(t0, until_ps=t1, bit=k) + self.timer.falls(t0, until_ps=t1, bit=k)
         )
+        toggles = len(edges)
+        if edges:
+            self.first_toggle_ps.append(edges[0] - t0)
         moved = [
             j
             for j in range(NUM_LANES)
@@ -472,13 +486,29 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         plan = self.plan
         p0 = ign["p0"]
         probes = ign["probes"]
+        changes = ign["changes"]
+        span_ps = ign["span_ps"]
+        # A healthy failing-noise burst changes bit k within this time; the leg
+        # must be at least that long for zero changes to mean anything.
+        need_ps = max(self.first_toggle_ps, default=None)
+        span_ok = need_ps is not None and span_ps >= need_ps
+        self.chk.ctrl(
+            "TUNE-IGNORED",
+            span_ok,
+            span_ps=span_ps,
+            first_toggle_ps=self.first_toggle_ps or "na",
+        )
         fields = {
             "detune_regs": f"0x{plan.m3:03x},0x{plan.m3c:03x}",
             "p0": f"0x{p0:03x}",
             "probe": ",".join(f"0x{p:03x}" for p in probes) or "na",
+            "changes_after_p0": changes,
+            "span_ps": span_ps,
             "ctrl_manual_probe": f"0x{manual['rows'][-1][2]:03x}",
         }
         if ign["reason"]:
             fields["reason"] = ign["reason"]
-        ok = not ign["reason"] and len(probes) == 2 and all(p == p0 for p in probes)
+        ok = (
+            not ign["reason"] and len(probes) == 2 and all(p == p0 for p in probes) and changes == 0
+        )
         self.chk.ok("TUNE-IGNORED", ok, **fields)

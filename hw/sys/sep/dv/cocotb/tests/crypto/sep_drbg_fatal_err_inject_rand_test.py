@@ -18,9 +18,10 @@ Contract (``vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc
     22) pulse the Crypto alert, vector bit 32 (csrng.adoc:381-396; edn.adoc:309-315;
     crypto.adoc:151; interrupts.adoc:177-178).
   * A TRNG reset clears ``ERR_CODE`` (hw/ip/entropy_source/doc/architecture.adoc:219-223).
-  * ``RESEED_CMD`` and ``GENERATE_CMD`` take up to 13 words; a 14th is ignored and
-    sets ``SFIFO_RESCMD_ERR`` or ``SFIFO_GENCMD_ERR``, ``edn_fatal_err`` and a fatal
-    alert (edn.adoc:225, :232, :241, :249, :318, :323).
+  * ``RESEED_CMD`` and ``GENERATE_CMD`` take up to 13 words; a 14th sets
+    ``SFIFO_RESCMD_ERR`` or ``SFIFO_GENCMD_ERR``, ``edn_fatal_err`` and a fatal
+    alert (edn.adoc:225, :232, :241, :249, :318, :323). The drop of the 14th word
+    is not graded: no register reads the FIFO level or contents.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. ``SW_RESET_N`` baseline 0x20. Each trial pulses the TRNG

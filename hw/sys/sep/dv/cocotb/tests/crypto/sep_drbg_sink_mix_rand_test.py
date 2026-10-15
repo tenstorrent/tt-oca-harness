@@ -40,24 +40,31 @@ Checkers:
 Overlap by construction: in the overlapped run each unit runs its drawn operation
 and then waits at a barrier. The barrier opens on the first clock on which the
 request probe of every sink of the set has shown a request. After it opens, each
-unit runs one tail operation that makes its sink request again (one Key Manager
-generate, one AES block, one KMAC ``CMD.entropy_req`` write, one OTBN program with
-one RND and one URND read of the set, one pool pop). Every busy window then starts
-at or before the barrier clock and ends after it, so every pair overlaps. A sink
-whose tail request the DUT does not serve ends its window before the barrier, and
-the control fails.
+unit waits until the request probe of each of its sinks has been low for 16 clocks
+(the pool also refills to 32 entries first) and marks that clock M. Then it runs one
+tail operation that makes its sinks request again (one Key Manager generate, one AES
+block, one KMAC ``CMD.entropy_req`` write, one OTBN program with one RND and one URND
+read of the set, one pool pop). The tail of a sink is served only by a request that
+starts after M and after the barrier clock and completes at least one word before the
+request probe drops; a completion of the drawn operation cannot serve it. Every busy
+window then starts at or before the barrier clock and ends after it, so every pair
+overlaps. A sink whose tail request the DUT does not serve fails ``CHK-MIX-SINK``
+with ``reason=timeout:tail_ack``.
   CHK-MIX-EXT-KM  with bit 0 set every beat that completes at external port 0
                   appears at ``km_entropy_*`` in order and value; the external
                   tready equals ``km_entropy_tready_o`` on every clock; ``axis1``
                   and ``axis2`` carry the internal endpoint words. Control: with bit
                   0 clear the same beats see tready 1 and ``km_entropy_*`` carries
                   the endpoint word; ``axis1`` and ``axis2`` show tvalid; with bit 0
-                  set ``km_entropy_tready_o`` reads 0 on at least one clock.
+                  set ``km_entropy_tready_o`` reads 0 on at least one clock. No
+                  graded probe (request, completion, tvalid, tready, and the tdata
+                  of each graded beat) reads X or Z (``xz`` = 0), and a beat with an
+                  X or Z tdata is a mismatch in every compare.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import combinations
 
 import cocotb
@@ -123,6 +130,8 @@ KM_OP_TIMEOUT = 400_000
 # Beats the bridge keeps queued on external port 0 across the select write (each
 # transfers in one clock while bit 0 is clear; the write takes about 15 clocks).
 BRIDGE_DEPTH = 4
+# Clocks with every request probe of a unit low before its tail operation starts.
+QUIET_CLKS = 16
 
 
 def _le_words(data: bytes) -> list[int]:
@@ -251,6 +260,23 @@ class SinkStat:
     first_ack: int | None = None
     last_ack: int | None = None
     acks: int = 0
+    # Request episodes: a span of clocks with the request probe 1. ``eps`` holds the
+    # closed ones as (start clock, completions inside the span).
+    ep_start: int | None = None
+    ep_words: int = 0
+    eps: list = field(default_factory=list)
+    last_req: int | None = None
+    orphan_acks: int = 0
+
+    def served(self, after: int) -> tuple[int, int] | None:
+        """First request episode that starts after ``after`` and completes a word."""
+        eps = list(self.eps)
+        if self.ep_start is not None:
+            eps.append((self.ep_start, self.ep_words))
+        for start, words in eps:
+            if start > after and words >= 1:
+                return start, words
+        return None
 
 
 class _Acc:
@@ -293,13 +319,39 @@ class _Acc:
         if req is None or ack is None:
             self.xz += 1
             return
-        if req and st.first_req is None:
-            st.first_req = self.clk
+        if req:
+            st.last_req = self.clk
+            if st.first_req is None:
+                st.first_req = self.clk
+            if st.ep_start is None:
+                st.ep_start, st.ep_words = self.clk, 0
         if ack:
             st.acks += 1
             st.last_ack = self.clk
             if st.first_ack is None:
                 st.first_ack = self.clk
+            if st.ep_start is None:
+                st.orphan_acks += 1
+            else:
+                st.ep_words += 1
+        if not req and st.ep_start is not None:
+            st.eps.append((st.ep_start, st.ep_words))
+            st.ep_start = None
+
+    def quiet(self, sinks: list[str]) -> bool:
+        """Every request probe of ``sinks`` is low and was low for ``QUIET_CLKS`` clocks."""
+        for s in sinks:
+            st = self.stat[s]
+            if st.ep_start is not None:
+                return False
+            if st.last_req is not None and self.clk - st.last_req < QUIET_CLKS:
+                return False
+        return True
+
+    def _x(self, v: int | None) -> int | None:
+        if v is None:
+            self.xz += 1
+        return v
 
     async def _run(self) -> None:
         d = self.dut
@@ -316,29 +368,38 @@ class _Acc:
             self._seen("pool", _known(d.pool_edn_req_o), _known(d.pool_edn_ack_o))
             if not self.ext:
                 continue
-            kd = _known(d.km_entropy_tdata_o)
-            ev, er = _bit(_known(d.ext_trng_tvalid_o), 0), _bit(_known(d.ext_trng_tready_o), 0)
-            iv, idata = _known(d.drbg_int_tvalid_o), _known(d.drbg_int_tdata_o)
+            # X or Z on a graded probe counts into ``xz`` and reads None, and None is
+            # a mismatch in every compare below (never equal to None).
+            ev = _bit(self._x(_known(d.ext_trng_tvalid_o)), 0)
+            er = _bit(self._x(_known(d.ext_trng_tready_o)), 0)
+            graded = kv == 1 or any(_known(v) != 0 for v in (d.axis1_tvalid_o, d.axis2_tvalid_o))
+            iv = self._x(_known(d.drbg_int_tvalid_o)) if graded else None
+            idata = self._x(_known(d.drbg_int_tdata_o)) if graded else None
+            kd = self._x(_known(d.km_entropy_tdata_o)) if kv == 1 else None
             if ev == 1 and er == 1:
-                self.ext_beats.append(_word(_known(d.ext_trng_tdata_o), 0))
+                self.ext_beats.append(_word(self._x(_known(d.ext_trng_tdata_o)), 0))
             if ev == 1 and er != 1:
                 self.ext_not_ready += 1
             if km_hs == 1:
                 self.km_beats.append(kd)
-            if er != kr:
+            if er is None or kr is None or er != kr:
                 self.tready_neq += 1
             if kr == 0:
                 self.km_tready_low += 1
             if kv == 1:
                 self.axis_valid[0] += 1
-                if _bit(iv, 0) != 1 or kd != _word(idata, 0):
+                if _bit(iv, 0) != 1 or kd is None or idata is None or kd != _word(idata, 0):
                     self.km_ep_neq += 1
             for j, (v, dat) in enumerate(
                 ((d.axis1_tvalid_o, d.axis1_tdata_o), (d.axis2_tvalid_o, d.axis2_tdata_o)), 1
             ):
-                if _known(v) == 1:
+                tv = self._x(_known(v))
+                if tv is None:
+                    self.axis_neq[j] += 1
+                elif tv == 1:
                     self.axis_valid[j] += 1
-                    if _bit(iv, j) != 1 or _known(dat) != _word(idata, j):
+                    ad = self._x(_known(dat))
+                    if _bit(iv, j) != 1 or ad is None or idata is None or ad != _word(idata, j):
                         self.axis_neq[j] += 1
 
 
@@ -489,10 +550,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             await self.otbn.execute()
             err = await self.otbn.read_errbits()
             return {"done": err == 0, "err_bits": err}
-        for _ in range(STATUS_READS):
-            if pool_level(await self.pool.status()) >= 1:
-                break
-            await ClockCycles(cocotb.top.clk_i, 16)
+        # The pool is full (32 entries) when its tail starts.
         seq = await self.pool.access(POOL_POP)
         return {"done": seq.resp_code == RESP_OKAY}
 
@@ -559,6 +617,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         errors: dict[str, str] = {}
         opened = Event()
         barrier: dict[str, int | None] = {"clk": None}
+        mark: dict[str, int] = {}
         stat = self.acc.stat
 
         async def gate() -> None:
@@ -581,15 +640,29 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             if barrier["clk"] is None:
                 errors[unit] = f"timeout:barrier bound={barrier_bound}"
                 return
+            sinks = self._sinks_of(unit)
+            try:
+                if unit == "pool":
+                    await self._pool_full()
+            except AssertionError as exc:
+                errors[unit] = f"tail:{exc}"
+                return
+            # No request of the drawn operation is open or recent at the mark M, so
+            # only a request that the tail operation makes can start after M.
+            n = await self._until(lambda: self.acc.quiet(sinks), tail_bound[unit])
+            if n is None:
+                errors[unit] = f"timeout:tail_quiet bound={tail_bound[unit]}"
+                return
+            mark[unit] = self.acc.clk
             try:
                 tails[unit] = await self._tail(unit)
             except AssertionError as exc:
                 errors[unit] = f"tail:{exc}"
                 return
-            # The tail request of each sink of the unit completes after the barrier.
-            t_clk = barrier["clk"]
+            # Each sink of the unit shows a request that starts after M and completes a
+            # word before the request probe drops.
             n = await self._until(
-                lambda: all((stat[s].last_ack or 0) > t_clk for s in self._sinks_of(unit)),
+                lambda: all(stat[s].served(mark[unit]) is not None for s in sinks),
                 tail_bound[unit],
             )
             if n is None:
@@ -628,6 +701,16 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             if unit == "aes":
                 golden_ok = golden_ok and tail.get("result==golden") == 1
             need = plan.counts["km"] if s == "km" else 1
+            t_clk = barrier["clk"]
+            m_clk = mark.get(unit)
+            srv = st.served(m_clk) if m_clk is not None else None
+            tail_ok = (
+                t_clk is not None
+                and m_clk is not None
+                and srv is not None
+                and srv[0] > max(t_clk, m_clk)
+                and srv[1] >= 1
+            )
             fields = {
                 "sink": s,
                 "words": st.acks,
@@ -635,6 +718,11 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
                 "count": plan.counts[s],
                 "done": int(done),
                 "tail_done": int(bool(tail.get("done"))),
+                "barrier_clk": t_clk if t_clk is not None else "none",
+                "tail_mark_clk": m_clk if m_clk is not None else "none",
+                "tail_req_clk": srv[0] if srv is not None else "none",
+                "tail_words": srv[1] if srv is not None else 0,
+                "orphan_acks": st.orphan_acks,
             }
             if unit in ("aes", "kmac"):
                 fields["result==golden"] = res.get("result==golden", "na")
@@ -642,7 +730,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
                 fields["tail_result==golden"] = tail.get("result==golden", "na")
             if unit in errors:
                 fields["reason"] = errors[unit]
-            self.chk.ok("MIX-SINK", done and golden_ok and st.acks >= need, **fields)
+            self.chk.ok("MIX-SINK", done and tail_ok and golden_ok and st.acks >= need, **fields)
         await self._end_run()
 
     # --- external Key Manager run --------------------------------------------------------
@@ -677,7 +765,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         run = await self._km_with_beats(pattern=plan.gap_pattern)
         close_graded_window(self.logger)
         a = self.acc
-        order_ok = a.ext_beats == a.km_beats
+        order_ok = None not in a.ext_beats and None not in a.km_beats and a.ext_beats == a.km_beats
         ctrl_ok = c_beats >= 1 and c_not_ready == 0 and c_km_neq == 0 and c_valid[0] > 0
         self.chk.ctrl(
             "MIX-EXT-KM",
