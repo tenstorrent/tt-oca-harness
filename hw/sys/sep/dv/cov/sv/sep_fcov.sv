@@ -7038,7 +7038,7 @@ module sep_fcov (
       if (d_go && !dg_init && dz_on_q && own_dma_zcont) begin
         dc_on_q   <= 1'b1;
         dc_hs_q   <= dg_hs;
-        dc_lock_q <= (d_regwen != 4'h6);
+        dc_lock_q <= (d_regwen != RegwenTrue);
         dc_out_q  <= 1'b0;
       end else if (dc_on_q) begin
         if (dc_out_now) dc_out_q <= 1'b1;
