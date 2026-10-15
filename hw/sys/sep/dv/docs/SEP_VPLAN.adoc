@@ -1357,7 +1357,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |no_cpu
 |IC_RESET TDR driver, gated-reset and isolate taps, isolate-vector and `aon_rst_n` observation taps
-|Proves that each per-IP JTAG override pair forces a domain reset or a release without the isolation sequence, and that a `sep_reset_n` override resets the `sep_reset_n` domain and every engine domain while `sep_fuse_sense_done_o` stays high. Extends the open override tests with the OTBN, AES, HMAC and KMAC pairs, the release value and the `sep_reset_n` reach only. The watchdog registers across the override are graded in `sep_timer_clock_contract_test`.
+|Proves that each per-IP JTAG override pair forces a domain reset or a release without the isolation sequence, that a `sep_reset_n` override resets the `sep_reset_n` domain and every engine domain while `sep_fuse_sense_done_o` stays high, and that a PTAP TRST of the IC_RESET TDR after fuse sense clears an applied override but drops neither `sep_fuse_sense_done_o` nor `sep_reset_n`. Extends the open override tests with the OTBN, AES, HMAC and KMAC pairs, the release value and the `sep_reset_n` reach only. The watchdog registers across the override are graded in `sep_timer_clock_contract_test`.
 
 |<<sep_scan_reset_override_test,`sep_scan_reset_override_test`>>
 |3
