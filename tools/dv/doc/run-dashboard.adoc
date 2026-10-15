@@ -1396,7 +1396,7 @@ Operational rules:
   computed from the native leaf records, per DUT under `duts.<dut>` and
   summed at the top level, because the normalized dashboard schema collapses
   those statuses into `FAIL`.
-* The workflow writes nothing to `gh-pages`. <<dashboard-site>> is the step
+* The workflow does not deploy the site. <<dashboard-site>> is the step
   that stages data into the built site.
 * An email digest is sent per weekly publication through the
   `OCAH_MAIL_USERNAME`, `OCAH_MAIL_PASSWORD`, and `OCAH_MAIL_TO` secrets; the
