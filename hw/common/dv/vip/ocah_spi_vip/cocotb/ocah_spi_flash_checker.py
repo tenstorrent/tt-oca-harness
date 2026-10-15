@@ -20,7 +20,10 @@ reached the pads is the ``oe_data`` check of an ``OcahSpiMonitor`` bound with
 emits one ``CHK-SPI-*`` record per rule through ``ocah_checker.OcahChecker``:
 
 ===========================  ==============================================================
-``CHK-SPI-JEDEC-ID``         READ JEDEC ID streamed the configured identifier
+``CHK-SPI-JEDEC-ID``         READ JEDEC ID streamed all three bytes of the configured
+                             identifier
+``CHK-SPI-JEDEC-PREFIX``     a READ JEDEC ID ended after one or two bytes streamed that
+                             prefix of the identifier
 ``CHK-SPI-STATUS-WEL``       READ STATUS REGISTER 1 reported the latch the model predicts
 ``CHK-SPI-STATUS-SR2``       READ STATUS REGISTER 2 reported the configured register
 ``CHK-SPI-WREN-ORDER``       a program or erase was accepted only with the latch set and
@@ -642,8 +645,11 @@ class OcahSpiFlashChecker:
             )
             return
         expected = (self.jedec_id & _ADDR_MASK_24).to_bytes(3, "big")
+        # Only a frame that streamed the whole identifier earns CHK-SPI-JEDEC-ID;
+        # a legal read that ended earlier grades its bytes as a prefix.
+        check_id = "CHK-SPI-JEDEC-ID" if len(rec.data_out) >= 3 else "CHK-SPI-JEDEC-PREFIX"
         self.expect_equal(
-            "CHK-SPI-JEDEC-ID",
+            check_id,
             rec.data_out[:3],
             expected[: len(rec.data_out)],
             context=f"bytes_streamed={len(rec.data_out)}",

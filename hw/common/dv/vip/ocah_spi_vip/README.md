@@ -303,9 +303,11 @@ seq.check_host_responses()        # CHK-SPI-HOST-*: the controller received what
 
 With `miso_oe` (the device's MISO drive enable) given to `OcahSpiMasterBfm`,
 every single-lane response bit a frame receives must be sampled with the
-enable high; otherwise the frame raises `OcahSpiMasterBfmError` after chip
-select rises, so a byte the device did not drive is never returned as
-received.
+enable high, and the enable must be sampled at every one of those bits;
+otherwise the frame raises `OcahSpiMasterBfmError` after chip select rises,
+so a byte the device did not drive is never returned as received.  The
+enable is sampled on the single-lane MISO path only, so the BFM refuses
+`miso_oe` together with the four-lane handles.
 | `bfm.lane_frame(segments)` | `list[bytes]` | Four-lane handles only. One frame of `(lanes, kind, arg)` segments: `lanes` 1, 2 or 4; `kind` `"tx"` (bytes to send), `"rx"` (byte count to receive), `"dummy"` (clock count) or `"clocks"` (per-clock lane values, driven with the segment's lanes enabled, for a frame that ends inside a byte). A single-lane segment keeps lane 0 driven; a dual or quad receive or dummy segment drives no lane. Bytes go most significant bits first, the least significant bit of each pair or nibble on lane 0. Returns the bytes of each receive segment |
 | `responses(opcode)` | `list[bytes]` | Every response the controller received for that opcode |
 
@@ -380,6 +382,12 @@ pins:
 | `oe_data` | With `sd_out` and `sd_oe`: at every sample edge of a controller-output clock (the command byte, the address, the payload of a command without a response, and any bit after WRITE ENABLE, WRITE DISABLE or SECTOR ERASE) the lanes that carry the data have their output enables on. A bit sampled with its output enable off did not reach the pad. Dummy and response clocks, and the clocks after the command byte of an unknown command, are not graded. Without `sd_oe` (a single-lane binding with no output-enable tap) the check is off |
 | `oe_ctrl` | With `cs_oe`/`sck_oe`: both are on at each sample edge. Derived, not stated in a pin table: a sample edge needs a driven chip-select low and a driven clock edge, and an undriven pad does not carry them |
 
+A data lane whose output enable is off is not graded and does not hide the
+others: the monitor resolves, compares and decodes only the enabled lanes, so
+an X/Z on a disabled lane neither raises `xz` nor masks a change or a bit on
+an enabled lane; in `beats` the lanes out hold the enabled lanes, a disabled
+lane reading 0.
+
 With `sd_out`, `mosi_edge` applies to every lane whose output enable is on
 before and after a change.
 
@@ -421,7 +429,8 @@ rules and their identifiers:
 
 | Identifier | Contract |
 |------------|----------|
-| `CHK-SPI-JEDEC-ID` | READ JEDEC ID streamed the configured identifier |
+| `CHK-SPI-JEDEC-ID` | READ JEDEC ID streamed all three bytes of the configured identifier |
+| `CHK-SPI-JEDEC-PREFIX` | A READ JEDEC ID that ended after one or two bytes streamed that prefix of the identifier; it does not earn `CHK-SPI-JEDEC-ID` |
 | `CHK-SPI-STATUS-WEL` | READ STATUS REGISTER 1 reported the latch the model predicts (set after WRITE ENABLE, clear after WRITE DISABLE, consumed by a program or erase) |
 | `CHK-SPI-STATUS-SR2` | READ STATUS REGISTER 2 reported the configured register |
 | `CHK-SPI-WREN-ORDER` | A program or erase was accepted only with the latch set, and refused (no payload taken) only with it clear |

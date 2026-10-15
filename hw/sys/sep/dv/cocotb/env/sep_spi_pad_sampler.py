@@ -2,9 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Per-core-clock sampler of the SPI host pad ports.
 
-Reads ``spi_cs_n_o``, ``spi_sck_o``, ``spi_mosi_o`` and lane 0 of
-``spi_sd_oe_o`` of ``tb_top`` (the approved SPI host pad ports and monitor
-taps, docs/SEP_TB_ARCH.adoc) on every rising edge of
+Reads ``spi_cs_n_o``, ``spi_sck_o``, ``spi_mosi_o``, lane 0 of
+``spi_sd_oe_o``, ``spi_cs_oe_o`` and ``spi_sck_oe_o`` of ``tb_top`` (the
+approved SPI host pad ports and monitor taps, docs/SEP_TB_ARCH.adoc) on every
+rising edge of
 ``clk_i``, in the read-only phase, and drives nothing. Clock ``n`` is the n-th
 sampled edge after ``start``; every time value here is a clock index, so every
 time relation is in core clocks.
@@ -26,6 +27,9 @@ Records:
   edges.
 * chip-select-high windows (``CsHighWindow``): the start and end clocks and the
   set of sck levels sampled in the window.
+* for both kinds of window, ``cs_oe_off`` and ``sck_oe_off``: the clocks on
+  which the chip-select or clock output enable was off (or X/Z), so the pad
+  did not carry the sampled level from the host.
 * every sck edge and every mosi change of the run, chip select high or low.
 
 A chip select or sck sample that resolves to X or Z fails the leaf with
@@ -51,6 +55,12 @@ import cocotb
 from cocotb.triggers import ReadOnly, RisingEdge
 
 
+def _on(sig) -> bool:
+    """True when a one-bit enable resolves to 1."""
+    v = sig.value
+    return bool(v.is_resolvable and int(v) & 1)
+
+
 class SpiPadXZError(AssertionError):
     """A chip select or sck sample resolved to X or Z."""
 
@@ -74,6 +84,8 @@ class CsWindow:
     # Clocks in the window on which spi_mosi_o was X or Z. A change count
     # over such a window is incomplete, so a check on MOSI changes needs 0.
     mosi_xz: int = 0
+    cs_oe_off: int = 0
+    sck_oe_off: int = 0
 
     @property
     def complete(self) -> bool:
@@ -127,6 +139,8 @@ class CsHighWindow:
     end: int | None = None
     sck_levels: set[int] = field(default_factory=set)
     sck_toggles: int = 0
+    cs_oe_off: int = 0
+    sck_oe_off: int = 0
 
 
 @dataclass(frozen=True)
@@ -152,6 +166,8 @@ class SepSpiPadSampler:
         self._sck = self.dut.spi_sck_o
         self._mosi = self.dut.spi_mosi_o
         self._sd_oe = self.dut.spi_sd_oe_o
+        self._cs_oe = self.dut.spi_cs_oe_o
+        self._sck_oe = self.dut.spi_sck_oe_o
         self._task: Any = None
         self._idle: int | None = None
         self.clk = 0
@@ -314,6 +330,10 @@ class SepSpiPadSampler:
                     self.high[-1].sck_toggles += 1
             if cs == 1 and self.high:
                 self.high[-1].sck_levels.add(sck)
+            win = self.low[-1] if cs == 0 and self.low else self.high[-1] if self.high else None
+            if win is not None:
+                win.cs_oe_off += 0 if _on(self._cs_oe) else 1
+                win.sck_oe_off += 0 if _on(self._sck_oe) else 1
             if mosi is None and cs == 0 and self.low:
                 self.low[-1].mosi_xz += 1
             if mosi is not None and self._mosi_level is not None and mosi != self._mosi_level:

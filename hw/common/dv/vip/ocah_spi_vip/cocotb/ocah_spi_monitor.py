@@ -91,7 +91,11 @@ other SCK edge is the shift edge.  It grades the controller's pins:
 ====================  =====================================================
 
 With the four-lane taps the MOSI checks apply to every lane whose output
-enable is on before and after a change. ``beats`` keeps the raw lanes of each
+enable is on before and after a change. A lane whose output enable is off is
+not graded and does not hide the others: the monitor resolves, compares and
+decodes only the enabled lanes, so an X/Z on a disabled lane neither raises
+``xz`` nor masks a change or a bit on an enabled lane. In ``beats`` the lanes
+out hold the enabled lanes, a disabled lane reading 0. ``beats`` keeps the raw lanes of each
 sample edge; ``lanes_to_bytes`` (``ocah_spi_types``) decodes a dual or quad
 phase from it.
 
@@ -614,11 +618,11 @@ class OcahSpiMonitor:
     def _driven_lanes(self) -> Optional[Tuple[int, int]]:
         """(lane values, lanes driven) the controller presents; ``None`` when X/Z."""
         if self._sd_out is not None:
-            value = _vector(self._sd_out)
             oe = 0xF if self._sd_oe is None else _vector(self._sd_oe)
-            if value is None or oe is None:
+            if oe is None:
                 return None
-            return value & oe, oe
+            value = _masked_vector(self._sd_out, oe)
+            return None if value is None else (value, oe)
         if self._mosi is not None:
             bit = _level(self._mosi)
             return None if bit is None else (bit, 1)
@@ -628,16 +632,16 @@ class OcahSpiMonitor:
         """Record one sample edge: the lane bits, the beat, and the output-enable checks."""
         mosi = self._mosi
         if mosi is None and self._sd_out is not None:
-            value = _vector(self._sd_out)
-            oe = _vector(self._sd_oe) if self._sd_oe is not None else 1
-            lane0 = None if value is None or oe is None else value & 1
+            lane0 = _masked_vector(self._sd_out, 1)
             mosi_bits.append(lane0 or 0)
         else:
             mosi_bits.append(0 if mosi is None else _level(mosi) or 0)
         if self._sd_out is None:
             return
-        out, oe, inp = _vector(self._sd_out), _vector(self._sd_oe), _vector(self._sd_in)
-        beats.append((out, oe, inp))
+        oe = _vector(self._sd_oe) if self._sd_oe is not None else 0xF
+        out = _masked_vector(self._sd_out, 0xF if oe is None else oe)
+        inp = _vector(self._sd_in)
+        beats.append((out, None if self._sd_oe is None else oe, inp))
         if self._sd_oe is not None:
             if oe is None or oe not in _LEGAL_OE:
                 self._violate(
@@ -895,6 +899,21 @@ def _vector(sig) -> Optional[int]:
 
 def _fmt_vec(value: Optional[int]) -> str:
     return "X/Z" if value is None else f"0b{value:04b}"
+
+
+def _masked_vector(sig, mask: int) -> Optional[int]:
+    """The bits of ``sig`` selected by ``mask`` (others read 0); ``None`` when one of them is X/Z."""
+    text = str(sig.value)
+    width = len(text)
+    value = 0
+    for i, ch in enumerate(text):
+        bit = width - 1 - i
+        if not (mask >> bit) & 1:
+            continue
+        if ch not in "01":
+            return None
+        value |= int(ch) << bit
+    return value
 
 
 def _has_xz(sig, mask: int) -> bool:

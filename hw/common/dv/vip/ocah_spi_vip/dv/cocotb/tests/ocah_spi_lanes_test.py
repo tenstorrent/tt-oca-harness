@@ -24,8 +24,10 @@ READ and QUAD I/O READ:
   ``oe_lanes`` and ``oe_data``, a lane enable raised with chip select high
   gives exactly ``oe_idle``, a lane enable still on when chip select rises
   gives exactly ``oe_idle``, a frame with the chip-select enable low gives
-  ``oe_ctrl``, and a WRITE ENABLE shifted on lane 0 with its output enable
-  off gives exactly ``oe_data``; ``stop()`` then
+  ``oe_ctrl``, a WRITE ENABLE shifted on lane 0 with its output enable off
+  gives exactly ``oe_data``, and (4-state simulator only) a lane 0 change on
+  a sample edge while a disabled lane holds X gives exactly ``mosi_edge``;
+  ``stop()`` then
   raises. A single-lane ``transfer()`` on the four-lane link turns its lane
   enable off before chip select rises, so it adds no violation.
 
@@ -50,6 +52,21 @@ from ocah_spi_vip import (
 from ocah_spi_vip_harness import JEDEC_ID, build_lane_stack, random_page_span, scenario_rng
 
 log = logging.getLogger("cocotb.tb.ocah_spi_lanes_test")
+
+FOUR_STATE = "verilator" not in str(getattr(cocotb, "SIM_NAME", "") or "").lower()
+
+
+def _lanes_value(handle: Any, text: str) -> Any:
+    """A four-lane value with X/Z bits, most significant lane first."""
+    try:
+        from cocotb.types import LogicArray  # cocotb 2.x
+
+        return LogicArray(text)
+    except ImportError:  # cocotb 1.x
+        from cocotb.binary import BinaryValue
+
+        return BinaryValue(text.lower(), n_bits=len(handle))
+
 
 REQUIRED_IDS = (
     "CHK-SPI-LANE-PROGRAM",
@@ -251,6 +268,25 @@ async def ocah_spi_lanes_test(dut) -> None:
     dut.spi4_sd_out.value = 0
     legs.append(("lane0_oe_off", [e.split(":")[0] for e in monitor.get_wire_errors()[before:]]))
 
+    # X on a disabled lane does not hide a lane 0 change on a sample edge.
+    if FOUR_STATE:
+        before = len(monitor.get_wire_errors())
+        await bfm.drive(cs_n=0)
+        dut.spi4_sd_oe.value = 0b0001
+        dut.spi4_sd_out.value = _lanes_value(dut.spi4_sd_out, "X000")
+        await bfm.drive(hold_ns=half)
+        dut.spi4_sd_out.value = _lanes_value(dut.spi4_sd_out, "X001")
+        await bfm.drive(sclk=1)  # lane 0 changes on the sample edge
+        await bfm.drive(sclk=0)
+        dut.spi4_sd_oe.value = 0
+        dut.spi4_sd_out.value = 0
+        await bfm.drive(cs_n=1, hold_ns=3 * half)
+        legs.append(
+            ("x_on_disabled_lane", [e.split(":")[0] for e in monitor.get_wire_errors()[before:]])
+        )
+    else:
+        log.info("OBS-SPI-LANE-XZ graded=0 reason=2-state simulator holds no X")
+
     errors = monitor.get_wire_errors()
     expected_stop = f"{monitor.name}: {len(errors)} wire-check violation(s); first: {errors[0]}"
     stop_text = ""
@@ -269,7 +305,8 @@ async def ocah_spi_lanes_test(dut) -> None:
                 ("oe_on_at_cs_rise", ["oe_idle"]),
                 ("cs_oe_low", ["oe_ctrl"]),
                 ("lane0_oe_off", ["oe_data"]),
-            ],
+            ]
+            + ([("x_on_disabled_lane", ["mosi_edge"])] if FOUR_STATE else []),
             True,
         ),
         context=f"stop() raised {stop_text!r}",

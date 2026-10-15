@@ -74,6 +74,11 @@ class OcahSpiMasterBfm:
         self._cs_oe = cs_oe
         self._sck_oe = sck_oe
         self._miso_oe = miso_oe
+        if miso_oe is not None and sd_out is not None:
+            raise ValueError(
+                f"{name}: miso_oe is sampled on the single-lane MISO path only; "
+                "a four-lane binding cannot grade it"
+            )
         # Device MISO drive enable at each single-lane sample of the last frame.
         self.last_drive_enables: list[int | None] = []
         self.half_period_ns = half_period_ns
@@ -201,11 +206,13 @@ class OcahSpiMasterBfm:
         self.bytes_tx += len(header)
         self.bytes_rx += rx_len
         undriven = sum(1 for enable in rx_enables if enable != 1)
-        if require_drive and self._miso_oe is not None and undriven:
-            raise OcahSpiMasterBfmError(
-                f"{self.name}: opcode 0x{int(opcode) & 0xFF:02x} received {undriven} of "
-                f"{8 * rx_len} response bit(s) with the device MISO drive enable low"
-            )
+        if require_drive and self._miso_oe is not None and rx_len:
+            if len(rx_enables) != 8 * rx_len or undriven:
+                raise OcahSpiMasterBfmError(
+                    f"{self.name}: opcode 0x{int(opcode) & 0xFF:02x} received {undriven} of "
+                    f"{8 * rx_len} response bit(s) with the device MISO drive enable low "
+                    f"(enable samples={len(rx_enables)})"
+                )
         self.log.debug(
             "%s: frame opcode=0x%02x header=%d B rx=%d B", self.name, opcode, len(header), rx_len
         )
