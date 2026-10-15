@@ -62,7 +62,7 @@ tests = ["sep_axi_smoke_test"]
 #   (memory.toml), as its run mode states. It needs the TCM controller of the
 #   full CPU, which the CPU stub does not have.
 name = "all"
-expected_count = 187
+expected_count = 188
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -238,6 +238,7 @@ tests = [
     "sep_ip_reset_override_matrix_test",
     "sep_scan_reset_override_test",
     "sep_cpu_reset_entry_test",
+    "sep_cpu_reset_entry_test_real_sense",
     "sep_secure_tm_strap_sampling_test",
     "sep_cpu_ctrl_reg_shape_test",
     "sep_timer_clock_contract_test",
@@ -286,6 +287,7 @@ tests = [
     "sep_pic_pending_map_walk_rand_test",
     "sep_nmi_vector_bark_rand_test",
     "sep_cpu_reset_entry_test",
+    "sep_cpu_reset_entry_test_real_sense",
     "sep_debug_master_target_matrix_test",
     "sep_boot_rom_aperture_sweep_test",
     "sep_cpu_demux_unmapped_fetch_test",
@@ -731,7 +733,7 @@ tests = [
 # entries, sep_tcm_dma_aperture_ecc_test and
 # sep_debug_master_target_matrix_test_sba).
 name = "phase3_memory_boot_reset"
-expected_count = 22
+expected_count = 23
 tests = [
     "sep_boot_release_terms_test",
     "sep_boot_release_terms_test_smc_hold",
@@ -742,6 +744,7 @@ tests = [
     "sep_ip_reset_override_matrix_test",
     "sep_scan_reset_override_test",
     "sep_cpu_reset_entry_test",
+    "sep_cpu_reset_entry_test_real_sense",
     "sep_secure_tm_strap_sampling_test",
     "sep_cpu_ctrl_reg_shape_test",
     "sep_timer_clock_contract_test",

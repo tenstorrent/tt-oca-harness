@@ -1367,9 +1367,9 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 
 |<<sep_cpu_reset_entry_test,`sep_cpu_reset_entry_test`>>
 |3
-|cpu
+|cpu, skip-sense plusarg; the second testlist entry `sep_cpu_reset_entry_test_real_sense` runs real fuse sense of the PROD preload
 |CPU trace port, JTAG TAP pins and DTM shifter (added hook)
-|Proves that the first CPU fetch is at the boot ROM base by default, that no instruction retires before both resets are high, and that a reset-vector TDR value redirects the first fetch, persists through CPU resets and is restored only by the TAP reset, which resets neither the SEP nor the CPU. Extends the open boot ROM tests with those cells only.
+|Proves that the first CPU fetch is at the boot ROM base by default, that no instruction retires before both resets are high, and that a reset-vector TDR value redirects the first fetch, persists through CPU resets and is restored only by the TAP reset, which resets neither the SEP nor the CPU and, with real fuse sense, does not drop `sep_fuse_sense_done_o`. Extends the open boot ROM tests with those cells only.
 
 |<<sep_secure_tm_strap_sampling_test,`sep_secure_tm_strap_sampling_test`>>
 |3
@@ -1999,7 +1999,9 @@ different run mode (`cpu` and `no_cpu`), or a full-CPU leg. No entry exists to p
 per-cell variant, no cell or field plusarg). The tests with a second entry are
 5.13 `sep_boot_release_terms_test`, whose entry
 `sep_boot_release_terms_test_smc_hold` adds the bench plusarg
-`+sep_smc_fuse_sense_hold`; 5.28 `sep_debug_master_target_matrix_test`, which
+`+sep_smc_fuse_sense_hold`; 5.19 `sep_cpu_reset_entry_test`, whose entry
+`sep_cpu_reset_entry_test_real_sense` omits the time-0 plusarg
+`+skip_fuse_sense` and runs real fuse sense; 5.28 `sep_debug_master_target_matrix_test`, which
 has one `cpu` entry and one `no_cpu` entry
 (`sep_debug_master_target_matrix_test_sba`, on `target = "default"`) of the one
 module; 5.15 `sep_cpu_reset_retention_test`, 5.20
