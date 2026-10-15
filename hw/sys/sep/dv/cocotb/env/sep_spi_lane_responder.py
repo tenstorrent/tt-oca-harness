@@ -300,7 +300,8 @@ async def run_lane_frame(
     before the call and grades the frame with ``expect_frame`` after it.
     The RX bytes of the segments before the last must fit the RX FIFO.
     The return value is the RX bytes of every RX segment in order, each
-    segment cut from its own word-aligned RXDATA words.
+    segment cut from its own word-aligned RXDATA words. A frame that leaves
+    an RXDATA word after the last expected one raises ``AssertionError``.
     """
     if responder is not None:
         responder.load(segments)
@@ -326,6 +327,11 @@ async def run_lane_frame(
             words.append(await ops.pop_rx())
             continue
         if len(words) == need and st.active == 0 and st.cmdqd == 0:
+            # The frame is done, so an RXDATA word left now is one too many.
+            if not st.rxempty:
+                raise AssertionError(
+                    f"SPI lane frame left RXEMPTY=0 after {need} RXDATA words: rxqd={st.rxqd}"
+                )
             break
     else:
         raise AssertionError(

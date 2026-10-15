@@ -846,7 +846,8 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
     async def _long_dummy_leg(self) -> None:
         seed = self.seed
         # The monitor and the responder would follow each of the 2,097,152 sck
-        # edges; this leg grades the sck count and the window count only.
+        # edges; this leg grades the sck count and the window count only, on
+        # windows whose chip select and sck output enables are on.
         await self.wire.monitor.stop()
         await self.rsp.stop()
         self._ungraded()
@@ -856,7 +857,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         await self.ops.issue_command(Seg(0, DIR_DUMMY, LONG_DUMMY_LEN).cmd)
         await self.ops.wait_segment_done(self.pads, mark, bound_clks=LONG_BOUND_CLKS)
         self._ungraded()
-        wins = self.pads.windows_since(mark, complete_only=False)
+        wins = self.pads.windows_since(mark, complete_only=False, require_oe=True)
         got = sum(w.leading_edges for w in wins)
         exp_wins = 1 + MUT_LONG_DUMMY_EXTRA_WIN
         line = (

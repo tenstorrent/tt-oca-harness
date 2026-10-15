@@ -185,6 +185,8 @@ PAYLOAD_POOL = 512
 DATA_BYTES_MAX = 32
 # The SW_RST abort segment: at most this many words (also at most the TX depth).
 ABORT_WORDS = 16
+# RXDATA words a finished Rx segment leaves unread before the SW_RST abort.
+ABORT_RX_WORDS = 2
 # Data lane output enables of a Tx segment, per lane count (spi_sd_oe_o[3:0]).
 TX_OE_MASK = {1: 0b0001, 2: 0b0011, 4: 0b1111}
 # The watermark event leg: at most this many TX words queued.
@@ -1306,18 +1308,32 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         pre_exp_oe = TX_OE_MASK[lanes]
         await self._clean()
         self._gate(True)
-        # The monitor never sees the frame that the abort cuts.
+        # The monitor never sees the Rx frame or the frame that the abort cuts.
         await self._session_end()
+        # Work for SW_RST to flush in each queue: RXDATA words of a finished Rx
+        # segment stay unread, and a second COMMAND waits behind the Tx segment.
+        rx_bytes = 4 * ABORT_RX_WORDS
+        await self.ops.issue_command(command_word(rx_bytes - 1, speed=self.speed, direction=DIR_RX))
+        await self._poll(
+            lambda s: s.active == 0 and s.cmdqd == 0 and s.rxqd == ABORT_RX_WORDS,
+            self._seg_bound(rx_bytes, self.speed),
+            f"abort Rx segment done: RXQD={ABORT_RX_WORDS}",
+            chk,
+        )
         for _ in range(nwords):
             await self.ops.push_tx(self._word())
         mark = self.pads.mark()
         await self.ops.issue_command(
             command_word(4 * nwords - 1, speed=self.speed, direction=DIR_TX)
         )
+        await self.ops.issue_command(command_word(3, speed=self.speed, direction=DIR_TX))
         try:
             await self.pads.wait_leading_edges(t, mark, self._seg_bound(4 * nwords, self.speed))
         except AssertionError as exc:
             self._ctrl_missing(chk, f"width={self._w} dir=tx t={t}: {exc}")
+        # Control: one STATUS read shows a TX word, an RX word and a queued
+        # command, with the Tx segment still active.
+        pre = await self.ops.read_status()
         # Control: the last pad sample before the SW_RST write shows the Tx
         # segment in flight, chip select low and its data lanes driven.
         cs_low = int(self.pads.cs_low())
@@ -1343,7 +1359,8 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             f"cs_low_at_sw_rst={cs_low} pre_cs_n={pre_cs_n} "
             f"pre_sd_oe={_bin4(pre_sd_oe)} expect_pre_sd_oe={pre_exp_oe:04b} "
             f"sd_oe={sd_oe} expect_sd_oe={exp_sd_oe} cs_n={cs_n} "
-            f"txqd={st.txqd} rxqd={st.rxqd} cmdqd={st.cmdqd}"
+            f"pre_active={pre.active} pre_txqd={pre.txqd} pre_rxqd={pre.rxqd} "
+            f"pre_cmdqd={pre.cmdqd} txqd={st.txqd} rxqd={st.rxqd} cmdqd={st.cmdqd}"
         )
         self.logger.info(
             "OBS-SPI-SWRST-CTRL-OE seed=%d width=%s dir=tx cs_oe=%s sck_oe=%s",
@@ -1353,6 +1370,8 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             sck_oe,
         )
         if not cs_low or pre_cs_n != 0 or pre_sd_oe != pre_exp_oe or cycles >= total:
+            self._ctrl_missing(chk, line)
+        if not pre.active or not pre.txqd or not pre.rxqd or not pre.cmdqd:
             self._ctrl_missing(chk, line)
         if sd_oe != exp_sd_oe or cs_n != 1 or st.txqd or st.rxqd or st.cmdqd:
             self._fail(chk, line)
