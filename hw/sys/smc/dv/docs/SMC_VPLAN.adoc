@@ -13117,7 +13117,9 @@ the first write. The sequence applies the full, single-byte, sparse, null and
 restore operations to each catalogued word, requires no Zeroer busy or unknown
 value sampled on a rising SMC clock edge from before the first catalogued
 operation through the final status read, checks Zeroer state and lane
-coverage, waits with a bound for all predicted comparisons, then checks
+coverage, runs a real one-word Zeroer command to SPM after the no-start check
+and requires the busy sample count to increase, waits with a bound for all
+predicted comparisons, then checks
 scoreboard results and access counts.
 
 *Checkers*:
@@ -13133,6 +13135,7 @@ scoreboard results and access counts.
 |`CHK-REGBLOCK-WIDE-RESTORE` |Each word reads its reset value after the restore write
 |`CHK-REGBLOCK-WIDE-RESTORE-NONVAC` |At least one restore per pass changes an RW value
 |`CHK-REGBLOCK-WIDE-NO-ZEROER-START` |No rising SMC clock edge samples busy or X/Z during the catalogued operations; the busy tap and final `CTRL_STATUS.STATUS` are idle
+|`CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL` |A real one-word Zeroer START changes the known busy sample count in the same pass
 |`CHK-REGBLOCK-WIDE-LANE-COVERAGE` |All eight SEP_IN byte lanes were strobed
 |`CHK-SB-REGBLOCK-WIDE` |Each catalogued read and write returns OKAY; each read also matches the passive model's predicted 64-bit value
 |`CHK-REGBLOCK-WIDE-SCOREBOARD` |Every predicted read and write was compared with no new mismatch
@@ -13144,6 +13147,11 @@ scoreboard results and access counts.
 
 The claim covers the seven selected words under the safe-state preconditions.
 The busy observation is clock-sampled; it does not grade sub-cycle glitches.
+After the absence check, a bounded positive control uses the last aligned SPM
+word as scratch. No CPU or other initiator may use that word during the pass.
+It is left zero through a SEP_IN write that also updates the SPM model; its
+initial SRAM contents are not read or restored. DEST_ADDR and SIZE return to
+their reset values. The control does not grade the Zeroer's zeroed payload.
 It excludes registers whose writes change decode, gating, reset, lock or other
 operational state. `RESET_VECTOR_0` through `RESET_VECTOR_3` are excluded
 because a later core reset that does not also assert warm reset can consume a
@@ -13156,14 +13164,21 @@ handles a real error response; the error-read path has no directed run here.
 *Pass Criteria*: all checks hold on every pass;
 `+SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE` must fail `regblock_wide`
 comparisons. `+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
-full-write and no-start expectations and must fail seven
+full-write, no-start and busy-control expectations and must fail seven
 `CHK-REGBLOCK-WIDE-FULL-RW` records and one
-`CHK-REGBLOCK-WIDE-NO-ZEROER-START` record per pass (eight failures per pass),
+`CHK-REGBLOCK-WIDE-NO-ZEROER-START` record and one
+`CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL` record per pass (nine failures per pass),
 while the scoreboard records no mismatch.
 `+SMC_REGBLOCK_WIDE_RESPONSE_NEGATIVE`, used alone, changes only predicted
 write responses to SLVERR and must fail every catalogued write comparison and
-no read comparison: 50 write mismatches per pass (35 base writes and 15 fixed
-sparse writes).
+no read comparison: 54 write mismatches per pass (35 base writes, 15 fixed
+sparse writes and four positive-control writes).
+The positive run requires 111 comparisons per pass (57 reads and 54 writes).
+With 16 passes, the sequence negative requires 144 checker failures and the
+response negative requires 864 write mismatches. A separate local mutation
+holding the busy tap or sample counter at zero must fail the busy-control
+check even with the sequence negative disabled. Control completion and
+safe-state prerequisites are outside the expectation-inverting negative.
 The sequence and end-of-run scoreboard summary also report those mismatches.
 Enrolled only in `csr_uvm_extended`, outside `all`, `hosted` and `ci`;
 run on demand. This card records what a run must show, not a pass.
