@@ -58,9 +58,15 @@ Checkers:
                     BOOT_PHASE_DONE returns to 1. Failures after the rise count
                     again by contract (stuck samples still in the pipeline at
                     the bad_pattern moment), so the counters at BOOT_PHASE_DONE
-                    are logged as OBS-BOOT-COUNTERS only.
+                    are logged as OBS-BOOT-COUNTERS only. At the bad_pattern
+                    moment HEALTH_TEST_CTRL.ENABLE goes 0 then 7 after the fall
+                    (it clears the tester run state, RDL :314), so a stale stuck0
+                    sample after the rise cannot extend the run past the limit
+                    before the read; the totals after that clear are the "before"
+                    of the graded edge.
                     Control: IDLE 0 before the fall; the boot moment reads
-                    BOOT_PHASE_DONE 0 last; bad_pattern reads REPCNT above 0.
+                    BOOT_PHASE_DONE 0 last; bad_pattern reads REPCNT above 0, and
+                    above 0 again after the tester clear.
 Every bound is a multiple of a clean time of the same seed and is logged.
 """
 
@@ -628,6 +634,42 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
             fields["reason"] = f"timeout:boot_done bound={HOLD_FACTOR * self.t_boot}"
         self.chk.ok("BOOT-RESTART", idle_ok and done_ok and not nonzero, **fields)
 
+    async def _clear_tester_runs(
+        self, moment: str, before: dict[str, int] | None
+    ) -> dict[str, int]:
+        """Clear the tester run state with MODULE_ENABLE = 0; return the totals after it.
+
+        At the bad_pattern moment the stuck0 run of every lane is far above the
+        repetition limit, and stuck0 samples are still in the pipeline at the fall. A
+        stale sample that reaches the repetition test after the rise extends that run
+        and counts a failure since the rise, by contract, before the bus read of the
+        totals can return. "Disabling a test clears its state"
+        (``hw/ip/entropy_source/regs/entropy_source.rdl:314``, HEALTH_TEST_CTRL.ENABLE),
+        so ENABLE = 0 then 7 drops the run before the rise; a stale sample then opens a
+        run of a few samples, far below the limit. The totals are read again after
+        the clear: they are the "before" of the graded edge, and the control needs
+        REPCNT_TOTAL_FAILS still above 0 (the clear of the tester run is not the clear
+        of the total counter that the rise grades).
+        """
+        lim = clean_limits(WINDOW)
+        for enable in (0, ENTROPY_SOURCE.fields("HEALTH_TEST_CTRL")["ENABLE"]["reset"]):
+            await self._wr(
+                ESRC_HEALTH_TEST_CTRL,
+                ENTROPY_SOURCE.value(
+                    "HEALTH_TEST_CTRL", ENABLE=enable, REPETITION_LIMIT=lim.repetition
+                ),
+            )
+        after_clear = await self._totals()
+        self.chk.ctrl(
+            "BOOT-TOGGLE",
+            after_clear["rep"] > 0,
+            moment=moment,
+            leg="tester_clear",
+            total_fails_at_fall=self._fmt_totals(before),
+            total_fails_after_clear=self._fmt_totals(after_clear),
+        )
+        return after_clear
+
     async def _toggle_leg(self, moment: str, raw: int) -> None:
         """One fall moment with clean noise, then a rise: IDLE, restart, counters cleared."""
         plan = self.plan
@@ -702,6 +744,8 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
             reason = f"timeout:idle bound={idle_bound}"
         # MODULE_ENABLE = 0: the immediate change returns every lane to balanced.
         self.noise.set_lanes(list(plan.balanced), immediate=True)
+        if moment == "bad_pattern":
+            before = await self._clear_tester_runs(moment, before)
         await self._enable(1)
         # REPCNT_TOTAL_FAILS is read first, before the first strobe after the rise;
         # the window counters fail only at a window end, a whole window later.

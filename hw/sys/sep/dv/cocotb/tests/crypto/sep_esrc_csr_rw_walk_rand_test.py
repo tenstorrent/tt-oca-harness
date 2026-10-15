@@ -23,10 +23,14 @@ TRNG reset release to the end of the leaf.
 
 Register lists come from the generated register export and the RDL text at run time:
 the read-only leg takes every register whose fields are all read-only, except the
-FIFO data ports; the restore leg takes every read-write field (not RW1C, RW1S or a
-pulse) whose RDL text lacks "FIPS_LOCK.LOCK prevents software changes", outside
-``CTRL``. ``HEALTH_TEST_CTRL.ENABLE`` lacks the phrase and is walked as unlocked
-(``OBS-LOCK-LIST``).
+FIFO data ports; the restore leg takes every stored read-write field (no RDL write or
+read side effect such as ``woclr``, and not written by hardware alone) whose RDL text
+lacks "FIPS_LOCK.LOCK prevents software changes", outside ``CTRL``.
+``HEALTH_TEST_CTRL.ENABLE`` lacks the phrase and is walked as unlocked
+(``OBS-LOCK-LIST``). The read-write status and alert latches that hardware sets
+(``INTR_STATUS``, ``*_HEALTH_STATUS``, ``MAIN_SM_STATUS.ALERT``/``ERR``) are not
+stored configuration; the restore leg logs their non-zero fields before and after
+the reset as ``OBS-ESRC-VOLATILE`` and grades none of them.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before the first stimulus):
 the ``balanced`` masks and permutation, the order of the read-only leg and of the
@@ -42,8 +46,8 @@ Checkers:
                     written register. Control: at least one register and
                     ``COMPONENT_ID`` are written.
   CHK-ESRC-RESTORE  each restore field reads its RDL reset value after the TRNG reset;
-                    VCS: no readback bit of a field is X. Control: each field read v1
-                    before the reset.
+                    VCS: no readback bit of a field is X. Control: each restore field
+                    reads its written v1 before the reset.
   CHK-LOCK-MEN      locked trial: ``IDLE`` = 0 and ``LEVEL`` > 0 within 2 t_ref after a
                     drain and the write of 0. Control: the unlocked trial of the same
                     seed reads ``IDLE`` = 1 and an empty FIFO for 2 t_ref after
@@ -143,19 +147,26 @@ def intr_value(mask8: int) -> int:
     return sum(1 << INTR_BITS[j] for j in range(len(INTR_BITS)) if (mask8 >> j) & 1)
 
 
-def _rdl_field_text() -> dict[tuple[str, str], tuple[str, str, bool]]:
-    """(reg, field) -> (sw access, desc, has onwrite) from the RDL text."""
+# RDL write and read side effects: a field with one of them is not a stored read-write
+# field (contract step 1: not RW1C, RW1S, W1C or W1P).
+SIDE_EFFECT = re.compile(r"\b(onwrite|onread|singlepulse|woclr|woset|rclr|rset)\b")
+
+
+def _rdl_field_text() -> dict[tuple[str, str], tuple[str, str, bool, str]]:
+    """(reg, field) -> (sw access, desc, has a side effect, hw access) from the RDL text."""
     text = RDL.read_text(encoding="utf-8")
-    out: dict[tuple[str, str], tuple[str, str, bool]] = {}
+    out: dict[tuple[str, str], tuple[str, str, bool, str]] = {}
     for reg in re.finditer(r"\breg\s+(\w+)\s*\{(.*?)\n\s*\}\s*;", text, re.S):
         for fld in re.finditer(r"field\s*\{(.*?)\}\s*(\w+)\s*\[", reg.group(2), re.S):
             body = fld.group(1)
             desc = re.search(r'desc\s*=\s*"(.*?)"\s*;', body, re.S)
             sw = re.search(r"\bsw\s*=\s*(\w+)", body)
+            hw = re.search(r"\bhw\s*=\s*(\w+)", body)
             out[(reg.group(1), fld.group(2))] = (
                 sw.group(1) if sw else "",
                 desc.group(1) if desc else "",
-                "onwrite" in body or "singlepulse" in body,
+                SIDE_EFFECT.search(body) is not None,
+                hw.group(1) if hw else "",
             )
     if not out:
         raise RuntimeError(f"{RDL}: no field parsed")
@@ -174,18 +185,32 @@ class RestoreField:
         return f"{self.reg}.{self.field}"
 
 
-def register_lists() -> tuple[tuple[str, ...], tuple[tuple[str, str, int, int], ...], int]:
-    """(read-only registers, restore fields (reg, field, width, reset), locked-list size)."""
+def register_lists() -> tuple[
+    tuple[str, ...], tuple[tuple[str, str, int, int], ...], int, tuple[tuple[str, str], ...]
+]:
+    """(read-only registers, restore fields (reg, field, width, reset), locked-list size,
+    volatile fields).
+
+    A restore field is a stored read-write field: sw = rw, no RDL side effect, hardware
+    does not write it alone (hw is not ``w``), outside the locked list and outside
+    ``NOT_WALKED``. A volatile field is an sw = rw field outside ``NOT_WALKED`` that
+    hardware updates or software clears by write-one (status and alert latches); the
+    restore leg reads it as ``OBS-ESRC-VOLATILE`` only (contract step 2).
+    """
     ro = tuple(sorted(reg_sw_readonly("entropy_source") - DATA_PORTS))
     rdl = _rdl_field_text()
-    locked = sum(1 for (_r, _f), (_sw, desc, _ow) in rdl.items() if LOCK_PHRASE in desc)
+    locked = sum(1 for (_r, _f), (_sw, desc, _se, _hw) in rdl.items() if LOCK_PHRASE in desc)
     restore: list[tuple[str, str, int, int]] = []
-    for (reg, field), (sw, desc, onwrite) in sorted(rdl.items()):
-        if reg in NOT_WALKED or sw != "rw" or onwrite or LOCK_PHRASE in desc:
+    volatile: list[tuple[str, str]] = []
+    for (reg, field), (sw, desc, side_effect, hw) in sorted(rdl.items()):
+        if reg in NOT_WALKED or sw != "rw" or LOCK_PHRASE in desc:
+            continue
+        if side_effect or hw == "w":
+            volatile.append((reg, field))
             continue
         m = _fmeta(reg, field)
         restore.append((reg, field, m["bw"], m["reset"]))
-    return ro, tuple(restore), locked
+    return ro, tuple(restore), locked, tuple(volatile)
 
 
 @dataclass(frozen=True)
@@ -194,6 +219,7 @@ class Plan:
     balanced: tuple[Balanced, ...]
     ro_order: tuple[str, ...]
     restore: tuple[RestoreField, ...]
+    volatile: tuple[tuple[str, str], ...]
     trial_order: tuple[str, ...]
     e8: int
     t8: int
@@ -222,7 +248,7 @@ def draw_plan(seed: int) -> Plan:
     """Every draw of the leaf, in a fixed order, with no simulator access."""
     rng = SepSeededRng(seed)
     balanced = tuple(balanced_lanes(rng))
-    ro, restore_meta, locked = register_lists()
+    ro, restore_meta, locked, volatile = register_lists()
     ro_order = list(ro)
     rng.shuffle(ro_order)
     fields: list[RestoreField] = []
@@ -253,6 +279,7 @@ def draw_plan(seed: int) -> Plan:
         balanced,
         tuple(ro_order),
         tuple(fields),
+        volatile,
         tuple(trials),
         e8,
         t8,
@@ -608,6 +635,16 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
                     values[fld.name] = _fget(reg, fld.field, v)
         return values, x_regs
 
+    async def _read_volatile(self) -> str:
+        """The non-zero volatile fields as ``reg.field=0xV`` (logged only, never graded)."""
+        out: list[str] = []
+        for reg in sorted({r for r, _f in self.plan.volatile}):
+            v = await self._rd(reg)
+            for r, fld in self.plan.volatile:
+                if r == reg and _fget(reg, fld, v):
+                    out.append(f"{reg}.{fld}=0x{_fget(reg, fld, v):x}")
+        return ",".join(out)
+
     async def _restore_leg(self) -> None:
         plan = self.plan
         for fld in plan.restore:
@@ -621,9 +658,17 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         pre, _ = await self._read_fields()
         pre_bad = [f.name for f in plan.restore if pre[f.name] != f.v1]
+        vol_pre = await self._read_volatile()
         await self._trng_reset()
         post, x_regs = await self._read_fields()
         close_graded_window(self.logger)
+        vol_post = await self._read_volatile()
+        self.chk.obs(
+            "ESRC-VOLATILE",
+            fields=len(plan.volatile),
+            pre=vol_pre or "none",
+            post=vol_post or "none",
+        )
         post_bad = [
             f"{f.name}=0x{post[f.name]:x}/0x{f.reset:x}"
             for f in plan.restore

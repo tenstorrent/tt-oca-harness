@@ -33,9 +33,19 @@ clocks) and the unique external beat words. The sink-set probability is a covera
 rate across seeds only; no check depends on it.
 
 Checkers:
-  CHK-MIX-SINK    every sink of the set reaches its count and completes, and its
-                  probe shows words. Control ``CTRL-MIX-OVERLAP``: every pair of busy
-                  windows overlaps.
+  CHK-MIX-SINK    every sink of the set reaches its count and completes, its tail
+                  operation completes, and its probe shows words. Control
+                  ``CTRL-MIX-OVERLAP``: every pair of busy windows overlaps.
+
+Overlap by construction: in the overlapped run each unit runs its drawn operation
+and then waits at a barrier. The barrier opens on the first clock on which the
+request probe of every sink of the set has shown a request. After it opens, each
+unit runs one tail operation that makes its sink request again (one Key Manager
+generate, one AES block, one KMAC ``CMD.entropy_req`` write, one OTBN program with
+one RND and one URND read of the set, one pool pop). Every busy window then starts
+at or before the barrier clock and ends after it, so every pair overlaps. A sink
+whose tail request the DUT does not serve ends its window before the barrier, and
+the control fails.
   CHK-MIX-EXT-KM  with bit 0 set every beat that completes at external port 0
                   appears at ``km_entropy_*`` in order and value; the external
                   tready equals ``km_entropy_tready_o`` on every clock; ``axis1``
@@ -51,7 +61,7 @@ from itertools import combinations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, Event, FallingEdge, ReadOnly, RisingEdge
 from env.sep_aes_golden import aes_encrypt_words
 from env.sep_chk_log import SepChkLog
 from env.sep_crypto_kat_rows import AES_KEY_ROWS, KMAC_SAMPLE_KEY_ROW
@@ -109,6 +119,9 @@ LONG_GAP = 64
 SETTLE_CAP = 40_000
 STATUS_READS = 64
 KM_OP_TIMEOUT = 400_000
+# Beats the bridge keeps queued on external port 0 across the select write (each
+# transfers in one clock while bit 0 is clear; the write takes about 15 clocks).
+BRIDGE_DEPTH = 4
 
 
 def _le_words(data: bytes) -> list[int]:
@@ -136,6 +149,7 @@ class Plan:
     gaps: tuple[int, ...]
     long_at: int
     ext_words: tuple[int, ...]
+    aes_tail_pt: tuple[int, ...]
 
     def units(self) -> tuple[str, ...]:
         """Operations of the set: OTBN RND and URND share one OTBN program."""
@@ -191,9 +205,10 @@ def draw_plan(seed: int) -> Plan:
     gaps = tuple(rng.randrange(0, 33) for _ in range(GAP_TABLE))
     long_at = rng.randrange(1, 9)
     ext_words = take(EXT_WORDS)
+    aes_tail_pt = take(4)
     return Plan(
         seed, tuple(sinks), counts, delay, aes_row, aes_pt, kmac_msgs, pattern, gaps,
-        long_at, ext_words,
+        long_at, ext_words, aes_tail_pt,
     )  # fmt: skip
 
 
@@ -445,6 +460,38 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             pops += int(seq.resp_code == RESP_OKAY)
         return {"ops": pops, "done": pops == c["pool"]}
 
+    async def _tail(self, unit: str) -> dict:
+        """One operation of ``unit`` that makes each of its sinks request entropy again."""
+        plan = self.plan
+        if unit == "km":
+            await self.km.key_generate(
+                dest=KM_DEST_AES, req_size=KM_KEY_WORDS - 1, timeout=KM_OP_TIMEOUT
+            )
+            return {"done": True}
+        if unit == "aes":
+            key = _le_words(AES_KEY_ROWS[256][plan.aes_row][1])
+            ct = await self.aes.run_blocks(list(plan.aes_tail_pt))
+            golden = aes_encrypt_words("ecb", key, list(plan.aes_tail_pt))
+            return {"done": True, "result==golden": int(ct == golden)}
+        if unit == "kmac":
+            # Manual reseed in EDN mode (kmac.hjson, CMD.entropy_req) while KMAC is idle.
+            await self.kmac._wait_idle("pre-tail-entropy-req")
+            await self.kmac._wr(KMAC_CMD, CMD_ENTROPY_REQ)
+            return {"done": True}
+        if unit == "otbn":
+            rnd = int("otbn_rnd" in plan.sinks)
+            urnd = int("otbn_urnd" in plan.sinks)
+            await self.otbn.load_program(otbn_prog(rnd, urnd))
+            await self.otbn.execute()
+            err = await self.otbn.read_errbits()
+            return {"done": err == 0, "err_bits": err}
+        for _ in range(STATUS_READS):
+            if pool_level(await self.pool.status()) >= 1:
+                break
+            await ClockCycles(cocotb.top.clk_i, 16)
+        seq = await self.pool.access(POOL_POP)
+        return {"done": seq.resp_code == RESP_OKAY}
+
     def _sinks_of(self, unit: str) -> list[str]:
         return [
             s for s in self.plan.sinks if (s.startswith("otbn") and unit == "otbn") or s == unit
@@ -493,13 +540,30 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         start = {u: big_r - r_u[u] + delay[u] for u in units}
         sched = {f"start_{u}": start[u] for u in units}
         self.chk.obs("MIX-SCHEDULE", half=half, r_max=big_r, **sched)
-        # Step 5: every unit, each launched at its offset after a common start marker.
+        # Step 5: every unit, each launched at its offset after a common start marker;
+        # then a barrier on the request probes of every sink, then one tail operation
+        # per unit, so every busy window holds the barrier clock.
         if "pool" in units:
             await self._pool_full()
+        # Bounds: 16 x the clean time of the same operation in this leaf and seed.
+        barrier_bound = 16 * max(start[u] + r_u[u] for u in units)
+        tail_bound = {u: 16 * (r_u[u] + max(t_s[s] for s in self._sinks_of(u))) for u in units}
         self.acc.reset()
         open_graded_window(TEST, self.logger)
         results: dict[str, dict] = {}
+        tails: dict[str, dict] = {}
         errors: dict[str, str] = {}
+        opened = Event()
+        barrier: dict[str, int | None] = {"clk": None}
+        stat = self.acc.stat
+
+        async def gate() -> None:
+            n = await self._until(
+                lambda: all(stat[s].first_req is not None for s in plan.sinks), barrier_bound
+            )
+            if n is not None:
+                barrier["clk"] = self.acc.clk
+            opened.set()
 
         async def launch(unit: str) -> None:
             if start[unit]:
@@ -508,13 +572,39 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
                 results[unit] = await self._unit(unit)
             except AssertionError as exc:
                 errors[unit] = str(exc)
+                return
+            await opened.wait()
+            if barrier["clk"] is None:
+                errors[unit] = f"timeout:barrier bound={barrier_bound}"
+                return
+            try:
+                tails[unit] = await self._tail(unit)
+            except AssertionError as exc:
+                errors[unit] = f"tail:{exc}"
+                return
+            # The tail request of each sink of the unit completes after the barrier.
+            t_clk = barrier["clk"]
+            n = await self._until(
+                lambda: all((stat[s].last_ack or 0) > t_clk for s in self._sinks_of(unit)),
+                tail_bound[unit],
+            )
+            if n is None:
+                errors[unit] = f"timeout:tail_ack bound={tail_bound[unit]}"
 
+        gate_task = cocotb.start_soon(gate())
         tasks = [cocotb.start_soon(launch(u)) for u in units]
         for t in tasks:
             await t
+        await gate_task
         await ClockCycles(cocotb.top.clk_i, 16)
         close_graded_window(self.logger)
         stat = {s: self.acc.stat[s] for s in plan.sinks}
+        self.chk.obs(
+            "MIX-BARRIER",
+            barrier_clk=barrier["clk"] if barrier["clk"] is not None else "none",
+            bound=barrier_bound,
+            **{f"req_{s}": stat[s].first_req for s in plan.sinks},
+        )
         # Step 6: the overlap of every pair of busy windows (control).
         for a, b in combinations(plan.sinks, 2):
             sa, sb = stat[a], stat[b]
@@ -525,10 +615,14 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         for s in plan.sinks:
             unit = "otbn" if s.startswith("otbn") else s
             res = results.get(unit, {})
+            tail = tails.get(unit, {})
             st = stat[s]
-            done = unit not in errors and bool(res.get("done"))
-            # AES ciphertext and KMAC digests of the overlapped run equal their goldens.
+            done = unit not in errors and bool(res.get("done")) and bool(tail.get("done"))
+            # AES ciphertext (drawn and tail blocks) and KMAC digests of the overlapped
+            # run equal their goldens.
             golden_ok = unit not in ("aes", "kmac") or res.get("result==golden") == 1
+            if unit == "aes":
+                golden_ok = golden_ok and tail.get("result==golden") == 1
             need = plan.counts["km"] if s == "km" else 1
             fields = {
                 "sink": s,
@@ -536,9 +630,12 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
                 "ops": res.get("ops", 0),
                 "count": plan.counts[s],
                 "done": int(done),
+                "tail_done": int(bool(tail.get("done"))),
             }
             if unit in ("aes", "kmac"):
                 fields["result==golden"] = res.get("result==golden", "na")
+            if unit == "aes":
+                fields["tail_result==golden"] = tail.get("result==golden", "na")
             if unit in errors:
                 fields["reason"] = errors[unit]
             self.chk.ok("MIX-SINK", done and golden_ok and st.acks >= need, **fields)
@@ -568,8 +665,8 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         c_not_ready = a_ctrl.ext_not_ready
         c_km_neq = a_ctrl.km_ep_neq
         c_valid = list(a_ctrl.axis_valid)
-        # Step 9: bit 0 set, bits 1 and 2 clear.
-        await self.reg._wr(SEL_ADDR, 0x1)
+        # Step 9: bit 0 set, bits 1 and 2 clear, written under a bridge stream.
+        bridge = await self._select_external()
         sel = await self.reg._rd(SEL_ADDR)
         self.acc.reset(ext=True)
         open_graded_window(TEST, self.logger)
@@ -585,6 +682,13 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             ctrl_not_ready=c_not_ready,
             ctrl_km_eq=int(c_km_neq == 0),
             ctrl_km_valid_clk=c_valid[0],
+        )
+        self.chk.ctrl(
+            "MIX-EXT-KM",
+            bridge["held_at_select"] == 1 and bridge["min_pending"] >= 1,
+            bridge_beats=bridge["offered"],
+            bridge_min_pending=bridge["min_pending"],
+            bridge_held_at_select=bridge["held_at_select"],
         )
         self.chk.ctrl(
             "MIX-EXT-KM",
@@ -619,6 +723,56 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         await self.ext.stop()
         await self._end_run()
 
+    async def _select_external(self) -> dict:
+        """Write ``EXT_TRNG_SRC_SEL`` = 0x1 while external port 0 holds tvalid 1 on every clock.
+
+        The selection is combinational with no switch handshake (``hw/sys/sep/doc/trng.adoc``,
+        Source Selection). The idle Key Manager sampler holds tready 0 while the internal
+        endpoint holds a queued word, so a switch to an external port with tvalid 0 is a
+        withdrawal before handshake: the sampler flags a stream error and pulses the DRBG
+        error source (``hw/ip/key_manager/doc/architecture.adoc``, DRBG Sampler, Errors and
+        reset), and the firmware answers the next command with ``RESP_UNRECOVERABLE_FAULT``
+        and fault code -8 (``drbg_err``, ``hw/ip/key_manager/doc/firmware.adoc``). The
+        bridge keeps at least one unique beat queued behind the held beat from before the
+        write to its response: while bit 0 is clear each beat transfers in its clock and is
+        discarded (tready 1), and after the write lands the held beat stays on the port
+        until the sampler takes it. The beats still queued after the write go to the
+        sampler in order and are graded like every other beat.
+        """
+        dut = cocotb.top
+        state = {"run": True, "offered": 0, "min_pending": BRIDGE_DEPTH}
+
+        async def feed() -> None:
+            while state["run"]:
+                pend = self.ext.pending(0)
+                state["min_pending"] = min(state["min_pending"], pend)
+                if pend < BRIDGE_DEPTH:
+                    n = BRIDGE_DEPTH - pend
+                    self.ext.send(0, [self._next_word() for _ in range(n)])
+                    state["offered"] += n
+                await RisingEdge(dut.clk_i)
+
+        self.ext.send(0, [self._next_word() for _ in range(BRIDGE_DEPTH)])
+        state["offered"] = BRIDGE_DEPTH
+        # The driver loads the first beat on the next rising edge; the feed starts after it.
+        await ClockCycles(dut.clk_i, 2)
+        task = cocotb.start_soon(feed())
+        await self.reg._wr(SEL_ADDR, 0x1)
+        state["run"] = False
+        await task
+        held = int(self.ext.pending(0) >= 1)
+        self.logger.info(
+            "EXT-SELECT bridge_beats=%d min_pending=%d left=%d",
+            state["offered"],
+            state["min_pending"],
+            self.ext.pending(0),
+        )
+        return {
+            "offered": state["offered"],
+            "min_pending": state["min_pending"],
+            "held_at_select": held,
+        }
+
     def _next_word(self) -> int:
         if self._wi >= len(self.plan.ext_words):
             raise AssertionError(f"plan word pool of {EXT_WORDS} words exhausted")
@@ -635,9 +789,19 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         """One Key Manager generate while the driver offers unique beats on stream 0,
         one at a time, holding each until tready, until the operation ends."""
         dut = cocotb.top
-        task = cocotb.start_soon(
-            self.km.key_generate(dest=KM_DEST_AES, req_size=KM_KEY_WORDS - 1, timeout=KM_OP_TIMEOUT)
-        )
+
+        async def op() -> str:
+            # A firmware error answer ends the operation with a reason; it must not end
+            # the leaf before the check line.
+            try:
+                await self.km.key_generate(
+                    dest=KM_DEST_AES, req_size=KM_KEY_WORDS - 1, timeout=KM_OP_TIMEOUT
+                )
+            except AssertionError as exc:
+                return f"km_op_error:{exc}"
+            return ""
+
+        task = cocotb.start_soon(op())
         offered = 0
         exhausted = False
         while not task.done():
@@ -662,11 +826,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         await ClockCycles(dut.clk_i, 4)
         if self.ext.pending(0):
             await self.ext.source_reset(0)
-        reason = ""
-        try:
-            task.result()
-        except AssertionError as exc:
-            reason = f"km_op_error:{exc}"
+        reason = task.result()
         if exhausted:
             self.chk.obs("MIX-EXT-WORDS", exhausted=1, offered=offered)
         return {"done": not reason, "reason": reason, "offered": offered}
