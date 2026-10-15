@@ -25,13 +25,14 @@ until programmed, so local resources are reached at their local alias addresses
 (SMC `0xC000_0000`) until then. Program the range, offset and AxCACHE of each
 region before relying on its translation or cacheability.
 
-In a system that integrates an application processor (AP), the SMC output
-fabric's M-mode and Xvisor remap regions let SMC firmware do work for the AP's
-software. A request through the M-mode window goes out as the AP machine-mode
-firmware, with source ID `MMODE`; a request through the Xvisor window goes out
-as the AP hypervisor and its guests, with source ID `OTHERS`; any other request
-goes out as the SMC. The address window selects this, not the privilege mode of
-the issuing hart. The TRM describes the
+Filters decide what an SMC outbound request may reach partly from its source
+ID. The SMC output fabric's M-mode and Xvisor remap regions translate requests
+to their windows and replace that source ID: `MMODE` for another processor's
+machine-mode firmware, `OTHERS` for its hypervisor and guests. Any other
+request keeps the SMC source ID. This lets SMC firmware reach resources of an
+integrated processor, such as an application processor (AP), as that
+processor's software would. The address window selects the source ID, not the
+privilege mode of the issuing hart. The TRM describes the
 ifdef::backend-html5[]
 xref:ocah-docs:smc:fabric.adoc#smc-fabric-privilege-controlled-remapping[SMC output remapping].
 endif::backend-html5[]

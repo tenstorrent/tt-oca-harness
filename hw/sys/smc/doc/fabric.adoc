@@ -382,30 +382,32 @@ endif::backend-html5[]
 [[smc-fabric-privilege-controlled-remapping]]
 === Output Remapping
 
-The application processor (AP) is the host CPU of a system that integrates
-one, such as a CPU chiplet. Its software runs in two worlds: machine-mode
-firmware, and the Xvisor hypervisor with its guests. The output remaps serve
-such a system, letting the SMC do work for an AP world, such as reaching memory
-the AP shares; in a system without an AP, the SMC has no use for them.
+Every outbound SMC request carries a source ID in AxUSER. The SMC outbound
+filter (<<smc-fabric-outbound-filtering>>) and the filters in front of other
+targets in the system match on it, together with address and NS, to decide
+what the request may reach.
 
-The output remaps let the SMC issue a request as if one of those AP worlds had
-issued it. Each remap translates the request
-through its window's programmed regions and gives it that world's source ID, so
-destination filters grant it exactly what they grant that world.
+The output remaps change that source ID. A request to a remap window is
+translated through the window's programmed regions and leaves with the
+window's source ID instead of the SMC's:
 
-M-mode remap:: A request to the M-mode window goes out as the AP machine-mode
-firmware, with source ID `MMODE_ID`. It reaches what the AP machine-mode
-firmware may reach, including assets reserved to it.
-Xvisor remap:: A request to the Xvisor window goes out as the AP hypervisor
-(Xvisor) and its guests, with source ID `OTHER_ID`. It reaches only what that
-AP software may reach.
-Direct path:: Any other request goes out as the SMC itself, with source ID
-`SMC_ID`, untranslated.
+M-mode remap:: `MMODE_ID`, the source ID of machine-mode firmware on another
+processor in the system.
+Xvisor remap:: `OTHER_ID`, the source ID of that processor's hypervisor and
+its guests.
+Direct path:: Any other address goes out untranslated, with `SMC_ID`.
 
-M-mode and Xvisor name AP worlds, not SMC privilege modes: SMC firmware runs in
-machine mode whichever window it uses. The address window alone selects the
-remap and the source ID; the privilege mode of the issuing SMC hart does not,
-and AxPROT, including NS, passes unchanged.
+The remaps are useful when the system integrates such a processor, for example
+an application processor (AP) running machine-mode firmware and the Xvisor
+hypervisor. SMC firmware can then reach memory the AP firmware owns through
+the M-mode window, or memory it shares with the hypervisor through the Xvisor
+window, and every filter treats the request as one from that software. A system
+without such a processor has no use for them.
+
+M-mode and Xvisor name the other processor's software, not SMC privilege
+modes: SMC firmware runs in machine mode whichever window it uses. The address
+window alone selects the remap and the source ID; the privilege mode of the
+issuing SMC hart does not, and AxPROT, including NS, passes unchanged.
 
 == Filtering and Protection
 
@@ -699,13 +701,13 @@ endif::backend-html5[]
 SMC outbound traffic serves dual purposes: accessing shared system
 services and extending the SMC's private domain across the system.
 
-For resources of an AP world (e.g., shared memory), traffic passes through
-that world's output remap: Xvisor for the AP hypervisor, M-mode for the AP
-machine-mode firmware. For private memory or memory-mapped I/O resources,
-traffic bypasses the remaps and goes directly to the system NoC, reducing
-latency.
+For resources that another processor's software owns or shares, such as
+shared memory, traffic passes through that software's output remap
+(<<smc-fabric-privilege-controlled-remapping>>). For private memory or
+memory-mapped I/O resources, traffic bypasses the remaps and goes directly to
+the system NoC, reducing latency.
 
-Each outbound transaction carries a source ID naming the world it acts for,
+Each outbound transaction carries a source ID naming the software it acts for,
 set by its traffic path (<<smc-source-id-by-traffic-path-table>>). A
 transaction that hits an alias remap region carries that region's AxCACHE
 value; any other keeps the AxCACHE its initiator issued.
@@ -716,8 +718,8 @@ value; any other keeps the AxCACHE its initiator issued.
 |==============================
 |Traffic Path |Source ID |Acts For
 |Direct to NoC |SMC_ID |The SMC
-|Through Xvisor remap |OTHER_ID |AP hypervisor and its guests
-|Through M-mode remap |MMODE_ID |AP machine-mode firmware
+|Through Xvisor remap |OTHER_ID |Another processor's hypervisor and guests
+|Through M-mode remap |MMODE_ID |Another processor's machine-mode firmware
 |==============================
 
 ifdef::backend-html5[]
