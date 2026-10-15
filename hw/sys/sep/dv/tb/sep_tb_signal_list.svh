@@ -111,7 +111,8 @@
 // force block in tb_top.sv.
 `SEP_TB_IN(logic, dma_host_intg_inject_i)
 // HMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
-// side idle so the hash engine stops consuming and the FIFO fills. A port rather
+// side idle and the core's message valid toward the SHA-2 engine low, so the
+// hash engine takes no word and the FIFO fills. A port rather
 // than a plusarg so a test can raise it after the ROM's short self-test hash.
 // See the force block in tb_top.sv.
 `SEP_TB_IN(logic, hmac_fifo_drain_stall_i)
@@ -119,6 +120,47 @@
 // side idle (no FIFO read, no word to the KMAC core), so the FIFO fills. See the
 // force block in tb_top.sv.
 `SEP_TB_IN(logic, kmac_fifo_drain_stall_i)
+// Crypto alert sender inject. Default 0. While crypto_alert_inject_i is 1, tb
+// forces alert_p and alert_n of crypto alert receiver crypto_alert_inject_idx_i
+// (0 to 10, the receiver order of crypto_alert_pulse_probe_o) both to
+// crypto_alert_inject_val_i, which is not a differential code. Error inject,
+// docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
+`SEP_TB_IN(logic, crypto_alert_inject_i)
+`SEP_TB_IN(logic [3:0], crypto_alert_inject_idx_i)
+`SEP_TB_IN(logic, crypto_alert_inject_val_i)
+// ESRC main-FIFO integrity inject. Default 0. While esrc_fifo_parity_inject_i
+// is 1, the parity nibble that the FIFO reads with its head entry has bit
+// esrc_fifo_parity_bit_i inverted. While esrc_fifo_ptr_inject_i is 1, one copy
+// of one pointer pair holds its value at the rise of the input with bit
+// esrc_fifo_ptr_bit_i (0 to 6) inverted; esrc_fifo_ptr_sel_i[1] selects the
+// pointer (0 write, 1 read) and esrc_fifo_ptr_sel_i[0] the copy (0 primary,
+// 1 secondary). Error inject, docs/SEP_TB_ARCH.adoc. See the force block in
+// tb_top.sv.
+`SEP_TB_IN(logic, esrc_fifo_parity_inject_i)
+`SEP_TB_IN(logic [1:0], esrc_fifo_parity_bit_i)
+`SEP_TB_IN(logic, esrc_fifo_ptr_inject_i)
+`SEP_TB_IN(logic [1:0], esrc_fifo_ptr_sel_i)
+`SEP_TB_IN(logic [2:0], esrc_fifo_ptr_bit_i)
+// ESRC noise-source stuck-at inject. Default 0. While bit i of
+// esrc_noise_stuck_en_i is 1, the ring-oscillator output of lane i is forced to
+// bit i of esrc_noise_stuck_val_i, upstream of the sampling flop, and the
+// +esrc_noise_force drive of that lane is released. Error inject,
+// docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
+`SEP_TB_IN(logic [11:0], esrc_noise_stuck_en_i)
+`SEP_TB_IN(logic [11:0], esrc_noise_stuck_val_i)
+// External TRNG stream driver (top-port drive of the sep input
+// ext_trng_axis_req_i[2:0], docs/SEP_TB_ARCH.adoc). Default 0. While bit i of
+// ext_trng_drive_en_i is 1, stream i carries tvalid ext_trng_tvalid_i[i], tdata
+// ext_trng_tdata_i[32*i +: 32] and tstrb ext_trng_tstrb_i[4*i +: 4]; with the
+// bit 0 the stream keeps the tie-off of the integration wrapper (all zero).
+// cocotb/env/sep_ext_trng_stream.py drives these pins.
+`SEP_TB_IN(logic [2:0], ext_trng_drive_en_i)
+`SEP_TB_IN(logic [2:0], ext_trng_tvalid_i)
+`SEP_TB_IN(logic [95:0], ext_trng_tdata_i)
+`SEP_TB_IN(logic [11:0], ext_trng_tstrb_i)
+// External TRNG interrupt (top-port drive of the sep input ext_trng_irq_i, PIC
+// source 17). Default 0, the tie-off of the integration wrapper.
+`SEP_TB_IN(logic, ext_trng_irq_drive_i)
 // Boundary interrupt input of the PIC (sep_wrapper sep_ext_interrupts_i,
 // extintsrc_req_i of sep). Default 0. A leaf drives one or two bits to raise a
 // pending source above PIC source 43 (top-port drive, docs/SEP_TB_ARCH.adoc).
@@ -432,6 +474,31 @@
 `SEP_TB_OUT(logic [127:0], drbg_genbits_data_o)  // CHK4: CTR_DRBG genbits block
 `SEP_TB_OUT(logic, drbg_genbits_fips_o)  // CHK4: genbits fips flag
 `SEP_TB_OUT(logic, drbg_gen_last_o)  // CHK4: last genbits of a Generate
+// Crypto and entropy observation taps (docs/SEP_TB_ARCH.adoc, observation-probe
+// list). Read-only copies of DUT nets, sampled on clk_i; no force.
+// Lane i: u_generator.noise_bit, the synchronized noise-source bit that the
+// noise observe FIFO samples (readback of the stuck-at inject).
+`SEP_TB_OUT(logic [11:0], esrc_noise_bit_o)
+// Lane i: u_generator.detune, the effective ring-oscillator detune select.
+`SEP_TB_OUT(logic [11:0], esrc_detune_o)
+// Next value of the SHA256_STATUS fields: [0] BUSY, [4:1] INPUT_COUNT,
+// [8:5] OUTPUT_COUNT.
+`SEP_TB_OUT(logic [8:0], esrc_sha256_status_o)
+// OTBN status_q, the operational state code (otbn_pkg::status_e).
+`SEP_TB_OUT(logic [7:0], otbn_status_probe_o)
+// Internal DRBG stream endpoint of stream i before the source mux
+// (u_sep_crypto.drbg_int_axis_req[i] / drbg_int_axis_rsp[i]).
+`SEP_TB_OUT(logic [2:0], drbg_int_tvalid_o)
+`SEP_TB_OUT(logic [2:0], drbg_int_tready_o)
+`SEP_TB_OUT(logic [95:0], drbg_int_tdata_o)  // word i at [32*i +: 32]
+`SEP_TB_OUT(logic [2:0], drbg_int_tuser_o)
+// External TRNG stream i as the sep port sees it (ext_trng_axis_req_i[i]) and
+// its response (ext_trng_axis_rsp_o[i].tready). A beat transfers on a clk_i
+// rising edge with tvalid and tready both high.
+`SEP_TB_OUT(logic [2:0], ext_trng_tvalid_o)
+`SEP_TB_OUT(logic [95:0], ext_trng_tdata_o)  // word i at [32*i +: 32]
+`SEP_TB_OUT(logic [11:0], ext_trng_tstrb_o)  // strobe i at [4*i +: 4]
+`SEP_TB_OUT(logic [2:0], ext_trng_tready_o)
 
 // drbg_axil64_lane_adapter channel-arbitration probes, one 6-bit vector per
 // lane, at the adapter's own AXI-Lite-64 port. The crossbar and

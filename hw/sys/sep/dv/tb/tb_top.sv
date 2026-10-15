@@ -2484,20 +2484,32 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // HMAC message-FIFO drain stall.
     // ------------------------------------------------------------------
-    // hmac_fifo_drain_stall_i=1 holds the message FIFO's rready low, so the hash
-    // engine stops consuming and the FIFO fills: the wedge the ROM's bounded
-    // FIFO waits must turn into a hash failure. fifo_rready is the hmac-local
-    // net that drives the FIFO's read side. Re-issued every clock for Verilator,
-    // released when the port drops.
-`define HMAC_FIFO_RREADY `SEP_CORE.u_sep_crypto.u_hmac_wrapper_s3c_scan.u_tt_hmac.fifo_rready
+    // hmac_fifo_drain_stall_i=1 holds the read side of the message FIFO idle,
+    // so the hash engine takes no word and the FIFO fills: the wedge the ROM's
+    // bounded FIFO waits must turn into a hash failure. Two hmac-local nets are
+    // forced to 0:
+    //   * fifo_rready, the read-ready of the FIFO (no word leaves the FIFO);
+    //   * u_hmac.sha_rvalid_o, the word valid that hmac_core gives the SHA-2
+    //     engine. In SHA-2 mode, and in the message state of HMAC mode, the
+    //     core passes the FIFO valid (fifo_rvalid_i) straight to this output,
+    //     and its own word count uses it, so it is the core's view of
+    //     fifo_rvalid. Without it the engine reads the head word on every
+    //     clock while the FIFO does not pop. The force stays off the FIFO's
+    //     own rvalid net (hmac fifo_rvalid), so STATUS.fifo_empty, the
+    //     fifo_empty interrupt and the idle term keep their real values.
+    // While the input is 1 the engine also takes no key-pad word. Re-issued
+    // every clock for Verilator, released when the port drops.
+`define HMAC_STALL_TT `SEP_CORE.u_sep_crypto.u_hmac_wrapper_s3c_scan.u_tt_hmac
     always @(posedge clk_i) begin
         if (hmac_fifo_drain_stall_i === 1'b1) begin
-            force `HMAC_FIFO_RREADY = 1'b0;
+            force `HMAC_STALL_TT.fifo_rready = 1'b0;
+            force `HMAC_STALL_TT.u_hmac.sha_rvalid_o = 1'b0;
         end else begin
-            release `HMAC_FIFO_RREADY;
+            release `HMAC_STALL_TT.fifo_rready;
+            release `HMAC_STALL_TT.u_hmac.sha_rvalid_o;
         end
     end
-`undef HMAC_FIFO_RREADY
+`undef HMAC_STALL_TT
 
     // ------------------------------------------------------------------
     // KMAC message-FIFO drain stall.
@@ -2573,11 +2585,22 @@ module sep_uvm_top
     // falling edge so noise_i is stable before the decorrelator samples it on the
     // rising edge; forcing on that same rising edge creates an ordering race.
     // Explicit per-lane indices avoid a cross-hierarchy genvar-indexed force.
+    //
+    // A lane whose noise-source stuck-at inject is on (esrc_noise_stuck_en_i[i],
+    // block below) is released instead: its decorrelator then takes the real
+    // synchronized noise bit, which carries the stuck value. So the two hooks
+    // never drive one lane at the same time, and the force on noise_i cannot
+    // stand in for the stuck-at value at the noise observe FIFO, even where a
+    // simulator merges the noise_i port with its noise_bit net.
 `define ESRC_NOISE_FORCE(i) \
-    force `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
+    if (esrc_noise_stuck_en_i[i] === 1'b1) \
+        release `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_decorrelator.noise_i; \
+    else \
+        force `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_decorrelator.noise_i = \
+            esrc_noise_d[i]
     // `force` is a procedural continuous override, so a plain `always` carries it.
     // The force is gated by `+esrc_noise_force` and each test is its own
-    // elaboration, so it ends with the sim and needs no `release`.
+    // elaboration, so it ends with the sim; only the stuck-at inject releases it.
     always @(negedge clk_i) begin
         if ($test$plusargs("esrc_noise_force")) begin
             `ESRC_NOISE_FORCE(0);  `ESRC_NOISE_FORCE(1);  `ESRC_NOISE_FORCE(2);
@@ -2587,6 +2610,146 @@ module sep_uvm_top
         end
     end
 `undef ESRC_NOISE_FORCE
+
+    // ------------------------------------------------------------------
+    // ESRC noise-source stuck-at inject.
+    // ------------------------------------------------------------------
+    // While bit i of esrc_noise_stuck_en_i is 1, the output of the noise ring
+    // oscillator of lane i (u_noise_source.noise_async, the net between the
+    // ring oscillator and the sampling flop u_smpl) is forced to bit i of
+    // esrc_noise_stuck_val_i: a stuck noise source. The value passes the
+    // sampling flop and the two-flop synchronizer like a real ring output, so it
+    // reaches noise_bit, the noise observe FIFO samples and the decorrelator of
+    // the lane. The sampling flop runs on the lane's selected sample clock, so a
+    // leaf that needs the value on Verilator selects the external sample clock
+    // (the ring oscillators do not toggle there). Re-issued every clock for
+    // Verilator, released when the bit drops. Default 0: no force.
+`define ESRC_NOISE_STUCK(i) \
+    if (esrc_noise_stuck_en_i[i] === 1'b1) \
+        force `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_source.noise_async = \
+            esrc_noise_stuck_val_i[i]; \
+    else \
+        release `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_source.noise_async
+    always @(negedge clk_i) begin
+        `ESRC_NOISE_STUCK(0);  `ESRC_NOISE_STUCK(1);  `ESRC_NOISE_STUCK(2);
+        `ESRC_NOISE_STUCK(3);  `ESRC_NOISE_STUCK(4);  `ESRC_NOISE_STUCK(5);
+        `ESRC_NOISE_STUCK(6);  `ESRC_NOISE_STUCK(7);  `ESRC_NOISE_STUCK(8);
+        `ESRC_NOISE_STUCK(9);  `ESRC_NOISE_STUCK(10); `ESRC_NOISE_STUCK(11);
+    end
+`undef ESRC_NOISE_STUCK
+    // Readback of the stuck-at inject and of the real noise path: the
+    // synchronized noise bit of each lane, read-only.
+`define ESRC_NOISE_BIT_TAP(i) \
+    assign esrc_noise_bit_o[i] = `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.noise_bit
+    `ESRC_NOISE_BIT_TAP(0);  `ESRC_NOISE_BIT_TAP(1);  `ESRC_NOISE_BIT_TAP(2);
+    `ESRC_NOISE_BIT_TAP(3);  `ESRC_NOISE_BIT_TAP(4);  `ESRC_NOISE_BIT_TAP(5);
+    `ESRC_NOISE_BIT_TAP(6);  `ESRC_NOISE_BIT_TAP(7);  `ESRC_NOISE_BIT_TAP(8);
+    `ESRC_NOISE_BIT_TAP(9);  `ESRC_NOISE_BIT_TAP(10); `ESRC_NOISE_BIT_TAP(11);
+`undef ESRC_NOISE_BIT_TAP
+
+    // ------------------------------------------------------------------
+    // ESRC main-FIFO integrity inject.
+    // ------------------------------------------------------------------
+    // Software cannot store a word with a wrong parity nor move one copy of a
+    // hardened pointer, so the FIFO integrity check has no frontdoor stimulus.
+    // Both injects target the main FIFO (u_entropy_fifo) only; INTR_STATUS
+    // and the stream taps the checkers read are not forced.
+    //
+    // Parity: while esrc_fifo_parity_inject_i is 1, stored_parity (the parity
+    // nibble of the entry at the read pointer, as the read check sees it) is
+    // the stored nibble with bit esrc_fifo_parity_bit_i inverted. The stored
+    // array is not written, so the error ends at the release.
+    //
+    // Pointer: at the rise of esrc_fifo_ptr_inject_i the bench captures the
+    // selected counter copy of prim_count (cnt_unforced_q of gen_cnts[c] in
+    // u_wptr or u_rptr) with bit esrc_fifo_ptr_bit_i inverted, and holds that
+    // copy at the captured value while the input stays 1. The other copy moves
+    // on, so the two copies disagree. esrc_fifo_ptr_sel_i and
+    // esrc_fifo_ptr_bit_i are sampled at the rise.
+    //
+    // Re-issued on every falling edge for Verilator (the counters and the read
+    // pointer change on the rising edge), released when the input drops.
+    // Default 0: no force.
+`define ESRC_FIFO `SEP_ESRC.u_entropy_fifo
+`define ESRC_PTR_W0 `ESRC_FIFO.u_fifo_cnt.gen_secure_ptrs.u_wptr.gen_cnts[0].cnt_unforced_q
+`define ESRC_PTR_W1 `ESRC_FIFO.u_fifo_cnt.gen_secure_ptrs.u_wptr.gen_cnts[1].cnt_unforced_q
+`define ESRC_PTR_R0 `ESRC_FIFO.u_fifo_cnt.gen_secure_ptrs.u_rptr.gen_cnts[0].cnt_unforced_q
+`define ESRC_PTR_R1 `ESRC_FIFO.u_fifo_cnt.gen_secure_ptrs.u_rptr.gen_cnts[1].cnt_unforced_q
+    logic       esrc_ptr_inj_on;
+    logic [1:0] esrc_ptr_inj_sel;
+    logic [6:0] esrc_ptr_inj_val;
+    initial begin
+        esrc_ptr_inj_on  = 1'b0;
+        esrc_ptr_inj_sel = '0;
+        esrc_ptr_inj_val = '0;
+    end
+    always @(negedge clk_i) begin
+        if (esrc_fifo_parity_inject_i === 1'b1) begin
+            force `ESRC_FIFO.stored_parity =
+                `ESRC_FIFO.read_entry[35:32] ^ (4'b0001 << esrc_fifo_parity_bit_i);
+        end else begin
+            release `ESRC_FIFO.stored_parity;
+        end
+        if (esrc_fifo_ptr_inject_i === 1'b1) begin
+            if (!esrc_ptr_inj_on) begin
+                esrc_ptr_inj_on  = 1'b1;
+                esrc_ptr_inj_sel = esrc_fifo_ptr_sel_i;
+                unique case (esrc_fifo_ptr_sel_i)
+                    2'b00:   esrc_ptr_inj_val = `ESRC_PTR_W0;
+                    2'b01:   esrc_ptr_inj_val = `ESRC_PTR_W1;
+                    2'b10:   esrc_ptr_inj_val = `ESRC_PTR_R0;
+                    default: esrc_ptr_inj_val = `ESRC_PTR_R1;
+                endcase
+                esrc_ptr_inj_val = esrc_ptr_inj_val ^ (7'b000_0001 << esrc_fifo_ptr_bit_i);
+                $display("[tb] ESRC FIFO pointer inject: sel=%0d bit=%0d value=0x%02x",
+                         esrc_fifo_ptr_sel_i, esrc_fifo_ptr_bit_i, esrc_ptr_inj_val);
+            end
+            unique case (esrc_ptr_inj_sel)
+                2'b00:   force `ESRC_PTR_W0 = esrc_ptr_inj_val;
+                2'b01:   force `ESRC_PTR_W1 = esrc_ptr_inj_val;
+                2'b10:   force `ESRC_PTR_R0 = esrc_ptr_inj_val;
+                default: force `ESRC_PTR_R1 = esrc_ptr_inj_val;
+            endcase
+        end else begin
+            esrc_ptr_inj_on = 1'b0;
+            release `ESRC_PTR_W0;
+            release `ESRC_PTR_W1;
+            release `ESRC_PTR_R0;
+            release `ESRC_PTR_R1;
+        end
+    end
+`undef ESRC_PTR_W0
+`undef ESRC_PTR_W1
+`undef ESRC_PTR_R0
+`undef ESRC_PTR_R1
+`undef ESRC_FIFO
+
+    // ------------------------------------------------------------------
+    // Crypto alert sender inject.
+    // ------------------------------------------------------------------
+    // While crypto_alert_inject_i is 1, the alert pair (alert_p, alert_n) at
+    // the input of crypto alert receiver crypto_alert_inject_idx_i
+    // (u_sep_crypto.gen_alert_receivers[i].u_alert_receiver.alert_tx_i) is
+    // forced to {v, v}, v = crypto_alert_inject_val_i. Both wires at one value
+    // is not a differential code, so the receiver signals an integrity fail
+    // into the Crypto alert source. No block can send a malformed pair, so this
+    // has no frontdoor. The interrupt vector the checker reads is not forced.
+    // An index above 10 forces nothing. Re-issued every clock for Verilator,
+    // released when the input drops. Default 0: no force.
+`define CRYPTO_ALERT_RX(i) `SEP_CORE.u_sep_crypto.gen_alert_receivers[i].u_alert_receiver.alert_tx_i
+`define CRYPTO_ALERT_INJ(i) \
+    if (crypto_alert_inject_i === 1'b1 && crypto_alert_inject_idx_i === 4'(i)) \
+        force `CRYPTO_ALERT_RX(i) = {crypto_alert_inject_val_i, crypto_alert_inject_val_i}; \
+    else \
+        release `CRYPTO_ALERT_RX(i)
+    always @(negedge clk_i) begin
+        `CRYPTO_ALERT_INJ(0);  `CRYPTO_ALERT_INJ(1);  `CRYPTO_ALERT_INJ(2);
+        `CRYPTO_ALERT_INJ(3);  `CRYPTO_ALERT_INJ(4);  `CRYPTO_ALERT_INJ(5);
+        `CRYPTO_ALERT_INJ(6);  `CRYPTO_ALERT_INJ(7);  `CRYPTO_ALERT_INJ(8);
+        `CRYPTO_ALERT_INJ(9);  `CRYPTO_ALERT_INJ(10);
+    end
+`undef CRYPTO_ALERT_INJ
+`undef CRYPTO_ALERT_RX
 
     // +sep_otbn_cmd_drop -- fault injection, off by default. Makes OTBN ignore
     // every command write, leaving the block powered, idle and error-free while
@@ -2825,6 +2988,84 @@ module sep_uvm_top
     assign crypto_edn_fips_o[i]             = `SEP_CORE.u_sep_crypto.crypto_edn_rsp[i].edn_fips
     `CRYPTO_EDN_TAP(0); `CRYPTO_EDN_TAP(1); `CRYPTO_EDN_TAP(2); `CRYPTO_EDN_TAP(3);
 `undef CRYPTO_EDN_TAP
+
+    // ------------------------------------------------------------------
+    // External TRNG stream driver and interrupt (top-port drives).
+    // ------------------------------------------------------------------
+    // The integration wrapper ties the sep inputs ext_trng_axis_req_i[2:0] and
+    // ext_trng_irq_i to 0 (hw/top/sep_ip_integration.sv). The bench forces the
+    // wrapper nets that carry them into sep (u_dut.ext_trng_axis_req[i],
+    // u_dut.ext_trng_irq), one constant index per stream.
+    //   * Stream i: while ext_trng_drive_en_i[i] is 1, tvalid, tdata and tstrb
+    //     come from ext_trng_tvalid_i[i], ext_trng_tdata_i[32*i +: 32] and
+    //     ext_trng_tstrb_i[4*i +: 4]. With the bit 0 the force is released and
+    //     the stream keeps the wrapper tie-off.
+    //   * Interrupt: while ext_trng_irq_drive_i is 1 the net is forced to 1;
+    //     otherwise it is released to the wrapper tie-off 0.
+    // The value is re-issued on every falling edge (Verilator snapshots a force
+    // RHS), so a pin that cocotb writes after a rising edge reaches sep before
+    // the next rising edge, as from a registered source. The response
+    // ext_trng_axis_rsp_o is not forced. cocotb/env/sep_ext_trng_stream.py
+    // drives the pins and records the beats.
+    sep_crypto_pkg::ext_trng_axis_req_t ext_trng_req_drive [3];
+    always_comb begin
+        for (int i = 0; i < 3; i++) begin
+            ext_trng_req_drive[i].tvalid = (ext_trng_tvalid_i[i] === 1'b1);
+            ext_trng_req_drive[i].tdata  = ext_trng_tdata_i[32*i +: 32];
+            ext_trng_req_drive[i].tstrb  = ext_trng_tstrb_i[4*i +: 4];
+        end
+    end
+`define EXT_TRNG_DRIVE(i) \
+    if (ext_trng_drive_en_i[i] === 1'b1) \
+        force u_dut.ext_trng_axis_req[i] = ext_trng_req_drive[i]; \
+    else \
+        release u_dut.ext_trng_axis_req[i]
+    always @(negedge clk_i) begin
+        `EXT_TRNG_DRIVE(0); `EXT_TRNG_DRIVE(1); `EXT_TRNG_DRIVE(2);
+        if (ext_trng_irq_drive_i === 1'b1) begin
+            force u_dut.ext_trng_irq = 1'b1;
+        end else begin
+            release u_dut.ext_trng_irq;
+        end
+    end
+`undef EXT_TRNG_DRIVE
+
+    // External stream response monitor and the internal DRBG endpoint probe
+    // (read-only). ext_trng_* is stream i at the sep port, after the drive
+    // above; drbg_int_* is the internal DRBG endpoint of stream i before the
+    // source mux of sep_crypto.
+`define EXT_TRNG_TAP(i) \
+    assign ext_trng_tvalid_o[i]          = `SEP_CORE.ext_trng_axis_req_i[i].tvalid; \
+    assign ext_trng_tdata_o[32*(i) +: 32] = `SEP_CORE.ext_trng_axis_req_i[i].tdata; \
+    assign ext_trng_tstrb_o[4*(i) +: 4]   = `SEP_CORE.ext_trng_axis_req_i[i].tstrb; \
+    assign ext_trng_tready_o[i]          = `SEP_CORE.ext_trng_axis_rsp_o[i].tready; \
+    assign drbg_int_tvalid_o[i]          = `SEP_CORE.u_sep_crypto.drbg_int_axis_req[i].tvalid; \
+    assign drbg_int_tdata_o[32*(i) +: 32] = `SEP_CORE.u_sep_crypto.drbg_int_axis_req[i].tdata; \
+    assign drbg_int_tuser_o[i]           = `SEP_CORE.u_sep_crypto.drbg_int_axis_req[i].tuser; \
+    assign drbg_int_tready_o[i]          = `SEP_CORE.u_sep_crypto.drbg_int_axis_rsp[i].tready
+    `EXT_TRNG_TAP(0); `EXT_TRNG_TAP(1); `EXT_TRNG_TAP(2);
+`undef EXT_TRNG_TAP
+
+    // ESRC and OTBN observation probes (read-only).
+    //   * esrc_detune_o[i]: the effective ring-oscillator detune select of lane
+    //     i (u_generator.detune: the tune FSM state with auto-tune on, else the
+    //     manual detune input detune_ro_i).
+    //   * esrc_sha256_status_o: the next value of SHA256_STATUS on every clock,
+    //     {OUTPUT_COUNT, INPUT_COUNT, BUSY}; a register read samples it once.
+    //   * otbn_status_probe_o: OTBN status_q on every clock; a STATUS read
+    //     samples it once.
+`define ESRC_DETUNE_TAP(i) \
+    assign esrc_detune_o[i] = `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.detune
+    `ESRC_DETUNE_TAP(0);  `ESRC_DETUNE_TAP(1);  `ESRC_DETUNE_TAP(2);
+    `ESRC_DETUNE_TAP(3);  `ESRC_DETUNE_TAP(4);  `ESRC_DETUNE_TAP(5);
+    `ESRC_DETUNE_TAP(6);  `ESRC_DETUNE_TAP(7);  `ESRC_DETUNE_TAP(8);
+    `ESRC_DETUNE_TAP(9);  `ESRC_DETUNE_TAP(10); `ESRC_DETUNE_TAP(11);
+`undef ESRC_DETUNE_TAP
+    assign esrc_sha256_status_o = {`SEP_ESRC.reg_in.SHA256_STATUS.OUTPUT_COUNT.next,
+                                   `SEP_ESRC.reg_in.SHA256_STATUS.INPUT_COUNT.next,
+                                   `SEP_ESRC.reg_in.SHA256_STATUS.BUSY.next};
+    assign otbn_status_probe_o =
+        8'(`SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn.status_q);
 
     // KM/OTBN memory activity counters from the wrapper-internal req nets.
     // KM SRAM gnt=1 and OTBN req=enable, so a count of the request strobe is
@@ -3495,6 +3736,21 @@ module sep_uvm_top
     assign dma_host_intg_inject_i   = 1'b0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
     assign kmac_fifo_drain_stall_i  = 1'b0;
+    assign crypto_alert_inject_i    = 1'b0;
+    assign crypto_alert_inject_idx_i = '0;
+    assign crypto_alert_inject_val_i = 1'b0;
+    assign esrc_fifo_parity_inject_i = 1'b0;
+    assign esrc_fifo_parity_bit_i   = '0;
+    assign esrc_fifo_ptr_inject_i   = 1'b0;
+    assign esrc_fifo_ptr_sel_i      = '0;
+    assign esrc_fifo_ptr_bit_i      = '0;
+    assign esrc_noise_stuck_en_i    = '0;
+    assign esrc_noise_stuck_val_i   = '0;
+    assign ext_trng_drive_en_i      = '0;
+    assign ext_trng_tvalid_i        = '0;
+    assign ext_trng_tdata_i         = '0;
+    assign ext_trng_tstrb_i         = '0;
+    assign ext_trng_irq_drive_i     = 1'b0;
     assign sep_ext_interrupts_i     = '0;
     assign smn_outbound_resp_hold_i = 1'b0;
     assign smn_outbound_rd_slverr_i = 1'b0;
@@ -4324,6 +4580,28 @@ module sep_uvm_top
     wire        fcov_dmi_wr_en     = 1'b0;
 `endif
 
+    // Crypto and entropy sampler taps (docs/SEP_FCOV.adoc, crypto and entropy
+    // groups, Sampled signals): read-only references, no force.
+`define FC_CRY  `SEP_CORE.u_sep_crypto
+`define FC_HMAC `FC_CRY.u_hmac_wrapper_s3c_scan.u_tt_hmac
+`define FC_AES  `FC_CRY.u_aes_wrapper_s3c_scan.u_tt_aes
+`define FC_KMAC `FC_CRY.u_kmac_wrapper_s3c_scan.u_tt_kmac
+`define FC_OTBN `FC_CRY.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn
+    // The engine idle outputs are unconnected at the sep_crypto level; the tap
+    // reads each port. OTBN reports idle as a multi-bit boolean.
+    wire [3:0] fcov_eng_idle = {
+        prim_mubi_pkg::mubi4_test_true_strict(`FC_OTBN.idle_o),
+        `FC_CRY.u_kmac_wrapper_s3c_scan.idle_o,
+        `FC_CRY.u_aes_wrapper_s3c_scan.idle_o,
+        `FC_CRY.u_hmac_wrapper_s3c_scan.idle_o
+    };
+    // The sep port ext_trng_axis_req_i is an unpacked array; one assign per
+    // stream packs it for the sampler.
+    sep_crypto_pkg::ext_trng_axis_req_t [2:0] fcov_ext_trng_req;
+    assign fcov_ext_trng_req[0] = `SEP_CORE.ext_trng_axis_req_i[0];
+    assign fcov_ext_trng_req[1] = `SEP_CORE.ext_trng_axis_req_i[1];
+    assign fcov_ext_trng_req[2] = `SEP_CORE.ext_trng_axis_req_i[2];
+
     sep_fcov u_sep_fcov (
         .clk_i                 (clk_i),
         .rst_ni                (rst_n_int),
@@ -4671,8 +4949,99 @@ module sep_uvm_top
         .dmi_core_en_i      (dmi_core_enable_i === 1'b1),
         .dmi_uncore_cfg_i   (dmi_uncore_enable_i === 1'b1),
         .dmi_uncore_en_i    (dmi_uncore_en_o),
-        .dmi_uncore_wr_en_i (dmi_uncore_wr_en_o)
+        .dmi_uncore_wr_en_i (dmi_uncore_wr_en_o),
+
+        // Crypto and entropy taps.
+        .eng_idle_i            (fcov_eng_idle),
+        .alert_tx_i            (`FC_CRY.crypto_alert_tx),
+        .drbg_int_req_i        (`FC_CRY.drbg_int_axis_req),
+        .drbg_int_rsp_i        (`FC_CRY.drbg_int_axis_rsp),
+        .ext_trng_req_i        (fcov_ext_trng_req),
+        .ext_trng_tready_i     (ext_trng_tready_o),
+        .ext_trng_irq_i        (`SEP_CORE.ext_trng_irq_i),
+        .ext_trng_sel_i        (`SEP_CORE.ext_trng_src_sel),
+        .pool_level_i          (`SEP_CORE.u_entropy_fifo.fifo_level_o),
+        .pool_low_i            (`SEP_CORE.u_entropy_fifo.pool_low_o),
+        .pool_fill_stall_i     (`SEP_CORE.u_entropy_fifo.fill_stall_o),
+        .pool_clear_i          (`SEP_CORE.u_entropy_fifo.entropy_clear_i),
+        .hmac_reg2hw_i         (`FC_HMAC.reg2hw),
+        .hmac_hw2reg_i         (`FC_HMAC.hw2reg),
+        .hmac_intr_i           ({`FC_CRY.intr_hmac_err_o,
+                                 `FC_CRY.intr_hmac_fifo_empty_o,
+                                 `FC_CRY.intr_hmac_done_o}),
+        .hmac_key_valid_i      (`FC_CRY.u_hmac_wrapper_s3c_scan.hmac_keymgr_key.valid),
+        .aes_reg2hw_i          (`FC_AES.reg2hw),
+        .aes_hw2reg_i          (`FC_AES.hw2reg),
+        .aes_op_i              (`FC_AES.u_aes_core.aes_op_q),
+        .aes_mode_i            (`FC_AES.u_aes_core.aes_mode_q),
+        .aes_key_len_i         (`FC_AES.u_aes_core.key_len_q),
+        .aes_prs_rate_i        (`FC_AES.u_aes_core.prng_reseed_rate_q),
+        .aes_sideload_i        (`FC_AES.u_aes_core.sideload_q),
+        .aes_manual_op_i       (`FC_AES.u_aes_core.manual_operation_q),
+        .aes_ctrl_qe_i         (`FC_AES.u_aes_core.ctrl_qe),
+        .aes_ctrl_we_i         (`FC_AES.u_aes_core.ctrl_we),
+        .aes_ctrl_err_update_i (`FC_AES.u_aes_core.ctrl_err_update),
+        .aes_aux_regwen_i      (`FC_AES.u_reg.ctrl_aux_regwen_qs),
+        .aes_key_valid_i       (`FC_CRY.u_aes_wrapper_s3c_scan.aes_keymgr_key.valid),
+        .kmac_reg2hw_i         (`FC_KMAC.reg2hw),
+        .kmac_hw2reg_i         (`FC_KMAC.hw2reg),
+        .kmac_mode_q_i         (`FC_KMAC.gen_entropy.u_entropy.mode_q),
+        .kmac_timer_expired_i  (`FC_KMAC.gen_entropy.u_entropy.timer_expired),
+        .kmac_hash_cnt_i       (`FC_KMAC.entropy_hash_cnt),
+        .kmac_intr_i           ({`FC_CRY.intr_kmac_err_o,
+                                 `FC_CRY.intr_kmac_fifo_empty_o,
+                                 `FC_CRY.intr_kmac_done_o}),
+        .otbn_status_i         (`FC_OTBN.status_q),
+        .otbn_errs_fatal_i     (`FC_OTBN.software_errs_fatal_q),
+        .otbn_reg2hw_i         (`FC_OTBN.reg2hw),
+        .otbn_hw2reg_i         (`FC_OTBN.hw2reg),
+        .otbn_done_i           (`FC_OTBN.done),
+        .otbn_insn_cnt_i       (`FC_OTBN.insn_cnt),
+        .otbn_intr_i           (`FC_CRY.intr_otbn_done_o),
+        .csrng_reg2hw_i        (`SEP_DRBG.u_csrng.reg2hw),
+        .csrng_hw2reg_i        (`SEP_DRBG.u_csrng.hw2reg),
+        .csrng_app0_req_i      (`SEP_DRBG.u_csrng.u_csrng_core.csrng_cmd_i[0]),
+        .csrng_app0_ack_i      (`SEP_DRBG.u_csrng.u_csrng_core.csrng_cmd_o[0].csrng_rsp_ack),
+        .csrng_intr_i          ({`FC_CRY.intr_cs_fatal_err_o,
+                                 `FC_CRY.intr_cs_hw_inst_exc_o,
+                                 `FC_CRY.intr_cs_entropy_req_o,
+                                 `FC_CRY.intr_cs_cmd_req_done_o}),
+        .csrng_regwen_i        (`SEP_DRBG.u_csrng.u_reg.regwen_qs),
+        .edn_reg2hw_i          (`SEP_DRBG.u_edn.reg2hw),
+        .edn_hw2reg_i          (`SEP_DRBG.u_edn.hw2reg),
+        .edn_intr_i            ({`FC_CRY.intr_edn_fatal_err_o,
+                                 `FC_CRY.intr_edn_cmd_req_done_o}),
+        .edn_regwen_i          (`SEP_DRBG.u_edn.u_reg.regwen_qs),
+        .esrc_reg_in_i         (`SEP_ESRC.reg_in),
+        .esrc_reg_out_i        (`SEP_ESRC.reg_out),
+        .esrc_boot_done_i      (`SEP_ESRC.boot_phase_done),
+        .esrc_sm_alert_i       (`SEP_ESRC.main_sm_alert),
+        .esrc_sm_idle_i        (`SEP_ESRC.main_sm_idle),
+        .esrc_sm_err_i         (`SEP_ESRC.main_sm_err),
+        .esrc_ht_fail_i        (`SEP_ESRC.ht_fail_pulse),
+        .esrc_pers_fail_i      (`SEP_ESRC.persistent_failure),
+        .esrc_autotune_fail_i  (`SEP_ESRC.autotune_fail),
+        .esrc_biw_obs_push_i   (`SEP_ESRC.biw_obs_push),
+        .esrc_biw_obs_level_i  (`SEP_ESRC.biw_obs_level),
+        .esrc_biw_obs_ovf_i    (`SEP_ESRC.biw_obs_overflow),
+        .esrc_noise_obs_push_i (`SEP_ESRC.noise_obs_push),
+        .esrc_noise_obs_level_i (`SEP_ESRC.noise_obs_level),
+        .esrc_noise_obs_ovf_i  (`SEP_ESRC.noise_obs_overflow),
+        .esrc_noise_obs_lane_i (`SEP_ESRC.noise_obs_lane_sel_eff),
+        .esrc_noise_obs_flush_i (`SEP_ESRC.noise_obs_flush),
+        .esrc_fifo_level_i     (`SEP_ESRC.fifo_level),
+        .esrc_fifo_ovf_i       (`SEP_ESRC.fifo_overflow),
+        .esrc_fifo_unf_i       (`SEP_ESRC.fifo_underflow),
+        .esrc_fifo_err_i       (`SEP_ESRC.fifo_error),
+        .esrc_fifo_wptr_i      (`SEP_ESRC.fifo_wptr),
+        .esrc_fifo_rptr_i      (`SEP_ESRC.fifo_rptr),
+        .esrc_detune_i         (esrc_detune_o)
     );
+`undef FC_CRY
+`undef FC_HMAC
+`undef FC_AES
+`undef FC_KMAC
+`undef FC_OTBN
 `endif
 
 `undef SEP_ESRC

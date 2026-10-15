@@ -446,7 +446,111 @@ module sep_fcov (
   input wire                 dmi_core_en_i,      // dmi_core_enable_i
   input wire                 dmi_uncore_cfg_i,   // dmi_uncore_enable_i
   input wire                 dmi_uncore_en_i,    // dmi_uncore_en_o
-  input wire                 dmi_uncore_wr_en_i  // dmi_uncore_wr_en_o
+  input wire                 dmi_uncore_wr_en_i, // dmi_uncore_wr_en_o
+
+  // Crypto and entropy taps (docs/SEP_FCOV.adoc, crypto and entropy groups,
+  // Sampled signals): read-only, no force. Aliases: CRY u_sep_crypto, HMAC,
+  // AES, KMAC, OTBN the engine under its wrapper, CSRNG and EDN under the DRBG,
+  // ESRC the entropy source.
+  // eng_idle: {OTBN idle_o is MuBi4True, KMAC, AES, HMAC wrapper idle_o}.
+  input wire [3:0]                          eng_idle_i,
+  input prim_alert_pkg::alert_tx_t [10:0]   alert_tx_i,       // CRY.crypto_alert_tx
+  // drbg_int: CRY.drbg_int_axis_req[i] / drbg_int_axis_rsp[i].
+  input drbg_pkg::drbg_axis_req_t [2:0]     drbg_int_req_i,
+  input drbg_pkg::drbg_axis_rsp_t [2:0]     drbg_int_rsp_i,
+  // ext_stream: the sep ports ext_trng_axis_req_i[i] and ext_trng_axis_rsp_o[i].
+  input sep_crypto_pkg::ext_trng_axis_req_t [2:0] ext_trng_req_i,
+  input wire [2:0]                          ext_trng_tready_i,
+  input wire                                ext_trng_irq_i,   // ext_irq: sep ext_trng_irq_i
+  input wire [2:0]                          ext_trng_sel_i,   // ext_sel: ext_trng_src_sel
+  // pool_state: u_entropy_fifo (sep_entropy_fifo).
+  input wire [5:0]                          pool_level_i,     // fifo_level_o
+  input wire                                pool_low_i,       // pool_low_o
+  input wire                                pool_fill_stall_i, // fill_stall_o
+  input wire                                pool_clear_i,     // entropy_clear_i
+  // HMAC: reg2hw (cfg, cmd, intr_state, intr_enable, digest and msg_length
+  // strobes), hw2reg (status), the interrupt lines {err, fifo_empty, done}
+  // and the delivered-key valid.
+  input hmac_reg_pkg::hmac_reg2hw_t         hmac_reg2hw_i,
+  input hmac_reg_pkg::hmac_hw2reg_t         hmac_hw2reg_i,
+  input wire [2:0]                          hmac_intr_i,
+  input wire                                hmac_key_valid_i,
+  // AES: reg2hw (trigger), hw2reg (status), the committed control of
+  // u_aes_core, its control strobes, CTRL_AUX_REGWEN and the delivered-key
+  // valid.
+  input aes_reg_pkg::aes_reg2hw_t           aes_reg2hw_i,
+  input aes_reg_pkg::aes_hw2reg_t           aes_hw2reg_i,
+  input aes_pkg::aes_op_e                   aes_op_i,         // aes_op_q
+  input aes_pkg::aes_mode_e                 aes_mode_i,       // aes_mode_q
+  input aes_pkg::key_len_e                  aes_key_len_i,    // key_len_q
+  input aes_pkg::prs_rate_e                 aes_prs_rate_i,   // prng_reseed_rate_q
+  input wire                                aes_sideload_i,   // sideload_q
+  input wire                                aes_manual_op_i,  // manual_operation_q
+  input wire                                aes_ctrl_qe_i,
+  input wire                                aes_ctrl_we_i,
+  input wire                                aes_ctrl_err_update_i,
+  input wire                                aes_aux_regwen_i, // u_reg.ctrl_aux_regwen_qs
+  input wire                                aes_key_valid_i,
+  // KMAC: reg2hw (cfg_shadowed, cmd, entropy_seed, intr_state, intr_enable),
+  // hw2reg (status), the entropy FSM mode, its timer, the hash count, and the
+  // interrupt lines {err, fifo_empty, done}.
+  input kmac_reg_pkg::kmac_reg2hw_t         kmac_reg2hw_i,
+  input kmac_reg_pkg::kmac_hw2reg_t         kmac_hw2reg_i,
+  input kmac_pkg::entropy_mode_e            kmac_mode_q_i,    // gen_entropy.u_entropy.mode_q
+  input wire                                kmac_timer_expired_i,
+  input wire [kmac_reg_pkg::HashCntW-1:0]   kmac_hash_cnt_i,  // entropy_hash_cnt
+  input wire [2:0]                          kmac_intr_i,
+  // OTBN: status_q, software_errs_fatal_q, reg2hw, hw2reg, done, insn_cnt and
+  // the done interrupt line.
+  input otbn_pkg::status_e                  otbn_status_i,
+  input wire                                otbn_errs_fatal_i,
+  input otbn_reg_pkg::otbn_reg2hw_t         otbn_reg2hw_i,
+  input otbn_reg_pkg::otbn_hw2reg_t         otbn_hw2reg_i,
+  input wire                                otbn_done_i,
+  input wire [31:0]                         otbn_insn_cnt_i,
+  input wire                                otbn_intr_i,
+  // CSRNG: reg2hw, the core hw2reg, hardware application port 0 (request and
+  // acknowledge), the interrupt lines {fatal_err, hw_inst_exc, entropy_req,
+  // cmd_req_done} and REGWEN.
+  input csrng_reg_pkg::csrng_reg2hw_t       csrng_reg2hw_i,
+  input csrng_reg_pkg::csrng_hw2reg_t       csrng_hw2reg_i,
+  input csrng_pkg::csrng_req_t              csrng_app0_req_i,
+  input wire                                csrng_app0_ack_i,
+  input wire [3:0]                          csrng_intr_i,
+  input wire                                csrng_regwen_i,
+  // EDN: reg2hw, the core hw2reg, the interrupt lines {fatal_err,
+  // cmd_req_done} and REGWEN.
+  input edn_reg_pkg::edn_reg2hw_t           edn_reg2hw_i,
+  input edn_reg_pkg::edn_hw2reg_t           edn_hw2reg_i,
+  input wire [1:0]                          edn_intr_i,
+  input wire                                edn_regwen_i,
+  // ESRC: the register-block hardware interface (reg_in: DUT status values;
+  // reg_out: the stored RW fields), the main state machine, the failure
+  // terms, the two observe FIFOs, the main FIFO and the per-lane detune.
+  input entropy_source_reg_pkg::entropy_source__in_t  esrc_reg_in_i,
+  input entropy_source_reg_pkg::entropy_source__out_t esrc_reg_out_i,
+  input wire                                esrc_boot_done_i,  // boot_phase_done
+  input wire                                esrc_sm_alert_i,   // main_sm_alert
+  input wire                                esrc_sm_idle_i,    // main_sm_idle
+  input wire                                esrc_sm_err_i,     // main_sm_err
+  input wire                                esrc_ht_fail_i,    // ht_fail_pulse
+  input wire                                esrc_pers_fail_i,  // persistent_failure
+  input wire                                esrc_autotune_fail_i,
+  input wire                                esrc_biw_obs_push_i,
+  input wire [6:0]                          esrc_biw_obs_level_i,
+  input wire                                esrc_biw_obs_ovf_i,
+  input wire                                esrc_noise_obs_push_i,
+  input wire [6:0]                          esrc_noise_obs_level_i,
+  input wire                                esrc_noise_obs_ovf_i,
+  input wire [3:0]                          esrc_noise_obs_lane_i, // noise_obs_lane_sel_eff
+  input wire                                esrc_noise_obs_flush_i,
+  input wire [6:0]                          esrc_fifo_level_i,
+  input wire                                esrc_fifo_ovf_i,
+  input wire                                esrc_fifo_unf_i,
+  input wire                                esrc_fifo_err_i,
+  input wire [5:0]                          esrc_fifo_wptr_i,
+  input wire [5:0]                          esrc_fifo_rptr_i,
+  input wire [11:0]                         esrc_detune_i      // esrc_detune_o
 );
 
   import sep_top_addrmap_pkg::*;
