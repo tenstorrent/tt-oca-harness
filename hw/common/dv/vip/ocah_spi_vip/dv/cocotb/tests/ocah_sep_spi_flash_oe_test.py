@@ -16,6 +16,10 @@ counts the slots.
   (the first response byte). A model that records the byte as sent fails.
 * CHK-SEP-FLASH-OE-RECOVER: a READ with DQ0 released after that returns the
   preload again.
+* CHK-SEP-FLASH-OE-PARTIAL: a READ frame that ends inside the first response
+  byte, with DQ0 driven by the controller, adds one to ``contended_bits`` for
+  each response bit slot the model saw (each SCK falling edge after the last
+  address bit, counted by the test), and leaves ``data_out`` empty.
 """
 
 from __future__ import annotations
@@ -24,7 +28,7 @@ import logging
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import Timer
+from cocotb.triggers import Edge, First, RisingEdge, Timer
 from ocah_spi_vip import OcahSepSpiFlash, OcahSpiMasterBfm
 from ocah_spi_vip_harness import CLK_PERIOD_NS, HALF_PERIOD_NS, JEDEC_ID, PREFIX, scenario_rng
 
@@ -100,4 +104,38 @@ async def ocah_sep_spi_flash_oe_test(dut) -> None:
     if got != preload or bytes(rec["data_out"]) != preload or flash.contended_bits != 8:
         raise AssertionError(f"CHK-SEP-FLASH-OE-RECOVER FAIL {line}")
     log.info("CHK-SEP-FLASH-OE-RECOVER PASS %s", line)
+    # A frame that ends inside the first response byte, DQ0 driven.
+    k = rng.randint(1, 7)
+    bits = [(READ >> (7 - i)) & 1 for i in range(8)] + [0] * 24 + [0] * k
+    slots = {"rises": 0, "falls_after_addr": 0}
+
+    async def count_slots() -> None:
+        while True:
+            await First(Edge(dut.spi_sclk), RisingEdge(dut.spi_cs_n))
+            if int(dut.spi_cs_n.value):
+                return
+            if int(dut.spi_sclk.value):
+                slots["rises"] += 1
+            elif slots["rises"] >= 32:
+                slots["falls_after_addr"] += 1
+
+    before = flash.contended_bits
+    n_rec = len(flash.get_transactions())
+    dut.spi_dq_oe_n.value = DQ0_DRIVEN
+    counter = cocotb.start_soon(count_slots())
+    await bfm.raw_frame(bits)
+    await counter
+    dut.spi_dq_oe_n.value = DQ_RELEASED
+    await Timer(4 * HALF_PERIOD_NS, "ns")
+    records = flash.get_transactions()
+    added = flash.contended_bits - before
+    data_out = bytes(records[-1]["data_out"]) if len(records) > n_rec else b""
+    line = (
+        f"response_clocks={k} slots_seen={slots['falls_after_addr']} "
+        f"contended_added={added} records_added={len(records) - n_rec} "
+        f"data_out={data_out.hex() or '-'}"
+    )
+    if slots["falls_after_addr"] < 1 or added != slots["falls_after_addr"] or data_out:
+        raise AssertionError(f"CHK-SEP-FLASH-OE-PARTIAL FAIL {line}")
+    log.info("CHK-SEP-FLASH-OE-PARTIAL PASS %s", line)
     await flash.stop(require_closed=True)

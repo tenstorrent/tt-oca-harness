@@ -242,6 +242,7 @@ class OcahSepSpiFlash(OcahSpiFlash):
         for bit_idx in range(7, -1, -1):
             await First(FallingEdge(sclk), RisingEdge(cs_n))
             if int(cs_n.value) != 0:
+                self.contended_bits += contended
                 return False
 
             if self._dq_oe_n is not None:
