@@ -5665,15 +5665,43 @@ module sep_fcov (
   endgroup
 
   // ---------------------------------------------------------------------
-  // sep_crypto_bus_access_cg: the OTBN register cache cells. The crypto
-  // coverage area extends this group with its own coverpoints.
+  // sep_crypto_bus_access_cg: the OTBN register cache cells and the engine
+  // concurrency cells of the crypto and entropy area. Each sample carries
+  // one point; its valid bit is set only when the owner of the point is in
+  // its window.
   // ---------------------------------------------------------------------
-  covergroup sep_crypto_bus_access_cg with function sample (logic [1:0] cache_dir, logic own);
+  covergroup sep_crypto_bus_access_cg with function sample (
+      logic [1:0] cache_dir,
+      logic own,
+      logic [2:0] ep,
+      logic ep_v,
+      logic [2:0] bc,
+      logic bc_v,
+      logic [1:0] br,
+      logic br_v
+  );
     option.per_instance = 1;
     option.name = "sep_crypto_bus_access_cg";
     // {AxCACHE[1], dir}.
     cp_otbn_cache_reg: coverpoint cache_dir iff (own) {
       bins nonmod_r = {2'b00}; bins nonmod_w = {2'b01}; bins mod_r = {2'b10}; bins mod_w = {2'b11};
+    }
+    // Two engines busy on the same clk_i (idle net low).
+    cp_engine_pair: coverpoint ep iff (ep_v) {
+      bins hmac_aes = {3'd0};
+      bins hmac_kmac = {3'd1};
+      bins hmac_otbn = {3'd2};
+      bins aes_kmac = {3'd3};
+      bins aes_otbn = {3'd4};
+      bins kmac_otbn = {3'd5};
+    }
+    // Number of busy engines on one clk_i.
+    cp_busy_count: coverpoint bc iff (bc_v) {
+      bins two = {3'd2}; bins three = {3'd3}; bins four = {3'd4};
+    }
+    // OKAY read of an HMAC DIGEST word while a peer engine is busy.
+    cp_bystander_read: coverpoint br iff (br_v) {
+      bins aes = {2'd0}; bins kmac = {2'd1}; bins otbn = {2'd2};
     }
   endgroup
 
@@ -6156,7 +6184,8 @@ module sep_fcov (
             ) && fcov_crypto_reg_addr(
                 {lq_a[31:2], 2'b00}
             ) && (lq_resp == FRespOkay)) begin
-          u_sep_crypto_bus_access_cg.sample({lq_c.cache[1], lq_dir_w}, own_row);
+          u_sep_crypto_bus_access_cg.sample({lq_c.cache[1], lq_dir_w}, own_row, 3'd0, 1'b0, 3'd0,
+                                            1'b0, 2'd0, 1'b0);
         end
       end
       // Outbound port captures.
@@ -15426,6 +15455,2779 @@ module sep_fcov (
         mm_cq_req[c] <= 1'b0;
         mm_cq_cnt[c] <= 1;
         mm_cq_a[c]   <= {lsu_m_addr_i[31:2], 2'b00};
+      end
+    end
+  end
+
+  // =====================================================================
+  // Crypto and entropy groups, entries 1.25 to 1.39 (docs/SEP_FCOV.adoc,
+  // crypto and entropy groups). Each point samples only inside the graded
+  // window of its owner (cy_own_*); where the contract names an owner per
+  // bin, the valid bit of the point checks the owner of that bin. A point
+  // whose stimulus cannot be paired with its DUT response is dropped: a
+  // missed hit, never a false one. A point that grades "the window ends
+  // with no event" samples at the clock where its observation window ends,
+  // which is the close of the graded window or the next access that ends
+  // the trial; the observation interval itself lies inside the window.
+  // =====================================================================
+  wire cy_own_irq = (graded_owner == FcovOwnSepIrqIpToAggregatorTest);
+  wire cy_own_conc = (graded_owner == FcovOwnSepCryptoEdnMultisinkArbitrationTest);
+  wire cy_own_hblk = (graded_owner == FcovOwnSepHmacIllegalCfgStartTest);
+  wire cy_own_hfifo = (graded_owner == FcovOwnSepHmacFifoStreamRandTest);
+  wire cy_own_hswap = (graded_owner == FcovOwnSepHmacSwapContextRandTest);
+  wire cy_own_keysel = (graded_owner == FcovOwnSepCryptoDeliveredKeySelectRandTest);
+  wire cy_own_aenc = (graded_owner == FcovOwnSepAesEncodingInjectRandTest);
+  wire cy_own_astr = (graded_owner == FcovOwnSepAesStreamStatusRandTest);
+  wire cy_own_arsd = (graded_owner == FcovOwnSepAesReseedTriggerRandTest);
+  wire cy_own_shadow = (graded_owner == FcovOwnSepCryptoShadowUpdateErrRandTest);
+  wire cy_own_kunsup = (graded_owner == FcovOwnSepKmacUnsupportedCfgInjectTest);
+  wire cy_own_kstr = (graded_owner == FcovOwnSepKmacStreamCfgRandTest);
+  wire cy_own_kent = (graded_owner == FcovOwnSepKmacEntropyModeRandTest);
+  wire cy_own_otbn = (graded_owner == FcovOwnSepOtbnCmdStatusRandTest);
+  wire cy_own_abr = (graded_owner == FcovOwnSepAbrCommandMatrixRandTest);
+
+  // Stimulus label of sep_abr_completion_cg cp_verify_outcome: the ACVP
+  // reason class of the sigVer reject row that the owning leaf writes to
+  // the DUT (1 modified message, 2 modified signature - commitment,
+  // 3 modified signature - hint, 4 modified signature - z), 0 when none.
+  // The leaf writes it through the u_sep_fcov handle under the rules of
+  // graded_owner. It selects a bin of a DUT outcome and drives nothing.
+  int unsigned abr_reject_class = 0;
+
+  // Encodings that the existing localparams do not hold. HMAC Key_None
+  // (CFG.key_length), AES MODE AES_NONE and PRNG_RESEED_RATE values
+  // (CTRL_SHADOWED), KMAC CMD.cmd values, OTBN CMD values and STATUS codes:
+  // register text of vendor/lowRISC/opentitan/overlay/regs/<ip>/regs/gen/adoc.
+  localparam logic [5:0] HmacKeyNone = 6'h20;
+  localparam logic [5:0] AesModeNone = 6'b11_1111;
+  localparam logic [2:0] AesPrsPer1 = 3'b001;
+  localparam logic [2:0] AesPrsPer64 = 3'b010;
+  localparam logic [2:0] AesPrsPer8k = 3'b100;
+  localparam logic [5:0] KmacCmdStart6 = 6'h1D;
+  localparam logic [5:0] KmacCmdProcess6 = 6'h2E;
+  localparam logic [5:0] KmacCmdRun6 = 6'h31;
+  localparam logic [1:0] KmacEntEdn = 2'd1;
+  localparam logic [1:0] KmacEntSw = 2'd2;
+  localparam logic [7:0] OtbnSecWipeDmem = 8'hC3;
+  localparam logic [7:0] OtbnSecWipeImem = 8'h1E;
+  localparam logic [7:0] OtbnStExec = 8'h01;
+  localparam logic [7:0] OtbnStWipeDmem = 8'h02;
+  localparam logic [7:0] OtbnStWipeImem = 8'h03;
+  localparam logic [7:0] OtbnStWipeInt = 8'h04;
+  localparam logic [31:0] AesCtrlFields = AES_CTRL_SHADOWED_OPERATION_MASK |
+      AES_CTRL_SHADOWED_MODE_MASK | AES_CTRL_SHADOWED_KEY_LEN_MASK |
+      AES_CTRL_SHADOWED_SIDELOAD_MASK | AES_CTRL_SHADOWED_PRNG_RESEED_RATE_MASK |
+      AES_CTRL_SHADOWED_MANUAL_OPERATION_MASK;
+  localparam logic [31:0] AesAuxFields = AES_CTRL_AUX_SHADOWED_KEY_TOUCH_FORCES_RESEED_MASK |
+      AES_CTRL_AUX_SHADOWED_FORCE_MASKS_MASK;
+  localparam logic [31:0] HmacMsgBase = HMAC_MSG_FIFO_MEM_BASE_ADDR;
+  localparam logic [31:0] HmacMsgEnd = HMAC_MSG_FIFO_MEM_BASE_ADDR + HMAC_MSG_FIFO_MEM_SIZE;
+  localparam logic [31:0] KmacMsgBase = KMAC_MSG_FIFO_MEM_BASE_ADDR;
+  localparam logic [31:0] KmacMsgEnd = KMAC_MSG_FIFO_MEM_BASE_ADDR + KMAC_MSG_FIFO_MEM_SIZE;
+  localparam logic [31:0] AbrSigBase = ABR_MLDSA_SIGNATURE_MEM_BASE_ADDR;
+  localparam logic [31:0] AbrVerifyRes0 = ABR_MLDSA_VERIFY_RES_0__REG_ADDR;
+  localparam logic [31:0] AbrStReady = 32'h1;  // MLDSA_STATUS.READY and MLKEM_STATUS.READY
+  localparam logic [31:0] AbrCtrlZeroize = ABR_REG_MLDSA_CTRL_ZEROIZE_MASK;  // same bit in MLKEM_CTRL
+  // Settle bounds of the sampler (clk_i edges). They bound how long a point
+  // waits for its outcome; they are not bins and grade nothing.
+  localparam int unsigned CySettle = 64;
+  localparam int unsigned CyAlertBound = 1024;
+
+  // Domain out of reset, SW_RESET_N bit order: 1 OTBN, 2 AES, 3 HMAC,
+  // 4 KMAC, 5 TRNG, 6 ABR.
+  logic [6:0] cy_ip;
+  always_comb begin
+    for (int i = 0; i < 7; i++) cy_ip[i] = !in_reset && (ip_rst_n_i[i] === 1'b1);
+  end
+  logic [6:0] cy_ip_q = '0;
+  wire  [6:0] cy_ip_fall = cy_ip_q & ~cy_ip;
+  wire  [6:0] cy_ip_rise = ~cy_ip_q & cy_ip;
+
+  // Engine busy: the idle net is low and the domain is out of reset.
+  // Bit 0 HMAC, 1 AES, 2 KMAC, 3 OTBN.
+  wire  [3:0] cy_busy = {
+    (eng_idle_i[3] === 1'b0) && cy_ip[1],
+    (eng_idle_i[2] === 1'b0) && cy_ip[4],
+    (eng_idle_i[1] === 1'b0) && cy_ip[2],
+    (eng_idle_i[0] === 1'b0) && cy_ip[3]
+  };
+  logic [3:0] cy_busy_q = '0;
+  logic [3:0] cy_busy_ar = '0;  // busy engines at the last LSU AR handshake
+
+  // Interrupt vector and EDN acknowledges, 2-state.
+  logic [42:0] cy_vec;
+  logic [3:0] cy_ack;
+  always_comb begin
+    for (int i = 0; i < 43; i++) cy_vec[i] = (vec_i[i] === 1'b1);
+    for (int i = 0; i < 4; i++) cy_ack[i] = (crypto_edn_ack_i[i] === 1'b1);
+  end
+  logic [42:0] cy_vec_q = '0;
+  logic [3:0] cy_ack_q = '0;
+  wire  [42:0] cy_vec_rise = cy_vec & ~cy_vec_q;
+  wire  [3:0] cy_ack_rise = cy_ack & ~cy_ack_q;
+
+  // LSU traffic that the single-outstanding gate cannot pair, and a write
+  // in flight (address or data accepted, response not yet returned).
+  wire cy_wr_unpaired = !in_reset && b_hs && !((aw_out_q == 4'd1) && (w_beats_q == 2'd1));
+  wire cy_rd_unpaired = !in_reset && r_hs && !((ar_out_q == 4'd1) && !r_multi_q);
+  wire cy_b_err = !in_reset && b_hs && (lsu_b_resp_i != AxiOkay);
+  wire cy_rd_known = !$isunknown(rd_data);
+  logic [1:0] cy_b_recent = '0;
+  wire cy_wr_busy = (aw_out_q != 4'd0) || aw_hs || (w_beats_q != 2'd0) || w_hs || b_hs ||
+      (cy_b_recent != 2'd0);
+  // A new AW request: AW valid rises, or stays high after a handshake.
+  logic cy_aw_v_q = 1'b0;
+  logic cy_aw_hs_q = 1'b0;
+  wire cy_aw_new = aw_v && (!cy_aw_v_q || cy_aw_hs_q);
+
+  always @(posedge clk_i) begin
+    cy_ip_q     <= cy_ip;
+    cy_busy_q   <= cy_busy;
+    cy_vec_q    <= cy_vec;
+    cy_ack_q    <= cy_ack;
+    cy_b_recent <= {cy_b_recent[0], b_hs};
+    cy_aw_v_q   <= aw_v;
+    cy_aw_hs_q  <= aw_hs;
+    if (ar_hs) cy_busy_ar <= cy_busy;
+  end
+
+  // In-order pairing of LSU write beats: AXI4 keeps W data in AW order, so
+  // each W beat of a single-beat write pairs with the oldest unpaired AW
+  // even while several writes are posted. cy_wb_* is one paired beat, one
+  // clock after the later of its two handshakes. An overflow or a bus clear
+  // drops the queues and raises cy_wb_drop for that clock.
+  logic [31:0] cy_aq[8];
+  logic [7:0] cy_wq[8];
+  logic [2:0] cy_aq_w = '0;
+  logic [2:0] cy_aq_r = '0;
+  logic [3:0] cy_aq_n = '0;
+  logic [2:0] cy_wq_w = '0;
+  logic [2:0] cy_wq_r = '0;
+  logic [3:0] cy_wq_n = '0;
+  logic        cy_wb_v = 1'b0;
+  logic        cy_wb_drop = 1'b0;
+  logic [31:0] cy_wb_a = '0;
+  logic [7:0] cy_wb_s = '0;
+  always @(posedge clk_i) begin
+    logic [3:0] an;
+    logic [3:0] wn;
+    an = cy_aq_n;
+    wn = cy_wq_n;
+    cy_wb_v    <= 1'b0;
+    cy_wb_drop <= 1'b0;
+    if (lsu_clear) begin
+      an = '0;
+      wn = '0;
+      cy_wb_drop <= 1'b1;
+    end else begin
+      if (aw_hs) begin
+        cy_aq[cy_aq_w] <= lsu_aw_addr_i;
+        cy_aq_w <= cy_aq_w + 3'd1;
+        an = an + 4'd1;
+      end
+      if (w_hs) begin
+        cy_wq[cy_wq_w] <= lsu_w_strb_i;
+        cy_wq_w <= cy_wq_w + 3'd1;
+        wn = wn + 4'd1;
+      end
+      if ((cy_aq_n != 4'd0) && (cy_wq_n != 4'd0)) begin
+        cy_wb_v <= 1'b1;
+        cy_wb_a <= cy_aq[cy_aq_r];
+        cy_wb_s <= cy_wq[cy_wq_r];
+        cy_aq_r <= cy_aq_r + 3'd1;
+        cy_wq_r <= cy_wq_r + 3'd1;
+        an = an - 4'd1;
+        wn = wn - 4'd1;
+      end
+      if ((an > 4'd7) || (wn > 4'd7)) begin
+        an = '0;
+        wn = '0;
+        cy_wb_drop <= 1'b1;
+      end
+    end
+    if ((an == 4'd0) && (wn == 4'd0)) begin
+      cy_aq_w <= '0;
+      cy_aq_r <= '0;
+      cy_wq_w <= '0;
+      cy_wq_r <= '0;
+    end
+    cy_aq_n <= an;
+    cy_wq_n <= wn;
+  end
+  wire [3:0] cy_wb_bytes = popcount8(cy_wb_s);
+
+  // ---------------------------------------------------------------------
+  // sep_crypto_intr_cg (points of entries 1.25 to 1.39). Source index s,
+  // PIC source 18 + s on vector bit 17 + s (doc/interrupts.adoc):
+  //  0 hmac_done, 1 hmac_fifo_empty, 2 hmac_err, 3 kmac_done,
+  //  4 kmac_fifo_empty, 5 kmac_err, 6 cs_cmd_req_done, 7 cs_entropy_req,
+  //  8 cs_hw_inst_exc, 9 cs_fatal_err, 10 edn_cmd_req_done,
+  //  11 edn_fatal_err, 12 otbn_done.
+  // ---------------------------------------------------------------------
+  wire [12:0] cy_st_raw = {
+    otbn_reg2hw_i.intr_state.q,
+    edn_reg2hw_i.intr_state.edn_fatal_err.q,
+    edn_reg2hw_i.intr_state.edn_cmd_req_done.q,
+    csrng_reg2hw_i.intr_state.cs_fatal_err.q,
+    csrng_reg2hw_i.intr_state.cs_hw_inst_exc.q,
+    csrng_reg2hw_i.intr_state.cs_entropy_req.q,
+    csrng_reg2hw_i.intr_state.cs_cmd_req_done.q,
+    kmac_reg2hw_i.intr_state.kmac_err.q,
+    kmac_reg2hw_i.intr_state.fifo_empty.q,
+    kmac_reg2hw_i.intr_state.kmac_done.q,
+    hmac_reg2hw_i.intr_state.hmac_err.q,
+    hmac_reg2hw_i.intr_state.fifo_empty.q,
+    hmac_reg2hw_i.intr_state.hmac_done.q
+  };
+  wire [12:0] cy_en_raw = {
+    otbn_reg2hw_i.intr_enable.q,
+    edn_reg2hw_i.intr_enable.edn_fatal_err.q,
+    edn_reg2hw_i.intr_enable.edn_cmd_req_done.q,
+    csrng_reg2hw_i.intr_enable.cs_fatal_err.q,
+    csrng_reg2hw_i.intr_enable.cs_hw_inst_exc.q,
+    csrng_reg2hw_i.intr_enable.cs_entropy_req.q,
+    csrng_reg2hw_i.intr_enable.cs_cmd_req_done.q,
+    kmac_reg2hw_i.intr_enable.kmac_err.q,
+    kmac_reg2hw_i.intr_enable.fifo_empty.q,
+    kmac_reg2hw_i.intr_enable.kmac_done.q,
+    hmac_reg2hw_i.intr_enable.hmac_err.q,
+    hmac_reg2hw_i.intr_enable.fifo_empty.q,
+    hmac_reg2hw_i.intr_enable.hmac_done.q
+  };
+  // INTR_TEST write strobe with the bit set.
+  wire [12:0] cy_tst_raw = {
+    otbn_reg2hw_i.intr_test.qe & otbn_reg2hw_i.intr_test.q,
+    edn_reg2hw_i.intr_test.edn_fatal_err.qe & edn_reg2hw_i.intr_test.edn_fatal_err.q,
+    edn_reg2hw_i.intr_test.edn_cmd_req_done.qe & edn_reg2hw_i.intr_test.edn_cmd_req_done.q,
+    csrng_reg2hw_i.intr_test.cs_fatal_err.qe & csrng_reg2hw_i.intr_test.cs_fatal_err.q,
+    csrng_reg2hw_i.intr_test.cs_hw_inst_exc.qe & csrng_reg2hw_i.intr_test.cs_hw_inst_exc.q,
+    csrng_reg2hw_i.intr_test.cs_entropy_req.qe & csrng_reg2hw_i.intr_test.cs_entropy_req.q,
+    csrng_reg2hw_i.intr_test.cs_cmd_req_done.qe & csrng_reg2hw_i.intr_test.cs_cmd_req_done.q,
+    kmac_reg2hw_i.intr_test.kmac_err.qe & kmac_reg2hw_i.intr_test.kmac_err.q,
+    kmac_reg2hw_i.intr_test.fifo_empty.qe & kmac_reg2hw_i.intr_test.fifo_empty.q,
+    kmac_reg2hw_i.intr_test.kmac_done.qe & kmac_reg2hw_i.intr_test.kmac_done.q,
+    hmac_reg2hw_i.intr_test.hmac_err.qe & hmac_reg2hw_i.intr_test.hmac_err.q,
+    hmac_reg2hw_i.intr_test.fifo_empty.qe & hmac_reg2hw_i.intr_test.fifo_empty.q,
+    hmac_reg2hw_i.intr_test.hmac_done.qe & hmac_reg2hw_i.intr_test.hmac_done.q
+  };
+  logic [12:0] cy_st;
+  logic [12:0] cy_en;
+  logic [12:0] cy_tst;
+  logic [12:0] cy_line;
+  always_comb begin
+    for (int i = 0; i < 13; i++) begin
+      cy_st[i]   = (cy_st_raw[i] === 1'b1);
+      cy_en[i]   = (cy_en_raw[i] === 1'b1);
+      cy_tst[i]  = (cy_tst_raw[i] === 1'b1);
+      cy_line[i] = cy_vec[17+i];
+    end
+  end
+  logic [12:0] cy_st_q = '0;
+  logic [12:0] cy_en_q = '0;
+  logic [12:0] cy_line_q = '0;
+  logic [12:0] cy_tst_q = '0;
+  logic [12:0] cy_tst_q2 = '0;
+  wire  [12:0] cy_tst_rec = cy_tst | cy_tst_q | cy_tst_q2;
+  wire  [12:0] cy_st_rise = cy_st & ~cy_st_q;
+
+  // Block of a source: 0 HMAC, 1 KMAC, 2 CSRNG, 3 EDN, 4 OTBN.
+  function automatic int unsigned cy_blk(input int unsigned s);
+    if (s <= 2) return 0;
+    if (s <= 5) return 1;
+    if (s <= 9) return 2;
+    if (s <= 11) return 3;
+    return 4;
+  endfunction
+  // Bit of a source in INTR_STATE, INTR_ENABLE and INTR_TEST of its block.
+  function automatic int unsigned cy_bit(input int unsigned s);
+    case (s)
+      1, 4, 7, 11: return 1;
+      2, 5, 8: return 2;
+      9: return 3;
+      default: return 0;
+    endcase
+  endfunction
+  // INTR_STATE address of a block; INTR_ENABLE is +4, INTR_TEST +8.
+  function automatic logic [31:0] cy_intr_addr(input int unsigned b);
+    case (b)
+      0: return HMAC_INTR_STATE_REG_ADDR;
+      1: return KMAC_INTR_STATE_REG_ADDR;
+      2: return CSRNG_INTR_STATE_REG_ADDR;
+      3: return EDN_INTR_STATE_REG_ADDR;
+      default: return OTBN_INTR_STATE_REG_ADDR;
+    endcase
+  endfunction
+  // Reset domain of a block (SW_RESET_N bit).
+  function automatic int unsigned cy_blk_dom(input int unsigned b);
+    case (b)
+      0: return 3;
+      1: return 4;
+      4: return 1;
+      default: return 5;
+    endcase
+  endfunction
+  // The ten sources of the interrupt extension leg.
+  function automatic logic cy_irq_src(input int unsigned s);
+    return !(s inside {1, 4, 12});
+  endfunction
+
+  // x_line_gate owner per cell (fcov_area sep_crypto_intr_cg owner column).
+  // hw: the state bit was set by a hardware event, not by INTR_TEST.
+  function automatic logic cy_lg_ok(input int unsigned s, input logic st, input logic en,
+                                    input logic hw);
+    if (graded_owner == FcovOwnSepIrqIpToAggregatorTest) begin
+      if (!cy_irq_src(s)) return 1'b0;
+      if (st != en) return 1'b1;
+      if (!st && !en) return s inside {0, 3, 5};
+      return s == 5;
+    end
+    if (graded_owner == FcovOwnSepOtbnCmdStatusRandTest) return s == 12;
+    if (graded_owner == FcovOwnSepPicPendingMapWalkRandTest) return (s inside {1, 4}) && st && hw;
+    if (!st || !hw) return 1'b0;
+    if (graded_owner == FcovOwnSepHmacIllegalCfgStartTest) return s == 2;
+    if (graded_owner == FcovOwnSepHmacSwapContextRandTest) return s == 0;
+    if (graded_owner == FcovOwnSepKmacUnsupportedCfgInjectTest) return s == 5;
+    if (graded_owner == FcovOwnSepKmacStreamCfgRandTest) return s == 3;
+    if (graded_owner == FcovOwnSepKmacEntropyModeRandTest) return s == 5;
+    return 1'b0;
+  endfunction
+  // cp_hw_raise owner per source.
+  function automatic logic cy_hr_ok(input int unsigned s);
+    case (s)
+      0: return graded_owner == FcovOwnSepHmacSwapContextRandTest;
+      1: return graded_owner == FcovOwnSepHmacFifoStreamRandTest;
+      2: return graded_owner == FcovOwnSepHmacIllegalCfgStartTest;
+      3: return graded_owner == FcovOwnSepKmacStreamCfgRandTest;
+      5:
+      return (graded_owner == FcovOwnSepKmacUnsupportedCfgInjectTest) ||
+          (graded_owner == FcovOwnSepKmacEntropyModeRandTest);
+      12: return graded_owner == FcovOwnSepOtbnCmdStatusRandTest;
+      default: return 1'b0;
+    endcase
+  endfunction
+
+  typedef struct packed {
+    logic [5:0] lg;
+    logic lg_v;  // {source, state, enable}
+    logic [5:0] wc;
+    logic wc_v;  // {no write, source, enable}
+    logic [4:0] ef;
+    logic ef_v;  // {source, 0 line rises / 1 line falls}
+    logic [3:0] hr;
+    logic hr_v;  // source
+    logic aq;
+    logic aq_v;  // 0 window ends quiet, 1 rise inside the window
+    logic [1:0] fq;
+    logic fq_v;  // 0 empty after full, 1 empty not full, 2 set with no full
+  } cy_intr_t;
+
+  covergroup sep_crypto_intr_cg with function sample (cy_intr_t s);
+    option.per_instance = 1;
+    option.name = "sep_crypto_intr_cg";
+    // {source[3:0], state, enable}: 38 cells (fcov_area, Bins not graded).
+    x_line_gate: coverpoint s.lg iff (s.lg_v) {
+      bins hmac_done[] = {6'b0000_00, 6'b0000_01, 6'b0000_10, 6'b0000_11};
+      bins hmac_fifo_empty[] = {6'b0001_10, 6'b0001_11};
+      bins hmac_err[] = {6'b0010_01, 6'b0010_10};
+      bins kmac_done[] = {6'b0011_00, 6'b0011_01, 6'b0011_10, 6'b0011_11};
+      bins kmac_fifo_empty[] = {6'b0100_10, 6'b0100_11};
+      bins kmac_err[] = {6'b0101_00, 6'b0101_01, 6'b0101_10, 6'b0101_11};
+      bins cs_cmd_req_done[] = {6'b0110_01, 6'b0110_10, 6'b0110_11};
+      bins cs_entropy_req[] = {6'b0111_01, 6'b0111_10};
+      bins cs_hw_inst_exc[] = {6'b1000_01, 6'b1000_10};
+      bins cs_fatal_err[] = {6'b1001_01, 6'b1001_10, 6'b1001_11};
+      bins edn_cmd_req_done[] = {6'b1010_01, 6'b1010_10, 6'b1010_11};
+      bins edn_fatal_err[] = {6'b1011_01, 6'b1011_10, 6'b1011_11};
+      bins otbn_done[] = {6'b1100_00, 6'b1100_01, 6'b1100_10, 6'b1100_11};
+    }
+    // {no write, source[3:0], enable}: a state fall by a write-one.
+    cp_w1c_clear: coverpoint s.wc iff (s.wc_v) {
+      bins enable0[] = {
+        6'b0_0000_0, 6'b0_0010_0, 6'b0_0011_0, 6'b0_0101_0, 6'b0_0110_0, 6'b0_0111_0,
+        6'b0_1000_0, 6'b0_1001_0, 6'b0_1010_0, 6'b0_1011_0, 6'b0_1100_0
+      };
+      bins enable1[] = {6'b0_0101_1, 6'b0_1100_1};
+      wildcard illegal_bins fall_without_write = {6'b1_????_?};
+    }
+    // {source[3:0], 0 rise when the enable sets / 1 fall when it clears}.
+    cp_enable_flip: coverpoint s.ef iff (s.ef_v) {
+      bins flip[] = {
+        5'b0000_0, 5'b0000_1, 5'b0010_0, 5'b0010_1, 5'b0011_0, 5'b0011_1, 5'b0101_0,
+        5'b0101_1, 5'b0110_0, 5'b0110_1, 5'b0111_0, 5'b0111_1, 5'b1000_0, 5'b1000_1,
+        5'b1001_0, 5'b1001_1, 5'b1010_0, 5'b1010_1, 5'b1011_0, 5'b1011_1, 5'b1100_0,
+        5'b1100_1
+      };
+    }
+    cp_hw_raise: coverpoint s.hr iff (s.hr_v) {
+      bins hmac_done = {4'd0};
+      bins hmac_fifo_empty = {4'd1};
+      bins hmac_err = {4'd2};
+      bins kmac_done = {4'd3};
+      bins kmac_err = {4'd5};
+      bins cs_cmd_req_done = {4'd6};
+      bins cs_fatal_err = {4'd9};
+      bins edn_cmd_req_done = {4'd10};
+      bins edn_fatal_err = {4'd11};
+      bins otbn_done = {4'd12};
+    }
+    cp_aes_quiet: coverpoint s.aq iff (s.aq_v) {
+      bins window_ends_quiet = {1'b0}; illegal_bins rise_in_window = {1'b1};
+    }
+    cp_hmac_fifo_empty_qual: coverpoint s.fq iff (s.fq_v) {
+      bins empty_after_full = {2'd0};
+      bins empty_not_full = {2'd1};
+      illegal_bins set_without_full = {2'd2};
+    }
+  endgroup
+
+  sep_crypto_intr_cg u_sep_crypto_intr_cg = new();
+
+  task automatic cy_intr(input int unsigned pt, input logic [5:0] v);
+    cy_intr_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.lg   = v;
+        e.lg_v = 1'b1;
+      end
+      1: begin
+        e.wc   = v;
+        e.wc_v = 1'b1;
+      end
+      2: begin
+        e.ef   = v[4:0];
+        e.ef_v = 1'b1;
+      end
+      3: begin
+        e.hr   = v[3:0];
+        e.hr_v = 1'b1;
+      end
+      4: begin
+        e.aq   = v[0];
+        e.aq_v = 1'b1;
+      end
+      default: begin
+        e.fq   = v[1:0];
+        e.fq_v = 1'b1;
+      end
+    endcase
+    u_sep_crypto_intr_cg.sample(e);
+  endtask
+
+  // Per-source trackers of x_line_gate, cp_w1c_clear, cp_enable_flip and
+  // cp_hw_raise. A line cell samples at the first clock after a change of
+  // its state or enable bit, or after a write to an interrupt register of
+  // its block, where the vector bit equals state AND enable: the
+  // specification states no latency, so the sample waits for the line.
+  logic [12:0] cy_hw = '0;  // state bit set by hardware, not by INTR_TEST
+  logic [12:0] cy_lg_pend = '0;
+  logic [12:0] cy_wc_pend = '0;
+  logic [12:0] cy_wc_en = '0;
+  logic [12:0] cy_ef_up = '0;
+  logic [12:0] cy_ef_dn = '0;
+  always @(posedge clk_i) begin
+    cy_st_q   <= cy_st;
+    cy_en_q   <= cy_en;
+    cy_line_q <= cy_line;
+    cy_tst_q  <= cy_tst;
+    cy_tst_q2 <= cy_tst_q;
+    for (int i = 0; i < 13; i++) begin
+      int unsigned b;
+      int unsigned d;
+      logic dom_ok;
+      logic rise;
+      logic fall;
+      logic hw;
+      logic own_we;
+      logic reg_wr;
+      logic pend;
+      b = cy_blk(i);
+      d = cy_blk_dom(b);
+      dom_ok = cy_ip[d] && cy_ip_q[d] && cy_ip[5] && cy_ip_q[5];
+      rise = cy_st[i] && !cy_st_q[i];
+      fall = !cy_st[i] && cy_st_q[i];
+      hw = rise ? !cy_tst_rec[i] : (cy_hw[i] && cy_st[i]);
+      own_we = (cy_own_irq && cy_irq_src(i)) || (cy_own_otbn && (i == 12));
+      reg_wr = wr_ev && ((aw_addr_q == cy_intr_addr(b)) ||
+                         (aw_addr_q == (cy_intr_addr(b) + 32'd4)) ||
+                         (aw_addr_q == (cy_intr_addr(b) + 32'd8)));
+      cy_hw[i] <= dom_ok && hw;
+
+      // cp_hw_raise
+      if (dom_ok && rise && !cy_tst_rec[i] && cy_hr_ok(i)) cy_intr(3, 6'(i));
+
+      // x_line_gate
+      if (!dom_ok || (graded_owner == FcovOwnNone)) begin
+        cy_lg_pend[i] <= 1'b0;
+      end else if ((cy_st[i] != cy_st_q[i]) || (cy_en[i] != cy_en_q[i]) || reg_wr) begin
+        cy_lg_pend[i] <= 1'b1;
+      end else if (cy_lg_pend[i] && (cy_line[i] == (cy_st[i] && cy_en[i]))) begin
+        cy_lg_pend[i] <= 1'b0;
+        if (cy_lg_ok(i, cy_st[i], cy_en[i], hw)) cy_intr(0, {4'(i), cy_st[i], cy_en[i]});
+      end
+
+      // cp_w1c_clear: a fall while an LSU write is in flight waits for the
+      // OKAY response of a write of one to the bit in INTR_STATE.
+      pend = cy_wc_pend[i];
+      if (fall && own_we && dom_ok) begin
+        if (cy_wr_busy) begin
+          pend = 1'b1;
+          cy_wc_en[i] <= cy_en[i];
+        end else begin
+          cy_intr(1, {1'b1, 4'(i), cy_en[i]});
+        end
+      end
+      if (!own_we) begin
+        pend = 1'b0;
+      end else if (wr_ev) begin
+        if (pend && (aw_addr_q == cy_intr_addr(b)) && wr_data[cy_bit(i)]) begin
+          cy_intr(1, {1'b0, 4'(i), (fall ? cy_en[i] : cy_wc_en[i])});
+        end
+        pend = 1'b0;
+      end
+      cy_wc_pend[i] <= pend;
+
+      // cp_enable_flip
+      if (!own_we || !dom_ok) begin
+        cy_ef_up[i] <= 1'b0;
+        cy_ef_dn[i] <= 1'b0;
+      end else begin
+        if (cy_en[i] && !cy_en_q[i] && cy_st[i] && !cy_line_q[i]) begin
+          cy_ef_up[i] <= 1'b1;
+        end else if (cy_ef_up[i]) begin
+          if (!cy_st[i] || !cy_en[i]) begin
+            cy_ef_up[i] <= 1'b0;
+          end else if (cy_line[i]) begin
+            cy_ef_up[i] <= 1'b0;
+            cy_intr(2, {1'b0, 4'(i), 1'b0});
+          end
+        end
+        if (!cy_en[i] && cy_en_q[i] && cy_st[i] && cy_line_q[i]) begin
+          cy_ef_dn[i] <= 1'b1;
+        end else if (cy_ef_dn[i]) begin
+          if (!cy_st[i] || cy_en[i]) begin
+            cy_ef_dn[i] <= 1'b0;
+          end else if (!cy_line[i]) begin
+            cy_ef_dn[i] <= 1'b0;
+            cy_intr(2, {1'b0, 4'(i), 1'b1});
+          end
+        end
+      end
+    end
+  end
+
+  // cp_aes_quiet: AES busy and no other engine busy. The window ends with
+  // no rise on the vector bits other than 36 and 37 (the pool low and
+  // fill-stall sources, which have no enable).
+  localparam logic [42:0] CyAesQuietMask = ~(43'h3 << 36);
+  wire  cy_aq_win = cy_own_astr && (cy_busy == 4'b0010);
+  logic cy_aq_on = 1'b0;
+  logic cy_aq_hit = 1'b0;
+  always @(posedge clk_i) begin
+    if (!cy_own_astr) begin
+      cy_aq_on  <= 1'b0;
+      cy_aq_hit <= 1'b0;
+    end else if (cy_aq_win) begin
+      logic h;
+      h = cy_aq_on && cy_aq_hit;
+      if (!h && ((cy_vec_rise & CyAesQuietMask) != '0)) begin
+        cy_intr(4, 6'd1);
+        h = 1'b1;
+      end
+      cy_aq_on  <= 1'b1;
+      cy_aq_hit <= h;
+    end else if (cy_aq_on) begin
+      cy_aq_on <= 1'b0;
+      if (!cy_aq_hit) cy_intr(4, 6'd0);
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // HMAC, AES and KMAC taps. CFG of HMAC is an external register: the
+  // write value is latched at its strobe, and hw2reg holds the stored
+  // (mapped) value that a read returns. AES STATUS bits are stored from
+  // their hw2reg d / de pair; IDLE and OUTPUT_LOST come from reg2hw.
+  // ---------------------------------------------------------------------
+  function automatic logic cy_t(input logic v);
+    return v === 1'b1;
+  endfunction
+
+  wire cy_h_start = cy_t(hmac_reg2hw_i.cmd.hash_start.qe) && cy_t(hmac_reg2hw_i.cmd.hash_start.q);
+  wire cy_h_proc = cy_t(hmac_reg2hw_i.cmd.hash_process.qe) &&
+      cy_t(hmac_reg2hw_i.cmd.hash_process.q);
+  wire cy_h_stop = cy_t(hmac_reg2hw_i.cmd.hash_stop.qe) && cy_t(hmac_reg2hw_i.cmd.hash_stop.q);
+  wire cy_h_cont = cy_t(hmac_reg2hw_i.cmd.hash_continue.qe) &&
+      cy_t(hmac_reg2hw_i.cmd.hash_continue.q);
+  // A hardware done event: the INTR_STATE set request with no INTR_TEST
+  // strobe of the bit.
+  wire cy_h_done_ev = cy_t(hmac_hw2reg_i.intr_state.hmac_done.de) &&
+      cy_t(hmac_hw2reg_i.intr_state.hmac_done.d) && !cy_tst_rec[0] && cy_ip[3];
+  wire [3:0] cy_h_dig = hmac_hw2reg_i.cfg.digest_size.d;
+  wire [5:0] cy_h_key = hmac_hw2reg_i.cfg.key_length.d;
+  wire cy_h_en = cy_t(hmac_hw2reg_i.cfg.hmac_en.d);
+  wire cy_h_sha = cy_t(hmac_hw2reg_i.cfg.sha_en.d);
+  wire cy_h_eswap = cy_t(hmac_hw2reg_i.cfg.endian_swap.d);
+  wire cy_h_dswap = cy_t(hmac_hw2reg_i.cfg.digest_swap.d);
+  wire cy_h_idle = cy_t(hmac_hw2reg_i.status.hmac_idle.d);
+  wire cy_h_fe = cy_t(hmac_hw2reg_i.status.fifo_empty.d);
+  wire cy_h_full = cy_t(hmac_hw2reg_i.status.fifo_full.d);
+  wire cy_h_kv = cy_t(hmac_key_valid_i);
+  logic cy_h_dig_qe;
+  always_comb begin
+    cy_h_dig_qe = 1'b0;
+    for (int i = 0; i < 16; i++) cy_h_dig_qe |= cy_t(hmac_reg2hw_i.digest[i].qe);
+  end
+  wire cy_h_len_qe = cy_t(hmac_reg2hw_i.msg_length_lower.qe) ||
+      cy_t(hmac_reg2hw_i.msg_length_upper.qe);
+  logic [3:0] cy_h_dig_raw = '0;
+  logic [5:0] cy_h_key_raw = '0;
+  logic cy_h_fe_q = 1'b0;
+  logic cy_h_sha_q = 1'b0;
+  always @(posedge clk_i) begin
+    if (cy_t(hmac_reg2hw_i.cfg.digest_size.qe)) cy_h_dig_raw <= hmac_reg2hw_i.cfg.digest_size.q;
+    if (cy_t(hmac_reg2hw_i.cfg.key_length.qe)) cy_h_key_raw <= hmac_reg2hw_i.cfg.key_length.q;
+    cy_h_fe_q   <= cy_h_fe;
+    cy_h_sha_q  <= cy_h_sha;
+  end
+  // CFG text: a digest_size or key_length outside the listed one-hot values
+  // is stored as None.
+  function automatic logic [3:0] cy_h_map_dig(input logic [3:0] r);
+    return (r inside {HmacSha256, HmacSha384, HmacSha512}) ? r : 4'h8;
+  endfunction
+  function automatic logic [5:0] cy_h_map_key(input logic [5:0] r);
+    return (r inside {HmacKey128, HmacKey256, HmacKey384, HmacKey512, HmacKey1024}) ? r :
+        HmacKeyNone;
+  endfunction
+  // Start class of x_hmac_start_class from the written CFG, -1 for a
+  // configuration that is not one of the seven blocked classes.
+  function automatic int cy_h_class(input logic en, input logic [3:0] d, input logic [5:0] k);
+    if (en && (k == HmacKeyNone)) begin
+      if (d == HmacSha256) return 0;
+      if (d == HmacSha384) return 1;
+      if (d == HmacSha512) return 2;
+      return -1;
+    end
+    if (en && (k == HmacKey1024) && (d == HmacSha256)) return 3;
+    if (en && ($countones(k) > 1) && (d == HmacSha256)) return 4;
+    if (!en && (d == 4'h0)) return 5;
+    if (!en && ($countones(d) > 1)) return 6;
+    return -1;
+  endfunction
+  function automatic int cy_dig_idx(input logic [3:0] d);
+    if (d == HmacSha256) return 0;
+    if (d == HmacSha384) return 1;
+    if (d == HmacSha512) return 2;
+    return -1;
+  endfunction
+  function automatic int cy_key_idx(input logic [5:0] k);
+    case (k)
+      HmacKey128: return 0;
+      HmacKey256: return 1;
+      HmacKey384: return 2;
+      HmacKey512: return 3;
+      HmacKey1024: return 4;
+      default: return -1;
+    endcase
+  endfunction
+  // x_len_class length index: SHA2_256 0, 1, 3, 4, 55, 56, 63, 64, 65, 200,
+  // 1000; SHA2_384 and SHA2_512 111, 112, 127, 128, 129, 200, 1000.
+  function automatic int cy_len_idx(input int dig, input int unsigned n);
+    if (dig == 0) begin
+      case (n)
+        0: return 0;
+        1: return 1;
+        3: return 2;
+        4: return 3;
+        55: return 4;
+        56: return 5;
+        63: return 6;
+        64: return 7;
+        65: return 8;
+        200: return 9;
+        1000: return 10;
+        default: return -1;
+      endcase
+    end
+    case (n)
+      111: return 0;
+      112: return 1;
+      127: return 2;
+      128: return 3;
+      129: return 4;
+      200: return 5;
+      1000: return 6;
+      default: return -1;
+    endcase
+  endfunction
+
+  wire cy_a_idle = cy_t(aes_reg2hw_i.status.idle.q);
+  wire cy_a_lost = cy_t(aes_reg2hw_i.status.output_lost.q);
+  wire cy_a_manual = cy_t(aes_manual_op_i);
+  logic cy_a_stall = 1'b0;
+  logic cy_a_ov = 1'b0;
+  logic cy_a_err = 1'b0;
+  wire cy_a_stall_n = cy_t(aes_hw2reg_i.status.stall.de) ? cy_t(aes_hw2reg_i.status.stall.d) :
+      cy_a_stall;
+  wire cy_a_ov_n = cy_t(aes_hw2reg_i.status.output_valid.de) ?
+      cy_t(aes_hw2reg_i.status.output_valid.d) : cy_a_ov;
+  wire cy_a_err_n = cy_t(aes_hw2reg_i.status.alert_recov_ctrl_update_err.de) ?
+      cy_t(aes_hw2reg_i.status.alert_recov_ctrl_update_err.d) : cy_a_err;
+  wire cy_a_ov_rise = cy_ip[2] && cy_a_ov_n && !cy_a_ov;
+  wire cy_a_we = cy_t(aes_ctrl_we_i);
+  wire cy_a_eu = cy_t(aes_ctrl_err_update_i);
+  wire cy_a_start_q = cy_t(aes_reg2hw_i.trigger.start.q);
+  wire cy_a_kclr_q = cy_t(aes_reg2hw_i.trigger.key_iv_data_in_clear.q);
+  logic cy_a_idle_q = 1'b0;
+  logic cy_a_lost_q = 1'b0;
+  logic cy_a_start_qq = 1'b0;
+  logic cy_a_kclr_qq = 1'b0;
+  logic [3:0] cy_a_we_rec = '0;  // ctrl_we in the last four clocks
+  logic cy_aux_regwen_q = 1'b1;
+  // Commit (ctrl_we) and update error (ctrl_err_update) seen since the AW
+  // handshake of the last LSU write to CTRL_SHADOWED.
+  logic cy_a_we_seen = 1'b0;
+  logic cy_a_eu_seen = 1'b0;
+  always @(posedge clk_i) begin
+    if (!cy_ip[2]) begin
+      cy_a_stall <= 1'b0;
+      cy_a_ov    <= 1'b0;
+      cy_a_err   <= 1'b0;
+    end else begin
+      cy_a_stall <= cy_a_stall_n;
+      cy_a_ov    <= cy_a_ov_n;
+      cy_a_err   <= cy_a_err_n;
+    end
+    cy_a_idle_q     <= cy_a_idle;
+    cy_a_lost_q     <= cy_a_lost;
+    cy_a_start_qq   <= cy_a_start_q;
+    cy_a_kclr_qq    <= cy_a_kclr_q;
+    cy_a_we_rec     <= {cy_a_we_rec[2:0], cy_a_we};
+    cy_aux_regwen_q <= cy_t(aes_aux_regwen_i);
+    if (aw_hs && (lsu_aw_addr_i == AES_CTRL_SHADOWED_REG_ADDR)) begin
+      cy_a_we_seen <= 1'b0;
+      cy_a_eu_seen <= 1'b0;
+    end else begin
+      if (cy_a_we) cy_a_we_seen <= 1'b1;
+      if (cy_a_eu) cy_a_eu_seen <= 1'b1;
+    end
+  end
+  wire cy_a_aw = aw_hs && (blk_of(lsu_aw_addr_i) == BLK_AES);  // an LSU write to AES starts
+  wire cy_a_ctrl_wr = wr_ev && (aw_addr_q == AES_CTRL_SHADOWED_REG_ADDR);
+
+  wire cy_k_cmd_qe = cy_t(kmac_reg2hw_i.cmd.cmd.qe);
+  wire [5:0] cy_k_cmd = kmac_reg2hw_i.cmd.cmd.q;
+  wire cy_k_start = cy_k_cmd_qe && (cy_k_cmd == KmacCmdStart6);
+  wire cy_k_proc = cy_k_cmd_qe && (cy_k_cmd == KmacCmdProcess6);
+  wire cy_k_run = cy_k_cmd_qe && (cy_k_cmd == KmacCmdRun6);
+  wire cy_k_errproc = cy_t(kmac_reg2hw_i.cmd.err_processed.qe) &&
+      cy_t(kmac_reg2hw_i.cmd.err_processed.q);
+  wire cy_k_cntclr = cy_t(kmac_reg2hw_i.cmd.hash_cnt_clr.qe) &&
+      cy_t(kmac_reg2hw_i.cmd.hash_cnt_clr.q);
+  wire cy_k_entreq = cy_t(kmac_reg2hw_i.cmd.entropy_req.qe) &&
+      cy_t(kmac_reg2hw_i.cmd.entropy_req.q);
+  wire cy_k_idle = cy_t(kmac_hw2reg_i.status.sha3_idle.d);
+  wire cy_k_abs = cy_t(kmac_hw2reg_i.status.sha3_absorb.d);
+  wire cy_k_sqz = cy_t(kmac_hw2reg_i.status.sha3_squeeze.d);
+  wire [1:0] cy_k_mode = kmac_reg2hw_i.cfg_shadowed.mode.q;
+  wire [2:0] cy_k_str = kmac_reg2hw_i.cfg_shadowed.kstrength.q;
+  wire [1:0] cy_k_emode = kmac_reg2hw_i.cfg_shadowed.entropy_mode.q;
+  wire cy_k_eready = cy_t(kmac_reg2hw_i.cfg_shadowed.entropy_ready.q);
+  wire cy_k_unsup = cy_t(kmac_reg2hw_i.cfg_shadowed.en_unsupported_modestrength.q);
+  wire cy_k_kmac_en = cy_t(kmac_reg2hw_i.cfg_shadowed.kmac_en.q);
+  wire cy_k_men = cy_t(kmac_reg2hw_i.cfg_shadowed.msg_endianness.q);
+  wire cy_k_sen = cy_t(kmac_reg2hw_i.cfg_shadowed.state_endianness.q);
+  wire cy_k_done_ev = cy_t(kmac_hw2reg_i.intr_state.kmac_done.de) &&
+      cy_t(kmac_hw2reg_i.intr_state.kmac_done.d) && !cy_tst_rec[3] && cy_ip[4];
+
+  // ---------------------------------------------------------------------
+  // Covergroups of entries 1.25 to 1.39. Each sample carries one point;
+  // the valid bit is set only when the owner of the point is in its window.
+  // ---------------------------------------------------------------------
+  typedef struct packed {
+    logic [3:0] hs;
+    logic hs_v;  // {class[2:0], 0 blocked / 1 started}
+    logic ks;
+    logic ks_v;  // 0 software key, 1 delivered key valid
+    logic [3:0] am;
+    logic am_v;  // {field[1:0], 0 all-zero / 1 multi-hot, stored value is the mapped value}
+    logic [4:0] km;
+    logic km_v;  // {0 SHAKE / 1 cSHAKE, strength 0 224 / 1 384 / 2 512, enable bit, started}
+    logic kr_v;
+  } cy_inv_t;
+
+  covergroup sep_crypto_invalid_encoding_cg with function sample (cy_inv_t s);
+    option.per_instance = 1;
+    option.name = "sep_crypto_invalid_encoding_cg";
+    // Classes: 0..2 Key_None with SHA2_256 / 384 / 512 (hmac_en 1), 3 Key_1024
+    // with SHA2_256, 4 several key_length bits with SHA2_256, 5 digest_size
+    // all-zero (hmac_en 0), 6 several digest_size bits (hmac_en 0).
+    x_hmac_start_class: coverpoint s.hs iff (s.hs_v) {
+      bins blocked_none_256 = {4'b000_0};
+      bins blocked_none_384 = {4'b001_0};
+      bins blocked_none_512 = {4'b010_0};
+      bins blocked_1024_256 = {4'b011_0};
+      bins blocked_keylen_invalid = {4'b100_0};
+      bins blocked_digest_none = {4'b101_0};
+      bins blocked_digest_invalid = {4'b110_0};
+      wildcard illegal_bins blocked_class_started = {4'b???_1};
+    }
+    cp_hmac_key_src: coverpoint s.ks iff (s.ks_v) {bins software = {1'b0}; bins delivered = {1'b1};}
+    // Fields 0 KEY_LEN (AES_256), 1 OPERATION (AES_ENC), 2 MODE (AES_NONE),
+    // 3 PRNG_RESEED_RATE (PER_1).
+    x_aes_invalid_map: coverpoint s.am iff (s.am_v) {
+      bins key_len_all_zero = {4'b00_0_1};
+      bins key_len_multi_hot = {4'b00_1_1};
+      bins operation_all_zero = {4'b01_0_1};
+      bins operation_multi_hot = {4'b01_1_1};
+      bins mode_all_zero = {4'b10_0_1};
+      bins mode_multi_hot = {4'b10_1_1};
+      bins prng_reseed_rate_all_zero = {4'b11_0_1};
+      bins prng_reseed_rate_multi_hot = {4'b11_1_1};
+      wildcard illegal_bins stored_not_mapped = {4'b??_?_0};
+    }
+    x_kmac_mode_strength: coverpoint s.km iff (s.km_v) {
+      bins blocked[] = {
+        5'b0_00_0_0, 5'b0_01_0_0, 5'b0_10_0_0, 5'b1_00_0_0, 5'b1_01_0_0, 5'b1_10_0_0
+      };
+      bins started[] = {
+        5'b0_00_1_1, 5'b0_01_1_1, 5'b0_10_1_1, 5'b1_00_1_1, 5'b1_01_1_1, 5'b1_10_1_1
+      };
+      wildcard illegal_bins unsupported_started_with_bit_clear = {5'b?_??_0_1};
+    }
+    cp_kmac_err_recover: coverpoint s.kr_v iff (s.kr_v) {bins recovered = {1'b1};}
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] ks;
+    logic ks_v;  // {stored SIDELOAD, delivered KEY_VALID}
+    logic [2:0] rr;
+    logic rr_v;  // stored PRNG_RESEED_RATE
+    logic rt;
+    logic rt_v;  // 0 window ends with no acknowledge, 1 acknowledge in the window
+    logic ct_v;
+  } cy_acfg_t;
+
+  covergroup sep_aes_cfg_cg with function sample (cy_acfg_t s);
+    option.per_instance = 1;
+    option.name = "sep_aes_cfg_cg";
+    x_key_source: coverpoint s.ks iff (s.ks_v) {
+      bins software_key_delivered_valid = {2'b01}; bins sideload_delivered_valid = {2'b11};
+    }
+    cp_reseed_rate: coverpoint s.rr iff (s.rr_v) {
+      bins per_1 = {AesPrsPer1}; bins per_64 = {AesPrsPer64}; bins per_8k = {AesPrsPer8k};
+    }
+    cp_reseed_trigger: coverpoint s.rt iff (s.rt_v) {
+      bins no_reseed_write_quiet = {1'b0}; illegal_bins acknowledge_without_reseed_write = {1'b1};
+    }
+    cp_clear_trigger: coverpoint s.ct_v iff (s.ct_v) {bins key_iv_data_in_clear_reload = {1'b1};}
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] ms;
+    logic ms_v;  // 0 automatic STALL 1, 1 automatic STALL 0 after the read, 2 manual OUTPUT_LOST 1
+    logic lc;
+    logic lc_v;  // 0 OUTPUT_LOST falls with ctrl_we, 1 falls with no strobe
+    logic nc;
+    logic nc_v;  // IDLE 0 with 0 the core running / 1 STALL
+    logic [1:0] ss;
+    logic ss_v;  // START in 0 manual legal mode / 1 manual AES_NONE / 2 automatic
+  } cy_aop_t;
+
+  covergroup sep_aes_op_status_cg with function sample (cy_aop_t s);
+    option.per_instance = 1;
+    option.name = "sep_aes_op_status_cg";
+    x_mode_status: coverpoint s.ms iff (s.ms_v) {
+      bins automatic_stall = {2'd0};
+      bins automatic_stall_cleared_by_read = {2'd1};
+      bins manual_output_lost = {2'd2};
+    }
+    cp_lost_clear: coverpoint s.lc iff (s.lc_v) {
+      bins cleared_by_ctrl_write = {1'b0}; illegal_bins fall_without_strobe = {1'b1};
+    }
+    cp_nonidle_cause: coverpoint s.nc iff (s.nc_v) {
+      bins core_running = {1'b0}; bins stall = {1'b1};
+    }
+    cp_start_suppress: coverpoint s.ss iff (s.ss_v) {
+      bins manual_legal_idle_falls = {2'd0};
+      bins manual_none_no_output = {2'd1};
+      bins automatic_no_start = {2'd2};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] sp;
+    logic sp_v;  // 0 matched pair, 1 mismatched pair, 2 mismatched pair with update error 0
+    logic ur_v;
+    logic rr;
+    logic rr_v;  // after the AES reset: 0 update error 0, 1 a new AUX pair lands
+  } cy_afl_t;
+
+  covergroup sep_aes_fault_cg with function sample (cy_afl_t s);
+    option.per_instance = 1;
+    option.name = "sep_aes_fault_cg";
+    x_shadow_pair_aes: coverpoint s.sp iff (s.sp_v) {
+      bins matched = {2'd0};
+      bins mismatched = {2'd1};
+      illegal_bins mismatched_without_update_error = {2'd2};
+    }
+    cp_update_err_recovery: coverpoint s.ur_v iff (s.ur_v) {bins rewrite_then_output = {1'b1};}
+    cp_reset_restore: coverpoint s.rr iff (s.rr_v) {
+      bins update_error_cleared = {1'b0}; bins aux_pair_lands = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic ar;
+    logic ar_v;  // 0 post-lock AUX write refused, 1 REGWEN write of 1 after 0 leaves 0
+  } cy_lock_t;
+
+  covergroup sep_crypto_reg_lock_cg with function sample (cy_lock_t s);
+    option.per_instance = 1;
+    option.name = "sep_crypto_reg_lock_cg";
+    cp_aux_regwen: coverpoint s.ar iff (s.ar_v) {
+      bins aux_write_refused = {1'b0}; bins regwen_stays_locked = {1'b1};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [2:0] as;
+    logic as_v;  // block 0 HMAC, 1 OTBN, 2 AES, 3 KMAC, 4 CSRNG, 5 EDN
+  } cy_alert_t;
+
+  covergroup sep_crypto_alert_cg with function sample (cy_alert_t s);
+    option.per_instance = 1;
+    option.name = "sep_crypto_alert_cg";
+    x_alert_source: coverpoint s.as iff (s.as_v) {
+      bins hmac = {3'd0};
+      bins otbn = {3'd1};
+      bins aes = {3'd2};
+      bins kmac = {3'd3};
+      bins csrng = {3'd4};
+      bins edn = {3'd5};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [2:0] cs;
+    logic cs_v;  // {0 start / 1 run, stage 1 absorb / 2 squeeze / 3 more than one}
+    logic [2:0] en;
+    logic en_v;  // {0 at start / 1 one-byte write, msg_endianness, state_endianness}
+    logic [4:0] lc;
+    logic lc_v;  // {combination, length 0 rate - 1 / 1 rate / 2 rate + 1}
+    logic rb;
+    logic rb_v;  // 0 SHAKE128, 1 SHAKE256
+  } cy_kcc_t;
+
+  covergroup sep_kmac_cfg_cmd_cg with function sample (cy_kcc_t s);
+    option.per_instance = 1;
+    option.name = "sep_kmac_cfg_cmd_cg";
+    x_cmd_stage: coverpoint s.cs iff (s.cs_v) {
+      bins start_absorb = {3'b0_01};
+      bins run_squeeze = {3'b1_10};
+      wildcard illegal_bins more_than_one_stage = {3'b?_11};
+    }
+    x_endian: coverpoint s.en iff (s.en_v) {
+      bins at_start[] = {3'b0_00, 3'b0_01, 3'b0_10, 3'b0_11};
+      wildcard bins one_byte_write_msg_endian = {3'b1_1?};
+    }
+    // Combinations 0..3 SHA3 224 / 256 / 384 / 512, 4 SHAKE128, 5 SHAKE256.
+    x_len_corner: coverpoint s.lc iff (s.lc_v) {
+      bins cells[] = {
+        5'b000_00, 5'b000_01, 5'b000_10, 5'b001_00, 5'b001_01, 5'b001_10, 5'b010_00, 5'b010_01,
+        5'b010_10, 5'b011_00, 5'b011_01, 5'b011_10, 5'b100_00, 5'b100_01, 5'b100_10, 5'b101_00,
+        5'b101_01, 5'b101_10
+      };
+    }
+    cp_run_block: coverpoint s.rb iff (s.rb_v) {bins shake128 = {1'b0}; bins shake256 = {1'b1};}
+  endgroup
+
+  typedef struct packed {
+    logic [2:0] ml;
+    logic ml_v;  // {0 before entropy_ready / 1 after / 2 later write diverges / 3 reset, sw}
+    logic [1:0] wt;
+    logic wt_v;  // {timer expires, prescaler 2 to 15}
+    logic [1:0] sc;
+    logic sc_v;  // seed words before CMD.start: 0 none, 1 five, 2 six
+    logic [1:0] hc;
+    logic hc_v;  // 0 rises by one, 1 0 at hash_cnt_clr, 2 0 at entropy_req
+    logic ea_v;
+    logic [1:0] ar;
+    logic ar_v;  // 0 threshold 2..4 reseeds, 1 threshold 0 quiet, 2 rise with threshold 0
+  } cy_kent_t;
+
+  covergroup sep_kmac_entropy_cg with function sample (cy_kent_t s);
+    option.per_instance = 1;
+    option.name = "sep_kmac_entropy_cg";
+    x_mode_lock: coverpoint s.ml iff (s.ml_v) {
+      bins edn_before_ready = {3'b00_0};
+      bins sw_before_ready = {3'b00_1};
+      bins edn_after_ready = {3'b01_0};
+      bins sw_after_ready = {3'b01_1};
+      bins edn_locked_later_write = {3'b10_0};
+      bins sw_locked_later_write = {3'b10_1};
+      bins reset_mode_idle = {3'b11_0};
+    }
+    cp_wait_timer: coverpoint s.wt iff (s.wt_v) {
+      bins timer0_never_expires_prescaler0 = {2'b00};
+      bins timer0_never_expires_prescaler_n = {2'b01};
+      bins timer_expires_prescaler0 = {2'b10};
+      bins timer_expires_prescaler_n = {2'b11};
+    }
+    cp_sw_seed_count: coverpoint s.sc iff (s.sc_v) {
+      bins seeds0_no_absorb = {2'd0}; bins seeds5_no_absorb = {2'd1}; bins seeds6_absorb = {2'd2};
+    }
+    cp_hash_cnt: coverpoint s.hc iff (s.hc_v) {
+      bins rises_by_one = {2'd0};
+      bins cleared_by_hash_cnt_clr = {2'd1};
+      bins cleared_by_entropy_req = {2'd2};
+    }
+    cp_entropy_req_ack: coverpoint s.ea_v iff (s.ea_v) {bins request_acknowledged = {1'b1};}
+    cp_auto_reseed: coverpoint s.ar iff (s.ar_v) {
+      bins threshold_reseeds = {2'd0};
+      bins threshold0_no_reseed = {2'd1};
+      illegal_bins acknowledge_with_threshold0 = {2'd2};
+    }
+  endgroup
+
+  covergroup sep_otbn_err_lock_cg with function sample (logic cw);
+    option.per_instance = 1;
+    option.name = "sep_otbn_err_lock_cg";
+    cp_ctrl_write_legality: coverpoint cw iff (cw) {bins busy_write_ignored = {1'b1};}
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] sw;
+    logic sw_v;  // {endian_swap, digest_swap} at hash_start
+    logic [2:0] ww;
+    logic ww_v;  // {width 0 32 / 1 16 / 2 8 bit, endian_swap}
+    logic [3:0] rt;
+    logic rt_v;  // {part count - 2, 0 round trip / 1 stop reaches done / 2 continue reaches done}
+    logic cw;
+    logic cw_v;  // written while idle: 0 DIGEST, 1 MSG_LENGTH
+    logic se_v;
+    logic [5:0] lc;
+    logic lc_v;  // {digest 0 SHA2_256 / 1 SHA2_384 / 2 SHA2_512, length index}
+    logic [3:0] fs;
+    logic fs_v;  // {0 empty / 1 partial / 2 full / 3 empty and full, 0 burst / 1 gapped / 2 byte}
+    logic bp_v;
+    logic [4:0] dk;
+    logic dk_v;  // {digest, key length 0 128 / 1 256 / 2 384 / 3 512 / 4 1024}
+    logic tk_v;
+  } cy_hcfg_t;
+
+  covergroup sep_hmac_cfg_op_cg with function sample (cy_hcfg_t s);
+    option.per_instance = 1;
+    option.name = "sep_hmac_cfg_op_cg";
+    x_swap_cell: coverpoint s.sw iff (s.sw_v) {bins cells[] = {[2'b00 : 2'b11]};}
+    x_write_width: coverpoint s.ww iff (s.ww_v) {
+      bins cells[] = {3'b00_0, 3'b00_1, 3'b01_0, 3'b01_1, 3'b10_0, 3'b10_1};
+    }
+    cp_context_round_trip: coverpoint s.rt iff (s.rt_v) {
+      bins parts2 = {4'b00_00};
+      bins parts2_stop_done = {4'b00_01};
+      bins parts2_continue_done = {4'b00_10};
+      bins parts3 = {4'b01_00};
+      bins parts3_stop_done = {4'b01_01};
+      bins parts3_continue_done = {4'b01_10};
+      bins parts4 = {4'b10_00};
+      bins parts4_stop_done = {4'b10_01};
+      bins parts4_continue_done = {4'b10_10};
+    }
+    cp_ctx_write_legality: coverpoint s.cw iff (s.cw_v) {
+      bins digest_while_idle = {1'b0}; bins msg_length_while_idle = {1'b1};
+    }
+    cp_sha_en_clear: coverpoint s.se_v iff (s.se_v) {bins digest_cleared = {1'b1};}
+    x_len_class: coverpoint s.lc iff (s.lc_v) {
+      bins sha256[] = {[6'b00_0000 : 6'b00_1010]};
+      bins sha384[] = {[6'b01_0000 : 6'b01_0110]};
+      bins sha512[] = {[6'b10_0000 : 6'b10_0110]};
+    }
+    x_fifo_state_mode: coverpoint s.fs iff (s.fs_v) {
+      bins cells[] = {
+        4'b00_00, 4'b00_01, 4'b00_10, 4'b01_00, 4'b01_01, 4'b01_10, 4'b10_00, 4'b10_01, 4'b10_10
+      };
+      wildcard illegal_bins empty_and_full = {4'b11_??};
+    }
+    cp_backpressure: coverpoint s.bp_v iff (s.bp_v) {bins response_after_full_falls = {1'b1};}
+    // The 13 keyed cells: SHA2_256 with 128, 384, 512; SHA2_384 and SHA2_512
+    // with every key length.
+    x_delivered_keylen: coverpoint s.dk iff (s.dk_v) {
+      bins sha256[] = {5'b00_000, 5'b00_010, 5'b00_011};
+      bins sha384[] = {[5'b01_000 : 5'b01_100]};
+      bins sha512[] = {[5'b10_000 : 5'b10_100]};
+    }
+    cp_two_engine_keys: coverpoint s.tk_v iff (s.tk_v) {bins both_done = {1'b1};}
+  endgroup
+
+  typedef struct packed {
+    logic [1:0] cm;
+    logic cm_v;  // 0 EXECUTE, 1 SEC_WIPE_DMEM, 2 SEC_WIPE_IMEM
+    logic [2:0] fb;
+    logic fb_v;  // {command, first non-IDLE code is the stated one}
+    logic ci;
+    logic ci_v;  // 0 unrecognised at IDLE, 1 recognised while busy
+    logic pr_v;
+    logic ic;
+    logic ic_v;  // 0 zero after reset, 1 non-zero after EXECUTE
+    logic [1:0] dn;
+    logic dn_v;  // command of the done event
+  } cy_otbn_t;
+
+  covergroup sep_otbn_op_cg with function sample (cy_otbn_t s);
+    option.per_instance = 1;
+    option.name = "sep_otbn_op_cg";
+    cp_cmd: coverpoint s.cm iff (s.cm_v) {
+      bins execute = {2'd0}; bins sec_wipe_dmem = {2'd1}; bins sec_wipe_imem = {2'd2};
+    }
+    x_cmd_first_busy: coverpoint s.fb iff (s.fb_v) {
+      bins execute_busy_execute = {3'b00_1};
+      bins sec_wipe_dmem_busy_dmem = {3'b01_1};
+      bins sec_wipe_imem_busy_imem = {3'b10_1};
+      wildcard illegal_bins other_first_code = {3'b??_0};
+    }
+    cp_cmd_ignored: coverpoint s.ci iff (s.ci_v) {
+      bins unrecognised_at_idle = {1'b0}; bins recognised_while_busy = {1'b1};
+    }
+    cp_post_reset_arc: coverpoint s.pr_v iff (s.pr_v) {bins wipe_then_idle = {1'b1};}
+    cp_insn_cnt: coverpoint s.ic iff (s.ic_v) {
+      bins zero_after_reset = {1'b0}; bins nonzero_after_execute = {1'b1};
+    }
+    cp_done_event: coverpoint s.dn iff (s.dn_v) {
+      bins execute = {2'd0}; bins sec_wipe_dmem = {2'd1}; bins sec_wipe_imem = {2'd2};
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [5:0] op;
+    logic op_v;  // {0 ML-DSA / 1 ML-KEM, CTRL command, state}
+    logic cc;
+    logic cc_v;  // CTRL = 100 of 0 ML-DSA / 1 ML-KEM
+    logic [1:0] vo;
+    logic vo_v;  // reason class - 1 of a rejected verify
+  } cy_abr_t;
+
+  // State: 0 VALID 1 and READY 0 (held for a combined operation, the end of
+  // a single-step cell), 1 READY after ZEROIZE, 2 READY after the ABR reset.
+  covergroup sep_abr_completion_cg with function sample (cy_abr_t s);
+    option.per_instance = 1;
+    option.name = "sep_abr_completion_cg";
+    x_op_protocol: coverpoint s.op iff (s.op_v) {
+      bins dsa_keygen_sign_held = {6'b0_100_00};
+      bins dsa_keygen_sign_ready_after_zeroize = {6'b0_100_01};
+      bins dsa_keygen_sign_ready_after_reset = {6'b0_100_10};
+      bins kem_keygen_decaps_held = {6'b1_100_00};
+      bins kem_keygen_decaps_ready_after_zeroize = {6'b1_100_01};
+      bins kem_keygen_decaps_ready_after_reset = {6'b1_100_10};
+      bins dsa_keygen_ready0 = {6'b0_001_00};
+      bins dsa_signing_ready0 = {6'b0_010_00};
+      bins dsa_verifying_ready0 = {6'b0_011_00};
+      bins kem_keygen_ready0 = {6'b1_001_00};
+      bins kem_encaps_ready0 = {6'b1_010_00};
+      bins kem_decaps_ready0 = {6'b1_011_00};
+    }
+    cp_combined_cmd: coverpoint s.cc iff (s.cc_v) {
+      bins dsa_keygen_sign = {1'b0}; bins kem_keygen_decaps = {1'b1};
+    }
+    cp_verify_outcome: coverpoint s.vo iff (s.vo_v) {
+      bins modified_message = {2'd0};
+      bins modified_signature_commitment = {2'd1};
+      bins modified_signature_hint = {2'd2};
+      bins modified_signature_z = {2'd3};
+    }
+  endgroup
+
+  sep_crypto_invalid_encoding_cg u_sep_crypto_invalid_encoding_cg = new();
+  sep_aes_cfg_cg                 u_sep_aes_cfg_cg                 = new();
+  sep_aes_op_status_cg           u_sep_aes_op_status_cg           = new();
+  sep_aes_fault_cg               u_sep_aes_fault_cg               = new();
+  sep_crypto_reg_lock_cg         u_sep_crypto_reg_lock_cg         = new();
+  sep_crypto_alert_cg            u_sep_crypto_alert_cg            = new();
+  sep_kmac_cfg_cmd_cg            u_sep_kmac_cfg_cmd_cg            = new();
+  sep_kmac_entropy_cg            u_sep_kmac_entropy_cg            = new();
+  sep_otbn_err_lock_cg           u_sep_otbn_err_lock_cg           = new();
+  sep_hmac_cfg_op_cg             u_sep_hmac_cfg_op_cg             = new();
+  sep_otbn_op_cg                 u_sep_otbn_op_cg                 = new();
+  sep_abr_completion_cg          u_sep_abr_completion_cg          = new();
+
+  // One-point sample helpers: pt selects the point, v carries its value.
+  task automatic cy_inv(input int unsigned pt, input logic [4:0] v);
+    cy_inv_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.hs   = v[3:0];
+        e.hs_v = 1'b1;
+      end
+      1: begin
+        e.ks   = v[0];
+        e.ks_v = 1'b1;
+      end
+      2: begin
+        e.am   = v[3:0];
+        e.am_v = 1'b1;
+      end
+      3: begin
+        e.km   = v;
+        e.km_v = 1'b1;
+      end
+      default: e.kr_v = 1'b1;
+    endcase
+    u_sep_crypto_invalid_encoding_cg.sample(e);
+  endtask
+
+  task automatic cy_acfg(input int unsigned pt, input logic [2:0] v);
+    cy_acfg_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.ks   = v[1:0];
+        e.ks_v = 1'b1;
+      end
+      1: begin
+        e.rr   = v;
+        e.rr_v = 1'b1;
+      end
+      2: begin
+        e.rt   = v[0];
+        e.rt_v = 1'b1;
+      end
+      default: e.ct_v = 1'b1;
+    endcase
+    u_sep_aes_cfg_cg.sample(e);
+  endtask
+
+  task automatic cy_aop(input int unsigned pt, input logic [1:0] v);
+    cy_aop_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.ms   = v;
+        e.ms_v = 1'b1;
+      end
+      1: begin
+        e.lc   = v[0];
+        e.lc_v = 1'b1;
+      end
+      2: begin
+        e.nc   = v[0];
+        e.nc_v = 1'b1;
+      end
+      default: begin
+        e.ss   = v;
+        e.ss_v = 1'b1;
+      end
+    endcase
+    u_sep_aes_op_status_cg.sample(e);
+  endtask
+
+  task automatic cy_afl(input int unsigned pt, input logic [1:0] v);
+    cy_afl_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.sp   = v;
+        e.sp_v = 1'b1;
+      end
+      1: e.ur_v = 1'b1;
+      default: begin
+        e.rr   = v[0];
+        e.rr_v = 1'b1;
+      end
+    endcase
+    u_sep_aes_fault_cg.sample(e);
+  endtask
+
+  task automatic cy_kcc(input int unsigned pt, input logic [4:0] v);
+    cy_kcc_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.cs   = v[2:0];
+        e.cs_v = 1'b1;
+      end
+      1: begin
+        e.en   = v[2:0];
+        e.en_v = 1'b1;
+      end
+      2: begin
+        e.lc   = v;
+        e.lc_v = 1'b1;
+      end
+      default: begin
+        e.rb   = v[0];
+        e.rb_v = 1'b1;
+      end
+    endcase
+    u_sep_kmac_cfg_cmd_cg.sample(e);
+  endtask
+
+  task automatic cy_kent(input int unsigned pt, input logic [2:0] v);
+    cy_kent_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.ml   = v;
+        e.ml_v = 1'b1;
+      end
+      1: begin
+        e.wt   = v[1:0];
+        e.wt_v = 1'b1;
+      end
+      2: begin
+        e.sc   = v[1:0];
+        e.sc_v = 1'b1;
+      end
+      3: begin
+        e.hc   = v[1:0];
+        e.hc_v = 1'b1;
+      end
+      4: e.ea_v = 1'b1;
+      default: begin
+        e.ar   = v[1:0];
+        e.ar_v = 1'b1;
+      end
+    endcase
+    u_sep_kmac_entropy_cg.sample(e);
+  endtask
+
+  task automatic cy_hcfg(input int unsigned pt, input logic [5:0] v);
+    cy_hcfg_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.sw   = v[1:0];
+        e.sw_v = 1'b1;
+      end
+      1: begin
+        e.ww   = v[2:0];
+        e.ww_v = 1'b1;
+      end
+      2: begin
+        e.rt   = v[3:0];
+        e.rt_v = 1'b1;
+      end
+      3: begin
+        e.cw   = v[0];
+        e.cw_v = 1'b1;
+      end
+      4: e.se_v = 1'b1;
+      5: begin
+        e.lc   = v;
+        e.lc_v = 1'b1;
+      end
+      6: begin
+        e.fs   = v[3:0];
+        e.fs_v = 1'b1;
+      end
+      7: e.bp_v = 1'b1;
+      8: begin
+        e.dk   = v[4:0];
+        e.dk_v = 1'b1;
+      end
+      default: e.tk_v = 1'b1;
+    endcase
+    u_sep_hmac_cfg_op_cg.sample(e);
+  endtask
+
+  task automatic cy_otbn(input int unsigned pt, input logic [2:0] v);
+    cy_otbn_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.cm   = v[1:0];
+        e.cm_v = 1'b1;
+      end
+      1: begin
+        e.fb   = v;
+        e.fb_v = 1'b1;
+      end
+      2: begin
+        e.ci   = v[0];
+        e.ci_v = 1'b1;
+      end
+      3: e.pr_v = 1'b1;
+      4: begin
+        e.ic   = v[0];
+        e.ic_v = 1'b1;
+      end
+      default: begin
+        e.dn   = v[1:0];
+        e.dn_v = 1'b1;
+      end
+    endcase
+    u_sep_otbn_op_cg.sample(e);
+  endtask
+
+  task automatic cy_abr(input int unsigned pt, input logic [5:0] v);
+    cy_abr_t e;
+    e = '0;
+    case (pt)
+      0: begin
+        e.op   = v;
+        e.op_v = 1'b1;
+      end
+      1: begin
+        e.cc   = v[0];
+        e.cc_v = 1'b1;
+      end
+      default: begin
+        e.vo   = v[1:0];
+        e.vo_v = 1'b1;
+      end
+    endcase
+    u_sep_abr_completion_cg.sample(e);
+  endtask
+
+  // ---------------------------------------------------------------------
+  // sep_crypto_bus_access_cg: engine concurrency (entry 1.26).
+  // ---------------------------------------------------------------------
+  // Pair index of engines a < b (0 HMAC, 1 AES, 2 KMAC, 3 OTBN).
+  function automatic logic [2:0] cy_pair(input int unsigned a, input int unsigned b);
+    if (a == 0) return 3'(b - 1);
+    if (a == 1) return 3'(b + 1);
+    return 3'd5;
+  endfunction
+  wire cy_digest_rd = rd_ev && (ar_addr_q >= HMAC_DIGEST_0__REG_ADDR) &&
+      (ar_addr_q <= HMAC_DIGEST_15__REG_ADDR) && (ar_addr_q[1:0] == 2'b00);
+  always @(posedge clk_i) begin
+    if (cy_own_conc && !in_reset) begin
+      // A new busy set: every pair of it, and its size.
+      if (cy_busy != cy_busy_q) begin
+        int unsigned n;
+        n = 0;
+        for (int a = 0; a < 4; a++) begin
+          if (cy_busy[a]) n++;
+          for (int b = a + 1; b < 4; b++) begin
+            if (cy_busy[a] && cy_busy[b]) begin
+              u_sep_crypto_bus_access_cg.sample(2'b00, 1'b0, cy_pair(a, b), 1'b1, 3'd0, 1'b0, 2'd0,
+                                                1'b0);
+            end
+          end
+        end
+        if (n >= 2) begin
+          u_sep_crypto_bus_access_cg.sample(2'b00, 1'b0, 3'd0, 1'b0, 3'(n), 1'b1, 2'd0, 1'b0);
+        end
+      end
+      // OKAY DIGEST read of an idle HMAC while a peer was busy at the
+      // address handshake and is busy at the response.
+      if (cy_digest_rd && !cy_busy[0] && !cy_busy_ar[0]) begin
+        for (int p = 1; p < 4; p++) begin
+          if (cy_busy_ar[p] && cy_busy[p]) begin
+            u_sep_crypto_bus_access_cg.sample(2'b00, 1'b0, 3'd0, 1'b0, 3'd0, 1'b0, 2'(p - 1), 1'b1);
+          end
+        end
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // HMAC trackers (entries 1.27 to 1.30).
+  // ---------------------------------------------------------------------
+  // x_hmac_start_class and cp_hmac_key_src: a start of a blocked class is
+  // blocked when hmac_err sets and no done event follows within CySettle
+  // clocks (or before the next start); a done event is a started outcome.
+  logic       cy_hs_on = 1'b0;
+  logic       cy_hs_err = 1'b0;
+  logic [2:0] cy_hs_cls = '0;
+  logic       cy_hs_kv = 1'b0;
+  int unsigned cy_hs_cnt = 0;
+  // sep_hmac_cfg_op_cg trackers.
+  logic [1:0] cy_se_st = '0;  // 0 idle, 1 non-zero DIGEST read with sha_en 1, 2 sha_en fell
+  logic [2:0] cy_rt_st = '0;  // 0 idle, 1 running, 2 stop issued, 3 saved, 4 process issued
+  logic [2:0] cy_rt_parts = '0;
+  logic       cy_rt_ok = 1'b0;
+  logic       cy_rt_side = 1'b0;
+  logic       cy_rt_rest = 1'b0;
+  logic       cy_lc_on = 1'b0;
+  logic       cy_lc_taint = 1'b0;
+  int unsigned cy_lc_n = 0;
+  logic       cy_fs_burst = 1'b0;
+  logic       cy_bp_on = 1'b0;
+  logic       cy_bp_fell = 1'b0;
+  logic       cy_fe_on = 1'b0;
+  logic       cy_fe_full = 1'b0;
+  int unsigned cy_fe_cnt = 0;
+  logic       cy_dk_on = 1'b0;
+  logic [4:0] cy_dk_cell = '0;
+  logic       cy_tk_on = 1'b0;
+  logic [1:0] cy_tk_done = '0;
+  wire        cy_hwin_aw = cy_aw_new && in_win(lsu_aw_addr_i, HmacMsgBase, HmacMsgEnd);
+  wire        cy_hwin_wb = cy_wb_v && in_win(cy_wb_a, HmacMsgBase, HmacMsgEnd);
+
+  always @(posedge clk_i) begin
+    logic on;
+    logic err;
+    int unsigned cnt;
+    logic [1:0] se;
+
+    // x_hmac_start_class, cp_hmac_key_src (owners 1.27, 1.30).
+    on  = cy_hs_on;
+    err = cy_hs_err;
+    cnt = cy_hs_cnt;
+    if (!(cy_own_hblk || cy_own_keysel) || !cy_ip[3]) on = 1'b0;
+    if (on) begin
+      if (cy_h_done_ev) begin
+        cy_inv(0, {1'b0, cy_hs_cls, 1'b1});
+        on = 1'b0;
+      end else begin
+        if (cy_st_rise[2]) err = 1'b1;
+        if (err) cnt++;
+        if (err && ((cnt > CySettle) || cy_h_start)) begin
+          cy_inv(0, {1'b0, cy_hs_cls, 1'b0});
+          if ((cy_hs_cls <= 3'd2) && ((!cy_hs_kv && cy_own_hblk) || (cy_hs_kv && cy_own_keysel))) begin
+            cy_inv(1, {4'd0, cy_hs_kv});
+          end
+          on = 1'b0;
+        end else if (cy_h_start) begin
+          on = 1'b0;
+        end
+      end
+    end
+    if (cy_h_start && (cy_own_hblk || cy_own_keysel) && cy_ip[3]) begin
+      int c;
+      logic stored;
+      c = cy_h_class(cy_h_en, cy_h_dig_raw, cy_h_key_raw);
+      stored = (cy_h_map_dig(cy_h_dig_raw) == cy_h_dig) &&
+          (cy_h_map_key(cy_h_key_raw) == cy_h_key);
+      if ((c >= 0) && stored) begin
+        on  = 1'b1;
+        err = 1'b0;
+        cnt = 0;
+        cy_hs_cls <= 3'(c);
+        cy_hs_kv  <= cy_h_kv;
+      end
+    end
+    cy_hs_on  <= on;
+    cy_hs_err <= err;
+    cy_hs_cnt <= cnt;
+
+    // Entry 1.29: x_swap_cell, x_write_width, cp_ctx_write_legality,
+    // cp_sha_en_clear, cp_context_round_trip.
+    if (cy_own_hswap && cy_ip[3]) begin
+      if (cy_h_start) cy_hcfg(0, {4'd0, cy_h_eswap, cy_h_dswap});
+      if (cy_hwin_wb) begin
+        case (cy_wb_bytes)
+          4'd4: cy_hcfg(1, {3'd0, 2'd0, cy_h_eswap});
+          4'd2: cy_hcfg(1, {3'd0, 2'd1, cy_h_eswap});
+          4'd1: cy_hcfg(1, {3'd0, 2'd2, cy_h_eswap});
+          default: ;
+        endcase
+      end
+      if (cy_h_idle && cy_h_dig_qe) cy_hcfg(3, 6'd0);
+      if (cy_h_idle && cy_h_len_qe) cy_hcfg(3, 6'd1);
+    end
+    se = cy_se_st;
+    if (!cy_own_hswap || !cy_ip[3]) begin
+      se = 2'd0;
+    end else begin
+      if (rd_ev && (ar_addr_q == HMAC_DIGEST_0__REG_ADDR)) begin
+        if (se == 2'd2) begin
+          if (rd_data == 32'h0) cy_hcfg(4, 6'd0);
+          se = 2'd0;
+        end else if (cy_h_sha && (rd_data != 32'h0)) begin
+          se = 2'd1;
+        end
+      end
+      if ((se == 2'd1) && cy_h_sha_q && !cy_h_sha) se = 2'd2;
+    end
+    cy_se_st <= se;
+
+    // cp_context_round_trip: start, then (stop, done, restore, continue)
+    // once per extra part, then process and done. A hash started while the
+    // context is saved is an unrelated hash; the restore must follow it.
+    if (!cy_own_hswap || !cy_ip[3]) begin
+      cy_rt_st <= 3'd0;
+    end else begin
+      if (cy_h_start) begin
+        if (cy_rt_st == 3'd3) begin
+          cy_rt_side <= 1'b1;
+          cy_rt_rest <= 1'b0;
+        end else begin
+          cy_rt_st    <= 3'd1;
+          cy_rt_parts <= 3'd0;
+          cy_rt_ok    <= 1'b1;
+          cy_rt_side  <= 1'b0;
+        end
+      end else if (cy_h_stop && (cy_rt_st == 3'd1)) begin
+        cy_rt_st <= 3'd2;
+      end else if (cy_h_proc && (cy_rt_st == 3'd1)) begin
+        cy_rt_st <= 3'd4;
+      end else if (cy_h_cont && (cy_rt_st == 3'd3) && !cy_rt_side) begin
+        if (!cy_rt_rest) cy_rt_ok <= 1'b0;
+        cy_rt_st <= 3'd1;
+      end else if ((cy_h_dig_qe || cy_h_len_qe) && (cy_rt_st == 3'd3) && !cy_rt_side) begin
+        cy_rt_rest <= 1'b1;
+      end else if (cy_h_done_ev) begin
+        if (cy_rt_side) begin
+          cy_rt_side <= 1'b0;
+        end else if (cy_rt_st == 3'd2) begin
+          cy_rt_parts <= cy_rt_parts + 3'd1;
+          cy_rt_rest  <= 1'b0;
+          cy_rt_st    <= 3'd3;
+        end else if (cy_rt_st == 3'd4) begin
+          if (cy_rt_ok && (cy_rt_parts >= 3'd1) && (cy_rt_parts <= 3'd3)) begin
+            cy_hcfg(2, {2'd0, 2'(cy_rt_parts - 3'd1), 2'd0});
+            cy_hcfg(2, {2'd0, 2'(cy_rt_parts - 3'd1), 2'd1});
+            cy_hcfg(2, {2'd0, 2'(cy_rt_parts - 3'd1), 2'd2});
+          end
+          cy_rt_st <= 3'd0;
+        end
+      end
+    end
+
+    // Entry 1.28: x_len_class, x_fifo_state_mode, cp_backpressure and the
+    // cp_hmac_fifo_empty_qual point of sep_crypto_intr_cg.
+    if (!cy_own_hfifo || !cy_ip[3]) begin
+      cy_lc_on <= 1'b0;
+      cy_bp_on <= 1'b0;
+      cy_fe_on <= 1'b0;
+      cy_fe_full <= 1'b0;
+    end else begin
+      logic full;
+      // Bytes written between hash_start and hash_process, from the paired
+      // write beats; a dropped pairing or an error response taints the count.
+      if (cy_h_start) begin
+        cy_lc_on    <= 1'b1;
+        cy_lc_taint <= 1'b0;
+        cy_lc_n     <= 0;
+        cy_fs_burst <= 1'b0;
+      end else if (cy_h_proc) begin
+        if (cy_lc_on && !cy_lc_taint) begin
+          int d;
+          int x;
+          d = cy_dig_idx(cy_h_dig);
+          x = (d >= 0) ? cy_len_idx(d, cy_lc_n) : -1;
+          if (x >= 0) cy_hcfg(5, {2'(d), 4'(x)});
+        end
+        cy_lc_on <= 1'b0;
+      end else begin
+        if (cy_hwin_wb) cy_lc_n <= cy_lc_n + cy_wb_bytes;
+        if (cy_wb_drop || cy_b_err) cy_lc_taint <= 1'b1;
+      end
+      // FIFO state at each new write request to the message window, and the
+      // write mode: byte (AxSIZE 0), burst (posted behind another write of
+      // the same hash), gapped (issued alone).
+      if (cy_hwin_aw) begin
+        logic [1:0] st;
+        logic [1:0] md;
+        st = (cy_h_fe && cy_h_full) ? 2'd3 : (cy_h_fe ? 2'd0 : (cy_h_full ? 2'd2 : 2'd1));
+        if (lsu_aw_size_i == 3'd0) begin
+          md = 2'd2;
+        end else if (cy_fs_burst || (aw_out_q != 4'd0)) begin
+          md = 2'd0;
+          cy_fs_burst <= 1'b1;
+        end else begin
+          md = 2'd1;
+        end
+        cy_hcfg(6, {2'd0, st, md});
+      end
+      // A write request issued while fifo_full is 1 whose OKAY response
+      // comes after fifo_full falls.
+      if (!cy_bp_on) begin
+        if (cy_hwin_aw && cy_h_full) begin
+          cy_bp_on   <= 1'b1;
+          cy_bp_fell <= 1'b0;
+        end
+      end else begin
+        if (!cy_h_full) cy_bp_fell <= 1'b1;
+        if (b_hs) begin
+          if (cy_bp_fell && (lsu_b_resp_i == AxiOkay) && (aw_out_q == 4'd1)) cy_hcfg(7, 6'd0);
+          cy_bp_on <= 1'b0;
+        end
+      end
+      // cp_hmac_fifo_empty_qual: at a rise of STATUS.fifo_empty, the
+      // fifo_empty state bit sets within CySettle clocks (a full FIFO was
+      // seen since the hash started) or stays 0.
+      full = (cy_fe_full || cy_h_full) && !cy_h_start;
+      if (cy_fe_on) begin
+        if (cy_st_rise[1]) begin
+          cy_intr(5, full ? 6'd0 : 6'd2);
+          cy_fe_on <= 1'b0;
+          full = 1'b0;
+        end else if (!cy_h_fe) begin
+          cy_fe_on <= 1'b0;
+        end else if (cy_fe_cnt >= CySettle) begin
+          if (!full) cy_intr(5, 6'd1);
+          cy_fe_on <= 1'b0;
+        end
+        cy_fe_cnt <= cy_fe_cnt + 1;
+      end else if (cy_h_fe && !cy_h_fe_q && !cy_st[1]) begin
+        cy_fe_on  <= 1'b1;
+        cy_fe_cnt <= 0;
+      end
+      cy_fe_full <= full;
+    end
+
+    // Entry 1.30: x_delivered_keylen, cp_two_engine_keys.
+    if (!cy_own_keysel || !cy_ip[3]) begin
+      cy_dk_on <= 1'b0;
+    end else if (cy_h_start) begin
+      int d;
+      int k;
+      d = cy_dig_idx(cy_h_dig);
+      k = cy_key_idx(cy_h_key);
+      cy_dk_on <= cy_h_en && cy_h_kv && (d >= 0) && (k >= 0) && !((d == 0) && (k == 1 || k == 4));
+      cy_dk_cell <= {2'(d), 3'(k)};
+    end else if (cy_dk_on) begin
+      if (cy_st_rise[2]) begin
+        cy_dk_on <= 1'b0;
+      end else if (cy_h_done_ev) begin
+        if (!cy_st[2]) cy_hcfg(8, {1'b0, cy_dk_cell});
+        cy_dk_on <= 1'b0;
+      end
+    end
+    if (!cy_own_keysel) begin
+      cy_tk_on <= 1'b0;
+    end else if (!cy_tk_on) begin
+      if (cy_h_kv && cy_t(aes_key_valid_i)) begin
+        cy_tk_on   <= 1'b1;
+        cy_tk_done <= '0;
+      end
+    end else begin
+      logic [1:0] t;
+      t = cy_tk_done | {cy_a_ov_rise, cy_h_done_ev};
+      if (t == 2'b11) begin
+        cy_hcfg(9, 6'd0);
+        cy_tk_on <= 1'b0;
+      end
+      cy_tk_done <= t;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // AES trackers (entries 1.30 to 1.34).
+  // ---------------------------------------------------------------------
+  // A CTRL_SHADOWED word with one legal value in every one-hot field.
+  function automatic logic cy_aes_ctrl_legal(input logic [31:0] w);
+    logic [1:0] op;
+    logic [5:0] md;
+    logic [2:0] kl;
+    logic [2:0] pr;
+    op = 2'((w & AES_CTRL_SHADOWED_OPERATION_MASK) >> AES_CTRL_SHADOWED_OPERATION_SHIFT);
+    md = 6'((w & AES_CTRL_SHADOWED_MODE_MASK) >> AES_CTRL_SHADOWED_MODE_SHIFT);
+    kl = 3'((w & AES_CTRL_SHADOWED_KEY_LEN_MASK) >> AES_CTRL_SHADOWED_KEY_LEN_SHIFT);
+    pr = 3'((w & AES_CTRL_SHADOWED_PRNG_RESEED_RATE_MASK) >>
+            AES_CTRL_SHADOWED_PRNG_RESEED_RATE_SHIFT);
+    return ({$countones(op), $countones(md), $countones(kl), $countones(pr)} == {4{32'd1}});
+  endfunction
+  function automatic logic cy_in(input logic [31:0] a, input logic [31:0] lo,
+                                 input logic [31:0] hi);
+    return (a >= lo) && (a <= hi);
+  endfunction
+
+  wire  cy_a_stall_rise = cy_ip[2] && cy_a_stall_n && !cy_a_stall;
+  wire  cy_a_stall_fall = cy_ip[2] && !cy_a_stall_n && cy_a_stall;
+  wire  cy_a_start_rise = cy_ip[2] && cy_a_start_q && !cy_a_start_qq && cy_a_idle_q;
+  wire  cy_a_dout_rd = rd_ev && cy_in(ar_addr_q, AES_DATA_OUT_0__REG_ADDR, AES_DATA_OUT_3__REG_ADDR);
+  logic cy_rr_on = 1'b0;
+  logic cy_rr_take = 1'b0;
+  logic [2:0] cy_rr_rate = '0;
+  int unsigned cy_rr_n = 0;
+  logic cy_rt_on = 1'b0;
+  logic cy_ct_on = 1'b0;
+  logic [2:0] cy_ct_m = '0;
+  logic cy_ms_stall = 1'b0;
+  logic cy_ms_read = 1'b0;
+  logic cy_ss_on = 1'b0;
+  logic [1:0] cy_ss_k = '0;
+  logic cy_ss_bad = 1'b0;
+  logic [31:0] cy_sp_prev = '0;
+  logic cy_sp_have = 1'b0;
+  logic cy_sp_phase = 1'b0;
+  logic cy_sp_known = 1'b0;
+  logic cy_sp_pulse = 1'b0;
+  logic [1:0] cy_sp_pend = '0;  // 1 matched pair waits for its window end, 2 mismatched waits
+  logic [1:0] cy_ur = '0;
+  logic cy_rs0 = 1'b0;
+  logic cy_rs1 = 1'b0;
+  logic [1:0] cy_rs1_n = '0;
+  logic [31:0] cy_rs1_d = '0;
+  logic [31:0] cy_aux_val = '0;
+  logic cy_aux_ok = 1'b0;
+  logic cy_ar_pend = 1'b0;
+  logic [31:0] cy_ar_exp = '0;
+  logic cy_aux_rw_aw = 1'b1;  // CTRL_AUX_REGWEN at the last LSU AW handshake
+  wire cy_aux_rw_now = cy_t(aes_aux_regwen_i);
+
+  always @(posedge clk_i) begin
+    if (aw_hs) cy_aux_rw_aw <= cy_t(aes_aux_regwen_i);
+
+    // x_key_source (1.30): the stored SIDELOAD and the delivered key valid
+    // when AES starts an operation.
+    if (cy_own_keysel && cy_busy[1] && !cy_busy_q[1]) begin
+      cy_acfg(0, {1'b0, cy_t(aes_sideload_i), cy_t(aes_key_valid_i)});
+    end
+
+    // x_aes_invalid_map (1.31 KEY_LEN, OPERATION, MODE; 1.33
+    // PRNG_RESEED_RATE): the committing write of a pair and the stored value.
+    if (cy_a_ctrl_wr && cy_a_we_seen) begin
+      logic [5:0] v[4];
+      logic ok[4];
+      v[0] = 6'((wr_data & AES_CTRL_SHADOWED_KEY_LEN_MASK) >> AES_CTRL_SHADOWED_KEY_LEN_SHIFT);
+      v[1] = 6'((wr_data & AES_CTRL_SHADOWED_OPERATION_MASK) >> AES_CTRL_SHADOWED_OPERATION_SHIFT);
+      v[2] = 6'((wr_data & AES_CTRL_SHADOWED_MODE_MASK) >> AES_CTRL_SHADOWED_MODE_SHIFT);
+      v[3] = 6'((wr_data & AES_CTRL_SHADOWED_PRNG_RESEED_RATE_MASK) >>
+                AES_CTRL_SHADOWED_PRNG_RESEED_RATE_SHIFT);
+      ok[0] = (aes_key_len_i == AesKey256);
+      ok[1] = (aes_op_i == AesOpEnc);
+      ok[2] = (aes_mode_i == AesModeNone);
+      ok[3] = (aes_prs_rate_i == AesPrsPer1);
+      for (int f = 0; f < 4; f++) begin
+        if (((f < 3) && cy_own_aenc) || ((f == 3) && cy_own_arsd)) begin
+          if (v[f] == 6'd0) cy_inv(2, {1'b0, 2'(f), 1'b0, ok[f]});
+          else if ($countones(v[f]) > 1) cy_inv(2, {1'b0, 2'(f), 1'b1, ok[f]});
+        end
+      end
+    end
+
+    // Entry 1.33: cp_reseed_rate, cp_reseed_trigger, cp_clear_trigger.
+    if (!cy_own_arsd || !cy_ip[2]) begin
+      cy_rr_on <= 1'b0;
+      cy_ct_on <= 1'b0;
+    end else begin
+      // A run starts at each commit; the stored rate is sampled at its
+      // 129th OUTPUT_VALID rise.
+      if (cy_a_we) begin
+        cy_rr_on   <= 1'b1;
+        cy_rr_take <= 1'b1;
+        cy_rr_n    <= 0;
+      end else begin
+        if (cy_rr_take) begin
+          cy_rr_rate <= aes_prs_rate_i;
+          cy_rr_take <= 1'b0;
+        end
+        if (cy_rr_on && cy_a_ov_rise) begin
+          if (cy_rr_n == 128) cy_acfg(1, cy_rr_rate);
+          cy_rr_n <= cy_rr_n + 1;
+        end
+      end
+      // KEY_IV_DATA_IN_CLEAR while idle, then key, IV and DATA_IN writes,
+      // then an OUTPUT_VALID rise.
+      if (cy_a_kclr_q && !cy_a_kclr_qq && cy_a_idle_q) begin
+        cy_ct_on <= 1'b1;
+        cy_ct_m  <= '0;
+      end else if (cy_ct_on) begin
+        logic [2:0] m;
+        m = cy_ct_m;
+        if (wr_ev && cy_in(aw_addr_q, AES_KEY_SHARE0_0__REG_ADDR, AES_KEY_SHARE1_7__REG_ADDR))
+          m[0] = 1'b1;
+        if (wr_ev && cy_in(aw_addr_q, AES_IV_0__REG_ADDR, AES_IV_3__REG_ADDR)) m[1] = 1'b1;
+        if (wr_ev && cy_in(aw_addr_q, AES_DATA_IN_0__REG_ADDR, AES_DATA_IN_3__REG_ADDR))
+          m[2] = 1'b1;
+        if (cy_a_ov_rise) begin
+          if (m == 3'b111) cy_acfg(3, 3'd0);
+          cy_ct_on <= 1'b0;
+        end
+        cy_ct_m <= m;
+      end
+    end
+    // A TRIGGER write with PRNG_RESEED 0 to an idle AES opens a window that
+    // ends at the close of the graded window or at the next LSU write to
+    // AES; a rise of crypto_edn_ack_o[0] inside it is illegal.
+    if (cy_rt_on) begin
+      if (!cy_ip[2] || !cy_a_idle) begin
+        cy_rt_on <= 1'b0;
+      end else if (cy_ack_rise[0]) begin
+        cy_acfg(2, 3'd1);
+        cy_rt_on <= 1'b0;
+      end else if (!cy_own_arsd || cy_a_aw) begin
+        cy_acfg(2, 3'd0);
+        cy_rt_on <= 1'b0;
+      end
+    end else if (cy_own_arsd && cy_ip[2] && cy_a_idle && wr_ev &&
+                 (aw_addr_q == AES_TRIGGER_REG_ADDR) &&
+                 ((wr_data & AES_TRIGGER_PRNG_RESEED_MASK) == 32'h0)) begin
+      cy_rt_on <= 1'b1;
+    end
+
+    // Entry 1.32: x_mode_status, cp_lost_clear, cp_nonidle_cause.
+    if (!cy_own_astr || !cy_ip[2]) begin
+      cy_ms_stall <= 1'b0;
+    end else begin
+      if (cy_a_stall_rise && !cy_a_manual) begin
+        cy_aop(0, 2'd0);
+        cy_ms_stall <= 1'b1;
+        cy_ms_read  <= 1'b0;
+      end else if (cy_ms_stall) begin
+        if (cy_a_dout_rd) cy_ms_read <= 1'b1;
+        if (cy_a_stall_fall) begin
+          if (cy_ms_read && !cy_a_manual) cy_aop(0, 2'd1);
+          cy_ms_stall <= 1'b0;
+        end
+      end
+      if (cy_a_lost && !cy_a_lost_q && cy_a_manual) cy_aop(0, 2'd2);
+      if (!cy_a_lost && cy_a_lost_q && cy_ip_q[2]) begin
+        cy_aop(1, ((cy_a_we_rec != 4'd0) || cy_a_we) ? 2'd0 : 2'd1);
+      end
+      if (cy_a_stall_rise && !cy_a_idle) cy_aop(2, 2'd1);
+      if (cy_a_ov_rise && !cy_a_idle_q && !cy_a_stall) cy_aop(2, 2'd0);
+    end
+
+    // cp_start_suppress: a START rise on an idle AES. Kind 0 manual with a
+    // legal mode (IDLE falls), 1 manual with AES_NONE (OUTPUT_VALID stays
+    // 0), 2 automatic (IDLE does not fall), each until the close of the
+    // graded window or the next LSU write to AES.
+    if (cy_ss_on) begin
+      logic own;
+      own = (cy_ss_k == 2'd1) ? cy_own_aenc : cy_own_astr;
+      if (!cy_ip[2]) begin
+        cy_ss_on <= 1'b0;
+      end else if (cy_ss_k == 2'd0) begin
+        if (!cy_a_idle && own) begin
+          cy_aop(3, 2'd0);
+          cy_ss_on <= 1'b0;
+        end else if (!own || cy_a_aw) begin
+          cy_ss_on <= 1'b0;
+        end
+      end else begin
+        logic bad;
+        bad = cy_ss_bad || ((cy_ss_k == 2'd1) && cy_a_ov_n) || ((cy_ss_k == 2'd2) && !cy_a_idle);
+        if (!own || cy_a_aw) begin
+          if (!bad) cy_aop(3, cy_ss_k);
+          cy_ss_on <= 1'b0;
+        end
+        cy_ss_bad <= bad;
+      end
+    end else if (cy_a_start_rise) begin
+      logic [1:0] k;
+      k = !cy_a_manual ? 2'd2 : ((aes_mode_i == AesModeNone) ? 2'd1 : 2'd0);
+      if (((k == 2'd1) && cy_own_aenc) || ((k != 2'd1) && cy_own_astr)) begin
+        cy_ss_on  <= 1'b1;
+        cy_ss_k   <= k;
+        cy_ss_bad <= 1'b0;
+      end
+    end
+
+    // Entry 1.34: x_shadow_pair_aes. The phase of the CTRL_SHADOWED pair
+    // follows the register text: a write toggles it, a read clears it, an
+    // update error clears it. It is known after an AES reset or a read and
+    // unknown after LSU traffic the sampler cannot pair.
+    begin : cy_shadow_pair
+      logic phase;
+      logic known;
+      logic [1:0] pend;
+      logic pulse;
+      phase = cy_sp_phase;
+      known = cy_sp_known;
+      pend  = cy_sp_pend;
+      pulse = cy_sp_pulse || cy_vec_rise[32];
+      if (!cy_ip[2]) begin
+        phase = 1'b0;
+        known = 1'b1;
+        pend  = 2'd0;
+        cy_sp_have <= 1'b0;
+      end else begin
+        if (cy_wr_unpaired || cy_rd_unpaired) known = 1'b0;
+        if (rd_ev && (ar_addr_q == AES_CTRL_SHADOWED_REG_ADDR)) begin
+          phase = 1'b0;
+          known = 1'b1;
+        end
+        if (cy_a_ctrl_wr) begin
+          logic [31:0] d;
+          logic second;
+          logic legal;
+          d = wr_data & AesCtrlFields;
+          legal = cy_aes_ctrl_legal(d) && cy_aes_ctrl_legal(cy_sp_prev);
+          second = cy_a_we_seen || cy_a_eu_seen || (known && phase);
+          if (second && cy_sp_have && cy_own_shadow && cy_a_idle_q) begin
+            if ((d == cy_sp_prev) && cy_a_we_seen) begin
+              pend = 2'd1;
+            end else if ((d != cy_sp_prev) && legal) begin
+              if (cy_a_eu_seen) pend = 2'd2;
+              else if (known && phase && !cy_a_we_seen) cy_afl(0, 2'd2);
+            end
+          end
+          if (!second) begin
+            cy_sp_prev <= d;
+            cy_sp_have <= 1'b1;
+            pulse = 1'b0;
+            phase = 1'b1;
+          end else begin
+            phase = 1'b0;
+            known = 1'b1;
+          end
+          if (!cy_a_idle_q) known = 1'b0;
+        end
+        if (pend == 2'd2) begin
+          if (cy_a_err && pulse) begin
+            cy_afl(0, 2'd1);
+            pend = 2'd0;
+          end else if (!cy_own_shadow || cy_a_aw) begin
+            pend = 2'd0;
+          end
+        end else if (pend == 2'd1) begin
+          if (pulse) begin
+            pend = 2'd0;
+          end else if (!cy_own_shadow || cy_a_aw) begin
+            cy_afl(0, 2'd0);
+            pend = 2'd0;
+          end
+        end
+      end
+      cy_sp_phase <= phase;
+      cy_sp_known <= known;
+      cy_sp_pend  <= pend;
+      cy_sp_pulse <= pulse;
+    end
+
+    // cp_update_err_recovery, cp_reset_restore, cp_aux_regwen (1.34).
+    if (!cy_own_shadow) begin
+      cy_ur  <= 2'd0;
+      cy_rs0 <= 1'b0;
+      cy_rs1 <= 1'b0;
+      cy_ar_pend <= 1'b0;
+    end else begin
+      if (!cy_ip[2]) begin
+        cy_ur <= 2'd0;
+      end else if (cy_a_err_n && !cy_a_err) begin
+        cy_ur <= 2'd1;
+      end else if ((cy_ur == 2'd1) && !cy_a_err_n && cy_a_err && cy_a_we) begin
+        cy_ur <= 2'd2;
+      end else if ((cy_ur == 2'd2) && cy_a_ov_rise) begin
+        cy_afl(1, 2'd0);
+        cy_ur <= 2'd0;
+      end
+      if (cy_ip_fall[2]) begin
+        cy_rs0   <= cy_a_err;
+        cy_rs1   <= !cy_aux_regwen_q;
+        cy_rs1_n <= 2'd0;
+      end else if (cy_ip[2]) begin
+        if (cy_rs0 && rd_ev && (ar_addr_q == AES_STATUS_REG_ADDR)) begin
+          if ((rd_data & AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR_MASK) == 32'h0) cy_afl(2, 2'd0);
+          cy_rs0 <= 1'b0;
+        end
+        if (cy_rs1) begin
+          if (wr_ev && (aw_addr_q == AES_CTRL_AUX_SHADOWED_REG_ADDR)) begin
+            cy_rs1_n <= ((cy_rs1_n != 2'd0) && ((wr_data & AesAuxFields) == cy_rs1_d)) ? 2'd2 :
+                2'd1;
+            cy_rs1_d <= wr_data & AesAuxFields;
+          end
+          if (rd_ev && (ar_addr_q == AES_CTRL_AUX_SHADOWED_REG_ADDR) && (cy_rs1_n == 2'd2) &&
+              ((rd_data & AesAuxFields) == cy_rs1_d) &&
+              (cy_rs1_d != (32'(AES_CTRL_AUX_SHADOWED_REG_DEFAULT) & AesAuxFields))) begin
+            cy_afl(2, 2'd1);
+            cy_rs1 <= 1'b0;
+          end
+        end
+      end
+      // cp_aux_regwen: an AUX write while CTRL_AUX_REGWEN is 0 that a later
+      // read shows unchanged, and a write of 1 to CTRL_AUX_REGWEN that
+      // leaves it 0.
+      if (!cy_ip[2]) begin
+        cy_aux_ok  <= 1'b0;
+        cy_ar_pend <= 1'b0;
+      end else begin
+        if (rd_ev && (ar_addr_q == AES_CTRL_AUX_SHADOWED_REG_ADDR)) begin
+          if (cy_ar_pend && ((rd_data & AesAuxFields) == cy_ar_exp)) begin
+            cy_lock_t e;
+            e      = '0;
+            e.ar   = 1'b0;
+            e.ar_v = 1'b1;
+            u_sep_crypto_reg_lock_cg.sample(e);
+          end
+          cy_ar_pend <= 1'b0;
+          cy_aux_val <= rd_data & AesAuxFields;
+          cy_aux_ok  <= !$isunknown(rd_data & AesAuxFields);
+        end
+        if (wr_ev && (aw_addr_q == AES_CTRL_AUX_SHADOWED_REG_ADDR) && !cy_aux_rw_aw &&
+            !cy_aux_rw_now && cy_aux_ok && ((wr_data & AesAuxFields) != cy_aux_val)) begin
+          cy_ar_pend <= 1'b1;
+          cy_ar_exp  <= cy_aux_val;
+        end
+        if (wr_ev && (aw_addr_q == AES_CTRL_AUX_REGWEN_REG_ADDR) &&
+            ((wr_data & AES_CTRL_AUX_REGWEN_CTRL_AUX_REGWEN_MASK) != 32'h0) && !cy_aux_rw_aw &&
+            (aes_aux_regwen_i === 1'b0)) begin
+          cy_lock_t e;
+          e      = '0;
+          e.ar   = 1'b1;
+          e.ar_v = 1'b1;
+          u_sep_crypto_reg_lock_cg.sample(e);
+        end
+      end
+    end
+  end
+
+  // x_alert_source (1.34): a malformed pair (alert_p equal to alert_n, both
+  // known) on a receiver of a block that is out of reset arms the block
+  // while vector bit 32 is 0; a rise of bit 32 within CyAlertBound clocks
+  // of the last malformed clock samples the armed block.
+  function automatic int unsigned cy_al_blk(input int unsigned i);
+    if (i == 0) return 0;
+    return (i + 1) / 2;
+  endfunction
+  function automatic int unsigned cy_al_dom(input int unsigned b);
+    case (b)
+      0: return 3;
+      1: return 1;
+      2: return 2;
+      3: return 4;
+      default: return 5;
+    endcase
+  endfunction
+  logic [5:0] cy_al_arm = '0;
+  int unsigned cy_al_cnt[6] = '{default: 0};
+  always @(posedge clk_i) begin
+    logic [5:0] mal;
+    mal = '0;
+    for (int i = 0; i < 11; i++) begin
+      if (((alert_tx_i[i].alert_p === 1'b1) && (alert_tx_i[i].alert_n === 1'b1)) ||
+          ((alert_tx_i[i].alert_p === 1'b0) && (alert_tx_i[i].alert_n === 1'b0))) begin
+        mal[cy_al_blk(i)] = 1'b1;
+      end
+    end
+    for (int b = 0; b < 6; b++) begin
+      int unsigned d;
+      d = cy_al_dom(b);
+      if (!cy_own_shadow || !cy_ip[d] || !cy_ip_q[d]) begin
+        cy_al_arm[b] <= 1'b0;
+      end else if (cy_al_arm[b] && cy_vec_rise[32]) begin
+        cy_alert_t e;
+        e      = '0;
+        e.as   = 3'(b);
+        e.as_v = 1'b1;
+        u_sep_crypto_alert_cg.sample(e);
+        cy_al_arm[b] <= 1'b0;
+      end else if (mal[b] && (cy_al_arm[b] || !cy_vec[32])) begin
+        cy_al_arm[b] <= 1'b1;
+        cy_al_cnt[b] <= 0;
+      end else if (cy_al_arm[b]) begin
+        if (cy_al_cnt[b] >= CyAlertBound) cy_al_arm[b] <= 1'b0;
+        cy_al_cnt[b] <= cy_al_cnt[b] + 1;
+      end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // KMAC trackers (entries 1.35 to 1.37).
+  // ---------------------------------------------------------------------
+  // Stored CFG_SHADOWED fields; a change is a committed pair.
+  wire [14:0] cy_k_cfgv = {
+    kmac_reg2hw_i.cfg_shadowed.en_unsupported_modestrength.q,
+    kmac_reg2hw_i.cfg_shadowed.entropy_ready.q,
+    kmac_reg2hw_i.cfg_shadowed.msg_mask.q,
+    kmac_reg2hw_i.cfg_shadowed.entropy_fast_process.q,
+    kmac_reg2hw_i.cfg_shadowed.entropy_mode.q,
+    kmac_reg2hw_i.cfg_shadowed.sideload.q,
+    kmac_reg2hw_i.cfg_shadowed.state_endianness.q,
+    kmac_reg2hw_i.cfg_shadowed.msg_endianness.q,
+    kmac_reg2hw_i.cfg_shadowed.mode.q,
+    kmac_reg2hw_i.cfg_shadowed.kstrength.q,
+    kmac_reg2hw_i.cfg_shadowed.kmac_en.q
+  };
+  logic [14:0] cy_k_cfgv_q = '0;
+  wire cy_k_commit = cy_ip[4] && cy_ip_q[4] && !$isunknown(cy_k_cfgv) && (cy_k_cfgv != cy_k_cfgv_q);
+  wire [1:0] cy_k_modeq = kmac_mode_q_i;
+  wire cy_k_tmo_now = cy_t(kmac_timer_expired_i);
+  wire [15:0] cy_k_wait = kmac_reg2hw_i.entropy_period.wait_timer.q;
+  wire [9:0] cy_k_presc = kmac_reg2hw_i.entropy_period.prescaler.q;
+  wire [9:0] cy_k_thr = kmac_reg2hw_i.entropy_refresh_threshold_shadowed.q;
+  wire cy_kwin_wb = cy_wb_v && in_win(cy_wb_a, KmacMsgBase, KmacMsgEnd);
+  // Prescaler class of cp_wait_timer: 0 for 0, 1 for 2 to 15, -1 otherwise.
+  function automatic int cy_presc_cls(input logic [9:0] p);
+    if (p == 10'd0) return 0;
+    if ((p >= 10'd2) && (p <= 10'd15)) return 1;
+    return -1;
+  endfunction
+  // x_len_corner combination of (mode, strength), -1 when not listed, and
+  // the Keccak rate in bytes of each combination (FIPS 202).
+  function automatic int cy_k_combo(input logic [1:0] m, input logic [2:0] s);
+    if (m == KmacSha3) begin
+      case (s)
+        KmacL224: return 0;
+        KmacL256: return 1;
+        KmacL384: return 2;
+        KmacL512: return 3;
+        default: return -1;
+      endcase
+    end
+    if (m == KmacShake) begin
+      case (s)
+        KmacL128: return 4;
+        KmacL256: return 5;
+        default: return -1;
+      endcase
+    end
+    return -1;
+  endfunction
+  function automatic int unsigned cy_k_rate(input int c);
+    case (c)
+      0: return 144;
+      1: return 136;
+      2: return 104;
+      3: return 72;
+      4: return 168;
+      default: return 136;
+    endcase
+  endfunction
+
+  logic cy_km_on = 1'b0;
+  logic [3:0] cy_km_cell = '0;  // {cSHAKE, strength index, enable bit}
+  logic [1:0] cy_kr = '0;
+  logic cy_cs_on = 1'b0;
+  logic cy_cs_run = 1'b0;
+  logic cy_cs_drop = 1'b0;
+  logic cy_cs_multi_q = 1'b0;
+  logic cy_kl_on = 1'b0;
+  logic cy_kl_taint = 1'b0;
+  int unsigned cy_kl_n = 0;
+  logic cy_k_tmo = 1'b0;  // the entropy wait timer expired since the KMAC reset
+  logic [1:0] cy_k_lock = '0;  // locked entropy mode, 0 none
+  logic [1:0] cy_ml_pa = '0;  // mode written with entropy_ready 1, waiting for mode_q
+  logic cy_ml_div = 1'b0;
+  logic cy_ml_rst = 1'b0;
+  logic cy_tm_exp = 1'b0;
+  logic cy_tm_pc = 1'b0;
+  logic cy_nv_on = 1'b0;
+  logic cy_nv_pc = 1'b0;
+  logic cy_k_tmo_q = 1'b0;
+  logic [2:0] cy_sd_n = '0;
+  logic cy_sd_on = 1'b0;
+  logic [2:0] cy_sd_k = '0;
+  logic [9:0] cy_hc_q = '0;
+  logic cy_hc_clr = 1'b0;
+  logic cy_hc_req = 1'b0;
+  logic cy_ea_on = 1'b0;
+  logic cy_ar_on = 1'b0;
+  logic [9:0] cy_ar_thr = '0;
+  int unsigned cy_ar_h = 0;
+  int unsigned cy_ar_a = 0;
+  logic cy_ar_started = 1'b0;
+  logic cy_ar_rdok = 1'b0;
+  logic cy_ar_done = 1'b0;
+
+  always @(posedge clk_i) begin
+    cy_k_cfgv_q <= cy_k_cfgv;
+    cy_k_tmo_q  <= cy_k_tmo_now;
+    cy_hc_q     <= kmac_hash_cnt_i;
+
+    // x_kmac_mode_strength, cp_kmac_err_recover (1.35).
+    if (!cy_own_kunsup || !cy_ip[4]) begin
+      cy_km_on <= 1'b0;
+      cy_kr    <= 2'd0;
+    end else begin
+      if (cy_km_on) begin
+        if (cy_k_abs) begin
+          cy_inv(3, {cy_km_cell, 1'b1});
+          cy_km_on <= 1'b0;
+        end else if (cy_st_rise[5] && cy_k_idle) begin
+          cy_inv(3, {cy_km_cell, 1'b0});
+          if (!cy_km_cell[0]) cy_kr <= 2'd1;
+          cy_km_on <= 1'b0;
+        end else if (cy_k_cmd_qe) begin
+          cy_km_on <= 1'b0;
+        end
+      end
+      if (cy_k_start) begin
+        logic [1:0] si;
+        si = (cy_k_str == KmacL224) ? 2'd0 : ((cy_k_str == KmacL384) ? 2'd1 :
+            ((cy_k_str == KmacL512) ? 2'd2 : 2'd3));
+        if (((cy_k_mode == KmacShake) || (cy_k_mode == KmacCshake)) && (si != 2'd3)) begin
+          cy_km_on   <= 1'b1;
+          cy_km_cell <= {(cy_k_mode == KmacCshake), si, cy_k_unsup};
+        end
+      end
+      // err_processed after the blocked start, then a start with kmac_err
+      // cleared and sha3_idle 1, then a done event.
+      case (cy_kr)
+        2'd1: begin
+          if (cy_k_errproc) cy_kr <= 2'd2;
+          else if (cy_k_start) cy_kr <= 2'd0;
+        end
+        2'd2: begin
+          if (cy_k_start) cy_kr <= (!cy_st[5] && cy_k_idle) ? 2'd3 : 2'd0;
+        end
+        2'd3: begin
+          if (cy_k_done_ev) begin
+            cy_inv(4, 5'd0);
+            cy_kr <= 2'd0;
+          end
+        end
+        default: ;
+      endcase
+    end
+
+    // sep_kmac_cfg_cmd_cg (1.36).
+    if (!cy_own_kstr || !cy_ip[4]) begin
+      cy_cs_on      <= 1'b0;
+      cy_cs_multi_q <= 1'b0;
+      cy_kl_on      <= 1'b0;
+    end else begin
+      int unsigned n;
+      n = 32'(cy_k_idle) + 32'(cy_k_abs) + 32'(cy_k_sqz);
+      if ((n > 1) && !cy_cs_multi_q) cy_kcc(0, 5'b00_011);
+      cy_cs_multi_q <= (n > 1);
+      if (cy_k_start || cy_k_run) begin
+        cy_cs_on   <= 1'b1;
+        cy_cs_run  <= cy_k_run;
+        cy_cs_drop <= 1'b0;
+      end else if (cy_cs_on) begin
+        if (!cy_cs_run && cy_k_abs && (n == 1)) begin
+          cy_kcc(0, 5'b00_001);
+          cy_cs_on <= 1'b0;
+        end else if (cy_cs_run) begin
+          if (!cy_k_sqz) cy_cs_drop <= 1'b1;
+          else if (cy_cs_drop && (n == 1)) begin
+            cy_kcc(0, 5'b00_110);
+            cy_cs_on <= 1'b0;
+          end
+        end
+        if (cy_k_cmd_qe) cy_cs_on <= 1'b0;
+      end
+      if (cy_k_start) cy_kcc(1, {3'd0, cy_k_men, cy_k_sen});
+      if (cy_kwin_wb && (cy_wb_bytes == 4'd1) && cy_k_men) begin
+        cy_kcc(1, 5'b00_110);
+      end
+      if (cy_k_run && cy_k_sqz && (cy_k_mode == KmacShake)) begin
+        if (cy_k_str == KmacL128) cy_kcc(3, 5'd0);
+        else if (cy_k_str == KmacL256) cy_kcc(3, 5'd1);
+      end
+      // Message bytes between CMD.start and CMD.process.
+      if (cy_k_start) begin
+        cy_kl_on    <= 1'b1;
+        cy_kl_taint <= 1'b0;
+        cy_kl_n     <= 0;
+      end else if (cy_k_proc) begin
+        if (cy_kl_on && !cy_kl_taint) begin
+          int c;
+          int unsigned r;
+          c = cy_k_combo(cy_k_mode, cy_k_str);
+          r = cy_k_rate(c);
+          if ((c >= 0) && (cy_kl_n + 1 >= r) && (cy_kl_n <= r + 1)) begin
+            cy_kcc(2, {3'(c), 2'(cy_kl_n + 1 - r)});
+          end
+        end
+        cy_kl_on <= 1'b0;
+      end else begin
+        if (cy_kwin_wb) cy_kl_n <= cy_kl_n + cy_wb_bytes;
+        if (cy_wb_drop || cy_b_err) cy_kl_taint <= 1'b1;
+      end
+    end
+
+    // sep_kmac_entropy_cg (1.37). The lock state follows the DUT whatever
+    // the window; every sample needs the window of the owner.
+    if (!cy_ip[4]) begin
+      cy_k_tmo  <= 1'b0;
+      cy_k_lock <= 2'd0;
+      cy_ml_pa  <= 2'd0;
+      cy_ml_div <= 1'b0;
+      cy_ml_rst <= 1'b1;
+      cy_tm_exp <= 1'b0;
+      cy_nv_on  <= 1'b0;
+      cy_sd_n   <= 3'd0;
+      cy_sd_on  <= 1'b0;
+      cy_hc_clr <= 1'b0;
+      cy_hc_req <= 1'b0;
+      cy_ea_on  <= 1'b0;
+      cy_ar_on  <= 1'b0;
+    end else begin
+      logic tmo;
+      int pc;
+      tmo = cy_k_tmo || cy_k_tmo_now;
+      cy_k_tmo <= tmo;
+      pc = cy_presc_cls(cy_k_presc);
+
+      // x_mode_lock.
+      if (cy_ml_rst && cy_own_kent && (cy_k_emode == 2'd0) && (cy_k_modeq == 2'd0)) begin
+        cy_kent(0, 3'b11_0);
+        cy_ml_rst <= 1'b0;
+      end
+      if (cy_k_commit) begin
+        cy_ml_rst <= 1'b0;
+        if (!cy_k_eready && ((cy_k_emode == KmacEntEdn) || (cy_k_emode == KmacEntSw)) && !tmo &&
+            cy_own_kent) begin
+          cy_kent(0, {2'b00, (cy_k_emode == KmacEntSw)});
+        end
+        if (cy_k_eready && (cy_k_lock == 2'd0) &&
+            ((cy_k_emode == KmacEntEdn) || (cy_k_emode == KmacEntSw))) begin
+          cy_ml_pa <= cy_k_emode;
+        end
+        if ((cy_k_lock != 2'd0) && (cy_k_emode != cy_k_lock) && (cy_k_modeq == cy_k_lock)) begin
+          cy_ml_div <= 1'b1;
+        end
+      end else begin
+        if ((cy_ml_pa != 2'd0) && (cy_k_modeq == cy_ml_pa)) begin
+          if (!tmo && cy_own_kent) cy_kent(0, {2'b01, (cy_ml_pa == KmacEntSw)});
+          cy_k_lock <= cy_ml_pa;
+          cy_ml_pa  <= 2'd0;
+        end
+        if (cy_ml_div) begin
+          if ((cy_k_modeq == cy_k_lock) && (cy_k_emode != cy_k_lock) && cy_own_kent) begin
+            cy_kent(0, {2'b10, (cy_k_lock == KmacEntSw)});
+          end
+          cy_ml_div <= 1'b0;
+        end
+      end
+
+      // cp_wait_timer: expiry with wait_timer 1 to 8, then kmac_err; with
+      // wait_timer 0 and EDN mode, a window to the KMAC reset or the window
+      // close with no expiry, no kmac_err and no acknowledge on client 1.
+      if (!cy_own_kent) begin
+        cy_tm_exp <= 1'b0;
+      end else if (cy_k_tmo_now && !cy_k_tmo_q && (cy_k_wait >= 16'd1) && (cy_k_wait <= 16'd8) &&
+                   (pc >= 0)) begin
+        cy_tm_exp <= 1'b1;
+        cy_tm_pc  <= (pc == 1);
+      end else if (cy_tm_exp && cy_st_rise[5]) begin
+        cy_kent(1, {1'b0, 1'b1, cy_tm_pc});
+        cy_tm_exp <= 1'b0;
+      end
+      if (cy_nv_on) begin
+        if (cy_k_tmo_now || cy_st_rise[5] || cy_ack_rise[1]) begin
+          cy_nv_on <= 1'b0;
+        end else if (!cy_own_kent) begin
+          cy_kent(1, {1'b0, 1'b0, cy_nv_pc});
+          cy_nv_on <= 1'b0;
+        end
+      end else if (cy_k_commit && cy_own_kent && cy_k_eready && (cy_k_emode == KmacEntEdn) &&
+                   (cy_k_wait == 16'd0) && (pc >= 0)) begin
+        cy_nv_on <= 1'b1;
+        cy_nv_pc <= (pc == 1);
+      end
+
+      // cp_sw_seed_count: ENTROPY_SEED writes since the KMAC reset at a
+      // CMD.start in software mode with entropy_ready.
+      if (cy_t(kmac_reg2hw_i.entropy_seed.qe) && (cy_sd_n != 3'd7)) cy_sd_n <= cy_sd_n + 3'd1;
+      if (cy_sd_on) begin
+        if (cy_k_abs) begin
+          if (cy_sd_k == 3'd6) cy_kent(2, 3'd2);
+          cy_sd_on <= 1'b0;
+        end else if (!cy_own_kent || cy_k_cmd_qe) begin
+          if (cy_sd_k != 3'd6) cy_kent(2, (cy_sd_k == 3'd0) ? 3'd0 : 3'd1);
+          cy_sd_on <= 1'b0;
+        end
+      end else if (cy_k_start && cy_own_kent && (cy_k_emode == KmacEntSw) && cy_k_eready &&
+                   (cy_sd_n inside {3'd0, 3'd5, 3'd6})) begin
+        cy_sd_on <= 1'b1;
+        cy_sd_k  <= cy_sd_n;
+      end
+
+      // cp_hash_cnt.
+      if (cy_own_kent && cy_ip_q[4]) begin
+        logic clr;
+        logic req;
+        clr = cy_hc_clr || (cy_k_cntclr && (kmac_hash_cnt_i != '0));
+        req = cy_hc_req || (cy_k_entreq && (kmac_hash_cnt_i != '0));
+        if (cy_k_start) begin
+          clr = 1'b0;
+          req = 1'b0;
+        end
+        if (!$isunknown(kmac_hash_cnt_i) && (kmac_hash_cnt_i != cy_hc_q)) begin
+          if (kmac_hash_cnt_i == (cy_hc_q + 10'd1)) begin
+            cy_kent(3, 3'd0);
+          end else if ((kmac_hash_cnt_i == '0) && (cy_hc_q != '0)) begin
+            if (clr) cy_kent(3, 3'd1);
+            else if (req) cy_kent(3, 3'd2);
+          end
+          if (kmac_hash_cnt_i == '0) begin
+            clr = 1'b0;
+            req = 1'b0;
+          end
+        end
+        cy_hc_clr <= clr;
+        cy_hc_req <= req;
+      end else begin
+        cy_hc_clr <= 1'b0;
+        cy_hc_req <= 1'b0;
+      end
+
+      // cp_entropy_req_ack.
+      if (!cy_own_kent) begin
+        cy_ea_on <= 1'b0;
+      end else if (cy_k_entreq && cy_k_idle && (cy_k_modeq == KmacEntEdn)) begin
+        cy_ea_on <= 1'b1;
+      end else if (cy_ea_on && cy_ack_rise[1]) begin
+        cy_kent(4, 3'd0);
+        cy_ea_on <= 1'b0;
+      end
+
+      // cp_auto_reseed: a run from CMD.hash_cnt_clr with a fixed threshold.
+      if (!cy_own_kent || cy_k_entreq || (cy_ar_on && (cy_k_thr != cy_ar_thr))) begin
+        cy_ar_on <= 1'b0;
+      end else if (cy_k_cntclr) begin
+        cy_ar_on      <= 1'b1;
+        cy_ar_thr     <= cy_k_thr;
+        cy_ar_h       <= 0;
+        cy_ar_a       <= 0;
+        cy_ar_started <= 1'b0;
+        cy_ar_rdok    <= 1'b0;
+        cy_ar_done    <= 1'b0;
+      end else if (cy_ar_on) begin
+        int unsigned h;
+        int unsigned a;
+        logic rdok;
+        logic done;
+        h = cy_ar_h;
+        a = cy_ar_a;
+        rdok = cy_ar_rdok;
+        done = cy_ar_done;
+        if (cy_k_start && cy_k_kmac_en) begin
+          h++;
+          cy_ar_started <= 1'b1;
+        end
+        if (cy_ar_started && cy_ack_rise[1]) begin
+          a++;
+          if ((cy_ar_thr == 10'd0) && !done) begin
+            cy_kent(5, 3'd2);
+            done = 1'b1;
+          end
+        end
+        if (rd_ev && cy_rd_known && (ar_addr_q == KMAC_ENTROPY_REFRESH_HASH_CNT_REG_ADDR)) begin
+          int unsigned v;
+          v = 32'(rd_data & KMAC_ENTROPY_REFRESH_HASH_CNT_HASH_CNT_MASK);
+          if ((cy_ar_thr >= 10'd2) && (cy_ar_thr <= 10'd4) && (h >= 32'(cy_ar_thr) + 2) && (v < h)) begin
+            rdok = 1'b1;
+          end
+          if ((cy_ar_thr == 10'd0) && (h >= 2) && (v == h) && (a == 0) && !done) begin
+            cy_kent(5, 3'd1);
+            done = 1'b1;
+          end
+        end
+        if (rdok && (a > 0) && !done) begin
+          cy_kent(5, 3'd0);
+          done = 1'b1;
+        end
+        cy_ar_h    <= h;
+        cy_ar_a    <= a;
+        cy_ar_rdok <= rdok;
+        cy_ar_done <= done;
+      end
+    end
+    // The software-seed and wait-timer windows also end at the KMAC reset.
+    if (cy_ip_fall[4]) begin
+      if (cy_nv_on && cy_own_kent) cy_kent(1, {1'b0, 1'b0, cy_nv_pc});
+      if (cy_sd_on && cy_own_kent && (cy_sd_k != 3'd6)) cy_kent(2, (cy_sd_k == 3'd0) ? 3'd0 : 3'd1);
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // OTBN trackers (entry 1.38).
+  // ---------------------------------------------------------------------
+  wire [7:0] cy_o_st = 8'(otbn_status_i);
+  wire cy_o_busy = cy_o_st inside {OtbnStExec, OtbnStWipeDmem, OtbnStWipeImem, OtbnStWipeInt};
+  wire cy_o_cmd = cy_t(otbn_reg2hw_i.cmd.qe) && cy_ip[1];
+  wire [7:0] cy_o_cmdv = otbn_reg2hw_i.cmd.q;
+  // Command kind: 0 EXECUTE, 1 SEC_WIPE_DMEM, 2 SEC_WIPE_IMEM, -1 other.
+  function automatic int cy_o_kind(input logic [7:0] c);
+    if (c == OtbnExecute) return 0;
+    if (c == OtbnSecWipeDmem) return 1;
+    if (c == OtbnSecWipeImem) return 2;
+    return -1;
+  endfunction
+  function automatic logic [7:0] cy_o_first(input int k);
+    if (k == 0) return OtbnStExec;
+    if (k == 1) return OtbnStWipeDmem;
+    return OtbnStWipeImem;
+  endfunction
+  logic cy_o_done_q = 1'b0;
+  logic cy_fb_on = 1'b0;
+  logic [1:0] cy_fb_k = '0;
+  logic [7:0] cy_ci_st = '0;  // STATUS at the AW handshake of the last CMD write
+  logic cy_ci_chg = 1'b0;
+  int unsigned cy_ci_cnt = 0;
+  logic cy_ci_cls = 1'b0;
+  logic [1:0] cy_pr = '0;
+  logic cy_ic_rst = 1'b0;
+  logic cy_ic_exec = 1'b0;
+  logic cy_dn_on = 1'b0;
+  logic [1:0] cy_dn_k = '0;
+  logic cy_cw_busy = 1'b0;
+  logic cy_cw_ef = 1'b0;
+  wire cy_o_ef = cy_t(otbn_errs_fatal_i);
+  always @(posedge clk_i) begin
+    logic done_rise;
+    int wk;
+    done_rise = cy_t(otbn_done_i) && !cy_o_done_q;
+    wk = cy_o_kind(wr_data[7:0]);
+    cy_o_done_q <= cy_t(otbn_done_i);
+    if (aw_hs && (lsu_aw_addr_i == OTBN_CMD_REG_ADDR)) begin
+      cy_ci_st  <= cy_o_st;
+      cy_ci_chg <= 1'b0;
+    end else if (cy_o_st != cy_ci_st) begin
+      cy_ci_chg <= 1'b1;
+    end
+    if (aw_hs && (lsu_aw_addr_i == OTBN_CTRL_REG_ADDR)) begin
+      cy_cw_busy <= cy_o_busy;
+      cy_cw_ef   <= cy_t(otbn_errs_fatal_i);
+    end
+    if (cy_ip_rise[1]) cy_ic_rst <= 1'b1;
+    if (!cy_own_otbn) begin
+      cy_fb_on  <= 1'b0;
+      cy_ci_cnt <= 0;
+      cy_pr     <= 2'd0;
+      cy_dn_on  <= 1'b0;
+    end else begin
+      // cp_cmd: a recognised CMD write accepted at IDLE.
+      if (wr_ev && (aw_addr_q == OTBN_CMD_REG_ADDR) && (cy_ci_st == OtbnIdle) && (wk >= 0)) begin
+        cy_otbn(0, 3'(wk));
+      end
+      // x_cmd_first_busy and cp_done_event follow the command strobe.
+      if (cy_o_cmd && (cy_o_st == OtbnIdle) && (cy_o_kind(cy_o_cmdv) >= 0)) begin
+        cy_fb_on <= 1'b1;
+        cy_fb_k  <= 2'(cy_o_kind(cy_o_cmdv));
+        cy_dn_on <= 1'b1;
+        cy_dn_k  <= 2'(cy_o_kind(cy_o_cmdv));
+        if (cy_o_kind(cy_o_cmdv) == 0) cy_ic_rst <= 1'b0;
+      end else begin
+        if (cy_fb_on && (cy_o_st != OtbnIdle)) begin
+          cy_otbn(1, {cy_fb_k, (cy_o_st == cy_o_first(cy_fb_k))});
+          cy_fb_on <= 1'b0;
+        end
+        if (cy_dn_on && done_rise) begin
+          cy_otbn(5, {1'b0, cy_dn_k});
+          if (cy_dn_k == 2'd0) cy_ic_exec <= 1'b1;
+          cy_dn_on <= 1'b0;
+        end
+      end
+      if (!cy_ip[1]) begin
+        cy_fb_on <= 1'b0;
+        cy_dn_on <= 1'b0;
+      end
+      // cp_cmd_ignored: STATUS unchanged from the AW handshake of the write
+      // to four clocks after its OKAY response.
+      if (wr_ev && (aw_addr_q == OTBN_CMD_REG_ADDR) && !cy_ci_chg && (cy_o_st == cy_ci_st)) begin
+        int k;
+        k = cy_o_kind(wr_data[7:0]);
+        if ((k < 0) && (cy_ci_st == OtbnIdle)) begin
+          cy_ci_cnt <= 4;
+          cy_ci_cls <= 1'b0;
+        end else if ((k >= 0) && (cy_ci_st inside {OtbnStExec, OtbnStWipeDmem, OtbnStWipeImem,
+                                                   OtbnStWipeInt})) begin
+          cy_ci_cnt <= 4;
+          cy_ci_cls <= 1'b1;
+        end
+      end else if (cy_ci_cnt != 0) begin
+        if (cy_o_st != cy_ci_st) begin
+          cy_ci_cnt <= 0;
+        end else begin
+          if (cy_ci_cnt == 1) cy_otbn(2, {2'd0, cy_ci_cls});
+          cy_ci_cnt <= cy_ci_cnt - 1;
+        end
+      end
+      // cp_post_reset_arc: after an OTBN reset the status reads 0x04, then
+      // 0x00.
+      if (cy_ip_fall[1]) begin
+        cy_pr <= 2'd1;
+      end else if (cy_ip[1]) begin
+        if (cy_pr == 2'd1) begin
+          cy_pr <= (cy_o_st == OtbnStWipeInt) ? 2'd2 : 2'd0;
+        end else if (cy_pr == 2'd2) begin
+          if (cy_o_st == OtbnIdle) begin
+            cy_otbn(3, 3'd0);
+            cy_pr <= 2'd0;
+          end else if (cy_o_st != OtbnStWipeInt) begin
+            cy_pr <= 2'd0;
+          end
+        end
+      end
+      // cp_insn_cnt: an OKAY INSN_CNT read that matches the counter.
+      if (rd_ev && cy_rd_known && (ar_addr_q == OTBN_INSN_CNT_REG_ADDR) &&
+          (rd_data == otbn_insn_cnt_i)) begin
+        if (cy_ic_rst && (rd_data == 32'h0)) cy_otbn(4, 3'd0);
+        if (cy_ic_exec && (rd_data != 32'h0)) cy_otbn(4, 3'd1);
+      end
+      // cp_ctrl_write_legality: a CTRL write while busy leaves the stored
+      // software_errs_fatal value.
+      if (wr_ev && (aw_addr_q == OTBN_CTRL_REG_ADDR) && cy_cw_busy && cy_o_busy &&
+          (((wr_data & OTBN_CTRL_SOFTWARE_ERRS_FATAL_MASK) != 32'h0) != cy_cw_ef) &&
+          (cy_o_ef == cy_cw_ef)) begin
+        u_sep_otbn_err_lock_cg.sample(1'b1);
+      end
+    end
+    if (cy_ip_fall[1]) begin
+      cy_ic_exec <= 1'b0;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Adams Bridge trackers (entry 1.39). Block 0 ML-DSA, 1 ML-KEM.
+  // ---------------------------------------------------------------------
+  logic [2:0] cy_ab_cmd[2] = '{default: '0};
+  logic [1:0] cy_ab_held = '0;
+  logic [1:0] cy_ab_zp = '0;
+  logic [1:0] cy_ab_rp = '0;
+  logic [31:0] cy_ab_sig[16] = '{default: '0};
+  logic [15:0] cy_ab_sig_m = '0;
+  logic [31:0] cy_ab_ct[16] = '{default: '0};
+  logic cy_ab_v_on = 1'b0;
+  logic [15:0] cy_ab_rd_m = '0;
+  logic cy_ab_diff = 1'b0;
+  always @(posedge clk_i) begin
+    if (!cy_own_abr) begin
+      cy_ab_cmd   <= '{default: '0};
+      cy_ab_held  <= '0;
+      cy_ab_zp    <= '0;
+      cy_ab_rp    <= '0;
+      cy_ab_sig_m <= '0;
+      cy_ab_v_on  <= 1'b0;
+    end else begin
+      for (int b = 0; b < 2; b++) begin
+        logic [31:0] ca;
+        logic [31:0] sa;
+        logic [31:0] vm;
+        ca = (b == 0) ? AbrCtrl : KemCtrl;
+        sa = (b == 0) ? AbrStatus : KemStatus;
+        vm = (b == 0) ? AbrStValid : KemStValid;
+        if (cy_ip_fall[6] && (cy_ab_cmd[b] == 3'd4) && cy_ab_held[b]) cy_ab_rp[b] <= 1'b1;
+        if (wr_ev && (aw_addr_q == ca)) begin
+          logic [2:0] c;
+          c = 3'(wr_data & AbrCtrlCmdMask);
+          if (c != 3'd0) begin
+            cy_ab_cmd[b]  <= c;
+            cy_ab_held[b] <= 1'b0;
+            if (c == 3'd4) cy_abr(1, 6'(b));
+          end
+          if (((wr_data & AbrCtrlZeroize) != 32'h0) && (cy_ab_cmd[b] == 3'd4) && cy_ab_held[b]) begin
+            cy_ab_zp[b] <= 1'b1;
+          end
+        end
+        if (rd_ev && (ar_addr_q == sa) && !$isunknown(rd_data)) begin
+          logic valid;
+          logic ready;
+          valid = (rd_data & vm) != 32'h0;
+          ready = (rd_data & AbrStReady) != 32'h0;
+          if (cy_ab_zp[b] && ready) begin
+            cy_abr(0, {1'(b), 3'd4, 2'd1});
+            cy_ab_zp[b]  <= 1'b0;
+            cy_ab_cmd[b] <= 3'd0;
+          end else if (cy_ab_rp[b] && ready && cy_ip[6]) begin
+            cy_abr(0, {1'(b), 3'd4, 2'd2});
+            cy_ab_rp[b]  <= 1'b0;
+            cy_ab_cmd[b] <= 3'd0;
+          end else if ((cy_ab_cmd[b] != 3'd0) && valid && !ready && !cy_ab_zp[b] &&
+                       !cy_ab_rp[b]) begin
+            cy_abr(0, {1'(b), cy_ab_cmd[b], 2'd0});
+            cy_ab_held[b] <= 1'b1;
+          end
+        end
+      end
+      // cp_verify_outcome: c~ is the first 16 words of the signature window
+      // as written before VERIFYING; a reject is a VERIFY_RES that differs
+      // from it in a word. The reason class is the stimulus label.
+      if (wr_ev && (aw_addr_q >= AbrSigBase) && (aw_addr_q < (AbrSigBase + 32'd64))) begin
+        cy_ab_sig[aw_addr_q[5:2]]   <= wr_data;
+        cy_ab_sig_m[aw_addr_q[5:2]] <= 1'b1;
+      end
+      if (wr_ev && (aw_addr_q == AbrCtrl) && (3'(wr_data & AbrCtrlCmdMask) == 3'd3)) begin
+        cy_ab_v_on  <= (cy_ab_sig_m == 16'hFFFF);
+        cy_ab_ct    <= cy_ab_sig;
+        cy_ab_rd_m  <= '0;
+        cy_ab_diff  <= 1'b0;
+        cy_ab_sig_m <= '0;
+      end else if (cy_ab_v_on && rd_ev && (ar_addr_q >= AbrVerifyRes0) &&
+                   (ar_addr_q < (AbrVerifyRes0 + 32'd64)) && cy_rd_known) begin
+        logic [15:0] m;
+        logic diff;
+        int unsigned i;
+        i = 32'((ar_addr_q - AbrVerifyRes0) >> 2);
+        m = cy_ab_rd_m;
+        m[i] = 1'b1;
+        diff = cy_ab_diff || (rd_data != cy_ab_ct[i]);
+        if ((m == 16'hFFFF) && diff && (abr_reject_class >= 1) && (abr_reject_class <= 4)) begin
+          cy_abr(2, 6'(abr_reject_class - 1));
+          cy_ab_v_on <= 1'b0;
+        end
+        cy_ab_rd_m <= m;
+        cy_ab_diff <= diff;
       end
     end
   end

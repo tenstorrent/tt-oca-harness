@@ -110,6 +110,30 @@ def set_quiet_window(on: bool, log=None) -> bool:
     return True
 
 
+def set_abr_reject_class(reason_class: int, log=None) -> bool:
+    """Write ``u_sep_fcov.abr_reject_class`` (1 to 4, or 0 for none).
+
+    The stimulus label of ``sep_abr_completion_cg.cp_verify_outcome``: the ACVP
+    reason class of the sigVer reject row that the ABR leaf writes to the DUT
+    (1 modified message, 2 modified signature - commitment, 3 modified
+    signature - hint, 4 modified signature - z). The leaf sets it before the
+    reject verify and writes 0 after the last ``MLDSA_VERIFY_RES`` read of that
+    verify. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    if not 0 <= reason_class <= 4:
+        raise ValueError(f"abr_reject_class {reason_class} is not 0 to 4")
+    if _gate_handle() is None:
+        return False
+    fcov = cocotb.top.u_sep_fcov
+    if not hasattr(fcov, "abr_reject_class"):
+        raise AttributeError("u_sep_fcov has no abr_reject_class variable (cov/sv/sep_fcov.sv)")
+    fcov.abr_reject_class.value = reason_class
+    if log is not None:
+        log.info("FCOV-ABR-REJECT-CLASS %d", reason_class)
+    return True
+
+
 def close_graded_window(log=None) -> bool:
     """Write 0 (no window open). Returns True when written."""
     gate = _gate_handle()

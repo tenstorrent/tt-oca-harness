@@ -165,11 +165,12 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 
 [[tests]]
-# AES and KMAC contend for the crypto-EDN leg off one verified DRBG stream.
+# AES and KMAC contend for the crypto-EDN leg off one verified DRBG stream; HMAC, KMAC,
+# AES and OTBN in overlap each return their own golden.
 name = "sep_crypto_edn_multisink_arbitration_test"
 module = "crypto.sep_crypto_edn_multisink_arbitration_test"
 seed = 1
-reseed = 3
+reseed = 4
 timeout_sec = 1800
 tags = ["drbg", "entropy", "crypto", "multi_sink", "aes", "kmac", "subsystem"]
 run_modes = ["no_cpu"]
@@ -287,3 +288,169 @@ tools = ["verilator"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_abr_absent"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_abr_absent.parhex"]
+
+[[tests]]
+# An HMAC start with an illegal configuration is blocked and signalled, and a legal start recovers.
+name = "sep_hmac_illegal_cfg_start_test"
+module = "crypto.sep_hmac_illegal_cfg_start_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "hmac", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# The HMAC message FIFO reports its occupancy, back-pressures a full write and loses no word.
+name = "sep_hmac_fifo_stream_rand_test"
+module = "crypto.sep_hmac_fifo_stream_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "hmac", "fifo", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# HMAC byte-order swaps, context save and restore, the sha_en clear and the done line.
+name = "sep_hmac_swap_context_rand_test"
+module = "crypto.sep_hmac_swap_context_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "hmac", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# HMAC and AES select the delivered key by their stated rules: matching, mismatching and
+# absent key. Real fuse sense: the KM rom_main firmware reads OTP.
+name = "sep_crypto_delivered_key_select_rand_test"
+module = "crypto.sep_crypto_delivered_key_select_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "km", "hmac", "aes", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# Invalid AES KEY_LEN, OPERATION and MODE encodings resolve to AES_256, AES_ENC and AES_NONE.
+name = "sep_aes_encoding_inject_rand_test"
+module = "crypto.sep_aes_encoding_inject_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "aes", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# AES streams per mode, the stall, START in automatic mode, the manual output overwrite,
+# IDLE and no interrupt.
+name = "sep_aes_stream_status_rand_test"
+module = "crypto.sep_aes_stream_status_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "aes", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# AES reseed-rate order, the invalid-rate mapping, the zero reseed trigger and the key clear.
+name = "sep_aes_reseed_trigger_rand_test"
+module = "crypto.sep_aes_reseed_trigger_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["crypto", "aes", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# AES shadowed-register update errors, the AUX lock, the AES reset restore and malformed
+# crypto alerts. VCS only: the reads after the AES reset must carry no X, which only a
+# four-state simulator shows.
+name = "sep_crypto_shadow_update_err_rand_test"
+module = "crypto.sep_crypto_shadow_update_err_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["crypto", "aes", "kmac", "alert", "subsystem"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# An unsupported SHAKE or cSHAKE strength raises kmac_err and does not start, and
+# err_processed recovers.
+name = "sep_kmac_unsupported_cfg_inject_test"
+module = "crypto.sep_kmac_unsupported_cfg_inject_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "kmac", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# KMAC stages, both endianness bits, length corners, the idle state, the config lock and
+# the done line.
+name = "sep_kmac_stream_cfg_rand_test"
+module = "crypto.sep_kmac_stream_cfg_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "kmac", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# KMAC entropy modes: software seeding, the mode lock, the EDN wait timer, the hash counter
+# and the counter reseed.
+name = "sep_kmac_entropy_mode_rand_test"
+module = "crypto.sep_kmac_entropy_mode_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 3600
+tags = ["crypto", "kmac", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# OTBN commands, status codes, INSN_CNT, the done line and the ignored writes.
+name = "sep_otbn_cmd_status_rand_test"
+module = "crypto.sep_otbn_cmd_status_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "otbn", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# ABR combined commands park and re-arm, single-step results do not depend on order, and
+# ACVP sigVer rejects hold.
+name = "sep_abr_command_matrix_rand_test"
+module = "crypto.sep_abr_command_matrix_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 21600
+tags = ["crypto", "abr", "mldsa", "mlkem", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]

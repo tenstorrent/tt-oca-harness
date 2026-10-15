@@ -14,6 +14,23 @@
 
 localparam int unsigned FcovOwnNone = 0;
 
+// Crypto and entropy.
+localparam int unsigned FcovOwnSepIrqIpToAggregatorTest = 125;
+localparam int unsigned FcovOwnSepCryptoEdnMultisinkArbitrationTest = 126;
+localparam int unsigned FcovOwnSepHmacIllegalCfgStartTest = 127;
+localparam int unsigned FcovOwnSepHmacFifoStreamRandTest = 128;
+localparam int unsigned FcovOwnSepHmacSwapContextRandTest = 129;
+localparam int unsigned FcovOwnSepCryptoDeliveredKeySelectRandTest = 130;
+localparam int unsigned FcovOwnSepAesEncodingInjectRandTest = 131;
+localparam int unsigned FcovOwnSepAesStreamStatusRandTest = 132;
+localparam int unsigned FcovOwnSepAesReseedTriggerRandTest = 133;
+localparam int unsigned FcovOwnSepCryptoShadowUpdateErrRandTest = 134;
+localparam int unsigned FcovOwnSepKmacUnsupportedCfgInjectTest = 135;
+localparam int unsigned FcovOwnSepKmacStreamCfgRandTest = 136;
+localparam int unsigned FcovOwnSepKmacEntropyModeRandTest = 137;
+localparam int unsigned FcovOwnSepOtbnCmdStatusRandTest = 138;
+localparam int unsigned FcovOwnSepAbrCommandMatrixRandTest = 139;
+
 // Fabric and remap.
 localparam int unsigned FcovOwnSepFabricInboundRebaseTest = 225;
 localparam int unsigned FcovOwnSepFabricFilterMatchPriorityRandTest = 226;

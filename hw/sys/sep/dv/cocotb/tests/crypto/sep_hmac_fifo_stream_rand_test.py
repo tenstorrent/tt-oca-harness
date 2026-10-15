@@ -1,0 +1,788 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""The HMAC message FIFO reports its occupancy, back-pressures a full write and loses no word.
+
+RAND-REP, ``no_cpu``. The leaf drives the HMAC engine over the CPU-LSU master. On every seed it
+runs the same plan shape in drawn orders:
+
+    25 length cells   SHA-256 with 0, 1, 3, 4, 55, 56, 63, 64, 65, 200 and 1000 bytes;
+                      SHA-384 and SHA-512 with 111, 112, 127, 128, 129, 200 and 1000 bytes;
+                      plain SHA-2 or HMAC and the write mode drawn per cell
+    3 stalled legs    one per write mode (burst of back-to-back single-beat writes, single
+                      writes with a drawn gap, single-byte writes): the FIFO fills under the
+                      drain stall, one more beat is held, the stall is released, the
+                      1000-byte message completes
+    2 fifo_empty legs a FIFO that was full, and a FIFO that never reaches full
+    1 wipe leg        ``WIPE_SECRET`` overwrites the digest and the secret key
+
+The drain stall is the bench input ``hmac_fifo_drain_stall_i``: it holds the read side of the
+message FIFO idle (``tb/tb_top.sv``, HMAC message-FIFO drain stall).
+
+Spec: ``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc`` (``INTR_STATE``
+:45-49 ``fifo_empty`` needs a FIFO that has been full and a FIFO that software can still
+write; ``CFG``:120 ``endian_swap`` = 0 adds each value in little-endian byte order; ``STATUS``
+:157-160 ``fifo_depth``, ``fifo_full`` with back-pressure on the interconnect, ``fifo_empty``)
+and ``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson`` (``WIPE_SECRET``:420-425,
+the written value overwrites the secret key and the digest and is duplicated into each 64-bit
+word; ``KEY``:446, ``KEY_0`` is the most-significant key word).
+
+Checkers:
+  CHK-HMAC-STATUS        on every ``STATUS`` sample ``fifo_empty`` = 1 iff ``fifo_depth`` = 0,
+                         ``fifo_full`` = 1 implies ``fifo_empty`` = 0, and no not-full sample
+                         reports a depth above a full sample of the seed
+  CHK-HMAC-BACKPRESSURE  a beat into a full FIFO gets no write response for 16 times the clean
+                         write latency, and completes OKAY after the stall is released
+  CHK-HMAC-MSG           the digest equals the software golden of the whole message
+  CHK-HMAC-FIFOEMPTY     ``INTR_STATE.fifo_empty`` reads 1 after a full FIFO drains and 0 for a
+                         FIFO that was never full, both before ``hash_process``
+  CHK-HMAC-WIPE          after a write of w to ``WIPE_SECRET`` every DIGEST word reads w, and
+                         the next HMAC with no ``KEY`` write hashes with an all-w key
+
+The write that fills the FIFO is not the last write the engine takes: the engine stages a
+write beyond the FIFO before it stops the bus. So the measurement run of each stalled leg
+counts the writes that complete with the stall held (N), and the graded run holds write N+1.
+
+Controls: ``CTRL-HMAC-STALL-FULL`` (a stalled leg reads ``fifo_full`` = 1),
+``CTRL-HMAC-BP-CLEAN`` (a beat into a FIFO that is not full completes), ``CTRL-HMAC-LENGTHS``
+(every length cell ran), ``CTRL-HMAC-FE-DEPTH`` (the not-full leg writes fewer words than the
+depth at full), ``CTRL-HMAC-WIPE-PRE`` (DIGEST before the wipe equals the golden and differs
+from w). Log-only: ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text gives only its
+reset value), ``OBS-HMAC-STALL-N`` (the write counts of the measurement run).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import cocotb
+import pyuvm
+from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.utils import get_sim_time
+from env.sep_axi_agent import SepAxiOp
+from env.sep_chk_log import SepChkLog
+from env.sep_crypto_kat_rows import RFC4231_KEYS
+from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_hmac_golden import hmac_sha2_bytes, sha2_bytes
+from env.sep_seeded_rng import SepSeededRng
+from sep_base_test import sep_base_test
+from sep_reg_meta import HMAC
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_resp_handshake, take_handshake
+from seq_lib.sep_hmac_seq import (
+    HMAC_CMD,
+    HMAC_CMD_HASH_PROCESS,
+    HMAC_CMD_HASH_START,
+    HMAC_DIGEST_0,
+    HMAC_DIGEST_WORDS,
+    HMAC_ILLEGAL_KEYED,
+    HMAC_INTR_DONE,
+    HMAC_INTR_STATE,
+    HMAC_KEY_0,
+    HMAC_KEY_LENGTH,
+    HMAC_MSG_FIFO,
+    HMAC_STATUS,
+    SepHmac,
+    build_cfg,
+)
+from seq_lib.sep_sw_reset_seq import SepSwReset
+
+TEST = "sep_hmac_fifo_stream_rand_test"
+
+# SW_RESET_N baseline: every engine released except the Key Manager (bit 0)
+# (hw/sys/sep/regs/gen/adoc/blocks/sep_reset_ctrl.adoc).
+SW_RESET_BASELINE = 0x7E
+
+HMAC_WIPE_SECRET = HMAC.addr("WIPE_SECRET")
+ST_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
+ST_EMPTY = HMAC.field_mask("STATUS", "fifo_empty")
+ST_FULL = HMAC.field_mask("STATUS", "fifo_full")
+ST_DEPTH = HMAC.field_mask("STATUS", "fifo_depth")
+ST_DEPTH_LSB = HMAC.field_lsb("STATUS", "fifo_depth")
+ST_FIELDS = ST_IDLE | ST_EMPTY | ST_FULL | ST_DEPTH
+ST_RESET_IDLE = HMAC.field_reset("STATUS", "hmac_idle")
+ST_RESET_EMPTY = HMAC.field_reset("STATUS", "fifo_empty")
+INTR_FIFO_EMPTY = HMAC.field_mask("INTR_STATE", "fifo_empty")
+INTR_FIELDS = HMAC_INTR_DONE | INTR_FIFO_EMPTY | HMAC.field_mask("INTR_STATE", "hmac_err")
+
+# Length cells (bytes) per digest size. The SHA-256 block is 64 bytes and the SHA-384/512
+# block is 128 bytes; the lengths sit on, below and above the padding and block edges.
+LEN_CELLS: tuple[tuple[int, int], ...] = tuple(
+    [(256, n) for n in (0, 1, 3, 4, 55, 56, 63, 64, 65, 200, 1000)]
+    + [(sha, n) for sha in (384, 512) for n in (111, 112, 127, 128, 129, 200, 1000)]
+)
+MODES = ("burst", "gap", "byte")
+STALL_MSG_BYTES = 1000
+
+# HMAC keys of the RFC 4231 test cases 1 to 6 (env/sep_crypto_kat_rows.py). A row is
+# zero-padded or cut to the 128 bytes of the 32 KEY registers; KEY_0 holds the first four
+# bytes, big-endian (hmac.hjson:446).
+_RFC4231_KEYS = RFC4231_KEYS
+KEY_ROWS: tuple[tuple[int, ...], ...] = tuple(
+    tuple(int.from_bytes(k.ljust(128, b"\0")[:128][i : i + 4], "big") for i in range(0, 128, 4))
+    for k in _RFC4231_KEYS
+)
+
+# Outer limits of clean-time measurements only; never a contract.
+DONE_BOUND = 200_000
+DRAIN_BOUND = 50_000
+RESET_BOUND = 2_000
+PROBE_EXTRA_MAX = 8
+
+
+def legal_key_bits(sha: int) -> list[int]:
+    return [k for k in HMAC_KEY_LENGTH if (sha, k) not in HMAC_ILLEGAL_KEYED]
+
+
+def golden_words(sha: int, hmac_en: bool, key_words, key_bits: int | None, msg: bytes) -> list[int]:
+    """DIGEST words of the hash at ``digest_swap`` = 0: big-endian reads of the digest bytes."""
+    if hmac_en:
+        assert key_bits is not None
+        key = b"".join(w.to_bytes(4, "big") for w in key_words[: key_bits // 32])
+        out = hmac_sha2_bytes(key, msg, sha)
+    else:
+        out = sha2_bytes(msg, sha)
+    return [int.from_bytes(out[i : i + 4], "big") for i in range(0, HMAC_DIGEST_WORDS[sha] * 4, 4)]
+
+
+def chunks(msg: bytes, mode: str) -> list[tuple[int, int]]:
+    """The writes of a message as (byte count, value). Lane order little-endian (endian_swap 0).
+
+    Burst and gap modes write whole words as 32-bit beats and a tail as one-byte beats.
+    """
+    if mode == "byte":
+        return [(1, b) for b in msg]
+    whole = len(msg) - len(msg) % 4
+    out = [(4, int.from_bytes(msg[i : i + 4], "little")) for i in range(0, whole, 4)]
+    out += [(1, b) for b in msg[whole:]]
+    return out
+
+
+@dataclass
+class Hash:
+    sha: int
+    hmac_en: bool
+    key_row: int
+    key_bits: int | None
+
+    def tag(self) -> str:
+        return f"sha{self.sha}/{'hmac' if self.hmac_en else 'plain'}/k{self.key_bits}"
+
+
+@dataclass
+class Cell:
+    h: Hash
+    length: int
+    mode: str
+    gap: int
+    rb: int
+    msg: bytes
+
+
+@dataclass
+class StallLeg:
+    h: Hash
+    mode: str
+    gap: int
+    rb: int
+    msg: bytes
+    probe: bytes
+
+
+@dataclass
+class FeLeg:
+    h: Hash
+    probe: bytes
+
+
+@dataclass
+class WipeLeg:
+    h: Hash
+    msg1: bytes
+    msg2: bytes
+    w: int
+
+
+@dataclass
+class Plan:
+    cells: list[Cell]
+    stall: list[StallLeg]
+    fe_full: FeLeg
+    fe_notfull: FeLeg
+    wipe: WipeLeg
+
+
+def _unique_msg(rng: SepSeededRng, nbytes: int) -> bytes:
+    """Message bytes from 32-bit words that are unique and non-zero (the MSG_FIFO reset value)."""
+    words: list[int] = []
+    seen: set[int] = set()
+    while len(words) * 4 < nbytes:
+        w = rng.getrandbits(32)
+        if w and w not in seen:
+            seen.add(w)
+            words.append(w)
+    return b"".join(w.to_bytes(4, "little") for w in words)[:nbytes]
+
+
+def _draw_hash(rng: SepSeededRng, sha: int | None = None, hmac_en: bool | None = None) -> Hash:
+    if sha is None:
+        sha = rng.choice((256, 384, 512))
+    if hmac_en is None:
+        hmac_en = bool(rng.choice((0, 1)))
+    key_row = rng.randrange(len(KEY_ROWS))
+    key_bits = rng.choice(legal_key_bits(sha)) if hmac_en else None
+    return Hash(sha, hmac_en, key_row, key_bits)
+
+
+def draw_plan(seed: int) -> Plan:
+    """Every draw of the leaf, in a fixed order, as a pure function of the seed."""
+    rng = SepSeededRng(seed)
+    order = list(range(len(LEN_CELLS)))
+    rng.shuffle(order)
+    cells = []
+    for idx in order:
+        sha, length = LEN_CELLS[idx]
+        mode = rng.choice(MODES)
+        gap = rng.randrange(0, 201)
+        rb = rng.randrange(1, 9)
+        h = _draw_hash(rng, sha=sha)
+        cells.append(Cell(h, length, mode, gap, rb, _unique_msg(rng, length)))
+    modes = list(MODES)
+    rng.shuffle(modes)
+    stall = []
+    for mode in modes:
+        h = _draw_hash(rng)
+        gap = rng.randrange(0, 201)
+        rb = rng.randrange(1, 9)
+        msg = _unique_msg(rng, STALL_MSG_BYTES)
+        probe = _unique_msg(rng, STALL_MSG_BYTES)
+        stall.append(StallLeg(h, mode, gap, rb, msg, probe))
+    fe_full = FeLeg(_draw_hash(rng), _unique_msg(rng, STALL_MSG_BYTES))
+    fe_notfull = FeLeg(_draw_hash(rng), _unique_msg(rng, 8))
+    wh = _draw_hash(rng, hmac_en=True)
+    msg1 = _unique_msg(rng, rng.randrange(1, 257))
+    msg2 = _unique_msg(rng, rng.randrange(1, 257))
+    d1 = golden_words(wh.sha, True, KEY_ROWS[wh.key_row], wh.key_bits, msg1)
+    while True:
+        w = int.from_bytes(bytes(rng.sample(range(256), 4)), "big")
+        if w not in d1:
+            break
+    return Plan(cells, stall, fe_full, fe_notfull, WipeLeg(wh, msg1, msg2, w))
+
+
+class _TrialTimeout(Exception):
+    """A bounded wait inside a trial expired; ``owner`` is the check that owns the wait."""
+
+    def __init__(self, owner: str, bound: int, what: str) -> None:
+        super().__init__(f"{owner} {what} bound={bound}")
+        self.owner = owner
+        self.bound = bound
+        self.what = what
+
+
+@pyuvm.test()
+class sep_hmac_fifo_stream_rand_test(sep_base_test):
+    """HMAC FIFO status, back-pressure, long messages, fifo_empty interrupt and secret wipe."""
+
+    required_evidence = (
+        "CHK-HMAC-STATUS",
+        "CHK-HMAC-BACKPRESSURE",
+        "CHK-HMAC-MSG",
+        "CHK-HMAC-FIFOEMPTY",
+        "CHK-HMAC-WIPE",
+    )
+
+    async def run_scenario(self) -> None:
+        seed = self.random_seed()
+        plan = draw_plan(seed)
+        self.chk = SepChkLog(self, TEST, seed)
+        self.logger.info(
+            "PLAN seed=%d cells=[%s] stalled=[%s] fe_full=%s fe_notfull=%s wipe=%s/w=0x%08x/"
+            "len1=%d/len2=%d",
+            seed,
+            ",".join(
+                f"{c.h.tag()}:{c.length}:{c.mode}:gap{c.gap}:rb{c.rb}:row{c.h.key_row}"
+                for c in plan.cells
+            ),
+            ",".join(f"{s.mode}:{s.h.tag()}:gap{s.gap}:rb{s.rb}" for s in plan.stall),
+            plan.fe_full.h.tag(),
+            plan.fe_notfull.h.tag(),
+            plan.wipe.h.tag(),
+            plan.wipe.w,
+            len(plan.wipe.msg1),
+            len(plan.wipe.msg2),
+        )
+
+        await self.bring_up_no_cpu()
+        self.dut = cocotb.top
+        self._period_ps = round(self.cfg.sys_clk_period_ns * 1000)
+        self.hmac = SepHmac(self)
+        self.swrst = SepSwReset(self)
+        self.swrst.value = SW_RESET_BASELINE
+        await self.swrst.release("hmac")
+        self.logger.info("SW_RESET_N baseline=0x%02x", SW_RESET_BASELINE)
+        self.dut.hmac_fifo_drain_stall_i.value = 0
+
+        self.samples: list[tuple[str, int, int, int]] = []
+        self.depth_at_full: int | None = None
+        self.ran_lengths: set[tuple[int, int]] = set()
+
+        # Reset values of STATUS (RDL reset: fifo_empty = 1, hmac_idle = 1).
+        await self._reset_hmac()
+        await self._status("idle", expect_reset=True)
+
+        for i, cell in enumerate(plan.cells):
+            await self._trial(self._cell_leg(cell), cell=i, len=cell.length, mode=cell.mode)
+        for leg in plan.stall:
+            await self._trial(self._stall_leg(leg), leg="stalled", mode=leg.mode)
+        d_full = None
+        try:
+            d_full = await self._fe_full_leg(plan.fe_full)
+        except _TrialTimeout as t:
+            await self._timeout_fail(t, leg="full")
+        if d_full is not None:
+            await self._trial(self._fe_notfull_leg(plan.fe_notfull, d_full), leg="notfull")
+        await self._trial(self._wipe_leg(plan.wipe), leg="wipe")
+
+        # Cross-sample relation: a depth read with fifo_full = 0 never exceeds a depth read
+        # with fifo_full = 1 (hmac.adoc:157-159).
+        full_depths = [d for _, d, f, _ in self.samples if f]
+        notfull_depths = [d for _, d, f, _ in self.samples if not f]
+        self.chk.ctrl(
+            "HMAC-STALL-FULL", bool(full_depths), phase="all", full_samples=len(full_depths)
+        )
+        if full_depths:
+            self.chk.ok(
+                "HMAC-STATUS",
+                max(notfull_depths, default=0) <= min(full_depths),
+                phase="all",
+                samples=len(self.samples),
+                max_notfull_depth=max(notfull_depths, default=0),
+                min_full_depth=min(full_depths),
+            )
+        self.chk.ctrl(
+            "HMAC-LENGTHS",
+            self.ran_lengths == set(LEN_CELLS),
+            ran=len(self.ran_lengths),
+            cells=len(LEN_CELLS),
+        )
+
+        await self._reset_hmac()
+        close_graded_window(self.logger)
+        self.chk.finish()
+
+    # ------------------------------------------------------------------ helpers
+
+    def _now_clk(self) -> int:
+        return int(get_sim_time("ps")) // self._period_ps
+
+    async def _trial(self, coro, **fields) -> None:
+        try:
+            await coro
+        except _TrialTimeout as t:
+            await self._timeout_fail(t, **fields)
+
+    async def _timeout_fail(self, t: _TrialTimeout, **fields) -> None:
+        self.chk.ok(t.owner, False, reason="timeout", wait=t.what, bound=t.bound, **fields)
+        self.dut.hmac_fifo_drain_stall_i.value = 0
+        await self._reset_hmac()
+
+    async def _reset_hmac(self) -> None:
+        """Clear SW_RESET_N bit 3, wait for the gated reset, restore, wait for an OKAY read."""
+        close_graded_window(self.logger)
+        dut = self.dut
+        await self.swrst.park("hmac")
+        for _ in range(RESET_BOUND):
+            if self.rd(dut.hmac_gated_rst_n_probe_o) == 0:
+                break
+            await ClockCycles(dut.clk_i, 1)
+        else:
+            raise AssertionError(f"hmac_gated_rst_n_probe_o not active within {RESET_BOUND} clocks")
+        await self.swrst.release("hmac")
+        assert self.swrst.value == SW_RESET_BASELINE, f"SW_RESET_N 0x{self.swrst.value:x}"
+        for _ in range(200):
+            seq = SepAxiAccessSeq(
+                "hmac_status",
+                op=SepAxiOp.READ,
+                addr=HMAC_STATUS,
+                size=2,
+                allow_ungraded_read_resp=True,
+            )
+            await self.start_seq(seq)
+            if seq.resp_ok:
+                return
+            await ClockCycles(dut.clk_i, 10)
+        raise AssertionError("HMAC STATUS read not OKAY within 200 tries after the reset")
+
+    def _open(self) -> None:
+        open_graded_window(TEST, self.logger)
+
+    async def _rd(self, addr: int) -> int:
+        return await self.hmac._rd(addr)
+
+    async def _wr(self, addr: int, data: int) -> None:
+        await self.hmac._wr(addr, data)
+
+    def _msg_seq(self, n: int, value: int) -> SepAxiAccessSeq:
+        return SepAxiAccessSeq(
+            "hmac_msg_wr",
+            op=SepAxiOp.WRITE,
+            addr=HMAC_MSG_FIFO,
+            wdata=value,
+            length=n,
+            size={4: 2, 1: 0}[n],
+        )
+
+    async def _wr_chunk(self, n: int, value: int) -> None:
+        seq = self._msg_seq(n, value)
+        await self.start_seq(seq)
+        if not seq.resp_ok:
+            raise AssertionError(f"HMAC MSG_FIFO write of {n} byte(s) not OKAY")
+
+    async def _timed_write(self, n: int, value: int) -> int:
+        """Clocks from the issue of a beat to its write response (at least 1)."""
+        cap = cocotb.start_soon(capture_resp_handshake("b"))
+        t0 = int(get_sim_time("ps"))
+        await self._wr_chunk(n, value)
+        t1 = take_handshake(cap)
+        if t1 is None:
+            raise AssertionError("no B handshake seen for a completed MSG_FIFO write")
+        return max(1, round((t1 - t0) / self._period_ps))
+
+    async def _status(self, phase: str, *, expect_reset: bool = False) -> dict:
+        """Read STATUS and grade one sample (hmac.adoc:157-160)."""
+        raw = await self._rd(HMAC_STATUS)
+        st = {
+            "depth": (raw & ST_DEPTH) >> ST_DEPTH_LSB,
+            "full": int(bool(raw & ST_FULL)),
+            "empty": int(bool(raw & ST_EMPTY)),
+            "idle": int(bool(raw & ST_IDLE)),
+        }
+        if st["full"] and self.depth_at_full is None:
+            self.depth_at_full = st["depth"]
+        cond = st["empty"] == int(st["depth"] == 0) and not (st["full"] and st["empty"])
+        extra = {}
+        if expect_reset:
+            cond = cond and st["empty"] == ST_RESET_EMPTY and st["idle"] == ST_RESET_IDLE
+            extra = {"reset_empty": ST_RESET_EMPTY, "reset_idle": ST_RESET_IDLE}
+        self.chk.ok(
+            "HMAC-STATUS",
+            cond,
+            phase=phase,
+            depth=st["depth"],
+            full=st["full"],
+            empty=st["empty"],
+            idle=st["idle"],
+            rsvd=f"0x{raw & ~ST_FIELDS & 0xFFFF_FFFF:x}",
+            **extra,
+            **{"OBS-depth_at_full": "na" if self.depth_at_full is None else self.depth_at_full},
+        )
+        self.chk.obs("HMAC-IDLE", phase=phase, idle=st["idle"])
+        self.samples.append((phase, st["depth"], st["full"], st["empty"]))
+        return st
+
+    async def _setup(self, h: Hash) -> None:
+        """CFG (sha_en = 1), the 32 KEY words of the row in HMAC mode, then hash_start."""
+        await self._wr(
+            HMAC.addr("CFG"), build_cfg(hmac_en=h.hmac_en, sha_bits=h.sha, key_bits=h.key_bits)
+        )
+        if h.hmac_en:
+            for i, word in enumerate(KEY_ROWS[h.key_row]):
+                await self._wr(HMAC_KEY_0 + 4 * i, word)
+        await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
+
+    async def _write_msg(
+        self, ch: list[tuple[int, int]], mode: str, gap: int, rb: int, phase: str
+    ) -> None:
+        for i, (n, v) in enumerate(ch):
+            await self._wr_chunk(n, v)
+            if mode == "gap" and gap:
+                await ClockCycles(self.dut.clk_i, gap)
+            if (i + 1) % rb == 0:
+                await self._status(phase)
+
+    async def _finish(self, sha: int, owner: str) -> list[int]:
+        """hash_process, poll hmac_done, STATUS sample, read DIGEST, W1C hmac_done."""
+        await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
+        t0 = self._now_clk()
+        while not (await self._rd(HMAC_INTR_STATE) & HMAC_INTR_DONE):
+            if self._now_clk() - t0 > DONE_BOUND:
+                raise _TrialTimeout(owner, DONE_BOUND, "hmac_done")
+            await ClockCycles(self.dut.clk_i, 10)
+        await self._status("idle")
+        digest = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(HMAC_DIGEST_WORDS[sha])]
+        await self._wr(HMAC_INTR_STATE, HMAC_INTR_DONE)
+        return digest
+
+    def _grade_msg(self, h: Hash, msg: bytes, mode: str, digest: list[int]) -> None:
+        golden = golden_words(h.sha, h.hmac_en, KEY_ROWS[h.key_row], h.key_bits, msg)
+        ok = digest == golden
+        self.chk.ok(
+            "HMAC-MSG",
+            ok,
+            len=len(msg),
+            mode=mode,
+            sha=h.sha,
+            hmac_en=int(h.hmac_en),
+            key_bits=h.key_bits,
+            **{"digest==golden": int(ok)},
+            digest0=f"0x{digest[0]:08x}",
+            golden0=f"0x{golden[0]:08x}",
+        )
+
+    async def _drain(self, bound: int, owner: str) -> int:
+        """Read STATUS until fifo_depth reads 0; return the clocks from the call. One read at least."""
+        t0 = self._now_clk()
+        while True:
+            st = await self._status("drain")
+            if st["depth"] == 0:
+                return self._now_clk() - t0
+            if self._now_clk() - t0 > bound:
+                raise _TrialTimeout(owner, bound, "fifo_depth==0")
+
+    async def _held_write(self, n: int, v: int):
+        """Issue a beat as a task. Returns (task, seq, B-capture task, issue time in ps)."""
+        cap = cocotb.start_soon(capture_resp_handshake("b"))
+        seq = self._msg_seq(n, v)
+        t0 = int(get_sim_time("ps"))
+        task = cocotb.start_soon(self.start_seq(seq))
+        return task, seq, cap, t0
+
+    async def _wait_task(self, task, bound: int) -> bool:
+        for _ in range(bound + 1):
+            if task.done():
+                return True
+            await RisingEdge(self.dut.clk_i)
+        return task.done()
+
+    # ------------------------------------------------------------------ legs
+
+    async def _cell_leg(self, c: Cell) -> None:
+        await self._reset_hmac()
+        self._open()
+        await self._setup(c.h)
+        await self._write_msg(chunks(c.msg, c.mode), c.mode, c.gap, c.rb, "run")
+        digest = await self._finish(c.h.sha, "HMAC-MSG")
+        self._grade_msg(c.h, c.msg, c.mode, digest)
+        self.ran_lengths.add((c.h.sha, c.length))
+
+    async def _probe_n(self, leg: StallLeg) -> int | None:
+        """Measurement run: the count of writes that complete while the drain stall is held."""
+        dut = self.dut
+        await self._reset_hmac()
+        await self._setup_stalled(leg.h)
+        ch = chunks(leg.probe, leg.mode)
+        t_wr = await self._timed_write(*ch[0])
+        count = 1
+        st = await self._status("stalled")
+        while not st["full"] and count < len(ch):
+            await self._wr_chunk(*ch[count])
+            count += 1
+            st = await self._status("stalled")
+        n_full = count
+        if not st["full"]:
+            self.chk.ctrl("HMAC-STALL-FULL", False, mode=leg.mode, writes=count, run="probe")
+            dut.hmac_fifo_drain_stall_i.value = 0
+            await self._reset_hmac()
+            return None
+        pending = None
+        for _ in range(PROBE_EXTRA_MAX):
+            if count >= len(ch):
+                break
+            task, _seq, cap, _t0 = await self._held_write(*ch[count])
+            if await self._wait_task(task, 16 * t_wr):
+                take_handshake(cap)
+                count += 1
+                continue
+            pending = (task, cap)
+            break
+        self.chk.obs(
+            "HMAC-STALL-N",
+            mode=leg.mode,
+            n_full=n_full,
+            n=count,
+            t_wr=t_wr,
+            held=int(pending is not None),
+        )
+        dut.hmac_fifo_drain_stall_i.value = 0
+        if pending is not None:
+            if not await self._wait_task(pending[0], 64 * t_wr):
+                raise AssertionError(
+                    f"measurement-run beat stays unanswered {64 * t_wr} clocks after the stall release"
+                )
+            take_handshake(pending[1])
+        await self._reset_hmac()
+        return count
+
+    async def _setup_stalled(self, h: Hash) -> None:
+        await self._wr(
+            HMAC.addr("CFG"), build_cfg(hmac_en=h.hmac_en, sha_bits=h.sha, key_bits=h.key_bits)
+        )
+        if h.hmac_en:
+            for i, word in enumerate(KEY_ROWS[h.key_row]):
+                await self._wr(HMAC_KEY_0 + 4 * i, word)
+        self.dut.hmac_fifo_drain_stall_i.value = 1
+        await ClockCycles(self.dut.clk_i, 2)
+        await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
+
+    async def _stall_leg(self, leg: StallLeg) -> None:
+        dut = self.dut
+        n = await self._probe_n(leg)
+        if n is None:
+            return
+        # The measurement run ends with an HMAC reset.
+        self._open()
+        await self._setup_stalled(leg.h)
+        ch = chunks(leg.msg, leg.mode)
+        assert len(ch) > n + 1, f"message of {len(ch)} writes cannot hold {n} + 1 writes"
+        # Clean write: the FIFO is empty, so the beat completes.
+        t_clean = await self._timed_write(*ch[0])
+        self.chk.ctrl("HMAC-BP-CLEAN", True, mode=leg.mode, clean_clk=t_clean)
+        for i in range(1, n):
+            await self._wr_chunk(*ch[i])
+            if leg.mode == "gap" and leg.gap:
+                await ClockCycles(dut.clk_i, leg.gap)
+        st = await self._status("stalled")
+        self.chk.ctrl("HMAC-STALL-FULL", st["full"] == 1, mode=leg.mode, writes=n, run="leg")
+
+        # Held beat: no other access may go on the host path during the hold.
+        hold = 16 * t_clean
+        task, seq, cap, t0 = await self._held_write(*ch[n])
+        await ClockCycles(dut.clk_i, hold)
+        no_resp = not cap.done() and not task.done()
+        dut.hmac_fifo_drain_stall_i.value = 0
+        bound = 64 * t_clean
+        answered = await self._wait_task(task, bound)
+        t_resp = take_handshake(cap)
+        resp_clk = None if t_resp is None else round((t_resp - t0) / self._period_ps)
+        if not answered:
+            self.chk.ok(
+                "HMAC-BACKPRESSURE",
+                False,
+                mode=leg.mode,
+                reason="timeout",
+                bound=bound,
+                clean_clk=t_clean,
+            )
+            raise AssertionError(
+                "held MSG_FIFO beat never answered after the stall release; the single host "
+                "path is blocked, so the leaf stops"
+            )
+        self.chk.ok(
+            "HMAC-BACKPRESSURE",
+            no_resp and seq.resp_ok,
+            mode=leg.mode,
+            full=st["full"],
+            no_resp_clk=hold if no_resp else resp_clk,
+            hold_clk=hold,
+            resp_clk=resp_clk,
+            clean_clk=t_clean,
+            resp_after_release="OKAY" if seq.resp_ok else f"code{seq.resp_code}",
+        )
+
+        await self._write_msg(ch[n + 1 :], leg.mode, leg.gap, leg.rb, "drain")
+        await self._drain(DRAIN_BOUND, "HMAC-STATUS")
+        digest = await self._finish(leg.h.sha, "HMAC-MSG")
+        self._grade_msg(leg.h, leg.msg, leg.mode, digest)
+
+    async def _fe_full_leg(self, leg: FeLeg) -> int | None:
+        dut = self.dut
+        await self._reset_hmac()
+        self._open()
+        await self._setup_stalled(leg.h)
+        ch = chunks(leg.probe, "burst")
+        st = {"full": 0}
+        writes = 0
+        while not st["full"] and writes < len(ch):
+            await self._wr_chunk(*ch[writes])
+            writes += 1
+            st = await self._status("stalled")
+        if not st["full"]:
+            self.chk.ctrl("HMAC-STALL-FULL", False, leg="full", writes=writes)
+            dut.hmac_fifo_drain_stall_i.value = 0
+            await self._reset_hmac()
+            return None
+        d_full = st["depth"]
+        dut.hmac_fifo_drain_stall_i.value = 0
+        t_drain = max(1, await self._drain(DRAIN_BOUND, "HMAC-FIFOEMPTY"))
+        await ClockCycles(dut.clk_i, 4 * t_drain)
+        intr = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
+        state = int(bool(intr & INTR_FIFO_EMPTY))
+        self.chk.ok(
+            "HMAC-FIFOEMPTY",
+            state == 1,
+            leg="full",
+            full_before=1,
+            state=state,
+            t_drain=t_drain,
+            depth_at_full=d_full,
+            writes=writes,
+        )
+        self.t_drain = t_drain
+        return d_full
+
+    async def _fe_notfull_leg(self, leg: FeLeg, d_full: int) -> None:
+        dut = self.dut
+        await self._reset_hmac()
+        self._open()
+        await self._setup(leg.h)
+        ch = chunks(leg.probe, "burst")[:2]
+        self.chk.ctrl("HMAC-FE-DEPTH", d_full > len(ch), writes=len(ch), depth_at_full=d_full)
+        for n, v in ch:
+            await self._wr_chunk(n, v)
+            await self._status("run")
+        await self._drain(4 * self.t_drain, "HMAC-STATUS")
+        await ClockCycles(dut.clk_i, 4 * self.t_drain)
+        intr = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
+        state = int(bool(intr & INTR_FIFO_EMPTY))
+        self.chk.ok(
+            "HMAC-FIFOEMPTY",
+            state == 0,
+            leg="notfull",
+            full_before=0,
+            state=state,
+            t_drain=self.t_drain,
+            writes=len(ch),
+        )
+
+    async def _wipe_leg(self, leg: WipeLeg) -> None:
+        h = leg.h
+        n_words = HMAC_DIGEST_WORDS[h.sha]
+        await self._reset_hmac()
+        self._open()
+        await self._setup(h)
+        await self._write_msg(chunks(leg.msg1, "burst"), "burst", 0, 8, "run")
+        d1 = await self._finish(h.sha, "HMAC-WIPE")
+        self._grade_msg(h, leg.msg1, "burst", d1)
+        g1 = golden_words(h.sha, True, KEY_ROWS[h.key_row], h.key_bits, leg.msg1)
+        self.chk.ctrl(
+            "HMAC-WIPE-PRE",
+            d1 == g1 and leg.w not in d1,
+            w=f"0x{leg.w:08x}",
+            digest_eq_golden=int(d1 == g1),
+        )
+
+        # hmac.hjson:420-425: the value overwrites the secret key and the digest; a 64-bit
+        # word of SHA-384/512 holds the 32-bit value twice, so every DIGEST word reads w.
+        await self._wr(HMAC_WIPE_SECRET, leg.w)
+        after = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n_words)]
+        digest_all_w = all(x == leg.w for x in after)
+
+        # The next HMAC writes CFG and no KEY word, so it hashes with a key of all-w words.
+        await self._wr(
+            HMAC.addr("CFG"), build_cfg(hmac_en=True, sha_bits=h.sha, key_bits=h.key_bits)
+        )
+        await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
+        await self._write_msg(chunks(leg.msg2, "burst"), "burst", 0, 8, "run")
+        d2 = await self._finish(h.sha, "HMAC-WIPE")
+        g2 = golden_words(h.sha, True, [leg.w] * 32, h.key_bits, leg.msg2)
+        key_ok = d2 == g2
+        self.chk.ok(
+            "HMAC-WIPE",
+            digest_all_w and key_ok,
+            sha=h.sha,
+            klen=h.key_bits,
+            w=f"0x{leg.w:08x}",
+            words=n_words,
+            digest_all_w=int(digest_all_w),
+            **{"key_half_digest==golden_key_w": int(key_ok)},
+            digest_after0=f"0x{after[0]:08x}",
+        )

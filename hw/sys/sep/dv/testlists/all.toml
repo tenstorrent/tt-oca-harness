@@ -38,8 +38,10 @@ tests = ["sep_axi_smoke_test"]
 # the size. `rom_fw` is not a member: it runs a third RTL target and states
 # firmware rather than hardware contracts. `all` is the coverage set.
 #
-# Eleven members are pinned to one simulator, so a single-simulator run of `all`
+# Twelve members are pinned to one simulator, so a single-simulator run of `all`
 # logs the members pinned to the other simulator as skipped_wrong_tool:
+# - sep_crypto_shadow_update_err_rand_test, VCS only (crypto.toml). It grades that the
+#   reads after an AES reset carry no X, which only a four-state simulator shows.
 # - sep_km_ic_reset_release_test, VCS only (km.toml). Its contract is the
 #   prim_rom noXOnCsI assertion. Verilator is two-state and prim_assert.sv
 #   compiles RTL assertions out under it, so that check cannot fail there.
@@ -62,7 +64,7 @@ tests = ["sep_axi_smoke_test"]
 #   (memory.toml), as its run mode states. It needs the TCM controller of the
 #   full CPU, which the CPU stub does not have.
 name = "all"
-expected_count = 189
+expected_count = 202
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -253,6 +255,19 @@ tests = [
     "sep_cpu_demux_unmapped_fetch_test",
     "sep_tcm_ecc_cpu_trap_test",
     "sep_cpu_isa_pmp_csr_test",
+    "sep_hmac_illegal_cfg_start_test",
+    "sep_hmac_fifo_stream_rand_test",
+    "sep_hmac_swap_context_rand_test",
+    "sep_crypto_delivered_key_select_rand_test",
+    "sep_aes_encoding_inject_rand_test",
+    "sep_aes_stream_status_rand_test",
+    "sep_aes_reseed_trigger_rand_test",
+    "sep_crypto_shadow_update_err_rand_test",
+    "sep_kmac_unsupported_cfg_inject_test",
+    "sep_kmac_stream_cfg_rand_test",
+    "sep_kmac_entropy_mode_rand_test",
+    "sep_otbn_cmd_status_rand_test",
+    "sep_abr_command_matrix_rand_test",
 ]
 
 [[groups]]
@@ -450,6 +465,19 @@ tests = [
     "sep_cpu_ctrl_reg_shape_test",
     "sep_timer_clock_contract_test",
     "sep_sram_axi_shape_matrix_test",
+    "sep_hmac_illegal_cfg_start_test",
+    "sep_hmac_fifo_stream_rand_test",
+    "sep_hmac_swap_context_rand_test",
+    "sep_crypto_delivered_key_select_rand_test",
+    "sep_aes_encoding_inject_rand_test",
+    "sep_aes_stream_status_rand_test",
+    "sep_aes_reseed_trigger_rand_test",
+    "sep_crypto_shadow_update_err_rand_test",
+    "sep_kmac_unsupported_cfg_inject_test",
+    "sep_kmac_stream_cfg_rand_test",
+    "sep_kmac_entropy_mode_rand_test",
+    "sep_otbn_cmd_status_rand_test",
+    "sep_abr_command_matrix_rand_test",
 ]
 
 [[groups]]
@@ -777,4 +805,27 @@ tests = [
     "sep_spi_ot_flash_cmd_rand_test",
     "sep_spi_ot_dma_tx_test",
     "sep_spi_cold_reset_values_rand_test",
+]
+
+[[groups]]
+# Convenience group of the crypto and entropy tests.
+# It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
+name = "phase3_crypto_entropy"
+expected_count = 15
+tests = [
+    "sep_irq_ip_to_aggregator_test",
+    "sep_crypto_edn_multisink_arbitration_test",
+    "sep_hmac_illegal_cfg_start_test",
+    "sep_hmac_fifo_stream_rand_test",
+    "sep_hmac_swap_context_rand_test",
+    "sep_crypto_delivered_key_select_rand_test",
+    "sep_aes_encoding_inject_rand_test",
+    "sep_aes_stream_status_rand_test",
+    "sep_aes_reseed_trigger_rand_test",
+    "sep_crypto_shadow_update_err_rand_test",
+    "sep_kmac_unsupported_cfg_inject_test",
+    "sep_kmac_stream_cfg_rand_test",
+    "sep_kmac_entropy_mode_rand_test",
+    "sep_otbn_cmd_status_rand_test",
+    "sep_abr_command_matrix_rand_test",
 ]
