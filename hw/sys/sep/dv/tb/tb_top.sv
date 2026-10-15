@@ -542,7 +542,7 @@ module sep_uvm_top
     // (the vendored VeeR tap has no reset-vector TDR).
     // ------------------------------------------------------------------
     sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_w;
-    logic       spi_four_lane_q;
+    bit         spi_four_lane_q;
     logic [3:0] spi_rsp_sd_w;
     // The irq field of the SPI request, selected by name, so a leaf that
     // samples it does not depend on the struct layout.

@@ -45,7 +45,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from ocah_spi_vip import OcahSpiFlash, command_format, lanes_to_bytes
+from ocah_spi_vip import OcahSpiFlash, OcahSpiOpcode, command_format, lanes_to_bytes
 
 from env.sep_spi_wire_monitor import SepSpiWireMonitor
 
@@ -233,7 +233,11 @@ class SepSpiScoreboard:
             fmt = command_format(rec["opcode"])
             if fmt is None:
                 continue
-            if exp.kind == "tx" and not fmt.response and rec["addr"] == exp.addr:
+            if (
+                exp.kind == "tx"
+                and rec["opcode"] == int(OcahSpiOpcode.PAGE_PROGRAM)
+                and rec["addr"] == exp.addr
+            ):
                 return i
             if exp.kind == "rx" and fmt.response and rec["opcode"] == exp.opcode:
                 return i
