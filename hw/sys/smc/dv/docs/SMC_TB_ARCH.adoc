@@ -739,9 +739,9 @@ Sub-cycle pulses between sampling edges are outside this check.
 After the no-start check, each wide-register strobe pass issues a real
 one-word Zeroer command to the last SPM word and requires the known sample
 count to change. A dead tap or counter fails the same run's positive control.
-The command completes before DEST_ADDR/SIZE are restored. The scratch word
-is left zero through SEP_IN so the ingress-only SPM model sees its final state;
-no other initiator may use that word during the pass.
+The command completes before DEST_ADDR/SIZE are restored and read back.
+The scratch word is left zero through SEP_IN so the ingress-only SPM model
+sees its final state; no other initiator may use that word during the pass.
 
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`

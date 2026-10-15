@@ -16,9 +16,9 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
   localparam string ChkRestoreNonvac = "CHK-REGBLOCK-WIDE-RESTORE-NONVAC";
   localparam string ChkNoZeroerStart = "CHK-REGBLOCK-WIDE-NO-ZEROER-START";
   localparam string ChkBusyControl = "CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL";
-  // DEST and SIZE writes and their restores are catalogued-word comparisons.
-  localparam int unsigned ControlComparisons = 4;
-  localparam int unsigned ControlFixedAccesses = 6;
+  // DEST and SIZE setup/restore writes and restore reads are catalogued comparisons.
+  localparam int unsigned ControlComparisons = 6;
+  localparam int unsigned ControlFixedAccesses = 8;
   localparam int unsigned ControlPollBound = 4096;
   localparam bit [63:0] ControlTarget = SmcSpmBase + SmcSpmSize - SmcMemBytes;
   localparam string ChkLaneCoverage = "CHK-REGBLOCK-WIDE-LANE-COVERAGE";
@@ -286,6 +286,10 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
       mem_write(SmcZeroerSizeAddr, ZEROER_CTRL_SIZE_REG_DEFAULT, "Zeroer control size restore");
       mem_write(SmcZeroerDestAddr, ZEROER_CTRL_DEST_ADDR_REG_DEFAULT,
                 "Zeroer control destination restore");
+      mem_read_check(ChkRestore, SmcZeroerSizeAddr, ZEROER_CTRL_SIZE_REG_DEFAULT,
+                     "Zeroer control size restore readback");
+      mem_read_check(ChkRestore, SmcZeroerDestAddr, ZEROER_CTRL_DEST_ADDR_REG_DEFAULT,
+                     "Zeroer control destination restore readback");
       // The SPM model sees ingress writes, not Zeroer writes; leave the scratch word known.
       mem_write(ControlTarget, 0, "SPM control scratch word");
       predicted_accesses += ControlFixedAccesses + control_polls;
