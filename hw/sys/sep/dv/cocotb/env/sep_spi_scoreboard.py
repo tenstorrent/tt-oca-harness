@@ -97,6 +97,8 @@ class SepSpiScoreboard:
 
     def expect_tx(self, addr: int, data: bytes, *, label: str = "") -> None:
         """A program the stimulus sent: ``data`` must reach the wire and the flash at ``addr``."""
+        if not data:
+            raise ValueError(f"expect_tx addr=0x{addr:06x}: a program carries at least one byte")
         self._expects.append(_Expect("tx", None, addr, bytes(data), label))
 
     def expect_rx(self, opcode: int, data: bytes, *, label: str = "") -> None:
@@ -147,18 +149,21 @@ class SepSpiScoreboard:
             used.add(index)
             rec = records[index]
             frame = frames[index] if index < len(frames) else None
+            n = len(exp.data)
             if exp.kind == "tx":
-                wire = _wire_data(frame, rec["opcode"], self._addr_bytes, response=False)
+                got = _wire_data(frame, rec["opcode"], self._addr_bytes, response=False)
                 device = bytes(rec["data_in"])
-                ok = bool(rec["ok"]) and wire == exp.data and device == exp.data
             else:
-                n = len(exp.data)
-                wire = _wire_data(frame, rec["opcode"], self._addr_bytes, response=True)[:n]
+                got = _wire_data(frame, rec["opcode"], self._addr_bytes, response=True, limit=n)
                 device = bytes(rec["data_out"])[:n]
-                ok = n > 0 and wire == exp.data and device == exp.data
+            wire = b"" if got is None else got[:n] if exp.kind == "rx" else got
+            ok = n > 0 and got is not None and wire == exp.data and device == exp.data
+            if exp.kind == "tx":
+                ok = ok and bool(rec["ok"])
             line = (
                 f"{exp.label} record={index} opcode=0x{rec['opcode']:02x} addr=0x{rec['addr']:06x} "
-                f"bytes={len(exp.data)} expected={exp.data.hex()} wire={wire.hex()} "
+                f"bytes={len(exp.data)} expected={exp.data.hex()} "
+                f"wire={'X/Z' if got is None else wire.hex()} "
                 f"device={device.hex()} accepted={rec['ok']}"
             )
             if not ok:
@@ -200,11 +205,11 @@ class SepSpiScoreboard:
                     field_index = 0 if kind == "tx" else 2
                     shift = 0 if kind == "tx" or lanes > 1 else 1
                     got = _decode(beats[pos : pos + clocks], field_index, lanes, shift)
-                    wire.append(f"{kind}x{lanes}:{got.hex()}")
+                    wire.append(f"{kind}x{lanes}:{'X/Z' if got is None else got.hex()}")
                     ok = ok and got == bytes(value)
                     if kind == "rx":
                         rx_driven += bytes(value)
-                        rx_wire += got
+                        rx_wire += got or b""
                 pos += clocks
             ok = ok and exp.delivered == bytes(rx_driven)
             line = (
@@ -235,8 +240,14 @@ class SepSpiScoreboard:
         return None
 
 
-def _wire_data(frame: dict | None, opcode: int, addr_bytes: int, *, response: bool) -> bytes:
-    """The monitor's decode of a frame's data phase at the command's lane width."""
+def _wire_data(
+    frame: dict | None, opcode: int, addr_bytes: int, *, response: bool, limit: int | None = None
+) -> bytes | None:
+    """The monitor's decode of a frame's data phase at the command's lane width.
+
+    ``None`` when a bit of the first ``limit`` bytes (all bytes by default)
+    was sampled as X/Z.
+    """
     if frame is None:
         return b""
     fmt = command_format(opcode)
@@ -244,11 +255,12 @@ def _wire_data(frame: dict | None, opcode: int, addr_bytes: int, *, response: bo
         return b""
     beats = frame.get("beats") or ()
     if fmt.data_lanes == 1 or not beats:
+        if response and any(limit is None or i < limit for i in frame.get("data_miso_xz", ())):
+            return None
         return bytes(frame["data_miso"] if response else frame["data_mosi"])
     start = fmt.input_clocks(addr_bytes) if response else 8 * (1 + addr_bytes)
-    field_index = 2 if response else 0
-    values = [beat[field_index] or 0 for beat in beats[start:]]
-    return bytes(lanes_to_bytes(values, fmt.data_lanes)[0])
+    stop = None if limit is None else start + limit * 8 // fmt.data_lanes
+    return _decode(beats[start:stop], 2 if response else 0, fmt.data_lanes, 0)
 
 
 def _segment_clocks(segment: tuple[int, str, Any]) -> int:
@@ -256,9 +268,14 @@ def _segment_clocks(segment: tuple[int, str, Any]) -> int:
     return int(value) if kind == "dummy" else len(bytes(value)) * 8 // lanes
 
 
-def _decode(beats: Sequence[tuple], field_index: int, lanes: int, shift: int) -> bytes:
-    """Bytes of ``beats`` on ``lanes`` lanes of one beat field, lane ``shift`` first."""
-    values = [((beat[field_index] or 0) >> shift) for beat in beats]
+def _decode(beats: Sequence[tuple], field_index: int, lanes: int, shift: int) -> bytes | None:
+    """Bytes of ``beats`` on ``lanes`` lanes of one beat field, lane ``shift`` first.
+
+    ``None`` when the field is X/Z at one of the beats.
+    """
+    if any(beat[field_index] is None for beat in beats):
+        return None
+    values = [beat[field_index] >> shift for beat in beats]
     return bytes(lanes_to_bytes(values, lanes)[0])
 
 

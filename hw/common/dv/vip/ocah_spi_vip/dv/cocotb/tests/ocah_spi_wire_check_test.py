@@ -23,8 +23,16 @@ violation, and no other:
   edge of the running clock.
 * ``CHK-SPI-WIRE-SCK-IDLE``: SCK leaves the CPOL level while chip-select is
   high.
-* ``CHK-SPI-WIRE-XZ``: MOSI is X at a sample edge. A 2-state simulator
-  cannot hold X, so the leg runs on a 4-state simulator only.
+* ``CHK-SPI-WIRE-XZ``: MOSI is X at a sample edge, and MOSI is X between a
+  shift edge and the next sample edge and resolves before that sample edge.
+  A 2-state simulator cannot hold X, so the legs run on a 4-state simulator
+  only.
+
+``CHK-SPI-MON-WHOLE-BYTES``: a PAGE PROGRAM frame that ends three bits into
+its second payload byte reports the one complete payload byte as data, and
+its ``bit_count`` keeps the three extra bits. ``CHK-SPI-MON-RX-XZ`` (4-state
+simulator only): a READ STATUS REGISTER 1 frame whose response bit is X has
+that response byte in ``data_miso_xz``.
 
 ``CHK-SPI-WIRE-STOP``: ``stop()`` raises ``OcahSpiMonitorError`` after the
 violations. The flash model is stopped before any frame: it answers Mode 0
@@ -51,9 +59,24 @@ REQUIRED_IDS = (
     "CHK-SPI-WIRE-MOSI-EDGE",
     "CHK-SPI-WIRE-SCK-IDLE",
     "CHK-SPI-WIRE-STOP",
-) + (("CHK-SPI-WIRE-XZ",) if FOUR_STATE else ())
+    "CHK-SPI-MON-WHOLE-BYTES",
+) + (("CHK-SPI-WIRE-XZ", "CHK-SPI-MON-RX-XZ") if FOUR_STATE else ())
 
 MODES = ((0, 0), (0, 1), (1, 0), (1, 1))
+
+
+def _miso_value(handle: Any, value: Any) -> Any:
+    """``value`` as the handle takes it; ``"x"`` becomes a one-bit logic value."""
+    if not isinstance(value, str):
+        return value
+    try:
+        from cocotb.types import Logic  # cocotb 2.x
+
+        return Logic(value)
+    except ImportError:  # cocotb 1.x
+        from cocotb.binary import BinaryValue
+
+        return BinaryValue(value, n_bits=len(handle))
 
 
 @cocotb.test()
@@ -201,6 +224,23 @@ async def ocah_spi_wire_check_test(dut) -> None:
 
     await leg("CHK-SPI-WIRE-SCK-IDLE", ["sck_while_idle"], sck_while_idle, context="mode=00")
 
+    async def program_tail() -> None:
+        set_mode(0, 0)
+        await bfm.drive(hold_ns=2 * half)
+        frame = bytes([OcahSpiOpcode.PAGE_PROGRAM]) + (0x12345).to_bytes(3, "big") + b"\xa5"
+        bits = [(byte >> i) & 1 for byte in frame for i in range(7, -1, -1)]
+        await bfm.raw_frame(bits + [1, 0, 1])
+
+    mark = len(monitor.get_transactions())
+    await leg("CHK-SPI-WIRE-LEGAL", [], program_tail, context="mode=00 program_tail")
+    tail = monitor.get_transactions()[mark:]
+    checker.expect_equal(
+        "CHK-SPI-MON-WHOLE-BYTES",
+        [(t["opcode"], t["addr"], t["data_mosi"], t["bit_count"]) for t in tail],
+        [(int(OcahSpiOpcode.PAGE_PROGRAM), 0x12345, b"\xa5", 43)],
+        context="PAGE PROGRAM with one payload byte and three tail bits",
+    )
+
     if FOUR_STATE:
 
         async def mosi_x() -> None:
@@ -212,6 +252,51 @@ async def ocah_spi_wire_check_test(dut) -> None:
             await bfm.drive(cs_n=1)
 
         await leg("CHK-SPI-WIRE-XZ", ["xz"], mosi_x, context="mode=00 mosi=X")
+
+        async def mosi_x_between_edges() -> None:
+            set_mode(0, 0)
+            await bfm.drive(hold_ns=2 * half)
+            await bfm.drive(cs_n=0, mosi=1)
+            await bfm.drive(sclk=1)  # sample edge with MOSI at 1
+            await bfm.drive(sclk=0, hold_ns=half // 4)  # shift edge
+            await bfm.drive(mosi="x", hold_ns=half // 4)  # X inside the shift half period
+            await bfm.drive(mosi=0, hold_ns=half - 2 * (half // 4))  # resolves before sampling
+            await bfm.drive(sclk=1)  # sample edge with MOSI at 0
+            await bfm.drive(sclk=0)
+            await bfm.drive(cs_n=1)
+
+        await leg(
+            "CHK-SPI-WIRE-XZ",
+            ["xz"],
+            mosi_x_between_edges,
+            context="mode=00 mosi=X between a shift and a sample edge",
+        )
+
+        async def status_rx_x() -> None:
+            set_mode(0, 0)
+            await bfm.drive(hold_ns=2 * half)
+            await bfm.drive(cs_n=0)
+            response = [1, 0, "x", 1, 0, 1, 1, 0]
+            for i, bit in enumerate(
+                [(int(OcahSpiOpcode.READ_SR1) >> k) & 1 for k in range(7, -1, -1)] + [0] * 8
+            ):
+                miso = response[i - 8] if i >= 8 else 0
+                dut.spi_miso.value = _miso_value(dut.spi_miso, miso)
+                await bfm.drive(mosi=bit)
+                await bfm.drive(sclk=1)
+                await bfm.drive(sclk=0)
+            await bfm.drive(cs_n=1)
+            dut.spi_miso.value = 0
+
+        mark = len(monitor.get_transactions())
+        await leg("CHK-SPI-WIRE-LEGAL", [], status_rx_x, context="mode=00 status_rx_x")
+        rx = monitor.get_transactions()[mark:]
+        checker.expect_equal(
+            "CHK-SPI-MON-RX-XZ",
+            [(t["opcode"], len(t["data_miso"]), t["data_miso_xz"]) for t in rx],
+            [(int(OcahSpiOpcode.READ_SR1), 1, (0,))],
+            context="READ STATUS REGISTER 1 with response bit 5 at X",
+        )
     else:
         log.info("OBS-SPI-WIRE-XZ graded=0 reason=2-state simulator holds no X")
 

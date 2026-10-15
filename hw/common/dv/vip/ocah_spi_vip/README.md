@@ -334,8 +334,13 @@ after the command, address, and dummy phases), `bit_count`, `input_bits`
 phase; `bit_count` otherwise), `input_clocks` (clocks of the command, address
 and dummy phases of a command with a response phase at its lane widths;
 `bit_count` otherwise), `opcode_complete`, `cpol`, `cpha`, `wire_errors`,
-`beats`, `start_ns`, `end_ns`.  A command without a response or payload
-phase carries empty data.  `data_mosi` and `data_miso` are the single-lane
+`beats`, `miso_idle` (response lane level when chip-select fell),
+`miso_raw` (response lane level at each sample edge), `data_miso_xz`
+(indices of `data_miso` bytes with a bit sampled as X/Z, which reads as 0),
+`start_ns`, `end_ns`; a level is `None` for X/Z.  A command without a
+response or payload phase carries empty data.  The data fields hold complete
+bytes only: a byte left incomplete when chip-select rises is not data
+(`bit_count` gives its bits).  `data_mosi` and `data_miso` are the single-lane
 decode (lane 0 out, lane 1 in).  With `sd_out`, `beats` holds one
 `(lanes out, output enables, lanes in)` tuple per sample edge (`None` for
 X/Z), and `lanes_to_bytes` decodes a dual or quad phase from it; with
@@ -352,7 +357,7 @@ pins:
 | `idle_at_cs_rise` | SCK is at the CPOL level when chip-select rises |
 | `mosi_edge` | While chip-select is low, MOSI does not change on a sample edge, nor after a sample edge and before the next shift edge of the running clock (within 1.5 half periods of the sample edge) |
 | `sck_while_idle` | While chip-select is high, SCK moves only to the CPOL level |
-| `xz` | While chip-select is low, chip-select, SCK and MOSI (with `sd_out`, every driven lane) resolve to 0 or 1; while chip-select is not low (reset included) an X/Z is not graded |
+| `xz` | At every settled time step while chip-select is low, chip-select, SCK and MOSI (with `sd_out`, every lane whose output enable is on, and the output enables) resolve to 0 or 1; one X/Z episode is one violation; while chip-select is not low (reset included) an X/Z is not graded |
 | `oe_idle` | With `sd_oe`: no data lane output enable rises, or is on at an SCK edge, while chip-select is high |
 | `oe_lanes` | With `sd_oe`: at each sample edge the data lane output enables are none, lane 0, lanes 1:0 or lanes 3:0 |
 | `oe_ctrl` | With `cs_oe`/`sck_oe`: both are on at each sample edge. Derived, not stated in a pin table: a sample edge needs a driven chip-select low and a driven clock edge, and an undriven pad does not carry them |
@@ -408,7 +413,7 @@ rules and their identifiers:
 | `CHK-SPI-NONVAC-PROGRAM` | An accepted program cleared at least one bit |
 | `CHK-SPI-NONVAC-READ` | A read returned at least one byte that is not 0xFF |
 | `CHK-SPI-NONVAC-ERASE` | An accepted erase returned at least one programmed byte to 0xFF |
-| `CHK-SPI-UNSUPPORTED` | The out-of-scope opcodes seen are exactly the expected ones and drew no response or payload |
+| `CHK-SPI-UNSUPPORTED` | `check_unsupported(expected, frames=monitor_frames)`: the out-of-scope opcodes seen are exactly the expected ones, each one is recorded as not accepted, and in the monitor frame of each one the response lane resolved and held its level from the chip-select fall at every sample edge (the device drove no response) |
 
 `finalize()` fails on any failed record, any required identifier never
 recorded, or zero records.  With `raise_on_error=True` (the default) the

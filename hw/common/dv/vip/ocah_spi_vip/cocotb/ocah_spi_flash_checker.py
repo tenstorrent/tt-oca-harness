@@ -520,19 +520,44 @@ class OcahSpiFlashChecker:
             )
         return passed
 
-    def check_unsupported(self, expected: Iterable[int], *, context: str = "") -> bool:
-        """The out-of-scope opcodes seen are exactly ``expected`` and drew no response."""
+    def check_unsupported(
+        self,
+        expected: Iterable[int],
+        *,
+        frames: Sequence[Mapping[str, Any]],
+        context: str = "",
+    ) -> bool:
+        """The out-of-scope opcodes seen are exactly ``expected`` and drew no response.
+
+        ``frames`` are the monitor's frames of the same bus. The device drew
+        no response when, in the monitor frame of each out-of-scope opcode,
+        the response lane resolved and held its level from the chip-select
+        fall at every sample edge: what the controller sampled, not the
+        device's own record.
+        """
         seen = sorted(rec.opcode for rec in self.unsupported)
         wanted = sorted(int(op) & 0xFF for op in expected)
-        silent = all(
-            not rec.ok and not rec.data_out and not rec.data_in for rec in self.unsupported
-        )
+        refused = all(not rec.ok for rec in self.unsupported)
+        on_wire = [
+            frame
+            for frame in frames
+            if frame["opcode_complete"] and int(frame["opcode"]) in set(seen)
+        ]
+        driven = [
+            f"0x{int(frame['opcode']):02x}@{frame['start_ns']}"
+            for frame in on_wire
+            if frame["miso_idle"] is None
+            or any(level != frame["miso_idle"] for level in frame["miso_raw"])
+        ]
+        samples = sum(len(frame["miso_raw"]) for frame in on_wire)
+        silent = len(on_wire) == len(seen) and samples > 0 and not driven
         return self.expect_true(
             "CHK-SPI-UNSUPPORTED",
-            seen == wanted and silent,
+            seen == wanted and refused and silent,
             context=(
                 f"seen={[f'0x{op:02x}' for op in seen]} "
-                f"expected={[f'0x{op:02x}' for op in wanted]} silent={silent} {context}"
+                f"expected={[f'0x{op:02x}' for op in wanted]} refused={refused} "
+                f"wire_frames={len(on_wire)} miso_samples={samples} driven={driven} {context}"
             ),
         )
 

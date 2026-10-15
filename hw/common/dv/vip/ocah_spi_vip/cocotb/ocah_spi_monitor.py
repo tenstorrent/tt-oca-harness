@@ -16,8 +16,9 @@ Each completed transaction is reported as a plain dict::
         "opcode":    int,          # 8-bit command byte
         "addr":      int,          # decoded address (0 if no address)
         "has_addr":  bool,         # True if command carries an address
-        "data_mosi": bytes,        # payload bytes on MOSI/DQ0 after the address (PAGE PROGRAM)
-        "data_miso": bytes,        # response bytes on MISO/DQ0 after the command, address, and dummy phases
+        "data_mosi": bytes,        # complete payload bytes on MOSI/DQ0 after the address (PAGE PROGRAM)
+        "data_miso": bytes,        # complete response bytes on MISO/DQ0 after the command, address, and dummy phases
+        "data_miso_xz": tuple,     # indices of data_miso bytes with a bit sampled as X/Z
         "bit_count": int,          # total bits observed in this transaction
         "input_bits": int,         # command, address and dummy bits of a single-
                                    # lane command with a response phase;
@@ -32,6 +33,8 @@ Each completed transaction is reported as a plain dict::
         "beats":     tuple,        # with the four-lane taps: one
                                    # (lanes out, output enables, lanes in)
                                    # per sample edge, None for X/Z
+        "miso_idle": int or None,  # response lane level when chip-select fell, None for X/Z
+        "miso_raw":  tuple,        # response lane level at each sample edge, None for X/Z
         "start_ns":  float or None,
         "end_ns":    float or None,
     }
@@ -62,9 +65,11 @@ other SCK edge is the shift edge.  It grades the controller's pins:
                       the first SCK edge, or after the last edge is legal
 ``sck_while_idle``    while chip-select is high, SCK moves only to the CPOL
                       level
-``xz``                while chip-select is low, chip-select, SCK and MOSI
-                      (every driven lane with the four-lane taps) resolve to
-                      0 or 1
+``xz``                at every settled time step while chip-select is low,
+                      chip-select, SCK and MOSI (with the four-lane taps,
+                      every lane whose output enable is on, and the output
+                      enables) resolve to 0 or 1; one X/Z episode is one
+                      violation
 ``oe_idle``           with ``sd_oe``: no data lane output enable rises, or is
                       on at an SCK edge, while chip-select is high
 ``oe_lanes``          with ``sd_oe``: at each sample edge the data lane output
@@ -440,8 +445,9 @@ class OcahSpiMonitor:
         sample_level = 1 if cpol == cpha else 0
         errors: List[str] = []
         mosi_bits: List[int] = []
-        miso_bits: List[int] = []
         beats: List[Tuple[Optional[int], Optional[int], Optional[int]]] = []
+        miso_raw: List[Optional[int]] = []
+        miso_idle = self._miso_level()
 
         sck_prev = _level(self._sclk)
         if sck_prev != cpol:
@@ -451,6 +457,7 @@ class OcahSpiMonitor:
                 f"SCK={_fmt(sck_prev)} at chip-select fall at {start_ns} ns (CPOL={cpol})",
             )
         out_prev = self._driven_lanes()
+        xz_prev = self._grade_xz(errors, start_ns, None)
         mosi_change_ns: Optional[float] = None
         last_edge_ns: Optional[float] = None
         last_edge_sample = False
@@ -473,6 +480,7 @@ class OcahSpiMonitor:
                 if cs is None:
                     self._violate(errors, "xz", f"chip-select is X/Z at {now} ns")
                 break
+            xz_prev = self._grade_xz(errors, now, xz_prev)
 
             sck = _level(self._sclk)
             if sck != sck_prev:
@@ -486,7 +494,8 @@ class OcahSpiMonitor:
                         self._violate(
                             errors, "mosi_edge", f"MOSI changed at a sample edge at {now} ns"
                         )
-                    self._sample_edge(errors, now, mosi_bits, miso_bits, beats)
+                    self._sample_edge(errors, now, mosi_bits, beats)
+                    miso_raw.append(self._miso_level())
                 elif pending is not None:
                     changed, sampled, half = pending
                     if half is None or now - sampled <= 1.5 * half:
@@ -525,8 +534,15 @@ class OcahSpiMonitor:
             )
         end_ns = _sim_time_ns()
 
-        txn = self._decode(mosi_bits, miso_bits, start_ns, end_ns, beats)
-        txn.update(cpol=cpol, cpha=cpha, wire_errors=tuple(errors), beats=tuple(beats))
+        txn = self._decode(mosi_bits, miso_raw, start_ns, end_ns, beats)
+        txn.update(
+            cpol=cpol,
+            cpha=cpha,
+            wire_errors=tuple(errors),
+            beats=tuple(beats),
+            miso_idle=miso_idle,
+            miso_raw=tuple(miso_raw),
+        )
         self._history.append(txn)
         if len(self._history) > self._max_history:
             self._history.pop(0)
@@ -568,22 +584,16 @@ class OcahSpiMonitor:
             return None if bit is None else (bit, 1)
         return (0, 0)
 
-    def _sample_edge(self, errors, now, mosi_bits, miso_bits, beats) -> None:
+    def _sample_edge(self, errors, now, mosi_bits, beats) -> None:
         """Record one sample edge: the lane bits, the beat, and the output-enable checks."""
         mosi = self._mosi
         if mosi is None and self._sd_out is not None:
             value = _vector(self._sd_out)
             oe = _vector(self._sd_oe) if self._sd_oe is not None else 1
             lane0 = None if value is None or oe is None else value & 1
-            if lane0 is None and (oe is None or oe & 1):
-                self._violate(errors, "xz", f"lane 0 is X/Z at the sample edge at {now} ns")
             mosi_bits.append(lane0 or 0)
         else:
-            mosi_bits.append(self._sample_bit(mosi, errors, "MOSI", now))
-        if self._miso is not None:
-            miso_bits.append(_level(self._miso) or 0)
-        elif self._sd_in is not None:
-            miso_bits.append(((_vector(self._sd_in) or 0) >> 1) & 1)
+            mosi_bits.append(0 if mosi is None else _level(mosi) or 0)
         if self._sd_out is None:
             return
         out, oe, inp = _vector(self._sd_out), _vector(self._sd_oe), _vector(self._sd_in)
@@ -593,8 +603,6 @@ class OcahSpiMonitor:
                 self._violate(
                     errors, "oe_lanes", f"data lane output enable {_fmt_vec(oe)} at {now} ns"
                 )
-            elif oe and _has_xz(self._sd_out, oe):
-                self._violate(errors, "xz", f"a driven data lane is X/Z at {now} ns")
         for handle, what in ((self._cs_oe, "chip-select"), (self._sck_oe, "clock")):
             if handle is not None and _level(handle) != 1:
                 self._violate(
@@ -604,15 +612,38 @@ class OcahSpiMonitor:
                     f"at {now} ns",
                 )
 
-    def _sample_bit(self, sig, errors: List[str], what: str, now) -> int:
-        """Level of ``sig`` at a sample edge; X/Z is a violation and reads as 0."""
-        if sig is None:
-            return 0
-        bit = _level(sig)
-        if bit is None:
-            self._violate(errors, "xz", f"{what} is X/Z at the sample edge at {now} ns")
-            return 0
-        return bit
+    def _miso_level(self) -> Optional[int]:
+        """The response lane into the controller (MISO, or lane 1 in); ``None`` when X/Z."""
+        if self._miso is not None:
+            return _level(self._miso)
+        if self._sd_in is not None:
+            lanes = _vector(self._sd_in)
+            return None if lanes is None else (lanes >> 1) & 1
+        return 0
+
+    def _driven_xz(self) -> Optional[str]:
+        """What the controller drives as X/Z at this step; ``None`` when every driven pin resolves."""
+        if self._sd_out is not None:
+            oe = 0xF if self._sd_oe is None else _vector(self._sd_oe)
+            if oe is None:
+                return "a data lane output enable is X/Z"
+            if oe and _has_xz(self._sd_out, oe):
+                return f"a driven data lane is X/Z (output enables {_fmt_vec(oe)})"
+            return None
+        if self._mosi is not None and _level(self._mosi) is None:
+            return "MOSI is X/Z"
+        return None
+
+    def _grade_xz(self, errors: List[str], now, prev: Optional[str]) -> Optional[str]:
+        """Grade the driven lanes at one settled step with chip-select low.
+
+        One X/Z episode is one violation: it is recorded when the X/Z starts
+        or changes, not again at each later step while it lasts.
+        """
+        what = self._driven_xz()
+        if what is not None and what != prev:
+            self._violate(errors, "xz", f"{what} with chip-select low at {now} ns")
+        return what
 
     def _violate(self, errors: List[str], check: str, text: str) -> None:
         """Record one wire-check violation."""
@@ -628,7 +659,7 @@ class OcahSpiMonitor:
     def _decode(
         self,
         mosi_bits: List[int],
-        miso_bits: List[int],
+        miso_raw: List[Optional[int]],
         start_ns,
         end_ns,
         beats: Optional[List[Tuple[Optional[int], Optional[int], Optional[int]]]] = None,
@@ -638,10 +669,15 @@ class OcahSpiMonitor:
         A dual or quad command (``LANE_OPCODES``) seen through the four-lane
         taps takes its address and data from the lanes of each phase, at the
         widths of its command format; ``data_mosi`` and ``data_miso`` then
-        hold those bytes.
+        hold those bytes. The data fields hold complete bytes only; a byte
+        left incomplete when chip-select rises is not reported as data
+        (``bit_count`` gives its bits). ``data_miso_xz`` lists the
+        ``data_miso`` bytes with a bit sampled as X/Z, which reads as 0.
         """
+        miso_bits = [bit or 0 for bit in miso_raw]
         mosi_bytes = _bits_to_bytes(mosi_bits)
-        miso_bytes = _bits_to_bytes(miso_bits)
+        mosi_whole = mosi_bytes[: len(mosi_bits) // 8]
+        miso_whole = _bits_to_bytes(miso_bits)[: len(miso_bits) // 8]
 
         opcode = mosi_bytes[0] if mosi_bytes else 0
         has_addr = opcode in _ADDR_COMMANDS
@@ -666,10 +702,15 @@ class OcahSpiMonitor:
         if fmt is not None and fmt.response:
             input_clocks = min(input_clocks, fmt.input_clocks(self._addr_bytes))
 
-        data_mosi = mosi_bytes[data_start:] if opcode in _MOSI_COMMANDS else b""
-        data_miso = miso_bytes[data_start:] if opcode in _MISO_COMMANDS else b""
+        data_mosi = mosi_whole[data_start:] if opcode in _MOSI_COMMANDS else b""
+        data_miso = miso_whole[data_start:] if opcode in _MISO_COMMANDS else b""
+        data_miso_xz = tuple(
+            i
+            for i in range(len(data_miso))
+            if None in miso_raw[8 * (data_start + i) : 8 * (data_start + i + 1)]
+        )
         if complete and opcode in LANE_OPCODES and beats and fmt is not None:
-            has_addr, addr, data_mosi, data_miso = self._decode_lanes(fmt, beats)
+            has_addr, addr, data_mosi, data_miso, data_miso_xz = self._decode_lanes(fmt, beats)
 
         return {
             "opcode": opcode,
@@ -677,6 +718,7 @@ class OcahSpiMonitor:
             "has_addr": has_addr,
             "data_mosi": data_mosi,
             "data_miso": data_miso,
+            "data_miso_xz": data_miso_xz,
             "bit_count": len(mosi_bits),
             "input_bits": input_bits,
             "input_clocks": input_clocks,
@@ -685,8 +727,12 @@ class OcahSpiMonitor:
             "end_ns": end_ns,
         }
 
-    def _decode_lanes(self, fmt, beats) -> Tuple[bool, int, bytes, bytes]:
-        """Address and data of a dual or quad command from the lanes of each phase."""
+    def _decode_lanes(self, fmt, beats) -> Tuple[bool, int, bytes, bytes, Tuple[int, ...]]:
+        """Address, data and X/Z response bytes of a dual or quad command.
+
+        A response byte is X/Z when the input lanes held an X/Z bit at one of
+        its sample edges.
+        """
 
         def phase(start: int, stop: Optional[int], field: int, lanes: int) -> bytes:
             shift = 1 if field == 2 and lanes == 1 else 0
@@ -697,13 +743,19 @@ class OcahSpiMonitor:
         addr_bytes = phase(8, 8 + addr_clocks, 0, fmt.addr_lanes or 1) if addr_clocks else b""
         addr = int.from_bytes(addr_bytes, "big") if addr_bytes else 0
         if fmt.response:
-            return (
-                bool(addr_clocks),
-                addr,
-                b"",
-                phase(fmt.input_clocks(self._addr_bytes), None, 2, fmt.data_lanes),
+            start = fmt.input_clocks(self._addr_bytes)
+            data = phase(start, None, 2, fmt.data_lanes)
+            per_byte = 8 // fmt.data_lanes
+            xz = tuple(
+                i
+                for i in range(len(data))
+                if any(
+                    beat[2] is None
+                    for beat in beats[start + i * per_byte : start + (i + 1) * per_byte]
+                )
             )
-        return bool(addr_clocks), addr, phase(8 + addr_clocks, None, 0, fmt.data_lanes), b""
+            return bool(addr_clocks), addr, b"", data, xz
+        return bool(addr_clocks), addr, phase(8 + addr_clocks, None, 0, fmt.data_lanes), b"", ()
 
 
 # ---------------------------------------------------------------------------
@@ -766,7 +818,7 @@ def _lanes_changed(prev, cur) -> bool:
 
 
 def _bits_to_bytes(bits: List[int]) -> bytes:
-    """Pack a list of 1/0 bits (MSB-first) into bytes, right-padding partial byte."""
+    """Pack a list of 1/0 bits (MSB-first) into bytes, right-padding a partial byte with 0."""
     out: List[int] = []
     i = 0
     while i < len(bits):

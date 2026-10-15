@@ -4,11 +4,12 @@
 
 After a page is programmed and read back, the controller issues SFDP
 read, unique-ID read, block erase, chip erase, and enter-4-byte-address
-frames. The device drains each without a response or a payload, the erase
-attempts leave the page intact, the monitor decodes them as unknown with empty
-data fields, and the checker counts them as unsupported: the in-scope opcode
-sequence and the memory evidence exclude them, and ``CHK-SPI-UNSUPPORTED``
-names exactly the opcodes seen.
+frames. The device drains each without a response, the erase attempts leave
+the page intact, the monitor decodes them as unknown with empty data fields,
+and the checker counts them as unsupported: the in-scope opcode sequence and
+the memory evidence exclude them, and ``CHK-SPI-UNSUPPORTED`` names exactly
+the opcodes seen and grades, from the monitor's MISO samples, that the
+response lane held its level through each of those frames.
 """
 
 from __future__ import annotations
@@ -82,7 +83,7 @@ async def ocah_spi_unsupported_test(dut) -> None:
             OcahSpiOpcode.READ,
         ]
     )
-    checker.check_unsupported(OUT_OF_SCOPE)
+    checker.check_unsupported(OUT_OF_SCOPE, frames=harness.monitor.get_transactions())
     checker.check_memory(source=data, addr=addr, context="page intact after out-of-scope erases")
     checker.check_nonvacuous()
 
