@@ -20,10 +20,12 @@ READ and QUAD I/O READ:
   ``partial_address`` and in its dummy clocks as ``partial_dummy``; memory and
   the latch are unchanged.
 * ``CHK-SPI-LANE-OE``: the legal frames give no output-enable violation; a
-  single-lane frame that enables lane 1 gives exactly ``oe_lanes``, a lane
-  enable raised with chip select high gives exactly ``oe_idle``, a lane
-  enable still on when chip select rises gives exactly ``oe_idle``, and a
-  frame with the chip-select enable low gives ``oe_ctrl``; ``stop()`` then
+  single-lane frame that enables lane 1 instead of lane 0 gives exactly
+  ``oe_lanes`` and ``oe_data``, a lane enable raised with chip select high
+  gives exactly ``oe_idle``, a lane enable still on when chip select rises
+  gives exactly ``oe_idle``, a frame with the chip-select enable low gives
+  ``oe_ctrl``, and a WRITE ENABLE shifted on lane 0 with its output enable
+  off gives exactly ``oe_data``; ``stop()`` then
   raises. A single-lane ``transfer()`` on the four-lane link turns its lane
   enable off before chip select rises, so it adds no violation.
 
@@ -167,7 +169,7 @@ async def ocah_spi_lanes_test(dut) -> None:
     memory = flash.read_memory(addr, length)
     rec_mark = len(flash.get_transactions())
     head = bytes([OcahSpiOpcode.QUAD_PAGE_PROGRAM]) + addr.to_bytes(ADDR_BYTES, "big")
-    await bfm.lane_frame([(1, "tx", head), (4, "tx", b"\x00"), (4, "dummy", 1)])
+    await bfm.lane_frame([(1, "tx", head), (4, "tx", b"\x00"), (4, "clocks", [0])])
     eb = command_format(OcahSpiOpcode.QUAD_IO_READ)
     assert eb is not None
     eb_cmd = (1, "tx", bytes([OcahSpiOpcode.QUAD_IO_READ]))
@@ -229,12 +231,25 @@ async def ocah_spi_lanes_test(dut) -> None:
     before = len(monitor.get_wire_errors())
     dut.spi4_cs_oe.value = 0
     await bfm.drive(cs_n=0)
+    dut.spi4_sd_oe.value = 0b0001
     await bfm.drive(sclk=1)
     await bfm.drive(sclk=0)
     await bfm.drive(cs_n=1)
+    dut.spi4_sd_oe.value = 0
     dut.spi4_cs_oe.value = 1
     await bfm.drive(hold_ns=3 * half)
     legs.append(("cs_oe_low", [e.split(":")[0] for e in monitor.get_wire_errors()[before:]]))
+
+    # WRITE ENABLE shifted on lane 0 with its output enable off.
+    before = len(monitor.get_wire_errors())
+    await bfm.drive(cs_n=0)
+    for bit in [(int(OcahSpiOpcode.WRITE_ENABLE) >> k) & 1 for k in range(7, -1, -1)]:
+        dut.spi4_sd_out.value = bit
+        await bfm.drive(sclk=1)
+        await bfm.drive(sclk=0)
+    await bfm.drive(cs_n=1, hold_ns=3 * half)
+    dut.spi4_sd_out.value = 0
+    legs.append(("lane0_oe_off", [e.split(":")[0] for e in monitor.get_wire_errors()[before:]]))
 
     errors = monitor.get_wire_errors()
     expected_stop = f"{monitor.name}: {len(errors)} wire-check violation(s); first: {errors[0]}"
@@ -249,10 +264,11 @@ async def ocah_spi_lanes_test(dut) -> None:
         (
             [],
             [
-                ("lane1_in_x1", ["oe_lanes"]),
+                ("lane1_in_x1", ["oe_lanes", "oe_data"]),
                 ("oe_with_cs_high", ["oe_idle"]),
                 ("oe_on_at_cs_rise", ["oe_idle"]),
                 ("cs_oe_low", ["oe_ctrl"]),
+                ("lane0_oe_off", ["oe_data"]),
             ],
             True,
         ),

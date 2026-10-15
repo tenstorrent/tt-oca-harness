@@ -192,6 +192,15 @@ write-enable latch or memory; a refused frame changes neither:
 | `"unexpected_payload"` | WRITE ENABLE, WRITE DISABLE or SECTOR ERASE carried a bit after its last command or address bit |
 | `"unknown_opcode"` | Command outside the supported set, or a lane command on a binding other than `quad_io` |
 
+A frame with a response (READ JEDEC ID, READ STATUS REGISTER 1 or 2, or a
+read) may end at any output bit once its command, address and dummy phases
+are complete: the controller ends a read by raising chip select, so the
+device accepts the frame and records the complete bytes the controller
+sampled.  A response frame that ends before its first complete output byte
+has no byte to judge; the checker logs it as information, not as a failure.
+The controller chose to read nothing, which the device cannot cause: the
+device records every output byte the controller clocked in full.
+
 WRITE ENABLE and WRITE DISABLE are exactly one command byte; SECTOR ERASE is
 one command byte and exactly `addr_bytes` address bytes; PAGE PROGRAM is one
 command byte, `addr_bytes` address bytes and at least one complete payload
@@ -290,7 +299,7 @@ seq.check_host_responses()        # CHK-SPI-HOST-*: the controller received what
 | `read(addr, n)`, `fast_read(addr, n)` | `bytes` | 0x03 / 0x0B (one dummy byte), address, `n` response bytes |
 | `raw_command(opcode, *, addr, dummy_bytes, tx, rx_len, tail_bits)` | `bytes` | Any opcode, for out-of-scope probes; `tail_bits` (0 to 7) ends the frame that many bits into a further byte |
 | `raw_frame(bits)` | `list[int]` | One frame of exactly these MOSI bits; it may end in any phase. Returns the MISO bits |
-| `bfm.lane_frame(segments)` | `list[bytes]` | Four-lane handles only. One frame of `(lanes, kind, arg)` segments: `lanes` 1, 2 or 4; `kind` `"tx"` (bytes to send), `"rx"` (byte count to receive) or `"dummy"` (clock count). A single-lane segment keeps lane 0 driven; a dual or quad receive or dummy segment drives no lane. Bytes go most significant bits first, the least significant bit of each pair or nibble on lane 0. Returns the bytes of each receive segment |
+| `bfm.lane_frame(segments)` | `list[bytes]` | Four-lane handles only. One frame of `(lanes, kind, arg)` segments: `lanes` 1, 2 or 4; `kind` `"tx"` (bytes to send), `"rx"` (byte count to receive), `"dummy"` (clock count) or `"clocks"` (per-clock lane values, driven with the segment's lanes enabled, for a frame that ends inside a byte). A single-lane segment keeps lane 0 driven; a dual or quad receive or dummy segment drives no lane. Bytes go most significant bits first, the least significant bit of each pair or nibble on lane 0. Returns the bytes of each receive segment |
 | `responses(opcode)` | `list[bytes]` | Every response the controller received for that opcode |
 
 ---
@@ -360,6 +369,7 @@ pins:
 | `xz` | At every settled time step while chip-select is low, chip-select, SCK and MOSI (with `sd_out`, every lane whose output enable is on, and the output enables) resolve to 0 or 1; one X/Z episode is one violation; while chip-select is not low (reset included) an X/Z is not graded |
 | `oe_idle` | With `sd_oe`: no data lane output enable rises, or is on at an SCK edge, while chip-select is high |
 | `oe_lanes` | With `sd_oe`: at each sample edge the data lane output enables are none, lane 0, lanes 1:0 or lanes 3:0 |
+| `oe_data` | With `sd_out` and `sd_oe`: at every sample edge of a controller-output clock (the command byte, the address, the payload of a command without a response, and any bit after WRITE ENABLE, WRITE DISABLE or SECTOR ERASE) the lanes that carry the data have their output enables on. A bit sampled with its output enable off did not reach the pad. Dummy and response clocks, and the clocks after the command byte of an unknown command, are not graded. Without `sd_oe` (a single-lane binding with no output-enable tap) the check is off |
 | `oe_ctrl` | With `cs_oe`/`sck_oe`: both are on at each sample edge. Derived, not stated in a pin table: a sample edge needs a driven chip-select low and a driven clock edge, and an undriven pad does not carry them |
 
 With `sd_out`, `mosi_edge` applies to every lane whose output enable is on

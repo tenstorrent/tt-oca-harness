@@ -290,7 +290,9 @@ class OcahSpiMasterBfm:
 
         Each segment is ``(lanes, kind, arg)``: ``lanes`` 1, 2 or 4; ``kind``
         ``"tx"`` with ``arg`` the bytes to send, ``"rx"`` with ``arg`` the byte
-        count to receive, or ``"dummy"`` with ``arg`` the clock count. Bytes
+        count to receive, ``"dummy"`` with ``arg`` the clock count, or
+        ``"clocks"`` with ``arg`` the lane values of each clock, driven with
+        the segment's lanes enabled (a frame that ends inside a byte). Bytes
         go out most significant bits first, the least significant bit of each
         pair or nibble on lane 0. A single-lane segment keeps lane 0 driven;
         a dual or quad receive or dummy segment drives no lane. Returns the
@@ -320,6 +322,9 @@ class OcahSpiMasterBfm:
                         byte_val = (byte_val << lanes) | bits
                     data.append(byte_val)
                 received.append(bytes(data))
+            elif kind == "clocks":
+                for value in arg:
+                    await self._clock(int(value) & mask, mask)
             elif kind == "dummy":
                 for _ in range(int(arg)):
                     await self._clock(0, idle_oe)

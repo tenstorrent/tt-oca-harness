@@ -74,6 +74,12 @@ other SCK edge is the shift edge.  It grades the controller's pins:
                       on at an SCK edge, while chip-select is high
 ``oe_lanes``          with ``sd_oe``: at each sample edge the data lane output
                       enables are none, lane 0, lanes 1:0 or lanes 3:0
+``oe_data``           with ``sd_out`` and ``sd_oe``: at every sample edge of a
+                      controller-output clock (command byte, address, the
+                      payload of a command without a response, and any bit
+                      after an exact command) the lanes that carry the data
+                      have their output enables on; a bit sampled with its
+                      output enable off did not reach the pad
 ``oe_ctrl``           with ``cs_oe``/``sck_oe``: both are on at each sample
                       edge (a sample edge needs a driven chip-select low and
                       a driven clock edge; an undriven pad does not carry
@@ -535,6 +541,8 @@ class OcahSpiMonitor:
         end_ns = _sim_time_ns()
 
         txn = self._decode(mosi_bits, miso_raw, start_ns, end_ns, beats)
+        if self._sd_oe is not None and self._sd_out is not None:
+            self._grade_output_enables(errors, txn, beats)
         txn.update(
             cpol=cpol,
             cpha=cpha,
@@ -611,6 +619,33 @@ class OcahSpiMonitor:
                     f"{what} output enable is {_fmt(_level(handle))} with chip-select low "
                     f"at {now} ns",
                 )
+
+    def _grade_output_enables(self, errors: List[str], txn: Dict[str, Any], beats) -> None:
+        """Every controller-output clock of the frame had its lanes' output enables on.
+
+        The controller-output clocks are the command byte, the address, and
+        the payload of a command without a response (any extra bit after an
+        exact command included). Dummy and response clocks, and the clocks
+        after the command byte of an unknown command, are not graded.
+        """
+        masks = _output_lane_masks(
+            int(txn["opcode"]), bool(txn["opcode_complete"]), len(beats), self._addr_bytes
+        )
+        bad = [
+            (i, mask, beats[i][1])
+            for i, mask in enumerate(masks)
+            if mask and (beats[i][1] is None or beats[i][1] & mask != mask)
+        ]
+        if bad:
+            i, mask, oe = bad[0]
+            self._violate(
+                errors,
+                "oe_data",
+                f"{len(bad)} controller-output clock(s) of "
+                f"{opcode_name(txn['opcode']) if txn['opcode_complete'] else 'PARTIAL'} "
+                f"sampled with a lane output enable off; first: clock {i} output enables "
+                f"{_fmt_vec(oe)}, lanes {_fmt_vec(mask)} carry data",
+            )
 
     def _miso_level(self) -> Optional[int]:
         """The response lane into the controller (MISO, or lane 1 in); ``None`` when X/Z."""
@@ -786,6 +821,28 @@ def _fmt(level: Optional[int]) -> str:
 # Output-enable patterns of a data phase: none (receive or dummy), lane 0
 # (single), lanes 1:0 (dual), lanes 3:0 (quad).
 _LEGAL_OE = frozenset((0b0000, 0b0001, 0b0011, 0b1111))
+
+
+def _output_lane_masks(opcode: int, complete: bool, clocks: int, addr_bytes: int) -> List[int]:
+    """Lanes that carry controller data at each clock of a frame; 0 where none is graded."""
+    if not complete:
+        return [1] * clocks
+    masks = [1] * 8
+    fmt = command_format(opcode)
+    if fmt is not None:
+        if fmt.addr_lanes:
+            masks += [(1 << fmt.addr_lanes) - 1] * ((8 * addr_bytes) // fmt.addr_lanes)
+        if not fmt.response:
+            masks += [(1 << fmt.data_lanes) - 1] * max(0, clocks - len(masks))
+    elif opcode in (
+        OcahSpiOpcode.WRITE_ENABLE,
+        OcahSpiOpcode.WRITE_DISABLE,
+        OcahSpiOpcode.SECTOR_ERASE,
+    ):
+        # Address and any extra bit: the device takes each one as input.
+        masks += [1] * max(0, clocks - 8)
+    masks += [0] * max(0, clocks - len(masks))
+    return masks[:clocks]
 
 
 def _vector(sig) -> Optional[int]:

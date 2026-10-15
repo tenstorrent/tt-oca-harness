@@ -323,7 +323,7 @@ class OcahSpiFlashChecker:
             return
         if opcode not in IN_SCOPE_OPCODES or rec.reason == "unknown_opcode":
             self.unsupported.append(rec)
-            self.log.warning(
+            self.log.info(
                 "%s: %s is outside the baseline scope and earns no credit (ok=%s out=%d B in=%d B)",
                 self.name,
                 opcode_name(opcode),
@@ -336,8 +336,11 @@ class OcahSpiFlashChecker:
         if opcode == OcahSpiOpcode.JEDEC_ID:
             self._check_jedec(rec)
         elif opcode in (OcahSpiOpcode.READ_SR1, OcahSpiOpcode.READ_SR2) and not rec.data_out:
-            self.log.warning(
-                "%s: %s streamed no complete byte; nothing to judge", self.name, opcode_name(opcode)
+            self.log.info(
+                "%s: %s ended before its first complete output byte (legal read termination); "
+                "no byte to judge",
+                self.name,
+                opcode_name(opcode),
             )
         elif opcode == OcahSpiOpcode.READ_SR1:
             self.expect_equal(
@@ -600,11 +603,13 @@ class OcahSpiFlashChecker:
 
     def _check_jedec(self, rec: OcahSpiFlashRecord) -> None:
         if self.jedec_id is None:
-            self.log.warning("%s: no JEDEC ID configured; identifier not judged", self.name)
+            self.log.info("%s: no JEDEC ID configured; identifier not judged", self.name)
             return
         if not rec.data_out:
-            self.log.warning(
-                "%s: READ JEDEC ID streamed no complete byte; nothing to judge", self.name
+            self.log.info(
+                "%s: READ JEDEC ID ended before its first complete output byte "
+                "(legal read termination); no byte to judge",
+                self.name,
             )
             return
         expected = (self.jedec_id & _ADDR_MASK_24).to_bytes(3, "big")
@@ -689,8 +694,9 @@ class OcahSpiFlashChecker:
         if not self._check_shape(rec, fmt.input_clocks(self.addr_bytes)):
             return
         if not rec.data_out:
-            self.log.warning(
-                "%s: %s at 0x%06x streamed no complete byte; nothing to judge",
+            self.log.info(
+                "%s: %s at 0x%06x ended before its first complete output byte "
+                "(legal read termination); no byte to judge",
                 self.name,
                 opcode_name(rec.opcode),
                 rec.addr,

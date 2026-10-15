@@ -294,12 +294,12 @@ def rejects(
     flash: OcahSpiFlash,
     action: Callable[[OcahSpiFlashChecker], object],
     *,
-    check_id: str | None = None,
+    check_id: str,
 ) -> bool:
-    """Run ``action`` on a fail-fast checker with a silent logger; True when it raised.
+    """Run ``action`` on a fail-fast checker with a silent logger; True when it raised on ``check_id``.
 
-    With ``check_id``, only a failure of that rule counts: a probe that
-    raises on another rule returns False. The probe checker owns no evidence
+    Only a failure of the rule ``check_id`` counts: a probe that raises on
+    another rule returns False. The probe checker owns no evidence
     of the test: the caller records the outcome under a ``CHK-SPI-NEG-*``
     identifier on the test's checker.
     """
@@ -309,5 +309,5 @@ def rejects(
     try:
         action(probe)
     except OcahCheckerError as exc:
-        return check_id is None or str(exc).startswith(f"{check_id} ")
+        return str(exc).startswith(f"{check_id} ")
     return False

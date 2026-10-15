@@ -131,6 +131,7 @@ async def ocah_spi_ordering_test(dut) -> None:
             probe.replay(records),
             probe.check_command_order(EXPECTED_ORDER[1:] + EXPECTED_ORDER[:1]),
         ),
+        check_id="CHK-SPI-CMD-ORDER",
     )
     checker.expect_true(
         "CHK-SPI-NEG-ORDER", rejected_order, context="a wrong expected sequence must be rejected"
@@ -141,7 +142,9 @@ async def ocah_spi_ordering_test(dut) -> None:
     await harness.stop()
     faulty_records = flash.get_transactions()
     faulty_records[-1] = _accepted_program(faulty_records[-1], other)
-    rejected_latch = rejects("latch", flash, lambda probe: probe.replay(faulty_records))
+    rejected_latch = rejects(
+        "latch", flash, lambda probe: probe.replay(faulty_records), check_id="CHK-SPI-WREN-ORDER"
+    )
     checker.expect_true(
         "CHK-SPI-NEG-WEL",
         rejected_latch,
