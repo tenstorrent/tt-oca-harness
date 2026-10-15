@@ -187,8 +187,11 @@ DATA_BYTES_MAX = 32
 ABORT_WORDS = 16
 # RXDATA words a finished Rx segment leaves unread before the SW_RST abort.
 ABORT_RX_WORDS = 2
-# Data lane output enables of a Tx segment, per lane count (spi_sd_oe_o[3:0]).
+# Data lane output enables of a Tx segment on the lanes it uses, per lane count
+# (spi_sd_oe_o[3:0]); no source states lanes 3:2 at x1 or x2, so they are not
+# compared.
 TX_OE_MASK = {1: 0b0001, 2: 0b0011, 4: 0b1111}
+TX_OE_LANES = {1: 0b0011, 2: 0b0011, 4: 0b1111}
 # The watermark event leg: at most this many TX words queued.
 EVENT_TX_WORDS_MAX = 8
 
@@ -1370,7 +1373,9 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             cs_oe,
             sck_oe,
         )
-        if not cs_low or pre_cs_n != 0 or pre_sd_oe != pre_exp_oe or cycles >= total:
+        pre_used = TX_OE_LANES[lanes]
+        pre_ok = isinstance(pre_sd_oe, int) and (pre_sd_oe & pre_used) == pre_exp_oe
+        if not cs_low or pre_cs_n != 0 or not pre_ok or cycles >= total:
             self._ctrl_missing(chk, line)
         if not pre.active or not pre.txqd or not pre.rxqd or not pre.cmdqd:
             self._ctrl_missing(chk, line)

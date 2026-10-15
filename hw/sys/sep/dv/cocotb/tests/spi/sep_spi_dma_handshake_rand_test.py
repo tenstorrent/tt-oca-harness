@@ -50,9 +50,12 @@ Checkers:
   CHK-HS-MASKED   mask bit 0 clear: the destination keeps its sentinel while the
                   trigger probe is high, and CONTROL.GO reads 1 at the end of
                   the window.
-  CHK-HS-GO       GO stays 1 between chunks below TOTAL_DATA_SIZE (stop run,
-                  before the firmware clear) and reads 0 with STATUS.DONE=1 once
-                  the transfer reaches TOTAL_DATA_SIZE (handshake run).
+  CHK-HS-GO       In handshake operation the engine does not clear GO; firmware
+                  clears it to stop (secure_dma.adoc, CONTROL.GO). GO stays 1
+                  between chunks below TOTAL_DATA_SIZE (stop run, before the
+                  firmware clear), and still reads 1 once the destination holds
+                  TOTAL_DATA_SIZE bytes and after a further wait as long as
+                  t_fill (handshake run). STATUS.DONE at the total is logged.
   CHK-HS-STOP     after the GO clear the words after the moved chunks keep their
                   sentinel while the trigger probe is high, and the moved chunks
                   keep the words read before the clear.
@@ -364,7 +367,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         if sess is None:
             raise AssertionError(f"{label}: RX expectation outside a monitor session")
         full = f"{sess.tag}:{label} width=x{lanes}"
-        sess.sb.expect_rx(opcode, data, label=full)
+        sess.sb.expect_rx(opcode, data, source="dut", label=full)
         sess.rx.append(_RxExpect(lanes, opcode, len(data), want, full))
 
     async def _session_end(self) -> None:
@@ -848,13 +851,16 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         self.logger.info(
             "T-FILL LOG seed=%d t_fill_clks=%d polls=%d", cfg.seed, t_fill, len(hs_polls)
         )
-        # At TOTAL_DATA_SIZE the engine has cleared GO: expected GO=0.
-        go1 = field_compare(await self.dma.rd(DMA_CONTROL), 0, GO_MASK)
+        # In handshake operation the engine does not clear GO (CONTROL.GO):
+        # expected GO=1 at TOTAL_DATA_SIZE and after the wait.
+        go1 = field_compare(await self.dma.rd(DMA_CONTROL), GO_MASK, GO_MASK)
         st_total = await self.dma.read_status()
         t1 = self.tw.clk
         while self.tw.clk - t1 < t_fill:
             hs_polls.append(await self.dma.read_status())
-        go2 = field_compare(await self.dma.rd(DMA_CONTROL), 0, GO_MASK)
+        go2 = field_compare(await self.dma.rd(DMA_CONTROL), GO_MASK, GO_MASK)
+        # Firmware stops the handshake operation by clearing GO.
+        await self.dma.wr(DMA_CONTROL, self.dma.last_control & ~GO_MASK)
         hs_irq_rises = self.irq.rises_since(m_hs_irq, "chunk")
         hs_irq_high = self.irq.high_clocks_since(m_hs_irq, "chunk")
         self._probe_log("handshake")
@@ -1041,9 +1047,10 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             self._fail("CHK-HS-NOCHUNK", line)
         self._pass("CHK-HS-NOCHUNK", line)
 
-        # CHK-HS-GO. Handshake mode skips the per-chunk GO clear only; the
-        # transfer ends, and GO clears, at TOTAL_DATA_SIZE (dma.hjson
-        # TOTAL_DATA_SIZE and CONTROL.GO).
+        # CHK-HS-GO. "For Hardware handshake operation, DMA engine does not
+        # auto clear the Go bit. Firmware shall clear the Go bit when it
+        # intends to stop the hardware handshake operation" (secure_dma.adoc,
+        # CONTROL.GO).
         control_normal_go = int(bool(go_nm.got & GO_MASK))
         go_at_total = int(bool(go1.got & GO_MASK))
         go_after_wait = int(bool(go2.got & GO_MASK))
@@ -1055,6 +1062,12 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         )
         if control_normal_go != 0:
             self._ctrl_missing("CHK-HS-GO", line)
-        if not (go_before == 1 and go_at_total == 0 and go_after_wait == 0 and st_total.done):
+        self.logger.info(
+            "OBS-HS-DONE seed=%d done_at_total=%d go_at_total=%d",
+            cfg.seed,
+            st_total.done,
+            go_at_total,
+        )
+        if not (go_before == 1 and go_at_total == 1 and go_after_wait == 1):
             self._fail("CHK-HS-GO", line)
         self._pass("CHK-HS-GO", line)

@@ -21,11 +21,13 @@ https://opentitan.org/book/hw/ip/spi_host/doc/theory_of_operation.html):
   received lands in RXDATA[7:0] (ByteOrder 1). At the end of a TX segment the
   unused bytes of its last TXDATA word are dropped, and each RX segment starts
   word-aligned in RXDATA.
-* Data lane output enables per segment: x1 TX and x1 bidirectional drive
-  lane 0 (0b0001); x2 TX drives lanes 1:0 (0b0011); x4 TX drives lanes 3:0
-  (0b1111); x2 and x4 RX drive no lane (a lane the host receives on is not
-  driven). The spec states no pattern for an x1 RX-only or a dummy segment;
-  the leaf logs them as OBS-SPI-OE-X1RX and OBS-SPI-OE-DUMMY.
+* Data lane output enables per segment, on the lanes the segment uses: x1 TX
+  and x1 bidirectional drive lane 0 and not lane 1 (lanes 1:0 = 0b01); x2 TX
+  drives lanes 1:0; x4 TX drives lanes 3:0; x2 RX drives neither of lanes 1:0
+  and x4 RX no lane (a lane the host receives on is not driven). No source
+  states lanes 3:2 at x1 or x2; the leaf logs them as OBS-SPI-OE-UNUSED. The
+  spec states no pattern for an x1 RX-only or a dummy segment; the leaf logs
+  them as OBS-SPI-OE-X1RX and OBS-SPI-OE-DUMMY.
 
 The leaf walks the 10 legal SPEED x DIRECTION cells as single segments, a dummy
 segment between FIFO reads, CSAAT chains that change speed or direction, the
@@ -184,17 +186,21 @@ def sck_expect(speed: int, direction: int, len_field: int) -> int:
     return (len_field + 1) * 8 // LANES[speed]
 
 
-def oe_expect(speed: int, direction: int) -> int | None:
-    """The stated data lane output-enable pattern of one segment, or None if none is stated."""
+def oe_expect(speed: int, direction: int) -> tuple[int, int] | None:
+    """The stated (pattern, graded lanes) of one segment's data lane enables, or None.
+
+    Only the lanes the segment uses are graded: lanes 1:0 at x1 and x2, all
+    four at x4. No source states lanes 3:2 at x1 or x2; the leaf logs them.
+    """
     if direction == DIR_DUMMY:
         return None
     if speed == 0:
-        return None if direction == DIR_RX else 0b0001
+        return None if direction == DIR_RX else (0b0001, 0b0011)
     if direction == DIR_RX:
-        return 0b0000
+        return (0b0000, 0b0011 if speed == 1 else 0b1111)
     if speed == 2:
-        return 0b0011 if MUT_X4_TX_OE else 0b1111
-    return 0b0011
+        return (0b0011 if MUT_X4_TX_OE else 0b1111, 0b1111)
+    return (0b0011, 0b0011)
 
 
 def _swap_lanes_23(byte: int) -> int:
@@ -536,15 +542,25 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         for i, (seg, got) in enumerate(zip(segs, delivered)):
             seg_beats = beats[pos : pos + seg.clocks]
             pos += seg.clocks
-            exp_oe = oe_expect(seg.speed, seg.direction)
+            exp = oe_expect(seg.speed, seg.direction)
             seen = {b[1] for b in seg_beats}
-            if exp_oe is None:
+            if exp is None:
                 obs = "OBS-SPI-OE-DUMMY" if seg.direction == DIR_DUMMY else "OBS-SPI-OE-X1RX"
                 self.logger.info("%s seed=%s %s seg=%d oe=%s", obs, seed, label, i, _fmt_oe(seen))
                 oe_rows.append(f"{i}:{seg.oe_row}:{_fmt_oe(seen)}/obs")
             else:
-                oe_rows.append(f"{i}:{seg.oe_row}:{_fmt_oe(seen)}/exp{exp_oe:04b}")
-                oe_ok = oe_ok and seen == {exp_oe}
+                exp_oe, used = exp
+                oe_rows.append(f"{i}:{seg.oe_row}:{_fmt_oe(seen)}/exp{exp_oe:04b}/lanes{used:04b}")
+                oe_ok = oe_ok and {v & used for v in seen} == {exp_oe}
+                if used != 0b1111:
+                    self.logger.info(
+                        "OBS-SPI-OE-UNUSED seed=%s %s seg=%d row=%s lanes_3_2=%s",
+                        seed,
+                        label,
+                        i,
+                        seg.oe_row,
+                        ",".join(sorted({f"{(v >> 2) & 3:02b}" for v in seen})),
+                    )
             if seg.direction == DIR_DUMMY:
                 continue
             if seg.is_tx:

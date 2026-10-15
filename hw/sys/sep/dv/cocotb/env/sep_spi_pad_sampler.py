@@ -312,7 +312,13 @@ class SepSpiPadSampler:
         return [b.start - a.end for a, b in zip(wins, wins[1:]) if a.end is not None]
 
     def sck_edges_between(self, c0: int, c1: int) -> list[tuple[int, int]]:
-        """Every sck edge (clock, new level) with ``c0 <= clock < c1``."""
+        """Every sck edge (clock, new level) with ``c0 <= clock < c1``.
+
+        A sampler built with ``keep_edges=False`` keeps no edge list, so the
+        call raises instead of returning an empty list.
+        """
+        if not self.keep_edges:
+            raise RuntimeError("sck_edges_between: the sampler was built with keep_edges=False")
         self._check_range(c1)
         return [(c, lvl) for c, lvl in self.sck_edges if c0 <= c < c1]
 

@@ -41,17 +41,27 @@ has its changes by construction.
 
 Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
 
-* CHK-SPI-IDLE-LEVEL: sck sits at CPOL, with the clock output enable on, in
-  every chip-select-high window of the graded pair that starts after the first
-  transaction ends. Control: sck
+* CHK-SPI-IDLE-LEVEL: sck sits at CPOL in every chip-select-high window of the
+  graded pair that starts after the first transaction ends (the clock output
+  enable there is logged with ``OBS-SPI-CTRL-OE``; no source states it). Control: sck
   toggles in the chip-select-low windows of the same pair.
 * CHK-SPI-PERIOD: every sck period of the graded pair is 2*(CLKDIV+1) clocks.
 * CHK-SPI-RATIO: period_a*(b+1) equals period_b*(a+1).
-* CHK-SPI-CSN: lead, trail and chip-select-high gap of each graded transaction
-  are at least (CSNLEAD+1), (CSNTRAIL+1) and (CSNIDLE+1) times (CLKDIV+1)
-  clocks; the spec states all three as minimum bounds. The chip-select and
-  clock output enables are on through both frames and the gap. Control: the idle
-  minimum is above g0 of the control pair.
+* CHK-SPI-CSN: lead and trail of each graded transaction are at least
+  (CSNLEAD+1) and (CSNTRAIL+1) times (CLKDIV+1) clocks, and the chip-select-high
+  gap at least max(CSNIDLE, 1) times (CLKDIV+1) (the register text gives the
+  idle minimum as CSNIDLE half cycles, one at 0). The chip-select and clock
+  output enables in the frames and the gap are logged (``OBS-SPI-CTRL-OE``).
+  Control: the idle minimum is above g0 of the control pair.
+  ``OBS-SPI-CSN-EXACT`` logs the lead and trail excess over each minimum
+  (not graded: the register text does not say whether the values are exact).
+* CHK-SPI-FULLCYC: at x1, x2 and x4 (drawn order, CPHA 0, drawn CPOL and
+  CLKDIV 1 to 15) an Rx segment from a late responder (each beat one core
+  clock after its sample edge) reads the seeded bytes with FULLCYC = 1: the
+  host samples a full cycle after its shift edge (CONFIGOPTS.FULLCYC).
+  Control: the same frame with FULLCYC = 0 reads every beat one beat late
+  (``late_sample_edge_bytes``), else CTRL-MISSING. The wire monitor is stopped
+  for this leg (it samples at the sample edge); RXDATA is the graded side.
 * CHK-SPI-CPHA: at CLKDIV 1 or more every Tx data change after the first bit
   lies in the half sck period that starts at the stated edge. A change counts
   only with the lane 0 output enable on; a ``spi_mosi_o`` change in the graded
@@ -97,6 +107,7 @@ from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spi_lane_responder import (
     SepSpiLaneResponder,
+    late_sample_edge_bytes,
     pack_tx_words,
     spi_lane_fcov,
     unpack_rx_words,
@@ -200,6 +211,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         "CHK-SPI-LANE-DATA",
         "CHK-SPI-CELL-FRAMES",
         "CHK-SPI-RX-WORDS",
+        "CHK-SPI-FULLCYC",
     )
 
     def _plan(self, seed: int) -> list[Cell]:
@@ -430,17 +442,19 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             [w.fmt() for w in cwins],
         )
 
-        # Raise CSNIDLE above the control gap.
+        # Raise CSNIDLE above the control gap. The register text gives the
+        # minimum as CSNIDLE half sck cycles and one half cycle at 0, so the
+        # bound that holds under that text is max(CSNIDLE, 1) half cycles.
         idle = c.idle
-        if (idle + 1) * half <= g0:
-            fits = [v for v in range(CSNIDLE_MAX + 1) if (v + 1) * half > g0]
+        if max(idle, 1) * half <= g0:
+            fits = [v for v in range(CSNIDLE_MAX + 1) if max(v, 1) * half > g0]
             if not fits:
                 raise AssertionError(
                     f"CTRL-MISSING seed={seed} mode={c.mode} CHK-SPI-CSN: no CSNIDLE "
                     f"gives a minimum above control_gap={g0} at clkdiv={c.a}"
                 )
             idle = fits[0]
-        idle_min = (idle + 1) * half
+        idle_min = max(idle, 1) * half
         self.logger.info(
             "DRAW seed=%d mode=%s csnidle_drawn=%d csnidle_graded=%d min=%d control_gap=%d",
             seed,
@@ -474,11 +488,19 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         )
         if min(toggles) < 1:
             raise AssertionError(f"CTRL-MISSING CHK-SPI-IDLE-LEVEL {line}")
-        if len(highs) < 2 or levels != {c.cpol} or sck_oe_off:
+        if len(highs) < 2 or levels != {c.cpol}:
             raise AssertionError(f"CHK-SPI-IDLE-LEVEL FAIL {line}")
+        # No source states the sck output enable while chip select is high.
+        self.logger.info(
+            "OBS-SPI-CTRL-OE seed=%d mode=%s where=cs_high sck_oe_off_clks=%d width=x%d",
+            seed,
+            c.mode,
+            sck_oe_off,
+            w,
+        )
         self.logger.info(
             "CHK-SPI-IDLE-LEVEL PASS seed=%d cpol=%d level=%d windows=%d control_toggles=%d "
-            "sck_oe_off=0 mode=%s width=x%d",
+            "mode=%s width=x%d",
             seed,
             c.cpol,
             c.cpol,
@@ -528,7 +550,6 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         )
         ok = (
             len(gap_wins) == 1
-            and not oe_off
             and min(w1.lead, w2.lead) >= exp_lead
             and min(w1.trail, w2.trail) >= exp_trail
             and gap >= idle_min
@@ -539,6 +560,33 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         csn_fail = None
         if ok:
             self.logger.info("CHK-SPI-CSN PASS %s", line)
+            # The register text does not say whether CSNLEAD and CSNTRAIL are
+            # exact, nor whether the CSNIDLE minimum is CSNIDLE or CSNIDLE+1 half
+            # cycles, nor the chip-select and clock enables in these windows;
+            # each is logged, not graded.
+            self.logger.info(
+                "OBS-SPI-CSN-EXACT seed=%d mode=%s clkdiv=%d half=%d lead_excess=%d,%d "
+                "trail_excess=%d,%d idle_gap=%d csnidle_plus_one=%d width=x%d",
+                seed,
+                c.mode,
+                c.a,
+                half,
+                w1.lead - exp_lead,
+                w2.lead - exp_lead,
+                w1.trail - exp_trail,
+                w2.trail - exp_trail,
+                gap,
+                (idle + 1) * half,
+                w,
+            )
+            self.logger.info(
+                "OBS-SPI-CTRL-OE seed=%d mode=%s where=frames_and_gap cs_sck_oe_off_clks=%d "
+                "width=x%d",
+                seed,
+                c.mode,
+                oe_off,
+                w,
+            )
         else:
             csn_fail = f"CHK-SPI-CSN FAIL {line}"
             self.logger.error(csn_fail)
@@ -630,6 +678,81 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         await spi_lane_fcov(TEST, "data", lanes=w, rx=False)
         await spi_lane_fcov(TEST, "data", lanes=w, rx=True)
 
+    # ---- FULLCYC sampling point -------------------------------------------
+    async def _fullcyc_rx(self, cpol: int, clkdiv: int, fullcyc: int, data: bytes, w: int):
+        """One Rx segment of ``data`` from the late responder; return the RXDATA bytes."""
+        ops, pads = self.ops, self.pads
+        cfg = configopts_word(clkdiv=clkdiv, fullcyc=fullcyc, cpha=0, cpol=cpol)
+        await ops.write_configopts(cfg)
+        pads.set_idle_level(cpol)
+        self.rsp.load([(w, "rx", data)])
+        mark = pads.mark()
+        await ops.issue_command(command_word(len(data) - 1, speed=SPEED[w], direction=DIR_RX))
+        await ops.wait_segment_done(pads, mark, windows=1, bound_clks=PAIR_BOUND_CLKS)
+        words = await ops.drain_rx()
+        if len(words) != (len(data) + 3) // 4:
+            raise AssertionError(
+                f"CHK-SPI-FULLCYC FAIL seed={self.seed} width=x{w} fullcyc={fullcyc} "
+                f"rx_bytes={len(data)} words={len(words)}"
+            )
+        return unpack_rx_words(words, len(data))
+
+    async def _fullcyc_leg(self) -> None:
+        """CHK-SPI-FULLCYC at x1, x2 and x4, CPHA 0, with a late responder.
+
+        The responder puts each beat one core clock after its sample edge. A
+        host that samples a full cycle after its shift edge (FULLCYC = 1)
+        reads the seeded bytes; with FULLCYC = 0 it reads each beat one beat
+        late (control).
+        """
+        seed, rng = self.seed, self.rng
+        widths = list(WIDTHS)
+        rng.shuffle(widths)
+        # The wire monitor samples at the sample edge, so it would decode the
+        # late beats one beat late; this leg grades RXDATA only.
+        await self.wire.monitor.stop()
+        try:
+            for w in widths:
+                cpol = rng.randrange(2)
+                clkdiv = rng.randrange(1, CLKDIV_DRAW_MAX + 1)
+                data = bytearray(self._rx_data(w))
+                # Beat 0 is 0..01 on the lanes, so the late read differs from
+                # the seeded bytes by construction.
+                top = ((1 << w) - 1) << (8 - w)
+                data[0] = (data[0] & ~top & 0xFF) | (1 << (8 - w))
+                data = bytes(data)
+                late = late_sample_edge_bytes(data, w)
+                graded_first = rng.randrange(2)
+                self.rsp.set_mode(cpol, 0)
+                self.rsp.set_late(True)
+                got: dict[int, bytes] = {}
+                for fullcyc in (1, 0) if graded_first else (0, 1):
+                    if fullcyc:
+                        open_graded_window(TEST, self.logger)
+                    got[fullcyc] = await self._fullcyc_rx(cpol, clkdiv, fullcyc, data, w)
+                    close_graded_window(self.logger)
+                self.rsp.set_late(False)
+                line = (
+                    f"seed={seed} width=x{w} cpol={cpol} cpha=0 clkdiv={clkdiv} "
+                    f"rx_bytes={len(data)} expected={data.hex()} fullcyc1={got[1].hex()} "
+                    f"fullcyc0={got[0].hex()} late_expected={late.hex()}"
+                )
+                if got[0] != late:
+                    raise AssertionError(f"CTRL-MISSING CHK-SPI-FULLCYC {line}")
+                if got[1] != data:
+                    raise AssertionError(f"CHK-SPI-FULLCYC FAIL {line}")
+                self.logger.info("CHK-SPI-FULLCYC PASS %s", line)
+                await spi_lane_fcov(TEST, "fullcyc", lanes=w, rx=True)
+            self.ran.add("CHK-SPI-FULLCYC")
+            err = field_compare(await self._err_status(), 0, ERR_STATUS_MASK)
+            if not err.ok:
+                raise AssertionError(
+                    f"SPI-ERROR FAIL seed={seed} leg=fullcyc error_status {err.fields()}"
+                )
+        finally:
+            self.rsp.set_late(False)
+            close_graded_window(self.logger)
+
     # ---- scenario ---------------------------------------------------------
     async def run_scenario(self) -> None:
         self.seed = self.random_seed()
@@ -667,6 +790,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             )
             for c in cells:
                 await self._mode_cell(c)
+            await self._fullcyc_leg()
             await self.pads.stop()
             await self.wire.finish(
                 self.logger, seed=self.seed, modes=[(c.cpol, c.cpha) for c in cells]

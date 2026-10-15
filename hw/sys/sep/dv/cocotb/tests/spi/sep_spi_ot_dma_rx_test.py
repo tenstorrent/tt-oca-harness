@@ -211,7 +211,12 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
             )
             self._firmware_check(staged)
             for read in staged.reads:
-                sb.expect_rx(read.opcode, read.data, label=f"read[{read.idx}] width=x{read.lanes}")
+                sb.expect_rx(
+                    read.opcode,
+                    read.data,
+                    source="fw:CHK-DATAPATH",
+                    label=f"read[{read.idx}] width=x{read.lanes}",
+                )
         finally:
             await flash.stop()
         await wire.finish(self.logger, seed=seed, flash=flash)

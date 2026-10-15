@@ -18,6 +18,7 @@ API::
     rsp = SepSpiLaneResponder(dut, cpol=0, cpha=0)
     await rsp.start()               # plusarg check, then the responder task
     rsp.set_mode(cpol, cpha)        # SPI mode of every frame that starts later
+    rsp.set_late(True)              # beat k one core clock after sample edge k
     rsp.queue_rx(data, lanes)       # bytes for the next RX segments of that width
     rsp.expect_segments(segs)       # layout of the next chip-select-low window
     rsp.load(segments)              # queue_rx + expect_segments in one call
@@ -44,6 +45,14 @@ The responder counts the sample edges of the SPI mode (SCK changes to the level
 ``k``-th sample edge of the window, 0 first) on the lanes at the shift edge
 before it: at the chip-select fall for beat 0 in CPHA 0, at each shift edge
 after that. A TX or dummy beat drives 0. At chip-select rise all lanes go to 0.
+
+With ``set_late(True)`` (CPHA 0 only) the responder puts beat ``k`` on the
+lanes one core clock after sample edge ``k`` and holds it to one core clock
+after sample edge ``k+1``. A host that samples a full sck cycle after its shift
+edge (CONFIGOPTS.FULLCYC = 1) reads beat ``k`` at the shift edge after sample
+edge ``k``; a host that samples at the sample edge reads the beat before it
+(0 for beat 0), which ``late_sample_edge_bytes`` gives. The late timing needs
+CLKDIV 1 or more, so that the drive lands before the next sck edge.
 
 ``driven`` is the list, one entry per segment of the last finished window, of
 the whole bytes the responder put on the lanes (``b""`` for TX and dummy
@@ -76,6 +85,7 @@ from env.sep_fcov_gate import fcov_present, owner_code
 
 __all__ = [
     "SepSpiLaneResponder",
+    "late_sample_edge_bytes",
     "pack_tx_words",
     "run_lane_frame",
     "spi_lane_fcov",
@@ -85,7 +95,7 @@ __all__ = [
 SPEED = {1: 0, 2: 1, 4: 2}
 DIRECTION = {"dummy": DIR_DUMMY, "rx": DIR_RX, "tx": DIR_TX, "bidir": DIR_BIDIR}
 
-_KIND = {"data": 1, "opcode": 2, "oe": 3, "trigger": 4, "abort": 5, "chain": 6}
+_KIND = {"data": 1, "opcode": 2, "oe": 3, "trigger": 4, "abort": 5, "chain": 6, "fullcyc": 7}
 
 Segment = tuple[int, str, bytes | int]
 
@@ -113,6 +123,7 @@ class SepSpiLaneResponder:
         self._queue: deque[tuple[int, int]] = deque()  # (lanes, byte)
         self._pending: list[tuple[str, int, bytes | int]] | None = None
         self._task: Any = None
+        self._late = False
         self.driven: list[bytes] = []
         self.windows = 0
 
@@ -120,6 +131,12 @@ class SepSpiLaneResponder:
         """SPI mode of every window that starts after this call."""
         self._cpol = cpol & 1
         self._cpha = cpha & 1
+
+    def set_late(self, late: bool) -> None:
+        """Late beats (see the module text) for every window that starts after this call."""
+        if late and self._cpha != 0:
+            raise ValueError("late beats are defined for CPHA 0 only")
+        self._late = bool(late)
 
     def queue_rx(self, data: bytes, lanes: int) -> None:
         """Queue ``data`` for the next RX (or bidir) segments of width ``lanes``."""
@@ -249,13 +266,21 @@ class SepSpiLaneResponder:
             record: dict[int, int] = {}
             samples = 0
 
+            late = self._late
+            done = False
+
             def drive(k: int) -> None:
                 value = beats.get(k, 0)
                 dut.spi_sd_i.value = value
                 if k in beats:
                     record[k] = value
 
-            if self._cpha == 0:
+            async def drive_late(k: int) -> None:
+                await RisingEdge(dut.clk_i)
+                if not done:
+                    drive(k)
+
+            if self._cpha == 0 and not late:
                 drive(0)
             while True:
                 await First(Edge(sck), RisingEdge(cs_n))
@@ -266,9 +291,12 @@ class SepSpiLaneResponder:
                 if not level.is_resolvable:
                     continue
                 if int(level) == sample_level:
+                    if late:
+                        cocotb.start_soon(drive_late(samples))
                     samples += 1
-                else:
+                elif not late:
                     drive(samples)
+            done = True
             dut.spi_sd_i.value = 0
             self.driven = self._rebuild(record, spans)
             self.windows += 1
@@ -278,6 +306,27 @@ def pack_tx_words(data: bytes) -> list[int]:
     """TXDATA words of one TX segment (ByteOrder 1), the last word zero-padded."""
     padded = bytes(data) + b"\0" * (-len(data) % 4)
     return [int.from_bytes(padded[i : i + 4], "little") for i in range(0, len(padded), 4)]
+
+
+def late_sample_edge_bytes(data: bytes, lanes: int) -> bytes:
+    """Bytes a host that samples at the sample edge reads from a late responder.
+
+    Each beat (``lanes`` bits) is the beat before it in ``data``; the first
+    beat is 0.
+    """
+    if lanes not in SPEED:
+        raise ValueError(f"lanes={lanes}: must be 1, 2 or 4")
+    mask = (1 << lanes) - 1
+    groups = [(b >> s) & mask for b in data for s in range(8 - lanes, -1, -lanes)]
+    shifted = [0, *groups[:-1]]
+    per = 8 // lanes
+    out = bytearray()
+    for i in range(0, len(shifted), per):
+        byte = 0
+        for g in shifted[i : i + per]:
+            byte = (byte << lanes) | g
+        out.append(byte)
+    return bytes(out)
 
 
 def unpack_rx_words(words: Sequence[int], n: int) -> bytes:
@@ -363,7 +412,8 @@ async def spi_lane_fcov(
     (``oe_win``: 0 cold reset, 1 OUTPUT_EN = 0, 2 CS high, 3 CS low),
     ``trigger`` (RXQD == RX_WATERMARK), ``abort`` (``abort``: 0 SW_RST,
     1 rst_ni; with ``lanes``), ``chain`` (``chain``: 0 same width, 1 width
-    changes). Returns False on Verilator (no sampler). On any other simulator
+    changes), ``fullcyc`` (``lanes``: an RX frame read with
+    CONFIGOPTS.FULLCYC = 1). Returns False on Verilator (no sampler). On any other simulator
     a sampler without ``spi_ln_seq`` is a testbench error.
     """
     if kind not in _KIND:

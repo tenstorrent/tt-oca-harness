@@ -7354,6 +7354,7 @@ module sep_fcov (
   localparam bit [2:0] SpiLnTrigger = 3'd4;
   localparam bit [2:0] SpiLnAbort = 3'd5;
   localparam bit [2:0] SpiLnChain = 3'd6;
+  localparam bit [2:0] SpiLnFullcyc = 3'd7;
 
   // Test index of a data record: 0 pad speed/direction matrix, 1 pad timing,
   // 2 FIFO stall/watermark, 3 DMA handshake, 4 OT DMA RX, 5 OT flash command,
@@ -7453,11 +7454,22 @@ module sep_fcov (
     }
   endgroup
 
+  // Lane width of an Rx frame read with CONFIGOPTS.FULLCYC = 1 whose
+  // CHK-SPI-FULLCYC passed (pad timing leaf).
+  covergroup sep_spi_lane_fullcyc_cg with function sample (logic [1:0] width, logic v);
+    option.per_instance = 1;
+    option.name = "sep_spi_lane_fullcyc_cg";
+    cp_fullcyc_width: coverpoint width iff (v) {
+      bins x1 = {2'd0}; bins x2 = {2'd1}; bins x4 = {2'd2};
+    }
+  endgroup
+
   sep_spi_lane_data_cg        u_sep_spi_lane_data_cg        = new();
   sep_spi_lane_opcode_cg      u_sep_spi_lane_opcode_cg      = new();
   sep_spi_lane_oe_win_cg      u_sep_spi_lane_oe_win_cg      = new();
   sep_spi_lane_trigger_cg     u_sep_spi_lane_trigger_cg     = new();
   sep_spi_lane_abort_chain_cg u_sep_spi_lane_abort_chain_cg = new();
+  sep_spi_lane_fullcyc_cg     u_sep_spi_lane_fullcyc_cg     = new();
 
   wire [2:0] spi_ln_t = spi_ln_test(spi_ln_owner);
   // Owner gate of each group.
@@ -7472,6 +7484,8 @@ module sep_fcov (
   wire spi_ln_abort_v = (spi_ln_kind == SpiLnAbort) && spi_ln_abort_own;
   wire spi_ln_chain_v = (spi_ln_kind == SpiLnChain) &&
       (spi_ln_owner == FcovOwnSepSpiPadSpeedDirMatrixTest);
+  wire spi_ln_fullcyc_v = (spi_ln_kind == SpiLnFullcyc) &&
+      (spi_ln_owner == FcovOwnSepSpiPadTimingCfgRandTest);
 
   // Not gated on reset: the cold reset and rst_ni records come after the
   // graded window.
@@ -7484,6 +7498,7 @@ module sep_fcov (
       u_sep_spi_lane_trigger_cg.sample(1'b1, spi_ln_trig_v);
       u_sep_spi_lane_abort_chain_cg.sample(spi_ln_abort, spi_ln_width, spi_ln_abort_v, spi_ln_chain,
                                            spi_ln_chain_v);
+      u_sep_spi_lane_fullcyc_cg.sample(spi_ln_width, spi_ln_fullcyc_v);
     end
   end
 

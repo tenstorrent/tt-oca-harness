@@ -59,14 +59,15 @@ Checks:
     CHK-SPI-SB-TX   : per case, the SRAM source bytes equal the monitor's wire
                       decode at the case's lane width and the flash record's
                       ``data_in``.
-    CHK-MULTICHUNK  : the TX watermark paced every DMA transfer. A watch-only
-                      probe samples the DMA input trigger and the SPI TX FIFO depth
-                      (TXQD) on each clock while DMA STATUS.busy is set. Per case,
-                      the DMA saw at least `chunks` (and at least 2) separate
-                      trigger assertions, and TXQD never went above
-                      TX_WATERMARK - 1 + one chunk (7 words). A trigger held high,
-                      or a DMA that refills without waiting for the watermark,
-                      fills the FIFO past that bound in one burst.
+    OBS-MULTICHUNK  : how the TX watermark paced each DMA transfer, logged and
+                      not graded (no source states one chunk per trigger in the
+                      TX direction or a TXQD bound). A watch-only probe samples
+                      the DMA input trigger and the SPI TX FIFO depth (TXQD) on
+                      each clock while DMA STATUS.busy is set; per case the leaf
+                      logs the trigger assertions against `chunks` and the TXQD
+                      peak against TX_WATERMARK - 1 + one chunk (7 words). The
+                      probe must show one busy window per case, else the leaf
+                      fails (CTRL-MISSING).
 
 main() returns the error count; fw/startup/crt0.s emits PASS (0xCAFEBABE) / FAIL (0xDEADBEEF).
 
@@ -114,7 +115,7 @@ _FLASH_PAGES = 32 * (_SECTOR_SIZE // _PAGE_SIZE)
 _MAX_WORDS = 16
 # nword counts whose (1+n)*4 byte total is a multiple of the 16-byte DMA chunk AND
 # exceeds one chunk, so every transfer needs >= 2 watermark-triggered refills and
-# every seed gives CHK-MULTICHUNK a pacing sequence to grade (n=3 -> exactly 1
+# every seed gives OBS-MULTICHUNK a pacing sequence to log (n=3 -> exactly 1
 # chunk, excluded).
 _LEGAL_NWORDS = [7, 11, 15]
 # Literal floor for the breadth claim. Independent of _LEGAL_NWORDS so a
@@ -228,7 +229,7 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
     """Each DMA-fed PAGE PROGRAM lands in the flash BFM, paced by the TX watermark."""
 
     build_env = False
-    required_evidence = ("CHK-FW-CONSOLE", "CHK-MULTICHUNK")
+    required_evidence = ("CHK-FW-CONSOLE",)
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -381,49 +382,27 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             windows.append(win)
 
     def _pacing_check(self, windows: list[_DmaTxWindow], cases) -> None:
-        """CHK-MULTICHUNK: the TX watermark paced each DMA transfer."""
+        """OBS-MULTICHUNK: how the TX watermark paced each DMA transfer (logged only)."""
         if len(windows) != len(cases):
             raise AssertionError(
-                f"SPI DMA-TX CHK-MULTICHUNK: the probe saw {len(windows)} DMA busy "
-                f"window(s) for {len(cases)} case(s)"
+                f"CTRL-MISSING SPI DMA-TX OBS-MULTICHUNK: the probe saw {len(windows)} DMA "
+                f"busy window(s) for {len(cases)} case(s)"
             )
         for case, win in zip(cases, windows):
             need = max(case.chunks, _MIN_TRIGGERS)
             self.logger.info(
-                "SPI DMA-TX pacing case[%d]: chunks=%d trigger_at_start=%d rises=%d "
-                "assertions=%d peak_txqd=%d busy_cycles=%d",
+                "OBS-MULTICHUNK case[%d]: chunks=%d trigger_at_start=%d rises=%d "
+                "assertions=%d per_chunk_floor=%d peak_txqd=%d paced_bound=%d busy_cycles=%d",
                 case.idx,
                 case.chunks,
                 win.trigger_at_start,
                 win.rises,
                 win.assertions,
+                need,
                 win.peak_txqd,
+                _PACED_TXQD_MAX,
                 win.cycles,
             )
-            if win.assertions < need:
-                raise AssertionError(
-                    f"SPI DMA-TX CHK-MULTICHUNK case[{case.idx}]: the DMA saw "
-                    f"{win.assertions} trigger assertion(s) for a {case.chunks}-chunk "
-                    f"transfer, need >= {need}; the watermark did not pace the refill"
-                )
-            if win.peak_txqd > _PACED_TXQD_MAX:
-                raise AssertionError(
-                    f"SPI DMA-TX CHK-MULTICHUNK case[{case.idx}]: TXQD peaked at "
-                    f"{win.peak_txqd} words, above the paced bound {_PACED_TXQD_MAX} "
-                    f"(TX_WATERMARK {_TX_WATERMARK_WORDS} - 1 + "
-                    f"{_DMA_CHUNK_BYTES // 4}-word chunk); the DMA refilled without "
-                    "waiting for the watermark"
-                )
-        self.logger.info(
-            "CHK-MULTICHUNK PASS: %d DMA-TX transfer(s) watermark-paced: "
-            "trigger assertions=%s for chunks=%s (floor %d), peak TXQD=%s <= %d words",
-            len(windows),
-            [w.assertions for w in windows],
-            [c.chunks for c in cases],
-            _MIN_TRIGGERS,
-            [w.peak_txqd for w in windows],
-            _PACED_TXQD_MAX,
-        )
 
     def _golden_check(self, flash, cfg, cases) -> None:
         txns = flash.get_transactions()

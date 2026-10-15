@@ -394,7 +394,9 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 sb.expect_tx(cfg.neigh_addr, cfg.neigh_bytes(), label="neighbour program")
                 # The first 0x03 record in device order is the primary READ that
                 # follows the primary program; it returns the programmed words.
-                sb.expect_rx(0x03, cfg.pp_bytes(), label="primary read width=x1")
+                sb.expect_rx(
+                    0x03, cfg.pp_bytes(), source="fw:CHK-READ", label="primary read width=x1"
+                )
                 for entry in cfg.lanes:
                     label = f"lane op=0x{entry.opcode:02x} width=x{entry.lanes}"
                     if entry.is_program:
@@ -402,7 +404,12 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                             entry.addr, entry.data_bytes(), label=label, opcode=entry.opcode
                         )
                     else:
-                        sb.expect_rx(entry.opcode, entry.data_bytes(), label=label)
+                        sb.expect_rx(
+                            entry.opcode,
+                            entry.data_bytes(),
+                            source="fw:CHK-SPI-LANE-READ",
+                            label=label,
+                        )
                 self._lane_fw_check(cfg)
             assert not bfm_errors.records, (
                 f"SPI-BFM FAIL: the flash model logged {len(bfm_errors.records)} error(s): "
