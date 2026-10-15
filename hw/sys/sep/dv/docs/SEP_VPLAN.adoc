@@ -1208,7 +1208,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, ocah_spi_vip, SPI pad ports, lane and output-enable taps (approved)
-|Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. Each cell runs at a drawn lane width, and its Tx and Rx data are graded byte for byte on the lanes. The Tx data edge is not graded in the cell CPHA=1 with FULLCYC=1, because `spi_controller.adoc` (CONFIGOPTS) gives that cell a shift edge that differs from the general CPHA text; the CPHA=1 edge closes on a merge of regressions. The FULLCYC sampling point is not graded.
+|Proves that CPOL, CPHA, CLKDIV, CSNLEAD, CSNTRAIL and CSNIDLE set the sck idle level, period, chip-select spacing and Tx data edge at the pad, in two drawn CPOL, CPHA and FULLCYC cells per seed, one at each CPOL and each CPHA value. Each cell runs at a drawn lane width, and its Tx and Rx data are graded byte for byte on the lanes. Each cell has exactly the frames it registered, and each Rx segment delivers exactly its RXDATA words. The Tx data edge is not graded in the cell CPHA=1 with FULLCYC=1, because `spi_controller.adoc` (CONFIGOPTS) gives that cell a shift edge that differs from the general CPHA text; the CPHA=1 edge closes on a merge of regressions. The FULLCYC sampling point is not graded.
 |<<sep_spi_fifo_stall_watermark_rand_test,`sep_spi_fifo_stall_watermark_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense

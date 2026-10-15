@@ -68,6 +68,13 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
 * CHK-SPI-LANE-DATA: one line per cell with ``width=`` and the Tx and Rx frame
   and byte counts, after CHK-SPI-SB-FRAME of the cell passed. Control: the cell
   graded at least one Tx frame and one Rx frame.
+* CHK-SPI-CELL-FRAMES: the monitor frames of the cell are exactly the frames
+  the cell registered with its scoreboard. A frame with no expectation, a
+  registered frame the monitor did not see, or a monitor tally difference in
+  the mode of the cell that is not equal to the registered count fails.
+* CHK-SPI-RX-WORDS: after each pair the RXDATA drain (reads until
+  RXEMPTY=1) gives exactly ceil(n/4) words for an Rx segment of n bytes, and no
+  word when the Rx COMMAND was not written. A surplus or a missing word fails.
 
 Every CHK line carries ``width=x1|x2|x4``.
 
@@ -129,6 +136,12 @@ CLKDIV_DRAW_MAX = 15
 CSNLEAD_MAX = (1 << SPI_CONTROLLER.field_width("CONFIGOPTS", "csnlead")) - 1
 CSNTRAIL_MAX = (1 << SPI_CONTROLLER.field_width("CONFIGOPTS", "csntrail")) - 1
 CSNIDLE_MAX = (1 << SPI_CONTROLLER.field_width("CONFIGOPTS", "csnidle")) - 1
+# Scratch mutation hooks; both are 0 in the shipped leaf. RX_EXTRA_BYTES > 0
+# lengthens each Rx COMMAND past its expected bytes (CHK-SPI-RX-WORDS fails);
+# EXTRA_TX_FRAMES > 0 issues that many unregistered Tx frames at the end of
+# each cell (CHK-SPI-CELL-FRAMES fails).
+RX_EXTRA_BYTES = 0
+EXTRA_TX_FRAMES = 0
 
 # Bounds. Each expiry fails the check that the wait feeds.
 QUEUE_POLLS = 64
@@ -185,6 +198,8 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         "CHK-SPI-CPHA",
         "CHK-SPI-SB-FRAME",
         "CHK-SPI-LANE-DATA",
+        "CHK-SPI-CELL-FRAMES",
+        "CHK-SPI-RX-WORDS",
     )
 
     def _plan(self, seed: int) -> list[Cell]:
@@ -247,6 +262,19 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         )
         self.tally[kind][0] += 1
         self.tally[kind][1] += len(value)
+        self.marks.add(mark)
+
+    def _rx_words(self, words: list[int], n: int, *, tag: str) -> None:
+        """CHK-SPI-RX-WORDS: the drain gave exactly the words of ``n`` Rx bytes."""
+        exp = (n + 3) // 4
+        line = (
+            f"seed={self.seed} mode={self.cell.mode} width=x{self.cell.width} {tag} "
+            f"rx_bytes={n} words={len(words)} expect={exp}"
+        )
+        if len(words) != exp:
+            raise AssertionError(f"CHK-SPI-RX-WORDS FAIL {line}")
+        self.logger.info("CHK-SPI-RX-WORDS PASS %s", line)
+        self.ran.add("CHK-SPI-RX-WORDS")
 
     async def _arm_rx_window(self, segs: list[tuple[str, int, int]]) -> None:
         """Give the responder the Rx layout once the Tx window of the pair has started."""
@@ -280,14 +308,17 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         for _ in range(QUEUE_POLLS):
             st = await ops.read_status()
             if st.ready and st.active:
-                await ops.wr(COMMAND, command_word(len(rx) - 1, speed=speed, direction=DIR_RX))
+                await ops.wr(
+                    COMMAND,
+                    command_word(len(rx) - 1 + RX_EXTRA_BYTES, speed=speed, direction=DIR_RX),
+                )
                 queued = st
                 break
             if st.ready and not st.active:
                 break
         if queued is None:
             await ops.wait_segment_done(pads, mark, windows=1, bound_clks=PAIR_BOUND_CLKS)
-            await ops.drain_rx()
+            self._rx_words(await ops.drain_rx(), 0, tag=f"{tag}_tx_only")
             arm.cancel()
             self.rsp.clear()
             self._expect(fmark, (width, "tx", tx), leg=f"{tag}_tx_only")
@@ -308,12 +339,14 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
                 f"CTRL-MISSING seed={self.seed} mode={self.cell.mode} width=x{width} "
                 f"{tag}: the Rx layout was not armed before the Rx window"
             )
+        self._rx_words(words, len(rx), tag=tag)
         delivered = unpack_rx_words(words, len(rx))
         self._expect(fmark, (width, "tx", tx), leg=f"{tag}_tx")
         self._expect(fmark + 1, (width, "rx", rx), delivered=delivered, leg=f"{tag}_rx")
         return mark, wins
 
-    async def _single_tx(self, cfg: int, cpol: int, width: int, *, leg: str) -> CsWindow:
+    async def _single_tx(self, cfg: int, cpol: int, width: int, *, leg: str | None) -> CsWindow:
+        """One Tx segment; with ``leg=None`` the frame is not registered."""
         ops, pads = self.ops, self.pads
         await ops.write_configopts(cfg)
         pads.set_idle_level(cpol)
@@ -326,7 +359,8 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             command_word(RATIO_TX_BYTES - 1, speed=SPEED[width], direction=DIR_TX)
         )
         wins = await ops.wait_segment_done(pads, mark, windows=1, bound_clks=PAIR_BOUND_CLKS)
-        self._expect(fmark, (width, "tx", tx), leg=leg)
+        if leg is not None:
+            self._expect(fmark, (width, "tx", tx), leg=leg)
         return wins[0]
 
     @staticmethod
@@ -358,6 +392,9 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         self.cell = c
         self.sb = SepSpiScoreboard(self.wire, None, self.logger, seed=seed)
         self.tally = {"tx": [0, 0], "rx": [0, 0]}
+        self.marks: set[int] = set()
+        first = self.sb.frame_mark()
+        mode_tally0 = self.wire.tally[(c.cpol, c.cpha)]
         # Every CONFIGOPTS write of the cell carries this CPOL and CPHA.
         self.wire.set_mode(c.cpol, c.cpha)
         self.rsp.set_mode(c.cpol, c.cpha)
@@ -560,6 +597,24 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             raise AssertionError(
                 f"SPI-ERROR FAIL seed={seed} mode={c.mode} width=x{w} error_status {err.fields()}"
             )
+
+        for _ in range(EXTRA_TX_FRAMES):
+            await self._single_tx(c.cfg(clkdiv=c.a, csnidle=idle), c.cpol, w, leg=None)
+
+        # Every monitor frame of the cell has one expectation.
+        end = self.sb.frame_mark()
+        mode_frames = self.wire.tally[(c.cpol, c.cpha)] - mode_tally0
+        unexpected = [i for i in range(first, end) if i not in self.marks]
+        unseen = sorted(m for m in self.marks if not first <= m < end)
+        line = (
+            f"seed={seed} mode={c.mode} width=x{w} first={first} frames={end - first} "
+            f"mode_tally={mode_frames} registered={len(self.marks)} "
+            f"unexpected={unexpected[:5]} unseen={unseen[:5]}"
+        )
+        if unexpected or unseen or mode_frames != len(self.marks) or not self.marks:
+            raise AssertionError(f"CHK-SPI-CELL-FRAMES FAIL {line}")
+        self.logger.info("CHK-SPI-CELL-FRAMES PASS %s", line)
+        self.ran.add("CHK-SPI-CELL-FRAMES")
 
         # Data of every frame of the cell, at the width of the cell.
         self.sb.finish()
