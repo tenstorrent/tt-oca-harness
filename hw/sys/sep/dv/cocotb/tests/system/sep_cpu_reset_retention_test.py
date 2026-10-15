@@ -515,6 +515,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         self.retain: dict[str, str] = {}
         self.agg: dict[str, str] = {}
         self.ovl_dbg: list[str] = []
+        self.late_b: list[str] = []
         self.cpu_rst = {"wdt_events": 0, "low": 0, "sep_high": True}
         try:
             await RisingEdge(dut.clk_i)
@@ -530,8 +531,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 await self._latch_faults(f"{cls} sequence")
                 await self._sequence(cls)
                 await self._retention_reads(cls)
-            # Every DMA run, the DBG runs too, comes before the overlap leg: a
-            # "between" overlap run can stop the leaf on the in-flight write defect.
+            # Every DMA run, the DBG runs too, comes before the overlap leg.
             for cls in self.classes:
                 for mode in self.plan.dma_modes:
                     await self._dma_leg(cls, mode)
@@ -549,6 +549,10 @@ class sep_cpu_reset_retention_test(sep_base_test):
                     self._chk("CHK-AGG-SURVIVE", True, self.agg[key])
             # Last, after every other check: a CPU reset with a write in flight.
             await self._wdt_inflight_leg()
+            if self.late_b:
+                raise AssertionError(
+                    f"CHK-OVL FAIL: {len(self.late_b)} overlap run(s) with a late B: {self.late_b[0]}"
+                )
         finally:
             await self._close()
             for w in (self.irq, self.mpc, *self.pins.values()):
@@ -926,7 +930,11 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 )
                 if cut["outcome"] != "late":
                     self.logger.error(msg)
-                raise AssertionError(msg)
+                    raise AssertionError(msg)
+                # A late B is the in-flight write defect. The run goes on so the later
+                # legs keep their evidence; the leaf fails after the last leg.
+                self.late_b.append(msg)
+            late = not cut["ok"]
             h = cut["aw"]
             fall = self.taps.ip_rst[IPRST[d]].fall_clks_since(m[f"ip_rst_{IPRST[d]}"])[0]
             low = self.pins[run.cls].fall_clks_since(mp)
@@ -994,7 +1002,10 @@ class sep_cpu_reset_retention_test(sep_base_test):
             if not ok:
                 self.logger.error("CHK-OVL FAIL: %s %s %s", line, fd.fields(), fs.fields())
                 raise AssertionError(f"CHK-OVL FAIL: {line}")
-            if run.cls == "WDT":
+            if late:
+                # The run already failed on its B; the rest of its grading met.
+                self.logger.info("OVL-AFTER-LATE: %s", line)
+            elif run.cls == "WDT":
                 self._chk("CHK-OVL", True, line)
             else:
                 self.ovl_dbg.append(line)
